@@ -1,0 +1,35 @@
+{
+  "skill_name": "rust-macros",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have 12 error types (`IoError`, `ParseError`, `ConfigError`, ...) and I'm hand-writing `impl From<X> for AppError` for every one of them. It's pure boilerplate. Is a macro the right call here, and which kind?",
+      "expected_output": "Confirms this is a good macro case and chooses `macro_rules!` (declarative): it is a uniform stamp-out over a list of types with no field introspection needed. Sketches the parse-to-emit shape, shows a rule that takes a list of variant/type pairs, and reminds to verify with `cargo expand` and use `$crate::` if the macro is exported.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I want a `#[derive(Builder)]` for my config structs that generates a builder type from the fields, and I need `#[builder(skip)]` and `#[builder(rename = \"...\")]` attributes on individual fields. How should I build this?",
+      "expected_output": "Chooses a procedural derive macro because it requires inspecting struct fields by name and type and parsing per-field attributes — beyond what `macro_rules!` can do. Outlines the parse+transform split with `syn`/`quote`, attribute parsing via syn 2.x, using `syn::Error::new_spanned` instead of `panic!`, and `trybuild` compile-fail tests for the error cases.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Can I use `macro_rules!` to generate a visitor that walks each variant of my enum and calls a `visit_*` method named after the variant, inspecting each variant's fields?",
+      "expected_output": "Says no: inspecting variant fields by name and concatenating identifiers from variant names needs field introspection, which `macro_rules!` cannot do — this is the canonical mistake of reaching for declarative macros for introspection. Routes to a proc macro derive. Notes that simple identifier concatenation alone could use `macro_rules!` + `paste`, but field-by-name inspection pushes it to a proc macro.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "There's some repetition in my config-validation code across a few structs and I'm thinking of writing a macro to DRY it up. Good idea?",
+      "expected_output": "Walks the escalation ladder before endorsing a macro: can a plain function abstract over the values, or generics + traits over the types? Macros are the last step, justified only when functions and generics genuinely cannot express the repetition. Resists reflexively reaching for a macro and asks what specifically can't be a function.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "My `#[macro_export]`ed `ensure!` macro works fine inside its own crate, but when another crate uses it the compile fails with errors like 'cannot find type `Result` in this scope' or unresolved paths. What's going on?",
+      "expected_output": "Identifies a hygiene/pathing bug: exported macros must qualify all paths with `$crate::` (and use absolute paths for std items) so they resolve in the caller's crate. Recommends fixing the unqualified paths and verifying the expansion at the call site with `cargo expand` in the consuming crate.",
+      "files": []
+    }
+  ]
+}

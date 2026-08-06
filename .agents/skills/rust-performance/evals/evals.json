@@ -1,0 +1,35 @@
+{
+  "skill_name": "rust-performance",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Our `intern_symbol` shows up hot in every profile. I'm pretty sure it's because we `.clone()` the `String` key on every insert into the `HashMap<String, SymbolId>` in `crates/frontend/src/interner.rs`. Should I switch the key to `Rc<str>` or move to an arena allocator?",
+      "expected_output": "Refuses to pick a data-structure change from intuition. Asks for (or establishes) a baseline measurement of the real workload first, then localizes whether the cost is the clone, the allocation, or the hashing — these point to different fixes. Proposes the lowest-risk intervention that matches the measured bottleneck and insists on re-measuring the changed path plus a broader workload that could regress. Names the key shape, access pattern, and lifetime before endorsing any container swap.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "A teammate's PR claims a 15% speedup on expression evaluation by switching `Vec<Expr>` to `SmallVec<[Expr; 4]>`. I'm reviewing it. How do I tell whether the win is real before I approve?",
+      "expected_output": "Enters review mode: checks for a representative benchmark or profile backing the claim (not a toy microbench), asks whether variance was accounted for, and whether the change trades speed for memory, compile time, or another pipeline stage. Asks what workload proves the win and what broader workload guards against regression. Flags the inline-capacity choice (4) as a value that itself needs justification from the measured distribution.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Our core `Term` enum is 96 bytes and we allocate millions of them during normalization. I want to shrink it to improve memory. What's the move?",
+      "expected_output": "First asks whether footprint is actually the bottleneck versus allocation rate or cache misses — measure before changing. Considers boxing rare/cold variants and layout (field ordering, niche) to shrink the common case, but warns against shrinking in a way that adds an indirection on the hot path. Requires measuring both memory and speed after the change, since they can trade off.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I want to optimize the typechecker's unification loop but there's no benchmark for it anywhere in the repo. Where do I even start?",
+      "expected_output": "Says the first deliverable is measurement, not a code change: add the smallest credible bench or profiling hook that exercises the unification path, name the concrete workload, and capture a baseline before touching the loop. Suggests reusing any existing nearby bench or profiling surface first. Resists optimizing until there is a number to beat.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Can we use SIMD to speed up the dispatch loop in our bytecode interpreter? It's the hottest function in the whole VM.",
+      "expected_output": "Resists defaulting to SIMD before measuring and before exhausting algorithm, representation, and allocation/layout changes. Asks for the workload and baseline, and points out that interpreter dispatch is usually bound by branch prediction and instruction-cache behavior rather than data parallelism, so the higher-leverage interventions are threading/dispatch structure, not vectorization. Only entertains SIMD once cheaper levels are measured and ruled out.",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "skill_name": "rust-testing",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just fixed a bug where our `normalize_float` function returned `0.0` for negative zero instead of preserving the sign. What test should I add so this doesn't come back?",
+      "expected_output": "Recommends a minimal regression test that fails before the fix and passes after, asserting the specific behavior (sign of negative zero preserved), not a vague `is_ok()`. Names the test with a contract-first convention like `regression_negative_zero_sign_preserved`. Considers whether the bug reveals a broader law (e.g. sign preservation as a property) worth one additional property test, without burying the repro in a large fixture.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We have a `serialize` and `deserialize` pair for our AST in `crates/core/src/ast.rs`. Right now there are a handful of hand-written example tests. How should I really be testing this?",
+      "expected_output": "Identifies the roundtrip law (`deserialize(serialize(x)) == x`) as a stronger oracle than example outputs and recommends a property test with a meaningful, shrinkable generator over ASTs. Suggests `*_laws.rs` naming, justifying case counts, and keeping the generator near the abstraction. Notes that many redundant examples that restate the same law can be replaced by the single property.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Our integration tests in `tests/cli.rs` go red every time someone tweaks the wording of a diagnostic message. CI is constantly broken over cosmetic changes. What's the fix?",
+      "expected_output": "Diagnoses brittle assertions coupled to volatile wording (full-string snapshots of unstable diagnostics). Recommends asserting stable fragments or structured fields (error code, span, variant) instead of exact text, and questions whether the check is at the right layer — a local invariant may belong a layer down. Keeps user-facing snapshots only for genuinely stable structure.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I want to add a test that asserts parsing a 10,000-line file completes in under 50ms, so we catch it if parsing ever gets slow. Where should that go in the test suite?",
+      "expected_output": "Says a timing assertion does not belong in a `#[test]` (benchmark-like loops in unit tests are flaky and use the wrong surface). Routes the latency/scaling concern to `rust-performance` for a proper bench or profiling guardrail. Suggests keeping a correctness regression only if the perf bug also had a semantic symptom.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "We added a check that rejects import cycles in the module graph. I've got tests confirming that several valid acyclic graphs are accepted. Is that enough coverage?",
+      "expected_output": "Points out that a suite of only positive cases misses the most dangerous failures: every 'must not hold' rule needs a negative test. Recommends adding a test that a known cyclic graph is actually rejected, asserting the specific rejection (error variant / stable diagnostic), proving the bad case stays bad — not just that good cases pass.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "We have around 200 passing tests on our typechecker crate, but a real soundness bug still made it to a release. Something is wrong with how we test. Where do I start?",
+      "expected_output": "Frames this as false confidence: counts are not confidence. Starts from 'what bug would escape today?' and 'what is the real contract?', steering toward testing invariants and laws (e.g. preservation, no ill-typed program accepted) rather than examples, and toward negative tests for the soundness obligations. Looks for tests over-coupled to representation that pass while the contract breaks.",
+      "files": []
+    }
+  ]
+}

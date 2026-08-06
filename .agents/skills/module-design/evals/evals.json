@@ -1,0 +1,41 @@
+{
+  "skill_name": "module-design",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I'm about to create a new `compiler-pipeline` crate that will hold the compilation pipeline stages (resolve, units, expand, snapshot). Right now these are scattered across `crates/musa-compiler/`. How should I structure the public API?",
+      "expected_output": "A design recommendation that identifies volatile decisions to hide, proposes a deep interface (few public entry points serving many pipeline configurations), and avoids complecting pipeline stages with each other or with storage/caching concerns.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "A `ScoreSnapshot` type in our compiler crate feels like it's doing too much — it handles storage, lookup, revision tracking, and caching all in one type. I want to clean it up but I'm not sure where to start.",
+      "expected_output": "A complecting diagnosis that names the independent concerns braided together, classifies the design pressure, and proposes separation along volatility lines — without just adding thin wrappers.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "I've been adding pub methods to a `ProjectSession` type in `crates/musa-project/src/session.rs` and it's getting unwieldy — 40+ public methods now. How do I decide what should stay and what should move?",
+      "expected_output": "A surface area analysis that groups methods by concern, identifies methods that could be general-purpose (serving multiple callers), spots shallow delegation, and recommends which groups to extract as separate types or traits.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "I'm writing a `struct NotationPlan` in `crates/musa-render`. The current sketch has eight `pub` fields — measures, staves, beams, ties, plus four convenience accessor methods that just read them. Which fields should actually be public, and should the accessors exist at all?",
+      "expected_output": "An analysis distinguishing data (what defines the plan) from operations (what consumers compute), recommending private fields with a small set of caller-oriented operations, and flagging that accessors which only mirror field layout are shallow surface rather than real abstraction.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "A module in `musa-language` has 14 public free functions that each just call one method on `SyntaxNode` and return the result (e.g., `pub fn node_kind(n: &SyntaxNode) -> SyntaxKind { n.kind() }`). They were added to make call sites read better. Is that bad design, and what would a depth-improving fix look like?",
+      "expected_output": "A diagnosis that flags this as shallow surface area (each wrapper adds a name without hiding complexity), names the depth ratio problem, and proposes either calling the methods directly, replacing the wrappers with a small set of general operations, or keeping them private if they're internal helpers — without simply deleting helpful API.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "I want a module that defines `struct Duration`, its `Ord`/`Add` impls, its `serde` serialization, and its `Display` formatting, all in one place. My colleague says this complects too much. Is the skill OK with this?",
+      "expected_output": "A nuanced answer: a value type plus its core trait impls is normal Rust style and not complecting; the question is whether the module mixes truly independent concerns (e.g., domain logic with export-format details, or the type with a heavy algorithm). Recommend keeping the type + core impls together, splitting out anything callers wouldn't expect to import as a unit.",
+      "files": []
+    }
+  ]
+}
