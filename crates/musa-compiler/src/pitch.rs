@@ -5,6 +5,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::origin::Interval;
+
 /// The diatonic letter of a written pitch.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Letter {
@@ -62,6 +64,33 @@ impl Letter {
             Self::G => 4,
             Self::A => 5,
             Self::B => 6,
+        }
+    }
+
+    /// The letter at a diatonic step above C (0..=6).
+    pub fn from_steps(steps: i8) -> Option<Self> {
+        match steps {
+            0 => Some(Self::C),
+            1 => Some(Self::D),
+            2 => Some(Self::E),
+            3 => Some(Self::F),
+            4 => Some(Self::G),
+            5 => Some(Self::A),
+            6 => Some(Self::B),
+            _ => None,
+        }
+    }
+
+    /// Semitones above C of the natural (unaltered) letter.
+    pub fn natural_semitone(self) -> i8 {
+        match self {
+            Self::C => 0,
+            Self::D => 2,
+            Self::E => 4,
+            Self::F => 5,
+            Self::G => 7,
+            Self::A => 9,
+            Self::B => 11,
         }
     }
 }
@@ -126,16 +155,34 @@ impl WrittenPitch {
 
     /// Semitones above C within the octave, accounting for the accidental.
     pub fn semitone(self) -> i8 {
-        let base: i8 = match self.letter {
-            Letter::C => 0,
-            Letter::D => 2,
-            Letter::E => 4,
-            Letter::F => 5,
-            Letter::G => 7,
-            Letter::A => 9,
-            Letter::B => 11,
-        };
-        base.saturating_add(self.accidental.0)
+        self.letter.natural_semitone().saturating_add(self.accidental.0)
+    }
+
+    /// Transpose by an interval, keeping the result spellable (roadmap
+    /// §5.4): the letter moves by the interval's diatonic steps and the
+    /// accidental absorbs whatever semitone difference remains. Returns
+    /// `None` when the result needs more than a double accidental.
+    pub fn transpose(self, interval: Interval) -> Option<Self> {
+        let steps = i32::from(self.letter.steps()).saturating_add(i32::from(interval.diatonic_steps));
+        let letter = Letter::from_steps(i8::try_from(steps.rem_euclid(7)).ok()?)?;
+        let octave_shift = steps.div_euclid(7);
+        let current = i32::from(self.octave)
+            .saturating_mul(12)
+            .saturating_add(i32::from(self.semitone()));
+        let moved = current.saturating_add(i32::from(interval.semitones));
+        let octave_i32 = i32::from(self.octave).saturating_add(octave_shift);
+        let natural = octave_i32
+            .saturating_mul(12)
+            .saturating_add(i32::from(letter.natural_semitone()));
+        let accidental = moved.saturating_sub(natural);
+        if !(-2..=2).contains(&accidental) {
+            return None;
+        }
+        Some(Self {
+            letter,
+            accidental: Accidental(i8::try_from(accidental).ok()?),
+            octave: i8::try_from(octave_i32).ok()?,
+        })
     }
 }
 

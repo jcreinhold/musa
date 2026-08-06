@@ -1,7 +1,7 @@
 ---
 id: 06
 slug: motifs-and-transforms
-status: pending
+status: done
 depends_on: [05]
 phase: 1
 ---

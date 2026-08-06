@@ -5,7 +5,7 @@
 // total for musa's magnitudes (see `musa-compiler/src/time.rs`).
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{Compilation, CompileOptions, MusicalDuration, Severity, SourceDocument, compile};
+use musa_compiler::{Compilation, CompileOptions, MusicalDuration, SourceDocument, compile};
 use num_rational::Ratio;
 use proptest::prelude::*;
 
@@ -48,19 +48,13 @@ fn counterpoint_snapshot_shape() {
 }
 
 #[test]
-fn motif_application_warns_and_is_skipped() {
+fn motif_application_expands_with_provenance() {
     let compilation = compile_source(GLASS_MOUNTAIN);
-    let warnings = compilation
-        .diagnostics()
-        .iter()
-        .filter(|diagnostic| diagnostic.severity == Severity::Warning)
-        .count();
     assert!(
-        warnings > 0,
-        "expected skip warnings: {}",
+        !compilation.has_errors(),
+        "errors: {}",
         messages(&compilation).join("\n")
     );
-    // The violin's lead voice exists but is empty: its items were skipped.
     let snapshot = compilation.snapshot();
     let Some(snapshot) = snapshot else { return };
     let violin = snapshot
@@ -70,16 +64,170 @@ fn motif_application_warns_and_is_skipped() {
         .map(|(_, part)| part);
     let Some(violin) = violin else { return };
     let lead = violin.voices.values().next();
-    assert_eq!(lead.map(|voice| voice.events.len()), Some(0));
-    // The strings part lowered fully: 8 events, total span 4 whole notes.
-    let strings = snapshot
+    let Some(lead) = lead else { return };
+    // `use sigh();` then `transpose down P5 { use sigh(); }`: two expansions
+    // of a 5-item motif.
+    assert_eq!(lead.events.len(), 10);
+    let Some(first) = lead.events.first() else { return };
+    // The default argument bound the `root` parameter to e5.
+    assert!(format!("{:?}", first.kind).contains("letter: E"));
+    assert!(format!("{:?}", first.kind).contains("octave: 5"));
+    assert_eq!(first.origin.expansion_path.len(), 1);
+    // The sixth event is the transposed expansion's first note: e5 down a
+    // perfect fifth is a4, and its path records both steps in application
+    // order (outermost first).
+    let sixth = lead.events.get(5);
+    let Some(sixth) = sixth else { return };
+    assert!(format!("{:?}", sixth.kind).contains("letter: A"));
+    assert!(format!("{:?}", sixth.kind).contains("octave: 4"));
+    assert_eq!(sixth.origin.expansion_path.len(), 2);
+    assert!(format!("{:?}", sixth.origin.expansion_path).starts_with("[Transposition"));
+}
+
+#[test]
+fn transpose_spells_correctly() {
+    let source = "piece \"x\" { score { part p { voice v {
+        transpose up P5 { c4 1/4; }
+        transpose up M3 { e4 1/4; }
+        transpose down m3 { d5 1/4; }
+        transpose up m2 { b4 1/4; }
+    } } } }";
+    let compilation = compile_source(source);
+    assert!(
+        !compilation.has_errors(),
+        "errors: {}",
+        messages(&compilation).join("\n")
+    );
+    let Some(snapshot) = compilation.snapshot() else { return };
+    let Some(voice) = snapshot
         .parts
         .iter()
-        .find(|(_, part)| part.name == "strings")
-        .map(|(_, part)| part);
-    let Some(strings) = strings else { return };
-    let total: usize = strings.voices.values().map(|voice| voice.events.len()).sum();
-    assert_eq!(total, 8);
+        .next()
+        .and_then(|(_, part)| part.voices.values().next())
+    else {
+        return;
+    };
+    let spellings: Vec<String> = voice
+        .events
+        .iter()
+        .filter_map(|event| match &event.kind {
+            musa_compiler::ScoreEventKind::Note { pitch } => Some(pitch.to_string()),
+            musa_compiler::ScoreEventKind::Rest | musa_compiler::ScoreEventKind::Chord { .. } => None,
+        })
+        .collect();
+    assert_eq!(spellings, vec!["g4", "gs4", "b4", "c5"]);
+}
+
+#[test]
+fn repeat_expands_iterations_with_provenance() {
+    let source = "piece \"x\" { score { part p { voice v {
+        repeat 3 { c4 1/4; }
+    } } } }";
+    let compilation = compile_source(source);
+    assert!(
+        !compilation.has_errors(),
+        "errors: {}",
+        messages(&compilation).join("\n")
+    );
+    let Some(snapshot) = compilation.snapshot() else { return };
+    let Some(voice) = snapshot
+        .parts
+        .iter()
+        .next()
+        .and_then(|(_, part)| part.voices.values().next())
+    else {
+        return;
+    };
+    assert_eq!(voice.events.len(), 3);
+    let onsets: Vec<String> = voice.events.iter().map(|event| event.onset.to_string()).collect();
+    assert_eq!(onsets, vec!["0", "1/4", "1/2"]);
+    for (index, event) in voice.events.iter().enumerate() {
+        assert_eq!(
+            event.origin.expansion_path,
+            vec![musa_compiler::ExpansionStep::RepeatIteration(
+                u32::try_from(index).unwrap_or(0)
+            )]
+        );
+    }
+}
+
+#[test]
+fn unknown_motif_is_an_error() {
+    let compilation = compile_source("piece \"x\" { score { part p { voice v { use missing(); } } } }");
+    assert!(compilation.has_errors());
+    assert!(
+        messages(&compilation)
+            .iter()
+            .any(|message| message.contains("unknown motif"))
+    );
+}
+
+#[test]
+fn motifs_only_see_earlier_motifs() {
+    let compilation = compile_source(
+        "piece \"x\" {
+            motif a() { use b(); }
+            motif b() { c4 1/4; }
+            score { part p { voice v { use a(); } } }
+        }",
+    );
+    assert!(compilation.has_errors());
+    assert!(
+        messages(&compilation)
+            .iter()
+            .any(|message| message.contains("declared before"))
+    );
+}
+
+#[test]
+fn nested_motifs_and_duration_parameters_expand() {
+    let source = "piece \"x\" {
+        motif cell(d: duration = 1/4) { c4 d; d4 d; }
+        motif pair(d: duration = 1/8) { use cell(d); use cell(d); }
+        score { part p { voice v { use pair(1/16); use pair(); } } }
+    }";
+    let compilation = compile_source(source);
+    assert!(
+        !compilation.has_errors(),
+        "errors: {}",
+        messages(&compilation).join("\n")
+    );
+    let Some(snapshot) = compilation.snapshot() else { return };
+    let Some(voice) = snapshot
+        .parts
+        .iter()
+        .next()
+        .and_then(|(_, part)| part.voices.values().next())
+    else {
+        return;
+    };
+    let durations: Vec<String> = voice
+        .events
+        .iter()
+        .map(|event| event.notated_duration.spelling.clone())
+        .collect();
+    // 1/16 bound through two levels, then the 1/8 default.
+    assert_eq!(
+        durations,
+        vec!["1/16", "1/16", "1/16", "1/16", "1/8", "1/8", "1/8", "1/8"]
+    );
+    assert_eq!(voice.span().to_string(), "3/4");
+}
+
+#[test]
+fn missing_argument_without_default_is_an_error() {
+    let compilation = compile_source(
+        "piece \"x\" {
+            motif m(root: pitch) { root 1/4; }
+            score { part p { voice v { use m(); } } }
+        }",
+    );
+    assert!(compilation.has_errors());
+    assert!(
+        messages(&compilation)
+            .iter()
+            .any(|message| message.contains("missing argument"))
+    );
 }
 
 #[test]
@@ -205,4 +353,65 @@ proptest! {
             prop_assert!(false, "no snapshot");
         }
     }
+
+    /// §5.4 composition law at the value level: whenever both evaluation
+    /// orders stay spellable, transpose(transpose(p, a), b) == transpose(p, a+b).
+    #[test]
+    fn transposition_composes(
+        pitch in pitch_literal(),
+        a in interval_literal(),
+        b in interval_literal()
+    ) {
+        let combined = musa_compiler::Interval {
+            diatonic_steps: a.diatonic_steps.saturating_add(b.diatonic_steps),
+            semitones: a.semitones.saturating_add(b.semitones),
+        };
+        let stepwise = pitch.transpose(a).and_then(|moved| moved.transpose(b));
+        let direct = pitch.transpose(combined);
+        if let (Some(stepwise), Some(direct)) = (stepwise, direct) {
+            assert_eq!(stepwise, direct);
+        }
+    }
+
+    /// Octave transposition preserves letter and accidental exactly.
+    #[test]
+    fn octave_transposition_preserves_spelling(pitch in pitch_literal()) {
+        let up = musa_compiler::Interval { diatonic_steps: 7, semitones: 12 };
+        let moved = pitch.transpose(up);
+        assert!(moved.is_some());
+        if let Some(moved) = moved {
+            assert_eq!(moved.letter, pitch.letter);
+            assert_eq!(moved.accidental, pitch.accidental);
+            assert_eq!(moved.octave, pitch.octave.saturating_add(1));
+        }
+    }
+}
+
+fn pitch_literal() -> impl Strategy<Value = musa_compiler::WrittenPitch> {
+    (0i8..7, -2i8..=2, 1i8..7).prop_map(|(steps, accidental, octave)| musa_compiler::WrittenPitch {
+        letter: musa_compiler::Letter::from_steps(steps).unwrap_or(musa_compiler::Letter::C),
+        accidental: musa_compiler::Accidental(accidental),
+        octave,
+    })
+}
+
+fn interval_literal() -> impl Strategy<Value = musa_compiler::Interval> {
+    prop::sample::select(vec![
+        (1i8, 1i8),
+        (1, 2),
+        (2, 3),
+        (2, 4),
+        (3, 5),
+        (4, 7),
+        (5, 8),
+        (6, 10),
+        (-1, -1),
+        (-2, -3),
+        (-3, -5),
+        (-4, -7),
+    ])
+    .prop_map(|(diatonic_steps, semitones)| musa_compiler::Interval {
+        diatonic_steps,
+        semitones,
+    })
 }

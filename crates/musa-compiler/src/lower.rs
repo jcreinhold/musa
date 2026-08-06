@@ -14,7 +14,7 @@ use num_rational::Ratio;
 use slotmap::{SlotMap, new_key_type};
 
 use crate::compile::{Compilation, Diagnostic, SourceDocument};
-use crate::origin::{DeclarationId, Origin, SourceSpan};
+use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::score::{
     Clef, EventId, KeyMap, MeterMap, Mode, NotatedDuration, Part, PartId, ScoreEvent, ScoreEventKind, ScoreSnapshot,
@@ -28,9 +28,7 @@ new_key_type! {
     struct DeclKey;
 }
 
-/// A piece-level declaration discovered during the walk. Payloads (spans
-/// for "declared here" diagnostics) arrive when motif resolution needs
-/// them in prompt 06.
+/// A piece-level declaration discovered during the walk.
 enum DeclInfo {
     Tempo,
     Meter,
@@ -40,9 +38,39 @@ enum DeclInfo {
     Voice,
 }
 
+/// A collected motif definition ready for expansion.
+struct MotifDef {
+    params: Vec<musa_language::ast::Param>,
+    body: Vec<VoiceItem>,
+    declaration: DeclarationId,
+}
+
+/// A parameter bound at a `use` site.
+#[derive(Clone)]
+enum BoundValue {
+    Pitch(WrittenPitch),
+    Duration(NotatedDuration),
+}
+
+/// Expansion context carried through blocks: bound parameters, the
+/// transposition stack (outermost first), and the provenance path prefix.
+#[derive(Clone)]
+struct ExpandCx {
+    params: IndexMap<String, BoundValue>,
+    intervals: Vec<Interval>,
+    path: Vec<ExpansionStep>,
+    declaration: DeclarationId,
+    /// Set when expanding a motif: every event's origin points at the call.
+    origin_span: Option<SourceSpan>,
+    /// Only motifs declared before this index are visible; this makes
+    /// cyclic expansion impossible by construction (roadmap §6.5).
+    max_motif: usize,
+}
+
 /// Mutable lowering state.
 struct Lowering {
     declarations: SlotMap<DeclKey, DeclInfo>,
+    motifs: IndexMap<String, MotifDef>,
     diagnostics: Vec<Diagnostic>,
     next_event: u64,
     next_part: u32,
@@ -52,6 +80,7 @@ impl Lowering {
     fn new() -> Self {
         Self {
             declarations: SlotMap::with_key(),
+            motifs: IndexMap::new(),
             diagnostics: Vec::new(),
             next_event: 0,
             next_part: 0,
@@ -64,10 +93,6 @@ impl Lowering {
 
     fn error(&mut self, message: impl Into<String>, span: SourceSpan) {
         self.diagnostics.push(Diagnostic::error(message, Some(span)));
-    }
-
-    fn warn(&mut self, message: impl Into<String>, span: SourceSpan) {
-        self.diagnostics.push(Diagnostic::warning(message, Some(span)));
     }
 
     fn event_id(&mut self) -> EventId {
@@ -178,18 +203,19 @@ fn lower_header(lowering: &mut Lowering, piece: &PieceDecl, snapshot: &mut Score
             None => lowering.error("invalid key declaration", span_of(key.syntax())),
         }
     }
-    let mut seen_motifs = std::collections::HashSet::new();
     for motif in piece.motifs() {
         let name = motif.name().unwrap_or_default();
-        if !seen_motifs.insert(name.clone()) {
+        if lowering.motifs.contains_key(&name) {
             lowering.error(format!("duplicate motif `{name}`"), span_of(motif.syntax()));
             continue;
         }
-        lowering.declare(DeclInfo::Motif);
-        lowering.warn(
-            format!("motif `{name}`: expansion is not yet implemented; applications will be skipped"),
-            span_of(motif.syntax()),
-        );
+        let key = lowering.declare(DeclInfo::Motif);
+        let definition = MotifDef {
+            params: motif.params(),
+            body: motif.items(),
+            declaration: ordinal(lowering, key),
+        };
+        lowering.motifs.insert(name, definition);
     }
 }
 
@@ -312,110 +338,300 @@ fn lower_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDecl, s
 
 /// Lower one voice: sequential accumulation of onsets (roadmap §5.2's span
 /// law by construction).
+/// Lower one voice from a root expansion context: sequential accumulation
+/// of onsets (roadmap §5.2's span law by construction).
 fn lower_voice(lowering: &mut Lowering, voice: &musa_language::ast::VoiceDecl, declaration: DeclarationId) -> Voice {
     let mut events = Vec::new();
     let mut onset = MusicalTime::ZERO;
-    for item in voice.items() {
-        match item {
-            VoiceItem::Note(note) => {
-                let Some(duration) = parse_duration(note.syntax()) else {
-                    lowering.error("missing duration", span_of(note.syntax()));
-                    continue;
-                };
-                let pitch_text = note.pitch().unwrap_or_default();
-                let kind = match WrittenPitch::parse(&pitch_text) {
-                    Some(pitch) => ScoreEventKind::Note { pitch },
-                    None => {
-                        lowering.warn(
-                            format!("`{pitch_text}` is a motif parameter reference; parameter binding is not yet implemented"),
-                            span_of(note.syntax()),
-                        );
-                        onset = onset + duration.value;
-                        continue;
-                    }
-                };
-                let origin = Origin {
-                    source_span: trimmed_span(note.syntax()),
-                    declaration,
-                    expansion_path: Vec::new(),
-                };
-                events.push(ScoreEvent {
-                    id: lowering.event_id(),
-                    origin,
-                    onset,
-                    notated_duration: duration.clone(),
-                    kind,
-                });
-                onset = onset + duration.value;
-            }
-            VoiceItem::Rest(rest) => {
-                let Some(duration) = parse_duration(rest.syntax()) else {
-                    lowering.error("missing duration", span_of(rest.syntax()));
-                    continue;
-                };
-                let origin = Origin {
-                    source_span: trimmed_span(rest.syntax()),
-                    declaration,
-                    expansion_path: Vec::new(),
-                };
-                events.push(ScoreEvent {
-                    id: lowering.event_id(),
-                    origin,
-                    onset,
-                    notated_duration: duration.clone(),
-                    kind: ScoreEventKind::Rest,
-                });
-                onset = onset + duration.value;
-            }
-            VoiceItem::Chord(chord) => {
-                let Some(duration) = parse_duration(chord.syntax()) else {
-                    lowering.error("missing duration", span_of(chord.syntax()));
-                    continue;
-                };
-                let pitches: Vec<WrittenPitch> = chord
-                    .pitches()
-                    .iter()
-                    .filter_map(|text| WrittenPitch::parse(text))
-                    .collect();
-                let origin = Origin {
-                    source_span: trimmed_span(chord.syntax()),
-                    declaration,
-                    expansion_path: Vec::new(),
-                };
-                events.push(ScoreEvent {
-                    id: lowering.event_id(),
-                    origin,
-                    onset,
-                    notated_duration: duration.clone(),
-                    kind: ScoreEventKind::Chord { pitches },
-                });
-                onset = onset + duration.value;
-            }
-            VoiceItem::Use(call) => {
-                let name = call.motif().unwrap_or_default();
-                lowering.warn(
-                    format!("`use {name}(...)`: motif expansion is not yet implemented; skipped"),
-                    span_of(call.syntax()),
-                );
-            }
-            VoiceItem::Transpose(transpose) => {
-                lowering.warn(
-                    "`transpose` is not yet implemented; contents skipped",
-                    span_of(transpose.syntax()),
-                );
-            }
-            VoiceItem::Repeat(repeat) => {
-                lowering.warn(
-                    "`repeat` is not yet implemented; contents skipped",
-                    span_of(repeat.syntax()),
-                );
-            }
-        }
-    }
+    let cx = ExpandCx {
+        params: IndexMap::new(),
+        intervals: Vec::new(),
+        path: Vec::new(),
+        declaration,
+        origin_span: None,
+        max_motif: usize::MAX,
+    };
+    lower_items(lowering, &voice.items(), &cx, &mut events, &mut onset);
     Voice { events }
 }
 
-/// Warn when a voice's span is not a whole number of measures.
+/// Lower a sequence of voice items under an expansion context.
+fn lower_items(
+    lowering: &mut Lowering,
+    items: &[VoiceItem],
+    cx: &ExpandCx,
+    events: &mut Vec<ScoreEvent>,
+    onset: &mut MusicalTime,
+) {
+    for item in items {
+        match item {
+            VoiceItem::Note(note) => {
+                let Some(duration) = resolve_duration(lowering, note.syntax(), cx) else {
+                    continue;
+                };
+                let pitch_text = note.pitch().unwrap_or_default();
+                let Some(pitch) = resolve_pitch(lowering, &pitch_text, note.syntax(), cx) else {
+                    continue;
+                };
+                push_event(
+                    lowering,
+                    events,
+                    onset,
+                    cx,
+                    trimmed_span(note.syntax()),
+                    duration,
+                    ScoreEventKind::Note { pitch },
+                );
+            }
+            VoiceItem::Rest(rest) => {
+                let Some(duration) = resolve_duration(lowering, rest.syntax(), cx) else {
+                    continue;
+                };
+                push_event(
+                    lowering,
+                    events,
+                    onset,
+                    cx,
+                    trimmed_span(rest.syntax()),
+                    duration,
+                    ScoreEventKind::Rest,
+                );
+            }
+            VoiceItem::Chord(chord) => {
+                let Some(duration) = resolve_duration(lowering, chord.syntax(), cx) else {
+                    continue;
+                };
+                let mut pitches = Vec::new();
+                for text in chord.pitches() {
+                    match WrittenPitch::parse(&text).map(|pitch| apply_intervals(lowering, pitch, cx, chord.syntax())) {
+                        Some(Some(pitch)) => pitches.push(pitch),
+                        Some(None) => break,
+                        None => {
+                            lowering.error(format!("invalid chord pitch `{text}`"), span_of(chord.syntax()));
+                        }
+                    }
+                }
+                push_event(
+                    lowering,
+                    events,
+                    onset,
+                    cx,
+                    trimmed_span(chord.syntax()),
+                    duration,
+                    ScoreEventKind::Chord { pitches },
+                );
+            }
+            VoiceItem::Use(call) => lower_use(lowering, call, cx, events, onset),
+            VoiceItem::Transpose(transpose) => {
+                let text = transpose.interval().unwrap_or_default();
+                let Some(interval) = Interval::parse(&text, transpose.is_down()) else {
+                    lowering.error(format!("unknown interval `{text}`"), span_of(transpose.syntax()));
+                    continue;
+                };
+                let mut inner = cx.clone();
+                inner.intervals.push(interval);
+                inner.path.push(ExpansionStep::Transposition(interval));
+                lower_items(lowering, &transpose.items(), &inner, events, onset);
+            }
+            VoiceItem::Repeat(repeat) => {
+                let count: u32 = repeat.count().and_then(|text| text.parse().ok()).unwrap_or(0);
+                for iteration in 0..count {
+                    let mut inner = cx.clone();
+                    inner.path.push(ExpansionStep::RepeatIteration(iteration));
+                    lower_items(lowering, &repeat.items(), &inner, events, onset);
+                }
+            }
+        }
+    }
+}
+
+/// Append an event and advance the onset.
+fn push_event(
+    lowering: &mut Lowering,
+    events: &mut Vec<ScoreEvent>,
+    onset: &mut MusicalTime,
+    cx: &ExpandCx,
+    span: SourceSpan,
+    duration: NotatedDuration,
+    kind: ScoreEventKind,
+) {
+    let origin = Origin {
+        source_span: cx.origin_span.unwrap_or(span),
+        declaration: cx.declaration,
+        expansion_path: cx.path.clone(),
+    };
+    let value = duration.value;
+    events.push(ScoreEvent {
+        id: lowering.event_id(),
+        origin,
+        onset: *onset,
+        notated_duration: duration,
+        kind,
+    });
+    *onset = *onset + value;
+}
+
+/// Resolve a pitch token: a literal, or a bound `pitch` parameter.
+fn resolve_pitch(lowering: &mut Lowering, text: &str, node: &SyntaxNode, cx: &ExpandCx) -> Option<WrittenPitch> {
+    let pitch = if let Some(pitch) = WrittenPitch::parse(text) {
+        pitch
+    } else if let Some(BoundValue::Pitch(pitch)) = cx.params.get(text) {
+        *pitch
+    } else {
+        lowering.error(format!("unknown pitch reference `{text}`"), span_of(node));
+        return None;
+    };
+    apply_intervals(lowering, pitch, cx, node)
+}
+
+/// Apply the transposition stack, outermost first.
+fn apply_intervals(
+    lowering: &mut Lowering,
+    pitch: WrittenPitch,
+    cx: &ExpandCx,
+    node: &SyntaxNode,
+) -> Option<WrittenPitch> {
+    let mut current = pitch;
+    for interval in &cx.intervals {
+        let Some(next) = current.transpose(*interval) else {
+            lowering.error(
+                format!("transposition of `{current}` needs more than a double accidental"),
+                span_of(node),
+            );
+            return None;
+        };
+        current = next;
+    }
+    Some(current)
+}
+
+/// Resolve a duration token: a literal, or a bound `duration` parameter.
+fn resolve_duration(lowering: &mut Lowering, node: &SyntaxNode, cx: &ExpandCx) -> Option<NotatedDuration> {
+    if let Some(duration) = parse_duration(node) {
+        return Some(duration);
+    }
+    if let Some(text) = token_text(node, SyntaxKind::Identifier)
+        && let Some(BoundValue::Duration(duration)) = cx.params.get(&text)
+    {
+        return Some(duration.clone());
+    }
+    lowering.error("missing or unresolved duration", span_of(node));
+    None
+}
+
+/// Expand a `use` statement: bind arguments, then lower the motif body.
+fn lower_use(
+    lowering: &mut Lowering,
+    call: &musa_language::ast::UseStmt,
+    cx: &ExpandCx,
+    events: &mut Vec<ScoreEvent>,
+    onset: &mut MusicalTime,
+) {
+    let name = call.motif().unwrap_or_default();
+    let found = lowering
+        .motifs
+        .get_full(&name)
+        .map(|(index, _, motif)| (index, motif.params.clone(), motif.body.clone(), motif.declaration));
+    let Some((index, motif_params, body, declaration)) = found else {
+        lowering.error(format!("unknown motif `{name}`"), span_of(call.syntax()));
+        return;
+    };
+    if index >= cx.max_motif {
+        lowering.error(
+            format!("motif `{name}` can only reference motifs declared before it"),
+            span_of(call.syntax()),
+        );
+        return;
+    }
+    let args = call.args();
+    if args.len() > motif_params.len() {
+        lowering.error(
+            format!(
+                "motif `{name}` takes {} arguments, got {}",
+                motif_params.len(),
+                args.len()
+            ),
+            span_of(call.syntax()),
+        );
+        return;
+    }
+    let mut params = IndexMap::new();
+    for (position, param) in motif_params.iter().enumerate() {
+        let text = args.get(position).cloned().or_else(|| param.default.clone());
+        let Some(text) = text else {
+            lowering.error(
+                format!("motif `{name}`: missing argument `{}`", param.name),
+                span_of(call.syntax()),
+            );
+            return;
+        };
+        let Some(value) = bind_argument(lowering, &name, param, &text, cx, call.syntax()) else {
+            return;
+        };
+        params.insert(param.name.clone(), value);
+    }
+    let call_span = trimmed_span(call.syntax());
+    let inner = ExpandCx {
+        params,
+        intervals: cx.intervals.clone(),
+        path: cx
+            .path
+            .iter()
+            .cloned()
+            .chain(std::iter::once(ExpansionStep::MotifApplication {
+                call_site: call_span,
+            }))
+            .collect(),
+        declaration,
+        origin_span: Some(call_span),
+        max_motif: index,
+    };
+    lower_items(lowering, &body, &inner, events, onset);
+}
+
+/// Bind one argument text to a parameter kind.
+fn bind_argument(
+    lowering: &mut Lowering,
+    motif: &str,
+    param: &musa_language::ast::Param,
+    text: &str,
+    cx: &ExpandCx,
+    node: &SyntaxNode,
+) -> Option<BoundValue> {
+    match param.kind.as_str() {
+        "pitch" => {
+            if let Some(pitch) = WrittenPitch::parse(text) {
+                Some(BoundValue::Pitch(pitch))
+            } else if let Some(BoundValue::Pitch(pitch)) = cx.params.get(text) {
+                Some(BoundValue::Pitch(*pitch))
+            } else {
+                lowering.error(format!("motif `{motif}`: `{text}` is not a pitch"), span_of(node));
+                None
+            }
+        }
+        "duration" => {
+            if let Some(value) = parse_ratio(text).or_else(|| text.parse::<i64>().ok().map(Ratio::from_integer)) {
+                Some(BoundValue::Duration(NotatedDuration {
+                    value: MusicalDuration::new(value),
+                    spelling: text.to_string(),
+                }))
+            } else if let Some(BoundValue::Duration(duration)) = cx.params.get(text) {
+                Some(BoundValue::Duration(duration.clone()))
+            } else {
+                lowering.error(format!("motif `{motif}`: `{text}` is not a duration"), span_of(node));
+                None
+            }
+        }
+        other => {
+            lowering.error(
+                format!("motif `{motif}`: unknown parameter kind `{other}`"),
+                span_of(node),
+            );
+            None
+        }
+    }
+}
+
 fn check_measure_sanity(lowering: &mut Lowering, snapshot: &ScoreSnapshot) {
     let measure = snapshot.meter_map.measure_len();
     if measure.is_zero() {

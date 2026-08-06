@@ -322,7 +322,11 @@ impl<'a> Parser<'a> {
             }
             if self.at(SyntaxKind::Equals) {
                 self.bump();
-                self.expect(SyntaxKind::PitchLiteral, "a default pitch");
+                if self.at_any(&[SyntaxKind::PitchLiteral, SyntaxKind::Rational, SyntaxKind::Integer]) {
+                    self.bump(); // default value (pitch or duration)
+                } else {
+                    self.error_here("expected a default value");
+                }
             }
             if self.at(SyntaxKind::Comma) {
                 self.bump();
@@ -482,7 +486,12 @@ impl<'a> Parser<'a> {
         self.expect(SyntaxKind::LParen, "`(`");
         if !self.at(SyntaxKind::RParen) {
             loop {
-                if self.at_any(&[SyntaxKind::PitchLiteral, SyntaxKind::Identifier]) {
+                if self.at_any(&[
+                    SyntaxKind::PitchLiteral,
+                    SyntaxKind::Identifier,
+                    SyntaxKind::Rational,
+                    SyntaxKind::Integer,
+                ]) {
                     self.bump();
                 } else {
                     self.error_here("expected an argument");
@@ -525,8 +534,8 @@ impl<'a> Parser<'a> {
 
     /// A duration: `1`, `1/2`, `3/8`, `1/12`, …
     fn duration(&mut self) {
-        if self.at_any(&[SyntaxKind::Rational, SyntaxKind::Integer]) {
-            self.bump();
+        if self.at_any(&[SyntaxKind::Rational, SyntaxKind::Integer, SyntaxKind::Identifier]) {
+            self.bump(); // literal or duration-parameter reference
         } else {
             self.error_here("expected a duration");
         }
