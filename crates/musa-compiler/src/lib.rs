@@ -11,15 +11,26 @@
 //! contain: notation planning, DSP, MIDI numbers in the score, or floating-
 //! point musical time.
 //!
-//! Intended facade (roadmap §15.3), to be implemented by prompts 05–06 and 10:
-//!
-//! ```text
-//! pub fn compile(syntax: &ParsedDocument, options: &CompileOptions) -> Compilation;
-//! pub fn lower_performance(score: &ScoreSnapshot, options: &PerformanceOptions)
-//!     -> Result<PerformancePlan, PerformanceError>;
-//! ```
+//! Facade (roadmap §15.3): [`compile`] (prompt 05) and `lower_performance`
+//! (prompt 10).
 //!
 //! Invariants: a `ScoreSnapshot` is finite, sorted by onset, immutable, and
 //! keeps written pitch spelling (D♯ ≠ E♭); every expanded event carries the
 //! full provenance path explaining why it exists; expansion always terminates
 //! (the language has no recursion).
+
+mod compile;
+mod lower;
+mod origin;
+mod pitch;
+mod score;
+mod time;
+
+pub use crate::compile::{Compilation, CompileOptions, Diagnostic, Severity, SourceDocument, compile};
+pub use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
+pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
+pub use crate::score::{
+    AnnotationStore, Clef, EventId, KeyMap, MeterMap, Mode, NotatedDuration, Part, PartId, PartMap, ScoreEvent,
+    ScoreEventKind, ScoreSnapshot, TempoMap, Voice, VoiceId,
+};
+pub use crate::time::{MusicalDuration, MusicalTime};

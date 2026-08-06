@@ -1,0 +1,29 @@
+piece "Counterpoint Study" {
+    tempo quarter = 90;
+    meter 4/4;
+    key d minor;
+
+    score {
+        part violin {
+            clef treble;
+
+            voice lead {
+                d4 1/2;
+                f4 1/2;
+                e4 1/2;
+                chord [d4, fs4, a4] 1/2;
+            }
+        }
+
+        part viola {
+            clef alto;
+
+            voice line {
+                d3 1/2;
+                a2 1/2;
+                bf2 1/2;
+                a2 1/2;
+            }
+        }
+    }
+}

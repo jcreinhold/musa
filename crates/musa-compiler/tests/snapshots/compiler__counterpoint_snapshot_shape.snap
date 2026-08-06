@@ -1,0 +1,409 @@
+---
+source: crates/musa-compiler/tests/compiler.rs
+expression: "format!(\"{snapshot:#?}\")"
+---
+ScoreSnapshot {
+    parts: PartMap {
+        parts: {
+            PartId(
+                0,
+            ): Part {
+                id: PartId(
+                    0,
+                ),
+                name: "violin",
+                clef: Some(
+                    Treble,
+                ),
+                voices: {
+                    VoiceId(
+                        0,
+                    ): Voice {
+                        events: [
+                            ScoreEvent {
+                                id: EventId(
+                                    0,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 187,
+                                        end: 194,
+                                    },
+                                    declaration: DeclarationId(
+                                        5,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 0,
+                                        denom: 1,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: D,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 4,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    1,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 211,
+                                        end: 218,
+                                    },
+                                    declaration: DeclarationId(
+                                        5,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 1,
+                                        denom: 2,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: F,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 4,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    2,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 235,
+                                        end: 242,
+                                    },
+                                    declaration: DeclarationId(
+                                        5,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 1,
+                                        denom: 1,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: E,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 4,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    3,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 259,
+                                        end: 283,
+                                    },
+                                    declaration: DeclarationId(
+                                        5,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 3,
+                                        denom: 2,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                },
+                                kind: Chord {
+                                    pitches: [
+                                        WrittenPitch {
+                                            letter: D,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 4,
+                                        },
+                                        WrittenPitch {
+                                            letter: F,
+                                            accidental: Accidental(
+                                                1,
+                                            ),
+                                            octave: 4,
+                                        },
+                                        WrittenPitch {
+                                            letter: A,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 4,
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                    },
+                },
+                voice_names: {
+                    VoiceId(
+                        0,
+                    ): "lead",
+                },
+            },
+            PartId(
+                1,
+            ): Part {
+                id: PartId(
+                    1,
+                ),
+                name: "viola",
+                clef: Some(
+                    Alto,
+                ),
+                voices: {
+                    VoiceId(
+                        0,
+                    ): Voice {
+                        events: [
+                            ScoreEvent {
+                                id: EventId(
+                                    4,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 395,
+                                        end: 402,
+                                    },
+                                    declaration: DeclarationId(
+                                        7,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 0,
+                                        denom: 1,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: D,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 3,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    5,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 419,
+                                        end: 426,
+                                    },
+                                    declaration: DeclarationId(
+                                        7,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 1,
+                                        denom: 2,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: A,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 2,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    6,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 443,
+                                        end: 451,
+                                    },
+                                    declaration: DeclarationId(
+                                        7,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 1,
+                                        denom: 1,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: B,
+                                        accidental: Accidental(
+                                            -1,
+                                        ),
+                                        octave: 2,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    7,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 468,
+                                        end: 475,
+                                    },
+                                    declaration: DeclarationId(
+                                        7,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 3,
+                                        denom: 2,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: A,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 2,
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+                voice_names: {
+                    VoiceId(
+                        0,
+                    ): "line",
+                },
+            },
+        },
+    },
+    tempo_map: TempoMap {
+        beat: Ratio {
+            numer: 1,
+            denom: 4,
+        },
+        bpm: 90,
+    },
+    meter_map: MeterMap {
+        numerator: 4,
+        denominator: 4,
+    },
+    key_map: Some(
+        KeyMap {
+            tonic: PitchClass {
+                letter: D,
+                accidental: Accidental(
+                    0,
+                ),
+            },
+            mode: Minor,
+        },
+    ),
+    annotations: AnnotationStore,
+}

@@ -73,42 +73,84 @@ fn cmd_format(args: &[String]) -> ExitCode {
     }
 }
 
-/// A `SyntaxError` rendered with source context by miette.
-#[derive(Debug, thiserror::Error, miette::Diagnostic)]
-#[error("{message}")]
+/// A diagnostic rendered with source context by miette.
+#[derive(Debug, thiserror::Error)]
+#[error("{severity}: {message}")]
 struct CliDiagnostic {
+    severity: &'static str,
     message: String,
-    #[source_code]
     src: miette::NamedSource<String>,
-    #[label("here")]
-    span: miette::SourceSpan,
+    span: Option<miette::SourceSpan>,
 }
 
-/// `musa check <file>` — lex + parse + diagnostics (semantic checks arrive
-/// with prompt 05 and extend this command).
+impl miette::Diagnostic for CliDiagnostic {
+    fn source_code(&self) -> Option<&dyn miette::SourceCode> {
+        Some(&self.src)
+    }
+
+    fn labels(&self) -> Option<Box<dyn Iterator<Item = miette::LabeledSpan> + '_>> {
+        let span = self.span?;
+        let label = miette::LabeledSpan::new_with_span(None, span);
+        Some(Box::new(std::iter::once(label)))
+    }
+
+    fn severity(&self) -> Option<miette::Severity> {
+        if self.severity == "error" {
+            Some(miette::Severity::Error)
+        } else {
+            Some(miette::Severity::Warning)
+        }
+    }
+}
+
+/// `musa check <file>...` — full semantic check through `musa_compiler`.
 fn cmd_check(args: &[String]) -> ExitCode {
-    let Some(path) = args.iter().find(|arg| !arg.starts_with("--")) else {
+    let mut status = ExitCode::SUCCESS;
+    let mut files: u32 = 0;
+    for path in args.iter().filter(|arg| !arg.starts_with("--")) {
+        files = files.saturating_add(1);
+        if cmd_check_one(path) == ExitCode::FAILURE {
+            status = ExitCode::FAILURE;
+        }
+    }
+    if files == 0 {
         eprintln!("error: check needs a file");
         return ExitCode::FAILURE;
-    };
-    let source = match read_source(path) {
+    }
+    status
+}
+
+fn cmd_check_one(path: &str) -> ExitCode {
+    let source = match musa_compiler::SourceDocument::open(path) {
         Ok(source) => source,
-        Err(code) => return code,
+        Err(error) => {
+            eprintln!("error: cannot read {path}: {error}");
+            return ExitCode::FAILURE;
+        }
     };
-    let document = musa_language::parse(&source);
-    if document.errors().is_empty() {
-        println!("{path}: ok");
-        return ExitCode::SUCCESS;
-    }
-    for error in document.errors() {
-        let start = usize::from(error.range().start());
-        let len = usize::from(error.range().end()).saturating_sub(start);
-        let diagnostic = CliDiagnostic {
-            message: error.message().to_string(),
-            src: miette::NamedSource::new(path, source.clone()),
-            span: miette::SourceSpan::from((miette::SourceOffset::from(start), len)),
+    let compilation = musa_compiler::compile(&source, &musa_compiler::CompileOptions::default());
+    for diagnostic in compilation.diagnostics() {
+        let severity = match diagnostic.severity {
+            musa_compiler::Severity::Error => "error",
+            musa_compiler::Severity::Warning => "warning",
         };
-        eprintln!("{:?}", miette::Report::new(diagnostic));
+        let rendered = CliDiagnostic {
+            severity,
+            message: diagnostic.message.clone(),
+            src: miette::NamedSource::new(path, source.text().to_string()),
+            span: diagnostic.span.map(|span| {
+                miette::SourceSpan::from((
+                    miette::SourceOffset::from(usize::try_from(span.start).unwrap_or(0)),
+                    usize::try_from(span.end.saturating_sub(span.start)).unwrap_or(0),
+                ))
+            }),
+        };
+        eprintln!("{:?}", miette::Report::new(rendered));
     }
-    ExitCode::FAILURE
+    if compilation.has_errors() {
+        ExitCode::FAILURE
+    } else {
+        println!("{path}: ok");
+        ExitCode::SUCCESS
+    }
 }

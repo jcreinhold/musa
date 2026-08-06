@@ -1,7 +1,7 @@
 ---
 id: 05
 slug: compiler-core
-status: pending
+status: done
 depends_on: [04]
 phase: 1
 ---
