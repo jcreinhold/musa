@@ -37,19 +37,33 @@ fn print_usage() {
 /// `musa render <file> --to plan` — debug dump of the notation plan (the
 /// snapshot surface until MEI exists; real backends arrive in prompts 08+).
 fn cmd_render(args: &[String]) -> ExitCode {
-    let Some(path) = args.iter().find(|arg| !arg.starts_with("--")) else {
+    let mut path: Option<&str> = None;
+    let mut target = "plan";
+    let mut output: Option<&str> = None;
+    let mut index = 0;
+    while index < args.len() {
+        let Some(arg) = args.get(index).map(String::as_str) else {
+            break;
+        };
+        match arg {
+            "--to" => {
+                target = args.get(index.saturating_add(1)).map_or("plan", String::as_str);
+                index = index.saturating_add(2);
+            }
+            "-o" => {
+                output = args.get(index.saturating_add(1)).map(String::as_str);
+                index = index.saturating_add(2);
+            }
+            other => {
+                path = Some(other);
+                index = index.saturating_add(1);
+            }
+        }
+    }
+    let Some(path) = path else {
         eprintln!("error: render needs a file");
         return ExitCode::FAILURE;
     };
-    let target = args
-        .iter()
-        .position(|arg| arg == "--to")
-        .and_then(|index| args.get(index.saturating_add(1)))
-        .map_or("plan", String::as_str);
-    if target != "plan" {
-        eprintln!("error: --to {target} is not implemented yet (only `plan`)");
-        return ExitCode::FAILURE;
-    }
     let source = match musa_compiler::SourceDocument::open(path) {
         Ok(source) => source,
         Err(error) => {
@@ -62,15 +76,66 @@ fn cmd_render(args: &[String]) -> ExitCode {
         eprintln!("error: {path}: compilation failed");
         return ExitCode::FAILURE;
     };
-    match musa_render::plan_notation(&score, &musa_render::NotationOptions::default()) {
-        Ok(plan) => {
-            println!("{plan:#?}");
-            ExitCode::SUCCESS
+    match target {
+        "plan" => match musa_render::plan_notation(&score, &musa_render::NotationOptions::default()) {
+            Ok(plan) => {
+                println!("{plan:#?}");
+                ExitCode::SUCCESS
+            }
+            Err(error) => {
+                eprintln!("error: {error}");
+                ExitCode::FAILURE
+            }
+        },
+        "mei" => {
+            let rendered = musa_render::render_notation(
+                &score,
+                musa_render::NotationTarget::Mei,
+                &musa_render::NotationOptions::default(),
+            );
+            match rendered {
+                Ok(rendered) => write_output(path, rendered.text(), output, "mei"),
+                Err(error) => {
+                    eprintln!("error: {error}");
+                    ExitCode::FAILURE
+                }
+            }
         }
-        Err(error) => {
-            eprintln!("error: {error}");
+        other => {
+            eprintln!("error: --to {other} is not implemented yet (plan | mei)");
             ExitCode::FAILURE
         }
+    }
+}
+
+/// Write rendered output: stdout for `-o -`, `<name>.<ext>` beside the input
+/// by default, or the given path.
+fn write_output(input: &str, text: &str, output: Option<&str>, extension: &str) -> ExitCode {
+    let destination = match output {
+        Some("-") => None,
+        Some(path) => Some(path.to_string()),
+        None => Some(
+            std::path::Path::new(input)
+                .with_extension(extension)
+                .to_string_lossy()
+                .to_string(),
+        ),
+    };
+    match destination {
+        None => {
+            println!("{text}");
+            ExitCode::SUCCESS
+        }
+        Some(path) => match std::fs::write(&path, text) {
+            Ok(()) => {
+                println!("wrote {path}");
+                ExitCode::SUCCESS
+            }
+            Err(error) => {
+                eprintln!("error: cannot write {path}: {error}");
+                ExitCode::FAILURE
+            }
+        },
     }
 }
 

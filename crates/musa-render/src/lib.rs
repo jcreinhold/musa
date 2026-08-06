@@ -16,10 +16,13 @@
 //! [`NotationError`]s, never raw backend escapes (§7.2).
 
 mod error;
+mod mei;
 mod plan;
+mod render;
 
-pub use crate::error::NotationError;
+pub use crate::error::{NotationError, RenderError};
 pub use crate::plan::{
     BeamGroup, KeySignature, MeasurePlan, NotatedItem, NotatedKind, NotationOptions, NotationPlan, StaffPlan,
     VoiceLane, plan_notation,
 };
+pub use crate::render::{NotationTarget, RenderedNotation, render_notation};
