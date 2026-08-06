@@ -1,7 +1,7 @@
 ---
 id: 01
 slug: workspace-skeleton
-status: pending
+status: done
 depends_on: []
 phase: 0
 ---

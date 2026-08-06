@@ -1,17 +1,12 @@
 [workspace]
-exclude = []
-members = []
+members = ["crates/*"]
 resolver = "3"
 
-[package]
+[workspace.package]
 edition = "2024"
 license = "Apache-2.0"
-name = "musa"
-readme = "README.md"
 repository = "https://github.com/jcreinhold/musa"
 version = "0.1.0"
-
-[dependencies]
 
 [workspace.lints.rust]
 future-incompatible = "warn"

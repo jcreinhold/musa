@@ -1,0 +1,12 @@
+[package]
+description = "Tokens, lexer, parser, lossless CST, formatter, and text edits for the .musa language"
+name = "musa-language"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]

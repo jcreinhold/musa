@@ -1,0 +1,17 @@
+[package]
+description = "ProjectSession facade: documents, revisions, commands, undo, and export orchestration"
+name = "musa-project"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+musa-audio = { path = "../musa-audio" }
+musa-compiler = { path = "../musa-compiler" }
+musa-engine = { path = "../musa-engine" }
+musa-language = { path = "../musa-language" }
+musa-render = { path = "../musa-render" }

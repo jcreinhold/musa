@@ -1,0 +1,13 @@
+[package]
+description = "Backend-neutral notation planning and MEI/LilyPond/MusicXML/MIDI export"
+name = "musa-render"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+musa-compiler = { path = "../musa-compiler" }

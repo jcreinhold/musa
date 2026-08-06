@@ -3,5 +3,52 @@
 version = 4
 
 [[package]]
-name = "musa"
+name = "musa-audio"
 version = "0.1.0"
+dependencies = [
+ "musa-compiler",
+]
+
+[[package]]
+name = "musa-cli"
+version = "0.1.0"
+dependencies = [
+ "musa-project",
+]
+
+[[package]]
+name = "musa-compiler"
+version = "0.1.0"
+dependencies = [
+ "musa-language",
+]
+
+[[package]]
+name = "musa-engine"
+version = "0.1.0"
+dependencies = [
+ "musa-audio",
+ "musa-compiler",
+]
+
+[[package]]
+name = "musa-language"
+version = "0.1.0"
+
+[[package]]
+name = "musa-project"
+version = "0.1.0"
+dependencies = [
+ "musa-audio",
+ "musa-compiler",
+ "musa-engine",
+ "musa-language",
+ "musa-render",
+]
+
+[[package]]
+name = "musa-render"
+version = "0.1.0"
+dependencies = [
+ "musa-compiler",
+]

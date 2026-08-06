@@ -1,0 +1,14 @@
+[package]
+description = "CPAL output stream, transport, real-time command queues, and MIDI input"
+name = "musa-engine"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+musa-audio = { path = "../musa-audio" }
+musa-compiler = { path = "../musa-compiler" }

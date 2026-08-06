@@ -1,0 +1,13 @@
+[package]
+description = "Thin CLI over musa-project"
+name = "musa-cli"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+musa-project = { path = "../musa-project" }
