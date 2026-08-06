@@ -4,11 +4,15 @@ Musa is a notation-first music language and workbench: a `.musa` source language
 MEI/LilyPond/MusicXML/MIDI export, a small built-in DSP studio, and a Tauri/Svelte desktop score editor. Rust workspace;
 the semantic core is Rust, the UI is a replaceable projection.
 
-## The two documents that govern this repo
+## The documents that govern this repo
 
 1. **`docs/initial-design-roadmap.md`** — the architecture. Semantic layers, crate ownership, language design, DSP
    rules, and what is explicitly rejected or deferred. Read the cited sections before changing anything structural.
-2. **`docs/prompts/`** — the work plan. 26 numbered feature prompts with their own README defining prompt anatomy and
+2. **`docs/course-correction.md`** — the semantic course correction: a small temporal kernel (ambient exact rational
+   time, typed occurrences, `timeline`/`sequence`/`overlay`) is the ontology; the surface language elaborates into it.
+   Where it and the roadmap disagree, the course correction wins. Its authoritative elaboration is
+   **`docs/kernel/`** (the kernel specification; candidate until prompt 12 graduates it).
+3. **`docs/prompts/`** — the work plan. 31 numbered feature prompts with their own README defining prompt anatomy and
    execution rules. Implementation happens by executing prompts in dependency order (see the `prompt-stack` skill).
 
 If code and these documents disagree, either the code is wrong or the document needs a deliberate repair — never let
@@ -19,7 +23,8 @@ them drift silently.
 | Path | What lives there |
 | --- | --- |
 | `crates/musa-language` | tokens, lexer, parser, lossless CST, formatter, text edits |
-| `crates/musa-compiler` | resolution, units, compositional model, expansion, score/performance snapshots |
+| `crates/musa-kernel` | finite temporal kernel: exact time, typed occurrences, timeline/sequence/overlay, normalization |
+| `crates/musa-compiler` | resolution, units, elaboration through the kernel, score/performance snapshots |
 | `crates/musa-render` | NotationPlan, MEI, LilyPond, MusicXML, MIDI export |
 | `crates/musa-audio` | studio graph spec→render-plan compiler, processors, offline rendering |
 | `crates/musa-engine` | CPAL stream, transport, real-time queues, MIDI input |
@@ -27,10 +32,11 @@ them drift silently.
 | `crates/musa-cli` | thin CLI over musa-project |
 | `apps/musa-desktop` | thin Tauri shell + Svelte UI over musa-project |
 | `examples/` | `.musa` fixtures — executable specifications, not demos |
+| `docs/kernel/` | the temporal-kernel specification (candidate until prompt 12) |
 | `docs/prompts/` | numbered implementation prompts + README |
 
-Dependency direction is one-way: language → compiler → {render, audio} → engine → project → {cli, desktop}. No
-dependency points upward.
+Dependency direction is one-way: language → compiler → {render, audio} → engine → project → {cli, desktop}, with
+`musa-kernel` a leaf that `musa-compiler` (and later consumers) depend on. No dependency points upward.
 
 ## Commands
 

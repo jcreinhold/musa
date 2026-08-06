@@ -1,8 +1,8 @@
 ---
-id: 13
+id: 18
 slug: engine-transport
 status: pending
-depends_on: [12]
+depends_on: [17]
 phase: 1
 ---
 
@@ -18,12 +18,12 @@ the piece live. This completes the Phase 1 CLI slice.
 
 - Roadmap §13.1–§13.2 (real-time separation: the callback never allocates, locks, parses, logs, or destroys), §15.6
   (crate ownership and the `AudioEngine` facade), §14.8 (default output selection algorithm; zero setup).
-- Prompt 11's RT contract, prompt 12's orchestration shim.
+- Prompt 16's RT contract, prompt 17's orchestration shim.
 
 ## Design
 
 - Create `musa-engine` with dependencies: `musa-compiler`, `musa-audio`, `cpal`, `rtrb`, `tracing`, `thiserror`.
-  (`midir` arrives at prompt 23.)
+  (`midir` arrives at prompt 28.)
 - Public surface exactly per §15.6:
 
   ```rust
@@ -46,7 +46,7 @@ the piece live. This completes the Phase 1 CLI slice.
   - Control → audio: one `rtrb` SPSC queue carrying `TransportCommand` and `Install(PreparedPlaybackPlan)`.
   - Audio → control: a second `rtrb` queue returning **retired plans** so large structures are dropped on the control
     thread, never in the callback.
-  - The callback consumes commands at block boundaries, executes the installed `RenderPlan::render` (prompt 11's
+  - The callback consumes commands at block boundaries, executes the installed `RenderPlan::render` (prompt 16's
     allocation-free contract), and handles underruns by emitting silence, never by panicking or blocking.
 - `PreparedPlaybackPlan` = compiled `RenderPlan` + scheduled `PerformancePlan` events
   + loop state; prepared entirely on the control side. Sample-rate mismatch between
@@ -54,7 +54,7 @@ the piece live. This completes the Phase 1 CLI slice.
   instead negotiate the stream at the plan's rate and error clearly if unsupported
   (record the decision; a resampler is a later measured feature).
 - `musa play <file>`: reuse the prompt-12 orchestration shim to build the plan, open the engine, install, play to
-  completion (or `--loop`), exit on Ctrl-C. Keep it thin; prompt 14 moves orchestration into `musa-project`.
+  completion (or `--loop`), exit on Ctrl-C. Keep it thin; prompt 19 moves orchestration into `musa-project`.
 - Instrumentation (§17.5): a test mode running the callback logic against a fake output, asserting no
   allocation/lock/destruction in the callback path and measuring per-block processing time budget. This test is the RT
   contract's enforcement.
@@ -81,6 +81,6 @@ Commit as `Add audio engine with real-time-safe transport`.
 
 ## Stop
 
-- No MIDI input (prompt 23), no recording (rejected, §4).
+- No MIDI input (prompt 28), no recording (rejected, §4).
 - No resampling, no device hot-plug, no per-part mixer UI.
-- No GUI; the desktop app drives this same facade in prompt 15.
+- No GUI; the desktop app drives this same facade in prompt 20.

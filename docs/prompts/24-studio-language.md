@@ -1,8 +1,8 @@
 ---
-id: 19
+id: 24
 slug: studio-language
 status: pending
-depends_on: [18]
+depends_on: [23]
 phase: 2
 ---
 
@@ -21,7 +21,7 @@ into a `StudioGraphSpec`. The bridge stays narrow: parts are assigned to patches
   patch/oscillator/envelope/lowpass/output, `|>` chains, `lfo |> scale |> bias`, `modulate`, `bus hall { reverb(...) }`,
   assign/route/ send with `at -18 dB`), §7.2 (units are syntax; no raw backend escapes), §13.7 (modulation is a typed
   connection).
-- Prompt 11's `StudioGraphSpec`/`PortKind`, prompt 05's unit-checking skeleton.
+- Prompt 16's `StudioGraphSpec`/`PortKind`, prompt 05's unit-checking skeleton.
 
 ## Design
 
@@ -32,7 +32,7 @@ into a `StudioGraphSpec`. The bridge stays narrow: parts are assigned to patches
   expression parser for signal chains and arguments.
 - Unit enforcement (§7.2) activates fully here: `1400 Hz`, `30 ms`, `-18 dB`, `0.08 Hz` are required with units; bare
   numbers for unit-bearing parameters are diagnostics. The prompt-05 unit skeleton becomes the real table: each
-  processor parameter has a declared `Unit` — shared with prompt 11's `ParameterDescriptor`, so language units and DSP
+  processor parameter has a declared `Unit` — shared with prompt 16's `ParameterDescriptor`, so language units and DSP
   parameters check against **one** declaration, not two.
 - Compiler produces `StudioSpec` (§6.3/§10.6 pipeline: `ScoreSnapshot + StudioSpec`): patches (node trees from the `|>`
   chains — desugared to spec nodes + connections), buses, bindings (`assign violin -> glass_pad`), routing, sends,
@@ -40,7 +40,7 @@ into a `StudioGraphSpec`. The bridge stays narrow: parts are assigned to patches
 - `musa-audio` gains `From<StudioSpec>`-style lowering to `StudioGraphSpec` (a function `studio_spec_to_graph`,
   direction: audio depends on compiler per §15.1). Desugaring rules: `a |> gain(x) |> output` = node chain; `mix(...)` =
   mixer node; `modulate lfo -> glass_pad.lowpass.cutoff` = control connection to a parameter port. Processors that don't
-  exist yet in DSP (envelope, lowpass, reverb, lfo, scale, bias — prompts 20–21) are represented in the graph as typed
+  exist yet in DSP (envelope, lowpass, reverb, lfo, scale, bias — prompts 25–26) are represented in the graph as typed
   placeholders that render as pass-through/silence **with a compile warning**, so language work isn't blocked on DSP
   work. Remove placeholders as 20–21 land.
 - Default studio (no `studio` block) is unchanged: every part → default sine polysynth → master. Once a `studio` block
@@ -71,7 +71,7 @@ Commit as `Add studio language and StudioSpec`.
 
 ## Stop
 
-- No real ADSR/LFO/filters/effects DSP (prompts 20–21) — placeholders with warnings.
-- No patch library imports (`use "../library/patches.musa"` — prompt 26).
-- No GUI sound-graph visualization (the Sound workspace comes after prompt 21; do not build it here).
-- No new synthesis techniques beyond what prompt 11/12 processors express.
+- No real ADSR/LFO/filters/effects DSP (prompts 25–26) — placeholders with warnings.
+- No patch library imports (`use "../library/patches.musa"` — prompt 31).
+- No GUI sound-graph visualization (the Sound workspace comes after prompt 26; do not build it here).
+- No new synthesis techniques beyond what prompt 16/17 processors express.

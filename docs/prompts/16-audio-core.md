@@ -1,8 +1,8 @@
 ---
-id: 11
+id: 16
 slug: audio-core
 status: pending
-depends_on: [10]
+depends_on: [15]
 phase: 1
 ---
 
@@ -25,7 +25,7 @@ rendering. No CPAL, no live stream — this prompt produces the pure DSP engine 
 ## Design
 
 - Create `musa-audio` with dependencies: `musa-compiler`, `hound` (WAV writing is used by the offline render test
-  harness and prompt 12), `rtrb` (not needed until 13 — defer unless a type requires it), `thiserror`. Do **not** add
+  harness and prompt 17), `rtrb` (not needed until 13 — defer unless a type requires it), `thiserror`. Do **not** add
   `fundsp` yet; decide at this prompt whether the first processors are hand-rolled (recommended for sine / gain / pan /
   mixer — they are small and the roadmap §13.6 only lists fundsp as "an implementation backend or reference"). If you do
   adopt fundsp, its types must not appear in any public signature (§13.6).
@@ -56,7 +56,7 @@ rendering. No CPAL, no live stream — this prompt produces the pure DSP engine 
 - Processors at this prompt: sine oscillator (phase-continuous, §13.5 formula), noise (deterministic seed), constant
   control, gain, pan, mixer (n-in), splitter, mono↔stereo adapters (§13.4's explicit adapters).
 - Parameter system skeleton (§13.7): `ParameterDescriptor { unit, range, default, smoothing, combination }` — no
-  modulation sources yet (prompt 20), but descriptors exist now so adding modulation is additive.
+  modulation sources yet (prompt 25), but descriptors exist now so adding modulation is additive.
 - The render function must satisfy the §13.2 rules even though nothing is live yet: preallocate everything in
   `compile_graph`; `render` takes `&mut self` and never allocates. Test this with an allocation-counting harness (a
   test-only global allocator wrapper) — it is the cheapest way to make the RT contract a test, not a hope.
@@ -69,7 +69,7 @@ rendering. No CPAL, no live stream — this prompt produces the pure DSP engine 
 - Tests (§17.5): oscillator frequency accuracy (zero-crossing/FFT-lite) and phase continuity across blocks; mixer/gain
   arithmetic; cycle rejection; disconnected-graph silence; determinism (two renders, byte equality); NaN/infinity
   absence with adversarial parameters; allocation-free `render`.
-- insta snapshots of validation diagnostics (they will become user-facing via prompt 19's language).
+- insta snapshots of validation diagnostics (they will become user-facing via prompt 24's language).
 
 ## Check
 
@@ -83,7 +83,7 @@ Commit as `Add audio graph compiler and offline renderer`.
 
 ## Stop
 
-- No voice allocation or note-event → oscillator routing (prompt 12).
-- No ADSR/LFO/filters/effects (prompts 20–21).
-- No CPAL or threads (prompt 13).
+- No voice allocation or note-event → oscillator routing (prompt 17).
+- No ADSR/LFO/filters/effects (prompts 25–26).
+- No CPAL or threads (prompt 18).
 - No fundsp types in public API; if undecided, hand-roll.

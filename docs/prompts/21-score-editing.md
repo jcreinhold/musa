@@ -1,8 +1,8 @@
 ---
-id: 16
+id: 21
 slug: score-editing
 status: pending
-depends_on: [15]
+depends_on: [20]
 phase: 1.5
 ---
 
@@ -18,11 +18,11 @@ stays canonical, and editing generated music surfaces a real choice instead of s
 ## Read
 
 - Roadmap §9 (editing transformed music: edit-definition vs detach/specialize — **note**: occurrence specialization
-  syntax `use sigh() with {...}` is implemented in prompt 24; this prompt must offer the choice and perform
-  edit-definition now, diagnose "specialization requires prompt 24" cleanly otherwise), §11 (`EditCommand` enum, project
+  syntax `use sigh() with {...}` is implemented in prompt 29; this prompt must offer the choice and perform
+  edit-definition now, diagnose "specialization requires prompt 29" cleanly otherwise), §11 (`EditCommand` enum, project
   resolves to text transactions), §14.5 (keyboard-first entry; mouse is for selection), §14.6 (the six-step command
   flow).
-- Prompt 04's `apply_edits`/`TextEdit`, prompt 05/06's `Origin` and expansion paths, prompt 14's `ProjectCommand`.
+- Prompt 04's `apply_edits`/`TextEdit`, prompt 05/06's `Origin` and expansion paths, prompt 19's `ProjectCommand`.
 
 ## Design
 
@@ -33,7 +33,7 @@ stays canonical, and editing generated music surfaces a real choice instead of s
   a new `motif` declaration and replaces them with `use name();`.
 - `musa-project`: extend `ProjectCommand` with `EditScore(EditCommand)` using §11's enum (`InsertNote`,
   `ChangePitch { mode: GeneratedEditMode }`, `ChangeDuration`, `ExtractMotif`). `GeneratedEditMode` at this prompt:
-  `EditDefinition` works; `Specialize` returns a structured "not yet supported" error variant (prompt 24 removes it).
+  `EditDefinition` works; `Specialize` returns a structured "not yet supported" error variant (prompt 29 removes it).
   The flow is §14.6 exactly: resolve provenance → authored vs generated → compute text edits → apply transactionally →
   recompile → return updated snapshot.
 - Transactional: if the computed edits produce invalid source, the whole command fails and the session is unchanged
@@ -48,7 +48,7 @@ stays canonical, and editing generated music surfaces a real choice instead of s
   - Extract motif: select a range of events, name the motif, command issues; source updates visibly in the source
     drawer.
   - After each command the score re-renders from the new snapshot; selection follows the event id where possible.
-- Undo/redo already works (prompt 14's revisions); wire keyboard shortcuts.
+- Undo/redo already works (prompt 19's revisions); wire keyboard shortcuts.
 
 ## Target
 
@@ -73,7 +73,7 @@ Commit as `Add provenance-aware score editing`.
 
 ## Stop
 
-- No `use sigh() with {...}` specialization (prompt 24) — the error must be clean.
+- No `use sigh() with {...}` specialization (prompt 29) — the error must be clean.
 - No mouse drag editing (§14.5 rejects it as primary; do not add it at all here).
-- No MIDI keyboard input (prompt 23).
-- No slur/tie/tuplet entry (prompt 17 constructs don't exist yet).
+- No MIDI keyboard input (prompt 28).
+- No slur/tie/tuplet entry (prompt 22 constructs don't exist yet).

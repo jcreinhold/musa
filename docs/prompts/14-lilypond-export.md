@@ -1,5 +1,5 @@
 ---
-id: 09
+id: 14
 slug: lilypond-export
 status: pending
 depends_on: [07]
@@ -17,7 +17,7 @@ shared `NotationPlan`, exposed as `musa render --to lilypond`.
 
 - Roadmap §12.3 (three-stage pipeline, `LyNode` sketch, determinism requirements, why LilyPond is export-only and GPL
   considerations), §15.4 (facade).
-- Prompt 07's `NotationPlan`, prompt 08's `render_notation` facade.
+- Prompt 07's `NotationPlan`, prompt 13's `render_notation` facade.
 
 ## Design
 

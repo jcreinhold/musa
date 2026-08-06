@@ -1,8 +1,8 @@
 ---
-id: 15
+id: 20
 slug: desktop-shell
 status: pending
-depends_on: [14]
+depends_on: [19]
 phase: 1.5
 ---
 
@@ -19,7 +19,7 @@ piece, see the score, press play, and see diagnostics — with the score updatin
 - Roadmap §14.1 (technology choices and why), §14.2 (state ownership: Rust owns semantics; frontend owns only ephemeral
   UI state), §14.3 (default workspace layout), §14.4 (workspaces — build **Compose** only), §14.7 (invalid-edit
   behavior), §14.8 (minimal setup: Verovio bundled), §15.9 (the shell is thin).
-- Prompt 14's `ProjectSnapshot`, prompt 08's `xml:id` contract.
+- Prompt 19's `ProjectSnapshot`, prompt 13's `xml:id` contract.
 
 ## Design
 
@@ -49,9 +49,9 @@ piece, see the score, press play, and see diagnostics — with the score updatin
     revision N" (§14.7 — the snapshot carries the flag; the frontend only displays it).
   - Verovio loaded as a bundled WASM module (§14.8: zero setup). Pin the version; render options minimal (adjust page
     width to pane).
-  - Score interaction for this prompt: click a note → resolve `xml:id` → `EventId` (prompt 08's contract) → highlight it
+  - Score interaction for this prompt: click a note → resolve `xml:id` → `EventId` (prompt 13's contract) → highlight it
     and show basic event info (pitch, duration, part/voice, origin expansion path) in the inspector. No editing yet
-    (prompt 16).
+    (prompt 21).
 - Playback: transport commands go to the session's engine; position display polls or receives an event at ~10 Hz.
   Playback cursor/highlight on the SVG is **not** required here (nice-to-have; the event id plumbing exists for it).
 - The Rust core must stay unaware of the webview: no Tauri types in `musa-project`.
@@ -79,7 +79,7 @@ Commit as `Add Tauri desktop shell with Verovio score view`.
 
 ## Stop
 
-- No score editing commands (prompt 16), no note entry.
+- No score editing commands (prompt 21), no note entry.
 - No Sound/Mix/Source workspaces (§14.4 — Compose only; the source drawer is a panel, not the Source workspace).
 - No MIDI input, no playback cursor animation requirement.
 - No menu/system-tray/packaging polish (icons, installers) — `tauri dev` is the bar.

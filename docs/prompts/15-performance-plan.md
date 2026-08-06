@@ -1,5 +1,5 @@
 ---
-id: 10
+id: 15
 slug: performance-plan
 status: pending
 depends_on: [06]
@@ -16,6 +16,10 @@ deliberately minimal — this prompt proves the scheduling pipeline that audio (
 
 ## Read
 
+- Course correction §22 (tempo is a monotone map `Beat → Second` supplied by the performance layer; symbolic kernel
+  positions stay in beats; "stretch the material" and "perform it more slowly" are different operations — this prompt
+  implements the second, never the first), §23 (audio is a separate semantic layer; this prompt ends at physical
+  musical events).
 - Roadmap §6.4 (`PerformancePlan`/`PerformanceEvent` shapes and what the layer is responsible for), §8.1 (`Tuning` trait
   — concrete 12-TET default now, service boundary later), §5.5 (lowering laws).
 - Roadmap §2: a written A4 is not MIDI note 69; `p` is not a velocity. This prompt's neutrality is the reason those
@@ -42,12 +46,12 @@ deliberately minimal — this prompt proves the scheduling pipeline that audio (
   ```
 
 - `IntegratedTempoMap` converts musical onsets to absolute frames through the declared tempo curve (constant tempo only
-  in the current grammar; design the map as a piecewise structure so prompt 26's curves extend data, not code).
+  in the current grammar; design the map as a piecewise structure so prompt 31's curves extend data, not code).
 - `PerformedNote` carries sounding pitch (post-transposition-instrument — none yet), frequency (via the tuning service),
   symbolic dynamic (none yet → default), and the event's `EventId` + `Origin` for provenance. Frequency is derived at
   this boundary, never stored in the score.
 - Gates: note-off frame = onset + notated duration × tempo factor. No articulation shortening yet (§6.4: that is a
-  profile decision, prompt 18).
+  profile decision, prompt 23).
 - Sorting/stability: events sorted by frame; simultaneous events ordered deterministically by lane then `EventId`.
 - Laws to test (§5.5, §17.2): `lower(a then b)` schedules b after a's span; `lower(a together_with b)` merges lanes
   without frame drift; total event count is preserved (2 per note at this stage).
@@ -73,8 +77,8 @@ Commit as `Add performance lowering with frame scheduling`.
 
 ## Stop
 
-- No articulation/dynamic interpretation or profiles (prompt 18).
-- No `Parameter` events from the grammar (nothing produces them until prompt 19/20); the variant exists now so the enum
+- No articulation/dynamic interpretation or profiles (prompt 23).
+- No `Parameter` events from the grammar (nothing produces them until prompt 24/25); the variant exists now so the enum
   is stable.
 - No audio rendering, no MIDI file export.
 - Do not put `lower_performance` in `musa-render` or `musa-audio`; it is part of the compiler's lowering pipeline

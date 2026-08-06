@@ -1,8 +1,8 @@
 ---
-id: 26
+id: 31
 slug: imports-and-curves
 status: pending
-depends_on: [24, 25]
+depends_on: [29, 30]
 phase: 3
 ---
 
@@ -19,7 +19,7 @@ dynamic curves over time) flowing from source through the integrated tempo map t
 - Roadmap §16 (imports: declarative, acyclic, local, side-effect-free; a piece remains independently compilable; no
   package registry, no dependency solver), §18 Phase 3 (tempo and expression curves), §6.4 (tempo map integration),
   §10.6 (pipeline).
-- Prompt 05's resolution pass, prompt 10's `IntegratedTempoMap` (designed piecewise for this), prompt 18's profiles.
+- Prompt 05's resolution pass, prompt 15's `IntegratedTempoMap` (designed piecewise for this), prompt 23's profiles.
 
 ## Design
 
@@ -38,9 +38,9 @@ dynamic curves over time) flowing from source through the integrated tempo map t
     beside the piece, it is read for shared metadata only; the piece still compiles standalone without it.
 - Curves:
   - Language: `tempo q = 72;` may now appear multiple times with positions (`at 9:1 tempo q = 96;` — choose syntax
-    consistent with prompt 25's `at`), and dynamic hairpins (`cresc.` / `dim.` spans in a voice, rendered as hairpins in
+    consistent with prompt 30's `at`), and dynamic hairpins (`cresc.` / `dim.` spans in a voice, rendered as hairpins in
     notation).
-  - Compiler: `TempoMap` becomes piecewise (prompt 10's structure pays off); `IntegratedTempoMap` integrates segments
+  - Compiler: `TempoMap` becomes piecewise (prompt 15's structure pays off); `IntegratedTempoMap` integrates segments
     exactly (rationals until the frame boundary, then exact conversion). Dynamics curves interpolate the profile's
     amplitude levels across hairpin spans in `lower_performance`.
   - Notation: tempo marks and hairpins in MEI/LilyPond/MusicXML.
