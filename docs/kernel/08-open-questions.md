@@ -96,5 +96,9 @@ Anything discovered while implementing prompts 09–12 is appended here with its
 - *(empty at specification time — prompt 08)*
 - **Prompt 09 (kernel implementation):** D6's phrasing `[s, e] ∩ [i, j] ≠ ∅` makes degenerate (point) occurrences
   unobservable — a half-open empty intersection is always empty. Refined: point occurrences at `s` are visible through
-  `[i, j)` when `s ∈ [i, j)`. Implemented in `Span::visible_through`; spec D6 updated to match when the candidate
-  banner comes off (prompt 12).
+  `[i, j)` when `s ∈ [i, j)`, plus (prompt 10) a point exactly at the ambient extent's end is visible through a window
+  ending at the extent — without it, `restrict` at the full extent is not the identity (L16). Spec D6 is updated to
+  match when the candidate banner comes off (prompt 12).
+- **Prompt 10 (law suite):** the L17 property caught that an empty window `[i, i)` observed non-degenerate spans
+  containing `i` (half-open intersection is empty, but the naive `s < j && e > i` test passes). Fixed:
+  `Span::visible_through` returns `false` for empty windows.

@@ -107,8 +107,11 @@ impl Span {
     /// Non-degenerate spans are visible when `[s, e) ∩ [i, j) ≠ ∅`; degenerate
     /// (point) spans are visible when `s ∈ [i, j)` — otherwise point
     /// occurrences could never be observed, which D6's interval-intersection
-    /// phrasing does not intend for them.
+    /// phrasing does not intend for them. An empty window observes nothing.
     pub fn visible_through(self, window: Self) -> bool {
+        if window.start == window.end {
+            return false;
+        }
         if self.start < self.end {
             self.start < window.end && self.end > window.start
         } else {

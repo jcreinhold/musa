@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 92c62e190df97ebc5c55fe541843fda713d977f72f3dee1e68a633b82e3e6243 # shrinks to mjw = (Timeline { extent: Beat(Ratio { numer: 13, denom: 4 }), occurrences: [Occurrence { span: Span { start: Beat(Ratio { numer: 9, denom: 4 }), end: Beat(Ratio { numer: 13, denom: 4 }) }, payload: 0 }] }, (12, 12), (12, 12))

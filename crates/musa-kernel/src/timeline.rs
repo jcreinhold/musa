@@ -130,7 +130,15 @@ impl<A> Timeline<A> {
         let observed = self
             .occurrences
             .iter()
-            .filter(|occurrence| occurrence.span().visible_through(window))
+            .filter(|occurrence| {
+                let span = occurrence.span();
+                // Point occurrences at the ambient extent's end are observable
+                // through a window ending at the extent; otherwise `restrict`
+                // at the full extent would not be the identity (L16).
+                let is_point = span.start() == span.end();
+                let point_at_windows_extent_end = is_point && span.start() == window.end();
+                span.visible_through(window) || (point_at_windows_extent_end && window.end() == self.extent)
+            })
             .map(|occurrence| {
                 ObservedOccurrence::new(occurrence.span(), occurrence.span().clip(window), occurrence.payload())
             })

@@ -1,7 +1,7 @@
 ---
 id: 10
 slug: kernel-laws
-status: pending
+status: done
 depends_on: [09]
 phase: 1
 ---
