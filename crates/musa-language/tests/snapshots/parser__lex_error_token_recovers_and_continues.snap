@@ -1,0 +1,8 @@
+---
+source: crates/musa-language/tests/parser.rs
+expression: print_errors(&doc)
+---
+unrecognized token at 82..83
+expected a duration at 81..82
+expected `;` at 81..82
+expected a note, rest, chord, use, transpose, or repeat at 81..82

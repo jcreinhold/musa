@@ -1,0 +1,7 @@
+---
+source: crates/musa-language/tests/parser.rs
+expression: print_errors(&doc)
+---
+unclosed `part` block at 40..41
+unclosed `score` block at 40..41
+unclosed `piece` block at 40..41

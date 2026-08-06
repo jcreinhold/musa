@@ -1,7 +1,7 @@
 ---
 id: 03
 slug: parser-cst
-status: pending
+status: done
 depends_on: [02]
 phase: 1
 ---

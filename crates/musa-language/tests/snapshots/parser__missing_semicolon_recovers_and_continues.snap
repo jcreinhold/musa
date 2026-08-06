@@ -1,0 +1,5 @@
+---
+source: crates/musa-language/tests/parser.rs
+expression: print_errors(&doc)
+---
+expected `;` at 25..30

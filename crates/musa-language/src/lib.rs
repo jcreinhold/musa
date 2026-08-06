@@ -25,8 +25,15 @@
 //! (`tree.text() == source`); the formatter preserves semantics
 //! (`semantic(parse(format(parse(s)))) == semantic(parse(s))`).
 
+pub mod ast;
+mod error;
+mod language;
 mod lexer;
+mod parser;
 mod syntax_kind;
 
+pub use crate::error::SyntaxError;
+pub use crate::language::{MusaLanguage, SyntaxElement, SyntaxNode, SyntaxToken};
 pub use crate::lexer::{LexError, LexErrorKind, Lexed, Token, lex};
+pub use crate::parser::{ParsedDocument, parse};
 pub use crate::syntax_kind::SyntaxKind;

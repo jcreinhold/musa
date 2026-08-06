@@ -228,6 +228,8 @@ enum RawToken {
     RestKw,
     #[token("chord", priority = 3)]
     ChordKw,
+    #[token("repeat", priority = 3)]
+    RepeatKw,
     #[token("performance", priority = 3)]
     PerformanceKw,
     #[token("profile", priority = 3)]
@@ -307,6 +309,7 @@ impl RawToken {
             | Self::UpKw
             | Self::RestKw
             | Self::ChordKw
+            | Self::RepeatKw
             | Self::PerformanceKw
             | Self::ProfileKw
             | Self::ArticulationKw
@@ -369,6 +372,7 @@ impl RawToken {
             Self::UpKw => SyntaxKind::UpKw,
             Self::RestKw => SyntaxKind::RestKw,
             Self::ChordKw => SyntaxKind::ChordKw,
+            Self::RepeatKw => SyntaxKind::RepeatKw,
             Self::PerformanceKw => SyntaxKind::PerformanceKw,
             Self::ProfileKw => SyntaxKind::ProfileKw,
             Self::ArticulationKw => SyntaxKind::ArticulationKw,

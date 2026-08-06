@@ -7,7 +7,9 @@
 
 /// The kind of a lexical token or syntax node.
 #[repr(u16)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, num_enum::IntoPrimitive, num_enum::FromPrimitive,
+)]
 pub enum SyntaxKind {
     // --- Trivia: preserved for losslessness, never significant to the parser.
     /// Runs of spaces, tabs, and newlines (newlines are trivia, not syntax).
@@ -107,6 +109,8 @@ pub enum SyntaxKind {
     RestKw,
     /// `chord`
     ChordKw,
+    /// `repeat`
+    RepeatKw,
     /// `performance`
     PerformanceKw,
     /// `profile`
@@ -137,8 +141,46 @@ pub enum SyntaxKind {
     PitchKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
-    /// stays lossless even for invalid input.
+    /// stays lossless even for invalid input. Also used for parser error
+    /// nodes and as the fallback for unknown raw kinds.
+    #[num_enum(default)]
     Error,
+
+    // --- Nodes (produced by the parser, never by the lexer).
+    /// Root of a parsed document.
+    Root,
+    /// `piece "name" { ... }`
+    PieceDecl,
+    /// `tempo <beat> = <bpm>;`
+    TempoStmt,
+    /// `meter <n>/<d>;`
+    MeterStmt,
+    /// `key <pitch-class> <mode>;`
+    KeyStmt,
+    /// `motif name(params) { ... }`
+    MotifDecl,
+    /// `score { ... }`
+    ScoreDecl,
+    /// `part name { ... }`
+    PartDecl,
+    /// `clef <name>;`
+    ClefStmt,
+    /// `voice name { ... }`
+    VoiceDecl,
+    /// `<pitch-or-ref> <duration>;`
+    NoteStmt,
+    /// `rest <duration>;`
+    RestStmt,
+    /// `chord [<pitch>, ...] <duration>;`
+    ChordStmt,
+    /// `use name(args);`
+    UseStmt,
+    /// `transpose up|down <interval> { ... }`
+    TransposeStmt,
+    /// `repeat <n> { ... }`
+    RepeatStmt,
+    /// `{ ... }` body of a motif, transpose, or repeat.
+    Block,
 }
 
 impl SyntaxKind {

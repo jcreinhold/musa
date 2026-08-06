@@ -1,0 +1,25 @@
+---
+source: crates/musa-language/tests/parser.rs
+expression: print_tree(&doc.syntax())
+---
+Root@0..43
+  PieceDecl@0..42
+    PieceKw@0..5 "piece"
+    Whitespace@5..6 " "
+    String@6..9 "\"x\""
+    Whitespace@9..10 " "
+    LBrace@10..11 "{"
+    MeterStmt@11..25
+      Whitespace@11..16 "\n    "
+      MeterKw@16..21 "meter"
+      Whitespace@21..22 " "
+      Rational@22..25 "4/4"
+    MeterStmt@25..40
+      Whitespace@25..30 "\n    "
+      MeterKw@30..35 "meter"
+      Whitespace@35..36 " "
+      Rational@36..39 "2/2"
+      Semicolon@39..40 ";"
+    Whitespace@40..41 "\n"
+    RBrace@41..42 "}"
+  Whitespace@42..43 "\n"
