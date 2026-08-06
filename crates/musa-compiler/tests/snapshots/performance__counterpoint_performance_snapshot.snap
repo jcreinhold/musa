@@ -1,0 +1,26 @@
+---
+source: crates/musa-compiler/tests/performance.rs
+expression: dump
+---
+lane violin:
+  on  0 d4 293.66Hz event-0 i0
+  off 64000 i0
+  on  64000 f4 349.23Hz event-1 i1
+  off 128000 i1
+  on  128000 e4 329.63Hz event-2 i2
+  off 192000 i2
+  on  192000 d4 293.66Hz event-3 i3
+  on  192000 fs4 369.99Hz event-3 i4
+  on  192000 a4 440.00Hz event-3 i5
+  off 256000 i3
+  off 256000 i4
+  off 256000 i5
+lane viola:
+  on  0 d3 146.83Hz event-4 i6
+  off 64000 i6
+  on  64000 a2 110.00Hz event-5 i7
+  off 128000 i7
+  on  128000 bf2 116.54Hz event-6 i8
+  off 192000 i8
+  on  192000 a2 110.00Hz event-7 i9
+  off 256000 i9

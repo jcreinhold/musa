@@ -87,10 +87,22 @@ fn cmd_render(args: &[String]) -> ExitCode {
                 ExitCode::FAILURE
             }
         },
+        "performance" => {
+            match musa_compiler::lower_performance(&score, &musa_compiler::PerformanceOptions::default()) {
+                Ok(plan) => {
+                    print_performance(&plan);
+                    ExitCode::SUCCESS
+                }
+                Err(error) => {
+                    eprintln!("error: {error}");
+                    ExitCode::FAILURE
+                }
+            }
+        }
         "mei" => render_backend(path, &score, musa_render::NotationTarget::Mei, output, "mei"),
         "lilypond" => render_backend(path, &score, musa_render::NotationTarget::LilyPond, output, "ly"),
         other => {
-            eprintln!("error: --to {other} is not implemented yet (plan | mei | lilypond)");
+            eprintln!("error: --to {other} is not implemented yet (plan | mei | lilypond | performance)");
             ExitCode::FAILURE
         }
     }
@@ -108,6 +120,29 @@ fn render_backend(
         Err(error) => {
             eprintln!("error: {error}");
             ExitCode::FAILURE
+        }
+    }
+}
+
+/// The `--to performance` debug dump (snapshot surface until audio exists).
+fn print_performance(plan: &musa_compiler::PerformancePlan) {
+    for lane in plan.lanes() {
+        println!("lane {}:", lane.name());
+        for event in lane.events() {
+            match event {
+                musa_compiler::PerformanceEvent::NoteOn { frame, note, instance } => {
+                    println!(
+                        "  on  {frame} {} {:.2}Hz event-{:x} i{}",
+                        note.pitch, note.frequency, note.event.0, instance.0
+                    );
+                }
+                musa_compiler::PerformanceEvent::NoteOff { frame, instance } => {
+                    println!("  off {frame} i{}", instance.0);
+                }
+                musa_compiler::PerformanceEvent::Parameter { frame, target, value } => {
+                    println!("  par {frame} p{} {value}", target.0);
+                }
+            }
         }
     }
 }

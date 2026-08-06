@@ -1,7 +1,7 @@
 ---
 id: 15
 slug: performance-plan
-status: pending
+status: done
 depends_on: [06]
 phase: 1
 ---

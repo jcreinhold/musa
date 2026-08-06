@@ -29,6 +29,7 @@ mod compile;
 mod elaborate;
 mod lower;
 mod origin;
+mod performance;
 mod pitch;
 mod score;
 mod time;
@@ -37,6 +38,10 @@ pub use crate::compile::{Compilation, CompileOptions, Diagnostic, Elaboration, S
 #[doc(hidden)]
 pub use crate::elaborate::kernel_normal_form;
 pub use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
+pub use crate::performance::{
+    IntegratedTempoMap, ParameterId, PerformanceError, PerformanceEvent, PerformanceLane, PerformanceOptions,
+    PerformancePlan, PerformedNote, Tuning, VoiceInstanceId, lower_performance,
+};
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::score::{
     AnnotationStore, Clef, EventId, KeyMap, MeterMap, Mode, NotatedDuration, Part, PartId, PartMap, ScoreEvent,
