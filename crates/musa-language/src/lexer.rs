@@ -151,6 +151,8 @@ enum RawToken {
     UnterminatedBlockComment,
     #[regex(r"[a-g](ss|ff|[sfn])?-?[0-9]+")]
     PitchLiteral,
+    #[regex(r"[PMm][0-9]+")]
+    IntervalLiteral,
     #[regex(r"[0-9]+\.[0-9]+")]
     Float,
     #[regex(r"[0-9]+/[0-9]+")]
@@ -272,6 +274,7 @@ impl RawToken {
             | Self::BlockComment
             | Self::String
             | Self::PitchLiteral
+            | Self::IntervalLiteral
             | Self::Float
             | Self::Rational
             | Self::Integer
@@ -335,6 +338,7 @@ impl RawToken {
             Self::String => SyntaxKind::String,
             Self::UnterminatedString | Self::UnterminatedBlockComment => SyntaxKind::Error,
             Self::PitchLiteral => SyntaxKind::PitchLiteral,
+            Self::IntervalLiteral => SyntaxKind::IntervalLiteral,
             Self::Float => SyntaxKind::Float,
             Self::Rational => SyntaxKind::Rational,
             Self::Integer => SyntaxKind::Integer,

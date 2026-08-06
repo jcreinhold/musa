@@ -509,8 +509,7 @@ impl<'a> Parser<'a> {
         } else {
             self.error_here("expected `up` or `down`");
         }
-        self.expect(SyntaxKind::Identifier, "an interval quality (`P`, `M`, `m`)");
-        self.expect(SyntaxKind::Integer, "an interval size");
+        self.expect(SyntaxKind::IntervalLiteral, "an interval such as `P5` or `m3`");
         self.block();
         self.finish();
     }

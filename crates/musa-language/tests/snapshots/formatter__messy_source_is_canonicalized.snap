@@ -1,0 +1,20 @@
+---
+source: crates/musa-language/tests/formatter.rs
+expression: formatted
+---
+piece "Messy" {
+    tempo quarter = 72;
+
+    meter 4/4;
+    key a minor;
+    score {
+        part p {
+            clef treble;
+            voice v {
+                c5 1/4;
+                chord [a3, c4, e4] 1/2;
+                rest 1/4;
+            }
+        }
+    }
+}

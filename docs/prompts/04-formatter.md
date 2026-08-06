@@ -1,7 +1,7 @@
 ---
 id: 04
 slug: formatter
-status: pending
+status: done
 depends_on: [03]
 phase: 1
 ---

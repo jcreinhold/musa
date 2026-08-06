@@ -1,0 +1,247 @@
+//! The lossless formatter (roadmap §11).
+//!
+//! Operates on the concrete syntax tree — never on any semantic model — and
+//! rewrites only whitespace. Rules (encoded and reviewed as insta snapshots):
+//!
+//! - 4-space indent per block level; `{` stays on the declaration line; `}`
+//!   on its own line.
+//! - One statement per line, terminated by `;`.
+//! - Blank lines from the original are preserved, capped at one.
+//! - A comment that trailed code on its line stays trailing; an own-line
+//!   comment stays attached above the construct it precedes.
+//!
+//! Laws (tested as properties): `format` is idempotent, and
+//! `parse(format(parse(source)))` equals `parse(source)` up to whitespace.
+
+use crate::language::SyntaxNode;
+use crate::{ParsedDocument, SyntaxElement, SyntaxKind};
+
+/// The result of formatting a document.
+pub struct FormattedSource {
+    text: String,
+}
+
+impl FormattedSource {
+    /// The formatted text, ending in exactly one newline.
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+}
+
+impl std::fmt::Display for FormattedSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.text)
+    }
+}
+
+/// Format a parsed document. Lossless: every comment and token survives;
+/// only whitespace trivia is normalized.
+pub fn format(document: &ParsedDocument) -> FormattedSource {
+    let mut writer = Writer::new();
+    format_node(&document.syntax(), &mut writer);
+    FormattedSource { text: writer.finish() }
+}
+
+fn format_node(node: &SyntaxNode, writer: &mut Writer) {
+    for element in node.children_with_tokens() {
+        match element {
+            SyntaxElement::Node(child) => {
+                writer.blank_line_if_pending();
+                format_node(&child, writer);
+            }
+            SyntaxElement::Token(token) => {
+                let kind = token.kind();
+                if kind == SyntaxKind::Whitespace {
+                    writer.note_whitespace(token.text());
+                    continue;
+                }
+                writer.blank_line_if_pending();
+                format_token(kind, token.text(), writer);
+            }
+        }
+    }
+}
+
+fn format_token(kind: SyntaxKind, text: &str, writer: &mut Writer) {
+    if kind == SyntaxKind::LineComment || kind == SyntaxKind::BlockComment {
+        writer.comment(text);
+        return;
+    }
+    writer.prep_line();
+    if kind == SyntaxKind::LBrace {
+        writer.space();
+        writer.write("{");
+        writer.indent_more();
+        writer.end_line();
+    } else if kind == SyntaxKind::RBrace {
+        writer.indent_less();
+        writer.write("}");
+        writer.end_line();
+    } else if kind == SyntaxKind::Semicolon {
+        writer.write(";");
+        writer.end_line();
+    } else if kind == SyntaxKind::Comma {
+        writer.write(",");
+        writer.space();
+    } else if kind == SyntaxKind::Equals {
+        writer.space();
+        writer.write("=");
+        writer.space();
+    } else if kind == SyntaxKind::Colon {
+        writer.write(":");
+        writer.space();
+    } else if kind == SyntaxKind::Arrow || kind == SyntaxKind::PipeForward {
+        writer.space();
+        writer.write(text);
+        writer.space();
+    } else if kind == SyntaxKind::LBracket {
+        // `chord [` takes a space; `use sigh(` does not.
+        if writer.needs_word_space() {
+            writer.space();
+        }
+        writer.write(text);
+    } else if kind == SyntaxKind::LParen
+        || kind == SyntaxKind::RBracket
+        || kind == SyntaxKind::RParen
+        || kind == SyntaxKind::Minus
+    {
+        writer.write(text);
+    } else {
+        if writer.needs_word_space() {
+            writer.space();
+        }
+        writer.write(text);
+    }
+    writer.after_significant(kind);
+}
+
+/// Layout state for the formatter.
+struct Writer {
+    out: String,
+    indent: usize,
+    at_line_start: bool,
+    /// A line break is owed before the next token (after `;`, `{`, `}`,
+    /// or a comment). Deferred so a trailing comment can join the line first.
+    need_newline: bool,
+    /// Newlines seen in the whitespace run just passed.
+    pending_newlines: usize,
+    /// Kind of the last significant token written.
+    prev: Option<SyntaxKind>,
+}
+
+impl Writer {
+    fn new() -> Self {
+        Self {
+            out: String::new(),
+            indent: 0,
+            at_line_start: true,
+            need_newline: false,
+            pending_newlines: 0,
+            prev: None,
+        }
+    }
+
+    fn finish(mut self) -> String {
+        while self.out.ends_with('\n') {
+            self.out.pop();
+        }
+        self.out.push('\n');
+        self.out
+    }
+
+    /// Emit a deferred line break, if one is owed.
+    fn prep_line(&mut self) {
+        if self.need_newline {
+            self.newline();
+            self.need_newline = false;
+        }
+    }
+
+    fn end_line(&mut self) {
+        self.need_newline = true;
+    }
+
+    fn write(&mut self, text: &str) {
+        if self.at_line_start {
+            for _ in 0..self.indent {
+                self.out.push(' ');
+            }
+            self.at_line_start = false;
+        }
+        self.out.push_str(text);
+    }
+
+    fn space(&mut self) {
+        if !self.at_line_start {
+            self.out.push(' ');
+        }
+    }
+
+    fn newline(&mut self) {
+        if !self.at_line_start {
+            self.out.push('\n');
+            self.at_line_start = true;
+        }
+    }
+
+    /// A comment that trailed code in the original (no newline before it)
+    /// stays trailing; an own-line comment writes at the current indent.
+    fn comment(&mut self, text: &str) {
+        if self.pending_newlines == 0 {
+            self.space();
+        } else {
+            self.prep_line();
+        }
+        self.pending_newlines = 0;
+        self.write(text);
+        self.end_line();
+    }
+
+    fn note_whitespace(&mut self, text: &str) {
+        self.pending_newlines = text.matches('\n').count();
+    }
+
+    fn blank_line_if_pending(&mut self) {
+        let starts_line = self.at_line_start || self.need_newline;
+        if starts_line && self.pending_newlines >= 2 && !self.out.is_empty() {
+            self.prep_line();
+            self.out.push('\n');
+        }
+        // Note: pending_newlines is *not* reset here — the comment logic
+        // still needs it; real tokens reset it in after_significant.
+    }
+
+    /// Whether the next word-like token needs a space before it.
+    fn needs_word_space(&self) -> bool {
+        let Some(prev) = self.prev else {
+            return false;
+        };
+        if self.at_line_start {
+            return false;
+        }
+        !matches!(
+            prev,
+            SyntaxKind::LParen
+                | SyntaxKind::LBracket
+                | SyntaxKind::Minus
+                | SyntaxKind::Comma
+                | SyntaxKind::Colon
+                | SyntaxKind::Equals
+                | SyntaxKind::Arrow
+                | SyntaxKind::PipeForward
+        )
+    }
+
+    fn after_significant(&mut self, kind: SyntaxKind) {
+        self.prev = Some(kind);
+        self.pending_newlines = 0;
+    }
+
+    fn indent_more(&mut self) {
+        self.indent = self.indent.saturating_add(4);
+    }
+
+    fn indent_less(&mut self) {
+        self.indent = self.indent.saturating_sub(4);
+    }
+}

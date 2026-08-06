@@ -35,6 +35,8 @@ pub enum SyntaxKind {
     /// `f`/`ff` flat, `n` natural — `LilyPond` English convention), octave
     /// digits with optional `-` sign: `c5`, `gs4`, `bff2`, `a-1`.
     PitchLiteral,
+    /// Interval: quality `P`/`M`/`m` plus size — `P5`, `M3`, `m3`.
+    IntervalLiteral,
 
     // --- Unit suffixes (roadmap §7.2: units are part of the syntax).
     /// `Hz`

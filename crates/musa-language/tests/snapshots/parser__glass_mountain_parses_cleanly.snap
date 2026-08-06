@@ -122,8 +122,7 @@ Root@0..731
             Whitespace@347..348 " "
             DownKw@348..352 "down"
             Whitespace@352..353 " "
-            Identifier@353..354 "P"
-            Integer@354..355 "5"
+            IntervalLiteral@353..355 "P5"
             Block@355..407
               Whitespace@355..356 " "
               LBrace@356..357 "{"
