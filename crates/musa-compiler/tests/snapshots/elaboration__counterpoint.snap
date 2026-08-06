@@ -1,0 +1,18 @@
+---
+source: crates/musa-compiler/tests/elaboration.rs
+expression: form
+---
+timeline 2 {
+  occurrence 0|0|note:d4|1/2|187|194|[] from 0 to 1/2;
+  occurrence 0|0|note:f4|1/2|211|218|[] from 1/2 to 1;
+  occurrence 0|0|note:e4|1/2|235|242|[] from 1 to 3/2;
+  occurrence 0|0|note:a4|1/2|259|283|[] from 3/2 to 2;
+  occurrence 0|0|note:d4|1/2|259|283|[] from 3/2 to 2;
+  occurrence 0|0|note:fs4|1/2|259|283|[] from 3/2 to 2;
+}
+timeline 2 {
+  occurrence 1|0|note:d3|1/2|395|402|[] from 0 to 1/2;
+  occurrence 1|0|note:a2|1/2|419|426|[] from 1/2 to 1;
+  occurrence 1|0|note:bf2|1/2|443|451|[] from 1 to 3/2;
+  occurrence 1|0|note:a2|1/2|468|475|[] from 3/2 to 2;
+}

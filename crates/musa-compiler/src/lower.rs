@@ -25,11 +25,11 @@ use crate::time::{MusicalDuration, MusicalTime};
 new_key_type! {
     /// Transient arena key for the declaration table (roadmap §15.3:
     /// never serialized as a permanent identity).
-    struct DeclKey;
+    pub(crate) struct DeclKey;
 }
 
 /// A piece-level declaration discovered during the walk.
-enum DeclInfo {
+pub(crate) enum DeclInfo {
     Tempo,
     Meter,
     Key,
@@ -39,15 +39,15 @@ enum DeclInfo {
 }
 
 /// A collected motif definition ready for expansion.
-struct MotifDef {
-    params: Vec<musa_language::ast::Param>,
-    body: Vec<VoiceItem>,
-    declaration: DeclarationId,
+pub(crate) struct MotifDef {
+    pub(crate) params: Vec<musa_language::ast::Param>,
+    pub(crate) body: Vec<VoiceItem>,
+    pub(crate) declaration: DeclarationId,
 }
 
 /// A parameter bound at a `use` site.
 #[derive(Clone)]
-enum BoundValue {
+pub(crate) enum BoundValue {
     Pitch(WrittenPitch),
     Duration(NotatedDuration),
 }
@@ -55,29 +55,29 @@ enum BoundValue {
 /// Expansion context carried through blocks: bound parameters, the
 /// transposition stack (outermost first), and the provenance path prefix.
 #[derive(Clone)]
-struct ExpandCx {
-    params: IndexMap<String, BoundValue>,
-    intervals: Vec<Interval>,
-    path: Vec<ExpansionStep>,
-    declaration: DeclarationId,
+pub(crate) struct ExpandCx {
+    pub(crate) params: IndexMap<String, BoundValue>,
+    pub(crate) intervals: Vec<Interval>,
+    pub(crate) path: Vec<ExpansionStep>,
+    pub(crate) declaration: DeclarationId,
     /// Set when expanding a motif: every event's origin points at the call.
-    origin_span: Option<SourceSpan>,
+    pub(crate) origin_span: Option<SourceSpan>,
     /// Only motifs declared before this index are visible; this makes
     /// cyclic expansion impossible by construction (roadmap §6.5).
-    max_motif: usize,
+    pub(crate) max_motif: usize,
 }
 
 /// Mutable lowering state.
-struct Lowering {
-    declarations: SlotMap<DeclKey, DeclInfo>,
-    motifs: IndexMap<String, MotifDef>,
-    diagnostics: Vec<Diagnostic>,
-    next_event: u64,
-    next_part: u32,
+pub(crate) struct Lowering {
+    pub(crate) declarations: SlotMap<DeclKey, DeclInfo>,
+    pub(crate) motifs: IndexMap<String, MotifDef>,
+    pub(crate) diagnostics: Vec<Diagnostic>,
+    pub(crate) next_event: u64,
+    pub(crate) next_part: u32,
 }
 
 impl Lowering {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             declarations: SlotMap::with_key(),
             motifs: IndexMap::new(),
@@ -87,15 +87,15 @@ impl Lowering {
         }
     }
 
-    fn declare(&mut self, info: DeclInfo) -> DeclKey {
+    pub(crate) fn declare(&mut self, info: DeclInfo) -> DeclKey {
         self.declarations.insert(info)
     }
 
-    fn error(&mut self, message: impl Into<String>, span: SourceSpan) {
+    pub(crate) fn error(&mut self, message: impl Into<String>, span: SourceSpan) {
         self.diagnostics.push(Diagnostic::error(message, Some(span)));
     }
 
-    fn event_id(&mut self) -> EventId {
+    pub(crate) fn event_id(&mut self) -> EventId {
         let id = EventId(self.next_event);
         self.next_event = self.next_event.saturating_add(1);
         id
@@ -103,14 +103,14 @@ impl Lowering {
 }
 
 /// Convert a text range to a serializable span.
-fn span_of(node: &SyntaxNode) -> SourceSpan {
+pub(crate) fn span_of(node: &SyntaxNode) -> SourceSpan {
     let range = node.text_range();
     SourceSpan::new(u32::from(range.start()), u32::from(range.end()))
 }
 
 /// The span of a node's significant (non-trivia) content: provenance points
 /// at the construct, not at the whitespace before it.
-fn trimmed_span(node: &SyntaxNode) -> SourceSpan {
+pub(crate) fn trimmed_span(node: &SyntaxNode) -> SourceSpan {
     let mut start = None;
     let mut end = None;
     for element in node.children_with_tokens() {
@@ -130,12 +130,12 @@ fn trimmed_span(node: &SyntaxNode) -> SourceSpan {
 }
 
 /// Declaration ordinal = its slot's position in insertion order.
-fn ordinal(_lowering: &Lowering, key: DeclKey) -> DeclarationId {
+pub(crate) fn ordinal(_lowering: &Lowering, key: DeclKey) -> DeclarationId {
     DeclarationId(u32::try_from(key.0.as_ffi() & 0xffff_ffff).unwrap_or(u32::MAX))
 }
 
 /// Text of the first token of `kind` under `node`.
-fn token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
+pub(crate) fn token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
     node.children_with_tokens()
         .filter_map(SyntaxElement::into_token)
         .find(|token| token.kind() == kind)
@@ -183,7 +183,7 @@ pub(crate) fn lower(source: &SourceDocument) -> Compilation {
 
 /// Tempo, meter, key — plus registration of motif declarations (expansion
 /// is prompt 06).
-fn lower_header(lowering: &mut Lowering, piece: &PieceDecl, snapshot: &mut ScoreSnapshot) {
+pub(crate) fn lower_header(lowering: &mut Lowering, piece: &PieceDecl, snapshot: &mut ScoreSnapshot) {
     if let Some(tempo) = piece.tempo() {
         lowering.declare(DeclInfo::Tempo);
         snapshot.tempo_map = parse_tempo(lowering, &tempo);
@@ -258,13 +258,13 @@ fn parse_key(key: &KeyStmt) -> Option<KeyMap> {
     Some(KeyMap { tonic, mode })
 }
 
-fn parse_ratio(text: &str) -> Option<Ratio<i64>> {
+pub(crate) fn parse_ratio(text: &str) -> Option<Ratio<i64>> {
     let (numerator, denominator) = text.split_once('/')?;
     Some(Ratio::new(numerator.parse().ok()?, denominator.parse().ok()?))
 }
 
 /// Parse a duration token (`1/2`, `3/8`, `1`) into value + spelling.
-fn parse_duration(node: &SyntaxNode) -> Option<NotatedDuration> {
+pub(crate) fn parse_duration(node: &SyntaxNode) -> Option<NotatedDuration> {
     let (kind, text) = node
         .children_with_tokens()
         .filter_map(SyntaxElement::into_token)
@@ -472,7 +472,12 @@ fn push_event(
 }
 
 /// Resolve a pitch token: a literal, or a bound `pitch` parameter.
-fn resolve_pitch(lowering: &mut Lowering, text: &str, node: &SyntaxNode, cx: &ExpandCx) -> Option<WrittenPitch> {
+pub(crate) fn resolve_pitch(
+    lowering: &mut Lowering,
+    text: &str,
+    node: &SyntaxNode,
+    cx: &ExpandCx,
+) -> Option<WrittenPitch> {
     let pitch = if let Some(pitch) = WrittenPitch::parse(text) {
         pitch
     } else if let Some(BoundValue::Pitch(pitch)) = cx.params.get(text) {
@@ -506,7 +511,7 @@ fn apply_intervals(
 }
 
 /// Resolve a duration token: a literal, or a bound `duration` parameter.
-fn resolve_duration(lowering: &mut Lowering, node: &SyntaxNode, cx: &ExpandCx) -> Option<NotatedDuration> {
+pub(crate) fn resolve_duration(lowering: &mut Lowering, node: &SyntaxNode, cx: &ExpandCx) -> Option<NotatedDuration> {
     if let Some(duration) = parse_duration(node) {
         return Some(duration);
     }
@@ -590,7 +595,7 @@ fn lower_use(
 }
 
 /// Bind one argument text to a parameter kind.
-fn bind_argument(
+pub(crate) fn bind_argument(
     lowering: &mut Lowering,
     motif: &str,
     param: &musa_language::ast::Param,
@@ -632,7 +637,7 @@ fn bind_argument(
     }
 }
 
-fn check_measure_sanity(lowering: &mut Lowering, snapshot: &ScoreSnapshot) {
+pub(crate) fn check_measure_sanity(lowering: &mut Lowering, snapshot: &ScoreSnapshot) {
     let measure = snapshot.meter_map.measure_len();
     if measure.is_zero() {
         return;

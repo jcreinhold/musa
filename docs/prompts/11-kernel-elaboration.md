@@ -1,7 +1,7 @@
 ---
 id: 11
 slug: kernel-elaboration
-status: pending
+status: done
 depends_on: [10]
 phase: 1
 ---

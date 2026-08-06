@@ -29,4 +29,4 @@ mod timeline;
 pub use crate::error::KernelError;
 pub use crate::occurrence::{Canonical, ObservedOccurrence, Occurrence};
 pub use crate::time::{Beat, Span};
-pub use crate::timeline::{RestrictedView, Timeline, overlay, sequence, timeline};
+pub use crate::timeline::{RestrictedView, Timeline, overlay, sequence, timeline, zero};

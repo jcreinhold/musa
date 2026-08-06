@@ -57,6 +57,12 @@ pub struct Span {
 }
 
 impl Span {
+    /// The empty span at the origin.
+    pub const ZERO: Self = Self {
+        start: Beat::ZERO,
+        end: Beat::ZERO,
+    };
+
     /// A span from two positions.
     ///
     /// # Errors

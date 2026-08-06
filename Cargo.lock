@@ -333,6 +333,7 @@ version = "0.1.0"
 dependencies = [
  "indexmap",
  "insta",
+ "musa-kernel",
  "musa-language",
  "num-rational",
  "proptest",

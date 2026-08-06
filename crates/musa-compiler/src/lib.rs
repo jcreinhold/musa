@@ -20,13 +20,16 @@
 //! (the language has no recursion).
 
 mod compile;
+mod elaborate;
 mod lower;
 mod origin;
 mod pitch;
 mod score;
 mod time;
 
-pub use crate::compile::{Compilation, CompileOptions, Diagnostic, Severity, SourceDocument, compile};
+pub use crate::compile::{Compilation, CompileOptions, Diagnostic, Elaboration, Severity, SourceDocument, compile};
+#[doc(hidden)]
+pub use crate::elaborate::kernel_normal_form;
 pub use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::score::{

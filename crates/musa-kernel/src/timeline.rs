@@ -41,6 +41,15 @@ pub fn timeline<A>(extent: Beat, occurrences: Vec<Occurrence<A>>) -> Result<Time
     Ok(Timeline { extent, occurrences })
 }
 
+/// The empty timeline `(0, ∅)` — the two-sided identity of `sequence` (L2).
+/// Infallible: no occurrence can violate the bounds of a zero extent.
+pub fn zero<A>() -> Timeline<A> {
+    Timeline {
+        extent: Beat::ZERO,
+        occurrences: Vec::new(),
+    }
+}
+
 /// Temporal succession: `M ; N = (d + e, E ⊎ τ_d(F))` (D2). Laws L1–L3.
 pub fn sequence<A>(parts: Vec<Timeline<A>>) -> Timeline<A> {
     let mut offset = Beat::ZERO;

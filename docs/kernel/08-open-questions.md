@@ -102,3 +102,11 @@ Anything discovered while implementing prompts 09–12 is appended here with its
 - **Prompt 10 (law suite):** the L17 property caught that an empty window `[i, i)` observed non-degenerate spans
   containing `i` (half-open intersection is empty, but the naive `s < j && e > i` test passes). Fixed:
   `Span::visible_through` returns `false` for empty windows.
+- **Prompt 11 (elaboration):** a surface `rest` elaborates to a `Rest` payload occurrence (notation intent), not to
+  absence — parity with the oracle requires rest events to carry their origin, which a bare gap cannot represent.
+  This refines `06-surface-elaboration.md`'s rest row: "no **note** occurrence" still holds; the kernel gains no
+  silence object. **Q3 evidence:** voice identity as payload metadata reproduced every fixture's lanes exactly;
+  no consumer needed a temporal voice primitive. **Q7 evidence:** (span, voice, origin) regrouping is correct on all
+  fixtures because coincidental simultaneity from separate constructs carries separate origins. **Transpose** is
+  applied eagerly via the shared interval stack during elaboration rather than as a literal `map_payload` pass;
+  composition commutativity (prompt 06's law) makes this observably equal, documented in `06` at graduation.

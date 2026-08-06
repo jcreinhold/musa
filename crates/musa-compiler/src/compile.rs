@@ -41,9 +41,26 @@ impl SourceDocument {
 }
 
 /// Options controlling compilation. Currently empty: defaults live inside
-/// (12-TET tuning arrives with prompt 10's performance options).
+/// (12-TET tuning arrives with prompt 15's performance options).
 #[derive(Clone, Debug, Default)]
-pub struct CompileOptions {}
+pub struct CompileOptions {
+    /// Which semantic path `compile` takes (course correction §30 Steps
+    /// 5–6). The direct lowerer is the regression oracle until prompt 12
+    /// makes the kernel path canonical.
+    #[doc(hidden)]
+    pub elaboration: Elaboration,
+}
+
+/// The semantic path used by [`compile`] (prompt 11/12 transition).
+#[doc(hidden)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Elaboration {
+    /// The direct CST→snapshot lowerer (prompts 05–06; the oracle).
+    #[default]
+    Direct,
+    /// Elaboration through the temporal kernel (prompt 11).
+    Kernel,
+}
 
 /// Diagnostic severity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -124,6 +141,9 @@ impl Compilation {
 /// (motif expansion, prompt 06) → normalized `ScoreSnapshot`. Motif
 /// applications, `transpose`, and `repeat` currently produce warnings and
 /// are skipped (prompt 06 implements them).
-pub fn compile(source: &SourceDocument, _options: &CompileOptions) -> Compilation {
-    crate::lower::lower(source)
+pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation {
+    match options.elaboration {
+        Elaboration::Direct => crate::lower::lower(source),
+        Elaboration::Kernel => crate::elaborate::elaborate(source),
+    }
 }
