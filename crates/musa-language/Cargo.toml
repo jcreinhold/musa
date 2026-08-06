@@ -10,3 +10,7 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+logos = "0.15"
+miette = "7"
+text-size = "1"
+thiserror = "2"

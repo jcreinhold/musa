@@ -10,9 +10,11 @@
 //! pitches, expanded motifs, or audio objects (those belong to
 //! `musa-compiler`).
 //!
-//! Intended facade (roadmap §15.2), to be implemented by prompts 02–04:
+//! Intended facade (roadmap §15.2). `lex` is implemented (prompt 02);
+//! `parse`, `format`, and `apply_edits` arrive with prompts 03–04:
 //!
 //! ```text
+//! pub fn lex(source: &str) -> Lexed;
 //! pub fn parse(source: &str) -> ParsedDocument;
 //! pub fn format(document: &ParsedDocument) -> FormattedSource;
 //! pub fn apply_edits(source: &str, edits: &[TextEdit]) -> String;
@@ -22,3 +24,9 @@
 //! token, comment, and whitespace span is retained so the tree is lossless
 //! (`tree.text() == source`); the formatter preserves semantics
 //! (`semantic(parse(format(parse(s)))) == semantic(parse(s))`).
+
+mod lexer;
+mod syntax_kind;
+
+pub use crate::lexer::{LexError, LexErrorKind, Lexed, Token, lex};
+pub use crate::syntax_kind::SyntaxKind;

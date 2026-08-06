@@ -1,7 +1,7 @@
 ---
 id: 02
 slug: lexer
-status: pending
+status: done
 depends_on: [01]
 phase: 1
 ---
