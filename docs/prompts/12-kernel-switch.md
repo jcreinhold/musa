@@ -1,7 +1,7 @@
 ---
 id: 12
 slug: kernel-switch
-status: pending
+status: done
 depends_on: [11]
 phase: 1
 ---

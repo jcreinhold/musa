@@ -1,5 +1,11 @@
 //! Semantic core: from parsed source to immutable musical snapshots.
 //!
+//! Pipeline (course correction §26, prompt 12): CST → expansion-aware
+//! elaboration → temporal kernel (`musa-kernel`) → `ScoreSnapshot` adapter.
+//! The direct lowerer of prompts 05–06 remains as the differential
+//! regression oracle; the kernel — not the surface grammar — defines the
+//! ontology.
+//!
 //! Owns: name resolution, unit checking, semantic diagnostics, the high-level
 //! compositional model (motifs, transformations, references), motif expansion,
 //! exact rational musical time, score normalization, performance lowering,

@@ -1,7 +1,5 @@
 # 01 — Kernel Interchange Grammar
 
-> **Status: candidate** — provisional until prompts 10–11 pass; see `00-purpose.md`.
-
 This document defines the **kernel interchange syntax**: a textual form for finite temporal-kernel compositions. It
 is a semantic/interchange language for golden tests, semantic hashing, and cross-tool exchange. **It is not the syntax
 musicians write** (course correction §24); the musician-facing surface language is the `.musa` grammar handled by

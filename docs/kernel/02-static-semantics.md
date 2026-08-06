@@ -1,7 +1,5 @@
 # 02 — Static Semantics
 
-> **Status: candidate** — provisional until prompts 10–11 pass; see `00-purpose.md`.
-
 Well-formedness rules for kernel compositions and kernel files. Everything here is checkable without evaluating
 anything musical — the kernel never inspects payload *meaning* (course correction §12); it checks shapes and bounds.
 

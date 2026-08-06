@@ -1,7 +1,5 @@
 # 04 — Algebraic Laws
 
-> **Status: candidate** — provisional until prompts 10–11 pass; see `00-purpose.md`.
-
 The laws of the temporal kernel, stated formally against the definitions of `03-denotational-semantics.md`. Every law
 names the property test that must implement it in `crates/musa-kernel/tests/laws.rs` (prompt 10); every non-law names
 its counterexample test. Equality (`=`) throughout is **semantic equality**: equality of canonical normal forms

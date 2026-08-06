@@ -1,7 +1,5 @@
 # 07 — Backend Contract
 
-> **Status: candidate** — provisional until prompts 10–11 pass; see `00-purpose.md`.
-
 What downstream consumers of the temporal kernel may assume, and what they must never do. Backends today consume
 `ScoreSnapshot` and `NotationPlan` rather than kernel timelines directly; this contract applies to those projections
 as well, because the projections preserve the kernel's guarantees (course correction §27–28).

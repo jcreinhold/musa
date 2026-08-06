@@ -1070,6 +1070,12 @@ pub fn compile(
 ) -> Compilation;
 ```
 
+> **Course correction (docs/course-correction.md):** the semantic core beneath this pipeline is now the finite
+> temporal kernel specified in `docs/kernel/` — the "high-level compositional representation" and "motif expansion"
+> stages above are the elaboration/HIR that evaluates into kernel timelines, and the normalized `ScoreSnapshot` is an
+> adapter projection of them. Where this roadmap and the course correction disagree on semantic architecture, the
+> course correction wins; everything else in this document stands.
+
 Intermediate pass types should remain private unless another crate has a real semantic need for them.
 
 ## 10.7 Incrementality

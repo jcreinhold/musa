@@ -1,7 +1,5 @@
 # 08 — Open Questions
 
-> **Status: candidate** — provisional until prompts 10–11 pass; see `00-purpose.md`.
-
 Deliberately undecided. Each entry states the question, the current working stance, and the evidence that would
 settle it. Nothing here may be settled by convenience (course correction §32: "do not prematurely decide").
 
@@ -74,9 +72,9 @@ surface grammar gains such a construct (prompt 30 era) — elaboration extends, 
 
 | # | Example | Status |
 | --- | --- | --- |
-| 1 | Twinkle Twinkle (sequential + rests) | prompt 11 fixture `examples/twinkle.musa` |
-| 2 | Four-part chorale (synchronized voices) | covered by `examples/counterpoint.musa` (two-part today; extend if cheap) |
-| 3 | Canon (reuse, delay, transformation, overlay) | prompt 11 fixture `examples/canon.musa` |
+| 1 | Twinkle Twinkle (sequential + rests) | **proven** (prompt 11): `examples/twinkle.musa`, parity + normal form |
+| 2 | Four-part chorale (synchronized voices) | **proven at two parts** (prompt 11): `counterpoint.musa` parity + normal form; extend to four parts with prompt 22-era fixtures |
+| 3 | Canon (reuse, delay, transformation, overlay) | **proven** (prompt 11): `examples/canon.musa` — motif reuse, delay by ambient extent, transposition, overlay |
 | 4 | Tuplets / polyrhythm (exact rationals) | blocked on surface syntax (prompt 22) |
 | 5 | Changing meter and key | blocked on surface syntax (see Q8) |
 | 6 | Accelerando / ritardando | blocked on tempo curves (prompt 31); tempo-map semantics already settled (§22) |
@@ -87,6 +85,8 @@ surface grammar gains such a construct (prompt 30 era) — elaboration extends, 
 
 Rule (§33): if several of these require awkward or lossy lowering, reconsider the kernel as a whole. Do not patch
 examples independently.
+
+The kernel graduated at prompt 12 with items 1–3 proven and 4–10 tracked above.
 
 ## Prompt-implementation log
 

@@ -1,7 +1,5 @@
 # 06 — Surface Elaboration
 
-> **Status: candidate** — provisional until prompts 10–11 pass; see `00-purpose.md`.
-
 How the existing `.musa` surface language elaborates into the temporal kernel (course correction §30 Step 4, §19–21).
 This document describes elaboration of the grammar **as it exists today** (prompts 02–06); it is not a surface
 redesign (§31). The implementation is prompt 11 (`docs/prompts/11-kernel-elaboration.md`).

@@ -1,7 +1,5 @@
 # 03 — Denotational Semantics
 
-> **Status: candidate** — provisional until prompts 10–11 pass; see `00-purpose.md`.
-
 The denotation of every finite kernel composition, and the definition of every operation. Laws these definitions
 satisfy are in `04-algebraic-laws.md`; how they are normalized and compared is in `05-normalization.md`.
 

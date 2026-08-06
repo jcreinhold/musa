@@ -1,6 +1,13 @@
-//! The lowering pass: CST → resolution + unit checks → `ScoreSnapshot`.
+//! The direct lowering pass: CST → resolution + unit checks → `ScoreSnapshot`.
 //! Private to the crate (roadmap §10.6: pass types never cross the
 //! boundary).
+//!
+//! **Frozen oracle (prompt 12):** the canonical semantic path is
+//! `elaborate.rs` through the temporal kernel (course correction §30 Step 6).
+//! This pass stays compiled in and runnable — it is the differential
+//! regression oracle (tests/elaboration.rs). Bugs found here after the
+//! switch are fixed in the elaboration path unless the differential suite
+//! itself is at fault; do not grow this pass with new features.
 //!
 //! Time accumulation here uses the `MusicalTime`/`MusicalDuration` operators,
 //! which are total for musa's magnitudes (see `time.rs`); the workspace

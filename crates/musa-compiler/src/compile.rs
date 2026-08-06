@@ -51,15 +51,17 @@ pub struct CompileOptions {
     pub elaboration: Elaboration,
 }
 
-/// The semantic path used by [`compile`] (prompt 11/12 transition).
+/// The semantic path used by [`compile`] (course correction §30 Step 6).
 #[doc(hidden)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Elaboration {
-    /// The direct CST→snapshot lowerer (prompts 05–06; the oracle).
+    /// Elaboration through the temporal kernel (prompt 11; canonical since
+    /// prompt 12).
     #[default]
-    Direct,
-    /// Elaboration through the temporal kernel (prompt 11).
     Kernel,
+    /// The direct CST→snapshot lowerer (prompts 05–06), frozen as the
+    /// regression oracle for the differential suite.
+    Direct,
 }
 
 /// Diagnostic severity.
@@ -135,15 +137,15 @@ impl Compilation {
     }
 }
 
-/// Compile `source` into a [`Compilation`] (roadmap §10.6, §15.3).
+/// Compile `source` into a [`Compilation`] (roadmap §10.6, §15.3; course
+/// correction §26).
 ///
-/// Pipeline: parse → name resolution and unit checks → high-level model →
-/// (motif expansion, prompt 06) → normalized `ScoreSnapshot`. Motif
-/// applications, `transpose`, and `repeat` currently produce warnings and
-/// are skipped (prompt 06 implements them).
+/// Pipeline: parse → expansion-aware elaboration (motifs, repeat, transpose)
+/// → temporal kernel → `ScoreSnapshot` adapter. The direct lowerer
+/// (prompts 05–06) remains selectable as the differential regression oracle.
 pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation {
     match options.elaboration {
-        Elaboration::Direct => crate::lower::lower(source),
         Elaboration::Kernel => crate::elaborate::elaborate(source),
+        Elaboration::Direct => crate::lower::lower(source),
     }
 }

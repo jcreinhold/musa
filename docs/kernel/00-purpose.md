@@ -1,8 +1,5 @@
 # 00 — Purpose of the Temporal Kernel
 
-> **Status: candidate** — this specification is provisional until the law suite (prompt 10) and the surface-elaboration
-> parity and falsification corpus (prompt 11) pass. See prompt 12 (`docs/prompts/12-kernel-switch.md`) for graduation.
-
 Musa maintains two pictures at once:
 
 1. **The surface language** — expressive, concise, musician-oriented, programmable. Composers write notes, rests,

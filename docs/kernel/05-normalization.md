@@ -1,7 +1,5 @@
 # 05 — Normalization, Semantic Equality, Serialization
 
-> **Status: candidate** — provisional until prompts 10–11 pass; see `00-purpose.md`.
-
 Every finite kernel composition normalizes to one flat timeline (course correction §25). This document fixes the
 normal form, the canonical occurrence order, semantic equality, and the canonical text serialization used for golden
 tests and semantic hashing.
