@@ -1,0 +1,5 @@
+---
+source: crates/musa-audio/tests/audio.rs
+expression: "compile_graph(&spec, &OPTIONS).err().expect(\"mismatch\").to_string()"
+---
+port mismatch: control into audio/1

@@ -11,3 +11,9 @@ workspace = true
 
 [dependencies]
 musa-compiler = { path = "../musa-compiler" }
+hound = "3"
+thiserror = "2"
+
+[dev-dependencies]
+insta = "1"
+proptest = "1"

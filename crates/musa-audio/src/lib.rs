@@ -1,31 +1,24 @@
-//! Studio graph compilation and pure DSP.
+//! The declarative studio graph: `StudioGraphSpec` (editable, serializable
+//! intent) → compiled `RenderPlan` (preallocated execution) (roadmap §13.3,
+//! §13.8).
 //!
-//! Owns: declarative studio graph types (`StudioGraphSpec`), graph validation
-//! (port compatibility, channel counts, cycles legal only through explicit
-//! delay), graph compilation into preallocated `RenderPlan`s, the processor
-//! interface, oscillators, envelopes, filters, effects, voice allocation,
-//! block processing, deterministic offline rendering, and the built-in patch
-//! library — design roadmap §15.5.
+//! Owns: graph validation (port-kind/channel compatibility, cycle rejection),
+//! topological scheduling, buffer allocation, the processor set, and
+//! deterministic offline rendering. Must never contain: musical semantics
+//! (it consumes scheduled `PerformanceEvent`s, never scores), CPAL or
+//! threads (prompt 18), or real-time violations — `RenderPlan::render`
+//! allocates nothing and takes no locks (§13.2).
 //!
-//! Must never expose: `FunDSP` types (if adopted as an implementation
-//! backend, §13.6) or DSP internals across the crate boundary; must never contain:
-//! CPAL or any platform audio code (that is `musa-engine`), GUI concepts, or
-//! score semantics (the studio receives performance events, never notes —
-//! §6.5).
-//!
-//! Intended facade (roadmap §13.3/§13.8), to be implemented by prompts
-//! 11–12 and 19–21:
-//!
-//! ```text
-//! pub fn compile_graph(spec: &StudioGraphSpec, options: &GraphOptions)
-//!     -> Result<RenderPlan, GraphError>;
-//! impl RenderPlan {
-//!     pub fn render(&mut self, events: &EventSlice, output: &mut [f32], frames: usize);
-//! }
-//! pub fn render_offline(plan: &mut RenderPlan, events: &PerformanceEvents,
-//!     frames: u64) -> RenderedAudio;
-//! ```
-//!
-//! Invariants: `RenderPlan::render` never allocates, locks, or destroys large
-//! objects; offline and live rendering execute the same processors on the
-//! same scheduled events; rendering is deterministic and NaN/infinity-free.
+//! Facade (roadmap §15.5): [`compile_graph`], [`RenderPlan::render`]. The
+//! graph compiler hides validation, topological sort, and buffer allocation;
+//! callers see `build` and `render` (§3).
+
+mod error;
+mod plan;
+mod spec;
+
+pub use crate::error::GraphError;
+pub use crate::plan::{EventSlice, RenderPlan, compile_graph};
+pub use crate::spec::{
+    Combination, GraphOptions, NodeId, ParameterDescriptor, PortKind, ProcessorSpec, Smoothing, StudioGraphSpec, Unit,
+};

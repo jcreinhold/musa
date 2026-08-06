@@ -1,7 +1,7 @@
 ---
 id: 16
 slug: audio-core
-status: pending
+status: done
 depends_on: [15]
 phase: 1
 ---
