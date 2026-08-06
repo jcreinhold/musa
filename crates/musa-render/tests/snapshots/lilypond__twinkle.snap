@@ -1,0 +1,38 @@
+---
+source: crates/musa-render/tests/lilypond.rs
+expression: lilypond_of(source)
+---
+\version "2.24.0"
+\language "english"
+
+partPiano = {
+  \time 4/4
+  \key c \major
+  {
+    c'4 % event:0
+    c'4 % event:1
+    g'4 % event:2
+    g'4 % event:3
+    |
+    a'4 % event:4
+    a'4 % event:5
+    g'2 % event:6
+    |
+    f'4 % event:7
+    f'4 % event:8
+    e'4 % event:9
+    e'4 % event:a
+    |
+    d'4 % event:b
+    d'4 % event:c
+    c'2 % event:d
+    |
+    r1 % event:e
+    |
+  }
+}
+\score {
+  <<
+    \new Staff \partPiano
+  >>
+}

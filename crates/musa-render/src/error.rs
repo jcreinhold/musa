@@ -25,6 +25,15 @@ pub enum RenderError {
     /// The backend writer failed.
     #[error("XML writer failed: {0}")]
     Xml(String),
+    /// A construct the backend cannot express (§7.2: explicit, never a raw
+    /// escape hatch).
+    #[error("event {event:?}: {what}")]
+    Unsupported {
+        /// The score event involved.
+        event: EventId,
+        /// What cannot be expressed.
+        what: String,
+    },
 }
 
 impl RenderError {

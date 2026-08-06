@@ -16,6 +16,7 @@
 //! [`NotationError`]s, never raw backend escapes (§7.2).
 
 mod error;
+mod ly;
 mod mei;
 mod plan;
 mod render;

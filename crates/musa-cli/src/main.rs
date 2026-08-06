@@ -87,22 +87,26 @@ fn cmd_render(args: &[String]) -> ExitCode {
                 ExitCode::FAILURE
             }
         },
-        "mei" => {
-            let rendered = musa_render::render_notation(
-                &score,
-                musa_render::NotationTarget::Mei,
-                &musa_render::NotationOptions::default(),
-            );
-            match rendered {
-                Ok(rendered) => write_output(path, rendered.text(), output, "mei"),
-                Err(error) => {
-                    eprintln!("error: {error}");
-                    ExitCode::FAILURE
-                }
-            }
-        }
+        "mei" => render_backend(path, &score, musa_render::NotationTarget::Mei, output, "mei"),
+        "lilypond" => render_backend(path, &score, musa_render::NotationTarget::LilyPond, output, "ly"),
         other => {
-            eprintln!("error: --to {other} is not implemented yet (plan | mei)");
+            eprintln!("error: --to {other} is not implemented yet (plan | mei | lilypond)");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn render_backend(
+    path: &str,
+    score: &musa_compiler::ScoreSnapshot,
+    target: musa_render::NotationTarget,
+    output: Option<&str>,
+    extension: &str,
+) -> ExitCode {
+    match musa_render::render_notation(score, target, &musa_render::NotationOptions::default()) {
+        Ok(rendered) => write_output(path, rendered.text(), output, extension),
+        Err(error) => {
+            eprintln!("error: {error}");
             ExitCode::FAILURE
         }
     }

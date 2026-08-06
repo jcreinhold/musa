@@ -12,6 +12,8 @@ use crate::plan::{NotationOptions, plan_notation};
 pub enum NotationTarget {
     /// MEI 5 XML (Verovio-compatible, `xml:id` event mapping).
     Mei,
+    /// `LilyPond` source (export only, §12.3).
+    LilyPond,
 }
 
 /// The rendered output of one backend.
@@ -46,6 +48,7 @@ pub fn render_notation(
     let plan = plan_notation(score, options)?;
     let text = match target {
         NotationTarget::Mei => crate::mei::render_mei(&plan)?,
+        NotationTarget::LilyPond => crate::ly::render_lilypond(&plan)?,
     };
     Ok(RenderedNotation { target, text })
 }
