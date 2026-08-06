@@ -1,28 +1,25 @@
-//! Notation planning and interchange export.
+//! Backend-neutral notation planning (roadmap §12.1) plus MEI, `LilyPond`,
+//! `MusicXML`, and MIDI export.
 //!
-//! Owns: the backend-neutral `NotationPlan` (measures, beaming, tie
-//! decomposition, voice allocation), MEI generation with `EventId`-carrying
-//! `xml:id`s, `MusicXML` generation, the typed `LilyPond` document model and its
-//! deterministic pretty-printer, MIDI-file export, deterministic text/XML
-//! serialization, and source maps for rendered artifacts — design roadmap
-//! §15.4.
+//! Owns: the `NotationPlan` derived from a `ScoreSnapshot` (measures, voice
+//! lanes, beaming, tie decomposition, key/time signatures), and every
+//! text/file backend that consumes it. Must never contain: musical semantics
+//! (it reads `ScoreSnapshot`, never reinterprets it), DSP, or respelling —
+//! written pitch spelling passes through verbatim (§6.3).
 //!
-//! Must never expose: `LilyPond`/`MusicXML`/MEI document internals (they stay
-//! behind the `NotationTarget` facade); must never contain: composition
-//! semantics (that is `musa-compiler`'s), backend assumptions leaking into
-//! the score model, or raw backend escape hatches (roadmap §7.2).
+//! Facade (roadmap §15.4): [`plan_notation`] (prompt 07); `render_mei`
+//! (prompt 08), `render_lilypond` (prompt 09), MIDI/MusicXML later.
 //!
-//! Intended facade (roadmap §15.4), to be implemented by prompts 07–09, 18,
-//! and 22:
-//!
-//! ```text
-//! pub enum NotationTarget { Mei, MusicXml, LilyPond }
-//! pub fn render_notation(score: &ScoreSnapshot, target: NotationTarget,
-//!     options: &NotationOptions) -> Result<RenderedNotation, RenderError>;
-//! pub fn render_midi(performance: &PerformancePlan, options: &MidiOptions)
-//!     -> Result<Vec<u8>, RenderError>;
-//! ```
-//!
-//! Invariants: output is deterministic (byte-identical for identical input);
-//! every notated item traces back to a `ScoreEvent` id; unsupported notation
-//! produces an explicit diagnostic, never a silent drop.
+//! Invariants: the plan is semantic, not typographic — no line breaks or
+//! spacing; every notated item carries the `EventId` it came from, so tie
+//! pieces of one event stay linked; unsupported constructs are explicit
+//! [`NotationError`]s, never raw backend escapes (§7.2).
+
+mod error;
+mod plan;
+
+pub use crate::error::NotationError;
+pub use crate::plan::{
+    BeamGroup, KeySignature, MeasurePlan, NotatedItem, NotatedKind, NotationOptions, NotationPlan, StaffPlan,
+    VoiceLane, plan_notation,
+};

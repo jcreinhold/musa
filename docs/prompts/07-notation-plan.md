@@ -1,7 +1,7 @@
 ---
 id: 07
 slug: notation-plan
-status: pending
+status: done
 depends_on: [06]
 phase: 1
 ---

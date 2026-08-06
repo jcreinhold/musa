@@ -12,6 +12,7 @@ fn main() -> ExitCode {
     match args.first().map(String::as_str) {
         Some("format") => cmd_format(args.get(1..).unwrap_or_default()),
         Some("check") => cmd_check(args.get(1..).unwrap_or_default()),
+        Some("render") => cmd_render(args.get(1..).unwrap_or_default()),
         _ => {
             print_usage();
             if args.is_empty() {
@@ -29,8 +30,48 @@ fn print_usage() {
     println!("Commands:");
     println!("  musa check <file.musa>                 parse + compile diagnostics");
     println!("  musa format <file.musa> [--check]      format in place (--check to diff)");
-    println!("  musa render <file.musa> --to <target>  mei | lilypond | musicxml | midi | wav (planned)");
+    println!("  musa render <file.musa> --to <target>  plan (debug); mei | lilypond | musicxml | midi | wav (planned)");
     println!("  musa play <file.musa>                  live playback (planned)");
+}
+
+/// `musa render <file> --to plan` — debug dump of the notation plan (the
+/// snapshot surface until MEI exists; real backends arrive in prompts 08+).
+fn cmd_render(args: &[String]) -> ExitCode {
+    let Some(path) = args.iter().find(|arg| !arg.starts_with("--")) else {
+        eprintln!("error: render needs a file");
+        return ExitCode::FAILURE;
+    };
+    let target = args
+        .iter()
+        .position(|arg| arg == "--to")
+        .and_then(|index| args.get(index.saturating_add(1)))
+        .map_or("plan", String::as_str);
+    if target != "plan" {
+        eprintln!("error: --to {target} is not implemented yet (only `plan`)");
+        return ExitCode::FAILURE;
+    }
+    let source = match musa_compiler::SourceDocument::open(path) {
+        Ok(source) => source,
+        Err(error) => {
+            eprintln!("error: cannot read {path}: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let compilation = musa_compiler::compile(&source, &musa_compiler::CompileOptions::default());
+    let Some(score) = compilation.into_snapshot() else {
+        eprintln!("error: {path}: compilation failed");
+        return ExitCode::FAILURE;
+    };
+    match musa_render::plan_notation(&score, &musa_render::NotationOptions::default()) {
+        Ok(plan) => {
+            println!("{plan:#?}");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("error: {error}");
+            ExitCode::FAILURE
+        }
+    }
 }
 
 /// Read a `.musa` file, or report the I/O error and give up.

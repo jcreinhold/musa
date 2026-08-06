@@ -1,0 +1,368 @@
+---
+source: crates/musa-render/tests/plan.rs
+expression: "format!(\"{rendered:#?}\")"
+---
+NotationPlan {
+    staves: [
+        StaffPlan {
+            name: "violin",
+            clef: Some(
+                Treble,
+            ),
+            key: Some(
+                KeySignature {
+                    fifths: -1,
+                    mode: Minor,
+                },
+            ),
+            time_signature: (
+                4,
+                4,
+            ),
+            measures: [
+                MeasurePlan {
+                    number: 1,
+                    lanes: [
+                        VoiceLane {
+                            voice: VoiceId(
+                                0,
+                            ),
+                            name: "lead",
+                            items: [
+                                NotatedItem {
+                                    event: EventId(
+                                        0,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: D,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 4,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 0,
+                                            denom: 1,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                        spelling: "1/2",
+                                    },
+                                    tie_start: false,
+                                    tie_stop: false,
+                                    beam: None,
+                                },
+                                NotatedItem {
+                                    event: EventId(
+                                        1,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: F,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 4,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                        spelling: "1/2",
+                                    },
+                                    tie_start: false,
+                                    tie_stop: false,
+                                    beam: None,
+                                },
+                            ],
+                        },
+                    ],
+                },
+                MeasurePlan {
+                    number: 2,
+                    lanes: [
+                        VoiceLane {
+                            voice: VoiceId(
+                                0,
+                            ),
+                            name: "lead",
+                            items: [
+                                NotatedItem {
+                                    event: EventId(
+                                        2,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: E,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 4,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 0,
+                                            denom: 1,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                        spelling: "1/2",
+                                    },
+                                    tie_start: false,
+                                    tie_stop: false,
+                                    beam: None,
+                                },
+                                NotatedItem {
+                                    event: EventId(
+                                        3,
+                                    ),
+                                    kind: Chord {
+                                        pitches: [
+                                            WrittenPitch {
+                                                letter: D,
+                                                accidental: Accidental(
+                                                    0,
+                                                ),
+                                                octave: 4,
+                                            },
+                                            WrittenPitch {
+                                                letter: F,
+                                                accidental: Accidental(
+                                                    1,
+                                                ),
+                                                octave: 4,
+                                            },
+                                            WrittenPitch {
+                                                letter: A,
+                                                accidental: Accidental(
+                                                    0,
+                                                ),
+                                                octave: 4,
+                                            },
+                                        ],
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                        spelling: "1/2",
+                                    },
+                                    tie_start: false,
+                                    tie_stop: false,
+                                    beam: None,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        },
+        StaffPlan {
+            name: "viola",
+            clef: Some(
+                Alto,
+            ),
+            key: Some(
+                KeySignature {
+                    fifths: -1,
+                    mode: Minor,
+                },
+            ),
+            time_signature: (
+                4,
+                4,
+            ),
+            measures: [
+                MeasurePlan {
+                    number: 1,
+                    lanes: [
+                        VoiceLane {
+                            voice: VoiceId(
+                                0,
+                            ),
+                            name: "line",
+                            items: [
+                                NotatedItem {
+                                    event: EventId(
+                                        4,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: D,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 3,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 0,
+                                            denom: 1,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                        spelling: "1/2",
+                                    },
+                                    tie_start: false,
+                                    tie_stop: false,
+                                    beam: None,
+                                },
+                                NotatedItem {
+                                    event: EventId(
+                                        5,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: A,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 2,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                        spelling: "1/2",
+                                    },
+                                    tie_start: false,
+                                    tie_stop: false,
+                                    beam: None,
+                                },
+                            ],
+                        },
+                    ],
+                },
+                MeasurePlan {
+                    number: 2,
+                    lanes: [
+                        VoiceLane {
+                            voice: VoiceId(
+                                0,
+                            ),
+                            name: "line",
+                            items: [
+                                NotatedItem {
+                                    event: EventId(
+                                        6,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: B,
+                                            accidental: Accidental(
+                                                -1,
+                                            ),
+                                            octave: 2,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 0,
+                                            denom: 1,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                        spelling: "1/2",
+                                    },
+                                    tie_start: false,
+                                    tie_stop: false,
+                                    beam: None,
+                                },
+                                NotatedItem {
+                                    event: EventId(
+                                        7,
+                                    ),
+                                    kind: Note {
+                                        pitch: WrittenPitch {
+                                            letter: A,
+                                            accidental: Accidental(
+                                                0,
+                                            ),
+                                            octave: 2,
+                                        },
+                                    },
+                                    onset_in_measure: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    duration: NotatedDuration {
+                                        value: MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                        spelling: "1/2",
+                                    },
+                                    tie_start: false,
+                                    tie_stop: false,
+                                    beam: None,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        },
+    ],
+}

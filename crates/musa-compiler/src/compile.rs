@@ -100,6 +100,11 @@ impl Compilation {
         self.snapshot.as_ref()
     }
 
+    /// The score snapshot, consuming the compilation.
+    pub fn into_snapshot(self) -> Option<ScoreSnapshot> {
+        self.snapshot
+    }
+
     /// All diagnostics (parse and semantic), in source order.
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
