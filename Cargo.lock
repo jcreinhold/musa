@@ -350,6 +350,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "musa-kernel"
+version = "0.1.0"
+dependencies = [
+ "num-rational",
+ "proptest",
+ "thiserror",
+]
+
+[[package]]
 name = "musa-language"
 version = "0.1.0"
 dependencies = [

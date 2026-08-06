@@ -94,3 +94,7 @@ Anything discovered while implementing prompts 09–12 is appended here with its
 (prompt 12) reviews a complete list.
 
 - *(empty at specification time — prompt 08)*
+- **Prompt 09 (kernel implementation):** D6's phrasing `[s, e] ∩ [i, j] ≠ ∅` makes degenerate (point) occurrences
+  unobservable — a half-open empty intersection is always empty. Refined: point occurrences at `s` are visible through
+  `[i, j)` when `s ∈ [i, j)`. Implemented in `Span::visible_through`; spec D6 updated to match when the candidate
+  banner comes off (prompt 12).

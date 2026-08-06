@@ -1,7 +1,7 @@
 ---
 id: 09
 slug: temporal-kernel
-status: pending
+status: done
 depends_on: [08]
 phase: 1
 ---
