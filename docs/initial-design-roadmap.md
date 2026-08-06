@@ -32,15 +32,18 @@ Live audio / WAV / MIDI
 
 The critical design rule is:
 
-> **The layers may refer to one another through narrow, typed bindings, but they must not share a single mutable object model.**
+> **The layers may refer to one another through narrow, typed bindings, but they must not share a single mutable object
+> model.**
 
-A violin part is not a synthesizer node. A written quarter note is not a MIDI event. A slur is not an ADSR envelope. A low-pass-filter sweep is not a notation marking.
+A violin part is not a synthesizer node. A written quarter note is not a MIDI event. A slur is not an ADSR envelope. A
+low-pass-filter sweep is not a notation marking.
 
 The application makes these things feel integrated, but the implementation keeps them separate.
 
 The intended product is:
 
-> **A score-centric composition environment with programmable motifs and transformations, immediate playback, and a deliberately small built-in studio.**
+> **A score-centric composition environment with programmable motifs and transformations, immediate playback, and a
+> deliberately small built-in studio.**
 
 It is not:
 
@@ -61,7 +64,10 @@ Rich Hickey’s distinction is directly applicable:
 - **Simple** means not interleaved or entwined with another concern.
 - **Easy** means nearby, familiar, or requiring little immediate effort.
 
-A system can be easy but deeply complected. A button that mutates a score, MIDI events, an audio graph, and serialized project state simultaneously may feel convenient, but creates a system whose behavior is difficult to reason about. Hickey’s argument is that simplicity produces reliability, flexibility, and comprehensibility, even when it requires more deliberate design. citeturn372226search9
+A system can be easy but deeply complected. A button that mutates a score, MIDI events, an audio graph, and serialized
+project state simultaneously may feel convenient, but creates a system whose behavior is difficult to reason about.
+Hickey’s argument is that simplicity produces reliability, flexibility, and comprehensibility, even when it requires
+more deliberate design. citeturn372226search9
 
 The design should therefore use this policy:
 
@@ -78,7 +84,7 @@ The user gets one easy action. The core still receives three simple facts.
 ## Things that must remain separate
 
 | Concern | Must not be identified with |
-|---|---|
+| --- | --- |
 | Written pitch | MIDI note number or frequency |
 | Notated duration | Performed duration |
 | Voice | Mixer track |
@@ -101,13 +107,16 @@ For example, a written A4 can be:
 - played by a sampler;
 - displayed differently because of clef or enharmonic spelling.
 
-Representing all of those as “MIDI note 69” would make the easy representation the central abstraction and discard the actual musical information.
+Representing all of those as “MIDI note 69” would make the easy representation the central abstraction and discard the
+actual musical information.
 
 ---
 
 # 3. Applying Ousterhout’s deep-module design
 
-Ousterhout’s information-hiding principle says a module should conceal important design decisions behind a substantially simpler interface. A deep module provides significant capability through a narrow surface; a shallow module merely redistributes complexity to its callers. citeturn372226search1turn372226search17
+Ousterhout’s information-hiding principle says a module should conceal important design decisions behind a substantially
+simpler interface. A deep module provides significant capability through a narrow surface; a shallow module merely
+redistributes complexity to its callers. citeturn372226search1turn372226search17
 
 That argues against creating a Cargo crate for every noun in the domain.
 
@@ -124,7 +133,8 @@ transform/
 event/
 ```
 
-as separate crates. That produces many shallow interfaces, dependency plumbing, and public types that become hard to change.
+as separate crates. That produces many shallow interfaces, dependency plumbing, and public types that become hard to
+change.
 
 Crate boundaries should correspond to genuine boundaries in:
 
@@ -201,15 +211,21 @@ This would require:
 - comping;
 - file lifecycle management.
 
-It would bury the central composition-language idea beneath ordinary DAW engineering. Export stems to a DAW when recorded vocals or advanced audio editing are needed.
+It would bury the central composition-language idea beneath ordinary DAW engineering. Export stems to a DAW when
+recorded vocals or advanced audio editing are needed.
 
 ### Complete engraving
 
-LilyPond and other notation systems have spent decades handling engraving. This application should produce a strong working score and export a semantically rich representation. It should not duplicate every page-layout and typographic facility.
+LilyPond and other notation systems have spent decades handling engraving. This application should produce a strong
+working score and export a semantically rich representation. It should not duplicate every page-layout and typographic
+facility.
 
 ### Third-party plugin hosting
 
-Audio Unit and CLAP hosting add discovery, compatibility, state serialization, GUI embedding, crash isolation, threading, and platform-specific behavior. The available Rust CLAP support is intentionally low-level, while Apple’s native audio stack models plugin hosting through its own node graph and runtime. citeturn923438search0turn923438search3
+Audio Unit and CLAP hosting add discovery, compatibility, state serialization, GUI embedding, crash isolation,
+threading, and platform-specific behavior. The available Rust CLAP support is intentionally low-level, while Apple’s
+native audio stack models plugin hosting through its own node graph and runtime.
+citeturn923438search0turn923438search3
 
 A built-in DSP system is sufficient for the initial goal and guarantees zero setup.
 
@@ -231,7 +247,8 @@ A finite `repeat 4` is useful. Arbitrary recursive generation is not necessary f
 
 # 5. The algebraic foundation
 
-Category theory should guide the laws and interfaces. It should **not** leak category-theory terminology into ordinary composition.
+Category theory should guide the laws and interfaces. It should **not** leak category-theory terminology into ordinary
+composition.
 
 The user should write “play these phrases together,” not “take the monoidal product of these morphisms.”
 
@@ -307,9 +324,11 @@ events(a together_with b)
   = events(a) ∪ events(b)
 ```
 
-Parallel composition is associative. It is commutative only when the participating voice identities are distinct and ordering has no semantic role.
+Parallel composition is associative. It is commutative only when the participating voice identities are distinct and
+ordering has no semantic role.
 
-Therefore, the canonical representation should not blindly overlay two anonymous event lists. It should overlay a map of identified lanes:
+Therefore, the canonical representation should not blindly overlay two anonymous event lists. It should overlay a map of
+identified lanes:
 
 ```rust
 BTreeMap<VoiceId, Fragment>
@@ -351,13 +370,17 @@ retrograde(a then b)
   = retrograde(b) then retrograde(a)
 ```
 
-This is an anti-homomorphism rather than an ordinary homomorphism. Encoding such laws explicitly is useful both conceptually and for property testing.
+This is an anti-homomorphism rather than an ordinary homomorphism. Encoding such laws explicitly is useful both
+conceptually and for property testing.
 
-Transformational music theory has often used groups and group actions, while category- and groupoid-based treatments generalize the idea to partial, noninvertible transformations and musical objects of different kinds or cardinalities. citeturn375652academia40turn375652search13
+Transformational music theory has often used groups and group actions, while category- and groupoid-based treatments
+generalize the idea to partial, noninvertible transformations and musical objects of different kinds or cardinalities.
+citeturn375652academia40turn375652search13
 
 The design implication is:
 
-> Do not assume that every musically meaningful transformation is an invertible operation on one uniform pitch-class set.
+> Do not assume that every musically meaningful transformation is an invertible operation on one uniform pitch-class
+> set.
 
 A transformation should be allowed to:
 
@@ -378,9 +401,11 @@ lower(a together_with b)
   = merge(lower(a), lower(b))
 ```
 
-Likewise, rendering two independent parts together should produce the same musical result as rendering each and combining their lanes.
+Likewise, rendering two independent parts together should produce the same musical result as rendering each and
+combining their lanes.
 
-These are “functor-like” laws. The implementation does not need a generic `Functor` trait. The important part is that the transformations have declared laws that can be tested.
+These are “functor-like” laws. The implementation does not need a generic `Functor` trait. The important part is that
+the transformations have declared laws that can be tested.
 
 ## 5.6 The production graph
 
@@ -393,9 +418,12 @@ The DSP graph has a separate but related algebra:
 - splitters duplicate them;
 - feedback is allowed only through an explicit delay.
 
-Faust’s block-diagram algebra uses sequential, parallel, split, merge, and feedback composition as the foundation of its signal-processing language. That is a better conceptual model for the studio layer than an arbitrary object graph. citeturn988595search0turn988595search1
+Faust’s block-diagram algebra uses sequential, parallel, split, merge, and feedback composition as the foundation of its
+signal-processing language. That is a better conceptual model for the studio layer than an arbitrary object graph.
+citeturn988595search0turn988595search1
 
-The score algebra and signal algebra are analogous, but they are not the same algebra. They should not share a universal “node” type.
+The score algebra and signal algebra are analogous, but they are not the same algebra. They should not share a universal
+“node” type.
 
 ---
 
@@ -519,9 +547,11 @@ This layer applies:
 - pedal and control curves;
 - instrument transposition.
 
-A staccato mark does not itself mean “multiply duration by 0.5.” Its realization is selected by an instrument or performance profile.
+A staccato mark does not itself mean “multiply duration by 0.5.” Its realization is selected by an instrument or
+performance profile.
 
-Likewise, `p` is a symbolic dynamic relationship. It is not globally equivalent to a particular MIDI velocity or decibel value.
+Likewise, `p` is a symbolic dynamic relationship. It is not globally equivalent to a particular MIDI velocity or decibel
+value.
 
 ## 6.5 Studio representation
 
@@ -552,7 +582,8 @@ The studio does not inspect notes, measures, or slurs directly. It receives perf
 
 # 7. Source language design
 
-The syntax should be explicit, compact, and unsurprising to a programmer, but optimized for reading music rather than resembling Rust for its own sake.
+The syntax should be explicit, compact, and unsurprising to a programmer, but optimized for reading music rather than
+resembling Rust for its own sake.
 
 ## 7.1 Proposed shape
 
@@ -683,7 +714,8 @@ Canonical duration syntax should be fractions of a whole note:
 1/12   triplet eighth
 ```
 
-The editor may display familiar note symbols and accept shortcuts such as `q`, `h`, or `e`, but those should elaborate into exact values.
+The editor may display familiar note symbols and accept shortcuts such as `q`, `h`, or `e`, but those should elaborate
+into exact values.
 
 ### Finite constructs only
 
@@ -735,7 +767,8 @@ or:
 verovio_option "arbitrary-string";
 ```
 
-Raw escape hatches make backend details infectious and prevent other renderers from representing the same piece. Unsupported notation should produce an explicit diagnostic until the common model is intentionally extended.
+Raw escape hatches make backend details infectious and prevent other renderers from representing the same piece.
+Unsupported notation should produce an explicit diagnostic until the common model is intentionally extended.
 
 ---
 
@@ -749,9 +782,11 @@ It would be tempting to parameterize the entire system:
 Score<PitchSystem, Tuning, Temperament, HarmonicTheory>
 ```
 
-That would make every function and data type carry abstractions most users do not need. Genericity itself can become complecting.
+That would make every function and data type carry abstractions most users do not need. Genericity itself can become
+complecting.
 
-The first implementation should use a concrete, well-designed written-pitch representation supporting conventional Western notation.
+The first implementation should use a concrete, well-designed written-pitch representation supporting conventional
+Western notation.
 
 Tuning remains a separate service:
 
@@ -761,7 +796,8 @@ pub trait Tuning {
 }
 ```
 
-The default is twelve-tone equal temperament with configurable concert A. The semantic boundary leaves room for other tuning systems without forcing them through every type.
+The default is twelve-tone equal temperament with configurable concert A. The semantic boundary leaves room for other
+tuning systems without forcing them through every type.
 
 ## 8.2 Harmony should initially be annotation, not ontology
 
@@ -877,7 +913,8 @@ use sigh() with {
 }
 ```
 
-This is a genuinely useful consequence of treating music as source-based structure rather than as anonymous piano-roll events.
+This is a genuinely useful consequence of treating music as source-based structure rather than as anonymous piano-roll
+events.
 
 ---
 
@@ -885,7 +922,8 @@ This is a genuinely useful consequence of treating music as source-based structu
 
 ## 10.1 Lexer: `logos`
 
-Use `logos` for lexical recognition. It provides token iteration and source spans and is appropriate for a compact language lexer. citeturn409710search0turn409710search19
+Use `logos` for lexical recognition. It provides token iteration and source spans and is appropriate for a compact
+language lexer. citeturn409710search0turn409710search19
 
 The lexer must emit trivia tokens rather than discarding them:
 
@@ -931,7 +969,8 @@ Use:
 
 I would **not** use a parser generator or a heavily generic parser-combinator system initially.
 
-`chumsky` offers expressive combinators and error recovery, but its generic type machinery can make large parsers and compiler errors harder to control. citeturn409710search1turn409710search27
+`chumsky` offers expressive combinators and error recovery, but its generic type machinery can make large parsers and
+compiler errors harder to control. citeturn409710search1turn409710search27
 
 A hand-written parser is preferable here because:
 
@@ -943,7 +982,8 @@ A hand-written parser is preferable here because:
 
 ## 10.3 Lossless concrete syntax tree: `rowan`
 
-Build a lossless green tree using `rowan`. This follows the architecture used by rust-analyzer: resilient full-fidelity syntax is kept separate from a more compact semantic representation. citeturn409710search3turn121767search3
+Build a lossless green tree using `rowan`. This follows the architecture used by rust-analyzer: resilient full-fidelity
+syntax is kept separate from a more compact semantic representation. citeturn409710search3turn121767search3
 
 The parser should emit events:
 
@@ -978,7 +1018,8 @@ Recovery points should include:
 
 Malformed regions become `ERROR` nodes. The remainder of the score should continue compiling where safe.
 
-Diagnostics should use a backend-neutral internal representation, with `miette` handling rich command-line rendering. citeturn193176search0
+Diagnostics should use a backend-neutral internal representation, with `miette` handling rich command-line rendering.
+citeturn193176search0
 
 ## 10.5 Typed syntax wrappers
 
@@ -1042,7 +1083,8 @@ Whole-document parsing and compilation of a small score should be inexpensive. S
 - reuse of the last successful playback plan;
 - compilation on a worker thread.
 
-Salsa supports incremental computations, but it adds an additional dependency model and identity discipline. Introduce it only when profiling demonstrates that recompilation is a user-visible limitation. citeturn409710search4
+Salsa supports incremental computations, but it adds an additional dependency model and identity discipline. Introduce
+it only when profiling demonstrates that recompilation is a user-visible limitation. citeturn409710search4
 
 ---
 
@@ -1135,7 +1177,9 @@ This prevents LilyPond- or MusicXML-specific assumptions from entering the compo
 
 MEI should be the primary live-rendering format.
 
-Verovio renders MEI to SVG, supports conversion from formats including MusicXML, and preserves MEI structure and identifiers in the resulting SVG. That makes it especially suitable for mapping rendered notes back to semantic event IDs. citeturn738899search5turn535118search26turn535118search30
+Verovio renders MEI to SVG, supports conversion from formats including MusicXML, and preserves MEI structure and
+identifiers in the resulting SVG. That makes it especially suitable for mapping rendered notes back to semantic event
+IDs. citeturn738899search5turn535118search26turn535118search30
 
 The MEI writer should assign IDs such as:
 
@@ -1151,11 +1195,14 @@ The frontend can then:
 - open context menus;
 - map clicks to `EventId`.
 
-Use `quick-xml` to construct MEI and MusicXML through a real XML writer rather than manual string concatenation. citeturn535118search1
+Use `quick-xml` to construct MEI and MusicXML through a real XML writer rather than manual string concatenation.
+citeturn535118search1
 
 ## 12.3 LilyPond export
 
-LilyPond should be a high-quality print backend, not the internal representation or live editor. LilyPond is a compiled textual engraving system and can produce engraved output and MIDI, but its source language is much broader than the proposed composition model. citeturn391625search20turn391625search0
+LilyPond should be a high-quality print backend, not the internal representation or live editor. LilyPond is a compiled
+textual engraving system and can produce engraved output and MIDI, but its source language is much broader than the
+proposed composition model. citeturn391625search20turn391625search0
 
 Use three stages:
 
@@ -1200,15 +1247,21 @@ Generated files should contain:
 - source-map comments where useful;
 - diagnostics for unsupported constructs.
 
-The normal application should merely export `.ly`. Optionally, it may invoke a separately installed LilyPond executable or an intentionally bundled sidecar after licensing and distribution review. LilyPond is GPL-licensed, whereas Verovio uses the LGPL; this difference is another reason to keep them behind separate backend interfaces. citeturn650761search0turn650761search1
+The normal application should merely export `.ly`. Optionally, it may invoke a separately installed LilyPond executable
+or an intentionally bundled sidecar after licensing and distribution review. LilyPond is GPL-licensed, whereas Verovio
+uses the LGPL; this difference is another reason to keep them behind separate backend interfaces.
+citeturn650761search0turn650761search1
 
-Do not support LilyPond import. LilyPond includes extensive language features and embedded Scheme; reliable round-tripping would effectively require implementing a substantial LilyPond frontend.
+Do not support LilyPond import. LilyPond includes extensive language features and embedded Scheme; reliable
+round-tripping would effectively require implementing a substantial LilyPond frontend.
 
 ## 12.4 MusicXML
 
-MusicXML is the appropriate interoperability export because it is an open format designed for exchanging digital sheet music among applications. citeturn391625search1
+MusicXML is the appropriate interoperability export because it is an open format designed for exchanging digital sheet
+music among applications. citeturn391625search1
 
-It should not be the internal score model. Its document hierarchy and interchange-oriented conventions would cause external-format choices to leak into composition semantics.
+It should not be the internal score model. Its document hierarchy and interchange-oriented conventions would cause
+external-format choices to leak into composition semantics.
 
 MusicXML import can come later and should produce warnings when information cannot be represented exactly.
 
@@ -1230,7 +1283,8 @@ Includes:
 - control curves;
 - expressive timing.
 
-Use `midly` for Standard MIDI File reading and writing. Live MIDI input belongs in the engine through `midir`. citeturn797105search1turn797105search2
+Use `midly` for Standard MIDI File reading and writing. Live MIDI input belongs in the engine through `midir`.
+citeturn797105search1turn797105search2
 
 MIDI must remain an edge format, never the canonical representation.
 
@@ -1262,7 +1316,8 @@ effects and routing graph
 master output
 ```
 
-Use CPAL for cross-platform audio-device and stream access. It exposes device enumeration, supported configurations, and audio streams without dictating the synthesis architecture. citeturn797105search0
+Use CPAL for cross-platform audio-device and stream access. It exposes device enumeration, supported configurations, and
+audio streams without dictating the synthesis architecture. citeturn797105search0
 
 ## 13.2 Real-time separation
 
@@ -1279,7 +1334,8 @@ The audio callback must not:
 
 The control side compiles a declarative graph into a preallocated `RenderPlan`. The audio side only executes that plan.
 
-Use `rtrb`, a wait-free single-producer/single-consumer ring buffer, for control and transport commands crossing the real-time boundary. citeturn193176search1
+Use `rtrb`, a wait-free single-producer/single-consumer ring buffer, for control and transport commands crossing the
+real-time boundary. citeturn193176search1
 
 A second queue should return retired plans to the control thread so large structures are not destroyed in the callback.
 
@@ -1320,7 +1376,8 @@ Do not use a general graph library as the public representation. A specialized c
 - illegal feedback;
 - unreachable processors.
 
-A cycle is allowed only if it passes through an explicit delay node. That makes causality visible rather than relying on arbitrary graph-evaluation behavior.
+A cycle is allowed only if it passes through an explicit delay node. That makes causality visible rather than relying on
+arbitrary graph-evaluation behavior.
 
 ## 13.4 Typed ports
 
@@ -1335,7 +1392,8 @@ enum PortKind {
 }
 ```
 
-An audio-rate signal and a low-rate control value must not be interchangeable merely because both eventually contain `f32`.
+An audio-rate signal and a low-rate control value must not be interchangeable merely because both eventually contain
+`f32`.
 
 Explicit adapters include:
 
@@ -1430,7 +1488,9 @@ The first useful set should be small:
 
 A compressor, convolution reverb, distortion, tape simulation, and band-limited analog oscillators can come later.
 
-FunDSP already provides Rust DSP graph concepts and processors including oscillators, filters, chorus, and reverberation. It is useful as an implementation backend or reference, but its types should remain hidden behind the workbench’s own processor interface. citeturn186041search0turn186041search1
+FunDSP already provides Rust DSP graph concepts and processors including oscillators, filters, chorus, and
+reverberation. It is useful as an implementation backend or reference, but its types should remain hidden behind the
+workbench’s own processor interface. citeturn186041search0turn186041search1
 
 This prevents the language and saved project format from becoming dependent on one DSP library.
 
@@ -1494,9 +1554,11 @@ Use:
 - **Verovio WebAssembly** for score rendering;
 - ordinary SVG/HTML overlays for interaction.
 
-Tauri’s architecture supports a Rust application core with a webview frontend and explicit command/message boundaries. citeturn738899search2turn974330search18
+Tauri’s architecture supports a Rust application core with a webview frontend and explicit command/message boundaries.
+citeturn738899search2turn974330search18
 
-CodeMirror models editor changes as transactions over immutable editor state, which fits the project’s source-transaction model. citeturn974330search0turn974330search1
+CodeMirror models editor changes as transactions over immutable editor state, which fits the project’s
+source-transaction model. citeturn974330search0turn974330search1
 
 A pure-Rust immediate-mode GUI would avoid JavaScript but would require substantially more work to integrate:
 
@@ -1506,7 +1568,8 @@ A pure-Rust immediate-mode GUI would avoid JavaScript but would require substant
 - rich inspector components;
 - scalable notation rendering.
 
-Using a webview at the UI boundary does not compromise the Rust semantic core. Insisting on Rust for the interface would optimize implementation ideology rather than the product.
+Using a webview at the UI boundary does not compromise the Rust semantic core. Insisting on Rust for the interface would
+optimize implementation ideology rather than the product.
 
 ## 14.2 State ownership
 
@@ -1556,7 +1619,8 @@ The frontend must never become a second authority for score semantics.
 
 The score is the main interface.
 
-The source, sound graph, and mixer are separate modes or collapsible panels. They should not permanently compete for screen space.
+The source, sound graph, and mixer are separate modes or collapsible panels. They should not permanently compete for
+screen space.
 
 ## 14.4 Progressive disclosure
 
@@ -1594,7 +1658,8 @@ Initial score editing should be keyboard-first and deterministic:
 - use tab or arrow navigation between events;
 - start playback from the selection.
 
-Do not make dragging notes around the staff the primary interaction. Dragging is visually intuitive but ambiguous around:
+Do not make dragging notes around the staff the primary interaction. Dragging is visually intuitive but ambiguous
+around:
 
 - voice ownership;
 - accidentals;
@@ -1769,7 +1834,8 @@ serde
 thiserror
 ```
 
-`slotmap` is suitable for efficient transient arena keys and secondary maps, but those keys should not be serialized as permanent project identities. citeturn902998search0
+`slotmap` is suitable for efficient transient arena keys and secondary maps, but those keys should not be serialized as
+permanent project identities. citeturn902998search0
 
 Public interface:
 
@@ -1946,7 +2012,8 @@ impl ProjectSession {
 }
 ```
 
-This interface hides the fact that one user command may trigger parsing, compilation, score rendering, and playback-plan rebuilding.
+This interface hides the fact that one user command may trigger parsing, compilation, score rendering, and playback-plan
+rebuilding.
 
 ## 15.8 `musa-cli`
 
@@ -2035,7 +2102,8 @@ Use snapshot tests for:
 
 ## 17.2 Property tests
 
-Use `proptest` for algebraic laws and generated score fragments. It is a QuickCheck-family property-testing framework that shrinks failures to smaller counterexamples. citeturn535118search6
+Use `proptest` for algebraic laws and generated score fragments. It is a QuickCheck-family property-testing framework
+that shrinks failures to smaller counterexamples. citeturn535118search6
 
 Examples:
 
@@ -2175,7 +2243,8 @@ Only after the native system is stable:
 - optional Audio Unit bridge on macOS;
 - MusicXML import.
 
-Audio recording and full waveform editing should remain outside the project unless the product’s purpose materially changes.
+Audio recording and full waveform editing should remain outside the project unless the product’s purpose materially
+changes.
 
 ---
 
@@ -2185,31 +2254,36 @@ Audio recording and full waveform editing should remain outside the project unle
 
 Reject for the initial implementation.
 
-It would spread theoretical abstraction through every data type and make ordinary notation harder. Preserve enough information to support later theories, and place theoretical operations behind libraries and services.
+It would spread theoretical abstraction through every data type and make ordinary notation harder. Preserve enough
+information to support later theories, and place theoretical operations behind libraries and services.
 
 ## “The source language should be as powerful as Rust”
 
 Reject.
 
-General computation would compromise termination, incremental recompilation, diagnostics, graphical editing, and semantic provenance.
+General computation would compromise termination, incremental recompilation, diagnostics, graphical editing, and
+semantic provenance.
 
 ## “Use LilyPond as the AST”
 
 Reject.
 
-LilyPond is an excellent output system, but it combines musical description, layout controls, language facilities, and embedded Scheme. It is too backend-specific and too broad to be the canonical model.
+LilyPond is an excellent output system, but it combines musical description, layout controls, language facilities, and
+embedded Scheme. It is too backend-specific and too broad to be the canonical model.
 
 ## “Build a notation renderer in Rust”
 
 Reject initially.
 
-Verovio already provides high-quality interactive SVG rendering with retained MEI structure. Reimplementing music engraving would not advance the distinctive part of the project.
+Verovio already provides high-quality interactive SVG rendering with retained MEI structure. Reimplementing music
+engraving would not advance the distinctive part of the project.
 
 ## “Keep the GUI entirely in Rust”
 
 Reject as a goal in itself.
 
-Tauri, Verovio, and CodeMirror provide a much shorter path to an ergonomic score and source interface. The semantic and audio systems remain Rust; the frontend is a replaceable projection.
+Tauri, Verovio, and CodeMirror provide a much shorter path to an ergonomic score and source interface. The semantic and
+audio systems remain Rust; the frontend is a replaceable projection.
 
 ## “Support every effect”
 
@@ -2232,7 +2306,8 @@ A complete plugin ecosystem is a different product.
 
 Reject categorically.
 
-They have different identities, equivalences, timing models, and composition laws. Their coordinated appearance belongs in the application layer, not the semantic model.
+They have different identities, equivalences, timing models, and composition laws. Their coordinated appearance belongs
+in the application layer, not the semantic model.
 
 ---
 
@@ -2289,4 +2364,5 @@ It is the **provenance-preserving composition model** that allows:
 
 to coexist without collapsing into one tangled representation.
 
-That is narrow enough to build, deep enough to be worthwhile, and materially different from both a conventional notation editor and a conventional DAW.
+That is narrow enough to build, deep enough to be worthwhile, and materially different from both a conventional notation
+editor and a conventional DAW.

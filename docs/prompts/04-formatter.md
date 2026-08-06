@@ -10,15 +10,14 @@ phase: 1
 
 ## Task
 
-Implement the lossless formatter over the CST and wire the first two real CLI
-commands, `musa format` and a structural `musa check` (parse + diagnostics only, for
-now). The formatter operates on syntax, not on any semantic model, and preserves
-comments predictably.
+Implement the lossless formatter over the CST and wire the first two real CLI commands, `musa format` and a structural
+`musa check` (parse + diagnostics only, for now). The formatter operates on syntax, not on any semantic model, and
+preserves comments predictably.
 
 ## Read
 
-- Roadmap §11 (formatting laws), §10.1 (why trivia is kept), §15.2 (`format` facade),
-  §15.8 (CLI commands), §17.3 (formatting laws to test).
+- Roadmap §11 (formatting laws), §10.1 (why trivia is kept), §15.2 (`format` facade), §15.8 (CLI commands), §17.3
+  (formatting laws to test).
 - Prompt 03's CST and typed wrappers.
 
 ## Design
@@ -34,33 +33,28 @@ comments predictably.
   pub fn apply_edits(source: &str, edits: &[TextEdit]) -> String;
   ```
 
-- Formatting rules: 4-space indent per block level; one statement per line; `;`
-  terminates; blank line between top-level declarations; `{` on the declaration line.
-  Comments stay attached to the following token (trailing comments stay on their
-  line). Whatever rules you choose, encode them as insta snapshots so review is
-  textual.
-- `TextEdit` is a simple `(TextRange, String)` replacement type; `apply_edits` is a
-  small utility now, load-bearing for score-editing in prompt 16.
-- `musa-cli` gains real argument handling (hand-rolled or `clap` — if `clap`, add it
-  and update `deny.toml` review in the same commit):
+- Formatting rules: 4-space indent per block level; one statement per line; `;` terminates; blank line between top-level
+  declarations; `{` on the declaration line. Comments stay attached to the following token (trailing comments stay on
+  their line). Whatever rules you choose, encode them as insta snapshots so review is textual.
+- `TextEdit` is a simple `(TextRange, String)` replacement type; `apply_edits` is a small utility now, load-bearing for
+  score-editing in prompt 16.
+- `musa-cli` gains real argument handling (hand-rolled or `clap` — if `clap`, add it and update `deny.toml` review in
+  the same commit):
   - `musa format <file>` — rewrite in place, or `--check` to exit non-zero on diff.
-  - `musa check <file>` — lex + parse, print diagnostics with `miette` (roadmap
-    §10.4), exit non-zero on errors. Semantic checks arrive in prompt 05 and extend
-    this command; structure the command so that happens by adding a pass, not
-    rewriting it.
+  - `musa check <file>` — lex + parse, print diagnostics with `miette` (roadmap §10.4), exit non-zero on errors.
+    Semantic checks arrive in prompt 05 and extend this command; structure the command so that happens by adding a pass,
+    not rewriting it.
 
 ## Target
 
 - `musa-language`: `format`, `FormattedSource`, `apply_edits`, `TextEdit`.
-- `musa-cli`: `format` and `check` subcommands calling `musa_language` directly for
-  now (the project-session indirection arrives in prompt 14 — per roadmap §15.8 the
-  CLI must not recreate orchestration, but at this stage there is no orchestration to
-  reuse; keep the call sites one-liners so the swap is trivial).
-- Tests: idempotence `format(format(x)) == format(x)` and semantic preservation
-  `parse(format(parse(x)))` equals `parse(x)` up to whitespace trivia, as `proptest`
-  properties over a small grammar-directed generator plus the two example files.
-- insta snapshots for formatted output of both examples and of comment-placement edge
-  cases.
+- `musa-cli`: `format` and `check` subcommands calling `musa_language` directly for now (the project-session indirection
+  arrives in prompt 14 — per roadmap §15.8 the CLI must not recreate orchestration, but at this stage there is no
+  orchestration to reuse; keep the call sites one-liners so the swap is trivial).
+- Tests: idempotence `format(format(x)) == format(x)` and semantic preservation `parse(format(parse(x)))` equals
+  `parse(x)` up to whitespace trivia, as `proptest` properties over a small grammar-directed generator plus the two
+  example files.
+- insta snapshots for formatted output of both examples and of comment-placement edge cases.
 
 ## Check
 
