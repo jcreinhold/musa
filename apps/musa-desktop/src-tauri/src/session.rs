@@ -32,10 +32,19 @@ use crate::dto::{ErrorDto, ErrorKindDto, ExportedDto};
 /// At rest the thread blocks: there is no timer anywhere in the application.
 const POSITION_INTERVAL: Duration = Duration::from_millis(100);
 
+/// How often the MIDI queue is drained while note entry is on.
+///
+/// Only while entry is on: a keyboard nobody is entering with costs nothing,
+/// and the thread goes back to blocking the moment entry is switched off.
+/// Fifteen milliseconds is below the chord window the session groups with, so
+/// grouping — not polling — is what decides when a chord is ready.
+const MIDI_INTERVAL: Duration = Duration::from_millis(15);
+
 /// The event names the webview subscribes to.
 pub const SNAPSHOT_EVENT: &str = "musa://snapshot";
 pub const POSITION_EVENT: &str = "musa://position";
 pub const TRANSPORT_EVENT: &str = "musa://transport";
+pub const MIDI_EVENT: &str = "musa://midi";
 
 /// One unit of work for the session thread.
 enum Job {
@@ -48,6 +57,8 @@ enum Job {
     Impact(EditCommand),
     /// Re-read the current snapshot without changing anything.
     Snapshot,
+    /// Start or stop reading the MIDI keyboard.
+    Midi(bool),
 }
 
 /// An `apply` that is either a document command or history navigation.
@@ -115,30 +126,45 @@ impl SessionHandle {
     pub(crate) fn edit_impact(&self, command: EditCommand) -> Reply {
         self.ask(Job::Impact(command))
     }
+
+    pub(crate) fn listen_to_midi(&self, listening: bool) -> Reply {
+        self.ask(Job::Midi(listening))
+    }
 }
 
 /// The session thread.
 fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
     let mut session: Option<ProjectSession> = None;
     let mut playing = false;
+    let mut listening = false;
     loop {
-        // Only a playing transport needs a clock. At rest this blocks, so the
-        // application has no timer running and no wakeups to account for.
-        let received = if playing {
-            match inbox.recv_timeout(POSITION_INTERVAL) {
-                Ok(job) => Some(job),
-                Err(RecvTimeoutError::Timeout) => None,
-                Err(RecvTimeoutError::Disconnected) => return,
-            }
-        } else {
+        // Only a playing transport and an open MIDI keyboard need a clock. At
+        // rest this blocks, so the application has no timer running and no
+        // wakeups to account for.
+        let interval = match (playing, listening) {
+            (true, true) => POSITION_INTERVAL.min(MIDI_INTERVAL),
+            (true, false) => POSITION_INTERVAL,
+            (false, true) => MIDI_INTERVAL,
+            (false, false) => Duration::ZERO,
+        };
+        let received = if interval.is_zero() {
             match inbox.recv() {
                 Ok(job) => Some(job),
                 Err(_) => return,
             }
+        } else {
+            match inbox.recv_timeout(interval) {
+                Ok(job) => Some(job),
+                Err(RecvTimeoutError::Timeout) => None,
+                Err(RecvTimeoutError::Disconnected) => return,
+            }
         };
 
         if let Some((job, reply)) = received {
-            let mutating = !matches!(job, Job::Snapshot | Job::Impact(_));
+            if let Job::Midi(wanted) = job {
+                listening = wanted;
+            }
+            let mutating = !matches!(job, Job::Snapshot | Job::Impact(_) | Job::Midi(_));
             let answer = perform(&mut session, job);
             let changed = mutating && answer.is_ok();
             // A dropped receiver means the webview went away mid-command;
@@ -146,6 +172,12 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
             reply.send(answer).ok();
             if changed && let Some(open) = session.as_ref() {
                 emit(app, SNAPSHOT_EVENT, &snapshot_json(open));
+            }
+        }
+
+        if listening && let Some(open) = session.as_mut() {
+            for entry in open.midi_entry() {
+                emit(app, MIDI_EVENT, &entry);
             }
         }
 
@@ -216,6 +248,13 @@ fn perform(session: &mut Option<ProjectSession>, job: Job) -> Reply {
             serde_json::to_value(impact).map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
         }
         Job::Snapshot => session.as_ref().map(snapshot_json).ok_or_else(no_project),
+        Job::Midi(listening) => {
+            let open = session.as_mut().ok_or_else(no_project)?;
+            if listening {
+                open.listen_to_midi();
+            }
+            Ok(snapshot_json(open))
+        }
     }
 }
 

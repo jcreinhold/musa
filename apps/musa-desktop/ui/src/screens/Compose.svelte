@@ -129,6 +129,21 @@
     <Margin side="top">
       <div class="identity">
         <h1 class="title">{score.title}</h1>
+        <!--
+          Whether the file has the work. Autosave means unsaved work is not
+          lost work, so the mark says which of the two it is rather than
+          nagging (roadmap §15.7).
+        -->
+        {#if snapshot.unsaved}
+          <!--
+            Not a live region: this changes on the first keystroke of every
+            edit, and announcing it each time would talk over the composer.
+            What is announced is the save itself, in the margin's notice.
+          -->
+          <span class="state"
+            >{snapshot.autosaved ? "Unsaved — recovery copy kept" : "Unsaved"}</span
+          >
+        {/if}
         <Workspaces current="compose" onshow={onshow} />
       </div>
 
@@ -138,7 +153,23 @@
         superseded, and — the one that matters — how far behind the page is
         while the source has problems (`05-states.md` §4).
       -->
-      {#if session.notice}
+      <!--
+        Work a previous session did not get to save takes the margin before
+        anything else does: it is the only line here that is about work that
+        could still be lost. It is offered rather than applied, because taking
+        it is an edit and declining it is the composer's to decide (§15.7).
+      -->
+      {#if snapshot.recovery !== null}
+        <div class="recovery" role="group" aria-label="Unsaved work from the last session">
+          <p>Unsaved work from a session that did not close.</p>
+          <button type="button" class="text" onclick={() => void session.recover(true)}
+            >Restore it</button
+          >
+          <button type="button" class="text" onclick={() => void session.recover(false)}
+            >Discard it</button
+          >
+        </div>
+      {:else if session.notice}
         <p class="notice" class:failure={session.notice.tone === "failure"} role="status">
           {session.notice.message}
         </p>
@@ -193,6 +224,18 @@
           >Notes{#if entry.on}<span class="duration" aria-hidden="true">{entry.glyph}</span
             ><span class="visually-hidden"> — duration {entry.duration}</span>{/if}</button
         >
+
+        <!--
+          Which keyboard the notes would come from. Only while entry is on,
+          because that is the only time one is being read, and silent when
+          there is none: not owning a MIDI keyboard is not a problem to report
+          (roadmap §14.8).
+        -->
+        {#if entry.on && snapshot.midiPort}
+          <span class="port" title="Notes played here are written at the caret"
+            >{snapshot.midiPort}</span
+          >
+        {/if}
 
         <!--
           The lens is held — `O` or `⌥` — and this pins it, for anyone who
@@ -332,6 +375,34 @@
     line-height: var(--t-title-line);
     font-weight: 400;
     margin: 0;
+    color: var(--ink);
+  }
+
+  .state,
+  .port {
+    font-family: var(--f-ui);
+    font-size: var(--t-small-size);
+    line-height: var(--t-small-line);
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+
+  .recovery {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-4);
+    min-width: 0;
+  }
+
+  .recovery p {
+    margin: 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--f-ui);
+    font-size: var(--t-small-size);
+    line-height: var(--t-small-line);
     color: var(--ink);
   }
 

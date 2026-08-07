@@ -269,6 +269,34 @@ pub struct KeyMap {
     pub mode: Mode,
 }
 
+impl KeyMap {
+    /// Where the key sits on the circle of fifths: positive counts sharps in
+    /// the signature, negative counts flats.
+    ///
+    /// This is a fact about the key, not about any one backend's spelling of
+    /// it, so it lives with the type — the MEI/`LilyPond`/`MusicXML` writers
+    /// and MIDI note entry all need the same number and must not each derive
+    /// their own.
+    pub fn fifths(self) -> i8 {
+        let letter: i8 = match self.tonic.letter {
+            crate::Letter::C => 0,
+            crate::Letter::G => 1,
+            crate::Letter::D => 2,
+            crate::Letter::A => 3,
+            crate::Letter::E => 4,
+            crate::Letter::B => 5,
+            crate::Letter::F => -1,
+        };
+        // Each accidental on the tonic moves the key seven fifths.
+        let major = letter.saturating_add(self.tonic.accidental.0.saturating_mul(7));
+        match self.mode {
+            Mode::Major => major,
+            // A minor key's signature is its relative major's: three fifths down.
+            Mode::Minor => major.saturating_sub(3),
+        }
+    }
+}
+
 /// A dynamic marking as written (roadmap §2: a marking is not a decibel
 /// value — what it does to a note is prompt 28's business, not this one's).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

@@ -181,6 +181,20 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
           );
           return answer();
         }
+        // Recovery is offered by the core and answered by the composer:
+        // taking it makes the copy the source, declining it forgets it. The
+        // stub answers both the way the session does.
+        if (command.kind === "restoreRecovery") {
+          history.push(current);
+          const recovered = current.recovery as string | null;
+          if (recovered !== null) setSource(recovered);
+          current = { ...current, recovery: null };
+          return answer();
+        }
+        if (command.kind === "discardRecovery") {
+          current = { ...current, recovery: null };
+          return answer();
+        }
         if (command.kind === "undo") {
           const previous = history.pop();
           if (previous) current = previous;
@@ -211,6 +225,12 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
         window.__musaLoop = (playback.loopRegion as [number, number] | null) ?? null;
         return current;
       },
+      // A machine with a keyboard plugged in; the no-device case is
+      // `musa-engine`'s test, since it is about the host and not about this.
+      listen_to_midi: (args) => {
+        current = { ...current, midiPort: args.listening === true ? "Stub Keyboard" : null };
+        return current;
+      },
       export: () => ({ path: "/tmp/glass-mountain.mei" }),
     };
 
@@ -237,6 +257,16 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
       },
     });
 
+    // A state the core would arrive at on its own — unsaved work found on
+    // open, say — put into the session the way the shell puts it: as a
+    // snapshot event carrying a new revision.
+    Object.defineProperty(window, "__musaSet", {
+      value: (patch: Record<string, unknown>) => {
+        current = { ...current, ...patch, revision: (current.revision as number) + 1 };
+        window.__musaEmit("musa://snapshot", current);
+      },
+    });
+
     // The tests raise shell events — a menu selection, a position tick —
     // through the same path the shell does.
     Object.defineProperty(window, "__musaEmit", {
@@ -252,6 +282,8 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
 declare global {
   interface Window {
     __musaEmit: (name: string, payload: unknown) => void;
+    /** Put the session into a state the core would have produced. */
+    __musaSet: (patch: Record<string, unknown>) => void;
     /** The loop region the interface last asked the shell for. */
     __musaLoop: [number, number] | null;
     /** Every score edit the interface has asked for, in order. */

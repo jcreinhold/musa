@@ -87,3 +87,98 @@ fn open_missing_file_fails_with_the_path() -> Result {
     );
     Ok(())
 }
+
+/// The autosave policy, stated as one law: while the source differs from the
+/// file, a recovery copy of it sits beside the file; saving removes it.
+#[test]
+fn unsaved_work_leaves_a_recovery_copy_beside_the_file() -> Result {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("etude.musa");
+    let recovery = dir.path().join("etude.musa.recovery");
+    let mut session = ProjectSession::create(&path, Template::Piece)?;
+    assert!(!recovery.exists(), "a saved session leaves nothing behind");
+
+    let edited = session.snapshot().source().replace("c4 1/4;", "d4 1/4;");
+    session.apply(ProjectCommand::SetSource(edited.clone()))?;
+
+    assert!(session.snapshot().autosaved());
+    assert_eq!(std::fs::read_to_string(&recovery)?, edited);
+
+    session.apply(ProjectCommand::Save)?;
+    assert!(!recovery.exists(), "the copy is gone once the file has the work");
+    Ok(())
+}
+
+/// What the recovery copy is for: a session that never got to save is offered
+/// its work back on the next open, and taking it makes it the source.
+#[test]
+fn work_lost_to_a_crash_comes_back_on_the_next_open() -> Result {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("etude.musa");
+    let mut session = ProjectSession::create(&path, Template::Piece)?;
+    let edited = session.snapshot().source().replace("c4 1/4;", "d4 1/4;");
+    session.apply(ProjectCommand::SetSource(edited.clone()))?;
+    drop(session); // the crash: no save, no clean close
+
+    let mut session = ProjectSession::open(&path)?;
+    assert_eq!(session.snapshot().recovery(), Some(edited.as_str()));
+    // Until it is taken, the session holds what is actually on disk.
+    assert_ne!(session.snapshot().source(), edited);
+
+    session.apply(ProjectCommand::RestoreRecovery)?;
+    let snapshot = session.snapshot();
+    assert_eq!(snapshot.source(), edited);
+    assert_eq!(snapshot.recovery(), None);
+    assert!(snapshot.compiles(), "{:?}", snapshot.diagnostics());
+    Ok(())
+}
+
+/// Recovery is an offer, not an imposition: declining it keeps the file's own
+/// text and removes the copy, so the next open is quiet.
+#[test]
+fn declining_recovery_keeps_the_file_and_forgets_the_copy() -> Result {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("etude.musa");
+    let mut session = ProjectSession::create(&path, Template::Piece)?;
+    let on_disk = session.snapshot().source().to_owned();
+    let edited = on_disk.replace("c4 1/4;", "d4 1/4;");
+    session.apply(ProjectCommand::SetSource(edited))?;
+    drop(session);
+
+    let mut session = ProjectSession::open(&path)?;
+    session.apply(ProjectCommand::DiscardRecovery)?;
+    assert_eq!(session.snapshot().recovery(), None);
+    assert_eq!(session.snapshot().source(), on_disk);
+
+    let reopened = ProjectSession::open(&path)?;
+    assert_eq!(reopened.snapshot().recovery(), None);
+    Ok(())
+}
+
+/// A copy that matches the file is not a recovery — it is a save that landed
+/// and a copy that outlived it, and offering it would be a false alarm.
+#[test]
+fn a_recovery_copy_that_matches_the_file_is_not_offered() -> Result {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("etude.musa");
+    let session = ProjectSession::create(&path, Template::Piece)?;
+    let source = session.snapshot().source().to_owned();
+    drop(session);
+    std::fs::write(dir.path().join("etude.musa.recovery"), &source)?;
+
+    let session = ProjectSession::open(&path)?;
+
+    assert_eq!(session.snapshot().recovery(), None);
+    assert!(!dir.path().join("etude.musa.recovery").exists());
+    Ok(())
+}
+
+/// A session with no file behind it has nowhere to write a recovery copy, and
+/// must not invent one — the desktop's scratch buffer is this case.
+#[test]
+fn a_piece_with_no_file_autosaves_nothing() {
+    let mut session = ProjectSession::new_piece(Template::Piece, "Untitled");
+    let edited = session.snapshot().source().replace("c4 1/4;", "d4 1/4;");
+    assert!(session.apply(ProjectCommand::SetSource(edited)).is_ok());
+    assert!(!session.snapshot().autosaved());
+}

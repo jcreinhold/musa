@@ -55,6 +55,28 @@ function insert(at: InsertAtDto | null, note: (EditDto & { kind: "insertNote" })
 }
 
 /**
+ * What notes played in on a MIDI keyboard write.
+ *
+ * The keyboard supplies the pitches — already spelled by the core, which is
+ * the only side that knows the key signature — and entry supplies the
+ * duration, because a keyboard cannot say how long a note is *notated* for
+ * (roadmap §14.5: pitch from the keyboard, duration from the number keys).
+ * One key is a note and several held together are a chord, which is the
+ * grouping the core made before this ever saw them.
+ */
+export function played(pitches: string[], entry: NoteEntry, workspace: Workspace): Stroke {
+  const at = anchorFor(workspace);
+  const [first, ...rest] = pitches;
+  if (first === undefined) return PASS;
+  return insert(
+    at,
+    rest.length === 0
+      ? { kind: "note", pitch: first, duration: entry.duration }
+      : { kind: "chord", pitches, duration: entry.duration },
+  );
+}
+
+/**
  * Read a keystroke as an entry command.
  *
  * Mutates `entry` for the keys that only change what comes next — the

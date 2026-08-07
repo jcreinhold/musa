@@ -14,7 +14,7 @@ import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { TransportDto } from "./generated/TransportDto";
-import type { EditImpact, ProjectSnapshot } from "../state/snapshot";
+import type { EditImpact, MidiEntry, ProjectSnapshot } from "../state/snapshot";
 
 /** Whether the interface is running inside the desktop shell. */
 export function inShell(): boolean {
@@ -27,6 +27,7 @@ export interface Events {
   "musa://position": ProjectSnapshot["playback"];
   "musa://transport": ProjectSnapshot["playback"];
   "musa://command": string;
+  "musa://midi": MidiEntry;
 }
 
 async function core(): Promise<typeof import("@tauri-apps/api/core")> {
@@ -56,6 +57,8 @@ export const bridge = {
   exportTo: (target: ExportTargetDto, path: string | null) =>
     call<{ path: string }>("export", { request: { target, path } }),
   snapshot: () => call<ProjectSnapshot>("snapshot", {}),
+  /** Read a MIDI keyboard, or stop reading it. */
+  listenToMidi: (listening: boolean) => call<ProjectSnapshot>("listen_to_midi", { listening }),
 
   /** Subscribe to a shell event. Resolves to the unsubscribe function. */
   async on<K extends keyof Events>(

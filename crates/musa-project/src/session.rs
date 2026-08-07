@@ -3,12 +3,13 @@
 use std::path::{Path, PathBuf};
 
 use musa_compiler::{CompileOptions, SourceDocument};
-use musa_engine::{AudioEngine, EngineConfig, TransportCommand};
+use musa_engine::{AudioEngine, EngineConfig, MidiInput, TransportCommand};
 
 use crate::command::{ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 use crate::diagnostic::Diagnostic;
 use crate::error::ProjectError;
 use crate::export::{ExportArtifact, ExportRequest};
+use crate::midi::{EntryBuffer, MidiEntry};
 use crate::playback;
 use crate::snapshot::{PlaybackState, ProjectSnapshot, ValidArtifacts};
 use crate::template::Template;
@@ -70,6 +71,14 @@ pub struct ProjectSession {
     /// The revision whose plan is installed, so an edit that does not change
     /// the score does not rebuild it.
     installed_revision: Option<Revision>,
+    /// Work a previous session left behind, until this one keeps or discards
+    /// it (roadmap §15.7).
+    recovery: Option<String>,
+    /// The MIDI keyboard, opened on request so a session that never enters
+    /// notes never touches the MIDI host.
+    midi: Option<MidiInput>,
+    /// Presses waiting to be grouped into chords.
+    entry: EntryBuffer,
 }
 
 /// One state of the document.
@@ -91,6 +100,7 @@ impl ProjectSession {
         let source = std::fs::read_to_string(path).map_err(|error| ProjectError::io(path.display(), error))?;
         let mut session = Self::from_source(source.clone(), path.to_string_lossy().into_owned());
         session.path = Some(path.to_path_buf());
+        session.recovery = crate::autosave::take(path, &source);
         session.on_disk = Some(source);
         session.recompile();
         Ok(session)
@@ -145,6 +155,9 @@ impl ProjectSession {
             valid: &self.valid,
             compiles: self.compiles,
             unsaved: self.on_disk.as_ref() != Some(&self.source),
+            autosaved: self.autosaved(),
+            recovery: self.recovery.as_deref(),
+            midi_port: self.midi.as_ref().and_then(MidiInput::port),
             playback: self.playback_state(),
         }
     }
@@ -172,6 +185,17 @@ impl ProjectSession {
             }
             ProjectCommand::Save => {
                 self.save()?;
+                Ok(ProjectUpdate::unchanged(self.revision, self.validity()))
+            }
+            ProjectCommand::RestoreRecovery => {
+                let recovered = self.recovery.take().ok_or(ProjectError::NothingTo("recover"))?;
+                Ok(self.set_source(recovered))
+            }
+            ProjectCommand::DiscardRecovery => {
+                self.recovery = None;
+                if let Some(path) = self.path.as_ref() {
+                    crate::autosave::clear(path);
+                }
                 Ok(ProjectUpdate::unchanged(self.revision, self.validity()))
             }
             ProjectCommand::Transport(request) => {
@@ -248,6 +272,49 @@ impl ProjectSession {
         }
     }
 
+    /// Start listening to a MIDI keyboard, and report which one.
+    ///
+    /// Idempotent, and never an error: a machine with no keyboard answers
+    /// `None` and keeps working, which is the normal case on CI and on a
+    /// laptop with nothing plugged in (roadmap §14.8).
+    pub fn listen_to_midi(&mut self) -> Option<&str> {
+        if self.midi.is_none() {
+            self.midi = Some(MidiInput::open(None));
+        }
+        self.midi.as_ref().and_then(MidiInput::port)
+    }
+
+    /// The notes played since the last call, spelled in the piece's key and
+    /// grouped into chords.
+    ///
+    /// A poll, not a subscription: the caller already has a loop, and a
+    /// callback from the MIDI thread into the session would need a lock the
+    /// MIDI thread is not allowed to take (§13.2).
+    ///
+    /// Presses still inside the chord window are held back, so a triad is
+    /// never split across two calls. Releases are read and dropped: entry
+    /// writes a notated duration the composer chose, not one the key was held
+    /// for (`03-interaction.md` §3).
+    pub fn midi_entry(&mut self) -> Vec<MidiEntry> {
+        let Some(midi) = self.midi.as_mut() else {
+            return Vec::new();
+        };
+        let now = std::time::Instant::now();
+        while let Some(event) = midi.poll() {
+            if event.pressed {
+                self.entry.press(event.note, now);
+            }
+        }
+        let key = self.valid.as_ref().and_then(|valid| valid.score.key_map);
+        self.entry
+            .ready(now)
+            .into_iter()
+            .map(|notes| MidiEntry {
+                pitches: notes.into_iter().map(|note| crate::midi::spell(note, key)).collect(),
+            })
+            .collect()
+    }
+
     /// Block until playback finishes, for callers with nothing else to do
     /// (the CLI's `play`). Returns immediately if nothing is playing.
     pub fn wait_for_playback(&self) {
@@ -284,6 +351,9 @@ impl ProjectSession {
             loop_region: None,
             total_frames: 0,
             installed_revision: None,
+            recovery: None,
+            midi: None,
+            entry: EntryBuffer::default(),
         }
     }
 
@@ -353,6 +423,7 @@ impl ProjectSession {
             revision: self.revision,
         });
         self.cursor = self.history.len().saturating_sub(1);
+        self.autosave();
         let changed = self.recompile();
         ProjectUpdate {
             revision: self.revision,
@@ -369,6 +440,7 @@ impl ProjectSession {
         self.cursor = index;
         self.source = entry.source.clone();
         self.revision = entry.revision;
+        self.autosave();
         let changed = self.recompile();
         ProjectUpdate {
             revision: self.revision,
@@ -534,9 +606,30 @@ impl ProjectSession {
         }
     }
 
+    /// Keep the current text where a crash cannot lose it.
+    ///
+    /// Called after every state change rather than on a timer of its own:
+    /// the caller has already debounced (§10.7), so one command is one
+    /// settled edit. A piece with no file yet has nowhere to put a copy,
+    /// which the snapshot reports as `autosaved: false`.
+    fn autosave(&self) {
+        let Some(path) = self.path.as_ref() else { return };
+        if self.on_disk.as_ref() == Some(&self.source) {
+            crate::autosave::clear(path);
+        } else {
+            crate::autosave::write(path, &self.source);
+        }
+    }
+
+    /// Whether the unsaved text is currently held in a recovery copy.
+    fn autosaved(&self) -> bool {
+        self.path.is_some() && self.on_disk.as_ref() != Some(&self.source)
+    }
+
     fn save(&mut self) -> Result<(), ProjectError> {
         let path = self.path.as_ref().ok_or(ProjectError::NothingTo("save to"))?;
         std::fs::write(path, &self.source).map_err(|error| ProjectError::io(path.display(), error))?;
+        crate::autosave::clear(path);
         self.on_disk = Some(self.source.clone());
         Ok(())
     }

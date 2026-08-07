@@ -183,3 +183,79 @@ test("undo takes an entered note back", async ({ page }) => {
   await page.keyboard.press("Meta+z");
   await expect.poll(() => page.evaluate(() => window.__musaRevision)).toBe(before);
 });
+
+test("a keyboard is named while entry is on, and its notes are written", async ({ page }) => {
+  await inScore(page);
+  await page.keyboard.press("n");
+
+  // The keyboard is read while notes are being entered, and named where the
+  // composer is looking — not announced in a settings pane they would have to
+  // go and find.
+  await expect(page.getByText("Stub Keyboard", { exact: true })).toBeVisible();
+
+  await page.keyboard.press("8");
+  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["ef4"] }));
+  await settled(page, 1);
+  const [written] = await edits(page);
+  expect(written?.kind).toBe("insertNote");
+  // The pitch is the core's spelling — the interface never decides whether a
+  // black key is a sharp or a flat — and the duration is the one entry is set
+  // to, because a keyboard cannot say how long a note is notated for.
+  expect(written?.note).toEqual({ kind: "note", pitch: "ef4", duration: "1/8" });
+
+  // Several keys held together arrive as one chord, already grouped.
+  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["c4", "e4", "g4"] }));
+  await settled(page, 2);
+  const asked = await edits(page);
+  expect(asked[1]?.note).toEqual({
+    kind: "chord",
+    pitches: ["c4", "e4", "g4"],
+    duration: "1/8",
+  });
+
+  // Leaving entry stops the keyboard being read, and the name goes with it.
+  await page.keyboard.press("Escape");
+  await expect(page.getByText("Stub Keyboard", { exact: true })).toHaveCount(0);
+});
+
+test("notes played with entry off are not written", async ({ page }) => {
+  await inScore(page);
+  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["c4"] }));
+  await expect.poll(() => page.evaluate(() => window.__musaEdits.length)).toBe(0);
+});
+
+test("work a crash left behind is offered, and taking it is one command", async ({ page }) => {
+  const recovered = 'piece "Glass Mountain" {\n}\n';
+  await page.evaluate((source) => window.__musaSet({ recovery: source }), recovered);
+
+  const banner = page.getByRole("group", { name: "Unsaved work from the last session" });
+  await expect(banner).toBeVisible();
+
+  await banner.getByRole("button", { name: "Restore it" }).click();
+  // The offer is gone and the recovered text is the document — one command,
+  // and an ordinary undoable one.
+  await expect(banner).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => window.__musaRevision))
+    .toBeGreaterThan(0);
+});
+
+test("declining the offer keeps the file's own text", async ({ page }) => {
+  await page.evaluate(() => window.__musaSet({ recovery: 'piece "Other" {}' }));
+  const banner = page.getByRole("group", { name: "Unsaved work from the last session" });
+  await banner.getByRole("button", { name: "Discard it" }).click();
+  await expect(banner).toHaveCount(0);
+  await expect(page.getByText("Glass Mountain")).toBeVisible();
+});
+
+test("unsaved work says whether it is kept, and a saved piece says nothing", async ({ page }) => {
+  // The fixture is a piece with unsaved edits and no recovery copy yet.
+  await expect(page.getByText("Unsaved", { exact: true })).toBeVisible();
+
+  await page.evaluate(() => window.__musaSet({ unsaved: true, autosaved: true }));
+  await expect(page.getByText("Unsaved — recovery copy kept")).toBeVisible();
+
+  // Saving is the only state that needs no words: the file has the work.
+  await page.evaluate(() => window.__musaSet({ unsaved: false, autosaved: false }));
+  await expect(page.getByText(/^Unsaved/)).toHaveCount(0);
+});

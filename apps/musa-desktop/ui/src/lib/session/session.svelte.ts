@@ -19,7 +19,7 @@ import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { EditDto } from "./generated/EditDto";
 import type { StudioEditDto } from "./generated/StudioEditDto";
-import type { EditImpact, ProjectSnapshot } from "../state/snapshot";
+import type { EditImpact, MidiEntry, ProjectSnapshot } from "../state/snapshot";
 
 /**
  * How long typing settles before the source is compiled
@@ -66,6 +66,7 @@ export type Link = Pick<
   | "on"
   | "askToOpen"
   | "askToSave"
+  | "listenToMidi"
 >;
 
 /**
@@ -75,7 +76,14 @@ export type Link = Pick<
  * arriving, and dropping the draft on its way back would undo whatever was
  * typed while it was in flight.
  */
-const REWRITES = new Set(["format", "undo", "redo", "editScore", "editStudio"]);
+const REWRITES = new Set([
+  "format",
+  "undo",
+  "redo",
+  "editScore",
+  "editStudio",
+  "restoreRecovery",
+]);
 
 /**
  * The file extension an export writes, for the targets whose name is not it.
@@ -103,6 +111,15 @@ export class Session {
    * and thereafter respects whatever the user last chose (`05-states.md` §4).
    */
   drawerOpen = $state(false);
+
+  /**
+   * What to do with notes played in on a MIDI keyboard.
+   *
+   * A callback rather than state, because a played note is an event and not a
+   * condition: it is written once, where the caret is at that moment. The
+   * workspace sets this; the session only carries it.
+   */
+  played: ((entry: MidiEntry) => void) | null = null;
   #announcedProblems = false;
 
   #settle: ReturnType<typeof setTimeout> | undefined;
@@ -195,6 +212,7 @@ export class Session {
       link.on("musa://transport", (playback) => {
         if (this.snapshot) this.snapshot = { ...this.snapshot, playback };
       }),
+      link.on("musa://midi", (entry) => this.played?.(entry)),
     ]);
     // No piece open yet is the launch state, not a failure.
     await link.snapshot().then(
@@ -258,6 +276,35 @@ export class Session {
 
   async save(): Promise<void> {
     await this.run({ kind: "save" }, (snapshot) => `Saved ${snapshot.name}.`);
+  }
+
+  /**
+   * Read a MIDI keyboard while note entry is on, and stop when it goes off.
+   *
+   * Turning it on names the keyboard that answered, because a composer who
+   * plugged one in wants to know it was found — and a composer who did not
+   * gets no message at all, since not having a keyboard is not a problem.
+   */
+  async listenToMidi(listening: boolean): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      const snapshot = await link.listenToMidi(listening);
+      this.receive(snapshot);
+      if (listening && snapshot.midiPort) {
+        this.say({ tone: "result", message: `Playing in from ${snapshot.midiPort}.` });
+      }
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  /** Take the work a crash left behind, or decline it (roadmap §15.7). */
+  async recover(take: boolean): Promise<void> {
+    await this.run(
+      { kind: take ? "restoreRecovery" : "discardRecovery" },
+      take ? () => "Restored the unsaved work." : undefined,
+    );
   }
 
   async format(): Promise<void> {

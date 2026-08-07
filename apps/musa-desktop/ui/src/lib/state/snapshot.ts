@@ -204,12 +204,24 @@ export interface PlaybackState {
   loopRegion: [number, number] | null;
 }
 
+/** Notes played in on a MIDI keyboard, spelled and grouped by the core. */
+export interface MidiEntry {
+  /** One pitch for a note, several for a chord, as the language spells them. */
+  pitches: string[];
+}
+
 export interface ProjectSnapshot {
   name: string;
   source: string;
   revision: number;
   compiles: boolean;
   unsaved: boolean;
+  /** Unsaved work has a recovery copy beside the file (roadmap §15.7). */
+  autosaved: boolean;
+  /** Work a previous session left behind, waiting to be taken or declined. */
+  recovery: string | null;
+  /** The MIDI keyboard being read, while note entry is on. */
+  midiPort: string | null;
   diagnostics: Diagnostic[];
   mei: string | null;
   score: ScoreFacts | null;

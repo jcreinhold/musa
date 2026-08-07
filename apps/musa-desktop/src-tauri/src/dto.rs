@@ -81,6 +81,10 @@ pub enum CommandDto {
     },
     Format,
     Save,
+    /// Take the work a crash left behind and make it the source.
+    RestoreRecovery,
+    /// Decline it, and stop being asked.
+    DiscardRecovery,
     Undo,
     Redo,
 }
@@ -273,6 +277,8 @@ impl CommandDto {
             Self::EditStudio { edit } => Request::Command(ProjectCommand::EditStudio(edit.into())),
             Self::Format => Request::Command(ProjectCommand::Format),
             Self::Save => Request::Command(ProjectCommand::Save),
+            Self::RestoreRecovery => Request::Command(ProjectCommand::RestoreRecovery),
+            Self::DiscardRecovery => Request::Command(ProjectCommand::DiscardRecovery),
             Self::Undo => Request::Undo,
             Self::Redo => Request::Redo,
         }

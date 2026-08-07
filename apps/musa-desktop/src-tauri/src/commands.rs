@@ -1,4 +1,4 @@
-//! The whole bridge. Seven commands, and it stays this small.
+//! The whole bridge. Eight commands, and it stays this small.
 //!
 //! Nothing here decides anything musical: each command translates a DTO into
 //! a `musa-project` request, hands it to the session thread, and returns what
@@ -83,6 +83,20 @@ pub fn export(request: ExportDto, session: State<'_, SessionHandle>) -> Result<V
         .path
         .ok_or_else(|| ErrorDto::shell(ErrorKindDto::File, "Choose where to save the export first"))?;
     session.export(request.target.into(), PathBuf::from(path))
+}
+
+/// Start or stop reading a MIDI keyboard.
+///
+/// Turned on with note entry and off with it: a keyboard is read while the
+/// composer is entering notes, and at every other moment the session is
+/// asleep. Answering with the snapshot is how the interface learns which
+/// keyboard it got, if any.
+///
+/// # Errors
+/// If no piece is open.
+#[tauri::command]
+pub fn listen_to_midi(listening: bool, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.listen_to_midi(listening)
 }
 
 /// The current snapshot, for a window that has just opened.

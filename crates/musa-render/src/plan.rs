@@ -376,22 +376,10 @@ impl Marks {
 }
 
 fn key_signature(key: KeyMap) -> KeySignature {
-    let letter_fifths: i8 = match key.tonic.letter {
-        musa_compiler::Letter::C => 0,
-        musa_compiler::Letter::G => 1,
-        musa_compiler::Letter::D => 2,
-        musa_compiler::Letter::A => 3,
-        musa_compiler::Letter::E => 4,
-        musa_compiler::Letter::B => 5,
-        musa_compiler::Letter::F => -1,
-    };
-    let major = letter_fifths.saturating_add(key.tonic.accidental.0.saturating_mul(7));
-    let fifths = match key.mode {
-        Mode::Major => major,
-        // A minor key's signature is its relative major's: three fifths down.
-        Mode::Minor => major.saturating_sub(3),
-    };
-    KeySignature { fifths, mode: key.mode }
+    KeySignature {
+        fifths: key.fifths(),
+        mode: key.mode,
+    }
 }
 
 fn plan_staff(

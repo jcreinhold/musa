@@ -39,6 +39,7 @@ pub fn run() -> tauri::Result<()> {
             commands::transport,
             commands::export,
             commands::snapshot,
+            commands::listen_to_midi,
         ])
         .run(context)
 }

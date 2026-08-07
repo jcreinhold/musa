@@ -20,6 +20,9 @@ pub struct ProjectSnapshot<'session> {
     pub(crate) valid: &'session Option<ValidArtifacts>,
     pub(crate) compiles: bool,
     pub(crate) unsaved: bool,
+    pub(crate) autosaved: bool,
+    pub(crate) recovery: Option<&'session str>,
+    pub(crate) midi_port: Option<&'session str>,
     pub(crate) playback: PlaybackState,
 }
 
@@ -106,6 +109,27 @@ impl ProjectSnapshot<'_> {
         self.unsaved
     }
 
+    /// Whether a recovery copy of the unsaved text is on disk. Together with
+    /// [`Self::unsaved`] this is the whole save state: saved, unsaved and
+    /// caught, or unsaved and not caught (a piece with no file yet).
+    pub fn autosaved(&self) -> bool {
+        self.autosaved
+    }
+
+    /// Work a previous session left behind and this one has not resolved.
+    ///
+    /// Present only when the recovery copy differs from the file, so it is
+    /// always a real choice: keep what was on disk, or take back what was
+    /// being typed.
+    pub fn recovery(&self) -> Option<&str> {
+        self.recovery
+    }
+
+    /// The MIDI keyboard being listened to, if one is connected.
+    pub fn midi_port(&self) -> Option<&str> {
+        self.midi_port
+    }
+
     /// What the transport is doing.
     pub fn playback(&self) -> PlaybackState {
         self.playback
@@ -126,6 +150,9 @@ struct SnapshotWire<'a> {
     revision: u64,
     compiles: bool,
     unsaved: bool,
+    autosaved: bool,
+    recovery: Option<&'a str>,
+    midi_port: Option<&'a str>,
     diagnostics: &'a [Diagnostic],
     mei: Option<&'a str>,
     score: Option<&'a ScoreFacts>,
@@ -142,6 +169,9 @@ impl serde::Serialize for ProjectSnapshot<'_> {
             revision: self.revision.0,
             compiles: self.compiles,
             unsaved: self.unsaved,
+            autosaved: self.autosaved,
+            recovery: self.recovery,
+            midi_port: self.midi_port,
             diagnostics: self.diagnostics,
             mei: self.mei(),
             score: self.score(),

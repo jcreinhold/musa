@@ -12,7 +12,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { stroke, anchorFor } from "../../src/lib/state/compose";
+import { stroke, anchorFor, played } from "../../src/lib/state/compose";
 import { NoteEntry, octaveOf, spellDuration, spellPitch } from "../../src/lib/state/entry.svelte";
 import { fixture } from "../../src/lib/state/fixtures";
 import { Workspace } from "../../src/lib/state/selection.svelte";
@@ -226,5 +226,57 @@ describe("where a new note goes", () => {
       part: space.focused?.part,
       voice: space.focused?.voice,
     });
+  });
+});
+
+describe("a note played in on a MIDI keyboard", () => {
+  it("is written where the caret is, with the duration entry is set to", () => {
+    const space = workspace();
+    space.select("event-3");
+    const entry = new NoteEntry();
+    entry.chooseDuration("8");
+
+    expect(played(["ef4"], entry, space)).toEqual({
+      kind: "edit",
+      at: { kind: "after", event: "event-3" },
+      edit: {
+        kind: "insertNote",
+        at: { kind: "after", event: "event-3" },
+        note: { kind: "note", pitch: "ef4", duration: "1/8" },
+      },
+    });
+  });
+
+  it("is a chord when several keys were held together", () => {
+    const space = workspace();
+    space.select("event-3");
+    const asked = played(["c4", "e4", "g4"], new NoteEntry(), space);
+
+    expect(asked.kind === "edit" && asked.edit).toEqual({
+      kind: "insertNote",
+      at: { kind: "after", event: "event-3" },
+      note: { kind: "chord", pitches: ["c4", "e4", "g4"], duration: "1/4" },
+    });
+  });
+
+  it("spells nothing itself: the pitches are the core's, accidental and all", () => {
+    const space = workspace();
+    space.select("event-3");
+    const entry = new NoteEntry();
+    // Entry's own accidental and octave belong to the letter keys. A played
+    // note already knows what it is, and must come through untouched.
+    entry.shiftAccidental(1);
+    entry.shiftOctave(-2);
+    const asked = played(["bf2"], entry, space);
+
+    expect(asked.kind === "edit" && asked.edit.kind === "insertNote" && asked.edit.note).toEqual({
+      kind: "note",
+      pitch: "bf2",
+      duration: "1/4",
+    });
+  });
+
+  it("writes nothing when the keyboard sent nothing", () => {
+    expect(played([], new NoteEntry(), workspace()).kind).toBe("pass");
   });
 });

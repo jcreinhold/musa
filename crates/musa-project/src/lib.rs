@@ -32,12 +32,14 @@
 //! temporarily invalid, the last valid score and playback plan stay live and
 //! are flagged as such (roadmap §14.7).
 
+mod autosave;
 mod command;
 mod diagnostic;
 mod edit;
 mod error;
 mod export;
 mod facts;
+mod midi;
 mod playback;
 mod session;
 mod snapshot;
@@ -52,6 +54,7 @@ pub use crate::export::{ExportArtifact, ExportRequest};
 pub use crate::facts::{
     EventFacts, EventKind, Fraction, OccurrenceFacts, OriginFacts, PartFacts, ScoreFacts, VoiceFacts,
 };
+pub use crate::midi::MidiEntry;
 pub use crate::session::ProjectSession;
 pub use crate::snapshot::{PlaybackState, ProjectSnapshot};
 pub use crate::studio::{

@@ -71,6 +71,11 @@ pub enum ProjectCommand {
     Format,
     /// Save the current source to the project path.
     Save,
+    /// Take back the work a previous session left in its recovery copy,
+    /// as an ordinary edit: it lands in the history and can be undone.
+    RestoreRecovery,
+    /// Keep what is on disk and delete the recovery copy.
+    DiscardRecovery,
     /// Drive the transport. Playback is unaffected by whether the *current*
     /// source compiles: it runs the last valid plan (roadmap §14.7).
     Transport(TransportRequest),

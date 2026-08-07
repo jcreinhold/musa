@@ -35,7 +35,7 @@
   import type { Diagnostic, Span } from "./lib/state/snapshot";
   import { Playhead, soundingAt } from "./lib/state/playhead.svelte";
   import { NoteEntry } from "./lib/state/entry.svelte";
-  import { stroke } from "./lib/state/compose";
+  import { played, stroke } from "./lib/state/compose";
   import type { EditDto } from "./lib/session/generated/EditDto";
   import type { InsertAtDto } from "./lib/session/generated/InsertAtDto";
   import type { EditImpact } from "./lib/state/snapshot";
@@ -221,6 +221,9 @@
    */
   function toggleEntry(): void {
     entry.toggle();
+    // The keyboard is read while notes are being entered and at no other
+    // time, so a session that is not entering has no MIDI poll running.
+    void session.listenToMidi(entry.on);
     if (!entry.on) return;
     if (workspace.selection.kind === "none") {
       const active = workspace.active;
@@ -454,6 +457,19 @@
       selectionSaid = kind === "none" || !event ? "" : workspace.describe(event);
     });
   });
+
+  /**
+   * A note played in on the MIDI keyboard, written where the caret is.
+   *
+   * The same path a typed note takes — the core spelled the pitch, entry
+   * supplies the duration, and the caret moves past what was written — so a
+   * played note and a typed one are the same edit and the same undo.
+   */
+  session.played = ({ pitches }) => {
+    if (!entry.on) return;
+    const asked = played(pitches, entry, workspace);
+    if (asked.kind === "edit") void write(asked.edit, asked.at);
+  };
 
   onMount(() => {
     // The shell frame is on screen now; the score arrives when the worker has
