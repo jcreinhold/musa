@@ -20,7 +20,8 @@
 
 use indexmap::IndexMap;
 use musa_language::ast::{
-    ArticulationRule, AstNode as _, DynamicRule, KeyStmt, PerformanceDecl, PieceDecl, SettingStmt, TempoStmt, VoiceItem,
+    ArticulationRule, AstNode as _, DynamicRule, FrontMatterRole, KeyStmt, PerformanceDecl, PieceDecl, SettingStmt,
+    TempoStmt, VoiceItem,
 };
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
@@ -232,11 +233,41 @@ pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot:
             None => resolver.error("invalid key declaration", span_of(key.syntax())),
         }
     }
+    lower_front_matter(resolver, piece, snapshot);
     if let Some(performance) = piece.performance() {
         let profiles = parse_profiles(resolver, &performance);
         merge_profiles(resolver, snapshot, &profiles, span_of(performance.syntax()), None);
     }
     register_motifs(resolver, snapshot, &piece.motifs(), None);
+}
+
+/// `composer`, `arranger`, `subtitle`, `copyright`.
+///
+/// Written twice is an error rather than a silent last-wins: a page whose
+/// composer depends on which line the engraver read is worse than a page that
+/// refuses to compile.
+fn lower_front_matter(resolver: &mut Resolver, piece: &PieceDecl, snapshot: &mut ScoreSnapshot) {
+    for statement in piece.front_matter() {
+        let Some(role) = statement.role() else { continue };
+        let text = statement.text().unwrap_or_default();
+        let slot = match role {
+            FrontMatterRole::Subtitle => &mut snapshot.front_matter_mut().subtitle,
+            FrontMatterRole::Composer => &mut snapshot.front_matter_mut().composer,
+            FrontMatterRole::Arranger => &mut snapshot.front_matter_mut().arranger,
+            FrontMatterRole::Copyright => &mut snapshot.front_matter_mut().copyright,
+        };
+        if slot.is_some() {
+            let word = match role {
+                FrontMatterRole::Subtitle => "subtitle",
+                FrontMatterRole::Composer => "composer",
+                FrontMatterRole::Arranger => "arranger",
+                FrontMatterRole::Copyright => "copyright",
+            };
+            resolver.error(format!("the piece already names a {word}"), span_of(statement.syntax()));
+            continue;
+        }
+        *slot = Some(text);
+    }
 }
 
 /// Register a set of motif declarations, refusing to shadow.

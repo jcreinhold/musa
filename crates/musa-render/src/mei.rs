@@ -47,6 +47,7 @@ pub(crate) fn render_mei(plan: &NotationPlan) -> Result<String, RenderError> {
     writer
         .write_event(Event::Start(mei))
         .map_err(|error| RenderError::xml(&error))?;
+    write_head(&mut writer, plan)?;
     for wrapper in ["music", "body", "mdiv", "score"] {
         start(&mut writer, wrapper)?;
     }
@@ -57,7 +58,8 @@ pub(crate) fn render_mei(plan: &NotationPlan) -> Result<String, RenderError> {
     let mut piece_counts: std::collections::HashMap<EventId, u32> = std::collections::HashMap::new();
     let measure_count = plan.staves().first().map_or(0, |staff| staff.measures().len());
     for index in 0..measure_count {
-        write_measure(&mut writer, plan, index, &mut piece_counts)?;
+        let last = index.saturating_add(1) == measure_count;
+        write_measure(&mut writer, plan, index, last, &mut piece_counts)?;
     }
     end(&mut writer, "section")?;
     for wrapper in ["score", "mdiv", "body", "music"] {
@@ -66,6 +68,73 @@ pub(crate) fn render_mei(plan: &NotationPlan) -> Result<String, RenderError> {
     end(&mut writer, "mei")?;
 
     String::from_utf8(writer.into_inner()).map_err(|error| RenderError::Xml(error.to_string()))
+}
+
+/// `<meiHead>`: the front matter, as facts rather than as layout.
+///
+/// Verovio draws a page head from this on its own — title centred, composer
+/// to the right, subtitle beneath — which is exactly the division roadmap §2
+/// asks for: musa says who wrote the piece, the engraver says where the name
+/// goes. A piece that names nothing but its title still gets a head, because
+/// a score with no `<meiHead>` is a score Verovio warns about and titles
+/// "Untitled".
+fn write_head(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<(), RenderError> {
+    let front = plan.front();
+    start(writer, "meiHead")?;
+    start(writer, "fileDesc")?;
+
+    start(writer, "titleStmt")?;
+    text_element(writer, "title", &front.title, &[])?;
+    if let Some(subtitle) = front.subtitle.as_deref() {
+        text_element(writer, "title", subtitle, &[("type", "subtitle")])?;
+    }
+    if let Some(composer) = front.composer.as_deref() {
+        text_element(writer, "composer", composer, &[])?;
+    }
+    if let Some(arranger) = front.arranger.as_deref() {
+        text_element(writer, "arranger", arranger, &[])?;
+    }
+    end(writer, "titleStmt")?;
+
+    // `<pubStmt>` is required inside `<fileDesc>` even when the piece says
+    // nothing about publication, so an unpublished piece gets the empty
+    // element rather than an empty pair of tags.
+    if let Some(copyright) = front.copyright.as_deref() {
+        start(writer, "pubStmt")?;
+        // `analog` is absent on purpose: the notice is the piece's own words,
+        // not a machine-readable licence musa is entitled to interpret.
+        start(writer, "availability")?;
+        text_element(writer, "useRestrict", copyright, &[])?;
+        end(writer, "availability")?;
+        end(writer, "pubStmt")?;
+    } else {
+        writer
+            .write_event(Event::Empty(element("pubStmt")))
+            .map_err(|error| RenderError::xml(&error))?;
+    }
+
+    end(writer, "fileDesc")?;
+    end(writer, "meiHead")
+}
+
+/// `<name attr="…">text</name>`, escaped by the writer.
+fn text_element(
+    writer: &mut Writer<Vec<u8>>,
+    name: &str,
+    text: &str,
+    attributes: &[(&str, &str)],
+) -> Result<(), RenderError> {
+    let mut node = element(name);
+    for (key, value) in attributes {
+        node.push_attribute((*key, *value));
+    }
+    writer
+        .write_event(Event::Start(node))
+        .map_err(|error| RenderError::xml(&error))?;
+    writer
+        .write_event(Event::Text(quick_xml::events::BytesText::new(text)))
+        .map_err(|error| RenderError::xml(&error))?;
+    end(writer, name)
 }
 
 fn start(writer: &mut Writer<Vec<u8>>, name: &str) -> Result<(), RenderError> {
@@ -108,12 +177,43 @@ fn write_score_def(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<
         .write_event(Event::Start(score_def))
         .map_err(|error| RenderError::xml(&error))?;
 
+    write_page_foot(writer, plan)?;
+
     start(writer, "staffGrp")?;
     for (index, staff) in plan.staves().iter().enumerate() {
         write_staff_def(writer, index.saturating_add(1), staff)?;
     }
     end(writer, "staffGrp")?;
     end(writer, "scoreDef")
+}
+
+/// `<pgFoot>`: the copyright line at the foot of the first page.
+///
+/// The notice is already in `<meiHead>` as `<useRestrict>`, which is where an
+/// archive looks for it — but that is catalogue metadata, and an engraver does
+/// not read it onto the page. `<pgFoot>` is MEI's own way to say "this line
+/// belongs at the foot", so writing it here is still musa naming a fact and
+/// the engraver placing it. Verovio's alternative is its automatic footer,
+/// which advertises Verovio rather than printing the piece's notice.
+///
+/// A piece with no copyright gets no footer at all rather than an empty one,
+/// which is why this is the encoded footer and not the automatic one.
+fn write_page_foot(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<(), RenderError> {
+    let Some(copyright) = plan.front().copyright.as_deref() else {
+        return Ok(());
+    };
+    start(writer, "pgFoot")?;
+    // Centred and small, because that is how every edition sets a copyright
+    // line: unaligned it goes flush with the page edge rather than the
+    // margin, and at the default size it competes with the composer's name.
+    // `<rend>` is required — Verovio drops bare text in a `<pgFoot>`.
+    text_element(
+        writer,
+        "rend",
+        copyright,
+        &[("halign", "center"), ("fontsize", "x-small")],
+    )?;
+    end(writer, "pgFoot")
 }
 
 fn write_staff_def(writer: &mut Writer<Vec<u8>>, n: usize, staff: &StaffPlan) -> Result<(), RenderError> {
@@ -127,8 +227,27 @@ fn write_staff_def(writer: &mut Writer<Vec<u8>>, n: usize, staff: &StaffPlan) ->
         staff_def.push_attribute(("clef.line", line));
     }
     writer
-        .write_event(Event::Empty(staff_def))
-        .map_err(|error| RenderError::xml(&error))
+        .write_event(Event::Start(staff_def))
+        .map_err(|error| RenderError::xml(&error))?;
+    // The part's name at the left of the first system, abbreviated after it.
+    // Verovio indents the first system for these on its own, which is the
+    // other half of what makes a page look like an edition rather than a run
+    // of staves.
+    text_element(writer, "label", staff.name(), &[])?;
+    text_element(writer, "labelAbbr", &abbreviate(staff.name()), &[])?;
+    end(writer, "staffDef")
+}
+
+/// A part name, shortened the way an engraver shortens one when the score
+/// gives no abbreviation: the first three letters and a period. A name
+/// already that short is left alone — `Vla.` is help, `Va.` for `Va` is not.
+fn abbreviate(name: &str) -> String {
+    let head: String = name.chars().take(3).collect();
+    if head.chars().count() < name.chars().count() {
+        format!("{head}.")
+    } else {
+        name.to_string()
+    }
 }
 
 fn clef_shape_line(clef: Clef) -> (&'static str, &'static str) {
@@ -144,11 +263,17 @@ fn write_measure(
     writer: &mut Writer<Vec<u8>>,
     plan: &NotationPlan,
     index: usize,
+    last: bool,
     piece_counts: &mut std::collections::HashMap<EventId, u32>,
 ) -> Result<(), RenderError> {
     let n_text = index.saturating_add(1).to_string();
     let mut measure = element("measure");
     measure.push_attribute(("n", n_text.as_str()));
+    // Thin-thick at the end. Musa's pieces are finite by construction, and a
+    // score that stops on a plain barline reads as a fragment.
+    if last {
+        measure.push_attribute(("right", "end"));
+    }
     writer
         .write_event(Event::Start(measure))
         .map_err(|error| RenderError::xml(&error))?;

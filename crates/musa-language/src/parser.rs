@@ -68,10 +68,21 @@ const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::TempoKw,
     SyntaxKind::MeterKw,
     SyntaxKind::KeyKw,
+    SyntaxKind::SubtitleKw,
+    SyntaxKind::ComposerKw,
+    SyntaxKind::ArrangerKw,
+    SyntaxKind::CopyrightKw,
     SyntaxKind::MotifKw,
     SyntaxKind::ScoreKw,
     SyntaxKind::PerformanceKw,
     SyntaxKind::StudioKw,
+];
+/// The four front-matter keywords, which open statements of one shape.
+const FRONT_MATTER: &[SyntaxKind] = &[
+    SyntaxKind::SubtitleKw,
+    SyntaxKind::ComposerKw,
+    SyntaxKind::ArrangerKw,
+    SyntaxKind::CopyrightKw,
 ];
 const SCORE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::RBrace,
@@ -327,6 +338,8 @@ impl<'a> Parser<'a> {
                 self.meter_stmt();
             } else if self.at(SyntaxKind::KeyKw) {
                 self.key_stmt();
+            } else if self.at_any(FRONT_MATTER) {
+                self.front_matter_stmt();
             } else if self.at(SyntaxKind::MotifKw) {
                 self.motif_decl();
             } else if self.at(SyntaxKind::ScoreKw) {
@@ -336,10 +349,25 @@ impl<'a> Parser<'a> {
             } else if self.at(SyntaxKind::StudioKw) {
                 self.studio_decl();
             } else {
-                self.error_here("expected a use, tempo, meter, key, motif, score, performance, or studio declaration");
+                self.error_here(
+                    "expected a use, tempo, meter, key, subtitle, composer, arranger, copyright, motif, score, performance, or studio declaration",
+                );
                 self.recover(PIECE_RECOVERY);
             }
         }
+        self.finish();
+    }
+
+    /// `composer "Name";` — one of the four front-matter statements.
+    ///
+    /// All four have the same shape, and which one this is lives in the
+    /// keyword token the node opens with. What each means on the page is the
+    /// engraver's business, not the parser's.
+    fn front_matter_stmt(&mut self) {
+        self.start(SyntaxKind::FrontMatterStmt);
+        self.bump(); // the keyword
+        self.expect(SyntaxKind::String, "a quoted line of front matter");
+        self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }
 

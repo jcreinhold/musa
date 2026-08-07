@@ -4,6 +4,12 @@ expression: "format!(\"{snapshot:#?}\")"
 ---
 ScoreSnapshot {
     title: "Counterpoint Study",
+    front_matter: FrontMatter {
+        subtitle: None,
+        composer: None,
+        arranger: None,
+        copyright: None,
+    },
     parts: PartMap {
         parts: {
             PartId(

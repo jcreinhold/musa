@@ -544,7 +544,14 @@ impl ProjectSession {
         };
         self.compiles = score.is_some();
         let mut score_changed = false;
-        if let Some(score) = score {
+        if let Some(mut score) = score {
+            // The project's composer, for a piece that named none. Done here
+            // rather than in the compiler because a piece opened on its own
+            // is still a whole piece: the `musa.toml` above it is context,
+            // not part of the document.
+            if let Some(composer) = self.project.as_ref().and_then(|meta| meta.composer.as_deref()) {
+                score.inherit_composer(composer);
+            }
             match render_notation(&score, musa_render::NotationTarget::Mei) {
                 Ok(mei) => {
                     score_changed = self.valid.as_ref().is_none_or(|valid| valid.mei != mei);

@@ -62,10 +62,10 @@ pub use crate::performance::{
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
 pub use crate::score::{
-    AnnotationStore, ArticulationMark, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, HairpinSpan,
-    HarmonyMark, KeyMap, MeterMap, Mode, MotifDeclaration, NotatedDuration, Part, PartId, PartMap, PhraseSpan,
-    ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoChange, TempoMap, TupletSpan, Voice,
-    VoiceId,
+    AnnotationStore, ArticulationMark, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, FrontMatter,
+    HairpinSpan, HarmonyMark, KeyMap, MeterMap, Mode, MotifDeclaration, NotatedDuration, Part, PartId, PartMap,
+    PhraseSpan, ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoChange, TempoMap, TupletSpan,
+    Voice, VoiceId,
 };
 pub use crate::studio::{
     Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,

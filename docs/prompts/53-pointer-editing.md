@@ -1,8 +1,8 @@
 ---
-id: 51
+id: 53
 slug: pointer-editing
 status: pending
-depends_on: [25, 26, 27]
+depends_on: [25, 26, 27, 52]
 phase: 2
 ---
 

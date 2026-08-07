@@ -85,7 +85,18 @@ spacingStaff:      8               // slightly open — musa scores are read on 
 spacingSystem:     10
 spacingNonLinear:  0.55
 spacingLinear:     0.25
+header:            "auto"          // the page head Verovio draws from the MEI `<meiHead>`: title and subtitle
+                                   // centred, composer and arranger to the right, a running head after page 1
+footer:            "encoded"       // only the `<pgFoot>` the MEI backend writes — the piece's copyright line.
+                                   // Verovio's automatic footer is its own credit and is not a fact about
+                                   // this piece, so a piece that claims no copyright gets no footer at all
+mnumInterval:      0               // one measure number at the head of each system — Verovio counts a repeat
+                                   // interval, so 0 is per-system and any n > 0 is a number every n bars
 ```
+
+**The page is an edition, not a run of staves** (prompt 51). The head, the foot, the measure numbers, the part labels
+in `<staffDef>`, and the final thin-thick barline are all things musa *names* and Verovio *places*. Nothing above says
+where any of them sits; the moment musa answers that, musa owns page layout forever.
 
 **Page view is the default** — a leaf, per the thesis. Continuous (single system, horizontal scroll) is an explicit
 mode, valuable while writing a single line, and it is what the playhead-follow mode prefers.

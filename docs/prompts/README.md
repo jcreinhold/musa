@@ -147,7 +147,9 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 48 | kernel-interop | 3 | `musa kernel`; `.kernel` round-trip; graduates the calculus |
 | 49 | elaboration-emits-terms | 3 | Sharing: `repeat` and motifs become `let` |
 | 50 | windowed-observation | 3 | Deferred observation, if measurement justifies it |
-| 51 | pointer-editing | 2 | The score writes the source: token-scoped pointer edits |
+| 51 | engraved-edition | 2 | Front matter, instrument labels, measure numbers: the page as a real edition |
+| 52 | linked-reading | 2 | One shared focus: which note is which, in both directions |
+| 53 | pointer-editing | 2 | The score writes the source: token-scoped pointer edits |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
@@ -165,10 +167,14 @@ real fonts, and committed screenshot goldens, and nothing else), then wired (21)
 (22, 23), then given its distinguishing interaction (24) and its editing story (25, 26). `docs/interface/` is the
 specification all seven implement.
 
-Prompt 51 returns to the interface block from the other side. Prompts 25 and 26 made the text canonical and gave it a
-keyboard; 51 makes the page a way to write it, under a rule narrow enough to survive roadmap §14.5's objection — a
-pointer gesture replaces one token with one value, and nothing else. It is numbered here rather than inside 20–26
-because it depends on prompt 27's constructs existing before it can refuse to create them.
+Prompts 51–53 are the second interface block, and they answer one complaint in three parts: the app is a text editor
+with a picture beside it. **51** makes the picture a document — front matter, instrument labels, measure numbers, a
+running head, a final barline — because a page that looks like a printout of a data structure is not a page anyone
+proofreads. **52** makes the two views legible against each other: one shared focus, marked in both at once, carrying
+the plural answer musa actually has (one statement is several notes; one generated note has two statements). **53**
+makes the page a way to *write*, under a rule narrow enough to survive roadmap §14.5's objection — a pointer gesture
+replaces one token with one value, and nothing else. They run in that order: being able to read the correspondence is
+what stops dragging it from being a guess.
 
 Prompts 37–50 are the kernel consolidation block. Prompt 12 made the kernel canonical but deliberately kept what the
 migration needed: the direct lowerer as a regression oracle, and a `ScoreSnapshot` shaped exactly as the pre-kernel

@@ -5,7 +5,13 @@ expression: musicxml_of(source)
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
 <score-partwise version="4.0">
+  <work>
+    <work-title>Glass Mountain</work-title>
+  </work>
+  <movement-title>for violin and strings</movement-title>
   <identification>
+    <creator type="composer">musa</creator>
+    <rights>© 2026. Licensed CC BY-SA 4.0.</rights>
     <encoding>
       <software>musa</software>
     </encoding>

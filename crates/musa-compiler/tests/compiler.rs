@@ -267,6 +267,42 @@ fn duplicate_motif_is_an_error() {
     );
 }
 
+/// A front-matter role written twice is an error, not last-wins: two composer
+/// lines mean the piece disagrees with itself about who wrote it, and only the
+/// person who typed them can say which is true.
+#[test]
+fn a_front_matter_role_written_twice_is_an_error() {
+    let compilation =
+        compile_source("piece \"x\" { composer \"a\"; composer \"b\"; score { part p { voice v { c5 1; } } } }");
+    assert!(compilation.has_errors());
+    assert!(
+        messages(&compilation)
+            .iter()
+            .any(|message| message.contains("already names a composer")),
+        "{:?}",
+        messages(&compilation)
+    );
+}
+
+/// The four roles are independent slots: all of them together compile, and
+/// each reaches the snapshot as itself.
+#[test]
+fn all_four_front_matter_roles_reach_the_snapshot() {
+    let compilation = compile_source(
+        "piece \"x\" { subtitle \"s\"; composer \"c\"; arranger \"a\"; copyright \"©\"; \
+         score { part p { voice v { c5 1; } } } }",
+    );
+    assert!(!compilation.has_errors(), "{:?}", messages(&compilation));
+    let Some(snapshot) = compilation.into_snapshot() else {
+        return;
+    };
+    let front = snapshot.front_matter();
+    assert_eq!(front.subtitle.as_deref(), Some("s"));
+    assert_eq!(front.composer.as_deref(), Some("c"));
+    assert_eq!(front.arranger.as_deref(), Some("a"));
+    assert_eq!(front.copyright.as_deref(), Some("©"));
+}
+
 #[test]
 fn provenance_points_back_to_source() {
     let compilation = compile_source(COUNTERPOINT);

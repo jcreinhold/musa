@@ -93,6 +93,14 @@ pub enum SyntaxKind {
     MeterKw,
     /// `key`
     KeyKw,
+    /// `subtitle`
+    SubtitleKw,
+    /// `composer`
+    ComposerKw,
+    /// `arranger`
+    ArrangerKw,
+    /// `copyright`
+    CopyrightKw,
     /// `motif`
     MotifKw,
     /// `score`
@@ -195,6 +203,9 @@ pub enum SyntaxKind {
     MeterStmt,
     /// `key <pitch-class> <mode>;`
     KeyStmt,
+    /// `composer "…";` and its three siblings — one node kind for all four,
+    /// because they differ only in which keyword opens them.
+    FrontMatterStmt,
     /// `motif name(params) { ... }`
     MotifDecl,
     /// `score { ... }`

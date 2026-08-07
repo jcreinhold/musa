@@ -3,6 +3,13 @@ source: crates/musa-render/tests/plan.rs
 expression: "format!(\"{rendered:#?}\")"
 ---
 NotationPlan {
+    front: FrontMatter {
+        title: "Tuplet Fixture",
+        subtitle: None,
+        composer: None,
+        arranger: None,
+        copyright: None,
+    },
     staves: [
         StaffPlan {
             name: "flute",

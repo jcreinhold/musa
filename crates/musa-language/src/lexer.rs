@@ -212,6 +212,14 @@ enum RawToken {
     MeterKw,
     #[token("key", priority = 3)]
     KeyKw,
+    #[token("subtitle", priority = 3)]
+    SubtitleKw,
+    #[token("composer", priority = 3)]
+    ComposerKw,
+    #[token("arranger", priority = 3)]
+    ArrangerKw,
+    #[token("copyright", priority = 3)]
+    CopyrightKw,
     #[token("motif", priority = 3)]
     MotifKw,
     #[token("score", priority = 3)]
@@ -339,6 +347,10 @@ impl RawToken {
             | Self::TempoKw
             | Self::MeterKw
             | Self::KeyKw
+            | Self::SubtitleKw
+            | Self::ComposerKw
+            | Self::ArrangerKw
+            | Self::CopyrightKw
             | Self::MotifKw
             | Self::ScoreKw
             | Self::PartKw
@@ -421,6 +433,10 @@ impl RawToken {
             Self::TempoKw => SyntaxKind::TempoKw,
             Self::MeterKw => SyntaxKind::MeterKw,
             Self::KeyKw => SyntaxKind::KeyKw,
+            Self::SubtitleKw => SyntaxKind::SubtitleKw,
+            Self::ComposerKw => SyntaxKind::ComposerKw,
+            Self::ArrangerKw => SyntaxKind::ArrangerKw,
+            Self::CopyrightKw => SyntaxKind::CopyrightKw,
             Self::MotifKw => SyntaxKind::MotifKw,
             Self::ScoreKw => SyntaxKind::ScoreKw,
             Self::PartKw => SyntaxKind::PartKw,

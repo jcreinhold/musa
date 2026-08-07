@@ -23,6 +23,7 @@ pub struct NotationOptions {}
 /// The backend-neutral plan for one score.
 #[derive(Clone, Debug)]
 pub struct NotationPlan {
+    front: FrontMatter,
     staves: Vec<StaffPlan>,
     tempos: Vec<PositionedMark<TempoText>>,
     sections: Vec<PositionedMark<String>>,
@@ -30,6 +31,13 @@ pub struct NotationPlan {
 }
 
 impl NotationPlan {
+    /// What the page prints around the music: title, and the four optional
+    /// lines an edition carries. Every backend writes these into its own
+    /// header; none of them decides where on the paper they go.
+    pub fn front(&self) -> &FrontMatter {
+        &self.front
+    }
+
     /// One staff per part, in source order.
     pub fn staves(&self) -> &[StaffPlan] {
         &self.staves
@@ -50,6 +58,27 @@ impl NotationPlan {
     pub fn harmony(&self) -> &[PositionedMark<ChordSymbol>] {
         &self.harmony
     }
+}
+
+/// The title and the four lines around it, as a backend needs them.
+///
+/// The compiler's `FrontMatter` is the piece's own; this one carries the
+/// title too, because a header element wants all five together and a backend
+/// that had to reach into two places for one `<titleStmt>` would be reaching
+/// into the score for layout.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct FrontMatter {
+    /// The piece's name, from its `piece` declaration. Always present, though
+    /// it may be empty for an unnamed piece.
+    pub title: String,
+    /// A second line under the title.
+    pub subtitle: Option<String>,
+    /// Who wrote it.
+    pub composer: Option<String>,
+    /// Who arranged it.
+    pub arranger: Option<String>,
+    /// The notice at the foot of the first page.
+    pub copyright: Option<String>,
 }
 
 /// A symbol printed at a place in the piece rather than on a note: a form
@@ -478,6 +507,13 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
         .map(|chord| positioned(chord.at, measure_len, chord.symbol.clone()))
         .collect();
     Ok(NotationPlan {
+        front: FrontMatter {
+            title: score.title().to_string(),
+            subtitle: score.front_matter().subtitle.clone(),
+            composer: score.front_matter().composer.clone(),
+            arranger: score.front_matter().arranger.clone(),
+            copyright: score.front_matter().copyright.clone(),
+        },
         staves,
         tempos,
         sections,

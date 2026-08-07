@@ -5,6 +5,12 @@ expression: lilypond_of(source)
 \version "2.24.0"
 \language "english"
 
+\header {
+  title = "twinkle"
+  composer = "traditional"
+  arranger = "musa"
+}
+
 partPiano = {
   \time 4/4
   \key c \major

@@ -5,6 +5,9 @@ expression: musicxml_of(source)
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
 <score-partwise version="4.0">
+  <work>
+    <work-title>Tuplet Fixture</work-title>
+  </work>
   <identification>
     <encoding>
       <software>musa</software>

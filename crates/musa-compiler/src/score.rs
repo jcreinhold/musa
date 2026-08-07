@@ -820,11 +820,31 @@ pub struct MotifDeclaration {
     pub span: crate::origin::SourceSpan,
 }
 
+/// The four lines a printed edition carries besides the title.
+///
+/// Each is absent unless the piece writes it, and absent prints nothing: a
+/// page with an empty composer line is worse than a page without one. The
+/// title is not here because a piece already has one — its `piece` name — and
+/// a second way to spell it is a way for the two to disagree.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FrontMatter {
+    /// A second line under the title.
+    pub subtitle: Option<String>,
+    /// Who wrote it. A piece that says nothing inherits its project's
+    /// composer, which `musa-project` supplies.
+    pub composer: Option<String>,
+    /// Who arranged it.
+    pub arranger: Option<String>,
+    /// The notice at the foot of the first page.
+    pub copyright: Option<String>,
+}
+
 /// The expanded score: finite, sorted, immutable, still musically spelled
 /// (roadmap §6.3).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScoreSnapshot {
     title: String,
+    front_matter: FrontMatter,
     parts: PartMap,
     tempo_map: TempoMap,
     meter_map: MeterMap,
@@ -838,6 +858,25 @@ impl ScoreSnapshot {
     /// The piece's title, as written in its `piece` declaration.
     pub fn title(&self) -> &str {
         &self.title
+    }
+
+    /// What a printed edition puts around the music: who wrote it, who
+    /// arranged it, what the second line of the title says, and the notice at
+    /// the foot of the first page. Facts about the piece — where any of them
+    /// sits on paper is the engraver's business (roadmap §2).
+    pub fn front_matter(&self) -> &FrontMatter {
+        &self.front_matter
+    }
+
+    /// Take a composer from outside the piece, if the piece named none.
+    ///
+    /// A directory project's `musa.toml` says who wrote the pieces in it
+    /// (roadmap §16), and a piece that names its own composer is not
+    /// overruled by it. Applied once, where the project is known, so that
+    /// every backend and the interface see one answer rather than each
+    /// deciding the precedence for itself.
+    pub fn inherit_composer(&mut self, composer: &str) {
+        self.front_matter.composer.get_or_insert_with(|| composer.to_owned());
     }
 
     /// The parts, in source order.
@@ -911,6 +950,10 @@ impl ScoreSnapshot {
 
     pub(crate) fn set_title(&mut self, title: String) {
         self.title = title;
+    }
+
+    pub(crate) fn front_matter_mut(&mut self) -> &mut FrontMatter {
+        &mut self.front_matter
     }
 
     pub(crate) fn parts_mut(&mut self) -> &mut PartMap {

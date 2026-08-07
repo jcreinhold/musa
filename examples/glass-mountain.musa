@@ -1,4 +1,8 @@
 piece "Glass Mountain" {
+    subtitle "for violin and strings";
+    composer "musa";
+    copyright "© 2026. Licensed CC BY-SA 4.0.";
+
     tempo quarter = 72;
     meter 4/4;
     key a minor;

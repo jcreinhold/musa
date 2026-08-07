@@ -97,6 +97,13 @@ impl PieceDecl {
         child(&self.0)
     }
 
+    /// The piece's front matter — composer, arranger, subtitle, copyright —
+    /// in source order. A role written twice keeps both, and the resolver
+    /// decides which wins; the parser does not editorialise.
+    pub fn front_matter(&self) -> Vec<FrontMatterStmt> {
+        children(&self.0)
+    }
+
     /// All motif declarations.
     pub fn motifs(&self) -> Vec<MotifDecl> {
         children(&self.0)
@@ -292,6 +299,52 @@ impl MeterStmt {
 /// `key a minor;`
 pub struct KeyStmt(SyntaxNode);
 wrapper!(KeyStmt, SyntaxKind::KeyStmt);
+
+/// Which line of front matter a [`FrontMatterStmt`] is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum FrontMatterRole {
+    /// A second line under the title.
+    Subtitle,
+    /// Who wrote it.
+    Composer,
+    /// Who arranged it.
+    Arranger,
+    /// The notice at the foot of the first page.
+    Copyright,
+}
+
+/// `composer "Name";` — one line of the piece's front matter.
+pub struct FrontMatterStmt(SyntaxNode);
+wrapper!(FrontMatterStmt, SyntaxKind::FrontMatterStmt);
+
+impl FrontMatterStmt {
+    /// Which of the four roles this line fills.
+    pub fn role(&self) -> Option<FrontMatterRole> {
+        // A table rather than a match: the node holds a `String` and a `;`
+        // besides its keyword, so the question is which of exactly four
+        // tokens opened it, not what every kind in the language means here.
+        const ROLES: [(SyntaxKind, FrontMatterRole); 4] = [
+            (SyntaxKind::SubtitleKw, FrontMatterRole::Subtitle),
+            (SyntaxKind::ComposerKw, FrontMatterRole::Composer),
+            (SyntaxKind::ArrangerKw, FrontMatterRole::Arranger),
+            (SyntaxKind::CopyrightKw, FrontMatterRole::Copyright),
+        ];
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .find_map(|token| {
+                ROLES
+                    .iter()
+                    .find(|(kind, _)| *kind == token.kind())
+                    .map(|(_, role)| *role)
+            })
+    }
+
+    /// The line as written, without its quotes.
+    pub fn text(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::String).map(|text| text.trim_matches('"').to_string())
+    }
+}
 
 /// `motif sigh(root: pitch = e5) { ... }`
 pub struct MotifDecl(SyntaxNode);

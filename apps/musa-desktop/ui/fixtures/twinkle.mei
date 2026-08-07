@@ -1,12 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.0">
+  <meiHead>
+    <fileDesc>
+      <titleStmt>
+        <title>twinkle</title>
+        <composer>traditional</composer>
+        <arranger>musa</arranger>
+      </titleStmt>
+      <pubStmt/>
+    </fileDesc>
+  </meiHead>
   <music>
     <body>
       <mdiv>
         <score>
           <scoreDef meter.count="4" meter.unit="4" key.sig="0" key.mode="major">
             <staffGrp>
-              <staffDef n="1" lines="5"/>
+              <staffDef n="1" lines="5">
+                <label>piano</label>
+                <labelAbbr>pia.</labelAbbr>
+              </staffDef>
             </staffGrp>
           </scoreDef>
           <section>
@@ -49,7 +62,7 @@
                 </layer>
               </staff>
             </measure>
-            <measure n="5">
+            <measure n="5" right="end">
               <staff n="1">
                 <layer xml:id="layer-1-1" n="1">
                   <rest xml:id="event-e" dur="1"/>

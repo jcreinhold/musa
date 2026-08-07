@@ -245,7 +245,9 @@ test("declining the offer keeps the file's own text", async ({ page }) => {
   const banner = page.getByRole("group", { name: "Unsaved work from the last session" });
   await banner.getByRole("button", { name: "Discard it" }).click();
   await expect(banner).toHaveCount(0);
-  await expect(page.getByText("Glass Mountain")).toBeVisible();
+  // The frame's title, not the engraved one: the page now prints the piece's
+  // name too, and the question here is which document the session is holding.
+  await expect(page.getByRole("heading", { name: "Glass Mountain" })).toBeVisible();
 });
 
 test("unsaved work says whether it is kept, and a saved piece says nothing", async ({ page }) => {

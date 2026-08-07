@@ -256,3 +256,69 @@ fn a_library_edited_on_disk_reaches_the_piece_that_imports_it() -> Result {
     assert!(!session.snapshot().compiles(), "the piece uses a motif that is gone");
     Ok(())
 }
+
+/// The project's composer is a fallback, not a competitor: a piece that names
+/// nobody inherits it, and a piece that names somebody keeps its own answer.
+///
+/// The resolution happens here, once, where the snapshot is built — so every
+/// backend and the GUI read one name rather than each deciding for itself.
+#[test]
+fn the_project_composer_fills_in_for_a_piece_that_names_none() -> Result {
+    let dir = tempfile::tempdir()?;
+    std::fs::write(dir.path().join("musa.toml"), "[project]\ncomposer = \"Ada\"\n")?;
+
+    let silent = dir.path().join("silent.musa");
+    std::fs::write(&silent, PIECE)?;
+    let mei = ProjectSession::open(&silent)?
+        .snapshot()
+        .mei()
+        .unwrap_or_default()
+        .to_owned();
+    assert!(mei.contains("<composer>Ada</composer>"), "{mei}");
+
+    let named = dir.path().join("named.musa");
+    std::fs::write(&named, PIECE.replacen("{\n", "{\n    composer \"Grace\";\n", 1))?;
+    let mei = ProjectSession::open(&named)?
+        .snapshot()
+        .mei()
+        .unwrap_or_default()
+        .to_owned();
+    assert!(mei.contains("<composer>Grace</composer>"), "{mei}");
+    assert!(!mei.contains("Ada"), "{mei}");
+    Ok(())
+}
+
+/// With no project and no `composer` statement, nothing is invented: the head
+/// carries a title and stops. An empty composer line is worse than none.
+#[test]
+fn a_piece_with_no_composer_anywhere_prints_no_composer() -> Result {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("alone.musa");
+    std::fs::write(&path, PIECE)?;
+
+    let mei = ProjectSession::open(&path)?
+        .snapshot()
+        .mei()
+        .unwrap_or_default()
+        .to_owned();
+    assert!(mei.contains("<title>Alone</title>"), "{mei}");
+    assert!(!mei.contains("<composer>"), "{mei}");
+    Ok(())
+}
+
+/// The smallest piece that engraves, for the front-matter tests above.
+const PIECE: &str = "piece \"Alone\" {
+    meter 4/4;
+    key c major;
+
+    score {
+        part violin {
+            clef treble;
+
+            voice upper {
+                c4 1/4;
+            }
+        }
+    }
+}
+";

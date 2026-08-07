@@ -121,7 +121,23 @@ export function verovioOptions(options: LayoutOptions): Record<string, unknown> 
     spacingSystem: 10,
     spacingNonLinear: 0.55,
     spacingLinear: 0.25,
-    header: "none",
-    footer: "none",
+    // The page's own front matter, drawn by Verovio from the `<meiHead>` the
+    // MEI backend now writes (prompt 51): title and subtitle centred, composer
+    // and arranger to the right, and a running head after page 1. Turning this
+    // off is what made the page read as a run of staves rather than as an
+    // edition. Nothing here says *where* any of it sits — that is the
+    // engraver's, and the moment musa answers it musa owns page layout.
+    header: "auto",
+    // The foot is the piece's copyright and nothing else. Verovio's automatic
+    // footer is its own credit line, which is not a fact about this piece; the
+    // encoded footer is the `<pgFoot>` the MEI backend writes, and a piece
+    // that claims no copyright gets no footer at all.
+    footer: "encoded",
+    // A measure number at the head of every system, which is the modern
+    // editorial default — not one on every bar, which is a proof-reading
+    // copy. Verovio spells that as an interval of 0: 0 is per-system, and
+    // any n > 0 is "repeat every n bars". Measured, not assumed — the
+    // option's name reads like the opposite of what it does.
+    mnumInterval: 0,
   };
 }

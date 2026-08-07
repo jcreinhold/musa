@@ -69,7 +69,29 @@ pub(crate) fn render_musicxml(plan: &NotationPlan) -> Result<String, RenderError
     xml.declaration()?;
     xml.doctype()?;
     xml.open("score-partwise", &[("version", "4.0")])?;
+
+    // The front matter, in MusicXML's own slots. `<work>` precedes
+    // `<identification>` in the partwise content model, and both precede
+    // `<part-list>`; a reader that gets them out of order rejects the file.
+    let front = plan.front();
+    xml.open("work", &[])?;
+    xml.leaf("work-title", &[], &front.title)?;
+    xml.close("work")?;
+    if let Some(subtitle) = front.subtitle.as_deref() {
+        // MusicXML has no subtitle: it belongs to the movement, which is what
+        // a subtitle names in a single-movement piece.
+        xml.leaf("movement-title", &[], subtitle)?;
+    }
     xml.open("identification", &[])?;
+    if let Some(composer) = front.composer.as_deref() {
+        xml.leaf("creator", &[("type", "composer")], composer)?;
+    }
+    if let Some(arranger) = front.arranger.as_deref() {
+        xml.leaf("creator", &[("type", "arranger")], arranger)?;
+    }
+    if let Some(copyright) = front.copyright.as_deref() {
+        xml.leaf("rights", &[], copyright)?;
+    }
     xml.open("encoding", &[])?;
     // No version and no encoding date: an export of one source is the same
     // bytes on every machine and every build (§17.5's determinism rule).

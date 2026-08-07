@@ -45,6 +45,8 @@ enum LyNode {
 /// A complete `.ly` document.
 struct LyDocument {
     version: &'static str,
+    /// `\header { … }` — the piece's front matter, in `LilyPond`'s own slots.
+    header: Vec<(&'static str, String)>,
     /// `(variable name, music)` in deterministic declaration order.
     variables: Vec<(String, LyNode)>,
     /// The `\score` block body.
@@ -77,10 +79,32 @@ pub(crate) fn render_lilypond(plan: &NotationPlan) -> Result<String, RenderError
     }
     let document = LyDocument {
         version: "2.24.0",
+        header: header_fields(plan),
         variables,
         score: LyNode::Simultaneous(score_children),
     };
     Ok(print_document(&document))
+}
+
+/// The `\header` fields the piece names, in the order `LilyPond` prints them.
+///
+/// Absent lines are absent rather than empty: `LilyPond` reserves vertical space
+/// for a field it is given, so an empty `composer` is a blank line above the
+/// first system.
+fn header_fields(plan: &NotationPlan) -> Vec<(&'static str, String)> {
+    let front = plan.front();
+    let mut fields = vec![("title", front.title.clone())];
+    for (name, value) in [
+        ("subtitle", &front.subtitle),
+        ("composer", &front.composer),
+        ("arranger", &front.arranger),
+        ("copyright", &front.copyright),
+    ] {
+        if let Some(text) = value.as_deref() {
+            fields.push((name, text.to_owned()));
+        }
+    }
+    fields
 }
 
 /// One staff's music: header commands, then measures; multi-voice staves
@@ -544,6 +568,15 @@ fn print_document(document: &LyDocument) -> String {
     out.push_str("\\version \"");
     out.push_str(document.version);
     out.push_str("\"\n\\language \"english\"\n\n");
+    out.push_str("\\header {\n");
+    for (field, value) in &document.header {
+        out.push_str("  ");
+        out.push_str(field);
+        out.push_str(" = \"");
+        out.push_str(&value.replace('\\', "\\\\").replace('"', "\\\""));
+        out.push_str("\"\n");
+    }
+    out.push_str("}\n\n");
     for (name, body) in &document.variables {
         out.push_str(name);
         out.push_str(" = ");

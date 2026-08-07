@@ -3,6 +3,19 @@ source: crates/musa-render/tests/plan.rs
 expression: "format!(\"{rendered:#?}\")"
 ---
 NotationPlan {
+    front: FrontMatter {
+        title: "Glass Mountain",
+        subtitle: Some(
+            "for violin and strings",
+        ),
+        composer: Some(
+            "musa",
+        ),
+        arranger: None,
+        copyright: Some(
+            "© 2026. Licensed CC BY-SA 4.0.",
+        ),
+    },
     staves: [
         StaffPlan {
             name: "violin",

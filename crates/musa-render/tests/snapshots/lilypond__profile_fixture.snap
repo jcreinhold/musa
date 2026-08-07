@@ -5,6 +5,10 @@ expression: lilypond_of(source)
 \version "2.24.0"
 \language "english"
 
+\header {
+  title = "Profile Fixture"
+}
+
 partFlute = {
   \clef "treble"
   \time 4/4

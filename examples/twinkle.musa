@@ -1,4 +1,7 @@
 piece "twinkle" {
+    composer "traditional";
+    arranger "musa";
+
     tempo 1/4 = 104;
     meter 4/4;
     key c major;

@@ -24,6 +24,10 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("tempo", SyntaxKind::TempoKw),
     ("meter", SyntaxKind::MeterKw),
     ("key", SyntaxKind::KeyKw),
+    ("subtitle", SyntaxKind::SubtitleKw),
+    ("composer", SyntaxKind::ComposerKw),
+    ("arranger", SyntaxKind::ArrangerKw),
+    ("copyright", SyntaxKind::CopyrightKw),
     ("motif", SyntaxKind::MotifKw),
     ("score", SyntaxKind::ScoreKw),
     ("part", SyntaxKind::PartKw),
@@ -182,6 +186,10 @@ impl TokenClass {
             | SyntaxKind::TempoKw
             | SyntaxKind::MeterKw
             | SyntaxKind::KeyKw
+            | SyntaxKind::SubtitleKw
+            | SyntaxKind::ComposerKw
+            | SyntaxKind::ArrangerKw
+            | SyntaxKind::CopyrightKw
             | SyntaxKind::MotifKw
             | SyntaxKind::ScoreKw
             | SyntaxKind::PartKw
@@ -231,6 +239,7 @@ impl TokenClass {
             | SyntaxKind::TempoStmt
             | SyntaxKind::MeterStmt
             | SyntaxKind::KeyStmt
+            | SyntaxKind::FrontMatterStmt
             | SyntaxKind::MotifDecl
             | SyntaxKind::ScoreDecl
             | SyntaxKind::PartDecl

@@ -5,6 +5,13 @@ expression: lilypond_of(source)
 \version "2.24.0"
 \language "english"
 
+\header {
+  title = "Glass Mountain"
+  subtitle = "for violin and strings"
+  composer = "musa"
+  copyright = "© 2026. Licensed CC BY-SA 4.0."
+}
+
 partViolin = {
   \clef "treble"
   \time 4/4
