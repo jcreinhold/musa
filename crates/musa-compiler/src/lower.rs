@@ -469,6 +469,7 @@ fn push_event(
 ) {
     let origin = Origin {
         source_span: cx.origin_span.unwrap_or(span),
+        definition_span: span,
         declaration: cx.declaration,
         expansion_path: cx.path.clone(),
     };

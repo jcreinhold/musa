@@ -34,7 +34,7 @@ mod lexer;
 mod parser;
 mod syntax_kind;
 
-pub use crate::edits::{TextEdit, apply_edits};
+pub use crate::edits::{Anchor, EditError, EditIntent, Statement, TextEdit, apply_edits, compute_edits};
 pub use crate::error::SyntaxError;
 pub use crate::formatter::{FormattedSource, format};
 pub use crate::language::{MusaLanguage, SyntaxElement, SyntaxNode, SyntaxToken};

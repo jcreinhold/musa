@@ -33,6 +33,11 @@ pub struct DeclarationId(pub u32);
 pub struct Origin {
     /// The source span that (transitively) produced the event.
     pub source_span: SourceSpan,
+    /// The span of the statement that literally spells this event: the note
+    /// inside the `motif` body for a generated event, and the same as
+    /// `source_span` for an authored one. Editing the definition edits here;
+    /// `source_span` is where the event *came from*, this is what wrote it.
+    pub definition_span: SourceSpan,
     /// The enclosing declaration.
     pub declaration: DeclarationId,
     /// The expansion steps from declaration to event; empty for directly

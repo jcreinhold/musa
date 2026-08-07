@@ -12,7 +12,10 @@
 
 use std::path::PathBuf;
 
-use musa_project::{ExportRequest, ProjectCommand, ProjectError, Span, Template, TextEdit, TransportRequest};
+use musa_project::{
+    EditCommand, ExportRequest, GeneratedEditMode, InsertAt, NoteSpec, ProjectCommand, ProjectError, Span, Template,
+    TextEdit, TransportRequest,
+};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -68,10 +71,125 @@ pub enum CommandDto {
     ApplyEdits {
         edits: Vec<TextEditDto>,
     },
+    #[serde(rename_all = "camelCase")]
+    EditScore {
+        edit: EditDto,
+    },
     Format,
     Save,
     Undo,
     Redo,
+}
+
+/// What to do when the edited event came out of an expansion (roadmap §9).
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum GeneratedEditModeDto {
+    /// Rewrite the motif; every occurrence changes.
+    EditDefinition,
+    /// Give this occurrence its own copy — prompt 34.
+    Specialize,
+}
+
+impl From<GeneratedEditModeDto> for GeneratedEditMode {
+    fn from(mode: GeneratedEditModeDto) -> Self {
+        match mode {
+            GeneratedEditModeDto::EditDefinition => Self::EditDefinition,
+            GeneratedEditModeDto::Specialize => Self::Specialize,
+        }
+    }
+}
+
+/// Where a newly entered statement goes.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum InsertAtDto {
+    #[serde(rename_all = "camelCase")]
+    Before { event: String },
+    #[serde(rename_all = "camelCase")]
+    After { event: String },
+    #[serde(rename_all = "camelCase")]
+    EndOfVoice { part: String, voice: String },
+}
+
+impl From<InsertAtDto> for InsertAt {
+    fn from(at: InsertAtDto) -> Self {
+        match at {
+            InsertAtDto::Before { event } => Self::Before { event },
+            InsertAtDto::After { event } => Self::After { event },
+            InsertAtDto::EndOfVoice { part, voice } => Self::EndOfVoice { part, voice },
+        }
+    }
+}
+
+/// What to write: pitches and durations as the language spells them.
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum NoteSpecDto {
+    #[serde(rename_all = "camelCase")]
+    Note { pitch: String, duration: String },
+    #[serde(rename_all = "camelCase")]
+    Rest { duration: String },
+    #[serde(rename_all = "camelCase")]
+    Chord { pitches: Vec<String>, duration: String },
+}
+
+impl From<NoteSpecDto> for NoteSpec {
+    fn from(note: NoteSpecDto) -> Self {
+        match note {
+            NoteSpecDto::Note { pitch, duration } => Self::Note { pitch, duration },
+            NoteSpecDto::Rest { duration } => Self::Rest { duration },
+            NoteSpecDto::Chord { pitches, duration } => Self::Chord { pitches, duration },
+        }
+    }
+}
+
+/// A structured score edit from the webview (roadmap §11).
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum EditDto {
+    #[serde(rename_all = "camelCase")]
+    InsertNote { at: InsertAtDto, note: NoteSpecDto },
+    #[serde(rename_all = "camelCase")]
+    ChangePitch {
+        event: String,
+        pitch: String,
+        mode: GeneratedEditModeDto,
+    },
+    #[serde(rename_all = "camelCase")]
+    ChangeDuration {
+        event: String,
+        duration: String,
+        mode: GeneratedEditModeDto,
+    },
+    #[serde(rename_all = "camelCase")]
+    ExtractMotif { events: Vec<String>, name: String },
+}
+
+impl From<EditDto> for EditCommand {
+    fn from(edit: EditDto) -> Self {
+        match edit {
+            EditDto::InsertNote { at, note } => Self::InsertNote {
+                at: at.into(),
+                note: note.into(),
+            },
+            EditDto::ChangePitch { event, pitch, mode } => Self::ChangePitch {
+                event,
+                pitch,
+                mode: mode.into(),
+            },
+            EditDto::ChangeDuration { event, duration, mode } => Self::ChangeDuration {
+                event,
+                duration,
+                mode: mode.into(),
+            },
+            EditDto::ExtractMotif { events, name } => Self::ExtractMotif { events, name },
+        }
+    }
 }
 
 impl CommandDto {
@@ -85,6 +203,7 @@ impl CommandDto {
             Self::ApplyEdits { edits } => {
                 Request::Command(ProjectCommand::ApplyEdits(edits.into_iter().map(Into::into).collect()))
             }
+            Self::EditScore { edit } => Request::Command(ProjectCommand::EditScore(edit.into())),
             Self::Format => Request::Command(ProjectCommand::Format),
             Self::Save => Request::Command(ProjectCommand::Save),
             Self::Undo => Request::Undo,
@@ -208,7 +327,10 @@ impl From<&ProjectError> for ErrorDto {
     fn from(error: &ProjectError) -> Self {
         let kind = match *error {
             ProjectError::Io { .. } => ErrorKindDto::File,
-            ProjectError::RejectedEdit { .. } => ErrorKindDto::Document,
+            ProjectError::RejectedEdit { .. }
+            | ProjectError::NoSuchEvent(_)
+            | ProjectError::Uneditable(_)
+            | ProjectError::NotYetImplemented { .. } => ErrorKindDto::Document,
             ProjectError::NothingTo(_) | ProjectError::NoValidScore => ErrorKindDto::Nothing,
             ProjectError::Performance(_) | ProjectError::Notation(_) | ProjectError::Engine(_) => ErrorKindDto::Backend,
         };

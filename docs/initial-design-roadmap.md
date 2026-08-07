@@ -1128,6 +1128,10 @@ pub enum EditCommand {
     ChangeDuration {
         event: EventId,
         duration: NotatedDuration,
+        // Repaired in prompt 25: renotating a generated note has exactly the
+        // consequence respelling one does, and §9 forbids making that choice
+        // on the composer's behalf in either case.
+        mode: GeneratedEditMode,
     },
 
     ExtractMotif {

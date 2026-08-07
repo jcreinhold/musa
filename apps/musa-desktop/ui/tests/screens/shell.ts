@@ -71,13 +71,94 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
       return current;
     }
 
+    interface Span {
+      start: number;
+      end: number;
+    }
+    interface Note {
+      id: string;
+      origin: { generated: boolean; occurrence: string | null; definitionSpan: Span };
+    }
+
+    const notes = (): Note[] =>
+      ((current.score as { events?: Note[] } | null)?.events ?? []) as Note[];
+
+    /**
+     * What an edit would change, by the core's own rule: every event spelled
+     * by the same statement moves together. The stub can answer this honestly
+     * because the snapshot carries `definitionSpan` — it is a lookup, not a
+     * compilation.
+     */
+    function impactOf(edit: Record<string, unknown>): Record<string, unknown> {
+      const target = notes().find((note) => note.id === (edit.event as string | undefined));
+      const origin = target?.origin;
+      if (!origin?.generated) {
+        const events = target ? [target.id] : [];
+        return { generated: false, motif: null, occurrence: null, occurrences: 0, events };
+      }
+      const kin = notes().filter(
+        (note) =>
+          note.origin.definitionSpan.start === origin.definitionSpan.start &&
+          note.origin.definitionSpan.end === origin.definitionSpan.end,
+      );
+      const occurrences = new Set(kin.map((note) => note.origin.occurrence));
+      const expansions = (current.score as { occurrences?: { id: string; label: string }[] })
+        .occurrences;
+      const label = (expansions ?? []).find((each) => each.id === origin.occurrence);
+      return {
+        generated: true,
+        motif: label?.label.split(" ▸ ").pop() ?? null,
+        occurrence: label?.label ?? null,
+        occurrences: occurrences.size,
+        events: kin.map((note) => note.id),
+      };
+    }
+
+    /**
+     * The states the document has been in, so undo can put one back. A score
+     * edit here changes the revision and records what was asked for; that the
+     * source it would produce is the right source is asserted by the Rust
+     * editing laws, not here.
+     */
+    const history: Record<string, unknown>[] = [];
+    window.__musaEdits = [];
+    window.__musaRevision = current.revision as number;
+
+    /** Every answer goes out through here, so the tests can watch the revision. */
+    function answer(): Record<string, unknown> {
+      window.__musaRevision = current.revision as number;
+      return current;
+    }
+
     const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
       snapshot: () => current,
       open_project: () => current,
       new_project: () => current,
+      edit_impact: (args) => impactOf(args.edit as Record<string, unknown>),
       apply: (args) => {
-        const command = args.command as { kind: string; source?: string };
-        return command.kind === "setSource" ? setSource(command.source ?? "") : current;
+        const command = args.command as {
+          kind: string;
+          source?: string;
+          edit?: Record<string, unknown>;
+        };
+        if (command.kind === "setSource") {
+          history.push(current);
+          setSource(command.source ?? "");
+          return answer();
+        }
+        if (command.kind === "editScore") {
+          history.push(current);
+          window.__musaEdits.push(command.edit ?? {});
+          const revision = (current.revision as number) + 1;
+          current = { ...current, revision, scoreRevision: revision, unsaved: true };
+          return answer();
+        }
+        if (command.kind === "undo") {
+          const previous = history.pop();
+          if (previous) current = previous;
+          return answer();
+        }
+        return answer();
       },
       transport: (args) => {
         const command = args.command as {
@@ -145,5 +226,9 @@ declare global {
     __musaEmit: (name: string, payload: unknown) => void;
     /** The loop region the interface last asked the shell for. */
     __musaLoop: [number, number] | null;
+    /** Every score edit the interface has asked for, in order. */
+    __musaEdits: Record<string, unknown>[];
+    /** The revision the stub last answered with, so undo can be seen to land. */
+    __musaRevision: number;
   }
 }

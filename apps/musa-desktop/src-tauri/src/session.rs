@@ -20,7 +20,9 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
 use std::thread;
 use std::time::Duration;
 
-use musa_project::{ExportRequest, PlaybackState, ProjectCommand, ProjectSession, Template, TransportRequest};
+use musa_project::{
+    EditCommand, ExportRequest, PlaybackState, ProjectCommand, ProjectSession, Template, TransportRequest,
+};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter};
 
@@ -42,6 +44,8 @@ enum Job {
     Apply(Request),
     Transport(TransportRequest),
     Export(ExportRequest, PathBuf),
+    /// Ask what an edit would change, without making it.
+    Impact(EditCommand),
     /// Re-read the current snapshot without changing anything.
     Snapshot,
 }
@@ -107,6 +111,10 @@ impl SessionHandle {
     pub(crate) fn snapshot(&self) -> Reply {
         self.ask(Job::Snapshot)
     }
+
+    pub(crate) fn edit_impact(&self, command: EditCommand) -> Reply {
+        self.ask(Job::Impact(command))
+    }
 }
 
 /// The session thread.
@@ -130,7 +138,7 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
         };
 
         if let Some((job, reply)) = received {
-            let mutating = !matches!(job, Job::Snapshot);
+            let mutating = !matches!(job, Job::Snapshot | Job::Impact(_));
             let answer = perform(&mut session, job);
             let changed = mutating && answer.is_ok();
             // A dropped receiver means the webview went away mid-command;
@@ -201,6 +209,11 @@ fn perform(session: &mut Option<ProjectSession>, job: Job) -> Reply {
                 .map_err(|error| ErrorDto::shell(ErrorKindDto::File, format!("{}: {error}", path.display())))?;
             serde_json::to_value(ExportedDto::from(path))
                 .map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
+        }
+        Job::Impact(command) => {
+            let open = session.as_ref().ok_or_else(no_project)?;
+            let impact = open.edit_impact(&command).map_err(|error| ErrorDto::from(&error))?;
+            serde_json::to_value(impact).map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
         }
         Job::Snapshot => session.as_ref().map(snapshot_json).ok_or_else(no_project),
     }

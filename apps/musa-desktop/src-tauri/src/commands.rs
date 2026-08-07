@@ -1,4 +1,4 @@
-//! The whole bridge. Six commands, and it stays this small.
+//! The whole bridge. Seven commands, and it stays this small.
 //!
 //! Nothing here decides anything musical: each command translates a DTO into
 //! a `musa-project` request, hands it to the session thread, and returns what
@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use serde_json::Value;
 use tauri::State;
 
-use crate::dto::{CommandDto, ErrorDto, ErrorKindDto, ExportDto, TemplateDto, TransportDto};
+use crate::dto::{CommandDto, EditDto, ErrorDto, ErrorKindDto, ExportDto, TemplateDto, TransportDto};
 use crate::session::SessionHandle;
 
 /// Open a `.musa` file and make it the session's project.
@@ -50,6 +50,17 @@ pub fn new_project(
 #[tauri::command]
 pub fn apply(command: CommandDto, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
     session.apply(command.into_request())
+}
+
+/// What a score edit would change, before it is made — the counts and the
+/// affected notes of `04-provenance.md` §4's inline choice.
+///
+/// # Errors
+/// If no piece is open, it has never compiled, or the edit names an event
+/// this revision does not have.
+#[tauri::command]
+pub fn edit_impact(edit: EditDto, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.edit_impact(edit.into())
 }
 
 /// Play, stop, seek, or set the loop.

@@ -17,7 +17,8 @@ import { bridge, inShell, isFailure } from "./bridge";
 import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { TemplateDto } from "./generated/TemplateDto";
-import type { ProjectSnapshot } from "../state/snapshot";
+import type { EditDto } from "./generated/EditDto";
+import type { EditImpact, ProjectSnapshot } from "../state/snapshot";
 
 /**
  * How long typing settles before the source is compiled
@@ -54,7 +55,16 @@ const NOTICE_MS = 3000;
  */
 export type Link = Pick<
   typeof bridge,
-  "openProject" | "newProject" | "apply" | "transport" | "exportTo" | "snapshot" | "on" | "askToOpen" | "askToSave"
+  | "openProject"
+  | "newProject"
+  | "apply"
+  | "editImpact"
+  | "transport"
+  | "exportTo"
+  | "snapshot"
+  | "on"
+  | "askToOpen"
+  | "askToSave"
 >;
 
 export class Session {
@@ -232,6 +242,40 @@ export class Session {
 
   async format(): Promise<void> {
     await this.run({ kind: "format" }, () => "Formatted the source.");
+  }
+
+  /**
+   * What a score edit would change, or null if the core cannot say.
+   *
+   * Asked before the edit, because `04-provenance.md` §4's choice has to
+   * state its consequence in counts and the frontend does not know them.
+   */
+  async impact(edit: EditDto): Promise<EditImpact | null> {
+    const link = this.#link;
+    if (!link) return null;
+    try {
+      return await link.editImpact(edit);
+    } catch (thrown) {
+      this.fail(thrown);
+      return null;
+    }
+  }
+
+  /**
+   * Issue a structured score edit. Reports whether it landed, so a caller
+   * that was mid-choice knows whether to close it.
+   */
+  async editScore(edit: EditDto, said?: string): Promise<boolean> {
+    const link = this.#link;
+    if (!link) return false;
+    try {
+      this.receive(await link.apply({ kind: "editScore", edit }));
+      if (said) this.say({ tone: "result", message: said });
+      return true;
+    } catch (thrown) {
+      this.fail(thrown);
+      return false;
+    }
   }
 
   async undo(): Promise<void> {

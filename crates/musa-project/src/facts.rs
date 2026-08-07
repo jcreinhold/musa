@@ -66,6 +66,10 @@ pub struct OriginFacts {
     pub line: u32,
     /// The source byte range, for revealing it in the drawer.
     pub span: crate::diagnostic::Span,
+    /// The statement that spells this event: the note inside the `motif`
+    /// body when generated, the same as `span` when authored. This is what
+    /// an edit-definition edit rewrites (`04-provenance.md` §4).
+    pub definition_span: crate::diagnostic::Span,
 }
 
 /// One expansion, and everything it produced
@@ -115,6 +119,11 @@ pub struct EventFacts {
     pub pitch: Option<String>,
     /// Every pitch, for a chord.
     pub pitches: Vec<String>,
+    /// The same pitches as the *language* spells them (`gs4`), not as a
+    /// reader reads them (`G♯4`). An editable field has to round-trip
+    /// through the source, and converting `♯` back to `s` in the frontend
+    /// would be the frontend spelling music (`03-interaction.md` §7).
+    pub pitch_spellings: Vec<String>,
     /// The notated duration's exact value in whole notes.
     pub duration: Fraction,
     /// How the duration is written in the source (`1/2`, `3/8`).
@@ -254,6 +263,7 @@ impl ScoreFacts {
                         kind: kind_of(&event.kind),
                         pitch: pitches.first().cloned(),
                         pitches,
+                        pitch_spellings: spellings_of(&event.kind),
                         duration: Fraction::from_ratio(event.notated_duration.value.as_ratio()),
                         duration_spelling: event.notated_duration.spelling.clone(),
                         bar,
@@ -372,6 +382,16 @@ fn kind_of(kind: &ScoreEventKind) -> EventKind {
     }
 }
 
+/// The pitches as the source spells them — `WrittenPitch`'s own `Display`,
+/// which is the inverse of the parser it came from.
+fn spellings_of(kind: &ScoreEventKind) -> Vec<String> {
+    match kind {
+        ScoreEventKind::Note { pitch } => vec![pitch.to_string()],
+        ScoreEventKind::Rest => Vec::new(),
+        ScoreEventKind::Chord { pitches } => pitches.iter().map(ToString::to_string).collect(),
+    }
+}
+
 fn pitches_of(kind: &ScoreEventKind) -> Vec<String> {
     match kind {
         ScoreEventKind::Note { pitch } => vec![written(*pitch)],
@@ -427,6 +447,10 @@ fn origin_facts(origin: &Origin, lines: &LineIndex, source: &str) -> OriginFacts
         span: crate::diagnostic::Span {
             start: origin.source_span.start,
             end: origin.source_span.end,
+        },
+        definition_span: crate::diagnostic::Span {
+            start: origin.definition_span.start,
+            end: origin.definition_span.end,
         },
     }
 }

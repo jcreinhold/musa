@@ -48,13 +48,15 @@ impl std::fmt::Display for Revision {
 
 /// A command against the session.
 ///
-/// Source-changing commands are the editor's primitives at this prompt.
-/// Structured score edits (`InsertNote`, `ChangePitch`, …) arrive at prompt
-/// 25 as a further variant; the shape of this enum does not change to
-/// accommodate them.
+/// Source-changing commands are the editor's primitives; structured score
+/// edits are one further variant that resolves into them.
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub enum ProjectCommand {
+    /// A structured score edit, resolved through provenance into text edits
+    /// and applied transactionally: if the result does not compile, the
+    /// session is unchanged (roadmap §14.6).
+    EditScore(crate::edit::EditCommand),
     /// Replace the whole document. The GUI's debounced text editor uses this.
     SetSource(String),
     /// Apply text edits — the mechanism every structured edit resolves to.

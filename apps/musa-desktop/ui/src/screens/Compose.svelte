@@ -18,7 +18,8 @@
   import { REPEAT_RIGHT_LEFT } from "../lib/ui/glyphs";
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
-  import type { Diagnostic, Span } from "../lib/state/snapshot";
+  import type { Diagnostic, EditImpact, Span } from "../lib/state/snapshot";
+  import type { NoteEntry } from "../lib/state/entry.svelte";
   import Drawer from "./Drawer.svelte";
   import Inspector from "./Inspector.svelte";
   import PartsList from "./PartsList.svelte";
@@ -33,6 +34,9 @@
     follow,
     origin,
     pinned,
+    entry,
+    choice,
+    naming,
     flash,
     reveal,
     onzoom,
@@ -41,6 +45,13 @@
     onloop,
     onfollow,
     onpin,
+    onentry,
+    onconfirm,
+    oncancel,
+    onname,
+    oncancelname,
+    onpitch,
+    onduration,
     onreveal,
     ondiagnostic,
   }: {
@@ -57,6 +68,12 @@
     origin: boolean;
     /** Whether it is pinned, which is what the toggle reports. */
     pinned: boolean;
+    /** Note entry: what the next note would be, and whether letters are notes. */
+    entry: NoteEntry;
+    /** An edit against generated music waiting to be confirmed (§4). */
+    choice: EditImpact | null;
+    /** How many notes an extraction is waiting on a name for, or null. */
+    naming: number | null;
     /** Event ids a diagnostic points at; their systems flash once. */
     flash: string[];
     /** A source span to put the caret at, once, when it changes. */
@@ -67,6 +84,13 @@
     onloop: () => void;
     onfollow: () => void;
     onpin: () => void;
+    onentry: () => void;
+    onconfirm: () => void;
+    oncancel: () => void;
+    onname: (name: string) => void;
+    oncancelname: () => void;
+    onpitch: (event: string, pitch: string) => void;
+    onduration: (event: string, duration: string) => void;
     onreveal: (span: Span) => void;
     ondiagnostic: (diagnostic: Diagnostic) => void;
   } = $props();
@@ -153,6 +177,21 @@
         </div>
 
         <!--
+          Note entry, and what it would write. The duration is the glyph an
+          engraver draws rather than a word, because the composer reading it
+          writes that glyph for a living (`03-interaction.md` §3).
+        -->
+        <button
+          type="button"
+          class="text entry"
+          aria-pressed={entry.on}
+          title="Write notes with the letter keys — N"
+          onclick={onentry}
+          >Notes{#if entry.on}<span class="duration" aria-hidden="true">{entry.glyph}</span
+            ><span class="visually-hidden"> — duration {entry.duration}</span>{/if}</button
+        >
+
+        <!--
           The lens is held — `O` or `⌥` — and this pins it, for anyone who
           cannot hold a key while working the pointer (`04-provenance.md` §2).
           It reports the pin, not the lens, because that is the state a click
@@ -232,7 +271,17 @@
           event={focused}
           adrift={workspace.adrift}
           occurrence={workspace.selectedOccurrence}
+          {choice}
+          {naming}
           onorigin={(depth) => workspace.selectOrigin(depth)}
+          {onconfirm}
+          {oncancel}
+          {onname}
+          {oncancelname}
+          onpitch={session.live && focused ? (pitch) => onpitch(focused.id, pitch) : undefined}
+          onduration={session.live && focused
+            ? (duration) => onduration(focused.id, duration)
+            : undefined}
           {onreveal}
         />
       </Margin>
@@ -303,6 +352,27 @@
   /* The current view is the one set in ink; the other is an offer. */
   .text[aria-pressed="true"] {
     color: var(--ink);
+  }
+
+  /*
+   * Entry is a mode, so it says so with a glyph beside its name rather than
+   * with colour alone (`03-interaction.md` §5).
+   */
+  .duration {
+    font-family: var(--f-notation);
+    font-size: 1.4em;
+    line-height: 1;
+    padding-left: var(--s-2);
+    vertical-align: -0.12em;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   /* Except the lens, whose whole subject is provenance. */

@@ -9,11 +9,12 @@
  */
 
 import type { CommandDto } from "./generated/CommandDto";
+import type { EditDto } from "./generated/EditDto";
 import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { TransportDto } from "./generated/TransportDto";
-import type { ProjectSnapshot } from "../state/snapshot";
+import type { EditImpact, ProjectSnapshot } from "../state/snapshot";
 
 /** Whether the interface is running inside the desktop shell. */
 export function inShell(): boolean {
@@ -49,6 +50,8 @@ export const bridge = {
   newProject: (template: TemplateDto, path: string | null) =>
     call<ProjectSnapshot>("new_project", { template, path }),
   apply: (command: CommandDto) => call<ProjectSnapshot>("apply", { command }),
+  /** What an edit would change, asked before it is made. */
+  editImpact: (edit: EditDto) => call<EditImpact>("edit_impact", { edit }),
   transport: (command: TransportDto) => call<ProjectSnapshot>("transport", { command }),
   exportTo: (target: ExportTargetDto, path: string | null) =>
     call<{ path: string }>("export", { request: { target, path } }),

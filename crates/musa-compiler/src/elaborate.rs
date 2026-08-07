@@ -415,6 +415,7 @@ fn single(duration: &NotatedDuration, payload: VoicePayload) -> Timeline<VoicePa
 fn origin_of(cx: &ExpandCx, span: SourceSpan) -> Origin {
     Origin {
         source_span: cx.origin_span.unwrap_or(span),
+        definition_span: span,
         declaration: cx.declaration,
         expansion_path: cx.path.clone(),
     }

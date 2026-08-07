@@ -158,6 +158,7 @@ impl ProjectSession {
     pub fn apply(&mut self, command: ProjectCommand) -> Result<ProjectUpdate, ProjectError> {
         match command {
             ProjectCommand::SetSource(text) => Ok(self.set_source(text)),
+            ProjectCommand::EditScore(edit) => self.edit_score(&edit),
             ProjectCommand::ApplyEdits(edits) => {
                 let edits: Vec<_> = edits.iter().map(TextEdit::to_language).collect();
                 let text = musa_language::apply_edits(&self.source, &edits);
@@ -177,6 +178,21 @@ impl ProjectSession {
                 Ok(ProjectUpdate::unchanged(self.revision, self.validity()))
             }
         }
+    }
+
+    /// What a structured edit would change, before it is made.
+    ///
+    /// This is the source of the counts in `04-provenance.md` §4's inline
+    /// choice and of the events it haloes. It is a query: nothing is applied,
+    /// and asking twice is free.
+    ///
+    /// # Errors
+    /// [`ProjectError::NoSuchEvent`] if the command names an event this
+    /// revision does not have, or [`ProjectError::NoValidScore`] if the piece
+    /// has never compiled and so has no events at all.
+    pub fn edit_impact(&self, command: &crate::edit::EditCommand) -> Result<crate::EditImpact, ProjectError> {
+        let facts = &self.valid.as_ref().ok_or(ProjectError::NoValidScore)?.facts;
+        crate::edit::impact_of(facts, command)
     }
 
     /// Move to the previous state.
@@ -263,6 +279,41 @@ impl ProjectSession {
             total_frames: 0,
             installed_revision: None,
         }
+    }
+
+    /// Resolve a structured edit through provenance and apply it
+    /// transactionally (roadmap §14.6).
+    ///
+    /// Transactional means what it says: the candidate source is compiled
+    /// before it is committed, and a candidate that does not compile leaves
+    /// the session — source, revision, history, playback — exactly as it was.
+    /// That costs one extra compile per successful edit, which at the rate a
+    /// human edits music is not worth complicating the history to avoid.
+    fn edit_score(&mut self, command: &crate::edit::EditCommand) -> Result<ProjectUpdate, ProjectError> {
+        let facts = &self.valid.as_ref().ok_or(ProjectError::NoValidScore)?.facts;
+        let intent = crate::edit::intent_of(facts, command)?;
+        let edits = musa_language::compute_edits(&self.source, &intent)
+            .map_err(|error| ProjectError::Uneditable(error.to_string()))?;
+        let candidate = musa_language::apply_edits(&self.source, &edits);
+        if let Some(reason) = self.first_error(&candidate) {
+            return Err(ProjectError::RejectedEdit {
+                intent: crate::edit::describe(command),
+                reason,
+            });
+        }
+        Ok(self.set_source(candidate))
+    }
+
+    /// The first error a candidate source would produce, if any.
+    fn first_error(&self, candidate: &str) -> Option<String> {
+        let document = SourceDocument::new(candidate.to_owned(), self.name.clone());
+        let compilation = musa_compiler::compile(&document, &CompileOptions::default());
+        compilation
+            .diagnostics()
+            .iter()
+            .map(Diagnostic::from_compiler)
+            .find(|diagnostic| diagnostic.severity == crate::diagnostic::Severity::Error)
+            .map(|diagnostic| diagnostic.message)
     }
 
     /// Replace the source, recording a new state in the history.

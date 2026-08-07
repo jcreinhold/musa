@@ -33,8 +33,33 @@ export interface OriginFacts {
   noteIndex: number | null;
   line: number;
   span: Span;
+  /**
+   * The statement that spells this event: the note inside the `motif` body
+   * when generated, the same as `span` when authored. What an edit-definition
+   * edit rewrites (`04-provenance.md` §4).
+   */
+  definitionSpan: Span;
   /** The occurrence that produced this event, when it was generated. */
   occurrence: string | null;
+}
+
+/**
+ * What an edit would change, computed by the core before it is made.
+ *
+ * The counts of `04-provenance.md` §4's inline choice, and the events it
+ * haloes. The frontend derives none of it: which notes one statement spelled
+ * is a fact about expansion.
+ */
+export interface EditImpact {
+  generated: boolean;
+  /** The motif an edit-definition edit would rewrite. */
+  motif: string | null;
+  /** The occurrence the edited note belongs to, labelled as the inspector labels it. */
+  occurrence: string | null;
+  /** How many occurrences would change. */
+  occurrences: number;
+  /** Every event that would change. */
+  events: string[];
 }
 
 /**
@@ -69,6 +94,8 @@ export interface EventFacts {
   kind: "note" | "rest" | "chord";
   pitch: string | null;
   pitches: string[];
+  /** The same pitches as the source spells them (`gs4`), for editing. */
+  pitchSpellings: string[];
   duration: Fraction;
   durationSpelling: string;
   bar: number;

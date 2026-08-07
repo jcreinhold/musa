@@ -30,6 +30,10 @@ ScoreSnapshot {
                                         start: 187,
                                         end: 194,
                                     },
+                                    definition_span: SourceSpan {
+                                        start: 187,
+                                        end: 194,
+                                    },
                                     declaration: DeclarationId(
                                         5,
                                     ),
@@ -66,6 +70,10 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
+                                        start: 211,
+                                        end: 218,
+                                    },
+                                    definition_span: SourceSpan {
                                         start: 211,
                                         end: 218,
                                     },
@@ -108,6 +116,10 @@ ScoreSnapshot {
                                         start: 235,
                                         end: 242,
                                     },
+                                    definition_span: SourceSpan {
+                                        start: 235,
+                                        end: 242,
+                                    },
                                     declaration: DeclarationId(
                                         5,
                                     ),
@@ -144,6 +156,10 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
+                                        start: 259,
+                                        end: 283,
+                                    },
+                                    definition_span: SourceSpan {
                                         start: 259,
                                         end: 283,
                                     },
@@ -226,6 +242,10 @@ ScoreSnapshot {
                                         start: 395,
                                         end: 402,
                                     },
+                                    definition_span: SourceSpan {
+                                        start: 395,
+                                        end: 402,
+                                    },
                                     declaration: DeclarationId(
                                         7,
                                     ),
@@ -262,6 +282,10 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
+                                        start: 419,
+                                        end: 426,
+                                    },
+                                    definition_span: SourceSpan {
                                         start: 419,
                                         end: 426,
                                     },
@@ -304,6 +328,10 @@ ScoreSnapshot {
                                         start: 443,
                                         end: 451,
                                     },
+                                    definition_span: SourceSpan {
+                                        start: 443,
+                                        end: 451,
+                                    },
                                     declaration: DeclarationId(
                                         7,
                                     ),
@@ -340,6 +368,10 @@ ScoreSnapshot {
                                 ),
                                 origin: Origin {
                                     source_span: SourceSpan {
+                                        start: 468,
+                                        end: 475,
+                                    },
+                                    definition_span: SourceSpan {
                                         start: 468,
                                         end: 475,
                                     },

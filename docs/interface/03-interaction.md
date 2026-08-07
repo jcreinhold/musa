@@ -77,7 +77,31 @@ documentation cannot drift from bindings.
 | `⌘K` | Command palette |
 | `?` | Keyboard sheet |
 
-Entry bindings (durations, pitches, rests, ties) arrive with prompt 25 and are specified there against this map.
+**Entry** (prompt 25 — only while entry is on)
+
+Entry is a mode, and it has to be: the navigation map above already owns the unmodified letters, so a bare `f` cannot
+be both follow and the note F. `N` says "the letters are notes now", which is the key every notation editor a musician
+has used binds it to. The mode is never invisible — the duration the next note would take is drawn as its glyph in the
+top margin for as long as entry is on, so the state is legible without colour (§5).
+
+| Key | Action |
+| --- | --- |
+| `N` | Turn note entry on or off |
+| `1` `2` `4` `8` `6` `3` | Duration: whole, half, quarter, eighth, sixteenth, thirty-second |
+| `.` | Dotted or not |
+| `c` `d` `e` `f` `g` `a` `b` | Write that pitch — or, with an event selected, respell it in its own octave |
+| `r` | Write a rest |
+| `⌘↑` `⌘↓` | Octave up / down for the notes that follow |
+| `⇧↑` `⇧↓` | Sharp / natural / flat for the notes that follow |
+| `Esc` | Leave entry (before it clears the selection) |
+
+A duration key with an event selected renotates that event rather than only setting what comes next: §1's rule is that
+the same gesture changes a selection where there is one and writes at the caret where there is not.
+
+`r` and not `Space`, because `Space` plays, and a transport key that stopped playing inside a mode would be worse than
+a second letter to learn. `16` and `32` take the nearest free digits — `6` and `3` — because they do not fit on one
+key. Ties have no binding: the language has no tie construct until prompt 27, and a key that spells nothing is worse
+than a key that is not there yet.
 
 **Focus.** There is one focus ring: `2px --plate`, `2px` offset, `3px` radius, and it is always visible on keyboard
 focus — never suppressed. Focus order is: top margin → parts list → score → inspector → drawer. The score pane is a

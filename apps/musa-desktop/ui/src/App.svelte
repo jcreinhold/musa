@@ -30,7 +30,13 @@
   import { fixture } from "./lib/state/fixtures";
   import type { Diagnostic, Span } from "./lib/state/snapshot";
   import { Playhead, soundingAt } from "./lib/state/playhead.svelte";
+  import { NoteEntry } from "./lib/state/entry.svelte";
+  import { stroke } from "./lib/state/compose";
+  import type { EditDto } from "./lib/session/generated/EditDto";
+  import type { InsertAtDto } from "./lib/session/generated/InsertAtDto";
+  import type { EditImpact } from "./lib/state/snapshot";
   import { Workspace } from "./lib/state/selection.svelte";
+  import type { Selection } from "./lib/state/selection.svelte";
   import { ViewPreferences, stepForPinch } from "./lib/state/view.svelte";
 
   const parameters = new URLSearchParams(globalThis.location?.search ?? "");
@@ -69,7 +75,30 @@
    */
   let held = $state(false);
   let pinned = $state(false);
-  const origin = $derived(held || pinned);
+
+  /**
+   * Note entry (prompt 25). A mode, and never a hidden one: the duration
+   * glyph sits in the top margin the whole time it is on, and the caret is
+   * placed the moment it opens so there is always somewhere for a note to go.
+   */
+  const entry = new NoteEntry();
+
+  /**
+   * An edit against generated music, waiting for the composer to choose
+   * (`04-provenance.md` §4). Holding it here rather than in the inspector is
+   * what lets Origin view enter and hold itself for as long as the choice is
+   * open, which is the whole reason the choice is comprehensible.
+   */
+  let choice = $state<{ edit: EditDto; impact: EditImpact; restore: Selection } | null>(null);
+
+  /**
+   * An extraction waiting on a name (§14.5). Held here rather than in the
+   * inspector because the events it covers are the selection at the moment
+   * the composer asked, and the selection is this component's to keep.
+   */
+  let naming = $state<{ events: string[] } | null>(null);
+
+  const origin = $derived(held || pinned || choice !== null);
 
   /** A source span to put the caret at, once: the inspector's line number,
       or the diagnostic a composer just clicked (`05-states.md` §5). */
@@ -152,15 +181,95 @@
     transportSaid = follow === "off" ? "Follow off" : `Follow ${follow}`;
   }
 
-  /** `Esc`: give up the selection first, the drawer second. */
+  /** `Esc`: the choice first, then entry, then the selection, then the drawer. */
   function escape(): void {
     if (paletteOpen || keysOpen) {
       paletteOpen = false;
       keysOpen = false;
       return;
     }
+    if (choice) return cancelChoice();
+    if (naming) {
+      naming = null;
+      return;
+    }
+    if (entry.on) return entry.set(false);
     if (workspace.selection.kind !== "none") workspace.clear();
     else session.drawerOpen = false;
+  }
+
+  /**
+   * Turn note entry on, putting the caret where the next note would go.
+   *
+   * Entry always has a position: the selection if there is one, otherwise the
+   * end of the voice the composer was last in (`03-interaction.md` §1).
+   */
+  function toggleEntry(): void {
+    entry.toggle();
+    if (!entry.on) return;
+    if (workspace.selection.kind === "none") {
+      const active = workspace.active;
+      if (active) workspace.placeCaret(active.part, active.voice, "end");
+    }
+  }
+
+  /**
+   * Issue an edit — or, when it lands on generated music, ask first.
+   *
+   * The counts and the affected notes come from the core; the interface's
+   * whole contribution is to show them before anything changes and to hold
+   * Origin view while it does (`04-provenance.md` §4).
+   */
+  async function issue(edit: EditDto): Promise<void> {
+    const impact = await session.impact(edit);
+    if (impact?.generated) {
+      choice = { edit, impact, restore: workspace.selection };
+      workspace.selection = { kind: "event", events: [...impact.events] };
+      return;
+    }
+    await session.editScore(edit);
+  }
+
+  /** Confirm the choice, and report it in musical words (§4). */
+  async function confirmChoice(): Promise<void> {
+    const pending = choice;
+    if (!pending) return;
+    const count = pending.impact.occurrences;
+    const said = `Edited ${pending.impact.occurrence ?? "the motif"} — ${count} ${
+      count === 1 ? "occurrence" : "occurrences"
+    } updated.`;
+    if (await session.editScore(pending.edit, said)) choice = null;
+  }
+
+  /**
+   * Extract the selection into a motif.
+   *
+   * The name is asked for inline, in the margin, next to the notes it will
+   * cover — never in a dialog, which would take the music off the screen at
+   * the moment the composer is deciding what to call it.
+   */
+  function extract(): void {
+    const events = workspace.selected;
+    if (events.length === 0) return;
+    naming = { events };
+  }
+
+  /** Name it, and the source in the drawer says so. */
+  async function nameMotif(name: string): Promise<void> {
+    const pending = naming;
+    naming = null;
+    if (!pending) return;
+    await session.editScore(
+      { kind: "extractMotif", events: pending.events, name },
+      `Extracted ${name}() — ${pending.events.length} notes.`,
+    );
+  }
+
+  /** Give up on it, putting the selection back where the composer left it. */
+  function cancelChoice(): void {
+    if (!choice) return;
+    workspace.selection = choice.restore;
+    choice = null;
   }
 
   const surface: Surface = {
@@ -172,6 +281,8 @@
     follow: cycleFollow,
     loop: toggleLoop,
     origin: () => (pinned = !pinned),
+    entry: toggleEntry,
+    extract,
     palette: (open) => (paletteOpen = open),
     keys: (open) => (keysOpen = open),
     escape,
@@ -208,10 +319,41 @@
       held = true;
       if (event.key !== "Alt") event.preventDefault();
     }
+    // While entry is on, the score pane's letters and numbers are notes and
+    // durations rather than commands. Everything the entry map passes on —
+    // arrows, Space, ⌘-anything — still reaches the map below.
+    if (entry.on && scopeOf(event.target) === "score") {
+      const asked = stroke(event, entry, workspace);
+      if (asked.kind !== "pass") {
+        event.preventDefault();
+        if (asked.kind === "edit") void write(asked.edit, asked.at);
+        return;
+      }
+    }
     const command = commandFor(event, scopeOf(event.target));
     if (!command) return;
     event.preventDefault();
     command.run(surface);
+  }
+
+  /**
+   * Issue an entry edit and move the caret past what it wrote.
+   *
+   * The new note has no id until the core answers, so the caret is placed
+   * afterwards by position in the voice — which is the only honest way to say
+   * "after the note I just entered" when ids are the core's to mint.
+   */
+  async function write(edit: EditDto, at: InsertAtDto | null): Promise<void> {
+    await issue(edit);
+    if (at === null || at.kind === "endOfVoice") return;
+    const before = at.event;
+    const events = session.snapshot?.score?.events ?? [];
+    const anchored = events.find((event) => event.id === before);
+    if (!anchored) return;
+    const voice = events.filter((e) => e.part === anchored.part && e.voice === anchored.voice);
+    const index = voice.findIndex((e) => e.id === before);
+    const written = at.kind === "before" ? voice[index] : voice[index + 1];
+    if (written) workspace.select(written.id);
   }
 
   /** Whether a keystroke is the lens: `O` in the score, or `⌥` anywhere. */
@@ -294,6 +436,9 @@
     {follow}
     {origin}
     {pinned}
+    {entry}
+    choice={choice?.impact ?? null}
+    naming={naming?.events.length ?? null}
     {flash}
     {reveal}
     onzoom={stepZoom}
@@ -302,6 +447,15 @@
     onloop={toggleLoop}
     onfollow={cycleFollow}
     onpin={() => (pinned = !pinned)}
+    onentry={toggleEntry}
+    onconfirm={() => void confirmChoice()}
+    oncancel={cancelChoice}
+    onname={(name) => void nameMotif(name)}
+    oncancelname={() => (naming = null)}
+    onpitch={(event, pitch) =>
+      void issue({ kind: "changePitch", event, pitch, mode: "editDefinition" })}
+    onduration={(event, duration) =>
+      void issue({ kind: "changeDuration", event, duration, mode: "editDefinition" })}
     onreveal={open}
     ondiagnostic={showDiagnostic}
   />

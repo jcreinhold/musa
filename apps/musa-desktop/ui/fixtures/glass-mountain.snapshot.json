@@ -50,6 +50,9 @@
         "pitches": [
           "E5"
         ],
+        "pitchSpellings": [
+          "e5"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 2
@@ -73,6 +76,10 @@
           "span": {
             "start": 309,
             "end": 320
+          },
+          "definitionSpan": {
+            "start": 125,
+            "end": 134
           }
         }
       },
@@ -83,6 +90,7 @@
         "kind": "rest",
         "pitch": null,
         "pitches": [],
+        "pitchSpellings": [],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -106,6 +114,10 @@
           "span": {
             "start": 309,
             "end": 320
+          },
+          "definitionSpan": {
+            "start": 143,
+            "end": 152
           }
         }
       },
@@ -117,6 +129,9 @@
         "pitch": "C5",
         "pitches": [
           "C5"
+        ],
+        "pitchSpellings": [
+          "c5"
         ],
         "duration": {
           "numerator": 1,
@@ -141,6 +156,10 @@
           "span": {
             "start": 309,
             "end": 320
+          },
+          "definitionSpan": {
+            "start": 161,
+            "end": 168
           }
         }
       },
@@ -152,6 +171,9 @@
         "pitch": "B4",
         "pitches": [
           "B4"
+        ],
+        "pitchSpellings": [
+          "b4"
         ],
         "duration": {
           "numerator": 1,
@@ -176,6 +198,10 @@
           "span": {
             "start": 309,
             "end": 320
+          },
+          "definitionSpan": {
+            "start": 177,
+            "end": 184
           }
         }
       },
@@ -187,6 +213,9 @@
         "pitch": "A4",
         "pitches": [
           "A4"
+        ],
+        "pitchSpellings": [
+          "a4"
         ],
         "duration": {
           "numerator": 1,
@@ -211,6 +240,10 @@
           "span": {
             "start": 309,
             "end": 320
+          },
+          "definitionSpan": {
+            "start": 193,
+            "end": 200
           }
         }
       },
@@ -222,6 +255,9 @@
         "pitch": "A4",
         "pitches": [
           "A4"
+        ],
+        "pitchSpellings": [
+          "a4"
         ],
         "duration": {
           "numerator": 1,
@@ -247,6 +283,10 @@
           "span": {
             "start": 378,
             "end": 389
+          },
+          "definitionSpan": {
+            "start": 125,
+            "end": 134
           }
         }
       },
@@ -257,6 +297,7 @@
         "kind": "rest",
         "pitch": null,
         "pitches": [],
+        "pitchSpellings": [],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -281,6 +322,10 @@
           "span": {
             "start": 378,
             "end": 389
+          },
+          "definitionSpan": {
+            "start": 143,
+            "end": 152
           }
         }
       },
@@ -292,6 +337,9 @@
         "pitch": "F4",
         "pitches": [
           "F4"
+        ],
+        "pitchSpellings": [
+          "f4"
         ],
         "duration": {
           "numerator": 1,
@@ -317,6 +365,10 @@
           "span": {
             "start": 378,
             "end": 389
+          },
+          "definitionSpan": {
+            "start": 161,
+            "end": 168
           }
         }
       },
@@ -328,6 +380,9 @@
         "pitch": "E4",
         "pitches": [
           "E4"
+        ],
+        "pitchSpellings": [
+          "e4"
         ],
         "duration": {
           "numerator": 1,
@@ -353,6 +408,10 @@
           "span": {
             "start": 378,
             "end": 389
+          },
+          "definitionSpan": {
+            "start": 177,
+            "end": 184
           }
         }
       },
@@ -364,6 +423,9 @@
         "pitch": "D4",
         "pitches": [
           "D4"
+        ],
+        "pitchSpellings": [
+          "d4"
         ],
         "duration": {
           "numerator": 1,
@@ -389,6 +451,10 @@
           "span": {
             "start": 378,
             "end": 389
+          },
+          "definitionSpan": {
+            "start": 193,
+            "end": 200
           }
         }
       },
@@ -400,6 +466,9 @@
         "pitch": "C5",
         "pitches": [
           "C5"
+        ],
+        "pitchSpellings": [
+          "c5"
         ],
         "duration": {
           "numerator": 1,
@@ -422,6 +491,10 @@
           "span": {
             "start": 498,
             "end": 503
+          },
+          "definitionSpan": {
+            "start": 498,
+            "end": 503
           }
         }
       },
@@ -433,6 +506,9 @@
         "pitch": "C5",
         "pitches": [
           "C5"
+        ],
+        "pitchSpellings": [
+          "c5"
         ],
         "duration": {
           "numerator": 1,
@@ -455,6 +531,10 @@
           "span": {
             "start": 520,
             "end": 525
+          },
+          "definitionSpan": {
+            "start": 520,
+            "end": 525
           }
         }
       },
@@ -466,6 +546,9 @@
         "pitch": "A4",
         "pitches": [
           "A4"
+        ],
+        "pitchSpellings": [
+          "a4"
         ],
         "duration": {
           "numerator": 1,
@@ -488,6 +571,10 @@
           "span": {
             "start": 542,
             "end": 547
+          },
+          "definitionSpan": {
+            "start": 542,
+            "end": 547
           }
         }
       },
@@ -499,6 +586,9 @@
         "pitch": "G♯4",
         "pitches": [
           "G♯4"
+        ],
+        "pitchSpellings": [
+          "gs4"
         ],
         "duration": {
           "numerator": 1,
@@ -521,6 +611,10 @@
           "span": {
             "start": 564,
             "end": 570
+          },
+          "definitionSpan": {
+            "start": 564,
+            "end": 570
           }
         }
       },
@@ -532,6 +626,9 @@
         "pitch": "A2",
         "pitches": [
           "A2"
+        ],
+        "pitchSpellings": [
+          "a2"
         ],
         "duration": {
           "numerator": 1,
@@ -554,6 +651,10 @@
           "span": {
             "start": 627,
             "end": 632
+          },
+          "definitionSpan": {
+            "start": 627,
+            "end": 632
           }
         }
       },
@@ -565,6 +666,9 @@
         "pitch": "F2",
         "pitches": [
           "F2"
+        ],
+        "pitchSpellings": [
+          "f2"
         ],
         "duration": {
           "numerator": 1,
@@ -587,6 +691,10 @@
           "span": {
             "start": 649,
             "end": 654
+          },
+          "definitionSpan": {
+            "start": 649,
+            "end": 654
           }
         }
       },
@@ -598,6 +706,9 @@
         "pitch": "D2",
         "pitches": [
           "D2"
+        ],
+        "pitchSpellings": [
+          "d2"
         ],
         "duration": {
           "numerator": 1,
@@ -620,6 +731,10 @@
           "span": {
             "start": 671,
             "end": 676
+          },
+          "definitionSpan": {
+            "start": 671,
+            "end": 676
           }
         }
       },
@@ -631,6 +746,9 @@
         "pitch": "E2",
         "pitches": [
           "E2"
+        ],
+        "pitchSpellings": [
+          "e2"
         ],
         "duration": {
           "numerator": 1,
@@ -651,6 +769,10 @@
           "occurrence": null,
           "line": 39,
           "span": {
+            "start": 693,
+            "end": 698
+          },
+          "definitionSpan": {
             "start": 693,
             "end": 698
           }

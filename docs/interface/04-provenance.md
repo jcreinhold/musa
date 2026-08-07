@@ -83,11 +83,16 @@ When an edit is issued against a generated event (prompt 25), the interface:
    ```
    This note comes from sigh().
 
-   Edit the motif       changes 2 occurrences, 10 notes
+   Edit the motif       changes 2 occurrences, 2 notes
    Just this occurrence requires occurrence specialization  (prompt 34)
    ```
 
-3. previews the affected notes with the selection halo while the choice is open;
+   The note count is the number of notes that **change**, not the number of notes the affected occurrences contain.
+   This draft said *10 notes* for a single-note edit to `sigh()`, which is the size of the two expansions rather than
+   the size of the consequence; repaired in prompt 25. An edit rewrites one statement of the motif body, so it changes
+   one note per occurrence — and a screen that overstates its own consequence teaches a composer to stop reading it.
+
+3. previews the affected notes with the selection halo while the choice is open — exactly the notes the count names;
 4. on confirm, applies the command and reports what happened in the interface's own vocabulary:
    *"Edited sigh() — 2 occurrences updated."*
 

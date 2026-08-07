@@ -45,6 +45,13 @@ function recorder(): Recorder {
       link.applied.push(source);
       return link.answer(source);
     }),
+    editImpact: vi.fn(async () => ({
+      generated: false,
+      motif: null,
+      occurrence: null,
+      occurrences: 0,
+      events: [],
+    })),
     transport: vi.fn(async () => VALID),
     exportTo: vi.fn(async () => ({ path: "/tmp/out.mei" })),
     snapshot: vi.fn(async () => VALID),

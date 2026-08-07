@@ -35,6 +35,7 @@ pub fn run() -> tauri::Result<()> {
             commands::open_project,
             commands::new_project,
             commands::apply,
+            commands::edit_impact,
             commands::transport,
             commands::export,
             commands::snapshot,

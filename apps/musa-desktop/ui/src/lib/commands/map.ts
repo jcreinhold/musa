@@ -39,6 +39,10 @@ export interface Surface {
   loop(): void;
   /** Pin Origin view, for anyone who cannot hold a key while pointing. */
   origin(): void;
+  /** Turn note entry on or off (prompt 25). */
+  entry(): void;
+  /** Lift the selected notes into a motif, naming it inline (prompt 25). */
+  extract(): void;
   palette(open: boolean): void;
   keys(open: boolean): void;
   /** Clear the selection, or — with nothing selected — close the drawer. */
@@ -122,6 +126,15 @@ export const COMMANDS: readonly Command[] = [
     workspace?.edge("last"),
   ),
   own("score.part.next", "Next part", "Score", "Tab", ({ workspace }) => workspace?.part(1)),
+  // Note entry is a mode because the unmodified letters already belong to the
+  // navigation map: `f` follows and `l` loops, so a bare `f` cannot also be
+  // the note F. `N` is how a composer says "the letters are notes now", and it
+  // is the key every notation editor they have used binds it to.
+  own("score.entry", "Note entry", "Score", "N", (surface) => surface.entry()),
+  // Extraction is the composer noticing they have written the same idea
+  // twice; `M` for motif, and the name is asked for in the margin rather than
+  // in a dialog that would take the notes off the screen.
+  own("score.extract", "Extract a motif", "Score", "M", (surface) => surface.extract()),
   // Escape is the one Score command that is global: giving up is answered
   // wherever the composer happens to be, including the drawer.
   own(

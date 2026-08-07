@@ -35,6 +35,25 @@ pub enum ProjectError {
         reason: String,
     },
 
+    /// A score edit named an event this revision does not contain — a stale
+    /// selection, almost always.
+    #[error("no such event: {0}")]
+    NoSuchEvent(String),
+
+    /// The source cannot express what the edit describes: a pitch change
+    /// aimed at a rest, an extraction spanning two voices.
+    #[error("cannot edit: {0}")]
+    Uneditable(String),
+
+    /// A capability the roadmap defines and this build does not have yet.
+    /// Refusing is the point: the alternative is doing something else and
+    /// not saying so.
+    #[error("{feature} is not implemented yet")]
+    NotYetImplemented {
+        /// The capability, named the way the interface names it.
+        feature: &'static str,
+    },
+
     /// There is nothing to undo or redo.
     #[error("nothing to {0}")]
     NothingTo(&'static str),
