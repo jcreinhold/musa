@@ -260,3 +260,100 @@ fn an_extraction_across_two_blocks_is_refused() {
     };
     assert_eq!(compute_edits(PIECE, &intent), Err(EditError::NotSiblings));
 }
+
+/// A piece whose voice calls the same motif three times: plainly, with one
+/// note already respelled, and with two.
+const CALLS: &str = r#"piece "Etude" {
+    motif sigh() {
+        e5 1/2;
+        c5 1/2;
+        g5 1/2;
+    }
+
+    score {
+        part piano {
+            voice right {
+                use sigh();
+                use sigh() with { note 2 = d5; }
+                use sigh() with { note 1 = f5; note 3 = a5; }
+            }
+        }
+    }
+}
+"#;
+
+/// The nth occurrence of `use sigh()` in the fixture, by its offset.
+fn call(source: &str, nth: usize) -> u32 {
+    let index = source
+        .match_indices("use sigh()")
+        .nth(nth)
+        .unwrap_or_else(|| panic!("the fixture has fewer than {nth} calls"))
+        .0;
+    u32::try_from(index).unwrap_or(0)
+}
+
+#[test]
+fn specializing_a_plain_call_gives_it_a_with_clause() {
+    let out = edited(
+        CALLS,
+        &EditIntent::Specialize {
+            at: call(CALLS, 0),
+            position: 2,
+            pitch: "d5".to_owned(),
+        },
+    );
+    assert!(
+        out.contains(
+            "                use sigh() with { note 2 = d5; }\n                use sigh() with { note 2 = d5; }"
+        ),
+        "the first call grew the clause the second already has:\n{out}"
+    );
+}
+
+#[test]
+fn specializing_a_note_that_is_already_specialized_respells_it() {
+    let out = edited(
+        CALLS,
+        &EditIntent::Specialize {
+            at: call(CALLS, 1),
+            position: 2,
+            pitch: "ef5".to_owned(),
+        },
+    );
+    assert_eq!(out, CALLS.replace("note 2 = d5;", "note 2 = ef5;"));
+}
+
+#[test]
+fn a_new_override_joins_the_clause_in_playing_order() {
+    // Overrides read in the order the notes sound, whichever order the
+    // composer specialized them in.
+    let out = edited(
+        CALLS,
+        &EditIntent::Specialize {
+            at: call(CALLS, 2),
+            position: 2,
+            pitch: "d5".to_owned(),
+        },
+    );
+    assert!(
+        out.contains("with { note 1 = f5; note 2 = d5; note 3 = a5; }"),
+        "the new override went between the two it belongs between:\n{out}"
+    );
+}
+
+#[test]
+fn specializing_something_that_is_not_an_occurrence_is_refused() {
+    // An authored note has no occurrence to specialize: the composer is
+    // editing the note itself, and `SetPitch` is that edit.
+    assert!(matches!(
+        compute_edits(
+            PIECE,
+            &EditIntent::Specialize {
+                at: at(PIECE, "a4 1/4;"),
+                position: 1,
+                pitch: "gs4".to_owned(),
+            }
+        ),
+        Err(EditError::NotAnOccurrence { .. })
+    ));
+}

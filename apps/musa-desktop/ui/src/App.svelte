@@ -260,6 +260,18 @@
   }
 
   /**
+   * Take the other answer: write the change onto this occurrence instead of
+   * onto the motif, which is what a `with { }` clause is for (§4).
+   */
+  async function specializeChoice(): Promise<void> {
+    const pending = choice;
+    if (!pending || pending.edit.kind !== "changePitch") return;
+    const edit: EditDto = { ...pending.edit, mode: "specialize" };
+    const said = `Specialized ${pending.impact.occurrence ?? "this occurrence"} — one note changed.`;
+    if (await session.editScore(edit, said)) choice = null;
+  }
+
+  /**
    * Extract the selection into a motif.
    *
    * The name is asked for inline, in the margin, next to the notes it will
@@ -534,6 +546,7 @@
     onpin={() => (pinned = !pinned)}
     onentry={toggleEntry}
     onconfirm={() => void confirmChoice()}
+    onspecialize={() => void specializeChoice()}
     oncancel={cancelChoice}
     onname={(name) => void nameMotif(name)}
     oncancelname={() => (naming = null)}

@@ -184,6 +184,55 @@ impl WrittenPitch {
             octave: i8::try_from(octave_i32).ok()?,
         })
     }
+
+    /// Mirror this pitch about `axis` (roadmap §5.4).
+    ///
+    /// Diatonic, not chromatic: the letter reflects through the axis's
+    /// letter and the accidental absorbs the semitone difference, so a
+    /// third above the axis comes back a third below it and the result is
+    /// still a note an engraver would write. Chromatic mirroring would put
+    /// `ef4` a *diminished* somewhere and spell the answer by pitch class,
+    /// which is how a spelling-preserving language loses its spelling.
+    ///
+    /// Returns `None` when the mirror image needs more than a double
+    /// accidental — a meaningful failure the caller reports as a diagnostic
+    /// rather than silently writing a different note.
+    pub fn invert(self, axis: Self) -> Option<Self> {
+        let steps = i32::from(axis.diatonic_index())
+            .saturating_mul(2)
+            .saturating_sub(i32::from(self.diatonic_index()));
+        let letter = Letter::from_steps(i8::try_from(steps.rem_euclid(7)).ok()?)?;
+        let octave = steps.div_euclid(7);
+        let sounding = i32::from(axis.chromatic_index())
+            .saturating_mul(2)
+            .saturating_sub(i32::from(self.chromatic_index()));
+        let natural = octave
+            .saturating_mul(12)
+            .saturating_add(i32::from(letter.natural_semitone()));
+        let accidental = sounding.saturating_sub(natural);
+        if !(-2..=2).contains(&accidental) {
+            return None;
+        }
+        Some(Self {
+            letter,
+            accidental: Accidental(i8::try_from(accidental).ok()?),
+            octave: i8::try_from(octave).ok()?,
+        })
+    }
+
+    /// Diatonic steps above `c0`: the staff position, ignoring accidentals.
+    fn diatonic_index(self) -> i16 {
+        i16::from(self.octave)
+            .saturating_mul(7)
+            .saturating_add(i16::from(self.letter.steps()))
+    }
+
+    /// Semitones above `c0`: what the pitch sounds at, ignoring spelling.
+    fn chromatic_index(self) -> i16 {
+        i16::from(self.octave)
+            .saturating_mul(12)
+            .saturating_add(i16::from(self.semitone()))
+    }
 }
 
 impl std::fmt::Display for WrittenPitch {

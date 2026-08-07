@@ -313,7 +313,9 @@ fn occurrence_facts(
         ExpansionStep::RepeatIteration(_)
         | ExpansionStep::Transposition(_)
         | ExpansionStep::Stretch(_)
-        | ExpansionStep::Retrograde => None,
+        | ExpansionStep::Retrograde
+        | ExpansionStep::Inversion { .. }
+        | ExpansionStep::Specialization { .. } => None,
     });
     let motif = call_site.map(|span| motif_name(source, span.start, span.end));
     let declaration = motif.as_ref().and_then(|name| {
@@ -468,6 +470,8 @@ fn step(step: &ExpansionStep, source: &str) -> String {
         ExpansionStep::Transposition(interval) => format!("transpose {}", interval_name(interval)),
         ExpansionStep::Stretch(factor) => format!("stretch {}/{}", factor.numer(), factor.denom()),
         ExpansionStep::Retrograde => "retrograde".to_owned(),
+        ExpansionStep::Inversion { ref axis } => format!("invert around {axis}"),
+        ExpansionStep::Specialization { .. } => "specialized".to_owned(),
     }
 }
 
@@ -476,6 +480,9 @@ fn call_site_name(source: &str, start: u32, end: u32) -> String {
     let range = usize::try_from(start).unwrap_or(0)..usize::try_from(end).unwrap_or(0);
     let text = source.get(range).unwrap_or("").trim();
     let text = text.strip_prefix("use").unwrap_or(text).trim();
+    // A specialized occurrence is still that motif's occurrence: the `with`
+    // clause says what this one does differently, not what it is called.
+    let text = text.split(" with").next().unwrap_or(text).trim();
     let text = text.strip_suffix(';').unwrap_or(text).trim();
     if text.is_empty() {
         "use".to_owned()

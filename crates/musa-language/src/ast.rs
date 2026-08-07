@@ -351,6 +351,12 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             DynamicStmt::cast(child).map(VoiceItem::Dynamic)
         } else if kind == SyntaxKind::TupletStmt {
             TupletStmt::cast(child).map(VoiceItem::Tuplet)
+        } else if kind == SyntaxKind::StretchStmt {
+            StretchStmt::cast(child).map(VoiceItem::Stretch)
+        } else if kind == SyntaxKind::RetrogradeStmt {
+            RetrogradeStmt::cast(child).map(VoiceItem::Retrograde)
+        } else if kind == SyntaxKind::InvertStmt {
+            InvertStmt::cast(child).map(VoiceItem::Invert)
         } else {
             None
         };
@@ -380,6 +386,12 @@ pub enum VoiceItem {
     Dynamic(DynamicStmt),
     /// `tuplet 3/2 { ... }`
     Tuplet(TupletStmt),
+    /// `stretch 3/2 { ... }`
+    Stretch(StretchStmt),
+    /// `retrograde { ... }`
+    Retrograde(RetrogradeStmt),
+    /// `invert around c5 { ... }`
+    Invert(InvertStmt),
 }
 
 /// The articulation names trailing a note or chord's duration.
@@ -490,6 +502,77 @@ impl UseStmt {
             .skip(1) // the motif name
             .map(|token| token.text().to_string())
             .collect()
+    }
+
+    /// The overrides specializing this occurrence, in source order. Empty
+    /// for an ordinary call — a `with` clause is the only thing that makes
+    /// one occurrence differ from its siblings (roadmap §9).
+    pub fn overrides(&self) -> Vec<OverrideStmt> {
+        self.0
+            .children()
+            .filter(|child| child.kind() == SyntaxKind::WithClause)
+            .flat_map(|clause| clause.children().filter_map(OverrideStmt::cast).collect::<Vec<_>>())
+            .collect()
+    }
+}
+
+/// One override inside a `with { ... }` clause: `note 2 = d5;`.
+pub struct OverrideStmt(SyntaxNode);
+wrapper!(OverrideStmt, SyntaxKind::OverrideStmt);
+
+impl OverrideStmt {
+    /// Which note of the occurrence this respells, counting from one.
+    pub fn position(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Integer)
+    }
+
+    /// The pitch it is respelled to.
+    pub fn pitch(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::PitchLiteral)
+    }
+}
+
+/// `stretch 3/2 { ... }`
+pub struct StretchStmt(SyntaxNode);
+wrapper!(StretchStmt, SyntaxKind::StretchStmt);
+
+impl StretchStmt {
+    /// The factor text (`3/2`, `2`), unreduced.
+    pub fn factor(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Rational).or_else(|| token_text(&self.0, SyntaxKind::Integer))
+    }
+
+    /// The block's items, in source order.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
+    }
+}
+
+/// `retrograde { ... }`
+pub struct RetrogradeStmt(SyntaxNode);
+wrapper!(RetrogradeStmt, SyntaxKind::RetrogradeStmt);
+
+impl RetrogradeStmt {
+    /// The block's items, in source order — the order they are *written*,
+    /// not the order they sound.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
+    }
+}
+
+/// `invert around c5 { ... }`
+pub struct InvertStmt(SyntaxNode);
+wrapper!(InvertStmt, SyntaxKind::InvertStmt);
+
+impl InvertStmt {
+    /// The axis pitch the block is mirrored about.
+    pub fn axis(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::PitchLiteral)
+    }
+
+    /// The block's items, in source order.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
     }
 }
 

@@ -152,6 +152,18 @@ pub enum EditIntent {
         /// What to write.
         statement: Statement,
     },
+    /// Respell one note of one motif occurrence, by adding or merging a
+    /// `with { note <n> = <pitch>; }` clause on the `use` at `at`
+    /// (roadmap §9).
+    Specialize {
+        /// The `use` statement's offset.
+        at: u32,
+        /// Which note of that occurrence, counting from one — the same
+        /// number the score inspector shows.
+        position: u32,
+        /// The new written pitch.
+        pitch: String,
+    },
     /// Lift the statements from `first` through `last` into a new `motif`
     /// declaration, leaving a `use` in their place.
     ExtractMotif {
@@ -192,6 +204,12 @@ pub enum EditError {
         /// The voice that was looked for.
         voice: String,
     },
+    /// The statement there is not a motif occurrence, so it has no notes of
+    /// its own to specialize.
+    NotAnOccurrence {
+        /// The offset of the statement that was found instead.
+        at: u32,
+    },
     /// The two ends of an extraction are not statements of the same block.
     NotSiblings,
     /// The document has no `score` block to place a motif before.
@@ -205,6 +223,9 @@ impl core::fmt::Display for EditError {
             Self::NotANote { at } => write!(formatter, "the statement at byte {at} is not a note"),
             Self::NoDuration { at } => write!(formatter, "the statement at byte {at} has no duration"),
             Self::NoVoice { ref part, ref voice } => write!(formatter, "no voice `{voice}` in part `{part}`"),
+            Self::NotAnOccurrence { at } => {
+                write!(formatter, "the statement at byte {at} is not a motif occurrence")
+            }
             Self::NotSiblings => write!(formatter, "an extraction must be one run of statements in one block"),
             Self::NoScore => write!(formatter, "the piece has no `score` block"),
         }
@@ -237,7 +258,67 @@ pub fn compute_edits(source: &str, intent: &EditIntent) -> Result<Vec<TextEdit>,
             ref anchor,
             ref statement,
         } => insert(&root, source, anchor, statement),
+        EditIntent::Specialize {
+            at,
+            position,
+            ref pitch,
+        } => specialize(&root, at, position, pitch),
         EditIntent::ExtractMotif { first, last, ref name } => extract_motif(&root, source, first, last, name),
+    }
+}
+
+/// Add or merge one `note <n> = <pitch>;` override on the `use` at `at`.
+///
+/// Three cases, and the difference between them is only punctuation: a call
+/// with no clause grows one in place of its `;`, a clause that already
+/// respells this note has that pitch replaced, and any other clause gains an
+/// override in position order — so a composer who specializes three notes
+/// reads them back in the order they are played.
+fn specialize(root: &SyntaxNode, at: u32, position: u32, pitch: &str) -> Result<Vec<TextEdit>, EditError> {
+    let statement = statement_at(root, at)?;
+    if statement.kind() != SyntaxKind::UseStmt {
+        return Err(EditError::NotAnOccurrence { at });
+    }
+    let written = format!("note {position} = {pitch};");
+    let Some(clause) = statement
+        .children()
+        .find(|child| child.kind() == SyntaxKind::WithClause)
+    else {
+        // `use sigh();` → `use sigh() with { note 2 = d5; }`. The call stops
+        // being a statement and becomes a block, so its `;` goes with it.
+        let semicolon = token_of(&statement, &[SyntaxKind::Semicolon])
+            .unwrap_or_else(|| TextRange::empty(trimmed(&statement).end()));
+        return Ok(vec![TextEdit::new(semicolon, format!(" with {{ {written} }}"))]);
+    };
+
+    let overrides: Vec<SyntaxNode> = clause
+        .children()
+        .filter(|child| child.kind() == SyntaxKind::OverrideStmt)
+        .collect();
+    let position_of = |node: &SyntaxNode| {
+        node.children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .find(|token| token.kind() == SyntaxKind::Integer)
+            .and_then(|token| token.text().parse::<u32>().ok())
+    };
+    if let Some(existing) = overrides.iter().find(|node| position_of(node) == Some(position)) {
+        let range = token_of(existing, &[SyntaxKind::PitchLiteral]).ok_or(EditError::NotAnOccurrence { at })?;
+        return Ok(vec![TextEdit::new(range, pitch.to_owned())]);
+    }
+    match overrides
+        .iter()
+        .find(|node| position_of(node).is_some_and(|existing| existing > position))
+    {
+        Some(later) => Ok(vec![TextEdit::new(
+            TextRange::empty(trimmed(later).start()),
+            format!("{written} "),
+        )]),
+        None => {
+            let last = overrides.last().map(|node| trimmed(node).end());
+            let brace = token_of(&clause, &[SyntaxKind::LBrace]).map(TextRange::end);
+            let point = last.or(brace).ok_or(EditError::NotAnOccurrence { at })?;
+            Ok(vec![TextEdit::new(TextRange::empty(point), format!(" {written}"))])
+        }
     }
 }
 
@@ -396,6 +477,9 @@ fn item_syntax(item: &crate::ast::VoiceItem) -> &SyntaxNode {
         crate::ast::VoiceItem::Slur(ref it) => it.syntax(),
         crate::ast::VoiceItem::Dynamic(ref it) => it.syntax(),
         crate::ast::VoiceItem::Tuplet(ref it) => it.syntax(),
+        crate::ast::VoiceItem::Stretch(ref it) => it.syntax(),
+        crate::ast::VoiceItem::Retrograde(ref it) => it.syntax(),
+        crate::ast::VoiceItem::Invert(ref it) => it.syntax(),
     }
 }
 

@@ -19,6 +19,7 @@
     naming = null,
     onorigin,
     onconfirm,
+    onspecialize,
     oncancel,
     onname,
     oncancelname,
@@ -49,6 +50,7 @@
      */
     choice?: EditImpact | null;
     onconfirm?: () => void;
+    onspecialize?: () => void;
     oncancel?: () => void;
     /**
      * How many notes an extraction is waiting to cover, or null when none is.
@@ -133,9 +135,18 @@
             {notes === 1 ? "note" : "notes"}</span
           >
         </button>
-        <button type="button" class="option" disabled>
+        <button
+          type="button"
+          class="option"
+          disabled={!choice.specializable}
+          onclick={() => onspecialize?.()}
+        >
           <span class="what">Just this occurrence</span>
-          <span class="cost">requires occurrence specialization, which musa cannot write yet</span>
+          <span class="cost"
+            >{choice.specializable
+              ? "changes this note, and writes it onto the call"
+              : "this call runs more than once, so an override would change every run"}</span
+          >
         </button>
         <button type="button" class="cancel" onclick={() => oncancel?.()}>Cancel</button>
       </div>

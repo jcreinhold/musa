@@ -26,11 +26,13 @@ pub enum GeneratedEditMode {
     /// Rewrite the motif's definition. Every occurrence of it changes, and
     /// [`EditImpact`] says how many before the edit is made.
     EditDefinition,
-    /// Give this occurrence its own copy and change only that. Requires
-    /// occurrence specialization (`use sigh() with { … }`), which arrives in
-    /// prompt 34; until then this is refused with
-    /// [`ProjectError::NotYetImplemented`] rather than quietly doing the
-    /// other thing.
+    /// Change this occurrence and only this one, by writing an override onto
+    /// its call: `use sigh() with { note 2 = d5; }` (roadmap §9). The motif
+    /// is untouched, and so is every other place that uses it.
+    ///
+    /// Only a pitch can be specialized. An override respells one note; it
+    /// does not renotate one, because a different duration would move every
+    /// note after it and the occurrence would no longer be that motif.
     Specialize,
 }
 
@@ -175,6 +177,11 @@ pub struct EditImpact {
     /// Every event that would change, so the interface can halo them without
     /// working out which ones they are.
     pub events: Vec<String>,
+    /// Whether this note can be changed on its own, by writing an override
+    /// onto its call. False when the call runs more than once — a `with`
+    /// clause belongs to the call, so there is no "just this one" there, and
+    /// the interface says so instead of offering it and failing.
+    pub specializable: bool,
 }
 
 impl EditImpact {
@@ -186,6 +193,7 @@ impl EditImpact {
             occurrence: None,
             occurrences: 0,
             events: vec![event.to_owned()],
+            specializable: false,
         }
     }
 }
@@ -246,6 +254,7 @@ pub(crate) fn impact(facts: &ScoreFacts, id: &str) -> Result<EditImpact, Project
         occurrence: occurrence_label(facts, target.origin.occurrence.as_deref()),
         occurrences: u32::try_from(occurrences.len()).unwrap_or(u32::MAX),
         events: affected.iter().map(|event| event.id.clone()).collect(),
+        specializable: override_site(facts, target).is_ok(),
     })
 }
 
@@ -262,6 +271,7 @@ pub(crate) fn impact_of(facts: &ScoreFacts, command: &EditCommand) -> Result<Edi
             occurrence: None,
             occurrences: 0,
             events: Vec::new(),
+            specializable: false,
         }),
         EditCommand::ExtractMotif { ref events, .. } => Ok(EditImpact {
             generated: false,
@@ -269,6 +279,7 @@ pub(crate) fn impact_of(facts: &ScoreFacts, command: &EditCommand) -> Result<Edi
             occurrence: None,
             occurrences: 0,
             events: events.clone(),
+            specializable: false,
         }),
     }
 }
@@ -289,15 +300,52 @@ fn site_offset(target: &EventFacts) -> u32 {
     target.origin.span.start
 }
 
-/// Refuse a specialization cleanly rather than silently editing the
-/// definition instead (`04-provenance.md` §4).
-fn check_mode(generated: bool, mode: GeneratedEditMode) -> Result<(), ProjectError> {
+/// The `use` this event's occurrence ran, and which note of it this is.
+///
+/// Both come from provenance rather than from counting: the occurrence knows
+/// its call site, and the event knows its position within the occurrence —
+/// the same `▸ note 3` the inspector shows, which is what the composer sees
+/// when they decide to specialize.
+fn override_site(facts: &ScoreFacts, target: &EventFacts) -> Result<(u32, u32), ProjectError> {
+    let id = target
+        .origin
+        .occurrence
+        .as_deref()
+        .ok_or_else(|| ProjectError::Uneditable("this note has no occurrence to specialize".to_owned()))?;
+    let occurrence = facts
+        .occurrences
+        .iter()
+        .find(|occurrence| occurrence.id == id)
+        .ok_or_else(|| ProjectError::Uneditable("this note has no occurrence to specialize".to_owned()))?;
+    // A `use` inside a `repeat` runs more than once, and a `with` clause
+    // belongs to the call rather than to one run of it. Specializing there
+    // would change every iteration, which is the thing this mode exists to
+    // avoid, so it is refused by name.
+    let sharing = facts
+        .occurrences
+        .iter()
+        .filter(|other| other.use_site == occurrence.use_site)
+        .count();
+    if sharing > 1 {
+        return Err(ProjectError::Uneditable(
+            "this call runs more than once, so an override would change every run; edit the motif or unroll the repeat"
+                .to_owned(),
+        ));
+    }
+    let position = target
+        .origin
+        .note_index
+        .ok_or_else(|| ProjectError::Uneditable("this note has no position in its occurrence".to_owned()))?;
+    Ok((occurrence.use_site.start, position))
+}
+
+/// Whether this edit should be written onto the occurrence rather than onto
+/// the definition. Authored music has no occurrence, so the mode is moot
+/// there and the composer's own note is what gets rewritten.
+fn specializing(generated: bool, mode: GeneratedEditMode) -> bool {
     match mode {
-        GeneratedEditMode::EditDefinition => Ok(()),
-        GeneratedEditMode::Specialize if !generated => Ok(()),
-        GeneratedEditMode::Specialize => Err(ProjectError::NotYetImplemented {
-            feature: "occurrence specialization (`use sigh() with { … }`)",
-        }),
+        GeneratedEditMode::EditDefinition => false,
+        GeneratedEditMode::Specialize => generated,
     }
 }
 
@@ -316,7 +364,14 @@ pub(crate) fn intent_of(facts: &ScoreFacts, command: &EditCommand) -> Result<Edi
             mode,
         } => {
             let target = event(facts, id)?;
-            check_mode(target.origin.generated, mode)?;
+            if specializing(target.origin.generated, mode) {
+                let (at, position) = override_site(facts, target)?;
+                return Ok(EditIntent::Specialize {
+                    at,
+                    position,
+                    pitch: pitch.clone(),
+                });
+            }
             Ok(EditIntent::SetPitch {
                 at: definition_offset(target),
                 pitch: pitch.clone(),
@@ -328,7 +383,15 @@ pub(crate) fn intent_of(facts: &ScoreFacts, command: &EditCommand) -> Result<Edi
             mode,
         } => {
             let target = event(facts, id)?;
-            check_mode(target.origin.generated, mode)?;
+            if specializing(target.origin.generated, mode) {
+                // An override respells one note. Renotating one inside an
+                // occurrence would move every note after it, and the
+                // occurrence would no longer be that motif — which is a
+                // different edit than the composer asked for.
+                return Err(ProjectError::Uneditable(
+                    "an override respells a note; to renotate one, edit the motif".to_owned(),
+                ));
+            }
             Ok(EditIntent::SetDuration {
                 at: definition_offset(target),
                 duration: duration.clone(),

@@ -60,6 +60,11 @@ export interface EditImpact {
   occurrences: number;
   /** Every event that would change. */
   events: string[];
+  /**
+   * Whether this note can be changed on its own. False when its call runs
+   * more than once: an override belongs to the call, not to one run of it.
+   */
+  specializable: boolean;
 }
 
 /**

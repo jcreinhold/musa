@@ -259,10 +259,115 @@ fn typed_views_read_the_new_statements() {
             | VoiceItem::Chord(_)
             | VoiceItem::Use(_)
             | VoiceItem::Transpose(_)
-            | VoiceItem::Repeat(_) => panic!("unexpected item"),
+            | VoiceItem::Repeat(_)
+            | VoiceItem::Stretch(_)
+            | VoiceItem::Retrograde(_)
+            | VoiceItem::Invert(_) => panic!("unexpected item"),
         }
     }
     assert_eq!(mark.as_deref(), Some("mf"));
     assert_eq!(ratio.as_deref(), Some("3/2"));
     assert_eq!(slurred, vec![true, false], "only the first note is tied");
+}
+
+#[test]
+fn the_transformations_and_their_bodies_are_typed_views() {
+    let source = "piece \"x\" { score { part p { voice v { \
+                  stretch 3/2 { c4 1/4; } retrograde { d4 1/4; e4 1/4; } \
+                  invert around c5 { f4 1/4; } } } } }";
+    let doc = parse(source);
+    assert_eq!(print_errors(&doc), "");
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");
+    let items = piece
+        .score()
+        .and_then(|score| score.parts().into_iter().next())
+        .and_then(|part| part.voices().into_iter().next())
+        .expect("voice")
+        .items();
+
+    assert_eq!(items.len(), 3, "stretch, retrograde, invert");
+    let mut factor = None;
+    let mut reversed = 0;
+    let mut axis = None;
+    for item in items {
+        match item {
+            VoiceItem::Stretch(stretch) => {
+                factor = stretch.factor();
+                assert_eq!(stretch.items().len(), 1);
+            }
+            // The block's items are in the order they are *written*. That
+            // they sound backwards is elaboration's business, not the tree's.
+            VoiceItem::Retrograde(retrograde) => reversed = retrograde.items().len(),
+            VoiceItem::Invert(invert) => {
+                axis = invert.axis();
+                assert_eq!(invert.items().len(), 1);
+            }
+            VoiceItem::Note(_)
+            | VoiceItem::Rest(_)
+            | VoiceItem::Chord(_)
+            | VoiceItem::Use(_)
+            | VoiceItem::Transpose(_)
+            | VoiceItem::Repeat(_)
+            | VoiceItem::Slur(_)
+            | VoiceItem::Dynamic(_)
+            | VoiceItem::Tuplet(_) => panic!("unexpected item"),
+        }
+    }
+    assert_eq!(factor.as_deref(), Some("3/2"));
+    assert_eq!(reversed, 2);
+    assert_eq!(axis.as_deref(), Some("c5"));
+}
+
+#[test]
+fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
+    let source = "piece \"x\" { motif m() { c4 1/4; } score { part p { voice v { \
+                  use m(); use m() with { note 2 = d5; note 3 = ef5; } } } } }";
+    let doc = parse(source);
+    assert_eq!(print_errors(&doc), "");
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");
+    let items = piece
+        .score()
+        .and_then(|score| score.parts().into_iter().next())
+        .and_then(|part| part.voices().into_iter().next())
+        .expect("voice")
+        .items();
+
+    let calls: Vec<_> = items
+        .into_iter()
+        .filter_map(|item| match item {
+            VoiceItem::Use(call) => Some(call),
+            VoiceItem::Note(_)
+            | VoiceItem::Rest(_)
+            | VoiceItem::Chord(_)
+            | VoiceItem::Transpose(_)
+            | VoiceItem::Repeat(_)
+            | VoiceItem::Slur(_)
+            | VoiceItem::Dynamic(_)
+            | VoiceItem::Tuplet(_)
+            | VoiceItem::Stretch(_)
+            | VoiceItem::Retrograde(_)
+            | VoiceItem::Invert(_) => None,
+        })
+        .collect();
+    assert_eq!(calls.len(), 2);
+    let plain = calls.first().expect("the plain call");
+    assert!(plain.overrides().is_empty(), "an ordinary call specializes nothing");
+    // The clause's tokens are not the call's arguments: a specialized
+    // occurrence still calls the motif with what it was given.
+    assert_eq!(plain.args(), Vec::<String>::new());
+
+    let special = calls.get(1).expect("the specialized call");
+    assert_eq!(special.args(), Vec::<String>::new());
+    let spelled: Vec<(Option<String>, Option<String>)> = special
+        .overrides()
+        .iter()
+        .map(|each| (each.position(), each.pitch()))
+        .collect();
+    assert_eq!(
+        spelled,
+        vec![
+            (Some("2".to_owned()), Some("d5".to_owned())),
+            (Some("3".to_owned()), Some("ef5".to_owned())),
+        ]
+    );
 }

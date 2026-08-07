@@ -270,6 +270,18 @@ enum RawToken {
     OutputKw,
     #[token("pitch", priority = 3)]
     PitchKw,
+    #[token("stretch", priority = 3)]
+    StretchKw,
+    #[token("retrograde", priority = 3)]
+    RetrogradeKw,
+    #[token("invert", priority = 3)]
+    InvertKw,
+    #[token("around", priority = 3)]
+    AroundKw,
+    #[token("with", priority = 3)]
+    WithKw,
+    #[token("note", priority = 3)]
+    NoteKw,
 }
 
 impl RawToken {
@@ -341,7 +353,13 @@ impl RawToken {
             | Self::MasterKw
             | Self::AtKw
             | Self::OutputKw
-            | Self::PitchKw => None,
+            | Self::PitchKw
+            | Self::StretchKw
+            | Self::RetrogradeKw
+            | Self::InvertKw
+            | Self::AroundKw
+            | Self::WithKw
+            | Self::NoteKw => None,
         }
     }
 
@@ -411,6 +429,12 @@ impl RawToken {
             Self::AtKw => SyntaxKind::AtKw,
             Self::OutputKw => SyntaxKind::OutputKw,
             Self::PitchKw => SyntaxKind::PitchKw,
+            Self::StretchKw => SyntaxKind::StretchKw,
+            Self::RetrogradeKw => SyntaxKind::RetrogradeKw,
+            Self::InvertKw => SyntaxKind::InvertKw,
+            Self::AroundKw => SyntaxKind::AroundKw,
+            Self::WithKw => SyntaxKind::WithKw,
+            Self::NoteKw => SyntaxKind::NoteKw,
         }
     }
 }

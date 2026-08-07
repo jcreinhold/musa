@@ -672,6 +672,9 @@ fn lower_items(
             VoiceItem::Slur(item) => reject(lowering, "slur", item.syntax()),
             VoiceItem::Dynamic(item) => reject(lowering, "dynamic", item.syntax()),
             VoiceItem::Tuplet(item) => reject(lowering, "tuplet", item.syntax()),
+            VoiceItem::Stretch(item) => reject(lowering, "stretch", item.syntax()),
+            VoiceItem::Retrograde(item) => reject(lowering, "retrograde", item.syntax()),
+            VoiceItem::Invert(item) => reject(lowering, "invert", item.syntax()),
         }
     }
 }

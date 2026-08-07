@@ -110,8 +110,8 @@ test("editing a generated note asks first, and states what it would change", asy
   // consequence can be read off the page rather than believed.
   await expect(page.locator(".overlay rect.selection")).toHaveCount(2);
 
-  // The second answer is honest about not existing yet rather than absent.
-  await expect(choice.getByRole("button", { name: /Just this occurrence/ })).toBeDisabled();
+  // Both answers are live: this call runs once, so it can carry an override.
+  await expect(choice.getByRole("button", { name: /Just this occurrence/ })).toBeEnabled();
 
   await choice.getByRole("button", { name: /Edit the motif/ }).click();
   await expect(choice).toBeHidden();
@@ -258,4 +258,25 @@ test("unsaved work says whether it is kept, and a saved piece says nothing", asy
   // Saving is the only state that needs no words: the file has the work.
   await page.evaluate(() => window.__musaSet({ unsaved: false, autosaved: false }));
   await expect(page.getByText(/^Unsaved/)).toHaveCount(0);
+});
+
+test("the other answer changes this occurrence and says which", async ({ page }) => {
+  await page.locator('.engraving [id="event-0"] use').click({ force: true });
+  await inScore(page);
+  await page.keyboard.press("n");
+  await page.keyboard.press("g");
+
+  const choice = page.getByRole("group", { name: "Editing generated music" });
+  await choice.getByRole("button", { name: /Just this occurrence/ }).click();
+  await expect(choice).toBeHidden();
+
+  await settled(page, 1);
+  const asked = await edits(page);
+  expect(asked[0]).toMatchObject({
+    kind: "changePitch",
+    event: "event-0",
+    pitch: "g5",
+    mode: "specialize",
+  });
+  await expect(page.locator("p.notice")).toContainText("one note changed");
 });

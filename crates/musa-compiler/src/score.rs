@@ -49,6 +49,15 @@ pub struct ScoreEvent {
     pub kind: ScoreEventKind,
 }
 
+/// How the language writes a duration value: `1`, `1/4`, `3/8`.
+fn spell_value(value: Ratio<i64>) -> String {
+    if *value.denom() == 1 {
+        value.numer().to_string()
+    } else {
+        format!("{}/{}", value.numer(), value.denom())
+    }
+}
+
 /// A written duration: exact temporal value plus its notational spelling
 /// (roadmap §6.3: a dotted quarter and a tied quarter+eighth share a span
 /// but not a notation).
@@ -94,6 +103,30 @@ impl NotatedDuration {
                 .iter()
                 .map(|piece| MusicalDuration::new(piece.as_ratio() * factor))
                 .collect(),
+        }
+    }
+
+    /// The same duration written out `factor` times as long — what an
+    /// augmentation does to the page.
+    ///
+    /// Unlike [`Self::scaled`], which is a tuplet and keeps the written
+    /// symbol while changing what it sounds for, this respells: a quarter
+    /// stretched by two *is* a half note, and the inspector must say so.
+    pub(crate) fn stretched(&self, factor: Ratio<i64>) -> Self {
+        let pieces: Vec<MusicalDuration> = self
+            .pieces
+            .iter()
+            .map(|piece| MusicalDuration::new(piece.as_ratio() * factor))
+            .collect();
+        let spelling = pieces
+            .iter()
+            .map(|piece| spell_value(piece.as_ratio()))
+            .collect::<Vec<_>>()
+            .join(" ~ ");
+        Self {
+            value: MusicalDuration::new(self.value.as_ratio() * factor),
+            spelling,
+            pieces,
         }
     }
 

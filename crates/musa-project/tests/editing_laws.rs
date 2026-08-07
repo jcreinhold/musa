@@ -140,26 +140,111 @@ fn editing_a_definition_changes_every_occurrence_at_once() {
 }
 
 #[test]
-fn specialization_is_refused_by_name_rather_than_done_differently() {
+fn specializing_a_note_changes_that_occurrence_and_no_other() {
     let mut session = session("glass-mountain.musa");
     let facts = score_facts(&session);
-    let id = nth_event(&facts, "lead", 2);
+    let id = nth_event(&facts, "lead", 2); // the `c5 1/2;` of the plain occurrence
+
+    // The core says the choice is available before it is offered.
+    let impact = session
+        .edit_impact(&EditCommand::ChangePitch {
+            event: id.clone(),
+            pitch: "d5".to_owned(),
+            mode: GeneratedEditMode::Specialize,
+        })
+        .expect("a generated note");
+    assert!(impact.generated);
+    assert!(impact.specializable, "this call runs once, so it can be specialized");
+
+    session
+        .apply(ProjectCommand::EditScore(EditCommand::ChangePitch {
+            event: id,
+            pitch: "d5".to_owned(),
+            mode: GeneratedEditMode::Specialize,
+        }))
+        .expect("the specialization applies");
+
+    let text = source(&session);
+    assert!(
+        text.contains("use sigh() with { note 3 = d5; }"),
+        "the occurrence carries its own override:\n{text}"
+    );
+    assert!(text.contains("        c5 1/2;"), "and the motif is untouched");
+
+    // One occurrence sounds the new note; the transposed one still sounds
+    // what the motif says, a fifth down.
+    let after = score_facts(&session);
+    let voices: Vec<&str> = after
+        .events
+        .iter()
+        .filter(|event| event.voice == "lead")
+        .filter_map(|event| event.pitch.as_deref())
+        .collect();
+    assert_eq!(voices.iter().filter(|pitch| **pitch == "D5").count(), 1);
+    assert!(
+        voices.contains(&"F4"),
+        "the transposed occurrence still sounds the motif's note a fifth down: {voices:?}"
+    );
+}
+
+#[test]
+fn a_call_that_runs_more_than_once_says_why_it_cannot_be_specialized() {
+    // A `with` clause belongs to the call, so specializing a note inside a
+    // `repeat` would change every run of it. That is exactly what the mode
+    // promises not to do, so it is refused rather than approximated.
+    let mut session = ProjectSession::from_text(
+        r#"piece "Etude" {
+    motif sigh() { e5 1/2; c5 1/2; }
+    score { part piano { voice right { repeat 2 { use sigh(); } } } }
+}
+"#
+        .to_owned(),
+        "etude.musa",
+    );
+    let facts = score_facts(&session);
+    let id = nth_event(&facts, "right", 0);
     let before = source(&session);
 
-    let refused = session.apply(ProjectCommand::EditScore(EditCommand::ChangePitch {
+    let impact = session
+        .edit_impact(&EditCommand::ChangePitch {
+            event: id.clone(),
+            pitch: "d5".to_owned(),
+            mode: GeneratedEditMode::Specialize,
+        })
+        .expect("a generated note");
+    assert!(!impact.specializable, "the interface is told before it offers it");
+
+    match session.apply(ProjectCommand::EditScore(EditCommand::ChangePitch {
         event: id,
         pitch: "d5".to_owned(),
         mode: GeneratedEditMode::Specialize,
-    }));
-
-    match refused {
-        Err(ProjectError::NotYetImplemented { feature }) => {
-            assert!(feature.contains("specialization"), "it says what is missing: {feature}");
+    })) {
+        Err(ProjectError::Uneditable(reason)) => {
+            assert!(reason.contains("more than once"), "it says why: {reason}");
         }
         Err(other) => panic!("the wrong refusal: {other}"),
-        Ok(_) => panic!("specialization must not silently edit the definition"),
+        Ok(_) => panic!("specializing a repeated call must not change every run"),
     }
     assert_eq!(source(&session), before, "and nothing happened");
+}
+
+#[test]
+fn a_duration_cannot_be_specialized_and_says_so() {
+    let mut session = session("glass-mountain.musa");
+    let facts = score_facts(&session);
+    let id = nth_event(&facts, "lead", 2);
+
+    match session.apply(ProjectCommand::EditScore(EditCommand::ChangeDuration {
+        event: id,
+        duration: "1/4".to_owned(),
+        mode: GeneratedEditMode::Specialize,
+    })) {
+        Err(ProjectError::Uneditable(reason)) => {
+            assert!(reason.contains("respells"), "it says what an override does: {reason}");
+        }
+        Err(other) => panic!("the wrong refusal: {other}"),
+        Ok(_) => panic!("an override cannot renotate a note"),
+    }
 }
 
 #[test]

@@ -126,6 +126,26 @@ impl VoicePayload {
         }
     }
 
+    /// The same fact sounding and notated `factor` times as long.
+    fn stretched(&self, factor: Ratio<i64>) -> Self {
+        let mut stretched = self.clone();
+        stretched.duration = self.duration.stretched(factor);
+        stretched
+    }
+
+    /// The same fact with its pitch mirrored about `axis`, or `None` when
+    /// the mirror image is not spellable (roadmap §5.4's meaningful failure).
+    fn inverted(&self, axis: WrittenPitch) -> Option<Self> {
+        let PayloadKind::Note { pitch } = self.kind else {
+            return Some(self.clone());
+        };
+        let mut inverted = self.clone();
+        inverted.kind = PayloadKind::Note {
+            pitch: pitch.invert(axis)?,
+        };
+        Some(inverted)
+    }
+
     fn rest(part: u32, voice: u32, origin: Origin, duration: NotatedDuration, marks: Marks) -> Self {
         Self {
             part,
@@ -472,6 +492,62 @@ fn elaborate_item(
             inner.scale = cx.scale * Ratio::new(i64::from(den), i64::from(num));
             elaborate_items(lowering, &tuplet.items(), &inner, part, voice, &inner_groups, pending)
         }
+        VoiceItem::Stretch(stretch) => {
+            let text = stretch.factor().unwrap_or_default();
+            let span = lower::trimmed_span(stretch.syntax());
+            let factor = lower::parse_ratio(&text).or_else(|| text.parse::<i64>().ok().map(Ratio::from_integer));
+            let Some(factor) = factor.filter(|factor| *factor > Ratio::ZERO) else {
+                lowering.error(format!("`{text}` is not a positive stretch factor such as `3/2`"), span);
+                return empty_segment();
+            };
+            let mut inner = cx.clone();
+            inner.path.push(ExpansionStep::Stretch(factor));
+            let elaborated = elaborate_items(lowering, &stretch.items(), &inner, part, voice, groups, pending);
+            // The kernel's time-scaling action (course correction §14) plus
+            // the matching renotation: a stretched quarter is *written* as a
+            // half, not as a quarter that lasts twice as long.
+            elaborated
+                .map_payload(|payload| payload.stretched(factor))
+                .scale(factor)
+                .unwrap_or_else(|_| empty_segment())
+        }
+        VoiceItem::Retrograde(retrograde) => {
+            let mut inner = cx.clone();
+            inner.path.push(ExpansionStep::Retrograde);
+            let elaborated = elaborate_items(lowering, &retrograde.items(), &inner, part, voice, groups, pending);
+            reverse(&elaborated)
+        }
+        VoiceItem::Invert(invert) => {
+            let text = invert.axis().unwrap_or_default();
+            let span = lower::trimmed_span(invert.syntax());
+            let Some(axis) = WrittenPitch::parse(&text) else {
+                lowering.error(format!("`{text}` is not a pitch to invert around"), span);
+                return empty_segment();
+            };
+            let mut inner = cx.clone();
+            inner.path.push(ExpansionStep::Inversion { axis: text.clone() });
+            let elaborated = elaborate_items(lowering, &invert.items(), &inner, part, voice, groups, pending);
+            // Inversion is a payload map (course correction §13). A note
+            // whose mirror image is unspellable is reported where it is
+            // written and left alone, so one impossible note does not take
+            // the rest of the phrase with it.
+            let refused = std::cell::RefCell::new(Vec::new());
+            let inverted = elaborated.map_payload(|payload| {
+                payload.inverted(axis).unwrap_or_else(|| {
+                    if let PayloadKind::Note { pitch } = payload.kind {
+                        refused.borrow_mut().push((pitch, payload.origin.definition_span));
+                    }
+                    payload.clone()
+                })
+            });
+            for (pitch, at) in refused.into_inner() {
+                lowering.error(
+                    format!("`{pitch}` inverted around `{text}` needs more than a double accidental"),
+                    at,
+                );
+            }
+            inverted
+        }
         VoiceItem::Dynamic(dynamic) => {
             let text = dynamic.mark().unwrap_or_default();
             let span = lower::trimmed_span(dynamic.syntax());
@@ -579,7 +655,187 @@ fn elaborate_use(
         max_motif: index,
         scale: cx.scale,
     };
-    elaborate_items(lowering, &body, &inner, part, voice, groups, pending)
+    let elaborated = elaborate_items(lowering, &body, &inner, part, voice, groups, pending);
+    specialize(lowering, call, &elaborated)
+}
+
+/// Apply an occurrence's `with { note n = <pitch>; }` overrides (roadmap §9).
+///
+/// The ordinal counts the occurrence's *events* in time order, from one: a
+/// chord is one position rather than one per pitch, and a rest takes a
+/// position it cannot be given a pitch at. That is the same count the score
+/// inspector shows as `▸ note 3` (`musa-project`'s `OriginFacts::note_index`),
+/// and the two must agree — a composer reading a position off the score and
+/// typing it into a `with` clause is naming the note they are looking at.
+///
+/// Overrides apply after the body elaborates, so what they respell is what
+/// this call actually produced — including notes a transposition or an
+/// inversion around it already moved.
+///
+/// Every override that lands records itself in the note's provenance, so the
+/// score can still say both "this came from the motif" and "and this call
+/// changed it" (roadmap §8.3).
+fn specialize(
+    lowering: &mut Lowering,
+    call: &musa_language::ast::UseStmt,
+    elaborated: &Timeline<VoicePayload>,
+) -> Timeline<VoicePayload> {
+    let overrides = call.overrides();
+    if overrides.is_empty() {
+        return elaborated.clone();
+    }
+    // The positions of this occurrence: one entry per group of occurrences
+    // sharing a span, which is how a chord's pitches become one position.
+    let mut positions: Vec<(usize, usize)> = Vec::new();
+    for (index, occurrence) in elaborated.occurrences().iter().enumerate() {
+        match positions.last_mut() {
+            Some(&mut (start, ref mut end))
+                if elaborated
+                    .occurrences()
+                    .get(start)
+                    .is_some_and(|first| first.span() == occurrence.span()) =>
+            {
+                *end = index.saturating_add(1);
+            }
+            _ => positions.push((index, index.saturating_add(1))),
+        }
+    }
+
+    let mut replacements: indexmap::IndexMap<usize, (WrittenPitch, SourceSpan)> = indexmap::IndexMap::new();
+    for each in &overrides {
+        let at = lower::trimmed_span(each.syntax());
+        let Some(position) = each
+            .position()
+            .and_then(|text| text.parse::<usize>().ok())
+            .filter(|n| *n > 0)
+        else {
+            lowering.error("a note override counts from `note 1`", at);
+            continue;
+        };
+        let Some(pitch) = each.pitch().as_deref().and_then(WrittenPitch::parse) else {
+            lowering.error("this override does not name a pitch", at);
+            continue;
+        };
+        let Some(&(start, end)) = positions.get(position.saturating_sub(1)) else {
+            lowering.error(
+                format!(
+                    "this occurrence has {} note{}, so there is no `note {position}`",
+                    positions.len(),
+                    if positions.len() == 1 { "" } else { "s" }
+                ),
+                at,
+            );
+            continue;
+        };
+        if end.saturating_sub(start) > 1 {
+            lowering.error(
+                format!("`note {position}` is a chord; an override respells one note"),
+                at,
+            );
+            continue;
+        }
+        if !matches!(
+            elaborated.occurrences().get(start).map(|it| &it.payload().kind),
+            Some(&PayloadKind::Note { .. })
+        ) {
+            lowering.error(format!("`note {position}` is a rest; an override respells a note"), at);
+            continue;
+        }
+        if replacements.insert(start, (pitch, at)).is_some() {
+            lowering.error(format!("`note {position}` is overridden twice"), at);
+        }
+    }
+    if replacements.is_empty() {
+        return elaborated.clone();
+    }
+
+    let occurrences: Vec<Occurrence<VoicePayload>> = elaborated
+        .occurrences()
+        .iter()
+        .enumerate()
+        .map(|(index, occurrence)| {
+            let Some(&(pitch, at)) = replacements.get(&index) else {
+                return occurrence.clone();
+            };
+            let mut payload = occurrence.payload().clone();
+            payload.kind = PayloadKind::Note { pitch };
+            payload
+                .origin
+                .expansion_path
+                .push(ExpansionStep::Specialization { override_site: at });
+            Occurrence::new(occurrence.span(), payload)
+        })
+        .collect();
+    timeline_or_empty(elaborated.extent(), occurrences)
+}
+
+/// The derived time reversal (roadmap §5.4, prompt 34): `(d, E)` becomes
+/// `(d, {(d−e, d−s, a)})`.
+///
+/// A plain function over an elaborated timeline, deliberately: the kernel
+/// needs no reversal primitive to express it, which is the evidence
+/// `docs/kernel/08-open-questions.md` records for §34's smallest complete
+/// basis.
+///
+/// Every mark stays with the note that carries it — a staccato is written on
+/// a note, and reversing time does not move it. The tie is the exception,
+/// because it is a relation *between* two notes rather than a property of
+/// one: reversed, the tie belongs to what is now the earlier of the pair.
+fn reverse(timeline: &Timeline<VoicePayload>) -> Timeline<VoicePayload> {
+    let extent = timeline.extent();
+    let mut mirrored: Vec<Occurrence<VoicePayload>> = timeline
+        .occurrences()
+        .iter()
+        .map(|occurrence| {
+            let span = occurrence.span();
+            let start = Beat::new(extent.as_ratio() - span.end().as_ratio());
+            let end = Beat::new(extent.as_ratio() - span.start().as_ratio());
+            let mirrored = Span::new(start, end).unwrap_or(Span::ZERO);
+            Occurrence::new(mirrored, occurrence.payload().clone())
+        })
+        .collect();
+    // Stable by start, so the members of a chord stay adjacent and in the
+    // order the adapter expects.
+    mirrored.sort_by_key(|occurrence| (occurrence.span().start(), occurrence.span().end()));
+    timeline_or_empty(extent, retie(&mirrored))
+}
+
+/// Move tie marks back one sounding position, in the reversed order.
+///
+/// A tie says "and the next one continues this". After reversal the pair
+/// still sounds together, in the other order, so the mark moves from the
+/// note that had it to the note it pointed at.
+fn retie(occurrences: &[Occurrence<VoicePayload>]) -> Vec<Occurrence<VoicePayload>> {
+    let mut groups: Vec<(usize, usize)> = Vec::new();
+    for (index, occurrence) in occurrences.iter().enumerate() {
+        let span = occurrence.span();
+        match groups.last_mut() {
+            Some(&mut (start, ref mut end)) if occurrences.get(start).is_some_and(|first| first.span() == span) => {
+                *end = index.saturating_add(1);
+            }
+            _ => groups.push((index, index.saturating_add(1))),
+        }
+    }
+    let ties: Vec<bool> = groups
+        .iter()
+        .map(|&(start, _)| occurrences.get(start).is_some_and(|first| first.payload().marks.tie))
+        .collect();
+    let mut retied = Vec::with_capacity(occurrences.len());
+    for (position, &(start, end)) in groups.iter().enumerate() {
+        let tie = ties.get(position.saturating_add(1)).copied().unwrap_or(false);
+        for occurrence in occurrences.get(start..end).unwrap_or_default() {
+            let mut payload = occurrence.payload().clone();
+            payload.marks.tie = tie;
+            retied.push(Occurrence::new(occurrence.span(), payload));
+        }
+    }
+    retied
+}
+
+/// A timeline over `extent`, or the empty segment when the occurrences do
+/// not fit it (unreachable for elaborated music; never a panic).
+fn timeline_or_empty(extent: Beat, occurrences: Vec<Occurrence<VoicePayload>>) -> Timeline<VoicePayload> {
+    timeline(extent, occurrences).unwrap_or_else(|_| musa_kernel::zero())
 }
 
 /// The empty segment `(0, ∅)` — contributes nothing to the sequence.

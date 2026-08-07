@@ -109,6 +109,9 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::SlurKw,
     SyntaxKind::DynamicKw,
     SyntaxKind::TupletKw,
+    SyntaxKind::StretchKw,
+    SyntaxKind::RetrogradeKw,
+    SyntaxKind::InvertKw,
 ];
 
 struct Parser<'a> {
@@ -848,8 +851,16 @@ impl<'a> Parser<'a> {
                 self.dynamic_stmt();
             } else if self.at(SyntaxKind::TupletKw) {
                 self.tuplet_stmt();
+            } else if self.at(SyntaxKind::StretchKw) {
+                self.stretch_stmt();
+            } else if self.at(SyntaxKind::RetrogradeKw) {
+                self.retrograde_stmt();
+            } else if self.at(SyntaxKind::InvertKw) {
+                self.invert_stmt();
             } else {
-                self.error_here("expected a note, rest, chord, use, transpose, repeat, slur, dynamic, or tuplet");
+                self.error_here(
+                    "expected a note, rest, chord, use, transpose, stretch, retrograde, invert, repeat, slur, dynamic, or tuplet",
+                );
                 self.recover(VOICE_RECOVERY);
             }
         }
@@ -953,6 +964,44 @@ impl<'a> Parser<'a> {
             }
         }
         self.expect(SyntaxKind::RParen, "`)`");
+        // `with { ... }` specializes this occurrence and only this one
+        // (roadmap §9). A call that ends there is a block, not a statement,
+        // so it takes no `;` — the same shape every other block has.
+        if self.at(SyntaxKind::WithKw) {
+            self.with_clause();
+        } else {
+            self.expect(SyntaxKind::Semicolon, "`;`");
+        }
+        self.finish();
+    }
+
+    /// `with { note <n> = <pitch>; ... }` — overrides on one occurrence.
+    fn with_clause(&mut self) {
+        self.start(SyntaxKind::WithClause);
+        self.bump(); // with
+        self.expect(SyntaxKind::LBrace, "`{`");
+        loop {
+            if self.at(SyntaxKind::RBrace) || self.current().is_none() {
+                break;
+            }
+            if self.at(SyntaxKind::NoteKw) {
+                self.override_stmt();
+            } else {
+                self.error_here("expected an override such as `note 2 = d5;`");
+                self.recover(&[SyntaxKind::Semicolon, SyntaxKind::RBrace, SyntaxKind::NoteKw]);
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `note <n> = <pitch>;` — the nth note of this occurrence, respelled.
+    fn override_stmt(&mut self) {
+        self.start(SyntaxKind::OverrideStmt);
+        self.bump(); // note
+        self.expect(SyntaxKind::Integer, "the note's position in the occurrence");
+        self.expect(SyntaxKind::Equals, "`=`");
+        self.expect(SyntaxKind::PitchLiteral, "a pitch");
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }
@@ -994,6 +1043,37 @@ impl<'a> Parser<'a> {
         self.bump(); // dynamic
         self.expect(SyntaxKind::Identifier, "a dynamic marking such as `p` or `mf`");
         self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `stretch <n>/<d> { ... }` — the block, its durations multiplied.
+    fn stretch_stmt(&mut self) {
+        self.start(SyntaxKind::StretchStmt);
+        self.bump(); // stretch
+        if self.at_any(&[SyntaxKind::Rational, SyntaxKind::Integer]) {
+            self.bump();
+        } else {
+            self.error_here("expected a factor such as `3/2` or `2`");
+        }
+        self.block();
+        self.finish();
+    }
+
+    /// `retrograde { ... }` — the block, backwards.
+    fn retrograde_stmt(&mut self) {
+        self.start(SyntaxKind::RetrogradeStmt);
+        self.bump(); // retrograde
+        self.block();
+        self.finish();
+    }
+
+    /// `invert around <pitch> { ... }` — the block, mirrored about a pitch.
+    fn invert_stmt(&mut self) {
+        self.start(SyntaxKind::InvertStmt);
+        self.bump(); // invert
+        self.expect(SyntaxKind::AroundKw, "`around`");
+        self.expect(SyntaxKind::PitchLiteral, "the axis pitch, such as `c5`");
+        self.block();
         self.finish();
     }
 

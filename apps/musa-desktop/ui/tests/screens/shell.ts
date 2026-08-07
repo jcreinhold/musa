@@ -94,7 +94,14 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
       const origin = target?.origin;
       if (!origin?.generated) {
         const events = target ? [target.id] : [];
-        return { generated: false, motif: null, occurrence: null, occurrences: 0, events };
+        return {
+          generated: false,
+          motif: null,
+          occurrence: null,
+          occurrences: 0,
+          events,
+          specializable: false,
+        };
       }
       const kin = notes().filter(
         (note) =>
@@ -102,15 +109,24 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
           note.origin.definitionSpan.end === origin.definitionSpan.end,
       );
       const occurrences = new Set(kin.map((note) => note.origin.occurrence));
-      const expansions = (current.score as { occurrences?: { id: string; label: string }[] })
-        .occurrences;
+      const expansions = (
+        current.score as {
+          occurrences?: { id: string; label: string; useSite: { start: number; end: number } }[];
+        }
+      ).occurrences;
       const label = (expansions ?? []).find((each) => each.id === origin.occurrence);
+      // A `with` clause belongs to the call, so an occurrence whose call also
+      // produced other occurrences — a `use` inside a `repeat` — has no "just
+      // this one". Same rule as the core's, over the same facts.
+      const runs = (expansions ?? []).filter((each) => each.useSite.start === label?.useSite.start)
+        .length;
       return {
         generated: true,
         motif: label?.label.split(" ▸ ").pop() ?? null,
         occurrence: label?.label ?? null,
         occurrences: occurrences.size,
         events: kin.map((note) => note.id),
+        specializable: runs === 1,
       };
     }
 

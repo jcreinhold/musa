@@ -61,6 +61,16 @@ pub enum ExpansionStep {
     Stretch(Ratio<i64>),
     /// A retrograde.
     Retrograde,
+    /// An inversion about an axis pitch, as the source spells it (`c5`).
+    Inversion {
+        /// The axis the block was mirrored about.
+        axis: String,
+    },
+    /// One note of a motif occurrence was respelled by a `with` clause.
+    Specialization {
+        /// The span of the override that respelled it.
+        override_site: SourceSpan,
+    },
 }
 
 /// A signed musical interval (roadmap §5.4): diatonic steps plus semitones,

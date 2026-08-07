@@ -151,6 +151,18 @@ pub enum SyntaxKind {
     OutputKw,
     /// `pitch` (motif parameter type)
     PitchKw,
+    /// `stretch`
+    StretchKw,
+    /// `retrograde`
+    RetrogradeKw,
+    /// `invert`
+    InvertKw,
+    /// `around`
+    AroundKw,
+    /// `with`
+    WithKw,
+    /// `note`
+    NoteKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -197,6 +209,16 @@ pub enum SyntaxKind {
     DynamicStmt,
     /// `tuplet <n>/<d> { ... }`
     TupletStmt,
+    /// `stretch <n>/<d> { ... }`
+    StretchStmt,
+    /// `retrograde { ... }`
+    RetrogradeStmt,
+    /// `invert around <pitch> { ... }`
+    InvertStmt,
+    /// `with { ... }` — the overrides specializing one motif occurrence.
+    WithClause,
+    /// `note <n> = <pitch>;` — one override inside a [`SyntaxKind::WithClause`].
+    OverrideStmt,
     /// The articulation names trailing a note or chord's duration. Their own
     /// node so a pitch reference and an articulation name — both bare
     /// identifiers — never have to be told apart by position.

@@ -1,7 +1,7 @@
 ---
 id: 34
 slug: transforms-variation
-status: pending
+status: done
 depends_on: [12, 25]
 phase: 3
 ---
@@ -75,6 +75,38 @@ cd apps/musa-desktop && cargo tauri dev   # manual: specialize a motif occurrenc
 ```
 
 Commit as `Add stretch, retrograde, invert, and occurrence specialization`.
+
+## Repairs made while implementing
+
+- **`stretch 3/2`, not `stretch 3:2`.** The language already spells exact ratios with `/` (durations, meters, tuplets);
+  a second ratio syntax for one construct would be a dialect. An integer factor (`stretch 2`) is accepted as the whole
+  number it is.
+- **`invert around c5`, not `invert axis c5`.** It reads as English at the point of use, and `around` is a keyword only
+  after `invert`.
+- **Stretch renotates, it does not only rescale.** Augmentation is a notational act as well as a temporal one: a bar of
+  quarters stretched by two is *written* as halves. `NotatedDuration::stretched` scales the value and its written
+  pieces and respells them, which is what separates `stretch` from a tuplet (whose written values deliberately stay put
+  while their sounding value changes).
+- **Inversion is diatonic, then spelled.** The mirror keeps the letter distance and the semitone distance, so `c5 e5 g5`
+  about `c5` becomes `c5 af4 f4` — an engraver's inversion, not a chromatic one that would write `gs4`. A result past a
+  double accidental is a diagnostic naming the pitch and the axis (roadmap §5.4's meaningful failure).
+- **Retrograde reverses ties.** A tie is a relation to the *next* sounding group, so reversing moves each mark back one
+  group; double reversal restores the original, which is a law test. `retie` rebuilds occurrences rather than mutating
+  payloads, because `Occurrence` exposes no payload mutation and does not need to.
+- **The specialization ordinal counts events, not sounding notes.** The first draft skipped rests. That silently
+  disagreed with the score inspector's `▸ note 3`, which counts every event of the occurrence — and a composer reading a
+  position off the score and typing it into a `with` clause is naming the note they are looking at. Positions now match,
+  and a position that is a rest or a chord is an error naming which.
+- **A `with` clause cannot specialize a call that runs more than once.** The clause belongs to the call, so a `use`
+  inside a `repeat` would change every run — the thing the mode exists to avoid. `EditImpact` carries `specializable`
+  so the interface can say why the second answer is unavailable instead of offering it and failing.
+- **Only a pitch can be specialized.** `ChangeDuration` with `Specialize` is refused by name: an override respells one
+  note, and renotating one inside an occurrence would move every note after it.
+- **`EditIntent::Specialize` is the language's job.** Adding, merging, and ordering `note n = p;` overrides is syntax
+  work, so it lives in `musa-language::edits` beside the other intents; `musa-project` resolves provenance to
+  `(call site, position)` and nothing more.
+- **Retrograde needs no kernel primitive**, recorded as §34 evidence in `docs/kernel/08-open-questions.md`: the finite
+  kernel's occurrences are already a materialized set, so reversal is a mapping over them.
 
 ## Stop
 

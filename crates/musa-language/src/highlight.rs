@@ -53,6 +53,12 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("at", SyntaxKind::AtKw),
     ("output", SyntaxKind::OutputKw),
     ("pitch", SyntaxKind::PitchKw),
+    ("stretch", SyntaxKind::StretchKw),
+    ("retrograde", SyntaxKind::RetrogradeKw),
+    ("invert", SyntaxKind::InvertKw),
+    ("around", SyntaxKind::AroundKw),
+    ("with", SyntaxKind::WithKw),
+    ("note", SyntaxKind::NoteKw),
     ("Hz", SyntaxKind::UnitHz),
     ("ms", SyntaxKind::UnitMs),
     ("s", SyntaxKind::UnitS),
@@ -196,7 +202,13 @@ impl TokenClass {
             | SyntaxKind::MasterKw
             | SyntaxKind::AtKw
             | SyntaxKind::OutputKw
-            | SyntaxKind::PitchKw => Self::Keyword,
+            | SyntaxKind::PitchKw
+            | SyntaxKind::StretchKw
+            | SyntaxKind::RetrogradeKw
+            | SyntaxKind::InvertKw
+            | SyntaxKind::AroundKw
+            | SyntaxKind::WithKw
+            | SyntaxKind::NoteKw => Self::Keyword,
 
             SyntaxKind::Error => Self::Invalid,
 
@@ -219,6 +231,11 @@ impl TokenClass {
             | SyntaxKind::SlurStmt
             | SyntaxKind::DynamicStmt
             | SyntaxKind::TupletStmt
+            | SyntaxKind::StretchStmt
+            | SyntaxKind::RetrogradeStmt
+            | SyntaxKind::InvertStmt
+            | SyntaxKind::WithClause
+            | SyntaxKind::OverrideStmt
             | SyntaxKind::ArticulationList
             | SyntaxKind::PerformanceDecl
             | SyntaxKind::ProfileDecl

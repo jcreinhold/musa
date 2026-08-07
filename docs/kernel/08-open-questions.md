@@ -108,3 +108,16 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   because coincidental simultaneity from separate constructs carries separate origins. **Transpose** is applied eagerly
   via the shared interval stack during elaboration rather than as a literal `map_payload` pass; composition
   commutativity (prompt 06's law) makes this observably equal, documented in `06` at graduation.
+- **Prompt 34 (variation transforms):** the three transformations added no kernel constructor, which is the evidence
+  §34 asks for on the "smallest complete basis" question. `stretch` is the existing scaling action (L13) applied during
+  elaboration and then *renotated*, because augmentation is a notational act as well as a temporal one — the kernel
+  scales the span, and the surface layer respells the written value. `invert` is an ordinary `map_payload`, with the
+  unspellable mirror image (past a double accidental) surfacing as a diagnostic rather than a kernel-level failure.
+  `retrograde` is the interesting one: it is a plain function over the finite occurrence list in
+  `musa-compiler/src/elaborate.rs`, reflecting each span about the ambient extent, and it needed **no** reversal
+  primitive — the finite kernel's occurrences are already a materialized set, so reversal is a mapping over them rather
+  than a construct they must be built with. Its laws (involution; anti-homomorphism for `sequence`) are proven at the
+  elaboration level in `musa-compiler/tests/transform_laws.rs`. Tie marks are the one thing reversal must repair: a tie
+  is a relation to the *next* sounding group, so reversing moves each mark back one group, and double reversal restores
+  the original — also a test. **Occurrence specialization** likewise stays above the kernel: a `with { note n = p; }`
+  clause is a positional payload edit applied after the call's body elaborates, recorded as an extra provenance step.

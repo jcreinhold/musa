@@ -50,6 +50,7 @@
     onpin,
     onentry,
     onconfirm,
+    onspecialize,
     oncancel,
     onname,
     oncancelname,
@@ -91,6 +92,8 @@
     onpin: () => void;
     onentry: () => void;
     onconfirm: () => void;
+    /** Take the other answer: change this occurrence only. */
+    onspecialize: () => void;
     oncancel: () => void;
     onname: (name: string) => void;
     oncancelname: () => void;
@@ -321,6 +324,7 @@
           {naming}
           onorigin={(depth) => workspace.selectOrigin(depth)}
           {onconfirm}
+          {onspecialize}
           {oncancel}
           {onname}
           {oncancelname}
