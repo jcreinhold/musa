@@ -1,5 +1,12 @@
 //! Generates the large-case workload the interface's budgets are measured on.
 //!
+//! The fixture ends with a short **coda** that every part plays: ties, slurs,
+//! tuplets, dynamics, and articulations, four bars of them. The 100 bars
+//! before it are plain notes at four densities, which measures throughput but
+//! would let a change to the expressive-notation path regress unmeasured
+//! (docs/prompts/38) — the coda is there so the benchmark and the engraver
+//! both see the constructs a real piece has.
+//!
 //! `docs/interface/06-performance.md` §1 measures the engraver and the frame
 //! loop against a 100-bar, 4-part score. Committing such a file by hand would
 //! be committing 1500 hand-written notes nobody would ever read or trust; this
@@ -73,6 +80,16 @@ const LINES: [Line; 4] = [
     },
 ];
 
+/// How many bars of coda every line plays after the 100 plain ones.
+const CODA_BARS: usize = 4;
+
+/// Notes each line writes in the coda: a slurred bar of four quarters, a tied
+/// pair of halves, a 3:2 tuplet plus two quarters, and four accented quarters.
+const CODA_NOTES: usize = 4 + 2 + 5 + 4;
+
+/// Dynamic markings each line writes in the coda.
+const CODA_DYNAMICS: usize = 2;
+
 /// The written duration of one note in a line of this density, in whole notes.
 fn written(density: usize) -> String {
     if density == 1 {
@@ -129,10 +146,45 @@ fn large_score() -> String {
             }
             source.push('\n');
         }
+        source.push_str(&coda(line));
         source.push_str("            }\n        }\n");
     }
     source.push_str("    }\n}\n");
     source
+}
+
+/// The coda: the same four bars in every line, written in that line's own
+/// register, using the constructs the plain bars do not — ties, slurs,
+/// tuplets, dynamics, articulations. Each bar sums to 4/4, so the parts stay
+/// aligned and the bar count stays the same for everyone.
+fn coda(line: &Line) -> String {
+    // Continue the line's walk up the scale rather than restarting it.
+    let start = BARS.saturating_mul(line.density);
+    let note = |offset: usize| pitch(line, start.saturating_add(offset));
+    let mut bars = String::with_capacity(512);
+    let _ = writeln!(bars, "\n                dynamic mf;");
+    let _ = writeln!(bars, "                slur {{");
+    for offset in 0..4 {
+        let _ = writeln!(bars, "                    {} 1/4;", note(offset));
+    }
+    let _ = writeln!(bars, "                }}");
+    // A tie across the bar line: one sound, two written halves.
+    let _ = writeln!(bars, "                {} 1/2 ~;", note(4));
+    let _ = writeln!(bars, "                {} 1/2;", note(4));
+    let _ = writeln!(bars, "                tuplet 3/2 {{");
+    for offset in 5..8 {
+        let _ = writeln!(bars, "                    {} 1/4;", note(offset));
+    }
+    let _ = writeln!(bars, "                }}");
+    for offset in 8..10 {
+        let _ = writeln!(bars, "                {} 1/4;", note(offset));
+    }
+    let _ = writeln!(bars, "                dynamic f;");
+    for (index, offset) in (10..14).enumerate() {
+        let articulation = if index % 2 == 0 { " accent" } else { " staccato" };
+        let _ = writeln!(bars, "                {} 1/4{articulation};", note(offset));
+    }
+    bars
 }
 
 fn repository() -> PathBuf {
@@ -186,16 +238,49 @@ fn large_score_fixture_is_current() -> Result {
     )
 }
 
-/// The workload is the one the budgets assume: four parts, 100 bars, 1500
-/// notes. A generator that quietly shrank would make every budget pass.
+/// The workload is the one the budgets assume: four parts, 100 plain bars of
+/// 1500 notes, plus a coda of expressive notation in every line. A generator
+/// that quietly shrank would make every budget pass.
 #[test]
 fn large_score_is_the_size_the_budgets_assume() {
     let source = large_score();
     // Every statement ends in a semicolon: the three that set up the piece,
-    // one clef per part, and then the notes.
-    let overhead = LINES.len().saturating_add(3);
+    // one clef per part, the dynamics in each line's coda, and the notes.
+    let overhead = LINES
+        .len()
+        .saturating_mul(CODA_DYNAMICS.saturating_add(1))
+        .saturating_add(3);
     let notes = source.matches(';').count().saturating_sub(overhead);
     let per_bar = LINES.iter().map(|line| line.density).sum::<usize>();
-    assert_eq!(notes, BARS.saturating_mul(per_bar));
-    assert_eq!(notes, 1500);
+    let plain = BARS.saturating_mul(per_bar);
+    let coda = LINES.len().saturating_mul(CODA_NOTES);
+    assert_eq!(notes, plain.saturating_add(coda));
+    assert_eq!(plain, 1500);
+    assert_eq!(coda, 60);
+}
+
+/// The coda is there for the constructs, so assert them by name: a fixture
+/// that lost its ties would still compile, still be 100 bars, and quietly
+/// stop measuring the path prompts 39–41 rewrite.
+#[test]
+fn large_score_exercises_the_expressive_notation_path() {
+    let source = large_score();
+    for (construct, expected) in [
+        ("slur {", LINES.len()),
+        ("tuplet 3/2 {", LINES.len()),
+        ("dynamic mf;", LINES.len()),
+        ("dynamic f;", LINES.len()),
+        (" ~;", LINES.len()),
+        (" accent;", LINES.len().saturating_mul(2)),
+        (" staccato;", LINES.len().saturating_mul(2)),
+    ] {
+        assert_eq!(
+            source.matches(construct).count(),
+            expected,
+            "the fixture should write `{construct}` once per line"
+        );
+    }
+    // Every line still ends at the same bar: the coda's four bars each sum to
+    // 4/4, so the parts stay aligned.
+    assert_eq!(CODA_BARS, 4);
 }

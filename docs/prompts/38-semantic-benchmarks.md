@@ -1,7 +1,7 @@
 ---
 id: 38
 slug: semantic-benchmarks
-status: in-progress
+status: done
 depends_on: [37]
 phase: 3
 ---
@@ -102,3 +102,25 @@ Commit the roadmap repair as `Add a benchmark harness to the dependency list`, t
 - No new public API on `Compilation`, `ScoreSnapshot`, or the kernel.
 - No CI wiring, no performance dashboards, no historical tracking beyond the checked-in table.
 - No UI-side (Playwright) budget work; B1/B2's end-to-end harness already exists and is prompt 22/26's.
+
+## Repairs made while implementing
+
+- Roadmap §15 had **no** development-dependency list to add the harness to — `insta` and `proptest` were named only in
+  §17. The repair commit adds §15.10 (the three dev dependencies, with `divan`'s justification) and §17.7 (what a
+  benchmark is for, and that it never widens a public interface), so the rule the prompt cites now exists to be cited.
+- The prompt asks for median and p95; `divan` reports fastest, median, mean, and slowest, not p95. The table carries
+  the **median**, and says so — p95 over 20 trials is the end-to-end harness's statistic in
+  `docs/interface/06-performance.md`, and restating it here would have meant a second harness for one number.
+- P2 needed parsing separable from elaboration, so `elaborate` was split into `elaborate` (parse, then) and
+  `elaborate_parsed`. P3 and P4 needed the voice timelines the adapter consumes, which nothing keeps: `Lowering` gained
+  a `timeline_sink: Option<Vec<_>>`, `None` on every production path. Both are internal; the public surface is
+  unchanged and the only new `pub` is the `#[doc(hidden)]` `bench` module.
+- The large fixture had none of the phase-2 constructs, so the generator gained a four-bar **coda** — slur, tie, 3:2
+  tuplet, two dynamics, accents and staccatos — played by every line, each bar summing to 4/4 so the parts stay
+  aligned. Its goldens (MEI, snapshot JSON) were re-recorded in the same commit, and a new test
+  (`large_score_exercises_the_expressive_notation_path`) asserts the constructs by name so the fixture cannot quietly
+  stop measuring them.
+- The baseline reports two findings without acting on either (the prompt forbids acting): elaboration is ~85% of
+  end-to-end compile on the large workload, and **canonical form costs more than producing the score does** — P4
+  exceeds P2 on an already-materialized timeline. That is prompt 43's `Canonical`-key question, now with a
+  before-number.

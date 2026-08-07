@@ -25,6 +25,10 @@
 //! full provenance path explaining why it exists; expansion always terminates
 //! (the language has no recursion).
 
+/// Measurement seams for the benchmark suite. Not an interface: see the
+/// module docs (roadmap §17.7).
+#[doc(hidden)]
+pub mod bench;
 mod compile;
 mod elaborate;
 mod harmony;

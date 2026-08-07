@@ -186,6 +186,23 @@ impl musa_kernel::Canonical for VoicePayload {
 pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions) -> Compilation {
     let document = musa_language::parse(source.text());
     let mut lowering = Lowering::new();
+    elaborate_parsed(&document, source.name(), options, &mut lowering)
+}
+
+/// One voice's elaborated timeline, before the snapshot adapter sees it.
+pub(crate) type VoiceTimeline = Timeline<VoicePayload>;
+
+/// Everything after parsing (docs/kernel/06): elaborate, adapt, check.
+///
+/// Split out of [`elaborate`] so the parse and the semantic work can be
+/// measured apart; `lowering` arrives from the caller for the same reason
+/// (see `crate::bench`). The production path passes a fresh one.
+pub(crate) fn elaborate_parsed(
+    document: &musa_language::ParsedDocument,
+    name: &str,
+    options: &crate::CompileOptions,
+    lowering: &mut Lowering,
+) -> Compilation {
     for error in document.errors() {
         let range = error.range();
         lowering.error(
@@ -198,43 +215,43 @@ pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions
         .iter()
         .any(|d| d.severity == crate::compile::Severity::Error)
     {
-        return Compilation::new(None, lowering.diagnostics);
+        return Compilation::new(None, std::mem::take(&mut lowering.diagnostics));
     }
     let Some(piece) = PieceDecl::from_root(&document.syntax()) else {
         lowering.error("no `piece` declaration", SourceSpan::new(0, 0));
-        return Compilation::new(None, lowering.diagnostics);
+        return Compilation::new(None, std::mem::take(&mut lowering.diagnostics));
     };
 
     let mut snapshot = ScoreSnapshot::default();
-    let libraries = crate::imports::load(&mut lowering, source.name(), &piece, &options.imports);
-    elaborate_libraries(&mut lowering, &libraries, &mut snapshot);
-    lower::lower_header(&mut lowering, &piece, &mut snapshot);
+    let libraries = crate::imports::load(lowering, name, &piece, &options.imports);
+    elaborate_libraries(lowering, &libraries, &mut snapshot);
+    lower::lower_header(lowering, &piece, &mut snapshot);
     if let Some(score) = piece.score() {
-        elaborate_score(&mut lowering, &score, &mut snapshot);
-        elaborate_annotations(&mut lowering, &score, &snapshot);
-        elaborate_tempo_changes(&mut lowering, &piece, &mut snapshot);
+        elaborate_score(lowering, &score, &mut snapshot);
+        elaborate_annotations(lowering, &score, &snapshot);
+        elaborate_tempo_changes(lowering, &piece, &mut snapshot);
     }
     snapshot.annotations = std::mem::take(&mut lowering.annotations);
-    lower::check_measure_sanity(&mut lowering, &snapshot);
-    check_tuplets(&mut lowering, &snapshot);
+    lower::check_measure_sanity(lowering, &snapshot);
+    check_tuplets(lowering, &snapshot);
     if lowering
         .diagnostics
         .iter()
         .any(|d| d.severity == crate::compile::Severity::Error)
     {
-        return Compilation::new(None, lowering.diagnostics);
+        return Compilation::new(None, std::mem::take(&mut lowering.diagnostics));
     }
     let imported_studios: Vec<musa_language::ast::StudioDecl> =
         libraries.each().filter_map(|(_, library)| library.studio()).collect();
-    let studio = lower::lower_studio(&mut lowering, &piece, &snapshot, &imported_studios);
+    let studio = lower::lower_studio(lowering, &piece, &snapshot, &imported_studios);
     if lowering
         .diagnostics
         .iter()
         .any(|d| d.severity == crate::compile::Severity::Error)
     {
-        return Compilation::new(None, lowering.diagnostics);
+        return Compilation::new(None, std::mem::take(&mut lowering.diagnostics));
     }
-    Compilation::new(Some(snapshot), lowering.diagnostics).with_studio(studio)
+    Compilation::new(Some(snapshot), std::mem::take(&mut lowering.diagnostics)).with_studio(studio)
 }
 
 /// Walk parts and voices exactly as the direct lowerer does, but elaborate
@@ -272,6 +289,9 @@ fn elaborate_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDec
             let voice_id = VoiceId(u32::try_from(index).unwrap_or(u32::MAX));
             let timeline = elaborate_voice(lowering, voice, declaration, id.0, voice_id.0);
             let adapted = adapt_voice(lowering, &timeline);
+            if let Some(sink) = &mut lowering.timeline_sink {
+                sink.push(timeline);
+            }
             voices.insert(voice_id, adapted);
             voice_names.insert(voice_id, voice_name);
         }
@@ -1096,7 +1116,7 @@ fn apply_intervals(
 /// (docs/kernel/06 adapter contract): per-pitch occurrences sharing span,
 /// voice, and origin regroup into chords; a `Rest` payload becomes a rest
 /// event. Event ids are assigned in traversal order, matching the oracle.
-fn adapt_voice(lowering: &mut Lowering, timeline: &Timeline<VoicePayload>) -> Voice {
+pub(crate) fn adapt_voice(lowering: &mut Lowering, timeline: &Timeline<VoicePayload>) -> Voice {
     let mut adapted = Vec::new();
     let mut index = 0;
     let occurrences = timeline.occurrences();

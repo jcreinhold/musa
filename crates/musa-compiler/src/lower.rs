@@ -120,6 +120,13 @@ pub(crate) struct Lowering {
     pub(crate) groups: IndexMap<u32, GroupInfo>,
     pub(crate) next_group: u32,
     pub(crate) annotations: AnnotationStore,
+    /// Where each voice's kernel timeline goes on its way to the adapter.
+    ///
+    /// `None` on every production path — nothing keeps a timeline after the
+    /// snapshot is built. It is `Some` only under `crate::bench`, which needs
+    /// the elaboration and projection stages separable to measure them apart
+    /// (roadmap §17.7). One `Option` check per voice is the whole cost.
+    pub(crate) timeline_sink: Option<Vec<crate::elaborate::VoiceTimeline>>,
 }
 
 impl Lowering {
@@ -133,6 +140,7 @@ impl Lowering {
             groups: IndexMap::new(),
             next_group: 0,
             annotations: AnnotationStore::default(),
+            timeline_sink: None,
         }
     }
 
