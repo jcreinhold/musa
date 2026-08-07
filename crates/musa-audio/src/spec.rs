@@ -79,6 +79,26 @@ pub struct ParameterDescriptor {
     pub combination: Combination,
 }
 
+/// A low-frequency oscillator's shape (§13.6).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Waveform {
+    /// A sine, the shape a modulation reaches for unless it says otherwise.
+    Sine,
+    /// A linear rise and fall.
+    Triangle,
+    /// A two-valued alternation.
+    Square,
+}
+
+/// A biquad's response (§13.6).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FilterKind {
+    /// Passes below the cutoff.
+    LowPass,
+    /// Passes above the cutoff.
+    HighPass,
+}
+
 /// The processor a node runs. Every variant knows its static port list and
 /// parameter descriptors.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -121,22 +141,56 @@ pub enum ProcessorSpec {
         /// Channel count of the signal passing through.
         channels: u8,
     },
-    /// Polyphonic sine synthesizer (§13.5: voice allocator → oscillator
-    /// bank → placeholder envelope). Input: note events; output: stereo.
+    /// Polyphonic synthesizer (§13.5: voice allocator → oscillator bank →
+    /// per-voice ADSR). Params: `attack`, `decay`, `sustain`, `release`,
+    /// and the bank's second partial (`ratio`, `blend`). Input: note events;
+    /// output: stereo.
     PolySine {
         /// Voice-pool size.
         voices: u8,
     },
+    /// Low-frequency oscillator at control rate. Params: `frequency` (Hz).
+    /// Output: control.
+    ///
+    /// One value per block, held across it (§13.6's control rate): a
+    /// modulation target reads one value per block anyway, so computing a
+    /// sample-rate sine for it would buy nothing but cycles.
+    Lfo {
+        /// Its shape.
+        waveform: Waveform,
+    },
+    /// Multiply a control signal. Params: `factor`. In/out: control.
+    Scale,
+    /// Offset a control signal. Params: `offset`. In/out: control.
+    Bias,
+    /// Bound a control signal. Params: `min`, `max`. In/out: control.
+    Clamp,
+    /// Slew-limit a control signal with a one-pole. Params: `time` (s).
+    /// In/out: control.
+    Smooth,
+    /// Biquad filter (RBJ cookbook). Params: `cutoff` (Hz), `q`. In/out:
+    /// stereo; the two channels filter independently.
+    Biquad {
+        /// Which response.
+        kind: FilterKind,
+    },
+    /// One-pole low-pass. Params: `cutoff` (Hz). In/out: stereo.
+    ///
+    /// Gentler than the biquad (6 dB/octave, no resonance) and cheaper; it is
+    /// what a patch wants when it means "take the edge off" rather than
+    /// "filter".
+    OnePole,
 }
 
 impl ProcessorSpec {
     /// Input port kinds, in index order.
     pub fn input_ports(&self) -> Vec<PortKind> {
         match self {
-            Self::Sine | Self::Noise | Self::Constant => Vec::new(),
+            Self::Sine | Self::Noise | Self::Constant | Self::Lfo { .. } => Vec::new(),
             Self::PolySine { .. } => vec![PortKind::NoteEvents],
             Self::Gain | Self::Splitter | Self::MonoToStereo | Self::Pan => vec![PortKind::Audio { channels: 1 }],
-            Self::StereoGain => vec![PortKind::Audio { channels: 2 }],
+            Self::StereoGain | Self::Biquad { .. } | Self::OnePole => vec![PortKind::Audio { channels: 2 }],
+            Self::Scale | Self::Bias | Self::Clamp | Self::Smooth => vec![PortKind::Control],
             Self::Passthrough { channels } => vec![PortKind::Audio { channels: *channels }],
             Self::Mixer { inputs } => vec![PortKind::Audio { channels: 2 }; usize::from(*inputs)],
             Self::StereoToMono => vec![PortKind::Audio { channels: 2 }],
@@ -148,8 +202,16 @@ impl ProcessorSpec {
         match self {
             Self::Sine | Self::Noise | Self::Gain => vec![PortKind::Audio { channels: 1 }],
             Self::Splitter => vec![PortKind::Audio { channels: 1 }, PortKind::Audio { channels: 1 }],
-            Self::Constant => vec![PortKind::Control],
-            Self::Pan | Self::MonoToStereo | Self::Mixer { .. } | Self::PolySine { .. } | Self::StereoGain => {
+            Self::Constant | Self::Lfo { .. } | Self::Scale | Self::Bias | Self::Clamp | Self::Smooth => {
+                vec![PortKind::Control]
+            }
+            Self::Pan
+            | Self::MonoToStereo
+            | Self::Mixer { .. }
+            | Self::PolySine { .. }
+            | Self::StereoGain
+            | Self::Biquad { .. }
+            | Self::OnePole => {
                 vec![PortKind::Audio { channels: 2 }]
             }
             Self::Passthrough { channels } => vec![PortKind::Audio { channels: *channels }],
@@ -191,23 +253,175 @@ impl ProcessorSpec {
             smoothing: Smoothing::BlockRamp,
             combination: Combination::Replace,
         };
+        // The names and units here are the ones the language writes (prompt
+        // 29's `Processor::params`): `cutoff` is `Hz` on both sides, so a
+        // written `1400 Hz` needs no translation to reach this descriptor.
+        // `gain` is the one deliberate exception — written in dB, held here
+        // as the linear multiplier the DSP applies (§2: a marking is not a
+        // number of decibels, and neither is a decibel a coefficient).
+        const CUTOFF: ParameterDescriptor = ParameterDescriptor {
+            name: "cutoff",
+            unit: Unit::Hz,
+            range: (10.0, 20_000.0),
+            default: 20_000.0,
+            smoothing: Smoothing::BlockRamp,
+            combination: Combination::Replace,
+        };
+        const Q: ParameterDescriptor = ParameterDescriptor {
+            name: "q",
+            unit: Unit::Linear,
+            range: (0.05, 20.0),
+            default: std::f32::consts::FRAC_1_SQRT_2,
+            smoothing: Smoothing::BlockRamp,
+            combination: Combination::Replace,
+        };
+        const FILTER: &[ParameterDescriptor] = &[CUTOFF, Q];
+        // A filter that says nothing filters nothing, which for a high-pass
+        // is the bottom of its range rather than the top.
+        const HIGH_PASS: &[ParameterDescriptor] = &[
+            ParameterDescriptor {
+                default: 20.0,
+                ..CUTOFF
+            },
+            Q,
+        ];
+        const ONE_POLE: &[ParameterDescriptor] = &[CUTOFF];
+        const LFO: &[ParameterDescriptor] = &[ParameterDescriptor {
+            name: "frequency",
+            unit: Unit::Hz,
+            range: (0.0, 200.0),
+            default: 1.0,
+            smoothing: Smoothing::None,
+            combination: Combination::Replace,
+        }];
+        // The oscillator bank is two partials: the note, and one at a ratio
+        // of it. `blend: 0` is one sine, which is what a patch that says
+        // nothing about partials gets — and what keeps the default
+        // instrument the one it has always been.
+        const VOICE: &[ParameterDescriptor] = &[
+            ParameterDescriptor {
+                name: "attack",
+                unit: Unit::Seconds,
+                range: (0.0, 20.0),
+                default: 0.005,
+                smoothing: Smoothing::None,
+                combination: Combination::Replace,
+            },
+            ParameterDescriptor {
+                name: "decay",
+                unit: Unit::Seconds,
+                range: (0.0, 20.0),
+                default: 0.0,
+                smoothing: Smoothing::None,
+                combination: Combination::Replace,
+            },
+            ParameterDescriptor {
+                name: "sustain",
+                unit: Unit::Linear,
+                range: (0.0, 1.0),
+                default: 1.0,
+                smoothing: Smoothing::None,
+                combination: Combination::Replace,
+            },
+            ParameterDescriptor {
+                name: "release",
+                unit: Unit::Seconds,
+                range: (0.0, 60.0),
+                default: 0.05,
+                smoothing: Smoothing::None,
+                combination: Combination::Replace,
+            },
+            ParameterDescriptor {
+                name: "ratio",
+                unit: Unit::Linear,
+                range: (0.0, 32.0),
+                default: 2.0,
+                smoothing: Smoothing::None,
+                combination: Combination::Replace,
+            },
+            ParameterDescriptor {
+                name: "blend",
+                unit: Unit::Linear,
+                range: (0.0, 1.0),
+                default: 0.0,
+                smoothing: Smoothing::None,
+                combination: Combination::Replace,
+            },
+        ];
+        // Control stages carry `Hz` for the same reason the language does:
+        // a control signal's dimension is its target's, and every target
+        // today is a cutoff (see `musa_compiler::Processor::params`).
+        const FACTOR: &[ParameterDescriptor] = &[ParameterDescriptor {
+            name: "factor",
+            unit: Unit::Hz,
+            range: (-100_000.0, 100_000.0),
+            default: 1.0,
+            smoothing: Smoothing::BlockRamp,
+            combination: Combination::Replace,
+        }];
+        const OFFSET: &[ParameterDescriptor] = &[ParameterDescriptor {
+            name: "offset",
+            unit: Unit::Hz,
+            range: (-100_000.0, 100_000.0),
+            default: 0.0,
+            smoothing: Smoothing::BlockRamp,
+            combination: Combination::Replace,
+        }];
+        const BOUNDS: &[ParameterDescriptor] = &[
+            ParameterDescriptor {
+                name: "min",
+                unit: Unit::Hz,
+                range: (-100_000.0, 100_000.0),
+                default: 0.0,
+                smoothing: Smoothing::None,
+                combination: Combination::Replace,
+            },
+            ParameterDescriptor {
+                name: "max",
+                unit: Unit::Hz,
+                range: (-100_000.0, 100_000.0),
+                default: 20_000.0,
+                smoothing: Smoothing::None,
+                combination: Combination::Replace,
+            },
+        ];
+        const TIME: &[ParameterDescriptor] = &[ParameterDescriptor {
+            name: "time",
+            unit: Unit::Seconds,
+            range: (0.0, 10.0),
+            default: 0.02,
+            smoothing: Smoothing::None,
+            combination: Combination::Replace,
+        }];
         match self {
             Self::Sine => &[FREQUENCY],
             Self::Constant => &[VALUE],
             Self::Gain | Self::StereoGain => &[GAIN],
             Self::Pan => &[PAN],
+            Self::PolySine { .. } => VOICE,
+            Self::Lfo { .. } => LFO,
+            Self::Biquad {
+                kind: FilterKind::LowPass,
+            } => FILTER,
+            Self::Biquad {
+                kind: FilterKind::HighPass,
+            } => HIGH_PASS,
+            Self::OnePole => ONE_POLE,
+            Self::Scale => FACTOR,
+            Self::Bias => OFFSET,
+            Self::Clamp => BOUNDS,
+            Self::Smooth => TIME,
             Self::Noise
             | Self::Passthrough { .. }
             | Self::Mixer { .. }
             | Self::Splitter
             | Self::MonoToStereo
-            | Self::StereoToMono
-            | Self::PolySine { .. } => &[],
+            | Self::StereoToMono => &[],
         }
     }
 
-    /// The default value of a named parameter, if it exists.
-    fn parameter_default(self, name: &str) -> Option<ParameterDescriptor> {
+    /// A named parameter's contract, if it declares one.
+    pub(crate) fn descriptor(self, name: &str) -> Option<ParameterDescriptor> {
         self.parameters().iter().copied().find(|p| p.name == name)
     }
 }
@@ -218,6 +432,7 @@ impl ProcessorSpec {
 pub struct StudioGraphSpec {
     nodes: Vec<Node>,
     connections: Vec<Connection>,
+    modulations: Vec<ModulationEdge>,
     output: Option<NodeId>,
 }
 
@@ -226,6 +441,21 @@ pub(crate) struct Node {
     id: NodeId,
     processor: ProcessorSpec,
     params: Vec<(&'static str, f32)>,
+}
+
+/// A control connection into a *parameter* rather than a port (§13.7).
+///
+/// Modulation is typed: the source must produce control, the target must
+/// declare the parameter, and what happens to the value on arrival is the
+/// parameter's business (its `combination`, `range`, and `smoothing`) rather
+/// than the connection's. That is what keeps `modulate` from becoming an
+/// anonymous 0..1 wire into an unknown quantity.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct ModulationEdge {
+    pub(crate) from: NodeId,
+    pub(crate) from_port: usize,
+    pub(crate) to: NodeId,
+    pub(crate) param: &'static str,
 }
 
 /// One connection between output and input ports.
@@ -263,7 +493,7 @@ impl StudioGraphSpec {
         let Some(entry) = self.nodes.iter_mut().find(|entry| entry.id == node) else {
             return Err(crate::GraphError::UnknownNode(node));
         };
-        if entry.processor.parameter_default(name).is_none() || !value.is_finite() {
+        if entry.processor.descriptor(name).is_none() || !value.is_finite() {
             return Err(crate::GraphError::InvalidParameter {
                 node,
                 name: name.to_string(),
@@ -287,6 +517,19 @@ impl StudioGraphSpec {
         });
     }
 
+    /// Connect a control output to a named parameter of another node.
+    ///
+    /// Both ends are checked in `compile_graph`, not here, so a spec under
+    /// construction can be written in any order.
+    pub fn modulate(&mut self, from: NodeId, from_port: usize, to: NodeId, param: &'static str) {
+        self.modulations.push(ModulationEdge {
+            from,
+            from_port,
+            to,
+            param,
+        });
+    }
+
     /// Designate the graph's master output node (its first output port must
     /// be stereo audio, or mono audio adapted via `MonoToStereo`).
     pub fn set_output(&mut self, node: NodeId) {
@@ -299,6 +542,10 @@ impl StudioGraphSpec {
 
     pub(crate) fn connections(&self) -> &[Connection] {
         &self.connections
+    }
+
+    pub(crate) fn modulations(&self) -> &[ModulationEdge] {
+        &self.modulations
     }
 
     pub(crate) fn output(&self) -> Option<NodeId> {

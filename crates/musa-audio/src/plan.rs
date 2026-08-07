@@ -14,7 +14,11 @@
 use musa_compiler::PerformanceEvent;
 
 use crate::error::GraphError;
-use crate::spec::{Connection, GraphOptions, NodeId, PortKind, ProcessorSpec, StudioGraphSpec};
+use crate::filter::{Biquad, Coefficients, OnePole};
+use crate::spec::{
+    Combination, Connection, FilterKind, GraphOptions, NodeId, ParameterDescriptor, PortKind, ProcessorSpec, Smoothing,
+    StudioGraphSpec, Waveform,
+};
 use crate::voice::VoiceAllocator;
 
 /// A slice of scheduled performance events for one render call.
@@ -68,21 +72,87 @@ struct Step {
     taken: Vec<Box<[f32]>>,
     /// Whether this processor consumes scheduled note events (§13.5).
     takes_events: bool,
+    /// Control connections into this node's parameters (§13.7).
+    modulations: Vec<ParamLink>,
+}
+
+/// One resolved modulation: where the control value comes from, what the
+/// parameter it lands on says about it, and the state that says applies it
+/// smoothly.
+struct ParamLink {
+    /// Buffer index of the modulating control signal.
+    buffer: usize,
+    descriptor: ParameterDescriptor,
+    /// The value the spec wrote, which the modulation combines with.
+    base: f32,
+    /// The value last handed to the processor — the smoother's state.
+    current: f32,
+    /// One-pole coefficient applied per block for `Smoothing::BlockRamp`.
+    coefficient: f32,
 }
 
 enum ProcessorInstance {
-    Sine { phase: f64, frequency: f32 },
-    Noise { state: u32 },
-    Constant { value: f32 },
-    Gain { gain: f32 },
-    StereoGain { gain: f32 },
+    Sine {
+        phase: f64,
+        frequency: f32,
+    },
+    Noise {
+        state: u32,
+    },
+    Constant {
+        value: f32,
+    },
+    Gain {
+        gain: f32,
+    },
+    StereoGain {
+        gain: f32,
+    },
     Passthrough,
-    Pan { pan: f32 },
+    Pan {
+        pan: f32,
+    },
     Mixer,
     Splitter,
     MonoToStereo,
     StereoToMono,
-    PolySine { allocator: VoiceAllocator },
+    PolySine {
+        allocator: VoiceAllocator,
+    },
+    Lfo {
+        waveform: Waveform,
+        phase: f64,
+        frequency: f32,
+    },
+    Scale {
+        factor: f32,
+    },
+    Bias {
+        offset: f32,
+    },
+    Clamp {
+        min: f32,
+        max: f32,
+    },
+    Smooth {
+        time: f32,
+        state: OnePole,
+    },
+    Filter {
+        kind: FilterKind,
+        cutoff: f32,
+        q: f32,
+        /// The coefficients in force, walked toward `target` across a block.
+        coefficients: Coefficients,
+        /// What the current parameters ask for.
+        target: Coefficients,
+        channels: [Biquad; 2],
+    },
+    OnePoleFilter {
+        cutoff: f32,
+        coefficient: f32,
+        channels: [OnePole; 2],
+    },
 }
 
 impl ProcessorInstance {
@@ -93,7 +163,7 @@ impl ProcessorInstance {
         };
         match event {
             PerformanceEvent::NoteOn { note, instance, .. } => {
-                allocator.note_on(*instance, note.frequency as f32, note.amplitude);
+                allocator.note_on(*instance, note.frequency as f32, note.amplitude, note.attack);
             }
             PerformanceEvent::NoteOff { instance, .. } => allocator.note_off(*instance),
             PerformanceEvent::Parameter { .. } => {}
@@ -122,13 +192,111 @@ impl ProcessorInstance {
             ProcessorSpec::Passthrough { .. } => Self::Passthrough,
             ProcessorSpec::Pan => Self::Pan { pan: param("pan") },
             ProcessorSpec::Mixer { .. } => Self::Mixer,
-            ProcessorSpec::PolySine { voices } => Self::PolySine {
-                allocator: VoiceAllocator::new(voices, sample_rate),
-            },
+            ProcessorSpec::PolySine { voices } => {
+                // The synth's parameters are its envelope and its oscillator
+                // bank, and unlike every other processor they live inside
+                // the allocator rather than in the instance's own fields.
+                let mut allocator = VoiceAllocator::new(voices, sample_rate);
+                for descriptor in processor.parameters() {
+                    allocator.set_voice(descriptor.name, spec.param_value(node, descriptor));
+                }
+                Self::PolySine { allocator }
+            }
             ProcessorSpec::Splitter => Self::Splitter,
             ProcessorSpec::MonoToStereo => Self::MonoToStereo,
             ProcessorSpec::StereoToMono => Self::StereoToMono,
+            ProcessorSpec::Lfo { waveform } => Self::Lfo {
+                waveform,
+                phase: 0.0,
+                frequency: param("frequency"),
+            },
+            ProcessorSpec::Scale => Self::Scale {
+                factor: param("factor"),
+            },
+            ProcessorSpec::Bias => Self::Bias {
+                offset: param("offset"),
+            },
+            ProcessorSpec::Clamp => Self::Clamp {
+                min: param("min"),
+                max: param("max"),
+            },
+            ProcessorSpec::Smooth => Self::Smooth {
+                time: param("time"),
+                state: OnePole::default(),
+            },
+            ProcessorSpec::Biquad { kind } => {
+                let (cutoff, q) = (param("cutoff"), param("q"));
+                let coefficients = Coefficients::new(kind, cutoff, q, sample_rate as f32);
+                Self::Filter {
+                    kind,
+                    cutoff,
+                    q,
+                    coefficients,
+                    target: coefficients,
+                    channels: [Biquad::default(); 2],
+                }
+            }
+            ProcessorSpec::OnePole => {
+                let cutoff = param("cutoff");
+                Self::OnePoleFilter {
+                    cutoff,
+                    coefficient: OnePole::coefficient(cutoff, sample_rate as f32),
+                    channels: [OnePole::default(); 2],
+                }
+            }
         }
+    }
+
+    /// Apply a modulated parameter value.
+    ///
+    /// Called at most once per parameter per block, off the sample loop, so
+    /// the coefficient recomputation a filter needs is paid at block rate
+    /// rather than per sample.
+    fn set_param(&mut self, name: &str, value: f32, sample_rate: f32) {
+        match self {
+            Self::Sine { frequency, .. } | Self::Lfo { frequency, .. } => set(frequency, name, "frequency", value),
+            Self::Constant { value: held } => set(held, name, "value", value),
+            Self::Gain { gain } | Self::StereoGain { gain } => set(gain, name, "gain", value),
+            Self::Pan { pan } => set(pan, name, "pan", value),
+            Self::Scale { factor } => set(factor, name, "factor", value),
+            Self::Bias { offset } => set(offset, name, "offset", value),
+            Self::Clamp { min, max } => {
+                set(min, name, "min", value);
+                set(max, name, "max", value);
+            }
+            Self::Smooth { time, .. } => set(time, name, "time", value),
+            Self::PolySine { allocator } => allocator.set_voice(name, value),
+            Self::Filter {
+                kind,
+                cutoff,
+                q,
+                target,
+                ..
+            } => {
+                set(cutoff, name, "cutoff", value);
+                set(q, name, "q", value);
+                *target = Coefficients::new(*kind, *cutoff, *q, sample_rate);
+            }
+            Self::OnePoleFilter {
+                cutoff, coefficient, ..
+            } => {
+                set(cutoff, name, "cutoff", value);
+                *coefficient = OnePole::coefficient(*cutoff, sample_rate);
+            }
+            Self::Noise { .. }
+            | Self::Passthrough
+            | Self::Mixer
+            | Self::Splitter
+            | Self::MonoToStereo
+            | Self::StereoToMono => {}
+        }
+    }
+}
+
+/// Assign `value` to `slot` when `name` is the parameter `slot` holds.
+fn set(slot: &mut f32, name: &str, expected: &str, value: f32) {
+    if name == expected {
+        *slot = value;
     }
 }
 
@@ -148,8 +316,14 @@ pub fn compile_graph(spec: &StudioGraphSpec, options: &GraphOptions) -> Result<R
     for node in spec.nodes() {
         indegree.insert(node.id(), 0);
     }
+    // A modulation is an edge for scheduling purposes too: a control signal
+    // must be computed before the node it steers reads it, or the parameter
+    // lags the sound by a block.
     for connection in spec.connections() {
         *indegree.entry(connection.to).or_insert(0) += 1;
+    }
+    for edge in spec.modulations() {
+        *indegree.entry(edge.to).or_insert(0) += 1;
     }
     let mut queue: Vec<NodeId> = indegree
         .iter()
@@ -160,11 +334,17 @@ pub fn compile_graph(spec: &StudioGraphSpec, options: &GraphOptions) -> Result<R
     let mut order = Vec::new();
     while let Some(id) = queue.pop() {
         order.push(id);
-        for connection in spec.connections().iter().filter(|c| c.from == id) {
-            if let Some(degree) = indegree.get_mut(&connection.to) {
+        let downstream = spec
+            .connections()
+            .iter()
+            .filter(|c| c.from == id)
+            .map(|c| c.to)
+            .chain(spec.modulations().iter().filter(|e| e.from == id).map(|e| e.to));
+        for to in downstream {
+            if let Some(degree) = indegree.get_mut(&to) {
                 *degree = degree.saturating_sub(1);
                 if *degree == 0 {
-                    queue.push(connection.to);
+                    queue.push(to);
                 }
             }
         }
@@ -181,6 +361,13 @@ pub fn compile_graph(spec: &StudioGraphSpec, options: &GraphOptions) -> Result<R
         grew = false;
         for connection in spec.connections() {
             if reachable.contains(&connection.to) && reachable.insert(connection.from) {
+                grew = true;
+            }
+        }
+        // A modulator of a reachable node is itself reachable: it is not
+        // heard, but it is the reason what is heard moves.
+        for edge in spec.modulations() {
+            if reachable.contains(&edge.to) && reachable.insert(edge.from) {
                 grew = true;
             }
         }
@@ -235,12 +422,29 @@ pub fn compile_graph(spec: &StudioGraphSpec, options: &GraphOptions) -> Result<R
             .collect::<Vec<usize>>();
         let taken = Vec::with_capacity(outputs.len());
         let takes_events = processor.input_ports().contains(&PortKind::NoteEvents);
+        let modulations = spec
+            .modulations()
+            .iter()
+            .filter(|edge| edge.to == *id)
+            .filter_map(|edge| {
+                let descriptor = processor.descriptor(edge.param)?;
+                let base = spec.param_value(*id, &descriptor);
+                Some(ParamLink {
+                    buffer: port_buffers.get(&(edge.from, edge.from_port)).copied().unwrap_or(0),
+                    descriptor,
+                    base,
+                    current: base,
+                    coefficient: block_coefficient(descriptor.smoothing, options),
+                })
+            })
+            .collect();
         schedule.push(Step {
             instance: ProcessorInstance::instantiate(spec, *id, processor, options.sample_rate),
             inputs,
             outputs,
             taken,
             takes_events,
+            modulations,
         });
     }
 
@@ -260,6 +464,23 @@ pub fn compile_graph(spec: &StudioGraphSpec, options: &GraphOptions) -> Result<R
     })
 }
 
+/// How far a smoothed parameter closes on its target in one block.
+///
+/// Parameters move at block rate (§13.7), so a jump would be audible as a
+/// step every block; a one-pole with a 5 ms time constant spreads it over
+/// two or three blocks, which is inaudible and costs one multiply-add per
+/// parameter per block.
+fn block_coefficient(smoothing: Smoothing, options: &GraphOptions) -> f32 {
+    const TIME_CONSTANT: f32 = 0.005;
+    match smoothing {
+        Smoothing::None => 1.0,
+        Smoothing::BlockRamp => {
+            let rate = options.sample_rate as f32 / options.block_size.max(1) as f32;
+            OnePole::time_coefficient(TIME_CONSTANT, rate)
+        }
+    }
+}
+
 /// Structural validation (§13.3): nodes, ports, kinds, duplicate inputs,
 /// processor-local limits.
 fn validate(spec: &StudioGraphSpec) -> Result<(), GraphError> {
@@ -275,6 +496,23 @@ fn validate(spec: &StudioGraphSpec) -> Result<(), GraphError> {
     }
     for connection in spec.connections() {
         check_connection(spec, connection)?;
+    }
+    for edge in spec.modulations() {
+        let from = spec.processor_of(edge.from).ok_or(GraphError::UnknownNode(edge.from))?;
+        let to = spec.processor_of(edge.to).ok_or(GraphError::UnknownNode(edge.to))?;
+        let kind = from.output_ports().get(edge.from_port).copied();
+        if kind != Some(PortKind::Control) {
+            return Err(GraphError::PortMismatch {
+                from: kind.map_or_else(|| "none".to_owned(), |kind| kind.to_string()),
+                to: PortKind::Control.to_string(),
+            });
+        }
+        if to.descriptor(edge.param).is_none() {
+            return Err(GraphError::InvalidParameter {
+                node: edge.to,
+                name: edge.param.to_owned(),
+            });
+        }
     }
     let mut fed: std::collections::HashSet<(NodeId, usize)> = std::collections::HashSet::new();
     for connection in spec.connections() {
@@ -397,9 +635,55 @@ fn window(events: &[PerformanceEvent], start: u64, end: u64) -> &[PerformanceEve
     events.get(from..to).unwrap_or(&[])
 }
 
+/// Apply this block's modulations to a node's parameters (§13.7).
+///
+/// Control signals are block-rate, so one value per block is the whole of the
+/// signal: reading the first frame is reading it, not sampling it. Everything
+/// the parameter says about the value happens here and in this order —
+/// combine, clamp, smooth — so a modulated parameter can never leave its
+/// declared range and never arrives as a step.
+fn apply_modulations(step: &mut Step, buffers: &[Box<[f32]>], sample_rate: f32) {
+    for link in &mut step.modulations {
+        let signal = buffers.get(link.buffer).and_then(|buffer| buffer.first()).copied();
+        // A control value that is not a number is not an instruction: the
+        // parameter keeps what the patch wrote rather than propagating a NaN
+        // into a filter coefficient (§17.5's NaN-freedom).
+        let signal = signal.filter(|value| value.is_finite()).unwrap_or(link.base);
+        let combined = match link.descriptor.combination {
+            Combination::Replace => signal,
+            Combination::Add => link.base + signal,
+            Combination::Multiply => link.base * signal,
+        };
+        let (low, high) = link.descriptor.range;
+        let target = if combined.is_finite() {
+            combined.clamp(low, high)
+        } else {
+            link.base
+        };
+        link.current = link.coefficient.mul_add(target - link.current, link.current);
+        step.instance.set_param(link.descriptor.name, link.current, sample_rate);
+    }
+}
+
+/// One period of an LFO shape at `phase` in `[0, 1)`.
+fn waveform_value(waveform: Waveform, phase: f64) -> f32 {
+    match waveform {
+        Waveform::Sine => (std::f64::consts::TAU * phase).sin() as f32,
+        Waveform::Triangle => 4.0f64.mul_add(-(phase - 0.5).abs(), 1.0) as f32,
+        Waveform::Square => {
+            if phase < 0.5 {
+                1.0
+            } else {
+                -1.0
+            }
+        }
+    }
+}
+
 /// Run one processor for `count` frames. Output buffers move out of the
 /// arena, are written, and move back — no heap traffic.
 fn process_step(step: &mut Step, buffers: &mut [Box<[f32]>], count: usize, sample_rate: f64, block: usize) {
+    apply_modulations(step, buffers, sample_rate as f32);
     step.taken.clear();
     for &index in &step.outputs {
         if let Some(buffer) = buffers.get_mut(index) {
@@ -573,6 +857,113 @@ fn process(
                 let (source, target) = (left.get(..count), right.get_mut(..count));
                 if let (Some(source), Some(target)) = (source, target) {
                     target.copy_from_slice(source);
+                }
+            }
+        }
+        ProcessorInstance::Lfo {
+            waveform,
+            phase,
+            frequency,
+        } => {
+            // One value per block, held: a parameter reads one value per
+            // block, so a sample-rate sine here would be arithmetic nobody
+            // looks at.
+            let value = waveform_value(*waveform, *phase);
+            *phase += f64::from(*frequency) * count as f64 / sample_rate;
+            *phase -= phase.floor();
+            if let Some(out) = outputs.first_mut() {
+                for slot in out.iter_mut().take(count) {
+                    *slot = value;
+                }
+            }
+        }
+        ProcessorInstance::Scale { factor } => {
+            if let Some(out) = outputs.first_mut() {
+                for i in 0..count {
+                    if let Some(slot) = out.get_mut(i) {
+                        *slot = input(0, i) * *factor;
+                    }
+                }
+            }
+        }
+        ProcessorInstance::Bias { offset } => {
+            if let Some(out) = outputs.first_mut() {
+                for i in 0..count {
+                    if let Some(slot) = out.get_mut(i) {
+                        *slot = input(0, i) + *offset;
+                    }
+                }
+            }
+        }
+        ProcessorInstance::Clamp { min, max } => {
+            let (low, high) = (min.min(*max), max.max(*min));
+            if let Some(out) = outputs.first_mut() {
+                for i in 0..count {
+                    if let Some(slot) = out.get_mut(i) {
+                        *slot = input(0, i).clamp(low, high);
+                    }
+                }
+            }
+        }
+        ProcessorInstance::Smooth { time, state } => {
+            let coefficient = OnePole::time_coefficient(*time, sample_rate as f32);
+            if let Some(out) = outputs.first_mut() {
+                for i in 0..count {
+                    let smoothed = state.process(input(0, i), coefficient);
+                    if let Some(slot) = out.get_mut(i) {
+                        *slot = smoothed;
+                    }
+                }
+            }
+        }
+        ProcessorInstance::Filter {
+            coefficients,
+            target,
+            channels,
+            ..
+        } => {
+            // The response walks to what the parameters now ask for over the
+            // block rather than arriving at its start; see `Coefficients`.
+            let step = coefficients.step_to(target, count);
+            let [left_state, right_state] = channels;
+            if let Some(out) = outputs.first_mut() {
+                for i in 0..count {
+                    let right_index = block.saturating_add(i);
+                    coefficients.advance(&step);
+                    let left = left_state.process(input(0, i), coefficients);
+                    let right = right_state.process(
+                        channel(0).and_then(|b| b.get(right_index)).copied().unwrap_or(0.0),
+                        coefficients,
+                    );
+                    if let Some(slot) = out.get_mut(i) {
+                        *slot = left;
+                    }
+                    if let Some(slot) = out.get_mut(right_index) {
+                        *slot = right;
+                    }
+                }
+            }
+            // End the block exactly on target, so a long sweep cannot drift.
+            *coefficients = *target;
+        }
+        ProcessorInstance::OnePoleFilter {
+            coefficient, channels, ..
+        } => {
+            let [left_state, right_state] = channels;
+            if let Some(out) = outputs.first_mut() {
+                for i in 0..count {
+                    let right_index = block.saturating_add(i);
+                    let left = left_state.process(input(0, i), *coefficient);
+                    let right = right_state.process(
+                        channel(0).and_then(|b| b.get(right_index)).copied().unwrap_or(0.0),
+                        *coefficient,
+                    );
+                    if let Some(slot) = out.get_mut(i) {
+                        *slot = left;
+                    }
+                    if let Some(slot) = out.get_mut(right_index) {
+                        *slot = right;
+                    }
                 }
             }
         }

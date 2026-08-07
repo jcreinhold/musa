@@ -101,12 +101,18 @@ pub enum Processor {
     Envelope,
     /// `lowpass(cutoff: 1400 Hz, q: 0.7)`
     Lowpass,
+    /// `highpass(cutoff: 80 Hz, q: 0.7)`
+    Highpass,
     /// `reverb(room: 0.82, damping: 0.55)`
     Reverb,
     /// `scale(250 Hz)` — multiply a control signal.
     Scale,
     /// `bias(1400 Hz)` — offset a control signal.
     Bias,
+    /// `clamp(min: 200 Hz, max: 6000 Hz)` — bound a control signal.
+    Clamp,
+    /// `smoothing(time: 20 ms)` — slew-limit a control signal.
+    Smoothing,
 }
 
 /// One declared parameter of a processor.
@@ -129,9 +135,12 @@ impl Processor {
             "mix" => Self::Mix,
             "envelope" => Self::Envelope,
             "lowpass" => Self::Lowpass,
+            "highpass" => Self::Highpass,
             "reverb" => Self::Reverb,
             "scale" => Self::Scale,
             "bias" => Self::Bias,
+            "clamp" => Self::Clamp,
+            "smoothing" => Self::Smoothing,
             _ => return None,
         })
     }
@@ -144,39 +153,62 @@ impl Processor {
             Self::Mix => "mix",
             Self::Envelope => "envelope",
             Self::Lowpass => "lowpass",
+            Self::Highpass => "highpass",
             Self::Reverb => "reverb",
             Self::Scale => "scale",
             Self::Bias => "bias",
+            Self::Clamp => "clamp",
+            Self::Smoothing => "smoothing",
         }
     }
 
     /// Its parameters, in declaration order. A positional argument binds to
     /// the first parameter, so the order is part of the contract.
+    ///
+    /// The control stages (`scale`, `bias`, `clamp`) declare their values in
+    /// `Hz` because a control signal's dimension is really its modulation
+    /// target's, and today the only target anyone modulates is a cutoff.
+    /// Inferring the unit from the target is a change to the unit system, not
+    /// to these tables, and it waits for a second target to justify it.
     pub fn params(self) -> &'static [ParamSpec] {
         const fn spec(name: &'static str, unit: Unit, default: f64) -> ParamSpec {
             ParamSpec { name, unit, default }
         }
         const OSCILLATOR: &[ParamSpec] = &[spec("frequency", Unit::Hz, 440.0), spec("ratio", Unit::Linear, 1.0)];
         const GAIN: &[ParamSpec] = &[spec("gain", Unit::Decibels, 0.0)];
+        // Written defaults are the built-in voice envelope, so `envelope()`
+        // with nothing said is not a different sound from saying nothing.
         const ENVELOPE: &[ParamSpec] = &[
             spec("attack", Unit::Seconds, 0.005),
-            spec("decay", Unit::Seconds, 0.1),
+            spec("decay", Unit::Seconds, 0.0),
             spec("sustain", Unit::Linear, 1.0),
-            spec("release", Unit::Seconds, 0.2),
+            spec("release", Unit::Seconds, 0.05),
         ];
-        const LOWPASS: &[ParamSpec] = &[spec("cutoff", Unit::Hz, 20_000.0), spec("q", Unit::Linear, 0.707)];
+        const LOWPASS: &[ParamSpec] = &[
+            spec("cutoff", Unit::Hz, 20_000.0),
+            spec("q", Unit::Linear, std::f64::consts::FRAC_1_SQRT_2),
+        ];
+        const HIGHPASS: &[ParamSpec] = &[
+            spec("cutoff", Unit::Hz, 20.0),
+            spec("q", Unit::Linear, std::f64::consts::FRAC_1_SQRT_2),
+        ];
         const REVERB: &[ParamSpec] = &[spec("room", Unit::Linear, 0.5), spec("damping", Unit::Linear, 0.5)];
         const SCALE: &[ParamSpec] = &[spec("factor", Unit::Hz, 1.0)];
         const BIAS: &[ParamSpec] = &[spec("offset", Unit::Hz, 0.0)];
+        const CLAMP: &[ParamSpec] = &[spec("min", Unit::Hz, 0.0), spec("max", Unit::Hz, 20_000.0)];
+        const SMOOTHING: &[ParamSpec] = &[spec("time", Unit::Seconds, 0.02)];
         match self {
             Self::Oscillator => OSCILLATOR,
             Self::Gain => GAIN,
             Self::Mix => &[],
             Self::Envelope => ENVELOPE,
             Self::Lowpass => LOWPASS,
+            Self::Highpass => HIGHPASS,
             Self::Reverb => REVERB,
             Self::Scale => SCALE,
             Self::Bias => BIAS,
+            Self::Clamp => CLAMP,
+            Self::Smoothing => SMOOTHING,
         }
     }
 
@@ -185,13 +217,17 @@ impl Processor {
         self.params().iter().copied().find(|param| param.name == name)
     }
 
-    /// Whether `musa-audio` can actually render this yet (prompts 30–31).
+    /// Whether `musa-audio` can actually render this yet (prompt 31).
     ///
     /// A processor without DSP is not an error: the language has to be
     /// writable before the sound exists, or every studio feature would wait
     /// on a filter. It renders as pass-through and says so.
+    ///
+    /// Prompt 30 gave the modulation core — envelopes, filters, and the
+    /// control stages — real DSP, so `reverb` is the last one left; the bus
+    /// effects arrive with prompt 31.
     pub fn is_placeholder(self) -> bool {
-        !matches!(self, Self::Oscillator | Self::Gain | Self::Mix)
+        matches!(self, Self::Reverb)
     }
 }
 

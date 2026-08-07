@@ -36,9 +36,12 @@ fn build(
     };
     // An empty studio lowers to the default instrument, so this one call
     // covers both the zero-setup piece and the fully patched one (§14.8).
-    let (spec, _) = musa_audio::lower_studio(studio, &options);
+    let (spec, lowering) = musa_audio::lower_studio(studio, &options);
     let plan = musa_audio::compile_graph(&spec, &options).map_err(|e| ProjectError::Performance(e.to_string()))?;
-    let tail = u64::from(sample_rate); // 1 s release tail until envelopes exist
+    // A second of room, plus however long the studio's longest release is:
+    // an export must contain the end of the sound, not the end of the notes.
+    let tail =
+        u64::from(sample_rate).saturating_add((f64::from(lowering.release_tail) * f64::from(sample_rate)) as u64);
     let frames = events
         .iter()
         .map(PerformanceEvent::frame)

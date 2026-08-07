@@ -13,7 +13,9 @@
 //! graph compiler hides validation, topological sort, and buffer allocation;
 //! callers see `build` and `render` (§3).
 
+mod envelope;
 mod error;
+mod filter;
 mod instrument;
 mod offline;
 mod plan;
@@ -26,7 +28,8 @@ pub use crate::instrument::poly_sine_spec;
 pub use crate::offline::{RenderedAudio, render_offline};
 pub use crate::plan::{EventSlice, RenderPlan, compile_graph};
 pub use crate::spec::{
-    Combination, GraphOptions, NodeId, ParameterDescriptor, PortKind, ProcessorSpec, Smoothing, StudioGraphSpec, Unit,
+    Combination, FilterKind, GraphOptions, NodeId, ParameterDescriptor, PortKind, ProcessorSpec, Smoothing,
+    StudioGraphSpec, Unit, Waveform,
 };
 pub use crate::studio::{StudioLowering, lower_studio};
 pub use crate::voice::VoiceAllocator;

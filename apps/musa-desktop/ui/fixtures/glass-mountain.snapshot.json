@@ -7,38 +7,6 @@
   "diagnostics": [
     {
       "severity": "warning",
-      "message": "`envelope` has no DSP yet and renders as pass-through",
-      "span": {
-        "start": 1110,
-        "end": 1185
-      }
-    },
-    {
-      "severity": "warning",
-      "message": "`lowpass` has no DSP yet and renders as pass-through",
-      "span": {
-        "start": 1204,
-        "end": 1237
-      }
-    },
-    {
-      "severity": "warning",
-      "message": "`scale` has no DSP yet and renders as pass-through",
-      "span": {
-        "start": 1341,
-        "end": 1355
-      }
-    },
-    {
-      "severity": "warning",
-      "message": "`bias` has no DSP yet and renders as pass-through",
-      "span": {
-        "start": 1370,
-        "end": 1384
-      }
-    },
-    {
-      "severity": "warning",
       "message": "`reverb` has no DSP yet and renders as pass-through",
       "span": {
         "start": 1456,

@@ -168,12 +168,20 @@ fn digest(bytes: &[u8]) -> u64 {
 /// where none was written is perfectly deterministic and perfectly wrong. The
 /// digest is the missing oracle — if a future change to the performance layer
 /// touches an unprofiled piece by even one sample, this fails.
+///
+/// It was re-pinned once, in prompt 30, when the placeholder ramp became a
+/// real ADSR. The old ramp compared an accumulated float against 1.0 and so
+/// spent 241 frames on a 240-frame attack; the ADSR counts frames. The
+/// difference was verified against the previous build before re-pinning: 26
+/// samples out of 576,000 changed, all at attack boundaries, none by more
+/// than one ulp. Nothing about interpretation moved, which is what this test
+/// is for.
 #[test]
 fn an_unprofiled_piece_renders_the_golden_audio() -> Result {
     let bytes = session().export(ExportRequest::Wav)?;
     assert_eq!(
         digest(bytes.as_bytes()),
-        0x0a45_f099_f55c_767d,
+        0x5af3_0a8a_a16d_6b85,
         "interpretation reached a piece that asked for none"
     );
     Ok(())

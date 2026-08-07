@@ -11,17 +11,48 @@ StudioGraphSpec {
             processor: PolySine {
                 voices: 16,
             },
-            params: [],
+            params: [
+                (
+                    "ratio",
+                    2.0,
+                ),
+                (
+                    "blend",
+                    0.17782794,
+                ),
+                (
+                    "attack",
+                    0.03,
+                ),
+                (
+                    "decay",
+                    1.8,
+                ),
+                (
+                    "sustain",
+                    0.65,
+                ),
+                (
+                    "release",
+                    3.5,
+                ),
+            ],
         },
         Node {
             id: NodeId(
                 1,
             ),
-            processor: StereoGain,
+            processor: Biquad {
+                kind: LowPass,
+            },
             params: [
                 (
-                    "gain",
-                    0.17782794,
+                    "cutoff",
+                    1400.0,
+                ),
+                (
+                    "q",
+                    0.7,
                 ),
             ],
         },
@@ -29,10 +60,13 @@ StudioGraphSpec {
             id: NodeId(
                 2,
             ),
-            processor: Passthrough {
-                channels: 2,
-            },
-            params: [],
+            processor: StereoGain,
+            params: [
+                (
+                    "gain",
+                    0.19952624,
+                ),
+            ],
         },
         Node {
             id: NodeId(
@@ -47,30 +81,6 @@ StudioGraphSpec {
             id: NodeId(
                 4,
             ),
-            processor: StereoGain,
-            params: [
-                (
-                    "gain",
-                    0.12589253,
-                ),
-            ],
-        },
-        Node {
-            id: NodeId(
-                5,
-            ),
-            processor: StereoGain,
-            params: [
-                (
-                    "gain",
-                    0.19952624,
-                ),
-            ],
-        },
-        Node {
-            id: NodeId(
-                6,
-            ),
             processor: Mixer {
                 inputs: 2,
             },
@@ -78,21 +88,41 @@ StudioGraphSpec {
         },
         Node {
             id: NodeId(
-                7,
+                5,
             ),
-            processor: Passthrough {
-                channels: 2,
+            processor: Lfo {
+                waveform: Sine,
             },
-            params: [],
+            params: [
+                (
+                    "frequency",
+                    0.08,
+                ),
+            ],
         },
         Node {
             id: NodeId(
-                8,
+                6,
             ),
-            processor: Mixer {
-                inputs: 3,
-            },
-            params: [],
+            processor: Scale,
+            params: [
+                (
+                    "factor",
+                    250.0,
+                ),
+            ],
+        },
+        Node {
+            id: NodeId(
+                7,
+            ),
+            processor: Bias,
+            params: [
+                (
+                    "offset",
+                    1400.0,
+                ),
+            ],
         },
     ],
     connections: [
@@ -128,7 +158,7 @@ StudioGraphSpec {
         },
         Connection {
             from: NodeId(
-                3,
+                1,
             ),
             from_port: 0,
             to: NodeId(
@@ -142,19 +172,9 @@ StudioGraphSpec {
             ),
             from_port: 0,
             to: NodeId(
-                5,
-            ),
-            to_port: 0,
-        },
-        Connection {
-            from: NodeId(
                 4,
             ),
-            from_port: 0,
-            to: NodeId(
-                6,
-            ),
-            to_port: 0,
+            to_port: 1,
         },
         Connection {
             from: NodeId(
@@ -164,7 +184,7 @@ StudioGraphSpec {
             to: NodeId(
                 6,
             ),
-            to_port: 1,
+            to_port: 0,
         },
         Connection {
             from: NodeId(
@@ -176,40 +196,22 @@ StudioGraphSpec {
             ),
             to_port: 0,
         },
-        Connection {
-            from: NodeId(
-                3,
-            ),
-            from_port: 0,
-            to: NodeId(
-                8,
-            ),
-            to_port: 0,
-        },
-        Connection {
-            from: NodeId(
-                3,
-            ),
-            from_port: 0,
-            to: NodeId(
-                8,
-            ),
-            to_port: 1,
-        },
-        Connection {
+    ],
+    modulations: [
+        ModulationEdge {
             from: NodeId(
                 7,
             ),
             from_port: 0,
             to: NodeId(
-                8,
+                1,
             ),
-            to_port: 2,
+            param: "cutoff",
         },
     ],
     output: Some(
         NodeId(
-            8,
+            4,
         ),
     ),
 }

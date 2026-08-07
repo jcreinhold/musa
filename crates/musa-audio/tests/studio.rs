@@ -55,15 +55,9 @@ fn a_patch_stage_becomes_a_node_between_the_synth_and_master() {
     let rendered = format!("{graph:#?}");
     assert!(rendered.contains("PolySine"), "{rendered}");
     assert!(rendered.contains("StereoGain"), "{rendered}");
-    assert!(
-        rendered.contains("Passthrough"),
-        "the filter has no DSP yet: {rendered}"
-    );
-    assert!(
-        lowering.notes.contains(&"`lowpass` renders as pass-through".to_owned()),
-        "{:?}",
-        lowering.notes
-    );
+    assert!(rendered.contains("Biquad"), "the filter is a filter now: {rendered}");
+    assert!(rendered.contains("800.0"), "the written cutoff reaches it: {rendered}");
+    assert!(lowering.notes.is_empty(), "{:?}", lowering.notes);
     compile_graph(&graph, &OPTIONS).expect("the lowered graph is valid");
 }
 

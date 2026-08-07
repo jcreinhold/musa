@@ -155,7 +155,11 @@ test("the origin row's line number opens the source at the use statement", async
 test("a diagnostic is a place in the source, not a notification", async ({ page }) => {
   await drawer(page).click();
   await rewrite(page, 'piece "Glass Mountain" {');
+  // Wait for the *compiler's* answer, not for a list of the right length: the
+  // piece opens with warnings of its own, and a count alone cannot tell them
+  // from the error the edit just caused.
   await expect(page.locator(".diagnostics li")).toHaveCount(1);
+  await expect(page.locator(".diagnostics .message")).toHaveText("expected `}`");
 
   const where = await page.locator(".diagnostics .where").innerText();
   await page.locator(".diagnostics button.problem").click();
