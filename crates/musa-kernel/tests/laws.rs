@@ -254,6 +254,106 @@ proptest! {
         prop_assert!(overlay(vec![m, n.clone()]).semantic_eq(&overlay(vec![rebuilt, n])));
     }
 
+    /// L20: coverage is observation, taken as narrowly as possible. An
+    /// occurrence covers `t` exactly when every window containing `t`
+    /// observes it — the two ways of asking cannot disagree.
+    #[test]
+    fn coverage_agrees_with_observation(m in arb_timeline(), at in 0i64..16) {
+        let at = quarters(at);
+        if at > m.extent() {
+            return Ok(());
+        }
+        let covering: Vec<Span> = m.covering(at).map(Occurrence::span).collect();
+        // Every window containing `at`, out of a family that includes the
+        // tightest ones on both sides.
+        for width in [1i64, 2, 4] {
+            let start = Beat::new(at.as_ratio() - quarters(width).as_ratio());
+            let start = if start.as_ratio() < num_rational::Ratio::ZERO { Beat::ZERO } else { start };
+            let end = Beat::new(at.as_ratio() + quarters(width).as_ratio());
+            let window = Span::new(start, end).expect("ordered");
+            let observed: Vec<Span> = m.restrict(window).observed().map(|(_, o)| o.span()).collect();
+            for span in &covering {
+                prop_assert!(observed.contains(span), "a covering occurrence must be observed through {window}");
+            }
+        }
+        // And nothing else covers `at`. Every occurrence that contains `at`
+        // is visible through the tightest window starting there, so filtering
+        // that observation by containment must reproduce `covering` exactly —
+        // as a multiset, since equal occurrences are distinct facts (K6).
+        let tight = Span::new(at, Beat::new(at.as_ratio() + quarters(1).as_ratio())).expect("ordered");
+        let mut observed: Vec<(Span, u8)> = m
+            .restrict(tight)
+            .observed()
+            .map(|(_, occurrence)| (occurrence.span(), *occurrence.payload()))
+            .filter(|(span, _)| span.contains(at))
+            .collect();
+        let mut covered: Vec<(Span, u8)> = m
+            .covering(at)
+            .map(|occurrence| (occurrence.span(), *occurrence.payload()))
+            .collect();
+        observed.sort_by_key(|(span, payload)| (span.start(), span.end(), *payload));
+        covered.sort_by_key(|(span, payload)| (span.start(), span.end(), *payload));
+        prop_assert_eq!(observed, covered);
+    }
+
+    /// L21: coverage commutes with the algebra. Scaling moves the question
+    /// with the music, and sequencing moves it by the first extent.
+    #[test]
+    fn coverage_is_stable_under_time_transformation(m in arb_timeline(), n in arb_timeline(), at in 1i64..12) {
+        let at = quarters(at);
+        if at > m.extent() {
+            return Ok(());
+        }
+        let factor = num_rational::Ratio::new(3, 2);
+        let scaled = m.scale(factor).expect("positive factor");
+        let here: Vec<&u8> = m.covering(at).map(Occurrence::payload).collect();
+        let there: Vec<&u8> = scaled.covering(Beat::new(at.as_ratio() * factor)).map(Occurrence::payload).collect();
+        prop_assert_eq!(here, there);
+
+        // Past the seam, a sequence answers with its second argument alone.
+        // *At* the seam both may answer — a point at `m`'s extent and `n`'s
+        // material at 0 share that instant — which is D2's boundary, not a
+        // defect, so the law is stated strictly past it.
+        let joined = sequence(vec![m.clone(), n.clone()]);
+        let after = Beat::new(m.extent().as_ratio() + at.as_ratio());
+        if at <= n.extent() {
+            let inside: Vec<&u8> = n.covering(at).map(Occurrence::payload).collect();
+            let outside: Vec<&u8> = joined.covering(after).map(Occurrence::payload).collect();
+            prop_assert_eq!(inside, outside);
+        }
+    }
+
+    /// L22: prevailing is the last selected start. Stated against an
+    /// independent scan, so the law does not check the implementation
+    /// against itself.
+    #[test]
+    fn prevailing_is_the_last_selected_start(m in arb_timeline(), at in 0i64..16) {
+        let at = quarters(at);
+        let expected = m
+            .canonical_occurrences()
+            .into_iter()
+            .rfind(|occurrence| occurrence.span().start() <= at && occurrence.payload().is_multiple_of(2))
+            .map(|occurrence| *occurrence.payload());
+        let actual = m.prevailing(at, |payload: &u8| payload.is_multiple_of(2).then_some(*payload));
+        prop_assert_eq!(actual, expected);
+    }
+
+    /// L23: prevailing is monotone in information. Facts that start after
+    /// `at` cannot change what is in force at `at`, which is what makes it
+    /// safe to build a piece a voice at a time.
+    #[test]
+    fn prevailing_ignores_facts_that_start_later(m in arb_timeline(), at in 0i64..8) {
+        let at = quarters(at);
+        let select = |payload: &u8| payload.is_multiple_of(2).then_some(*payload);
+        let before = m.prevailing(at, select);
+        // Everything in `later` starts strictly after `at`.
+        let start = Beat::new(at.as_ratio() + quarters(1).as_ratio());
+        let end = Beat::new(start.as_ratio() + quarters(2).as_ratio());
+        let span = Span::new(start, end).expect("ordered");
+        let later = timeline(end, vec![Occurrence::new(span, 2u8), Occurrence::new(span, 4u8)]).expect("in bounds");
+        prop_assert_eq!(overlay(vec![m, later]).prevailing(at, select), before);
+    }
+
     /// N6: the semantic hash agrees with semantic equality. Equal meaning,
     /// equal digest — the direction a caller relies on when an unequal digest
     /// makes it rebuild something.

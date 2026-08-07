@@ -138,7 +138,69 @@ delay_b(M) = (b, ∅) ; M
 No silence object is involved — `(b, ∅)` is an empty ambient region, sequenced before `M`. Delay therefore needs no
 primitive constructor.
 
-## D9 — Explicitly not defined
+## D10 — Coverage (which occurrences are in force at an instant)
+
+```text
+covering(M, t) = [ (s, e, a) ∈ E | contains([s, e), t) ]   in canonical order (N2)
+```
+
+where containment is the support's own convention:
+
+```text
+contains([s, e), t)  ≡  s = e ? s = t : s ≤ t < e
+```
+
+Coverage is an **observation, not a constructor**: it stores nothing, changes nothing, and adds no denotation D0–D7 did
+not already give. It exists because every consumer that wanted "what is sounding here" was computing it privately, and
+they did not agree (prompt 44).
+
+Coverage yields *occurrences*, not identities: which events a score gave names to is the score layer's invention
+(§12), and the kernel must not learn it.
+
+Coverage and restriction are the same question asked two ways, which L20 states: `covering(M, t)` is exactly what
+`restrict(M, I)` observes for every window `I` containing `t`, filtered to those occurrences containing `t`.
+
+## D11 — Prevailing value (what is in force at an instant)
+
+Given a selector `σ : A → V ∪ {⊥}` naming which payloads participate,
+
+```text
+prevailing(M, t, σ) = σ(a) for the canonically last (s, e, a) ∈ E with s ≤ t and σ(a) ≠ ⊥
+                    = ⊥ when there is none
+```
+
+The selector, rather than a payload trait, is what keeps the musical knowledge out of the kernel: the *caller* says "the
+key facts", and the kernel never learns what a key is (§12). One timeline therefore supports as many independent
+prevailing values as a consumer has questions — key, meter, clef, dynamic — without a type per kind.
+
+Note what is *not* in the definition: the occurrence's end. A prevailing value is anchored by where it was stated, not
+by how far its support happens to reach, which is why a whole-piece key fact and a key fact stated at bar 40 answer the
+same way.
+
+### The boundary conventions, decided once
+
+These four decisions were previously made in four places and not identically. They are the definition, and each is
+tested (L20–L23).
+
+| Question | Ruling | Why |
+| --- | --- | --- |
+| Is a fact covering at its end instant? | No — support is `[s, e)` | Consistent with D6 and with `sequence`: the next fact's start is the previous one's end, and one instant must not belong to both |
+| Is a point occurrence covered at its own instant? | Yes | Otherwise a point fact is unobservable — the same defect prompt 37 repaired in D6 |
+| Two prevailing candidates at the same instant? | The canonically later wins | Canonical order is total and includes the payload key (N2), so the answer is deterministic and does not depend on how the timeline was built |
+| Does a fact starting exactly at `t` prevail at `t`? | Yes | `dynamic mf;` on a note applies to *that* note; anything else surprises a composer |
+
+### The performance rule
+
+Both queries are linear scans, which is right for a one-off ask ("what covers the selection") and wrong for bulk
+derivation: calling `covering` once per event is O(events × facts).
+
+**The kernel defines what the answer is; bulk derivation does one ordered pass.** A projection that must answer for
+every event keeps its single sweep and honours the conventions above rather than calling the queries per event — see
+`musa-compiler`'s `project_regions` and `lower_performance`, both of which cite this rule. If benchmark P3 regresses, a
+sweep was turned into n queries and must be reverted, not tuned. No bulk or indexed query API belongs in the kernel for
+this: no caller wants one, and the sweep belongs where the score's ordering lives.
+
+## D12 — Explicitly not defined
 
 - **No `join`.** `Timeline[Timeline[A]]` has no canonical flattening: begin-at-onset, stretch-to-fit, crop, repeat, and
   preserve-inner-duration are genuinely different musical operations (§16). Specific higher-level abstractions may

@@ -273,6 +273,48 @@ impl<A: Canonical> Timeline<A> {
         }
     }
 
+    /// The occurrences whose support contains `at`, in canonical order
+    /// (docs/kernel/03 D8).
+    ///
+    /// "Contains" is [`Span::contains`]: support is half-open, so a fact is
+    /// gone at its end instant, and a point fact is present at its own. The
+    /// order is N2's, which makes the answer independent of how the timeline
+    /// was built.
+    ///
+    /// This is a *point* query and a linear scan of a canonically ordered
+    /// copy: right for asking once ("what is under the cursor"), wrong for
+    /// deriving something about every event. Bulk derivation makes one
+    /// ordered pass and uses D8's convention directly — see
+    /// `docs/kernel/03-denotational-semantics.md`.
+    pub fn covering(&self, at: crate::Beat) -> impl Iterator<Item = &Occurrence<A>> {
+        self.canonical_occurrences()
+            .into_iter()
+            .filter(move |occurrence| occurrence.span().contains(at))
+    }
+
+    /// The value in force at `at`: the canonically last occurrence starting
+    /// at or before `at` whose payload `select` accepts (docs/kernel/03 D9).
+    ///
+    /// A fact starting exactly at `at` does prevail there — `dynamic mf` on a
+    /// note applies to that note — and where two candidates start together
+    /// the later in canonical order wins, which is deterministic because N2's
+    /// order is total.
+    ///
+    /// `select` is how a caller says which facts are context-bearing. The
+    /// kernel must not know that a key is context and a note is not (§12), so
+    /// the question arrives as a closure rather than as a payload trait; one
+    /// timeline can then answer for key, meter, clef and dynamic
+    /// independently, with no type per kind.
+    ///
+    /// The same scan caveat as [`Self::covering`] applies.
+    pub fn prevailing<'a, V>(&'a self, at: crate::Beat, select: impl Fn(&'a A) -> Option<V>) -> Option<V> {
+        self.canonical_occurrences()
+            .into_iter()
+            .filter(|occurrence| occurrence.span().start() <= at)
+            .filter_map(|occurrence| select(occurrence.payload()))
+            .next_back()
+    }
+
     /// A stable digest of the canonical form (N6).
     ///
     /// Equal canonical forms hash equal, in every run and every process:

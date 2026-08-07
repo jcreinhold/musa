@@ -97,6 +97,16 @@ per iteration and are exact rather than sampled.
 | 43 | P4 | large | 389 µs | 9 457 | 636 KB |
 | 43 | P5 | small | 11 µs | 125 | 8.5 KB |
 | 43 | P5 | large | 660 µs | 9 520 | 645 KB |
+| 44 | P1 | small | 72.27 µs | 2 123 | 141.1 KB |
+| 44 | P1 | large | 2.015 ms | 57 235 | 4.037 MB |
+| 44 | P2 | small | 53.97 µs | 1 875 | 119.6 KB |
+| 44 | P2 | large | 1.781 ms | 55 534 | 3.838 MB |
+| 44 | P3 | small | 3.309 µs | 127 | 11.09 KB |
+| 44 | P3 | large | 232.3 µs | 7 852 | 853 KB |
+| 44 | P4 | small | 6.664 µs | 136 | 12.58 KB |
+| 44 | P4 | large | 396.4 µs | 9 457 | 1.02 MB |
+| 44 | P5 | small | 12.61 µs | 125 | 9.408 KB |
+| 44 | P5 | large | 674.8 µs | 9 520 | 776.3 KB |
 
 Two things the baseline already says, recorded here rather than acted on (prompt 38 changes nothing it measures):
 
@@ -170,10 +180,30 @@ to buy time nobody is short of. Recorded so the next person does not have to re-
 Net against prompt 42, on the phases that existed then: P1 +38%, P2 +33%, P3 unchanged, P4 −77%. A keystroke costs
 about half a millisecond more and gets an answer to a question it could not previously ask.
 
+
+### Prompt 44 — the queries cost nothing measurable
+
+P3 is the row this prompt was told to watch, because replacing four hand-rolled scans with kernel queries would be a
+regression if the migration turned a sweep into one query per event. It did not: **P3 large 227 µs → 232 µs (+2%)**,
+allocations unchanged at 7 852, which is run-to-run noise on this machine. `project_regions` still makes one ordered
+pass over the voice's event extents and `lower_performance` still carries the dynamic forward; both now cite D10–D11's
+conventions instead of inventing their own, which is a change of *authority*, not of algorithm. P1 large +3.3% and P2
+large +1.8% are the same noise and are inside the 10% gate.
+
+The one real cost is five allocations on P1/P2 large (57 230 → 57 235). `project_piece` sorts the piece-scoped facts in
+canonical order now, which builds a `canonical_key` `String` per piece-scoped fact — five of them in the large fixture
+— where sorting on `origin.definition_span` allocated nothing. That is the price of ordering by *meaning* rather than
+by source position, and it is per piece-scoped fact, not per event.
+
+**A transcription correction.** Prompt 43's P4-large and P5-large "bytes allocated" figures (636 KB, 645 KB) do not
+match the divan block at identical allocation counts; the column is the `alloc:` byte total, which this run reports as
+1.02 MB and 776 KB with allocation counts of exactly 9 457 and 9 520. Nothing regressed between the two rows — the
+earlier bytes were read off the wrong line. Later rows are the `alloc:` line, as the column heading says.
+
 ## The rule
 
 The table is a record, not a gate — machines differ, and a row taken on another laptop is not comparable to this one.
-The gate is **relative**: no prompt in the 39–48 block may regress **P1 or P2 on the large workload by more than 10%**
+The gate is **relative**: no prompt in the 39–50 block may regress **P1 or P2 on the large workload by more than 10%**
 against the row before it without saying so in its "Repairs made while implementing" section and justifying the trade.
 
 A prompt in this block is not done while its row is missing. Re-run the command above, append the rows, and keep the

@@ -50,6 +50,21 @@ implements canonical **serialization** only (N5). Working stance: no parser unti
 files exists (another implementation, a visualizer, a test oracle written in kernel text). *Settle when:* that consumer
 appears. Today's golden files are written to remain parseable by the future grammar (N5 is a strict subset).
 
+## Q8 — A `Behavior` abstraction over the queries
+
+`covering` and `prevailing` (D10–D11) are two concrete queries. The alternative considered at prompt 44 was an
+FRP-shaped `Behavior<V>` — `timeline.behavior(rule)` returning a sampled function of time, with `Step`, `Ramp`, and
+`Coverage` rules — which is conceptually tidier, because it names the fact that a finite occurrence set induces total
+functions of time, and is what a functional-reactive treatment of this domain would reach for.
+
+It was not taken. It buys a vocabulary and costs a trait with one implementor per rule, a closure at every call site,
+and a sampling protocol (`sample_over(window, step)`) that no current caller wants; a one-implementor trait is a
+concrete type wearing a costume. Working stance: two concrete queries. *Settle when:* a **third** rule appears with
+**two** callers each. That is the evidence that would justify the abstraction; until then it is speculative generality.
+
+Note that Q4 (time-varying continuous controls) is the most likely source of that third rule — a `Ramp` behaviour is
+what an envelope wants. If Q4 lands with a curve payload, revisit this question at the same time.
+
 ## Q7 — Chord regrouping fidelity
 
 Chords elaborate to simultaneous per-pitch occurrences; the snapshot adapter regroups by (span, voice, origin)

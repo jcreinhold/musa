@@ -1,7 +1,7 @@
 ---
 id: 44
 slug: kernel-queries
-status: in-progress
+status: done
 depends_on: [43]
 phase: 3
 ---
@@ -144,6 +144,49 @@ lives.
 - `crates/musa-compiler/src/performance.rs`: the per-voice dynamic scan replaced.
 - `crates/musa-render/src/plan.rs`: `Marks::collect`'s membership rebuild replaced by prompt 42's accessor.
 - `docs/kernel/09-performance.md`: this prompt's row.
+
+## Repairs made while implementing
+
+**D8 and D9 were taken; the queries are D10 and D11.** `03-denotational-semantics.md` already used D8 for derived delay
+and D9 for the explicitly-undefined list. Coverage and prevailing value are therefore **D10** and **D11**, and the old
+D9 became **D12**. Every cross-reference in this prompt should be read with that shift; the specification, the laws, and
+the code comments all use the new numbers.
+
+**The queries live on `impl<A: Canonical>`, not `impl<A>`.** The prompt's signature block puts them on the unconstrained
+impl, but both are specified to return results *in canonical order* (N2), and canonical order is (start, end, payload
+key) — it cannot be computed without the payload's key. Dropping the ordering requirement instead would have made
+`prevailing`'s coincident-onset ruling undefinable, which is one of the four conventions this prompt exists to settle.
+
+**`plan.rs`'s membership rebuild was already gone.** Prompt 42 replaced `Marks::collect`'s id-arithmetic loop with
+`ScoreSnapshot::events_in`, so that Target line was satisfied by `cefa2a9` rather than by this commit. What remained
+here were the three in `musa-compiler`.
+
+**`lower_performance`'s scan was documented, not replaced.** The prompt lists it as a scan to delete, but it is already
+the correct shape: one ordered pass per voice carrying the last marking forward, which is exactly D11 applied in bulk.
+Replacing it with a `prevailing` call per event is precisely what D10's performance rule forbids and what P3 would
+have caught. The repair it actually needed was authority — it now cites D11 and states, at the point of the code, how
+it answers the two conventions it used to answer implicitly (a marking is in force *at* its own event; of two markings
+at one instant the canonically later wins, because `Marks::collect`'s last insertion keeps the key).
+
+**`project_regions` also moved off `definition_span`, and its sort with it.** The Check line only requires
+`project_piece` to be clean, but `project_regions` sorted brackets by `origin.definition_span` for the same wrong
+reason — source position standing in for time. It now sorts by `(span.start(), Reverse(span.end()))`, which keeps the
+outermost-first nesting order the annotation lanes have always had while making it a fact about time. Membership is the
+D10 convention (`s ≤ onset < e`, point regions holding their own instant) computed in a single pass over the already
+ordered event extents, replacing the pair of `find`/`rev().find` scans that asked "entirely inside" — a different
+question that happened to agree on every fixture. All 438 tests pass and no golden changed.
+
+**`project_points` was left alone.** It resolves a dynamic to the next event at or after its instant, which is already
+convention row 4 ("a fact starting exactly at `t` prevails at `t`") expressed in time, and its only `definition_span`
+use is the span of a diagnostic — which is what a diagnostic span is for.
+
+**Design 2 is recorded as Q8, and points at Q4.** `08-open-questions.md` states the `Behavior<V>` shape, why it was
+declined, and the evidence that would settle it (a third rule with two callers each) — plus the observation that Q4's
+continuous controls are the most likely source of that third rule, so the two questions should be reopened together.
+
+**The measurement.** P3 large 227 µs → 232 µs (+2%), allocations unchanged; P1 large +3.3%, P2 large +1.8%, all noise
+and all inside the block's gate. The one real cost is five allocations, from `project_piece` building a canonical key
+per piece-scoped fact. Full numbers and a correction to prompt 43's byte column are in `docs/kernel/09-performance.md`.
 
 ## Check
 

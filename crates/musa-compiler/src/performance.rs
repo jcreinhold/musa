@@ -347,6 +347,16 @@ pub fn lower_performance(
         for (_, voice) in part.voices() {
             // The prevailing dynamic is per voice: a marking applies from its
             // event onward in the voice that wrote it, not across the part.
+            //
+            // This is the kernel's prevailing rule (docs/kernel/03 D11) applied
+            // in bulk — one ordered pass over the voice, carrying the last
+            // marking forward — and not one `Timeline::prevailing` call per
+            // event, which would be O(events × markings). The two conventions
+            // D11 fixes are honoured here: a marking on an event is in force
+            // *at* that event (the assignment precedes the read below), and of
+            // two markings at one instant the canonically later wins, because
+            // `Marks::collect` inserts them in the annotation lane's order and
+            // the last insertion keeps the key.
             let mut dynamic = None;
             // The loudness a hairpin grows from: whatever was in force at its
             // first note, which is what a hairpin means on the page.

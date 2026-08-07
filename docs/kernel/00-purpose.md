@@ -16,6 +16,18 @@ Everything else — how those facts were produced (motif? repetition? transposit
 rest glyphs, line breaks), how they sound (tempo realization, instruments, DSP) — belongs to layers above or below the
 kernel, never inside it.
 
+Stating the facts is only half the job. A representation nobody can interrogate is ceremony: if every consumer that
+needs "what is sounding at bar 12" or "which key is in force here" writes the scan itself, the kernel has centralized
+the *storage* of temporal truth while leaving its *interpretation* scattered — and scattered interpretations disagree,
+which is exactly what prompt 44 found. So the kernel is a representation **and** the interface for interrogating it
+(`03-denotational-semantics.md` D10–D11): the second answer it gives is
+
+> **What is in force at this instant, and what does it cover?**
+
+The interface stays small in the same way the representation does. A query earns its place by being something more than
+one consumer already computes by hand, and it adds no stored state, no constructor, and no denotation the operations
+above do not already give.
+
 ## Why a kernel at all
 
 Without a small semantic basis, every surface-language construct becomes something each backend must independently
@@ -123,3 +135,4 @@ musician-facing Musa source
 | `06-surface-elaboration.md` | How the existing surface constructs elaborate. |
 | `07-backend-contract.md` | What downstream consumers may assume. |
 | `08-open-questions.md` | What is deliberately undecided. |
+| `09-performance.md` | The measured cost of the kernel path, prompt by prompt. |

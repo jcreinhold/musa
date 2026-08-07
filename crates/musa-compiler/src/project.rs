@@ -14,7 +14,7 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use indexmap::IndexMap;
-use musa_kernel::{Occurrence, Timeline};
+use musa_kernel::{Canonical as _, Occurrence, Timeline};
 
 use crate::elaborate::{FactKind, ScoreFact};
 use crate::resolve::Resolver;
@@ -81,12 +81,30 @@ pub(crate) fn project(resolver: &mut Resolver, timeline: &Timeline<ScoreFact>) -
 /// The piece-scoped facts: the context maps, and the annotations written at a
 /// position rather than on a note.
 ///
-/// Order is source order, which is the order these lists have always been in:
-/// a form marker's place in the outline is where the composer wrote it, and
-/// two markers at one instant would otherwise swap on a re-elaboration.
+/// The order is **canonical order** (N2: start, end, payload key), which is
+/// time order with source position as its tie-break — the payload key ends in
+/// the origin's source span. That matters twice. For the context maps it is
+/// the prevailing rule of `docs/kernel/03` D11 applied in bulk: the last fact
+/// starting at or before the piece's start is the one in force, and when
+/// `modulate` arrives this sweep already answers correctly for a key that
+/// changes at bar 40. Sorting on the fact's *source* position — which this did until
+/// prompt 44 — was only ever right while every context fact spanned the whole
+/// piece. For the markers it preserves the order the outline has always had:
+/// a form marker's place is where the composer wrote it, and two markers at
+/// one instant cannot swap on a re-elaboration.
+///
+/// This is D11's *definition* applied by one ordered pass, not a `prevailing`
+/// call per fact. The kernel says what the answer is; bulk derivation sweeps
+/// (docs/kernel/03 D11, "the performance rule").
 fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]) -> (Option<KeyMap>, MeterMap) {
     let mut ordered: Vec<&&Occurrence<ScoreFact>> = occurrences.iter().collect();
-    ordered.sort_by_key(|occurrence| occurrence.payload().origin.definition_span.start);
+    ordered.sort_by_cached_key(|occurrence| {
+        (
+            occurrence.span().start(),
+            occurrence.span().end(),
+            occurrence.payload().canonical_key(),
+        )
+    });
     let mut key = None;
     let mut meter = MeterMap::default();
     for occurrence in ordered {
@@ -265,34 +283,58 @@ fn project_points(
 
 /// Region facts name the events at their ends.
 ///
-/// Order is the order the brackets were written, outermost first, which is
-/// the order the annotation lists have always been in: a region that starts
-/// earlier comes first, and where two start together the one that ends later
-/// encloses the other.
+/// Order is time order, outermost first, which is the order the annotation
+/// lists have always been in: a region that starts earlier comes first, and
+/// where two start together the one that ends later encloses the other.
+/// Membership follows the kernel's containment convention (docs/kernel/03 D10)
+/// and is derived by one ordered pass, not by a query per event.
 fn project_regions(
     resolver: &mut Resolver,
     regions: &mut [&Occurrence<ScoreFact>],
     extents: &[(MusicalTime, MusicalTime, EventId)],
 ) {
+    // Time order, outermost first: a bracket that opens earlier is written
+    // first, and of two brackets opening together the wider one encloses the
+    // narrower. Until prompt 44 this sorted on the bracket's source position, which
+    // agreed only because nothing yet moves a region away from where it was
+    // written.
     regions.sort_by_key(|occurrence| {
-        let span = occurrence.payload().origin.definition_span;
-        (span.start, std::cmp::Reverse(span.end))
+        let span = occurrence.span();
+        (span.start(), std::cmp::Reverse(span.end()))
     });
     for occurrence in regions.iter() {
         let fact = occurrence.payload();
-        let from_time = MusicalTime::new(occurrence.span().start().as_ratio());
-        let to_time = MusicalTime::new(occurrence.span().end().as_ratio());
-        let from = extents.iter().find(|(onset, _, _)| *onset >= from_time);
-        let to = extents.iter().rev().find(|(_, end, _)| *end <= to_time);
-        let (Some((_, _, from)), Some((_, _, to))) = (from, to) else {
+        let span = occurrence.span();
+        let from_time = MusicalTime::new(span.start().as_ratio());
+        let to_time = MusicalTime::new(span.end().as_ratio());
+        // The containment convention of docs/kernel/03 D10, applied in one
+        // ordered pass rather than one `covering` call per event (D10, "the
+        // performance rule"): a region `[s, e)` holds the events whose onset
+        // satisfies `s ≤ onset < e`, and a point region holds the events at
+        // its own instant. `extents` is already in onset order, so the first
+        // and last held event bound the region.
+        let held = |onset: MusicalTime| {
+            if from_time == to_time {
+                onset == from_time
+            } else {
+                from_time <= onset && onset < to_time
+            }
+        };
+        let mut first = None;
+        let mut last = None;
+        for (onset, _, id) in extents {
+            if !held(*onset) {
+                continue;
+            }
+            first.get_or_insert(*id);
+            last = Some(*id);
+        }
+        let (Some(from), Some(to)) = (first, last) else {
             // A bracket with no events under it annotates nothing, which is
             // what it has always done.
             continue;
         };
-        if from > to {
-            continue;
-        }
-        let (from, to, origin) = (*from, *to, fact.origin.clone());
+        let origin = fact.origin.clone();
         match &fact.kind {
             FactKind::Slur => resolver.annotations.push_slur(SlurSpan { from, to, origin }),
             FactKind::Phrase { name } => resolver.annotations.push_phrase(PhraseSpan {

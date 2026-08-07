@@ -52,6 +52,22 @@ laws described an operation nothing used.
   moves an occurrence's origin claim (§17). Test: `restrict_composition`,
   `restrict_composition_strictly_nested`.
 
+## Query laws
+
+- **L20 — coverage agrees with observation.** For every window `I` containing `t`, the occurrences of `restrict_I(M)`
+  whose whole support contains `t` are exactly `covering(M, t)`, in the same canonical order. The two ways of asking
+  what is in force cannot disagree. Test: `coverage_agrees_with_observation`.
+- **L21 — coverage is stable under time transformation.** `covering(scale_r(M), r·t)` corresponds to `covering(M, t)`,
+  and `covering(M ; N, d + t)` corresponds to `covering(N, t)` for `d = extent(M)` and `t` strictly past the seam. The
+  queries commute with the algebra; the seam itself is excluded because `[s, e)` gives that instant to `N` alone, which
+  is the first convention of D11. Test: `coverage_is_stable_under_time_transformation`.
+- **L22 — prevailing is the last selected start.** For every `t`, `prevailing(M, t, σ)` equals `σ` applied to the
+  canonically last occurrence with `start ≤ t` that `σ` accepts, and is `⊥` when there is none. Test:
+  `prevailing_is_the_last_selected_start`.
+- **L23 — prevailing is monotone in information.** Overlaying a timeline whose `σ`-selected occurrences all start
+  strictly after `t` does not change `prevailing(M, t, σ)`. This is the law that lets a projection build a piece
+  incrementally and still answer correctly about its beginning. Test: `prevailing_ignores_facts_that_start_later`.
+
 ## The synchronized interchange law
 
 - **L18 — synchronized interchange.** If `duration(M) = duration(N)` and `duration(P) = duration(Q)`, then

@@ -93,6 +93,31 @@ Constructors are `pub(crate)` throughout: a snapshot is produced by projecting a
 exception is `KeyMap::new`, because naming a key is not a snapshot-building privilege — the MIDI entry buffer spells
 incoming notes against a key it was handed, and holds no score.
 
+## Questions consumers ask the kernel rather than answer privately (prompt 44)
+
+Prompt 42 closed the *snapshot* so that guarantees travel by accessor. Prompt 44 does the same one layer down, for the
+timeline itself. Before it, four places answered "what is in force here" and "what does this cover" — `project_piece`,
+`project_regions`, `plan.rs`'s membership rebuild, and `lower_performance`'s dynamic scan — and they disagreed about
+end instants, point occurrences, and coincident onsets. Two of them were keyed on *source position* rather than time,
+which is correct only while every context fact spans the whole piece.
+
+The guarantee the kernel now carries is simple, and is the reason these are queries rather than four conventions:
+
+> **Two consumers asking the same question of the same timeline get the same answer.**
+
+| Question | The operation that answers it |
+| --- | --- |
+| Which occurrences are in force at instant `t`? | `Timeline::covering` (D10) |
+| What value is in force at `t`, among the facts I care about? | `Timeline::prevailing` (D11) |
+| Where do the boundaries fall — end instants, points, ties? | The convention table in D10–D11, stated once |
+
+Two things consumers may *not* assume. The queries return occurrences, never identities: `EventId` is the score layer's
+invention and the kernel does not know it (§12). And `prevailing` takes a selector, not a payload trait — the caller
+says which facts are context-bearing, because "this is a key signature" is musical knowledge the kernel must not learn.
+
+Consumers that must answer for *every* event keep their ordered sweep and honour the conventions rather than calling a
+query per event; D10's performance rule says why, and benchmark P3 enforces it.
+
 ## Falsification duty (§33)
 
 Consumers built against this contract are evidence for or against it. If several materially different musical examples

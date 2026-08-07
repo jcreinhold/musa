@@ -125,6 +125,24 @@ impl Span {
         }
     }
 
+    /// Whether `at` lies inside this span (docs/kernel/03 D8).
+    ///
+    /// Support is half-open: `s ≤ at < e`. The end instant belongs to
+    /// whatever comes next, which is what makes `sequence` unambiguous — the
+    /// second timeline's first instant is the first one's end, and one
+    /// instant must not be inside both.
+    ///
+    /// A **point** span (`s = e`) contains its own instant, for D6's reason:
+    /// the half-open reading alone would make a point unobservable
+    /// everywhere, which is a defect rather than a definition.
+    pub fn contains(self, at: Beat) -> bool {
+        if self.start == self.end {
+            self.start == at
+        } else {
+            self.start <= at && at < self.end
+        }
+    }
+
     /// The intersection `self ∩ window`, for visible spans.
     #[must_use]
     pub fn clip(self, window: Self) -> Self {
