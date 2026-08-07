@@ -60,16 +60,15 @@ the shorter timeline** — it simply lives inside a larger ambient region.
   a union of sets.
 - At any fixed extent `d`, overlay forms a commutative monoid with identity `(d, ∅)` (L6).
 
-## D4 — Ambient extension
+## D4 — Ambient extension *(struck: prompt 37)*
 
-For `d ≤ e`:
+`extend_{d,e} (d, E) = (e, E)` was a standalone operation. It is removed: nothing called it. `sequence` and `overlay`
+compute their extents themselves, and no surface construct asks a timeline to grow without adding material, so under §34
+the basis shrinks. Re-adding it needs new evidence, not taste.
 
-```text
-extend_{d,e} (d, E) = (e, E)
-```
-
-No occurrence is introduced, moved, or removed (§9). This is the correct reading of "making a temporal region longer" —
-categorically different from "padding with silence," which would require a silence object the kernel does not have (§2).
+Ambient extension as a *concept* stays, and is exactly what it always was: `(d, ∅)` is silence by absence, and `overlay`
+of unequal extents takes the maximum without padding the shorter argument. What went is the operation that only ever
+restated that.
 
 ## D5 — Time scaling (an external action)
 
@@ -85,18 +84,35 @@ normalized representation (§14).
 
 ## D6 — Restriction (observation, not mutation)
 
-Restricting `M = (d, E)` to a window `I = [i, j]` with `0 ≤ i ≤ j ≤ d` yields an **observation**: for each occurrence
-`(s, e, a)` with `[s, e] ∩ [i, j] ≠ ∅`, report
+Restricting `M = (d, E)` to a window `I = [i, j)` yields an **observation**: for each occurrence `(s, e, a)` visible
+through `I`, report
 
 ```text
-whole_span    = [s, e]
-visible_span  = [max(s, i), min(e, j)]
+whole_span    = [s, e)
+visible_span  = [max(s, i), min(e, j))
 payload       = a
 ```
 
+An occurrence is visible through `[i, j)` when:
+
+- it has positive duration and `[s, e) ∩ [i, j) ≠ ∅`; or
+- it is a **point** (`s = e`) and `s ∈ [i, j)`; a point occurrence is otherwise unobservable through every window, which
+  the interval-intersection phrasing does not intend; or
+- **the final instant of a timeline is observable**: it is a point at `s = j = d`. A window that ends at the observed
+  timeline's extent is closed at its right end. L16 follows from this rule — without it, observing at the full extent
+  `[0, d)` would drop an occurrence at `d` and so would not be the identity.
+
+The third rule is a fact about the timeline being observed, not about the window: an observation therefore carries the
+extent it was taken from, and narrowing it cannot silently drop an occurrence the wider observation reported (L17).
+
 The observation knows both spans (§17): an occurrence over `[3, 6)` observed through `[5, 8)` has whole support `[3, 6)`
-and visible support `[5, 6)` — cropping never claims the occurrence began at 5. The normalized serialized kernel stores
-whole spans only; the whole/visible pair is the observation-time representation.
+and visible support `[5, 6)` — cropping never claims the occurrence began at 5. The visible span is a *function* of the
+whole span and the window, so it is computed on demand rather than stored beside it; the normalized serialized kernel
+stores whole spans only.
+
+Restriction is total and composes: narrowing an observation to `K` intersects the windows, so there is no containment
+precondition and no error (L17). Windows that do not meet observe nothing — which is *not* the same as a degenerate
+window sitting at the extent, where the rule above applies.
 
 ## D7 — Payload mapping (functorial, not a temporal primitive)
 

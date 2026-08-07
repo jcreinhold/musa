@@ -143,3 +143,17 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   performance boundary and nowhere else. §33 item 6 is therefore partly answered: stepwise tempo is exact, and a
   continuous ramp remains a surface-syntax question rather than a kernel one — the piecewise map already has the shape
   a ramp would lower into.
+- **Prompt 37 (observation and the end of `extend`):** two repairs, both of them removals. `extend` was deleted because
+  no caller ever appeared: `sequence` and `overlay` compute extents themselves, and the surface has no construct that
+  asks a timeline to grow without adding material. Under §34 that is the evidence the basis is one operation too large,
+  so K3, D4, and L7–L8 are struck; ambient extension as a *concept* — `(d, ∅)`, and `overlay` taking the maximum
+  without padding — is untouched, since it was never the operation. Re-adding `extend` requires a caller, not a taste.
+  The second removal is `ObservedOccurrence`: it stored the visible span next to the whole span, two facts that must
+  agree, kept in two places. `Observation<'a, A>` computes the visible span on the way out instead, and *narrowing an
+  observation intersects the windows* — which makes L17 hold for arbitrary windows rather than for nested ones under a
+  precondition the caller had to respect, and deletes the error that precondition would otherwise have needed. The
+  observation carries the extent it was taken from, because "the final instant of a timeline is observable" is a fact
+  about the timeline and not about the window; without it, narrowing a full-extent observation would drop the point
+  occurrence the wider one reported (`the_final_instant_survives_narrowing`). D6 now states that rule positively, and
+  L16 is derived from it. `06-surface-elaboration.md`'s rest row, which prompt 11 had already contradicted, is repaired
+  to match the code.

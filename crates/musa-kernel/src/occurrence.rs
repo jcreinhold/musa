@@ -64,39 +64,3 @@ impl<A: Canonical> Occurrence<A> {
         (self.span.start(), self.span.end(), self.payload.canonical_key())
     }
 }
-
-/// An occurrence seen through a restriction window (docs/kernel/03 D6).
-///
-/// The whole support is always reported alongside the visible part, so
-/// cropping never claims an occurrence began inside the window (§17).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ObservedOccurrence<'a, A> {
-    whole_span: Span,
-    visible_span: Span,
-    payload: &'a A,
-}
-
-impl<'a, A> ObservedOccurrence<'a, A> {
-    pub(crate) fn new(whole_span: Span, visible_span: Span, payload: &'a A) -> Self {
-        Self {
-            whole_span,
-            visible_span,
-            payload,
-        }
-    }
-
-    /// The occurrence's full support, regardless of the window.
-    pub fn whole_span(&self) -> Span {
-        self.whole_span
-    }
-
-    /// `whole_span ∩ window`.
-    pub fn visible_span(&self) -> Span {
-        self.visible_span
-    }
-
-    /// The payload.
-    pub fn payload(&self) -> &'a A {
-        self.payload
-    }
-}

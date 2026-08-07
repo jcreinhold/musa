@@ -25,10 +25,10 @@ Every occurrence `(s, e, a)` in a timeline of extent `d` must satisfy:
 - Scaling factors are **positive** rationals (`ℚ>0`); zero or negative scaling is a construction error
   (`03-denotational-semantics.md`, D5).
 
-## K3 — Ambient extension
+## K3 — Ambient extension *(struck: prompt 37)*
 
-`extend(d, E)` to a new extent `e` requires `d ≤ e`. Extension never adds, moves, or removes an occurrence (§9); a
-request to shrink is an error, not an implicit crop. Cropping is `restrict` — an observation, not a mutation
+There was a rule here about `extend(d, E)` refusing to shrink. The operation was removed at prompt 37 (nothing called
+it), and with it the error. Cropping was never extension anyway: it is `restrict` — an observation, not a mutation
 (`03-denotational-semantics.md`, D6).
 
 ## K4 — Reference resolution and acyclicity

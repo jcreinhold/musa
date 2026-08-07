@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 92c62e190df97ebc5c55fe541843fda713d977f72f3dee1e68a633b82e3e6243 # shrinks to mjw = (Timeline { extent: Beat(Ratio { numer: 13, denom: 4 }), occurrences: [Occurrence { span: Span { start: Beat(Ratio { numer: 9, denom: 4 }), end: Beat(Ratio { numer: 13, denom: 4 }) }, payload: 0 }] }, (12, 12), (12, 12))
+cc 72d956a792370ae69fb3b87d209ea1c9721e67daae0cb42779990bda30167fc7 # shrinks to mjk = (Timeline { extent: Beat(Ratio { numer: 3, denom: 4 }), occurrences: [Occurrence { span: Span { start: Beat(Ratio { numer: 3, denom: 4 }), end: Beat(Ratio { numer: 3, denom: 4 }) }, payload: 0 }] }, (0, 0), (3, 3))

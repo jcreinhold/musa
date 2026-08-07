@@ -22,14 +22,6 @@ pub enum KernelError {
         /// The timeline extent.
         extent: Beat,
     },
-    /// Ambient extension was asked to shrink (K3); cropping is `restrict`.
-    #[error("cannot extend extent {from} down to {to}: extension never shrinks")]
-    ShrinkingExtension {
-        /// The current extent.
-        from: Beat,
-        /// The requested extent.
-        to: Beat,
-    },
     /// Time scaling by a non-positive factor (K2/D5).
     #[error("scale factor must be a positive rational, got {factor}")]
     NonPositiveScale {

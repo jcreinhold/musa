@@ -46,7 +46,7 @@ Decisions recorded against course correction §32:
 | Surface construct | Elaboration |
 | --- | --- |
 | `note c5 1/4;` | One occurrence of `NotePayload` over the current position's span; the voice cursor advances by `1/4`. |
-| `rest 1/2;` | **No occurrence.** The voice cursor advances by `1/2` — ambient extent grows; absence is silence (§2). |
+| `rest 1/2;` | One occurrence of `RestPayload` over the current position's span; the voice cursor advances by `1/2`. A *written* rest is notation an author asked for, and export and provenance both need it; what stays absent is unwritten silence (§2). |
 | `chord (c5 e5 g5) 1/2;` | `overlay` of one `NotePayload` occurrence per pitch over the same span (§30 Step 4). The snapshot adapter regroups same-span, same-voice, same-origin occurrences into `ScoreEventKind::Chord`. |
 | voice body | `sequence` of its items in source order (cursor semantics = left-fold of successive extents). |
 | part | `overlay` of its voice timelines. Voice identity stays separable via payload metadata. |
@@ -99,7 +99,8 @@ parity therefore still holds on everything the oracle accepts. `phase_two_constr
 
 ## What elaboration must never do
 
-- Introduce rest/silence occurrences to "fill" regions (§2).
+- Introduce rest/silence occurrences to "fill" regions the author left empty (§2) — a `rest` the author wrote is
+  material and elaborates to an occurrence; a gap is not.
 - Push production history into kernel semantics (e.g. making equality motif-aware) (§20).
 - Add kernel constructs because one surface feature is awkward — awkwardness is elaboration's problem (§34).
 - Change the surface grammar to make elaboration easier (§35.9).

@@ -1,7 +1,7 @@
 ---
 id: 37
 slug: kernel-observation
-status: pending
+status: done
 depends_on: [12]
 phase: 3
 ---
@@ -114,3 +114,18 @@ Commit as `Make kernel observation composable and drop ambient extension`.
 - No new kernel constructors. This prompt only removes and repairs.
 - No compiler, render, project, or desktop changes — if one is forced, the prompt is mis-scoped: stop and repair it.
 - Do not "fix" `Canonical`'s `String` keys here; that is prompt 43, and it needs prompt 38's measurement first.
+
+## Repairs made while implementing
+
+- Narrowing to a window that does not meet the current one is an explicit empty case, not a clipped span. `Span::clip`
+  is only correct where the two overlap, and a *fabricated* empty span can land on the extent — where the
+  point-at-the-end rule would then read an occurrence that neither window shows. The proptest found this immediately
+  once L17 was generalized to arbitrary windows, which is the argument for generalizing it.
+- `docs/kernel/02-static-semantics.md` K3 also stated the extension rule; the prompt named 03, 04, and 06 but not 02.
+  It is struck with the same note rather than left contradicting the code.
+- `restrict_composition` is now stated as `restrict_K ∘ restrict_J = restrict_{J ∩ K}` over two independently generated
+  windows, with "observes nothing" as the law for windows that do not meet; the strictly-nested case is kept as a
+  worked example (`restrict_composition_strictly_nested`) since it is
+  the case the law was originally written for.
+- Added `the_final_instant_survives_narrowing`: the point-at-the-extent rule is the reason `Observation` carries the
+  source extent, and nothing else pinned that narrowing preserves it.

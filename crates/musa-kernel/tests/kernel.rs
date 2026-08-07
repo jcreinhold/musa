@@ -58,34 +58,37 @@ fn overlay_takes_max_extent_and_keeps_multiplicity() {
 }
 
 #[test]
-fn extend_never_shrinks_and_adds_nothing() {
-    let base = timeline(beat(1, 1), vec![occurrence((0, 1), (1, 1), 1)]).expect("valid");
-    let grown = base.extend(beat(4, 1));
-    assert!(grown.is_ok());
-    assert_eq!(grown.ok().map(|t| t.occurrences().len()), Some(1));
-    assert!(base.extend(beat(1, 2)).is_err());
-}
-
-#[test]
 fn restrict_reports_whole_and_visible_spans() {
     let base = timeline(beat(8, 1), vec![occurrence((3, 1), (6, 1), 1)]).expect("valid");
-    let window = span((5, 1), (8, 1));
-    let view = base.restrict(window);
-    assert_eq!(view.observed().len(), 1);
-    let observed = view.observed().first().expect("one observed");
+    let observation = base.restrict(span((5, 1), (8, 1)));
+    let seen: Vec<(Span, Span)> = observation
+        .observed()
+        .map(|(visible, occurrence)| (occurrence.span(), visible))
+        .collect();
     // The whole support is [3, 6): cropping must not claim the occurrence
     // began at 5 (docs/kernel/03 D6).
-    assert_eq!(observed.whole_span().start(), beat(3, 1));
-    assert_eq!(observed.visible_span().start(), beat(5, 1));
-    assert_eq!(observed.visible_span().end(), beat(6, 1));
+    assert_eq!(seen, vec![(span((3, 1), (6, 1)), span((5, 1), (6, 1)))]);
 }
 
 #[test]
 fn point_occurrences_are_observable() {
     let point = span((3, 1), (3, 1));
     let base = timeline(beat(8, 1), vec![Occurrence::new(point, 1u8)]).expect("valid");
-    assert_eq!(base.restrict(span((2, 1), (5, 1))).observed().len(), 1);
-    assert!(base.restrict(span((4, 1), (8, 1))).observed().is_empty());
+    assert_eq!(base.restrict(span((2, 1), (5, 1))).observed().count(), 1);
+    assert!(base.restrict(span((4, 1), (8, 1))).is_empty());
+}
+
+/// The final instant of a timeline is observable (docs/kernel/03 D6), and a
+/// narrowed observation keeps it: the rule is about the timeline's extent,
+/// not about the window it is first seen through.
+#[test]
+fn the_final_instant_survives_narrowing() {
+    let end = span((8, 1), (8, 1));
+    let base = timeline(beat(8, 1), vec![Occurrence::new(end, 1u8)]).expect("valid");
+    let full = base.restrict(span((0, 1), (8, 1)));
+    assert_eq!(full.observed().count(), 1);
+    assert_eq!(full.restrict(span((7, 1), (8, 1))).observed().count(), 1);
+    assert!(full.restrict(span((0, 1), (7, 1))).is_empty());
 }
 
 #[test]

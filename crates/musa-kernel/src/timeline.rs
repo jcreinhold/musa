@@ -8,7 +8,7 @@
 
 use num_rational::Ratio;
 
-use crate::occurrence::{Canonical, ObservedOccurrence, Occurrence};
+use crate::occurrence::{Canonical, Occurrence};
 use crate::time::{Beat, Span};
 
 /// A finite timeline: ambient extent `d ∈ ℚ≥0` plus a multiset of occurrences
@@ -81,23 +81,91 @@ pub fn overlay<A>(parts: Vec<Timeline<A>>) -> Timeline<A> {
     Timeline { extent, occurrences }
 }
 
-/// The result of observing a timeline through a window (D6).
+/// A timeline observed through a window (D6, §17).
+///
+/// Borrowed and cheap: an observation selects occurrences, it does not copy
+/// them, and it stores nothing that can be computed. In particular the
+/// *visible* span — `whole ∩ window` — is derived on the way out rather than
+/// kept beside the whole span, so the two can never disagree.
+///
+/// Observations compose: narrowing one intersects the windows, which makes
+/// L17 hold by construction rather than by a precondition a caller has to
+/// respect.
 #[derive(Clone, Debug)]
-pub struct RestrictedView<'a, A> {
+pub struct Observation<'a, A> {
     window: Span,
-    observed: Vec<ObservedOccurrence<'a, A>>,
+    /// The extent of the timeline being observed. The final instant of a
+    /// timeline is observable (D6), and that is a fact about the timeline
+    /// rather than about the window: without it, narrowing a full-extent
+    /// observation would drop a point occurrence the wider one reported.
+    extent: Beat,
+    selected: Vec<&'a Occurrence<A>>,
 }
 
-impl<'a, A> RestrictedView<'a, A> {
+impl<'a, A> Observation<'a, A> {
     /// The observation window.
     pub fn window(&self) -> Span {
         self.window
     }
 
-    /// Observed occurrences, each with whole and visible spans.
-    pub fn observed(&self) -> &[ObservedOccurrence<'a, A>] {
-        &self.observed
+    /// Narrow to `window ∩ self.window()`.
+    ///
+    /// Total by intersection: there is no containment precondition, so L17
+    /// holds for every pair of windows rather than only for nested ones. Two
+    /// windows that do not meet observe nothing, which is not the same as a
+    /// degenerate window at the extent — hence the explicit empty case rather
+    /// than a fabricated span the point-at-the-end rule would then read.
+    #[must_use]
+    pub fn restrict(&self, window: Span) -> Self {
+        let start = self.window.start().max(window.start());
+        let end = self.window.end().min(window.end());
+        if start > end {
+            return Self {
+                window: Span::ZERO.translate(start),
+                extent: self.extent,
+                selected: Vec::new(),
+            };
+        }
+        let window = self.window.clip(window);
+        Self {
+            window,
+            extent: self.extent,
+            selected: self
+                .selected
+                .iter()
+                .copied()
+                .filter(|occurrence| visible(occurrence.span(), window, self.extent))
+                .collect(),
+        }
     }
+
+    /// Each observed occurrence with its visible span `whole ∩ window`.
+    ///
+    /// The occurrence keeps its whole span (§17): observation never moves an
+    /// occurrence's claim about where it began.
+    pub fn observed(&self) -> impl Iterator<Item = (Span, &'a Occurrence<A>)> + '_ {
+        let window = self.window;
+        self.selected
+            .iter()
+            .copied()
+            .map(move |occurrence| (occurrence.span().clip(window), occurrence))
+    }
+
+    /// Whether the window shows nothing.
+    pub fn is_empty(&self) -> bool {
+        self.selected.is_empty()
+    }
+}
+
+/// Whether `span` is visible through `window` in a timeline of `extent`.
+///
+/// The final instant of a timeline is observable: a point occurrence at the
+/// extent is shown by a window that ends there, which is what makes
+/// observing at the full extent the identity (L16).
+fn visible(span: Span, window: Span, extent: Beat) -> bool {
+    let is_point = span.start() == span.end();
+    let at_the_end = is_point && span.start() == window.end() && window.end() == extent;
+    span.visible_through(window) || at_the_end
 }
 
 impl<A> Timeline<A> {
@@ -112,47 +180,18 @@ impl<A> Timeline<A> {
         &self.occurrences
     }
 
-    /// Ambient extension: `(e, E)` for `e ≥ d`, introducing nothing (D4).
-    ///
-    /// # Errors
-    /// [`KernelError::ShrinkingExtension`](crate::KernelError::ShrinkingExtension)
-    /// when `new_extent < self.extent()` — cropping is [`Timeline::restrict`].
-    pub fn extend(&self, new_extent: Beat) -> Result<Self, crate::KernelError>
-    where
-        A: Clone,
-    {
-        if new_extent < self.extent {
-            return Err(crate::KernelError::ShrinkingExtension {
-                from: self.extent,
-                to: new_extent,
-            });
+    /// Observe through `window` (D6, §17): the occurrences the window shows,
+    /// each keeping its whole span.
+    pub fn restrict(&self, window: Span) -> Observation<'_, A> {
+        Observation {
+            window,
+            extent: self.extent,
+            selected: self
+                .occurrences
+                .iter()
+                .filter(|occurrence| visible(occurrence.span(), window, self.extent))
+                .collect(),
         }
-        Ok(Self {
-            extent: new_extent,
-            occurrences: self.occurrences.clone(),
-        })
-    }
-
-    /// Observe through `window` (D6, §17): occurrences intersecting the
-    /// window report both whole and visible spans.
-    pub fn restrict(&self, window: Span) -> RestrictedView<'_, A> {
-        let observed = self
-            .occurrences
-            .iter()
-            .filter(|occurrence| {
-                let span = occurrence.span();
-                // Point occurrences at the ambient extent's end are observable
-                // through a window ending at the extent; otherwise `restrict`
-                // at the full extent would not be the identity (L16).
-                let is_point = span.start() == span.end();
-                let point_at_windows_extent_end = is_point && span.start() == window.end();
-                span.visible_through(window) || (point_at_windows_extent_end && window.end() == self.extent)
-            })
-            .map(|occurrence| {
-                ObservedOccurrence::new(occurrence.span(), occurrence.span().clip(window), occurrence.payload())
-            })
-            .collect();
-        RestrictedView { window, observed }
     }
 
     /// Functorial payload mapping: `Timeline(f)(d, E) = (d, {(s,e,f(a))})`

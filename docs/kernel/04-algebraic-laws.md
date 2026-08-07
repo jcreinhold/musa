@@ -21,12 +21,11 @@ its counterexample test. Equality (`=`) throughout is **semantic equality**: equ
 - **L6 — fixed-duration identity.** For `M` with extent `d`: `M ⊕ (d, ∅) = M = (d, ∅) ⊕ M`. Overlay at fixed duration is
   a commutative monoid with identity `(d, ∅)` (§8). Test: `overlay_fixed_duration_identity`.
 
-## Ambient-extension laws
+## Ambient-extension laws *(struck: prompt 37)*
 
-- **L7 — identity and composition.** `extend_{d,d} = id`, and for `d ≤ e ≤ f`:
-  `extend_{e,f} ∘ extend_{d,e} = extend_{d,f}` (§9). Test: `extend_identity`, `extend_composition`.
-- **L8 — overlay respects extension.** For `d ≤ e`: `(extend_{d,e} M) ⊕ N = M ⊕ N` whenever `extent(N) = e` — extending
-  the shorter argument before overlaying changes nothing (§9). Test: `overlay_respects_extension`.
+**L7** (extension identity and composition) and **L8** (overlay respects extension) were laws about `extend`, which was
+removed at prompt 37 for want of a caller (docs/kernel/03 D4). Their tests went with them. No behaviour changed: the
+laws described an operation nothing used.
 
 ## Payload-map laws
 
@@ -46,9 +45,12 @@ its counterexample test. Equality (`=`) throughout is **semantic equality**: equ
 
 - **L16 — identity.** `restrict_I = id` when `I` is the whole extent: every occurrence's visible span equals its whole
   span, and no occurrence is dropped. Test: `restrict_identity`.
-- **L17 — nested composition.** For `K ⊆ J ⊆ I`: `restrict_K(restrict_J(M)) = restrict_K(M)` — the observations
-  coincide, with **whole spans preserved**: restricting twice never moves an occurrence's origin claim (§17). Test:
-  `restrict_composition`.
+- **L17 — composition.** For **any** windows `J` and `K` that meet: `restrict_K(restrict_J(M)) = restrict_{J ∩ K}(M)`;
+  windows that do not meet observe nothing. Narrowing
+  an observation intersects the windows, so the law holds without a nesting precondition (it specializes to
+  `restrict_K(restrict_J(M)) = restrict_K(M)` when `K ⊆ J`). Whole spans are **preserved**: restricting twice never
+  moves an occurrence's origin claim (§17). Test: `restrict_composition`,
+  `restrict_composition_strictly_nested`.
 
 ## The synchronized interchange law
 

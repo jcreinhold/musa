@@ -47,40 +47,17 @@ fn arb_window(extent_quarters: i64) -> impl Strategy<Value = (i64, i64)> {
     (0..=extent_quarters).prop_flat_map(move |start| (Just(start), start..=extent_quarters))
 }
 
-/// A timeline with nested observation windows K ⊆ J ⊆ extent.
-fn arb_timeline_with_nested_windows() -> impl Strategy<Value = (Timeline<u8>, (i64, i64), (i64, i64))> {
-    (0i64..=16)
-        .prop_flat_map(|extent| (arb_timeline_at(extent), arb_window(extent)))
-        .prop_flat_map(|(m, j)| {
-            (
-                Just(m),
-                Just(j),
-                (j.0..=j.1).prop_flat_map(move |start| (Just(start), start..=j.1)),
-            )
-        })
+/// A timeline with two independent observation windows — *not* nested, since
+/// narrowing intersects and L17 is therefore claimed for all windows.
+fn arb_timeline_with_two_windows() -> impl Strategy<Value = (Timeline<u8>, (i64, i64), (i64, i64))> {
+    (0i64..=16).prop_flat_map(|extent| (arb_timeline_at(extent), arb_window(extent), arb_window(extent)))
 }
 
-/// Observations of `view` re-restricted to `k` (docs/kernel/04 L17): keep
-/// what intersects `k`, re-clip the visible span, never move the whole span.
-/// `extent` is the underlying timeline's extent, for the point-at-extent
-/// boundary rule.
-fn restrict_view<A>(view: &musa_kernel::RestrictedView<'_, A>, k: Span, extent: Beat) -> Vec<(Span, Span)> {
-    view.observed()
-        .iter()
-        .filter(|observed| {
-            let visible = observed.visible_span();
-            let is_point = visible.start() == visible.end();
-            let point_at_windows_extent_end = is_point && visible.start() == k.end();
-            visible.visible_through(k) || (point_at_windows_extent_end && k.end() == extent)
-        })
-        .map(|observed| (observed.whole_span(), observed.visible_span().clip(k)))
-        .collect()
-}
-
-fn observed_pairs<A>(view: &musa_kernel::RestrictedView<'_, A>) -> Vec<(Span, Span)> {
-    view.observed()
-        .iter()
-        .map(|observed| (observed.whole_span(), observed.visible_span()))
+/// Each observation as `(whole span, visible span)`, the pair D6 reports.
+fn observed_pairs<A>(observation: &musa_kernel::Observation<'_, A>) -> Vec<(Span, Span)> {
+    observation
+        .observed()
+        .map(|(visible, occurrence)| (occurrence.span(), visible))
         .collect()
 }
 
@@ -133,38 +110,6 @@ proptest! {
         let empty = timeline(m.extent(), Vec::<Occurrence<u8>>::new()).expect("empty");
         prop_assert!(overlay(vec![m.clone(), empty.clone()]).semantic_eq(&m));
         prop_assert!(overlay(vec![empty, m.clone()]).semantic_eq(&m));
-    }
-
-    /// L7a: extend_{d,d} = id.
-    #[test]
-    fn extend_identity(m in arb_timeline()) {
-        let same = m.extend(m.extent()).expect("equal extents");
-        prop_assert!(same.semantic_eq(&m));
-    }
-
-    /// L7b: extend_{e,f} ∘ extend_{d,e} = extend_{d,f} for d ≤ e ≤ f.
-    #[test]
-    fn extend_composition(m in arb_timeline(), extra in 0i64..=8, more in 0i64..=8) {
-        let d = m.extent().as_ratio();
-        let e = d + Ratio::new(extra, QUARTER);
-        let f = e + Ratio::new(more, QUARTER);
-        let stepwise = m
-            .extend(Beat::new(e))
-            .and_then(|mid| mid.extend(Beat::new(f)))
-            .expect("growing");
-        let direct = m.extend(Beat::new(f)).expect("growing");
-        prop_assert!(stepwise.semantic_eq(&direct));
-    }
-
-    /// L8: (extend_{d,e} M) ⊕ N = M ⊕ N when N has extent e ≥ d.
-    #[test]
-    fn overlay_respects_extension(m in arb_timeline(), n in arb_timeline()) {
-        let e = m.extent().max(n.extent());
-        let grown_m = m.extend(e).expect("growing");
-        let grown_n = n.extend(e).expect("growing");
-        let left = overlay(vec![grown_m, grown_n]);
-        let right = overlay(vec![m, n]);
-        prop_assert!(left.semantic_eq(&right));
     }
 
     /// L9: Timeline(id) = id.
@@ -245,26 +190,35 @@ proptest! {
         prop_assert!(left.semantic_eq(&right));
     }
 
-    /// L16: restrict at the full extent is the identity on observations.
+    /// L16: restrict at the full extent is the identity on observations —
+    /// every occurrence is reported, and its visible span is its whole span.
     #[test]
     fn restrict_identity(m in arb_timeline()) {
         let full = Span::new(Beat::ZERO, m.extent()).expect("ordered");
-        let view = m.restrict(full);
-        prop_assert_eq!(view.observed().len(), m.occurrences().len());
-        for (observed, occurrence) in view.observed().iter().zip(m.occurrences()) {
-            prop_assert_eq!(observed.whole_span(), occurrence.span());
-            prop_assert_eq!(observed.visible_span(), occurrence.span());
-        }
+        let observed = observed_pairs(&m.restrict(full));
+        let whole: Vec<(Span, Span)> = m
+            .occurrences()
+            .iter()
+            .map(|occurrence| (occurrence.span(), occurrence.span()))
+            .collect();
+        prop_assert_eq!(observed, whole);
     }
 
-    /// L17: restrict_K ∘ restrict_J = restrict_K for K ⊆ J ⊆ I, whole spans
-    /// preserved.
+    /// L17: restrict_K ∘ restrict_J = restrict_{J ∩ K}, for *any* two windows.
+    /// Narrowing intersects, so the law needs no nesting precondition; windows
+    /// that do not meet observe nothing.
     #[test]
-    fn restrict_composition(mjw in arb_timeline_with_nested_windows()) {
-        let (m, (j0, j1), (k0, k1)) = mjw;
+    fn restrict_composition(mjk in arb_timeline_with_two_windows()) {
+        let (m, (j0, j1), (k0, k1)) = mjk;
         let j = Span::new(quarters(j0), quarters(j1)).expect("ordered");
         let k = Span::new(quarters(k0), quarters(k1)).expect("ordered");
-        prop_assert_eq!(observed_pairs(&m.restrict(k)), restrict_view(&m.restrict(j), k, m.extent()));
+        let composed = m.restrict(j).restrict(k);
+        if j0.max(k0) <= j1.min(k1) {
+            let meet = Span::new(quarters(j0.max(k0)), quarters(j1.min(k1))).expect("ordered");
+            prop_assert_eq!(observed_pairs(&composed), observed_pairs(&m.restrict(meet)));
+        } else {
+            prop_assert!(composed.is_empty());
+        }
     }
 
     /// L18: (M ⊕ N) ; (P ⊕ Q) = (M ; P) ⊕ (N ; Q) under synchronization.
@@ -329,7 +283,8 @@ fn interchange_fails_without_synchronization() {
     assert!(!left.semantic_eq(&right));
 }
 
-/// L17 with a strictly nested window K ⊂ J ⊂ I.
+/// L17 with a strictly nested window K ⊂ J ⊂ I: the case the law was first
+/// stated for, kept as a worked example alongside the general property.
 #[test]
 fn restrict_composition_strictly_nested() {
     let m = timeline(
@@ -343,11 +298,10 @@ fn restrict_composition_strictly_nested() {
     .expect("valid");
     let j = Span::new(quarters(2), quarters(14)).expect("ordered");
     let k = Span::new(quarters(4), quarters(10)).expect("ordered");
-    let direct = observed_pairs(&m.restrict(k));
-    // Restrict the J-observation to K: keep observations whose visible part
-    // intersects K, re-clip, keep whole spans.
-    let via_j = restrict_view(&m.restrict(j), k, m.extent());
-    assert_eq!(direct, via_j);
+    assert_eq!(
+        observed_pairs(&m.restrict(j).restrict(k)),
+        observed_pairs(&m.restrict(k))
+    );
 }
 
 fn occurrence_at(start: i64, end: i64, payload: u8) -> Occurrence<u8> {
