@@ -353,6 +353,17 @@ impl RenderPlan {
         self.sample_rate
     }
 
+    /// The absolute frame the event-dispatch window is based on.
+    pub fn cursor(&self) -> u64 {
+        self.cursor
+    }
+
+    /// Move the event-dispatch cursor (transport seek/loop). Sounding
+    /// voices are left alone — this moves the schedule, not the DSP state.
+    pub fn seek(&mut self, frame: u64) {
+        self.cursor = frame;
+    }
+
     /// Interleave the master buffer into `output[2*written .. 2*(written+count)]`.
     fn copy_master(&self, output: &mut [f32], written: usize, count: usize, block: usize) {
         let Some(master) = self.buffers.get(self.master) else {

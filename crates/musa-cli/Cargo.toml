@@ -13,6 +13,7 @@ workspace = true
 miette = { version = "7", features = ["fancy"] }
 musa-audio = { path = "../musa-audio" }
 musa-compiler = { path = "../musa-compiler" }
+musa-engine = { path = "../musa-engine" }
 hound = "3"
 musa-language = { path = "../musa-language" }
 musa-project = { path = "../musa-project" }

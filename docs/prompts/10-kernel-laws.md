@@ -26,15 +26,15 @@ acceptance gate for the kernel; the "Status: candidate" banner does not come off
 ## Design
 
 - One proptest per law, named exactly as `04-algebraic-laws.md` names it. Generate small timelines (extents and spans
-  with denominators up to ~16, payload `u8` or short strings — payloads are arbitrary) and compare **semantic**
-  equality (normalized forms), not internal representation.
+  with denominators up to ~16, payload `u8` or short strings — payloads are arbitrary) and compare **semantic** equality
+  (normalized forms), not internal representation.
 - Required properties (from §30 Step 3):
   - `sequence` associativity; `sequence` zero identity (`(0, ∅)` on both sides); duration additivity.
   - `overlay` associativity; `overlay` commutativity; fixed-duration identity `(d, ∅)`; **non-idempotence**:
     `overlay(M, M) ≠ M` whenever `M` has a non-empty occurrence multiset (multiplicity doubles).
   - Ambient extension: `extend(d, d) = id`; `extend(e, f) ∘ extend(d, e) = extend(d, f)`; overlay respects extension.
-  - Restriction: identity at the full extent; nested composition `restrict_K ∘ restrict_J = restrict_K` for
-    `K ⊆ J ⊆ I`; whole spans preserved (visible span crops, whole span never moves).
+  - Restriction: identity at the full extent; nested composition `restrict_K ∘ restrict_J = restrict_K` for `K ⊆ J ⊆ I`;
+    whole spans preserved (visible span crops, whole span never moves).
   - Payload map: identity and composition; preserves `sequence` and `overlay`.
   - Time scaling: `scale_1 = id`; `scale_r ∘ scale_s = scale_{rs}`; preserves `sequence` and `overlay`.
   - Synchronized interchange: when `duration(M) = duration(N)` and `duration(P) = duration(Q)`,

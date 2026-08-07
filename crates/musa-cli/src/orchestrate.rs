@@ -18,6 +18,25 @@ pub(crate) struct RenderedWav {
 /// A string description (the CLI reports it verbatim) when performance
 /// lowering or graph compilation fails.
 pub(crate) fn render_to_wav(score: &ScoreSnapshot) -> Result<RenderedWav, String> {
+    let (mut plan, events, frames) = build_playback(score)?;
+    let audio = musa_audio::render_offline(&mut plan, &events, frames);
+    Ok(RenderedWav {
+        bytes: wav_bytes(&audio)?,
+    })
+}
+
+/// The same chain prepared for live playback (§13.8: one preparation,
+/// offline or live).
+///
+/// # Errors
+/// As [`render_to_wav`].
+pub(crate) fn prepare_playback(score: &ScoreSnapshot) -> Result<musa_engine::PreparedPlaybackPlan, String> {
+    let (plan, events, frames) = build_playback(score)?;
+    Ok(musa_engine::PreparedPlaybackPlan::new(plan, events, frames))
+}
+
+/// Performance lowering → default instrument graph → scheduled events.
+fn build_playback(score: &ScoreSnapshot) -> Result<(musa_audio::RenderPlan, Vec<PerformanceEvent>, u64), String> {
     let performance = lower_performance(score, &PerformanceOptions::default()).map_err(|e| e.to_string())?;
     let sample_rate = performance_options_rate();
     let events = collect_events(&performance);
@@ -26,7 +45,7 @@ pub(crate) fn render_to_wav(score: &ScoreSnapshot) -> Result<RenderedWav, String
         sample_rate,
         block_size: 128,
     };
-    let mut plan = musa_audio::compile_graph(&spec, &options).map_err(|e| e.to_string())?;
+    let plan = musa_audio::compile_graph(&spec, &options).map_err(|e| e.to_string())?;
     let tail = u64::from(sample_rate); // 1 s release tail until envelopes exist
     let frames = events
         .iter()
@@ -34,10 +53,7 @@ pub(crate) fn render_to_wav(score: &ScoreSnapshot) -> Result<RenderedWav, String
         .max()
         .unwrap_or(0)
         .saturating_add(tail);
-    let audio = musa_audio::render_offline(&mut plan, &events, frames);
-    Ok(RenderedWav {
-        bytes: wav_bytes(&audio)?,
-    })
+    Ok((plan, events, frames))
 }
 
 fn performance_options_rate() -> u32 {

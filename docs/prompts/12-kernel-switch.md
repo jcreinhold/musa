@@ -31,8 +31,8 @@ spec. After this prompt the temporal kernel — not the surface grammar — defi
   oracle permanently).
 - Spec graduation: remove the "Status: candidate" banner from `docs/kernel/*.md` and record the falsification status
   (§33: which examples are proven, which remain open and why) in `docs/kernel/08-open-questions.md`.
-- `docs/initial-design-roadmap.md` gets one pointer section (where it describes the lowering architecture) forwarding
-  to `docs/kernel/` and the course correction — the roadmap remains the source for everything else.
+- `docs/initial-design-roadmap.md` gets one pointer section (where it describes the lowering architecture) forwarding to
+  `docs/kernel/` and the course correction — the roadmap remains the source for everything else.
 - Update the module-level docs of `musa-compiler` to state the pipeline as: CST → (expansion-aware) elaboration →
   temporal kernel → `ScoreSnapshot` adapter, with the old lowerer named as oracle.
 

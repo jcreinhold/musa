@@ -4,14 +4,17 @@
 
 Course-correct the current Musa implementation around a smaller and more principled semantic kernel.
 
-The previous design has been drifting toward treating musician-facing concepts—motifs, repetitions, transpositions, voices, rests, chords, and similar constructs—as increasingly fundamental compiler structures. Do **not** continue in that direction.
+The previous design has been drifting toward treating musician-facing concepts—motifs, repetitions, transpositions,
+voices, rests, chords, and similar constructs—as increasingly fundamental compiler structures. Do **not** continue in
+that direction.
 
 The revised architecture should maintain two distinct pictures simultaneously:
 
 1. **Musa source language:** expressive, concise, musician-oriented, and programmable.
 2. **Musa temporal kernel:** very small, exact, backend-independent semantics into which the source language elaborates.
 
-The kernel should not attempt to be a general-purpose programming language, nor should the surface language resemble a declarative configuration DSL.
+The kernel should not attempt to be a general-purpose programming language, nor should the surface language resemble a
+declarative configuration DSL.
 
 The purpose of the kernel is to give every downstream consumer one precise answer to:
 
@@ -68,7 +71,8 @@ Every additional primitive becomes something that:
 * tests must special-case;
 * future features must compose with.
 
-A surface-language construct should earn kernel status only when it cannot be faithfully reduced to the existing temporal semantics without losing information required by independent consumers.
+A surface-language construct should earn kernel status only when it cannot be faithfully reduced to the existing
+temporal semantics without losing information required by independent consumers.
 
 ---
 
@@ -130,45 +134,31 @@ That is a notation decision, not a kernel ontology.
 
 For a payload type `A`, the denotation of a finite kernel timeline is:
 
-[
-(d,E)
-]
+[ (d,E) ]
 
 where:
 
-[
-d\in\mathbb Q_{\ge0}
-]
+[ d\in\mathbb Q_{\ge0} ]
 
 is the extent of the ambient musical-time interval
 
-[
-[0,d],
-]
+[ [0,d], ]
 
 and:
 
-[
-E
-]
+[ E ]
 
 is a finite multiset of occurrences
 
-[
-(s,e,a)
-]
+[ (s,e,a) ]
 
 such that:
 
-[
-0\le s\le e\le d
-]
+[ 0\le s\le e\le d ]
 
 and:
 
-[
-a:A.
-]
+[ a:A. ]
 
 Informally:
 
@@ -199,29 +189,21 @@ Musical positions use exact rational beat time.
 
 Use conceptually:
 
-[
-Time=\mathbb Q
-]
+[ Time=\mathbb Q ]
 
 and:
 
-[
-Duration=\mathbb Q_{\ge0}.
-]
+[ Duration=\mathbb Q_{\ge0}. ]
 
 Do not use floating-point numbers as the canonical representation of symbolic musical time.
 
 Global time positions form the abelian group:
 
-[
-(\mathbb Q,+,0).
-]
+[ (\mathbb Q,+,0). ]
 
 Durations form the ordered commutative monoid:
 
-[
-(\mathbb Q_{\ge0},+,0).
-]
+[ (\mathbb Q_{\ge0},+,0). ]
 
 This directly supports exact representation of:
 
@@ -290,9 +272,7 @@ timeline 4 beats {
 
 The semantic checker requires:
 
-[
-0\le start\le end\le duration.
-]
+[ 0\le start\le end\le duration. ]
 
 Multiple equal occurrences are allowed.
 
@@ -308,15 +288,11 @@ Two identical notes played by two performers must not collapse merely because al
 
 Given:
 
-[
-M=(d,E)
-]
+[ M=(d,E) ]
 
 and:
 
-[
-N=(e,F),
-]
+[ N=(e,F), ]
 
 define:
 
@@ -324,8 +300,7 @@ define:
 M;N
 ===
 
-(d+e,\ E\uplus\tau_d(F)),
-]
+(d+e,\ E\uplus\tau_d(F)), ]
 
 where:
 
@@ -333,28 +308,21 @@ where:
 \tau_d(s,t,a)
 =============
 
-(d+s,d+t,a).
-]
+(d+s,d+t,a). ]
 
 So the second timeline is translated by the duration of the first.
 
 Required laws:
 
-[
-(M;N);P=M;(N;P)
-]
+[ (M;N);P=M;(N;P) ]
 
 and:
 
-[
-0;M=M=M;0,
-]
+[ 0;M=M=M;0, ]
 
 where:
 
-[
-0=(0,\varnothing).
-]
+[ 0=(0,\varnothing). ]
 
 Duration must satisfy:
 
@@ -362,8 +330,7 @@ Duration must satisfy:
 duration(M;N)
 =============
 
-duration(M)+duration(N).
-]
+duration(M)+duration(N). ]
 
 `sequence` is therefore associative temporal concatenation.
 
@@ -375,15 +342,11 @@ duration(M)+duration(N).
 
 For:
 
-[
-M=(d,E)
-]
+[ M=(d,E) ]
 
 and:
 
-[
-N=(e,F),
-]
+[ N=(e,F), ]
 
 define:
 
@@ -391,8 +354,7 @@ define:
 M\oplus N
 =========
 
-(\max(d,e),E\uplus F).
-]
+(\max(d,e),E\uplus F). ]
 
 Nothing is inserted into the uncovered portion of the shorter timeline.
 
@@ -400,9 +362,7 @@ The shorter timeline is simply regarded as living inside a larger ambient region
 
 Required laws:
 
-[
-M\oplus N=N\oplus M
-]
+[ M\oplus N=N\oplus M ]
 
 and:
 
@@ -410,22 +370,17 @@ and:
 (M\oplus N)\oplus P
 ===================
 
-M\oplus(N\oplus P).
-]
+M\oplus(N\oplus P). ]
 
 Do **not** impose:
 
-[
-M\oplus M=M.
-]
+[ M\oplus M=M. ]
 
 Multiplicity matters.
 
 At any fixed duration (d), overlay forms a commutative monoid whose identity is:
 
-[
-(d,\varnothing).
-]
+[ (d,\varnothing). ]
 
 ---
 
@@ -433,9 +388,7 @@ At any fixed duration (d), overlay forms a commutative monoid whose identity is:
 
 For:
 
-[
-d\le e,
-]
+[ d\le e, ]
 
 define:
 
@@ -443,8 +396,7 @@ define:
 extend_{d,e}(d,E)
 =================
 
-(e,E).
-]
+(e,E). ]
 
 No occurrence is introduced.
 
@@ -452,9 +404,7 @@ This is the correct interpretation of extending a temporal region.
 
 Required coherence:
 
-[
-extend_{d,d}=id
-]
+[ extend_{d,d}=id ]
 
 and:
 
@@ -462,8 +412,7 @@ and:
 extend_{e,f}\circ extend_{d,e}
 ==============================
 
-extend_{d,f}.
-]
+extend_{d,f}. ]
 
 Overlay must respect ambient extension.
 
@@ -477,25 +426,17 @@ Do not force attractive algebraic names or laws where the musical semantics does
 
 In particular:
 
-[
-M;(N\oplus P)
-]
+[ M;(N\oplus P) ]
 
 contains one copy of (M), while:
 
-[
-(M;N)\oplus(M;P)
-]
+[ (M;N)\oplus(M;P) ]
 
 contains two.
 
 Therefore distributivity generally fails:
 
-[
-M;(N\oplus P)
-\ne
-(M;N)\oplus(M;P).
-]
+[ M;(N\oplus P) \ne (M;N)\oplus(M;P). ]
 
 The kernel is not naturally a ring or semiring.
 
@@ -509,15 +450,11 @@ There is, however, an important coherence law.
 
 If:
 
-[
-duration(M)=duration(N)
-]
+[ duration(M)=duration(N) ]
 
 and:
 
-[
-duration(P)=duration(Q),
-]
+[ duration(P)=duration(Q), ]
 
 then:
 
@@ -525,8 +462,7 @@ then:
 (M\oplus N);(P\oplus Q)
 =======================
 
-(M;P)\oplus(N;Q).
-]
+(M;P)\oplus(N;Q). ]
 
 Musically:
 
@@ -586,23 +522,17 @@ This is what allows Musa's temporal semantics to remain stable while its musical
 
 Given:
 
-[
-f:A\to B,
-]
+[ f:A\to B, ]
 
 there is a canonical induced transformation:
 
-[
-Timeline(f):Timeline\to Timeline[B]
-]
+[ Timeline(f):Timeline\to Timeline[B] ]
 
 that changes every payload while preserving temporal support.
 
 Required laws:
 
-[
-Timeline(id)=id
-]
+[ Timeline(id)=id ]
 
 and:
 
@@ -610,8 +540,7 @@ and:
 Timeline(g\circ f)
 ==================
 
-Timeline(g)\circ Timeline(f).
-]
+Timeline(g)\circ Timeline(f). ]
 
 It also preserves:
 
@@ -640,29 +569,19 @@ The normalized kernel should preserve what it means.
 
 Positive rational scaling:
 
-[
-r\in\mathbb Q_{>0}
-]
+[ r\in\mathbb Q_{>0} ]
 
 acts on a timeline by:
 
-[
-(d,E)
-\mapsto
-(rd,{(rs,re,a)}).
-]
+[ (d,E) \mapsto (rd,{(rs,re,a)}). ]
 
 Required laws:
 
-[
-scale_1=id
-]
+[ scale_1=id ]
 
 and:
 
-[
-scale_r\circ scale_s=scale_{rs}.
-]
+[ scale_r\circ scale_s=scale_{rs}. ]
 
 Scaling preserves both sequence and overlay.
 
@@ -682,8 +601,7 @@ Conceptually:
 delay_b(M)
 ==========
 
-(b,\varnothing);M.
-]
+(b,\varnothing);M. ]
 
 Therefore delay does not need an independent primitive semantic constructor either.
 
@@ -730,15 +648,11 @@ The kernel should support a clear notion of restricting an existing timeline to 
 
 If an occurrence exists over:
 
-[
-[3,6)
-]
+[ [3,6) ]
 
 and the requested observation window is:
 
-[
-[5,8),
-]
+[ [5,8), ]
 
 the observer should know both:
 
@@ -761,9 +675,7 @@ even if the normalized serialized kernel only stores whole spans.
 
 Restriction must obey:
 
-[
-restrict_I=id
-]
+[ restrict_I=id ]
 
 and nested restriction composition:
 
@@ -771,14 +683,11 @@ and nested restriction composition:
 restrict_K(restrict_J(M))
 =========================
 
-restrict_K(M)
-]
+restrict_K(M) ]
 
 for:
 
-[
-K\subseteq J\subseteq I.
-]
+[ K\subseteq J\subseteq I. ]
 
 This gives Musa temporal locality and makes finite-window observation mathematically coherent.
 
@@ -792,17 +701,11 @@ Instead, define a higher-level pattern as something capable of producing coheren
 
 Conceptually, a pattern supplies:
 
-[
-P(I)
-]
+[ P(I) ]
 
 for every bounded musical-time interval (I), with the compatibility law:
 
-[
-J\subseteq I
-\Longrightarrow
-restrict_J(P(I))=P(J).
-]
+[ J\subseteq I \Longrightarrow restrict_J(P(I))=P(J). ]
 
 Thus:
 
@@ -927,24 +830,17 @@ Keep symbolic kernel positions in beats.
 
 A performance layer supplies:
 
-[
-tempo:
-Beat\to Second
-]
+[ tempo: Beat\to Second ]
 
 more precisely, a monotone map from musical positions into physical time.
 
 An occurrence:
 
-[
-(s,e,a)
-]
+[ (s,e,a) ]
 
 then realizes as:
 
-[
-(tempo(s),tempo(e),a).
-]
+[ (tempo(s),tempo(e),a). ]
 
 Changing tempo therefore does not rewrite the symbolic temporal meaning of the composition.
 
@@ -978,10 +874,7 @@ typed occurrences over musical time
 
 Audio is fundamentally closer to:
 
-[
-Signal:
-PhysicalTime\to Sample.
-]
+[ Signal: PhysicalTime\to Sample. ]
 
 The two should meet through a realization/instrument boundary.
 
@@ -1161,7 +1054,8 @@ The course correction is primarily conceptual and architectural:
 * `ScoreSnapshot` should be evaluated as an implementation of, or adapter from, that normalized denotation;
 * it should not become the place where arbitrary surface-language semantics accumulate.
 
-If `ScoreSnapshot` contains note-specific assumptions that prevent it from serving as the generic temporal denotation, retain it as the score-specific interpretation of the kernel rather than forcing generic temporal semantics into it.
+If `ScoreSnapshot` contains note-specific assumptions that prevent it from serving as the generic temporal denotation,
+retain it as the score-specific interpretation of the kernel rather than forcing generic temporal semantics into it.
 
 Do not destabilize working notation code unnecessarily.
 
@@ -1413,11 +1307,13 @@ The following remain intentionally unresolved:
 
 ### Infinite/live patterns
 
-Treat them initially as producers of coherent finite kernel observations. Do not add them to the finite kernel until necessary.
+Treat them initially as producers of coherent finite kernel observations. Do not add them to the finite kernel until
+necessary.
 
 ### Aleatory semantics
 
-Probability, nondeterminism, performer choice, and reactive improvisation are not the same phenomenon. Do not invent one universal `Choice` kernel construct.
+Probability, nondeterminism, performer choice, and reactive improvisation are not the same phenomenon. Do not invent one
+universal `Choice` kernel construct.
 
 ### Voice identity
 
@@ -1442,7 +1338,8 @@ Do not force continuous control into discrete occurrences prematurely.
 
 ### Recursive/generative source programs
 
-The surface language may eventually need recursion or other generative facilities. This does not imply that the finite kernel needs them.
+The surface language may eventually need recursion or other generative facilities. This does not imply that the finite
+kernel needs them.
 
 ---
 
@@ -1452,35 +1349,26 @@ Before declaring this architecture settled, use materially different musical exa
 
 The candidate kernel should support clean elaboration of at least:
 
-1. **Twinkle Twinkle Little Star**
-   Ordinary sequential pitched material and rests.
+1. **Twinkle Twinkle Little Star** Ordinary sequential pitched material and rests.
 
-2. **A four-part chorale**
-   Multiple synchronized voices and harmonic simultaneity.
+2. **A four-part chorale** Multiple synchronized voices and harmonic simultaneity.
 
-3. **A canon**
-   Reuse, delay, transformation, and overlay.
+3. **A canon** Reuse, delay, transformation, and overlay.
 
-4. **Tuplets and polyrhythm**
-   Exact rational temporal relationships.
+4. **Tuplets and polyrhythm** Exact rational temporal relationships.
 
-5. **Changing meter and key**
-   Contextual temporal information without semantic special cases.
+5. **Changing meter and key** Contextual temporal information without semantic special cases.
 
-6. **Accelerando/ritardando**
-   Distinguish symbolic beat structure from physical-time realization.
+6. **Accelerando/ritardando** Distinguish symbolic beat structure from physical-time realization.
 
-7. **Glissando/crescendo**
-   Determine where continuous temporal behavior belongs.
+7. **Glissando/crescendo** Determine where continuous temporal behavior belongs.
 
-8. **Loop-based electronic music**
-   Surface iteration producing finite observations.
+8. **Loop-based electronic music** Surface iteration producing finite observations.
 
-9. **Controlled aleatory**
-   Multiple possible realizations producing ordinary finite kernels.
+9. **Controlled aleatory** Multiple possible realizations producing ordinary finite kernels.
 
-10. **An improvisational/live process**
-    Verify that the finite kernel remains a useful observation/interchange target even when the producer is reactive.
+10. **An improvisational/live process** Verify that the finite kernel remains a useful observation/interchange target
+    even when the producer is reactive.
 
 If several of these require awkward or lossy lowering, reconsider the kernel.
 
@@ -1492,7 +1380,8 @@ Do not patch each example independently.
 
 Use this rule for every proposed new kernel feature:
 
-> **A construct belongs in the kernel only if removing it makes an important class of musical meanings impossible or unnatural to represent faithfully across multiple independent consumers.**
+> **A construct belongs in the kernel only if removing it makes an important class of musical meanings impossible or
+> unnatural to represent faithfully across multiple independent consumers.**
 
 “Musicians use this concept” is not enough.
 
@@ -1502,7 +1391,8 @@ Use this rule for every proposed new kernel feature:
 
 The burden is semantic necessity.
 
-Conversely, do not worship minimality. If a concept repeatedly requires convoluted encodings, duplicated conventions, or backend-specific reconstruction, that is evidence that the kernel is missing a genuine primitive.
+Conversely, do not worship minimality. If a concept repeatedly requires convoluted encodings, duplicated conventions, or
+backend-specific reconstruction, that is evidence that the kernel is missing a genuine primitive.
 
 The target is not the *fewest constructors*.
 
@@ -1524,7 +1414,8 @@ For the next implementation phase:
 8. **Preserve source structure and provenance above the normalized kernel.**
 9. **Elaborate existing Musa syntax into the kernel without requiring an immediate source-language redesign.**
 10. **Differentially validate the new path against the existing lowering behavior before replacing it.**
-11. **Do not add `Pattern`, recursion, aleatory choice, DSP, or general-purpose language machinery to the finite kernel merely to anticipate future features.**
+11. **Do not add `Pattern`, recursion, aleatory choice, DSP, or general-purpose language machinery to the finite kernel
+    merely to anticipate future features.**
 12. **Use real musical examples to falsify the kernel before extending it.**
 
 The intended architecture is:

@@ -3,8 +3,8 @@
 Musa maintains two pictures at once:
 
 1. **The surface language** — expressive, concise, musician-oriented, programmable. Composers write notes, rests,
-   chords, motifs, repeats, transpositions, voices, parts, keys, meters, and (later) phrases, sections, dynamics,
-   loops, and aleatory constructions.
+   chords, motifs, repeats, transpositions, voices, parts, keys, meters, and (later) phrases, sections, dynamics, loops,
+   and aleatory constructions.
 2. **The temporal kernel** — a very small, exact, backend-independent semantics into which the surface language
    elaborates.
 
@@ -27,19 +27,19 @@ The anti-pattern is **not** domain-specific syntax; musician-friendly syntax is 
 
 ## The foundational model
 
-Musical time is ambient: it exists independently of what occurs within it (course correction §2). A finite kernel
-object is:
+Musical time is ambient: it exists independently of what occurs within it (course correction §2). A finite kernel object
+is:
 
 1. an ambient region of exact musical time `[0, d]`, `d ∈ ℚ≥0`; and
 2. zero or more typed occurrences `(s, e, a)` supported within that region, `0 ≤ s ≤ e ≤ d`, payload `a : A`.
 
 If a region contains no note occurrence, that region is silent with respect to notes. **Nothing representing silence
-needs to exist.** A rest glyph is a notation decision a backend makes about an uncovered region of a notated voice —
-it is not kernel ontology (§2, `07-backend-contract.md`).
+needs to exist.** A rest glyph is a notation decision a backend makes about an uncovered region of a notated voice — it
+is not kernel ontology (§2, `07-backend-contract.md`).
 
-Time is exact: positions form the abelian group `(ℚ, +, 0)` and durations the ordered commutative monoid
-`(ℚ≥0, +, 0)` (§4). Floats never represent symbolic musical time; physical seconds are a separate domain introduced
-by performance realization (§22).
+Time is exact: positions form the abelian group `(ℚ, +, 0)` and durations the ordered commutative monoid `(ℚ≥0, +, 0)`
+(§4). Floats never represent symbolic musical time; physical seconds are a separate domain introduced by performance
+realization (§22).
 
 ## The governing design rule
 
@@ -48,10 +48,8 @@ Every proposed kernel feature is judged by this rule, quoted verbatim from cours
 > **A construct belongs in the kernel only if removing it makes an important class of musical meanings impossible or
 > unnatural to represent faithfully across multiple independent consumers.**
 >
-> "Musicians use this concept" is not enough.
-> "It's convenient to parse this way" is not enough.
-> "It's easier to implement this feature as another enum variant" is not enough.
-> The burden is semantic necessity.
+> "Musicians use this concept" is not enough. "It's convenient to parse this way" is not enough. "It's easier to
+> implement this feature as another enum variant" is not enough. The burden is semantic necessity.
 >
 > Conversely, do not worship minimality. If a concept repeatedly requires convoluted encodings, duplicated conventions,
 > or backend-specific reconstruction, that is evidence that the kernel is missing a genuine primitive.
@@ -70,8 +68,8 @@ Exactly three structural forms, plus named references for sharing (§5):
 - `overlay` — simultaneous presence in a common ambient region (commutative, associative, **not** idempotent).
 
 No primitive `note`, `rest`, `chord`, `motif`, `voice`, `repeat`, `transpose`, `key`, or `tempo` exists at this level.
-Payloads are typed but musically opaque to the kernel (§12): the kernel knows *where*, *when*, *for how long*, and
-*what typed value* — never what a `Note` means.
+Payloads are typed but musically opaque to the kernel (§12): the kernel knows *where*, *when*, *for how long*, and *what
+typed value* — never what a `Note` means.
 
 ## What the kernel deliberately is not
 
@@ -80,8 +78,8 @@ Payloads are typed but musically opaque to the kernel (§12): the kernel knows *
 - Not assumed to be a monad; there is no canonical musically-correct `join` (§16).
 - Not infinite: patterns, loops, and live processes live **above** the finite kernel as producers of coherent finite
   observations (§18).
-- Not a provenance store: the kernel is a semantic *quotient* of richer source structure; provenance is preserved
-  above it (§20, `06-surface-elaboration.md`).
+- Not a provenance store: the kernel is a semantic *quotient* of richer source structure; provenance is preserved above
+  it (§20, `06-surface-elaboration.md`).
 
 ## The pipeline
 

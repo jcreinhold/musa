@@ -13,6 +13,7 @@ fn main() -> ExitCode {
         Some("format") => cmd_format(args.get(1..).unwrap_or_default()),
         Some("check") => cmd_check(args.get(1..).unwrap_or_default()),
         Some("render") => cmd_render(args.get(1..).unwrap_or_default()),
+        Some("play") => cmd_play(args.get(1..).unwrap_or_default()),
         _ => {
             print_usage();
             if args.is_empty() {
@@ -30,12 +31,10 @@ fn print_usage() {
     println!("Commands:");
     println!("  musa check <file.musa>                 parse + compile diagnostics");
     println!("  musa format <file.musa> [--check]      format in place (--check to diff)");
-    println!("  musa render <file.musa> --to <target>  plan (debug); mei | lilypond | musicxml | midi | wav (planned)");
-    println!("  musa play <file.musa>                  live playback (planned)");
+    println!("  musa render <file.musa> --to <target>  plan (debug) | mei | lilypond | performance | wav");
+    println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
 }
 
-/// `musa render <file> --to plan` — debug dump of the notation plan (the
-/// snapshot surface until MEI exists; real backends arrive in prompts 08+).
 mod orchestrate;
 
 fn cmd_render(args: &[String]) -> ExitCode {
@@ -185,6 +184,64 @@ fn write_output(input: &str, text: &str, output: Option<&str>, extension: &str) 
             }
         },
     }
+}
+
+/// `musa play <file> [--loop]`: compile, prepare, open the engine, install,
+/// play to completion (Ctrl-C terminates the process). Thin by design;
+/// prompt 19 moves orchestration into `musa-project`.
+fn cmd_play(args: &[String]) -> ExitCode {
+    let mut path: Option<&str> = None;
+    let mut looping = false;
+    for arg in args {
+        match arg.as_str() {
+            "--loop" => looping = true,
+            other => path = Some(other),
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("error: play needs a file");
+        return ExitCode::FAILURE;
+    };
+    let source = match musa_compiler::SourceDocument::open(path) {
+        Ok(source) => source,
+        Err(error) => {
+            eprintln!("error: cannot read {path}: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let compilation = musa_compiler::compile(&source, &musa_compiler::CompileOptions::default());
+    let Some(score) = compilation.into_snapshot() else {
+        eprintln!("error: {path}: compilation failed");
+        return ExitCode::FAILURE;
+    };
+    let plan = match orchestrate::prepare_playback(&score) {
+        Ok(plan) => plan,
+        Err(error) => {
+            eprintln!("error: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let total = plan.total_frames();
+    let engine = match musa_engine::AudioEngine::open(musa_engine::EngineConfig::default()) {
+        Ok(engine) => engine,
+        Err(error) => {
+            eprintln!("error: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    if engine.install(plan).is_err() || engine.command(musa_engine::TransportCommand::Play).is_err() {
+        eprintln!("error: engine command queue is full");
+        return ExitCode::FAILURE;
+    }
+    if looping {
+        let _ignored = engine.command(musa_engine::TransportCommand::SetLoop { start: 0, end: total });
+    }
+    println!("playing {path}{}…", if looping { " (looping)" } else { "" });
+    while engine.is_playing() {
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    println!("done");
+    ExitCode::SUCCESS
 }
 
 /// Write binary output (WAV) to `-o` or the input path with `extension`.

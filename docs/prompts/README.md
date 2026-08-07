@@ -2,13 +2,13 @@
 
 This directory is the executable work plan for building musa according to
 [`../initial-design-roadmap.md`](../initial-design-roadmap.md) as course-corrected by
-[`../course-correction.md`](../course-correction.md). Each numbered prompt delivers one feature and builds on
-the prompts it depends on. Work them in dependency order; when in doubt, work them in numeric order.
+[`../course-correction.md`](../course-correction.md). Each numbered prompt delivers one feature and builds on the
+prompts it depends on. Work them in dependency order; when in doubt, work them in numeric order.
 
-**Where the two documents disagree** — most importantly, the course correction's rule that the surface grammar does
-not define the ontology and that a small temporal kernel (`timeline` / `sequence` / `overlay` over exact rational
-ambient time) is the semantic core — the course correction wins. Prompts 08–12 specify, implement, prove, and install
-that kernel; prompts 13+ proceed exactly as before on top of it.
+**Where the two documents disagree** — most importantly, the course correction's rule that the surface grammar does not
+define the ontology and that a small temporal kernel (`timeline` / `sequence` / `overlay` over exact rational ambient
+time) is the semantic core — the course correction wins. Prompts 08–12 specify, implement, prove, and install that
+kernel; prompts 13+ proceed exactly as before on top of it.
 
 ## Prompt anatomy
 

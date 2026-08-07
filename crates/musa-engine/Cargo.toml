@@ -10,5 +10,13 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+cpal = "0.15"
 musa-audio = { path = "../musa-audio" }
 musa-compiler = { path = "../musa-compiler" }
+rtrb = "0.3"
+thiserror = "2"
+tracing = "0.1"
+
+[dev-dependencies]
+insta = "1"
+rtrb = "0.3"

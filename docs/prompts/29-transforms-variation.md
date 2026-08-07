@@ -19,8 +19,8 @@ an **elaboration-time function over timelines or payloads** (course correction �
 
 - Course correction §13 (payload mapping is functorial — transposition/inversion are payload maps, no `Transform` kernel
   node), §14 (time scaling is an external action — augmentation/diminution evaluate into ordinary kernel timelines, no
-  permanent `Stretch` node), §19–20 (surface structure and provenance stay above the normalized kernel), §29 (do not
-  add dedicated lowering cases for new musical concepts), §34 (the governing rule: semantic necessity only).
+  permanent `Stretch` node), §19–20 (surface structure and provenance stay above the normalized kernel), §29 (do not add
+  dedicated lowering cases for new musical concepts), §34 (the governing rule: semantic necessity only).
 - Roadmap §5.4 (transformation laws; retrograde reverses order: `retro(a then b) = retro(b) then retro(a)`;
   transformations may fail, change shape, or require a pitch system), §7.2 (finite constructs list), §9 (occurrence
   specialization syntax and semantics), §17.2 (law tests).
@@ -34,9 +34,9 @@ an **elaboration-time function over timelines or payloads** (course correction �
   finite (§7.2). The parser accepts the constructs; **elaboration** (not the kernel) defines their meaning:
   - `stretch r` → the kernel's time-scaling action (course correction §14) applied during elaboration:
     `span(stretch(r, x)) = r · span(x)`, exact rationals.
-  - `retrograde` → the derived time-reversal function on the elaborated finite timeline: `(d, E) ↦ (d, {(d−e, d−s, a)})`.
-    It is a plain function in the elaboration module — the kernel needs no reversal primitive (record this in
-    `docs/kernel/08-open-questions.md` as evidence for §34's "smallest complete basis").
+  - `retrograde` → the derived time-reversal function on the elaborated finite timeline:
+    `(d, E) ↦ (d, {(d−e, d−s, a)})`. It is a plain function in the elaboration module — the kernel needs no reversal
+    primitive (record this in `docs/kernel/08-open-questions.md` as evidence for §34's "smallest complete basis").
   - `invert axis` → payload map mirroring pitch around the axis (chromatic with respelling preference — pick and
     document; spellings needing more than a double accidental are a **diagnostic**, not silent wrong notes; §5.4 allows
     meaningful failure).
@@ -78,9 +78,9 @@ Commit as `Add stretch, retrograde, invert, and occurrence specialization`.
 
 ## Stop
 
-- No new kernel constructors for any of these (course correction §29, §34); a perceived need is a spec repair,
-  committed first.
-- No "variation" operators beyond these three (no random/humanize transforms — roadmap §7.2 finite + deterministic;
-  §8.3 rejects unstable semantics).
+- No new kernel constructors for any of these (course correction §29, §34); a perceived need is a spec repair, committed
+  first.
+- No "variation" operators beyond these three (no random/humanize transforms — roadmap §7.2 finite + deterministic; §8.3
+  rejects unstable semantics).
 - No theory-driven transforms (neo-Riemannian etc. — roadmap §8.2 libraries, not core).
 - No motif extraction improvements (prompt 21's version stands; refine only if the fixture exposes a bug).

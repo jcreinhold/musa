@@ -1,7 +1,7 @@
 # 02 — Static Semantics
 
-Well-formedness rules for kernel compositions and kernel files. Everything here is checkable without evaluating
-anything musical — the kernel never inspects payload *meaning* (course correction §12); it checks shapes and bounds.
+Well-formedness rules for kernel compositions and kernel files. Everything here is checkable without evaluating anything
+musical — the kernel never inspects payload *meaning* (course correction §12); it checks shapes and bounds.
 
 ## K1 — Occurrence bounds
 
@@ -36,10 +36,10 @@ request to shrink is an error, not an implicit crop. Cropping is `restrict` — 
 In a kernel file (or any HIR that names compositions):
 
 - Every `composition-name` referenced in a `composition-expression` must be declared in the same file/scope.
-- The reference graph must be **acyclic**. There is no recursion in the kernel (§32); a cycle is rejected, not
-  lazily tolerated.
-- All composition expressions in one `sequence` or `overlay` must share the same payload type. The kernel is
-  parametric in `A`, not polymorphic per composition.
+- The reference graph must be **acyclic**. There is no recursion in the kernel (§32); a cycle is rejected, not lazily
+  tolerated.
+- All composition expressions in one `sequence` or `overlay` must share the same payload type. The kernel is parametric
+  in `A`, not polymorphic per composition.
 
 ## K5 — Payload schemas
 

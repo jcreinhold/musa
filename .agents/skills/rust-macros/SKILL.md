@@ -5,7 +5,8 @@ description: Use for Rust macros — declarative (macro_rules!) and procedural (
 
 # Writing Rust Macros
 
-Use a macro only when a function or generic cannot express the job. Read `references/macro-patterns.md` before writing one.
+Use a macro only when a function or generic cannot express the job. Read `references/macro-patterns.md` before writing
+one.
 
 ## Choose the Tool
 
@@ -31,7 +32,8 @@ cargo expand
 cargo expand module::name
 ```
 
-On nightly, use `trace_macros!(true)` for `macro_rules!`. For proc macros, print the generated tokens while debugging and remove the output afterward.
+On nightly, use `trace_macros!(true)` for `macro_rules!`. For proc macros, print the generated tokens while debugging
+and remove the output afterward.
 
 ## Common Errors
 

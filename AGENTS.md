@@ -10,8 +10,8 @@ the semantic core is Rust, the UI is a replaceable projection.
    rules, and what is explicitly rejected or deferred. Read the cited sections before changing anything structural.
 2. **`docs/course-correction.md`** — the semantic course correction: a small temporal kernel (ambient exact rational
    time, typed occurrences, `timeline`/`sequence`/`overlay`) is the ontology; the surface language elaborates into it.
-   Where it and the roadmap disagree, the course correction wins. Its authoritative elaboration is
-   **`docs/kernel/`** (the kernel specification; candidate until prompt 12 graduates it).
+   Where it and the roadmap disagree, the course correction wins. Its authoritative elaboration is **`docs/kernel/`**
+   (the kernel specification; candidate until prompt 12 graduates it).
 3. **`docs/prompts/`** — the work plan. 31 numbered feature prompts with their own README defining prompt anatomy and
    execution rules. Implementation happens by executing prompts in dependency order (see the `prompt-stack` skill).
 

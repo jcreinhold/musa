@@ -5,7 +5,8 @@ description: 'Use for Rust correctness tests: regressions, property tests, integ
 
 # Test Engineering
 
-Test the contract at the narrowest layer that still covers the risk. Use `rust-performance` for timing, allocation, or scaling guards.
+Test the contract at the narrowest layer that still covers the risk. Use `rust-performance` for timing, allocation, or
+scaling guards.
 
 ## Orient First
 
@@ -35,7 +36,8 @@ Read `references/test-taxonomy.md` and `references/mathematical-code.md` for law
 ## Names
 
 - Use `<area>_<suite>.rs`; suite suffixes: `laws`, `regressions`, `validation`, `generators`, `helpers`.
-- Use `<subject>_<property>` for laws, `regression_<case>_<behavior>` for regressions, and `<subject>_<invalid_case>_<rejects_or_fails>` for negative cases.
+- Use `<subject>_<property>` for laws, `regression_<case>_<behavior>` for regressions, and
+  `<subject>_<invalid_case>_<rejects_or_fails>` for negative cases.
 - Name the protected contract, not the test tool.
 
 ## By Context
@@ -67,7 +69,8 @@ Start with:
 cargo nextest run -p <affected-crate>
 ```
 
-Widen only when the change spans crates or layers. Read `references/failure-smells.md` for examples and `references/perf-handoff.md` for the performance handoff.
+Widen only when the change spans crates or layers. Read `references/failure-smells.md` for examples and
+`references/perf-handoff.md` for the performance handoff.
 
 ## Related Skills
 

@@ -9,4 +9,5 @@
 | Snapshot | Stable user-facing structure. |
 | Benchmark/profile | Time, allocation, or scaling behavior. |
 
-Choose the smallest kind that covers the risk. Do not use a snapshot for an invariant that a direct assertion can express.
+Choose the smallest kind that covers the risk. Do not use a snapshot for an invariant that a direct assertion can
+express.

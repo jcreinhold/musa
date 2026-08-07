@@ -37,4 +37,5 @@ Read `references/workflow.md` for every task. Then load only the needed referenc
 
 ## Review
 
-Check that the benchmark represents the claimed win, the intervention fits the bottleneck, costs did not move to a different stage, lifetime ownership remains sound, and the new measurement can catch regressions.
+Check that the benchmark represents the claimed win, the intervention fits the bottleneck, costs did not move to a
+different stage, lifetime ownership remains sound, and the new measurement can catch regressions.

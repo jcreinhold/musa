@@ -1,8 +1,8 @@
 # 06 — Surface Elaboration
 
 How the existing `.musa` surface language elaborates into the temporal kernel (course correction §30 Step 4, §19–21).
-This document describes elaboration of the grammar **as it exists today** (prompts 02–06); it is not a surface
-redesign (§31). The implementation is prompt 11 (`docs/prompts/11-kernel-elaboration.md`).
+This document describes elaboration of the grammar **as it exists today** (prompts 02–06); it is not a surface redesign
+(§31). The implementation is prompt 11 (`docs/prompts/11-kernel-elaboration.md`).
 
 ## The elaboration boundary
 
@@ -14,10 +14,10 @@ finite temporal kernel  (flat timelines; the semantic quotient)
 ScoreSnapshot  (the score-specific projection backends already consume)
 ```
 
-Normalization is a **semantic boundary, not the internal representation of every compiler pass** (§19). The HIR
-keeps `repeat`, `loop`, motif references, and transformations for efficiency, editing, provenance, diagnostics, and
-structural display; elaboration evaluates finite observations of them into kernel timelines. Nothing requires
-duplicating thousands of nodes merely to obey the normalized model.
+Normalization is a **semantic boundary, not the internal representation of every compiler pass** (§19). The HIR keeps
+`repeat`, `loop`, motif references, and transformations for efficiency, editing, provenance, diagnostics, and structural
+display; elaboration evaluates finite observations of them into kernel timelines. Nothing requires duplicating thousands
+of nodes merely to obey the normalized model.
 
 ## Payload design (the central decision)
 
@@ -33,12 +33,12 @@ NotePayload {
 
 Decisions recorded against course correction §32:
 
-- **Voice identity rides in payload metadata** — it is not a temporal primitive. The candidate answer to the §32
-  open question is "payload metadata + HIR structure"; prompt 11 gathers the evidence.
+- **Voice identity rides in payload metadata** — it is not a temporal primitive. The candidate answer to the §32 open
+  question is "payload metadata + HIR structure"; prompt 11 gathers the evidence.
 - **Provenance rides in the payload** (§20): the kernel quotient forgets production history, so history travels with
-  each occurrence as data the kernel is opaque to. `Origin` never participates in temporal semantics; it participates
-  in canonical payload serialization only as a stable, deterministic key (N3), so semantic equality can still
-  distinguish occurrences a consumer must tell apart.
+  each occurrence as data the kernel is opaque to. `Origin` never participates in temporal semantics; it participates in
+  canonical payload serialization only as a stable, deterministic key (N3), so semantic equality can still distinguish
+  occurrences a consumer must tell apart.
 - **No duration field in the payload** — duration is temporal support (D0).
 
 ## Elaboration rules, per surface construct
@@ -59,18 +59,17 @@ Decisions recorded against course correction §32:
 ## Key, meter, harmony: the future shape
 
 Course correction §21 places key/meter/harmony **regions** in the kernel as typed interval payloads
-(`Timeline[KeyRegion]`, `Timeline[MeterRegion]`, `Timeline[HarmonyAnnotation]`) whenever their temporal extent
-matters — e.g. `modulate to C major { … }`. The current surface grammar has only piece-wide declarations, so today's
-adapter keeps them as snapshot context maps. When a surface construct gives them temporal extent, they elaborate as
-payload-bearing timelines **without any kernel change** (that is the point of §21), and this document is extended —
-not repaired — at that prompt. Prompt 30 (annotations) is the first consumer of that shape.
+(`Timeline[KeyRegion]`, `Timeline[MeterRegion]`, `Timeline[HarmonyAnnotation]`) whenever their temporal extent matters —
+e.g. `modulate to C major { … }`. The current surface grammar has only piece-wide declarations, so today's adapter keeps
+them as snapshot context maps. When a surface construct gives them temporal extent, they elaborate as payload-bearing
+timelines **without any kernel change** (that is the point of §21), and this document is extended — not repaired — at
+that prompt. Prompt 30 (annotations) is the first consumer of that shape.
 
 ## Tempo stays out (§22)
 
 Tempo never elaborates into kernel occurrences and never rescales kernel time. It is the performance layer's monotone
-map `Beat → Second` applied to symbolic positions at realization time (`07-backend-contract.md`). "Stretch the
-material" (payload/time action, D5) and "perform the same material more slowly" (tempo map) remain different
-operations.
+map `Beat → Second` applied to symbolic positions at realization time (`07-backend-contract.md`). "Stretch the material"
+(payload/time action, D5) and "perform the same material more slowly" (tempo map) remain different operations.
 
 ## Adapter contract (ScoreSnapshot)
 
@@ -82,9 +81,9 @@ The adapter projects normalized `Timeline[NotePayload]` values into the existing
 - extent per voice → `Voice::span`; part extent = max over voices;
 - context maps and annotations → as the old lowerer emits them.
 
-**Parity requirement (§30 Step 5):** for every fixture, the adapter's snapshot must equal the old lowerer's snapshot
-on positions, durations, spelling, part/voice identity, multiplicity, ordering, and provenance. The old lowerer is
-the regression oracle until prompt 12, and remains runnable permanently.
+**Parity requirement (§30 Step 5):** for every fixture, the adapter's snapshot must equal the old lowerer's snapshot on
+positions, durations, spelling, part/voice identity, multiplicity, ordering, and provenance. The old lowerer is the
+regression oracle until prompt 12, and remains runnable permanently.
 
 ## What elaboration must never do
 

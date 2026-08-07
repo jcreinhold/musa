@@ -41,14 +41,18 @@ If unclear, run `bash .agents/skills/module-design/scripts/audit-module.sh <path
 
 Apply these in order when they conflict.
 
-1. **Keep independent concerns apart.** If they change independently, do not make callers manage them through one interface.
+1. **Keep independent concerns apart.** If they change independently, do not make callers manage them through one
+   interface.
 2. **Make modules deep.** A small public surface should serve several use cases and hide substantial work.
-3. **Hide volatile decisions.** Group code by data format, policy, or storage choice, not by the current sequence of steps.
+3. **Hide volatile decisions.** Group code by data format, policy, or storage choice, not by the current sequence of
+   steps.
 4. **Put defaults inside.** Remove parameters that every caller gives the same value.
 5. **Remove needless errors.** If a normal result can safely cover an edge case, use it.
-6. **Generalize the interface, not unused functionality.** Use terms that fit several current callers; do not add knobs for imagined ones.
+6. **Generalize the interface, not unused functionality.** Use terms that fit several current callers; do not add knobs
+   for imagined ones.
 7. **Make each layer add an abstraction.** Merge a pass-through wrapper, or give it real work to hide.
-8. **Split and combine by information sharing.** Combine code that shares state or yields a narrower interface; separate code that changes on its own.
+8. **Split and combine by information sharing.** Combine code that shares state or yields a narrower interface; separate
+   code that changes on its own.
 
 ## Audit
 

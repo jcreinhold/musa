@@ -12,9 +12,11 @@ Read the target and immediate callers. If the target is unclear, ask. Run:
 bash .agents/skills/module-design/scripts/audit-module.sh <path>
 ```
 
-Name the main pressure: shallow surface, leaked detail, mixed concerns, growing surface, temporal coupling, or information loss.
+Name the main pressure: shallow surface, leaked detail, mixed concerns, growing surface, temporal coupling, or
+information loss.
 
-List independent concerns in each changed public type. Read `references/rust-patterns.md`. Do not propose an implementation.
+List independent concerns in each changed public type. Read `references/rust-patterns.md`. Do not propose an
+implementation.
 
 Return:
 

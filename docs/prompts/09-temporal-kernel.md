@@ -19,16 +19,16 @@ changes, no compiler changes (elaboration is prompt 11).
 
 - `docs/kernel/03-denotational-semantics.md` and `05-normalization.md` (the normative definitions; prompt 08).
 - Course correction §§3–17 (the algebra), §26 (compiler architecture: the kernel's public interface is approximately
-  `construct/check timeline`, `sequence`, `overlay`, `restrict`, `normalize`, `compare`, `map payloads`,
-  `scale time` — internals hidden), §29 ("do not split each concept into its own microcrate").
+  `construct/check timeline`, `sequence`, `overlay`, `restrict`, `normalize`, `compare`, `map payloads`, `scale time` —
+  internals hidden), §29 ("do not split each concept into its own microcrate").
 - `musa-compiler/src/time.rs` for the existing rational-time conventions (the kernel uses the same `num-rational`
   exactness discipline but is its own crate — payloads, not the kernel, carry musical meaning; §12).
 
 ## Design
 
 - New workspace crate `crates/musa-kernel`, depending only on `num-rational` (+ `serde` if the spec's serialization
-  needs it). It must not depend on `musa-language` or `musa-compiler`: `Timeline<A>` is generic over its payload and
-  the kernel never learns what a `Note` is (§12).
+  needs it). It must not depend on `musa-language` or `musa-compiler`: `Timeline<A>` is generic over its payload and the
+  kernel never learns what a `Note` is (§12).
 - Public surface (doc-commented with invariants before implementation, per conventions):
 
   ```rust
@@ -52,9 +52,9 @@ changes, no compiler changes (elaboration is prompt 11).
   stores only flat timelines — construction IS normalization, so `normalize` is a re-canonicalization of occurrence
   order. If implementation evidence shows a real need to retain un-normalized trees, repair the spec first (prompt 08's
   `05-normalization.md`), then implement.
-- Occurrences form a multiset: equal occurrences never collapse (§6). Canonical order: start, end, then payload
-  ordering — define a `Canonical` trait (`fn canonical_key(&self) -> String` or `Ord` bound; pick one, document) so
-  semantic equality and hashing are well-defined for arbitrary payloads.
+- Occurrences form a multiset: equal occurrences never collapse (§6). Canonical order: start, end, then payload ordering
+  — define a `Canonical` trait (`fn canonical_key(&self) -> String` or `Ord` bound; pick one, document) so semantic
+  equality and hashing are well-defined for arbitrary payloads.
 - `restrict` returns the observation representation of course correction §17: each observed occurrence reports
   `whole_span` and `visible_span` — cropping never rewrites where an occurrence began.
 - Semantic equality: `Timeline::semantic_eq` comparing canonical forms (extent + sorted occurrence multiset), not

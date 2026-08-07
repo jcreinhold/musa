@@ -10,8 +10,8 @@ phase: 1
 
 ## Task
 
-Give the existing surface language a second semantic path: elaborate the current grammar (notes, rests, chords,
-voices, parts, motifs, `repeat`, `transpose`) through the temporal kernel and adapt the result back into the existing
+Give the existing surface language a second semantic path: elaborate the current grammar (notes, rests, chords, voices,
+parts, motifs, `repeat`, `transpose`) through the temporal kernel and adapt the result back into the existing
 `ScoreSnapshot`, then differentially validate it against the prompt-05/06 direct lowerer on every fixture. The old
 lowerer stays as the regression oracle; this prompt adds the new path **alongside** it — switching is prompt 12.
 
@@ -20,8 +20,8 @@ lowerer stays as the regression oracle; this prompt adds the new path **alongsid
 - `docs/kernel/06-surface-elaboration.md` (normative elaboration rules; prompt 08) and `07-backend-contract.md`.
 - Course correction §19 (surface structure is preserved in the HIR; normalization is a semantic boundary, not the
   working representation), §20 (provenance above the semantic quotient — provenance rides in payload metadata), §27
-  (`ScoreSnapshot` as the score-specific interpretation of the normalized denotation), §30 Steps 4–5, §33
-  (falsification corpus).
+  (`ScoreSnapshot` as the score-specific interpretation of the normalized denotation), §30 Steps 4–5, §33 (falsification
+  corpus).
 - Prompt 05's `lower.rs` (the oracle), prompt 06's expansion pass (motif/repeat/transpose semantics that must be
   reproduced exactly), prompt 09's `musa-kernel` surface.
 
@@ -36,8 +36,8 @@ lowerer stays as the regression oracle; this prompt adds the new path **alongsid
   - voice body → `sequence` of its items; a rest item contributes ambient extent with **no** note occurrence (§2);
   - chord → `overlay` of one occurrence per pitch over the same span;
   - part → `overlay` of its voices (identity in payloads keeps lanes separable downstream);
-  - `transpose` → `map_payload` (§13); `repeat` → `sequence` of n evaluations at the HIR level, observed into the
-    kernel (§19); motif calls → binding/reference + provenance, evaluated like their bodies;
+  - `transpose` → `map_payload` (§13); `repeat` → `sequence` of n evaluations at the HIR level, observed into the kernel
+    (§19); motif calls → binding/reference + provenance, evaluated like their bodies;
   - key/meter/tempo → snapshot maps as today (they are context, not occurrences, in the current surface grammar —
     `06-surface-elaboration.md` §21's typed-interval-payload view is the future shape; note the gap in
     `08-open-questions.md` if one appears).
@@ -45,8 +45,8 @@ lowerer stays as the regression oracle; this prompt adds the new path **alongsid
   selected path; the differential harness runs both.
 - Differential testing (§30 Step 5): for all `examples/*.musa` and a proptest-generated corpus of valid sources,
   old-path and new-path snapshots must agree on: event positions and durations (exact), pitch spelling, part/voice
-  identity, event multiplicity, ordering, and origin spans/paths (provenance mapping). Report mismatches with both
-  event sets printed; a mismatch is a bug in the new path until proven otherwise.
+  identity, event multiplicity, ordering, and origin spans/paths (provenance mapping). Report mismatches with both event
+  sets printed; a mismatch is a bug in the new path until proven otherwise.
 - Falsification corpus (§33), first instalment, as fixtures with hand-checked kernel normal-form snapshots:
   1. *Twinkle Twinkle* (sequential pitches and rests) — new `examples/twinkle.musa`;
   2. the existing `counterpoint.musa` (synchronized voices);

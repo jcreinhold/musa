@@ -1,6 +1,7 @@
 # Benchmark Design
 
-Use a microbenchmark to isolate one operation, a scenario benchmark for a realistic sequence, and an end-to-end run for pipeline claims. Build fixtures outside the timed section unless fixture work is part of the claim.
+Use a microbenchmark to isolate one operation, a scenario benchmark for a realistic sequence, and an end-to-end run for
+pipeline claims. Build fixtures outside the timed section unless fixture work is part of the claim.
 
 - Benchmark representative sizes and distributions, including likely boundary cases.
 - Warm up and use repeated samples; do not treat small variance as a win.

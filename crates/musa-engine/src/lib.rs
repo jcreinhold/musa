@@ -1,27 +1,28 @@
-//! Platform and real-time integration.
+//! The audio engine: CPAL output stream lifecycle, the real-time command
+//! boundary, and transport (roadmap §13.1–§13.2, §15.6).
 //!
-//! Owns: CPAL device negotiation and output stream lifecycle, live
-//! scheduling, MIDI input (`midir`), transport state, the real-time command
-//! boundary (`rtrb` queues in both directions, including retired-plan
-//! return), render-plan installation, and clock synchronization — design
-//! roadmap §15.6.
+//! Owns: device negotiation, the output stream, `rtrb` command queues, the
+//! audio callback, and transport state. Must never contain: score or
+//! language types in signatures (it executes prepared plans), GUI concerns,
+//! or real-time violations — the callback never allocates, locks, does I/O,
+//! logs, or destroys large objects (§13.2).
 //!
-//! Must never expose: a CPAL stream, stream config, or sample format to the
-//! rest of the application; must never contain: composition, notation, or
-//! project semantics.
-//!
-//! Intended facade (roadmap §15.6), to be implemented by prompts 13 and 23:
-//!
-//! ```text
-//! pub struct AudioEngine { /* hidden */ }
-//! impl AudioEngine {
-//!     pub fn open(config: EngineConfig) -> Result<Self, EngineError>;
-//!     pub fn install(&self, plan: PreparedPlaybackPlan) -> Result<(), EngineError>;
-//!     pub fn command(&self, command: TransportCommand) -> Result<(), EngineError>;
-//! }
-//! ```
-//!
-//! Invariants (roadmap §13.2): the audio callback never allocates, acquires
-//! locks, performs I/O, parses, compiles, logs, or destroys large objects;
-//! plans are prepared and preallocated on the control side and cross the
-//! boundary on `rtrb` queues; underruns produce silence, never panics.
+//! Facade (§15.6): [`AudioEngine::open`], [`AudioEngine::install`],
+//! [`AudioEngine::command`]. The rest of the application never sees a CPAL
+//! stream, stream config, or sample format.
+
+mod core;
+mod engine;
+mod error;
+
+pub use crate::core::{PreparedPlaybackPlan, TransportCommand};
+pub use crate::engine::{AudioEngine, EngineConfig};
+pub use crate::error::EngineError;
+
+#[doc(hidden)]
+pub mod testing {
+    //! RT-contract test hooks (roadmap §17.5): drive the callback core
+    //! against a fake output without an audio device. Not part of the
+    //! facade; hidden so no real caller depends on it.
+    pub use crate::core::{CallbackCore, Message};
+}

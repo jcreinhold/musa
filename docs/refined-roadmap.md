@@ -36,7 +36,8 @@ Everything else must either:
 * live in the payload carried by an occurrence;
 * or belong to another semantic layer, such as audio.
 
-The design goal is not minimum syntax for its own sake. The goal is the **smallest semantic vocabulary that every backend can agree on**.
+The design goal is not minimum syntax for its own sake. The goal is the **smallest semantic vocabulary that every
+backend can agree on**.
 
 ---
 
@@ -44,9 +45,7 @@ The design goal is not minimum syntax for its own sake. The goal is the **smalle
 
 A kernel term denotes:
 
-[
-(d,E)
-]
+[ (d,E) ]
 
 where:
 
@@ -66,9 +65,7 @@ timeline 1 beat {
 
 contains nothing during:
 
-[
-[1/4,1/2).
-]
+[ [1/4,1/2). ]
 
 That absence is what a notation backend may later render as a rest.
 
@@ -80,7 +77,8 @@ There is no kernel value called `silence`.
 
 The following grammar is intentionally first-order.
 
-It includes a small payload-schema language so a kernel file is syntactically self-contained, but it contains no general-purpose functions, recursion, classes, traits, effects, or user-defined operators.
+It includes a small payload-schema language so a kernel file is syntactically self-contained, but it contains no
+general-purpose functions, recursion, classes, traits, effects, or user-defined operators.
 
 ```ebnf
 kernel-file
@@ -394,15 +392,11 @@ EBNF gives syntax, not correctness. The kernel checker imposes the following jud
 
 Write:
 
-[
-\Sigma\vdash A;\mathsf{payload}
-]
+[ \Sigma\vdash A;\mathsf{payload} ]
 
 for a valid payload type and
 
-[
-\Sigma\vdash M:\operatorname{Timeline}[A]
-]
+[ \Sigma\vdash M:\operatorname{Timeline}[A] ]
 
 for a well-typed composition.
 
@@ -425,7 +419,8 @@ A record denotes a Cartesian product.
 
 A variant denotes a disjoint sum.
 
-For the initial kernel, named payload definitions must be non-recursive. Recursive or richer musical structures belong above the kernel unless a real interchange requirement justifies them.
+For the initial kernel, named payload definitions must be non-recursive. Recursive or richer musical structures belong
+above the kernel unless a real interchange requirement justifies them.
 
 ## 5.2 Timeline literals
 
@@ -440,9 +435,7 @@ timeline d {
 
 the checker requires:
 
-[
-0\le s\le e\le d.
-]
+[ 0\le s\le e\le d. ]
 
 Every occurrence payload must have the timeline's payload type.
 
@@ -454,9 +447,7 @@ No requirement says that every portion of ([0,d]) contains an occurrence.
 
 Every operand must have the same payload type:
 
-[
-M_i:\operatorname{Timeline}[A].
-]
+[ M_i:\operatorname{Timeline}[A]. ]
 
 The resulting timeline also has payload type (A).
 
@@ -466,7 +457,9 @@ The composition-reference graph must be acyclic in the kernel.
 
 This is **not** a restriction on the Musa surface language.
 
-It guarantees that a kernel document denotes a finite, normalizable temporal object. Infinite loops, recursive generators and live processes are observed over a finite window by the surface/runtime and then lowered into a finite kernel document.
+It guarantees that a kernel document denotes a finite, normalizable temporal object. Infinite loops, recursive
+generators and live processes are observed over a finite window by the surface/runtime and then lowered into a finite
+kernel document.
 
 That makes the kernel suitable as an interchange representation.
 
@@ -476,15 +469,11 @@ That makes the kernel suitable as an interchange representation.
 
 Let musical positions be rational:
 
-[
-T=\mathbb Q.
-]
+[ T=\mathbb Q. ]
 
 Under addition,
 
-[
-(T,+,0)
-]
+[ (T,+,0) ]
 
 is an abelian group.
 
@@ -492,15 +481,11 @@ This is the appropriate global algebra for translations of musical time.
 
 Kernel-local timelines begin at zero, so their lengths use only:
 
-[
-D=\mathbb Q_{\ge0}.
-]
+[ D=\mathbb Q_{\ge0}. ]
 
 Under addition:
 
-[
-(D,+,0)
-]
+[ (D,+,0) ]
 
 is a commutative, cancellative monoid.
 
@@ -508,16 +493,11 @@ It is **not** a group, because negative duration is meaningless.
 
 Positive rational scaling acts on both positions and durations:
 
-[
-\mathbb Q_{>0}\curvearrowright T,\qquad
-r\cdot t=rt
-]
+[ \mathbb Q_{>0}\curvearrowright T,\qquad r\cdot t=rt ]
 
 and
 
-[
-\mathbb Q_{>0}\curvearrowright D.
-]
+[ \mathbb Q_{>0}\curvearrowright D. ]
 
 Thus the orientation-preserving rational affine group
 
@@ -525,14 +505,11 @@ Thus the orientation-preserving rational affine group
 \operatorname{Aff}^+(\mathbb Q)
 ===============================
 
-\mathbb Q\rtimes\mathbb Q_{>0}
-]
+\mathbb Q\rtimes\mathbb Q_{>0} ]
 
 acts on global musical time by
 
-[
-t\mapsto rt+b.
-]
+[ t\mapsto rt+b. ]
 
 This supplies the mathematics underlying operations such as:
 
@@ -541,7 +518,8 @@ This supplies the mathematics underlying operations such as:
 * diminution;
 * global time rescaling.
 
-These need not be primitive kernel syntax: a surface transformation can apply the action and emit the transformed kernel timeline.
+These need not be primitive kernel syntax: a surface transformation can apply the action and emit the transformed kernel
+timeline.
 
 ---
 
@@ -555,11 +533,7 @@ For duration (d\in D), define the possible occurrences:
 G_A(d)
 ======
 
-{(s,e,a)\mid
-0\le s\le e\le d,;
-a\in A
-}.
-]
+{(s,e,a)\mid 0\le s\le e\le d,; a\in A }. ]
 
 Define:
 
@@ -567,10 +541,10 @@ Define:
 \mathcal T_A(d)
 ===============
 
-\operatorname{FinMultiset}(G_A(d)).
-]
+\operatorname{FinMultiset}(G_A(d)). ]
 
-A timeline of duration (d) is therefore a finite multiset of typed occurrences supported in the ambient interval ([0,d]).
+A timeline of duration (d) is therefore a finite multiset of typed occurrences supported in the ambient interval
+([0,d]).
 
 The complete denotation is:
 
@@ -578,14 +552,11 @@ The complete denotation is:
 \mathcal T_A
 ============
 
-\coprod_{d\in D}\mathcal T_A(d).
-]
+\coprod_{d\in D}\mathcal T_A(d). ]
 
 An element is written:
 
-[
-(d,E).
-]
+[ (d,E). ]
 
 The ambient duration (d) exists independently of (E).
 
@@ -611,13 +582,7 @@ define:
 \llbracket M\rrbracket
 ======================
 
-\left(
-d,;
-[(s_1,e_1,\llbracket a_1\rrbracket),
-\ldots,
-(s_n,e_n,\llbracket a_n\rrbracket)]
-\right).
-]
+\left( d,; [(s_1,e_1,\llbracket a_1\rrbracket), \ldots, (s_n,e_n,\llbracket a_n\rrbracket)] \right). ]
 
 The brackets denote a multiset, not a set.
 
@@ -640,9 +605,7 @@ timeline 4 beats {
 
 denotes
 
-[
-(4,\varnothing).
-]
+[ (4,\varnothing). ]
 
 This does **not** denote a primitive musical object called silence.
 
@@ -662,15 +625,11 @@ The kernel makes neither choice.
 
 Suppose:
 
-[
-\llbracket M\rrbracket=(d,E)
-]
+[ \llbracket M\rrbracket=(d,E) ]
 
 and
 
-[
-\llbracket N\rrbracket=(e,F).
-]
+[ \llbracket N\rrbracket=(e,F). ]
 
 Define translation of an occurrence multiset by (d):
 
@@ -678,8 +637,7 @@ Define translation of an occurrence multiset by (d):
 \tau_d(F)
 =========
 
-{(d+s,d+t,a)\mid(s,t,a)\in F}.
-]
+{(d+s,d+t,a)\mid(s,t,a)\in F}. ]
 
 Then:
 
@@ -688,9 +646,7 @@ Then:
 \llbracket sequence{M;N}\rrbracket
 ==================================
 
-(d+e,;E\uplus\tau_d(F)).
-}
-]
+(d+e,;E\uplus\tau_d(F)). } ]
 
 Here (\uplus) is multiset union.
 
@@ -704,8 +660,7 @@ Sequence is associative:
 (M;N);P
 =======
 
-M;(N;P)
-]
+M;(N;P) ]
 
 denotationally.
 
@@ -723,8 +678,7 @@ because:
 
 # (d,E)
 
-(d,E);(0,\varnothing).
-]
+(d,E);(0,\varnothing). ]
 
 Duration is a monoid homomorphism:
 
@@ -732,16 +686,11 @@ Duration is a monoid homomorphism:
 \operatorname{duration}(M;N)
 ============================
 
-\operatorname{duration}(M)
-+
-\operatorname{duration}(N).
-]
+\operatorname{duration}(M) + \operatorname{duration}(N). ]
 
 Therefore:
 
-[
-(\mathcal T_A,,;,,0)
-]
+[ (\mathcal T_A,,;,,0) ]
 
 is a monoid graded by the duration monoid (D).
 
@@ -753,15 +702,11 @@ This is the kernel's fundamental algebra of **succession**.
 
 Suppose:
 
-[
-M=(d,E),\qquad N=(e,F).
-]
+[ M=(d,E),\qquad N=(e,F). ]
 
 Define:
 
-[
-m=\max(d,e).
-]
+[ m=\max(d,e). ]
 
 The shorter timeline is simply regarded as content over the larger ambient interval; no new occurrence is inserted.
 
@@ -772,9 +717,7 @@ Then:
 M\oplus N
 =========
 
-(m,;E\uplus F).
-}
-]
+(m,;E\uplus F). } ]
 
 This is `overlay`.
 
@@ -786,42 +729,31 @@ Overlay is associative:
 (M\oplus N)\oplus P
 ===================
 
-M\oplus(N\oplus P).
-]
+M\oplus(N\oplus P). ]
 
 It is commutative:
 
-[
-M\oplus N=N\oplus M.
-]
+[ M\oplus N=N\oplus M. ]
 
 Its global identity is the zero-duration empty timeline:
 
-[
-M\oplus(0,\varnothing)=M.
-]
+[ M\oplus(0,\varnothing)=M. ]
 
 It is **not idempotent**:
 
-[
-M\oplus M\ne M
-]
+[ M\oplus M\ne M ]
 
 in general.
 
 At a fixed duration (d),
 
-[
-\mathcal T_A(d)
-]
+[ \mathcal T_A(d) ]
 
 is the free commutative monoid generated by (A)-occurrences over ([0,d]).
 
 Its identity is:
 
-[
-0_d=(d,\varnothing).
-]
+[ 0_d=(d,\varnothing). ]
 
 This is the algebra of **simultaneous presence**.
 
@@ -831,16 +763,11 @@ This is the algebra of **simultaneous presence**.
 
 If
 
-[
-d\le e,
-]
+[ d\le e, ]
 
 there is a canonical map:
 
-[
-\operatorname{extend}_{d,e}:
-\mathcal T_A(d)\to\mathcal T_A(e)
-]
+[ \operatorname{extend}_{d,e}: \mathcal T_A(d)\to\mathcal T_A(e) ]
 
 defined by:
 
@@ -848,8 +775,7 @@ defined by:
 \operatorname{extend}_{d,e}(d,E)
 ================================
 
-(e,E).
-]
+(e,E). ]
 
 Nothing is added.
 
@@ -865,14 +791,11 @@ For each (d\le e\le f):
 \operatorname{extend}*{d,e}
 ===========================
 
-\operatorname{extend}_{d,f}.
-]
+\operatorname{extend}_{d,f}. ]
 
 And:
 
-[
-\operatorname{extend}_{d,d}=id.
-]
+[ \operatorname{extend}_{d,d}=id. ]
 
 Each extension preserves overlay:
 
@@ -880,10 +803,7 @@ Each extension preserves overlay:
 \operatorname{extend}_{d,e}(M\oplus N)
 ======================================
 
-\operatorname{extend}*{d,e}(M)
-\oplus
-\operatorname{extend}*{d,e}(N).
-]
+\operatorname{extend}*{d,e}(M) \oplus \operatorname{extend}*{d,e}(N). ]
 
 So the fixed-duration overlay monoids form a covariant system over the ordered duration domain.
 
@@ -897,27 +817,19 @@ One might hope that overlay behaves like addition and sequence like multiplicati
 
 But:
 
-[
-M;(N\oplus P)
-]
+[ M;(N\oplus P) ]
 
 contains one copy of (M).
 
 Whereas:
 
-[
-(M;N)\oplus(M;P)
-]
+[ (M;N)\oplus(M;P) ]
 
 contains two copies of (M).
 
 Therefore:
 
-[
-M;(N\oplus P)
-\ne
-(M;N)\oplus(M;P)
-]
+[ M;(N\oplus P) \ne (M;N)\oplus(M;P) ]
 
 in general.
 
@@ -959,9 +871,7 @@ Then:
 (M\oplus N);(P\oplus Q)
 =======================
 
-(M;P)\oplus(N;Q).
-}
-]
+(M;P)\oplus(N;Q). } ]
 
 Both sides contain:
 
@@ -986,13 +896,12 @@ The result is identical.
 
 We must **not** require unrestricted interchange.
 
-If two unital monoid structures on the same carrier share a unit and satisfy full interchange, the Eckmann–Hilton argument forces them to coincide and become commutative.
+If two unital monoid structures on the same carrier share a unit and satisfy full interchange, the Eckmann–Hilton
+argument forces them to coincide and become commutative.
 
 That would imply, absurdly:
 
-[
-sequence=overlay
-]
+[ sequence=overlay ]
 
 and sequence would be commutative.
 
@@ -1013,39 +922,27 @@ Let (\mathcal I) be the poset-category of bounded rational time intervals:
 
 For every payload type (A), observations of musical occurrences over intervals form a contravariant assignment:
 
-[
-\mathcal O_A:
-\mathcal I^{op}\to\mathbf{CMon}.
-]
+[ \mathcal O_A: \mathcal I^{op}\to\mathbf{CMon}. ]
 
 For interval (I):
 
-[
-\mathcal O_A(I)
-]
+[ \mathcal O_A(I) ]
 
 is the commutative monoid of occurrence views visible in (I).
 
 For:
 
-[
-J\subseteq I,
-]
+[ J\subseteq I, ]
 
 restriction:
 
-[
-\rho_{I,J}:
-\mathcal O_A(I)\to\mathcal O_A(J)
-]
+[ \rho_{I,J}: \mathcal O_A(I)\to\mathcal O_A(J) ]
 
 clips each occurrence to the smaller observation window.
 
 Restriction obeys:
 
-[
-\rho_{I,I}=id
-]
+[ \rho_{I,I}=id ]
 
 and:
 
@@ -1053,8 +950,7 @@ and:
 \rho_{J,K}\circ\rho_{I,J}
 =========================
 
-\rho_{I,K}.
-]
+\rho_{I,K}. ]
 
 Thus:
 
@@ -1062,7 +958,8 @@ Thus:
 
 This is the categorical form of temporal locality.
 
-Tidal's modern pattern representation is built around almost exactly this operational idea: rational time, finite interval queries, and events retaining both their whole span and the part visible in the query.
+Tidal's modern pattern representation is built around almost exactly this operational idea: rational time, finite
+interval queries, and events retaining both their whole span and the part visible in the query.
 
 ---
 
@@ -1070,27 +967,19 @@ Tidal's modern pattern representation is built around almost exactly this operat
 
 To make restriction lossless, an observed occurrence should conceptually retain:
 
-[
-(\text{whole span},\text{visible span},a).
-]
+[ (\text{whole span},\text{visible span},a). ]
 
 Suppose a note exists on:
 
-[
-[3,6)
-]
+[ [3,6) ]
 
 but the current observation window is:
 
-[
-[5,8).
-]
+[ [5,8). ]
 
 Its observation is:
 
-[
-(,[3,6),,[5,6),,a,).
-]
+[ (,[3,6),,[5,6),,a,). ]
 
 Thus cropping does not falsely turn the event into one that began at beat 5.
 
@@ -1106,17 +995,11 @@ This gives a clean definition of a potentially unbounded pattern without putting
 
 A pattern of (A) is approximately a compatible family:
 
-[
-P(I)\in\mathcal O_A(I)
-]
+[ P(I)\in\mathcal O_A(I) ]
 
 for every bounded interval (I), satisfying:
 
-[
-J\subseteq I
-\implies
-\rho_{I,J}(P(I))=P(J).
-]
+[ J\subseteq I \implies \rho_{I,J}(P(I))=P(J). ]
 
 So:
 
@@ -1125,17 +1008,18 @@ So:
 Pattern[A]
 ==========
 
-\text{compatible finite kernel observations over bounded time windows.}
-}
-]
+\text{compatible finite kernel observations over bounded time windows.} } ]
 
 The kernel remains finite.
 
 A loop, algorithmic generator, live-coded pattern, or aleatory realization can implement this interface.
 
-Tidal likewise represents potentially indefinite musical patterns by answering finite time-range queries rather than materializing an infinite event list.
+Tidal likewise represents potentially indefinite musical patterns by answering finite time-range queries rather than
+materializing an infinite event list.
 
-Whether the compatible-family assignment satisfies a full sheaf gluing condition is a separate question. It likely can when occurrence identity and whole-span information are retained, but **presheaf compatibility is enough for the kernel design and should be the current claim**.
+Whether the compatible-family assignment satisfies a full sheaf gluing condition is a separate question. It likely can
+when occurrence identity and whole-span information are retained, but **presheaf compatibility is enough for the kernel
+design and should be the current claim**.
 
 ---
 
@@ -1145,30 +1029,19 @@ The temporal structure is independent of what occurs.
 
 For any pure function:
 
-[
-f:A\to B,
-]
+[ f:A\to B, ]
 
 define:
 
-[
-\mathcal T(f):
-\mathcal T_A\to\mathcal T_B
-]
+[ \mathcal T(f): \mathcal T_A\to\mathcal T_B ]
 
 by:
 
-[
-(d,E)
-\mapsto
-(d,{(s,e,f(a))\mid(s,e,a)\in E}).
-]
+[ (d,E) \mapsto (d,{(s,e,f(a))\mid(s,e,a)\in E}). ]
 
 Then:
 
-[
-\mathcal T(id_A)=id_{\mathcal T_A}
-]
+[ \mathcal T(id_A)=id_{\mathcal T_A} ]
 
 and:
 
@@ -1176,8 +1049,7 @@ and:
 \mathcal T(g\circ f)
 ====================
 
-\mathcal T(g)\circ\mathcal T(f).
-]
+\mathcal T(g)\circ\mathcal T(f). ]
 
 So temporal timelines are **functorial in their payload**.
 
@@ -1187,9 +1059,7 @@ They also preserve both principal operations:
 \mathcal T(f)(M;N)
 ==================
 
-\mathcal T(f)(M);
-\mathcal T(f)(N)
-]
+\mathcal T(f)(M); \mathcal T(f)(N) ]
 
 and:
 
@@ -1197,22 +1067,18 @@ and:
 \mathcal T(f)(M\oplus N)
 ========================
 
-\mathcal T(f)(M)
-\oplus
-\mathcal T(f)(N).
-]
+\mathcal T(f)(M) \oplus \mathcal T(f)(N). ]
 
 This is the mathematical reason that things like transposition should normally live outside the temporal kernel.
 
 If:
 
-[
-transpose_{P5}:Note\to Note,
-]
+[ transpose_{P5}:Note\to Note, ]
 
 then its action on complete music is induced automatically.
 
-Hudak's temporal-media work and Haskore exploit closely related separation between the temporal algebra and the type of musical material carried by it.
+Hudak's temporal-media work and Haskore exploit closely related separation between the temporal algebra and the type of
+musical material carried by it.
 
 ---
 
@@ -1220,9 +1086,7 @@ Hudak's temporal-media work and Haskore exploit closely related separation betwe
 
 For:
 
-[
-r\in\mathbb Q_{>0},
-]
+[ r\in\mathbb Q_{>0}, ]
 
 define:
 
@@ -1230,23 +1094,15 @@ define:
 S_r(d,E)
 ========
 
-\left(
-rd,;
-{(rs,re,a)\mid(s,e,a)\in E}
-\right).
-]
+\left( rd,; {(rs,re,a)\mid(s,e,a)\in E} \right). ]
 
 Then:
 
-[
-S_1=id
-]
+[ S_1=id ]
 
 and:
 
-[
-S_r\circ S_s=S_{rs}.
-]
+[ S_r\circ S_s=S_{rs}. ]
 
 Thus positive rational scaling acts on timelines.
 
@@ -1256,8 +1112,7 @@ It respects sequence:
 S_r(M;N)
 ========
 
-S_r(M);S_r(N),
-]
+S_r(M);S_r(N), ]
 
 and overlay:
 
@@ -1265,8 +1120,7 @@ and overlay:
 S_r(M\oplus N)
 ==============
 
-S_r(M)\oplus S_r(N).
-]
+S_r(M)\oplus S_r(N). ]
 
 So augmentation and diminution are not arbitrary compiler rewrites; they arise from a genuine group action.
 
@@ -1290,8 +1144,7 @@ For nonnegative (b), define delayed placement:
 D_b(d,E)
 ========
 
-(d+b,\tau_b(E)).
-]
+(d+b,\tau_b(E)). ]
 
 But:
 
@@ -1299,14 +1152,14 @@ But:
 D_b(M)
 ======
 
-( b,\varnothing ); M.
-]
+( b,\varnothing ); M. ]
 
 So delay is **derived from ambient time plus sequence**.
 
 It should not be a kernel primitive.
 
-For global absolute coordinates, all (b\in\mathbb Q) are allowed and the additive group of time translations acts normally.
+For global absolute coordinates, all (b\in\mathbb Q) are allowed and the additive group of time translations acts
+normally.
 
 ---
 
@@ -1314,18 +1167,11 @@ For global absolute coordinates, all (b\in\mathbb Q) are allowed and the additiv
 
 The construction is clearly functorial:
 
-[
-A\mapsto\mathcal T_A.
-]
+[ A\mapsto\mathcal T_A. ]
 
 It is tempting to demand a monad:
 
-[
-join:
-\mathcal T_{\mathcal T_A}
-\to
-\mathcal T_A.
-]
+[ join: \mathcal T_{\mathcal T_A} \to \mathcal T_A. ]
 
 But there is no canonical meaning for that operation.
 
@@ -1344,7 +1190,9 @@ All are musically useful.
 
 None is universally correct.
 
-Tidal encounters precisely this issue when combining differently structured patterns: there are several meaningful choices for which pattern's temporal structure governs the combination, and modern Tidal exposes the distinction rather than pretending there is one universal flattening operation.
+Tidal encounters precisely this issue when combining differently structured patterns: there are several meaningful
+choices for which pattern's temporal structure governs the combination, and modern Tidal exposes the distinction rather
+than pretending there is one universal flattening operation.
 
 Therefore:
 
@@ -1368,9 +1216,7 @@ Examples:
 
 Intervals may form a group (G) acting on pitches:
 
-[
-G\curvearrowright Pitch.
-]
+[ G\curvearrowright Pitch. ]
 
 Functoriality then lifts that action to whole timelines.
 
@@ -1392,7 +1238,8 @@ May define subsets or relations over kernel timelines.
 
 None belongs to the universal temporal calculus.
 
-This prevents Western harmony, MIDI conventions, or twelve-tone pitch arithmetic from becoming accidental foundations of the language.
+This prevents Western harmony, MIDI conventions, or twelve-tone pitch arithmetic from becoming accidental foundations of
+the language.
 
 ---
 
@@ -1404,30 +1251,22 @@ The kernel lives in exact beat time.
 
 A tempo interpretation supplies a monotone map:
 
-[
-\tau:
-\mathbb Q_{\ge0}
-\to
-\mathbb R_{\ge0}
-]
+[ \tau: \mathbb Q_{\ge0} \to \mathbb R_{\ge0} ]
 
 from beats to physical seconds.
 
 A kernel occurrence:
 
-[
-(s,e,a)
-]
+[ (s,e,a) ]
 
 is realized physically as:
 
-[
-(\tau(s),\tau(e),a).
-]
+[ (\tau(s),\tau(e),a). ]
 
 Thus changing tempo changes the **interpretation of the time axis**, not the kernel composition.
 
-A surface-language tempo declaration can therefore be retained as a typed temporal payload/context for notation and editing while separately compiling to the physical-time map used by playback.
+A surface-language tempo declaration can therefore be retained as a typed temporal payload/context for notation and
+editing while separately compiling to the physical-time map used by playback.
 
 ---
 
@@ -1491,9 +1330,7 @@ Occurrence order in the serialized normal form is canonical, for example by:
 
 Then kernel equality is:
 
-[
-M\equiv N
-]
+[ M\equiv N ]
 
 iff their normalized timeline literals are structurally equal.
 
@@ -1505,9 +1342,7 @@ This makes semantic equality decidable for the initial payload schema.
 
 Every exporter receives the same object:
 
-[
-(d,E).
-]
+[ (d,E). ]
 
 It does not need to understand:
 
@@ -1584,36 +1419,25 @@ For payload (A), the proposed kernel has:
 
 ### Time
 
-[
-(\mathbb Q,+,0)
-]
+[ (\mathbb Q,+,0) ]
 
 an abelian group of global musical positions.
 
 ### Duration
 
-[
-(\mathbb Q_{\ge0},+,0)
-]
+[ (\mathbb Q_{\ge0},+,0) ]
 
 an ordered commutative monoid.
 
 ### Fixed-duration timelines
 
-[
-(\mathcal T_A(d),\oplus,0_d)
-]
+[ (\mathcal T_A(d),\oplus,0_d) ]
 
 a free commutative monoid of occurrences.
 
 ### Succession
 
-[
-;:
-\mathcal T_A(d)\times\mathcal T_A(e)
-\to
-\mathcal T_A(d+e)
-]
+[ ;: \mathcal T_A(d)\times\mathcal T_A(e) \to \mathcal T_A(d+e) ]
 
 associative and unital.
 
@@ -1624,30 +1448,19 @@ d\le e
 \implies
 \operatorname{extend}_{d,e}
 :
-\mathcal T_A(d)\to\mathcal T_A(e).
-]
+\mathcal T_A(d)\to\mathcal T_A(e). ]
 
 ### Payload functoriality
 
-[
-f:A\to B
-\implies
-\mathcal T(f):
-\mathcal T_A\to\mathcal T_B.
-]
+[ f:A\to B \implies \mathcal T(f): \mathcal T_A\to\mathcal T_B. ]
 
 ### Time-scaling action
 
-[
-\mathbb Q_{>0}\curvearrowright\mathcal T_A.
-]
+[ \mathbb Q_{>0}\curvearrowright\mathcal T_A. ]
 
 ### Local observation
 
-[
-\mathcal O_A:
-\mathcal I^{op}\to\mathbf{CMon}
-]
+[ \mathcal O_A: \mathcal I^{op}\to\mathbf{CMon} ]
 
 a presheaf of occurrence observations on bounded time intervals.
 
@@ -1657,8 +1470,7 @@ a presheaf of occurrence observations on bounded time intervals.
 (M\oplus N);(P\oplus Q)
 =======================
 
-(M;P)\oplus(N;Q)
-]
+(M;P)\oplus(N;Q) ]
 
 when the first pair and second pair respectively have equal durations.
 
@@ -1680,10 +1492,13 @@ Those stronger structures impose laws that do not correspond uniquely to actual 
 
 The design rests on one falsifiable hypothesis:
 
-> **Finite symbolic musical meaning can be represented faithfully as typed occurrences supported in an ambient exact musical-time region, with succession and superposition providing the only universally necessary composition operations.**
+> **Finite symbolic musical meaning can be represented faithfully as typed occurrences supported in an ambient exact
+> musical-time region, with succession and superposition providing the only universally necessary composition
+> operations.**
 
 The surface language may contain far richer constructs.
 
-They earn kernel status only if we find a real musical construction that cannot faithfully elaborate to this calculus without losing information required by multiple independent consumers.
+They earn kernel status only if we find a real musical construction that cannot faithfully elaborate to this calculus
+without losing information required by multiple independent consumers.
 
 That is the appropriate test for whether the kernel is missing a primitive.

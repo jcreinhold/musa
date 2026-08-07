@@ -7,4 +7,5 @@
 5. Re-run the focused workload and a broader guardrail.
 6. Stop when the target is met, the evidence is inconclusive, or another cost now dominates.
 
-Reject claims based on a workload that omits the affected pipeline stage. Report uncertainty and regressions, not only the best number.
+Reject claims based on a workload that omits the affected pipeline stage. Report uncertainty and regressions, not only
+the best number.

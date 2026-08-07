@@ -11,6 +11,8 @@ Check these common sources after profiling:
 - Pass boundaries that serialize, copy, or invalidate work.
 - Persistent structures used in deep write-heavy paths.
 
-For large enums, measure footprint, allocation rate, and cache misses before changing layout. Consider field order, niche use, or boxing rare variants, but recheck hot-path indirection. Interpreter dispatch often depends on branch prediction and instruction-cache behavior; do not choose SIMD before measuring those limits.
+For large enums, measure footprint, allocation rate, and cache misses before changing layout. Consider field order,
+niche use, or boxing rare variants, but recheck hot-path indirection. Interpreter dispatch often depends on branch
+prediction and instruction-cache behavior; do not choose SIMD before measuring those limits.
 
 Use the profile and input shape to select one; do not assume compiler-like code shares one bottleneck.

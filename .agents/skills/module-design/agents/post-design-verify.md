@@ -8,7 +8,8 @@ tools: Read, Grep, Glob, Bash
 
 Run `bash .agents/skills/module-design/scripts/audit-module.sh <path>`, inspect the diff, and read two or three callers.
 
-Check that the public surface did not grow without capability, no type mixes independent concerns, no wrapper only forwards calls, and callers need fewer facts or gain a clear capability.
+Check that the public surface did not grow without capability, no type mixes independent concerns, no wrapper only
+forwards calls, and callers need fewer facts or gain a clear capability.
 
 Run the relevant gate:
 
@@ -17,4 +18,5 @@ cargo nextest run -p <crate-name>
 cargo clippy -p <crate-name>
 ```
 
-Report the before/after audit, public items added or removed, caller impact, failed constraints, commands run, and a `PASS`, `FAIL`, or `PASS WITH NOTES` verdict.
+Report the before/after audit, public items added or removed, caller impact, failed constraints, commands run, and a
+`PASS`, `FAIL`, or `PASS WITH NOTES` verdict.
