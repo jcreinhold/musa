@@ -70,6 +70,20 @@
     "available": true
   },
   {
+    "id": "view.workspace.sound",
+    "title": "Sound workspace",
+    "section": "view",
+    "accelerator": "CmdOrCtrl+2",
+    "available": true
+  },
+  {
+    "id": "view.workspace.mix",
+    "title": "Mix workspace",
+    "section": "view",
+    "accelerator": "CmdOrCtrl+3",
+    "available": true
+  },
+  {
     "id": "view.workspace.source",
     "title": "Source workspace",
     "section": "view",

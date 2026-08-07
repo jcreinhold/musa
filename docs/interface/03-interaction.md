@@ -72,16 +72,15 @@ documentation cannot drift from bindings.
 | Key | Action |
 | --- | --- |
 | `O` (hold) or `⌥` (hold) | Origin view (`04-provenance.md`) |
-| `⌘1` `⌘4` | Compose / Source workspace |
+| `⌘1` `⌘2` `⌘3` `⌘4` | Compose / Sound / Mix / Source workspace |
 | `⌘−` `⌘=` `⌘0` | Zoom out / in / reset |
 | `⌘'` | Toggle the source & diagnostics drawer |
 | `⌘⇧F` | Format the source |
 | `⌘K` | Command palette |
 | `?` | Keyboard sheet |
 
-`⌘2` and `⌘3` are reserved for Sound and Mix and are bound to nothing until those workspaces exist: a switcher with a
-tab that opens an empty room is a promise the application cannot keep, so the switcher shows the two that are real
-(prompt 26).
+All four workspaces exist as of prompt 31; before that `⌘2` and `⌘3` were bound to nothing and the switcher showed only
+the two that were real, because a tab that opens an empty room is a promise the application cannot keep.
 
 **Modified keys belong to the application; unmodified ones belong to the score.** Everything without `⌘` or `⌥` — the
 arrows, `Space`, `F`, `L`, `⇧O` — fires only when the score pane has focus, so typing `f` in the source is an `f` and

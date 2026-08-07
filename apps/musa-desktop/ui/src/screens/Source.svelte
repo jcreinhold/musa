@@ -18,6 +18,7 @@
   import Margin from "../lib/ui/Margin.svelte";
   import SourceEditor from "../lib/ui/SourceEditor.svelte";
   import Workspaces from "../lib/ui/Workspaces.svelte";
+  import type { Screen } from "../lib/commands/map";
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
@@ -44,7 +45,7 @@
     /** The caret moved; the score follows it (§14.4's other direction). */
     oncaret?: (offset: number) => void;
     ondiagnostic?: (diagnostic: Diagnostic) => void;
-    onshow: (which: "compose" | "source") => void;
+    onshow: (which: Screen) => void;
   } = $props();
 
   const snapshot = $derived(session.snapshot);

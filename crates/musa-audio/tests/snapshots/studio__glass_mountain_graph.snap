@@ -72,10 +72,21 @@ StudioGraphSpec {
             id: NodeId(
                 3,
             ),
-            processor: Passthrough {
-                channels: 2,
-            },
-            params: [],
+            processor: Reverb,
+            params: [
+                (
+                    "room",
+                    0.82,
+                ),
+                (
+                    "damping",
+                    0.55,
+                ),
+                (
+                    "mix",
+                    1.0,
+                ),
+            ],
         },
         Node {
             id: NodeId(
@@ -90,6 +101,13 @@ StudioGraphSpec {
             id: NodeId(
                 5,
             ),
+            processor: Limiter,
+            params: [],
+        },
+        Node {
+            id: NodeId(
+                6,
+            ),
             processor: Lfo {
                 waveform: Sine,
             },
@@ -102,7 +120,7 @@ StudioGraphSpec {
         },
         Node {
             id: NodeId(
-                6,
+                7,
             ),
             processor: Scale,
             params: [
@@ -114,7 +132,7 @@ StudioGraphSpec {
         },
         Node {
             id: NodeId(
-                7,
+                8,
             ),
             processor: Bias,
             params: [
@@ -178,11 +196,11 @@ StudioGraphSpec {
         },
         Connection {
             from: NodeId(
-                5,
+                4,
             ),
             from_port: 0,
             to: NodeId(
-                6,
+                5,
             ),
             to_port: 0,
         },
@@ -196,11 +214,21 @@ StudioGraphSpec {
             ),
             to_port: 0,
         },
+        Connection {
+            from: NodeId(
+                7,
+            ),
+            from_port: 0,
+            to: NodeId(
+                8,
+            ),
+            to_port: 0,
+        },
     ],
     modulations: [
         ModulationEdge {
             from: NodeId(
-                7,
+                8,
             ),
             from_port: 0,
             to: NodeId(
@@ -211,7 +239,7 @@ StudioGraphSpec {
     ],
     output: Some(
         NodeId(
-            4,
+            5,
         ),
     ),
 }

@@ -30,14 +30,13 @@ async function inSource(page: Page): Promise<void> {
 test("⌘4 opens the Source workspace, with the page still on it", async ({ page }) => {
   await inSource(page);
 
-  // Text and page, side by side, and the switcher says which of the two
-  // workspaces this is. Sound and Mix are not offered, because they are not
-  // built (`03-interaction.md` §3).
+  // Text and page, side by side, and the switcher says which of the four
+  // workspaces this is (`03-interaction.md` §3).
   await expect(source(page)).toBeVisible();
   await expect(page.locator(".source-workspace .engraving")).toBeVisible();
   const workspaces = page.getByRole("navigation", { name: "Workspace" }).getByRole("button");
-  await expect(workspaces).toHaveCount(2);
-  await expect(workspaces.nth(1)).toHaveAttribute("aria-current", "page");
+  await expect(workspaces).toHaveCount(4);
+  await expect(workspaces.nth(3)).toHaveAttribute("aria-current", "page");
 
   // And back, by the same map.
   await page.keyboard.press("ControlOrMeta+1");

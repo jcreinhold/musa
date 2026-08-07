@@ -22,6 +22,9 @@ import type { Workspace } from "../state/selection.svelte";
 /** The commands the native menu shows, generated from the Rust registry. */
 export const REGISTERED = registry as readonly CommandDescriptor[];
 
+/** The four workspaces of roadmap §14.4, in the order they are numbered. */
+export type Screen = "compose" | "sound" | "mix" | "source";
+
 /** Where a command belongs in the palette and the keyboard sheet. */
 export type Group = "File" | "Edit" | "Score" | "Transport" | "View" | "Help";
 
@@ -44,7 +47,7 @@ export interface Surface {
   /** Lift the selected notes into a motif, naming it inline (prompt 25). */
   extract(): void;
   /** Open a workspace (roadmap §14.4). */
-  show(which: "compose" | "source"): void;
+  show(which: Screen): void;
   palette(open: boolean): void;
   keys(open: boolean): void;
   /** Clear the selection, or — with nothing selected — close the drawer. */
@@ -193,6 +196,8 @@ export const COMMANDS: readonly Command[] = [
   own("view.origin", "Pin Origin view (hold O)", "View", "Shift+O", (surface) => surface.origin()),
 
   command("view.workspace.compose", "View", (surface) => surface.show("compose")),
+  command("view.workspace.sound", "View", (surface) => surface.show("sound")),
+  command("view.workspace.mix", "View", (surface) => surface.show("mix")),
   command("view.workspace.source", "View", (surface) => surface.show("source")),
 
   command("view.zoom.out", "View", (surface) => surface.zoom(-1)),

@@ -1,7 +1,7 @@
 ---
 id: 31
 slug: dsp-effects-mix
-status: pending
+status: done
 depends_on: [30]
 phase: 2
 ---
@@ -64,6 +64,46 @@ cd apps/musa-desktop && cargo tauri dev   # manual: Sound and Mix workspaces edi
 ```
 
 Commit as `Add time effects, buses, and mix workspaces`.
+
+## Repairs made while implementing
+
+- **A legal cycle is one that passes through a delay, and it is implemented as a deferred read.** `schedule_order`
+  finds every `Delay` node that can reach itself, drops its in-edges from the topological sort, and lets it read the
+  previous block. Any other cycle is still `GraphError::Cycle`. One block of latency inside a loop already measured in
+  hundreds of milliseconds is not audible, and it is the only way to keep the render plan a straight-line schedule.
+- **The limiter has no lookahead, deliberately.** Instantaneous attack with a `min` against the allowed gain makes the
+  guarantee exact per sample, and it keeps the master bus latency-free, so an offline render and a live one stay
+  sample-aligned (§13.8). The cost — distortion when it engages hard — is documented on the processor.
+- **The golden audio digest was re-pinned.** Measured against a worktree at the previous commit: the old master peaked
+  at 3.80 with 189,980 samples over 0 dBFS. It now peaks at exactly 1.0. `session_laws` records both numbers beside the
+  new digest so the change reads as the fix it is rather than as drift.
+- **`is_placeholder` and its warning were deleted, not left always-false.** With `reverb` implemented there is no
+  processor without DSP, and a check that can never fire is a lie about the language.
+- **The compiler now records where each written value is.** `StudioNode.param_spans`, `StudioNode.span`, `Send.level_span`,
+  `Assignment.patch_span`, and `StudioSpec::span()` are what a knob rewrites. Regenerating a whole call instead would
+  normalize `30 ms` to `0.03 s`, reorder named arguments, and drop any comment inside the parentheses — so a written
+  value is replaced in the scale it was written in, an unwritten one is *added* in the unit it is declared in, and a
+  part with no `assign` gets a new statement inside the `studio` block rather than a refusal.
+- **Those spans are trimmed.** `span_of` includes a node's leading trivia, so the first fader move produced
+  `at-6.5 dB`. They use `trimmed_span` now.
+- **`ParamSpec` gained a writable `range`.** A slider needs bounds in the unit the composer writes (`-60`…`+12` dB), and
+  `musa-audio`'s `ParameterDescriptor` bounds something else — what the DSP accepts, in linear terms. Two questions,
+  two answers; the doc on `ParamSpec::range` says which is which.
+- **Mix shows only the levels the language has.** There is no per-part fader in `.musa`, so the Mix workspace does not
+  draw one: a part's level is the `gain` stage its patch actually writes, plus its sends. Inventing a control would have
+  meant inventing a second authority for the value behind it (§11).
+- **A parameter change is committed on release, not while dragging.** One gesture is one edit, one revision, one entry
+  in the undo history. This is the "ride the existing debounce" the Design section asked for; no separate real-time
+  parameter channel was built, and none was needed at this rate.
+- **A modulated parameter says so.** `ParamFacts.modulated_by` is filled from the resolved `modulate` statements, and
+  the row prints it, because a knob that appeared to disagree with what is heard would be worse than no knob.
+- **`--s-5` did not exist.** Four existing screens used `var(--s-5)` for gaps and padding, so those declarations were
+  silently dropped. It is now part of the 4px chrome scale.
+- **`ParamControl` takes its element id from the caller.** Two oscillators in one patch both have a `frequency`, so a
+  label pointing at `param-frequency` pointed at the wrong control.
+- **The workspace switcher and the command registry now list four workspaces.** `⌘2` and `⌘3` were reserved and bound to
+  nothing; `docs/interface/03-interaction.md` and the stale comment in `examples/glass-mountain.musa` about
+  pass-through stages were updated to say what is now true.
 
 ## Stop
 

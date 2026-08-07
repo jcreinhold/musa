@@ -17,6 +17,7 @@
   import TransportReadout from "../lib/ui/TransportReadout.svelte";
   import Workspaces from "../lib/ui/Workspaces.svelte";
   import { REPEAT_RIGHT_LEFT } from "../lib/ui/glyphs";
+  import type { Screen } from "../lib/commands/map";
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
@@ -99,7 +100,7 @@
     ondiagnostic: (diagnostic: Diagnostic) => void;
     /** The source caret moved; the score follows it (roadmap §14.4). */
     oncaret: (offset: number) => void;
-    onshow: (which: "compose" | "source") => void;
+    onshow: (which: Screen) => void;
   } = $props();
 
   const snapshot = $derived(session.snapshot);

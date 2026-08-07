@@ -199,19 +199,23 @@ fn the_roadmap_example_compiles_and_resolves() {
     insta::assert_snapshot!("glass_mountain_studio", format!("{studio:#?}"));
 }
 
+/// Every processor the language names has DSP behind it (prompt 31 removed
+/// the last placeholder), so a patch that uses one is not merely accepted —
+/// it is accepted without a word of apology.
 #[test]
-fn a_placeholder_processor_warns_rather_than_failing() {
+fn a_written_effect_compiles_without_a_warning() {
     let compilation = compile_text(&piece(
-        "patch p { oscillator(sine) |> reverb(room: 0.5) |> output; } assign violin -> p; route violin -> master;",
+        "patch p { oscillator(sine) |> reverb(room: 0.5) |> delay(time: 250 ms) |> chorus() |> output; } \
+         assign violin -> p; route violin -> master;",
     ));
-    assert!(!compilation.has_errors(), "the language must not wait on the DSP");
+    assert!(!compilation.has_errors(), "the effects are part of the language");
     let warnings: Vec<&str> = compilation
         .diagnostics()
         .iter()
         .filter(|diagnostic| diagnostic.severity == Severity::Warning)
         .map(|diagnostic| diagnostic.message.as_str())
         .collect();
-    assert_eq!(warnings, vec!["`reverb` has no DSP yet and renders as pass-through"]);
+    assert_eq!(warnings, Vec::<&str>::new());
 }
 
 // --- Diagnostics ------------------------------------------------------------

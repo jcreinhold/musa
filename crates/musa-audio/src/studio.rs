@@ -158,14 +158,15 @@ pub fn lower_studio(studio: &StudioSpec, _options: &GraphOptions) -> (StudioGrap
             .push("nothing is routed to `master`, so the studio renders silence".to_owned());
     }
 
-    match merge(&mut graph, &master_inputs, &mut lowering) {
-        Some(master) => graph.set_output(master),
-        None => {
-            // Keep the graph renderable: a silent master is still a master.
-            let silent = graph.add_node(ProcessorSpec::Passthrough { channels: 2 });
-            graph.set_output(silent);
-        }
-    }
+    // Master always ends in the limiter (§13.6): a mix is a set of choices
+    // about balance, and what leaves the graph should be bounded whatever
+    // those choices were. Keep the graph renderable when nothing was routed —
+    // a silent master is still a master.
+    let mixed = merge(&mut graph, &master_inputs, &mut lowering)
+        .unwrap_or_else(|| graph.add_node(ProcessorSpec::Passthrough { channels: 2 }));
+    let master = graph.add_node(ProcessorSpec::Limiter);
+    graph.connect(mixed, 0, master, 0);
+    graph.set_output(master);
 
     lower_modulations(&mut graph, studio, &addresses, &mut lowering);
     (graph, lowering)
@@ -286,10 +287,19 @@ fn lower_container<'a>(
                 id
             }
             Processor::Reverb => {
-                lowering
-                    .notes
-                    .push(format!("`{}` renders as pass-through", node.processor.name()));
-                graph.add_node(ProcessorSpec::Passthrough { channels: 2 })
+                let id = graph.add_node(ProcessorSpec::Reverb);
+                set_stage_params(graph, id, node, lowering);
+                id
+            }
+            Processor::Delay | Processor::Chorus => {
+                let processor = if node.processor == Processor::Delay {
+                    ProcessorSpec::Delay
+                } else {
+                    ProcessorSpec::Chorus
+                };
+                let id = graph.add_node(processor);
+                set_stage_params(graph, id, node, lowering);
+                id
             }
         };
         graph.connect(previous, 0, lowered, 0);
@@ -337,6 +347,8 @@ fn partial(patch: &Patch, index: NodeIndex) -> Option<(f64, f64)> {
         | Processor::Lowpass
         | Processor::Highpass
         | Processor::Reverb
+        | Processor::Delay
+        | Processor::Chorus
         | Processor::Scale
         | Processor::Bias
         | Processor::Clamp
@@ -443,7 +455,9 @@ fn lower_signal(graph: &mut StudioGraphSpec, signal: &Patch, lowering: &mut Stud
             | Processor::Envelope
             | Processor::Lowpass
             | Processor::Highpass
-            | Processor::Reverb => {
+            | Processor::Reverb
+            | Processor::Delay
+            | Processor::Chorus => {
                 lowering.notes.push(format!(
                     "`{}` shapes a sound, not a control signal; it does nothing in a modulation source",
                     node.processor.name()

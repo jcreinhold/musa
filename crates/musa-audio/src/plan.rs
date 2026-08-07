@@ -13,6 +13,7 @@
 
 use musa_compiler::PerformanceEvent;
 
+use crate::effects::{Chorus, Delay, Limiter, Reverb};
 use crate::error::GraphError;
 use crate::filter::{Biquad, Coefficients, OnePole};
 use crate::spec::{
@@ -153,6 +154,28 @@ enum ProcessorInstance {
         coefficient: f32,
         channels: [OnePole; 2],
     },
+    Echo {
+        time: f32,
+        feedback: f32,
+        mix: f32,
+        channels: [Delay; 2],
+    },
+    Chorusing {
+        rate: f32,
+        depth: f32,
+        mix: f32,
+        channels: [Chorus; 2],
+    },
+    Room {
+        room: f32,
+        damping: f32,
+        mix: f32,
+        channels: [Reverb; 2],
+    },
+    Ceiling {
+        ceiling: f32,
+        limiter: Limiter,
+    },
 }
 
 impl ProcessorInstance {
@@ -236,6 +259,39 @@ impl ProcessorInstance {
                     channels: [Biquad::default(); 2],
                 }
             }
+            ProcessorSpec::Delay => Self::Echo {
+                time: param("time"),
+                feedback: param("feedback"),
+                mix: param("mix"),
+                channels: [
+                    Delay::new(crate::MAX_DELAY, sample_rate as f32),
+                    Delay::new(crate::MAX_DELAY, sample_rate as f32),
+                ],
+            },
+            ProcessorSpec::Chorus => Self::Chorusing {
+                rate: param("rate"),
+                depth: param("depth"),
+                mix: param("mix"),
+                // Half a cycle apart, so the two channels wobble against each
+                // other rather than together: that difference is the width.
+                channels: [
+                    Chorus::new(0.0, sample_rate as f32),
+                    Chorus::new(0.5, sample_rate as f32),
+                ],
+            },
+            ProcessorSpec::Reverb => Self::Room {
+                room: param("room"),
+                damping: param("damping"),
+                mix: param("mix"),
+                channels: [
+                    Reverb::new(0, sample_rate as f32),
+                    Reverb::new(Reverb::spread(), sample_rate as f32),
+                ],
+            },
+            ProcessorSpec::Limiter => Self::Ceiling {
+                ceiling: param("ceiling"),
+                limiter: Limiter::new(sample_rate as f32),
+            },
             ProcessorSpec::OnePole => {
                 let cutoff = param("cutoff");
                 Self::OnePoleFilter {
@@ -283,6 +339,24 @@ impl ProcessorInstance {
                 set(cutoff, name, "cutoff", value);
                 *coefficient = OnePole::coefficient(*cutoff, sample_rate);
             }
+            Self::Echo {
+                time, feedback, mix, ..
+            } => {
+                set(time, name, "time", value);
+                set(feedback, name, "feedback", value);
+                set(mix, name, "mix", value);
+            }
+            Self::Chorusing { rate, depth, mix, .. } => {
+                set(rate, name, "rate", value);
+                set(depth, name, "depth", value);
+                set(mix, name, "mix", value);
+            }
+            Self::Room { room, damping, mix, .. } => {
+                set(room, name, "room", value);
+                set(damping, name, "damping", value);
+                set(mix, name, "mix", value);
+            }
+            Self::Ceiling { ceiling, .. } => set(ceiling, name, "ceiling", value),
             Self::Noise { .. }
             | Self::Passthrough
             | Self::Mixer
@@ -309,49 +383,7 @@ fn set(slot: &mut f32, name: &str, expected: &str, value: f32) {
 pub fn compile_graph(spec: &StudioGraphSpec, options: &GraphOptions) -> Result<RenderPlan, GraphError> {
     validate(spec)?;
 
-    // Topological order (Kahn). A cycle anywhere is rejected: cycles are
-    // legal only through an explicit delay node (§5.6), which does not exist
-    // yet — the rule is encoded, not just the current case.
-    let mut indegree: std::collections::HashMap<NodeId, usize> = std::collections::HashMap::new();
-    for node in spec.nodes() {
-        indegree.insert(node.id(), 0);
-    }
-    // A modulation is an edge for scheduling purposes too: a control signal
-    // must be computed before the node it steers reads it, or the parameter
-    // lags the sound by a block.
-    for connection in spec.connections() {
-        *indegree.entry(connection.to).or_insert(0) += 1;
-    }
-    for edge in spec.modulations() {
-        *indegree.entry(edge.to).or_insert(0) += 1;
-    }
-    let mut queue: Vec<NodeId> = indegree
-        .iter()
-        .filter(|(_, degree)| **degree == 0)
-        .map(|(id, _)| *id)
-        .collect();
-    queue.sort_unstable();
-    let mut order = Vec::new();
-    while let Some(id) = queue.pop() {
-        order.push(id);
-        let downstream = spec
-            .connections()
-            .iter()
-            .filter(|c| c.from == id)
-            .map(|c| c.to)
-            .chain(spec.modulations().iter().filter(|e| e.from == id).map(|e| e.to));
-        for to in downstream {
-            if let Some(degree) = indegree.get_mut(&to) {
-                *degree = degree.saturating_sub(1);
-                if *degree == 0 {
-                    queue.push(to);
-                }
-            }
-        }
-    }
-    if order.len() != spec.nodes().len() {
-        return Err(GraphError::Cycle);
-    }
+    let order = schedule_order(spec)?;
 
     // Only ancestors of the output render; the rest is dead weight (§13.3).
     let output = spec.output().ok_or(GraphError::OutputMissing)?;
@@ -462,6 +494,95 @@ pub fn compile_graph(spec: &StudioGraphSpec, options: &GraphOptions) -> Result<R
         cursor: 0,
         sample_rate: options.sample_rate,
     })
+}
+
+/// The order the nodes run in: a topological sort (Kahn) of every edge except
+/// the ones a legal feedback loop is allowed to defer.
+///
+/// **Feedback (§13.3, §5.6).** A cycle is legal exactly when it passes through
+/// a [`ProcessorSpec::Delay`], and it is legal because of what a delay does: a
+/// signal that comes back has been held for an amount the patch wrote, so the
+/// loop is causal and its period is something a reader can see. A delay on a
+/// cycle therefore reads its input as it stood at the end of the previous
+/// block — one block added to a loop whose length is already measured in
+/// hundreds of milliseconds. Any other cycle is rejected, because there is no
+/// interpretation of it that is not "the output before the output".
+fn schedule_order(spec: &StudioGraphSpec) -> Result<Vec<NodeId>, GraphError> {
+    // Edges into these nodes do not constrain the order: they are the ones
+    // closing a loop, and the delay is where the loop is allowed to close.
+    let deferred: std::collections::HashSet<NodeId> = spec
+        .nodes()
+        .iter()
+        .filter(|node| node.processor() == ProcessorSpec::Delay && on_a_cycle(spec, node.id()))
+        .map(|node| node.id())
+        .collect();
+
+    let edges = |from: NodeId| {
+        spec.connections()
+            .iter()
+            .filter(move |c| c.from == from)
+            .map(|c| c.to)
+            // A modulation is an edge for scheduling purposes too: a control
+            // signal must be computed before the node it steers reads it, or
+            // the parameter lags the sound by a block.
+            .chain(spec.modulations().iter().filter(move |e| e.from == from).map(|e| e.to))
+            .filter(|to| !deferred.contains(to))
+    };
+
+    let mut indegree: std::collections::HashMap<NodeId, usize> = std::collections::HashMap::new();
+    for node in spec.nodes() {
+        indegree.insert(node.id(), 0);
+    }
+    for node in spec.nodes() {
+        for to in edges(node.id()) {
+            *indegree.entry(to).or_insert(0) += 1;
+        }
+    }
+    let mut queue: Vec<NodeId> = indegree
+        .iter()
+        .filter(|(_, degree)| **degree == 0)
+        .map(|(id, _)| *id)
+        .collect();
+    queue.sort_unstable();
+    let mut order = Vec::new();
+    while let Some(id) = queue.pop() {
+        order.push(id);
+        for to in edges(id) {
+            if let Some(degree) = indegree.get_mut(&to) {
+                *degree = degree.saturating_sub(1);
+                if *degree == 0 {
+                    queue.push(to);
+                }
+            }
+        }
+    }
+    if order.len() != spec.nodes().len() {
+        return Err(GraphError::Cycle);
+    }
+    Ok(order)
+}
+
+/// Whether `start` can reach itself: the definition of being on a cycle.
+fn on_a_cycle(spec: &StudioGraphSpec, start: NodeId) -> bool {
+    let mut seen: std::collections::HashSet<NodeId> = std::collections::HashSet::new();
+    let mut frontier = vec![start];
+    while let Some(id) = frontier.pop() {
+        let downstream = spec
+            .connections()
+            .iter()
+            .filter(|c| c.from == id)
+            .map(|c| c.to)
+            .chain(spec.modulations().iter().filter(|e| e.from == id).map(|e| e.to));
+        for to in downstream {
+            if to == start {
+                return true;
+            }
+            if seen.insert(to) {
+                frontier.push(to);
+            }
+        }
+    }
+    false
 }
 
 /// How far a smoothed parameter closes on its target in one block.
@@ -663,6 +784,13 @@ fn apply_modulations(step: &mut Step, buffers: &[Box<[f32]>], sample_rate: f32) 
         link.current = link.coefficient.mul_add(target - link.current, link.current);
         step.instance.set_param(link.descriptor.name, link.current, sample_rate);
     }
+}
+
+/// Dry and wet in the balance a `mix` parameter asks for: 0 is the input
+/// untouched, 1 is the effect alone.
+fn blend(dry: f32, wet: f32, mix: f32) -> f32 {
+    let mix = mix.clamp(0.0, 1.0);
+    mix.mul_add(wet - dry, dry)
 }
 
 /// One period of an LFO shape at `phase` in `[0, 1)`.
@@ -963,6 +1091,96 @@ fn process(
                     }
                     if let Some(slot) = out.get_mut(right_index) {
                         *slot = right;
+                    }
+                }
+            }
+        }
+        ProcessorInstance::Echo {
+            time,
+            feedback,
+            mix,
+            channels,
+        } => {
+            let [left_state, right_state] = channels;
+            let rate = sample_rate as f32;
+            if let Some(out) = outputs.first_mut() {
+                for i in 0..count {
+                    let right_index = block.saturating_add(i);
+                    let dry_left = input(0, i);
+                    let dry_right = channel(0).and_then(|b| b.get(right_index)).copied().unwrap_or(0.0);
+                    let wet_left = left_state.process(dry_left, *time, *feedback, rate);
+                    let wet_right = right_state.process(dry_right, *time, *feedback, rate);
+                    if let Some(slot) = out.get_mut(i) {
+                        *slot = blend(dry_left, wet_left, *mix);
+                    }
+                    if let Some(slot) = out.get_mut(right_index) {
+                        *slot = blend(dry_right, wet_right, *mix);
+                    }
+                }
+            }
+        }
+        ProcessorInstance::Chorusing {
+            rate,
+            depth,
+            mix,
+            channels,
+        } => {
+            let [left_state, right_state] = channels;
+            let sample_rate = sample_rate as f32;
+            if let Some(out) = outputs.first_mut() {
+                for i in 0..count {
+                    let right_index = block.saturating_add(i);
+                    let dry_left = input(0, i);
+                    let dry_right = channel(0).and_then(|b| b.get(right_index)).copied().unwrap_or(0.0);
+                    let wet_left = left_state.process(dry_left, *rate, *depth, sample_rate);
+                    let wet_right = right_state.process(dry_right, *rate, *depth, sample_rate);
+                    if let Some(slot) = out.get_mut(i) {
+                        *slot = blend(dry_left, wet_left, *mix);
+                    }
+                    if let Some(slot) = out.get_mut(right_index) {
+                        *slot = blend(dry_right, wet_right, *mix);
+                    }
+                }
+            }
+        }
+        ProcessorInstance::Room {
+            room,
+            damping,
+            mix,
+            channels,
+        } => {
+            let [left_state, right_state] = channels;
+            if let Some(out) = outputs.first_mut() {
+                for i in 0..count {
+                    let right_index = block.saturating_add(i);
+                    let dry_left = input(0, i);
+                    let dry_right = channel(0).and_then(|b| b.get(right_index)).copied().unwrap_or(0.0);
+                    // Both networks are fed the sum: a reverb is a room, and
+                    // a room does not have a left half and a right half.
+                    let source = dry_left + dry_right;
+                    let wet_left = left_state.process(source, *room, *damping);
+                    let wet_right = right_state.process(source, *room, *damping);
+                    if let Some(slot) = out.get_mut(i) {
+                        *slot = blend(dry_left, wet_left, *mix);
+                    }
+                    if let Some(slot) = out.get_mut(right_index) {
+                        *slot = blend(dry_right, wet_right, *mix);
+                    }
+                }
+            }
+        }
+        ProcessorInstance::Ceiling { ceiling, limiter } => {
+            if let Some(out) = outputs.first_mut() {
+                for i in 0..count {
+                    let right_index = block.saturating_add(i);
+                    let left = input(0, i);
+                    let right = channel(0).and_then(|b| b.get(right_index)).copied().unwrap_or(0.0);
+                    let gain = limiter.gain_for(left.abs().max(right.abs()), *ceiling);
+                    if let Some(slot) = out.get_mut(i) {
+                        *slot = left * gain;
+                    }
+                    if let Some(slot) = out.get_mut(right_index) {
+                        *slot = right * gain;
                     }
                 }
             }

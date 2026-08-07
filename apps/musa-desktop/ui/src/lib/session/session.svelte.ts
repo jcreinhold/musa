@@ -18,6 +18,7 @@ import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { EditDto } from "./generated/EditDto";
+import type { StudioEditDto } from "./generated/StudioEditDto";
 import type { EditImpact, ProjectSnapshot } from "../state/snapshot";
 
 /**
@@ -74,7 +75,7 @@ export type Link = Pick<
  * arriving, and dropping the draft on its way back would undo whatever was
  * typed while it was in flight.
  */
-const REWRITES = new Set(["format", "undo", "redo", "editScore"]);
+const REWRITES = new Set(["format", "undo", "redo", "editScore", "editStudio"]);
 
 export class Session {
   snapshot = $state<ProjectSnapshot | null>(null);
@@ -279,6 +280,26 @@ export class Session {
     if (!link) return false;
     try {
       this.receive(await link.apply({ kind: "editScore", edit }));
+      if (said) this.say({ tone: "result", message: said });
+      return true;
+    } catch (thrown) {
+      this.fail(thrown);
+      return false;
+    }
+  }
+
+  /**
+   * Issue a structured studio edit — a knob, a fader, an assignment.
+   *
+   * The same call shape as a score edit, because it is the same kind of act:
+   * the source is rewritten, transactionally, and the answer is the new
+   * document (roadmap §11).
+   */
+  async editStudio(edit: StudioEditDto, said?: string): Promise<boolean> {
+    const link = this.#link;
+    if (!link) return false;
+    try {
+      this.receive(await link.apply({ kind: "editStudio", edit }));
       if (said) this.say({ tone: "result", message: said });
       return true;
     } catch (thrown) {

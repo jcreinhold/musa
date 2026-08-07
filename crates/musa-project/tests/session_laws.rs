@@ -169,19 +169,29 @@ fn digest(bytes: &[u8]) -> u64 {
 /// digest is the missing oracle — if a future change to the performance layer
 /// touches an unprofiled piece by even one sample, this fails.
 ///
-/// It was re-pinned once, in prompt 30, when the placeholder ramp became a
-/// real ADSR. The old ramp compared an accumulated float against 1.0 and so
-/// spent 241 frames on a 240-frame attack; the ADSR counts frames. The
-/// difference was verified against the previous build before re-pinning: 26
-/// samples out of 576,000 changed, all at attack boundaries, none by more
-/// than one ulp. Nothing about interpretation moved, which is what this test
-/// is for.
+/// It has been re-pinned twice, both times for a change to the *instrument*
+/// rather than to interpretation, and both times verified against the
+/// previous build first.
+///
+/// Prompt 30 replaced the placeholder ramp with a real ADSR: the old ramp
+/// compared an accumulated float against 1.0 and so spent 241 frames on a
+/// 240-frame attack. 26 samples out of 576,000 changed, none by more than one
+/// ulp.
+///
+/// Prompt 31 put the master limiter on the default instrument. This fixture
+/// peaked at 3.80 — 190,000 of its samples were above full scale — so the
+/// limiter engages, and most samples move. That is the point of it: sixteen
+/// voices summing past 0 dBFS is a mix decision nobody made, and a file that
+/// records it is a file that clips on anything that plays it. What the digest
+/// still guards is unchanged: nothing here asks for a profile, and nothing in
+/// the performance layer may act as though it did.
 #[test]
 fn an_unprofiled_piece_renders_the_golden_audio() -> Result {
+    const GOLDEN: u64 = 0x1426_af4f_74c0_0489;
     let bytes = session().export(ExportRequest::Wav)?;
     assert_eq!(
         digest(bytes.as_bytes()),
-        0x5af3_0a8a_a16d_6b85,
+        GOLDEN,
         "interpretation reached a piece that asked for none"
     );
     Ok(())

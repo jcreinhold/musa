@@ -1,19 +1,10 @@
 {
   "name": "glass-mountain.musa",
-  "source": "piece \"Glass Mountain\" {\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: pitch = e5) {\n        root 1/2;\n        rest 1/4;\n        c5 1/2;\n        b4 1/4;\n        a4 1/2;\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh();\n\n                transpose down P5 {\n                    use sigh();\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5 1;\n                c5 1;\n                a4 1;\n                gs4 1;\n            }\n\n            voice bass {\n                a2 1;\n                f2 1;\n                d2 1;\n                e2 1;\n            }\n        }\n    }\n\n    // The sound side (roadmap 7.1). Stages whose DSP has not been written\n    // yet render as pass-through and say so, so the patch can be written\n    // before the filter exists.\n    studio {\n        patch glass_pad {\n            carrier = oscillator(sine);\n            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);\n\n            mix(carrier, shimmer)\n                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))\n                |> lowpass(cutoff: 1400 Hz, q: 0.7)\n                |> output;\n        }\n\n        lfo = oscillator(sine, frequency: 0.08 Hz)\n            |> scale(250 Hz)\n            |> bias(1400 Hz);\n\n        modulate lfo -> glass_pad.lowpass.cutoff;\n\n        bus hall {\n            reverb(room: 0.82, damping: 0.55);\n        }\n\n        assign violin -> glass_pad;\n        assign strings -> glass_pad;\n\n        route violin -> master;\n        route strings -> master;\n\n        send violin -> hall at -18 dB;\n        send strings -> hall at -14 dB;\n        route hall -> master;\n    }\n}\n",
+  "source": "piece \"Glass Mountain\" {\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: pitch = e5) {\n        root 1/2;\n        rest 1/4;\n        c5 1/2;\n        b4 1/4;\n        a4 1/2;\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh();\n\n                transpose down P5 {\n                    use sigh();\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5 1;\n                c5 1;\n                a4 1;\n                gs4 1;\n            }\n\n            voice bass {\n                a2 1;\n                f2 1;\n                d2 1;\n                e2 1;\n            }\n        }\n    }\n\n    // The sound side (roadmap 7.1). Every stage here runs real DSP: the\n    // oscillators and envelope are the voice, the filter and its modulation\n    // shape it, and the hall is a send to a reverb bus that returns to the\n    // master.\n    studio {\n        patch glass_pad {\n            carrier = oscillator(sine);\n            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);\n\n            mix(carrier, shimmer)\n                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))\n                |> lowpass(cutoff: 1400 Hz, q: 0.7)\n                |> output;\n        }\n\n        lfo = oscillator(sine, frequency: 0.08 Hz)\n            |> scale(250 Hz)\n            |> bias(1400 Hz);\n\n        modulate lfo -> glass_pad.lowpass.cutoff;\n\n        bus hall {\n            reverb(room: 0.82, damping: 0.55);\n        }\n\n        assign violin -> glass_pad;\n        assign strings -> glass_pad;\n\n        route violin -> master;\n        route strings -> master;\n\n        send violin -> hall at -18 dB;\n        send strings -> hall at -14 dB;\n        route hall -> master;\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
-  "diagnostics": [
-    {
-      "severity": "warning",
-      "message": "`reverb` has no DSP yet and renders as pass-through",
-      "span": {
-        "start": 1456,
-        "end": 1502
-      }
-    }
-  ],
+  "diagnostics": [],
   "mei": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n  <music>\n    <body>\n      <mdiv>\n        <score>\n          <scoreDef meter.count=\"4\" meter.unit=\"4\" key.sig=\"0\" key.mode=\"minor\">\n            <staffGrp>\n              <staffDef n=\"1\" lines=\"5\" clef.shape=\"G\" clef.line=\"2\"/>\n              <staffDef n=\"2\" lines=\"5\"/>\n            </staffGrp>\n          </scoreDef>\n          <section>\n            <measure n=\"1\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-0\" dur=\"2\" oct=\"5\" pname=\"e\"/>\n                  <rest xml:id=\"event-1\" dur=\"4\"/>\n                  <note xml:id=\"event-2\" dur=\"4\" oct=\"5\" pname=\"c\" tie=\"i\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-a\" dur=\"1\" oct=\"5\" pname=\"c\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-e\" dur=\"1\" oct=\"2\" pname=\"a\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"2\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-2-t2\" dur=\"4\" oct=\"5\" pname=\"c\" tie=\"t\"/>\n                  <note xml:id=\"event-3\" dur=\"4\" oct=\"4\" pname=\"b\"/>\n                  <note xml:id=\"event-4\" dur=\"2\" oct=\"4\" pname=\"a\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-b\" dur=\"1\" oct=\"5\" pname=\"c\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-f\" dur=\"1\" oct=\"2\" pname=\"f\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"3\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-5\" dur=\"2\" oct=\"4\" pname=\"a\"/>\n                  <rest xml:id=\"event-6\" dur=\"4\"/>\n                  <note xml:id=\"event-7\" dur=\"4\" oct=\"4\" pname=\"f\" tie=\"i\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-c\" dur=\"1\" oct=\"4\" pname=\"a\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-10\" dur=\"1\" oct=\"2\" pname=\"d\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"4\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-7-t2\" dur=\"4\" oct=\"4\" pname=\"f\" tie=\"t\"/>\n                  <note xml:id=\"event-8\" dur=\"4\" oct=\"4\" pname=\"e\"/>\n                  <note xml:id=\"event-9\" dur=\"2\" oct=\"4\" pname=\"d\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-d\" dur=\"1\" oct=\"4\" pname=\"g\" accid=\"s\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-11\" dur=\"1\" oct=\"2\" pname=\"e\"/>\n                </layer>\n              </staff>\n            </measure>\n          </section>\n        </score>\n      </mdiv>\n    </body>\n  </music>\n</mei>",
   "score": {
     "title": "Glass Mountain",
@@ -837,6 +828,365 @@
           "event-8",
           "event-9"
         ]
+      }
+    ]
+  },
+  "studio": {
+    "declared": true,
+    "patches": [
+      {
+        "kind": "patch",
+        "name": "glass_pad",
+        "stages": [
+          {
+            "index": 0,
+            "processor": "oscillator",
+            "label": "carrier",
+            "params": [
+              {
+                "name": "frequency",
+                "value": 440.0,
+                "unit": "Hz",
+                "minimum": 20.0,
+                "maximum": 20000.0,
+                "written": false,
+                "span": null,
+                "modulatedBy": null
+              },
+              {
+                "name": "ratio",
+                "value": 1.0,
+                "unit": "",
+                "minimum": 0.25,
+                "maximum": 16.0,
+                "written": false,
+                "span": null,
+                "modulatedBy": null
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "processor": "oscillator",
+            "label": null,
+            "params": [
+              {
+                "name": "frequency",
+                "value": 440.0,
+                "unit": "Hz",
+                "minimum": 20.0,
+                "maximum": 20000.0,
+                "written": false,
+                "span": null,
+                "modulatedBy": null
+              },
+              {
+                "name": "ratio",
+                "value": 2.0,
+                "unit": "",
+                "minimum": 0.25,
+                "maximum": 16.0,
+                "written": true,
+                "span": {
+                  "start": 1096,
+                  "end": 1097
+                },
+                "modulatedBy": null
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "processor": "gain",
+            "label": "shimmer",
+            "params": [
+              {
+                "name": "gain",
+                "value": -15.0,
+                "unit": "dB",
+                "minimum": -60.0,
+                "maximum": 12.0,
+                "written": true,
+                "span": {
+                  "start": 1107,
+                  "end": 1113
+                },
+                "modulatedBy": null
+              }
+            ]
+          },
+          {
+            "index": 3,
+            "processor": "mix",
+            "label": null,
+            "params": []
+          },
+          {
+            "index": 4,
+            "processor": "envelope",
+            "label": null,
+            "params": [
+              {
+                "name": "attack",
+                "value": 0.03,
+                "unit": "s",
+                "minimum": 0.0,
+                "maximum": 5.0,
+                "written": true,
+                "span": {
+                  "start": 1192,
+                  "end": 1197
+                },
+                "modulatedBy": null
+              },
+              {
+                "name": "decay",
+                "value": 1.8,
+                "unit": "s",
+                "minimum": 0.0,
+                "maximum": 10.0,
+                "written": true,
+                "span": {
+                  "start": 1206,
+                  "end": 1211
+                },
+                "modulatedBy": null
+              },
+              {
+                "name": "sustain",
+                "value": 0.65,
+                "unit": "",
+                "minimum": 0.0,
+                "maximum": 1.0,
+                "written": true,
+                "span": {
+                  "start": 1222,
+                  "end": 1226
+                },
+                "modulatedBy": null
+              },
+              {
+                "name": "release",
+                "value": 3.5,
+                "unit": "s",
+                "minimum": 0.0,
+                "maximum": 10.0,
+                "written": true,
+                "span": {
+                  "start": 1237,
+                  "end": 1242
+                },
+                "modulatedBy": null
+              }
+            ]
+          },
+          {
+            "index": 5,
+            "processor": "lowpass",
+            "label": null,
+            "params": [
+              {
+                "name": "cutoff",
+                "value": 1400.0,
+                "unit": "Hz",
+                "minimum": 20.0,
+                "maximum": 20000.0,
+                "written": true,
+                "span": {
+                  "start": 1280,
+                  "end": 1287
+                },
+                "modulatedBy": "lfo"
+              },
+              {
+                "name": "q",
+                "value": 0.7,
+                "unit": "",
+                "minimum": 0.1,
+                "maximum": 20.0,
+                "written": true,
+                "span": {
+                  "start": 1292,
+                  "end": 1295
+                },
+                "modulatedBy": null
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "buses": [
+      {
+        "kind": "bus",
+        "name": "hall",
+        "stages": [
+          {
+            "index": 0,
+            "processor": "reverb",
+            "label": null,
+            "params": [
+              {
+                "name": "room",
+                "value": 0.82,
+                "unit": "",
+                "minimum": 0.0,
+                "maximum": 1.0,
+                "written": true,
+                "span": {
+                  "start": 1541,
+                  "end": 1545
+                },
+                "modulatedBy": null
+              },
+              {
+                "name": "damping",
+                "value": 0.55,
+                "unit": "",
+                "minimum": 0.0,
+                "maximum": 1.0,
+                "written": true,
+                "span": {
+                  "start": 1556,
+                  "end": 1560
+                },
+                "modulatedBy": null
+              },
+              {
+                "name": "mix",
+                "value": 1.0,
+                "unit": "",
+                "minimum": 0.0,
+                "maximum": 1.0,
+                "written": false,
+                "span": null,
+                "modulatedBy": null
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "signals": [
+      {
+        "kind": "signal",
+        "name": "lfo",
+        "stages": [
+          {
+            "index": 0,
+            "processor": "oscillator",
+            "label": null,
+            "params": [
+              {
+                "name": "frequency",
+                "value": 0.08,
+                "unit": "Hz",
+                "minimum": 20.0,
+                "maximum": 20000.0,
+                "written": true,
+                "span": {
+                  "start": 1377,
+                  "end": 1384
+                },
+                "modulatedBy": null
+              },
+              {
+                "name": "ratio",
+                "value": 1.0,
+                "unit": "",
+                "minimum": 0.25,
+                "maximum": 16.0,
+                "written": false,
+                "span": null,
+                "modulatedBy": null
+              }
+            ]
+          },
+          {
+            "index": 1,
+            "processor": "scale",
+            "label": null,
+            "params": [
+              {
+                "name": "factor",
+                "value": 250.0,
+                "unit": "Hz",
+                "minimum": 0.0,
+                "maximum": 20000.0,
+                "written": true,
+                "span": {
+                  "start": 1407,
+                  "end": 1413
+                },
+                "modulatedBy": null
+              }
+            ]
+          },
+          {
+            "index": 2,
+            "processor": "bias",
+            "label": null,
+            "params": [
+              {
+                "name": "offset",
+                "value": 1400.0,
+                "unit": "Hz",
+                "minimum": 0.0,
+                "maximum": 20000.0,
+                "written": true,
+                "span": {
+                  "start": 1435,
+                  "end": 1442
+                },
+                "modulatedBy": null
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "assignments": [
+      {
+        "part": "violin",
+        "patch": "glass_pad"
+      },
+      {
+        "part": "strings",
+        "patch": "glass_pad"
+      }
+    ],
+    "sends": [
+      {
+        "source": "violin",
+        "bus": "hall",
+        "decibels": -18.0,
+        "span": {
+          "start": 1745,
+          "end": 1751
+        }
+      },
+      {
+        "source": "strings",
+        "bus": "hall",
+        "decibels": -14.0,
+        "span": {
+          "start": 1785,
+          "end": 1791
+        }
+      }
+    ],
+    "routes": [
+      {
+        "source": "violin",
+        "destination": "master"
+      },
+      {
+        "source": "strings",
+        "destination": "master"
+      },
+      {
+        "source": "hall",
+        "destination": "master"
       }
     ]
   },

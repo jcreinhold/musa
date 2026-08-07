@@ -52,6 +52,6 @@ pub use crate::score::{
     ScoreSnapshot, SlurSpan, TempoMap, TupletSpan, Voice, VoiceId,
 };
 pub use crate::studio::{
-    Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,
+    Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,
 };
 pub use crate::time::{MusicalDuration, MusicalTime};

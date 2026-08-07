@@ -57,6 +57,11 @@ pub enum ProjectCommand {
     /// and applied transactionally: if the result does not compile, the
     /// session is unchanged (roadmap §14.6).
     EditScore(crate::edit::EditCommand),
+    /// A structured studio edit — a knob turned in the Sound workspace, a
+    /// fader moved in the Mix workspace, a part pointed at another patch.
+    /// Resolved into text edits against the studio source and applied
+    /// transactionally, exactly as a score edit is (roadmap §11, §14.4).
+    EditStudio(crate::studio::StudioEdit),
     /// Replace the whole document. The GUI's debounced text editor uses this.
     SetSource(String),
     /// Apply text edits — the mechanism every structured edit resolves to.

@@ -25,6 +25,8 @@
 
 use indexmap::IndexMap;
 
+use crate::origin::SourceSpan;
+
 /// A parameter's physical unit (§7.2: units are part of the syntax).
 ///
 /// This is the **one** unit declaration in the workspace: `musa-audio`
@@ -105,6 +107,10 @@ pub enum Processor {
     Highpass,
     /// `reverb(room: 0.82, damping: 0.55)`
     Reverb,
+    /// `delay(time: 250 ms, feedback: 0.4, mix: 0.3)`
+    Delay,
+    /// `chorus(rate: 0.6 Hz, depth: 4 ms, mix: 0.4)`
+    Chorus,
     /// `scale(250 Hz)` — multiply a control signal.
     Scale,
     /// `bias(1400 Hz)` — offset a control signal.
@@ -124,6 +130,15 @@ pub struct ParamSpec {
     pub unit: Unit,
     /// Its value when the patch does not say.
     pub default: f64,
+    /// The range a control may write, in the unit above — a decibel gain runs
+    /// from −60 to +12, not from 0 to 1.
+    ///
+    /// This is the *writable* range, which is not the DSP's clamp: a graph
+    /// parameter's descriptor in `musa-audio` bounds what the processor will
+    /// accept in linear terms, and this bounds what a composer means by
+    /// turning a knob all the way up. They answer different questions, and a
+    /// slider needs this one.
+    pub range: (f64, f64),
 }
 
 impl Processor {
@@ -137,6 +152,8 @@ impl Processor {
             "lowpass" => Self::Lowpass,
             "highpass" => Self::Highpass,
             "reverb" => Self::Reverb,
+            "delay" => Self::Delay,
+            "chorus" => Self::Chorus,
             "scale" => Self::Scale,
             "bias" => Self::Bias,
             "clamp" => Self::Clamp,
@@ -155,6 +172,8 @@ impl Processor {
             Self::Lowpass => "lowpass",
             Self::Highpass => "highpass",
             Self::Reverb => "reverb",
+            Self::Delay => "delay",
+            Self::Chorus => "chorus",
             Self::Scale => "scale",
             Self::Bias => "bias",
             Self::Clamp => "clamp",
@@ -171,32 +190,61 @@ impl Processor {
     /// Inferring the unit from the target is a change to the unit system, not
     /// to these tables, and it waits for a second target to justify it.
     pub fn params(self) -> &'static [ParamSpec] {
-        const fn spec(name: &'static str, unit: Unit, default: f64) -> ParamSpec {
-            ParamSpec { name, unit, default }
+        const fn spec(name: &'static str, unit: Unit, default: f64, range: (f64, f64)) -> ParamSpec {
+            ParamSpec {
+                name,
+                unit,
+                default,
+                range,
+            }
         }
-        const OSCILLATOR: &[ParamSpec] = &[spec("frequency", Unit::Hz, 440.0), spec("ratio", Unit::Linear, 1.0)];
-        const GAIN: &[ParamSpec] = &[spec("gain", Unit::Decibels, 0.0)];
+        const OSCILLATOR: &[ParamSpec] = &[
+            spec("frequency", Unit::Hz, 440.0, (20.0, 20_000.0)),
+            spec("ratio", Unit::Linear, 1.0, (0.25, 16.0)),
+        ];
+        const GAIN: &[ParamSpec] = &[spec("gain", Unit::Decibels, 0.0, (-60.0, 12.0))];
         // Written defaults are the built-in voice envelope, so `envelope()`
         // with nothing said is not a different sound from saying nothing.
         const ENVELOPE: &[ParamSpec] = &[
-            spec("attack", Unit::Seconds, 0.005),
-            spec("decay", Unit::Seconds, 0.0),
-            spec("sustain", Unit::Linear, 1.0),
-            spec("release", Unit::Seconds, 0.05),
+            spec("attack", Unit::Seconds, 0.005, (0.0, 5.0)),
+            spec("decay", Unit::Seconds, 0.0, (0.0, 10.0)),
+            spec("sustain", Unit::Linear, 1.0, (0.0, 1.0)),
+            spec("release", Unit::Seconds, 0.05, (0.0, 10.0)),
         ];
         const LOWPASS: &[ParamSpec] = &[
-            spec("cutoff", Unit::Hz, 20_000.0),
-            spec("q", Unit::Linear, std::f64::consts::FRAC_1_SQRT_2),
+            spec("cutoff", Unit::Hz, 20_000.0, (20.0, 20_000.0)),
+            spec("q", Unit::Linear, std::f64::consts::FRAC_1_SQRT_2, (0.1, 20.0)),
         ];
         const HIGHPASS: &[ParamSpec] = &[
-            spec("cutoff", Unit::Hz, 20.0),
-            spec("q", Unit::Linear, std::f64::consts::FRAC_1_SQRT_2),
+            spec("cutoff", Unit::Hz, 20.0, (20.0, 20_000.0)),
+            spec("q", Unit::Linear, std::f64::consts::FRAC_1_SQRT_2, (0.1, 20.0)),
         ];
-        const REVERB: &[ParamSpec] = &[spec("room", Unit::Linear, 0.5), spec("damping", Unit::Linear, 0.5)];
-        const SCALE: &[ParamSpec] = &[spec("factor", Unit::Hz, 1.0)];
-        const BIAS: &[ParamSpec] = &[spec("offset", Unit::Hz, 0.0)];
-        const CLAMP: &[ParamSpec] = &[spec("min", Unit::Hz, 0.0), spec("max", Unit::Hz, 20_000.0)];
-        const SMOOTHING: &[ParamSpec] = &[spec("time", Unit::Seconds, 0.02)];
+        const REVERB: &[ParamSpec] = &[
+            spec("room", Unit::Linear, 0.5, (0.0, 1.0)),
+            spec("damping", Unit::Linear, 0.5, (0.0, 1.0)),
+            spec("mix", Unit::Linear, 1.0, (0.0, 1.0)),
+        ];
+        // Time effects (§13.6). `mix` is the dry/wet balance: 0 is the input
+        // untouched, 1 is the effect alone. A delay's `time` is bounded by
+        // the line the DSP preallocates (2 s), and a chorus's `depth` by what
+        // a chorus is — a few milliseconds of wobble, not a second one.
+        const DELAY: &[ParamSpec] = &[
+            spec("time", Unit::Seconds, 0.25, (0.0, 2.0)),
+            spec("feedback", Unit::Linear, 0.3, (0.0, 0.95)),
+            spec("mix", Unit::Linear, 0.3, (0.0, 1.0)),
+        ];
+        const CHORUS: &[ParamSpec] = &[
+            spec("rate", Unit::Hz, 0.6, (0.0, 20.0)),
+            spec("depth", Unit::Seconds, 0.004, (0.0, 0.01)),
+            spec("mix", Unit::Linear, 0.4, (0.0, 1.0)),
+        ];
+        const SCALE: &[ParamSpec] = &[spec("factor", Unit::Hz, 1.0, (0.0, 20_000.0))];
+        const BIAS: &[ParamSpec] = &[spec("offset", Unit::Hz, 0.0, (0.0, 20_000.0))];
+        const CLAMP: &[ParamSpec] = &[
+            spec("min", Unit::Hz, 0.0, (0.0, 20_000.0)),
+            spec("max", Unit::Hz, 20_000.0, (0.0, 20_000.0)),
+        ];
+        const SMOOTHING: &[ParamSpec] = &[spec("time", Unit::Seconds, 0.02, (0.0, 1.0))];
         match self {
             Self::Oscillator => OSCILLATOR,
             Self::Gain => GAIN,
@@ -205,6 +253,8 @@ impl Processor {
             Self::Lowpass => LOWPASS,
             Self::Highpass => HIGHPASS,
             Self::Reverb => REVERB,
+            Self::Delay => DELAY,
+            Self::Chorus => CHORUS,
             Self::Scale => SCALE,
             Self::Bias => BIAS,
             Self::Clamp => CLAMP,
@@ -215,19 +265,6 @@ impl Processor {
     /// A named parameter's declaration.
     pub fn param(self, name: &str) -> Option<ParamSpec> {
         self.params().iter().copied().find(|param| param.name == name)
-    }
-
-    /// Whether `musa-audio` can actually render this yet (prompt 31).
-    ///
-    /// A processor without DSP is not an error: the language has to be
-    /// writable before the sound exists, or every studio feature would wait
-    /// on a filter. It renders as pass-through and says so.
-    ///
-    /// Prompt 30 gave the modulation core — envelopes, filters, and the
-    /// control stages — real DSP, so `reverb` is the last one left; the bus
-    /// effects arrive with prompt 31.
-    pub fn is_placeholder(self) -> bool {
-        matches!(self, Self::Reverb)
     }
 }
 
@@ -244,6 +281,17 @@ pub struct StudioNode {
     pub label: Option<String>,
     /// Resolved parameter values, in the processor's declaration order.
     pub params: Vec<Value>,
+    /// Where each parameter's *written* value is, parallel to `params`, and
+    /// `None` for a parameter the patch left to its default.
+    ///
+    /// A structured editor rewrites exactly this range and nothing else: a
+    /// slider that regenerated the whole call would silently normalize
+    /// `30 ms` to `0.03 s` and lose any comment inside it (§11 — the source
+    /// is the document, and an edit to it should be the edit that was made).
+    pub param_spans: Vec<Option<SourceSpan>>,
+    /// The whole `name(args)` construction, so a parameter the patch never
+    /// wrote can be *added* rather than only changed.
+    pub span: Option<SourceSpan>,
     /// The nodes feeding it, in argument order.
     pub inputs: Vec<NodeIndex>,
 }
@@ -303,6 +351,18 @@ pub struct Send {
     pub bus: String,
     /// How much of the signal is sent.
     pub level: Value,
+    /// Where the level was written, for an editor that rewrites it.
+    pub level_span: Option<SourceSpan>,
+}
+
+/// `assign violin -> glass_pad;` — which patch realizes a part.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Assignment {
+    /// The patch the part is realized by.
+    pub patch: String,
+    /// Where the patch *name* was written, so pointing a part at a different
+    /// patch replaces a name rather than rewriting a statement.
+    pub patch_span: Option<SourceSpan>,
 }
 
 /// `route violin -> master;`
@@ -321,10 +381,11 @@ pub struct StudioSpec {
     patches: IndexMap<String, Patch>,
     buses: IndexMap<String, Patch>,
     signals: IndexMap<String, Patch>,
-    assignments: IndexMap<String, String>,
+    assignments: IndexMap<String, Assignment>,
     routes: Vec<Route>,
     sends: Vec<Send>,
     modulations: Vec<Modulation>,
+    span: Option<SourceSpan>,
 }
 
 impl StudioSpec {
@@ -359,14 +420,20 @@ impl StudioSpec {
     /// A part the studio does not mention keeps the default instrument: a
     /// partial `studio` block must not silence the rest of the piece (§14.8).
     pub fn patch_for_part(&self, part: &str) -> Option<&str> {
-        self.assignments.get(part).map(String::as_str)
+        self.assignments.get(part).map(|assignment| assignment.patch.as_str())
     }
 
     /// The part→patch assignments, in source order.
     pub fn assignments(&self) -> impl Iterator<Item = (&str, &str)> {
         self.assignments
             .iter()
-            .map(|(part, patch)| (part.as_str(), patch.as_str()))
+            .map(|(part, assignment)| (part.as_str(), assignment.patch.as_str()))
+    }
+
+    /// One part's assignment, with the span an editor would rewrite to point
+    /// it at a different patch (§11's `AssignPatch`).
+    pub fn assignment(&self, part: &str) -> Option<&Assignment> {
+        self.assignments.get(part)
     }
 
     /// The declared routes, in source order.
@@ -384,6 +451,13 @@ impl StudioSpec {
         &self.modulations
     }
 
+    /// The `studio { … }` block itself, when the piece declared one. An
+    /// editor that has to *add* a statement — assigning a part that no
+    /// `assign` mentions — writes it inside this range.
+    pub fn span(&self) -> Option<SourceSpan> {
+        self.span
+    }
+
     pub(crate) fn insert_patch(&mut self, name: String, patch: Patch) -> bool {
         self.patches.insert(name, patch).is_none()
     }
@@ -396,8 +470,8 @@ impl StudioSpec {
         self.signals.insert(name, signal).is_none()
     }
 
-    pub(crate) fn assign(&mut self, part: String, patch: String) {
-        self.assignments.insert(part, patch);
+    pub(crate) fn assign(&mut self, part: String, assignment: Assignment) {
+        self.assignments.insert(part, assignment);
     }
 
     pub(crate) fn push_route(&mut self, route: Route) {
@@ -457,7 +531,7 @@ use musa_language::ast::{
 };
 
 use crate::compile::Diagnostic;
-use crate::lower::span_of;
+use crate::lower::{span_of, trimmed_span};
 
 /// Resolve a `studio` block into a [`StudioSpec`], reporting every unresolved
 /// name and mis-united value against `diagnostics`.
@@ -466,7 +540,10 @@ use crate::lower::span_of;
 /// place the two layers meet, so it is the one place a studio name is checked
 /// against a score name.
 pub(crate) fn resolve(decl: &StudioDecl, parts: &[String], diagnostics: &mut Vec<Diagnostic>) -> StudioSpec {
-    let mut spec = StudioSpec::default();
+    let mut spec = StudioSpec {
+        span: Some(span_of(decl.syntax())),
+        ..StudioSpec::default()
+    };
     let items = decl.items();
 
     // Two passes: patches, buses, and signals first, so the bindings that
@@ -503,7 +580,11 @@ pub(crate) fn resolve(decl: &StudioDecl, parts: &[String], diagnostics: &mut Vec
                 } else if !spec.has_patch(&patch) {
                     diagnostics.push(Diagnostic::error(format!("unknown patch `{patch}`"), span));
                 } else {
-                    spec.assign(part, patch);
+                    let patch_span = assign.destination_token().map(|token| {
+                        let range = token.text_range();
+                        SourceSpan::new(u32::from(range.start()), u32::from(range.end()))
+                    });
+                    spec.assign(part, Assignment { patch, patch_span });
                 }
             }
             StudioItem::Route(route) => {
@@ -567,7 +648,13 @@ fn resolve_send(send: &SendStmt, spec: &mut StudioSpec, diagnostics: &mut Vec<Di
         diagnostics.push(Diagnostic::error("a send level is written in `dB`", span));
         return;
     }
-    spec.push_send(Send { source, bus, level });
+    let level_span = send.level().map(|literal| trimmed_span(literal.syntax()));
+    spec.push_send(Send {
+        source,
+        bus,
+        level,
+        level_span,
+    });
 }
 
 /// `glass_pad.lowpass.cutoff` → the node and parameter it names.
@@ -768,13 +855,6 @@ fn lower_call(
         diagnostics.push(Diagnostic::error(format!("unknown processor `{written}`"), span));
         return None;
     };
-    if processor.is_placeholder() {
-        diagnostics.push(Diagnostic::warning(
-            format!("`{written}` has no DSP yet and renders as pass-through"),
-            span,
-        ));
-    }
-
     let mut params: Vec<Value> = processor
         .params()
         .iter()
@@ -783,6 +863,7 @@ fn lower_call(
             unit: declared.unit,
         })
         .collect();
+    let mut param_spans: Vec<Option<SourceSpan>> = vec![None; params.len()];
     let mut inputs: Vec<NodeIndex> = upstream.into_iter().collect();
     let mut positional = 0usize;
 
@@ -793,7 +874,14 @@ fn lower_call(
             // shape exists for readability, not for a second node.
             Some(SignalStage::Call(inner)) if is_argument_group(&inner) => {
                 for nested in inner.args() {
-                    bind_argument(&nested, processor, &mut params, &mut positional, diagnostics);
+                    bind_argument(
+                        &nested,
+                        processor,
+                        &mut params,
+                        &mut param_spans,
+                        &mut positional,
+                        diagnostics,
+                    );
                 }
             }
             Some(SignalStage::Call(inner)) => {
@@ -815,7 +903,14 @@ fn lower_call(
                 }
             }
             Some(SignalStage::Literal(_)) | None => {
-                bind_argument(&arg, processor, &mut params, &mut positional, diagnostics);
+                bind_argument(
+                    &arg,
+                    processor,
+                    &mut params,
+                    &mut param_spans,
+                    &mut positional,
+                    diagnostics,
+                );
             }
         }
     }
@@ -824,6 +919,8 @@ fn lower_call(
         processor,
         label: None,
         params,
+        param_spans,
+        span,
         inputs,
     }))
 }
@@ -839,6 +936,7 @@ fn bind_argument(
     arg: &Arg,
     processor: Processor,
     params: &mut [Value],
+    spans: &mut [Option<SourceSpan>],
     positional: &mut usize,
     diagnostics: &mut Vec<Diagnostic>,
 ) {
@@ -891,5 +989,10 @@ fn bind_argument(
     }
     if let Some(slot) = params.get_mut(index) {
         *slot = value;
+    }
+    if let Some(slot) = spans.get_mut(index) {
+        // The literal's own range, unit included: replacing it replaces what
+        // was written, so `1400 Hz` becomes `900 Hz` and nothing else moves.
+        *slot = Some(trimmed_span(literal.syntax()));
     }
 }

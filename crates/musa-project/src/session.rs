@@ -159,6 +159,7 @@ impl ProjectSession {
         match command {
             ProjectCommand::SetSource(text) => Ok(self.set_source(text)),
             ProjectCommand::EditScore(edit) => self.edit_score(&edit),
+            ProjectCommand::EditStudio(edit) => self.edit_studio(&edit),
             ProjectCommand::ApplyEdits(edits) => {
                 let edits: Vec<_> = edits.iter().map(TextEdit::to_language).collect();
                 let text = musa_language::apply_edits(&self.source, &edits);
@@ -305,6 +306,22 @@ impl ProjectSession {
         Ok(self.set_source(candidate))
     }
 
+    /// Resolve a studio edit and apply it under the same transaction a score
+    /// edit gets: a knob that produced an uncompilable patch changes nothing.
+    fn edit_studio(&mut self, edit: &crate::studio::StudioEdit) -> Result<ProjectUpdate, ProjectError> {
+        let studio = &self.valid.as_ref().ok_or(ProjectError::NoValidScore)?.studio;
+        let edits = crate::studio::edits_for(studio, &self.source, edit)?;
+        let edits: Vec<_> = edits.iter().map(TextEdit::to_language).collect();
+        let candidate = musa_language::apply_edits(&self.source, &edits);
+        if let Some(reason) = self.first_error(&candidate) {
+            return Err(ProjectError::RejectedEdit {
+                intent: crate::studio::describe(edit),
+                reason,
+            });
+        }
+        Ok(self.set_source(candidate))
+    }
+
     /// The first error a candidate source would produce, if any.
     fn first_error(&self, candidate: &str) -> Option<String> {
         let document = SourceDocument::new(candidate.to_owned(), self.name.clone());
@@ -389,11 +406,14 @@ impl ProjectSession {
                 Ok(mei) => {
                     score_changed = self.valid.as_ref().is_none_or(|valid| valid.mei != mei);
                     let facts = crate::facts::ScoreFacts::derive(&score, &self.source);
+                    let parts: Vec<String> = facts.parts.iter().map(|part| part.name.clone()).collect();
+                    let studio_facts = crate::studio::StudioFacts::derive(&studio, &parts);
                     self.valid = Some(ValidArtifacts {
                         mei,
                         score,
                         studio,
                         facts,
+                        studio_facts,
                         revision,
                     });
                     if score_changed {

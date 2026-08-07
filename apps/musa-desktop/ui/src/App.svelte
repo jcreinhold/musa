@@ -16,6 +16,8 @@
   import { onMount, untrack } from "svelte";
 
   import Compose from "./screens/Compose.svelte";
+  import Sound from "./screens/Sound.svelte";
+  import Mix from "./screens/Mix.svelte";
   import Source from "./screens/Source.svelte";
   import Launch from "./screens/Launch.svelte";
   import Palette from "./screens/Palette.svelte";
@@ -25,7 +27,7 @@
   import { ZOOM_STEPS } from "./lib/engrave/options";
   import { bridge } from "./lib/session/bridge";
   import type { Reveal } from "./lib/state/reveal";
-  import { commandFor, dispatch, type Surface } from "./lib/commands/map";
+  import { commandFor, dispatch, type Screen, type Surface } from "./lib/commands/map";
   import { Session } from "./lib/session/session.svelte";
   import { ThemeChoice } from "./lib/session/theme.svelte";
   import { mark } from "./lib/perf";
@@ -66,12 +68,8 @@
   /** The looped range as event ids, so it survives a re-engraving like any other. */
   let looped = $state<[string, string] | null>(null);
 
-  /**
-   * Which workspace is open (roadmap §14.4). Two of them exist: Compose and
-   * Source. Sound and Mix hold `⌘2` and `⌘3` and are not offered until the
-   * DSP behind them does.
-   */
-  let screen = $state<"compose" | "source">("compose");
+  /** Which workspace is open (roadmap §14.4): all four now exist. */
+  let screen = $state<Screen>("compose");
 
   let paletteOpen = $state(false);
   let keysOpen = $state(false);
@@ -480,6 +478,10 @@
 
 {#if !session.live && parameters.get("view") === "sheet"}
   <Sheet fixture={chosen} />
+{:else if session.snapshot && screen === "sound"}
+  <Sound {session} onshow={(which) => (screen = which)} />
+{:else if session.snapshot && screen === "mix"}
+  <Mix {session} onshow={(which) => (screen = which)} />
 {:else if session.snapshot && screen === "source"}
   <Source
     {session}

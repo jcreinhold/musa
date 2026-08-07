@@ -854,6 +854,12 @@ macro_rules! binding_wrapper {
             pub fn destination(&self) -> Option<String> {
                 binding_names(&self.0).get(1).cloned()
             }
+
+            /// The right-hand name's own token, for an editor that means to
+            /// rewrite the name and nothing else around it.
+            pub fn destination_token(&self) -> Option<SyntaxToken> {
+                binding_tokens(&self.0).into_iter().nth(1)
+            }
         }
     };
 }
@@ -861,10 +867,16 @@ macro_rules! binding_wrapper {
 /// The names on either side of a binding arrow, in written order. `master` is
 /// a keyword rather than an identifier, so reading tokens by kind alone would
 /// silently drop it.
-fn binding_names(node: &SyntaxNode) -> Vec<String> {
+fn binding_tokens(node: &SyntaxNode) -> Vec<SyntaxToken> {
     node.children_with_tokens()
         .filter_map(SyntaxElement::into_token)
         .filter(|token| matches!(token.kind(), SyntaxKind::Identifier | SyntaxKind::MasterKw))
+        .collect()
+}
+
+fn binding_names(node: &SyntaxNode) -> Vec<String> {
+    binding_tokens(node)
+        .iter()
         .map(|token| token.text().to_string())
         .collect()
 }

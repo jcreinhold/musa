@@ -90,6 +90,14 @@ pub enum Waveform {
     Square,
 }
 
+/// The longest delay a `delay` stage can ask for, in seconds.
+///
+/// A delay line is preallocated (§13.2), so its length is a number the plan
+/// has to know before it renders; making it the parameter's range is what
+/// turns "the line is not that long" from a render-time surprise into
+/// something the patch is told at compile time.
+pub const MAX_DELAY: f32 = 2.0;
+
 /// A biquad's response (§13.6).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FilterKind {
@@ -174,6 +182,25 @@ pub enum ProcessorSpec {
         /// Which response.
         kind: FilterKind,
     },
+    /// Delay with feedback. Params: `time` (s, up to [`MAX_DELAY`]),
+    /// `feedback` (linear), `mix` (dry/wet). In/out: stereo.
+    ///
+    /// This is the only processor a graph cycle may pass through (§13.3): the
+    /// signal that comes back has been delayed by an amount the patch wrote,
+    /// so the feedback is causal and its period is visible.
+    Delay,
+    /// Chorus: a short delay modulated by an LFO. Params: `rate` (Hz),
+    /// `depth` (s), `mix`. In/out: stereo.
+    Chorus,
+    /// Algorithmic reverb (comb + allpass network). Params: `room`,
+    /// `damping`, `mix`. In/out: stereo.
+    Reverb,
+    /// Peak limiter. Params: `ceiling` (linear, 1.0 is 0 dBFS). In/out:
+    /// stereo.
+    ///
+    /// The last node on master, always: what leaves the graph is bounded
+    /// whatever the mix asked for (§13.6).
+    Limiter,
     /// One-pole low-pass. Params: `cutoff` (Hz). In/out: stereo.
     ///
     /// Gentler than the biquad (6 dB/octave, no resonance) and cheaper; it is
@@ -189,7 +216,13 @@ impl ProcessorSpec {
             Self::Sine | Self::Noise | Self::Constant | Self::Lfo { .. } => Vec::new(),
             Self::PolySine { .. } => vec![PortKind::NoteEvents],
             Self::Gain | Self::Splitter | Self::MonoToStereo | Self::Pan => vec![PortKind::Audio { channels: 1 }],
-            Self::StereoGain | Self::Biquad { .. } | Self::OnePole => vec![PortKind::Audio { channels: 2 }],
+            Self::StereoGain
+            | Self::Biquad { .. }
+            | Self::OnePole
+            | Self::Delay
+            | Self::Chorus
+            | Self::Reverb
+            | Self::Limiter => vec![PortKind::Audio { channels: 2 }],
             Self::Scale | Self::Bias | Self::Clamp | Self::Smooth => vec![PortKind::Control],
             Self::Passthrough { channels } => vec![PortKind::Audio { channels: *channels }],
             Self::Mixer { inputs } => vec![PortKind::Audio { channels: 2 }; usize::from(*inputs)],
@@ -211,7 +244,11 @@ impl ProcessorSpec {
             | Self::PolySine { .. }
             | Self::StereoGain
             | Self::Biquad { .. }
-            | Self::OnePole => {
+            | Self::OnePole
+            | Self::Delay
+            | Self::Chorus
+            | Self::Reverb
+            | Self::Limiter => {
                 vec![PortKind::Audio { channels: 2 }]
             }
             Self::Passthrough { channels } => vec![PortKind::Audio { channels: *channels }],
@@ -385,6 +422,86 @@ impl ProcessorSpec {
                 combination: Combination::Replace,
             },
         ];
+        // The wet/dry balance every time effect carries. Multiplying a mix
+        // rather than replacing it is what lets one modulation fade an effect
+        // in without the patch losing the balance it was written with.
+        const MIX: ParameterDescriptor = ParameterDescriptor {
+            name: "mix",
+            unit: Unit::Linear,
+            range: (0.0, 1.0),
+            default: 0.3,
+            smoothing: Smoothing::BlockRamp,
+            combination: Combination::Multiply,
+        };
+        const DELAY: &[ParameterDescriptor] = &[
+            ParameterDescriptor {
+                name: "time",
+                unit: Unit::Seconds,
+                range: (0.0, MAX_DELAY),
+                default: 0.25,
+                smoothing: Smoothing::BlockRamp,
+                combination: Combination::Replace,
+            },
+            // Feedback stops short of one: at one a delay never decays, and
+            // an instrument that never stops is not an effect.
+            ParameterDescriptor {
+                name: "feedback",
+                unit: Unit::Linear,
+                range: (0.0, 0.95),
+                default: 0.3,
+                smoothing: Smoothing::BlockRamp,
+                combination: Combination::Replace,
+            },
+            MIX,
+        ];
+        const CHORUS: &[ParameterDescriptor] = &[
+            ParameterDescriptor {
+                name: "rate",
+                unit: Unit::Hz,
+                range: (0.0, 20.0),
+                default: 0.6,
+                smoothing: Smoothing::BlockRamp,
+                combination: Combination::Replace,
+            },
+            ParameterDescriptor {
+                name: "depth",
+                unit: Unit::Seconds,
+                range: (0.0, 0.01),
+                default: 0.004,
+                smoothing: Smoothing::BlockRamp,
+                combination: Combination::Replace,
+            },
+            ParameterDescriptor { default: 0.4, ..MIX },
+        ];
+        const REVERB: &[ParameterDescriptor] = &[
+            ParameterDescriptor {
+                name: "room",
+                unit: Unit::Linear,
+                range: (0.0, 1.0),
+                default: 0.5,
+                smoothing: Smoothing::BlockRamp,
+                combination: Combination::Replace,
+            },
+            ParameterDescriptor {
+                name: "damping",
+                unit: Unit::Linear,
+                range: (0.0, 1.0),
+                default: 0.5,
+                smoothing: Smoothing::BlockRamp,
+                combination: Combination::Replace,
+            },
+            // A bus that exists to be a reverb is all reverb; a reverb in a
+            // patch's chain is the one that wants a balance, and says so.
+            ParameterDescriptor { default: 1.0, ..MIX },
+        ];
+        const LIMITER: &[ParameterDescriptor] = &[ParameterDescriptor {
+            name: "ceiling",
+            unit: Unit::Linear,
+            range: (0.0, 1.0),
+            default: 1.0,
+            smoothing: Smoothing::None,
+            combination: Combination::Replace,
+        }];
         const TIME: &[ParameterDescriptor] = &[ParameterDescriptor {
             name: "time",
             unit: Unit::Seconds,
@@ -411,6 +528,10 @@ impl ProcessorSpec {
             Self::Bias => OFFSET,
             Self::Clamp => BOUNDS,
             Self::Smooth => TIME,
+            Self::Delay => DELAY,
+            Self::Chorus => CHORUS,
+            Self::Reverb => REVERB,
+            Self::Limiter => LIMITER,
             Self::Noise
             | Self::Passthrough { .. }
             | Self::Mixer { .. }

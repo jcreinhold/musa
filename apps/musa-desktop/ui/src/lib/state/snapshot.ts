@@ -132,6 +132,70 @@ export interface ScoreFacts {
   occurrences: OccurrenceFacts[];
 }
 
+/**
+ * One parameter of one stage, as the Sound workspace reads it.
+ *
+ * `value` is in the unit's base — seconds, hertz, decibels, or a plain ratio —
+ * and `unit` is how the language writes it. The frontend converts nothing:
+ * `30 ms` arrives as `0.03` with unit `s`, and an edit sends `0.05` back and
+ * the core decides how to spell it.
+ */
+export interface ParamFacts {
+  name: string;
+  value: number;
+  unit: string;
+  /** What a control may write, in that unit. */
+  minimum: number;
+  maximum: number;
+  /** False when the patch never wrote it and this is the declared default. */
+  written: boolean;
+  span: Span | null;
+  /** The signal modulating it, when one does (§13.7). */
+  modulatedBy: string | null;
+}
+
+export interface StageFacts {
+  index: number;
+  processor: string;
+  label: string | null;
+  params: ParamFacts[];
+}
+
+export interface ContainerFacts {
+  kind: "patch" | "bus" | "signal";
+  name: string;
+  stages: StageFacts[];
+}
+
+export interface AssignmentFacts {
+  part: string;
+  /** Null for a part the studio never mentions: it keeps the built-in voice. */
+  patch: string | null;
+}
+
+export interface SendFacts {
+  source: string;
+  bus: string;
+  decibels: number;
+  span: Span | null;
+}
+
+export interface RouteFacts {
+  source: string;
+  destination: string;
+}
+
+/** The studio, as the Sound and Mix workspaces read it (roadmap §14.4). */
+export interface StudioFacts {
+  declared: boolean;
+  patches: ContainerFacts[];
+  buses: ContainerFacts[];
+  signals: ContainerFacts[];
+  assignments: AssignmentFacts[];
+  sends: SendFacts[];
+  routes: RouteFacts[];
+}
+
 export interface PlaybackState {
   playing: boolean;
   positionFrames: number;
@@ -149,6 +213,7 @@ export interface ProjectSnapshot {
   diagnostics: Diagnostic[];
   mei: string | null;
   score: ScoreFacts | null;
+  studio: StudioFacts | null;
   scoreRevision: number | null;
   playback: PlaybackState;
 }

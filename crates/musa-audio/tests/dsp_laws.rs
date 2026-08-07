@@ -48,7 +48,7 @@ fn render(spec: &StudioGraphSpec, frames: usize) -> Vec<f32> {
 /// what they may not differ in is what a name means.
 #[test]
 fn the_language_and_the_dsp_agree_about_every_shared_parameter() {
-    let pairs: [(Processor, ProcessorSpec); 5] = [
+    let pairs: [(Processor, ProcessorSpec); 8] = [
         (Processor::Envelope, ProcessorSpec::PolySine { voices: 16 }),
         (
             Processor::Lowpass,
@@ -64,6 +64,9 @@ fn the_language_and_the_dsp_agree_about_every_shared_parameter() {
         ),
         (Processor::Scale, ProcessorSpec::Scale),
         (Processor::Bias, ProcessorSpec::Bias),
+        (Processor::Delay, ProcessorSpec::Delay),
+        (Processor::Chorus, ProcessorSpec::Chorus),
+        (Processor::Reverb, ProcessorSpec::Reverb),
     ];
     for (written, rendered) in pairs {
         for declared in written.params() {

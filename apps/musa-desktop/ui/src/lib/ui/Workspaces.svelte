@@ -2,25 +2,29 @@
   /**
    * Which workspace is open (roadmap §14.4).
    *
-   * Two, because two exist. Sound and Mix have their bindings reserved and
-   * their place in the order, but an empty tab is a promise the application
-   * cannot keep, so they are not drawn until they are real.
+   * Four, in the order they are numbered, because the order is an argument:
+   * what the music is, what it sounds like, how it is balanced, what it says
+   * in text. The current workspace is the one set in ink; the others are an
+   * offer.
    *
-   * The current workspace is the one set in ink; the other is an offer. The
-   * accelerator is written beside the name because these are the two bindings
+   * The accelerator is written beside the name because these are the bindings
    * a composer uses most and reading them here is how they are learned
    * (`03-interaction.md` §3).
    */
+  import type { Screen } from "../commands/map";
+
   let {
     current,
     onshow,
   }: {
-    current: "compose" | "source";
-    onshow: (which: "compose" | "source") => void;
+    current: Screen;
+    onshow: (which: Screen) => void;
   } = $props();
 
   const OPEN = [
     { id: "compose", name: "Compose", key: "⌘1" },
+    { id: "sound", name: "Sound", key: "⌘2" },
+    { id: "mix", name: "Mix", key: "⌘3" },
     { id: "source", name: "Source", key: "⌘4" },
   ] as const;
 </script>

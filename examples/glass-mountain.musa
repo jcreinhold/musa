@@ -41,9 +41,10 @@ piece "Glass Mountain" {
         }
     }
 
-    // The sound side (roadmap 7.1). Stages whose DSP has not been written
-    // yet render as pass-through and say so, so the patch can be written
-    // before the filter exists.
+    // The sound side (roadmap 7.1). Every stage here runs real DSP: the
+    // oscillators and envelope are the voice, the filter and its modulation
+    // shape it, and the hall is a send to a reverb bus that returns to the
+    // master.
     studio {
         patch glass_pad {
             carrier = oscillator(sine);

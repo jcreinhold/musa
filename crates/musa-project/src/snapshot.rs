@@ -40,6 +40,8 @@ pub(crate) struct ValidArtifacts {
     pub(crate) studio: musa_compiler::StudioSpec,
     /// Everything the interface displays about that score.
     pub(crate) facts: ScoreFacts,
+    /// Everything the Sound and Mix workspaces display about that studio.
+    pub(crate) studio_facts: crate::studio::StudioFacts,
     pub(crate) revision: Revision,
 }
 
@@ -87,6 +89,13 @@ impl ProjectSnapshot<'_> {
         self.valid.as_ref().map(|valid| &valid.facts)
     }
 
+    /// The studio facts the Sound and Mix workspaces display: patches and
+    /// their stages, buses, sends, and which patch realizes each part. From
+    /// the same revision as [`Self::mei`].
+    pub fn studio(&self) -> Option<&crate::studio::StudioFacts> {
+        self.valid.as_ref().map(|valid| &valid.studio_facts)
+    }
+
     /// The revision the engraved score and playback plan came from.
     pub fn score_revision(&self) -> Option<Revision> {
         self.valid.as_ref().map(|valid| valid.revision)
@@ -120,6 +129,7 @@ struct SnapshotWire<'a> {
     diagnostics: &'a [Diagnostic],
     mei: Option<&'a str>,
     score: Option<&'a ScoreFacts>,
+    studio: Option<&'a crate::studio::StudioFacts>,
     score_revision: Option<u64>,
     playback: PlaybackState,
 }
@@ -135,6 +145,7 @@ impl serde::Serialize for ProjectSnapshot<'_> {
             diagnostics: self.diagnostics,
             mei: self.mei(),
             score: self.score(),
+            studio: self.studio(),
             score_revision: self.score_revision().map(|revision| revision.0),
             playback: self.playback,
         }

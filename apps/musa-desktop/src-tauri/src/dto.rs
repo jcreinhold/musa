@@ -13,8 +13,8 @@
 use std::path::PathBuf;
 
 use musa_project::{
-    EditCommand, ExportRequest, GeneratedEditMode, InsertAt, NoteSpec, ProjectCommand, ProjectError, Span, Template,
-    TextEdit, TransportRequest,
+    ContainerKind, EditCommand, ExportRequest, GeneratedEditMode, InsertAt, NoteSpec, ProjectCommand, ProjectError,
+    Span, StudioEdit, Template, TextEdit, TransportRequest,
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -74,6 +74,10 @@ pub enum CommandDto {
     #[serde(rename_all = "camelCase")]
     EditScore {
         edit: EditDto,
+    },
+    #[serde(rename_all = "camelCase")]
+    EditStudio {
+        edit: StudioEditDto,
     },
     Format,
     Save,
@@ -192,6 +196,68 @@ impl From<EditDto> for EditCommand {
     }
 }
 
+/// Which of the studio's three namespaces a container lives in.
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum ContainerKindDto {
+    Patch,
+    Bus,
+    Signal,
+}
+
+impl From<ContainerKindDto> for ContainerKind {
+    fn from(kind: ContainerKindDto) -> Self {
+        match kind {
+            ContainerKindDto::Patch => Self::Patch,
+            ContainerKindDto::Bus => Self::Bus,
+            ContainerKindDto::Signal => Self::Signal,
+        }
+    }
+}
+
+/// A structured studio edit from the webview — a knob, a fader, or a part
+/// pointed at another patch (roadmap §11, §14.4).
+#[derive(Clone, Debug, Deserialize, Serialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum StudioEditDto {
+    #[serde(rename_all = "camelCase")]
+    AssignPatch { part: String, patch: String },
+    #[serde(rename_all = "camelCase")]
+    SetParam {
+        container: ContainerKindDto,
+        name: String,
+        stage: usize,
+        param: String,
+        value: f64,
+    },
+    #[serde(rename_all = "camelCase")]
+    SetSendLevel { source: String, bus: String, decibels: f64 },
+}
+
+impl From<StudioEditDto> for StudioEdit {
+    fn from(edit: StudioEditDto) -> Self {
+        match edit {
+            StudioEditDto::AssignPatch { part, patch } => Self::AssignPatch { part, patch },
+            StudioEditDto::SetParam {
+                container,
+                name,
+                stage,
+                param,
+                value,
+            } => Self::SetParam {
+                kind: container.into(),
+                container: name,
+                stage,
+                param,
+                value,
+            },
+            StudioEditDto::SetSendLevel { source, bus, decibels } => Self::SetSendLevel { source, bus, decibels },
+        }
+    }
+}
+
 impl CommandDto {
     /// The session request this stands for.
     ///
@@ -204,6 +270,7 @@ impl CommandDto {
                 Request::Command(ProjectCommand::ApplyEdits(edits.into_iter().map(Into::into).collect()))
             }
             Self::EditScore { edit } => Request::Command(ProjectCommand::EditScore(edit.into())),
+            Self::EditStudio { edit } => Request::Command(ProjectCommand::EditStudio(edit.into())),
             Self::Format => Request::Command(ProjectCommand::Format),
             Self::Save => Request::Command(ProjectCommand::Save),
             Self::Undo => Request::Undo,

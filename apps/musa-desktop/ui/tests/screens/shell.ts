@@ -146,7 +146,11 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
           setSource(command.source ?? "");
           return answer();
         }
-        if (command.kind === "editScore") {
+        // A studio edit is the same kind of act as a score edit — intent in,
+        // a rewritten source out — and the stub answers it the same way: it
+        // records what was asked for and mints a revision. That the text it
+        // would produce is the right text is `musa-project`'s studio laws.
+        if (command.kind === "editScore" || command.kind === "editStudio") {
           history.push(current);
           window.__musaEdits.push(command.edit ?? {});
           const revision = (current.revision as number) + 1;

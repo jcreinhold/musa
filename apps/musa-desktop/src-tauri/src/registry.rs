@@ -74,14 +74,28 @@ pub const COMMANDS: &[CommandDescriptor] = &[
         Some("CmdOrCtrl+Shift+F"),
         true,
     ),
-    // The workspaces of roadmap §14.4. Sound and Mix hold `CmdOrCtrl+2` and
-    // `CmdOrCtrl+3`; they are not listed at all until the DSP exists, because
-    // a tab that opens nothing teaches the wrong thing about the application.
+    // The four workspaces of roadmap §14.4, in the order they are numbered:
+    // what the music is, what it sounds like, how it is balanced, and what it
+    // says in text.
     command(
         "view.workspace.compose",
         "Compose workspace",
         Section::View,
         Some("CmdOrCtrl+1"),
+        true,
+    ),
+    command(
+        "view.workspace.sound",
+        "Sound workspace",
+        Section::View,
+        Some("CmdOrCtrl+2"),
+        true,
+    ),
+    command(
+        "view.workspace.mix",
+        "Mix workspace",
+        Section::View,
+        Some("CmdOrCtrl+3"),
         true,
     ),
     command(

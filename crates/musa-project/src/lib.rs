@@ -41,6 +41,7 @@ mod facts;
 mod playback;
 mod session;
 mod snapshot;
+mod studio;
 mod template;
 
 pub use crate::command::{ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
@@ -53,5 +54,9 @@ pub use crate::facts::{
 };
 pub use crate::session::ProjectSession;
 pub use crate::snapshot::{PlaybackState, ProjectSnapshot};
+pub use crate::studio::{
+    AssignmentFacts, ContainerFacts, ContainerKind, ParamFacts, RouteFacts, SendFacts, StageFacts, StudioEdit,
+    StudioFacts,
+};
 pub use crate::template::Template;
 pub use musa_render::MidiMode;
