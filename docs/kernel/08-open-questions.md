@@ -9,7 +9,7 @@ A `Pattern[A]` is **not** part of the finite kernel grammar (§18). Working stan
 produce coherent finite observations `P(I)` for every bounded interval `I`, obeying the compatibility law
 `J ⊆ I ⟹ restrict_J(P(I)) = P(J)`. Loops, algorithmic generators, aleatory realizations, and live-coded patterns all
 expose finite kernel observations without sharing a computation model. *Settle when:* a concrete loop/live feature
-(prompt 24-era or later) shows whether observation coherence needs kernel-level support (e.g. a `Pattern` type with a
+(prompt 29-era or later) shows whether observation coherence needs kernel-level support (e.g. a `Pattern` type with a
 restrict-based contract) or stays a library convention.
 
 ## Q2 — Aleatory semantics
@@ -25,7 +25,7 @@ taken?) will show whether the kernel needs anything beyond occurrence payloads.
 Candidates (§32): payload metadata; a separate temporal relation; HIR structure plus provenance; or a combination.
 Working stance (adopted by `06-surface-elaboration.md`): **payload metadata + HIR structure** — `NotePayload.voice`
 carries (part, voice) identity; the kernel stays identity-free; `ScoreSnapshot`'s lanes are an adapter projection.
-*Settle when:* prompt 11's differential parity and prompt 21's score-editing show whether any consumer needs voice-level
+*Settle when:* prompt 11's differential parity and prompt 25's score-editing show whether any consumer needs voice-level
 temporal queries the payload projection can't answer cleanly (e.g. cross-voice alignment constraints).
 
 ## Q4 — Time-varying continuous controls
@@ -33,7 +33,7 @@ temporal queries the payload projection can't answer cleanly (e.g. cross-voice a
 Automation (crescendo, glissando, parameter curves) does not obviously belong to discrete occurrences (§32). Candidates:
 typed interval payloads (a `CurveRegion` payload); a separate behavior/curve layer; the performance/audio model. Working
 stance: **undecided, deferred**. The §33 falsification items 6–7 (accelerando/ritardando, glissando/crescendo) exist
-precisely to force this question with evidence. *Settle when:* prompt 31 (tempo/expression curves) designs the surface
+precisely to force this question with evidence. *Settle when:* prompt 36 (tempo/expression curves) designs the surface
 constructs — tempo is settled (§22: performance-layer map); continuous *expression* is not.
 
 ## Q5 — Recursive / generative source programs
@@ -56,7 +56,7 @@ Chords elaborate to simultaneous per-pitch occurrences; the snapshot adapter reg
 (`06-surface-elaboration.md`). Open: is (span, voice, origin) the right grouping key when two different chords in the
 same voice share a span via `overlay` of separately-written material? Working stance: origin distinguishes deliberate
 chords from coincidental simultaneity, since coincidental simultaneity arises from different source constructs with
-different origins. *Settle when:* prompt 11's parity tests exercise overlaid same-span material, or prompt 22's chord
+different origins. *Settle when:* prompt 11's parity tests exercise overlaid same-span material, or prompt 27's chord
 notation exposes a counterexample.
 
 ## Q8 — Key/meter regions
@@ -64,18 +64,18 @@ notation exposes a counterexample.
 `06-surface-elaboration.md` keeps `key`/`meter`/`tempo` as piece-wide context maps because the current grammar has no
 temporal extent for them. §21's typed interval payloads (`Timeline[KeyRegion]`, `Timeline[MeterRegion]`) are the agreed
 shape *when extent matters* (`modulate to C major { … }`, meter changes, the §33 item 5). *Settle when:* the surface
-grammar gains such a construct (prompt 30 era) — elaboration extends, kernel unchanged.
+grammar gains such a construct (prompt 35 era) — elaboration extends, kernel unchanged.
 
 ## Falsification corpus status (§33)
 
 | # | Example | Status |
 | --- | --- | --- |
 | 1 | Twinkle Twinkle (sequential + rests) | **proven** (prompt 11): `examples/twinkle.musa`, parity + normal form |
-| 2 | Four-part chorale (synchronized voices) | **proven at two parts** (prompt 11): `counterpoint.musa` parity + normal form; extend to four parts with prompt 22-era fixtures |
+| 2 | Four-part chorale (synchronized voices) | **proven at two parts** (prompt 11): `counterpoint.musa` parity + normal form; extend to four parts with prompt 27-era fixtures |
 | 3 | Canon (reuse, delay, transformation, overlay) | **proven** (prompt 11): `examples/canon.musa` — motif reuse, delay by ambient extent, transposition, overlay |
-| 4 | Tuplets / polyrhythm (exact rationals) | blocked on surface syntax (prompt 22) |
+| 4 | Tuplets / polyrhythm (exact rationals) | blocked on surface syntax (prompt 27) |
 | 5 | Changing meter and key | blocked on surface syntax (see Q8) |
-| 6 | Accelerando / ritardando | blocked on tempo curves (prompt 31); tempo-map semantics already settled (§22) |
+| 6 | Accelerando / ritardando | blocked on tempo curves (prompt 36); tempo-map semantics already settled (§22) |
 | 7 | Glissando / crescendo | blocked on Q4 |
 | 8 | Loop-based electronic music | blocked on surface loops (Phase 2/3; see Q1) |
 | 9 | Controlled aleatory | blocked on Q2 |

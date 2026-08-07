@@ -39,18 +39,31 @@ Consequences that must be designed for, not discovered:
 
 ## 3. Theming: `currentColor`, never `filter`
 
-Verovio emits explicit `fill`/`stroke` values. Both themes need real re-inking, and the printed page needs black ink
-regardless of the current theme.
+Both themes need real re-inking, and Origin view needs to re-ink *part* of the page without touching the rest.
 
-The render layer runs a **documented sanitizer** over emitted SVG that:
+Verovio 6 emits no per-element `fill`, but it does set `color="black"` on the `.definition-scale` element and lets
+everything inherit from there. That single attribute is what defeats theming. The render layer runs a **documented
+sanitizer** over emitted SVG that:
 
-1. rewrites notation `fill`/`stroke` values to `currentColor`, so the page takes `--ink` from CSS;
-2. leaves genuinely semantic colors (if any are ever introduced by the MEI) alone, matched by an explicit allowlist;
-3. strips `xlink` (use `svgRemoveXlink`) and inlines the SMuFL glyph defs once per page;
-4. preserves every `xml:id` verbatim — the id map is prompt 13's contract with the editor and must survive intact.
+1. **removes** `color="black"` from `.definition-scale`, so the CSS cascade governs;
+2. removes the `font-family="Times, serif"` fallback, so score text takes Academico from the token system;
+3. strips `xlink` (use `svgRemoveXlink`);
+4. preserves every `xml:id` verbatim — the id map is prompt 13's contract with the editor and must survive intact;
+5. leaves genuinely semantic colors (if any are ever introduced by the MEI) alone, matched by an explicit allowlist.
 
-`filter: invert()` on a score is forbidden. It ruins glyph weight, breaks any future colored annotation, and prints
-wrong.
+The CSS side matters as much as the sanitizer:
+
+```css
+#score       { color: var(--ink); }
+#score g     { fill: currentColor; stroke: currentColor; }  /* re-resolved per group */
+```
+
+`currentColor` on an inherited property resolves **where it is declared** and inherits as a resolved color. Declaring
+it once on the root would freeze every glyph at the root's ink and make Origin view impossible; declaring it per `g`
+lets any group that sets its own `color` — a generated-note group under the lens — re-ink correctly. Verified in
+`prototype.html`.
+
+`filter: invert()` on a score is forbidden. It ruins glyph weight, breaks colored annotation, and prints wrong.
 
 ## 4. Layout options
 

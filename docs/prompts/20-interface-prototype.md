@@ -20,6 +20,10 @@ nothing later in the sequence fixes that.
 
 - **`docs/interface/`** in full — it is the governing document for prompts 20–26. In particular `00-thesis.md` (leaf and
   margin; what is rejected), `01-visual-language.md` (every token; the Compose layout), `02-engraving.md` §§1–5, §9.
+- **`docs/interface/prototype.html`** — open it in a browser first. It is the static reference mockup of exactly this
+  screen, with real Verovio output, and it already answers the questions that would otherwise be guessed: overlay
+  geometry in staff spaces, the `currentColor` sanitizer, the parts bracket, the Origin tint. Rebuild it properly here;
+  do not port its markup.
 - Roadmap §14.1–§14.4 (architecture this design implements), §14.8 (zero setup — everything bundled).
 - Prompt 13's `xml:id` contract; prompt 19's `ProjectSnapshot` shape (the fixture must be a faithful serialization of
   it, not an invented shape).
