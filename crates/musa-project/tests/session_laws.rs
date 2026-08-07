@@ -204,6 +204,7 @@ fn every_export_target_produces_an_artifact() -> Result {
     for request in [
         ExportRequest::Mei,
         ExportRequest::LilyPond,
+        ExportRequest::MusicXml,
         ExportRequest::Midi(musa_project::MidiMode::Score),
         ExportRequest::Midi(musa_project::MidiMode::Performance),
         ExportRequest::PerformanceDump,
@@ -212,6 +213,22 @@ fn every_export_target_produces_an_artifact() -> Result {
         let artifact = session.export(request)?;
         assert!(!artifact.as_bytes().is_empty(), "{request:?} produced nothing");
     }
+    Ok(())
+}
+
+/// `MusicXML` leaves as a `score-partwise` document under the extension the
+/// other programs open, and carries none of MEI's event provenance with it
+/// (roadmap §12.4).
+#[test]
+fn musicxml_leaves_as_an_interchange_document() -> Result {
+    let text = session()
+        .export(ExportRequest::MusicXml)?
+        .as_text()
+        .unwrap_or_default()
+        .to_owned();
+    assert!(text.contains("<score-partwise"), "{text}");
+    assert!(!text.contains("event-"), "no event ids leave in MusicXML");
+    assert_eq!(ExportRequest::MusicXml.extension(), "musicxml");
     Ok(())
 }
 

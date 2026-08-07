@@ -7,13 +7,16 @@ use musa_compiler::ScoreSnapshot;
 use crate::RenderError;
 use crate::plan::{NotationOptions, plan_notation};
 
-/// The notation output formats (extended at prompts 14, 27).
+/// The notation output formats (extended at prompts 14, 27, 32).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NotationTarget {
     /// MEI 5 XML (Verovio-compatible, `xml:id` event mapping).
     Mei,
     /// `LilyPond` source (export only, §12.3).
     LilyPond,
+    /// `MusicXML` 4.0 `score-partwise` (export only, §12.4) — the
+    /// interchange format, without the event provenance MEI carries.
+    MusicXml,
 }
 
 /// The rendered output of one backend.
@@ -49,6 +52,7 @@ pub fn render_notation(
     let text = match target {
         NotationTarget::Mei => crate::mei::render_mei(&plan)?,
         NotationTarget::LilyPond => crate::ly::render_lilypond(&plan)?,
+        NotationTarget::MusicXml => crate::musicxml::render_musicxml(&plan)?,
     };
     Ok(RenderedNotation { target, text })
 }

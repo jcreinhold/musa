@@ -233,6 +233,10 @@ impl ProjectSession {
                 score,
                 musa_render::NotationTarget::LilyPond,
             )?)),
+            ExportRequest::MusicXml => Ok(ExportArtifact::Text(render_notation(
+                score,
+                musa_render::NotationTarget::MusicXml,
+            )?)),
             ExportRequest::Wav => Ok(ExportArtifact::Bytes(playback::to_wav(score, &valid.studio)?)),
             ExportRequest::Midi(mode) => Ok(ExportArtifact::Bytes(playback::to_midi(score, mode)?)),
             ExportRequest::PerformanceDump => Ok(ExportArtifact::Text(playback::performance_dump(score)?)),

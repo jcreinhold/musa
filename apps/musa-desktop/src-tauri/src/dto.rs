@@ -327,6 +327,7 @@ pub struct ExportDto {
 pub enum ExportTargetDto {
     Mei,
     LilyPond,
+    MusicXml,
     Wav,
 }
 
@@ -335,6 +336,7 @@ impl From<ExportTargetDto> for ExportRequest {
         match target {
             ExportTargetDto::Mei => Self::Mei,
             ExportTargetDto::LilyPond => Self::LilyPond,
+            ExportTargetDto::MusicXml => Self::MusicXml,
             ExportTargetDto::Wav => Self::Wav,
         }
     }

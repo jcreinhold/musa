@@ -3,4 +3,4 @@
 /**
  * The export formats the shell offers.
  */
-export type ExportTargetDto = "mei" | "lilyPond" | "wav";
+export type ExportTargetDto = "mei" | "lilyPond" | "musicXml" | "wav";

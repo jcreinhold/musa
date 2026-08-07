@@ -119,6 +119,7 @@ export const COMMANDS: readonly Command[] = [
   command("file.save", "File", ({ session }) => void session.save()),
   command("file.export.mei", "File", ({ session }) => void session.exportTo("mei")),
   command("file.export.lilypond", "File", ({ session }) => void session.exportTo("lilyPond")),
+  command("file.export.musicxml", "File", ({ session }) => void session.exportTo("musicXml")),
   command("file.export.wav", "File", ({ session }) => void session.exportTo("wav")),
 
   command("edit.undo", "Edit", ({ session }) => void session.undo()),

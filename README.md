@@ -58,7 +58,7 @@ make setup && make desktop
 | `make desktop` | Start the score editor (Tauri shell, hot-reloading UI) |
 | `make ui` | Start the UI alone in a browser against a stubbed backend |
 | `make check-file FILE=…` | Compile one `.musa` file and print its diagnostics |
-| `make render FILE=… TO=…` | Render to `wav`, `midi`, `mei`, `lilypond`, `performance`, or `plan` |
+| `make render FILE=… TO=…` | Render to `wav`, `midi`, `mei`, `lilypond`, `musicxml`, `performance`, or `plan` |
 | `make play FILE=…` | Play a piece through the audio engine |
 | `make verify` | Every gate CI runs: format, clippy, tests, types, licences |
 
@@ -85,7 +85,7 @@ language → compiler → { render, audio } → engine → project → { cli, de
 | `musa-language` | tokens, parser, a lossless syntax tree, formatting, text edits |
 | `musa-kernel` | the temporal kernel: exact rational time, typed occurrences, timeline/sequence/overlay |
 | `musa-compiler` | name resolution, units, elaboration through the kernel, score and performance snapshots |
-| `musa-render` | engraving plan, MEI, LilyPond, MIDI |
+| `musa-render` | engraving plan, MEI, LilyPond, MusicXML, MIDI |
 | `musa-audio` | the studio graph, DSP processors, offline rendering |
 | `musa-engine` | audio device, transport, real-time queues, MIDI input |
 | `musa-project` | the session facade: documents, revisions, commands, exports |

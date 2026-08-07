@@ -36,7 +36,7 @@ check-file: ## Compile one .musa file and print its diagnostics (FILE=...)
 	$(CARGO) run -q -p musa-cli -- check $(FILE)
 
 .PHONY: render
-render: ## Render FILE to TO (wav|midi|mei|lilypond|performance|plan) at OUT
+render: ## Render FILE to TO (wav|midi|mei|lilypond|musicxml|performance|plan) at OUT
 	@mkdir -p $(dir $(OUT))
 	$(CARGO) run -q -p musa-cli -- render $(FILE) --to $(TO) -o $(OUT)
 	@echo "wrote $(OUT)"

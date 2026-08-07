@@ -8,7 +8,8 @@
 //! written pitch spelling passes through verbatim (§6.3).
 //!
 //! Facade (roadmap §15.4): [`plan_notation`] (prompt 07); `render_mei`
-//! (prompt 08), `render_lilypond` (prompt 09), MIDI/MusicXML later.
+//! (prompt 08), `render_lilypond` (prompt 09), `render_musicxml` (prompt 32),
+//! `render_midi` (prompt 14).
 //!
 //! Invariants: the plan is semantic, not typographic — no line breaks or
 //! spacing; every notated item carries the `EventId` it came from, so tie
@@ -19,6 +20,7 @@ mod error;
 mod ly;
 mod mei;
 mod midi;
+mod musicxml;
 mod plan;
 mod render;
 

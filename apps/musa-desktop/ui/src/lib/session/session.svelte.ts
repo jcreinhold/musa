@@ -77,6 +77,16 @@ export type Link = Pick<
  */
 const REWRITES = new Set(["format", "undo", "redo", "editScore", "editStudio"]);
 
+/**
+ * The file extension an export writes, for the targets whose name is not it.
+ * The core decides the real extension; this is only what the save dialog
+ * suggests before the export has run.
+ */
+const EXTENSIONS: Partial<Record<ExportTargetDto, string>> = {
+  lilyPond: "ly",
+  musicXml: "musicxml",
+};
+
 export class Session {
   snapshot = $state<ProjectSnapshot | null>(null);
   notice = $state<Notice | null>(null);
@@ -348,7 +358,7 @@ export class Session {
   async exportTo(target: ExportTargetDto): Promise<void> {
     const link = this.#link;
     if (!link) return;
-    const extension = target === "lilyPond" ? "ly" : target;
+    const extension = EXTENSIONS[target] ?? target;
     const stem = (this.snapshot?.name ?? "piece").replace(/\.musa$/, "");
     try {
       const path = await link.askToSave(`${stem}.${extension}`, extension);

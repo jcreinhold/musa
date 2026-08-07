@@ -25,6 +25,17 @@ pub enum RenderError {
     /// The backend writer failed.
     #[error("XML writer failed: {0}")]
     Xml(String),
+    /// `MusicXML` measures time in integer divisions of a quarter note, and
+    /// this score's durations do not all land on one reasonable value.
+    /// Rounding them would silently change the music, so the export fails
+    /// instead (§7.2).
+    #[error("representing {duration} exactly needs more than {max} MusicXML divisions per quarter note")]
+    Divisions {
+        /// The duration, in whole notes, that could not be represented.
+        duration: String,
+        /// The largest divisions value the backend will emit.
+        max: i64,
+    },
     /// A construct the backend cannot express (§7.2: explicit, never a raw
     /// escape hatch).
     #[error("event {event:?}: {what}")]

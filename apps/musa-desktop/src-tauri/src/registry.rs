@@ -64,6 +64,7 @@ pub const COMMANDS: &[CommandDescriptor] = &[
     command("file.save", "Save", Section::File, Some("CmdOrCtrl+S"), true),
     command("file.export.mei", "Export MEI", Section::File, None, true),
     command("file.export.lilypond", "Export LilyPond", Section::File, None, true),
+    command("file.export.musicxml", "Export MusicXML", Section::File, None, true),
     command("file.export.wav", "Export WAV", Section::File, None, true),
     command("edit.undo", "Undo", Section::Edit, Some("CmdOrCtrl+Z"), true),
     command("edit.redo", "Redo", Section::Edit, Some("CmdOrCtrl+Shift+Z"), true),

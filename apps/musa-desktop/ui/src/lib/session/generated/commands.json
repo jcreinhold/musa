@@ -35,6 +35,13 @@
     "available": true
   },
   {
+    "id": "file.export.musicxml",
+    "title": "Export MusicXML",
+    "section": "file",
+    "accelerator": null,
+    "available": true
+  },
+  {
     "id": "file.export.wav",
     "title": "Export WAV",
     "section": "file",

@@ -33,7 +33,9 @@ fn print_usage() {
     println!("Commands:");
     println!("  musa check <file.musa>                 parse + compile diagnostics");
     println!("  musa format <file.musa> [--check]      format in place (--check to diff)");
-    println!("  musa render <file.musa> --to <target>  plan (debug) | mei | lilypond | performance | wav | midi");
+    println!(
+        "  musa render <file.musa> --to <target>  plan (debug) | mei | lilypond | musicxml | performance | wav | midi"
+    );
     println!("      --mode score|performance             for --to midi (default: score)");
     println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
 }
@@ -85,6 +87,7 @@ fn cmd_render(args: &[String]) -> ExitCode {
         "performance" => ExportRequest::PerformanceDump,
         "mei" => ExportRequest::Mei,
         "lilypond" => ExportRequest::LilyPond,
+        "musicxml" => ExportRequest::MusicXml,
         "wav" => ExportRequest::Wav,
         "midi" => match mode {
             "score" => ExportRequest::Midi(MidiMode::Score),
@@ -95,7 +98,9 @@ fn cmd_render(args: &[String]) -> ExitCode {
             }
         },
         other => {
-            eprintln!("error: --to {other} is not implemented yet (plan | mei | lilypond | performance | wav | midi)");
+            eprintln!(
+                "error: --to {other} is not implemented yet (plan | mei | lilypond | musicxml | performance | wav | midi)"
+            );
             return ExitCode::FAILURE;
         }
     };
@@ -124,6 +129,7 @@ fn cmd_render(args: &[String]) -> ExitCode {
         }
         ExportRequest::Mei
         | ExportRequest::LilyPond
+        | ExportRequest::MusicXml
         | ExportRequest::Wav
         | ExportRequest::PerformanceDump
         | ExportRequest::NotationPlanDump

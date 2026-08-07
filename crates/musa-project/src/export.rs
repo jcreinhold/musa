@@ -12,6 +12,9 @@ pub enum ExportRequest {
     Mei,
     /// `LilyPond` source.
     LilyPond,
+    /// `MusicXML` — the interchange format, for handing a piece to another
+    /// notation program. Export only (§12.4).
+    MusicXml,
     /// A deterministic offline audio render, 32-bit float stereo WAV.
     Wav,
     /// A Standard MIDI File. Two documents, not one setting: `Score` is the
@@ -29,6 +32,7 @@ impl ExportRequest {
         match self {
             Self::Mei => "mei",
             Self::LilyPond => "ly",
+            Self::MusicXml => "musicxml",
             Self::Wav => "wav",
             Self::Midi(_) => "mid",
             Self::PerformanceDump | Self::NotationPlanDump => "txt",
