@@ -1,7 +1,7 @@
 ---
 id: 21
 slug: desktop-shell
-status: pending
+status: in-progress
 depends_on: [20]
 phase: 1.5
 ---
@@ -36,9 +36,17 @@ is the only new concept: a narrow, typed command surface with no semantics in it
   #[tauri::command] fn export(request: ExportDto) -> Result<PathBuf, ErrorDto>;
   ```
 
-  DTOs are serde mirrors in `src-tauri`, never re-exported internal types; the surface grows by adding fields. TypeScript
-  types are **generated** from the DTOs (`ts-rs` or equivalent) so the two sides cannot drift — a hand-maintained
-  `.d.ts` is a defect waiting to happen.
+  The **input** side is DTOs owned by `src-tauri` — `CommandDto`, `TransportDto`, `ExportDto`, `TemplateDto`,
+  `ErrorDto` — never re-exported internal types; the surface grows by adding fields. TypeScript types for them are
+  **generated** (`ts-rs`) so the two sides cannot drift.
+
+  The **snapshot** is different, and prompt 20 already settled it: `musa-project` owns `ProjectSnapshot`'s wire format,
+  because the UI fixture is a serialization of that type and a test in `musa-project` keeps the fixture from drifting
+  from it. Mirroring the whole of `ScoreFacts` in `src-tauri` would produce a second wire format that can disagree with
+  the first, which is the failure the DTO rule exists to prevent, not an instance of it. So the commands return
+  `ProjectSnapshot` directly, `musa-project` gains no Tauri dependency and no webview-only serde attribute, and the
+  frontend's hand-written mirror of it stays honest because every fixture-driven test fails the moment a field is
+  renamed.
 - **Events, not polling** (`06-performance.md` §3): `musa://snapshot` after every successful `apply`, `musa://position`
   from the engine at ~10 Hz **only while playing**, `musa://transport` on state change. The frontend has no timers at
   rest; B10 is asserted.
