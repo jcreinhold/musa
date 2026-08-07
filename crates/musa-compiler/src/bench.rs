@@ -12,7 +12,7 @@ use musa_kernel::{Occurrence, Timeline, overlay};
 
 use crate::compile::{Compilation, CompileOptions, SourceDocument};
 use crate::elaborate::VoiceTimeline;
-use crate::lower::Lowering;
+use crate::resolve::Resolver;
 
 /// A parsed document, held so a benchmark can exclude parsing from its
 /// measurement.
@@ -32,8 +32,8 @@ pub fn parse(source: &SourceDocument) -> Parsed {
 /// Everything after parsing: elaboration through the kernel and the snapshot
 /// adapter (P2).
 pub fn elaborate(parsed: &Parsed, options: &CompileOptions) -> Compilation {
-    let mut lowering = Lowering::new();
-    crate::elaborate::elaborate_parsed(&parsed.document, &parsed.name, options, &mut lowering)
+    let mut resolver = Resolver::new();
+    crate::elaborate::elaborate_parsed(&parsed.document, &parsed.name, options, &mut resolver)
 }
 
 /// The piece's voice timelines, kept for the projection and canonical-form
@@ -44,16 +44,16 @@ pub struct Timelines {
 
 /// Elaborate, and keep the kernel timelines the adapter would have consumed.
 pub fn timelines(parsed: &Parsed, options: &CompileOptions) -> Timelines {
-    let mut lowering = Lowering::new();
-    lowering.timeline_sink = Some(Vec::new());
+    let mut resolver = Resolver::new();
+    resolver.timeline_sink = Some(Vec::new());
     drop(crate::elaborate::elaborate_parsed(
         &parsed.document,
         &parsed.name,
         options,
-        &mut lowering,
+        &mut resolver,
     ));
     Timelines {
-        voices: lowering.timeline_sink.unwrap_or_default(),
+        voices: resolver.timeline_sink.unwrap_or_default(),
     }
 }
 
@@ -67,9 +67,9 @@ impl Timelines {
     /// The snapshot projection (P3): the piece's timeline read back as score
     /// events. Returns the event count so the work cannot be optimized away.
     pub fn project(&self) -> usize {
-        let mut lowering = Lowering::new();
+        let mut resolver = Resolver::new();
         let piece = musa_kernel::overlay(self.voices.clone());
-        crate::project::project(&mut lowering, &piece)
+        crate::project::project(&mut resolver, &piece)
             .voices
             .values()
             .map(|voice| voice.events.len())

@@ -1,5 +1,5 @@
 //! The compiler facade (roadmap §10.6, §15.3): one deep operation. Passes
-//! (resolution, units, lowering) are private; callers see `Compilation`.
+//! (resolution, units, resolver) are private; callers see `Compilation`.
 
 use crate::origin::SourceSpan;
 use crate::score::ScoreSnapshot;

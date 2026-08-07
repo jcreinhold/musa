@@ -26,9 +26,9 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use crate::compile::{Compilation, SourceDocument};
-use crate::lower::{self, ExpandCx, Lowering};
 use crate::origin::{ExpansionStep, Origin, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
+use crate::resolve::{self, ExpandCx, Resolver};
 use crate::score::{
     ArticulationMark, DynamicMark, MeterMap, Mode, NotatedDuration, Part, PartId, ScoreSnapshot, TempoChange, Voice,
     VoiceId,
@@ -298,8 +298,8 @@ impl musa_kernel::Canonical for ScoreFact {
 /// a `ScoreSnapshot` (docs/kernel/06, prompt 11).
 pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions) -> Compilation {
     let document = musa_language::parse(source.text());
-    let mut lowering = Lowering::new();
-    elaborate_parsed(&document, source.name(), options, &mut lowering)
+    let mut resolver = Resolver::new();
+    elaborate_parsed(&document, source.name(), options, &mut resolver)
 }
 
 /// One voice's elaborated timeline, before the snapshot adapter sees it.
@@ -308,62 +308,62 @@ pub(crate) type VoiceTimeline = Timeline<ScoreFact>;
 /// Everything after parsing (docs/kernel/06): elaborate, adapt, check.
 ///
 /// Split out of [`elaborate`] so the parse and the semantic work can be
-/// measured apart; `lowering` arrives from the caller for the same reason
+/// measured apart; `resolver` arrives from the caller for the same reason
 /// (see `crate::bench`). The production path passes a fresh one.
 pub(crate) fn elaborate_parsed(
     document: &musa_language::ParsedDocument,
     name: &str,
     options: &crate::CompileOptions,
-    lowering: &mut Lowering,
+    resolver: &mut Resolver,
 ) -> Compilation {
     for error in document.errors() {
         let range = error.range();
-        lowering.error(
+        resolver.error(
             format!("syntax: {}", error.message()),
             SourceSpan::new(u32::from(range.start()), u32::from(range.end())),
         );
     }
-    if lowering
+    if resolver
         .diagnostics
         .iter()
         .any(|d| d.severity == crate::compile::Severity::Error)
     {
-        return Compilation::new(None, std::mem::take(&mut lowering.diagnostics));
+        return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
     let Some(piece) = PieceDecl::from_root(&document.syntax()) else {
-        lowering.error("no `piece` declaration", SourceSpan::new(0, 0));
-        return Compilation::new(None, std::mem::take(&mut lowering.diagnostics));
+        resolver.error("no `piece` declaration", SourceSpan::new(0, 0));
+        return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     };
 
     let mut snapshot = ScoreSnapshot::default();
-    let libraries = crate::imports::load(lowering, name, &piece, &options.imports);
-    elaborate_libraries(lowering, &libraries, &mut snapshot);
-    lower::lower_header(lowering, &piece, &mut snapshot);
+    let libraries = crate::imports::load(resolver, name, &piece, &options.imports);
+    elaborate_libraries(resolver, &libraries, &mut snapshot);
+    resolve::lower_header(resolver, &piece, &mut snapshot);
     if let Some(score) = piece.score() {
-        let context = elaborate_score(lowering, &piece, &score, &mut snapshot);
-        elaborate_tempo_changes(lowering, &piece, &mut snapshot, &context);
+        let context = elaborate_score(resolver, &piece, &score, &mut snapshot);
+        elaborate_tempo_changes(resolver, &piece, &mut snapshot, &context);
     }
-    snapshot.annotations = std::mem::take(&mut lowering.annotations);
-    lower::check_measure_sanity(lowering, &snapshot);
-    check_tuplets(lowering, &snapshot);
-    if lowering
+    snapshot.annotations = std::mem::take(&mut resolver.annotations);
+    resolve::check_measure_sanity(resolver, &snapshot);
+    check_tuplets(resolver, &snapshot);
+    if resolver
         .diagnostics
         .iter()
         .any(|d| d.severity == crate::compile::Severity::Error)
     {
-        return Compilation::new(None, std::mem::take(&mut lowering.diagnostics));
+        return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
     let imported_studios: Vec<musa_language::ast::StudioDecl> =
         libraries.each().filter_map(|(_, library)| library.studio()).collect();
-    let studio = lower::lower_studio(lowering, &piece, &snapshot, &imported_studios);
-    if lowering
+    let studio = resolve::lower_studio(resolver, &piece, &snapshot, &imported_studios);
+    if resolver
         .diagnostics
         .iter()
         .any(|d| d.severity == crate::compile::Severity::Error)
     {
-        return Compilation::new(None, std::mem::take(&mut lowering.diagnostics));
+        return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
-    Compilation::new(Some(snapshot), std::mem::take(&mut lowering.diagnostics)).with_studio(studio)
+    Compilation::new(Some(snapshot), std::mem::take(&mut resolver.diagnostics)).with_studio(studio)
 }
 
 /// What the piece timeline says about the piece as a whole, for the callers
@@ -388,7 +388,7 @@ pub(crate) struct PieceContext {
 /// voice identity live in `Scope`, not in a timeline per voice, which is the
 /// evidence Q3's working stance asked for.
 fn elaborate_score(
-    lowering: &mut Lowering,
+    resolver: &mut Resolver,
     piece: &PieceDecl,
     score: &musa_language::ast::ScoreDecl,
     snapshot: &mut ScoreSnapshot,
@@ -398,16 +398,16 @@ fn elaborate_score(
     let mut lanes: Vec<Timeline<ScoreFact>> = Vec::new();
     for part in score.parts() {
         let name = part.name().unwrap_or_default();
-        let part_key = lowering.declare(crate::lower::DeclInfo::Part);
-        let _ = lower::ordinal(lowering, part_key);
+        let part_key = resolver.declare(crate::resolve::DeclInfo::Part);
+        let _ = resolve::ordinal(resolver, part_key);
         if metadata.iter().any(|(_, existing, _)| *existing == name) {
-            lowering.error(format!("duplicate part `{name}`"), lower::span_of(part.syntax()));
+            resolver.error(format!("duplicate part `{name}`"), resolve::span_of(part.syntax()));
             continue;
         }
-        let id = PartId(lowering.next_part);
-        lowering.next_part = lowering.next_part.saturating_add(1);
+        let id = PartId(resolver.next_part);
+        resolver.next_part = resolver.next_part.saturating_add(1);
 
-        let (clef, profile) = lower::part_metadata(lowering, &part, &snapshot.profiles);
+        let (clef, profile) = resolve::part_metadata(resolver, &part, &snapshot.profiles);
         if let Some(profile) = profile {
             snapshot.profiles.assign(&name, profile);
         }
@@ -415,18 +415,18 @@ fn elaborate_score(
         let mut names = indexmap::IndexMap::new();
         for (index, voice) in part.voices().iter().enumerate() {
             let voice_name = voice.name().unwrap_or_default();
-            let voice_key = lowering.declare(crate::lower::DeclInfo::Voice);
-            let declaration = lower::ordinal(lowering, voice_key);
+            let voice_key = resolver.declare(crate::resolve::DeclInfo::Voice);
+            let declaration = resolve::ordinal(resolver, voice_key);
             if names.values().any(|existing| *existing == voice_name) {
-                lowering.error(
+                resolver.error(
                     format!("duplicate voice `{voice_name}` in part `{name}`"),
-                    lower::span_of(voice.syntax()),
+                    resolve::span_of(voice.syntax()),
                 );
                 continue;
             }
             let voice_id = VoiceId(u32::try_from(index).unwrap_or(u32::MAX));
-            let timeline = elaborate_voice(lowering, voice, declaration, id.0, voice_id.0);
-            if let Some(sink) = &mut lowering.timeline_sink {
+            let timeline = elaborate_voice(resolver, voice, declaration, id.0, voice_id.0);
+            if let Some(sink) = &mut resolver.timeline_sink {
                 sink.push(timeline.clone());
             }
             lanes.push(timeline);
@@ -438,9 +438,9 @@ fn elaborate_score(
 
     let music = overlay(lanes);
     let extent = music.extent();
-    let context = context_facts(lowering, piece, score, snapshot, extent);
+    let context = context_facts(resolver, piece, score, snapshot, extent);
     let whole = overlay(vec![music, context]);
-    let projection = crate::project::project(lowering, &whole);
+    let projection = crate::project::project(resolver, &whole);
     snapshot.key_map = projection.key;
     snapshot.meter_map = projection.meter;
     let meter = projection.meter;
@@ -485,7 +485,7 @@ fn elaborate_score(
 /// interprets them: a chord symbol is parsed so a later library can read it,
 /// and that is the end of the core's involvement.
 fn context_facts(
-    lowering: &mut Lowering,
+    resolver: &mut Resolver,
     piece: &PieceDecl,
     score: &musa_language::ast::ScoreDecl,
     snapshot: &mut ScoreSnapshot,
@@ -519,7 +519,7 @@ fn context_facts(
             at_span(
                 piece
                     .meter()
-                    .map_or_else(|| SourceSpan::new(0, 0), |node| lower::span_of(node.syntax())),
+                    .map_or_else(|| SourceSpan::new(0, 0), |node| resolve::span_of(node.syntax())),
             ),
         ),
     )];
@@ -535,7 +535,7 @@ fn context_facts(
                 at_span(
                     piece
                         .key()
-                        .map_or_else(|| SourceSpan::new(0, 0), |node| lower::span_of(node.syntax())),
+                        .map_or_else(|| SourceSpan::new(0, 0), |node| resolve::span_of(node.syntax())),
                 ),
             ),
         ));
@@ -543,8 +543,8 @@ fn context_facts(
 
     let extent_time = MusicalTime::new(extent.as_ratio());
     for section in score.sections() {
-        let span = lower::trimmed_span(section.syntax());
-        let Some(at) = resolve_position(lowering, section.position().as_ref(), span, meter, extent_time) else {
+        let span = resolve::trimmed_span(section.syntax());
+        let Some(at) = resolve_position(resolver, section.position().as_ref(), span, meter, extent_time) else {
             continue;
         };
         occurrences.push(point_at(
@@ -560,26 +560,26 @@ fn context_facts(
     }
     let lanes = score.harmonies();
     for extra in lanes.iter().skip(1) {
-        lowering.error(
+        resolver.error(
             "one `harmony` lane per score; write every chord in the first one",
-            lower::trimmed_span(extra.syntax()),
+            resolve::trimmed_span(extra.syntax()),
         );
     }
     for chord in lanes.iter().flat_map(musa_language::ast::HarmonyDecl::chords) {
-        let span = lower::trimmed_span(chord.syntax());
-        let Some(at) = resolve_position(lowering, chord.position().as_ref(), span, meter, extent_time) else {
+        let span = resolve::trimmed_span(chord.syntax());
+        let Some(at) = resolve_position(resolver, chord.position().as_ref(), span, meter, extent_time) else {
             continue;
         };
         let Some(written) = chord.symbol() else {
             continue;
         };
         if !written.is_one_word() {
-            lowering.error("a chord symbol is one word, such as `am` or `fmaj7`", span);
+            resolver.error("a chord symbol is one word, such as `am` or `fmaj7`", span);
             continue;
         }
         let text = written.text();
         let Some(symbol) = crate::harmony::ChordSymbol::parse(&text) else {
-            lowering.error(format!("`{text}` is not a chord symbol musa can read"), span);
+            resolver.error(format!("`{text}` is not a chord symbol musa can read"), span);
             continue;
         };
         occurrences.push(point_at(
@@ -601,19 +601,19 @@ fn point_at(at: MusicalTime, fact: ScoreFact) -> Occurrence<ScoreFact> {
 /// Register everything the imported libraries declare, before the piece's
 /// own declarations, so a collision is reported against the library that
 /// caused it (roadmap §16).
-fn elaborate_libraries(lowering: &mut Lowering, libraries: &crate::imports::Libraries, snapshot: &mut ScoreSnapshot) {
+fn elaborate_libraries(resolver: &mut Resolver, libraries: &crate::imports::Libraries, snapshot: &mut ScoreSnapshot) {
     for (path, library) in libraries.each() {
         if let Some(performance) = library.performance() {
-            let profiles = lower::parse_profiles(lowering, &performance);
-            lower::merge_profiles(
-                lowering,
+            let profiles = resolve::parse_profiles(resolver, &performance);
+            resolve::merge_profiles(
+                resolver,
                 snapshot,
                 &profiles,
-                lower::span_of(performance.syntax()),
+                resolve::span_of(performance.syntax()),
                 Some(path),
             );
         }
-        lower::register_motifs(lowering, snapshot, &library.motifs(), Some(path));
+        resolve::register_motifs(resolver, snapshot, &library.motifs(), Some(path));
     }
 }
 
@@ -624,7 +624,7 @@ fn elaborate_libraries(lowering: &mut Lowering, libraries: &crate::imports::Libr
 /// note. Positions are resolved after the parts exist so that a tempo nobody
 /// ever reaches is an error rather than a silent segment.
 fn elaborate_tempo_changes(
-    lowering: &mut Lowering,
+    resolver: &mut Resolver,
     piece: &musa_language::ast::PieceDecl,
     snapshot: &mut ScoreSnapshot,
     context: &PieceContext,
@@ -632,20 +632,20 @@ fn elaborate_tempo_changes(
     let declaration = crate::origin::DeclarationId::default();
     let mut changes: Vec<TempoChange> = Vec::new();
     for tempo in piece.tempos().iter().filter(|tempo| tempo.position().is_some()) {
-        let span = lower::trimmed_span(tempo.syntax());
-        let Some(at) = resolve_position(lowering, tempo.position().as_ref(), span, context.meter, context.extent)
+        let span = resolve::trimmed_span(tempo.syntax());
+        let Some(at) = resolve_position(resolver, tempo.position().as_ref(), span, context.meter, context.extent)
         else {
             continue;
         };
         if at == MusicalTime::ZERO {
-            lowering.error("the tempo at `1:1` is the piece's tempo; write it without `at`", span);
+            resolver.error("the tempo at `1:1` is the piece's tempo; write it without `at`", span);
             continue;
         }
         if changes.iter().any(|existing| existing.at == at) {
-            lowering.error("two tempos at the same place", span);
+            resolver.error("two tempos at the same place", span);
             continue;
         }
-        let (beat, bpm) = lower::tempo_reading(lowering, tempo);
+        let (beat, bpm) = resolve::tempo_reading(resolver, tempo);
         changes.push(TempoChange {
             at,
             beat,
@@ -674,7 +674,7 @@ fn elaborate_tempo_changes(
 /// and a piece that ends in a rest still ends where the rest ends, because a
 /// rest is an occurrence.
 fn resolve_position(
-    lowering: &mut Lowering,
+    resolver: &mut Resolver,
     position: Option<&musa_language::ast::Position>,
     span: SourceSpan,
     meter: MeterMap,
@@ -683,16 +683,16 @@ fn resolve_position(
     let position = position?;
     let measure: i64 = position.measure()?.parse().ok()?;
     let beat_text = position.beat()?;
-    let beat = lower::parse_ratio(&beat_text).or_else(|| beat_text.parse::<i64>().ok().map(Ratio::from_integer))?;
+    let beat = resolve::parse_ratio(&beat_text).or_else(|| beat_text.parse::<i64>().ok().map(Ratio::from_integer))?;
     if measure < 1 || beat < Ratio::ONE {
-        lowering.error("measures and beats count from `1:1`", span);
+        resolver.error("measures and beats count from `1:1`", span);
         return None;
     }
     let measure_len = meter.measure_len().as_ratio();
     let beat_len = Ratio::new(1, i64::from(meter.denominator.max(1)));
     let at = MusicalTime::new(measure_len * (measure - 1) + beat_len * (beat - Ratio::ONE));
     if at >= extent && extent > MusicalTime::default() {
-        lowering.error(format!("the piece ends before `{measure}:{beat_text}`"), span);
+        resolver.error(format!("the piece ends before `{measure}:{beat_text}`"), span);
         return None;
     }
     Some(at)
@@ -700,7 +700,7 @@ fn resolve_position(
 
 /// Elaborate one voice: `sequence` of its items (docs/kernel/06).
 fn elaborate_voice(
-    lowering: &mut Lowering,
+    resolver: &mut Resolver,
     voice: &musa_language::ast::VoiceDecl,
     declaration: crate::origin::DeclarationId,
     part: u32,
@@ -715,8 +715,8 @@ fn elaborate_voice(
         max_motif: usize::MAX,
         scale: Ratio::ONE,
     };
-    let timeline = elaborate_items(lowering, &voice.items(), &cx, Scope::Voice { part, voice: voice_id });
-    check_dangling_tie(lowering, timeline)
+    let timeline = elaborate_items(resolver, &voice.items(), &cx, Scope::Voice { part, voice: voice_id });
+    check_dangling_tie(resolver, timeline)
 }
 
 /// Elaborate voice items into a kernel timeline (sequence of item segments),
@@ -727,21 +727,21 @@ fn elaborate_voice(
 /// reversed or scaled, so `retrograde` mirrors ordinary occurrences and needs
 /// no repair, and a tie that crosses a block boundary merges at the level
 /// that contains both sides.
-fn elaborate_items(lowering: &mut Lowering, items: &[VoiceItem], cx: &ExpandCx, scope: Scope) -> Timeline<ScoreFact> {
+fn elaborate_items(resolver: &mut Resolver, items: &[VoiceItem], cx: &ExpandCx, scope: Scope) -> Timeline<ScoreFact> {
     let mut segments = Vec::new();
     for item in items {
-        segments.push(elaborate_item(lowering, item, cx, scope));
+        segments.push(elaborate_item(resolver, item, cx, scope));
     }
-    merge_ties(lowering, sequence(segments))
+    merge_ties(resolver, sequence(segments))
 }
 
 /// The articulations written on a note or chord statement.
-fn articulations_of(lowering: &mut Lowering, names: &[String], span: SourceSpan) -> Vec<ArticulationMark> {
+fn articulations_of(resolver: &mut Resolver, names: &[String], span: SourceSpan) -> Vec<ArticulationMark> {
     let mut articulations = Vec::new();
     for name in names {
         match ArticulationMark::parse(name) {
             Some(mark) => articulations.push(mark),
-            None => lowering.error(format!("unknown articulation `{name}`"), span),
+            None => resolver.error(format!("unknown articulation `{name}`"), span),
         }
     }
     articulations
@@ -749,18 +749,18 @@ fn articulations_of(lowering: &mut Lowering, names: &[String], span: SourceSpan)
 
 /// Elaborate one item; malformed items elaborate to the empty segment
 /// `(0, ∅)` — the direct lowerer's `continue` (diagnostic already emitted).
-fn elaborate_item(lowering: &mut Lowering, item: &VoiceItem, cx: &ExpandCx, scope: Scope) -> Timeline<ScoreFact> {
+fn elaborate_item(resolver: &mut Resolver, item: &VoiceItem, cx: &ExpandCx, scope: Scope) -> Timeline<ScoreFact> {
     match item {
         VoiceItem::Note(note) => {
-            let Some(duration) = resolve_scaled_duration(lowering, note.syntax(), cx) else {
+            let Some(duration) = resolve_scaled_duration(resolver, note.syntax(), cx) else {
                 return empty_segment();
             };
             let pitch_text = note.pitch().unwrap_or_default();
-            let Some(pitch) = lower::resolve_pitch(lowering, &pitch_text, note.syntax(), cx) else {
+            let Some(pitch) = resolve::resolve_pitch(resolver, &pitch_text, note.syntax(), cx) else {
                 return empty_segment();
             };
-            let span = lower::trimmed_span(note.syntax());
-            let articulations = articulations_of(lowering, &note.articulations(), span);
+            let span = resolve::trimmed_span(note.syntax());
+            let articulations = articulations_of(resolver, &note.articulations(), span);
             let origin = origin_of(cx, span);
             let mut fact = ScoreFact::new(
                 scope,
@@ -775,10 +775,10 @@ fn elaborate_item(lowering: &mut Lowering, item: &VoiceItem, cx: &ExpandCx, scop
             single(&duration, fact)
         }
         VoiceItem::Rest(rest) => {
-            let Some(duration) = resolve_scaled_duration(lowering, rest.syntax(), cx) else {
+            let Some(duration) = resolve_scaled_duration(resolver, rest.syntax(), cx) else {
                 return empty_segment();
             };
-            let span = lower::trimmed_span(rest.syntax());
+            let span = resolve::trimmed_span(rest.syntax());
             let origin = origin_of(cx, span);
             single(
                 &duration,
@@ -793,14 +793,14 @@ fn elaborate_item(lowering: &mut Lowering, item: &VoiceItem, cx: &ExpandCx, scop
             )
         }
         VoiceItem::Chord(chord) => {
-            let Some(duration) = resolve_scaled_duration(lowering, chord.syntax(), cx) else {
+            let Some(duration) = resolve_scaled_duration(resolver, chord.syntax(), cx) else {
                 return empty_segment();
             };
-            let node_span = lower::trimmed_span(chord.syntax());
-            let articulations = articulations_of(lowering, &chord.articulations(), node_span);
+            let node_span = resolve::trimmed_span(chord.syntax());
+            let articulations = articulations_of(resolver, &chord.articulations(), node_span);
             let mut pitches = Vec::new();
             for text in chord.pitches() {
-                match WrittenPitch::parse(&text).map(|pitch| apply_intervals(lowering, pitch, cx, chord.syntax())) {
+                match WrittenPitch::parse(&text).map(|pitch| apply_intervals(resolver, pitch, cx, chord.syntax())) {
                     Some(Some(pitch)) => {
                         let origin = origin_of(cx, node_span);
                         let mut fact = ScoreFact::new(
@@ -817,7 +817,10 @@ fn elaborate_item(lowering: &mut Lowering, item: &VoiceItem, cx: &ExpandCx, scop
                     }
                     Some(None) => break,
                     None => {
-                        lowering.error(format!("invalid chord pitch `{text}`"), lower::span_of(chord.syntax()));
+                        resolver.error(
+                            format!("invalid chord pitch `{text}`"),
+                            resolve::span_of(chord.syntax()),
+                        );
                     }
                 }
             }
@@ -831,17 +834,20 @@ fn elaborate_item(lowering: &mut Lowering, item: &VoiceItem, cx: &ExpandCx, scop
             )
             .unwrap_or_else(|_| musa_kernel::zero())
         }
-        VoiceItem::Use(call) => elaborate_use(lowering, call, cx, scope),
+        VoiceItem::Use(call) => elaborate_use(resolver, call, cx, scope),
         VoiceItem::Transpose(transpose) => {
             let text = transpose.interval().unwrap_or_default();
             let Some(interval) = crate::origin::Interval::parse(&text, transpose.is_down()) else {
-                lowering.error(format!("unknown interval `{text}`"), lower::span_of(transpose.syntax()));
+                resolver.error(
+                    format!("unknown interval `{text}`"),
+                    resolve::span_of(transpose.syntax()),
+                );
                 return empty_segment();
             };
             let mut inner = cx.clone();
             inner.intervals.push(interval);
             inner.path.push(ExpansionStep::Transposition(interval));
-            elaborate_items(lowering, &transpose.items(), &inner, scope)
+            elaborate_items(resolver, &transpose.items(), &inner, scope)
         }
         VoiceItem::Repeat(repeat) => {
             let count: u32 = repeat.count().and_then(|text| text.parse().ok()).unwrap_or(0);
@@ -849,57 +855,57 @@ fn elaborate_item(lowering: &mut Lowering, item: &VoiceItem, cx: &ExpandCx, scop
             for iteration in 0..count {
                 let mut inner = cx.clone();
                 inner.path.push(ExpansionStep::RepeatIteration(iteration));
-                segments.push(elaborate_items(lowering, &repeat.items(), &inner, scope));
+                segments.push(elaborate_items(resolver, &repeat.items(), &inner, scope));
             }
             sequence(segments)
         }
         VoiceItem::Slur(slur) => {
-            let origin = origin_of(cx, lower::trimmed_span(slur.syntax()));
-            let body = elaborate_items(lowering, &slur.items(), cx, scope);
+            let origin = origin_of(cx, resolve::trimmed_span(slur.syntax()));
+            let body = elaborate_items(resolver, &slur.items(), cx, scope);
             over(body, ScoreFact::new(scope, FactKind::Slur, origin))
         }
         VoiceItem::Phrase(phrase) => {
-            let origin = origin_of(cx, lower::trimmed_span(phrase.syntax()));
+            let origin = origin_of(cx, resolve::trimmed_span(phrase.syntax()));
             let name = phrase.name().unwrap_or_default();
-            let body = elaborate_items(lowering, &phrase.items(), cx, scope);
+            let body = elaborate_items(resolver, &phrase.items(), cx, scope);
             over(body, ScoreFact::new(scope, FactKind::Phrase { name }, origin))
         }
         VoiceItem::Hairpin(hairpin) => {
-            let span = lower::trimmed_span(hairpin.syntax());
+            let span = resolve::trimmed_span(hairpin.syntax());
             let text = hairpin.target().unwrap_or_default();
             let Some(target) = DynamicMark::parse(&text) else {
-                lowering.error(format!("unknown dynamic marking `{text}`"), span);
+                resolver.error(format!("unknown dynamic marking `{text}`"), span);
                 return empty_segment();
             };
             let origin = origin_of(cx, span);
             let grows = hairpin.grows();
-            let body = elaborate_items(lowering, &hairpin.items(), cx, scope);
+            let body = elaborate_items(resolver, &hairpin.items(), cx, scope);
             over(body, ScoreFact::new(scope, FactKind::Hairpin { grows, target }, origin))
         }
         VoiceItem::Tuplet(tuplet) => {
             let text = tuplet.ratio().unwrap_or_default();
-            let span = lower::trimmed_span(tuplet.syntax());
+            let span = resolve::trimmed_span(tuplet.syntax());
             let Some((num, den)) = parse_tuplet_ratio(&text) else {
-                lowering.error(format!("`{text}` is not a tuplet ratio such as `3/2`"), span);
+                resolver.error(format!("`{text}` is not a tuplet ratio such as `3/2`"), span);
                 return empty_segment();
             };
             let origin = origin_of(cx, span);
             let mut inner = cx.clone();
             inner.scale = cx.scale * Ratio::new(i64::from(den), i64::from(num));
-            let body = elaborate_items(lowering, &tuplet.items(), &inner, scope);
+            let body = elaborate_items(resolver, &tuplet.items(), &inner, scope);
             over(body, ScoreFact::new(scope, FactKind::Tuplet { num, den }, origin))
         }
         VoiceItem::Stretch(stretch) => {
             let text = stretch.factor().unwrap_or_default();
-            let span = lower::trimmed_span(stretch.syntax());
-            let factor = lower::parse_ratio(&text).or_else(|| text.parse::<i64>().ok().map(Ratio::from_integer));
+            let span = resolve::trimmed_span(stretch.syntax());
+            let factor = resolve::parse_ratio(&text).or_else(|| text.parse::<i64>().ok().map(Ratio::from_integer));
             let Some(factor) = factor.filter(|factor| *factor > Ratio::ZERO) else {
-                lowering.error(format!("`{text}` is not a positive stretch factor such as `3/2`"), span);
+                resolver.error(format!("`{text}` is not a positive stretch factor such as `3/2`"), span);
                 return empty_segment();
             };
             let mut inner = cx.clone();
             inner.path.push(ExpansionStep::Stretch(factor));
-            let elaborated = elaborate_items(lowering, &stretch.items(), &inner, scope);
+            let elaborated = elaborate_items(resolver, &stretch.items(), &inner, scope);
             // The kernel's time-scaling action (course correction §14) plus
             // the matching renotation: a stretched quarter is *written* as a
             // half, not as a quarter that lasts twice as long.
@@ -911,19 +917,19 @@ fn elaborate_item(lowering: &mut Lowering, item: &VoiceItem, cx: &ExpandCx, scop
         VoiceItem::Retrograde(retrograde) => {
             let mut inner = cx.clone();
             inner.path.push(ExpansionStep::Retrograde);
-            let elaborated = elaborate_items(lowering, &retrograde.items(), &inner, scope);
+            let elaborated = elaborate_items(resolver, &retrograde.items(), &inner, scope);
             reverse(&elaborated)
         }
         VoiceItem::Invert(invert) => {
             let text = invert.axis().unwrap_or_default();
-            let span = lower::trimmed_span(invert.syntax());
+            let span = resolve::trimmed_span(invert.syntax());
             let Some(axis) = WrittenPitch::parse(&text) else {
-                lowering.error(format!("`{text}` is not a pitch to invert around"), span);
+                resolver.error(format!("`{text}` is not a pitch to invert around"), span);
                 return empty_segment();
             };
             let mut inner = cx.clone();
             inner.path.push(ExpansionStep::Inversion { axis: text.clone() });
-            let elaborated = elaborate_items(lowering, &invert.items(), &inner, scope);
+            let elaborated = elaborate_items(resolver, &invert.items(), &inner, scope);
             // Inversion is a payload map (course correction §13). A note
             // whose mirror image is unspellable is reported where it is
             // written and left alone, so one impossible note does not take
@@ -938,7 +944,7 @@ fn elaborate_item(lowering: &mut Lowering, item: &VoiceItem, cx: &ExpandCx, scop
                 })
             });
             for (pitch, at) in refused.into_inner() {
-                lowering.error(
+                resolver.error(
                     format!("`{pitch}` inverted around `{text}` needs more than a double accidental"),
                     at,
                 );
@@ -947,11 +953,11 @@ fn elaborate_item(lowering: &mut Lowering, item: &VoiceItem, cx: &ExpandCx, scop
         }
         VoiceItem::Dynamic(dynamic) => {
             let text = dynamic.mark().unwrap_or_default();
-            let span = lower::trimmed_span(dynamic.syntax());
+            let span = resolve::trimmed_span(dynamic.syntax());
             match DynamicMark::parse(&text) {
                 Some(mark) => point(ScoreFact::new(scope, FactKind::Dynamic { mark }, origin_of(cx, span))),
                 None => {
-                    lowering.error(format!("unknown dynamic marking `{text}`"), span);
+                    resolver.error(format!("unknown dynamic marking `{text}`"), span);
                     empty_segment()
                 }
             }
@@ -969,8 +975,8 @@ fn parse_tuplet_ratio(text: &str) -> Option<(u32, u32)> {
 }
 
 /// The written duration of a statement, scaled by the enclosing tuplets.
-fn resolve_scaled_duration(lowering: &mut Lowering, node: &SyntaxNode, cx: &ExpandCx) -> Option<NotatedDuration> {
-    let duration = lower::resolve_duration(lowering, node, cx)?;
+fn resolve_scaled_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &ExpandCx) -> Option<NotatedDuration> {
+    let duration = resolve::resolve_duration(resolver, node, cx)?;
     Some(if cx.scale == Ratio::ONE {
         duration
     } else {
@@ -980,36 +986,36 @@ fn resolve_scaled_duration(lowering: &mut Lowering, node: &SyntaxNode, cx: &Expa
 
 /// Expand a `use` statement, mirroring the direct lowerer's binding rules.
 fn elaborate_use(
-    lowering: &mut Lowering,
+    resolver: &mut Resolver,
     call: &musa_language::ast::UseStmt,
     cx: &ExpandCx,
     scope: Scope,
 ) -> Timeline<ScoreFact> {
     let name = call.motif().unwrap_or_default();
-    let found = lowering
+    let found = resolver
         .motifs
         .get_full(&name)
         .map(|(index, _, motif)| (index, motif.params.clone(), motif.body.clone(), motif.declaration));
     let Some((index, motif_params, body, declaration)) = found else {
-        lowering.error(format!("unknown motif `{name}`"), lower::span_of(call.syntax()));
+        resolver.error(format!("unknown motif `{name}`"), resolve::span_of(call.syntax()));
         return empty_segment();
     };
     if index >= cx.max_motif {
-        lowering.error(
+        resolver.error(
             format!("motif `{name}` can only reference motifs declared before it"),
-            lower::span_of(call.syntax()),
+            resolve::span_of(call.syntax()),
         );
         return empty_segment();
     }
     let args = call.args();
     if args.len() > motif_params.len() {
-        lowering.error(
+        resolver.error(
             format!(
                 "motif `{name}` takes {} arguments, got {}",
                 motif_params.len(),
                 args.len()
             ),
-            lower::span_of(call.syntax()),
+            resolve::span_of(call.syntax()),
         );
         return empty_segment();
     }
@@ -1017,18 +1023,18 @@ fn elaborate_use(
     for (position, param) in motif_params.iter().enumerate() {
         let text = args.get(position).cloned().or_else(|| param.default.clone());
         let Some(text) = text else {
-            lowering.error(
+            resolver.error(
                 format!("motif `{name}`: missing argument `{}`", param.name),
-                lower::span_of(call.syntax()),
+                resolve::span_of(call.syntax()),
             );
             return empty_segment();
         };
-        let Some(value) = lower::bind_argument(lowering, &name, param, &text, cx, call.syntax()) else {
+        let Some(value) = resolve::bind_argument(resolver, &name, param, &text, cx, call.syntax()) else {
             return empty_segment();
         };
         params.insert(param.name.clone(), value);
     }
-    let call_span = lower::trimmed_span(call.syntax());
+    let call_span = resolve::trimmed_span(call.syntax());
     let inner = ExpandCx {
         params,
         intervals: cx.intervals.clone(),
@@ -1045,8 +1051,8 @@ fn elaborate_use(
         max_motif: index,
         scale: cx.scale,
     };
-    let elaborated = elaborate_items(lowering, &body, &inner, scope);
-    specialize(lowering, call, &elaborated)
+    let elaborated = elaborate_items(resolver, &body, &inner, scope);
+    specialize(resolver, call, &elaborated)
 }
 
 /// Apply an occurrence's `with { note n = <pitch>; }` overrides (roadmap §9).
@@ -1066,7 +1072,7 @@ fn elaborate_use(
 /// score can still say both "this came from the motif" and "and this call
 /// changed it" (roadmap §8.3).
 fn specialize(
-    lowering: &mut Lowering,
+    resolver: &mut Resolver,
     call: &musa_language::ast::UseStmt,
     elaborated: &Timeline<ScoreFact>,
 ) -> Timeline<ScoreFact> {
@@ -1099,21 +1105,21 @@ fn specialize(
 
     let mut replacements: indexmap::IndexMap<usize, (WrittenPitch, SourceSpan)> = indexmap::IndexMap::new();
     for each in &overrides {
-        let at = lower::trimmed_span(each.syntax());
+        let at = resolve::trimmed_span(each.syntax());
         let Some(position) = each
             .position()
             .and_then(|text| text.parse::<usize>().ok())
             .filter(|n| *n > 0)
         else {
-            lowering.error("a note override counts from `note 1`", at);
+            resolver.error("a note override counts from `note 1`", at);
             continue;
         };
         let Some(pitch) = each.pitch().as_deref().and_then(WrittenPitch::parse) else {
-            lowering.error("this override does not name a pitch", at);
+            resolver.error("this override does not name a pitch", at);
             continue;
         };
         let Some(&(start, end)) = positions.get(position.saturating_sub(1)) else {
-            lowering.error(
+            resolver.error(
                 format!(
                     "this occurrence has {} note{}, so there is no `note {position}`",
                     positions.len(),
@@ -1124,7 +1130,7 @@ fn specialize(
             continue;
         };
         if end.saturating_sub(start) > 1 {
-            lowering.error(
+            resolver.error(
                 format!("`note {position}` is a chord; an override respells one note"),
                 at,
             );
@@ -1136,11 +1142,11 @@ fn specialize(
             .and_then(|it| it.payload().pitch_of())
             .is_none()
         {
-            lowering.error(format!("`note {position}` is a rest; an override respells a note"), at);
+            resolver.error(format!("`note {position}` is a rest; an override respells a note"), at);
             continue;
         }
         if replacements.insert(start, (pitch, at)).is_some() {
-            lowering.error(format!("`note {position}` is overridden twice"), at);
+            resolver.error(format!("`note {position}` is overridden twice"), at);
         }
     }
     if replacements.is_empty() {
@@ -1259,7 +1265,7 @@ fn origin_of(cx: &ExpandCx, span: SourceSpan) -> Origin {
 
 /// Apply the transposition stack (shared semantics with the direct lowerer).
 fn apply_intervals(
-    lowering: &mut Lowering,
+    resolver: &mut Resolver,
     pitch: WrittenPitch,
     cx: &ExpandCx,
     node: &SyntaxNode,
@@ -1267,9 +1273,9 @@ fn apply_intervals(
     let mut current = pitch;
     for interval in &cx.intervals {
         let Some(next) = current.transpose(*interval) else {
-            lowering.error(
+            resolver.error(
                 format!("transposition of `{current}` needs more than a double accidental"),
-                lower::span_of(node),
+                resolve::span_of(node),
             );
             return None;
         };
@@ -1286,7 +1292,7 @@ fn apply_intervals(
 /// duration is the compound spelling, and nothing downstream ever sees a tie
 /// flag. A tie onto a different pitch, or with nothing after it, is a
 /// diagnostic here rather than a shape the projection has to cope with.
-fn merge_ties(lowering: &mut Lowering, timeline: Timeline<ScoreFact>) -> Timeline<ScoreFact> {
+fn merge_ties(resolver: &mut Resolver, timeline: Timeline<ScoreFact>) -> Timeline<ScoreFact> {
     if !timeline.occurrences().iter().any(|it| it.payload().tied) {
         return timeline;
     }
@@ -1310,7 +1316,7 @@ fn merge_ties(lowering: &mut Lowering, timeline: Timeline<ScoreFact>) -> Timelin
             let at = statement
                 .first()
                 .map_or_else(|| SourceSpan::new(0, 0), |first| first.payload().origin.definition_span);
-            lowering.error("a tie must be followed by the same pitch or chord", at);
+            resolver.error("a tie must be followed by the same pitch or chord", at);
             for occurrence in previous.iter_mut() {
                 untie(occurrence);
             }
@@ -1396,7 +1402,7 @@ fn join(previous: &mut [Occurrence<ScoreFact>], statement: &[Occurrence<ScoreFac
 /// continues into whatever follows the block, and merges at the level that
 /// contains both sides. Reported once, and cleared, so no fact leaves
 /// elaboration still claiming to be tied.
-fn check_dangling_tie(lowering: &mut Lowering, timeline: Timeline<ScoreFact>) -> Timeline<ScoreFact> {
+fn check_dangling_tie(resolver: &mut Resolver, timeline: Timeline<ScoreFact>) -> Timeline<ScoreFact> {
     if !timeline.occurrences().iter().any(|it| it.payload().tied) {
         return timeline;
     }
@@ -1408,7 +1414,7 @@ fn check_dangling_tie(lowering: &mut Lowering, timeline: Timeline<ScoreFact>) ->
             continue;
         }
         if !reported {
-            lowering.error(
+            resolver.error(
                 "this tie has no note after it",
                 occurrence.payload().origin.definition_span,
             );
@@ -1429,7 +1435,7 @@ fn untie(occurrence: &mut Occurrence<ScoreFact>) {
 /// A tuplet has to be spellable, and a group split across a barline is not:
 /// the notes on either side would need their own bracket and their own
 /// ratio, which is a different piece of music from the one that was written.
-fn check_tuplets(lowering: &mut Lowering, snapshot: &ScoreSnapshot) {
+fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
     let measure = snapshot.meter_map.measure_len().as_ratio();
     if measure == Ratio::ZERO {
         return;
@@ -1460,7 +1466,7 @@ fn check_tuplets(lowering: &mut Lowering, snapshot: &ScoreSnapshot) {
         }
     }
     for span in offenders {
-        lowering.error("a tuplet must fit inside one measure", span);
+        resolver.error("a tuplet must fit inside one measure", span);
     }
 }
 
@@ -1478,18 +1484,18 @@ pub fn kernel_normal_form(source: &SourceDocument) -> Option<String> {
         return None;
     }
     let piece = PieceDecl::from_root(&document.syntax())?;
-    let mut lowering = Lowering::new();
+    let mut resolver = Resolver::new();
     let mut snapshot = ScoreSnapshot::default();
-    lower::lower_header(&mut lowering, &piece, &mut snapshot);
+    resolve::lower_header(&mut resolver, &piece, &mut snapshot);
     let score = piece.score()?;
     let mut lanes = Vec::new();
     for (part_index, part) in score.parts().iter().enumerate() {
         let part_id = u32::try_from(part_index).unwrap_or(u32::MAX);
         for (index, voice) in part.voices().iter().enumerate() {
-            let voice_key = lowering.declare(crate::lower::DeclInfo::Voice);
-            let declaration = lower::ordinal(&lowering, voice_key);
+            let voice_key = resolver.declare(crate::resolve::DeclInfo::Voice);
+            let declaration = resolve::ordinal(&resolver, voice_key);
             lanes.push(elaborate_voice(
-                &mut lowering,
+                &mut resolver,
                 voice,
                 declaration,
                 part_id,
@@ -1499,6 +1505,6 @@ pub fn kernel_normal_form(source: &SourceDocument) -> Option<String> {
     }
     let music = overlay(lanes);
     let extent = music.extent();
-    let context = context_facts(&mut lowering, &piece, &score, &mut snapshot, extent);
+    let context = context_facts(&mut resolver, &piece, &score, &mut snapshot, extent);
     Some(overlay(vec![music, context]).to_string())
 }

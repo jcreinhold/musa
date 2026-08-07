@@ -25,8 +25,8 @@ use std::collections::HashMap;
 
 use musa_language::ast::{AstNode as _, LibraryDecl, PieceDecl};
 
-use crate::lower::Lowering;
 use crate::origin::SourceSpan;
+use crate::resolve::Resolver;
 
 /// The text of every file a compilation may import, by resolved path.
 ///
@@ -103,7 +103,7 @@ impl Libraries {
 ///
 /// Diagnostics from inside a library name the file, because a span from
 /// another document would point at the wrong bytes of this one.
-pub(crate) fn load(lowering: &mut Lowering, importer: &str, piece: &PieceDecl, sources: &ImportSources) -> Libraries {
+pub(crate) fn load(resolver: &mut Resolver, importer: &str, piece: &PieceDecl, sources: &ImportSources) -> Libraries {
     let mut loader = Loader {
         sources,
         libraries: Libraries {
@@ -114,9 +114,9 @@ pub(crate) fn load(lowering: &mut Lowering, importer: &str, piece: &PieceDecl, s
         stack: Vec::new(),
     };
     for import in piece.imports() {
-        let span = crate::lower::trimmed_span(import.syntax());
+        let span = crate::resolve::trimmed_span(import.syntax());
         let Some(written) = import.path() else { continue };
-        loader.load_one(lowering, importer, &written, span);
+        loader.load_one(resolver, importer, &written, span);
     }
     loader.libraries
 }
@@ -131,7 +131,7 @@ struct Loader<'a> {
 }
 
 impl Loader<'_> {
-    fn load_one(&mut self, lowering: &mut Lowering, importer: &str, written: &str, span: SourceSpan) {
+    fn load_one(&mut self, resolver: &mut Resolver, importer: &str, written: &str, span: SourceSpan) {
         let path = resolve_import(importer, written);
         if self.stack.contains(&path) {
             let cycle = self
@@ -141,24 +141,24 @@ impl Loader<'_> {
                 .chain(std::iter::once(path.as_str()))
                 .collect::<Vec<_>>()
                 .join(" → ");
-            lowering.error(format!("import cycle: {cycle}"), span);
+            resolver.error(format!("import cycle: {cycle}"), span);
             return;
         }
         if self.loaded.contains(&path) {
             return;
         }
         let Some(text) = self.sources.get(&path) else {
-            lowering.error(format!("cannot find `{path}`"), span);
+            resolver.error(format!("cannot find `{path}`"), span);
             return;
         };
         let document = musa_language::parse(text);
         if let Some(error) = document.errors().first() {
-            lowering.error(format!("`{path}`: {}", error.message()), span);
+            resolver.error(format!("`{path}`: {}", error.message()), span);
             return;
         }
         let root = document.syntax();
         if LibraryDecl::from_root(&root).is_none() {
-            lowering.error(
+            resolver.error(
                 format!("`{path}` is not a library; an imported file writes `library {{ ... }}`"),
                 span,
             );
@@ -175,7 +175,7 @@ impl Loader<'_> {
             .filter_map(musa_language::ast::ImportStmt::path)
             .collect();
         for import in nested {
-            self.load_one(lowering, &path, &import, span);
+            self.load_one(resolver, &path, &import, span);
         }
         self.stack.pop();
         self.libraries.documents.push(document);

@@ -8,7 +8,7 @@
 //!
 //! Owns: name resolution, unit checking, semantic diagnostics, the high-level
 //! compositional model (motifs, transformations, references), motif expansion,
-//! exact rational musical time, score normalization, performance lowering,
+//! exact rational musical time, score normalization, performance resolver,
 //! provenance (`Origin`/`ExpansionStep`), and the public immutable snapshots
 //! (`ScoreSnapshot`, `PerformancePlan`, `StudioSpec`) — design roadmap §15.3.
 //!
@@ -39,6 +39,7 @@ mod performance;
 mod pitch;
 mod profile;
 mod project;
+mod resolve;
 mod score;
 mod studio;
 mod time;

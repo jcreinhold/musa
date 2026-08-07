@@ -531,7 +531,7 @@ use musa_language::ast::{
 };
 
 use crate::compile::Diagnostic;
-use crate::lower::{span_of, trimmed_span};
+use crate::resolve::{span_of, trimmed_span};
 
 /// What a library's `studio` may not write.
 fn complain(node: &musa_language::SyntaxNode, what: &str, diagnostics: &mut Vec<Diagnostic>) {

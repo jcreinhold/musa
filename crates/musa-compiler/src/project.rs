@@ -17,7 +17,7 @@ use indexmap::IndexMap;
 use musa_kernel::{Occurrence, Timeline};
 
 use crate::elaborate::{FactKind, ScoreFact};
-use crate::lower::Lowering;
+use crate::resolve::Resolver;
 use crate::score::{
     ArticulationMarking, DynamicMarking, EventId, HairpinSpan, HarmonyMark, KeyMap, MeterMap, PhraseSpan, ScoreEvent,
     ScoreEventKind, SectionMark, SlurSpan, TupletSpan, Voice,
@@ -29,7 +29,7 @@ pub(crate) type Voices = IndexMap<(u32, u32), Voice>;
 
 /// Everything the snapshot reads off one piece timeline.
 ///
-/// The context maps are *here*, not in the header lowering, because after
+/// The context maps are *here*, not in the header resolver, because after
 /// prompt 40 the key and the meter are occurrences: the timeline states them
 /// and this is the reading of it. A piece with no key written has none, which
 /// is why `key` is an `Option` and `meter` is not — 4/4 governs a piece that
@@ -57,7 +57,7 @@ pub(crate) struct Projection {
 /// it encloses ([`crate::elaborate`]'s `over`). The projection relies on it to
 /// name the events at a region's ends; if it is ever violated, the
 /// elaboration that violated it is the bug.
-pub(crate) fn project(lowering: &mut Lowering, timeline: &Timeline<ScoreFact>) -> Projection {
+pub(crate) fn project(resolver: &mut Resolver, timeline: &Timeline<ScoreFact>) -> Projection {
     let mut buckets: IndexMap<(u32, u32), Vec<&Occurrence<ScoreFact>>> = IndexMap::new();
     let mut piece: Vec<&Occurrence<ScoreFact>> = Vec::new();
     for occurrence in timeline.occurrences() {
@@ -72,9 +72,9 @@ pub(crate) fn project(lowering: &mut Lowering, timeline: &Timeline<ScoreFact>) -
     }
     let mut voices = Voices::with_capacity(buckets.len());
     for (key, occurrences) in buckets {
-        voices.insert(key, project_voice(lowering, &occurrences));
+        voices.insert(key, project_voice(resolver, &occurrences));
     }
-    let (key, meter) = project_piece(lowering, &piece);
+    let (key, meter) = project_piece(resolver, &piece);
     Projection { voices, key, meter }
 }
 
@@ -84,7 +84,7 @@ pub(crate) fn project(lowering: &mut Lowering, timeline: &Timeline<ScoreFact>) -
 /// Order is source order, which is the order these lists have always been in:
 /// a form marker's place in the outline is where the composer wrote it, and
 /// two markers at one instant would otherwise swap on a re-elaboration.
-fn project_piece(lowering: &mut Lowering, occurrences: &[&Occurrence<ScoreFact>]) -> (Option<KeyMap>, MeterMap) {
+fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]) -> (Option<KeyMap>, MeterMap) {
     let mut ordered: Vec<&&Occurrence<ScoreFact>> = occurrences.iter().collect();
     ordered.sort_by_key(|occurrence| occurrence.payload().origin.definition_span.start);
     let mut key = None;
@@ -105,12 +105,12 @@ fn project_piece(lowering: &mut Lowering, occurrences: &[&Occurrence<ScoreFact>]
                     denominator: *denominator,
                 };
             }
-            FactKind::Section { name } => lowering.annotations.push_section(SectionMark {
+            FactKind::Section { name } => resolver.annotations.push_section(SectionMark {
                 name: name.clone(),
                 at,
                 origin: fact.origin.clone(),
             }),
-            FactKind::Harmony { symbol } => lowering.annotations.push_harmony(HarmonyMark {
+            FactKind::Harmony { symbol } => resolver.annotations.push_harmony(HarmonyMark {
                 symbol: symbol.clone(),
                 at,
                 origin: fact.origin.clone(),
@@ -128,7 +128,7 @@ fn project_piece(lowering: &mut Lowering, occurrences: &[&Occurrence<ScoreFact>]
 }
 
 /// One voice: its events, and the annotations that name them.
-fn project_voice(lowering: &mut Lowering, occurrences: &[&Occurrence<ScoreFact>]) -> Voice {
+fn project_voice(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]) -> Voice {
     let mut events: Vec<ScoreEvent> = Vec::with_capacity(occurrences.len());
     // Where each event sits, so a region can be resolved to the ids at its
     // ends without a second pass over the timeline.
@@ -145,11 +145,11 @@ fn project_voice(lowering: &mut Lowering, occurrences: &[&Occurrence<ScoreFact>]
         match &fact.kind {
             FactKind::Note { .. } | FactKind::Rest { .. } => {
                 let consumed = chord_len(occurrences, index);
-                if let Some(event) = event_from(lowering, occurrences, index, consumed) {
+                if let Some(event) = event_from(resolver, occurrences, index, consumed) {
                     let end = event.onset + event.notated_duration.value;
                     extents.push((event.onset, end, event.id));
                     for articulation in articulations(occurrences, index) {
-                        lowering.annotations.push_articulation(ArticulationMarking {
+                        resolver.annotations.push_articulation(ArticulationMarking {
                             at: event.id,
                             mark: articulation,
                             origin: event.origin.clone(),
@@ -175,8 +175,8 @@ fn project_voice(lowering: &mut Lowering, occurrences: &[&Occurrence<ScoreFact>]
         }
     }
 
-    project_points(lowering, &points, &extents);
-    project_regions(lowering, &mut regions, &extents);
+    project_points(resolver, &points, &extents);
+    project_regions(resolver, &mut regions, &extents);
     Voice { events }
 }
 
@@ -206,7 +206,7 @@ fn chord_len(occurrences: &[&Occurrence<ScoreFact>], index: usize) -> usize {
 /// `None` when there is nothing there to spell (unreachable at the call
 /// site, and a skipped event rather than a panic if it ever happens).
 fn event_from(
-    lowering: &mut Lowering,
+    resolver: &mut Resolver,
     occurrences: &[&Occurrence<ScoreFact>],
     index: usize,
     consumed: usize,
@@ -226,7 +226,7 @@ fn event_from(
         _ => ScoreEventKind::Chord { pitches },
     };
     Some(ScoreEvent {
-        id: lowering.event_id(),
+        id: resolver.event_id(),
         origin: fact.origin.clone(),
         onset: MusicalTime::new(first.span().start().as_ratio()),
         notated_duration: duration,
@@ -245,7 +245,7 @@ fn articulations(occurrences: &[&Occurrence<ScoreFact>], index: usize) -> Vec<cr
 
 /// Point facts — dynamics — take effect at the first event at or after them.
 fn project_points(
-    lowering: &mut Lowering,
+    resolver: &mut Resolver,
     points: &[&Occurrence<ScoreFact>],
     extents: &[(MusicalTime, MusicalTime, EventId)],
 ) {
@@ -258,10 +258,10 @@ fn project_points(
         };
         let at = MusicalTime::new(occurrence.span().start().as_ratio());
         let Some((_, _, id)) = extents.iter().find(|(onset, _, _)| *onset >= at) else {
-            lowering.error("this dynamic marking has no note after it", fact.origin.definition_span);
+            resolver.error("this dynamic marking has no note after it", fact.origin.definition_span);
             continue;
         };
-        lowering.annotations.push_dynamic(DynamicMarking {
+        resolver.annotations.push_dynamic(DynamicMarking {
             at: *id,
             mark,
             origin: fact.origin.clone(),
@@ -276,7 +276,7 @@ fn project_points(
 /// earlier comes first, and where two start together the one that ends later
 /// encloses the other.
 fn project_regions(
-    lowering: &mut Lowering,
+    resolver: &mut Resolver,
     regions: &mut [&Occurrence<ScoreFact>],
     extents: &[(MusicalTime, MusicalTime, EventId)],
 ) {
@@ -300,21 +300,21 @@ fn project_regions(
         }
         let (from, to, origin) = (*from, *to, fact.origin.clone());
         match &fact.kind {
-            FactKind::Slur => lowering.annotations.push_slur(SlurSpan { from, to, origin }),
-            FactKind::Phrase { name } => lowering.annotations.push_phrase(PhraseSpan {
+            FactKind::Slur => resolver.annotations.push_slur(SlurSpan { from, to, origin }),
+            FactKind::Phrase { name } => resolver.annotations.push_phrase(PhraseSpan {
                 name: name.clone(),
                 from,
                 to,
                 origin,
             }),
-            FactKind::Tuplet { num, den } => lowering.annotations.push_tuplet(TupletSpan {
+            FactKind::Tuplet { num, den } => resolver.annotations.push_tuplet(TupletSpan {
                 from,
                 to,
                 num: *num,
                 den: *den,
                 origin,
             }),
-            FactKind::Hairpin { grows, target } => lowering.annotations.push_hairpin(HairpinSpan {
+            FactKind::Hairpin { grows, target } => resolver.annotations.push_hairpin(HairpinSpan {
                 from,
                 to,
                 grows: *grows,

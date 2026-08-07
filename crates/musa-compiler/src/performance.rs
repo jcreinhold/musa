@@ -1,4 +1,4 @@
-//! Performance lowering (roadmap §6.4, §15.3; course correction §22): the
+//! Performance resolver (roadmap §6.4, §15.3; course correction §22): the
 //! neutral core that integrates the tempo map and schedules a
 //! `ScoreSnapshot` into frame-exact note-on/note-off events.
 //!
@@ -48,7 +48,7 @@ impl Tuning {
     }
 }
 
-/// Options for performance lowering.
+/// Options for performance resolver.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PerformanceOptions {
     /// Frames per second of the target render.
