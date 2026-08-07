@@ -55,7 +55,18 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
         // it reproduces faithfully is that a new score revision means the
         // engraver has a page to lay out again, which is what B2 measures.
         scoreRevision: compiles ? revision : current.scoreRevision,
-        diagnostics: compiles ? [] : [{ severity: "error", message: "expected `}`", span: null }],
+        // A real diagnostic points at a place, and the interface's whole
+        // answer to one is to go there — so the stub points at the brace it
+        // is complaining about rather than at nothing.
+        diagnostics: compiles
+          ? []
+          : [
+              {
+                severity: "error",
+                message: "expected `}`",
+                span: { start: source.lastIndexOf("{"), end: source.lastIndexOf("{") + 1 },
+              },
+            ],
       };
       return current;
     }

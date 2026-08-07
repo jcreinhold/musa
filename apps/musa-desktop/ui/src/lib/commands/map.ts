@@ -37,6 +37,8 @@ export interface Surface {
   follow(): void;
   /** Loop the selected range, or stop looping. */
   loop(): void;
+  /** Pin Origin view, for anyone who cannot hold a key while pointing. */
+  origin(): void;
   palette(open: boolean): void;
   keys(open: boolean): void;
   /** Clear the selection, or — with nothing selected — close the drawer. */
@@ -154,6 +156,11 @@ export const COMMANDS: readonly Command[] = [
   ),
   own("transport.loop", "Loop the selection", "Transport", "L", (surface) => surface.loop()),
   own("transport.follow", "Follow the playhead", "Transport", "F", (surface) => surface.follow()),
+
+  // The lens itself is held rather than run (`04-provenance.md` §2), so what
+  // the map carries is the pin: the same view, kept, for anyone who cannot
+  // hold a key and work the pointer at once.
+  own("view.origin", "Pin Origin view (hold O)", "View", "Shift+O", (surface) => surface.origin()),
 
   command("view.zoom.out", "View", (surface) => surface.zoom(-1)),
   command("view.zoom.in", "View", (surface) => surface.zoom(1)),

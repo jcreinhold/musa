@@ -27,7 +27,9 @@ export type Moment =
   /** The inspector is showing the chosen note's facts (B4). */
   | "inspector"
   /** An origin segment was clicked, so a new selection is owed (B9). */
-  | "origin";
+  | "origin"
+  /** Origin view was asked for, so the lens is owed (B9). */
+  | "lens";
 
 const enabled =
   typeof globalThis.location !== "undefined" &&

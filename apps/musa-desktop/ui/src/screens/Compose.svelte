@@ -18,6 +18,7 @@
   import { REPEAT_RIGHT_LEFT } from "../lib/ui/glyphs";
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
+  import type { Diagnostic, Span } from "../lib/state/snapshot";
   import Drawer from "./Drawer.svelte";
   import Inspector from "./Inspector.svelte";
   import PartsList from "./PartsList.svelte";
@@ -30,11 +31,18 @@
     playing,
     loop,
     follow,
+    origin,
+    pinned,
+    flash,
+    reveal,
     onzoom,
     onpinch,
     onmode,
     onloop,
     onfollow,
+    onpin,
+    onreveal,
+    ondiagnostic,
   }: {
     session: Session;
     workspace: Workspace;
@@ -45,17 +53,43 @@
     /** The looped range, as its first and last event ids. */
     loop: [string, string] | null;
     follow: "off" | "page" | "continuous";
+    /** Origin view, held or pinned (`04-provenance.md` §2). */
+    origin: boolean;
+    /** Whether it is pinned, which is what the toggle reports. */
+    pinned: boolean;
+    /** Event ids a diagnostic points at; their systems flash once. */
+    flash: string[];
+    /** A source span to put the caret at, once, when it changes. */
+    reveal: Span | null;
     onzoom: (by: number) => void;
     onpinch: (factor: number) => void;
     onmode: (mode: ViewMode) => void;
     onloop: () => void;
     onfollow: () => void;
+    onpin: () => void;
+    onreveal: (span: Span) => void;
+    ondiagnostic: (diagnostic: Diagnostic) => void;
   } = $props();
 
   const snapshot = $derived(session.snapshot);
   const score = $derived(snapshot?.score ?? null);
   const focused = $derived(workspace.focused);
   const problems = $derived(snapshot?.diagnostics.filter((d) => d.severity === "error") ?? []);
+
+  /**
+   * The expansion the source drawer is currently about: what the pointer is
+   * over while the lens is held, or failing that what is selected. Hover only
+   * counts while held, or the highlight would chase the pointer around the
+   * page (`04-provenance.md` §2).
+   */
+  const occurrence = $derived(
+    (origin ? workspace.hoveredOccurrence : undefined) ?? workspace.selectedOccurrence,
+  );
+
+  /** Its two spans: where the motif is declared, and where it was used. */
+  const highlight = $derived(
+    occurrence ? [occurrence.declaration, occurrence.useSite].filter((s) => s !== null) : [],
+  );
 
   // A new score is a new set of events. The selection is by id and usually
   // survives it untouched; when the note it was on is gone, this is what moves
@@ -117,6 +151,20 @@
             onclick={onfollow}>Follow</button
           >
         </div>
+
+        <!--
+          The lens is held — `O` or `⌥` — and this pins it, for anyone who
+          cannot hold a key while working the pointer (`04-provenance.md` §2).
+          It reports the pin, not the lens, because that is the state a click
+          changes.
+        -->
+        <button
+          type="button"
+          class="text origin"
+          aria-pressed={pinned}
+          title="Show where the music came from — hold O"
+          onclick={onpin}>Origin</button
+        >
         <TransportReadout
           {score}
           playback={snapshot.playback}
@@ -158,7 +206,7 @@
 
     <div class="body">
       <Margin side="left" label="Parts">
-        <PartsList parts={score.parts} {workspace} />
+        <PartsList parts={score.parts} {workspace} {origin} />
       </Margin>
 
       <main class="stage" class:continuous={mode === "continuous"}>
@@ -173,6 +221,8 @@
             {playing}
             {loop}
             {follow}
+            {origin}
+            {flash}
           />
         </Leaf>
       </main>
@@ -181,7 +231,9 @@
         <Inspector
           event={focused}
           adrift={workspace.adrift}
+          occurrence={workspace.selectedOccurrence}
           onorigin={(depth) => workspace.selectOrigin(depth)}
+          {onreveal}
         />
       </Margin>
     </div>
@@ -191,7 +243,10 @@
         source={session.text}
         editable={session.live}
         diagnostics={snapshot.diagnostics}
+        {highlight}
+        {reveal}
         onedit={(text) => session.edit(text)}
+        {ondiagnostic}
         bind:open={session.drawerOpen}
       />
     </Margin>
@@ -248,6 +303,11 @@
   /* The current view is the one set in ink; the other is an offer. */
   .text[aria-pressed="true"] {
     color: var(--ink);
+  }
+
+  /* Except the lens, whose whole subject is provenance. */
+  .text.origin[aria-pressed="true"] {
+    color: var(--plate);
   }
 
   /*

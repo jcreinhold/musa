@@ -24,6 +24,7 @@
     scale,
     staffSpace,
     marks,
+    onoccurrence,
   }: {
     /** 1-based page number, which the observer reports back. */
     number: number;
@@ -41,6 +42,8 @@
     staffSpace: number;
     /** What is drawn over this page, measured in its own coordinates. */
     marks: Marks;
+    /** Select an occurrence by clicking its Origin-view bracket. */
+    onoccurrence?: (id: string) => void;
   } = $props();
 
   /** How long the cross-fade lasts (`01-visual-language.md` §6). */
@@ -86,6 +89,10 @@
         playing={marks.playing}
         caret={marks.caret}
         loop={marks.loop}
+        flash={marks.flash}
+        brackets={marks.brackets}
+        trace={marks.trace}
+        {onoccurrence}
       />
     </div>
   {/if}

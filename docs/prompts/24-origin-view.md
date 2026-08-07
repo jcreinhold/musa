@@ -1,7 +1,7 @@
 ---
 id: 24
 slug: origin-view
-status: pending
+status: done
 depends_on: [23]
 phase: 1.5
 ---
@@ -32,9 +32,12 @@ program can, and it is the precondition for prompt 25's editing choice being com
 - **The lens** (`04-provenance.md` §2): hold `O` or `⌥`; 120 ms cross-fade (B9); authored stays full `--ink`, generated
   falls to `--plate` at 65 %; **no layout reflow** — ink and margin only. A pinned toggle in the top margin exists for
   users who cannot hold a key.
-- **Margin brackets**: each generated run gets a `⟨` in `--plate` in its system's left margin, labelled with the
-  occurrence, drawn in the prompt-22 overlay layer. Colour is never the only signal (`03-interaction.md` §5).
-- **Trace on hover**: one `1px --plate` hairline from the note to its occurrence bracket, plus source highlighting of
+- **Run brackets**: each generated run gets an editorial bracket in `--plate` over exactly the notes that expansion
+  produced, labelled with the occurrence, drawn in the prompt-22 overlay layer. Colour is never the only signal
+  (`03-interaction.md` §5). `04-provenance.md` §2 first put this bracket in the system's left margin; that is repaired
+  in this prompt, because glass-mountain's two occurrences share one system and two margin brackets at the same height
+  answer nothing.
+- **Trace on hover**: one `1px --plate` hairline from the note to its bracket, plus source highlighting of
   the `motif` declaration and the `use` statement when the drawer is open. Drawn instantly; it does not animate along
   its path.
 - **Click selects the occurrence**: all events that expansion produced, across bars and staves. This becomes the

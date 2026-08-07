@@ -28,6 +28,7 @@
   import { ThemeChoice } from "./lib/session/theme.svelte";
   import { mark } from "./lib/perf";
   import { fixture } from "./lib/state/fixtures";
+  import type { Diagnostic, Span } from "./lib/state/snapshot";
   import { Playhead, soundingAt } from "./lib/state/playhead.svelte";
   import { Workspace } from "./lib/state/selection.svelte";
   import { ViewPreferences, stepForPinch } from "./lib/state/view.svelte";
@@ -59,6 +60,26 @@
 
   let paletteOpen = $state(false);
   let keysOpen = $state(false);
+
+  /**
+   * Origin view (`04-provenance.md` §2): a held lens, not a mode with state to
+   * get lost in. It is held here rather than in the score pane because the
+   * parts list and the source drawer answer to it too — and because a key
+   * released while the pointer is over a menu must still release the lens.
+   */
+  let held = $state(false);
+  let pinned = $state(false);
+  const origin = $derived(held || pinned);
+
+  /** A source span to put the caret at, once: the inspector's line number,
+      or the diagnostic a composer just clicked (`05-states.md` §5). */
+  let reveal = $state<Span | null>(null);
+  /** Event ids whose systems flash once, for the same reason. */
+  let flash = $state<string[]>([]);
+  let fading: ReturnType<typeof setTimeout> | undefined;
+
+  /** How long a diagnostic's flash lasts, matching the overlay's animation. */
+  const FLASH_MS = 900;
 
   /** What the live regions are currently saying (§5). */
   let selectionSaid = $state("");
@@ -107,6 +128,25 @@
     transportSaid = `Looping bars ${from.bar} to ${to.bar}`;
   }
 
+  /** Open the source at a span, opening the drawer if it is shut. */
+  function open(span: Span): void {
+    session.drawerOpen = true;
+    // A new object every time, so asking for the same span twice reveals twice.
+    reveal = { ...span };
+  }
+
+  /**
+   * A diagnostic is a place: the source caret goes there and the system it is
+   * about flashes once (`05-states.md` §5). Never a toast, never a state that
+   * has to be dismissed — which is why the flash clears itself.
+   */
+  function showDiagnostic(diagnostic: Diagnostic): void {
+    if (diagnostic.span) open(diagnostic.span);
+    flash = workspace.eventsForSpan(diagnostic.span);
+    clearTimeout(fading);
+    fading = setTimeout(() => (flash = []), FLASH_MS);
+  }
+
   function cycleFollow(): void {
     follow = FOLLOWS[(FOLLOWS.indexOf(follow) + 1) % FOLLOWS.length] ?? "off";
     transportSaid = follow === "off" ? "Follow off" : `Follow ${follow}`;
@@ -131,6 +171,7 @@
     resetZoom: () => (zoomStep = DEFAULT_STEP),
     follow: cycleFollow,
     loop: toggleLoop,
+    origin: () => (pinned = !pinned),
     palette: (open) => (paletteOpen = open),
     keys: (open) => (keysOpen = open),
     escape,
@@ -158,14 +199,43 @@
       }
       return;
     }
+    // The lens is a hold, not a command: it lasts exactly as long as the key
+    // is down (`04-provenance.md` §2). `o` belongs to the score pane, so it is
+    // still an `o` while the composer is typing in the drawer; `⌥` is the
+    // second way in, and works wherever the pointer is.
+    if (lensKey(event) && !event.repeat) {
+      mark("lens");
+      held = true;
+      if (event.key !== "Alt") event.preventDefault();
+    }
     const command = commandFor(event, scopeOf(event.target));
     if (!command) return;
     event.preventDefault();
     command.run(surface);
   }
 
-  const pinned = parameters.get("theme");
-  if (pinned === "light" || pinned === "dark") theme.chosen = pinned;
+  /** Whether a keystroke is the lens: `O` in the score, or `⌥` anywhere. */
+  function lensKey(event: KeyboardEvent): boolean {
+    if (event.key === "Alt") return true;
+    // `⇧O` is the pin, which is a command and not a hold.
+    if (event.key !== "o" || event.shiftKey) return false;
+    return !event.metaKey && !event.ctrlKey && scopeOf(event.target) === "score";
+  }
+
+  function onkeyup(event: KeyboardEvent): void {
+    if (event.key === "Alt" || event.key === "o" || event.key === "O") held = false;
+  }
+
+  /**
+   * A key released while the window is not focused never arrives, so the lens
+   * would stick on. Losing focus releases it.
+   */
+  function onblur(): void {
+    held = false;
+  }
+
+  const pinnedTheme = parameters.get("theme");
+  if (pinnedTheme === "light" || pinnedTheme === "dark") theme.chosen = pinnedTheme;
 
   if (!session.live && chosen.snapshot) session.snapshot = chosen.snapshot;
 
@@ -201,6 +271,7 @@
       : Promise.resolve(() => {});
     return () => {
       stopFollowing();
+      clearTimeout(fading);
       playhead.dispose();
       void listening.then((stop) => stop());
       void commands.then((stop) => stop());
@@ -208,7 +279,7 @@
   });
 </script>
 
-<svelte:window {onkeydown} />
+<svelte:window {onkeydown} {onkeyup} {onblur} />
 
 {#if !session.live && parameters.get("view") === "sheet"}
   <Sheet fixture={chosen} />
@@ -221,11 +292,18 @@
     {playing}
     loop={looped}
     {follow}
+    {origin}
+    {pinned}
+    {flash}
+    {reveal}
     onzoom={stepZoom}
     onpinch={pinch}
     onmode={(chosenMode) => views.choose(piece, chosenMode)}
     onloop={toggleLoop}
     onfollow={cycleFollow}
+    onpin={() => (pinned = !pinned)}
+    onreveal={open}
+    ondiagnostic={showDiagnostic}
   />
 {:else}
   <Launch onopen={() => void session.open()} onnew={() => void session.create()} />

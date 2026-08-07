@@ -223,6 +223,10 @@ pub(crate) fn lower_header(lowering: &mut Lowering, piece: &PieceDecl, snapshot:
             body: motif.items(),
             declaration: ordinal(lowering, key),
         };
+        snapshot.motifs.push(crate::score::MotifDeclaration {
+            name: name.clone(),
+            span: trimmed_span(motif.syntax()),
+        });
         lowering.motifs.insert(name, definition);
     }
 }

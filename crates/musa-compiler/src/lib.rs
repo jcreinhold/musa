@@ -44,7 +44,7 @@ pub use crate::performance::{
 };
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::score::{
-    AnnotationStore, Clef, EventId, KeyMap, MeterMap, Mode, NotatedDuration, Part, PartId, PartMap, ScoreEvent,
-    ScoreEventKind, ScoreSnapshot, TempoMap, Voice, VoiceId,
+    AnnotationStore, Clef, EventId, KeyMap, MeterMap, Mode, MotifDeclaration, NotatedDuration, Part, PartId, PartMap,
+    ScoreEvent, ScoreEventKind, ScoreSnapshot, TempoMap, Voice, VoiceId,
 };
 pub use crate::time::{MusicalDuration, MusicalTime};

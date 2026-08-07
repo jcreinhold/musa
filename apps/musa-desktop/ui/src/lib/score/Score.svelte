@@ -25,7 +25,18 @@
   import { modeOptions, pageFor, pixelsPerUnit, type ViewMode } from "../engrave/options";
   import type { Workspace } from "../state/selection.svelte";
   import Page from "./Page.svelte";
-  import { boxesFor, pad, NOTHING, type Marks, type Rect } from "./geometry";
+  import {
+    boxesFor,
+    bracketNear,
+    bracketOver,
+    pad,
+    runsFor,
+    traceTo,
+    NOTHING,
+    type Bracket,
+    type Marks,
+    type Rect,
+  } from "./geometry";
   import { eventIdOf } from "./ids";
 
   let {
@@ -38,6 +49,8 @@
     playing = [],
     loop = null,
     follow = "off",
+    origin = false,
+    flash = [],
   }: {
     mei: string;
     revision: number;
@@ -53,6 +66,10 @@
     loop?: [string, string] | null;
     /** How the page follows the playhead: off, a page turn, or a scroll. */
     follow?: "off" | "page" | "continuous";
+    /** Origin view held or pinned (`04-provenance.md` §2). */
+    origin?: boolean;
+    /** Event ids a diagnostic points at; their systems flash once. */
+    flash?: string[];
   } = $props();
 
   /** Selection halo padding, in staff spaces (§8). */
@@ -70,6 +87,12 @@
   let visible = $state<Set<number>>(new Set([1]));
   /** Every mark on every resident page, measured in that page's own units. */
   let marks = $state<Map<number, Marks>>(new Map());
+  /**
+   * Origin view's margin brackets, kept apart from the rest of the marks
+   * because they cost a measurement per generated event and change only when
+   * the lens opens or the pages swap — never on a pointer move.
+   */
+  let brackets = $state<Map<number, Bracket[]>>(new Map());
   let width = $state(0);
   let height = $state(0);
   let gesture = $state(1);
@@ -214,6 +237,49 @@
     });
   });
 
+  /**
+   * The pages whose ink is the current layout's, with their numbers.
+   *
+   * The arriving ink only: a page mid-cross-fade still holds the outgoing
+   * engraving, and measuring that would both double every box and take the
+   * coordinates from the wrong root (`02-engraving.md` §6).
+   */
+  function arriving(container: HTMLElement): [number, HTMLElement][] {
+    const found: [number, HTMLElement][] = [];
+    for (const page of container.querySelectorAll<HTMLElement>(".page")) {
+      const ink = page.querySelector<HTMLElement>(".arriving");
+      if (ink) found.push([Number(page.dataset.page), ink]);
+    }
+    return found;
+  }
+
+  /**
+   * Origin view's brackets: one `⟨` per system a given expansion reached.
+   *
+   * Measured only while the lens is open, because it costs a box per generated
+   * event and a score can be mostly generated.
+   */
+  $effect(() => {
+    void resident;
+    const occurrences = origin ? (workspace?.occurrences ?? []) : [];
+    const container = host;
+    void staffSpace;
+    if (!container || occurrences.length === 0) {
+      brackets = new Map();
+      return;
+    }
+    const measured = new Map<number, Bracket[]>();
+    for (const [number, element] of arriving(container)) {
+      const found = occurrences.flatMap((occurrence) =>
+        runsFor(element, occurrence.events).map((where) =>
+          bracketOver(occurrence.id, occurrence.label, where.run, staffSpace),
+        ),
+      );
+      if (found.length > 0) measured.set(number, found);
+    }
+    brackets = measured;
+  });
+
   /** Measure after every page swap: the boxes belong to this layout only. */
   $effect(() => {
     void resident;
@@ -221,31 +287,37 @@
     const hovered = workspace?.hovered ?? null;
     const sounding = playing;
     const looped = loop;
+    const flashing = flash;
+    const bracketed = brackets;
+    const traced = origin ? hovered : null;
     const caret = workspace?.caretAt ?? null;
     const container = host;
     if (!container || resident.size === 0) {
       marks = new Map();
       return;
     }
+    const occurrenceOf = (id: string) =>
+      workspace?.snapshot?.score?.events.find((event) => event.id === id)?.origin.occurrence ?? null;
     const grow = (rect: Rect) => pad(rect, HALO_SPACES, staffSpace);
     const measured = new Map<number, Marks>();
-    for (const page of container.querySelectorAll<HTMLElement>(".page")) {
-      // The arriving ink only: a page mid-cross-fade still holds the outgoing
-      // engraving, and measuring that would both double every box and take
-      // the coordinates from the wrong root (`02-engraving.md` §6).
-      const element = page.querySelector<HTMLElement>(".arriving");
-      if (!element) continue;
-      const number = Number(page.dataset.page);
+    for (const [number, element] of arriving(container)) {
       const boxes = (id: string) => boxesFor(element, id);
       const first = (id: string) => boxesFor(element, id)[0] ?? null;
       const from = looped ? first(looped[0]) : null;
       const to = looped ? first(looped[1]) : null;
+      const here = bracketed.get(number) ?? [];
+      const at = traced ? first(traced) : null;
+      const occurrence = traced ? occurrenceOf(traced) : null;
+      const bracket = at && occurrence ? bracketNear(here, occurrence, at) : undefined;
       measured.set(number, {
         selection: ids.flatMap(boxes).map(grow),
         hover: hovered && !ids.includes(hovered) ? boxes(hovered).map(grow) : [],
         playing: sounding.flatMap(boxes).map(grow),
         caret: caret ? caretRect(first(caret.id), caret.side) : null,
         loop: from && to ? { from, to } : null,
+        flash: flashing.length > 0 ? runsFor(element, flashing).map((where) => where.system) : [],
+        brackets: here,
+        trace: bracket && at ? traceTo(bracket, at) : null,
       });
     }
     marks = measured;
@@ -308,18 +380,22 @@
     const describe = workspace.describe.bind(workspace);
     untrack(() => {
       void arrived;
-      const named = new Map(
-        (workspace.snapshot?.score?.events ?? []).map((event) => [event.id, describe(event)]),
+      const facts = new Map(
+        (workspace.snapshot?.score?.events ?? []).map((event) => [event.id, event]),
       );
       for (const element of container.querySelectorAll<SVGGraphicsElement>('g[id^="event-"]')) {
-        const label = named.get(eventIdOf(element) ?? "");
-        if (label === undefined) continue;
+        const event = facts.get(eventIdOf(element) ?? "");
+        if (event === undefined) continue;
         // `img` is the honest role for an engraved note: a graphic with a
         // name. `option`/`listitem` would demand a parent Verovio does not
         // write, and a `g` with no role may not carry a name at all.
         element.setAttribute("role", "img");
-        element.setAttribute("aria-label", label);
+        element.setAttribute("aria-label", describe(event));
         element.setAttribute("tabindex", "-1");
+        // Origin view is then a stylesheet, not a traversal: which ink is
+        // generated is stamped on the ink once, when the page arrives.
+        if (event.origin.generated) element.dataset["generated"] = "true";
+        else delete element.dataset["generated"];
       }
     });
   });
@@ -336,8 +412,24 @@
     if (!workspace) return;
     mark("select");
     const id = eventIdOf(event.target as Element);
-    if (id) workspace.select(id, event.shiftKey);
-    else workspace.clear();
+    if (!id) {
+      workspace.clear();
+      return;
+    }
+    // Held lens: a click asks about provenance, so the unit is the whole
+    // expansion rather than the notehead under the pointer (§2).
+    const generated = workspace.snapshot?.score?.events.find((candidate) => candidate.id === id);
+    if (origin && generated?.origin.occurrence) {
+      workspace.selectOccurrence(generated.origin.occurrence);
+      return;
+    }
+    workspace.select(id, event.shiftKey);
+  }
+
+  /** A click on a margin bracket selects what that expansion produced. */
+  function selectOccurrence(id: string): void {
+    mark("select");
+    workspace?.selectOccurrence(id);
   }
 
   function onpointermove(event: PointerEvent): void {
@@ -379,6 +471,7 @@
 <div
   class="engraving"
   class:continuous={mode === "continuous"}
+  class:origin
   bind:this={host}
   bind:clientWidth={width}
   bind:clientHeight={height}
@@ -401,6 +494,7 @@
           {scale}
           {staffSpace}
           marks={marks.get(number) ?? NOTHING}
+          onoccurrence={selectOccurrence}
         />
       </div>
     {/each}
@@ -445,5 +539,29 @@
    */
   .engraving :global(g[id^="event-"]) {
     pointer-events: bounding-box;
+  }
+
+  /*
+   * Origin view (`04-provenance.md` §2). Verovio's output inherits
+   * `currentColor`, so re-inking the generated groups is the whole lens: ink
+   * and opacity only, no reflow, nothing inserted into the engraving. The
+   * transition lives on the ink rather than on the held class so that
+   * releasing the key fades back rather than snapping.
+   */
+  .engraving :global(g[data-generated="true"]) {
+    transition:
+      color var(--m-base) var(--e-out),
+      opacity var(--m-base) var(--e-out);
+  }
+
+  .engraving.origin :global(g[data-generated="true"]) {
+    color: var(--plate);
+    opacity: 0.65;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .engraving :global(g[data-generated="true"]) {
+      transition: none;
+    }
   }
 </style>

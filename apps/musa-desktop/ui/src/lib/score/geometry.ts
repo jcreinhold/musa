@@ -54,6 +54,136 @@ export function boxesFor(container: ParentNode, id: string): Rect[] {
     .filter((rect): rect is Rect => rect !== null && rect.width > 0 && rect.height > 0);
 }
 
+/** The smallest box containing both. */
+function union(a: Rect, b: Rect): Rect {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x,
+    y,
+    width: Math.max(a.x + a.width, b.x + b.width) - x,
+    height: Math.max(a.y + a.height, b.y + b.height) - y,
+  };
+}
+
+/**
+ * A contiguous stretch of one expansion's output within one system, with the
+ * system it landed in.
+ *
+ * Origin view brackets runs rather than events, because a composer reads "this
+ * phrase came from `sigh()`", not "these five noteheads did"
+ * (`04-provenance.md` §2). The system comes from the engraving's own structure
+ * — Verovio's `g.system` — so the bracket sits in the margin the engraver laid
+ * out rather than at a guessed offset.
+ */
+export interface Run {
+  /** The system's own box: where its left margin is. */
+  system: Rect;
+  /** The union of this expansion's events inside that system. */
+  run: Rect;
+}
+
+/** Where `ids` landed on this page, split by system, in system order. */
+export function runsFor(container: ParentNode, ids: string[]): Run[] {
+  const root = pageRoot(container);
+  if (!root) return [];
+  const runs = new Map<Element, Rect>();
+  const systems = new Map<Element, Rect>();
+  for (const id of ids) {
+    for (const element of elementsOf(container, id)) {
+      if (!(element instanceof SVGGraphicsElement)) continue;
+      const rect = boxOf(root, element);
+      if (rect === null || rect.width <= 0 || rect.height <= 0) continue;
+      const owner = element.closest<SVGGraphicsElement>("g.system") ?? root;
+      const known = runs.get(owner);
+      runs.set(owner, known ? union(known, rect) : rect);
+      if (!systems.has(owner)) {
+        const box = boxOf(root, owner);
+        if (box) systems.set(owner, box);
+      }
+    }
+  }
+  const found: Run[] = [];
+  for (const [owner, run] of runs) {
+    const system = systems.get(owner);
+    if (system) found.push({ system, run });
+  }
+  return found.sort((a, b) => a.run.y - b.run.y);
+}
+
+/**
+ * One run's bracket, in the page's own coordinates: a span over the notes one
+ * expansion produced, with the terminals an editor would draw.
+ */
+export interface Bracket {
+  /** The occurrence this brackets, so a click on it can select it. */
+  id: string;
+  /** The expansion path as one line: `transpose down P5 ▸ sigh()`. */
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+}
+
+/** How far the bracket's terminals hang down, in staff spaces. */
+export const TICK_SPACES = 0.5;
+
+/** How far the bracket clears the run's ink, in staff spaces. */
+export const CLEARANCE_SPACES = 1.2;
+
+/** How far the bracket over-hangs the run at each end, in staff spaces. */
+export const OVERHANG_SPACES = 0.4;
+
+/** The bracket over one run of one expansion's output. */
+export function bracketOver(
+  id: string,
+  label: string,
+  run: Rect,
+  staffSpace: number,
+): Bracket {
+  const over = staffSpace * OVERHANG_SPACES;
+  return {
+    id,
+    label,
+    x: run.x - over,
+    y: run.y - staffSpace * CLEARANCE_SPACES,
+    width: run.width + over * 2,
+  };
+}
+
+/** The hover trace: one hairline from a note out to its bracket. */
+export interface Trace {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+/**
+ * The trace from a note up to its bracket's left terminal. One line, drawn
+ * instantly (`04-provenance.md` §2).
+ */
+export function traceTo(bracket: Bracket, rect: Rect): Trace {
+  return { x1: rect.x + rect.width / 2, y1: rect.y, x2: bracket.x, y2: bracket.y };
+}
+
+/**
+ * The bracket of `id` this note belongs to: the one whose span contains it,
+ * or failing that the nearest — a run and its bracket are the same notes, so
+ * containment is the answer except at the rounding of a box edge.
+ */
+export function bracketNear(brackets: Bracket[], id: string, rect: Rect): Bracket | undefined {
+  const mid = rect.x + rect.width / 2;
+  const off = (bracket: Bracket) =>
+    Math.max(bracket.x - mid, mid - (bracket.x + bracket.width), 0) + Math.abs(bracket.y - rect.y);
+  return brackets
+    .filter((bracket) => bracket.id === id)
+    .reduce<Bracket | undefined>(
+      (best, bracket) => (best === undefined || off(bracket) < off(best) ? bracket : best),
+      undefined,
+    );
+}
+
 /**
  * Everything drawn over one page.
  *
@@ -66,6 +196,11 @@ export interface Marks {
   playing: Rect[];
   caret: Rect | null;
   loop: { from: Rect; to: Rect } | null;
+  /** Systems a diagnostic points at, flashed once (`05-states.md` §5). */
+  flash: Rect[];
+  /** Origin view's margin brackets, empty unless the lens is held. */
+  brackets: Bracket[];
+  trace: Trace | null;
 }
 
 /** A page with nothing on it — the shared empty value, allocated once. */
@@ -75,6 +210,9 @@ export const NOTHING: Marks = Object.freeze({
   playing: [],
   caret: null,
   loop: null,
+  flash: [],
+  brackets: [],
+  trace: null,
 });
 
 /** A box grown by `spaces` staff spaces on every side. */

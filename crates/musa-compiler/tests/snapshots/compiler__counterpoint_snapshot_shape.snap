@@ -407,4 +407,5 @@ ScoreSnapshot {
         },
     ),
     annotations: AnnotationStore,
+    motifs: [],
 }

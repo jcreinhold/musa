@@ -12,7 +12,7 @@
    * Loop is a pair of repeat brackets in the margin, never a coloured
    * rectangle.
    */
-  import type { Rect } from "./geometry";
+  import { TICK_SPACES, type Bracket, type Rect, type Trace } from "./geometry";
 
   let {
     box,
@@ -22,6 +22,10 @@
     playing = [],
     caret = null,
     loop = null,
+    flash = [],
+    brackets = [],
+    trace = null,
+    onoccurrence,
   }: {
     /** The page's coordinate system, adopted verbatim from the engraving. */
     box: { width: number; height: number };
@@ -35,6 +39,14 @@
     caret?: Rect | null;
     /** The looped region's first and last note on this page. */
     loop?: { from: Rect; to: Rect } | null;
+    /** Systems a diagnostic points at, flashed once and then gone. */
+    flash?: Rect[];
+    /** Origin view's margin brackets (`04-provenance.md` §2). */
+    brackets?: Bracket[];
+    /** The hover trace from a generated note out to its bracket. */
+    trace?: Trace | null;
+    /** Select an occurrence by clicking its bracket. */
+    onoccurrence?: (id: string) => void;
   } = $props();
 
   /** Halo corners round at a third of a staff space — the score's own scale. */
@@ -45,6 +57,9 @@
 
   /** The caret's height: two staff spaces of hairline (§1). */
   const CARET_SPACES = 2;
+
+  /** The bracket label, set in the score's own unit rather than in pixels. */
+  const LABEL_SIZE = $derived(staffSpace * 1.3);
 </script>
 
 <svg
@@ -122,6 +137,64 @@
       r={staffSpace / 4}
     />
   {/if}
+
+  <!--
+    A diagnostic points at a place in the music, so the music says where: the
+    system flashes once, in --chalk, and is then gone (`05-states.md` §5). Not
+    a toast, and not a state that has to be dismissed.
+  -->
+  {#each flash as rect, index (index)}
+    <rect
+      class="flash"
+      x={rect.x}
+      y={rect.y}
+      width={rect.width}
+      height={rect.height}
+      rx={radius}
+    />
+  {/each}
+
+  <!--
+    Origin view's brackets: an editorial span over exactly the notes one
+    expansion produced (`04-provenance.md` §2). The extent is the first signal
+    and the label the second, because colour is never the only one
+    (`03-interaction.md` §5). Both sit above the ink, so nothing moves.
+  -->
+  {#each brackets as bracket (bracket.id + bracket.x)}
+    {@const tick = staffSpace * TICK_SPACES}
+    {@const right = bracket.x + bracket.width}
+    <g
+      class="bracket"
+      role="button"
+      tabindex="-1"
+      aria-label="Select the notes from {bracket.label}"
+      onpointerdown={(event) => event.stopPropagation()}
+      onclick={() => onoccurrence?.(bracket.id)}
+      onkeydown={(event) => {
+        if (event.key === "Enter" || event.key === " ") onoccurrence?.(bracket.id);
+      }}
+    >
+      <path
+        class="span"
+        d="M {bracket.x} {bracket.y + tick} L {bracket.x} {bracket.y} L {right} {bracket.y} L {right} {bracket.y + tick}"
+      />
+      <text class="label" x={bracket.x} y={bracket.y - tick} font-size={LABEL_SIZE}>
+        {bracket.label}
+      </text>
+      <!-- The band above the run is the hit area; a hairline is not clickable. -->
+      <rect
+        class="hit"
+        x={bracket.x}
+        y={bracket.y - tick * 2}
+        width={bracket.width}
+        height={tick * 3}
+      />
+    </g>
+  {/each}
+
+  {#if trace}
+    <line class="trace" x1={trace.x1} y1={trace.y1} x2={trace.x2} y2={trace.y2} />
+  {/if}
 </svg>
 
 <style>
@@ -168,5 +241,57 @@
   .loop.dot {
     fill: var(--plate);
     stroke: none;
+  }
+
+  .flash {
+    fill: var(--chalk);
+    fill-opacity: 0;
+    animation: flash 900ms var(--e-out);
+  }
+
+  @keyframes flash {
+    30% {
+      fill-opacity: 0.14;
+    }
+  }
+
+  .bracket {
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
+  .span {
+    fill: none;
+    stroke: var(--plate);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .label {
+    fill: var(--plate);
+    font-family: var(--f-ui);
+    font-weight: 500;
+    letter-spacing: var(--tracking-micro);
+    text-transform: uppercase;
+  }
+
+  .hit {
+    fill: transparent;
+  }
+
+  .trace {
+    stroke: var(--plate);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* The trace is drawn instantly; it does not animate along its path (§2). */
+  @media (prefers-reduced-motion: reduce) {
+    .flash {
+      animation: none;
+      fill-opacity: 0.14;
+    }
   }
 </style>

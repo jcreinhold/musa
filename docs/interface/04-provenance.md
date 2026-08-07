@@ -29,14 +29,22 @@ While held, over 120 ms:
 - **Authored music stays exactly as it is** — full `--ink`, unmoved.
 - **Generated music fades to `--plate` at 65 % opacity.** The page separates into what you wrote and what the language
   produced. Nothing moves; only ink changes.
-- Each generated **run** gets a `⟨` bracket in the left margin of its system, in `--plate`, labelled with the occurrence
-  in `--t-micro`: `sigh()`, `transpose down P5 ▸ sigh()`. Colour is never the only signal (`03-interaction.md` §5).
+- Each generated **run** gets an editorial bracket above it, in `--plate`, spanning exactly the notes that expansion
+  produced and labelled with the occurrence in `--t-micro`: `sigh()`, `transpose down P5 ▸ sigh()`. Colour is never the
+  only signal (`03-interaction.md` §5).
+
+  *Amended (prompt 24).* This was first specified as a `⟨` in the left margin of the run's system. That is right when a
+  system carries one run and wrong the moment it carries two — which is the very first case, `glass-mountain.musa`,
+  whose two `sigh()` occurrences are four bars apart on one system. Two margin brackets at the same height, with two
+  labels on top of each other, answer nothing. The bracket therefore sits over the run it is about, where an editor
+  would draw it, and says by its own extent which notes it means. It is still drawn in the overlay layer, still ink
+  only, and still moves nothing.
 - The parts list dims voices with no generated material, so the structure of the piece is legible at a glance.
 - The source drawer, if open, highlights the `use` statement and the enclosing transform blocks that produced what is
   on screen.
 
 **Hovering a generated note while Origin view is held** draws the trace: a `1px --plate` hairline from the note, out to
-the margin bracket of its occurrence, and — when the drawer is open — a matching highlight on the `motif` declaration
+the bracket of its occurrence, and — when the drawer is open — a matching highlight on the `motif` declaration
 and the `use` statement in the source. One line, one highlight, drawn instantly; it does not animate along its path.
 
 **Clicking a generated note while Origin view is held** selects the whole occurrence — all the notes that expansion

@@ -170,9 +170,37 @@ test.describe("selection", () => {
   });
 
   /**
-   * B9 is stated for the Origin *view*, which is prompt 24. What exists now
-   * is the Origin row's segments, and they are the same interaction with the
-   * same rule: it is an ink change, and it must cost like one.
+   * B9, the budget itself: Origin view enters in 120 ms and reflows nothing.
+   *
+   * The clock runs from the key going down to the frame the brackets are
+   * measured in — the last thing the lens owes. The reflow half of the budget
+   * is asserted in `origin.spec.ts`, by measuring the notes.
+   */
+  test("B9: Origin view opens within 120 ms of the key", async ({ page }) => {
+    await stubShell(page);
+    await page.goto("/?perf=1");
+    await engraved(page);
+    await page.getByRole("application", { name: "Engraved score" }).focus();
+
+    const samples: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      await page.evaluate(() => performance.clearMarks());
+      await page.keyboard.down("o");
+      await page.waitForFunction(
+        () => performance.getEntriesByName("musa:halo", "mark").length > 0,
+      );
+      samples.push((await at(page, "halo")) - (await at(page, "lens")));
+      await page.keyboard.up("o");
+    }
+    expect(
+      p95(samples),
+      `Origin view opened at p95 ${Math.round(p95(samples))} ms`,
+    ).toBeLessThanOrEqual(120);
+  });
+
+  /**
+   * The same rule for the Origin row's segments: following one is an ink
+   * change too, and must cost like one.
    */
   test("B9: following an origin segment costs no more than an ink change", async ({ page }) => {
     await stubShell(page);

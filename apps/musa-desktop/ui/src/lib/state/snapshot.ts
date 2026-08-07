@@ -33,6 +33,32 @@ export interface OriginFacts {
   noteIndex: number | null;
   line: number;
   span: Span;
+  /** The occurrence that produced this event, when it was generated. */
+  occurrence: string | null;
+}
+
+/**
+ * One expansion that ran: the unit Origin view brackets, traces, and selects.
+ *
+ * Identity is the whole expansion path, so two `use sigh()` statements are two
+ * occurrences even though they read the same on the page.
+ */
+export interface OccurrenceFacts {
+  id: string;
+  /** Containment order, outside in. */
+  path: string[];
+  /** The path as one line, for a margin bracket's label. */
+  label: string;
+  /** The motif's name, when a motif produced this. */
+  motif: string | null;
+  /** Where that motif is declared, for revealing it in the drawer. */
+  declaration: Span | null;
+  /** The `use` statement that ran. */
+  useSite: Span;
+  /** 1-based line of the `use` statement. */
+  line: number;
+  /** Every event this expansion produced, in score order. */
+  events: string[];
 }
 
 export interface EventFacts {
@@ -76,6 +102,7 @@ export interface ScoreFacts {
   meterUnit: number;
   parts: PartFacts[];
   events: EventFacts[];
+  occurrences: OccurrenceFacts[];
 }
 
 export interface PlaybackState {

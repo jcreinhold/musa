@@ -8,12 +8,14 @@
   import Fraction from "../lib/ui/Fraction.svelte";
   import Position from "../lib/ui/Position.svelte";
   import TypographicRow from "../lib/ui/TypographicRow.svelte";
-  import type { EventFacts } from "../lib/state/snapshot";
+  import type { EventFacts, OccurrenceFacts, Span } from "../lib/state/snapshot";
 
   let {
     event,
     adrift = null,
+    occurrence,
     onorigin,
+    onreveal,
   }: {
     event: EventFacts | undefined;
     /**
@@ -29,7 +31,14 @@
      * in — the engraving goldens.
      */
     onorigin?: (depth: number) => void;
+    /** The expansion that produced this event, when one did. */
+    occurrence?: OccurrenceFacts;
+    /** Open the source at a span: the line number's whole job. */
+    onreveal?: (span: Span) => void;
   } = $props();
+
+  /** Where "line N" goes: the `use` statement, or failing that the event. */
+  const at = $derived(occurrence?.useSite ?? event?.origin.span);
 
   const sounds = $derived(event && event.kind !== "rest");
 
@@ -77,12 +86,21 @@
     <!--
       The Origin row of 04-provenance.md §3: always present, held or not. It
       reads outside-in, in containment order — the `use` that produced these
-      notes sits inside the transform block, and the path says so. Its
-      Its segments are clickable: each selects what that generator produced in
-      this voice (`03-interaction.md` §1). The held lens is prompt 24.
+      notes sits inside the transform block, and the path says so.
+
+      Every part of it is a control. A transform segment selects what it
+      produced in this voice; the innermost segment is the occurrence itself,
+      so it selects the whole expansion and reveals the motif's declaration in
+      the drawer; the line number opens the source at the `use` statement.
     -->
     <TypographicRow label="Origin">
-      {#snippet trailing()}line {event.origin.line}{/snippet}
+      {#snippet trailing()}
+        {#if at && onreveal}
+          <button type="button" class="segment line" onclick={() => onreveal(at)}
+            >line {event.origin.line}</button
+          >
+        {:else}line {event.origin.line}{/if}
+      {/snippet}
       {#if event.origin.generated}
         <span class="path">
           {#each event.origin.path as segment, index (index)}
@@ -159,6 +177,11 @@
 
   button.segment:disabled {
     cursor: default;
+  }
+
+  /* The line number is chrome, not provenance: it stays the row's quiet trailing. */
+  button.segment.line {
+    color: inherit;
   }
 
   .path {

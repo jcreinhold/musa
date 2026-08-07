@@ -9,7 +9,19 @@
   import type { PartFacts } from "../lib/state/snapshot";
   import type { Workspace } from "../lib/state/selection.svelte";
 
-  let { parts, workspace }: { parts: PartFacts[]; workspace: Workspace } = $props();
+  let {
+    parts,
+    workspace,
+    origin = false,
+  }: {
+    parts: PartFacts[];
+    workspace: Workspace;
+    /**
+     * Origin view held: voices with nothing generated in them recede, so the
+     * structure of the piece is legible at a glance (`04-provenance.md` §2).
+     */
+    origin?: boolean;
+  } = $props();
 
   const active = $derived(workspace.active);
   let heights = $state<number[]>([]);
@@ -25,6 +37,7 @@
             type="button"
             class="voice"
             class:generated={voice.generated}
+            class:aside={origin && !voice.generated}
             class:active={active?.part === part.name && active?.voice === voice.name}
             onclick={() => workspace.selectVoice(part.name, voice.name)}
           >
@@ -85,6 +98,25 @@
 
   .voice.active {
     color: var(--plate);
+  }
+
+  /*
+   * Recede, do not disappear: the voice is still a control, still readable,
+   * and still the thing a click selects. The lens answers "where is the
+   * generated material", not "what may I touch".
+   */
+  .voice {
+    transition: opacity var(--m-base) var(--e-out);
+  }
+
+  .voice.aside {
+    opacity: 0.45;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .voice {
+      transition: none;
+    }
   }
 
   /* A voice the language produced rather than one that was typed. */

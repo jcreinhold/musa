@@ -228,6 +228,20 @@ pub struct AnnotationStore {
     // Prompt 17: slur/dynamic/articulation spans; prompt 25: phrase/harmony.
 }
 
+/// A motif declaration, kept so a consumer can point at where a motif is
+/// written rather than only at where it was used.
+///
+/// Expansion records the call site; the declaration is the other half of the
+/// answer to "where did this note come from", and only the compiler knows it
+/// (`docs/interface/04-provenance.md` §3).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MotifDeclaration {
+    /// The motif's name, as declared.
+    pub name: String,
+    /// The span of the whole `motif` declaration.
+    pub span: crate::origin::SourceSpan,
+}
+
 /// The expanded score: finite, sorted, immutable, still musically spelled
 /// (roadmap §6.3).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -244,4 +258,6 @@ pub struct ScoreSnapshot {
     pub key_map: Option<KeyMap>,
     /// Score annotations.
     pub annotations: AnnotationStore,
+    /// Every motif declared in the piece, in source order.
+    pub motifs: Vec<MotifDeclaration>,
 }

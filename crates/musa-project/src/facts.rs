@@ -59,10 +59,42 @@ pub struct OriginFacts {
     /// Which note of its occurrence this is, 1-based — the `▸ note 3` tail
     /// of the inspector's Origin row. Absent for authored events.
     pub note_index: Option<u32>,
+    /// The occurrence that produced it, when generated — the key into
+    /// `ScoreFacts::occurrences`.
+    pub occurrence: Option<String>,
     /// 1-based line in the source that (transitively) produced the event.
     pub line: u32,
     /// The source byte range, for revealing it in the drawer.
     pub span: crate::diagnostic::Span,
+}
+
+/// One expansion, and everything it produced
+/// (`docs/interface/04-provenance.md` §2).
+///
+/// An occurrence is a single act of expansion: one `use` inside whatever
+/// transform blocks enclose it. Two `use sigh()` statements are two
+/// occurrences even though they read the same, and the same `use` inside a
+/// `transpose` block is a third — which is exactly the distinction a composer
+/// is asking about when they hold the lens.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OccurrenceFacts {
+    /// Stable within one compile; the id events point at.
+    pub id: String,
+    /// The expansion path, outside in: `["transpose down P5", "sigh()"]`.
+    pub path: Vec<String>,
+    /// The path as one line, for a margin bracket's label.
+    pub label: String,
+    /// The motif's name, when a motif produced this: `sigh`.
+    pub motif: Option<String>,
+    /// Where that motif is declared, for revealing it in the drawer.
+    pub declaration: Option<crate::diagnostic::Span>,
+    /// The `use` statement that ran.
+    pub use_site: crate::diagnostic::Span,
+    /// 1-based line of the `use` statement.
+    pub line: u32,
+    /// Every event this expansion produced, in score order.
+    pub events: Vec<String>,
 }
 
 /// One event, as the inspector reads it.
@@ -146,6 +178,8 @@ pub struct ScoreFacts {
     pub parts: Vec<PartFacts>,
     /// Every event, in score order, keyed by its engraved `xml:id`.
     pub events: Vec<EventFacts>,
+    /// Every expansion in the piece, in the order they were first met.
+    pub occurrences: Vec<OccurrenceFacts>,
 }
 
 impl ScoreFacts {
@@ -163,6 +197,12 @@ impl ScoreFacts {
 
         let mut parts = Vec::new();
         let mut events = Vec::new();
+        // Occurrences, and the expansion paths that identify them. Identity is
+        // the path itself — call-site spans and transform arguments included —
+        // so two `use sigh()` statements are two occurrences even though they
+        // read the same on the page.
+        let mut occurrences: Vec<OccurrenceFacts> = Vec::new();
+        let mut paths: Vec<Vec<ExpansionStep>> = Vec::new();
         for (_, part) in score.parts.iter() {
             let mut voices = Vec::new();
             for (voice_id, voice) in &part.voices {
@@ -172,20 +212,32 @@ impl ScoreFacts {
                     .cloned()
                     .unwrap_or_else(|| voice_id.0.to_string());
                 let mut generated = false;
-                // How many notes of the current occurrence have been seen, so
-                // the inspector can say "note 3 of sigh()".
-                let mut occurrence: Option<(Vec<String>, u32)> = None;
                 for event in &voice.events {
+                    let id = format!("event-{:x}", event.id.0);
                     let mut origin = origin_facts(&event.origin, &lines, source);
                     if origin.generated {
-                        let index = match occurrence.take() {
-                            Some((path, count)) if path == origin.path => count.saturating_add(1),
-                            _ => 1,
+                        let at = match paths.iter().position(|known| *known == event.origin.expansion_path) {
+                            Some(at) => at,
+                            None => {
+                                paths.push(event.origin.expansion_path.clone());
+                                occurrences.push(occurrence_facts(
+                                    occurrences.len(),
+                                    &origin.path,
+                                    &event.origin.expansion_path,
+                                    score,
+                                    &lines,
+                                    source,
+                                ));
+                                occurrences.len().saturating_sub(1)
+                            }
                         };
-                        occurrence = Some((origin.path.clone(), index));
-                        origin.note_index = Some(index);
-                    } else {
-                        occurrence = None;
+                        if let Some(occurrence) = occurrences.get_mut(at) {
+                            occurrence.events.push(id.clone());
+                            // Which note of this expansion it is — the `▸ note 3`
+                            // tail of the inspector's Origin row.
+                            origin.note_index = u32::try_from(occurrence.events.len()).ok();
+                            origin.occurrence = Some(occurrence.id.clone());
+                        }
                     }
                     generated |= origin.generated;
                     let onset = event.onset.as_ratio();
@@ -196,7 +248,7 @@ impl ScoreFacts {
                     #[expect(clippy::arithmetic_side_effects, reason = "exact rational musical time")]
                     let end = event.onset + event.notated_duration.value;
                     events.push(EventFacts {
-                        id: format!("event-{:x}", event.id.0),
+                        id,
                         part: part.name.clone(),
                         voice: name.clone(),
                         kind: kind_of(&event.kind),
@@ -230,8 +282,66 @@ impl ScoreFacts {
             meter_unit: score.meter_map.denominator,
             parts,
             events,
+            occurrences,
         }
     }
+}
+
+/// One occurrence's row, built the first time an event from it is met.
+fn occurrence_facts(
+    at: usize,
+    path: &[String],
+    steps: &[ExpansionStep],
+    score: &ScoreSnapshot,
+    lines: &LineIndex,
+    source: &str,
+) -> OccurrenceFacts {
+    // The motif application is the innermost step, and therefore the last:
+    // `transpose down P5 ▸ sigh()` is a `use` inside a transform block.
+    let call_site = steps.iter().rev().find_map(|step| match *step {
+        ExpansionStep::MotifApplication { call_site } => Some(call_site),
+        ExpansionStep::RepeatIteration(_)
+        | ExpansionStep::Transposition(_)
+        | ExpansionStep::Stretch(_)
+        | ExpansionStep::Retrograde => None,
+    });
+    let motif = call_site.map(|span| motif_name(source, span.start, span.end));
+    let declaration = motif.as_ref().and_then(|name| {
+        score
+            .motifs
+            .iter()
+            .find(|declared| declared.name == *name)
+            .map(|declared| crate::diagnostic::Span {
+                start: declared.span.start,
+                end: declared.span.end,
+            })
+    });
+    let use_site = call_site.map_or(crate::diagnostic::Span { start: 0, end: 0 }, |span| {
+        crate::diagnostic::Span {
+            start: span.start,
+            end: span.end,
+        }
+    });
+    OccurrenceFacts {
+        id: format!("occurrence-{at:x}"),
+        path: path.to_vec(),
+        label: path.join(" \u{25b8} "),
+        motif,
+        declaration,
+        use_site,
+        line: lines.line_of(use_site.start),
+        events: Vec::new(),
+    }
+}
+
+/// `use sigh(a4);` → `sigh`.
+fn motif_name(source: &str, start: u32, end: u32) -> String {
+    let called = call_site_name(source, start, end);
+    called
+        .split_once('(')
+        .map_or(called.as_str(), |(name, _)| name)
+        .trim()
+        .to_owned()
 }
 
 /// Bar and beat, both 1-based, from an onset in whole notes.
@@ -312,6 +422,7 @@ fn origin_facts(origin: &Origin, lines: &LineIndex, source: &str) -> OriginFacts
         generated: !origin.expansion_path.is_empty(),
         path: origin.expansion_path.iter().map(|it| step(it, source)).collect(),
         note_index: None,
+        occurrence: None,
         line: lines.line_of(origin.source_span.start),
         span: crate::diagnostic::Span {
             start: origin.source_span.start,

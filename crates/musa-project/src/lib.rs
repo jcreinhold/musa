@@ -46,7 +46,9 @@ pub use crate::command::{ProjectCommand, ProjectUpdate, Revision, TextEdit, Tran
 pub use crate::diagnostic::{Diagnostic, Severity, Span};
 pub use crate::error::ProjectError;
 pub use crate::export::{ExportArtifact, ExportRequest};
-pub use crate::facts::{EventFacts, EventKind, Fraction, OriginFacts, PartFacts, ScoreFacts, VoiceFacts};
+pub use crate::facts::{
+    EventFacts, EventKind, Fraction, OccurrenceFacts, OriginFacts, PartFacts, ScoreFacts, VoiceFacts,
+};
 pub use crate::session::ProjectSession;
 pub use crate::snapshot::{PlaybackState, ProjectSnapshot};
 pub use crate::template::Template;

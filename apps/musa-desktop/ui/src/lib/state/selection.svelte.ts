@@ -9,7 +9,7 @@
  * model, and is constructed from prompt 25 onward when entry exists.
  */
 
-import type { EventFacts, ProjectSnapshot } from "./snapshot";
+import type { EventFacts, OccurrenceFacts, ProjectSnapshot, Span } from "./snapshot";
 
 export type Selection =
   | { kind: "none" }
@@ -233,6 +233,10 @@ export class Workspace {
   selectOrigin(depth: number): void {
     const here = this.focused;
     if (!here || depth <= 0) return;
+    // The innermost segment *is* the occurrence, and the core already listed
+    // exactly what it produced — across voices and staves, which a path
+    // prefix within one voice cannot reach (`04-provenance.md` §2).
+    if (depth >= here.origin.path.length && this.selectOccurrence(here.origin.occurrence)) return;
     const prefix = here.origin.path.slice(0, depth);
     const kin = voiceEvents(this.snapshot, here.part, here.voice).filter((event) =>
       prefix.every((segment, index) => event.origin.path[index] === segment),
@@ -240,6 +244,60 @@ export class Workspace {
     if (kin.length === 0) return;
     this.adrift = null;
     this.selection = { kind: "event", events: kin.map((event) => event.id) };
+  }
+
+  /** Every expansion that ran in this score, as the core listed them. */
+  get occurrences(): OccurrenceFacts[] {
+    return this.snapshot?.score?.occurrences ?? [];
+  }
+
+  /** The occurrence with this id, or undefined. */
+  occurrence(id: string | null): OccurrenceFacts | undefined {
+    return id === null ? undefined : this.occurrences.find((candidate) => candidate.id === id);
+  }
+
+  /**
+   * Select everything one expansion produced (`04-provenance.md` §2): the unit
+   * a composer wants to operate on, and the one prompt 25's edit-definition
+   * path acts through. Reports whether there was an occurrence to select.
+   */
+  selectOccurrence(id: string | null): boolean {
+    const occurrence = this.occurrence(id);
+    if (!occurrence || occurrence.events.length === 0) return false;
+    this.adrift = null;
+    this.selection = { kind: "event", events: [...occurrence.events] };
+    return true;
+  }
+
+  /** The expansion that produced an event, when one did. */
+  occurrenceOf(eventId: string | null): OccurrenceFacts | undefined {
+    const event = (this.snapshot?.score?.events ?? []).find(
+      (candidate) => candidate.id === eventId,
+    );
+    return this.occurrence(event?.origin.occurrence ?? null);
+  }
+
+  /** The expansion the selection landed in — one, never several. */
+  get selectedOccurrence(): OccurrenceFacts | undefined {
+    return this.occurrenceOf(this.selected[0] ?? null);
+  }
+
+  /** The expansion the pointer is over, which Origin view traces. */
+  get hoveredOccurrence(): OccurrenceFacts | undefined {
+    return this.occurrenceOf(this.hovered);
+  }
+
+  /**
+   * The events a diagnostic points at: those whose source text encloses it.
+   *
+   * Spans come from the core on both sides, so this is a containment test, not
+   * a parse — the frontend still computes nothing musical (§7).
+   */
+  eventsForSpan(span: Span | null): string[] {
+    if (!span) return [];
+    return (this.snapshot?.score?.events ?? [])
+      .filter((event) => event.origin.span.start <= span.start && span.start < event.origin.span.end)
+      .map((event) => event.id);
   }
 
   /**
