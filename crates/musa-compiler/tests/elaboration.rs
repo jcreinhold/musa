@@ -69,8 +69,8 @@ fn the_key_and_the_meter_are_facts_of_the_timeline() {
     assert!(form.contains("key:bf:major"), "key is not an occurrence: {form}");
 
     let snapshot = snapshot_of(source).expect("compiles");
-    assert_eq!((snapshot.meter_map.numerator, snapshot.meter_map.denominator), (3, 4));
-    assert_eq!(snapshot.key_map.map(|key| key.tonic.to_string()), Some("bf".to_owned()));
+    assert_eq!((snapshot.meter().numerator(), snapshot.meter().denominator()), (3, 4));
+    assert_eq!(snapshot.key().map(|key| key.tonic().to_string()), Some("bf".to_owned()));
 }
 
 /// The elaborated kernel timelines are the same under semantic equality no
@@ -240,18 +240,18 @@ fn motif_source_strategy() -> impl Strategy<Value = (String, GeneratedVoice)> {
 /// the last one reaches.
 fn measured(snapshot: &ScoreSnapshot, index: usize) -> (usize, Ratio<i64>) {
     let voice = snapshot
-        .parts
+        .parts()
         .iter()
-        .flat_map(|(_, part)| part.voices.values())
+        .flat_map(|(_, part)| part.voices().map(|(_, voice)| voice))
         .nth(index)
         .expect("the voice exists");
     let end = voice
-        .events
+        .events()
         .iter()
         .map(|event| (event.onset + event.notated_duration.value).as_ratio())
         .max()
         .unwrap_or_default();
-    (voice.events.len(), end)
+    (voice.events().len(), end)
 }
 
 proptest! {

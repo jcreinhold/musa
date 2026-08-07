@@ -343,7 +343,7 @@ pub(crate) fn elaborate_parsed(
         let context = elaborate_score(resolver, &piece, &score, &mut snapshot);
         elaborate_tempo_changes(resolver, &piece, &mut snapshot, &context);
     }
-    snapshot.annotations = std::mem::take(&mut resolver.annotations);
+    snapshot.set_annotations(std::mem::take(&mut resolver.annotations));
     resolve::check_measure_sanity(resolver, &snapshot);
     check_tuplets(resolver, &snapshot);
     if resolver
@@ -407,9 +407,9 @@ fn elaborate_score(
         let id = PartId(resolver.next_part);
         resolver.next_part = resolver.next_part.saturating_add(1);
 
-        let (clef, profile) = resolve::part_metadata(resolver, &part, &snapshot.profiles);
+        let (clef, profile) = resolve::part_metadata(resolver, &part, snapshot.profiles());
         if let Some(profile) = profile {
-            snapshot.profiles.assign(&name, profile);
+            snapshot.profiles_mut().assign(&name, profile);
         }
 
         let mut names = indexmap::IndexMap::new();
@@ -441,8 +441,8 @@ fn elaborate_score(
     let context = context_facts(resolver, piece, score, snapshot, extent);
     let whole = overlay(vec![music, context]);
     let projection = crate::project::project(resolver, &whole);
-    snapshot.key_map = projection.key;
-    snapshot.meter_map = projection.meter;
+    snapshot.set_key(projection.key);
+    snapshot.set_meter(projection.meter);
     let meter = projection.meter;
     let mut projected = projection.voices;
     for (id, name, clef) in metadata {
@@ -451,19 +451,12 @@ fn elaborate_score(
         for voice_id in names.keys() {
             let voice = projected
                 .swap_remove(&(id.0, voice_id.0))
-                .unwrap_or_else(|| Voice { events: Vec::new() });
+                .unwrap_or_else(|| Voice::new(Vec::new()));
             voices.insert(*voice_id, voice);
         }
-        snapshot.parts.insert(
-            id,
-            Part {
-                id,
-                name,
-                clef,
-                voices,
-                voice_names: names,
-            },
-        );
+        snapshot
+            .parts_mut()
+            .insert(id, Part::new(id, name, clef, voices, names));
     }
     PieceContext {
         extent: MusicalTime::new(extent.as_ratio()),
@@ -501,8 +494,8 @@ fn context_facts(
     // `lower_header` parsed the key and the meter out of the header; take
     // them, so that the only thing which puts either back into the snapshot
     // is the projection of the timeline they are about to enter.
-    let meter = std::mem::take(&mut snapshot.meter_map);
-    let key = snapshot.key_map.take();
+    let meter = snapshot.take_meter();
+    let key = snapshot.take_key();
 
     let region = Span::new(Beat::ZERO, extent).unwrap_or(Span::ZERO);
     let mut occurrences = vec![Occurrence::new(
@@ -510,8 +503,8 @@ fn context_facts(
         ScoreFact::new(
             Scope::Piece,
             FactKind::Meter {
-                numerator: meter.numerator,
-                denominator: meter.denominator,
+                numerator: meter.numerator(),
+                denominator: meter.denominator(),
             },
             // An unwritten meter is still a meter — 4/4 governs the piece
             // whether or not anybody said so — so the fact exists either way
@@ -529,8 +522,8 @@ fn context_facts(
             ScoreFact::new(
                 Scope::Piece,
                 FactKind::Key {
-                    tonic: key.tonic,
-                    mode: key.mode,
+                    tonic: key.tonic(),
+                    mode: key.mode(),
                 },
                 at_span(
                     piece
@@ -659,7 +652,7 @@ fn elaborate_tempo_changes(
         });
     }
     changes.sort_by_key(|change| change.at);
-    snapshot.tempo_map.changes = changes;
+    snapshot.tempo_mut().changes = changes;
 }
 
 /// Turn a `measure:beat` coordinate into time, or report why it is not one.
@@ -689,7 +682,7 @@ fn resolve_position(
         return None;
     }
     let measure_len = meter.measure_len().as_ratio();
-    let beat_len = Ratio::new(1, i64::from(meter.denominator.max(1)));
+    let beat_len = Ratio::new(1, i64::from(meter.denominator().max(1)));
     let at = MusicalTime::new(measure_len * (measure - 1) + beat_len * (beat - Ratio::ONE));
     if at >= extent && extent > MusicalTime::default() {
         resolver.error(format!("the piece ends before `{measure}:{beat_text}`"), span);
@@ -1436,25 +1429,18 @@ fn untie(occurrence: &mut Occurrence<ScoreFact>) {
 /// the notes on either side would need their own bracket and their own
 /// ratio, which is a different piece of music from the one that was written.
 fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
-    let measure = snapshot.meter_map.measure_len().as_ratio();
+    let measure = snapshot.meter().measure_len().as_ratio();
     if measure == Ratio::ZERO {
         return;
     }
     let mut offenders = Vec::new();
-    for tuplet in snapshot.annotations.tuplets() {
+    for tuplet in snapshot.annotations().tuplets() {
         let mut start = None;
         let mut end = None;
-        for (_, part) in snapshot.parts.iter() {
-            for voice in part.voices.values() {
-                for event in &voice.events {
-                    if event.id < tuplet.from || event.id > tuplet.to {
-                        continue;
-                    }
-                    let event_end = event.onset + event.notated_duration.value;
-                    start = Some(start.map_or(event.onset, |current: MusicalTime| current.min(event.onset)));
-                    end = Some(end.map_or(event_end, |current: MusicalTime| current.max(event_end)));
-                }
-            }
+        for event in snapshot.events_in(tuplet.from, tuplet.to) {
+            let event_end = event.onset + event.notated_duration.value;
+            start = Some(start.map_or(event.onset, |current: MusicalTime| current.min(event.onset)));
+            end = Some(end.map_or(event_end, |current: MusicalTime| current.max(event_end)));
         }
         let (Some(start), Some(end)) = (start, end) else {
             continue;

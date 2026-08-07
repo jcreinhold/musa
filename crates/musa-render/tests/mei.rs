@@ -92,11 +92,11 @@ fn well_formed_and_event_ids_resolve() {
         assert!(!ids.is_empty());
 
         let event_ids: std::collections::HashSet<u64> = score
-            .parts
+            .parts()
             .iter()
             .map(|(_, part)| part)
-            .flat_map(|part| part.voices.values())
-            .flat_map(|voice| voice.events.iter())
+            .flat_map(|part| part.voices().map(|(_, voice)| voice))
+            .flat_map(|voice| voice.events().iter())
             .map(|event| event.id.0)
             .collect();
         for id in ids {
@@ -130,11 +130,11 @@ fn tie_pieces_share_the_event_id() {
         .text()
         .to_string();
     let Some(event) = score
-        .parts
+        .parts()
         .iter()
         .map(|(_, part)| part)
-        .flat_map(|part| part.voices.values())
-        .flat_map(|voice| voice.events.iter())
+        .flat_map(|part| part.voices().map(|(_, voice)| voice))
+        .flat_map(|voice| voice.events().iter())
         .next()
     else {
         return;

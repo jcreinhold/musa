@@ -56,9 +56,9 @@ fn piece(annotations: &str) -> String {
 /// annotation is forbidden to change.
 fn music(snapshot: &ScoreSnapshot) -> Vec<String> {
     let mut out = Vec::new();
-    for (_, part) in snapshot.parts.iter() {
-        for (_, voice) in &part.voices {
-            for event in &voice.events {
+    for (_, part) in snapshot.parts().iter() {
+        for (_, voice) in part.voices() {
+            for event in voice.events() {
                 out.push(format!("{} {:?}", event.onset.as_ratio(), event.kind));
             }
         }
@@ -71,8 +71,8 @@ fn annotating_a_piece_changes_no_note() {
     let plain = snapshot_of(&piece(""));
     let annotated = snapshot_of(&piece("section \"A\" at 1:1; harmony { at 1:1 c; at 1:3 g7; }"));
     assert_eq!(music(&plain), music(&annotated));
-    assert_eq!(annotated.annotations.sections().len(), 1);
-    assert_eq!(annotated.annotations.harmony().len(), 2);
+    assert_eq!(annotated.annotations().sections().len(), 1);
+    assert_eq!(annotated.annotations().harmony().len(), 2);
 }
 
 #[test]
@@ -85,7 +85,7 @@ fn a_phrase_brackets_the_events_written_inside_it() {
     let phrased = snapshot_of(source);
     assert_eq!(plain, music(&phrased));
 
-    let phrases = phrased.annotations.phrases();
+    let phrases = phrased.annotations().phrases();
     let [phrase] = phrases else {
         panic!("expected exactly one phrase, got {phrases:?}");
     };
@@ -102,7 +102,7 @@ fn a_phrase_brackets_the_events_written_inside_it() {
 fn a_position_is_measured_against_the_meter() {
     let snapshot = snapshot_of(&piece("harmony { at 2:1 g; at 1:3 f; at 1:1 c; }"));
     let times: Vec<String> = snapshot
-        .annotations
+        .annotations()
         .harmony()
         .iter()
         .map(|mark| format!("{} {}", mark.at.as_ratio(), mark.symbol.text))
@@ -238,7 +238,7 @@ fn a_symbol_outside_the_grammar_does_not_parse() {
 fn the_annotated_fixture_records_every_annotation() {
     let snapshot = snapshot_of(ANNOTATED);
     let sections: Vec<String> = snapshot
-        .annotations
+        .annotations()
         .sections()
         .iter()
         .map(|mark| format!("{} {}", mark.at.as_ratio(), mark.name))
@@ -246,7 +246,7 @@ fn the_annotated_fixture_records_every_annotation() {
     assert_eq!(sections, ["0 Exposition", "2 Development"]);
 
     let harmony: Vec<String> = snapshot
-        .annotations
+        .annotations()
         .harmony()
         .iter()
         .map(|mark| format!("{} {}", mark.at.as_ratio(), mark.symbol.text))
@@ -254,7 +254,7 @@ fn the_annotated_fixture_records_every_annotation() {
     assert_eq!(harmony, ["0 am", "1 fmaj7", "2 e7", "3 am"]);
 
     let phrases: Vec<String> = snapshot
-        .annotations
+        .annotations()
         .phrases()
         .iter()
         .map(|phrase| phrase.name.clone())
@@ -268,7 +268,7 @@ fn the_annotated_fixture_records_every_annotation() {
 #[test]
 fn a_form_marker_lands_at_a_time_the_performance_agrees_with() {
     let snapshot = snapshot_of(ANNOTATED);
-    let [_, development] = snapshot.annotations.sections() else {
+    let [_, development] = snapshot.annotations().sections() else {
         panic!("expected two sections");
     };
     let tempo = IntegratedTempoMap::new(&snapshot, &PerformanceOptions::default());

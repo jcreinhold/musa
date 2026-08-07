@@ -86,11 +86,11 @@ fn shape(event: &ScoreEvent) -> Shape {
 fn music(body: &str) -> Vec<Shape> {
     let snapshot = snapshot_of(&piece(body));
     snapshot
-        .parts
+        .parts()
         .iter()
         .next()
-        .and_then(|(_, part)| part.voices.values().next())
-        .map(|voice| voice.events.iter().map(shape).collect())
+        .and_then(|(_, part)| part.voices().map(|(_, voice)| voice).next())
+        .map(|voice| voice.events().iter().map(shape).collect())
         .unwrap_or_default()
 }
 
@@ -249,11 +249,11 @@ fn the_variation_fixture_says_where_every_note_came_from() {
     // it (course correction §20).
     let snapshot = snapshot_of(VARIATION);
     let mut dump = String::new();
-    for (_, part) in snapshot.parts.iter() {
-        for (name, voice) in &part.voices {
+    for (_, part) in snapshot.parts().iter() {
+        for (name, voice) in part.voices() {
             let header = format!("voice {name:?}:\n");
             dump.push_str(&header);
-            for event in &voice.events {
+            for event in voice.events() {
                 let sounds = match &event.kind {
                     ScoreEventKind::Note { pitch } => pitch.to_string(),
                     ScoreEventKind::Rest => "rest".to_owned(),

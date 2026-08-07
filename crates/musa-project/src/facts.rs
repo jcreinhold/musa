@@ -248,8 +248,8 @@ impl ScoreFacts {
         // The same tempo integration the performance lowering uses, at the
         // same options, so a frame here is the frame the engine will report.
         let tempo = IntegratedTempoMap::new(score, &PerformanceOptions::default());
-        let measure = score.meter_map.measure_len().as_ratio();
-        let beat = num_rational::Ratio::new(1, i64::from(score.meter_map.denominator).max(1));
+        let measure = score.meter().measure_len().as_ratio();
+        let beat = num_rational::Ratio::new(1, i64::from(score.meter().denominator()).max(1));
 
         let mut parts = Vec::new();
         let mut events = Vec::new();
@@ -259,16 +259,14 @@ impl ScoreFacts {
         // read the same on the page.
         let mut occurrences: Vec<OccurrenceFacts> = Vec::new();
         let mut paths: Vec<Vec<ExpansionStep>> = Vec::new();
-        for (_, part) in score.parts.iter() {
+        for (_, part) in score.parts().iter() {
             let mut voices = Vec::new();
-            for (voice_id, voice) in &part.voices {
+            for (voice_id, voice) in part.voices() {
                 let name = part
-                    .voice_names
-                    .get(voice_id)
-                    .cloned()
-                    .unwrap_or_else(|| voice_id.0.to_string());
+                    .voice_name(voice_id)
+                    .map_or_else(|| voice_id.0.to_string(), ToString::to_string);
                 let mut generated = false;
-                for event in &voice.events {
+                for event in voice.events() {
                     let id = format!("event-{:x}", event.id.0);
                     let mut origin = origin_facts(&event.origin, &lines, source);
                     if origin.generated {
@@ -305,7 +303,7 @@ impl ScoreFacts {
                     let end = event.onset + event.notated_duration.value;
                     events.push(EventFacts {
                         id,
-                        part: part.name.clone(),
+                        part: part.name().to_string(),
                         voice: name.clone(),
                         kind: kind_of(&event.kind),
                         pitch: pitches.first().cloned(),
@@ -323,21 +321,21 @@ impl ScoreFacts {
                 voices.push(VoiceFacts { name, generated });
             }
             parts.push(PartFacts {
-                name: part.name.clone(),
+                name: part.name().to_string(),
                 voices,
             });
         }
 
         let outline = outline_facts(score, &events, &lines, measure, beat, &tempo);
         Self {
-            title: score.title.clone(),
-            tempo_bpm: score.tempo_map.bpm,
-            tempo_beat: Fraction::from_ratio(score.tempo_map.beat),
+            title: score.title().to_string(),
+            tempo_bpm: score.tempo().bpm,
+            tempo_beat: Fraction::from_ratio(score.tempo().beat),
             key: score
-                .key_map
-                .map(|key| format!("{} {}", pitch_class(key.tonic), mode(key.mode))),
-            meter_count: score.meter_map.numerator,
-            meter_unit: score.meter_map.denominator,
+                .key()
+                .map(|key| format!("{} {}", pitch_class(key.tonic()), mode(key.mode()))),
+            meter_count: score.meter().numerator(),
+            meter_unit: score.meter().denominator(),
             parts,
             events,
             occurrences,
@@ -364,12 +362,12 @@ fn outline_facts(
     // piece, which is the end of its last event.
     let ending = events.iter().map(|event| event.end_frames).max().unwrap_or_default();
     let starts: Vec<u64> = score
-        .annotations
+        .annotations()
         .sections()
         .iter()
         .map(|section| tempo.frames(section.at))
         .collect();
-    for (index, section) in score.annotations.sections().iter().enumerate() {
+    for (index, section) in score.annotations().sections().iter().enumerate() {
         let (bar, beat_in_bar) = position(section.at.as_ratio(), measure, beat);
         let frames = tempo.frames(section.at);
         // The notehead a reader would look at: the first one that has not
@@ -396,7 +394,7 @@ fn outline_facts(
             },
         ));
     }
-    for phrase in score.annotations.phrases() {
+    for phrase in score.annotations().phrases() {
         let id = format!("event-{:x}", phrase.from.0);
         let Some(event) = events.iter().find(|event| event.id == id) else {
             continue;
@@ -453,7 +451,7 @@ fn occurrence_facts(
     let motif = call_site.map(|span| motif_name(source, span.start, span.end));
     let declaration = motif.as_ref().and_then(|name| {
         score
-            .motifs
+            .motifs()
             .iter()
             .find(|declared| declared.name == *name)
             .map(|declared| crate::diagnostic::Span {

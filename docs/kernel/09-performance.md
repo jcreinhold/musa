@@ -78,6 +78,14 @@ per iteration and are exact rather than sampled.
 | 41 | P3 | large | 224 µs | 7 852 | 853 KB |
 | 41 | P4 | small | 30 µs | 367 | 17.6 KB |
 | 41 | P4 | large | 1.72 ms | 30 934 | 1.51 MB |
+| 42 | P1 | small | 63 µs | 2 036 | 137 KB |
+| 42 | P1 | large | 1.41 ms | 50 836 | 3.75 MB |
+| 42 | P2 | small | 42 µs | 1 788 | 116 KB |
+| 42 | P2 | large | 1.32 ms | 49 135 | 3.55 MB |
+| 42 | P3 | small | 3.4 µs | 127 | 11.1 KB |
+| 42 | P3 | large | 223 µs | 7 852 | 853 KB |
+| 42 | P4 | small | 29 µs | 367 | 17.6 KB |
+| 42 | P4 | large | 1.67 ms | 30 934 | 1.51 MB |
 
 Two things the baseline already says, recorded here rather than acted on (prompt 38 changes nothing it measures):
 
@@ -114,6 +122,17 @@ four phases and both workloads, which is exactly what deleting a path `compile` 
 machine (divan's slowest sample reached 158 ms against a 1.3 ms median, where prompt 40's worst sample was 1.7 ms), and
 the medians above are the best of the three. When a row's allocation counts are unchanged and its timings are not, the
 timings are the thing that is lying.
+
+Prompt 42 closed the snapshot's fields and measured, again, nothing: **every allocation count and every allocated
+byte is identical to prompts 40 and 41**, in all four phases and both workloads. An accessor that returns a borrow of a
+private field compiles to the field read it replaced, which is what the numbers say. The timings again sit above prompt
+40's (P1 large +12%, P2 large +21%) on the same contended machine that produced prompt 41's row — divan's slowest P4
+sample was 4.0 ms against a 1.67 ms median — and the rule below is deliberately *not* invoked for them: a row whose
+allocation counts are unchanged to the unit cannot have regressed 21% in real work. What prompt 42 did change is where
+region membership is computed: `plan.rs` and `performance.rs` each stopped rebuilding it (by id arithmetic in one, by a
+pair of linear scans in the other) and now call `ScoreSnapshot::events_in`. That work is in neither P3 nor P4, which
+measure projection and canonicalization; it is in notation planning and performance lowering, which this harness does
+not yet time. Prompt 48's windowed observation is where it will be.
 
 ## The rule
 

@@ -94,16 +94,10 @@ fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
         let at = MusicalTime::new(occurrence.span().start().as_ratio());
         match &fact.kind {
             FactKind::Key { tonic, mode } => {
-                key = Some(KeyMap {
-                    tonic: *tonic,
-                    mode: *mode,
-                });
+                key = Some(KeyMap::new(*tonic, *mode));
             }
             FactKind::Meter { numerator, denominator } => {
-                meter = MeterMap {
-                    numerator: *numerator,
-                    denominator: *denominator,
-                };
+                meter = MeterMap::new(*numerator, *denominator);
             }
             FactKind::Section { name } => resolver.annotations.push_section(SectionMark {
                 name: name.clone(),
@@ -177,7 +171,7 @@ fn project_voice(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
 
     project_points(resolver, &points, &extents);
     project_regions(resolver, &mut regions, &extents);
-    Voice { events }
+    Voice::new(events)
 }
 
 /// How many occurrences at `index` spell one written statement: a chord's

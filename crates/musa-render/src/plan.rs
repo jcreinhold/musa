@@ -439,14 +439,14 @@ pub enum NotatedKind {
 /// Returns [`NotationError`] when a duration cannot be spelled with standard
 /// values and ties inside one measure.
 pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Result<NotationPlan, crate::NotationError> {
-    let measure_len = score.meter_map.measure_len().as_ratio();
-    let key = score.key_map.map(key_signature);
+    let measure_len = score.meter().measure_len().as_ratio();
+    let key = score.key().map(key_signature);
     let marks = Marks::collect(score);
     let mut staves = Vec::new();
-    for (_, part) in score.parts.iter() {
-        staves.push(plan_staff(part, score.meter_map, measure_len, key, &marks)?);
+    for (_, part) in score.parts().iter() {
+        staves.push(plan_staff(part, score.meter(), measure_len, key, &marks)?);
     }
-    let tempo = &score.tempo_map;
+    let tempo = score.tempo();
     let mut tempos = vec![positioned(
         MusicalTime::ZERO,
         measure_len,
@@ -466,13 +466,13 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
         )
     }));
     let sections = score
-        .annotations
+        .annotations()
         .sections()
         .iter()
         .map(|section| positioned(section.at, measure_len, section.name.clone()))
         .collect();
     let harmony = score
-        .annotations
+        .annotations()
         .harmony()
         .iter()
         .map(|chord| positioned(chord.at, measure_len, chord.symbol.clone()))
@@ -502,7 +502,7 @@ struct Marks {
 
 impl Marks {
     fn collect(score: &ScoreSnapshot) -> Self {
-        let annotations = &score.annotations;
+        let annotations = score.annotations();
         let mut marks = Self::default();
         for slur in annotations.slurs() {
             marks.slur_ends.insert(slur.from, slur.to);
@@ -518,44 +518,44 @@ impl Marks {
                 .or_default()
                 .push(articulation.mark);
         }
-        // Event ids run consecutively within a voice, so a group's members
-        // are exactly the ids between its ends (musa-compiler's `identify`).
+        // A group's members are the events between its ends; the snapshot
+        // answers which those are, so planning does not re-derive it.
         for phrase in annotations.phrases() {
             marks.phrase_ends.insert(phrase.from, phrase.to);
-            for raw in phrase.from.0..=phrase.to.0 {
+            for event in score.events_in(phrase.from, phrase.to) {
                 marks.phrases.insert(
-                    EventId(raw),
+                    event.id,
                     PhraseMark {
                         name: phrase.name.clone(),
-                        start: raw == phrase.from.0,
-                        stop: raw == phrase.to.0,
+                        start: event.id == phrase.from,
+                        stop: event.id == phrase.to,
                     },
                 );
             }
         }
         for hairpin in annotations.hairpins() {
             marks.hairpin_ends.insert(hairpin.from, hairpin.to);
-            for raw in hairpin.from.0..=hairpin.to.0 {
+            for event in score.events_in(hairpin.from, hairpin.to) {
                 marks.hairpins.insert(
-                    EventId(raw),
+                    event.id,
                     HairpinMark {
                         grows: hairpin.grows,
                         target: hairpin.target,
-                        start: raw == hairpin.from.0,
-                        stop: raw == hairpin.to.0,
+                        start: event.id == hairpin.from,
+                        stop: event.id == hairpin.to,
                     },
                 );
             }
         }
         for tuplet in annotations.tuplets() {
-            for raw in tuplet.from.0..=tuplet.to.0 {
+            for event in score.events_in(tuplet.from, tuplet.to) {
                 marks.tuplets.insert(
-                    EventId(raw),
+                    event.id,
                     TupletMark {
                         num: tuplet.num,
                         den: tuplet.den,
-                        start: raw == tuplet.from.0,
-                        stop: raw == tuplet.to.0,
+                        start: event.id == tuplet.from,
+                        stop: event.id == tuplet.to,
                     },
                 );
             }
@@ -593,7 +593,7 @@ fn positioned<T>(at: MusicalTime, measure_len: Ratio<i64>, what: T) -> Positione
 fn key_signature(key: KeyMap) -> KeySignature {
     KeySignature {
         fifths: key.fifths(),
-        mode: key.mode,
+        mode: key.mode(),
     }
 }
 
@@ -604,7 +604,7 @@ fn plan_staff(
     key: Option<KeySignature>,
     marks: &Marks,
 ) -> Result<StaffPlan, crate::NotationError> {
-    let span = part.voices.values().map(Voice::span).max().unwrap_or_default();
+    let span = part.span();
     let measure_count = if measure_len == Ratio::ZERO {
         1
     } else {
@@ -622,11 +622,11 @@ fn plan_staff(
         let start = MusicalTime::new(measure_len * Ratio::from_integer(i64::from(index)));
         let end = MusicalTime::new(measure_len * Ratio::from_integer(i64::from(index.saturating_add(1))));
         let mut lanes = Vec::new();
-        for (voice_id, voice) in &part.voices {
-            let name = part.voice_names.get(voice_id).cloned().unwrap_or_default();
+        for (voice_id, voice) in part.voices() {
+            let name = part.voice_name(voice_id).unwrap_or_default().to_string();
             let lane = plan_lane(voice, meter, measure_len, start, end, marks)?;
             lanes.push(VoiceLane {
-                voice: *voice_id,
+                voice: voice_id,
                 name,
                 items: lane.items,
                 slurs: lane.slurs,
@@ -640,10 +640,10 @@ fn plan_staff(
         });
     }
     Ok(StaffPlan {
-        name: part.name.clone(),
-        clef: part.clef,
+        name: part.name().to_string(),
+        clef: part.clef(),
         key,
-        time_signature: (meter.numerator, meter.denominator),
+        time_signature: (meter.numerator(), meter.denominator()),
         measures,
     })
 }
@@ -651,10 +651,10 @@ fn plan_staff(
 /// The beat unit for beaming: compound meters (`6/8`, `9/8`, `12/8`) beam in
 /// groups of three eighths; simple meters beam per notated beat.
 fn beam_unit(meter: MeterMap) -> Ratio<i64> {
-    if meter.denominator == 8 && meter.numerator.is_multiple_of(3) && meter.numerator > 3 {
+    if meter.denominator() == 8 && meter.numerator().is_multiple_of(3) && meter.numerator() > 3 {
         Ratio::new(3, 8)
     } else {
-        Ratio::new(1, i64::from(meter.denominator))
+        Ratio::new(1, i64::from(meter.denominator()))
     }
 }
 
@@ -668,7 +668,7 @@ fn plan_lane(
     marks: &Marks,
 ) -> Result<Lane, crate::NotationError> {
     let mut items = Vec::new();
-    for event in &voice.events {
+    for event in voice.events() {
         let event_end = event.onset + event.notated_duration.value;
         if event_end <= start || event.onset >= end {
             continue;

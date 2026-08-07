@@ -1,7 +1,7 @@
 ---
 id: 42
 slug: snapshot-projection
-status: pending
+status: done
 depends_on: [41]
 phase: 3
 ---
@@ -83,6 +83,50 @@ workspace is the proof.
 - `docs/kernel/07-backend-contract.md`: a short section stating that the guarantees are now carried by the snapshot's
   interface, naming the accessors that carry each one.
 - `docs/kernel/09-performance.md`: this prompt's row.
+
+## Repairs made while implementing
+
+**The Set B motivation above was wrong about where the duplication is.** The Design section claims *marks attached to
+an event* is re-derived "from `annotations` by id" in each of MEI, LilyPond and MusicXML. It is not: those three
+backends consume `NotationPlan`, and `NotationPlan` is built once, in `musa-render/src/plan.rs`. Exactly two places in
+the workspace read `annotations` and rebuild anything from it, and they do the *same* rebuild two different ways:
+
+- `plan.rs::Marks::collect` walks `from.0..=to.0` for phrases, hairpins and tuplets — raw id arithmetic that assumes
+  contiguity without saying so, and that silently invents ids for events that do not exist if a region ever spans two
+  voices;
+- `performance.rs::hairpin_curves` scans a voice twice with `position()` per hairpin, per voice — quadratic in the
+  hairpin count and re-run for every voice in the part.
+
+So the Set B accessor that earned its place is neither of the two the prompt guessed. It is **one**:
+`ScoreSnapshot::events_in(from, to) -> &[ScoreEvent]` — the events a region annotation covers. Both call sites above
+became a single `for event in score.events_in(a, b)`, and `hairpin_curves` additionally collapsed from once-per-voice
+to once-per-piece, since an event belongs to exactly one voice and the map is keyed by event id.
+
+**Everything else is Set A, on purpose.** `parts()`, `meter()`, `key()`, `annotations()`, `motifs()`, `profiles()`,
+`tempo()`, `Part::{id,name,clef,voices,voice,voice_name}`, `Voice::events`. Each renames a field and nothing more; by
+the prompt's own bar ("two or more call sites become simpler") none of them earns a query, and inventing one would be
+the speculative generality the Stop section forbids. Two near-Set-A accessors do slightly more than rename and are
+recorded as such: `Voice::span` already existed as a method, and `Part::span` replaces
+`part.voices.values().map(Voice::span).max().unwrap_or_default()` — one call site today, but a fold over a container
+whose layout just became private, so the caller can no longer write it.
+
+**`AnnotationStore` stays**, with the reason the Design section asked for: it is kind-major, and kind-major is what
+its callers want — the outline pane lists sections, MEI writes dynamics as a lane, LilyPond emits articulations per
+note. Only region membership was the duplicated question, and `events_in` answers that. It is not a struct that exists
+because it used to.
+
+**`KeyMap::new` is public, not `pub(crate)`.** `musa-project`'s MIDI entry buffer spells incoming notes against a key
+it was handed and holds no score; naming a key is not a snapshot-building privilege. Every other constructor
+(`ScoreSnapshot`'s mutators, `Part::new`, `Voice::new`, `MeterMap::new`) is `pub(crate)`: a snapshot is produced by
+projecting a timeline and by nothing else.
+
+**`TempoMap` did not close.** It is not in the Design section's list, and it is a value — a beat, a bpm, and a list of
+changes — that `plan.rs` and `performance.rs` read field-wise. Closing it would have been a rename with no invariant
+behind it.
+
+**No snapshot changed and no allocation count moved.** 429 tests, every golden byte-identical, and P1–P4 allocation
+counts identical to prompts 40 and 41 — see `docs/kernel/09-performance.md` for why this prompt's timings are not read
+as a regression.
 
 ## Check
 

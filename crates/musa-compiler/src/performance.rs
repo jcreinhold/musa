@@ -104,7 +104,7 @@ fn seconds_per_whole(beat: Ratio<i64>, bpm: u32) -> Ratio<i64> {
 impl IntegratedTempoMap {
     /// Build the map from a snapshot's tempo declarations.
     pub fn new(snapshot: &ScoreSnapshot, options: &PerformanceOptions) -> Self {
-        let tempo = &snapshot.tempo_map;
+        let tempo = snapshot.tempo();
         let rate = Ratio::from_integer(i64::from(options.sample_rate.max(1)));
         let segment = |position: MusicalTime, beat: Ratio<i64>, bpm: u32, frame_offset: Ratio<i64>| {
             let seconds = seconds_per_whole(beat, bpm);
@@ -336,20 +336,22 @@ pub fn lower_performance(
 ) -> Result<PerformancePlan, PerformanceError> {
     let tempo = IntegratedTempoMap::new(score, options);
     let marks = Interpretation::collect(score);
+    // The hairpin index covers the whole piece: an event belongs to exactly
+    // one voice, so one map keyed by event id serves every voice.
+    let curves = hairpin_curves(score);
     let mut lanes = Vec::new();
     let mut next_instance = 0u32;
-    for (_, part) in score.parts.iter() {
-        let profile = score.profiles.for_part(&part.name);
+    for (_, part) in score.parts().iter() {
+        let profile = score.profiles().for_part(part.name());
         let mut events = Vec::new();
-        for voice in part.voices.values() {
+        for (_, voice) in part.voices() {
             // The prevailing dynamic is per voice: a marking applies from its
             // event onward in the voice that wrote it, not across the part.
             let mut dynamic = None;
-            let curves = hairpin_curves(score, voice);
             // The loudness a hairpin grows from: whatever was in force at its
             // first note, which is what a hairpin means on the page.
             let mut curve_from: Option<Ratio<i64>> = None;
-            for event in &voice.events {
+            for event in voice.events() {
                 if let Some(mark) = marks.dynamics.get(&event.id) {
                     dynamic = Some(*mark);
                 }
@@ -394,8 +396,8 @@ pub fn lower_performance(
         }
         sort_events(&mut events);
         lanes.push(PerformanceLane {
-            part: part.id,
-            name: part.name.clone(),
+            part: part.id(),
+            name: part.name().to_string(),
             events,
         });
     }
@@ -422,11 +424,11 @@ struct Interpretation {
 impl Interpretation {
     fn collect(score: &ScoreSnapshot) -> Self {
         let mut dynamics = std::collections::HashMap::new();
-        for marking in score.annotations.dynamics() {
+        for marking in score.annotations().dynamics() {
             dynamics.insert(marking.at, marking.mark);
         }
         let mut articulations: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
-        for marking in score.annotations.articulations() {
+        for marking in score.annotations().articulations() {
             articulations.entry(marking.at).or_default().push(marking.mark);
         }
         Self {
@@ -456,19 +458,15 @@ struct Curve {
 /// and the last one arrives exactly at the written mark. Interpolating over
 /// frames instead would make the arrival depend on the rhythm, which is not
 /// what the sign says.
-fn hairpin_curves(score: &ScoreSnapshot, voice: &crate::score::Voice) -> std::collections::HashMap<EventId, Curve> {
+fn hairpin_curves(score: &ScoreSnapshot) -> std::collections::HashMap<EventId, Curve> {
     let mut curves = std::collections::HashMap::new();
-    for hairpin in score.annotations.hairpins() {
-        let start = voice.events.iter().position(|event| event.id == hairpin.from);
-        let end = voice.events.iter().position(|event| event.id == hairpin.to);
-        let (Some(start), Some(end)) = (start, end) else {
-            continue;
-        };
-        let Some(span) = end.checked_sub(start) else {
+    for hairpin in score.annotations().hairpins() {
+        let events = score.events_in(hairpin.from, hairpin.to);
+        let Some(span) = events.len().checked_sub(1) else {
             continue;
         };
         let last = u32::try_from(span).unwrap_or(u32::MAX);
-        for (step, event) in voice.events.iter().skip(start).take(span.saturating_add(1)).enumerate() {
+        for (step, event) in events.iter().enumerate() {
             curves.insert(
                 event.id,
                 Curve {

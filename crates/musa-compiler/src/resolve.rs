@@ -193,17 +193,21 @@ pub(crate) fn lower_studio(
     if studio.is_none() && imported.is_empty() {
         return crate::studio::StudioSpec::default();
     }
-    let parts: Vec<String> = snapshot.parts.iter().map(|(_, part)| part.name.clone()).collect();
+    let parts: Vec<String> = snapshot
+        .parts()
+        .iter()
+        .map(|(_, part)| part.name().to_string())
+        .collect();
     crate::studio::resolve(studio.as_ref(), imported, &parts, &mut resolver.diagnostics)
 }
 
 /// Tempo, meter, key — plus registration of motif declarations (expansion
 /// is prompt 06).
 pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot: &mut ScoreSnapshot) {
-    snapshot.title = piece.name().unwrap_or_default();
+    snapshot.set_title(piece.name().unwrap_or_default());
     if let Some(tempo) = piece.tempo() {
         resolver.declare(DeclInfo::Tempo);
-        snapshot.tempo_map = parse_tempo(resolver, &tempo);
+        *snapshot.tempo_mut() = parse_tempo(resolver, &tempo);
     }
     // A second tempo without a position would leave two answers to "how fast
     // does this piece start" — the one thing a header may not do.
@@ -216,7 +220,7 @@ pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot:
     if let Some(meter) = piece.meter() {
         resolver.declare(DeclInfo::Meter);
         if let Some(map) = parse_meter(&meter) {
-            snapshot.meter_map = map;
+            snapshot.set_meter(map);
         } else {
             resolver.error("invalid meter", span_of(meter.syntax()));
         }
@@ -224,7 +228,7 @@ pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot:
     if let Some(key) = piece.key() {
         resolver.declare(DeclInfo::Key);
         match parse_key(&key) {
-            Some(map) => snapshot.key_map = Some(map),
+            Some(map) => snapshot.set_key(Some(map)),
             None => resolver.error("invalid key declaration", span_of(key.syntax())),
         }
     }
@@ -259,7 +263,7 @@ pub(crate) fn register_motifs(
             body: motif.items(),
             declaration: ordinal(resolver, key),
         };
-        snapshot.motifs.push(crate::score::MotifDeclaration {
+        snapshot.push_motif(crate::score::MotifDeclaration {
             name: name.clone(),
             span: trimmed_span(motif.syntax()),
         });
@@ -278,12 +282,12 @@ pub(crate) fn merge_profiles(
 ) {
     let names: Vec<String> = profiles.names().map(str::to_owned).collect();
     for name in names {
-        if snapshot.profiles.declares(&name) {
+        if snapshot.profiles().declares(&name) {
             resolver.error(duplicate(&format!("profile `{name}`"), from), span);
             continue;
         }
         if let Some(profile) = profiles.get(&name) {
-            snapshot.profiles.insert(profile.clone());
+            snapshot.profiles_mut().insert(profile.clone());
         }
     }
 }
@@ -475,10 +479,7 @@ fn parse_tempo(resolver: &mut Resolver, tempo: &TempoStmt) -> TempoMap {
 fn parse_meter(meter: &musa_language::ast::MeterStmt) -> Option<MeterMap> {
     let text = meter.value()?;
     let (numerator, denominator) = text.split_once('/')?;
-    Some(MeterMap {
-        numerator: numerator.parse().ok()?,
-        denominator: denominator.parse().ok()?,
-    })
+    Some(MeterMap::new(numerator.parse().ok()?, denominator.parse().ok()?))
 }
 
 fn parse_key(key: &KeyStmt) -> Option<KeyMap> {
@@ -493,7 +494,7 @@ fn parse_key(key: &KeyStmt) -> Option<KeyMap> {
         "minor" => Mode::Minor,
         _ => return None,
     };
-    Some(KeyMap { tonic, mode })
+    Some(KeyMap::new(tonic, mode))
 }
 
 pub(crate) fn parse_ratio(text: &str) -> Option<Ratio<i64>> {
@@ -613,23 +614,23 @@ pub(crate) fn bind_argument(
 }
 
 pub(crate) fn check_measure_sanity(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
-    let measure = snapshot.meter_map.measure_len();
+    let measure = snapshot.meter().measure_len();
     if measure.is_zero() {
         return;
     }
-    for (_, part) in snapshot.parts.iter() {
-        for (voice_id, voice) in &part.voices {
+    for (_, part) in snapshot.parts().iter() {
+        for (voice_id, voice) in part.voices() {
             let span = voice.span().as_ratio();
             let measures = span / measure.as_ratio();
             if span != Ratio::ZERO && *measures.denom() != 1 {
-                let name = part.voice_names.get(voice_id).map_or("?", String::as_str);
+                let name = part.voice_name(voice_id).unwrap_or("?");
                 resolver.diagnostics.push(Diagnostic::warning(
                     format!(
                         "voice `{}` in part `{}` spans {} whole notes, which is not a whole number of {} measures",
                         name,
-                        part.name,
+                        part.name(),
                         voice.span(),
-                        snapshot.meter_map.numerator
+                        snapshot.meter().numerator()
                     ),
                     None,
                 ));

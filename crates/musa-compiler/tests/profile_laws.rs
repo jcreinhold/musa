@@ -95,7 +95,7 @@ fn piece(profiles: &str, part_profile: &str, body: &str) -> String {
 fn a_piece_without_profiles_is_scheduled_neutrally() {
     let snapshot =
         score_of("piece \"x\" { tempo 1/4 = 60; meter 4/4; score { part p { voice v { c4 1 staccato; } } } }");
-    assert!(snapshot.profiles.is_empty());
+    assert!(snapshot.profiles().is_empty());
     let notes = notes_of(&snapshot);
     // A whole note at quarter=60 is 4 seconds; the staccato is written but
     // uninterpreted, so it still sounds its full value.

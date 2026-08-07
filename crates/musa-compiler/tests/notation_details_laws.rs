@@ -51,11 +51,11 @@ fn errors_of(text: &str) -> Vec<String> {
 /// The first voice of the first part, in source order.
 fn first_voice(snapshot: &ScoreSnapshot) -> Vec<ScoreEvent> {
     snapshot
-        .parts
+        .parts()
         .iter()
         .next()
-        .and_then(|(_, part)| part.voices.values().next())
-        .map(|voice| voice.events.clone())
+        .and_then(|(_, part)| part.voices().map(|(_, voice)| voice).next())
+        .map(|voice| voice.events().to_vec())
         .unwrap_or_default()
 }
 
@@ -109,7 +109,7 @@ fn a_triplet_eighth_is_exactly_one_twelfth() {
     for event in events.iter().take(3) {
         assert_eq!(event.notated_duration.value.as_ratio(), Ratio::new(1, 12));
     }
-    let tuplets = snapshot.annotations.tuplets();
+    let tuplets = snapshot.annotations().tuplets();
     assert_eq!(tuplets.len(), 1);
     let tuplet = tuplets.first().expect("tuplet");
     assert_eq!((tuplet.num, tuplet.den), (3, 2));
@@ -131,7 +131,7 @@ fn a_tuplet_across_a_barline_is_an_error() {
 #[test]
 fn a_slur_names_the_events_it_joins() {
     let snapshot = score_of(&voice_source("slur { c4 1/4; d4 1/4; e4 1/4; } f4 1/4;"));
-    let slurs = snapshot.annotations.slurs();
+    let slurs = snapshot.annotations().slurs();
     assert_eq!(slurs.len(), 1);
     let slur = slurs.first().expect("slur");
     assert_eq!((slur.from.0, slur.to.0), (0, 2), "the slurred run, not the whole voice");
@@ -140,7 +140,7 @@ fn a_slur_names_the_events_it_joins() {
 #[test]
 fn a_dynamic_belongs_to_the_note_after_it() {
     let snapshot = score_of(&voice_source("c4 1/4; dynamic mf; d4 1/4; rest 1/2;"));
-    let dynamics = snapshot.annotations.dynamics();
+    let dynamics = snapshot.annotations().dynamics();
     assert_eq!(dynamics.len(), 1);
     let dynamic = dynamics.first().expect("dynamic");
     assert_eq!(dynamic.mark, DynamicMark::Mf);
@@ -150,7 +150,7 @@ fn a_dynamic_belongs_to_the_note_after_it() {
 #[test]
 fn a_dynamic_reaches_into_the_block_that_follows_it() {
     let snapshot = score_of(&voice_source("dynamic p; repeat 2 { c4 1/4; d4 1/4; }"));
-    let dynamics = snapshot.annotations.dynamics();
+    let dynamics = snapshot.annotations().dynamics();
     assert_eq!(dynamics.len(), 1);
     assert_eq!(dynamics.first().expect("dynamic").at.0, 0);
 }
@@ -165,7 +165,7 @@ fn a_dynamic_with_nothing_after_it_is_an_error() {
 fn articulations_keep_their_written_order_and_reject_unknown_names() {
     let snapshot = score_of(&voice_source("c4 1 accent staccato;"));
     let marks: Vec<ArticulationMark> = snapshot
-        .annotations
+        .annotations()
         .articulations()
         .iter()
         .map(|articulation| articulation.mark)
@@ -180,9 +180,9 @@ fn an_expanded_motif_carries_its_marks_once_per_use() {
     let source = "piece \"x\" { meter 4/4; motif m() { slur { c4 1/4 accent; d4 1/4; } } \
                   score { part p { voice v { use m(); use m(); } } } }";
     let snapshot = score_of(source);
-    assert_eq!(snapshot.annotations.slurs().len(), 2, "one slur per expansion");
-    assert_eq!(snapshot.annotations.articulations().len(), 2);
-    let slurs = snapshot.annotations.slurs();
+    assert_eq!(snapshot.annotations().slurs().len(), 2, "one slur per expansion");
+    assert_eq!(snapshot.annotations().articulations().len(), 2);
+    let slurs = snapshot.annotations().slurs();
     let spans: Vec<(u64, u64)> = slurs.iter().map(|slur| (slur.from.0, slur.to.0)).collect();
     assert_eq!(spans, vec![(0, 1), (2, 3)]);
 }
@@ -192,7 +192,7 @@ fn an_expanded_motif_carries_its_marks_once_per_use() {
 #[test]
 fn the_fixture_compiles_and_carries_every_annotation_kind() {
     let snapshot = score_of(TUPLET_FIXTURE);
-    let annotations = &snapshot.annotations;
+    let annotations = &snapshot.annotations();
     assert_eq!(annotations.tuplets().len(), 2);
     assert_eq!(annotations.slurs().len(), 3);
     assert_eq!(annotations.dynamics().len(), 3);

@@ -146,16 +146,28 @@ impl NotatedDuration {
 /// lanes are identified, not anonymous event lists).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Voice {
-    /// Events sorted by onset.
-    pub events: Vec<ScoreEvent>,
+    events: Vec<ScoreEvent>,
 }
 
 impl Voice {
+    /// The voice's events, in onset order.
+    ///
+    /// Sorted and contiguous in id: a voice's events carry consecutive
+    /// [`EventId`]s in this order, which is what makes
+    /// [`ScoreSnapshot::events_in`] a slice rather than a search.
+    pub fn events(&self) -> &[ScoreEvent] {
+        &self.events
+    }
+
     /// The voice's span: the end of its last event.
     pub fn span(&self) -> MusicalDuration {
         self.events.last().map_or(MusicalDuration::ZERO, |event| {
             (event.onset - MusicalTime::ZERO) + event.notated_duration.value
         })
+    }
+
+    pub(crate) fn new(events: Vec<ScoreEvent>) -> Self {
+        Self { events }
     }
 }
 
@@ -196,16 +208,64 @@ pub struct PartId(pub u32);
 /// A named part with its voices.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Part {
+    id: PartId,
+    name: String,
+    clef: Option<Clef>,
+    voices: IndexMap<VoiceId, Voice>,
+    voice_names: IndexMap<VoiceId, String>,
+}
+
+impl Part {
     /// The part identity.
-    pub id: PartId,
+    pub fn id(&self) -> PartId {
+        self.id
+    }
+
     /// The part name from the source.
-    pub name: String,
-    /// The written clef, if declared.
-    pub clef: Option<Clef>,
-    /// Voice lanes by identity, in source order.
-    pub voices: IndexMap<VoiceId, Voice>,
-    /// Voice names by identity.
-    pub voice_names: IndexMap<VoiceId, String>,
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// The written clef, if the part declared one.
+    pub fn clef(&self) -> Option<Clef> {
+        self.clef
+    }
+
+    /// The voice lanes, in source order.
+    pub fn voices(&self) -> impl Iterator<Item = (VoiceId, &Voice)> {
+        self.voices.iter().map(|(id, voice)| (*id, voice))
+    }
+
+    /// One voice lane by identity.
+    pub fn voice(&self, id: VoiceId) -> Option<&Voice> {
+        self.voices.get(&id)
+    }
+
+    /// The name a voice was written under; `None` when it was unnamed.
+    pub fn voice_name(&self, id: VoiceId) -> Option<&str> {
+        self.voice_names.get(&id).map(String::as_str)
+    }
+
+    /// The part's span: the end of its longest voice.
+    pub fn span(&self) -> MusicalDuration {
+        self.voices.values().map(Voice::span).max().unwrap_or_default()
+    }
+
+    pub(crate) fn new(
+        id: PartId,
+        name: String,
+        clef: Option<Clef>,
+        voices: IndexMap<VoiceId, Voice>,
+        voice_names: IndexMap<VoiceId, String>,
+    ) -> Self {
+        Self {
+            id,
+            name,
+            clef,
+            voices,
+            voice_names,
+        }
+    }
 }
 
 /// The score's parts, in source order.
@@ -293,10 +353,8 @@ impl Default for TempoMap {
 /// The initial meter.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MeterMap {
-    /// Beats per measure.
-    pub numerator: u32,
-    /// The beat unit denominator (`4` for quarters).
-    pub denominator: u32,
+    numerator: u32,
+    denominator: u32,
 }
 
 impl Default for MeterMap {
@@ -309,9 +367,23 @@ impl Default for MeterMap {
 }
 
 impl MeterMap {
+    /// Beats per measure.
+    pub fn numerator(self) -> u32 {
+        self.numerator
+    }
+
+    /// The beat unit denominator (`4` for quarters).
+    pub fn denominator(self) -> u32 {
+        self.denominator
+    }
+
     /// The length of one measure in whole notes.
     pub fn measure_len(&self) -> MusicalDuration {
         MusicalDuration::new(Ratio::new(i64::from(self.numerator), i64::from(self.denominator)))
+    }
+
+    pub(crate) fn new(numerator: u32, denominator: u32) -> Self {
+        Self { numerator, denominator }
     }
 }
 
@@ -327,13 +399,31 @@ pub enum Mode {
 /// The initial key signature.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyMap {
-    /// The tonic pitch class.
-    pub tonic: PitchClass,
-    /// The mode.
-    pub mode: Mode,
+    tonic: PitchClass,
+    mode: Mode,
 }
 
 impl KeyMap {
+    /// The tonic pitch class.
+    pub fn tonic(self) -> PitchClass {
+        self.tonic
+    }
+
+    /// The mode.
+    pub fn mode(self) -> Mode {
+        self.mode
+    }
+
+    /// The key a tonic and a mode name.
+    ///
+    /// Public because naming a key is not a snapshot-building privilege: a
+    /// caller that spells MIDI input, or a test that states what `bf major`
+    /// means, is entitled to say one without holding a score.
+    #[must_use]
+    pub fn new(tonic: PitchClass, mode: Mode) -> Self {
+        Self { tonic, mode }
+    }
+
     /// Where the key sits on the circle of fifths: positive counts sharps in
     /// the signature, negative counts flats.
     ///
@@ -695,21 +785,128 @@ pub struct MotifDeclaration {
 /// (roadmap §6.3).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScoreSnapshot {
+    title: String,
+    parts: PartMap,
+    tempo_map: TempoMap,
+    meter_map: MeterMap,
+    key_map: Option<KeyMap>,
+    annotations: AnnotationStore,
+    motifs: Vec<MotifDeclaration>,
+    profiles: crate::profile::ProfileSet,
+}
+
+impl ScoreSnapshot {
     /// The piece's title, as written in its `piece` declaration.
-    pub title: String,
-    /// Parts in source order.
-    pub parts: PartMap,
-    /// Tempo information.
-    pub tempo_map: TempoMap,
-    /// Meter information.
-    pub meter_map: MeterMap,
-    /// Key information.
-    pub key_map: Option<KeyMap>,
-    /// Score annotations.
-    pub annotations: AnnotationStore,
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
+    /// The parts, in source order.
+    pub fn parts(&self) -> &PartMap {
+        &self.parts
+    }
+
+    /// The piece's tempo: what it starts in, and every change after that.
+    pub fn tempo(&self) -> &TempoMap {
+        &self.tempo_map
+    }
+
+    /// The meter. A piece that names none is in 4/4.
+    pub fn meter(&self) -> MeterMap {
+        self.meter_map
+    }
+
+    /// The key signature, when the piece names one.
+    pub fn key(&self) -> Option<KeyMap> {
+        self.key_map
+    }
+
+    /// The annotations, by kind.
+    ///
+    /// Kind-major because that is how they are read: an outline pane wants
+    /// every section, an export backend wants every slur. Per-event questions
+    /// are [`Self::events_in`] and the marking lanes' own `at` fields.
+    pub fn annotations(&self) -> &AnnotationStore {
+        &self.annotations
+    }
+
     /// Every motif declared in the piece, in source order.
-    pub motifs: Vec<MotifDeclaration>,
+    pub fn motifs(&self) -> &[MotifDeclaration] {
+        &self.motifs
+    }
+
     /// The piece's interpretation profiles and their part assignments.
-    /// Declarations only: no `ScoreEvent` is touched by them (§6.4).
-    pub profiles: crate::profile::ProfileSet,
+    /// Declarations only: no [`ScoreEvent`] is touched by them (§6.4).
+    pub fn profiles(&self) -> &crate::profile::ProfileSet {
+        &self.profiles
+    }
+
+    /// The events a region annotation covers, from its first to its last
+    /// inclusive.
+    ///
+    /// A slur, phrase, tuplet or hairpin names the events at its ends; the
+    /// events between them are the ones it is *about*, and every consumer
+    /// needs them. Answering it here means the rule — a region lies inside one
+    /// voice, and a voice's events are contiguous in id — is stated once,
+    /// where the projection that guarantees it lives, instead of being
+    /// re-derived by id arithmetic in one caller and by a pair of linear
+    /// searches in another.
+    ///
+    /// Empty when the ends name no voice, or name different ones, or are the
+    /// wrong way round.
+    pub fn events_in(&self, from: EventId, to: EventId) -> &[ScoreEvent] {
+        for (_, part) in self.parts.iter() {
+            for (_, voice) in part.voices() {
+                let events = voice.events();
+                let Some(start) = events.iter().position(|event| event.id == from) else {
+                    continue;
+                };
+                let Some(end) = events.iter().position(|event| event.id == to) else {
+                    return &[];
+                };
+                return events.get(start..=end).unwrap_or_default();
+            }
+        }
+        &[]
+    }
+
+    pub(crate) fn set_title(&mut self, title: String) {
+        self.title = title;
+    }
+
+    pub(crate) fn parts_mut(&mut self) -> &mut PartMap {
+        &mut self.parts
+    }
+
+    pub(crate) fn tempo_mut(&mut self) -> &mut TempoMap {
+        &mut self.tempo_map
+    }
+
+    pub(crate) fn set_meter(&mut self, meter: MeterMap) {
+        self.meter_map = meter;
+    }
+
+    pub(crate) fn take_meter(&mut self) -> MeterMap {
+        std::mem::take(&mut self.meter_map)
+    }
+
+    pub(crate) fn set_key(&mut self, key: Option<KeyMap>) {
+        self.key_map = key;
+    }
+
+    pub(crate) fn take_key(&mut self) -> Option<KeyMap> {
+        self.key_map.take()
+    }
+
+    pub(crate) fn set_annotations(&mut self, annotations: AnnotationStore) {
+        self.annotations = annotations;
+    }
+
+    pub(crate) fn push_motif(&mut self, motif: MotifDeclaration) {
+        self.motifs.push(motif);
+    }
+
+    pub(crate) fn profiles_mut(&mut self) -> &mut crate::profile::ProfileSet {
+        &mut self.profiles
+    }
 }

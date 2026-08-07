@@ -72,7 +72,7 @@ impl Timelines {
         crate::project::project(&mut resolver, &piece)
             .voices
             .values()
-            .map(|voice| voice.events.len())
+            .map(|voice| voice.events().len())
             .sum()
     }
 

@@ -86,10 +86,10 @@ fn an_imported_motif_sounds_exactly_as_it_would_written_in_place() {
     ));
     let events = |score: &ScoreSnapshot| {
         score
-            .parts
+            .parts()
             .iter()
-            .flat_map(|(_, part)| part.voices.values())
-            .flat_map(|voice| voice.events.iter())
+            .flat_map(|(_, part)| part.voices().map(|(_, voice)| voice))
+            .flat_map(|voice| voice.events().iter())
             .map(|event| (event.onset, event.kind.clone(), event.notated_duration.value))
             .collect::<Vec<_>>()
     };
@@ -106,7 +106,7 @@ fn a_file_reached_twice_is_read_once() {
         &[("lib.musa", MOTIFS), ("also.musa", "library { use \"lib.musa\"; }")],
     );
     assert_eq!(errors(&compilation), Vec::<String>::new());
-    assert_eq!(snapshot(compilation).motifs.len(), 1, "one declaration, not two");
+    assert_eq!(snapshot(compilation).motifs().len(), 1, "one declaration, not two");
 }
 
 /// A cycle is reported with the files in it, so the fix is visible from the

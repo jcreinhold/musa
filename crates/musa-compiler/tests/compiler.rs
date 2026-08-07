@@ -58,17 +58,17 @@ fn motif_application_expands_with_provenance() {
     let snapshot = compilation.snapshot();
     let Some(snapshot) = snapshot else { return };
     let violin = snapshot
-        .parts
+        .parts()
         .iter()
-        .find(|(_, part)| part.name == "violin")
+        .find(|(_, part)| part.name() == "violin")
         .map(|(_, part)| part);
     let Some(violin) = violin else { return };
-    let lead = violin.voices.values().next();
+    let lead = violin.voices().map(|(_, voice)| voice).next();
     let Some(lead) = lead else { return };
     // `use sigh();` then `transpose down P5 { use sigh(); }`: two expansions
     // of a 5-item motif.
-    assert_eq!(lead.events.len(), 10);
-    let Some(first) = lead.events.first() else { return };
+    assert_eq!(lead.events().len(), 10);
+    let Some(first) = lead.events().first() else { return };
     // The default argument bound the `root` parameter to e5.
     assert!(format!("{:?}", first.kind).contains("letter: E"));
     assert!(format!("{:?}", first.kind).contains("octave: 5"));
@@ -76,7 +76,7 @@ fn motif_application_expands_with_provenance() {
     // The sixth event is the transposed expansion's first note: e5 down a
     // perfect fifth is a4, and its path records both steps in application
     // order (outermost first).
-    let sixth = lead.events.get(5);
+    let sixth = lead.events().get(5);
     let Some(sixth) = sixth else { return };
     assert!(format!("{:?}", sixth.kind).contains("letter: A"));
     assert!(format!("{:?}", sixth.kind).contains("octave: 4"));
@@ -100,15 +100,15 @@ fn transpose_spells_correctly() {
     );
     let Some(snapshot) = compilation.snapshot() else { return };
     let Some(voice) = snapshot
-        .parts
+        .parts()
         .iter()
         .next()
-        .and_then(|(_, part)| part.voices.values().next())
+        .and_then(|(_, part)| part.voices().map(|(_, voice)| voice).next())
     else {
         return;
     };
     let spellings: Vec<String> = voice
-        .events
+        .events()
         .iter()
         .filter_map(|event| match &event.kind {
             musa_compiler::ScoreEventKind::Note { pitch } => Some(pitch.to_string()),
@@ -131,17 +131,17 @@ fn repeat_expands_iterations_with_provenance() {
     );
     let Some(snapshot) = compilation.snapshot() else { return };
     let Some(voice) = snapshot
-        .parts
+        .parts()
         .iter()
         .next()
-        .and_then(|(_, part)| part.voices.values().next())
+        .and_then(|(_, part)| part.voices().map(|(_, voice)| voice).next())
     else {
         return;
     };
-    assert_eq!(voice.events.len(), 3);
-    let onsets: Vec<String> = voice.events.iter().map(|event| event.onset.to_string()).collect();
+    assert_eq!(voice.events().len(), 3);
+    let onsets: Vec<String> = voice.events().iter().map(|event| event.onset.to_string()).collect();
     assert_eq!(onsets, vec!["0", "1/4", "1/2"]);
-    for (index, event) in voice.events.iter().enumerate() {
+    for (index, event) in voice.events().iter().enumerate() {
         assert_eq!(
             event.origin.expansion_path,
             vec![musa_compiler::ExpansionStep::RepeatIteration(
@@ -194,15 +194,15 @@ fn nested_motifs_and_duration_parameters_expand() {
     );
     let Some(snapshot) = compilation.snapshot() else { return };
     let Some(voice) = snapshot
-        .parts
+        .parts()
         .iter()
         .next()
-        .and_then(|(_, part)| part.voices.values().next())
+        .and_then(|(_, part)| part.voices().map(|(_, voice)| voice).next())
     else {
         return;
     };
     let durations: Vec<String> = voice
-        .events
+        .events()
         .iter()
         .map(|event| event.notated_duration.spelling.clone())
         .collect();
@@ -272,12 +272,17 @@ fn provenance_points_back_to_source() {
     let compilation = compile_source(COUNTERPOINT);
     let Some(snapshot) = compilation.snapshot() else { return };
     let violin = snapshot
-        .parts
+        .parts()
         .iter()
-        .find(|(_, part)| part.name == "violin")
+        .find(|(_, part)| part.name() == "violin")
         .map(|(_, part)| part);
     let Some(violin) = violin else { return };
-    let Some(first) = violin.voices.values().next().and_then(|voice| voice.events.first()) else {
+    let Some(first) = violin
+        .voices()
+        .map(|(_, voice)| voice)
+        .next()
+        .and_then(|voice| voice.events().first())
+    else {
         return;
     };
     // The first event's origin span covers `d4 1/2;` in the source.
@@ -337,12 +342,12 @@ proptest! {
         assert!(!compilation.has_errors(), "errors: {}", messages(&compilation).join("\n"));
         if let Some(snapshot) = compilation.snapshot() {
             if let Some(voice) =
-                snapshot.parts.iter().next().and_then(|(_, part)| part.voices.values().next())
+                snapshot.parts().iter().next().and_then(|(_, part)| part.voices().map(|(_, voice)| voice).next())
             {
                 assert_eq!(voice.span().as_ratio(), expected);
                 // Onsets are cumulative: each event starts where the previous ended.
                 let mut cursor = Ratio::from_integer(0);
-                for event in &voice.events {
+                for event in voice.events() {
                     assert_eq!(event.onset.as_ratio(), cursor);
                     cursor += event.notated_duration.value.as_ratio();
                 }

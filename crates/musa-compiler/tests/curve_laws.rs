@@ -210,10 +210,10 @@ fn a_hairpin_moves_no_note() {
         score { part p { voice v { crescendo to f { c5 1/4; c5 1/4; c5 1/4; c5 1/4; } } } } }";
     let times = |score: &ScoreSnapshot| {
         score
-            .parts
+            .parts()
             .iter()
-            .flat_map(|(_, part)| part.voices.values())
-            .flat_map(|voice| voice.events.iter())
+            .flat_map(|(_, part)| part.voices().map(|(_, voice)| voice))
+            .flat_map(|voice| voice.events().iter())
             .map(|event| (event.onset, event.notated_duration.value))
             .collect::<Vec<(MusicalTime, _)>>()
     };

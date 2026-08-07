@@ -316,7 +316,7 @@ impl ProjectSession {
                 self.entry.press(event.note, now);
             }
         }
-        let key = self.valid.as_ref().and_then(|valid| valid.score.key_map);
+        let key = self.valid.as_ref().and_then(|valid| valid.score.key());
         self.entry
             .ready(now)
             .into_iter()

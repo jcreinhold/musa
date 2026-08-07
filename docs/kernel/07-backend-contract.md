@@ -64,6 +64,35 @@ events, never timelines.
 - Provenance flows: `EventId`/`Origin` in the snapshot are the same provenance carried in occurrence payloads, so the
   editor's source-mapping contract (MEI `xml:id`, click-to-source) survives the kernel unchanged (§20).
 
+## The interface that carries the guarantees (prompt 42)
+
+The assumptions above used to be conventions: `ScoreSnapshot` and its parts were public structs with public fields, and
+a consumer could read the layout and rely on it. Since prompt 42 the containers are closed, and each guarantee is
+carried by a named accessor rather than by a field a caller happens to find:
+
+| Guarantee | The accessor that carries it |
+| --- | --- |
+| A part's voices, and which voice is which | `Part::voices`, `Part::voice`, `Part::voice_name` |
+| A voice's events, in onset order, contiguous in id | `Voice::events` |
+| How long a voice or a part is written to last | `Voice::span`, `Part::span` |
+| The events a region annotation is *about* | `ScoreSnapshot::events_in` |
+| The piece's key and meter, present whether or not written | `ScoreSnapshot::key`, `ScoreSnapshot::meter` |
+| Markings by kind, in position order | `ScoreSnapshot::annotations` |
+
+`events_in` is the one accessor that is a question rather than a field. A slur, phrase, tuplet or hairpin names only the
+events at its ends; the events between them are what the mark is about, and every consumer needs them. The rule that
+answers it — a region lies inside one voice, and a voice's events are contiguous in id — is a *projection* invariant, so
+the projection states it once instead of `plan.rs` re-deriving it by id arithmetic and `performance.rs` re-deriving it
+by a pair of linear scans, each with its own way of being wrong at a voice boundary.
+
+`AnnotationStore` stays, deliberately. It is kind-major (`slurs()`, `dynamics()`, `sections()`, …), and kind-major is
+what its callers want: the outline pane lists sections, MEI writes dynamics as a lane, LilyPond emits articulations per
+note. Only region *membership* was the duplicated question, and `events_in` answers that.
+
+Constructors are `pub(crate)` throughout: a snapshot is produced by projecting a timeline and by nothing else. The one
+exception is `KeyMap::new`, because naming a key is not a snapshot-building privilege — the MIDI entry buffer spells
+incoming notes against a key it was handed, and holds no score.
+
 ## Falsification duty (§33)
 
 Consumers built against this contract are evidence for or against it. If several materially different musical examples

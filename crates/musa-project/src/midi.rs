@@ -208,13 +208,13 @@ mod midi_laws {
     use std::time::{Duration, Instant};
 
     fn key(letter: Letter, accidental: i8, mode: Mode) -> Option<KeyMap> {
-        Some(KeyMap {
-            tonic: PitchClass {
+        Some(KeyMap::new(
+            PitchClass {
                 letter,
                 accidental: Accidental(accidental),
             },
             mode,
-        })
+        ))
     }
 
     /// The spelling table the doc comment promises. Every row is a note a
