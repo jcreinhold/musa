@@ -1,5 +1,5 @@
 [package]
-description = "ProjectSession facade: documents, revisions, commands, undo, and export orchestration"
+description = "Project session: documents, revisions, commands, compilation orchestration, and exports"
 name = "musa-project"
 edition.workspace = true
 license.workspace = true
@@ -10,8 +10,15 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+hound = "3"
 musa-audio = { path = "../musa-audio" }
 musa-compiler = { path = "../musa-compiler" }
 musa-engine = { path = "../musa-engine" }
 musa-language = { path = "../musa-language" }
 musa-render = { path = "../musa-render" }
+text-size = "1"
+thiserror = "2"
+tracing = "0.1"
+
+[dev-dependencies]
+tempfile = "3"

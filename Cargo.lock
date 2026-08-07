@@ -646,14 +646,8 @@ dependencies = [
 name = "musa-cli"
 version = "0.1.0"
 dependencies = [
- "hound",
  "miette",
- "musa-audio",
- "musa-compiler",
- "musa-engine",
- "musa-language",
  "musa-project",
- "musa-render",
  "thiserror 2.0.19",
 ]
 
@@ -712,11 +706,16 @@ dependencies = [
 name = "musa-project"
 version = "0.1.0"
 dependencies = [
+ "hound",
  "musa-audio",
  "musa-compiler",
  "musa-engine",
  "musa-language",
  "musa-render",
+ "tempfile",
+ "text-size",
+ "thiserror 2.0.19",
+ "tracing",
 ]
 
 [[package]]

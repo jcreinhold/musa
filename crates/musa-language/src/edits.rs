@@ -4,6 +4,7 @@
 use text_size::TextRange;
 
 /// A replacement of one source range with new text.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextEdit {
     /// Byte range of the original text to replace.
     pub range: TextRange,

@@ -1,31 +1,50 @@
 //! The application's deepest module: one session, one canonical source.
 //!
-//! Owns: project loading and saving, source documents, revisions, commands,
-//! undo/redo, compiler orchestration, rendered-score snapshots, playback-plan
-//! preparation and installation, autosave, and asset references — design
-//! roadmap §15.7.
+//! Owns project loading and saving, source documents, revisions, commands,
+//! undo/redo, compiler orchestration, engraved-score snapshots, playback-plan
+//! preparation and installation, and exports — design roadmap §15.7.
 //!
-//! Must never expose: parser, compiler, renderer, DSP, or CPAL types; the
-//! frontend and CLI see only session-level DTOs. Must never contain: a
-//! second editable AST or a mutable expanded cache — the `.musa` source is
-//! the single persistent truth (roadmap §11), and score/studio interfaces
-//! are structured editors of that source.
+//! Never exposes parser, compiler, renderer, DSP, or CPAL types: the frontend
+//! and CLI see only session-level types ([`ProjectSnapshot`],
+//! [`Diagnostic`], [`ExportArtifact`]). Never contains a second editable AST
+//! or a mutable expanded cache — the `.musa` source is the single persistent
+//! truth (roadmap §11), and score and studio interfaces are structured
+//! editors of that source.
 //!
-//! Intended facade (roadmap §15.7), to be implemented by prompts 19 and 25:
+//! ```no_run
+//! # fn main() -> Result<(), musa_project::ProjectError> {
+//! use musa_project::{ExportRequest, ProjectCommand, ProjectSession};
 //!
-//! ```text
-//! pub struct ProjectSession { /* hidden */ }
-//! impl ProjectSession {
-//!     pub fn open(path: impl AsRef<Path>) -> Result<Self, ProjectError>;
-//!     pub fn snapshot(&self) -> ProjectSnapshot;
-//!     pub fn apply(&mut self, command: ProjectCommand)
-//!         -> Result<ProjectUpdate, ProjectError>;
-//!     pub fn export(&self, request: ExportRequest)
-//!         -> Result<ExportArtifact, ProjectError>;
-//! }
+//! let mut session = ProjectSession::open("examples/glass-mountain.musa")?;
+//! session.apply(ProjectCommand::SetSource("piece \"x\" {}".into()))?;
+//! // The source no longer compiles, so the previous score is still there.
+//! assert!(!session.snapshot().compiles());
+//! assert!(session.snapshot().mei().is_some());
+//! session.undo()?;
+//! let wav = session.export(ExportRequest::Wav)?;
+//! # let _ = wav;
+//! # Ok(())
+//! # }
 //! ```
 //!
-//! Invariants: one user command may trigger parsing, compilation, score
-//! rendering, and playback-plan rebuilding, and callers cannot tell; while
-//! the source is temporarily invalid, the last valid score and playback plan
-//! stay live and are clearly flagged as such (roadmap §14.7).
+//! One user command may parse, compile, engrave, rebuild a DSP plan, and
+//! reinstall it on the audio thread; callers cannot tell. While the source is
+//! temporarily invalid, the last valid score and playback plan stay live and
+//! are flagged as such (roadmap §14.7).
+
+mod command;
+mod diagnostic;
+mod error;
+mod export;
+mod playback;
+mod session;
+mod snapshot;
+mod template;
+
+pub use crate::command::{ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
+pub use crate::diagnostic::{Diagnostic, Severity, Span};
+pub use crate::error::ProjectError;
+pub use crate::export::{ExportArtifact, ExportRequest};
+pub use crate::session::ProjectSession;
+pub use crate::snapshot::{PlaybackState, ProjectSnapshot};
+pub use crate::template::Template;

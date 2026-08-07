@@ -1,7 +1,7 @@
 ---
 id: 19
 slug: project-session
-status: pending
+status: done
 depends_on: [18]
 phase: 1.5
 ---

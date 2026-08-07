@@ -1,11 +1,13 @@
 //! Thin command-line interface over `musa-project`.
 //!
-//! The CLI must call public facades only; it never recreates compiler
-//! orchestration (design roadmap §15.8). Until `musa-project` exists
-//! (prompt 14), `format` and `check` call `musa_language` directly — the
-//! call sites are one-liners so the swap is mechanical.
+//! The CLI calls public facades only; it never chains compiler, renderer, or
+//! engine calls itself (design roadmap §15.8). Everything below is argument
+//! parsing, one `ProjectSession` call, and printing — if a subcommand here
+//! ever needs to orchestrate, the orchestration belongs in `musa-project`.
 
 use std::process::ExitCode;
+
+use musa_project::{ExportArtifact, ExportRequest, ProjectCommand, ProjectSession, TransportRequest};
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -35,8 +37,15 @@ fn print_usage() {
     println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
 }
 
-mod orchestrate;
+/// Open a project, or report why not.
+fn open(path: &str) -> Result<ProjectSession, ExitCode> {
+    ProjectSession::open(path).map_err(|error| {
+        eprintln!("error: {error}");
+        ExitCode::FAILURE
+    })
+}
 
+/// `musa render <file> --to <target> [-o <path>]`
 fn cmd_render(args: &[String]) -> ExitCode {
     let mut path: Option<&str> = None;
     let mut target = "plan";
@@ -65,130 +74,85 @@ fn cmd_render(args: &[String]) -> ExitCode {
         eprintln!("error: render needs a file");
         return ExitCode::FAILURE;
     };
-    let source = match musa_compiler::SourceDocument::open(path) {
-        Ok(source) => source,
-        Err(error) => {
-            eprintln!("error: cannot read {path}: {error}");
+    let request = match target {
+        "plan" => ExportRequest::NotationPlanDump,
+        "performance" => ExportRequest::PerformanceDump,
+        "mei" => ExportRequest::Mei,
+        "lilypond" => ExportRequest::LilyPond,
+        "wav" => ExportRequest::Wav,
+        other => {
+            eprintln!("error: --to {other} is not implemented yet (plan | mei | lilypond | performance | wav)");
             return ExitCode::FAILURE;
         }
     };
-    let compilation = musa_compiler::compile(&source, &musa_compiler::CompileOptions::default());
-    let Some(score) = compilation.into_snapshot() else {
-        eprintln!("error: {path}: compilation failed");
-        return ExitCode::FAILURE;
+    let session = match open(path) {
+        Ok(session) => session,
+        Err(code) => return code,
     };
-    match target {
-        "plan" => match musa_render::plan_notation(&score, &musa_render::NotationOptions::default()) {
-            Ok(plan) => {
-                println!("{plan:#?}");
-                ExitCode::SUCCESS
-            }
-            Err(error) => {
-                eprintln!("error: {error}");
-                ExitCode::FAILURE
-            }
-        },
-        "performance" => {
-            match musa_compiler::lower_performance(&score, &musa_compiler::PerformanceOptions::default()) {
-                Ok(plan) => {
-                    print_performance(&plan);
-                    ExitCode::SUCCESS
-                }
-                Err(error) => {
-                    eprintln!("error: {error}");
-                    ExitCode::FAILURE
-                }
-            }
-        }
-        "mei" => render_backend(path, &score, musa_render::NotationTarget::Mei, output, "mei"),
-        "lilypond" => render_backend(path, &score, musa_render::NotationTarget::LilyPond, output, "ly"),
-        "wav" => match orchestrate::render_to_wav(&score) {
-            Ok(rendered) => write_bytes(path, &rendered.bytes, output, "wav"),
-            Err(error) => {
-                eprintln!("error: {error}");
-                ExitCode::FAILURE
-            }
-        },
-        other => {
-            eprintln!("error: --to {other} is not implemented yet (plan | mei | lilypond | performance | wav)");
-            ExitCode::FAILURE
-        }
-    }
-}
-
-fn render_backend(
-    path: &str,
-    score: &musa_compiler::ScoreSnapshot,
-    target: musa_render::NotationTarget,
-    output: Option<&str>,
-    extension: &str,
-) -> ExitCode {
-    match musa_render::render_notation(score, target, &musa_render::NotationOptions::default()) {
-        Ok(rendered) => write_output(path, rendered.text(), output, extension),
+    let artifact = match session.export(request) {
+        Ok(artifact) => artifact,
         Err(error) => {
-            eprintln!("error: {error}");
-            ExitCode::FAILURE
+            eprintln!("error: {path}: {error}");
+            return ExitCode::FAILURE;
         }
+    };
+    // The debug dumps go to stdout by default; the file formats go to a file.
+    match request {
+        ExportRequest::NotationPlanDump | ExportRequest::PerformanceDump if output.is_none() => {
+            println!(
+                "{}",
+                artifact
+                    .as_text()
+                    .unwrap_or_default()
+                    .trim_end_matches(char::is_whitespace)
+            );
+            ExitCode::SUCCESS
+        }
+        ExportRequest::Mei
+        | ExportRequest::LilyPond
+        | ExportRequest::Wav
+        | ExportRequest::PerformanceDump
+        | ExportRequest::NotationPlanDump
+        | _ => write_artifact(path, &artifact, output, request.extension()),
     }
 }
 
-/// The `--to performance` debug dump (snapshot surface until audio exists).
-fn print_performance(plan: &musa_compiler::PerformancePlan) {
-    for lane in plan.lanes() {
-        println!("lane {}:", lane.name());
-        for event in lane.events() {
-            match event {
-                musa_compiler::PerformanceEvent::NoteOn { frame, note, instance } => {
-                    println!(
-                        "  on  {frame} {} {:.2}Hz event-{:x} i{}",
-                        note.pitch, note.frequency, note.event.0, instance.0
-                    );
-                }
-                musa_compiler::PerformanceEvent::NoteOff { frame, instance } => {
-                    println!("  off {frame} i{}", instance.0);
-                }
-                musa_compiler::PerformanceEvent::Parameter { frame, target, value } => {
-                    println!("  par {frame} p{} {value}", target.0);
-                }
+/// Write an export to `-o`, to stdout for `-o -`, or beside the input.
+fn write_artifact(input: &str, artifact: &ExportArtifact, output: Option<&str>, extension: &str) -> ExitCode {
+    if output == Some("-") {
+        match artifact.as_text() {
+            Some(text) => {
+                println!("{text}");
+                return ExitCode::SUCCESS;
+            }
+            None => {
+                eprintln!("error: this format is binary; give -o <path>");
+                return ExitCode::FAILURE;
             }
         }
     }
-}
-
-/// Write rendered output: stdout for `-o -`, `<name>.<ext>` beside the input
-/// by default, or the given path.
-fn write_output(input: &str, text: &str, output: Option<&str>, extension: &str) -> ExitCode {
-    let destination = match output {
-        Some("-") => None,
-        Some(path) => Some(path.to_string()),
-        None => Some(
+    let destination = output.map_or_else(
+        || {
             std::path::Path::new(input)
                 .with_extension(extension)
                 .to_string_lossy()
-                .to_string(),
-        ),
-    };
-    match destination {
-        None => {
-            println!("{text}");
+                .into_owned()
+        },
+        ToOwned::to_owned,
+    );
+    match std::fs::write(&destination, artifact.as_bytes()) {
+        Ok(()) => {
+            println!("wrote {destination}");
             ExitCode::SUCCESS
         }
-        Some(path) => match std::fs::write(&path, text) {
-            Ok(()) => {
-                println!("wrote {path}");
-                ExitCode::SUCCESS
-            }
-            Err(error) => {
-                eprintln!("error: cannot write {path}: {error}");
-                ExitCode::FAILURE
-            }
-        },
+        Err(error) => {
+            eprintln!("error: cannot write {destination}: {error}");
+            ExitCode::FAILURE
+        }
     }
 }
 
-/// `musa play <file> [--loop]`: compile, prepare, open the engine, install,
-/// play to completion (Ctrl-C terminates the process). Thin by design;
-/// prompt 19 moves orchestration into `musa-project`.
+/// `musa play <file> [--loop]` — play to completion; Ctrl-C ends it early.
 fn cmd_play(args: &[String]) -> ExitCode {
     let mut path: Option<&str> = None;
     let mut looping = false;
@@ -202,75 +166,22 @@ fn cmd_play(args: &[String]) -> ExitCode {
         eprintln!("error: play needs a file");
         return ExitCode::FAILURE;
     };
-    let source = match musa_compiler::SourceDocument::open(path) {
-        Ok(source) => source,
-        Err(error) => {
-            eprintln!("error: cannot read {path}: {error}");
-            return ExitCode::FAILURE;
-        }
+    let mut session = match open(path) {
+        Ok(session) => session,
+        Err(code) => return code,
     };
-    let compilation = musa_compiler::compile(&source, &musa_compiler::CompileOptions::default());
-    let Some(score) = compilation.into_snapshot() else {
-        eprintln!("error: {path}: compilation failed");
-        return ExitCode::FAILURE;
-    };
-    let plan = match orchestrate::prepare_playback(&score) {
-        Ok(plan) => plan,
-        Err(error) => {
-            eprintln!("error: {error}");
-            return ExitCode::FAILURE;
-        }
-    };
-    let total = plan.total_frames();
-    let engine = match musa_engine::AudioEngine::open(musa_engine::EngineConfig::default()) {
-        Ok(engine) => engine,
-        Err(error) => {
-            eprintln!("error: {error}");
-            return ExitCode::FAILURE;
-        }
-    };
-    if engine.install(plan).is_err() || engine.command(musa_engine::TransportCommand::Play).is_err() {
-        eprintln!("error: engine command queue is full");
+    if let Err(error) = session.apply(ProjectCommand::Transport(TransportRequest::Play)) {
+        eprintln!("error: {error}");
         return ExitCode::FAILURE;
     }
     if looping {
-        let _ignored = engine.command(musa_engine::TransportCommand::SetLoop { start: 0, end: total });
+        let end = session.snapshot().playback().total_frames;
+        let _ignored = session.apply(ProjectCommand::Transport(TransportRequest::SetLoop { start: 0, end }));
     }
     println!("playing {path}{}…", if looping { " (looping)" } else { "" });
-    while engine.is_playing() {
-        std::thread::sleep(std::time::Duration::from_millis(50));
-    }
+    session.wait_for_playback();
     println!("done");
     ExitCode::SUCCESS
-}
-
-/// Write binary output (WAV) to `-o` or the input path with `extension`.
-fn write_bytes(input: &str, bytes: &[u8], output: Option<&str>, extension: &str) -> ExitCode {
-    let destination = match output {
-        Some(path) => path.to_string(),
-        None => std::path::Path::new(input)
-            .with_extension(extension)
-            .to_string_lossy()
-            .to_string(),
-    };
-    match std::fs::write(&destination, bytes) {
-        Ok(()) => {
-            println!("wrote {destination}");
-            ExitCode::SUCCESS
-        }
-        Err(error) => {
-            eprintln!("error: cannot write {destination}: {error}");
-            ExitCode::FAILURE
-        }
-    }
-}
-
-/// Read a `.musa` file, or report the I/O error and give up.
-fn read_source(path: &str) -> Result<String, ExitCode> {
-    std::fs::read_to_string(path).map_err(|error| {
-        eprintln!("error: cannot read {path}: {error}");
-        ExitCode::FAILURE
-    })
 }
 
 /// `musa format <file> [--check]`
@@ -280,26 +191,31 @@ fn cmd_format(args: &[String]) -> ExitCode {
         eprintln!("error: format needs a file");
         return ExitCode::FAILURE;
     };
-    let source = match read_source(path) {
-        Ok(source) => source,
+    let mut session = match open(path) {
+        Ok(session) => session,
         Err(code) => return code,
     };
-    let document = musa_language::parse(&source);
-    let formatted = musa_language::format(&document);
-    if formatted.text() == source {
+    let update = match session.apply(ProjectCommand::Format) {
+        Ok(update) => update,
+        Err(error) => {
+            eprintln!("error: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    if !update.source_changed {
         return ExitCode::SUCCESS;
     }
     if check_only {
         eprintln!("{path}: not formatted");
         return ExitCode::FAILURE;
     }
-    match std::fs::write(path, formatted.text()) {
-        Ok(()) => {
+    match session.apply(ProjectCommand::Save) {
+        Ok(_) => {
             println!("{path}: formatted");
             ExitCode::SUCCESS
         }
         Err(error) => {
-            eprintln!("error: cannot write {path}: {error}");
+            eprintln!("error: {error}");
             ExitCode::FAILURE
         }
     }
@@ -335,7 +251,7 @@ impl miette::Diagnostic for CliDiagnostic {
     }
 }
 
-/// `musa check <file>...` — full semantic check through `musa_compiler`.
+/// `musa check <file>...` — full semantic check.
 fn cmd_check(args: &[String]) -> ExitCode {
     let mut status = ExitCode::SUCCESS;
     let mut files: u32 = 0;
@@ -353,23 +269,20 @@ fn cmd_check(args: &[String]) -> ExitCode {
 }
 
 fn cmd_check_one(path: &str) -> ExitCode {
-    let source = match musa_compiler::SourceDocument::open(path) {
-        Ok(source) => source,
-        Err(error) => {
-            eprintln!("error: cannot read {path}: {error}");
-            return ExitCode::FAILURE;
-        }
+    let session = match open(path) {
+        Ok(session) => session,
+        Err(code) => return code,
     };
-    let compilation = musa_compiler::compile(&source, &musa_compiler::CompileOptions::default());
-    for diagnostic in compilation.diagnostics() {
+    let snapshot = session.snapshot();
+    for diagnostic in snapshot.diagnostics() {
         let severity = match diagnostic.severity {
-            musa_compiler::Severity::Error => "error",
-            musa_compiler::Severity::Warning => "warning",
+            musa_project::Severity::Error => "error",
+            musa_project::Severity::Warning => "warning",
         };
         let rendered = CliDiagnostic {
             severity,
             message: diagnostic.message.clone(),
-            src: miette::NamedSource::new(path, source.text().to_string()),
+            src: miette::NamedSource::new(path, snapshot.source().to_owned()),
             span: diagnostic.span.map(|span| {
                 miette::SourceSpan::from((
                     miette::SourceOffset::from(usize::try_from(span.start).unwrap_or(0)),
@@ -379,10 +292,10 @@ fn cmd_check_one(path: &str) -> ExitCode {
         };
         eprintln!("{:?}", miette::Report::new(rendered));
     }
-    if compilation.has_errors() {
-        ExitCode::FAILURE
-    } else {
+    if snapshot.compiles() {
         println!("{path}: ok");
         ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
     }
 }
