@@ -25,6 +25,7 @@ mod error;
 mod hash;
 mod occurrence;
 mod progress;
+mod term;
 mod time;
 mod timeline;
 
@@ -32,5 +33,6 @@ pub use crate::error::KernelError;
 pub use crate::hash::SemanticHash;
 pub use crate::occurrence::{Canonical, Occurrence};
 pub use crate::progress::Progress;
+pub use crate::term::{Term, evaluate};
 pub use crate::time::{Beat, Span};
 pub use crate::timeline::{Observation, Timeline, overlay, sequence, timeline, zero};

@@ -1,7 +1,7 @@
 ---
 id: 47
 slug: kernel-terms
-status: pending
+status: done
 depends_on: [45, 46]
 phase: 3
 ---
@@ -97,6 +97,52 @@ fails, the calculus and the algebra disagree and the *specification* is wrong �
 - `crates/musa-kernel/tests/terms.rs`: T1–T5 and the transported laws.
 - `docs/kernel/10-term-calculus.md`: each theorem's `Test:` line pointed at the real test name.
 - `docs/kernel/09-performance.md`: no row — nothing on the measured path changed.
+
+## Repairs made while implementing
+
+**`Term` is an opaque struct, not a public enum, and that is what made `evaluate` infallible.** The prompt offered the
+choice and preferred constructors if they sufficed; they do. With `Term::seq`/`over`/`shift`/`scale` returning
+`Result`, four of `02-static-semantics.md` K7's rules become unrepresentable — an empty composition, a non-positive
+factor, a backwards delay, a disordered window — and payload uniformity is the type parameter. `check` is left with
+exactly the two rules that are **not local to one node**, and both are about names.
+
+**The one case that could not be pushed into construction is a free name**, because a reference is built before the
+binder that encloses it: `Term::var("x")` exists before `Term::bind("x", …)` wraps it. `evaluate` still returns a
+`Timeline` rather than a `Result` — an unchecked free name denotes the empty timeline `(0, ∅)`, and a debug build
+asserts that `check` passed. Panicking in a library on a caller's mistake is worse than the total answer, and returning
+`Result` from `evaluate` would put an error case on the path of every well-formed term to describe a term no checked
+caller can hold. This is the case the prompt asked to be named.
+
+**Shadowing is rejected, and that shaped the term generator.** K7 forbids it so substitution stays textual and T2 needs
+no capture-avoidance apparatus. The recursive `proptest` strategy therefore names each binding after its depth
+(`x2`, `x1`, …); the first version reused `x` at every level and every nested term was ill-formed — which is the rule
+catching a real mistake on its first use rather than a test being bent to fit.
+
+**T2's reference is the substituted term, written out, not a substituting evaluator.** The prompt asked for a reference
+evaluator that expands `let` by substitution. `Term` is opaque, so substitution is not expressible from a test file —
+but it does not need to be: the test builds `let x = v in seq(x, body, x)` and `seq(v, body, v)` directly and compares
+their denotations, which is exactly `⟦let x = t in u⟧ = ⟦u[t/x]⟧` with the substitution done by hand. Same reference,
+fewer moving parts, and no second evaluator to keep correct.
+
+**`restrict` needed D6 materialized as a value, and it is private.** `Timeline::restrict` returns an `Observation`,
+which is a view; E-Restrict must yield a timeline. The evaluator materializes it — visible occurrences, **whole** spans
+preserved (§17), the observed extent kept so L16 still makes full-extent restriction the identity — in a private
+helper. It is not a new public operation, because it is not a new meaning and nothing outside the evaluator wants one.
+The T1 test writes the same materialization independently so the `restrict` case compares two implementations rather
+than one against itself.
+
+**`shift` is expanded by the evaluator, not denoted.** `Form::Shift` exists so a parser and a printer can round-trip
+the sugar, but E-Shift is not a rule: evaluation builds `seq (timeline d {}) t` and hands off. A dedicated test
+(`shift_denotes_its_stated_expansion`) pins that, so the sugar cannot drift into a primitive.
+
+**References clone; the comment names prompt 49.** As instructed. `Rc` was not introduced, and the place the decision
+would be revisited is stated in `evaluate`'s doc comment rather than left to be rediscovered.
+
+**Two documents were repaired.** `02-static-semantics.md` K7 now says which of its rules are checked and which are
+unrepresentable — a list of rules that does not say where each is enforced invites a checker that re-validates what the
+type system already guarantees. `10-term-calculus.md`'s theorem preamble moved from future tense to present, and gained
+a short section naming the three tests beyond T1–T5 (the transported algebra, the sugar's expansion, the negative
+cases).
 
 ## Check
 

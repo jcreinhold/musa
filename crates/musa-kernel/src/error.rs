@@ -22,6 +22,24 @@ pub enum KernelError {
         /// The timeline extent.
         extent: Beat,
     },
+    /// A `seq` or `over` term with no arguments (K7).
+    #[error("`{form}` needs at least one argument; the empty case is written as a literal timeline")]
+    EmptyComposition {
+        /// The offending form, `"seq"` or `"over"`.
+        form: &'static str,
+    },
+    /// A term names something no enclosing `let` binds (K7).
+    #[error("`{name}` is not bound by any enclosing `let`")]
+    FreeName {
+        /// The offending name.
+        name: String,
+    },
+    /// A `let` rebinds a name already in scope (K7).
+    #[error("`{name}` is already bound; shadowing is rejected so substitution stays textual")]
+    ShadowedName {
+        /// The offending name.
+        name: String,
+    },
     /// Time scaling by a non-positive factor (K2/D5).
     #[error("scale factor must be a positive rational, got {factor}")]
     NonPositiveScale {

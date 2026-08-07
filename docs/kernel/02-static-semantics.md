@@ -83,6 +83,13 @@ without evaluating it.
 A term satisfying these rules and containing no free names is **closed and well-formed**, which is the precondition of
 every theorem in `10-term-calculus.md`.
 
+**Only two of these rules are ever checked.** Prompt 47's implementation makes the rest unrepresentable: `Term` is
+opaque and built through constructors, so a non-positive `scale` factor, a negative `shift`, an empty `seq` or `over`,
+and a disordered window are rejected where they are written and never become terms. Payload uniformity is the type
+parameter. Acyclicity is free, as above. What is left is the two rules that are **not local to one node** — a free
+name and a shadowed one — because a reference is built before the binder that encloses it. Those are what
+`Term::check` answers, and a term that passes it evaluates (T4).
+
 ## Error surface
 
 All static violations are reported as `KernelError` values naming the rule and the offending data (extent, span, or

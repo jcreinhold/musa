@@ -160,8 +160,8 @@ where an occurrence began, in a term any more than in a value.
 
 ## Theorems
 
-These are the theorems that make this a calculus rather than a file format. Each names the property test that will
-implement it at prompt 47, in the style `04-algebraic-laws.md` uses. `⟦t⟧` abbreviates the `v` with `∅ ⊢ t ⇓ v`, for
+These are the theorems that make this a calculus rather than a file format. Each names the property test that
+implements it (prompt 47, `crates/musa-kernel/tests/terms.rs`), in the style `04-algebraic-laws.md` uses. `⟦t⟧` abbreviates the `v` with `∅ ⊢ t ⇓ v`, for
 closed well-formed `t`; equality is semantic equality (N4).
 
 - **T1 — the constructors are a homomorphism.** For all closed well-formed terms,
@@ -212,6 +212,15 @@ closed well-formed `t`; equality is semantic equality (N4).
   false, because `seq` translates its second argument and a window in the composite names different material than the
   same window in the parts. The push-inward rule for `seq` has to translate the window, and stating it is prompt 50's
   job, with the measurement that justifies doing it at all.
+
+### What the suite checks beyond the five theorems
+
+- `the_algebra_transports_to_terms` and `synchronized_interchange_holds_of_terms` — L1, L4, L5 and L18 asked at the
+  term level. They are T1's consequence, and they are tested rather than argued because a disagreement between the
+  calculus and the algebra would be a bug in *this document*, not in the code.
+- `shift_denotes_its_stated_expansion` — the sugar's expansion, so `shift` cannot quietly become a primitive.
+- `ill_formed_terms_are_rejected` — the two rules `check` answers, plus the four the constructors make
+  unrepresentable.
 
 ## What is deliberately absent
 
