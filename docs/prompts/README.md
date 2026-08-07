@@ -133,6 +133,18 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 34 | transforms-variation | 3 | stretch/retrograde/invert as elaboration-time functions, specialization |
 | 35 | annotations-harmony | 3 | Phrase/form and harmony as typed interval payloads |
 | 36 | imports-and-curves | 3 | Relative imports, tempo/expression curves |
+| 37 | kernel-observation | 3 | Composable observation; ambient extension deleted; kernel spec repairs |
+| 38 | semantic-benchmarks | 3 | Measured baseline for the semantic pipeline |
+| 39 | score-facts | 3 | Every notated fact is an occurrence; snapshot becomes a projection |
+| 40 | context-facts | 3 | Key, meter, sections, harmony as occurrences; one timeline per piece |
+| 41 | retire-the-oracle | 3 | The direct lowerer and the `Elaboration` switch deleted |
+| 42 | snapshot-projection | 3 | `ScoreSnapshot` closed behind its interface |
+| 43 | semantic-identity | 3 | Semantic hash; playback keyed on meaning, not revisions |
+| 44 | kernel-term-spec | 3 | `docs/kernel/10-term-calculus.md` (candidate) |
+| 45 | kernel-terms | 3 | `Term`, evaluator, soundness laws |
+| 46 | kernel-interop | 3 | `musa kernel`; `.kernel` round-trip; graduates the calculus |
+| 47 | elaboration-emits-terms | 3 | Sharing: `repeat` and motifs become `let` |
+| 48 | windowed-observation | 3 | Deferred observation, if measurement justifies it |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 is **frozen as
 the regression oracle** once prompt 11 lands: the new kernel elaboration must reproduce its snapshots exactly
@@ -147,6 +159,17 @@ so that **the design is settled before any plumbing exists** (prompt 20 is a fix
 real fonts, and committed screenshot goldens, and nothing else), then wired (21), then made to hold up under real use
 (22, 23), then given its distinguishing interaction (24) and its editing story (25, 26). `docs/interface/` is the
 specification all seven implement.
+
+Prompts 37–48 are the kernel consolidation block. Prompt 12 made the kernel canonical but deliberately kept what the
+migration needed: the direct lowerer as a regression oracle, and a `ScoreSnapshot` shaped exactly as the pre-kernel
+compiler had left it. The consequence, five prompts later, was a system with one semantic core and two temporal
+representations — notes in the timeline, and slurs, dynamics, key, meter, sections, and harmony in parallel side tables
+keyed by ids the adapter assigned. **37–43 finish the migration and delete what it was keeping**: every temporal fact
+becomes an occurrence, the snapshot becomes a projection behind an interface, the oracle goes, and semantic identity
+replaces the revision counters that stood in for it. **44–48 add the term calculus** — `docs/kernel/01-grammar.md`'s
+long-promised syntax, with `let` for sharing, an evaluator, soundness theorems, and the interchange format that Q6 said
+would justify a parser. The block follows the 08–12 shape: specify (44), implement and prove (45), install (46–47), and
+measure before optimizing (38, 48).
 
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
 ("Verovio score preview", "play, stop, seek, loop") but which this sequence deliberately runs after the CLI-provable
