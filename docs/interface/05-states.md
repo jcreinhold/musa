@@ -1,6 +1,6 @@
 # 05 — States and Voice
 
-Status: **candidate**.
+Status: **governing**.
 
 Every screen the application can be in, and the words it uses. States that are designed late become the parts of a
 program that feel unfinished, and they are disproportionately what a new user meets first.

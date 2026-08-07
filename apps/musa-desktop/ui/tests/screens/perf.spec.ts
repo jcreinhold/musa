@@ -14,6 +14,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
+import { drawer, rewrite } from "./source";
 import { stubShell } from "./shell";
 
 /** The debounce the budget is stated relative to (`06-performance.md` §1). */
@@ -76,15 +77,14 @@ test("B1: a keystroke reaches diagnostics within 120 ms of the debounce", async 
   await stubShell(page);
   await page.goto("/?perf=1");
   await engraved(page);
-  await page.getByRole("button", { name: /Source/ }).click();
-  const source = page.getByRole("textbox", { name: "Source" });
+  await drawer(page).click();
 
   const samples: number[] = [];
   for (let trial = 0; trial < TRIALS; trial += 1) {
     await page.evaluate(() => performance.clearMarks());
     // Every trial alternates between two sources so that each one is a real
     // change; setting the text the document already has compiles nothing.
-    await source.fill(trial % 2 === 0 ? `piece "A" {}` : `piece "B" {}`);
+    await rewrite(page, trial % 2 === 0 ? `piece "A" {}` : `piece "B" {}`);
     await page.waitForFunction(
       () => performance.getEntriesByName("musa:snapshot", "mark").length > 0,
     );
@@ -239,13 +239,12 @@ test.describe("the large score", () => {
     await stubShell(page, "large-score");
     await page.goto("/?perf=1");
     await engraved(page);
-    await page.getByRole("button", { name: /Source/ }).click();
-    const source = page.getByRole("textbox", { name: "Source" });
+    await drawer(page).click();
 
     const samples: number[] = [];
     for (let trial = 0; trial < TRIALS; trial += 1) {
       await page.evaluate(() => performance.clearMarks());
-      await source.fill(trial % 2 === 0 ? `piece "A" {}` : `piece "B" {}`);
+      await rewrite(page, trial % 2 === 0 ? `piece "A" {}` : `piece "B" {}`);
       await page.waitForFunction(
         () => performance.getEntriesByName("musa:score", "mark").length > 0,
       );

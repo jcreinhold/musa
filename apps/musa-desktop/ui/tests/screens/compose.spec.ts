@@ -9,6 +9,7 @@
 import { expect, test } from "@playwright/test";
 
 import { engraved } from "./engraved";
+import { drawer } from "./source";
 
 const SIZES = [
   { name: "1440x900", width: 1440, height: 900 },
@@ -64,7 +65,7 @@ test("the drawer pushes the leaf rather than covering it", async ({ page }) => {
   await engraved(page);
   const before = await page.locator(".engraving").boundingBox();
 
-  await page.getByRole("button", { name: /Source/ }).click();
+  await drawer(page).click();
   const after = await page.locator(".engraving").boundingBox();
 
   expect(before?.height ?? 0).toBeGreaterThan(after?.height ?? 0);

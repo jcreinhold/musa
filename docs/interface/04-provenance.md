@@ -1,6 +1,6 @@
 # 04 — Origin View
 
-Status: **candidate**.
+Status: **governing**.
 
 This is the application's signature. It is the one interaction that only musa can offer, and it is the visual
 precondition for the editing story in roadmap §9.

@@ -14,6 +14,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
+import { caret, drawer, marked, rewrite, selected, source } from "./source";
 import { stubShell } from "./shell";
 
 /** Where the generated notes are, and what colour they are in, right now. */
@@ -127,14 +128,14 @@ test("the lens can be pinned for anyone who cannot hold a key", async ({ page })
 });
 
 test("the source says where too, and the parts list dims what is authored", async ({ page }) => {
-  await page.getByRole("button", { name: "Source" }).click();
+  await drawer(page).click();
   await page.locator('.engraving .arriving [id="event-4"]').first().click({ force: true });
 
   // The declaration and the use statement, both marked, neither invented here.
-  const marks = page.locator(".drawer mark");
-  await expect(marks).toHaveCount(2);
-  await expect(marks.first()).toContainText("motif sigh");
-  await expect(marks.last()).toHaveText("use sigh();");
+  await expect.poll(() => marked(page)).not.toHaveLength(0);
+  const marks = await marked(page);
+  expect(marks.join("\n")).toContain("motif sigh");
+  expect(marks.at(-1)).toBe("use sigh();");
 
   await inScore(page);
   await page.keyboard.down("o");
@@ -147,19 +148,13 @@ test("the origin row's line number opens the source at the use statement", async
   await page.locator('.engraving .arriving [id="event-4"]').first().click({ force: true });
   await page.locator(".inspector button.segment.line").click();
 
-  const source = page.locator(".drawer textarea.source");
-  await expect(source).toBeVisible();
-  const selected = await source.evaluate((element) => {
-    const field = element as HTMLTextAreaElement;
-    return field.value.slice(field.selectionStart, field.selectionEnd);
-  });
-  expect(selected).toBe("use sigh();");
+  await expect(source(page)).toBeVisible();
+  await expect.poll(() => selected(page)).toBe("use sigh();");
 });
 
 test("a diagnostic is a place in the source, not a notification", async ({ page }) => {
-  await page.getByRole("button", { name: /Source/ }).click();
-  const source = page.getByRole("textbox", { name: "Source" });
-  await source.fill('piece "Glass Mountain" {');
+  await drawer(page).click();
+  await rewrite(page, 'piece "Glass Mountain" {');
   await expect(page.locator(".diagnostics li")).toHaveCount(1);
 
   const where = await page.locator(".diagnostics .where").innerText();
@@ -167,10 +162,8 @@ test("a diagnostic is a place in the source, not a notification", async ({ page 
 
   // The caret goes where the compiler is pointing, and the field keeps focus
   // so the composer can simply type the fix (`05-states.md` §5).
-  await expect(source).toBeFocused();
-  expect(await source.evaluate((field) => (field as HTMLTextAreaElement).selectionStart)).toBe(
-    Number(where),
-  );
+  await expect(source(page)).toBeFocused();
+  await expect.poll(() => caret(page)).toBe(Number(where));
 });
 
 for (const theme of ["light", "dark"] as const) {

@@ -11,6 +11,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
+import { drawer } from "./source";
 import { stubShell } from "./shell";
 
 /**
@@ -39,7 +40,7 @@ test("the drawer, the palette, and the sheet are clean too", async ({ page }) =>
   await page.goto("/");
   await engraved(page);
 
-  await page.getByRole("button", { name: /Source/ }).click();
+  await drawer(page).click();
   await expect(page.getByRole("textbox", { name: "Source" })).toBeVisible();
   expect((await scan(page).analyze()).violations.map((violation) => violation.id)).toEqual([]);
 

@@ -1,6 +1,6 @@
 # 02 — Engraving
 
-Status: **candidate**.
+Status: **governing**.
 
 The score is what the user looks at for hours. Verovio is capable of genuinely good engraving; the difference between
 good and bad output is almost entirely in how it is driven, themed, scaled, and re-rendered. This document is that

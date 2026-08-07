@@ -13,8 +13,8 @@
    * place it is complaining about (`05-states.md` §5). Both arrive as spans
    * from the core; this file turns spans into marks and never reads the text.
    */
-  import { untrack } from "svelte";
-
+  import SourceEditor from "../lib/ui/SourceEditor.svelte";
+  import type { Reveal } from "../lib/state/reveal";
   import type { Diagnostic, Span } from "../lib/state/snapshot";
 
   let {
@@ -24,6 +24,7 @@
     highlight = [],
     reveal = null,
     onedit,
+    oncaret,
     ondiagnostic,
     open = $bindable(false),
   }: {
@@ -32,83 +33,16 @@
     editable?: boolean;
     /** Spans to mark in the source: the provenance of what is on screen. */
     highlight?: Span[];
-    /** A span to put the caret at and scroll to, once, when it changes. */
-    reveal?: Span | null;
+    /** A place to put the caret, once, when it changes. */
+    reveal?: Reveal | null;
     onedit?: (source: string) => void;
+    /** Where the caret is now, so the score can follow it (prompt 26). */
+    oncaret?: (offset: number) => void;
     ondiagnostic?: (diagnostic: Diagnostic) => void;
     open?: boolean;
   } = $props();
 
   const errors = $derived(diagnostics.filter((diagnostic) => diagnostic.severity === "error"));
-
-  /**
-   * The source cut into marked and unmarked pieces.
-   *
-   * Overlapping spans are merged rather than nested, because a mark inside a
-   * mark reads as a darker mark and means nothing.
-   */
-  const pieces = $derived.by(() => {
-    const wanted = highlight
-      .filter((span) => span.end > span.start)
-      .sort((a, b) => a.start - b.start);
-    const merged: Span[] = [];
-    for (const span of wanted) {
-      const last = merged[merged.length - 1];
-      if (last && span.start <= last.end) last.end = Math.max(last.end, span.end);
-      else merged.push({ ...span });
-    }
-    const cut: { text: string; marked: boolean }[] = [];
-    let at = 0;
-    for (const span of merged) {
-      if (span.start > at) cut.push({ text: source.slice(at, span.start), marked: false });
-      cut.push({ text: source.slice(span.start, span.end), marked: true });
-      at = span.end;
-    }
-    cut.push({ text: source.slice(at), marked: false });
-    return cut;
-  });
-
-  let area = $state<HTMLTextAreaElement | undefined>();
-  let ghost = $state<HTMLElement | undefined>();
-  let page = $state<HTMLElement | undefined>();
-
-  /** The ghost carries the marks; the textarea carries the text over it. */
-  function sync(): void {
-    if (!ghost || !area) return;
-    ghost.scrollTop = area.scrollTop;
-    ghost.scrollLeft = area.scrollLeft;
-  }
-
-  /**
-   * Put the caret where the caller pointed and bring it into view.
-   *
-   * In an editable source that is a real text selection — the caret a composer
-   * would then type at. In a read-only one there is no caret, so the marked
-   * run is scrolled to instead.
-   */
-  $effect(() => {
-    const span = reveal;
-    void open;
-    void pieces;
-    if (!span) return;
-    untrack(() => {
-      const field = area;
-      if (field) {
-        field.focus();
-        field.setSelectionRange(span.start, span.end);
-        const marked = ghost?.querySelector("mark");
-        if (marked instanceof HTMLElement) {
-          field.scrollTop = Math.max(marked.offsetTop - field.clientHeight / 3, 0);
-          sync();
-        }
-        return;
-      }
-      const marked = page?.querySelector("mark");
-      if (marked instanceof HTMLElement && page) {
-        page.scrollTop = Math.max(marked.offsetTop - page.clientHeight / 3, 0);
-      }
-    });
-  });
 </script>
 
 <div class="drawer" class:open>
@@ -125,36 +59,24 @@
 
   {#if open}
     <div class="panes">
-      {#if editable}
-        <!--
-          Plain text, in the mono face the value type already uses. Syntax
-          highlighting and structural editing are prompts 25 and 26; typing
-          into a textarea is the whole of source editing here, and it is
-          already the fastest path from an idea to a sound.
-
-          The marks live in a copy behind it, set in the same metrics: a
-          textarea cannot hold a mark, and painting one over the text is the
-          only way to keep the field a real, editable field.
-        -->
-        <div class="field">
-          <pre class="source ghost" aria-hidden="true" bind:this={ghost}>{#each pieces as piece, index (index)}{#if piece.marked}<mark
-                >{piece.text}</mark
-              >{:else}{piece.text}{/if}{/each}</pre>
-          <textarea
-            class="source"
-            spellcheck="false"
-            aria-label="Source"
-            bind:this={area}
-            onscroll={sync}
-            value={source}
-            oninput={(event) => onedit?.(event.currentTarget.value)}
-          ></textarea>
-        </div>
-      {:else}
-        <pre class="source" bind:this={page}>{#each pieces as piece, index (index)}{#if piece.marked}<mark
-              >{piece.text}</mark
-            >{:else}{piece.text}{/if}{/each}</pre>
-      {/if}
+      <!--
+        The source, set in the editor of roadmap §14.1 — highlighting derived
+        from the real token list, the compiler's diagnostics in the gutter,
+        and provenance marked in the one hue that ever means it. Read-only
+        when the shell is not live, because a field that takes text nothing
+        will read is a lie.
+      -->
+      <div class="field">
+        <SourceEditor
+          {source}
+          {diagnostics}
+          {editable}
+          {highlight}
+          {reveal}
+          {onedit}
+          {oncaret}
+        />
+      </div>
       {#if diagnostics.length > 0}
         <ul class="diagnostics">
           {#each diagnostics as diagnostic, index (index)}
@@ -181,7 +103,16 @@
   .drawer {
     display: flex;
     flex-direction: column;
-    max-height: 40vh;
+  }
+
+  /*
+   * Open, the drawer is a shelf of a fixed size, not a box that grows with
+   * its text. A drawer that resized itself as the source changed would move
+   * the page under the composer on every keystroke, and the page not moving
+   * is the whole point (`01-visual-language.md` §7).
+   */
+  .drawer.open {
+    height: 34vh;
   }
 
   .handle {
@@ -230,51 +161,20 @@
   }
 
   .panes {
+    flex: 1;
     display: flex;
     gap: var(--s-6);
+    min-height: 0;
     padding: 0 var(--s-6) var(--s-4);
-    overflow: auto;
   }
 
   .field {
-    position: relative;
     flex: 1;
     display: flex;
     min-width: 0;
-  }
-
-  .source {
-    flex: 1;
-    margin: 0;
-    padding: 0;
-    background: none;
-    border: 0;
-    resize: none;
-    font-family: var(--f-mono);
-    font-size: var(--t-value-size);
-    line-height: var(--t-value-line);
-    color: var(--ink-muted);
-    white-space: pre;
-    overflow: auto;
-  }
-
-  /*
-   * The copy is invisible except for its marks, and takes no events: it exists
-   * so that a highlight can sit under real, editable text.
-   */
-  .ghost {
-    position: absolute;
-    inset: 0;
+    min-height: 0;
+    /* The editor scrolls itself; the drawer does not scroll around it. */
     overflow: hidden;
-    color: transparent;
-    pointer-events: none;
-  }
-
-  /* Provenance, so --plate; a wash rather than a fill, so the text still reads. */
-  mark {
-    background: var(--plate-wash);
-    color: inherit;
-    box-shadow: -1px 0 0 var(--plate);
   }
 
   .diagnostics {

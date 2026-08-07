@@ -288,6 +288,33 @@ export class Workspace {
   }
 
   /**
+   * The spans the source marks right now: where the expansion in view is
+   * declared, and where it was used.
+   *
+   * `held` is Origin view: hover only counts while the lens is held, or the
+   * marks would chase the pointer around the page (`04-provenance.md` §2).
+   */
+  originSpans(held: boolean): Span[] {
+    const occurrence = (held ? this.hoveredOccurrence : undefined) ?? this.selectedOccurrence;
+    if (!occurrence) return [];
+    return [occurrence.declaration, occurrence.useSite].filter((span) => span !== null);
+  }
+
+  /**
+   * What the source marks: where the music in view is written.
+   *
+   * The chosen note's own text, and — when it came from a motif — the
+   * declaration and the `use` that produced it. Marking the note itself is
+   * how the link reads in the other direction: choosing a note on the page
+   * shows it in the text without taking the keyboard off the page.
+   */
+  sourceSpans(held: boolean): Span[] {
+    const chosen = this.focused?.origin.span;
+    const origins = this.originSpans(held);
+    return chosen ? [...origins, chosen] : origins;
+  }
+
+  /**
    * The events a diagnostic points at: those whose source text encloses it.
    *
    * Spans come from the core on both sides, so this is a containment test, not
@@ -296,7 +323,9 @@ export class Workspace {
   eventsForSpan(span: Span | null): string[] {
     if (!span) return [];
     return (this.snapshot?.score?.events ?? [])
-      .filter((event) => event.origin.span.start <= span.start && span.start < event.origin.span.end)
+      .filter(
+        (event) => event.origin.span.start <= span.start && span.start < event.origin.span.end,
+      )
       .map((event) => event.id);
   }
 

@@ -1,6 +1,6 @@
 # 06 — Performance Budgets
 
-Status: **candidate**.
+Status: **governing**.
 
 Roadmap §17/§13.2 hold the audio thread to measured guarantees. The interface gets the same treatment: named budgets,
 measured on a real workload, checked in the prompt that introduces the surface. "Feels fast" is not a criterion.

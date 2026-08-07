@@ -67,6 +67,15 @@ export type Link = Pick<
   | "askToSave"
 >;
 
+/**
+ * The commands whose answer is a new source.
+ *
+ * `setSource` is not one of them: it is the draft being sent, not a rewrite
+ * arriving, and dropping the draft on its way back would undo whatever was
+ * typed while it was in flight.
+ */
+const REWRITES = new Set(["format", "undo", "redo", "editScore"]);
+
 export class Session {
   snapshot = $state<ProjectSnapshot | null>(null);
   notice = $state<Notice | null>(null);
@@ -337,8 +346,21 @@ export class Session {
   ): Promise<void> {
     const link = this.#link;
     if (!link) return;
+    // Every command acts on what is on the screen. A draft still inside the
+    // settle window has not reached the core yet, so it goes first — without
+    // this, formatting a piece the composer had just retyped would answer
+    // with the text they replaced.
+    if (this.draft !== null) await this.compile(this.draft);
     try {
       const snapshot = await link.apply(command);
+      // A command that rewrites the source — a format, an undo, a structured
+      // edit — is the document speaking, and the draft was only ever text the
+      // core had not seen yet. Keeping it would hide the answer behind the
+      // question (roadmap §11: the source is canonical).
+      if (REWRITES.has(command.kind)) {
+        clearTimeout(this.#settle);
+        this.draft = null;
+      }
       this.receive(snapshot);
       if (said) this.say({ tone: "result", message: said(snapshot) });
     } catch (thrown) {

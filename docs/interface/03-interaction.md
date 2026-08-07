@@ -1,6 +1,6 @@
 # 03 — Interaction
 
-Status: **candidate**.
+Status: **governing**.
 
 Roadmap §14.5 fixes the policy: keyboard-first, deterministic, mouse for selection and inspection. This document fixes
 the model that policy needs to be real.
@@ -72,10 +72,21 @@ documentation cannot drift from bindings.
 | Key | Action |
 | --- | --- |
 | `O` (hold) or `⌥` (hold) | Origin view (`04-provenance.md`) |
+| `⌘1` `⌘4` | Compose / Source workspace |
 | `⌘−` `⌘=` `⌘0` | Zoom out / in / reset |
 | `⌘'` | Toggle the source & diagnostics drawer |
+| `⌘⇧F` | Format the source |
 | `⌘K` | Command palette |
 | `?` | Keyboard sheet |
+
+`⌘2` and `⌘3` are reserved for Sound and Mix and are bound to nothing until those workspaces exist: a switcher with a
+tab that opens an empty room is a promise the application cannot keep, so the switcher shows the two that are real
+(prompt 26).
+
+**Modified keys belong to the application; unmodified ones belong to the score.** Everything without `⌘` or `⌥` — the
+arrows, `Space`, `F`, `L`, `⇧O` — fires only when the score pane has focus, so typing `f` in the source is an `f` and
+not a follow toggle. Scope is read off the binding rather than declared per command, which is what keeps the rule from
+being remembered one command at a time.
 
 **Entry** (prompt 25 — only while entry is on)
 

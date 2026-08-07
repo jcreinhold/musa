@@ -30,4 +30,5 @@ thiserror = "2"
 ts-rs = "12"
 
 [dev-dependencies]
+musa-language = { path = "../../../crates/musa-language" }
 tempfile = "3"

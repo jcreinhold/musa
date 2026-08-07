@@ -13,7 +13,7 @@ and install that kernel; prompts 13+ proceed exactly as before on top of it.
 
 **Where the roadmap is silent on the desktop interface** — its visual language, engraving quality, interaction model,
 states, and performance budgets — `docs/interface/` is the authority. Roadmap §14 still fixes the architecture. Prompts
-20–26 implement `docs/interface/`; prompt 26 graduates it from candidate, as prompt 12 did for the kernel.
+20–26 implement `docs/interface/`; prompt 26 graduated it from candidate to governing, as prompt 12 did for the kernel.
 
 ## Prompt anatomy
 

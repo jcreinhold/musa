@@ -63,6 +63,20 @@
     "available": true
   },
   {
+    "id": "view.workspace.compose",
+    "title": "Compose workspace",
+    "section": "view",
+    "accelerator": "CmdOrCtrl+1",
+    "available": true
+  },
+  {
+    "id": "view.workspace.source",
+    "title": "Source workspace",
+    "section": "view",
+    "accelerator": "CmdOrCtrl+4",
+    "available": true
+  },
+  {
     "id": "view.zoom.out",
     "title": "Zoom out",
     "section": "view",

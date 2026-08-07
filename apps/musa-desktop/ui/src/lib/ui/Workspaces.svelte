@@ -1,0 +1,76 @@
+<script lang="ts">
+  /**
+   * Which workspace is open (roadmap §14.4).
+   *
+   * Two, because two exist. Sound and Mix have their bindings reserved and
+   * their place in the order, but an empty tab is a promise the application
+   * cannot keep, so they are not drawn until they are real.
+   *
+   * The current workspace is the one set in ink; the other is an offer. The
+   * accelerator is written beside the name because these are the two bindings
+   * a composer uses most and reading them here is how they are learned
+   * (`03-interaction.md` §3).
+   */
+  let {
+    current,
+    onshow,
+  }: {
+    current: "compose" | "source";
+    onshow: (which: "compose" | "source") => void;
+  } = $props();
+
+  const OPEN = [
+    { id: "compose", name: "Compose", key: "⌘1" },
+    { id: "source", name: "Source", key: "⌘4" },
+  ] as const;
+</script>
+
+<nav class="workspaces" aria-label="Workspace">
+  {#each OPEN as workspace (workspace.id)}
+    <button
+      type="button"
+      class="text"
+      aria-current={current === workspace.id ? "page" : undefined}
+      onclick={() => onshow(workspace.id)}
+    >
+      {workspace.name}<span class="key" aria-hidden="true">{workspace.key}</span>
+    </button>
+  {/each}
+</nav>
+
+<style>
+  .workspaces {
+    display: flex;
+    align-items: center;
+    gap: var(--s-1);
+  }
+
+  .text {
+    background: none;
+    border: 0;
+    border-radius: var(--radius-control);
+    padding: var(--s-1) var(--s-2);
+    font-family: var(--f-ui);
+    font-size: var(--t-small-size);
+    line-height: var(--t-small-line);
+    color: var(--ink-muted);
+    cursor: pointer;
+  }
+
+  .text:hover {
+    color: var(--ink);
+  }
+
+  /* Current is ink, and underlined: never colour alone (`03-interaction.md` §5). */
+  .text[aria-current="page"] {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 0.35em;
+  }
+
+  .key {
+    padding-left: var(--s-2);
+    font-family: var(--f-mono);
+    color: var(--ink-muted);
+  }
+</style>

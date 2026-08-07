@@ -153,6 +153,30 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
           current = { ...current, revision, scoreRevision: revision, unsaved: true };
           return answer();
         }
+        // Formatting is the one command that rewrites the source without the
+        // composer typing it. The stub indents by brace depth, which is the
+        // rule `musa-language`'s formatter follows; that its output is
+        // byte-for-byte the formatter's is a Rust test's business, not this
+        // one's. What the interface is judged on here is that a source it did
+        // not type still keeps the caret where it was.
+        if (command.kind === "format") {
+          history.push(current);
+          let depth = 0;
+          setSource(
+            (current.source as string)
+              .split("\n")
+              .map((line) => {
+                const trimmed = line.trim();
+                const opens = (trimmed.match(/\{/g) ?? []).length;
+                const closes = (trimmed.match(/\}/g) ?? []).length;
+                const at = trimmed.startsWith("}") ? Math.max(depth - 1, 0) : depth;
+                depth = Math.max(at + opens - closes + (trimmed.startsWith("}") ? 1 : 0), 0);
+                return trimmed === "" ? "" : "    ".repeat(at) + trimmed;
+              })
+              .join("\n"),
+          );
+          return answer();
+        }
         if (command.kind === "undo") {
           const previous = history.pop();
           if (previous) current = previous;

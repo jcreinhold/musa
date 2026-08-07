@@ -1,6 +1,6 @@
 # 00 — Interface Thesis
 
-Status: **candidate** (graduates at prompt 26, alongside the source workspace).
+Status: **governing** (graduated at prompt 26, alongside the source workspace).
 
 ## 1. What this document is
 

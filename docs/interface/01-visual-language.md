@@ -1,6 +1,6 @@
 # 01 — Visual Language
 
-Status: **candidate**.
+Status: **governing**.
 
 Every value here is a design token. Tokens live in one file (`apps/musa-desktop/ui/src/lib/design/tokens.css`) as CSS
 custom properties and are the only source of color, type, spacing, and duration in the application. A literal hex value,
@@ -182,8 +182,9 @@ The Compose workspace, as an arrangement of the elements roadmap §14.3 requires
    └───────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Top margin** (48px): piece title in Academico at the left; transport, position, tempo, and key at the right. No
-  background fill, no bottom border. The leaf's shadow provides the separation.
+- **Top margin** (48px): piece title in Academico at the left, with the workspace switcher beside it; transport,
+  position, tempo, and key at the right. No background fill, no bottom border. The leaf's shadow provides the
+  separation.
 - **Left margin**: the parts list, right-aligned toward the leaf and connected by a **real staff bracket** drawn in
   `--rule` — the same brace/bracket grouping the score itself uses at the left edge of every system. Part names in
   Academico; voice names one step down in `--ink-muted`. The list is a miniature of the score's own left margin, which
@@ -191,8 +192,29 @@ The Compose workspace, as an arrangement of the elements roadmap §14.3 requires
 - **Right margin**: the inspector, as a run of rows — label in `--t-micro`, value in `--t-value` or `--t-name`. Editable
   values show a `--rule` underline on hover and a `--plate` underline on focus. There are no field boxes at rest.
 - **Bottom drawer**: source and diagnostics. It slides up from the surround and **pushes the leaf**; it never overlaps
-  it. Closed by default in Compose.
+  it. Closed by default in Compose. Open, it is a **fixed** third of the window and stays that height: a drawer that
+  grew with its text would move the page under the reader on every keystroke, which §7's whole claim forbids. The
+  source scrolls inside it.
 
 Responsive behavior: below 1100px the inspector collapses to a toggled overlay in the *right margin only*; below 840px
 the parts list collapses to a single active-part readout. The leaf never shrinks below a legible staff size — the window
 scrolls instead.
+
+## 8. Layout: the Source workspace
+
+Roadmap §14.4's second workspace, and the one place the text is the subject rather than the evidence. Text left, page
+right, in a `5fr / 7fr` split: the page keeps the larger share because it is still what the composer is reading, and
+the text is wide enough for the language's longest ordinary line without wrapping.
+
+- The text sits on `--surround-in` and the page on `--surround`, so the two halves read as two materials rather than
+  two panels. One `--rule` hairline between them; no card, no shadow, no tab strip.
+- **The source is set, not dumped** (§3): Recursive Mono Linear, no ligatures, `1.65` line height, four-space indent —
+  the formatter's own, so a file the editor indented and a file the formatter wrote are the same file.
+- **Ink weight does the work.** Keywords in `--ink` at 500; pitches and durations in `--ink`; identifiers, numbers,
+  units, strings, comments and punctuation in `--ink-muted`, with strings, units and comments italic. `use` is the one
+  accent — `--plate`, because it is the generated-material site, and the same hue means the same thing in the text as
+  on the page (`04-provenance.md` §2). Nothing else is coloured.
+- **Provenance is `--plate-wash` behind the text**, the same wash the halo uses.
+- **Diagnostics** are the compiler's own: a `--chalk` underline on the span, the message on hover, and the list beneath
+  the text, each entry a place to go rather than a notification (`05-states.md` §5).
+- **Problems** appear beneath the source or not at all. With none, the pane shows nothing — not "0 problems".

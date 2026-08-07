@@ -9,6 +9,7 @@
 import { expect, test } from "@playwright/test";
 
 import { engraved } from "./engraved";
+import { drawer, rewrite } from "./source";
 import { stubShell } from "./shell";
 
 const LEAF = ".stage > div";
@@ -27,9 +28,7 @@ async function engravedEvents(page: import("@playwright/test").Page): Promise<st
   return page.evaluate(() =>
     [
       ...new Set(
-        [...document.querySelectorAll('.engraving g[id^="event-"]')].map(
-          (element) => element.id,
-        ),
+        [...document.querySelectorAll('.engraving g[id^="event-"]')].map((element) => element.id),
       ),
     ]
       .sort()
@@ -50,8 +49,8 @@ test("a piece opens engraved, with its source behind the drawer", async ({ page 
   await expect(page.locator("h1")).toHaveText("Glass Mountain");
   await expect(page.getByRole("textbox", { name: "Source" })).toHaveCount(0);
 
-  await page.getByRole("button", { name: /Source/ }).click();
-  await expect(page.getByRole("textbox", { name: "Source" })).toHaveValue(/^piece /);
+  await drawer(page).click();
+  await expect(page.getByRole("textbox", { name: "Source" })).toContainText("piece");
 });
 
 test("breaking the source keeps the score and says how far behind it is", async ({ page }) => {
@@ -60,13 +59,12 @@ test("breaking the source keeps the score and says how far behind it is", async 
 
   // Opened first, so the leaf has already settled at its shorter height: the
   // drawer pushes the leaf, and that re-layout is not what is under test.
-  await page.getByRole("button", { name: /Source/ }).click();
+  await drawer(page).click();
   await engraved(page);
   const before = await engravedEvents(page);
   const edge = await page.locator(LEAF).evaluate((leaf) => getComputedStyle(leaf).borderTopColor);
 
-  const source = page.getByRole("textbox", { name: "Source" });
-  await source.fill("piece \"Glass Mountain\" {");
+  await rewrite(page, 'piece "Glass Mountain" {');
 
   // The drawer opened itself the first time, and the message names the
   // revision on screen and counts the problems.
@@ -86,12 +84,11 @@ test("fixing the source removes the message without announcing it", async ({ pag
   await page.goto("/");
   await engraved(page);
 
-  await page.getByRole("button", { name: /Source/ }).click();
-  const source = page.getByRole("textbox", { name: "Source" });
-  await source.fill("piece \"Glass Mountain\" {");
+  await drawer(page).click();
+  await rewrite(page, 'piece "Glass Mountain" {');
   await expect(page.getByRole("status")).toBeVisible();
 
-  await source.fill("piece \"Glass Mountain\" {}");
+  await rewrite(page, 'piece "Glass Mountain" {}');
   await expect(page.getByRole("status")).toHaveCount(0);
 });
 

@@ -16,6 +16,7 @@
   import { onMount, untrack } from "svelte";
 
   import Compose from "./screens/Compose.svelte";
+  import Source from "./screens/Source.svelte";
   import Launch from "./screens/Launch.svelte";
   import Palette from "./screens/Palette.svelte";
   import KeyboardSheet from "./screens/KeyboardSheet.svelte";
@@ -23,6 +24,7 @@
   import Announcer from "./lib/ui/Announcer.svelte";
   import { ZOOM_STEPS } from "./lib/engrave/options";
   import { bridge } from "./lib/session/bridge";
+  import type { Reveal } from "./lib/state/reveal";
   import { commandFor, dispatch, type Surface } from "./lib/commands/map";
   import { Session } from "./lib/session/session.svelte";
   import { ThemeChoice } from "./lib/session/theme.svelte";
@@ -64,6 +66,13 @@
   /** The looped range as event ids, so it survives a re-engraving like any other. */
   let looped = $state<[string, string] | null>(null);
 
+  /**
+   * Which workspace is open (roadmap §14.4). Two of them exist: Compose and
+   * Source. Sound and Mix hold `⌘2` and `⌘3` and are not offered until the
+   * DSP behind them does.
+   */
+  let screen = $state<"compose" | "source">("compose");
+
   let paletteOpen = $state(false);
   let keysOpen = $state(false);
 
@@ -102,7 +111,9 @@
 
   /** A source span to put the caret at, once: the inspector's line number,
       or the diagnostic a composer just clicked (`05-states.md` §5). */
-  let reveal = $state<Span | null>(null);
+  let reveal = $state<Reveal | null>(null);
+  /** Where the source caret last was, so the link does not loop (§14.4). */
+  let caretAt: number | null = null;
   /** Event ids whose systems flash once, for the same reason. */
   let flash = $state<string[]>([]);
   let fading: ReturnType<typeof setTimeout> | undefined;
@@ -157,11 +168,17 @@
     transportSaid = `Looping bars ${from.bar} to ${to.bar}`;
   }
 
-  /** Open the source at a span, opening the drawer if it is shut. */
-  function open(span: Span): void {
+  /**
+   * Open the source at a span, opening the drawer if it is shut.
+   *
+   * `focus` is whether going there also takes the keyboard: true when the
+   * composer asked to go and fix something, false when the text is merely
+   * keeping up with the page.
+   */
+  function open(span: Span, focus = true): void {
     session.drawerOpen = true;
     // A new object every time, so asking for the same span twice reveals twice.
-    reveal = { ...span };
+    reveal = { span: { ...span }, focus };
   }
 
   /**
@@ -283,6 +300,7 @@
     origin: () => (pinned = !pinned),
     entry: toggleEntry,
     extract,
+    show: (which) => (screen = which),
     palette: (open) => (paletteOpen = open),
     keys: (open) => (keysOpen = open),
     escape,
@@ -356,6 +374,43 @@
     if (written) workspace.select(written.id);
   }
 
+  /**
+   * The caret moved: select what it is inside (§14.4's other direction).
+   *
+   * Which notes a source offset belongs to is a containment test over spans
+   * the core wrote, so the text and the page stay two views of one document
+   * without the frontend parsing anything.
+   */
+  function followCaret(offset: number): void {
+    caretAt = offset;
+    const events = workspace.eventsForSpan({ start: offset, end: offset + 1 });
+    if (events.length === 0) return;
+    // Only when it is a different note. The caret and the selection point at
+    // each other, so re-announcing what is already chosen would be the two of
+    // them talking forever.
+    const chosen = workspace.selected;
+    if (chosen.length === events.length && chosen.every((id, at) => id === events[at])) return;
+    workspace.selection = { kind: "event", events };
+  }
+
+  /**
+   * The other direction of the link (roadmap §14.4): in the Source workspace,
+   * choosing a note on the page is choosing its text, so the caret goes to
+   * the span the note came from.
+   */
+  $effect(() => {
+    const span = screen === "source" ? workspace.focused?.origin.span : undefined;
+    if (!span) return;
+    untrack(() => {
+      // Not when the caret is already in that note's text: the note was
+      // chosen *by* the caret, and moving the caret to where it already is
+      // would be the two views arguing with each other.
+      if (caretAt !== null && span.start <= caretAt && caretAt < span.end) return;
+      if (reveal?.span.start === span.start && reveal.span.end === span.end) return;
+      open(span, false);
+    });
+  });
+
   /** Whether a keystroke is the lens: `O` in the score, or `⌥` anywhere. */
   function lensKey(event: KeyboardEvent): boolean {
     if (event.key === "Alt") return true;
@@ -425,6 +480,18 @@
 
 {#if !session.live && parameters.get("view") === "sheet"}
   <Sheet fixture={chosen} />
+{:else if session.snapshot && screen === "source"}
+  <Source
+    {session}
+    {workspace}
+    {zoom}
+    {mode}
+    {reveal}
+    {origin}
+    oncaret={followCaret}
+    ondiagnostic={showDiagnostic}
+    onshow={(which) => (screen = which)}
+  />
 {:else if session.snapshot}
   <Compose
     {session}
@@ -458,6 +525,8 @@
       void issue({ kind: "changeDuration", event, duration, mode: "editDefinition" })}
     onreveal={open}
     ondiagnostic={showDiagnostic}
+    oncaret={followCaret}
+    onshow={(which) => (screen = which)}
   />
 {:else}
   <Launch onopen={() => void session.open()} onnew={() => void session.create()} />

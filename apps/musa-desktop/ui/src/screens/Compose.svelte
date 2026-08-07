@@ -15,9 +15,11 @@
   import Margin from "../lib/ui/Margin.svelte";
   import GlyphButton from "../lib/ui/GlyphButton.svelte";
   import TransportReadout from "../lib/ui/TransportReadout.svelte";
+  import Workspaces from "../lib/ui/Workspaces.svelte";
   import { REPEAT_RIGHT_LEFT } from "../lib/ui/glyphs";
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
+  import type { Reveal } from "../lib/state/reveal";
   import type { Diagnostic, EditImpact, Span } from "../lib/state/snapshot";
   import type { NoteEntry } from "../lib/state/entry.svelte";
   import Drawer from "./Drawer.svelte";
@@ -54,6 +56,8 @@
     onduration,
     onreveal,
     ondiagnostic,
+    oncaret,
+    onshow,
   }: {
     session: Session;
     workspace: Workspace;
@@ -76,8 +80,8 @@
     naming: number | null;
     /** Event ids a diagnostic points at; their systems flash once. */
     flash: string[];
-    /** A source span to put the caret at, once, when it changes. */
-    reveal: Span | null;
+    /** A place to put the caret in the source, once, when it changes. */
+    reveal: Reveal | null;
     onzoom: (by: number) => void;
     onpinch: (factor: number) => void;
     onmode: (mode: ViewMode) => void;
@@ -93,6 +97,9 @@
     onduration: (event: string, duration: string) => void;
     onreveal: (span: Span) => void;
     ondiagnostic: (diagnostic: Diagnostic) => void;
+    /** The source caret moved; the score follows it (roadmap §14.4). */
+    oncaret: (offset: number) => void;
+    onshow: (which: "compose" | "source") => void;
   } = $props();
 
   const snapshot = $derived(session.snapshot);
@@ -101,19 +108,11 @@
   const problems = $derived(snapshot?.diagnostics.filter((d) => d.severity === "error") ?? []);
 
   /**
-   * The expansion the source drawer is currently about: what the pointer is
-   * over while the lens is held, or failing that what is selected. Hover only
-   * counts while held, or the highlight would chase the pointer around the
-   * page (`04-provenance.md` §2).
+   * What the drawer marks: the declaration and the use of the expansion in
+   * view. The workspace decides which expansion that is, so the drawer and
+   * the Source workspace cannot mark different things.
    */
-  const occurrence = $derived(
-    (origin ? workspace.hoveredOccurrence : undefined) ?? workspace.selectedOccurrence,
-  );
-
-  /** Its two spans: where the motif is declared, and where it was used. */
-  const highlight = $derived(
-    occurrence ? [occurrence.declaration, occurrence.useSite].filter((s) => s !== null) : [],
-  );
+  const highlight = $derived(workspace.sourceSpans(origin));
 
   // A new score is a new set of events. The selection is by id and usually
   // survives it untouched; when the note it was on is gone, this is what moves
@@ -127,7 +126,10 @@
 {#if snapshot && score}
   <div class="workspace">
     <Margin side="top">
-      <h1 class="title">{score.title}</h1>
+      <div class="identity">
+        <h1 class="title">{score.title}</h1>
+        <Workspaces current="compose" onshow={onshow} />
+      </div>
 
       <!--
         The top margin carries whatever the interface currently has to say:
@@ -295,6 +297,7 @@
         {highlight}
         {reveal}
         onedit={(text) => session.edit(text)}
+        {oncaret}
         {ondiagnostic}
         bind:open={session.drawerOpen}
       />
@@ -311,6 +314,15 @@
        scrolls inside the leaf, the layout itself does not. */
     max-width: 100%;
     overflow-x: hidden;
+  }
+
+  /* Which piece, and which of its workspaces: the two facts about where you
+     are, together at the head of the window. */
+  .identity {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-5);
+    min-width: 0;
   }
 
   .title {

@@ -1,7 +1,7 @@
 ---
 id: 26
 slug: source-workspace
-status: pending
+status: done
 depends_on: [25]
 phase: 1.5
 ---
@@ -60,6 +60,34 @@ from candidate to the governing interface specification, the same way prompt 12 
 - `docs/interface/`: status promoted; divergences reconciled.
 - Tests: highlighting snapshot over `examples/*.musa` (proves token coverage); a test that every prompt-02 token kind
   has a highlight role; linking tests both directions; format-preserves-selection test; B1 still met with CM6 in place.
+
+## Repairs made while implementing
+
+- **Four-space indent, not two.** The Design section said "2-space indent matching the formatter"; the formatter
+  (`crates/musa-language/src/formatter.rs`) indents by four. The editor follows the formatter, since the point of the
+  rule is that formatting a file the editor indented changes nothing.
+- **`⌘⇧F`, not `⇧⌥F`.** Prompt 23 already registered `edit.format` as `CmdOrCtrl+Shift+F`, and the registry is the one
+  source the menu, the palette and the keyboard sheet all read. Moving it would have been a repair to prompt 23 with
+  nothing gained; `03-interaction.md` §3 now records the binding it has.
+- **Highlighting is derived twice over, and neither derivation can drift.** `musa-language` gained `TokenClass` (an
+  exhaustive match over `SyntaxKind` — a new kind is a compile error) and `SPELLINGS` (a table proven against the lexer
+  by `spellings_lex_as_their_kind`); the frontend tokenizer is then checked token-for-token against the Rust lexer's
+  own reading of every file in `examples/` (`tests/unit/highlighting.test.ts`).
+- **Folding is the brace, not a keyword list.** `piece`/`score`/`part`/`voice`/`motif` are all braced blocks, and so
+  are `transpose` and `overlay`; a list of foldable keywords would have gone stale the first time the language grew
+  one.
+- **Bindings without ⌘ or ⌥ belong to the score pane, read off the accelerator.** Scope had been declared per command
+  group, which made `F`, `L`, `Space` and `Return` global — so typing `forte` in the drawer toggled follow. The rule is
+  now derived from the binding itself.
+- **Two bugs the workspace exposed, both fixed in the session facade.** A command now flushes the pending draft before
+  it runs (formatting a piece the composer had just retyped answered with the text they had replaced), and a command
+  that rewrites the source drops the draft afterwards (otherwise the format, undo, or structured edit stayed hidden
+  behind the draft it produced).
+- **Revealing a span does not always take the keyboard.** A diagnostic is somewhere the composer is going to type, so
+  the caret arrives focused; choosing a note on the page is not, so the text follows without the hands leaving the
+  score. That distinction is now part of the request (`src/lib/state/reveal.ts`).
+- **The budgets run alone.** `06-performance.md`'s numbers are measured on an unloaded machine, so `perf.spec.ts` is
+  its own Playwright project that runs after the rest rather than beside it.
 
 ## Check
 

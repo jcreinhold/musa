@@ -43,6 +43,8 @@ export interface Surface {
   entry(): void;
   /** Lift the selected notes into a motif, naming it inline (prompt 25). */
   extract(): void;
+  /** Open a workspace (roadmap §14.4). */
+  show(which: "compose" | "source"): void;
   palette(open: boolean): void;
   keys(open: boolean): void;
   /** Clear the selection, or — with nothing selected — close the drawer. */
@@ -57,9 +59,9 @@ export interface Command {
   /** Tauri accelerator spelling, or null for a mouse-only command. */
   accelerator: string | null;
   /**
-   * Where the binding applies. `score` bindings are the unmodified keys —
-   * arrows, `Tab`, `Home` — which belong to the score pane and must not fire
-   * while the composer is typing in the drawer or the palette.
+   * Where the binding applies. `score` bindings are the ones without ⌘ or ⌥ —
+   * arrows, `Tab`, `F`, `Space` — which belong to the score pane and must not
+   * fire while the composer is typing in the drawer or the palette.
    */
   scope: "global" | "score";
   run(surface: Surface): void;
@@ -71,8 +73,23 @@ function registered(id: string): Pick<CommandDescriptor, "title" | "accelerator"
   return { title: found?.title ?? id, accelerator: found?.accelerator ?? null };
 }
 
+/**
+ * Where a binding applies, read off the binding itself.
+ *
+ * A keystroke a composer could type into a text field belongs to the score
+ * pane and nowhere else — and that is exactly the keystrokes with no ⌘ and no
+ * ⌥, `⇧O` and `⇧Space` included. Deriving it from the accelerator rather than
+ * declaring it per command is what keeps `F` from toggling follow while
+ * someone is writing `forte` in the source.
+ */
+function scopeFor(accelerator: string | null): Command["scope"] {
+  if (accelerator === null) return "global";
+  return /CmdOrCtrl|Alt/.test(accelerator) ? "global" : "score";
+}
+
 function command(id: string, group: Group, run: (surface: Surface) => void): Command {
-  return { id, group, run, scope: "global", ...registered(id) };
+  const known = registered(id);
+  return { id, group, run, scope: scopeFor(known.accelerator), ...known };
 }
 
 function own(
@@ -81,7 +98,7 @@ function own(
   group: Group,
   accelerator: string | null,
   run: (surface: Surface) => void,
-  scope: Command["scope"] = group === "Score" ? "score" : "global",
+  scope: Command["scope"] = scopeFor(accelerator),
 ): Command {
   return { id, title, group, accelerator, run, scope };
 }
@@ -174,6 +191,9 @@ export const COMMANDS: readonly Command[] = [
   // the map carries is the pin: the same view, kept, for anyone who cannot
   // hold a key and work the pointer at once.
   own("view.origin", "Pin Origin view (hold O)", "View", "Shift+O", (surface) => surface.origin()),
+
+  command("view.workspace.compose", "View", (surface) => surface.show("compose")),
+  command("view.workspace.source", "View", (surface) => surface.show("source")),
 
   command("view.zoom.out", "View", (surface) => surface.zoom(-1)),
   command("view.zoom.in", "View", (surface) => surface.zoom(1)),

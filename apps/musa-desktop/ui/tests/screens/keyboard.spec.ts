@@ -10,6 +10,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
+import { drawer, rewrite, source, text } from "./source";
 import { stubShell } from "./shell";
 
 /**
@@ -72,13 +73,12 @@ test("the selected note is haloed and named for a screen reader", async ({ page 
 });
 
 test("the arrows belong to the score, and the drawer keeps its own letters", async ({ page }) => {
-  await page.getByRole("button", { name: /Source/ }).click();
-  const source = page.getByRole("textbox", { name: "Source" });
-  await source.click();
-  await source.press("End");
-  await page.keyboard.type("f");
-  // `f` is the follow binding in the score; in the drawer it is an `f`.
-  expect(await source.inputValue()).toContain("f");
+  await drawer(page).click();
+  await source(page).click();
+  // `f` is the follow binding in the score; in the drawer it is an `f`, and
+  // `o` — origin view — is an `o`.
+  await page.keyboard.type("fof");
+  await expect.poll(() => text(page)).toContain("fof");
 });
 
 test("⌘K opens the palette, which runs a command by name", async ({ page }) => {
@@ -143,9 +143,8 @@ test("the selection survives a re-engraving", async ({ page }) => {
 
   // A new score revision with the same events: the ids are unchanged, so the
   // selection is too (`02-engraving.md` §6).
-  await page.getByRole("button", { name: /Source/ }).click();
-  const source = page.getByRole("textbox", { name: "Source" });
-  await source.fill(`${await source.inputValue()}\n`);
+  await drawer(page).click();
+  await rewrite(page, `${await text(page)}\n`);
   await page.waitForTimeout(400);
 
   expect(await where(page)).toBe(chosen);
