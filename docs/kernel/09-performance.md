@@ -24,9 +24,21 @@ The two reference workloads of `docs/interface/06-performance.md` §1:
 | --- | --- | --- |
 | small | `examples/glass-mountain.musa` | 18 occurrences |
 | large | `tests/fixtures/large-score.musa` | 1560 occurrences — 100 bars × 4 parts, plus a coda of ties, slurs, tuplets, dynamics, and articulations |
+| shared | `tests/fixtures/shared-score.musa` | 1500 occurrences — the same 100 bars, written as four motifs repeated 100 times |
 
 The coda was added at prompt 38: the plain bars measure throughput, but without it a change to the expressive-notation
 path — exactly what prompts 39–41 rewrite — would regress unmeasured.
+
+**`shared` was added at prompt 49**, and the reason is a rule this file should state once: *a change justified by reuse
+cannot be measured on material with no reuse.* `large-score.musa` contains no `repeat` and no `use` — every one of its
+1500 notes is typed out — so prompt 49's sharing had nothing to bite on there. `shared-score.musa` denotes the same
+music at the other extreme of reuse, and a test in `large_score_generators.rs` asserts they agree on note count, so
+the pair is a controlled comparison rather than two unrelated files. Both are generated from the same `LINES` table by
+`crates/musa-project/tests/large_score_generators.rs`.
+
+Adding a *third* fixture rather than extending the second is deliberate, and is the resolution of the tension prompt
+45 recorded: growing `large-score.musa` would move every P1–P5 number and make this table's existing rows
+non-comparable. A new workload adds a column; it does not invalidate one.
 
 ## What is measured
 
@@ -240,6 +252,67 @@ it instead of calling `overlay` directly. `evaluate` on a literal is a clone and
 `overlay`, so the work is identical up to one `Vec` of terms — and `kernel_normal_form` is itself a test-and-golden
 entry point, not a pipeline stage. Printing a piece is linear in its occurrences and allocates one string; that is the
 whole cost, and it is paid only by someone who asked for a file.
+
+### Prompt 49 — sharing, measured on material that shares
+
+Apple M4 Pro, `--release`, median of 100 samples, against prompt 48's tree with the `shared` workload back-ported so
+both sides measure the same three files.
+
+| id | workload | before | after | Δ | alloc before | alloc after | Δ |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| P1 | small | 61.7 µs | 73.1 µs | +18.6% | 1 997 | 2 160 | +8.2% |
+| P1 | large | 1.854 ms | 1.866 ms | +0.6% | 54 088 | 54 103 | +0.03% |
+| P1 | **shared** | 2.558 ms | **1.643 ms** | **−35.8%** | 62 871 | **25 024** | **−60.2%** |
+| P2 | small | 51.1 µs | 56.2 µs | +9.9% | 1 749 | 1 912 | +9.3% |
+| P2 | large | 1.663 ms | 1.637 ms | −1.6% | 52 387 | 52 402 | +0.03% |
+| P2 | **shared** | 2.537 ms | **1.666 ms** | **−34.3%** | 62 736 | **24 889** | **−60.3%** |
+| P3 | large | 200.6 µs | 217.5 µs | +8.4% | 7 852 | 7 852 | 0 |
+| P4 | large | 391.5 µs | 360.1 µs | −8.0% | 9 457 | 9 457 | 0 |
+| P5 | large | 590.3 µs | 625.8 µs | +6.0% | 9 520 | 9 520 | 0 |
+
+**The shared column is the prompt.** A third of the elaboration time and three-fifths of the allocations disappear on
+material written with a motif and a repeat, because the body is now walked, resolved, and diagnosed once instead of
+100 times. Nothing about the *result* changed: the projected snapshot is byte-identical, which is what
+`crates/musa-compiler/tests/` asserts and what made this a representation change rather than a semantic one (T2).
+
+**The large column is the gate, and it is inside it** — P2 came out 1.6% *faster* and P1 0.6% slower, both noise.
+`large` has no reuse, so it can only lose, and what it loses is 15 allocations out of 54 103, which is the `Vec` of segments and the pair `coalesce` folds through. Getting there took two
+corrections, both worth recording because both are the same mistake:
+
+- The first draft cloned each literal out of its term to coalesce a run (`as_literal` returning a reference). On
+  material with nothing to share that is a full copy of every occurrence: **+29% allocations on large**. Fixed by
+  `Term::into_literal`, which takes the timeline by value.
+- The second draft still cloned the piece's whole term to evaluate it, because `evaluate_marked` borrowed. Same
+  shape, same cost, still +29%. Fixed by making `evaluate`/`evaluate_marked` take the term **by value**, so a
+  literal's occurrences move into the result. The signature change is the honest one anyway: a caller that needs the
+  term afterwards now says `evaluate(term.clone())`.
+
+The lesson generalizes past this prompt: **a representation that shares must not pay for sharing where there is
+none.** Both regressions were invisible on `small` and `shared` and obvious on `large`; without the fixture that has
+no reuse, this would have shipped 29% heavier for every composer who types their notes out.
+
+**P3/P4/P5 are noise.** Allocation counts are identical to the digit on every one, and the code they exercise is not
+touched — P3 walks an evaluated timeline that is byte-identical to prompt 48's. P3 large's +8.4% (and P4 large's −8.0%) is drift between two
+builds in two worktrees, not a change; it is reported rather than smoothed because the table is a record.
+
+**P1/P2 small regress by 10–19%, and that is real.** `glass-mountain.musa` is 18 occurrences with two motif calls, so
+it does share — but at that size the fixed cost of the representation (a `Segment` per item, the two vectors
+`coalesce` folds through, the binding table) is larger than the sharing it recovers. In absolute terms the compile
+went from 62 µs to 73 µs, against a keystroke budget of 120 ms. It is stated rather than optimized away: the
+crossover is somewhere between 18 occurrences and 1500, every real score is on the far side of it, and buying 12 µs
+back on the near side would mean a second code path for small documents.
+
+### The corpus, qualitatively
+
+`examples/kernel/canon.kernel` is the visible payoff, and it is what the prompt asked to see: two `let` bindings and
+two marked references, where before it was every occurrence of both voices written out. The subject appears once.
+Five of the nine files are **byte-identical** to prompt 48's — `counterpoint`, `invention`, `profile-fixture`,
+`twinkle`, `tuplet-fixture` — because a run of adjacent literals is coalesced back into one `timeline` block. That
+was not free either: without coalescing, every note printed as its own nested `timeline` inside a `sequence` and the
+corpus grew 30% across the board while saying nothing new. The four that changed are exactly the four with structure
+to show: `canon` and `glass-mountain` have motifs, `variation` has a motif and transformations, and `annotated` has
+slurs, phrases and hairpins, whose region facts now print as the `overlay` they always were. The rule the printer
+follows is the one the prompt wanted: **show the structure a composer wrote, and no structure they did not.**
 
 ## The rule
 

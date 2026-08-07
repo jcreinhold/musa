@@ -57,7 +57,7 @@ pub fn kernel_text(source: &SourceDocument) -> Option<String> {
 #[doc(hidden)]
 pub fn kernel_normalized_text(source: &SourceDocument) -> Option<String> {
     let (name, term) = piece_term(source)?;
-    let value = musa_kernel::evaluate(&term);
+    let value = musa_kernel::evaluate_marked(term, crate::elaborate::instantiate);
     Some(musa_kernel::print(&name, &musa_kernel::Term::literal(value)))
 }
 
@@ -76,7 +76,7 @@ pub fn kernel_normalized_text(source: &SourceDocument) -> Option<String> {
 pub fn kernel_text_meaning(text: &str) -> Result<(String, musa_kernel::SemanticHash), String> {
     let (_, term) = musa_kernel::parse::<ScoreFact>(text).map_err(|error| error.to_string())?;
     term.check().map_err(|error| error.to_string())?;
-    let value = musa_kernel::evaluate(&term);
+    let value = musa_kernel::evaluate_marked(term, crate::elaborate::instantiate);
     let hash = value.semantic_hash();
     Ok((value.to_string(), hash))
 }
@@ -91,7 +91,7 @@ pub fn kernel_text_meaning(text: &str) -> Result<(String, musa_kernel::SemanticH
 pub fn check_kernel_text(text: &str) -> Result<KernelCheck, String> {
     let (name, term) = musa_kernel::parse::<ScoreFact>(text).map_err(|error| error.to_string())?;
     term.check().map_err(|error| error.to_string())?;
-    let value = musa_kernel::evaluate(&term);
+    let value = musa_kernel::evaluate_marked(term, crate::elaborate::instantiate);
     Ok(KernelCheck {
         name,
         occurrences: value.occurrences().len(),

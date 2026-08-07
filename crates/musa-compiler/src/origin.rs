@@ -17,7 +17,7 @@ pub struct SourceSpan {
 
 impl SourceSpan {
     /// Create a span from start and end byte offsets.
-    pub fn new(start: u32, end: u32) -> Self {
+    pub const fn new(start: u32, end: u32) -> Self {
         Self { start, end }
     }
 }

@@ -98,13 +98,46 @@ requires duplicating thousands of nodes merely to obey the normalized model".
 `let` cannot each carry a different iteration — that is the saving. Two options were on the table; the resolution is
 **provenance at the reference**:
 
-> A reference carries a **mark** naming the expansion step that distinguishes this use. Evaluation applies a payload
-> map chosen from that mark, appending the step to each instantiated occurrence's `Origin`.
+> A reference carries a **mark** naming what distinguishes this use. Evaluation applies a payload map chosen from that
+> mark, rewriting each instantiated occurrence's `Origin` and nothing else.
 
-The mark's text is exactly one `step` of the expansion-path grammar below, so it round-trips through a file with no
-second encoding. Provenance is byte-identical to what direct expansion produced: the same steps, in the same order,
-on the same occurrences. The saving is in elaboration — the CST is walked once, pitches resolved once, diagnostics
-emitted once — not in evaluation, which still materializes every occurrence.
+**The mark's text**, which is `ScoreFact`'s and not the kernel's — the kernel treats it as an opaque string
+(`10-term-calculus.md` T6):
+
+```text
+mark  = <depth> "|" <origin-span> "|" <scope> "|" <steps>
+depth = <integer>                      (* where in the expansion path the steps belong *)
+steps = <step> { "," <step> }          (* the expansion-path grammar below *)
+```
+
+`origin-span` and `scope` are `-` when the reference does not rewrite them. The steps come **last** so they are
+escaped once rather than twice: nothing before them contains a `|`, so a reader splits three times and takes the rest
+verbatim.
+
+Three things this had to get right, none of them obvious from the option alone:
+
+- **Depth, not append.** A repeat's iteration index belongs *before* the steps of everything nested inside the body,
+  which is where direct expansion puts it. Appending would put it after. So the mark says where to splice, and a
+  repeat splices at its body's own depth while a motif call splices at zero.
+- **A motif body is elaborated with no path at all**, because two call sites in different places must reach the same
+  body. The path leading to the call — every enclosing transposition and motif application — travels on the mark
+  instead, and is spliced back at depth zero.
+- **Placeholders for what the call supplies.** A motif body's occurrences take their `source_span` from the *call*
+  and their `scope` from the *voice*, and neither can be baked into a shared body. The body carries `u32::MAX` in
+  both, and the mark says what to put there. This is visible in `examples/kernel/*.kernel` as `4294967295` inside a
+  shared binding's payloads, and it is not corrupt data: it is the hole the reference fills.
+
+Provenance is byte-identical to what direct expansion produced: the same steps, in the same order, on the same
+occurrences. The saving is in elaboration — the CST is walked once, pitches resolved once, diagnostics emitted once —
+not in evaluation, which still materializes every occurrence.
+
+**Where sharing is spent.** A level that needs a *value* rather than a term cannot stay shared, and there are exactly
+four: a tie crossing an item boundary (merging joins two occurrences into one, which no payload map can do),
+`retrograde` and `invert` and `stretch` (payload maps and mirroring, applied during elaboration), and a `use` with
+`with { … }` overrides (which respell notes of *this* call). Each of these evaluates its reference, which instantiates
+the body exactly as direct expansion would have built it — so the sharing is spent, not lost, and the binding it made
+is pruned when the piece's term is closed. This is why `examples/kernel/variation.kernel` has one `let` for five
+`use`s: four of its five are inside a transformation.
 
 The rejected option was to share only where the expansion path would be identical, which for `repeat` is never, and
 which would therefore have bought nothing. What was *not* an option was dropping the iteration index: the Origin view

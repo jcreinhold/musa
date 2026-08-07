@@ -118,11 +118,13 @@ Four notes a reader needs:
 - **`shift by d t` is sugar** for `sequence { timeline d { }; t }` (`10-term-calculus.md`). It may be written; it is
   never printed, because the printer prints the term it is given and `Term::shift` records the sugar rather than the
   expansion only when a producer wrote it.
-- **A reference may carry a mark**, `subject @ "repeat:2"`. The mark is an opaque string; the kernel hands it to the
-  consumer that owns the payload, which chooses a payload map from it (`10-term-calculus.md` T6). It is how a file both
-  shares a body and says how each use of it differs — for musa, which repetition or which call site an occurrence came
-  from. A consumer that does not recognise a mark applies the identity, which is the correct default: it has read the
-  music, and it has not read a provenance detail it does not own.
+- **A reference may carry a mark**, `subject @ "0|251:263|voice@0@0|motif:251\\:263"`. The mark is an opaque string;
+  the kernel hands it to the consumer that owns the payload, which chooses a payload map from it
+  (`10-term-calculus.md` T6). It is how a file both shares a body and says how each use of it differs — for musa,
+  which repetition or which call site an occurrence came from, and what to substitute for the placeholders a shared
+  body carries where its call site would be. Its internal shape belongs to the payload, not here:
+  `06-surface-elaboration.md` specifies `ScoreFact`'s. A consumer that does not recognise a mark applies the identity,
+  which is the correct default: it has read the music, and it has not read a provenance detail it does not own.
 - **`let` scopes over the expression after `in`**, and shadowing is rejected (K7). A file declares exactly one
   composition, so `let` is the only sharing form a file has — which is deliberate: two file-level declarations would be
   two ways to say the same thing, and one of them would have to be canonical anyway.

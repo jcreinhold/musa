@@ -54,8 +54,8 @@ pub(crate) enum Form<A> {
         value: Box<Term<A>>,
         body: Box<Term<A>>,
     },
-    /// A reference (E-Var).
-    Var(String),
+    /// A reference (E-Var), optionally marked (E-Mark).
+    Var { name: String, mark: Option<String> },
 }
 
 impl<A> Term<A> {
@@ -64,6 +64,55 @@ impl<A> Term<A> {
     pub fn literal(value: Timeline<A>) -> Self {
         Self {
             form: Form::Literal(value),
+        }
+    }
+
+    /// The timeline this term is, taken by value, or the term back when it is
+    /// not a literal.
+    ///
+    /// For a producer that builds bottom-up: a run of adjacent literals in a
+    /// `seq` says nothing a single literal does not, and coalescing it keeps
+    /// the printed term to the structure that was actually written. Taking by
+    /// value rather than by reference is the whole point — folding a run by
+    /// cloning each literal out costs a full copy of every occurrence in it,
+    /// which on material with no sharing to gain is pure loss.
+    ///
+    /// Deliberately this narrow: `Form` stays private, and a consumer that
+    /// wants to walk a term wants an interpreter, not a getter.
+    ///
+    /// # Errors
+    ///
+    /// The term itself, unchanged, when it is not a literal.
+    pub fn into_literal(self) -> Result<Timeline<A>, Self> {
+        match self.form {
+            Form::Literal(value) => Ok(value),
+            form @ (Form::Seq(_)
+            | Form::Over(_)
+            | Form::Shift { .. }
+            | Form::Scale { .. }
+            | Form::Restrict { .. }
+            | Form::Let { .. }
+            | Form::Var { .. }) => Err(Self { form }),
+        }
+    }
+
+    /// Whether any reference in this term names `name`.
+    ///
+    /// For a producer that binds speculatively — elaboration binds a motif
+    /// body before it knows whether the level above will need it as a value —
+    /// this is how an unreferenced binding is dropped instead of printed. It
+    /// answers about the whole term, shadowing included, which is the safe
+    /// direction: a `let` that is kept is never wrong, only verbose.
+    #[must_use]
+    pub fn references_name(&self, name: &str) -> bool {
+        match &self.form {
+            Form::Literal(_) => false,
+            Form::Var { name: bound, .. } => bound == name,
+            Form::Seq(parts) | Form::Over(parts) => parts.iter().any(|part| part.references_name(name)),
+            Form::Shift { body, .. } | Form::Scale { body, .. } | Form::Restrict { body, .. } => {
+                body.references_name(name)
+            }
+            Form::Let { value, body, .. } => value.references_name(name) || body.references_name(name),
         }
     }
 
@@ -177,7 +226,32 @@ impl<A> Term<A> {
     /// [`Term::check`] exists at all.
     pub fn var(name: impl Into<String>) -> Self {
         Self {
-            form: Form::Var(name.into()),
+            form: Form::Var {
+                name: name.into(),
+                mark: None,
+            },
+        }
+    }
+
+    /// A reference that records how *this* use of the shared body differs
+    /// (`10-term-calculus.md` T6, E-Mark).
+    ///
+    /// The mark is an opaque string. The kernel never reads it: it hands it to
+    /// the `instantiate` function given to [`evaluate_marked`], which chooses a
+    /// payload map from it. That map may change payloads and nothing else —
+    /// spans, extent, occurrence count and order are D7's to preserve (L9–L12),
+    /// which is what makes T6 hold and what stops this from being `map f`
+    /// smuggled in as a term.
+    ///
+    /// It exists because sharing and provenance pull opposite ways: a `repeat`
+    /// elaborated once cannot have its occurrences each carry a different
+    /// iteration index, so the *reference* carries it instead.
+    pub fn var_marked(name: impl Into<String>, mark: impl Into<String>) -> Self {
+        Self {
+            form: Form::Var {
+                name: name.into(),
+                mark: Some(mark.into()),
+            },
         }
     }
 
@@ -222,7 +296,7 @@ impl<A> Term<A> {
                 bound.pop();
                 result
             }
-            Form::Var(name) => {
+            Form::Var { name, .. } => {
                 if bound.contains(&name.as_str()) {
                     Ok(())
                 } else {
@@ -253,43 +327,89 @@ impl<A> Term<A> {
 /// once. References currently *clone* the bound value rather than sharing it
 /// behind an `Rc`; prompt 49 is the measurement that would justify changing
 /// that, since it is the first caller to produce terms with heavy reuse.
-pub fn evaluate<A: Clone>(term: &Term<A>) -> Timeline<A> {
-    debug_assert!(term.check().is_ok(), "evaluate expects a checked term (K7)");
-    let mut environment: Vec<(&str, Timeline<A>)> = Vec::new();
-    eval(term, &mut environment)
+pub fn evaluate<A: Clone>(term: Term<A>) -> Timeline<A> {
+    evaluate_marked(term, |_, _| {})
 }
 
-fn eval<'a, A: Clone>(term: &'a Term<A>, environment: &mut Vec<(&'a str, Timeline<A>)>) -> Timeline<A> {
-    match &term.form {
-        Form::Literal(value) => value.clone(),
-        Form::Seq(parts) => sequence(parts.iter().map(|part| eval(part, environment)).collect()),
-        Form::Over(parts) => overlay(parts.iter().map(|part| eval(part, environment)).collect()),
+/// Evaluate a term, honouring the marks on its references (E-Mark, T6).
+///
+/// The term is taken **by value**: a literal's occurrences move into the
+/// result rather than being copied. For a producer whose term holds the whole
+/// piece exactly once — which is what elaboration builds when there is nothing
+/// to share — borrowing would double the allocations of every compilation. A
+/// caller that needs the term afterwards clones it and says so.
+///
+/// `instantiate` is the `φ` of E-Mark: it is handed a reference's mark and the
+/// freshly instantiated copy of the bound value, and may rewrite that copy's
+/// **payloads**. Once per reference site, not once per occurrence, so a caller
+/// that has to decode the mark decodes it once.
+///
+/// The contract it owes, and the whole of what T6 rests on: it must not change
+/// how many occurrences there are, where they sit, or what order they are in.
+/// The kernel cannot enforce that — a `&mut Timeline` is the only signature
+/// that lets a caller rewrite payloads in place instead of rebuilding — so it
+/// is stated here and checked by `a_mark_changes_payloads_and_nothing_else`.
+/// [`Timeline::map_payload`] is the safe way to honour it.
+///
+/// [`evaluate`] is this with the identity, which is why a consumer that has no
+/// marks never sees this function.
+pub fn evaluate_marked<A: Clone>(term: Term<A>, mut instantiate: impl FnMut(&str, &mut Timeline<A>)) -> Timeline<A> {
+    debug_assert!(term.check().is_ok(), "evaluate expects a checked term (K7)");
+    let mut environment: Vec<(String, Timeline<A>)> = Vec::new();
+    eval(term, &mut environment, &mut instantiate)
+}
+
+fn eval<A: Clone>(
+    term: Term<A>,
+    environment: &mut Vec<(String, Timeline<A>)>,
+    instantiate: &mut impl FnMut(&str, &mut Timeline<A>),
+) -> Timeline<A> {
+    match term.form {
+        Form::Literal(value) => value,
+        Form::Seq(parts) => sequence(
+            parts
+                .into_iter()
+                .map(|part| eval(part, environment, instantiate))
+                .collect(),
+        ),
+        Form::Over(parts) => overlay(
+            parts
+                .into_iter()
+                .map(|part| eval(part, environment, instantiate))
+                .collect(),
+        ),
         Form::Shift { by, body } => {
             // The stated expansion, applied rather than denoted separately:
             // `shift d t = seq (timeline d {}) t` (10-term-calculus).
-            let silence = timeline(*by, Vec::new()).unwrap_or_else(|_| zero());
-            sequence(vec![silence, eval(body, environment)])
+            let silence = timeline(by, Vec::new()).unwrap_or_else(|_| zero());
+            sequence(vec![silence, eval(*body, environment, instantiate)])
         }
         Form::Scale { by, body } => {
-            let value = eval(body, environment);
+            let value = eval(*body, environment, instantiate);
             // The factor was checked positive at construction, so `scale`
             // cannot reject it; the fallback keeps this total rather than
             // asserting an invariant twice.
-            value.scale(*by).unwrap_or(value)
+            value.scale(by).unwrap_or(value)
         }
-        Form::Restrict { window, body } => materialize(&eval(body, environment), *window),
+        Form::Restrict { window, body } => materialize(&eval(*body, environment, instantiate), window),
         Form::Let { name, value, body } => {
-            let bound = eval(value, environment);
-            environment.push((name.as_str(), bound));
-            let result = eval(body, environment);
+            let bound = eval(*value, environment, instantiate);
+            environment.push((name, bound));
+            let result = eval(*body, environment, instantiate);
             environment.pop();
             result
         }
-        Form::Var(name) => environment
-            .iter()
-            .rev()
-            .find(|(bound, _)| *bound == name.as_str())
-            .map_or_else(zero, |(_, value)| value.clone()),
+        Form::Var { name, mark } => {
+            let mut instance = environment
+                .iter()
+                .rev()
+                .find(|(bound, _)| *bound == name)
+                .map_or_else(zero, |(_, value)| value.clone());
+            if let Some(mark) = mark {
+                instantiate(&mark, &mut instance);
+            }
+            instance
+        }
     }
 }
 

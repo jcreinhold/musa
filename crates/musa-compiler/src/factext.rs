@@ -72,14 +72,14 @@ impl TextPayload for ScoreFact {
 // one occurrence, and that is resolved before a timeline exists. A file that
 // carried it would be describing a state no timeline is ever in.
 
-fn scope_text(scope: Scope) -> String {
+pub(crate) fn scope_text(scope: Scope) -> String {
     match scope {
         Scope::Piece => "piece".to_owned(),
         Scope::Voice { part, voice } => join(&["voice".to_owned(), part.to_string(), voice.to_string()], '@'),
     }
 }
 
-fn read_scope(text: &str) -> Option<Scope> {
+pub(crate) fn read_scope(text: &str) -> Option<Scope> {
     let fields = split_escaped(text, '@');
     match fields.as_slice() {
         [tag] if tag == "piece" => Some(Scope::Piece),
@@ -91,11 +91,11 @@ fn read_scope(text: &str) -> Option<Scope> {
     }
 }
 
-fn span_text(span: SourceSpan) -> String {
+pub(crate) fn span_text(span: SourceSpan) -> String {
     join(&[span.start.to_string(), span.end.to_string()], ':')
 }
 
-fn read_span(text: &str) -> Option<SourceSpan> {
+pub(crate) fn read_span(text: &str) -> Option<SourceSpan> {
     let fields = split_escaped(text, ':');
     let [start, end] = fields.as_slice() else {
         return None;
@@ -287,7 +287,7 @@ fn path_text(steps: &[ExpansionStep]) -> String {
     join(&steps, ',')
 }
 
-fn step_text(step: &ExpansionStep) -> String {
+pub(crate) fn step_text(step: &ExpansionStep) -> String {
     let fields: Vec<String> = match step {
         ExpansionStep::MotifApplication { call_site } => vec!["motif".to_owned(), span_text(*call_site)],
         ExpansionStep::RepeatIteration(index) => vec!["repeat".to_owned(), index.to_string()],
@@ -311,7 +311,7 @@ fn read_path(text: &str) -> Option<Vec<ExpansionStep>> {
     split_escaped(text, ',').iter().map(|step| read_step(step)).collect()
 }
 
-fn read_step(text: &str) -> Option<ExpansionStep> {
+pub(crate) fn read_step(text: &str) -> Option<ExpansionStep> {
     let fields = split_escaped(text, ':');
     let tag = fields.first()?.as_str();
     let arg = |index: usize| fields.get(index).map(String::as_str);
@@ -344,7 +344,7 @@ fn read_step(text: &str) -> Option<ExpansionStep> {
 /// field to the outer join, which escapes it again. Every level unescapes
 /// exactly the level it splits, so the layers stay independent and no
 /// producer needs to know how deeply it is nested.
-fn join(fields: &[String], separator: char) -> String {
+pub(crate) fn join(fields: &[String], separator: char) -> String {
     fields
         .iter()
         .map(|field| escape(field, separator))
@@ -365,7 +365,7 @@ fn escape(text: &str, separator: char) -> String {
 
 /// The inverse of [`join`]: split on `separator`, honouring `\` escapes, and
 /// unescape each field.
-fn split_escaped(text: &str, separator: char) -> Vec<String> {
+pub(crate) fn split_escaped(text: &str, separator: char) -> Vec<String> {
     let mut fields = vec![String::new()];
     let mut escaped = false;
     for character in text.chars() {

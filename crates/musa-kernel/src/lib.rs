@@ -34,7 +34,7 @@ pub use crate::error::KernelError;
 pub use crate::hash::SemanticHash;
 pub use crate::occurrence::{Canonical, Occurrence};
 pub use crate::progress::Progress;
-pub use crate::term::{Term, evaluate};
+pub use crate::term::{Term, evaluate, evaluate_marked};
 pub use crate::text::{FORMAT_VERSION, TextPayload, parse, print};
 pub use crate::time::{Beat, Span};
 pub use crate::timeline::{Observation, Timeline, overlay, sequence, timeline, zero};

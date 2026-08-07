@@ -207,6 +207,19 @@ impl<A> Timeline<A> {
         }
     }
 
+    /// D7 in place: every payload, mutably, in storage order.
+    ///
+    /// The same functor as [`Self::map_payload`] for a caller that is rewriting
+    /// `A` into `A` and would otherwise rebuild the occurrence vector to change
+    /// a field. It cannot touch spans or the extent — that is the type, not a
+    /// convention — which is what makes it safe to hand to an `instantiate`
+    /// hook (`10-term-calculus.md` T6). Storage order, not canonical order:
+    /// nothing here depends on the order, and canonicalizing to hand out
+    /// mutable references would be a sort per instantiation.
+    pub fn payloads_mut(&mut self) -> impl Iterator<Item = &mut A> {
+        self.occurrences.iter_mut().map(Occurrence::payload_mut)
+    }
+
     /// Exact time scaling by a positive rational (D5, §14). Laws L13–L15.
     ///
     /// # Errors

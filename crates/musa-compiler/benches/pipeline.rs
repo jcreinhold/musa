@@ -1,7 +1,9 @@
 //! The semantic pipeline's baseline (docs/prompts/38; roadmap §17.7).
 //!
-//! Four measurements on the two reference workloads of
-//! `docs/interface/06-performance.md`:
+//! Five measurements on three reference workloads: the two of
+//! `docs/interface/06-performance.md`, plus prompt 49's `shared`, which is
+//! the same music as `large` written with a motif and a repeat instead of
+//! typed out.
 //!
 //! | id | what | why it is the right thing to watch |
 //! | --- | --- | --- |
@@ -22,7 +24,7 @@
 //! cargo bench -p musa-compiler
 //! ```
 
-// Benchmarks index a two-element workload table and unwrap statically valid
+// Benchmarks index a fixed workload table and unwrap statically valid
 // fixtures: a failure is a bug in the benchmark, and panicking is correct.
 #![allow(clippy::expect_used)]
 
@@ -34,13 +36,23 @@ static ALLOC: divan::AllocProfiler = divan::AllocProfiler::system();
 
 const SMALL: &str = include_str!("../../../examples/glass-mountain.musa");
 const LARGE: &str = include_str!("../../../tests/fixtures/large-score.musa");
+const SHARED: &str = include_str!("../../../tests/fixtures/shared-score.musa");
 
-/// The two reference workloads, named once (`docs/interface/06-performance.md`).
-const WORKLOADS: [&str; 2] = ["small", "large"];
+/// The reference workloads, named once.
+///
+/// `small` and `large` are `docs/interface/06-performance.md`'s two; `shared`
+/// is prompt 49's, added because neither of the other two contains a `repeat`
+/// or a `use` and a prompt whose claim is sharing cannot be measured on
+/// material that shares nothing. It denotes the same 1500 notes as `large`
+/// minus the coda, written as four motifs repeated 100 times — so `shared`
+/// against `large` is the same music at two levels of reuse, and the
+/// difference between the columns is what sharing is worth.
+const WORKLOADS: [&str; 3] = ["small", "large", "shared"];
 
 fn source(workload: &str) -> SourceDocument {
     match workload {
         "small" => SourceDocument::new(SMALL, "examples/glass-mountain.musa"),
+        "shared" => SourceDocument::new(SHARED, "tests/fixtures/shared-score.musa"),
         _ => SourceDocument::new(LARGE, "tests/fixtures/large-score.musa"),
     }
 }

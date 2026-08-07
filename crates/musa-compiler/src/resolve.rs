@@ -60,7 +60,7 @@ pub(crate) struct MotifDef {
 }
 
 /// A parameter bound at a `use` site.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum BoundValue {
     Pitch(WrittenPitch),
     Duration(NotatedDuration),

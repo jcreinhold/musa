@@ -45,6 +45,14 @@ impl<A> Occurrence<A> {
     }
 
     /// The payload.
+    /// The payload, mutably. Only [`Timeline::payloads_mut`] hands this out,
+    /// and only for D7-in-place; the span stays immutable.
+    ///
+    /// [`Timeline::payloads_mut`]: crate::Timeline::payloads_mut
+    pub(crate) fn payload_mut(&mut self) -> &mut A {
+        &mut self.payload
+    }
+
     pub fn payload(&self) -> &A {
         &self.payload
     }

@@ -95,21 +95,21 @@ proptest! {
         a in 0i64..12,
         b in 0i64..12,
     ) {
-        let (lv, rv) = (evaluate(&left), evaluate(&right));
+        let (lv, rv) = (evaluate(left.clone()), evaluate(right.clone()));
 
         let seq_term = Term::seq(vec![left.clone(), right.clone()]).expect("non-empty");
-        prop_assert!(evaluate(&seq_term).semantic_eq(&sequence(vec![lv.clone(), rv.clone()])));
+        prop_assert!(evaluate(seq_term).semantic_eq(&sequence(vec![lv.clone(), rv.clone()])));
 
         let over_term = Term::over(vec![left.clone(), right]).expect("non-empty");
-        prop_assert!(evaluate(&over_term).semantic_eq(&overlay(vec![lv.clone(), rv])));
+        prop_assert!(evaluate(over_term).semantic_eq(&overlay(vec![lv.clone(), rv])));
 
         let factor = Ratio::new(n, d);
         let scaled = Term::scale(factor, left.clone()).expect("positive");
-        prop_assert!(evaluate(&scaled).semantic_eq(&lv.scale(factor).expect("positive")));
+        prop_assert!(evaluate(scaled).semantic_eq(&lv.scale(factor).expect("positive")));
 
         let window = Span::new(quarters(a.min(b)), quarters(a.max(b))).expect("ordered");
         let restricted = Term::restrict(window, left);
-        prop_assert!(evaluate(&restricted).semantic_eq(&observed_value(&lv, window)));
+        prop_assert!(evaluate(restricted).semantic_eq(&observed_value(&lv, window)));
     }
 
     /// T2 — `let` is transparent: a shared term and the same term with the
@@ -128,7 +128,7 @@ proptest! {
         // evaluator: `Term` is opaque, so the substituted term is written out
         // here, which is the same reference and a shorter one.
         let expanded = Term::seq(vec![value.clone(), body, value]).expect("non-empty");
-        prop_assert!(evaluate(&shared).semantic_eq(&evaluate(&expanded)));
+        prop_assert!(evaluate(shared).semantic_eq(&evaluate(expanded)));
     }
 
     /// T3 — evaluation is normalization: normalizing an evaluated term is the
@@ -137,7 +137,7 @@ proptest! {
     /// one equality in this kernel.
     #[test]
     fn evaluation_agrees_with_normalization(left in arb_term(2), right in arb_term(2)) {
-        let (lv, rv) = (evaluate(&left), evaluate(&right));
+        let (lv, rv) = (evaluate(left), evaluate(right));
         prop_assert!(lv.normalize().semantic_eq(&lv), "normalize preserves meaning");
         prop_assert_eq!(
             lv.semantic_eq(&rv),
@@ -154,10 +154,10 @@ proptest! {
     #[test]
     fn every_well_formed_term_evaluates(term in arb_term(3)) {
         prop_assert!(term.check().is_ok(), "the generator produces closed terms");
-        let value = evaluate(&term);
+        let value = evaluate(term.clone());
         prop_assert!(value.extent() >= Beat::ZERO);
         // Deterministic: the rules are syntax-directed, one per form.
-        prop_assert!(evaluate(&term).semantic_eq(&value));
+        prop_assert!(evaluate(term).semantic_eq(&value));
     }
 
     /// T5 — observation commutes with sharing: a restriction may be pushed
@@ -174,7 +174,7 @@ proptest! {
         let inner = Term::seq(vec![Term::var("x"), body, Term::var("x")]).expect("non-empty");
         let outside = Term::restrict(window, Term::bind("x", value.clone(), inner.clone()));
         let inside = Term::bind("x", value, Term::restrict(window, inner));
-        prop_assert!(evaluate(&outside).semantic_eq(&evaluate(&inside)));
+        prop_assert!(evaluate(outside).semantic_eq(&evaluate(inside)));
     }
 
     /// The algebra transports: L1 (sequence associativity), L4/L5 (overlay
@@ -186,15 +186,15 @@ proptest! {
     fn the_algebra_transports_to_terms(t in arb_term(1), u in arb_term(1), v in arb_term(1)) {
         let left = Term::seq(vec![Term::seq(vec![t.clone(), u.clone()]).expect("ne"), v.clone()]).expect("ne");
         let right = Term::seq(vec![t.clone(), Term::seq(vec![u.clone(), v.clone()]).expect("ne")]).expect("ne");
-        prop_assert!(evaluate(&left).semantic_eq(&evaluate(&right)), "L1");
+        prop_assert!(evaluate(left).semantic_eq(&evaluate(right)), "L1");
 
         let ab = Term::over(vec![t.clone(), u.clone()]).expect("ne");
         let ba = Term::over(vec![u.clone(), t.clone()]).expect("ne");
-        prop_assert!(evaluate(&ab).semantic_eq(&evaluate(&ba)), "L4");
+        prop_assert!(evaluate(ab).semantic_eq(&evaluate(ba)), "L4");
 
         let l = Term::over(vec![Term::over(vec![t.clone(), u.clone()]).expect("ne"), v.clone()]).expect("ne");
         let r = Term::over(vec![t, Term::over(vec![u, v]).expect("ne")]).expect("ne");
-        prop_assert!(evaluate(&l).semantic_eq(&evaluate(&r)), "L5");
+        prop_assert!(evaluate(l).semantic_eq(&evaluate(r)), "L5");
     }
 }
 
@@ -229,7 +229,7 @@ fn synchronized_interchange_holds_of_terms() {
     ])
     .expect("ne");
     assert!(
-        evaluate(&by_section).semantic_eq(&evaluate(&by_voice)),
+        evaluate(by_section).semantic_eq(&evaluate(by_voice)),
         "L18 transports to terms through T1"
     );
 }
@@ -277,7 +277,7 @@ fn shift_denotes_its_stated_expansion() {
     let shifted = Term::shift(quarters(6), body.clone()).expect("non-negative");
     let expansion = Term::seq(vec![Term::literal(timeline(quarters(6), vec![]).expect("empty")), body]).expect("ne");
     assert!(
-        evaluate(&shifted).semantic_eq(&evaluate(&expansion)),
+        evaluate(shifted).semantic_eq(&evaluate(expansion)),
         "shift d t = seq (timeline d {{}}) t"
     );
 }
@@ -350,7 +350,7 @@ fn printing_and_parsing_a_term_preserves_its_meaning() {
     let (name, parsed) = musa_kernel::parse::<Awkward>(&text).expect("its own output parses");
     assert_eq!(name, "awkward");
     assert!(parsed.check().is_ok(), "its own output is well formed");
-    let (before, after) = (evaluate(&term), evaluate(&parsed));
+    let (before, after) = (evaluate(term.clone()), evaluate(parsed.clone()));
     assert!(before.semantic_eq(&after), "the round trip preserves meaning");
     assert_eq!(before.semantic_hash(), after.semantic_hash());
     assert_eq!(parsed, term, "and the structure, not only the denotation");
@@ -390,4 +390,107 @@ fn malformed_kernel_text_is_rejected() {
             "`{text}` is not a kernel file"
         );
     }
+}
+
+/// T6 — a mark changes payloads and nothing else.
+///
+/// The strong form: the marked term and the same term with its marks erased
+/// denote timelines with identical extents and identical spans in canonical
+/// order. Only the payloads differ, and they differ exactly where the mark
+/// said they would.
+#[test]
+fn a_mark_changes_payloads_and_nothing_else() {
+    let at = |a: i64, b: i64| Span::new(quarters(a), quarters(b)).expect("ordered");
+    let body = Term::literal(
+        timeline(
+            quarters(2),
+            vec![Occurrence::new(at(0, 1), 1_u32), Occurrence::new(at(1, 2), 2_u32)],
+        )
+        .expect("in bounds"),
+    );
+    // Three uses of one body, each marked with what distinguishes it.
+    let uses = Term::seq(vec![
+        Term::var_marked("subject", "10"),
+        Term::var_marked("subject", "20"),
+        Term::var("subject"),
+    ])
+    .expect("non-empty");
+    let marked = Term::bind("subject", body.clone(), uses);
+
+    let erased = Term::bind(
+        "subject",
+        body,
+        Term::seq(vec![Term::var("subject"), Term::var("subject"), Term::var("subject")]).expect("non-empty"),
+    );
+
+    let with = musa_kernel::evaluate_marked(marked, |mark, instance| {
+        let bump: u32 = mark.parse().unwrap_or(0);
+        for payload in instance.payloads_mut() {
+            *payload += bump;
+        }
+    });
+    let without = musa_kernel::evaluate(erased);
+
+    assert_eq!(with.extent(), without.extent(), "a mark moved the extent");
+    // Storage order, not canonical order: `u32` is not `Canonical`, and the
+    // claim is about *where* occurrences sit, which storage order already
+    // pins because both terms have the same shape.
+    let spans_of = |value: &musa_kernel::Timeline<u32>| -> Vec<(Beat, Beat)> {
+        value
+            .occurrences()
+            .iter()
+            .map(|occurrence| (occurrence.span().start(), occurrence.span().end()))
+            .collect()
+    };
+    assert_eq!(spans_of(&with), spans_of(&without), "a mark moved an occurrence");
+
+    // And the payloads did change, exactly as the marks said — otherwise the
+    // assertions above would hold vacuously.
+    let mut payloads: Vec<u32> = with.occurrences().iter().map(|o| *o.payload()).collect();
+    payloads.sort_unstable();
+    assert_eq!(payloads, vec![1, 2, 11, 12, 21, 22]);
+}
+
+/// An unmarked reference is E-Var: `evaluate` and `evaluate_marked` with a
+/// hook that is never reached agree on every generated term.
+#[test]
+fn unmarked_terms_evaluate_identically_either_way() {
+    proptest!(|(term in arb_term(3))| {
+        let plain = musa_kernel::evaluate(term.clone());
+        // `arb_term` builds no marked references, so the hook must never fire;
+        // a counter says so without a panic the lints would object to.
+        let mut reached = 0_u32;
+        let hooked = musa_kernel::evaluate_marked(term, |_, _| reached = reached.saturating_add(1));
+        prop_assert_eq!(reached, 0);
+        prop_assert!(plain.semantic_eq(&hooked));
+    });
+}
+
+/// A marked reference survives the interchange format: the mark is written,
+/// read back, and still names the same payload map.
+#[test]
+fn a_mark_round_trips_through_kernel_text() {
+    let body = Term::literal(
+        timeline(
+            quarters(1),
+            vec![Occurrence::new(
+                Span::new(quarters(0), quarters(1)).expect("ordered"),
+                Awkward("a \"quoted\" payload".to_owned()),
+            )],
+        )
+        .expect("in bounds"),
+    );
+    let term = Term::bind(
+        "subject",
+        body,
+        Term::seq(vec![
+            Term::var_marked("subject", "repeat:0"),
+            Term::var_marked("subject", "invert:c4\\|d4"),
+        ])
+        .expect("non-empty"),
+    );
+    let text = musa_kernel::print("marked", &term);
+    let (name, read) = musa_kernel::parse::<Awkward>(&text).expect("parses");
+    assert_eq!(name, "marked");
+    assert_eq!(read, term, "the marks did not survive the round trip");
 }

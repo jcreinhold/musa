@@ -1,7 +1,7 @@
 ---
 id: 49
 slug: elaboration-emits-terms
-status: in-progress
+status: done
 depends_on: [48]
 phase: 3
 ---
@@ -112,3 +112,47 @@ Commit as `Elaborate into kernel terms`.
 - No lazy evaluation, no deferred observation — prompt 50, and only if measured.
 - No caching of evaluated bindings across compilations.
 - No new term form. If sharing wants one, the specification is repaired first and the evidence recorded.
+
+## Repairs made while implementing
+
+**The mark is wider than one step, and had to be.** The prompt (and `06-surface-elaboration.md`'s first draft) said a
+reference's mark is "exactly one `step`" appended to each instantiated occurrence's origin. Three things broke that,
+all discovered by the byte-identical-provenance requirement in *Stop*:
+
+1. **Append is the wrong position.** Direct expansion puts `RepeatIteration(i)` *before* the steps of everything
+   nested inside the body. Appending puts it after. The mark carries an **insertion depth**.
+2. **A motif body cannot carry the path that led to the call**, because two call sites must reach the same body — so
+   the body is elaborated with an *empty* path and the mark carries the whole prefix, spliced at depth zero. That
+   makes the mark a step *list*, not a step.
+3. **Nor can it carry the call site or the voice.** A motif body's `source_span` comes from the call and its `scope`
+   from the voice. The body carries `u32::MAX` placeholders in both, and the mark says what to substitute — which is
+   why `4294967295` is visible inside shared bindings in `examples/kernel/*.kernel`.
+
+The mark is therefore `<depth>|<origin-span>|<scope>|<steps>`, and it is `ScoreFact`'s format, not the kernel's — the
+kernel still only knows it is an opaque string it hands to `instantiate` (T6 unchanged). `docs/kernel/01-grammar.md`
+and `06-surface-elaboration.md` are repaired to say so.
+
+**Two kernel accessors were needed, and both are about ownership, not inspection.** `Term::into_literal` and taking
+the term **by value** in `evaluate`/`evaluate_marked`. Both were added after measuring: the first draft cloned every
+occurrence twice on the way to a value and cost **+29% allocations on the `large` workload**, which has no sharing to
+offset it. `docs/kernel/09-performance.md` records the two corrections and the rule they illustrate. The `evaluate`
+signature change is a repair to prompt 45's; callers that still need the term say `evaluate(term.clone())`.
+
+**A third bench workload, not a bigger second one.** `tests/fixtures/large-score.musa` has no `repeat` and no `use`,
+so it could not show what this prompt does. `tests/fixtures/shared-score.musa` is the same 1500 notes written as four
+motifs repeated 100 times, generated from the same `LINES` table by the same generator, with a test asserting the two
+agree on note count. Extending `large-score.musa` instead would have invalidated forty existing rows — the tension
+prompt 45 recorded, resolved by adding a column rather than moving one.
+
+**Coalescing adjacent literals was not in the prompt and is not optional.** Without it every note printed as its own
+nested `timeline` inside a `sequence`, and the corpus grew ~30% while saying nothing new. With it, files with no
+reuse are byte-identical to prompt 48's. `Term::seq` was deliberately *not* changed to coalesce: the printer prints
+the term it is given (`01-grammar.md`), so the producer folds and the kernel does not.
+
+**Four levels spend their sharing**, listed in `06-surface-elaboration.md`: a tie crossing an item boundary,
+`retrograde`, `invert`, `stretch`, and a `use` with `with { … }` overrides. Each needs a *value*, so it evaluates its
+reference — which instantiates the body exactly as direct expansion would have — and the binding it made is pruned
+when the piece's term is closed. This is why `examples/kernel/variation.kernel` has one `let` for five `use`s.
+
+**What did not change**: `project.rs`, the projected snapshot (byte-identical, as *Stop* required), `canonical_key`,
+any semantic hash, and any golden outside `examples/kernel/`.

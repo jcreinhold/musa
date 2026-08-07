@@ -158,7 +158,13 @@ fn write_term<A: TextPayload>(out: &mut String, term: &Term<A>, depth: usize) {
             let _ = write!(out, "\n{pad}in ");
             write_term(out, body, depth);
         }
-        Form::Var(name) => out.push_str(name),
+        Form::Var { name, mark } => {
+            out.push_str(name);
+            if let Some(mark) = mark {
+                out.push_str(" @ ");
+                write_string(out, mark);
+            }
+        }
     }
 }
 
@@ -398,7 +404,14 @@ impl<'a> Cursor<'a> {
                 Ok(Term::bind(name, value, body))
             }
             "" => Err(self.error("expected a term")),
-            _ => Ok(Term::var(self.name()?)),
+            _ => {
+                let name = self.name()?;
+                if self.peek_symbol("@") {
+                    self.symbol("@")?;
+                    return Ok(Term::var_marked(name, self.string()?));
+                }
+                Ok(Term::var(name))
+            }
         }
     }
 
