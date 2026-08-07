@@ -21,10 +21,22 @@ program that feel unfinished, and they are disproportionately what a new user me
 
 | State | What is shown |
 | --- | --- |
-| **No piece open** | The leaf is present but blank, with the app name set in Academico at the top of the sheet, and three actions as plain text links on the surround beneath it: *Open a piece*, *New piece*, *Open an example*. Recent pieces list underneath if any. No splash art, no hero image. |
+| **No piece open** | A title page for the piece that is not written yet. The leaf is present, sized as a sheet on a desk rather than stretched to the window; the app name is set in Academico in the sheet's title position; and the page's text block is **ruled with empty five-line staves** in `--rule` at the resting rastral unit (`--sp`), so the sheet reads as manuscript paper rather than as an unexplained rectangle. Beneath it on the surround, on the page's own measure and inside the page's own side margins, the ways in as a ruled list — one line each, the name at the left and the menu accelerator in mono at the right: *Open a piece* `⌘O`, *New piece* `⌘N`, *Open an example* when there is one to open. Recent pieces extend the same list when the core can supply them. Nothing but the name is placed on the sheet: on every other screen the sheet is the score and every control is margin, and the first frame is the wrong place to teach otherwise. No splash art, no hero image. |
 | **New empty piece** | The leaf shows a real engraved empty system — clef, key, meter, one empty bar — because roadmap §14.8 says a new piece must be immediately playable. Caret is placed in the first voice. A single line of `--ink-muted` text under the transport: *Press a number for a duration, then a letter for a pitch.* It disappears after the first note and does not come back. |
 | **Part with no voices** | The staff is drawn with a whole-bar rest and the part name greyed. Inspector offers *Add a voice*. |
 | **No diagnostics** | The diagnostics pane shows nothing at all — not "0 problems". Absence is the message. |
+
+**On the ruling, and on the arrangement.** The first version of the no-piece state took "the leaf is present but blank"
+literally: a full-window-height A4 with one muted word near the top, and the actions as a row of links twenty pixels
+apart on the surround below it. Both halves of that failed the same test. A sheet stretched to the height of a wide
+window is not a sheet, it is a tall narrow band, and a genuinely blank one gives the eye nothing to land on; a row of
+two short links at the bottom edge of that band reads as one cramped clump rather than as two choices, and it is the
+full height of the window away from the only other thing on screen. The repair keeps the thesis — the paper is the only
+lit surface, and no control is placed on it — and fixes the execution: the sheet is sized and the sheet is ruled, and
+the list beneath shares the sheet's measure, margins and hairline weight so that page and list are one composition
+rather than an object and its caption. The ruling is not ornament: it is what music paper is, it is drawn at the
+engraving's own line weight and rastral unit, and it is what turns "empty is an invitation" from a rule in §1 into
+something on the screen.
 
 ## 3. Loading
 

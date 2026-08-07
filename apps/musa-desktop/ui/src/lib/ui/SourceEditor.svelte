@@ -28,7 +28,10 @@
   import {
     Decoration,
     EditorView,
+    drawSelection,
+    dropCursor,
     highlightActiveLine,
+    highlightActiveLineGutter,
     keymap,
     lineNumbers,
     type DecorationSet,
@@ -107,9 +110,28 @@
       color: "var(--ink-muted)",
       paddingRight: "var(--s-2)",
     },
+    // Where you are is said twice, both times typographically: the line the
+    // caret is on takes its number in full ink rather than the muted ink every
+    // other number is set in, and the caret itself is drawn below. No band, no
+    // fill — a highlighted row behind the text would be a second wash arguing
+    // with the provenance wash that means something.
     ".cm-activeLine": { backgroundColor: "transparent" },
-    ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--ink-muted)" },
-    ".cm-cursor": { borderLeftColor: "var(--ink)" },
+    ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--ink)" },
+    /*
+     * The caret, in `--plate`.
+     *
+     * That hue is the one the design language already gives to "where the
+     * keyboard is and what is live" — the focus ring, the playhead hairline
+     * (`01-visual-language.md` §2). The caret is both of those things for the
+     * text, and a caret that took `--ink` would be a hairline of body-text
+     * colour inside a field of body text: findable only by hunting. Two
+     * pixels, because one is a hairline and hairlines are for rules.
+     */
+    ".cm-cursor, .cm-dropCursor": {
+      borderLeftColor: "var(--plate)",
+      borderLeftWidth: "2px",
+      marginLeft: "-1px",
+    },
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
       backgroundColor: "var(--plate-wash)",
     },
@@ -140,11 +162,31 @@
   /** The last reveal acted on, so one request moves the caret once. */
   let revealed: Reveal | null = null;
 
+  /**
+   * How the caret blinks, in milliseconds — or not at all.
+   *
+   * A blinking caret is a platform convention rather than one of the three
+   * things this application animates (`01-visual-language.md` §6), and it is
+   * the signal every reader already knows. Under `prefers-reduced-motion` it
+   * stops blinking and stays lit, which is the reduction that loses nothing:
+   * the caret is still exactly where it was.
+   */
+  function blinkRate(): number {
+    return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 1200;
+  }
+
   function extensions(): Extension[] {
     return [
       lineNumbers(),
       foldGutter({ markerDOM: marker }),
       highlightActiveLine(),
+      highlightActiveLineGutter(),
+      // The caret and the selection are drawn by the editor rather than by the
+      // platform, so both answer to the theme above: a native caret is the
+      // browser's colour, and on a graphite sheet the browser's colour is
+      // black on near-black.
+      drawSelection({ cursorBlinkRate: blinkRate() }),
+      dropCursor(),
       bracketMatching(),
       closeBrackets(),
       keymap.of([...defaultKeymap, ...foldKeymap, indentWithTab]),

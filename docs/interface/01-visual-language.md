@@ -78,7 +78,11 @@ lifted object; it does not dissolve into the background.
   not a quiet label, it is an unreadable one; the automated accessibility scan (prompt 23) asserts this on the running
   screen rather than on the token file.
 - **`--plate` means one thing:** derived from something else, or currently live. Generated material, the Origin trace,
-  the focus ring, the playhead hairline, the "playing" state. Nothing else.
+  the focus ring, the source caret, the playhead hairline, the "playing" state. Nothing else. The caret belongs to this
+  list on both counts — it is the focus ring of the text and the playhead of the keyboard — and it takes the hue rather
+  than `--ink` for a practical reason as well: a caret set in the colour of the body text around it is a two-pixel
+  hairline that has to be hunted for, which on a full screen of source is the difference between knowing where you are
+  editing and guessing.
 - **`--chalk` means one thing:** something the compiler is telling you is wrong, or that what you are hearing is not what
   you are looking at. Nothing else. It never appears as a brand accent.
 - **Printing** uses the light tokens with `--surround` dropped entirely; the leaf becomes the page.

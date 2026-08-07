@@ -115,3 +115,51 @@ test("origin view marks the declaration and the use, in the workspace too", asyn
   expect(marks.join("\n")).toContain("motif sigh");
   expect(marks.at(-1)).toBe("use sigh();");
 });
+
+/**
+ * Where the caret is, and that it can be seen.
+ *
+ * A theme rule that styles an element no extension ever creates is silent —
+ * the source shipped for a while with a `.cm-cursor` rule and no drawn cursor
+ * behind it, which on a graphite sheet left a black caret on near-black. So
+ * the assertion is on the drawn element and its colour, not on the stylesheet.
+ */
+test("the caret is drawn, and drawn in the hue that means 'here'", async ({ page }) => {
+  await inSource(page);
+  await source(page).locator(".cm-line").nth(3).click();
+
+  const cursor = page.locator(".cm-cursor-primary");
+  await expect(cursor).toHaveCount(1);
+  const drawn = await cursor.evaluate((node) => {
+    const style = getComputedStyle(node);
+    return {
+      color: style.borderLeftColor,
+      width: style.borderLeftWidth,
+      shown: style.display,
+      plate: getComputedStyle(document.documentElement).getPropertyValue("--plate").trim(),
+    };
+  });
+  expect(drawn.shown).toBe("block");
+  expect(drawn.width).toBe("2px");
+  expect(drawn.color).toBe(hex(drawn.plate));
+
+  // And the line it is on says so a second way, so the answer does not rest on
+  // colour alone (`03-interaction.md` §5): its number is set in full ink.
+  const gutter = page.locator(".cm-lineNumbers .cm-activeLineGutter");
+  await expect(gutter).toHaveText("4");
+  const numbers = await gutter.evaluate((node) => ({
+    color: getComputedStyle(node).color,
+    ink: getComputedStyle(document.documentElement).getPropertyValue("--ink").trim(),
+    others: getComputedStyle(
+      node.parentElement?.querySelector(".cm-gutterElement:not(.cm-activeLineGutter)") ?? node,
+    ).color,
+  }));
+  expect(numbers.color).toBe(hex(numbers.ink));
+  expect(numbers.others).not.toBe(numbers.color);
+});
+
+/** `#rrggbb` as `getComputedStyle` reports it. */
+function hex(value: string): string {
+  const channels = [1, 3, 5].map((at) => Number.parseInt(value.slice(at, at + 2), 16));
+  return `rgb(${channels.join(", ")})`;
+}
