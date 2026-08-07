@@ -507,6 +507,9 @@ ScoreSnapshot {
         tuplets: [],
         dynamics: [],
         articulations: [],
+        phrases: [],
+        sections: [],
+        harmony: [],
     },
     motifs: [],
     profiles: ProfileSet {

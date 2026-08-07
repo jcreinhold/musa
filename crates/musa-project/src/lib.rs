@@ -52,7 +52,8 @@ pub use crate::edit::{EditCommand, EditImpact, GeneratedEditMode, InsertAt, Note
 pub use crate::error::ProjectError;
 pub use crate::export::{ExportArtifact, ExportRequest};
 pub use crate::facts::{
-    EventFacts, EventKind, Fraction, OccurrenceFacts, OriginFacts, PartFacts, ScoreFacts, VoiceFacts,
+    EventFacts, EventKind, Fraction, OccurrenceFacts, OriginFacts, OutlineFacts, OutlineKind, PartFacts, ScoreFacts,
+    VoiceFacts,
 };
 pub use crate::midi::MidiEntry;
 pub use crate::session::ProjectSession;

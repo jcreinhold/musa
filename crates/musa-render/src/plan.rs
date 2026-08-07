@@ -10,7 +10,7 @@
 use std::collections::{HashMap, HashSet};
 
 use musa_compiler::{
-    ArticulationMark, Clef, DynamicMark, EventId, KeyMap, MeterMap, Mode, MusicalDuration, MusicalTime,
+    ArticulationMark, ChordSymbol, Clef, DynamicMark, EventId, KeyMap, MeterMap, Mode, MusicalDuration, MusicalTime,
     NotatedDuration, Part, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice, VoiceId, WrittenPitch,
 };
 use num_rational::Ratio;
@@ -24,12 +24,50 @@ pub struct NotationOptions {}
 #[derive(Clone, Debug)]
 pub struct NotationPlan {
     staves: Vec<StaffPlan>,
+    sections: Vec<PositionedMark<String>>,
+    harmony: Vec<PositionedMark<ChordSymbol>>,
 }
 
 impl NotationPlan {
     /// One staff per part, in source order.
     pub fn staves(&self) -> &[StaffPlan] {
         &self.staves
+    }
+
+    /// Form markers, in the order they are reached.
+    pub fn sections(&self) -> &[PositionedMark<String>] {
+        &self.sections
+    }
+
+    /// Chord symbols, in the order they are reached.
+    pub fn harmony(&self) -> &[PositionedMark<ChordSymbol>] {
+        &self.harmony
+    }
+}
+
+/// A symbol printed at a place in the piece rather than on a note: a form
+/// marker, a chord symbol.
+///
+/// Positions are given as the backends need them — a measure and an offset
+/// inside it — because every notation format anchors such a symbol to a bar.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PositionedMark<T> {
+    /// The 1-based measure it falls in.
+    pub measure: u32,
+    /// How far into that measure it is, in whole notes.
+    pub onset_in_measure: MusicalDuration,
+    /// What is printed there.
+    pub what: T,
+}
+
+impl<T> PositionedMark<T> {
+    /// The 1-based beat within the measure, given the meter's beat unit: the
+    /// coordinate notation formats anchor a measure-level symbol with.
+    ///
+    /// The start of a measure is beat 1, and a symbol halfway through a 4/4
+    /// bar is beat 3.
+    pub fn beat(&self, unit: u32) -> Ratio<i64> {
+        self.onset_in_measure.as_ratio() * Ratio::from_integer(i64::from(unit.max(1))) + Ratio::ONE
     }
 }
 
@@ -106,6 +144,22 @@ pub struct VoiceLane {
     name: String,
     items: Vec<NotatedItem>,
     slurs: Vec<SlurRange>,
+    phrases: Vec<PhraseRange>,
+}
+
+/// A phrase that begins in this lane's measure, by the events it brackets.
+///
+/// Same reason as `SlurRange`: the items carry start/stop flags for the
+/// backends that write a phrase inline, and a backend that anchors it by
+/// identity needs both ends and the name at once.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PhraseRange {
+    /// The phrase's name, as written.
+    pub name: String,
+    /// The first event in the phrase.
+    pub from: EventId,
+    /// The last event in the phrase.
+    pub to: EventId,
 }
 
 /// A slur that begins in this lane's measure, by the events it joins.
@@ -142,6 +196,11 @@ impl VoiceLane {
     pub fn slurs(&self) -> &[SlurRange] {
         &self.slurs
     }
+
+    /// Phrases beginning in this measure, in onset order.
+    pub fn phrases(&self) -> &[PhraseRange] {
+        &self.phrases
+    }
 }
 
 /// A beam group identifier within a lane's measure (the beat index).
@@ -159,6 +218,17 @@ pub enum Placement {
     Above,
     /// Below the staff.
     Below,
+}
+
+/// A phrase bracket over a run of items, carrying the name written on it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PhraseMark {
+    /// The phrase's name, as written.
+    pub name: String,
+    /// The phrase opens at this item.
+    pub start: bool,
+    /// The phrase closes at this item.
+    pub stop: bool,
 }
 
 /// A tuplet bracket over a run of items: `num` written values in the time of
@@ -210,6 +280,7 @@ pub struct NotatedItem {
     beam: Option<BeamGroup>,
     tuplet: Option<TupletMark>,
     slur: Edges,
+    phrase: Option<PhraseMark>,
     dynamic: Option<DynamicMark>,
     articulations: Vec<ArticulationMark>,
 }
@@ -265,6 +336,11 @@ impl NotatedItem {
         self.slur.stop
     }
 
+    /// The phrase this item belongs to, if any.
+    pub fn phrase(&self) -> Option<&PhraseMark> {
+        self.phrase.as_ref()
+    }
+
     /// The dynamic marking printed at this item, if any.
     pub fn dynamic(&self) -> Option<DynamicMark> {
         self.dynamic
@@ -316,7 +392,23 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
     for (_, part) in score.parts.iter() {
         staves.push(plan_staff(part, score.meter_map, measure_len, key, &marks)?);
     }
-    Ok(NotationPlan { staves })
+    let sections = score
+        .annotations
+        .sections()
+        .iter()
+        .map(|section| positioned(section.at, measure_len, section.name.clone()))
+        .collect();
+    let harmony = score
+        .annotations
+        .harmony()
+        .iter()
+        .map(|chord| positioned(chord.at, measure_len, chord.symbol.clone()))
+        .collect();
+    Ok(NotationPlan {
+        staves,
+        sections,
+        harmony,
+    })
 }
 
 /// The annotation store, indexed the way planning reads it: by the event a
@@ -328,6 +420,8 @@ struct Marks {
     slur_stops: HashSet<EventId>,
     dynamics: HashMap<EventId, DynamicMark>,
     articulations: HashMap<EventId, Vec<ArticulationMark>>,
+    phrases: HashMap<EventId, PhraseMark>,
+    phrase_ends: HashMap<EventId, EventId>,
 }
 
 impl Marks {
@@ -350,6 +444,19 @@ impl Marks {
         }
         // Event ids run consecutively within a voice, so a group's members
         // are exactly the ids between its ends (musa-compiler's `identify`).
+        for phrase in annotations.phrases() {
+            marks.phrase_ends.insert(phrase.from, phrase.to);
+            for raw in phrase.from.0..=phrase.to.0 {
+                marks.phrases.insert(
+                    EventId(raw),
+                    PhraseMark {
+                        name: phrase.name.clone(),
+                        start: raw == phrase.from.0,
+                        stop: raw == phrase.to.0,
+                    },
+                );
+            }
+        }
         for tuplet in annotations.tuplets() {
             for raw in tuplet.from.0..=tuplet.to.0 {
                 marks.tuplets.insert(
@@ -372,6 +479,24 @@ impl Marks {
         self.tuplets.get(&event).map_or(Ratio::ONE, |tuplet| {
             Ratio::new(i64::from(tuplet.num), i64::from(tuplet.den))
         })
+    }
+}
+
+/// Where a positioned symbol falls, in the coordinates the backends use.
+fn positioned<T>(at: MusicalTime, measure_len: Ratio<i64>, what: T) -> PositionedMark<T> {
+    if measure_len == Ratio::ZERO {
+        return PositionedMark {
+            measure: 1,
+            onset_in_measure: MusicalDuration::default(),
+            what,
+        };
+    }
+    let measures = (at.as_ratio() / measure_len).floor();
+    let into = at.as_ratio() - measures * measure_len;
+    PositionedMark {
+        measure: u32::try_from(measures.to_integer().saturating_add(1)).unwrap_or(1),
+        onset_in_measure: MusicalDuration::new(into),
+        what,
     }
 }
 
@@ -415,6 +540,7 @@ fn plan_staff(
                 name,
                 items: lane.items,
                 slurs: lane.slurs,
+                phrases: lane.phrases,
             });
         }
         measures.push(MeasurePlan {
@@ -514,6 +640,11 @@ fn plan_lane(
                     start: is_first && marks.slur_ends.contains_key(&event.id),
                     stop: is_last && marks.slur_stops.contains(&event.id),
                 },
+                phrase: marks.phrases.get(&event.id).map(|phrase| PhraseMark {
+                    start: phrase.start && is_first,
+                    stop: phrase.stop && is_last,
+                    name: phrase.name.clone(),
+                }),
                 dynamic: if is_first {
                     marks.dynamics.get(&event.id).copied()
                 } else {
@@ -538,13 +669,26 @@ fn plan_lane(
             })
         })
         .collect();
-    Ok(Lane { items, slurs })
+    let phrases = items
+        .iter()
+        .filter_map(|item| {
+            let phrase = item.phrase.as_ref().filter(|phrase| phrase.start)?;
+            let to = *marks.phrase_ends.get(&item.event)?;
+            Some(PhraseRange {
+                name: phrase.name.clone(),
+                from: item.event,
+                to,
+            })
+        })
+        .collect();
+    Ok(Lane { items, slurs, phrases })
 }
 
 /// One lane's plan for one measure, before it is named.
 struct Lane {
     items: Vec<NotatedItem>,
     slurs: Vec<SlurRange>,
+    phrases: Vec<PhraseRange>,
 }
 
 fn kind_of(event: &ScoreEvent) -> NotatedKind {

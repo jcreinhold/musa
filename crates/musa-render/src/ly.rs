@@ -19,10 +19,12 @@
 // module scope for that reason.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{ArticulationMark, Clef, EventId, Mode, WrittenPitch};
+use musa_compiler::{ArticulationMark, ChordQuality, ChordSymbol, Clef, EventId, Mode, Seventh, WrittenPitch};
 
 use crate::RenderError;
-use crate::plan::{ARTICULATION_PLACEMENT, NotatedItem, NotatedKind, NotationPlan, Placement, StaffPlan, VoiceLane};
+use crate::plan::{
+    ARTICULATION_PLACEMENT, NotatedItem, NotatedKind, NotationPlan, Placement, PositionedMark, StaffPlan, VoiceLane,
+};
 
 /// The typed document node tree (§12.3). Private to the backend.
 enum LyNode {
@@ -58,9 +60,18 @@ struct LyDocument {
 pub(crate) fn render_lilypond(plan: &NotationPlan) -> Result<String, RenderError> {
     let mut variables = Vec::new();
     let mut score_children = Vec::new();
-    for staff in plan.staves() {
+    if !plan.harmony().is_empty() {
+        let measure_len = measure_length(plan);
+        variables.push(("chords".to_owned(), chord_names(plan.harmony(), measure_len)));
+        score_children.push(LyNode::Command("\\new ChordNames \\chords".to_owned()));
+    }
+    for (index, staff) in plan.staves().iter().enumerate() {
         let variable = sanitize(staff.name());
-        let body = staff_body(staff)?;
+        // Form markers are score-wide, so they are written once, in the
+        // topmost staff: `\mark` is a Score-level event and LilyPond prints it
+        // above the system however many staves the system has.
+        let sections = if index == 0 { plan.sections() } else { &[] };
+        let body = staff_body(staff, sections)?;
         score_children.push(LyNode::Command(format!("\\new Staff \\{variable}")));
         variables.push((variable, body));
     }
@@ -74,7 +85,7 @@ pub(crate) fn render_lilypond(plan: &NotationPlan) -> Result<String, RenderError
 
 /// One staff's music: header commands, then measures; multi-voice staves
 /// become simultaneous voice blocks.
-fn staff_body(staff: &StaffPlan) -> Result<LyNode, RenderError> {
+fn staff_body(staff: &StaffPlan, sections: &[PositionedMark<String>]) -> Result<LyNode, RenderError> {
     let mut head = Vec::new();
     if let Some(clef) = staff.clef() {
         let name = match clef {
@@ -102,7 +113,15 @@ fn staff_body(staff: &StaffPlan) -> Result<LyNode, RenderError> {
         for (lane_index, lane) in measure.lanes().iter().enumerate() {
             let nodes = lanes.get_mut(lane_index);
             if let Some(nodes) = nodes {
-                nodes.extend(lane_body(lane, count, unit)?);
+                let here: Vec<&PositionedMark<String>> = if lane_index == 0 {
+                    sections
+                        .iter()
+                        .filter(|mark| mark.measure == measure.number())
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                nodes.extend(lane_body(lane, count, unit, &here)?);
                 nodes.push(LyNode::BarCheck);
             }
         }
@@ -117,11 +136,19 @@ fn staff_body(staff: &StaffPlan) -> Result<LyNode, RenderError> {
 }
 
 /// One lane's music for one measure.
-fn lane_body(lane: &VoiceLane, count: u32, unit: u32) -> Result<Vec<LyNode>, RenderError> {
+fn lane_body(
+    lane: &VoiceLane,
+    count: u32,
+    unit: u32,
+    sections: &[&PositionedMark<String>],
+) -> Result<Vec<LyNode>, RenderError> {
     if lane.items().is_empty() {
         // An uncovered measure of this voice renders as spacer skips — a
         // notation decision (docs/kernel/02): the kernel stored nothing.
         let mut nodes = Vec::new();
+        for mark in sections {
+            nodes.push(rehearsal_mark(&mark.what));
+        }
         for piece in spell_pieces(i64::from(count), i64::from(unit)) {
             nodes.push(LyNode::Note {
                 body: format!("s{piece}"),
@@ -134,7 +161,16 @@ fn lane_body(lane: &VoiceLane, count: u32, unit: u32) -> Result<Vec<LyNode>, Ren
     // stack: items go to the innermost open bracket.
     let mut nodes = Vec::new();
     let mut open: Option<(u32, u32, Vec<LyNode>)> = None;
+    let mut pending = sections.iter();
+    let mut next_mark = pending.next();
     for item in lane.items() {
+        // A form marker prints where it falls, which in LilyPond means before
+        // the note that follows it; a marker past the last note of the measure
+        // lands after them all, below.
+        while let Some(mark) = next_mark.filter(|mark| mark.onset_in_measure <= item.onset_in_measure()) {
+            nodes.push(rehearsal_mark(&mark.what));
+            next_mark = pending.next();
+        }
         if let Some(tuplet) = item.tuplet()
             && tuplet.start
             && open.is_none()
@@ -157,7 +193,130 @@ fn lane_body(lane: &VoiceLane, count: u32, unit: u32) -> Result<Vec<LyNode>, Ren
     if let Some((num, den, body)) = open.take() {
         nodes.push(LyNode::Tuplet { num, den, body });
     }
+    while let Some(mark) = next_mark {
+        nodes.push(rehearsal_mark(&mark.what));
+        next_mark = pending.next();
+    }
     Ok(nodes)
+}
+
+/// A form marker as `LilyPond` writes one: a rehearsal mark carrying the name
+/// rather than the automatic letter.
+fn rehearsal_mark(name: &str) -> LyNode {
+    let escaped = name.replace('\\', "").replace('"', "'");
+    LyNode::Command(format!("\\mark \\markup {{ \\bold \"{escaped}\" }}"))
+}
+
+/// The harmony lane as a `\chordmode` sequence: skips up to each symbol, then
+/// the symbol itself lasting until the next one.
+///
+/// `ChordNames` is what `LilyPond` renders best — the symbols sit in their own
+/// line above the system and are spaced against the music — and it is what a
+/// `LilyPond` user would write by hand. It costs one thing markup would not:
+/// the chord has to be spelled in `chordmode`'s vocabulary rather than printed
+/// verbatim, which is exactly what parsing the symbol bought.
+fn chord_names(harmony: &[PositionedMark<ChordSymbol>], measure_len: num_rational::Ratio<i64>) -> LyNode {
+    let mut nodes = Vec::new();
+    let mut at = num_rational::Ratio::ZERO;
+    for (index, chord) in harmony.iter().enumerate() {
+        let start = measure_len * num_rational::Ratio::from_integer(i64::from(chord.measure.saturating_sub(1)))
+            + chord.onset_in_measure.as_ratio();
+        for piece in spell_ratio(start - at) {
+            nodes.push(LyNode::Note {
+                body: format!("s{piece}"),
+                event: EventId(u64::MAX),
+            });
+        }
+        let next = harmony.get(index.saturating_add(1)).map_or_else(
+            // The last symbol holds to the end of its measure; nothing after
+            // it disagrees, and a chord with no length prints nothing.
+            || (start / measure_len).floor() * measure_len + measure_len,
+            |next| {
+                measure_len * num_rational::Ratio::from_integer(i64::from(next.measure.saturating_sub(1)))
+                    + next.onset_in_measure.as_ratio()
+            },
+        );
+        let held = if next > start { next - start } else { measure_len };
+        let modifier = chordmode_modifier(&chord.what);
+        for (piece_index, piece) in spell_ratio(held).into_iter().enumerate() {
+            let body = if piece_index == 0 {
+                format!("{}{piece}{modifier}", chordmode_root(&chord.what))
+            } else {
+                // A held symbol is one chord in LilyPond, tied across the
+                // pieces its length decomposes into.
+                format!("~ {}{piece}{modifier}", chordmode_root(&chord.what))
+            };
+            nodes.push(LyNode::Note {
+                body,
+                event: EventId(u64::MAX),
+            });
+        }
+        at = next;
+    }
+    LyNode::Sequential(vec![
+        LyNode::Command("\\chordmode".to_owned()),
+        LyNode::Sequential(nodes),
+    ])
+}
+
+/// The chord root in `LilyPond`'s english note names.
+fn chordmode_root(chord: &ChordSymbol) -> String {
+    pitch_name(WrittenPitch {
+        letter: chord.letter,
+        accidental: chord.accidental,
+        octave: 3,
+    })
+}
+
+/// The `:modifier` a chord symbol becomes in `chordmode`.
+///
+/// `LilyPond` spells a raised seventh as `7+`, which is how a minor-major
+/// seventh (`cmmaj7`) is written; the word modifiers (`sus4`, `dim`, `aug`)
+/// join a step with a dot, while `m` and `maj` prefix it directly, because
+/// that is the spelling `LilyPond`'s own documentation uses.
+fn chordmode_modifier(chord: &ChordSymbol) -> String {
+    let base = match chord.quality {
+        ChordQuality::Major => "",
+        ChordQuality::Minor => "m",
+        ChordQuality::Diminished => "dim",
+        ChordQuality::Augmented => "aug",
+        ChordQuality::Suspended2 => "sus2",
+        ChordQuality::Suspended4 => "sus4",
+    };
+    let Some(seventh) = chord.seventh else {
+        return match chord.extension {
+            Some(step) => {
+                if base.is_empty() {
+                    format!(":{step}")
+                } else {
+                    format!(":{base}.{step}")
+                }
+            }
+            None => {
+                if base.is_empty() {
+                    String::new()
+                } else {
+                    format!(":{base}")
+                }
+            }
+        };
+    };
+    let step = chord.extension.unwrap_or(7);
+    match (seventh, base) {
+        (Seventh::Major, "") => format!(":maj{step}"),
+        (Seventh::Major, base) => format!(":{base}{step}+"),
+        (Seventh::Minor | Seventh::Diminished, "") => format!(":{step}"),
+        (Seventh::Minor | Seventh::Diminished, "m") => format!(":m{step}"),
+        (Seventh::Minor | Seventh::Diminished, base) => format!(":{base}{step}"),
+    }
+}
+
+/// One measure's length in whole notes, from the first staff's meter.
+fn measure_length(plan: &NotationPlan) -> num_rational::Ratio<i64> {
+    plan.staves().first().map_or(num_rational::Ratio::ONE, |staff| {
+        let (count, unit) = staff.time_signature();
+        num_rational::Ratio::new(i64::from(count), i64::from(unit.max(1)))
+    })
 }
 
 /// One plan item as a `LilyPond` note/chord/rest token, with the marks that
@@ -187,6 +346,15 @@ fn item_node(item: &NotatedItem) -> Result<LyNode, RenderError> {
     if let Some(dynamic) = item.dynamic() {
         body.push('\\');
         body.push_str(dynamic.name());
+    }
+    // LilyPond has no phrase bracket that does not need an engraver added to
+    // the layout, so a phrase prints as its name above its first note. The
+    // name is the part a reader needs; the bracket is what the source already
+    // shows.
+    if let Some(phrase) = item.phrase().filter(|phrase| phrase.start) {
+        let escaped = phrase.name.replace('\\', "").replace('"', "'");
+        let markup = format!("^\\markup {{ \\italic \"{escaped}\" }}");
+        body.push_str(&markup);
     }
     if item.slur_start() {
         body.push('(');
@@ -297,8 +465,13 @@ fn spell_duration(numerator: i64, denominator: i64) -> Option<String> {
 /// Greedy plain/dotted spelling of an arbitrary `count/unit` measure length
 /// (for spacer skips), largest pieces first.
 fn spell_pieces(count: i64, unit: i64) -> Vec<String> {
+    spell_ratio(num_rational::Ratio::new(count, unit))
+}
+
+/// The same, for a length already in whole notes.
+fn spell_ratio(length: num_rational::Ratio<i64>) -> Vec<String> {
     let mut pieces = Vec::new();
-    let mut remaining = num_rational::Ratio::new(count, unit);
+    let mut remaining = length;
     while remaining > num_rational::Ratio::ZERO {
         let mut plain = num_rational::Ratio::from_integer(1);
         while plain > remaining {

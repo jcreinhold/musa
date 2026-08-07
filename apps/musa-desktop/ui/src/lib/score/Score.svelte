@@ -51,6 +51,7 @@
     follow = "off",
     origin = false,
     flash = [],
+    bring = null,
   }: {
     mei: string;
     revision: number;
@@ -70,6 +71,13 @@
     origin?: boolean;
     /** Event ids a diagnostic points at; their systems flash once. */
     flash?: string[];
+    /**
+     * A note to bring into view, once, when it changes — how the outline
+     * takes you to a section (`docs/prompts/35`). Unlike following the
+     * playhead, this is asked for, so it scrolls even when the note is
+     * already on screen but off to one side.
+     */
+    bring?: { id: string } | null;
   } = $props();
 
   /** Selection halo padding, in staff spaces (§8). */
@@ -361,6 +369,26 @@
         at.right <= seen.right;
       if (inside) return;
       if (follow === "page") element.closest(".page")?.scrollIntoView({ block: "start" });
+      else element.scrollIntoView({ block: "nearest", inline: "center" });
+    });
+  });
+
+  /**
+   * Go to a note the composer asked for, once per request.
+   *
+   * Page view brings its whole page, as a page turner would; continuous
+   * centres it. Both wait on `marks`, because the note is only findable once
+   * the page it is on has been engraved.
+   */
+  $effect(() => {
+    const target = bring;
+    const container = host;
+    if (!target || !container) return;
+    void marks;
+    untrack(() => {
+      const element = container.querySelector<SVGGraphicsElement>(`[id="${target.id}"]`);
+      if (!element) return;
+      if (mode === "page") element.closest(".page")?.scrollIntoView({ block: "start" });
       else element.scrollIntoView({ block: "nearest", inline: "center" });
     });
   });

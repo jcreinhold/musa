@@ -5,4 +5,4 @@ expression: print_errors(&doc)
 unrecognized token at 82..83
 expected a duration at 81..82
 expected `;` at 81..82
-expected a note, rest, chord, use, transpose, stretch, retrograde, invert, repeat, slur, dynamic, or tuplet at 81..82
+expected a note, rest, chord, use, transpose, stretch, retrograde, invert, repeat, slur, phrase, dynamic, or tuplet at 81..82

@@ -189,6 +189,53 @@ pub struct ScoreFacts {
     pub events: Vec<EventFacts>,
     /// Every expansion in the piece, in the order they were first met.
     pub occurrences: Vec<OccurrenceFacts>,
+    /// The piece's structure, in the order it is played: what the outline
+    /// pane navigates by.
+    pub outline: Vec<OutlineFacts>,
+}
+
+/// What kind of structural marker an outline entry is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OutlineKind {
+    /// A form marker: `section "Exposition" at 1:1;`.
+    Section,
+    /// A named phrase over a run of notes.
+    Phrase,
+}
+
+/// One row of the structural outline (roadmap §8.2's annotations, read as
+/// navigation).
+///
+/// A section and a phrase are anchored differently in the score — one to a
+/// time, one to a run of events — but a composer looking for "the
+/// development" wants the same thing from both: a place to jump to. The row
+/// carries the event to reveal, so the interface scrolls to a notehead rather
+/// than guessing at a coordinate.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutlineFacts {
+    /// Section or phrase.
+    pub kind: OutlineKind,
+    /// The name as it was written.
+    pub name: String,
+    /// The bar it begins in.
+    pub bar: u32,
+    /// The beat within that bar, 1-based.
+    pub beat: Fraction,
+    /// The event to reveal, when the score has one there. A section written
+    /// past the last note of every part has none.
+    pub event: Option<String>,
+    /// When it is reached, in the frames the engine reports positions in.
+    pub onset_frames: u64,
+    /// When the passage it names ends: the next marker of its kind for a
+    /// section, the phrase's last note for a phrase. What makes "the
+    /// selection is inside this" a question with an answer.
+    pub end_frames: u64,
+    /// 1-based line of the statement that wrote it.
+    pub line: u32,
+    /// Its source range, for revealing it in the drawer.
+    pub span: crate::diagnostic::Span,
 }
 
 impl ScoreFacts {
@@ -281,6 +328,7 @@ impl ScoreFacts {
             });
         }
 
+        let outline = outline_facts(score, &events, &lines, measure, beat, &tempo);
         Self {
             title: score.title.clone(),
             tempo_bpm: score.tempo_map.bpm,
@@ -293,8 +341,93 @@ impl ScoreFacts {
             parts,
             events,
             occurrences,
+            outline,
         }
     }
+}
+
+/// The outline, in the order the piece reaches its markers.
+///
+/// Sections are anchored to a time and phrases to their first event, so each
+/// is resolved to the other coordinate here: the interface gets one list with
+/// one shape, sorted the way a reader reads.
+fn outline_facts(
+    score: &ScoreSnapshot,
+    events: &[EventFacts],
+    lines: &LineIndex,
+    measure: num_rational::Ratio<i64>,
+    beat: num_rational::Ratio<i64>,
+    tempo: &IntegratedTempoMap,
+) -> Vec<OutlineFacts> {
+    let mut rows: Vec<(u64, OutlineFacts)> = Vec::new();
+    // A section runs until the next one; the last runs to the end of the
+    // piece, which is the end of its last event.
+    let ending = events.iter().map(|event| event.end_frames).max().unwrap_or_default();
+    let starts: Vec<u64> = score
+        .annotations
+        .sections()
+        .iter()
+        .map(|section| tempo.frames(section.at))
+        .collect();
+    for (index, section) in score.annotations.sections().iter().enumerate() {
+        let (bar, beat_in_bar) = position(section.at.as_ratio(), measure, beat);
+        let frames = tempo.frames(section.at);
+        // The notehead a reader would look at: the first one that has not
+        // already gone by when the marker is reached.
+        let event = events
+            .iter()
+            .find(|event| event.onset_frames >= frames)
+            .map(|event| event.id.clone());
+        rows.push((
+            frames,
+            OutlineFacts {
+                kind: OutlineKind::Section,
+                name: section.name.clone(),
+                bar,
+                beat: Fraction::from_ratio(beat_in_bar),
+                event,
+                onset_frames: frames,
+                end_frames: starts.get(index.saturating_add(1)).copied().unwrap_or(ending),
+                line: lines.line_of(section.origin.source_span.start),
+                span: crate::diagnostic::Span {
+                    start: section.origin.source_span.start,
+                    end: section.origin.source_span.end,
+                },
+            },
+        ));
+    }
+    for phrase in score.annotations.phrases() {
+        let id = format!("event-{:x}", phrase.from.0);
+        let Some(event) = events.iter().find(|event| event.id == id) else {
+            continue;
+        };
+        let last = format!("event-{:x}", phrase.to.0);
+        let stops = events
+            .iter()
+            .find(|event| event.id == last)
+            .map_or(event.end_frames, |event| event.end_frames);
+        rows.push((
+            event.onset_frames,
+            OutlineFacts {
+                kind: OutlineKind::Phrase,
+                name: phrase.name.clone(),
+                bar: event.bar,
+                beat: event.beat,
+                event: Some(event.id.clone()),
+                onset_frames: event.onset_frames,
+                end_frames: stops,
+                line: lines.line_of(phrase.origin.source_span.start),
+                span: crate::diagnostic::Span {
+                    start: phrase.origin.source_span.start,
+                    end: phrase.origin.source_span.end,
+                },
+            },
+        ));
+    }
+    // A section names the passage a phrase inside it belongs to, so it comes
+    // first when they start together.
+    rows.sort_by_key(|(frames, row)| (*frames, row.kind == OutlineKind::Phrase));
+    rows.into_iter().map(|(_, row)| row).collect()
 }
 
 /// One occurrence's row, built the first time an event from it is met.

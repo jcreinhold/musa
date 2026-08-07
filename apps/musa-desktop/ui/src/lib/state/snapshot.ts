@@ -125,6 +125,27 @@ export interface PartFacts {
   voices: VoiceFacts[];
 }
 
+/**
+ * One row of the structural outline: a form marker or a named phrase.
+ *
+ * The two are anchored differently in the score — one to a time, one to a run
+ * of notes — but both resolve to a place, and the core resolves it: `event` is
+ * the notehead to bring into view, not a coordinate the frontend guessed at.
+ */
+export interface OutlineFacts {
+  kind: "section" | "phrase";
+  name: string;
+  bar: number;
+  beat: Fraction;
+  /** The event to reveal. Null for a marker past the last note. */
+  event: string | null;
+  onsetFrames: number;
+  /** Where the passage it names ends, in the same frames. */
+  endFrames: number;
+  line: number;
+  span: Span;
+}
+
 export interface ScoreFacts {
   title: string;
   tempoBpm: number;
@@ -135,6 +156,8 @@ export interface ScoreFacts {
   parts: PartFacts[];
   events: EventFacts[];
   occurrences: OccurrenceFacts[];
+  /** The piece's structure, in the order it is played. */
+  outline: OutlineFacts[];
 }
 
 /**

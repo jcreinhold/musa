@@ -21,10 +21,11 @@
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
-  import type { Diagnostic, EditImpact, Span } from "../lib/state/snapshot";
+  import type { Diagnostic, EditImpact, OutlineFacts, Span } from "../lib/state/snapshot";
   import type { NoteEntry } from "../lib/state/entry.svelte";
   import Drawer from "./Drawer.svelte";
   import Inspector from "./Inspector.svelte";
+  import Outline from "./Outline.svelte";
   import PartsList from "./PartsList.svelte";
 
   let {
@@ -60,6 +61,8 @@
     ondiagnostic,
     oncaret,
     onshow,
+    onoutline,
+    bring,
   }: {
     session: Session;
     workspace: Workspace;
@@ -104,12 +107,29 @@
     /** The source caret moved; the score follows it (roadmap §14.4). */
     oncaret: (offset: number) => void;
     onshow: (which: Screen) => void;
+    /** A structural marker was chosen: go to the place it names. */
+    onoutline: (row: OutlineFacts) => void;
+    /** A note to bring into view, once, when it changes. */
+    bring: { id: string } | null;
   } = $props();
 
   const snapshot = $derived(session.snapshot);
   const score = $derived(snapshot?.score ?? null);
   const focused = $derived(workspace.focused);
   const problems = $derived(snapshot?.diagnostics.filter((d) => d.severity === "error") ?? []);
+
+  /**
+   * Where the selection is in the piece's structure: every passage that
+   * contains it, so a phrase and the section it sits in both light. Reading
+   * position, not a second selection — clicking a row moves the selection,
+   * and the row lights because the selection is there.
+   */
+  const outlineAt = $derived.by(() => {
+    const rows = score?.outline ?? [];
+    const at = focused?.onsetFrames;
+    if (at === undefined) return [];
+    return rows.filter((row) => at >= row.onsetFrames && at < row.endFrames);
+  });
 
   /**
    * What the drawer marks: the declaration and the use of the expansion in
@@ -295,6 +315,7 @@
     <div class="body">
       <Margin side="left" label="Parts">
         <PartsList parts={score.parts} {workspace} {origin} />
+        <Outline outline={score.outline} active={outlineAt} onselect={onoutline} />
       </Margin>
 
       <main class="stage" class:continuous={mode === "continuous"}>
@@ -311,6 +332,7 @@
             {follow}
             {origin}
             {flash}
+            {bring}
           />
         </Leaf>
       </main>

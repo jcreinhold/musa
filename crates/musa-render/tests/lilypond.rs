@@ -9,7 +9,7 @@
 use musa_compiler::{CompileOptions, SourceDocument, compile};
 use musa_render::{NotationOptions, NotationTarget, render_notation};
 
-const EXAMPLES: [(&str, &str); 7] = [
+const EXAMPLES: [(&str, &str); 8] = [
     ("glass_mountain", include_str!("../../../examples/glass-mountain.musa")),
     ("invention", include_str!("../../../examples/invention.musa")),
     ("counterpoint", include_str!("../../../examples/counterpoint.musa")),
@@ -20,6 +20,7 @@ const EXAMPLES: [(&str, &str); 7] = [
         "profile_fixture",
         include_str!("../../../examples/profile-fixture.musa"),
     ),
+    ("annotated", include_str!("../../../examples/annotated.musa")),
 ];
 
 fn lilypond_of(text: &str) -> String {

@@ -1,0 +1,44 @@
+// The annotation layer, end to end (docs/prompts/35): named phrases over the
+// notes, form markers at measure:beat positions, and a harmony lane.
+//
+// Nothing here is interpreted. The chord symbols are recorded and printed;
+// musa never derives notes from them, never checks the notes under them, and
+// has no opinion about the voice leading between them. Sections and phrases
+// name the structure a reader already hears; they change no sounding note.
+piece "Annotated" {
+    tempo 1/4 = 96;
+    meter 4/4;
+    key a minor;
+
+    score {
+        section "Exposition" at 1:1;
+        section "Development" at 3:1;
+
+        harmony {
+            at 1:1 am;
+            at 2:1 fmaj7;
+            at 3:1 e7;
+            at 4:1 am;
+        }
+
+        part piano {
+            clef treble;
+
+            voice lead {
+                phrase "antecedent" {
+                    a4 1/4;
+                    c5 1/4;
+                    e5 1/2;
+                    f5 1/2;
+                    e5 1/2;
+                }
+                phrase "consequent" {
+                    b4 1/4;
+                    e5 1/4;
+                    gs5 1/2;
+                    a5 1;
+                }
+            }
+        }
+    }
+}

@@ -30,8 +30,8 @@ use crate::lower::{self, ExpandCx, GroupInfo, GroupKind, Lowering};
 use crate::origin::{ExpansionStep, Origin, SourceSpan};
 use crate::pitch::WrittenPitch;
 use crate::score::{
-    ArticulationMark, ArticulationMarking, DynamicMark, DynamicMarking, NotatedDuration, Part, PartId, ScoreEvent,
-    ScoreEventKind, ScoreSnapshot, SlurSpan, TupletSpan, Voice, VoiceId,
+    ArticulationMark, ArticulationMarking, DynamicMark, DynamicMarking, HarmonyMark, NotatedDuration, Part, PartId,
+    PhraseSpan, ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TupletSpan, Voice, VoiceId,
 };
 use crate::time::MusicalTime;
 use musa_kernel::{Beat, Occurrence, Span, Timeline, overlay, sequence, timeline};
@@ -208,6 +208,7 @@ pub(crate) fn elaborate(source: &SourceDocument) -> Compilation {
     lower::lower_header(&mut lowering, &piece, &mut snapshot);
     if let Some(score) = piece.score() {
         elaborate_score(&mut lowering, &score, &mut snapshot);
+        elaborate_annotations(&mut lowering, &score, &snapshot);
     }
     snapshot.annotations = std::mem::take(&mut lowering.annotations);
     lower::check_measure_sanity(&mut lowering, &snapshot);
@@ -280,6 +281,111 @@ fn elaborate_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDec
             },
         );
     }
+}
+
+/// Record the score's form markers and chord symbols (roadmap §8.2).
+///
+/// These are the annotations written at a *position* rather than on a note,
+/// so they are resolved here, after the parts are elaborated and the piece
+/// has a length to be inside of. Nothing interprets them: a chord symbol is
+/// parsed so a later library can read it, and that is the end of the core's
+/// involvement.
+fn elaborate_annotations(lowering: &mut Lowering, score: &musa_language::ast::ScoreDecl, snapshot: &ScoreSnapshot) {
+    let declaration = crate::origin::DeclarationId::default();
+    let extent = piece_extent(snapshot);
+    for section in score.sections() {
+        let span = lower::trimmed_span(section.syntax());
+        let Some(at) = resolve_position(lowering, section.position().as_ref(), span, snapshot, extent) else {
+            continue;
+        };
+        lowering.annotations.push_section(SectionMark {
+            name: section.name().unwrap_or_default(),
+            at,
+            origin: Origin {
+                source_span: span,
+                definition_span: span,
+                declaration,
+                expansion_path: Vec::new(),
+            },
+        });
+    }
+    let lanes = score.harmonies();
+    for extra in lanes.iter().skip(1) {
+        lowering.error(
+            "one `harmony` lane per score; write every chord in the first one",
+            lower::trimmed_span(extra.syntax()),
+        );
+    }
+    for chord in lanes.iter().flat_map(musa_language::ast::HarmonyDecl::chords) {
+        let span = lower::trimmed_span(chord.syntax());
+        let Some(at) = resolve_position(lowering, chord.position().as_ref(), span, snapshot, extent) else {
+            continue;
+        };
+        let Some(written) = chord.symbol() else {
+            continue;
+        };
+        if !written.is_one_word() {
+            lowering.error("a chord symbol is one word, such as `am` or `fmaj7`", span);
+            continue;
+        }
+        let text = written.text();
+        let Some(symbol) = crate::harmony::ChordSymbol::parse(&text) else {
+            lowering.error(format!("`{text}` is not a chord symbol musa can read"), span);
+            continue;
+        };
+        lowering.annotations.push_harmony(HarmonyMark {
+            symbol,
+            at,
+            origin: Origin {
+                source_span: span,
+                definition_span: span,
+                declaration,
+                expansion_path: Vec::new(),
+            },
+        });
+    }
+}
+
+/// How long the piece is: where its last event ends.
+fn piece_extent(snapshot: &ScoreSnapshot) -> MusicalTime {
+    snapshot
+        .parts
+        .iter()
+        .flat_map(|(_, part)| part.voices.values())
+        .flat_map(|voice| voice.events.iter())
+        .map(|event| event.onset + event.notated_duration.value)
+        .max()
+        .unwrap_or_default()
+}
+
+/// Turn a `measure:beat` coordinate into time, or report why it is not one.
+///
+/// Measures and beats count from one, the way a composer reads them off the
+/// page, and a position past the end of the piece is an error: a chord symbol
+/// nobody will ever reach is a mistake, not a comment.
+fn resolve_position(
+    lowering: &mut Lowering,
+    position: Option<&musa_language::ast::Position>,
+    span: SourceSpan,
+    snapshot: &ScoreSnapshot,
+    extent: MusicalTime,
+) -> Option<MusicalTime> {
+    let position = position?;
+    let measure: i64 = position.measure()?.parse().ok()?;
+    let beat_text = position.beat()?;
+    let beat = lower::parse_ratio(&beat_text).or_else(|| beat_text.parse::<i64>().ok().map(Ratio::from_integer))?;
+    if measure < 1 || beat < Ratio::ONE {
+        lowering.error("measures and beats count from `1:1`", span);
+        return None;
+    }
+    let measure_len = snapshot.meter_map.measure_len().as_ratio();
+    let beat_len = Ratio::new(1, i64::from(snapshot.meter_map.denominator.max(1)));
+    let at = MusicalTime::new(measure_len * (measure - 1) + beat_len * (beat - Ratio::ONE));
+    if at >= extent && extent > MusicalTime::default() {
+        lowering.error(format!("the piece ends before `{measure}:{beat_text}`"), span);
+        return None;
+    }
+    Some(at)
 }
 
 /// Elaborate one voice: `sequence` of its items (docs/kernel/06).
@@ -474,6 +580,17 @@ fn elaborate_item(
             });
             let inner: Vec<u32> = groups.iter().copied().chain(std::iter::once(id)).collect();
             elaborate_items(lowering, &slur.items(), cx, part, voice, &inner, pending)
+        }
+        VoiceItem::Phrase(phrase) => {
+            let origin = origin_of(cx, lower::trimmed_span(phrase.syntax()));
+            let id = lowering.group(GroupInfo {
+                kind: GroupKind::Phrase {
+                    name: phrase.name().unwrap_or_default(),
+                },
+                origin,
+            });
+            let inner: Vec<u32> = groups.iter().copied().chain(std::iter::once(id)).collect();
+            elaborate_items(lowering, &phrase.items(), cx, part, voice, &inner, pending)
         }
         VoiceItem::Tuplet(tuplet) => {
             let text = tuplet.ratio().unwrap_or_default();
@@ -1040,6 +1157,12 @@ fn identify(lowering: &mut Lowering, adapted: Vec<Adapted>) -> Voice {
         let origin = info.origin.clone();
         match info.kind {
             GroupKind::Slur => lowering.annotations.push_slur(SlurSpan { from, to, origin }),
+            GroupKind::Phrase { ref name } => lowering.annotations.push_phrase(PhraseSpan {
+                name: name.clone(),
+                from,
+                to,
+                origin,
+            }),
             GroupKind::Tuplet { num, den } => lowering.annotations.push_tuplet(TupletSpan {
                 from,
                 to,

@@ -64,7 +64,10 @@ notation exposes a counterexample.
 `06-surface-elaboration.md` keeps `key`/`meter`/`tempo` as piece-wide context maps because the current grammar has no
 temporal extent for them. §21's typed interval payloads (`Timeline[KeyRegion]`, `Timeline[MeterRegion]`) are the agreed
 shape *when extent matters* (`modulate to C major { … }`, meter changes, the §33 item 5). *Settle when:* the surface
-grammar gains such a construct (prompt 35 era) — elaboration extends, kernel unchanged.
+grammar gains such a construct — elaboration extends, kernel unchanged. **Still open after prompt 35:** that prompt
+added annotations with extent (phrases, sections, a harmony lane), and none of them needed a typed interval payload,
+because none of them is *context* — nothing reads a chord symbol to decide what a later note means. A key region would
+be the first construct that does, so the question is unchanged rather than answered.
 
 ## Falsification corpus status (§33)
 
@@ -121,3 +124,12 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   is a relation to the *next* sounding group, so reversing moves each mark back one group, and double reversal restores
   the original — also a test. **Occurrence specialization** likewise stays above the kernel: a `with { note n = p; }`
   clause is a positional payload edit applied after the call's body elaborates, recorded as an extra provenance step.
+- **Prompt 35 (annotations and harmony):** phrases, form markers, and chord symbols are score-level annotations, and
+  the kernel gained nothing for any of them — an annotation is *about* the music, so it never becomes an occurrence and
+  never has to. The evidence is a law: `musa-compiler/tests/annotation_laws.rs` compiles the same piece with and
+  without annotations and compares every event, which is the precise sense in which they are outside the ontology.
+  The one design question they raised is anchoring, and the answer is that it differs by kind: a **phrase** is anchored
+  to events, like a slur, so re-barring keeps it on its notes; a **section** and a **chord symbol** are anchored to
+  *time*, because a bar line is a place whether or not a note starts there. Positions (`at 3:1`) are resolved against
+  the meter map during elaboration and refused when they fall past the end of the piece — a marker nobody reaches is a
+  mistake, not a marker. Q8 is untouched by any of this (see above).

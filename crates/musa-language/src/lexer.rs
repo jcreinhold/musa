@@ -282,6 +282,12 @@ enum RawToken {
     WithKw,
     #[token("note", priority = 3)]
     NoteKw,
+    #[token("phrase", priority = 3)]
+    PhraseKw,
+    #[token("section", priority = 3)]
+    SectionKw,
+    #[token("harmony", priority = 3)]
+    HarmonyKw,
 }
 
 impl RawToken {
@@ -359,7 +365,10 @@ impl RawToken {
             | Self::InvertKw
             | Self::AroundKw
             | Self::WithKw
-            | Self::NoteKw => None,
+            | Self::NoteKw
+            | Self::PhraseKw
+            | Self::SectionKw
+            | Self::HarmonyKw => None,
         }
     }
 
@@ -435,6 +444,9 @@ impl RawToken {
             Self::AroundKw => SyntaxKind::AroundKw,
             Self::WithKw => SyntaxKind::WithKw,
             Self::NoteKw => SyntaxKind::NoteKw,
+            Self::PhraseKw => SyntaxKind::PhraseKw,
+            Self::SectionKw => SyntaxKind::SectionKw,
+            Self::HarmonyKw => SyntaxKind::HarmonyKw,
         }
     }
 }

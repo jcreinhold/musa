@@ -184,6 +184,7 @@ fn write_measure(
             write_control_events(writer, &staff_n, lane)?;
         }
     }
+    write_positioned(writer, plan, index)?;
     end(writer, "measure")
 }
 
@@ -200,6 +201,18 @@ fn place(placement: Placement) -> &'static str {
 /// A slur is written in the measure it starts in; its `endid` may point into
 /// a later measure, which is what those attributes are for.
 fn write_control_events(writer: &mut Writer<Vec<u8>>, staff: &str, lane: &VoiceLane) -> Result<(), RenderError> {
+    for phrase in lane.phrases() {
+        let start_ref = format!("#event-{:x}", phrase.from.0);
+        let end_ref = format!("#event-{:x}", phrase.to.0);
+        let mut element = element("phrase");
+        element.push_attribute(("staff", staff));
+        element.push_attribute(("startid", start_ref.as_str()));
+        element.push_attribute(("endid", end_ref.as_str()));
+        element.push_attribute(("label", phrase.name.as_str()));
+        writer
+            .write_event(Event::Empty(element))
+            .map_err(|error| RenderError::xml(&error))?;
+    }
     for slur in lane.slurs() {
         let start_ref = format!("#event-{:x}", slur.from.0);
         let end_ref = format!("#event-{:x}", slur.to.0);
@@ -213,6 +226,25 @@ fn write_control_events(writer: &mut Writer<Vec<u8>>, staff: &str, lane: &VoiceL
             .map_err(|error| RenderError::xml(&error))?;
     }
     for item in lane.items() {
+        // A phrase is a bracket over notes and a word above them. The bracket
+        // is `<phrase>`, which every MEI consumer understands; the word is a
+        // `<dir>`, which every MEI consumer *prints* — a renderer that draws
+        // no bracket still shows the composer what the phrase is called.
+        if let Some(phrase) = item.phrase().filter(|phrase| phrase.start) {
+            let start_ref = format!("#event-{:x}", item.event().0);
+            let mut dir = element("dir");
+            dir.push_attribute(("staff", staff));
+            dir.push_attribute(("startid", start_ref.as_str()));
+            dir.push_attribute(("place", "above"));
+            dir.push_attribute(("type", "phrase"));
+            writer
+                .write_event(Event::Start(dir))
+                .map_err(|error| RenderError::xml(&error))?;
+            writer
+                .write_event(Event::Text(quick_xml::events::BytesText::new(&phrase.name)))
+                .map_err(|error| RenderError::xml(&error))?;
+            end(writer, "dir")?;
+        }
         if let Some(mark) = item.dynamic() {
             let start_ref = format!("#event-{:x}", item.event().0);
             let mut dynam = element("dynam");
@@ -227,6 +259,57 @@ fn write_control_events(writer: &mut Writer<Vec<u8>>, staff: &str, lane: &VoiceL
                 .map_err(|error| RenderError::xml(&error))?;
             end(writer, "dynam")?;
         }
+    }
+    Ok(())
+}
+
+/// A `tstamp` as MEI counts them: beat 1 is the start of the measure, and a
+/// symbol halfway through a 4/4 bar is beat 3.
+fn timestamp(beats: num_rational::Ratio<i64>) -> String {
+    if *beats.denom() == 1 {
+        return beats.numer().to_string();
+    }
+    // MEI timestamps are decimal; a beat that is not a whole number is written
+    // to four places, which is exact for every value a notated onset can take.
+    let numerator = *beats.numer() as f64;
+    let denominator = *beats.denom() as f64;
+    format!("{:.4}", numerator / denominator)
+}
+
+/// `<harm>` and `<dir>` for the symbols written at a position rather than on
+/// a note. Both hang off the measure with a `tstamp`, which is how MEI says
+/// "here, whether or not a notehead is here".
+fn write_positioned(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan, index: usize) -> Result<(), RenderError> {
+    let measure = u32::try_from(index.saturating_add(1)).unwrap_or(1);
+    let unit = plan.staves().first().map_or(4, |staff| staff.time_signature().1);
+    for section in plan.sections().iter().filter(|mark| mark.measure == measure) {
+        let stamp = timestamp(section.beat(unit));
+        let mut dir = element("dir");
+        dir.push_attribute(("staff", "1"));
+        dir.push_attribute(("tstamp", stamp.as_str()));
+        dir.push_attribute(("place", "above"));
+        dir.push_attribute(("type", "section"));
+        writer
+            .write_event(Event::Start(dir))
+            .map_err(|error| RenderError::xml(&error))?;
+        writer
+            .write_event(Event::Text(quick_xml::events::BytesText::new(&section.what)))
+            .map_err(|error| RenderError::xml(&error))?;
+        end(writer, "dir")?;
+    }
+    for chord in plan.harmony().iter().filter(|mark| mark.measure == measure) {
+        let stamp = timestamp(chord.beat(unit));
+        let mut harm = element("harm");
+        harm.push_attribute(("staff", "1"));
+        harm.push_attribute(("tstamp", stamp.as_str()));
+        harm.push_attribute(("place", "above"));
+        writer
+            .write_event(Event::Start(harm))
+            .map_err(|error| RenderError::xml(&error))?;
+        writer
+            .write_event(Event::Text(quick_xml::events::BytesText::new(&chord.what.text)))
+            .map_err(|error| RenderError::xml(&error))?;
+        end(writer, "harm")?;
     }
     Ok(())
 }

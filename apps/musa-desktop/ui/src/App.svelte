@@ -32,7 +32,7 @@
   import { ThemeChoice } from "./lib/session/theme.svelte";
   import { mark } from "./lib/perf";
   import { fixture } from "./lib/state/fixtures";
-  import type { Diagnostic, Span } from "./lib/state/snapshot";
+  import type { Diagnostic, OutlineFacts, Span } from "./lib/state/snapshot";
   import { Playhead, soundingAt } from "./lib/state/playhead.svelte";
   import { NoteEntry } from "./lib/state/entry.svelte";
   import { played, stroke } from "./lib/state/compose";
@@ -114,6 +114,9 @@
   let caretAt: number | null = null;
   /** Event ids whose systems flash once, for the same reason. */
   let flash = $state<string[]>([]);
+
+  /** A note the page should bring into view, once, when it changes. */
+  let bring = $state<{ id: string } | null>(null);
   let fading: ReturnType<typeof setTimeout> | undefined;
 
   /** How long a diagnostic's flash lasts, matching the overlay's animation. */
@@ -189,6 +192,20 @@
     flash = workspace.eventsForSpan(diagnostic.span);
     clearTimeout(fading);
     fading = setTimeout(() => (flash = []), FLASH_MS);
+  }
+
+  /**
+   * A structural marker is a place, like a diagnostic: the selection goes to
+   * the note it names, the page brings that note into view, and the source
+   * follows without taking the keyboard. Nothing is edited — the outline is a
+   * table of contents, and annotations are written in the source.
+   */
+  function goTo(row: OutlineFacts): void {
+    if (row.event) workspace.select(row.event);
+    // A new object every time, so choosing the same marker twice goes there
+    // twice — the page may have been scrolled away in between.
+    bring = row.event ? { id: row.event } : null;
+    open(row.span, false);
   }
 
   function cycleFollow(): void {
@@ -558,6 +575,8 @@
     ondiagnostic={showDiagnostic}
     oncaret={followCaret}
     onshow={(which) => (screen = which)}
+    onoutline={goTo}
+    {bring}
   />
 {:else}
   <Launch onopen={() => void session.open()} onnew={() => void session.create()} />

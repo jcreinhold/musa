@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 
 /** The pieces the stub can open, both written by `musa-project`'s tests. */
-export type Piece = "glass-mountain" | "large-score";
+export type Piece = "glass-mountain" | "large-score" | "annotated";
 
 function snapshotOf(piece: Piece): string {
   return fileURLToPath(new URL(`../../fixtures/${piece}.snapshot.json`, import.meta.url));

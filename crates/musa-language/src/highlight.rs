@@ -59,6 +59,9 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("around", SyntaxKind::AroundKw),
     ("with", SyntaxKind::WithKw),
     ("note", SyntaxKind::NoteKw),
+    ("phrase", SyntaxKind::PhraseKw),
+    ("section", SyntaxKind::SectionKw),
+    ("harmony", SyntaxKind::HarmonyKw),
     ("Hz", SyntaxKind::UnitHz),
     ("ms", SyntaxKind::UnitMs),
     ("s", SyntaxKind::UnitS),
@@ -208,7 +211,10 @@ impl TokenClass {
             | SyntaxKind::InvertKw
             | SyntaxKind::AroundKw
             | SyntaxKind::WithKw
-            | SyntaxKind::NoteKw => Self::Keyword,
+            | SyntaxKind::NoteKw
+            | SyntaxKind::PhraseKw
+            | SyntaxKind::SectionKw
+            | SyntaxKind::HarmonyKw => Self::Keyword,
 
             SyntaxKind::Error => Self::Invalid,
 
@@ -236,6 +242,12 @@ impl TokenClass {
             | SyntaxKind::InvertStmt
             | SyntaxKind::WithClause
             | SyntaxKind::OverrideStmt
+            | SyntaxKind::PhraseStmt
+            | SyntaxKind::SectionStmt
+            | SyntaxKind::HarmonyDecl
+            | SyntaxKind::HarmonyStmt
+            | SyntaxKind::Position
+            | SyntaxKind::ChordSymbol
             | SyntaxKind::ArticulationList
             | SyntaxKind::PerformanceDecl
             | SyntaxKind::ProfileDecl

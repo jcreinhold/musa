@@ -37,7 +37,7 @@
 
 use std::collections::HashMap;
 
-use musa_compiler::{ArticulationMark, Clef, DynamicMark, Mode, WrittenPitch};
+use musa_compiler::{ArticulationMark, ChordQuality, ChordSymbol, Clef, DynamicMark, Mode, Seventh, WrittenPitch};
 use num_rational::Ratio;
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
@@ -86,7 +86,11 @@ pub(crate) fn render_musicxml(plan: &NotationPlan) -> Result<String, RenderError
     xml.close("part-list")?;
 
     for (index, staff) in plan.staves().iter().enumerate() {
-        write_part(&mut xml, &part_id(index), staff, divisions)?;
+        // Chord symbols and form markers belong to the score, not to a part,
+        // and MusicXML has nowhere to put a score-wide symbol: they are
+        // written in the first part, which is where a reader expects them.
+        let annotations = if index == 0 { Some(plan) } else { None };
+        write_part(&mut xml, &part_id(index), staff, divisions, annotations)?;
     }
     xml.close("score-partwise")?;
     xml.finish()
@@ -295,7 +299,13 @@ fn step_of(pitch: WrittenPitch) -> &'static str {
 
 // --- Document ----------------------------------------------------------------
 
-fn write_part(xml: &mut Xml, id: &str, staff: &StaffPlan, divisions: i64) -> Result<(), RenderError> {
+fn write_part(
+    xml: &mut Xml,
+    id: &str,
+    staff: &StaffPlan,
+    divisions: i64,
+    annotations: Option<&NotationPlan>,
+) -> Result<(), RenderError> {
     xml.open("part", &[("id", id)])?;
     // Slur numbers are per voice and nest like brackets, so the open ones are
     // a stack: the number a slur takes is the lowest one free when it starts.
@@ -305,6 +315,9 @@ fn write_part(xml: &mut Xml, id: &str, staff: &StaffPlan, divisions: i64) -> Res
         xml.open("measure", &[("number", &number)])?;
         if index == 0 {
             write_attributes(xml, staff, divisions)?;
+        }
+        if let Some(plan) = annotations {
+            write_positioned(xml, plan, measure.number(), divisions)?;
         }
         let lanes = measure.lanes();
         let full = ticks(measure_length(staff), divisions);
@@ -395,13 +408,142 @@ fn write_lane(
             xml.close("backup")?;
         }
         cursor = onset;
+        if let Some(phrase) = item.phrase().filter(|phrase| phrase.start) {
+            write_phrase(xml, &phrase.name, true)?;
+        }
         if let Some(dynamic) = item.dynamic() {
             write_dynamic(xml, dynamic)?;
         }
         write_item(xml, item, &beams(items, index), voice, divisions, open_slurs)?;
+        if let Some(phrase) = item.phrase().filter(|phrase| phrase.stop) {
+            write_phrase(xml, &phrase.name, false)?;
+        }
         cursor += sounding(item);
     }
     Ok(ticks(cursor, divisions))
+}
+
+/// The chord symbols and form markers falling in one measure.
+///
+/// Both are written at the head of the measure with an `<offset>` rather than
+/// interleaved with the notes: `MusicXML`'s offset says where a symbol sounds
+/// independently of where it sits in the document, and a measure whose voices
+/// backup and forward has no single place that means "here".
+fn write_positioned(xml: &mut Xml, plan: &NotationPlan, measure: u32, divisions: i64) -> Result<(), RenderError> {
+    for section in plan.sections().iter().filter(|mark| mark.measure == measure) {
+        xml.open("direction", &[("placement", "above")])?;
+        xml.open("direction-type", &[])?;
+        xml.leaf("rehearsal", &[], &section.what)?;
+        xml.close("direction-type")?;
+        write_offset(xml, section.onset_in_measure.as_ratio(), divisions)?;
+        xml.close("direction")?;
+    }
+    for chord in plan.harmony().iter().filter(|mark| mark.measure == measure) {
+        write_harmony(xml, &chord.what, chord.onset_in_measure.as_ratio(), divisions)?;
+    }
+    Ok(())
+}
+
+/// `<offset>`, omitted at the start of a measure where it would say nothing.
+fn write_offset(xml: &mut Xml, onset: Ratio<i64>, divisions: i64) -> Result<(), RenderError> {
+    if onset == Ratio::ZERO {
+        return Ok(());
+    }
+    xml.leaf("offset", &[], &ticks(onset, divisions).to_string())
+}
+
+/// One chord symbol as `<harmony>`.
+///
+/// `<kind>` carries musa's parsed reading of the symbol and its `text`
+/// attribute carries what the composer wrote, so a consumer that understands
+/// the kind gets the structure and one that does not still prints `fmaj7`.
+fn write_harmony(xml: &mut Xml, chord: &ChordSymbol, onset: Ratio<i64>, divisions: i64) -> Result<(), RenderError> {
+    xml.open("harmony", &[])?;
+    xml.open("root", &[])?;
+    xml.leaf("root-step", &[], chord_step(chord))?;
+    xml.leaf("root-alter", &[], &chord.accidental.0.to_string())?;
+    xml.close("root")?;
+    xml.leaf("kind", &[("text", &chord.text)], chord_kind(chord))?;
+    write_offset(xml, onset, divisions)?;
+    xml.close("harmony")
+}
+
+fn chord_step(chord: &ChordSymbol) -> &'static str {
+    match chord.letter {
+        musa_compiler::Letter::C => "C",
+        musa_compiler::Letter::D => "D",
+        musa_compiler::Letter::E => "E",
+        musa_compiler::Letter::F => "F",
+        musa_compiler::Letter::G => "G",
+        musa_compiler::Letter::A => "A",
+        musa_compiler::Letter::B => "B",
+    }
+}
+
+/// `MusicXML`'s `kind` vocabulary for a parsed symbol.
+///
+/// The vocabulary is coarser than the symbols musa reads — it has no name for
+/// a suspended chord with a seventh, and none for an augmented major seventh —
+/// so those fall back to the nearest kind and rely on the `text` attribute for
+/// the exact symbol. Nothing is invented: an unrepresentable shade is written
+/// as the triad it is built on, never as a different chord.
+fn chord_kind(chord: &ChordSymbol) -> &'static str {
+    let triad = match chord.quality {
+        ChordQuality::Major => "major",
+        ChordQuality::Minor => "minor",
+        ChordQuality::Diminished => "diminished",
+        ChordQuality::Augmented => "augmented",
+        ChordQuality::Suspended2 => "suspended-second",
+        ChordQuality::Suspended4 => "suspended-fourth",
+    };
+    let Some(seventh) = chord.seventh else {
+        return match (chord.extension, chord.quality) {
+            (Some(6), ChordQuality::Major) => "major-sixth",
+            (Some(6), ChordQuality::Minor) => "minor-sixth",
+            (Some(_) | None, _) => triad,
+        };
+    };
+    match (chord.quality, seventh, chord.extension) {
+        (ChordQuality::Diminished, _, _) => "diminished-seventh",
+        (ChordQuality::Major, Seventh::Major, None) => "major-seventh",
+        (ChordQuality::Major, Seventh::Major, Some(9)) => "major-ninth",
+        (ChordQuality::Major, Seventh::Major, Some(11)) => "major-11th",
+        (ChordQuality::Major, Seventh::Major, Some(13)) => "major-13th",
+        (ChordQuality::Major, Seventh::Minor | Seventh::Diminished, None) => "dominant",
+        (ChordQuality::Major, Seventh::Minor | Seventh::Diminished, Some(9)) => "dominant-ninth",
+        (ChordQuality::Major, Seventh::Minor | Seventh::Diminished, Some(11)) => "dominant-11th",
+        (ChordQuality::Major, Seventh::Minor | Seventh::Diminished, Some(13)) => "dominant-13th",
+        (ChordQuality::Minor, Seventh::Major, _) => "major-minor",
+        (ChordQuality::Minor, Seventh::Minor | Seventh::Diminished, None) => "minor-seventh",
+        (ChordQuality::Minor, Seventh::Minor | Seventh::Diminished, Some(9)) => "minor-ninth",
+        (ChordQuality::Minor, Seventh::Minor | Seventh::Diminished, Some(11)) => "minor-11th",
+        (ChordQuality::Minor, Seventh::Minor | Seventh::Diminished, Some(13)) => "minor-13th",
+        (ChordQuality::Augmented, _, _) => "augmented-seventh",
+        (ChordQuality::Major | ChordQuality::Minor, _, Some(_)) => triad,
+        (ChordQuality::Suspended2 | ChordQuality::Suspended4, _, _) => triad,
+    }
+}
+
+/// A phrase, as the bracket `MusicXML` spans a run of notes with, plus the
+/// words that name it.
+fn write_phrase(xml: &mut Xml, name: &str, start: bool) -> Result<(), RenderError> {
+    xml.open("direction", &[("placement", "above")])?;
+    xml.open("direction-type", &[])?;
+    if start {
+        xml.leaf("words", &[], name)?;
+    }
+    xml.close("direction-type")?;
+    xml.open("direction-type", &[])?;
+    xml.empty(
+        "bracket",
+        &[
+            ("type", if start { "start" } else { "stop" }),
+            ("number", "1"),
+            ("line-end", "down"),
+        ],
+    )?;
+    xml.close("direction-type")?;
+    xml.close("direction")
 }
 
 /// A dynamic marking, as the `<direction>` that precedes the note it marks.

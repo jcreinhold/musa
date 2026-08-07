@@ -486,6 +486,50 @@ pub struct ArticulationMarking {
     pub origin: Origin,
 }
 
+/// A named span over a run of events in one voice, inclusive of both ends.
+///
+/// Anchored to events, like a slur: a phrase is written *on* music, and it
+/// must survive that music being re-barred or re-spelled.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhraseSpan {
+    /// The phrase's name, as written.
+    pub name: String,
+    /// The first event of the phrase.
+    pub from: EventId,
+    /// The last event of the phrase.
+    pub to: EventId,
+    /// Why this phrase exists.
+    pub origin: Origin,
+}
+
+/// A form marker at a position in the piece.
+///
+/// Anchored to *time*, unlike a phrase: a section begins where the composer
+/// says it begins, and a bar line is a place even when no note starts there.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SectionMark {
+    /// The section's name, as written.
+    pub name: String,
+    /// Where it begins, in whole notes from the piece start.
+    pub at: MusicalTime,
+    /// Why this marker exists.
+    pub origin: Origin,
+}
+
+/// A chord symbol at a position in the piece (roadmap §8.2).
+///
+/// Recorded, never interpreted: nothing derives notes from it and nothing
+/// checks the notes against it.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HarmonyMark {
+    /// The symbol, parsed.
+    pub symbol: crate::harmony::ChordSymbol,
+    /// Where it is written, in whole notes from the piece start.
+    pub at: MusicalTime,
+    /// Why this symbol exists.
+    pub origin: Origin,
+}
+
 /// Score-level annotations (roadmap §6.3): symbols that are *about* events
 /// rather than events themselves, each carrying its own provenance.
 ///
@@ -498,6 +542,9 @@ pub struct AnnotationStore {
     tuplets: Vec<TupletSpan>,
     dynamics: Vec<DynamicMarking>,
     articulations: Vec<ArticulationMarking>,
+    phrases: Vec<PhraseSpan>,
+    sections: Vec<SectionMark>,
+    harmony: Vec<HarmonyMark>,
 }
 
 impl AnnotationStore {
@@ -519,6 +566,38 @@ impl AnnotationStore {
     /// Articulations, in source order.
     pub fn articulations(&self) -> &[ArticulationMarking] {
         &self.articulations
+    }
+
+    /// Phrases, in source order.
+    pub fn phrases(&self) -> &[PhraseSpan] {
+        &self.phrases
+    }
+
+    /// Form markers, in the order they occur in the piece.
+    pub fn sections(&self) -> &[SectionMark] {
+        &self.sections
+    }
+
+    /// Chord symbols, in the order they occur in the piece.
+    pub fn harmony(&self) -> &[HarmonyMark] {
+        &self.harmony
+    }
+
+    pub(crate) fn push_phrase(&mut self, phrase: PhraseSpan) {
+        self.phrases.push(phrase);
+    }
+
+    /// Record a form marker, keeping the lane sorted by position: markers are
+    /// read in the order they are reached, not the order they were typed.
+    pub(crate) fn push_section(&mut self, section: SectionMark) {
+        let at = self.sections.partition_point(|existing| existing.at <= section.at);
+        self.sections.insert(at, section);
+    }
+
+    /// Record a chord symbol, keeping the lane sorted by position.
+    pub(crate) fn push_harmony(&mut self, harmony: HarmonyMark) {
+        let at = self.harmony.partition_point(|existing| existing.at <= harmony.at);
+        self.harmony.insert(at, harmony);
     }
 
     pub(crate) fn push_slur(&mut self, slur: SlurSpan) {

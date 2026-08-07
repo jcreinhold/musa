@@ -163,6 +163,12 @@ pub enum SyntaxKind {
     WithKw,
     /// `note`
     NoteKw,
+    /// `phrase`
+    PhraseKw,
+    /// `section`
+    SectionKw,
+    /// `harmony`
+    HarmonyKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -219,6 +225,19 @@ pub enum SyntaxKind {
     WithClause,
     /// `note <n> = <pitch>;` — one override inside a [`SyntaxKind::WithClause`].
     OverrideStmt,
+    /// `phrase "A" { ... }` — a named span over a voice's music.
+    PhraseStmt,
+    /// `section "Exposition" at 1:1;` — a form marker in the score.
+    SectionStmt,
+    /// `harmony { ... }` — the chord-symbol lane.
+    HarmonyDecl,
+    /// `at 1:1 am;` — one chord symbol at a position, inside a
+    /// [`SyntaxKind::HarmonyDecl`].
+    HarmonyStmt,
+    /// `1:1` — a measure:beat position.
+    Position,
+    /// `fmaj7` — a chord symbol, as written.
+    ChordSymbol,
     /// The articulation names trailing a note or chord's duration. Their own
     /// node so a pitch reference and an articulation name — both bare
     /// identifiers — never have to be told apart by position.

@@ -262,7 +262,8 @@ fn typed_views_read_the_new_statements() {
             | VoiceItem::Repeat(_)
             | VoiceItem::Stretch(_)
             | VoiceItem::Retrograde(_)
-            | VoiceItem::Invert(_) => panic!("unexpected item"),
+            | VoiceItem::Invert(_)
+            | VoiceItem::Phrase(_) => panic!("unexpected item"),
         }
     }
     assert_eq!(mark.as_deref(), Some("mf"));
@@ -310,7 +311,8 @@ fn the_transformations_and_their_bodies_are_typed_views() {
             | VoiceItem::Repeat(_)
             | VoiceItem::Slur(_)
             | VoiceItem::Dynamic(_)
-            | VoiceItem::Tuplet(_) => panic!("unexpected item"),
+            | VoiceItem::Tuplet(_)
+            | VoiceItem::Phrase(_) => panic!("unexpected item"),
         }
     }
     assert_eq!(factor.as_deref(), Some("3/2"));
@@ -346,7 +348,8 @@ fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
             | VoiceItem::Tuplet(_)
             | VoiceItem::Stretch(_)
             | VoiceItem::Retrograde(_)
-            | VoiceItem::Invert(_) => None,
+            | VoiceItem::Invert(_)
+            | VoiceItem::Phrase(_) => None,
         })
         .collect();
     assert_eq!(calls.len(), 2);

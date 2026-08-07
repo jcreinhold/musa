@@ -93,6 +93,10 @@ pub(crate) struct GroupInfo {
 /// Which bracket a group came from.
 pub(crate) enum GroupKind {
     Slur,
+    /// A named phrase.
+    Phrase {
+        name: String,
+    },
     /// `num` written values in the time of `den`.
     Tuplet {
         num: u32,
@@ -511,6 +515,14 @@ pub(crate) fn parse_duration(node: &SyntaxNode) -> Option<NotatedDuration> {
 }
 
 fn lower_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDecl, snapshot: &mut ScoreSnapshot) {
+    // The oracle is frozen at phase 1 (prompt 11): every construct added after
+    // it says so rather than compiling to something quietly smaller.
+    for section in score.sections() {
+        reject(lowering, "section", section.syntax());
+    }
+    for lane in score.harmonies() {
+        reject(lowering, "harmony", lane.syntax());
+    }
     for part in score.parts() {
         let name = part.name().unwrap_or_default();
         let part_key = lowering.declare(DeclInfo::Part);
@@ -675,6 +687,7 @@ fn lower_items(
             VoiceItem::Stretch(item) => reject(lowering, "stretch", item.syntax()),
             VoiceItem::Retrograde(item) => reject(lowering, "retrograde", item.syntax()),
             VoiceItem::Invert(item) => reject(lowering, "invert", item.syntax()),
+            VoiceItem::Phrase(item) => reject(lowering, "phrase", item.syntax()),
         }
     }
 }

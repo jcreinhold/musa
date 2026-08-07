@@ -846,6 +846,9 @@ ScoreSnapshot {
                 },
             },
         ],
+        phrases: [],
+        sections: [],
+        harmony: [],
     },
     motifs: [],
     profiles: ProfileSet {

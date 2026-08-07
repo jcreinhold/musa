@@ -1,0 +1,489 @@
+{
+  "name": "annotated.musa",
+  "source": "// The annotation layer, end to end (docs/prompts/35): named phrases over the\n// notes, form markers at measure:beat positions, and a harmony lane.\n//\n// Nothing here is interpreted. The chord symbols are recorded and printed;\n// musa never derives notes from them, never checks the notes under them, and\n// has no opinion about the voice leading between them. Sections and phrases\n// name the structure a reader already hears; they change no sounding note.\npiece \"Annotated\" {\n    tempo 1/4 = 96;\n    meter 4/4;\n    key a minor;\n\n    score {\n        section \"Exposition\" at 1:1;\n        section \"Development\" at 3:1;\n\n        harmony {\n            at 1:1 am;\n            at 2:1 fmaj7;\n            at 3:1 e7;\n            at 4:1 am;\n        }\n\n        part piano {\n            clef treble;\n\n            voice lead {\n                phrase \"antecedent\" {\n                    a4 1/4;\n                    c5 1/4;\n                    e5 1/2;\n                    f5 1/2;\n                    e5 1/2;\n                }\n                phrase \"consequent\" {\n                    b4 1/4;\n                    e5 1/4;\n                    gs5 1/2;\n                    a5 1;\n                }\n            }\n        }\n    }\n}\n",
+  "revision": 0,
+  "compiles": true,
+  "unsaved": true,
+  "autosaved": false,
+  "recovery": null,
+  "midiPort": null,
+  "diagnostics": [],
+  "mei": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n  <music>\n    <body>\n      <mdiv>\n        <score>\n          <scoreDef meter.count=\"4\" meter.unit=\"4\" key.sig=\"0\" key.mode=\"minor\">\n            <staffGrp>\n              <staffDef n=\"1\" lines=\"5\" clef.shape=\"G\" clef.line=\"2\"/>\n            </staffGrp>\n          </scoreDef>\n          <section>\n            <measure n=\"1\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-0\" dur=\"4\" oct=\"4\" pname=\"a\"/>\n                  <note xml:id=\"event-1\" dur=\"4\" oct=\"5\" pname=\"c\"/>\n                  <note xml:id=\"event-2\" dur=\"2\" oct=\"5\" pname=\"e\"/>\n                </layer>\n              </staff>\n              <phrase staff=\"1\" startid=\"#event-0\" endid=\"#event-4\" label=\"antecedent\"/>\n              <dir staff=\"1\" startid=\"#event-0\" place=\"above\" type=\"phrase\">antecedent</dir>\n              <dir staff=\"1\" tstamp=\"1\" place=\"above\" type=\"section\">Exposition</dir>\n              <harm staff=\"1\" tstamp=\"1\" place=\"above\">am</harm>\n            </measure>\n            <measure n=\"2\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-3\" dur=\"2\" oct=\"5\" pname=\"f\"/>\n                  <note xml:id=\"event-4\" dur=\"2\" oct=\"5\" pname=\"e\"/>\n                </layer>\n              </staff>\n              <harm staff=\"1\" tstamp=\"1\" place=\"above\">fmaj7</harm>\n            </measure>\n            <measure n=\"3\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-5\" dur=\"4\" oct=\"4\" pname=\"b\"/>\n                  <note xml:id=\"event-6\" dur=\"4\" oct=\"5\" pname=\"e\"/>\n                  <note xml:id=\"event-7\" dur=\"2\" oct=\"5\" pname=\"g\" accid=\"s\"/>\n                </layer>\n              </staff>\n              <phrase staff=\"1\" startid=\"#event-5\" endid=\"#event-8\" label=\"consequent\"/>\n              <dir staff=\"1\" startid=\"#event-5\" place=\"above\" type=\"phrase\">consequent</dir>\n              <dir staff=\"1\" tstamp=\"1\" place=\"above\" type=\"section\">Development</dir>\n              <harm staff=\"1\" tstamp=\"1\" place=\"above\">e7</harm>\n            </measure>\n            <measure n=\"4\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-8\" dur=\"1\" oct=\"5\" pname=\"a\"/>\n                </layer>\n              </staff>\n              <harm staff=\"1\" tstamp=\"1\" place=\"above\">am</harm>\n            </measure>\n          </section>\n        </score>\n      </mdiv>\n    </body>\n  </music>\n</mei>",
+  "score": {
+    "title": "Annotated",
+    "tempoBpm": 96,
+    "tempoBeat": {
+      "numerator": 1,
+      "denominator": 4
+    },
+    "key": "A minor",
+    "meterCount": 4,
+    "meterUnit": 4,
+    "parts": [
+      {
+        "name": "piano",
+        "voices": [
+          {
+            "name": "lead",
+            "generated": false
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-0",
+        "part": "piano",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "A4",
+        "pitches": [
+          "A4"
+        ],
+        "pitchSpellings": [
+          "a4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "onsetFrames": 0,
+        "endFrames": 30000,
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 29,
+          "span": {
+            "start": 873,
+            "end": 880
+          },
+          "definitionSpan": {
+            "start": 873,
+            "end": 880
+          }
+        }
+      },
+      {
+        "id": "event-1",
+        "part": "piano",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "C5",
+        "pitches": [
+          "C5"
+        ],
+        "pitchSpellings": [
+          "c5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "onsetFrames": 30000,
+        "endFrames": 60000,
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 30,
+          "span": {
+            "start": 901,
+            "end": 908
+          },
+          "definitionSpan": {
+            "start": 901,
+            "end": 908
+          }
+        }
+      },
+      {
+        "id": "event-2",
+        "part": "piano",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "E5",
+        "pitches": [
+          "E5"
+        ],
+        "pitchSpellings": [
+          "e5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 1,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "onsetFrames": 60000,
+        "endFrames": 120000,
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 31,
+          "span": {
+            "start": 929,
+            "end": 936
+          },
+          "definitionSpan": {
+            "start": 929,
+            "end": 936
+          }
+        }
+      },
+      {
+        "id": "event-3",
+        "part": "piano",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "F5",
+        "pitches": [
+          "F5"
+        ],
+        "pitchSpellings": [
+          "f5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 2,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "onsetFrames": 120000,
+        "endFrames": 180000,
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 32,
+          "span": {
+            "start": 957,
+            "end": 964
+          },
+          "definitionSpan": {
+            "start": 957,
+            "end": 964
+          }
+        }
+      },
+      {
+        "id": "event-4",
+        "part": "piano",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "E5",
+        "pitches": [
+          "E5"
+        ],
+        "pitchSpellings": [
+          "e5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 2,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "onsetFrames": 180000,
+        "endFrames": 240000,
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 33,
+          "span": {
+            "start": 985,
+            "end": 992
+          },
+          "definitionSpan": {
+            "start": 985,
+            "end": 992
+          }
+        }
+      },
+      {
+        "id": "event-5",
+        "part": "piano",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "B4",
+        "pitches": [
+          "B4"
+        ],
+        "pitchSpellings": [
+          "b4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 3,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "onsetFrames": 240000,
+        "endFrames": 270000,
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 36,
+          "span": {
+            "start": 1069,
+            "end": 1076
+          },
+          "definitionSpan": {
+            "start": 1069,
+            "end": 1076
+          }
+        }
+      },
+      {
+        "id": "event-6",
+        "part": "piano",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "E5",
+        "pitches": [
+          "E5"
+        ],
+        "pitchSpellings": [
+          "e5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 3,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "onsetFrames": 270000,
+        "endFrames": 300000,
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 37,
+          "span": {
+            "start": 1097,
+            "end": 1104
+          },
+          "definitionSpan": {
+            "start": 1097,
+            "end": 1104
+          }
+        }
+      },
+      {
+        "id": "event-7",
+        "part": "piano",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "G♯5",
+        "pitches": [
+          "G♯5"
+        ],
+        "pitchSpellings": [
+          "gs5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 3,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "onsetFrames": 300000,
+        "endFrames": 360000,
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 38,
+          "span": {
+            "start": 1125,
+            "end": 1133
+          },
+          "definitionSpan": {
+            "start": 1125,
+            "end": 1133
+          }
+        }
+      },
+      {
+        "id": "event-8",
+        "part": "piano",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "A5",
+        "pitches": [
+          "A5"
+        ],
+        "pitchSpellings": [
+          "a5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "durationSpelling": "1",
+        "bar": 4,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "onsetFrames": 360000,
+        "endFrames": 480000,
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 39,
+          "span": {
+            "start": 1154,
+            "end": 1159
+          },
+          "definitionSpan": {
+            "start": 1154,
+            "end": 1159
+          }
+        }
+      }
+    ],
+    "occurrences": [],
+    "outline": [
+      {
+        "kind": "section",
+        "name": "Exposition",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "event": "event-0",
+        "onsetFrames": 0,
+        "endFrames": 240000,
+        "line": 14,
+        "span": {
+          "start": 551,
+          "end": 579
+        }
+      },
+      {
+        "kind": "phrase",
+        "name": "antecedent",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "event": "event-0",
+        "onsetFrames": 0,
+        "endFrames": 240000,
+        "line": 28,
+        "span": {
+          "start": 831,
+          "end": 1010
+        }
+      },
+      {
+        "kind": "section",
+        "name": "Development",
+        "bar": 3,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "event": "event-5",
+        "onsetFrames": 240000,
+        "endFrames": 480000,
+        "line": 15,
+        "span": {
+          "start": 588,
+          "end": 617
+        }
+      },
+      {
+        "kind": "phrase",
+        "name": "consequent",
+        "bar": 3,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "event": "event-5",
+        "onsetFrames": 240000,
+        "endFrames": 480000,
+        "line": 35,
+        "span": {
+          "start": 1027,
+          "end": 1177
+        }
+      }
+    ]
+  },
+  "studio": {
+    "declared": false,
+    "patches": [],
+    "buses": [],
+    "signals": [],
+    "assignments": [
+      {
+        "part": "piano",
+        "patch": null
+      }
+    ],
+    "sends": [],
+    "routes": []
+  },
+  "scoreRevision": 0,
+  "playback": {
+    "playing": false,
+    "positionFrames": 0,
+    "totalFrames": 0,
+    "sampleRate": 48000,
+    "loopRegion": null
+  }
+}

@@ -41,6 +41,20 @@ fn write_or_compare(path: &Path, contents: &str) -> Result {
     Ok(())
 }
 
+/// The annotated piece, which is what the outline pane is built against: the
+/// demo score has no sections and no phrases, and a navigation pane with
+/// nothing to navigate proves nothing.
+#[test]
+fn annotated_fixture_is_current() -> Result {
+    let source = std::fs::read_to_string(example("annotated.musa"))?;
+    let session = ProjectSession::from_text(source, "annotated.musa");
+    assert!(session.snapshot().compiles(), "the fixture piece must compile");
+
+    let mut json = serde_json::to_string_pretty(&session.snapshot())?;
+    json.push('\n');
+    write_or_compare(&fixtures_dir().join("annotated.snapshot.json"), &json)
+}
+
 /// The snapshot the Compose screen is built against.
 #[test]
 fn snapshot_fixture_is_current() -> Result {
@@ -58,7 +72,7 @@ fn snapshot_fixture_is_current() -> Result {
 /// One MEI per engraving fixture (`docs/interface/02-engraving.md` §9).
 #[test]
 fn mei_fixtures_are_current() -> Result {
-    for name in ["glass-mountain", "counterpoint", "twinkle"] {
+    for name in ["glass-mountain", "counterpoint", "twinkle", "annotated"] {
         let session = ProjectSession::open(example(&format!("{name}.musa")))?;
         let artifact = session.export(ExportRequest::Mei)?;
         let mei = artifact.as_text().unwrap_or_default();

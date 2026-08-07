@@ -12,7 +12,9 @@ import counterpointMei from "../../../fixtures/counterpoint.mei?raw";
 import glassMountainMei from "../../../fixtures/glass-mountain.mei?raw";
 import largeScoreMei from "../../../fixtures/large-score.mei?raw";
 import twinkleMei from "../../../fixtures/twinkle.mei?raw";
+import annotatedMei from "../../../fixtures/annotated.mei?raw";
 import glassMountainSnapshot from "../../../fixtures/glass-mountain.snapshot.json";
+import annotatedSnapshot from "../../../fixtures/annotated.snapshot.json";
 import type { ProjectSnapshot } from "./snapshot";
 
 export interface Fixture {
@@ -33,6 +35,14 @@ const GLASS_MOUNTAIN: Fixture = {
 
 export const FIXTURES: readonly Fixture[] = [
   GLASS_MOUNTAIN,
+  // The annotated piece: phrases, form markers, and a harmony lane, which is
+  // what the outline pane is read against.
+  {
+    key: "annotated",
+    title: "Annotated",
+    mei: annotatedMei,
+    snapshot: annotatedSnapshot as unknown as ProjectSnapshot,
+  },
   { key: "counterpoint", title: "Counterpoint Study", mei: counterpointMei },
   { key: "twinkle", title: "Twinkle", mei: twinkleMei },
   // The large-case workload of `06-performance.md` §1 — 100 bars in four

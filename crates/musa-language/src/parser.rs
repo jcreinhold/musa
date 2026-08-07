@@ -72,7 +72,12 @@ const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::PerformanceKw,
     SyntaxKind::StudioKw,
 ];
-const SCORE_RECOVERY: &[SyntaxKind] = &[SyntaxKind::RBrace, SyntaxKind::PartKw];
+const SCORE_RECOVERY: &[SyntaxKind] = &[
+    SyntaxKind::RBrace,
+    SyntaxKind::PartKw,
+    SyntaxKind::SectionKw,
+    SyntaxKind::HarmonyKw,
+];
 const PART_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::Semicolon,
     SyntaxKind::RBrace,
@@ -107,6 +112,7 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::TransposeKw,
     SyntaxKind::RepeatKw,
     SyntaxKind::SlurKw,
+    SyntaxKind::PhraseKw,
     SyntaxKind::DynamicKw,
     SyntaxKind::TupletKw,
     SyntaxKind::StretchKw,
@@ -407,8 +413,12 @@ impl<'a> Parser<'a> {
             }
             if self.at(SyntaxKind::PartKw) {
                 self.part_decl();
+            } else if self.at(SyntaxKind::SectionKw) {
+                self.section_stmt();
+            } else if self.at(SyntaxKind::HarmonyKw) {
+                self.harmony_decl();
             } else {
-                self.error_here("expected a `part` declaration");
+                self.error_here("expected a `part`, `section`, or `harmony` declaration");
                 self.recover(SCORE_RECOVERY);
             }
         }
@@ -857,9 +867,11 @@ impl<'a> Parser<'a> {
                 self.retrograde_stmt();
             } else if self.at(SyntaxKind::InvertKw) {
                 self.invert_stmt();
+            } else if self.at(SyntaxKind::PhraseKw) {
+                self.phrase_stmt();
             } else {
                 self.error_here(
-                    "expected a note, rest, chord, use, transpose, stretch, retrograde, invert, repeat, slur, dynamic, or tuplet",
+                    "expected a note, rest, chord, use, transpose, stretch, retrograde, invert, repeat, slur, phrase, dynamic, or tuplet",
                 );
                 self.recover(VOICE_RECOVERY);
             }
@@ -1034,6 +1046,90 @@ impl<'a> Parser<'a> {
         self.start(SyntaxKind::SlurStmt);
         self.bump(); // slur
         self.block();
+        self.finish();
+    }
+
+    /// `phrase "A" { ... }` — a named span over the music it wraps.
+    fn phrase_stmt(&mut self) {
+        self.start(SyntaxKind::PhraseStmt);
+        self.bump(); // phrase
+        self.expect(SyntaxKind::String, "a phrase name in quotes");
+        self.block();
+        self.finish();
+    }
+
+    /// `section "Exposition" at 1:1;` — a form marker in the score.
+    fn section_stmt(&mut self) {
+        self.start(SyntaxKind::SectionStmt);
+        self.bump(); // section
+        self.expect(SyntaxKind::String, "a section name in quotes");
+        self.expect(SyntaxKind::AtKw, "`at`");
+        self.position();
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `harmony { at 1:1 am; ... }` — the chord-symbol lane.
+    fn harmony_decl(&mut self) {
+        self.start(SyntaxKind::HarmonyDecl);
+        self.bump(); // harmony
+        self.expect(SyntaxKind::LBrace, "`{`");
+        loop {
+            if self.at(SyntaxKind::RBrace) || self.current().is_none() {
+                break;
+            }
+            if self.at(SyntaxKind::AtKw) {
+                self.harmony_stmt();
+            } else {
+                self.error_here("expected a chord such as `at 1:1 am;`");
+                self.recover(&[SyntaxKind::Semicolon, SyntaxKind::RBrace, SyntaxKind::AtKw]);
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `at 1:1 am;` — one chord symbol at a position.
+    fn harmony_stmt(&mut self) {
+        self.start(SyntaxKind::HarmonyStmt);
+        self.bump(); // at
+        self.position();
+        self.chord_symbol();
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `<measure>:<beat>` — a position in the piece, in the coordinates a
+    /// composer reads off the page.
+    fn position(&mut self) {
+        self.start(SyntaxKind::Position);
+        self.expect(SyntaxKind::Integer, "a measure number");
+        self.expect(SyntaxKind::Colon, "`:`");
+        if self.at_any(&[SyntaxKind::Integer, SyntaxKind::Rational]) {
+            self.bump();
+        } else {
+            self.error_here("expected a beat such as `1` or `3/2`");
+        }
+        self.finish();
+    }
+
+    /// A chord symbol as written: `am`, `fmaj7`, `a7`.
+    ///
+    /// The lexer has no chord-symbol token and does not need one — a symbol
+    /// is one word, and the word lexes as a name (`am`), a pitch (`a7`), or a
+    /// name and a number (`fmaj` `7`) depending on how it is spelled. The
+    /// parser takes that word; the compiler reads what it says, and checks
+    /// that it really was one word rather than two.
+    fn chord_symbol(&mut self) {
+        self.start(SyntaxKind::ChordSymbol);
+        if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::PitchLiteral]) {
+            self.bump();
+            if self.at(SyntaxKind::Integer) {
+                self.bump();
+            }
+        } else {
+            self.error_here("expected a chord such as `am` or `fmaj7`");
+        }
         self.finish();
     }
 

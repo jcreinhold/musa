@@ -273,6 +273,17 @@ impl ScoreDecl {
     pub fn parts(&self) -> Vec<PartDecl> {
         children(&self.0)
     }
+
+    /// The form markers written in the score, in source order.
+    pub fn sections(&self) -> Vec<SectionStmt> {
+        children(&self.0)
+    }
+
+    /// The harmony lanes, in source order. More than one is a diagnostic,
+    /// not a parse error: the parser records what was written.
+    pub fn harmonies(&self) -> Vec<HarmonyDecl> {
+        children(&self.0)
+    }
 }
 
 /// `part violin { ... }`
@@ -357,6 +368,8 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             RetrogradeStmt::cast(child).map(VoiceItem::Retrograde)
         } else if kind == SyntaxKind::InvertStmt {
             InvertStmt::cast(child).map(VoiceItem::Invert)
+        } else if kind == SyntaxKind::PhraseStmt {
+            PhraseStmt::cast(child).map(VoiceItem::Phrase)
         } else {
             None
         };
@@ -392,6 +405,8 @@ pub enum VoiceItem {
     Retrograde(RetrogradeStmt),
     /// `invert around c5 { ... }`
     Invert(InvertStmt),
+    /// `phrase "A" { ... }`
+    Phrase(PhraseStmt),
 }
 
 /// The articulation names trailing a note or chord's duration.
@@ -608,6 +623,111 @@ impl SlurStmt {
     /// The slurred items, in source order.
     pub fn items(&self) -> Vec<VoiceItem> {
         voice_items(&self.0)
+    }
+}
+
+/// `phrase "A" { ... }`
+pub struct PhraseStmt(SyntaxNode);
+wrapper!(PhraseStmt, SyntaxKind::PhraseStmt);
+
+impl PhraseStmt {
+    /// The phrase's name, without its quotes.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::String).map(|text| text.trim_matches('"').to_string())
+    }
+
+    /// The music the phrase covers, in source order.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
+    }
+}
+
+/// `section "Exposition" at 1:1;`
+pub struct SectionStmt(SyntaxNode);
+wrapper!(SectionStmt, SyntaxKind::SectionStmt);
+
+impl SectionStmt {
+    /// The section's name, without its quotes.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::String).map(|text| text.trim_matches('"').to_string())
+    }
+
+    /// Where it is marked.
+    pub fn position(&self) -> Option<Position> {
+        children(&self.0).into_iter().next()
+    }
+}
+
+/// `harmony { ... }`
+pub struct HarmonyDecl(SyntaxNode);
+wrapper!(HarmonyDecl, SyntaxKind::HarmonyDecl);
+
+impl HarmonyDecl {
+    /// The chords in the lane, in source order.
+    pub fn chords(&self) -> Vec<HarmonyStmt> {
+        children(&self.0)
+    }
+}
+
+/// `at 1:1 am;`
+pub struct HarmonyStmt(SyntaxNode);
+wrapper!(HarmonyStmt, SyntaxKind::HarmonyStmt);
+
+impl HarmonyStmt {
+    /// Where the chord is written.
+    pub fn position(&self) -> Option<Position> {
+        children(&self.0).into_iter().next()
+    }
+
+    /// The chord symbol, as written.
+    pub fn symbol(&self) -> Option<ChordSymbol> {
+        children(&self.0).into_iter().next()
+    }
+}
+
+/// `1:1` — a measure:beat position.
+pub struct Position(SyntaxNode);
+wrapper!(Position, SyntaxKind::Position);
+
+impl Position {
+    /// The measure number, as written.
+    pub fn measure(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Integer)
+    }
+
+    /// The beat within the measure, as written (`1`, `3/2`).
+    pub fn beat(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Rational).or_else(|| {
+            self.0
+                .children_with_tokens()
+                .filter_map(SyntaxElement::into_token)
+                .filter(|token| token.kind() == SyntaxKind::Integer)
+                .nth(1)
+                .map(|token| token.text().to_string())
+        })
+    }
+}
+
+/// `fmaj7` — a chord symbol, as written.
+pub struct ChordSymbol(SyntaxNode);
+wrapper!(ChordSymbol, SyntaxKind::ChordSymbol);
+
+impl ChordSymbol {
+    /// The symbol's significant text, with nothing between its parts.
+    pub fn text(&self) -> String {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| !token.kind().is_trivia())
+            .map(|token| token.text().to_string())
+            .collect()
+    }
+
+    /// Whether the symbol really is one word. `fmaj 7` parses as the same
+    /// tokens as `fmaj7` and means nothing musical; the compiler rejects it
+    /// rather than quietly reading a chord out of two words.
+    pub fn is_one_word(&self) -> bool {
+        self.0.text().to_string().trim() == self.text()
     }
 }
 
