@@ -1,0 +1,282 @@
+/**
+ * The session: one snapshot, and every way the interface can ask for a new
+ * one.
+ *
+ * The core owns the document; this class owns nothing musical. It holds the
+ * latest snapshot the shell sent, the words currently in the top margin, and
+ * the small amount of interface state that is genuinely about *editing* — the
+ * draft the user is typing, and whether the drawer has opened itself yet.
+ *
+ * Roadmap §14.2: state has one owner. When a command answers and an event
+ * also arrives, both carry the same snapshot, and taking the newer revision
+ * makes that harmless.
+ */
+
+import { mark } from "../perf";
+import { bridge, inShell, isFailure } from "./bridge";
+import type { ErrorDto } from "./generated/ErrorDto";
+import type { ExportTargetDto } from "./generated/ExportTargetDto";
+import type { TemplateDto } from "./generated/TemplateDto";
+import type { ProjectSnapshot } from "../state/snapshot";
+
+/**
+ * How long typing settles before the source is compiled
+ * (`06-performance.md` §3). Long enough that a word is one compile, short
+ * enough that a pause reads as immediate.
+ */
+export const SETTLE_MS = 180;
+
+/** What the top margin is currently saying, and in what voice. */
+export interface Notice {
+  tone: "result" | "failure";
+  message: string;
+}
+
+/** How long a completed operation stays in the top margin (`05-states.md` §6). */
+const NOTICE_MS = 3000;
+
+/**
+ * The half of the bridge the session uses. Named as an interface so a test
+ * can answer it directly — a session that could only be exercised through a
+ * running shell would be a session nothing ever tests.
+ */
+export type Link = Pick<
+  typeof bridge,
+  "openProject" | "newProject" | "apply" | "transport" | "exportTo" | "snapshot" | "on" | "askToOpen" | "askToSave"
+>;
+
+export class Session {
+  snapshot = $state<ProjectSnapshot | null>(null);
+  notice = $state<Notice | null>(null);
+
+  /**
+   * The text as the user has typed it, before the core has answered. Cleared
+   * the moment a snapshot carrying it arrives, so the textarea shows the
+   * document again rather than a copy of it.
+   */
+  draft = $state<string | null>(null);
+
+  /**
+   * The drawer opens itself the first time a session's source goes invalid,
+   * and thereafter respects whatever the user last chose (`05-states.md` §4).
+   */
+  drawerOpen = $state(false);
+  #announcedProblems = false;
+
+  #settle: ReturnType<typeof setTimeout> | undefined;
+  #issued = 0;
+  #applied = 0;
+  #noticeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  readonly #link: Link | null;
+
+  /**
+   * Without a link the session is a viewer: it renders whatever snapshot it
+   * was seeded with and every command is a no-op. That is the mode the
+   * engraving goldens are taken in.
+   */
+  constructor(link: Link | null = inShell() ? bridge : null) {
+    this.#link = link;
+  }
+
+  /** Whether anything is answering, as opposed to a fixture on screen. */
+  get live(): boolean {
+    return this.#link !== null;
+  }
+
+  /** The source to edit: the draft if there is one, else the document's. */
+  get text(): string {
+    return this.draft ?? this.snapshot?.source ?? "";
+  }
+
+  /** The current source has problems and the score on screen is older. */
+  get stale(): boolean {
+    return this.snapshot !== null && !this.snapshot.compiles;
+  }
+
+  /** The revision the engraving on screen belongs to. */
+  get shownRevision(): number | null {
+    return this.snapshot?.scoreRevision ?? null;
+  }
+
+  /**
+   * Adopt a snapshot from either a command's answer or a `musa://snapshot`
+   * event, whichever arrived second.
+   */
+  receive(snapshot: ProjectSnapshot): void {
+    mark("snapshot");
+    const current = this.snapshot;
+    if (current && snapshot.revision < current.revision) return;
+    this.snapshot = snapshot;
+    if (this.draft !== null && this.draft === snapshot.source) this.draft = null;
+    if (!snapshot.compiles && !this.#announcedProblems) {
+      this.#announcedProblems = true;
+      this.drawerOpen = true;
+    }
+  }
+
+  /** Show a failure until it is superseded (`05-states.md` §7). */
+  fail(thrown: unknown): void {
+    const failure: ErrorDto | null = isFailure(thrown) ? thrown : null;
+    this.say({
+      tone: "failure",
+      message: failure?.message ?? String(thrown),
+    });
+  }
+
+  /** Put a line in the top margin; results fade, failures persist. */
+  say(notice: Notice): void {
+    clearTimeout(this.#noticeTimer);
+    this.notice = notice;
+    if (notice.tone === "result") {
+      this.#noticeTimer = setTimeout(() => (this.notice = null), NOTICE_MS);
+    }
+  }
+
+  dismiss(): void {
+    clearTimeout(this.#noticeTimer);
+    this.notice = null;
+  }
+
+  /**
+   * Start listening and ask for whatever the shell already has. Outside the
+   * shell this does nothing: the caller seeds a fixture instead.
+   */
+  async start(): Promise<() => void> {
+    const link = this.#link;
+    if (!link) return () => {};
+    const stop = await Promise.all([
+      link.on("musa://snapshot", (snapshot) => this.receive(snapshot)),
+      link.on("musa://position", (playback) => {
+        if (this.snapshot) this.snapshot = { ...this.snapshot, playback };
+      }),
+      link.on("musa://transport", (playback) => {
+        if (this.snapshot) this.snapshot = { ...this.snapshot, playback };
+      }),
+    ]);
+    // No piece open yet is the launch state, not a failure.
+    await link.snapshot().then(
+      (snapshot) => this.receive(snapshot),
+      () => undefined,
+    );
+    return () => {
+      for (const unsubscribe of stop) unsubscribe();
+    };
+  }
+
+  /** Type into the source. One compile per pause, never one per keystroke. */
+  edit(source: string): void {
+    mark("edit");
+    this.draft = source;
+    clearTimeout(this.#settle);
+    this.#settle = setTimeout(() => void this.compile(source), SETTLE_MS);
+  }
+
+  /** Compile the draft now, without waiting for the pause. */
+  async compile(source: string): Promise<void> {
+    clearTimeout(this.#settle);
+    const link = this.#link;
+    if (!link || source === this.snapshot?.source) return;
+    const issue = ++this.#issued;
+    try {
+      const snapshot = await link.apply({ kind: "setSource", source });
+      // A compile that finished after a later one started is stale: the user
+      // has typed on, and its snapshot describes text that no longer exists.
+      if (issue < this.#applied) return;
+      this.#applied = issue;
+      this.receive(snapshot);
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  async open(path?: string): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      const chosen = path ?? (await link.askToOpen());
+      if (chosen === null) return;
+      this.receive(await link.openProject(chosen));
+      this.dismiss();
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  async create(template: TemplateDto = "piece"): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      this.receive(await link.newProject(template, null));
+      this.dismiss();
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  async save(): Promise<void> {
+    await this.run({ kind: "save" }, (snapshot) => `Saved ${snapshot.name}.`);
+  }
+
+  async format(): Promise<void> {
+    await this.run({ kind: "format" }, () => "Formatted the source.");
+  }
+
+  async undo(): Promise<void> {
+    await this.run({ kind: "undo" });
+  }
+
+  async redo(): Promise<void> {
+    await this.run({ kind: "redo" });
+  }
+
+  async play(): Promise<void> {
+    await this.move({ kind: "play" });
+  }
+
+  async stop(): Promise<void> {
+    await this.move({ kind: "stop" });
+  }
+
+  /** Write an export where the user chooses, and name the file it wrote. */
+  async exportTo(target: ExportTargetDto): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    const extension = target === "lilyPond" ? "ly" : target;
+    const stem = (this.snapshot?.name ?? "piece").replace(/\.musa$/, "");
+    try {
+      const path = await link.askToSave(`${stem}.${extension}`, extension);
+      if (path === null) return;
+      const written = await link.exportTo(target, path);
+      const name = written.path.split(/[/\\]/).pop() ?? written.path;
+      this.say({ tone: "result", message: `Exported ${name}.` });
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  private async run(
+    command: Parameters<Link["apply"]>[0],
+    said?: (snapshot: ProjectSnapshot) => string,
+  ): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      const snapshot = await link.apply(command);
+      this.receive(snapshot);
+      if (said) this.say({ tone: "result", message: said(snapshot) });
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  private async move(command: Parameters<Link["transport"]>[0]): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      this.receive(await link.transport(command));
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+}

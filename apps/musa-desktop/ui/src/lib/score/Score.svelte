@@ -9,6 +9,7 @@
    */
   import { onMount, untrack } from "svelte";
 
+  import { mark } from "../perf";
   import { createEngraver, type Engraver, type Layout, type PageSvg } from "../engrave/engraver";
   import { pageFor } from "../engrave/options";
   import type { Workspace } from "../state/selection.svelte";
@@ -66,6 +67,7 @@
     // (`02-engraving.md` §6); assigning here is the swap.
     layout = next;
     page = rendered;
+    mark("score");
   }
 
   onMount(() => {

@@ -3,66 +3,90 @@
    * The Compose workspace: leaf and margin, exactly the arrangement of
    * `01-visual-language.md` §7.
    *
-   * In this prototype the transport is present and disabled, and playback,
-   * the playhead, the keyboard map, and Origin view are deliberately absent —
-   * they belong to later prompts. Selection and hover are here, because they
-   * are pure frontend and they are what proves the overlay layer and the
-   * staff-space unit.
+   * The score, the playhead, and the keyboard map belong to later prompts.
+   * What is here is everything the session can already answer: the piece, its
+   * problems, its transport, and the source you edit it through.
    */
-  import { untrack } from "svelte";
-
   import Score from "../lib/score/Score.svelte";
-  import { ZOOM_STEPS } from "../lib/engrave/options";
   import Leaf from "../lib/ui/Leaf.svelte";
   import Margin from "../lib/ui/Margin.svelte";
   import GlyphButton from "../lib/ui/GlyphButton.svelte";
   import TransportReadout from "../lib/ui/TransportReadout.svelte";
   import { REPEAT_RIGHT_LEFT } from "../lib/ui/glyphs";
+  import type { Session } from "../lib/session/session.svelte";
   import { Workspace } from "../lib/state/selection.svelte";
   import type { ProjectSnapshot } from "../lib/state/snapshot";
   import Drawer from "./Drawer.svelte";
   import Inspector from "./Inspector.svelte";
   import PartsList from "./PartsList.svelte";
 
-  let { snapshot }: { snapshot: ProjectSnapshot } = $props();
+  let {
+    session,
+    zoom,
+    onzoom,
+  }: { session: Session; zoom: number; onzoom: (by: number) => void } = $props();
 
-  // The snapshot is a fixture here and never changes; prompt 21 replaces this
-  // with a session that pushes new ones.
-  const workspace = untrack(() => new Workspace(snapshot));
-  const score = $derived(snapshot.score);
+  // Read through, never copied: the session replaces the snapshot on every
+  // revision, and a selection is only meaningful against the current one.
+  const workspace = new Workspace(() => session.snapshot as ProjectSnapshot);
+
+  const snapshot = $derived(session.snapshot);
+  const score = $derived(snapshot?.score ?? null);
   const focused = $derived(workspace.focused);
-
-  let zoomStep = $state(ZOOM_STEPS.indexOf(100));
-  let drawerOpen = $state(false);
-  const zoom = $derived(ZOOM_STEPS[zoomStep] ?? 100);
-
-  function stepZoom(by: number): void {
-    zoomStep = Math.min(Math.max(zoomStep + by, 0), ZOOM_STEPS.length - 1);
-  }
+  const problems = $derived(snapshot?.diagnostics.filter((d) => d.severity === "error") ?? []);
 </script>
 
-{#if score}
+{#if snapshot && score}
   <div class="workspace">
     <Margin side="top">
       <h1 class="title">{score.title}</h1>
+
+      <!--
+        The top margin carries whatever the interface currently has to say:
+        a completed operation for three seconds, a failure until it is
+        superseded, and — the one that matters — how far behind the page is
+        while the source has problems (`05-states.md` §4).
+      -->
+      {#if session.notice}
+        <p class="notice" class:failure={session.notice.tone === "failure"} role="status">
+          {session.notice.message}
+        </p>
+      {:else if session.stale && session.shownRevision !== null}
+        <p class="notice stale" role="status">
+          Showing revision {session.shownRevision} — the current source has {problems.length}
+          {problems.length === 1 ? "problem" : "problems"}
+        </p>
+      {/if}
+
       <div class="controls">
         <div class="transport">
-          <button type="button" class="text" disabled>Play</button>
-          <button type="button" class="text" disabled>Stop</button>
+          <button
+            type="button"
+            class="text"
+            disabled={!session.live}
+            onclick={() => void session.play()}>Play</button
+          >
+          <button
+            type="button"
+            class="text"
+            disabled={!session.live || !snapshot.playback.playing}
+            onclick={() => void session.stop()}>Stop</button
+          >
           <GlyphButton glyph={REPEAT_RIGHT_LEFT} label="Loop the selection" disabled />
         </div>
         <TransportReadout
           {score}
           playback={snapshot.playback}
+          stale={session.stale}
           bar={focused?.bar ?? 1}
           beat={focused?.beat ?? { numerator: 1, denominator: 1 }}
         />
         <div class="zoom">
-          <button type="button" class="text" onclick={() => stepZoom(-1)} aria-label="Zoom out"
+          <button type="button" class="text" onclick={() => onzoom(-1)} aria-label="Zoom out"
             >−</button
           >
           <span class="level">{zoom}&thinsp;%</span>
-          <button type="button" class="text" onclick={() => stepZoom(1)} aria-label="Zoom in"
+          <button type="button" class="text" onclick={() => onzoom(1)} aria-label="Zoom in"
             >+</button
           >
         </div>
@@ -75,7 +99,7 @@
       </Margin>
 
       <div class="stage">
-        <Leaf>
+        <Leaf stale={session.stale}>
           <Score
             mei={snapshot.mei ?? ""}
             revision={snapshot.scoreRevision ?? snapshot.revision}
@@ -91,7 +115,13 @@
     </div>
 
     <Margin side="bottom">
-      <Drawer source={snapshot.source} diagnostics={snapshot.diagnostics} bind:open={drawerOpen} />
+      <Drawer
+        source={session.text}
+        editable={session.live}
+        diagnostics={snapshot.diagnostics}
+        onedit={(text) => session.edit(text)}
+        bind:open={session.drawerOpen}
+      />
     </Margin>
   </div>
 {/if}
@@ -110,6 +140,19 @@
     font-weight: 400;
     margin: 0;
     color: var(--ink);
+  }
+
+  .notice {
+    margin: 0;
+    font-family: var(--f-ui);
+    font-size: var(--t-small-size);
+    line-height: var(--t-small-line);
+    color: var(--ink-muted);
+  }
+
+  .notice.stale,
+  .notice.failure {
+    color: var(--chalk);
   }
 
   .controls {

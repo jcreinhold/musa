@@ -1,7 +1,7 @@
 ---
 id: 21
 slug: desktop-shell
-status: in-progress
+status: done
 depends_on: [20]
 phase: 1.5
 ---
@@ -71,8 +71,14 @@ is the only new concept: a narrow, typed command surface with no semantics in it
 - `apps/musa-desktop/ui`: `session` store, live snapshot rendering, debounced source editing, stale-revision and empty
   states, theme following the OS with a manual override.
 - Tests: Rust tests for DTO round-trips and that `open → apply(invalid) → snapshot` retains the last-valid artifacts;
-  Playwright smoke against `tauri dev` (open `examples/glass-mountain.musa`, score appears, edit to invalid, score
-  unchanged and edge is chalk, revert, play issues transport); perf assertions for B1, B6, B7, B10.
+  a Playwright smoke test (open a piece, score appears, edit to invalid, score unchanged and edge is chalk, revert, play
+  issues transport); perf assertions for B1, B6, B7, B10.
+
+  The smoke test runs against the Vite dev server with a stubbed IPC layer, not against `tauri dev`: `tauri-driver` has
+  no macOS support, so a real webview cannot be automated on the development platform. `06-performance.md` §2 already
+  names this substitution. What the stub answers is the *shape* the core guarantees — a new revision, the same score,
+  diagnostics when the source is invalid — and that the real core keeps those guarantees is asserted in Rust. Driving a
+  real window belongs to a CI prompt on a platform that supports it.
 
 ## Check
 
@@ -80,6 +86,7 @@ is the only new concept: a narrow, typed command surface with no semantics in it
 cargo nextest run -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
+cargo nextest run -p musa-desktop
 cd apps/musa-desktop/ui && npm ci && npm run check && npm run test && npm run build
 cd apps/musa-desktop && cargo tauri dev   # manual: open glass-mountain.musa, break the source, press play
 ```

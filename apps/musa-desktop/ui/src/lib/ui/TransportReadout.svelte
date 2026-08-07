@@ -18,12 +18,20 @@
     playback,
     bar,
     beat,
-  }: { score: ScoreFacts; playback: PlaybackState; bar: number; beat: Rational } = $props();
+    stale = false,
+  }: {
+    score: ScoreFacts;
+    playback: PlaybackState;
+    bar: number;
+    beat: Rational;
+    /** What you hear is the last valid plan, not the text (`05-states.md` §4). */
+    stale?: boolean;
+  } = $props();
 
   const note = $derived(tempoNote(score.tempoBeat.numerator, score.tempoBeat.denominator));
 </script>
 
-<div class="readout">
+<div class="readout" class:stale>
   <div class="where">
     <Position {bar} {beat} />
     <span class="time">{elapsed(playback.positionFrames, playback.sampleRate)}</span>
@@ -62,6 +70,11 @@
     display: flex;
     align-items: baseline;
     gap: var(--s-2);
+  }
+
+  .stale .time,
+  .stale :global(.bar) {
+    color: var(--chalk);
   }
 
   .time {

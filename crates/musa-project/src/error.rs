@@ -7,8 +7,13 @@
 /// (roadmap §14.7), reported through
 /// [`ProjectSnapshot`](crate::ProjectSnapshot). This type covers the cases
 /// where the session could not carry out the operation at all.
+///
+/// The enum is deliberately exhaustive. The workspace forbids wildcard match
+/// arms, so consumers — the CLI, the desktop shell — match every variant, and
+/// adding one here is a compile error until each of them decides what the new
+/// failure means to a user. That is the check we want; `#[non_exhaustive]`
+/// would trade it for a source compatibility this workspace has no use for.
 #[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
 pub enum ProjectError {
     /// The project file could not be read or written.
     #[error("cannot access {path}: {source}")]

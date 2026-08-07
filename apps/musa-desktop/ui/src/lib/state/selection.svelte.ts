@@ -25,12 +25,21 @@ function voiceEvents(snapshot: ProjectSnapshot, part: string, voice: string): Ev
 }
 
 export class Workspace {
-  readonly snapshot: ProjectSnapshot;
+  /**
+   * Read on demand rather than copied, because the session replaces the
+   * snapshot on every revision and a selection that outlived its score would
+   * describe notes that are no longer there.
+   */
+  readonly #read: () => ProjectSnapshot;
   selection = $state<Selection>({ kind: "none" });
   hovered = $state<string | null>(null);
 
-  constructor(snapshot: ProjectSnapshot) {
-    this.snapshot = snapshot;
+  constructor(read: () => ProjectSnapshot) {
+    this.#read = read;
+  }
+
+  get snapshot(): ProjectSnapshot {
+    return this.#read();
   }
 
   /** Every event id the selection covers, in score order. */

@@ -12,8 +12,16 @@
   let {
     source,
     diagnostics,
+    editable = false,
+    onedit,
     open = $bindable(false),
-  }: { source: string; diagnostics: Diagnostic[]; open?: boolean } = $props();
+  }: {
+    source: string;
+    diagnostics: Diagnostic[];
+    editable?: boolean;
+    onedit?: (source: string) => void;
+    open?: boolean;
+  } = $props();
 
   const errors = $derived(diagnostics.filter((diagnostic) => diagnostic.severity === "error"));
 </script>
@@ -32,7 +40,23 @@
 
   {#if open}
     <div class="panes">
-      <pre class="source">{source}</pre>
+      {#if editable}
+        <!--
+          Plain text, in the mono face the value type already uses. Syntax
+          highlighting and structural editing are prompts 25 and 26; typing
+          into a textarea is the whole of source editing here, and it is
+          already the fastest path from an idea to a sound.
+        -->
+        <textarea
+          class="source"
+          spellcheck="false"
+          aria-label="Source"
+          value={source}
+          oninput={(event) => onedit?.(event.currentTarget.value)}
+        ></textarea>
+      {:else}
+        <pre class="source">{source}</pre>
+      {/if}
       {#if diagnostics.length > 0}
         <ul class="diagnostics">
           {#each diagnostics as diagnostic, index (index)}
@@ -110,6 +134,10 @@
   .source {
     flex: 1;
     margin: 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    resize: none;
     font-family: var(--f-mono);
     font-size: var(--t-value-size);
     line-height: var(--t-value-line);

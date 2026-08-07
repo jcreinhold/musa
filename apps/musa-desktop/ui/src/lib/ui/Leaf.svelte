@@ -7,10 +7,16 @@
    */
   import type { Snippet } from "svelte";
 
-  let { children }: { children: Snippet } = $props();
+  /**
+   * `stale` turns the hairline `--chalk` while the source has problems and
+   * the engraving is older than the text (`05-states.md` §4). The score
+   * itself is untouched — not dimmed, not blurred, not overlaid: it is still
+   * correct, it is only older.
+   */
+  let { children, stale = false }: { children: Snippet; stale?: boolean } = $props();
 </script>
 
-<div class="leaf">{@render children()}</div>
+<div class="leaf" class:stale>{@render children()}</div>
 
 <style>
   .leaf {
@@ -19,5 +25,9 @@
     border: 1px solid var(--leaf-edge);
     border-radius: var(--radius-leaf);
     box-shadow: var(--leaf-shadow);
+  }
+
+  .leaf.stale {
+    border-color: var(--chalk);
   }
 </style>

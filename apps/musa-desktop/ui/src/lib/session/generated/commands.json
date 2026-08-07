@@ -1,0 +1,114 @@
+[
+  {
+    "id": "file.new",
+    "title": "New piece",
+    "section": "file",
+    "accelerator": "CmdOrCtrl+N",
+    "available": true
+  },
+  {
+    "id": "file.open",
+    "title": "Open a piece",
+    "section": "file",
+    "accelerator": "CmdOrCtrl+O",
+    "available": true
+  },
+  {
+    "id": "file.save",
+    "title": "Save",
+    "section": "file",
+    "accelerator": "CmdOrCtrl+S",
+    "available": true
+  },
+  {
+    "id": "file.export.mei",
+    "title": "Export MEI",
+    "section": "file",
+    "accelerator": null,
+    "available": true
+  },
+  {
+    "id": "file.export.lilypond",
+    "title": "Export LilyPond",
+    "section": "file",
+    "accelerator": null,
+    "available": true
+  },
+  {
+    "id": "file.export.wav",
+    "title": "Export WAV",
+    "section": "file",
+    "accelerator": null,
+    "available": true
+  },
+  {
+    "id": "edit.undo",
+    "title": "Undo",
+    "section": "edit",
+    "accelerator": "CmdOrCtrl+Z",
+    "available": true
+  },
+  {
+    "id": "edit.redo",
+    "title": "Redo",
+    "section": "edit",
+    "accelerator": "CmdOrCtrl+Shift+Z",
+    "available": true
+  },
+  {
+    "id": "edit.format",
+    "title": "Format the source",
+    "section": "edit",
+    "accelerator": "CmdOrCtrl+Shift+F",
+    "available": true
+  },
+  {
+    "id": "view.zoom.out",
+    "title": "Zoom out",
+    "section": "view",
+    "accelerator": "CmdOrCtrl+-",
+    "available": true
+  },
+  {
+    "id": "view.zoom.in",
+    "title": "Zoom in",
+    "section": "view",
+    "accelerator": "CmdOrCtrl+=",
+    "available": true
+  },
+  {
+    "id": "view.zoom.reset",
+    "title": "Reset zoom",
+    "section": "view",
+    "accelerator": "CmdOrCtrl+0",
+    "available": true
+  },
+  {
+    "id": "view.drawer",
+    "title": "Show the source",
+    "section": "view",
+    "accelerator": "CmdOrCtrl+'",
+    "available": true
+  },
+  {
+    "id": "view.theme",
+    "title": "Switch theme",
+    "section": "view",
+    "accelerator": null,
+    "available": true
+  },
+  {
+    "id": "view.palette",
+    "title": "Command palette",
+    "section": "view",
+    "accelerator": "CmdOrCtrl+K",
+    "available": false
+  },
+  {
+    "id": "help.keys",
+    "title": "Keyboard sheet",
+    "section": "help",
+    "accelerator": "?",
+    "available": false
+  }
+]

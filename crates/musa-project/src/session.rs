@@ -114,6 +114,16 @@ impl ProjectSession {
         Ok(session)
     }
 
+    /// A new piece that has not been given a home yet.
+    ///
+    /// A new file is playable before it is saved: the "New piece" state of
+    /// `docs/interface/05-states.md` §2 shows a real engraved system and puts
+    /// the caret in it, and asking for a path first would make the empty
+    /// state a file dialog.
+    pub fn new_piece(template: Template, title: &str) -> Self {
+        Self::from_text(template.source(title), format!("{title}.musa"))
+    }
+
     /// A session over text with no file behind it, for callers that hold the
     /// document themselves (tests, and the desktop app's scratch buffer).
     pub fn from_text(source: impl Into<String>, name: impl Into<String>) -> Self {
