@@ -1,7 +1,7 @@
 ---
 id: 17
 slug: polysynth-wav
-status: pending
+status: done
 depends_on: [16]
 phase: 1
 ---

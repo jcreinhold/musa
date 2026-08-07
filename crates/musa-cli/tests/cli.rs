@@ -65,3 +65,53 @@ fn format_check_fails_on_an_unformatted_file() -> std::io::Result<()> {
     assert!(!output.status.success());
     std::fs::remove_file(&path)
 }
+
+// --- WAV export (prompt 17) -----------------------------------------------------
+
+/// Every shipped example renders to WAV deterministically (same source →
+/// byte-identical bytes, §17.5) with the expected header.
+#[test]
+fn wav_export_is_deterministic_for_all_examples() -> std::io::Result<()> {
+    let examples = format!("{}/../../examples", env!("CARGO_MANIFEST_DIR"));
+    let mut count = 0usize;
+    for entry in std::fs::read_dir(&examples)? {
+        let entry = entry?;
+        if entry.path().extension().and_then(|e| e.to_str()) != Some("musa") {
+            continue;
+        }
+        count += 1;
+        let source = entry.path();
+        let first = std::env::temp_dir().join(format!("musa-cli-test-{}-a.wav", std::process::id()));
+        let second = std::env::temp_dir().join(format!("musa-cli-test-{}-b.wav", std::process::id()));
+        for target in [&first, &second] {
+            let output = musa(&[
+                "render",
+                &source.to_string_lossy(),
+                "--to",
+                "wav",
+                "-o",
+                &target.to_string_lossy(),
+            ])?;
+            assert!(
+                output.status.success(),
+                "{}: stderr: {:?}",
+                source.display(),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+        let a = std::fs::read(&first)?;
+        let b = std::fs::read(&second)?;
+        assert_eq!(a, b, "{}: WAV render is not deterministic", source.display());
+        assert_eq!(
+            a.get(0..4),
+            Some(b"RIFF".as_slice()),
+            "{}: not a WAV file",
+            source.display()
+        );
+        assert!(a.len() > 44, "{}: suspiciously small WAV", source.display());
+        std::fs::remove_file(&first)?;
+        std::fs::remove_file(&second)?;
+    }
+    assert!(count >= 3, "expected at least 3 examples, found {count}");
+    Ok(())
+}

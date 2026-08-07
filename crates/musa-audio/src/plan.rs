@@ -15,6 +15,7 @@ use musa_compiler::PerformanceEvent;
 
 use crate::error::GraphError;
 use crate::spec::{Connection, GraphOptions, NodeId, PortKind, ProcessorSpec, StudioGraphSpec};
+use crate::voice::VoiceAllocator;
 
 /// A slice of scheduled performance events for one render call.
 ///
@@ -52,6 +53,9 @@ pub struct RenderPlan {
     /// Buffer index of the master output (stereo planar or mono).
     master: usize,
     master_channels: usize,
+    /// Absolute frames rendered so far (event dispatch window base).
+    cursor: u64,
+    sample_rate: u32,
 }
 
 struct Step {
@@ -62,6 +66,8 @@ struct Step {
     outputs: Vec<usize>,
     /// Preallocated scratch for taken output buffers (capacity = outputs).
     taken: Vec<Box<[f32]>>,
+    /// Whether this processor consumes scheduled note events (§13.5).
+    takes_events: bool,
 }
 
 enum ProcessorInstance {
@@ -74,10 +80,25 @@ enum ProcessorInstance {
     Splitter,
     MonoToStereo,
     StereoToMono,
+    PolySine { allocator: VoiceAllocator },
 }
 
 impl ProcessorInstance {
-    fn instantiate(spec: &StudioGraphSpec, node: NodeId, processor: ProcessorSpec) -> Self {
+    /// Deliver a scheduled event. Only event-consuming processors act.
+    fn apply_event(&mut self, event: &PerformanceEvent) {
+        let Self::PolySine { allocator } = self else {
+            return;
+        };
+        match event {
+            PerformanceEvent::NoteOn { note, instance, .. } => {
+                allocator.note_on(*instance, note.frequency as f32);
+            }
+            PerformanceEvent::NoteOff { instance, .. } => allocator.note_off(*instance),
+            PerformanceEvent::Parameter { .. } => {}
+        }
+    }
+
+    fn instantiate(spec: &StudioGraphSpec, node: NodeId, processor: ProcessorSpec, sample_rate: u32) -> Self {
         let param = |name: &str| {
             processor
                 .parameters()
@@ -97,6 +118,9 @@ impl ProcessorInstance {
             ProcessorSpec::Gain => Self::Gain { gain: param("gain") },
             ProcessorSpec::Pan => Self::Pan { pan: param("pan") },
             ProcessorSpec::Mixer { .. } => Self::Mixer,
+            ProcessorSpec::PolySine { voices } => Self::PolySine {
+                allocator: VoiceAllocator::new(voices, sample_rate),
+            },
             ProcessorSpec::Splitter => Self::Splitter,
             ProcessorSpec::MonoToStereo => Self::MonoToStereo,
             ProcessorSpec::StereoToMono => Self::StereoToMono,
@@ -206,11 +230,13 @@ pub fn compile_graph(spec: &StudioGraphSpec, options: &GraphOptions) -> Result<R
             .map(|(port, _)| port_buffers.get(&(*id, port)).copied().unwrap_or(0))
             .collect::<Vec<usize>>();
         let taken = Vec::with_capacity(outputs.len());
+        let takes_events = processor.input_ports().contains(&PortKind::NoteEvents);
         schedule.push(Step {
-            instance: ProcessorInstance::instantiate(spec, *id, processor),
+            instance: ProcessorInstance::instantiate(spec, *id, processor, options.sample_rate),
             inputs,
             outputs,
             taken,
+            takes_events,
         });
     }
 
@@ -225,6 +251,8 @@ pub fn compile_graph(spec: &StudioGraphSpec, options: &GraphOptions) -> Result<R
         buffers,
         master,
         master_channels,
+        cursor: 0,
+        sample_rate: options.sample_rate,
     })
 }
 
@@ -304,12 +332,25 @@ impl RenderPlan {
         let mut written = 0;
         while written < frames {
             let count = (frames - written).min(block);
+            let window_start = self.cursor;
+            let window_end = window_start.saturating_add(count as u64);
             for step in &mut self.schedule {
+                if step.takes_events {
+                    for event in window(events.events(), window_start, window_end) {
+                        step.instance.apply_event(event);
+                    }
+                }
                 process_step(step, &mut self.buffers, count, sample_rate, block);
             }
             self.copy_master(output, written, count, block);
             written = written.saturating_add(count);
+            self.cursor = window_end;
         }
+    }
+
+    /// The plan's sample rate.
+    pub fn sample_rate(&self) -> u32 {
+        self.sample_rate
     }
 
     /// Interleave the master buffer into `output[2*written .. 2*(written+count)]`.
@@ -332,6 +373,13 @@ impl RenderPlan {
             }
         }
     }
+}
+
+/// Events with frames in `[start, end)` (slice is sorted by frame).
+fn window(events: &[PerformanceEvent], start: u64, end: u64) -> &[PerformanceEvent] {
+    let from = events.partition_point(|event| event.frame() < start);
+    let to = events.partition_point(|event| event.frame() < end);
+    events.get(from..to).unwrap_or(&[])
 }
 
 /// Run one processor for `count` frames. Output buffers move out of the
@@ -474,6 +522,17 @@ fn process(
                     if let Some(slot) = out.get_mut(block.saturating_add(i)) {
                         *slot = mono;
                     }
+                }
+            }
+        }
+        ProcessorInstance::PolySine { allocator } => {
+            // Render the voice pool mono into the left half, then mirror.
+            if let Some(out) = outputs.first_mut() {
+                let (left, right) = out.split_at_mut(block);
+                allocator.render(left, count, sample_rate);
+                let (source, target) = (left.get(..count), right.get_mut(..count));
+                if let (Some(source), Some(target)) = (source, target) {
+                    target.copy_from_slice(source);
                 }
             }
         }

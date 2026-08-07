@@ -14,11 +14,17 @@
 //! callers see `build` and `render` (§3).
 
 mod error;
+mod instrument;
+mod offline;
 mod plan;
 mod spec;
+mod voice;
 
 pub use crate::error::GraphError;
+pub use crate::instrument::poly_sine_spec;
+pub use crate::offline::{RenderedAudio, render_offline};
 pub use crate::plan::{EventSlice, RenderPlan, compile_graph};
 pub use crate::spec::{
     Combination, GraphOptions, NodeId, ParameterDescriptor, PortKind, ProcessorSpec, Smoothing, StudioGraphSpec, Unit,
 };
+pub use crate::voice::VoiceAllocator;

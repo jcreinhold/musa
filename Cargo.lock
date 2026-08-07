@@ -329,7 +329,9 @@ dependencies = [
 name = "musa-cli"
 version = "0.1.0"
 dependencies = [
+ "hound",
  "miette",
+ "musa-audio",
  "musa-compiler",
  "musa-language",
  "musa-project",

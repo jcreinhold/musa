@@ -113,6 +113,12 @@ pub enum ProcessorSpec {
     MonoToStereo,
     /// Stereo → mono adapter (average).
     StereoToMono,
+    /// Polyphonic sine synthesizer (§13.5: voice allocator → oscillator
+    /// bank → placeholder envelope). Input: note events; output: stereo.
+    PolySine {
+        /// Voice-pool size.
+        voices: u8,
+    },
 }
 
 impl ProcessorSpec {
@@ -120,6 +126,7 @@ impl ProcessorSpec {
     pub fn input_ports(&self) -> Vec<PortKind> {
         match self {
             Self::Sine | Self::Noise | Self::Constant => Vec::new(),
+            Self::PolySine { .. } => vec![PortKind::NoteEvents],
             Self::Gain | Self::Splitter | Self::MonoToStereo | Self::Pan => vec![PortKind::Audio { channels: 1 }],
             Self::Mixer { inputs } => vec![PortKind::Audio { channels: 2 }; usize::from(*inputs)],
             Self::StereoToMono => vec![PortKind::Audio { channels: 2 }],
@@ -132,7 +139,9 @@ impl ProcessorSpec {
             Self::Sine | Self::Noise | Self::Gain => vec![PortKind::Audio { channels: 1 }],
             Self::Splitter => vec![PortKind::Audio { channels: 1 }, PortKind::Audio { channels: 1 }],
             Self::Constant => vec![PortKind::Control],
-            Self::Pan | Self::MonoToStereo | Self::Mixer { .. } => vec![PortKind::Audio { channels: 2 }],
+            Self::Pan | Self::MonoToStereo | Self::Mixer { .. } | Self::PolySine { .. } => {
+                vec![PortKind::Audio { channels: 2 }]
+            }
             Self::StereoToMono => vec![PortKind::Audio { channels: 1 }],
         }
     }
@@ -176,7 +185,12 @@ impl ProcessorSpec {
             Self::Constant => &[VALUE],
             Self::Gain => &[GAIN],
             Self::Pan => &[PAN],
-            Self::Noise | Self::Mixer { .. } | Self::Splitter | Self::MonoToStereo | Self::StereoToMono => &[],
+            Self::Noise
+            | Self::Mixer { .. }
+            | Self::Splitter
+            | Self::MonoToStereo
+            | Self::StereoToMono
+            | Self::PolySine { .. } => &[],
         }
     }
 

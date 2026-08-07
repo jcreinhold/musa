@@ -36,6 +36,8 @@ fn print_usage() {
 
 /// `musa render <file> --to plan` — debug dump of the notation plan (the
 /// snapshot surface until MEI exists; real backends arrive in prompts 08+).
+mod orchestrate;
+
 fn cmd_render(args: &[String]) -> ExitCode {
     let mut path: Option<&str> = None;
     let mut target = "plan";
@@ -101,8 +103,15 @@ fn cmd_render(args: &[String]) -> ExitCode {
         }
         "mei" => render_backend(path, &score, musa_render::NotationTarget::Mei, output, "mei"),
         "lilypond" => render_backend(path, &score, musa_render::NotationTarget::LilyPond, output, "ly"),
+        "wav" => match orchestrate::render_to_wav(&score) {
+            Ok(rendered) => write_bytes(path, &rendered.bytes, output, "wav"),
+            Err(error) => {
+                eprintln!("error: {error}");
+                ExitCode::FAILURE
+            }
+        },
         other => {
-            eprintln!("error: --to {other} is not implemented yet (plan | mei | lilypond | performance)");
+            eprintln!("error: --to {other} is not implemented yet (plan | mei | lilypond | performance | wav)");
             ExitCode::FAILURE
         }
     }
@@ -175,6 +184,27 @@ fn write_output(input: &str, text: &str, output: Option<&str>, extension: &str) 
                 ExitCode::FAILURE
             }
         },
+    }
+}
+
+/// Write binary output (WAV) to `-o` or the input path with `extension`.
+fn write_bytes(input: &str, bytes: &[u8], output: Option<&str>, extension: &str) -> ExitCode {
+    let destination = match output {
+        Some(path) => path.to_string(),
+        None => std::path::Path::new(input)
+            .with_extension(extension)
+            .to_string_lossy()
+            .to_string(),
+    };
+    match std::fs::write(&destination, bytes) {
+        Ok(()) => {
+            println!("wrote {destination}");
+            ExitCode::SUCCESS
+        }
+        Err(error) => {
+            eprintln!("error: cannot write {destination}: {error}");
+            ExitCode::FAILURE
+        }
     }
 }
 
