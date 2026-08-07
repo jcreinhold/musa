@@ -13,6 +13,11 @@ TAURI   := $(CURDIR)/$(UI)/node_modules/.bin/tauri
 NPM     := npm --prefix $(UI)
 CARGO   := cargo
 
+# The dev server's port. Fixed rather than negotiated: `vite.config.ts` sets
+# `strictPort`, so a second server fails to start instead of drifting to 5174
+# and leaving `make stop` looking at the wrong one.
+UI_PORT := 5173
+
 # The example a target uses when you do not name one: `make play FILE=...`.
 FILE ?= examples/glass-mountain.musa
 # Where `make render` writes. WAV by default; `make render TO=mei` prints MEI.
@@ -30,6 +35,25 @@ desktop: node_modules ## Start the desktop app (Tauri shell + Svelte UI, hot rel
 .PHONY: ui
 ui: node_modules ## Start the UI alone in a browser, against the stubbed shell
 	$(NPM) run dev
+
+.PHONY: stop
+stop: ## Stop a running desktop app or UI dev server, however it was started
+	@# Three processes, because `make desktop` starts a tree and killing the
+	@# middle of it leaves the ends: the Tauri driver, the app binary it
+	@# builds and runs, and the Vite server its `beforeDevCommand` spawns.
+	@# Ordered outermost first, so the driver cannot restart what follows.
+	@#
+	@# The last one goes by *port* rather than by name because an orphan is
+	@# usually orphaned from a runner that is gone — a preview harness, a
+	@# closed terminal — and what identifies it then is the socket it is
+	@# still holding, which is also what makes the next `make ui` fail.
+	@pkill -f 'node_modules/.bin/tauri dev' 2>/dev/null || true
+	@pkill -x musa-desktop 2>/dev/null || true
+	@pids=$$(lsof -ti tcp:$(UI_PORT) 2>/dev/null || true); \
+	if [ -n "$$pids" ]; then kill $$pids 2>/dev/null || true; fi
+	@# Silent when there was nothing to stop: a stop target that fails on an
+	@# already-stopped tree is one nobody runs before `make ui`.
+	@echo "stopped: nothing is listening on $(UI_PORT)"
 
 .PHONY: check-file
 check-file: ## Compile one .musa file and print its diagnostics (FILE=...)
