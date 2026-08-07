@@ -62,6 +62,14 @@ per iteration and are exact rather than sampled.
 | 39 | P3 | large | 220 µs | 7 852 | 853 KB |
 | 39 | P4 | small | 38 µs | 367 | 13.1 KB |
 | 39 | P4 | large | 2.13 ms | 30 934 | 1.09 MB |
+| 40 | P1 | small | 55 µs | 2 036 | 137 KB |
+| 40 | P1 | large | 1.26 ms | 50 836 | 3.75 MB |
+| 40 | P2 | small | 39 µs | 1 788 | 116 KB |
+| 40 | P2 | large | 1.09 ms | 49 135 | 3.55 MB |
+| 40 | P3 | small | 3.1 µs | 127 | 11.1 KB |
+| 40 | P3 | large | 208 µs | 7 852 | 853 KB |
+| 40 | P4 | small | 29 µs | 367 | 17.6 KB |
+| 40 | P4 | large | 1.56 ms | 30 934 | 1.51 MB |
 
 Two things the baseline already says, recorded here rather than acted on (prompt 38 changes nothing it measures):
 
@@ -80,6 +88,17 @@ and where it can be measured. Allocation is where the cost shows, as prompt 38 p
 The trade is the one the migration was for: a slur is stored once instead of once per note it covers, and the
 `Vec<u32>` every note carried is gone. Prompt 43 is where the `Canonical` `String` keys — still the largest single
 line in P4 — get their measurement.
+
+Prompt 40's row, read against 39's: **P1 large −6%, P2 large −8%, P3 large −5%, P4 large −27%**. Nothing regressed, so
+the block's gate is not engaged; the numbers are recorded because the P4 movement is a real change rather than noise.
+
+The piece timeline gained two occurrences (a key and a meter) and the large workload's P1/P2 allocation counts moved by
+twelve — the cost of putting the context maps in the timeline is, as §21 predicted, nothing. **P4 is where the work
+went.** `Canonical::canonical_key` used to build its scope prefix with one `format!` and the whole key with another;
+it now writes into a single `String` sized up front. Allocation *count* is identical (30 934 either way, because P3 and
+P4 measure the voice lanes only), but reallocation is not: `grow` fell from 24 478 per iteration to 310. That is the
+first of the two `Canonical` costs prompt 38 flagged; the `String` keys themselves are still there, and still prompt
+43's to measure.
 
 ## The rule
 

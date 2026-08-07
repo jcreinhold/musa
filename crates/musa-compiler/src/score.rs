@@ -260,6 +260,15 @@ pub struct TempoChange {
 /// minute; turning that into frames is the performance layer's job
 /// ([`crate::IntegratedTempoMap`]), and no note in the score moves because a
 /// tempo changed.
+///
+/// Prompt 40 moved key, meter, sections and chord symbols into the timeline
+/// as occurrences and left tempo here, which looks like an omission and is
+/// not. Course correction **§22**: a tempo is a map from symbolic time to
+/// physical time, applied at realization. `stretch` changes the music; a
+/// tempo change changes the performance of it. Making tempo a fact of the
+/// timeline would offer a place where those two could be confused, and the
+/// first person to confuse them would write a `stretch` that means
+/// *ritardando* and a tempo change that re-bars the score.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TempoMap {
     /// The beat unit as a fraction of a whole note (`1/4` for a quarter).

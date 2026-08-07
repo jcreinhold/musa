@@ -28,16 +28,17 @@
 use crate::compile::{Compilation, SourceDocument};
 use crate::lower::{self, ExpandCx, Lowering};
 use crate::origin::{ExpansionStep, Origin, SourceSpan};
-use crate::pitch::WrittenPitch;
+use crate::pitch::{PitchClass, WrittenPitch};
 use crate::score::{
-    ArticulationMark, DynamicMark, HarmonyMark, NotatedDuration, Part, PartId, ScoreSnapshot, SectionMark, TempoChange,
-    Voice, VoiceId,
+    ArticulationMark, DynamicMark, MeterMap, Mode, NotatedDuration, Part, PartId, ScoreSnapshot, TempoChange, Voice,
+    VoiceId,
 };
 use crate::time::MusicalTime;
 use musa_kernel::{Beat, Occurrence, Span, Timeline, overlay, sequence, timeline};
 use musa_language::SyntaxNode;
 use musa_language::ast::{AstNode as _, PieceDecl, VoiceItem};
 use num_rational::Ratio;
+use std::fmt::Write as _;
 
 /// Where a fact sits in the score's *structure*.
 ///
@@ -45,19 +46,23 @@ use num_rational::Ratio;
 /// the two apart is the point (docs/kernel/03). A slur moves in time without
 /// changing voice; a voice is renamed without moving anything.
 ///
-/// Piece and part scopes arrive with the score-level facts of prompt 40; a
-/// variant with no producer would be a public item with no caller.
+/// A part scope arrives when a part-wide fact does; a variant with no
+/// producer would be a public item with no caller.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Scope {
+    /// The piece as a whole: key, meter, form markers, chord symbols.
+    Piece,
     /// One voice of one part, by the ids the snapshot uses.
     Voice { part: u32, voice: u32 },
 }
 
 impl Scope {
-    /// The (part, voice) pair, for bucketing during projection.
-    pub(crate) fn voice(self) -> (u32, u32) {
+    /// The (part, voice) pair, for bucketing during projection, or `None`
+    /// when the fact belongs to the piece rather than to a voice.
+    pub(crate) fn voice(self) -> Option<(u32, u32)> {
         match self {
-            Self::Voice { part, voice } => (part, voice),
+            Self::Piece => None,
+            Self::Voice { part, voice } => Some((part, voice)),
         }
     }
 }
@@ -95,6 +100,16 @@ pub(crate) enum FactKind {
     Dynamic { mark: DynamicMark },
     /// A hairpin over the region it spans, and the mark it arrives at.
     Hairpin { grows: bool, target: DynamicMark },
+    /// The key signature, over the region it governs — the whole piece
+    /// while the grammar has no `modulate` (prompt 40).
+    Key { tonic: PitchClass, mode: Mode },
+    /// The meter, over the region it governs — likewise the whole piece.
+    Meter { numerator: u32, denominator: u32 },
+    /// A form marker at the place it names.
+    Section { name: String },
+    /// A chord symbol at the place it is written; a region once a chord's
+    /// duration can be written.
+    Harmony { symbol: crate::harmony::ChordSymbol },
 }
 
 impl FactKind {
@@ -108,7 +123,15 @@ impl FactKind {
     pub(crate) fn articulations_of(&self) -> &[ArticulationMark] {
         match self {
             Self::Note { articulations, .. } | Self::Rest { articulations, .. } => articulations,
-            Self::Slur | Self::Phrase { .. } | Self::Tuplet { .. } | Self::Dynamic { .. } | Self::Hairpin { .. } => &[],
+            Self::Slur
+            | Self::Phrase { .. }
+            | Self::Tuplet { .. }
+            | Self::Dynamic { .. }
+            | Self::Hairpin { .. }
+            | Self::Key { .. }
+            | Self::Meter { .. }
+            | Self::Section { .. }
+            | Self::Harmony { .. } => &[],
         }
     }
 
@@ -116,9 +139,15 @@ impl FactKind {
     pub(crate) fn duration_of(&self) -> Option<&NotatedDuration> {
         match self {
             Self::Note { duration, .. } | Self::Rest { duration, .. } => Some(duration),
-            Self::Slur | Self::Phrase { .. } | Self::Tuplet { .. } | Self::Dynamic { .. } | Self::Hairpin { .. } => {
-                None
-            }
+            Self::Slur
+            | Self::Phrase { .. }
+            | Self::Tuplet { .. }
+            | Self::Dynamic { .. }
+            | Self::Hairpin { .. }
+            | Self::Key { .. }
+            | Self::Meter { .. }
+            | Self::Section { .. }
+            | Self::Harmony { .. } => None,
         }
     }
 }
@@ -160,7 +189,11 @@ impl ScoreFact {
             | FactKind::Phrase { .. }
             | FactKind::Tuplet { .. }
             | FactKind::Dynamic { .. }
-            | FactKind::Hairpin { .. } => {}
+            | FactKind::Hairpin { .. }
+            | FactKind::Key { .. }
+            | FactKind::Meter { .. }
+            | FactKind::Section { .. }
+            | FactKind::Harmony { .. } => {}
         }
         stretched
     }
@@ -188,7 +221,11 @@ impl ScoreFact {
             | FactKind::Phrase { .. }
             | FactKind::Tuplet { .. }
             | FactKind::Dynamic { .. }
-            | FactKind::Hairpin { .. } => None,
+            | FactKind::Hairpin { .. }
+            | FactKind::Key { .. }
+            | FactKind::Meter { .. }
+            | FactKind::Section { .. }
+            | FactKind::Harmony { .. } => None,
         }
     }
 }
@@ -201,7 +238,6 @@ impl musa_kernel::Canonical for ScoreFact {
     /// before facts were heterogeneous, so a piece of plain notes has the
     /// normal form it has always had.
     fn canonical_key(&self) -> String {
-        let (part, voice) = self.scope.voice();
         let articulations = |marks: &[ArticulationMark]| {
             if marks.is_empty() {
                 String::new()
@@ -227,11 +263,34 @@ impl musa_kernel::Canonical for ScoreFact {
             FactKind::Hairpin { grows, target } => {
                 format!("hairpin:{}:{}|", if *grows { "cres" } else { "dim" }, target.name())
             }
+            FactKind::Key { tonic, mode } => {
+                let mode = match mode {
+                    Mode::Major => "major",
+                    Mode::Minor => "minor",
+                };
+                format!("key:{tonic}:{mode}|")
+            }
+            FactKind::Meter { numerator, denominator } => format!("meter:{numerator}/{denominator}|"),
+            FactKind::Section { name } => format!("section:{name}|"),
+            FactKind::Harmony { symbol } => format!("harmony:{}|", symbol.text),
         };
-        format!(
-            "{}|{}|{}|{}|{}|{:?}",
-            part, voice, kind, self.origin.source_span.start, self.origin.source_span.end, self.origin.expansion_path,
-        )
+        // Written rather than `format!`ed so the scope costs no second
+        // allocation: P4 walks every occurrence on every edit.
+        let mut key = String::with_capacity(kind.len().saturating_add(32));
+        match self.scope {
+            // `*` sorts before any part number, so at one instant the context
+            // a reader meets first is the context that prints first.
+            Scope::Piece => key.push_str("*|*|"),
+            Scope::Voice { part, voice } => {
+                let _ = write!(key, "{part}|{voice}|");
+            }
+        }
+        let _ = write!(
+            key,
+            "{}|{}|{}|{:?}",
+            kind, self.origin.source_span.start, self.origin.source_span.end, self.origin.expansion_path,
+        );
+        key
     }
 }
 
@@ -281,9 +340,8 @@ pub(crate) fn elaborate_parsed(
     elaborate_libraries(lowering, &libraries, &mut snapshot);
     lower::lower_header(lowering, &piece, &mut snapshot);
     if let Some(score) = piece.score() {
-        elaborate_score(lowering, &score, &mut snapshot);
-        elaborate_annotations(lowering, &score, &snapshot);
-        elaborate_tempo_changes(lowering, &piece, &mut snapshot);
+        let context = elaborate_score(lowering, &piece, &score, &mut snapshot);
+        elaborate_tempo_changes(lowering, &piece, &mut snapshot, &context);
     }
     snapshot.annotations = std::mem::take(&mut lowering.annotations);
     lower::check_measure_sanity(lowering, &snapshot);
@@ -308,14 +366,33 @@ pub(crate) fn elaborate_parsed(
     Compilation::new(Some(snapshot), std::mem::take(&mut lowering.diagnostics)).with_studio(studio)
 }
 
+/// What the piece timeline says about the piece as a whole, for the callers
+/// that need it after the projection has run.
+///
+/// Both fields are read *off the timeline* — the extent is the kernel's own,
+/// and the meter is the meter occurrence's payload — which is why no function
+/// in this module recomputes either from the snapshot.
+pub(crate) struct PieceContext {
+    /// Where the piece ends, in whole notes.
+    extent: MusicalTime,
+    /// The meter that governs it.
+    meter: MeterMap,
+}
+
 /// Walk parts and voices exactly as the direct lowerer does, elaborating
-/// each voice into kernel facts — and then overlay every one of them into a
-/// single `Timeline<ScoreFact>` for the whole piece, which is projected once.
+/// each voice into kernel facts — and then overlay every one of them, plus
+/// the piece's key, meter, form markers and chord symbols, into a single
+/// `Timeline<ScoreFact>` for the whole piece, which is projected once.
 ///
 /// One compilation, one temporal object (course correction §21). Part and
 /// voice identity live in `Scope`, not in a timeline per voice, which is the
 /// evidence Q3's working stance asked for.
-fn elaborate_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDecl, snapshot: &mut ScoreSnapshot) {
+fn elaborate_score(
+    lowering: &mut Lowering,
+    piece: &PieceDecl,
+    score: &musa_language::ast::ScoreDecl,
+    snapshot: &mut ScoreSnapshot,
+) -> PieceContext {
     let mut voice_names: indexmap::IndexMap<PartId, indexmap::IndexMap<VoiceId, String>> = indexmap::IndexMap::new();
     let mut metadata: Vec<(PartId, String, Option<crate::score::Clef>)> = Vec::new();
     let mut lanes: Vec<Timeline<ScoreFact>> = Vec::new();
@@ -359,8 +436,15 @@ fn elaborate_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDec
         metadata.push((id, name, clef));
     }
 
-    let piece = overlay(lanes);
-    let mut projected = crate::project::project(lowering, &piece);
+    let music = overlay(lanes);
+    let extent = music.extent();
+    let context = context_facts(lowering, piece, score, snapshot, extent);
+    let whole = overlay(vec![music, context]);
+    let projection = crate::project::project(lowering, &whole);
+    snapshot.key_map = projection.key;
+    snapshot.meter_map = projection.meter;
+    let meter = projection.meter;
+    let mut projected = projection.voices;
     for (id, name, clef) in metadata {
         let names = voice_names.swap_remove(&id).unwrap_or_default();
         let mut voices = indexmap::IndexMap::with_capacity(names.len());
@@ -381,33 +465,98 @@ fn elaborate_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDec
             },
         );
     }
+    PieceContext {
+        extent: MusicalTime::new(extent.as_ratio()),
+        meter,
+    }
 }
 
-/// Record the score's form markers and chord symbols (roadmap §8.2).
+/// The facts that are about the piece rather than about a voice: its key,
+/// its meter, its form markers, and its chord symbols (roadmap §8.2).
 ///
-/// These are the annotations written at a *position* rather than on a note,
-/// so they are resolved here, after the parts are elaborated and the piece
-/// has a length to be inside of. Nothing interprets them: a chord symbol is
-/// parsed so a later library can read it, and that is the end of the core's
-/// involvement.
-fn elaborate_annotations(lowering: &mut Lowering, score: &musa_language::ast::ScoreDecl, snapshot: &ScoreSnapshot) {
+/// Key and meter are *regions*. Today they cover `[0, d]`, because the
+/// grammar has no `modulate` and no mid-piece `meter`; when it grows one the
+/// change is more occurrences, not a second representation of the same
+/// question (prompt 40). A region that happens to cover everything is not a
+/// special case; a piece-wide scalar is.
+///
+/// Sections and chord symbols are *points*, resolved here because a position
+/// is only meaningful once the piece has a length to be inside of. Nothing
+/// interprets them: a chord symbol is parsed so a later library can read it,
+/// and that is the end of the core's involvement.
+fn context_facts(
+    lowering: &mut Lowering,
+    piece: &PieceDecl,
+    score: &musa_language::ast::ScoreDecl,
+    snapshot: &mut ScoreSnapshot,
+    extent: Beat,
+) -> Timeline<ScoreFact> {
     let declaration = crate::origin::DeclarationId::default();
-    let extent = piece_extent(snapshot);
+    let at_span = |span: SourceSpan| Origin {
+        source_span: span,
+        definition_span: span,
+        declaration,
+        expansion_path: Vec::new(),
+    };
+    // `lower_header` parsed the key and the meter out of the header; take
+    // them, so that the only thing which puts either back into the snapshot
+    // is the projection of the timeline they are about to enter.
+    let meter = std::mem::take(&mut snapshot.meter_map);
+    let key = snapshot.key_map.take();
+
+    let region = Span::new(Beat::ZERO, extent).unwrap_or(Span::ZERO);
+    let mut occurrences = vec![Occurrence::new(
+        region,
+        ScoreFact::new(
+            Scope::Piece,
+            FactKind::Meter {
+                numerator: meter.numerator,
+                denominator: meter.denominator,
+            },
+            // An unwritten meter is still a meter — 4/4 governs the piece
+            // whether or not anybody said so — so the fact exists either way
+            // and points at the header when there is one to point at.
+            at_span(
+                piece
+                    .meter()
+                    .map_or_else(|| SourceSpan::new(0, 0), |node| lower::span_of(node.syntax())),
+            ),
+        ),
+    )];
+    if let Some(key) = key {
+        occurrences.push(Occurrence::new(
+            region,
+            ScoreFact::new(
+                Scope::Piece,
+                FactKind::Key {
+                    tonic: key.tonic,
+                    mode: key.mode,
+                },
+                at_span(
+                    piece
+                        .key()
+                        .map_or_else(|| SourceSpan::new(0, 0), |node| lower::span_of(node.syntax())),
+                ),
+            ),
+        ));
+    }
+
+    let extent_time = MusicalTime::new(extent.as_ratio());
     for section in score.sections() {
         let span = lower::trimmed_span(section.syntax());
-        let Some(at) = resolve_position(lowering, section.position().as_ref(), span, snapshot, extent) else {
+        let Some(at) = resolve_position(lowering, section.position().as_ref(), span, meter, extent_time) else {
             continue;
         };
-        lowering.annotations.push_section(SectionMark {
-            name: section.name().unwrap_or_default(),
+        occurrences.push(point_at(
             at,
-            origin: Origin {
-                source_span: span,
-                definition_span: span,
-                declaration,
-                expansion_path: Vec::new(),
-            },
-        });
+            ScoreFact::new(
+                Scope::Piece,
+                FactKind::Section {
+                    name: section.name().unwrap_or_default(),
+                },
+                at_span(span),
+            ),
+        ));
     }
     let lanes = score.harmonies();
     for extra in lanes.iter().skip(1) {
@@ -418,7 +567,7 @@ fn elaborate_annotations(lowering: &mut Lowering, score: &musa_language::ast::Sc
     }
     for chord in lanes.iter().flat_map(musa_language::ast::HarmonyDecl::chords) {
         let span = lower::trimmed_span(chord.syntax());
-        let Some(at) = resolve_position(lowering, chord.position().as_ref(), span, snapshot, extent) else {
+        let Some(at) = resolve_position(lowering, chord.position().as_ref(), span, meter, extent_time) else {
             continue;
         };
         let Some(written) = chord.symbol() else {
@@ -433,17 +582,20 @@ fn elaborate_annotations(lowering: &mut Lowering, score: &musa_language::ast::Sc
             lowering.error(format!("`{text}` is not a chord symbol musa can read"), span);
             continue;
         };
-        lowering.annotations.push_harmony(HarmonyMark {
-            symbol,
+        occurrences.push(point_at(
             at,
-            origin: Origin {
-                source_span: span,
-                definition_span: span,
-                declaration,
-                expansion_path: Vec::new(),
-            },
-        });
+            ScoreFact::new(Scope::Piece, FactKind::Harmony { symbol }, at_span(span)),
+        ));
     }
+    timeline_or_empty(extent, occurrences)
+}
+
+/// A point occurrence at an absolute time, for the facts that are placed by
+/// coordinate rather than by where the cursor reached.
+fn point_at(at: MusicalTime, fact: ScoreFact) -> Occurrence<ScoreFact> {
+    let instant = Beat::new(at.as_ratio());
+    let span = Span::new(instant, instant).unwrap_or(Span::ZERO);
+    Occurrence::new(span, fact)
 }
 
 /// Register everything the imported libraries declare, before the piece's
@@ -475,13 +627,14 @@ fn elaborate_tempo_changes(
     lowering: &mut Lowering,
     piece: &musa_language::ast::PieceDecl,
     snapshot: &mut ScoreSnapshot,
+    context: &PieceContext,
 ) {
     let declaration = crate::origin::DeclarationId::default();
-    let extent = piece_extent(snapshot);
     let mut changes: Vec<TempoChange> = Vec::new();
     for tempo in piece.tempos().iter().filter(|tempo| tempo.position().is_some()) {
         let span = lower::trimmed_span(tempo.syntax());
-        let Some(at) = resolve_position(lowering, tempo.position().as_ref(), span, snapshot, extent) else {
+        let Some(at) = resolve_position(lowering, tempo.position().as_ref(), span, context.meter, context.extent)
+        else {
             continue;
         };
         if at == MusicalTime::ZERO {
@@ -509,28 +662,22 @@ fn elaborate_tempo_changes(
     snapshot.tempo_map.changes = changes;
 }
 
-/// How long the piece is: where its last event ends.
-fn piece_extent(snapshot: &ScoreSnapshot) -> MusicalTime {
-    snapshot
-        .parts
-        .iter()
-        .flat_map(|(_, part)| part.voices.values())
-        .flat_map(|voice| voice.events.iter())
-        .map(|event| event.onset + event.notated_duration.value)
-        .max()
-        .unwrap_or_default()
-}
-
 /// Turn a `measure:beat` coordinate into time, or report why it is not one.
 ///
 /// Measures and beats count from one, the way a composer reads them off the
 /// page, and a position past the end of the piece is an error: a chord symbol
 /// nobody will ever reach is a mistake, not a comment.
+///
+/// `meter` is the meter *occurrence*'s payload and `extent` is the timeline's
+/// own extent — neither is recomputed from the snapshot, which is the point
+/// of prompt 40. The extent is exact rather than a maximum over event ends,
+/// and a piece that ends in a rest still ends where the rest ends, because a
+/// rest is an occurrence.
 fn resolve_position(
     lowering: &mut Lowering,
     position: Option<&musa_language::ast::Position>,
     span: SourceSpan,
-    snapshot: &ScoreSnapshot,
+    meter: MeterMap,
     extent: MusicalTime,
 ) -> Option<MusicalTime> {
     let position = position?;
@@ -541,8 +688,8 @@ fn resolve_position(
         lowering.error("measures and beats count from `1:1`", span);
         return None;
     }
-    let measure_len = snapshot.meter_map.measure_len().as_ratio();
-    let beat_len = Ratio::new(1, i64::from(snapshot.meter_map.denominator.max(1)));
+    let measure_len = meter.measure_len().as_ratio();
+    let beat_len = Ratio::new(1, i64::from(meter.denominator.max(1)));
     let at = MusicalTime::new(measure_len * (measure - 1) + beat_len * (beat - Ratio::ONE));
     if at >= extent && extent > MusicalTime::default() {
         lowering.error(format!("the piece ends before `{measure}:{beat_text}`"), span);
@@ -1317,9 +1464,13 @@ fn check_tuplets(lowering: &mut Lowering, snapshot: &ScoreSnapshot) {
     }
 }
 
-/// The normalized kernel text of a source's part timelines, for golden
+/// The normalized kernel text of a source's piece timeline, for golden
 /// snapshots and semantic hashing (docs/kernel/05 N5–N6). `None` when the
 /// source does not elaborate cleanly.
+///
+/// One timeline, not one per part: after prompt 40 a compilation has exactly
+/// one temporal object, and the normal form is the text of that object —
+/// key, meter, form markers and chord symbols included.
 #[doc(hidden)]
 pub fn kernel_normal_form(source: &SourceDocument) -> Option<String> {
     let document = musa_language::parse(source.text());
@@ -1330,10 +1481,10 @@ pub fn kernel_normal_form(source: &SourceDocument) -> Option<String> {
     let mut lowering = Lowering::new();
     let mut snapshot = ScoreSnapshot::default();
     lower::lower_header(&mut lowering, &piece, &mut snapshot);
-    let mut out = String::new();
-    for (part_index, part) in piece.score()?.parts().iter().enumerate() {
+    let score = piece.score()?;
+    let mut lanes = Vec::new();
+    for (part_index, part) in score.parts().iter().enumerate() {
         let part_id = u32::try_from(part_index).unwrap_or(u32::MAX);
-        let mut lanes = Vec::new();
         for (index, voice) in part.voices().iter().enumerate() {
             let voice_key = lowering.declare(crate::lower::DeclInfo::Voice);
             let declaration = lower::ordinal(&lowering, voice_key);
@@ -1345,7 +1496,9 @@ pub fn kernel_normal_form(source: &SourceDocument) -> Option<String> {
                 u32::try_from(index).unwrap_or(u32::MAX),
             ));
         }
-        out.push_str(&overlay(lanes).to_string());
     }
-    Some(out)
+    let music = overlay(lanes);
+    let extent = music.extent();
+    let context = context_facts(&mut lowering, &piece, &score, &mut snapshot, extent);
+    Some(overlay(vec![music, context]).to_string())
 }

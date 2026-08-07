@@ -121,6 +121,31 @@ fn a_position_past_the_end_of_the_piece_is_an_error() {
     );
 }
 
+/// A piece that ends in silence still ends where the silence ends.
+///
+/// Prompt 40 replaced "the maximum over event ends" with the timeline's own
+/// extent, and the two agree only because a written rest is an occurrence
+/// (prompt 39). Stated as a fixture rather than as reasoning: a position
+/// inside the trailing rest is reachable, and one past it is not.
+#[test]
+fn a_piece_that_ends_in_a_rest_ends_where_the_rest_ends() {
+    let ending_in_silence = |annotations: &str| {
+        format!(
+            "piece \"P\" {{ tempo 1/4 = 60; meter 4/4; score {{ {annotations}
+                part piano {{ voice one {{ c4 1/4; rest 1/4; rest 1/2; rest 1; }} }} }} }}"
+        )
+    };
+    // The music stops at 1/4; the rests carry the piece to the end of bar 2.
+    assert!(errors_of(&ending_in_silence("section \"Fade\" at 2:1;")).is_empty());
+    let errors = errors_of(&ending_in_silence("section \"Gone\" at 3:1;"));
+    assert!(
+        errors
+            .iter()
+            .any(|message| message.contains("the piece ends before `3:1`")),
+        "expected a diagnostic naming the position, got {errors:?}"
+    );
+}
+
 #[test]
 fn a_beat_past_the_end_of_its_measure_is_an_error() {
     let errors = errors_of(&piece("section \"Late\" at 1:9;"));

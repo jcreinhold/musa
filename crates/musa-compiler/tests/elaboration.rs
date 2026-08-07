@@ -126,6 +126,26 @@ fn kernel_normal_forms_snapshot() {
     }
 }
 
+/// The key and the meter are occurrences, and the snapshot's context maps are
+/// a reading of them (prompt 40).
+///
+/// `fixtures_have_full_parity` already proves the reading reproduces the
+/// direct lowerer's answer; this says where the answer now comes from, which
+/// is the thing a refactor could quietly undo.
+#[test]
+fn the_key_and_the_meter_are_facts_of_the_timeline() {
+    let source = "piece \"x\" { meter 3/4; key bf major; score { part p { voice v { c4 1/4; } } } }";
+    let form = kernel_normal_form(&SourceDocument::new(source, "k")).expect("elaborates");
+    assert!(form.contains("meter:3/4"), "meter is not an occurrence: {form}");
+    assert!(form.contains("key:bf:major"), "key is not an occurrence: {form}");
+
+    let snapshot = compile_with(source, Elaboration::Kernel)
+        .into_snapshot()
+        .expect("compiles");
+    assert_eq!((snapshot.meter_map.numerator, snapshot.meter_map.denominator), (3, 4));
+    assert_eq!(snapshot.key_map.map(|key| key.tonic.to_string()), Some("bf".to_owned()));
+}
+
 /// The elaborated kernel timelines are the same under semantic equality no
 /// matter how the surface structured them: a written-out repeat equals its
 /// unrolling.

@@ -227,6 +227,14 @@ impl WrittenPitch {
             .saturating_add(i16::from(self.letter.steps()))
     }
 
+    /// The pitch class this pitch spells, without its octave.
+    pub fn pitch_class(self) -> PitchClass {
+        PitchClass {
+            letter: self.letter,
+            accidental: self.accidental,
+        }
+    }
+
     /// Semitones above `c0`: what the pitch sounds at, ignoring spelling.
     fn chromatic_index(self) -> i16 {
         i16::from(self.octave)
@@ -237,15 +245,7 @@ impl WrittenPitch {
 
 impl std::fmt::Display for WrittenPitch {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let accidental = match self.accidental.0 {
-            2 => "ss",
-            1 => "s",
-            0 => "",
-            -1 => "f",
-            -2 => "ff",
-            _ => "?",
-        };
-        write!(f, "{}{}{}", self.letter.as_char(), accidental, self.octave)
+        write!(f, "{}{}", self.pitch_class(), self.octave)
     }
 }
 
@@ -256,6 +256,22 @@ pub struct PitchClass {
     pub letter: Letter,
     /// The accidental.
     pub accidental: Accidental,
+}
+
+impl std::fmt::Display for PitchClass {
+    /// As the language spells it: `g`, `bf`, `fs`. One place spells a pitch
+    /// class, so a written pitch and a key tonic can never disagree.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let accidental = match self.accidental.0 {
+            2 => "ss",
+            1 => "s",
+            0 => "",
+            -1 => "f",
+            -2 => "ff",
+            _ => "?",
+        };
+        write!(f, "{}{}", self.letter.as_char(), accidental)
+    }
 }
 
 impl PitchClass {

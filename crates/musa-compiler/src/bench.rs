@@ -70,6 +70,7 @@ impl Timelines {
         let mut lowering = Lowering::new();
         let piece = musa_kernel::overlay(self.voices.clone());
         crate::project::project(&mut lowering, &piece)
+            .voices
             .values()
             .map(|voice| voice.events.len())
             .sum()

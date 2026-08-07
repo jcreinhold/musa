@@ -61,15 +61,19 @@ Decisions recorded against course correction §32:
 | `tuplet n/d { … }` | The body elaborates with the voice's duration scale multiplied by `d/n`, so written values become exact rationals (`3/2` of eighths gives `1/12`). A `ScoreFact::Tuplet` occurrence is overlaid over the body, and the projection emits a `TupletSpan` carrying the unreduced `n/d`, which is what the backends need to print the bracket. A tuplet that would cross a barline is a diagnostic. |
 | `performance { profile v { … } }` | **Nothing elaborates.** A profile is a reading of marks, not material: it produces no occurrence, occupies no time, and is carried on the snapshot beside the motif table for the performance layer to consult. Written marks stay written (§6.4). |
 | `profile v;` inside a part | **A binding, not an occurrence.** It names which profile realizes this part; naming an undeclared one is a diagnostic. Both semantic paths read it through the same `part_metadata`, so it cannot drift between them. |
-| `key`, `meter`, `tempo` declarations | **Context, not occurrences**, in the current grammar: they populate the snapshot's `KeyMap`/`MeterMap`/`TempoMap` exactly as the old lowerer does. |
-| piece | The one timeline, the context maps, and the profiles — **projected** into `ScoreSnapshot` (`musa-compiler/src/project.rs`). |
+| `key c major;`, `meter 4/4;` | **Region occurrences** of `ScoreFact::Key`/`Meter`, scoped to the piece and spanning `[0, d]`. An unwritten meter still produces a fact — 4/4 governs a piece that never says so — while an unwritten key produces none, which is why the projection's `key` is an `Option` and its `meter` is not. |
+| `section "A" at 9:1;`, `harmony { at 1:1 c; }` | **Point occurrences** of `ScoreFact::Section`/`Harmony` at the time the coordinate names. The coordinate is resolved against the *meter occurrence* and the timeline's own extent; naming a place the piece never reaches is a diagnostic. |
+| `tempo 1/4 = 60;`, `tempo 1/4 = 90 at 9:1;` | **Not a fact, ever** (§22). Tempo is the performance layer's `Beat → Second` map; it stays on the snapshot's `TempoMap`. See "Tempo stays out" below. |
+| piece | The one timeline **projected** into `ScoreSnapshot` (`musa-compiler/src/project.rs`): voices, context maps, and annotations alike. |
 
 ## The payload, and the adapter contract
 
 A `ScoreFact` has exactly three axes, and they vary independently:
 
-- **`scope`** — where in the score's *structure* the fact sits (which voice of which part). Not where it is in time.
-- **`kind`** — what is stated: a note, a rest, a slur, a phrase, a tuplet, a dynamic, a hairpin.
+- **`scope`** — where in the score's *structure* the fact sits: one voice of one part, or the piece as a whole. Not
+  where it is in time.
+- **`kind`** — what is stated: a note, a rest, a slur, a phrase, a tuplet, a dynamic, a hairpin, a key, a meter, a
+  section, a chord symbol.
 - **`origin`** — why it exists (§20). Provenance stays above the kernel.
 
 *Where it is in time is the occurrence's span*, and is never a field. Keeping the three apart is the point: a slur moves
@@ -81,14 +85,34 @@ one invariant, stated on the function and asserted in debug builds: **a region f
 boundaries in its own scope**, because a region is built from the extent of the items it encloses. If that is ever
 violated, the elaboration that violated it is the bug.
 
-## Key, meter, harmony: the future shape
+## Key, meter, harmony: the present shape
 
-Course correction §21 places key/meter/harmony **regions** in the kernel as typed interval payloads
-(`Timeline[KeyRegion]`, `Timeline[MeterRegion]`, `Timeline[HarmonyAnnotation]`) whenever their temporal extent matters —
-e.g. `modulate to C major { … }`. The current surface grammar has only piece-wide declarations, so today's adapter keeps
-them as snapshot context maps. When a surface construct gives them temporal extent, they elaborate as payload-bearing
-timelines **without any kernel change** (that is the point of §21), and this document is extended — not repaired — at
-that prompt. Prompt 30 (annotations) is the first consumer of that shape.
+Course correction §21 places key/meter/harmony **regions** in the kernel as typed interval payloads whenever their
+temporal extent matters — e.g. `modulate to C major { … }`. Prompt 40 put them there **before** the surface grew such a
+construct, and that order was deliberate: a region that happens to cover the whole piece is not a special case, but a
+piece-wide scalar called `MeterMap` is. Modelling meter as one region over `[0, d]` now means the later change adds
+*more occurrences* rather than a second way to ask the same question (PoSD ch. 10).
+
+So today:
+
+- `Key { tonic, mode }` and `Meter { numerator, denominator }` are occurrences over `[0, d]`, scoped `Scope::Piece`.
+- `Section { name }` and `Harmony { symbol }` are point occurrences at the time their `measure:beat` coordinate names.
+- `KeyMap`, `MeterMap`, and the section and harmony lanes of `AnnotationStore` are **projections** of those
+  occurrences, reproducing byte for byte what the direct lowerer emits — which is what `fixtures_have_full_parity`
+  checks.
+
+The promise of §21 — that these arrive "without any kernel change" — is therefore demonstrated rather than asserted:
+prompt 40 touched no file in `musa-kernel`. When `modulate` or a mid-piece `meter` arrives, the elaboration emits a
+region with a narrower span and nothing else changes; this document is extended, not repaired, at that prompt.
+
+Two consequences worth stating, because a later reader will otherwise re-derive them:
+
+- **Positions resolve against the meter *occurrence*, and against the timeline's own extent.** Neither is recomputed
+  from the snapshot. The extent is exact rather than a maximum over event ends, and the two agree only because a
+  written rest is an occurrence (prompt 39) — a piece that ends in silence ends where the silence ends, which
+  `a_piece_that_ends_in_a_rest_ends_where_the_rest_ends` fixes as a fixture.
+- **Piece-scoped facts sort first at a shared instant.** Their canonical key begins `*|*`, and `*` sorts before any
+  part number, so the normal form prints the context a reader meets first.
 
 ## Tempo stays out (§22)
 

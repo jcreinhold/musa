@@ -19,13 +19,29 @@ use musa_kernel::{Occurrence, Timeline};
 use crate::elaborate::{FactKind, ScoreFact};
 use crate::lower::Lowering;
 use crate::score::{
-    ArticulationMarking, DynamicMarking, EventId, HairpinSpan, PhraseSpan, ScoreEvent, ScoreEventKind, SlurSpan,
-    TupletSpan, Voice,
+    ArticulationMarking, DynamicMarking, EventId, HairpinSpan, HarmonyMark, KeyMap, MeterMap, PhraseSpan, ScoreEvent,
+    ScoreEventKind, SectionMark, SlurSpan, TupletSpan, Voice,
 };
 use crate::time::MusicalTime;
 
 /// The projected voices, keyed the way the snapshot's parts are.
 pub(crate) type Voices = IndexMap<(u32, u32), Voice>;
+
+/// Everything the snapshot reads off one piece timeline.
+///
+/// The context maps are *here*, not in the header lowering, because after
+/// prompt 40 the key and the meter are occurrences: the timeline states them
+/// and this is the reading of it. A piece with no key written has none, which
+/// is why `key` is an `Option` and `meter` is not — 4/4 governs a piece that
+/// never says so.
+pub(crate) struct Projection {
+    /// The voices, keyed by (part, voice).
+    pub(crate) voices: Voices,
+    /// The key signature, when the piece names one.
+    pub(crate) key: Option<KeyMap>,
+    /// The meter.
+    pub(crate) meter: MeterMap,
+}
 
 /// Project the piece's timeline into voices and annotations.
 ///
@@ -41,23 +57,74 @@ pub(crate) type Voices = IndexMap<(u32, u32), Voice>;
 /// it encloses ([`crate::elaborate`]'s `over`). The projection relies on it to
 /// name the events at a region's ends; if it is ever violated, the
 /// elaboration that violated it is the bug.
-pub(crate) fn project(lowering: &mut Lowering, timeline: &Timeline<ScoreFact>) -> Voices {
+pub(crate) fn project(lowering: &mut Lowering, timeline: &Timeline<ScoreFact>) -> Projection {
     let mut buckets: IndexMap<(u32, u32), Vec<&Occurrence<ScoreFact>>> = IndexMap::new();
+    let mut piece: Vec<&Occurrence<ScoreFact>> = Vec::new();
     for occurrence in timeline.occurrences() {
         debug_assert!(
             !occurrence.payload().tied,
             "ties are merged during elaboration; the projection must never see one"
         );
-        buckets
-            .entry(occurrence.payload().scope.voice())
-            .or_default()
-            .push(occurrence);
+        match occurrence.payload().scope.voice() {
+            Some(key) => buckets.entry(key).or_default().push(occurrence),
+            None => piece.push(occurrence),
+        }
     }
     let mut voices = Voices::with_capacity(buckets.len());
     for (key, occurrences) in buckets {
         voices.insert(key, project_voice(lowering, &occurrences));
     }
-    voices
+    let (key, meter) = project_piece(lowering, &piece);
+    Projection { voices, key, meter }
+}
+
+/// The piece-scoped facts: the context maps, and the annotations written at a
+/// position rather than on a note.
+///
+/// Order is source order, which is the order these lists have always been in:
+/// a form marker's place in the outline is where the composer wrote it, and
+/// two markers at one instant would otherwise swap on a re-elaboration.
+fn project_piece(lowering: &mut Lowering, occurrences: &[&Occurrence<ScoreFact>]) -> (Option<KeyMap>, MeterMap) {
+    let mut ordered: Vec<&&Occurrence<ScoreFact>> = occurrences.iter().collect();
+    ordered.sort_by_key(|occurrence| occurrence.payload().origin.definition_span.start);
+    let mut key = None;
+    let mut meter = MeterMap::default();
+    for occurrence in ordered {
+        let fact = occurrence.payload();
+        let at = MusicalTime::new(occurrence.span().start().as_ratio());
+        match &fact.kind {
+            FactKind::Key { tonic, mode } => {
+                key = Some(KeyMap {
+                    tonic: *tonic,
+                    mode: *mode,
+                });
+            }
+            FactKind::Meter { numerator, denominator } => {
+                meter = MeterMap {
+                    numerator: *numerator,
+                    denominator: *denominator,
+                };
+            }
+            FactKind::Section { name } => lowering.annotations.push_section(SectionMark {
+                name: name.clone(),
+                at,
+                origin: fact.origin.clone(),
+            }),
+            FactKind::Harmony { symbol } => lowering.annotations.push_harmony(HarmonyMark {
+                symbol: symbol.clone(),
+                at,
+                origin: fact.origin.clone(),
+            }),
+            FactKind::Note { .. }
+            | FactKind::Rest { .. }
+            | FactKind::Slur
+            | FactKind::Phrase { .. }
+            | FactKind::Tuplet { .. }
+            | FactKind::Dynamic { .. }
+            | FactKind::Hairpin { .. } => {}
+        }
+    }
+    (key, meter)
 }
 
 /// One voice: its events, and the annotations that name them.
@@ -98,6 +165,11 @@ fn project_voice(lowering: &mut Lowering, occurrences: &[&Occurrence<ScoreFact>]
             }
             FactKind::Slur | FactKind::Phrase { .. } | FactKind::Tuplet { .. } | FactKind::Hairpin { .. } => {
                 regions.push(occurrence);
+                index = index.saturating_add(1);
+            }
+            // Piece-scoped facts were bucketed away before this ran; they are
+            // named here only because the match is total.
+            FactKind::Key { .. } | FactKind::Meter { .. } | FactKind::Section { .. } | FactKind::Harmony { .. } => {
                 index = index.saturating_add(1);
             }
         }
@@ -249,7 +321,13 @@ fn project_regions(
                 target: *target,
                 origin,
             }),
-            FactKind::Note { .. } | FactKind::Rest { .. } | FactKind::Dynamic { .. } => {}
+            FactKind::Note { .. }
+            | FactKind::Rest { .. }
+            | FactKind::Dynamic { .. }
+            | FactKind::Key { .. }
+            | FactKind::Meter { .. }
+            | FactKind::Section { .. }
+            | FactKind::Harmony { .. } => {}
         }
     }
 }

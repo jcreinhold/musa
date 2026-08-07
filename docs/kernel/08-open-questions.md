@@ -59,16 +59,6 @@ chords from coincidental simultaneity, since coincidental simultaneity arises fr
 different origins. *Settle when:* prompt 11's parity tests exercise overlaid same-span material, or prompt 27's chord
 notation exposes a counterexample.
 
-## Q8 — Key/meter regions
-
-`06-surface-elaboration.md` keeps `key`/`meter`/`tempo` as piece-wide context maps because the current grammar has no
-temporal extent for them. §21's typed interval payloads (`Timeline[KeyRegion]`, `Timeline[MeterRegion]`) are the agreed
-shape *when extent matters* (`modulate to C major { … }`, meter changes, the §33 item 5). *Settle when:* the surface
-grammar gains such a construct — elaboration extends, kernel unchanged. **Still open after prompt 35:** that prompt
-added annotations with extent (phrases, sections, a harmony lane), and none of them needed a typed interval payload,
-because none of them is *context* — nothing reads a chord symbol to decide what a later note means. A key region would
-be the first construct that does, so the question is unchanged rather than answered.
-
 ## Falsification corpus status (§33)
 
 | # | Example | Status |
@@ -77,7 +67,7 @@ be the first construct that does, so the question is unchanged rather than answe
 | 2 | Four-part chorale (synchronized voices) | **proven at two parts** (prompt 11): `counterpoint.musa` parity + normal form; extend to four parts with prompt 27-era fixtures |
 | 3 | Canon (reuse, delay, transformation, overlay) | **proven** (prompt 11): `examples/canon.musa` — motif reuse, delay by ambient extent, transposition, overlay |
 | 4 | Tuplets / polyrhythm (exact rationals) | blocked on surface syntax (prompt 27) |
-| 5 | Changing meter and key | blocked on surface syntax (see Q8) |
+| 5 | Changing meter and key | **half proven** (prompt 40): key and meter are region occurrences and the context maps are projections of them; a *changing* key or meter still needs surface syntax, and needs no kernel change when it arrives |
 | 6 | Accelerando / ritardando | **partly proven** (prompt 36): stepwise tempo changes integrate exactly; a continuous ramp still needs surface syntax |
 | 7 | Glissando / crescendo | blocked on Q4 |
 | 8 | Loop-based electronic music | blocked on surface loops (Phase 2/3; see Q1) |
@@ -132,7 +122,7 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   to events, like a slur, so re-barring keeps it on its notes; a **section** and a **chord symbol** are anchored to
   *time*, because a bar line is a place whether or not a note starts there. Positions (`at 3:1`) are resolved against
   the meter map during elaboration and refused when they fall past the end of the piece — a marker nobody reaches is a
-  mistake, not a marker. Q8 is untouched by any of this (see above).
+  mistake, not a marker. Q8 was untouched by any of this; prompt 40 answered it.
 - **Prompt 36 (imports and curves):** neither half touched the kernel, for the same reason and in two different ways.
   An **import** is resolved before elaboration begins: a library contributes declarations, and a declaration is not an
   occurrence until something uses it, so an imported motif and a locally written one elaborate through identical code
@@ -169,3 +159,17 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   elaboration — at *every* nesting level, so an inner block's ties are resolved before it is reversed or scaled —
   deletes the relation instead of repairing it, and prompt 34's double-reversal law now passes for a simpler reason
   than it used to.
+- **Prompt 40 (key, meter, and score annotations as occurrences):** **Q8 is answered, and deleted from this file.** The
+  working stance was "context maps until the surface gives them extent"; the prompt gave them kernel extent *without*
+  waiting for the surface, and that order turned out to be the right one. A region covering `[0, d]` is not a special
+  case, but a piece-wide scalar named `MeterMap` is: had the region shape waited for `modulate`, the type would have
+  grown a second representation and every consumer would have learned two ways to ask one question. The kernel again
+  gained nothing — no file in `musa-kernel` was touched — which is §21's promise demonstrated instead of asserted.
+  Two smaller findings. First, deleting `piece_extent` (a maximum over event ends) in favour of the timeline's own
+  extent is only sound because a written rest is an occurrence, so a piece ending in silence still ends where the
+  silence ends; that is now a fixture rather than an argument. Second, `resolve_position` used to read the snapshot it
+  was helping to build — the last place where a temporal fact was computed from the adapter's output rather than from
+  the timeline — and it now reads the meter occurrence. **Tempo did not move and will not** (§22): it is the map from
+  symbolic to physical time, and a place where `stretch` and *ritardando* could be confused is exactly what the kernel
+  must not offer. `TempoMap` now carries that reasoning as a comment, because the next reader will otherwise ask why
+  tempo was left behind and answer the question wrong.
