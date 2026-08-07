@@ -93,6 +93,19 @@ typed value* — never what a `Note` means.
 - Not a provenance store: the kernel is a semantic *quotient* of richer source structure; provenance is preserved above
   it (§20, `06-surface-elaboration.md`).
 
+## The calculus, and why it does not cross that line
+
+Prompt 46 adds `10-term-calculus.md` (candidate): a *syntax* whose meanings are the timelines above. It exists for
+three things values cannot express — sharing (`let`, so a canon's subject is stated once), deferred observation
+(restricting before evaluating), and interchange (a syntax a second implementation can read) — and it adds no
+semantic operation: every term denotes something `03-denotational-semantics.md` already defines.
+
+It therefore stays under the "not a general-purpose programming language" line above rather than testing it. The
+calculus has a binder but no abstraction: `let x = t in u` names a *value*, and there is no way to write a function, an
+application, a conditional, or a recursion. That is why every closed well-formed term evaluates, deterministically and
+in finitely many steps. `map f` is deliberately not a term for exactly this reason — naming `f` would require a syntax
+for functions — so payload transformation stays above the kernel, where it already is.
+
 ## The pipeline
 
 ```text
@@ -136,3 +149,4 @@ musician-facing Musa source
 | `07-backend-contract.md` | What downstream consumers may assume. |
 | `08-open-questions.md` | What is deliberately undecided. |
 | `09-performance.md` | The measured cost of the kernel path, prompt by prompt. |
+| `10-term-calculus.md` | The term calculus: syntax, evaluation, soundness theorems *(candidate)*. |

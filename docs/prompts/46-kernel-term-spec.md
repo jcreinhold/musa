@@ -1,8 +1,8 @@
 ---
 id: 46
 slug: kernel-term-spec
-status: pending
-depends_on: [43]
+status: done
+depends_on: [45]
 phase: 3
 ---
 
@@ -105,6 +105,52 @@ retrograde needs no primitive, and a calculus is not a reason to revisit that.
 - `docs/kernel/08-open-questions.md`: Q6 restated — the trigger has fired, and here is what fires it.
 - `docs/kernel/00-purpose.md`: one paragraph placing the calculus under the existing "not a general-purpose programming
   language" line, so the two documents cannot be read as disagreeing.
+
+## Repairs made while implementing
+
+**The calculus was specified after prompts 44 and 45, not after 43, and the frontmatter says so.** `depends_on` moved
+from `[43]` to `[45]`. Both intervening prompts changed what this document had to say. Prompt 44 renumbered the
+denotations — the queries are D10–D11 and the not-defined list is D12 — so "adds no operation to D1–D9" became
+"D1–D12", and the absent list gained a bullet saying why `covering` and `prevailing` are **not** term forms: a term
+denotes a timeline, and a query does not, so giving them syntax would mean a term language with two kinds of result.
+Prompt 45 resolved Q4, which is the more interesting one.
+
+**Q4's resolution is the scope rule's first real test, and it passed.** The Stop section said to cite prompt 45's
+answer if it had landed and not to give the calculus a curve form. It had landed, and no curve form was needed:
+`Progress` is a payload *value*, so `a` in a `timeline` literal already carries it and the grammar is unchanged. That
+is recorded in the absent list as evidence rather than as a rule — the first construct that could have demanded a new
+term form instead demanded a new payload value, which is exactly the outcome the acceptance test predicts.
+
+**The `Behavior` question is Q9, not Q8.** Prompt 44 filed it as Q8, but prompt 40's own log entry says "Q8 is answered,
+and deleted from this file" — so a live Q8 would make that entry read as though it settled the `Behavior` question.
+Renumbered to Q9 here, with a parenthetical at the top of the question saying why the number skips, and prompt 44's
+repairs section corrected to match. Q8 stays retired.
+
+**Q7 and the new question were in the wrong order.** Prompt 44 inserted its question before `Q7 — Chord regrouping
+fidelity` rather than after it. Reordered so the file reads Q1…Q7, Q9.
+
+**The prompt-implementation log gained prompts 44, 45, and 46.** The log is what prompt 12's graduation review reads,
+and it had entries through prompt 40 and nothing after. The three new entries state each prompt's finding in the form
+the earlier ones use — what the kernel gained, what it deliberately did not, and which open question moved.
+
+**`shift`'s justification is D8's, and the document says so explicitly.** The design section argued sugar-versus-
+primitive on general grounds; the written specification anchors it to precedent instead — D4 was *struck* at prompt 37
+for being an operation that only restated another, so a primitive `shift` alongside `seq (timeline d {}) t` would be
+adding back exactly the kind of form the kernel already removed once.
+
+**Printers write the expansion, never the sugar.** Stated in both `10-term-calculus.md` and `01-grammar.md`, because it
+is what keeps N5's canonical text unique now that the grammar has two ways to write a delay. `shift` is an input
+convenience and nothing else.
+
+**K7 makes acyclicity free rather than restating it.** `let` scopes over its body only, so a name cannot refer to
+itself and the reference graph is a tree by construction — K4's acyclicity rule has nothing to do for terms. The
+no-shadowing rule is likewise doing work beyond taste: it makes substitution textual, which is what lets T2 be stated
+without a capture-avoidance apparatus the calculus would otherwise have to specify and prompt 47 would have to build.
+
+**T5's note on what it does not say.** The theorem licenses pushing a restriction through a `let`, and a reader will
+immediately try the same move through `seq` — which is false, because `seq` translates its second argument. The
+document states the counterexample beside the theorem so prompt 50 starts from the right rule rather than the tempting
+one.
 
 ## Check
 

@@ -59,6 +59,30 @@ Occurrences form a finite **multiset**, not a set (§6): two occurrences identic
 occurrences. No operation in the kernel may deduplicate them. Two performers playing the same note must not collapse
 merely because all visible values coincide.
 
+## K7 — Term well-formedness *(candidate: prompt 46)*
+
+Rules for the term calculus of `10-term-calculus.md`, which is itself candidate. They are checkable on the term alone,
+without evaluating it.
+
+- **Scoping.** Every name occurring in a term is bound by an enclosing `let`. A term with a free name is rejected, not
+  resolved against an ambient environment: a term means one thing on its own or it does not mean anything.
+- **No shadowing.** `let x = t in (let x = u in v)` is rejected. Nothing needs it, alpha-renaming is not a burden a
+  file format should impose on its readers, and forbidding it makes substitution textual, which is what lets T2 be
+  stated without a capture-avoidance apparatus.
+- **Payload uniformity.** All arguments of one `seq` or `over` share a payload type, as K4 already requires of
+  composition expressions. `let` binds a term of one payload type; a name's type is its bound term's.
+- **Arity.** `seq` and `over` take at least one argument. Zero arguments would need a unit, and the two units differ
+  (`(0, ∅)` for `seq`, `(d, ∅)` at a fixed `d` for `over`, L2/L6) — so the empty case is written as the literal it is,
+  not inferred.
+- **Windows and factors.** `restrict [i, j)` requires `i ≤ j`; `scale r` requires `r ∈ ℚ>0` (K2). A window is *not*
+  required to lie inside the extent: restriction is total (D6, L17), and a window past the end observes nothing.
+- **Literals.** Every `timeline` literal satisfies K1.
+- **Acyclicity comes free.** `let` scopes over its body only, so a name cannot refer to itself and the reference graph
+  is a tree by construction. K4's acyclicity rule is what this replaces for terms.
+
+A term satisfying these rules and containing no free names is **closed and well-formed**, which is the precondition of
+every theorem in `10-term-calculus.md`.
+
 ## Error surface
 
 All static violations are reported as `KernelError` values naming the rule and the offending data (extent, span, or

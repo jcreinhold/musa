@@ -54,14 +54,36 @@ needs them (§32). Working stance: surface programs must have finite observable 
 is a surface-language static property (as with motif ordering today, roadmap §6.5). *Settle when:* a surface recursion
 proposal exists; its elaboration must produce finite observations or be rejected.
 
-## Q6 — Kernel-file parser
+## Q6 — Kernel-file parser *(trigger fired: prompt 46)*
 
 `01-grammar.md` defines the full interchange grammar (un-normalized expressions, named compositions), but prompt 09
-implements canonical **serialization** only (N5). Working stance: no parser until a second producer/consumer of kernel
-files exists (another implementation, a visualizer, a test oracle written in kernel text). *Settle when:* that consumer
-appears. Today's golden files are written to remain parseable by the future grammar (N5 is a strict subset).
+implemented canonical **serialization** only (N5). The working stance was: no parser until a second producer/consumer
+of kernel files exists (another implementation, a visualizer, a test oracle written in kernel text).
 
-## Q8 — A `Behavior` abstraction over the queries
+**That trigger has fired, and this is what fired it.** The consumer is `musa kernel` (prompt 48): a command that reads
+a `.kernel` file and evaluates it, which is a producer/consumer pair independent of the compiler and therefore the
+second implementation the stance was waiting for. What made it worth building is sharing — a term language with `let`
+says "this is that material again", which no serialization of *values* can say, and which is the difference between a
+canon's interchange file being one subject or four copies of one.
+
+The order the stance implies is being followed rather than short-circuited: specify first (prompt 46,
+`10-term-calculus.md`, candidate), implement and prove (prompt 47), and only then parse (prompt 48), which is also
+where this document's Q6 is closed and the calculus graduates. Today's golden files remain parseable by the grammar
+that arrives — N5 is a strict subset of it, as it has been since prompt 09.
+
+## Q7 — Chord regrouping fidelity
+
+Chords elaborate to simultaneous per-pitch occurrences; the snapshot adapter regroups by (span, voice, origin)
+(`06-surface-elaboration.md`). Open: is (span, voice, origin) the right grouping key when two different chords in the
+same voice share a span via `overlay` of separately-written material? Working stance: origin distinguishes deliberate
+chords from coincidental simultaneity, since coincidental simultaneity arises from different source constructs with
+different origins. *Settle when:* prompt 11's parity tests exercise overlaid same-span material, or prompt 27's chord
+notation exposes a counterexample.
+
+## Q9 — A `Behavior` abstraction over the queries
+
+(Numbered 9, not 8: prompt 40 answered and deleted an earlier Q8, and reusing the number would make its log entry
+below read as though it settled this.)
 
 `covering` and `prevailing` (D10–D11) are two concrete queries. The alternative considered at prompt 44 was an
 FRP-shaped `Behavior<V>` — `timeline.behavior(rule)` returning a sampled function of time, with `Step`, `Ramp`, and
@@ -77,15 +99,6 @@ Q4 was named here as the most likely source of that third rule, and it landed on
 one**. `Progress` is a payload *value* sampled by whichever consumer holds it, not a rule the kernel evaluates, so the
 `Ramp` behaviour an envelope would have wanted turned out to be the consumer's sampling policy. The count of rules is
 still one (`prevailing`), and the threshold is unmet by a wider margin than before.
-
-## Q7 — Chord regrouping fidelity
-
-Chords elaborate to simultaneous per-pitch occurrences; the snapshot adapter regroups by (span, voice, origin)
-(`06-surface-elaboration.md`). Open: is (span, voice, origin) the right grouping key when two different chords in the
-same voice share a span via `overlay` of separately-written material? Working stance: origin distinguishes deliberate
-chords from coincidental simultaneity, since coincidental simultaneity arises from different source constructs with
-different origins. *Settle when:* prompt 11's parity tests exercise overlaid same-span material, or prompt 27's chord
-notation exposes a counterexample.
 
 ## Falsification corpus status (§33)
 
@@ -201,3 +214,28 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   symbolic to physical time, and a place where `stretch` and *ritardando* could be confused is exactly what the kernel
   must not offer. `TempoMap` now carries that reasoning as a comment, because the next reader will otherwise ask why
   tempo was left behind and answer the question wrong.
+- **Prompt 44 (coverage and prevailing-value queries):** the kernel gained an *interface*, not an ontology — two
+  queries, no constructor, no stored state, no payload requirement. The finding that justified them is that four
+  consumers were answering "what is in force here" privately and **disagreeing**: two keyed the answer on
+  `origin.definition_span` (source position, correct only while every context fact spans the whole piece), and the
+  four differed on end instants, point occurrences, and coincident onsets. The four boundary conventions are now stated
+  once in D10–D11 and tested as L20–L23. **Q9 opened** with the `Behavior<V>` alternative that was declined, and the
+  evidence that would settle it. The performance rule was added because a point query invites O(n²): the kernel defines
+  what the answer is, and bulk derivation still does one ordered pass — P3 is what enforces it, and it did not move.
+- **Prompt 45 (continuous shape):** **Q4 resolved.** The answer is a payload *value*, `Progress`, and it cost the
+  kernel no operation and changed no law — the third piece of §34 evidence after prompts 39 and 44. The whole design is
+  one decision: index the curve by the occurrence's *normalized local* time, and every operation then acts on the span
+  and leaves the payload byte-identical (the span-alone theorem, L24). An absolute-time curve would have forced the
+  kernel to look inside payloads to transform them, violating §12 and breaking L11–L15. Two boundaries were worth
+  stating because they will be pushed on: shape is normative but *sampling policy* is the consumer's
+  (`07-backend-contract.md`), and `Progress` expresses no steps, no units, no periodic shapes and no easing catalogue —
+  a sudden change is a fact at a point, which D11 already answers. `serde` was deliberately not added to the kernel for
+  this; `musa-compiler` adapts the breakpoints instead.
+- **Prompt 46 (the term calculus, specification only):** the calculus is six forms and a reference, and it adds no
+  meaning — the acceptance test for a form is that it serves sharing, deferred observation, or interchange **and**
+  denotes a timeline `03` already defines. Two forms were argued about and settled the same way. `shift` is sugar with
+  a stated expansion, because a primitive that only restates `seq` is what D4's striking established the kernel does
+  not keep. `map f` is **not** a term at all, because naming a function is the door to general computation; the price
+  is that an interchange file can say "this section is that section" but not "…transposed", and if that is ever wanted
+  the answer is a payload-level interval, not a term-level function. Prompt 45's `Progress` arrived one prompt earlier
+  and needed **no** curve form, which is the scope rule paying off on the first construct that tested it.

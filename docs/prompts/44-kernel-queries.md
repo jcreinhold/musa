@@ -180,8 +180,8 @@ question that happened to agree on every fixture. All 438 tests pass and no gold
 convention row 4 ("a fact starting exactly at `t` prevails at `t`") expressed in time, and its only `definition_span`
 use is the span of a diagnostic — which is what a diagnostic span is for.
 
-**Design 2 is recorded as Q8, and points at Q4.** `08-open-questions.md` states the `Behavior<V>` shape, why it was
-declined, and the evidence that would settle it (a third rule with two callers each) — plus the observation that Q4's
+**Design 2 is recorded as Q9, and points at Q4.** `08-open-questions.md` states the `Behavior<V>` shape (numbered Q9, since
+prompt 40 answered and deleted an earlier Q8), why it was declined, and the evidence that would settle it (a third rule with two callers each) — plus the observation that Q4's
 continuous controls are the most likely source of that third rule, so the two questions should be reopened together.
 
 **The measurement.** P3 large 227 µs → 232 µs (+2%), allocations unchanged; P1 large +3.3%, P2 large +1.8%, all noise
