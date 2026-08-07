@@ -1326,15 +1326,20 @@ Determine whether voice identity is best represented as:
 
 Do not promote it to a primitive temporal operation without evidence.
 
-### Time-varying continuous controls
+### Time-varying continuous controls — **resolved (prompt 45)**
 
-Determine whether automation belongs as:
+The question was whether automation belongs as typed interval payloads, a separate behavior/curve layer, or the
+performance/audio model.
 
-* typed interval payloads;
-* a separate behavior/curve layer;
-* or the performance/audio model.
+It is a **typed payload value**: `Progress`, a monotone piecewise-linear map from an occurrence's *normalized local*
+time to a unit-free fraction in `[0, 1]`. It cost the kernel no new operation and changed no existing law, because
+indexing by local time makes every operation act on the span and leave the payload untouched (the span-alone theorem,
+`docs/kernel/03-denotational-semantics.md`, tested as L24). A behavior layer would have been a second way to say what
+occurrences already say; an absolute-time curve would have forced the kernel to look inside payloads, violating §12.
 
-Do not force continuous control into discrete occurrences prematurely.
+The warning that produced this section still stands for what remains: `Progress` says *how far along*, never how loud
+or how fast, and it expresses no steps, no units, no periodic shapes. Continuous control was not forced into discrete
+occurrences — the occurrence supplies the span, the value supplies the shape, and the meaning stays above the kernel.
 
 ### Recursive/generative source programs
 

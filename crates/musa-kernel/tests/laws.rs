@@ -9,7 +9,7 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use musa_kernel::{Beat, Occurrence, Span, Timeline, overlay, sequence, timeline};
+use musa_kernel::{Beat, Canonical as _, Occurrence, Progress, Span, Timeline, overlay, sequence, timeline};
 use num_rational::Ratio;
 use proptest::prelude::*;
 
@@ -454,4 +454,52 @@ fn restrict_composition_strictly_nested() {
 fn occurrence_at(start: i64, end: i64, payload: u8) -> Occurrence<u8> {
     let span = Span::new(quarters(start), quarters(end)).expect("ordered");
     Occurrence::new(span, payload)
+}
+
+/// L24 — a curve-bearing occurrence transforms by its span alone.
+///
+/// `Progress` is indexed by normalized *local* time, so every kernel operation
+/// moves or stretches the span and leaves the payload bytes untouched. This is
+/// what makes a continuous shape a payload value rather than a kernel
+/// operation (docs/kernel/03 `Progress`, §32 Q4): if the curve were in
+/// absolute time, `scale` and `sequence` would have to rewrite it, and the
+/// kernel would be looking inside payloads (§12).
+///
+/// The test checks both halves: the bytes are identical after each operation,
+/// and `at(u)` at corresponding *absolute* times agrees before and after —
+/// which is the part that would fail for an absolute-time curve even if the
+/// bytes happened to survive.
+#[test]
+fn a_curve_bearing_occurrence_transforms_by_its_span_alone() {
+    let curve = Progress::piecewise([
+        (Ratio::new(0, 1), Ratio::new(0, 1)),
+        (Ratio::new(1, 2), Ratio::new(1, 4)),
+        (Ratio::new(1, 1), Ratio::new(1, 1)),
+    ])
+    .expect("well formed");
+    let key = curve.canonical_key();
+    let span = Span::new(quarters(4), quarters(12)).expect("ordered");
+    let m = timeline(quarters(16), vec![Occurrence::new(span, curve.clone())]).expect("in bounds");
+
+    // A probe at the absolute instant one quarter of the way through the
+    // occurrence: u = 1/4 before and after every operation.
+    let u = Ratio::new(1, 4);
+    let expected = curve.at(u);
+
+    let scaled = m.scale(Ratio::new(3, 1)).expect("positive");
+    let delayed = sequence(vec![timeline(quarters(8), vec![]).expect("empty"), m.clone()]);
+    let stacked = overlay(vec![m.clone(), timeline(quarters(16), vec![]).expect("empty")]);
+    let observed = m.restrict(Span::new(Beat::ZERO, quarters(16)).expect("ordered"));
+
+    for (name, moved) in [("scale", &scaled), ("sequence", &delayed), ("overlay", &stacked)] {
+        let occurrence = moved.occurrences().first().expect("one occurrence");
+        assert_eq!(occurrence.payload().canonical_key(), key, "{name} rewrote the payload");
+        let local = occurrence.span();
+        let width = local.end().as_ratio() - local.start().as_ratio();
+        let probe = local.start().as_ratio() + width * u;
+        let recovered = (probe - local.start().as_ratio()) / width;
+        assert_eq!(occurrence.payload().at(recovered), expected, "{name} moved the curve");
+    }
+    let (_, seen) = observed.observed().next().expect("observable");
+    assert_eq!(seen.payload().canonical_key(), key, "restrict rewrote the payload");
 }

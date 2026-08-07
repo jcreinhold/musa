@@ -107,6 +107,16 @@ per iteration and are exact rather than sampled.
 | 44 | P4 | large | 396.4 µs | 9 457 | 1.02 MB |
 | 44 | P5 | small | 12.61 µs | 125 | 9.408 KB |
 | 44 | P5 | large | 674.8 µs | 9 520 | 776.3 KB |
+| 45 | P1 | small | 68.99 µs | 2 123 | 141.1 KB |
+| 45 | P1 | large | 1.943 ms | 57 235 | 4.037 MB |
+| 45 | P2 | small | 51.64 µs | 1 875 | 119.6 KB |
+| 45 | P2 | large | 1.766 ms | 55 534 | 3.838 MB |
+| 45 | P3 | small | 3.432 µs | 127 | 11.09 KB |
+| 45 | P3 | large | 230.7 µs | 7 852 | 853 KB |
+| 45 | P4 | small | 6.456 µs | 136 | 12.58 KB |
+| 45 | P4 | large | 395.5 µs | 9 457 | 1.02 MB |
+| 45 | P5 | small | 11.44 µs | 125 | 9.408 KB |
+| 45 | P5 | large | 665.4 µs | 9 520 | 776.3 KB |
 
 Two things the baseline already says, recorded here rather than acted on (prompt 38 changes nothing it measures):
 
@@ -199,6 +209,25 @@ by source position, and it is per piece-scoped fact, not per event.
 match the divan block at identical allocation counts; the column is the `alloc:` byte total, which this run reports as
 1.02 MB and 776 KB with allocation counts of exactly 9 457 and 9 520. Nothing regressed between the two rows — the
 earlier bytes were read off the wrong line. Later rows are the `alloc:` line, as the column heading says.
+
+
+### Prompt 45 — free, and honestly unmeasured
+
+Every row is within noise of prompt 44's and **every allocation count is identical to the digit**. That is not a
+coincidence and it is not a win: **neither reference workload contains a hairpin.** `examples/glass-mountain.musa` has
+none and `tests/fixtures/large-score.musa` has none — its coda's expressive material is point dynamics,
+articulations, ties, slurs and tuplets. So the one path prompt 45 changed is not exercised by P1–P5, and the table can
+only say that adding a `Progress` to `FactKind::Hairpin` costs nothing where there are no hairpins.
+
+What the cost would be, stated so it is not mistaken for zero: one two-element `Vec` per hairpin at elaboration, one
+clone of it per hairpin at projection, and one `at()` per event under a hairpin at performance lowering — replacing
+one `Ratio` multiply. All three are per *hairpin*, not per event, on a path that already allocates an `Origin` per
+fact.
+
+The fixture is the thing to fix, not this row, and it is deliberately not fixed here: adding a hairpin to
+`large-score.musa` would move every P1–P5 number and make this table's forty existing rows non-comparable. The right
+place is the prompt that next needs the fixture to grow, and it should say so in its own row.
+
 
 ## The rule
 

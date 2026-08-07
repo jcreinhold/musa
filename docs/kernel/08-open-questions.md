@@ -28,13 +28,24 @@ carries (part, voice) identity; the kernel stays identity-free; `ScoreSnapshot`'
 *Settle when:* prompt 11's differential parity and prompt 25's score-editing show whether any consumer needs voice-level
 temporal queries the payload projection can't answer cleanly (e.g. cross-voice alignment constraints).
 
-## Q4 — Time-varying continuous controls
+## Q4 — Time-varying continuous controls — **RESOLVED (prompt 45)**
 
-Automation (crescendo, glissando, parameter curves) does not obviously belong to discrete occurrences (§32). Candidates:
-typed interval payloads (a `CurveRegion` payload); a separate behavior/curve layer; the performance/audio model. Working
-stance: **undecided, deferred**. The §33 falsification items 6–7 (accelerando/ritardando, glissando/crescendo) exist
-precisely to force this question with evidence. *Settle when:* prompt 36 (tempo/expression curves) designs the surface
-constructs — tempo is settled (§22: performance-layer map); continuous *expression* is not.
+Automation (crescendo, glissando, parameter curves) does not obviously belong to discrete occurrences (§32). The
+candidates were: typed interval payloads; a separate behavior/curve layer; the performance/audio model.
+
+**Answer: a typed payload value, and no kernel operation.** `Progress` (`03-denotational-semantics.md`) is a monotone
+piecewise-linear map from an occurrence's normalized *local* time to a unit-free fraction. Because it is indexed by
+local time, every kernel operation acts on the span and leaves the payload byte-identical — the span-alone theorem,
+tested as L24. A behaviour layer was not needed and an absolute-time curve would have forced the kernel to look inside
+payloads, violating §12.
+
+The evidence that settled it was §33 item 7 (crescendo): the shape existed, it was invented inside `performance.rs` and
+discarded, and it could not be serialized. That is a specification hole, not an implementation difference.
+
+Two things this resolution deliberately did not settle. `Progress` expresses no steps, no units, no periodic shapes and
+no easing catalogue — see the type's non-goals. And §33 item 6 (accelerando/ritardando) remains a *tempo* question,
+which §22 already places in the performance layer; `Progress` is available to it as a shared value type if a future
+prompt wants one, and that is an implementation convenience, not a change of layer.
 
 ## Q5 — Recursive / generative source programs
 
@@ -62,8 +73,10 @@ and a sampling protocol (`sample_over(window, step)`) that no current caller wan
 concrete type wearing a costume. Working stance: two concrete queries. *Settle when:* a **third** rule appears with
 **two** callers each. That is the evidence that would justify the abstraction; until then it is speculative generality.
 
-Note that Q4 (time-varying continuous controls) is the most likely source of that third rule — a `Ramp` behaviour is
-what an envelope wants. If Q4 lands with a curve payload, revisit this question at the same time.
+Q4 was named here as the most likely source of that third rule, and it landed one prompt later — **without producing
+one**. `Progress` is a payload *value* sampled by whichever consumer holds it, not a rule the kernel evaluates, so the
+`Ramp` behaviour an envelope would have wanted turned out to be the consumer's sampling policy. The count of rules is
+still one (`prevailing`), and the threshold is unmet by a wider margin than before.
 
 ## Q7 — Chord regrouping fidelity
 

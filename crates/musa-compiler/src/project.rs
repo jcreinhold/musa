@@ -350,11 +350,12 @@ fn project_regions(
                 den: *den,
                 origin,
             }),
-            FactKind::Hairpin { grows, target } => resolver.annotations.push_hairpin(HairpinSpan {
+            FactKind::Hairpin { grows, target, shape } => resolver.annotations.push_hairpin(HairpinSpan {
                 from,
                 to,
                 grows: *grows,
                 target: *target,
+                shape: shape.clone(),
                 origin,
             }),
             FactKind::Note { .. }

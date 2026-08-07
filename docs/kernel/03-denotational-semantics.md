@@ -138,6 +138,65 @@ delay_b(M) = (b, ∅) ; M
 No silence object is involved — `(b, ∅)` is an empty ambient region, sequenced before `M`. Delay therefore needs no
 primitive constructor.
 
+## Progress — continuous shape as a payload value (§32 Q4)
+
+A hairpin is the one musical fact the kernel could not say. The timeline recorded *that* a crescendo spans a region;
+**how** it grows existed only inside the performance lowerer, invented there and thrown away — so an interchange file
+could not carry it, and every future continuous control (`gliss`, *rit.*, a filter sweep, a fader move) would have
+arrived with nowhere to live.
+
+The answer is a **value**, not an operation:
+
+```text
+Progress = a piecewise-linear, monotone map  p : [0, 1] → [0, 1]
+           given by breakpoints (u₀, v₀) … (uₙ, vₙ),
+           u strictly increasing, u₀ = 0, uₙ = 1, v non-decreasing in [0, 1]
+```
+
+`u` is **normalized local time**: the fraction of the *occurrence's own span* that has elapsed. `v` is a unit-free
+fraction of the distance covered. `Progress` says how far along — never how loud, how fast, or how high. What the
+fraction means belongs to the consuming layer (§12): a performance profile maps a hairpin's endpoints to amplitudes, a
+tempo map maps them to seconds. A dynamic marking is still not a decibel.
+
+### The span-alone theorem
+
+> **A curve-bearing occurrence transforms by its span alone.** For every kernel operation `op ∈ {sequence, overlay,
+> scale, restrict, map_payload}`, the `Progress` in an occurrence's payload is byte-identical before and after, and
+> `p(u)` evaluated at corresponding absolute instants agrees before and after.
+
+This is why the design is safe, and it is a consequence of normalizing `u` rather than a property that had to be
+arranged. `scale r` multiplies the span; `u` is a fraction of the span, so it is unchanged. `sequence` translates;
+same. `overlay` does not touch spans. `map_payload` never inspects a payload at all.
+
+An **absolute-time** curve would have to be rewritten by `scale` and by `sequence` — which means the kernel would have
+to look inside payloads to transform them. That is precisely the §12 violation the kernel exists to prevent, and it
+would break the functor laws L11–L15. The theorem is tested as **L24**.
+
+So Q4's answer is that the kernel needed a value, not an operation. That is the third piece of §34 evidence — alongside
+prompt 39's total timeline and prompt 44's queries — that the operation set is complete.
+
+### Shape is normative; sampling policy is not
+
+- The **shape** — "linear from 0 to 1 across this hairpin" — is a fact about the piece. It lives in the timeline, it
+  serializes, it contributes to the semantic hash, and two implementations must agree on it.
+- The **sampling policy** — evaluate once per notated event at `u = index / (count − 1)`, or once per onset at
+  `u = (onset − start) / width` — is the consuming layer's interpretation, and consumers may differ. See
+  `07-backend-contract.md`.
+
+### What `Progress` deliberately cannot express
+
+- **Steps.** Piecewise-*linear* only; no jump discontinuities. A sudden change is a fact at a point, the timeline
+  already has one, and D11 already answers what is in force there. Saying one thing two ways is the complecting this
+  block exists to remove.
+- **Units.** Unit-free fractions in `[0, 1]`. A curve "in decibels" is a consumer's mapping of the endpoints.
+- **Non-monotone shapes.** Vibrato and an LFO are periodic, not progress. A different construct, with its own name and
+  its own evidence, if one is ever wanted.
+- **An easing catalogue.** No `ease_in`, no exponential, no Bézier: breakpoints approximate any of them, and a catalogue
+  is a vocabulary two implementations would then have to agree on.
+
+Ill-formed curves are unrepresentable rather than diagnosed (PoSD ch. 6): construction is the only place the
+breakpoints are checked, so a `Progress` that exists is well-formed and no consumer validates one.
+
 ## D10 — Coverage (which occurrences are in force at an instant)
 
 ```text

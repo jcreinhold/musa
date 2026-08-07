@@ -68,6 +68,13 @@ laws described an operation nothing used.
   strictly after `t` does not change `prevailing(M, t, σ)`. This is the law that lets a projection build a piece
   incrementally and still answer correctly about its beginning. Test: `prevailing_ignores_facts_that_start_later`.
 
+## Payload-shape laws
+
+- **L24 — a curve-bearing occurrence transforms by its span alone.** For every operation, an occurrence carrying a
+  `Progress` has a byte-identical payload afterwards, and `p(u)` at corresponding absolute instants agrees before and
+  after `scale`, `sequence`, `overlay`, and `restrict`. Continuous shape is therefore a payload *value* and costs the
+  kernel no operation (§32 Q4). Test: `a_curve_bearing_occurrence_transforms_by_its_span_alone`.
+
 ## The synchronized interchange law
 
 - **L18 — synchronized interchange.** If `duration(M) = duration(N)` and `duration(P) = duration(Q)`, then

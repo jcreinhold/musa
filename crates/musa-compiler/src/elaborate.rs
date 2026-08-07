@@ -98,8 +98,15 @@ pub(crate) enum FactKind {
     Tuplet { num: u32, den: u32 },
     /// A dynamic marking: a point at the onset it applies from.
     Dynamic { mark: DynamicMark },
-    /// A hairpin over the region it spans, and the mark it arrives at.
-    Hairpin { grows: bool, target: DynamicMark },
+    /// A hairpin over the region it spans, the mark it arrives at, and the
+    /// shape of the growth. The shape is a kernel value (`Progress`), so it
+    /// survives serialization and every consumer reads the same curve; how
+    /// often to sample it is the consumer's policy (docs/kernel/07).
+    Hairpin {
+        grows: bool,
+        target: DynamicMark,
+        shape: musa_kernel::Progress,
+    },
     /// The key signature, over the region it governs — the whole piece
     /// while the grammar has no `modulate` (prompt 40).
     Key { tonic: PitchClass, mode: Mode },
@@ -260,8 +267,13 @@ impl musa_kernel::Canonical for ScoreFact {
             FactKind::Phrase { name } => format!("phrase:{name}|"),
             FactKind::Tuplet { num, den } => format!("tuplet:{num}/{den}|"),
             FactKind::Dynamic { mark } => format!("dynamic:{}|", mark.name()),
-            FactKind::Hairpin { grows, target } => {
-                format!("hairpin:{}:{}|", if *grows { "cres" } else { "dim" }, target.name())
+            FactKind::Hairpin { grows, target, shape } => {
+                format!(
+                    "hairpin:{}:{}:{}|",
+                    if *grows { "cres" } else { "dim" },
+                    target.name(),
+                    shape.canonical_key()
+                )
             }
             FactKind::Key { tonic, mode } => {
                 let mode = match mode {
@@ -884,7 +896,15 @@ fn elaborate_item(resolver: &mut Resolver, item: &VoiceItem, cx: &ExpandCx, scop
             let origin = origin_of(cx, span);
             let grows = hairpin.grows();
             let body = elaborate_items(resolver, &hairpin.items(), cx, scope);
-            over(body, ScoreFact::new(scope, FactKind::Hairpin { grows, target }, origin))
+            // The grammar writes `cres.`/`dim.` and nothing about shape, so
+            // every hairpin is a straight line today. The value is in the
+            // timeline rather than invented during lowering, which is what
+            // lets a second implementation sound the same (§32 Q4).
+            let shape = musa_kernel::Progress::linear();
+            over(
+                body,
+                ScoreFact::new(scope, FactKind::Hairpin { grows, target, shape }, origin),
+            )
         }
         VoiceItem::Tuplet(tuplet) => {
             let text = tuplet.ratio().unwrap_or_default();

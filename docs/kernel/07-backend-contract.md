@@ -118,6 +118,18 @@ says which facts are context-bearing, because "this is a key signature" is music
 Consumers that must answer for *every* event keep their ordered sweep and honour the conventions rather than calling a
 query per event; D10's performance rule says why, and benchmark P3 enforces it.
 
+## Shape is normative; sampling is the consumer's (prompt 45)
+
+A `Progress` in a payload (`03-denotational-semantics.md`) is a fact about the piece, and a conforming consumer must
+honour it: the same breakpoints, evaluated the same way, in exact rationals. It serializes and it contributes to the
+semantic hash, so two implementations that disagree about a shape are reading different pieces.
+
+**Where** to sample the shape is not part of the contract. musa's performance layer samples a hairpin once per notated
+event, at `u = index / (count − 1)`, because a hairpin is written around notes and the arrival should not depend on the
+rhythm. A consumer that samples per onset, per frame, or per control-rate tick is equally conforming; it will agree at
+the endpoints and may differ between them. That is the same latitude a consumer already has over tempo realization
+(§22), and it is stated here so nobody encodes musa's sampling choice as though it were the specification.
+
 ## Falsification duty (§33)
 
 Consumers built against this contract are evidence for or against it. If several materially different musical examples

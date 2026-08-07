@@ -623,6 +623,40 @@ pub struct PhraseSpan {
     pub origin: Origin,
 }
 
+/// `Progress` as exact breakpoint quadruples, so the kernel needs no `serde`.
+///
+/// The kernel's dependency list is `num-rational` and `thiserror`; a payload
+/// value type is not a reason to widen it. `Progress::points` and
+/// `Progress::piecewise` are the two halves of this conversion and already
+/// exist for their own reasons, so the adapter is arithmetic-free and cannot
+/// admit a curve the constructor would reject.
+mod progress_serde {
+    use musa_kernel::Progress;
+    use num_rational::Ratio;
+    use serde::{Deserialize as _, Deserializer, Serialize as _, Serializer};
+
+    type Breakpoint = (i64, i64, i64, i64);
+
+    pub(super) fn serialize<S: Serializer>(shape: &Progress, out: S) -> Result<S::Ok, S::Error> {
+        let points: Vec<Breakpoint> = shape
+            .points()
+            .iter()
+            .map(|(u, v)| (*u.numer(), *u.denom(), *v.numer(), *v.denom()))
+            .collect();
+        points.serialize(out)
+    }
+
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(input: D) -> Result<Progress, D::Error> {
+        let points = Vec::<Breakpoint>::deserialize(input)?;
+        Progress::piecewise(
+            points
+                .into_iter()
+                .map(|(un, ud, vn, vd)| (Ratio::new(un, ud), Ratio::new(vn, vd))),
+        )
+        .ok_or_else(|| serde::de::Error::custom("breakpoints do not describe a progress curve"))
+    }
+}
+
 /// A hairpin: a growth or fade over the notes it covers.
 ///
 /// The mark it arrives at is written; the mark it leaves from is whatever
@@ -638,6 +672,11 @@ pub struct HairpinSpan {
     pub grows: bool,
     /// The dynamic it arrives at.
     pub target: DynamicMark,
+    /// How the growth is shaped across the region, in normalized local time.
+    /// The shape is normative; the sampling policy is the consumer's
+    /// (docs/kernel/07).
+    #[serde(with = "progress_serde")]
+    pub shape: musa_kernel::Progress,
     /// Why this hairpin exists.
     pub origin: Origin,
 }

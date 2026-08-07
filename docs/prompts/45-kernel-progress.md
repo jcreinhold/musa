@@ -1,7 +1,7 @@
 ---
 id: 45
 slug: kernel-progress
-status: pending
+status: done
 depends_on: [44]
 phase: 3
 ---
@@ -145,6 +145,50 @@ it and say so.
 - `crates/musa-compiler/src/performance.rs`: `Curve` deleted; `hairpin_curves` reads the shape and keeps its sampling.
 - `docs/kernel/07-backend-contract.md`: shape is normative, sampling is the consumer's.
 - `docs/kernel/09-performance.md`: this prompt's row.
+
+## Repairs made while implementing
+
+**`Progress` carries no `serde`, and the compiler adapts it.** `HairpinSpan` is a serialized snapshot type, so adding a
+`Progress` field to it demanded `Serialize`/`Deserialize`. The kernel's dependency list is `num-rational` and
+`thiserror`; roadmap §15 sanctions `serde` for `musa-compiler`, not for the crate the kernel was carved into, and a
+payload value type is not a reason to widen it. `musa-compiler/src/score.rs` therefore carries a ~30-line
+`progress_serde` adapter that writes breakpoints as exact `(numer, denom, numer, denom)` quadruples through the
+already-public `Progress::points`/`Progress::piecewise`. The adapter is arithmetic-free and cannot admit a curve the
+constructor would reject, because deserialization goes through `piecewise` — an invalid file is a deserialization
+error, not an ill-formed value.
+
+**`Curve` became `Reached`, which is a smaller thing.** The prompt says delete `Curve` and it is deleted, but the
+sampling policy still needs somewhere to put its answer per event. The replacement holds the target mark and the
+*fraction the shape reached* — not `step`/`last`, which were the shape being invented. Where the old code computed
+`from + (to − from) · step/last`, it now computes `from + (to − from) · shape.at(u)` with `u = step/last`, which is the
+prompt's split made literal: the policy picks `u`, the kernel's value answers what fraction that is. With
+`Progress::linear()` the two are identical rational expressions, which is why no golden moved.
+
+**The single-event hairpin lost its special case.** `Curve` handled `last == 0` with an `if` that jumped straight to the
+target. Now a lone event under a hairpin is sampled at `u = 1` and the shape answers `1`, so the branch disappears and
+the arrival test becomes `fraction == 1` — one rule instead of two. This is the same behaviour, expressed once.
+
+**`TempoSegment` was not re-expressed, and the prompt allowed for that.** It holds a *constant* seconds-per-quarter for
+a segment plus its starting frame; there is no curve in it. Rewriting it in terms of `Progress` would relocate code
+rather than delete any, which is the condition the prompt set for leaving it alone.
+
+**`Progress::at` clamps rather than erroring.** Asking a curve about `u` outside `[0, 1]` is a question about its
+endpoints — a consumer sampling at an onset slightly outside the region should get the endpoint value, not an
+`Option`. The lookup loop also ends in a total fallback that the `uₙ = 1` invariant makes unreachable, because a
+total function is cheaper than a `panic!` guarding an invariant construction already enforces.
+
+**L24 tests both halves.** Byte-identity of the payload alone would pass for an absolute-time curve that happened to be
+copied unchanged and therefore be *wrong*; the test also evaluates `at(u)` at corresponding absolute instants after
+`scale`, `sequence`, and `overlay`, which is the half that would fail. `restrict` is checked for payload identity
+through the observation, since it moves nothing.
+
+**The measurement, and what it cannot see.** Every row is within noise of prompt 44's and every allocation count is
+identical to the digit — because **neither benchmark workload contains a hairpin**. `glass-mountain.musa` has none and
+`large-score.musa`'s coda is point dynamics, articulations, ties, slurs and tuplets. The table therefore confirms the
+change costs nothing where there are no hairpins and says nothing else; the real cost is one two-element `Vec` per
+hairpin at elaboration, one clone at projection, and one `at()` per event under a hairpin replacing a multiply. Growing
+the fixture would invalidate forty existing rows, so `docs/kernel/09-performance.md` records the gap and leaves the
+repair to the prompt that next needs the fixture to change.
 
 ## Check
 

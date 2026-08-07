@@ -50,6 +50,18 @@ that is:
 For the first-order payload schemas of `01-grammar.md` this is: fields in declaration order, `name = value;` pairs,
 rationals in reduced `p/q` form, text escaped minimally and consistently.
 
+### The canonical form of a `Progress`
+
+```text
+u₀/d₀:v₀/e₀,u₁/d₁:v₁/e₁,…
+```
+
+Breakpoints in order, each rational in reduced `p/q` form, `u` and `v` separated by `:` and pairs by `,`. Deterministic
+and float-free by construction; injective because the breakpoints are strictly increasing in `u`, so no two distinct
+curves produce the same string. A `Progress` therefore contributes stably to semantic equality (N4) and to the semantic
+hash (N6), which is what makes two implementations reading the same interchange file agree that they read the same
+piece.
+
 ## N4 — Semantic equality
 
 ```text

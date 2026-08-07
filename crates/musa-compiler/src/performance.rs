@@ -382,14 +382,10 @@ pub fn lower_performance(
                         let to = profile
                             .and_then(|profile| profile.amplitude(curve.target))
                             .unwrap_or(Ratio::ONE);
-                        let reached = if curve.last == 0 {
-                            to
-                        } else {
-                            from + (to - from) * Ratio::new(i64::from(curve.step), i64::from(curve.last))
-                        };
+                        let reached = from + (to - from) * curve.fraction;
                         // A hairpin arrives at its mark, and leaves it in
                         // force for what follows.
-                        if curve.step == curve.last {
+                        if curve.fraction == Ratio::ONE {
                             dynamic = Some(curve.target);
                             curve_from = None;
                         }
@@ -452,37 +448,53 @@ impl Interpretation {
     }
 }
 
-/// Where one event sits inside a hairpin: `step` of `last` steps, arriving
-/// at `target`.
+/// How far one event is along the hairpin it falls under, and the mark that
+/// hairpin arrives at.
+///
+/// `fraction` is the *shape's* value, not the sampling position: the policy
+/// below picks `u`, the kernel's `Progress` says what fraction of the distance
+/// `u` has covered, and this is that answer. A hairpin's last event has
+/// `fraction == 1` and therefore leaves the target in force.
 #[derive(Clone, Copy, Debug)]
-struct Curve {
+struct Reached {
     target: crate::score::DynamicMark,
-    step: u32,
-    last: u32,
+    fraction: Ratio<i64>,
 }
 
-/// Index a voice's events by the hairpin they fall under.
+/// Index a voice's events by the hairpin they fall under, sampling each
+/// hairpin's shape once per event.
 ///
-/// A hairpin is written around notes, so it interpolates over notes rather
-/// than over time: each event under it takes an equal share of the distance,
-/// and the last one arrives exactly at the written mark. Interpolating over
-/// frames instead would make the arrival depend on the rhythm, which is not
-/// what the sign says.
-fn hairpin_curves(score: &ScoreSnapshot) -> std::collections::HashMap<EventId, Curve> {
+/// **Shape versus sampling policy** (docs/kernel/07). The shape — how the
+/// growth is distributed across the region — is a fact about the piece: it
+/// lives in the timeline as a `Progress`, it serializes, and every conforming
+/// consumer must honour it. *Where to sample it* is this layer's choice, and
+/// this layer chooses **once per notated event, at `u = index / (count − 1)`**.
+///
+/// That choice is deliberate: a hairpin is written around notes, so each event
+/// under it takes an equal share of the distance and the last one arrives
+/// exactly at the written mark. Sampling by time instead — `u = (onset −
+/// start) / width` — would make the arrival depend on the rhythm, which is not
+/// what the sign says. A consumer that prefers time-sampling is conforming;
+/// it will simply sound different between the endpoints, and identical at
+/// them.
+fn hairpin_curves(score: &ScoreSnapshot) -> std::collections::HashMap<EventId, Reached> {
     let mut curves = std::collections::HashMap::new();
     for hairpin in score.annotations().hairpins() {
         let events = score.events_in(hairpin.from, hairpin.to);
-        let Some(span) = events.len().checked_sub(1) else {
+        let Some(last) = events.len().checked_sub(1) else {
             continue;
         };
-        let last = u32::try_from(span).unwrap_or(u32::MAX);
         for (step, event) in events.iter().enumerate() {
+            // A lone event under a hairpin is already at the far end.
+            let u = match (i64::try_from(step), i64::try_from(last)) {
+                (Ok(step), Ok(last)) if last > 0 => Ratio::new(step, last),
+                _ => Ratio::ONE,
+            };
             curves.insert(
                 event.id,
-                Curve {
+                Reached {
                     target: hairpin.target,
-                    step: u32::try_from(step).unwrap_or(u32::MAX),
-                    last,
+                    fraction: hairpin.shape.at(u),
                 },
             );
         }
