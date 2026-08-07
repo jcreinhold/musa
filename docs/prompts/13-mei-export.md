@@ -42,7 +42,7 @@ Write the MEI backend: deterministic MEI XML generation from a `NotationPlan` wi
   per Verovio compatibility and record the choice; beams via `<beam>` groups matching the plan. `<scoreDef>` carries
   meter and key from the maps; clef per staff.
 - `xml:id` format: `event-` + stable hex of the `EventId`. Tied pieces of one event get suffixed ids (`event-<hex>-t2`)
-  with the base id recorded so the GUI (prompt 20/21) can resolve any rendered note to its `EventId`. Document the
+  with the base id recorded so the GUI (prompts 23-25) can resolve any rendered note to its `EventId`. Document the
   scheme in the module docs — it is a contract.
 - Output is deterministic: fixed attribute order, fixed declaration order, no timestamps. Snapshot tests are the
   regression net.

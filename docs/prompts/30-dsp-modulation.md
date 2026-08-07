@@ -1,8 +1,8 @@
 ---
-id: 25
+id: 30
 slug: dsp-modulation
 status: pending
-depends_on: [24]
+depends_on: [29]
 phase: 2
 ---
 
@@ -10,7 +10,7 @@ phase: 2
 
 ## Task
 
-Replace prompt 24's placeholders with real processors for the modulation core: ADSR envelope, LFO, one-pole and biquad
+Replace prompt 29's placeholders with real processors for the modulation core: ADSR envelope, LFO, one-pole and biquad
 filters, scale/bias/clamp/smoothing control stages — driven by the parameter system's typed units, ranges, and
 modulation-combination policies. After this prompt the `glass_pad` patch from §7.1 sounds like a pad, not a buzz.
 
@@ -19,7 +19,7 @@ modulation-combination policies. After this prompt the `glass_pad` patch from §
 - Roadmap §13.5 (envelope in the voice structure), §13.6 (initial processor list), §13.7 (`ParameterDescriptor` and
   modulation as typed connections; no anonymous normalized 0..1), §17.5 (envelope stages, filter response, modulation
   ranges, NaN-freedom).
-- Prompt 16's parameter skeleton and prompt 24's placeholders.
+- Prompt 16's parameter skeleton and prompt 29's placeholders.
 
 ## Design
 
@@ -34,16 +34,16 @@ modulation-combination policies. After this prompt the `glass_pad` patch from §
 - Parameter system completion (§13.7): `ParameterDescriptor { unit, range, default, smoothing, combination }` is now
   load-bearing. `modulate lfo -> glass_pad.lowpass.cutoff` compiles to a control connection; at render time the
   connection's value is combined per `combination` (Add/Multiply/Replace), clamped to `range`, smoothed per `smoothing`.
-  Language-side units were checked in prompt 24 against the same descriptors — verify the descriptors are literally
+  Language-side units were checked in prompt 29 against the same descriptors — verify the descriptors are literally
   shared.
 - Per-voice integration: patch structure from §13.5 — allocator → pitch-to-frequency → oscillator bank → amplitude ADSR
   → optional filter envelope → per-voice gain/pan → mix. The prompt-12 placeholder ramp envelope is replaced by the
-  default ADSR (fast attack, short release) so unenveloped patches still don't click. Dynamics from prompt 23 profiles
+  default ADSR (fast attack, short release) so unenveloped patches still don't click. Dynamics from prompt 28 profiles
   now scale voice gain (the amplitude boundary designed there).
 - Fundsp decision point (§13.6): if hand-rolling biquads/ADSR looks like reimplementing fundsp badly, adopt it **as a
   private implementation detail** for these processors. Either way its types never appear publicly. Record the decision
   in the module docs.
-- Remove the envelope/lowpass/lfo/scale/bias placeholders from prompt 24; the §7.1 `glass_pad` patch compiles with zero
+- Remove the envelope/lowpass/lfo/scale/bias placeholders from prompt 29; the §7.1 `glass_pad` patch compiles with zero
   placeholder warnings.
 
 ## Target
@@ -69,6 +69,6 @@ Commit as `Add envelopes, filters, and typed modulation`.
 
 ## Stop
 
-- No delay/chorus/reverb/buses/sends DSP (prompt 26) — `reverb` stays a placeholder.
+- No delay/chorus/reverb/buses/sends DSP (prompt 31) — `reverb` stays a placeholder.
 - No band-limited/analog oscillators, compressor, distortion (§13.6 "later" list).
-- No GUI modulation routing (Sound workspace follows prompt 26).
+- No GUI modulation routing (Sound workspace follows prompt 31).

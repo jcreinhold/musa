@@ -1,8 +1,8 @@
 ---
-id: 29
+id: 34
 slug: transforms-variation
 status: pending
-depends_on: [12, 21]
+depends_on: [12, 25]
 phase: 3
 ---
 
@@ -11,7 +11,7 @@ phase: 3
 ## Task
 
 Complete the transformation story on top of the temporal kernel: `stretch`, `retrograde`, and `invert` alongside
-`transpose`; occurrence specialization (`use sigh() with { ... }`) so prompt 21's `Specialize` mode becomes real; and
+`transpose`; occurrence specialization (`use sigh() with { ... }`) so prompt 25's `Specialize` mode becomes real; and
 the laws of roadmap §5.4 — including retrograde's anti-homomorphism — as executable property tests. Every transform is
 an **elaboration-time function over timelines or payloads** (course correction §13–14); none adds a kernel constructor.
 
@@ -24,7 +24,7 @@ an **elaboration-time function over timelines or payloads** (course correction �
 - Roadmap §5.4 (transformation laws; retrograde reverses order: `retro(a then b) = retro(b) then retro(a)`;
   transformations may fail, change shape, or require a pitch system), §7.2 (finite constructs list), §9 (occurrence
   specialization syntax and semantics), §17.2 (law tests).
-- Prompt 12's canonical kernel elaboration path (transforms elaborate through it), prompt 21's
+- Prompt 12's canonical kernel elaboration path (transforms elaborate through it), prompt 25's
   `GeneratedEditMode::Specialize` stub.
 
 ## Design
@@ -83,4 +83,4 @@ Commit as `Add stretch, retrograde, invert, and occurrence specialization`.
 - No "variation" operators beyond these three (no random/humanize transforms — roadmap §7.2 finite + deterministic; §8.3
   rejects unstable semantics).
 - No theory-driven transforms (neo-Riemannian etc. — roadmap §8.2 libraries, not core).
-- No motif extraction improvements (prompt 21's version stands; refine only if the fixture exposes a bug).
+- No motif extraction improvements (prompt 25's version stands; refine only if the fixture exposes a bug).

@@ -1,8 +1,8 @@
 ---
-id: 24
+id: 29
 slug: studio-language
 status: pending
-depends_on: [23]
+depends_on: [28]
 phase: 2
 ---
 
@@ -40,7 +40,7 @@ into a `StudioGraphSpec`. The bridge stays narrow: parts are assigned to patches
 - `musa-audio` gains `From<StudioSpec>`-style lowering to `StudioGraphSpec` (a function `studio_spec_to_graph`,
   direction: audio depends on compiler per §15.1). Desugaring rules: `a |> gain(x) |> output` = node chain; `mix(...)` =
   mixer node; `modulate lfo -> glass_pad.lowpass.cutoff` = control connection to a parameter port. Processors that don't
-  exist yet in DSP (envelope, lowpass, reverb, lfo, scale, bias — prompts 25–26) are represented in the graph as typed
+  exist yet in DSP (envelope, lowpass, reverb, lfo, scale, bias — prompts 30–26) are represented in the graph as typed
   placeholders that render as pass-through/silence **with a compile warning**, so language work isn't blocked on DSP
   work. Remove placeholders as 20–21 land.
 - Default studio (no `studio` block) is unchanged: every part → default sine polysynth → master. Once a `studio` block
@@ -71,7 +71,7 @@ Commit as `Add studio language and StudioSpec`.
 
 ## Stop
 
-- No real ADSR/LFO/filters/effects DSP (prompts 25–26) — placeholders with warnings.
-- No patch library imports (`use "../library/patches.musa"` — prompt 31).
-- No GUI sound-graph visualization (the Sound workspace comes after prompt 26; do not build it here).
+- No real ADSR/LFO/filters/effects DSP (prompts 30–26) — placeholders with warnings.
+- No patch library imports (`use "../library/patches.musa"` — prompt 36).
+- No GUI sound-graph visualization (the Sound workspace comes after prompt 31; do not build it here).
 - No new synthesis techniques beyond what prompt 16/17 processors express.

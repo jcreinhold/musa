@@ -1,7 +1,7 @@
 ---
 id: 18
 slug: engine-transport
-status: in-progress
+status: pending
 depends_on: [17]
 phase: 1
 ---
@@ -23,7 +23,7 @@ the piece live. This completes the Phase 1 CLI slice.
 ## Design
 
 - Create `musa-engine` with dependencies: `musa-compiler`, `musa-audio`, `cpal`, `rtrb`, `tracing`, `thiserror`.
-  (`midir` arrives at prompt 28.)
+  (`midir` arrives at prompt 33.)
 - Public surface exactly per §15.6:
 
   ```rust
@@ -81,6 +81,6 @@ Commit as `Add audio engine with real-time-safe transport`.
 
 ## Stop
 
-- No MIDI input (prompt 28), no recording (rejected, §4).
+- No MIDI input (prompt 33), no recording (rejected, §4).
 - No resampling, no device hot-plug, no per-part mixer UI.
-- No GUI; the desktop app drives this same facade in prompt 20.
+- No GUI; the desktop app drives this same facade in prompt 21.

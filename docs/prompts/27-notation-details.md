@@ -1,8 +1,8 @@
 ---
-id: 22
+id: 27
 slug: notation-details
 status: pending
-depends_on: [14, 21]
+depends_on: [14, 25]
 phase: 2
 ---
 
@@ -19,7 +19,7 @@ travels the full pipeline in one prompt so no layer drifts ahead of another.
 - Roadmap §7.1 (annotations in the example), §6.3 (`AnnotationStore`, spans), §12.1 (plan contents: annotations and
   spans), §17.6 (tuplets-and-ties fixture).
 - Roadmap §2 separation table: a dynamic marking is not a decibel value; an articulation is not a gate multiplier. This
-  prompt carries the **symbols**; interpretation arrives in prompt 23.
+  prompt carries the **symbols**; interpretation arrives in prompt 28.
 - All of prompts 02–14's surfaces.
 
 ## Design
@@ -48,7 +48,7 @@ travels the full pipeline in one prompt so no layer drifts ahead of another.
 - Backends: MEI (`<slur>`, `<dynam>`, `<artic>`, `<tuplet>`, tie elements) and LilyPond (`( )`, `\p`, `--`, `->`,
   `\tuplet 3/2`, `~`) in the same prompt.
 - GUI: render only — Verovio shows everything for free. Entry shortcuts (tie key, slur range command, dynamic menu) if
-  cheap; otherwise defer entry to a later prompt and note it. Editing commands from prompt 21 must not break on
+  cheap; otherwise defer entry to a later prompt and note it. Editing commands from prompt 25 must not break on
   annotated events.
 - Fixture: add tuplets/ties/slurs/dynamics to `examples/` per §17.6.
 
@@ -74,7 +74,7 @@ Commit as `Add ties, slurs, dynamics, articulations, and tuplets`.
 
 ## Stop
 
-- No interpretation of dynamics/articulations (prompt 23) — WAV output must remain byte-identical for pieces without the
+- No interpretation of dynamics/articulations (prompt 28) — WAV output must remain byte-identical for pieces without the
   new constructs.
 - No hairpins/crescendi (later; add to the annotation model only if trivially cheap).
 - No beaming customization beyond meter defaults.

@@ -46,12 +46,12 @@ deliberately minimal — this prompt proves the scheduling pipeline that audio (
   ```
 
 - `IntegratedTempoMap` converts musical onsets to absolute frames through the declared tempo curve (constant tempo only
-  in the current grammar; design the map as a piecewise structure so prompt 31's curves extend data, not code).
+  in the current grammar; design the map as a piecewise structure so prompt 36's curves extend data, not code).
 - `PerformedNote` carries sounding pitch (post-transposition-instrument — none yet), frequency (via the tuning service),
   symbolic dynamic (none yet → default), and the event's `EventId` + `Origin` for provenance. Frequency is derived at
   this boundary, never stored in the score.
 - Gates: note-off frame = onset + notated duration × tempo factor. No articulation shortening yet (§6.4: that is a
-  profile decision, prompt 23).
+  profile decision, prompt 28).
 - Sorting/stability: events sorted by frame; simultaneous events ordered deterministically by lane then `EventId`.
 - Laws to test (§5.5, §17.2): `lower(a then b)` schedules b after a's span; `lower(a together_with b)` merges lanes
   without frame drift; total event count is preserved (2 per note at this stage).
@@ -77,8 +77,8 @@ Commit as `Add performance lowering with frame scheduling`.
 
 ## Stop
 
-- No articulation/dynamic interpretation or profiles (prompt 23).
-- No `Parameter` events from the grammar (nothing produces them until prompt 24/25); the variant exists now so the enum
+- No articulation/dynamic interpretation or profiles (prompt 28).
+- No `Parameter` events from the grammar (nothing produces them until prompt 29/30); the variant exists now so the enum
   is stable.
 - No audio rendering, no MIDI file export.
 - Do not put `lower_performance` in `musa-render` or `musa-audio`; it is part of the compiler's lowering pipeline

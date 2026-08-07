@@ -1,8 +1,8 @@
 ---
-id: 23
+id: 28
 slug: performance-profiles
 status: pending
-depends_on: [22]
+depends_on: [27]
 phase: 2
 ---
 
@@ -20,14 +20,14 @@ performance MIDI (interpreted) via `midly`.
   choices explicit and per-instrument), §7.1 (the
   `performance { profile violin { articulation staccato { gate = 0.55; attack = 8 ms; } } }` example), §12.5 (score MIDI
   vs performance MIDI; MIDI is an edge format, never canonical), §17.6 (dynamic/articulation interpretation fixture).
-- Prompt 15's `lower_performance`, prompt 22's annotations.
+- Prompt 15's `lower_performance`, prompt 27's annotations.
 
 ## Design
 
 - Language: parse the `performance { profile <name> { ... } }` block (lexer/parser additions: `profile`, `articulation`,
   `dynamic`, unit-bearing values like `8 ms`, gate floats). Profiles declare: articulation realizations (gate ratio,
   attack time), dynamic levels (mapping `pp..ff` to abstract amplitude values — still not decibels; the mapping to gain
-  happens at the instrument boundary in prompt 25's parameter system), and default profile per part.
+  happens at the instrument boundary in prompt 30's parameter system), and default profile per part.
 - Compiler: `PerformanceOptions` gains the resolved profiles; `lower_performance` applies them — gate shortens note-off
   per articulation, dynamics scale per-note amplitude, attack shapes the envelope request carried on `PerformedNote`.
   The score remains untouched: interpretation lives only in the plan (§6.4).
@@ -73,8 +73,8 @@ Commit as `Add performance profiles and MIDI export`.
 
 ## Stop
 
-- No tempo/expression **curves** (constant tempo per piece; curves are prompt 31).
+- No tempo/expression **curves** (constant tempo per piece; curves are prompt 36).
 - No rubato/humanization, no per-note timing jitter.
 - No live MIDI output; MIDI is files only until a later measured need (§12.5).
 - No studio/synth realization of dynamics beyond per-note amplitude on the existing sine synth (full parameter routing
-  arrives with prompts 24–25).
+  arrives with prompts 29–25).

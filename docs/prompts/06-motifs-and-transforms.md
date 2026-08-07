@@ -78,6 +78,6 @@ Commit as `Add motifs, repeat, and transpose with provenance`.
 
 ## Stop
 
-- No `stretch`, `retrograde`, `invert`, variation, or occurrence specialization (`use sigh() with {...}`) — prompt 24.
-- No motif extraction command (prompt 24).
+- No `stretch`, `retrograde`, `invert`, variation, or occurrence specialization (`use sigh() with {...}`) — prompt 34.
+- No motif extraction command (prompt 25).
 - No performance or notation consequences yet; this prompt ends at the snapshot.

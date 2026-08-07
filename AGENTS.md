@@ -12,7 +12,11 @@ the semantic core is Rust, the UI is a replaceable projection.
    time, typed occurrences, `timeline`/`sequence`/`overlay`) is the ontology; the surface language elaborates into it.
    Where it and the roadmap disagree, the course correction wins. Its authoritative elaboration is **`docs/kernel/`**
    (the kernel specification; candidate until prompt 12 graduates it).
-3. **`docs/prompts/`** — the work plan. 31 numbered feature prompts with their own README defining prompt anatomy and
+3. **`docs/interface/`** — the desktop interface specification: visual language, engraving quality bar, interaction and
+   selection model, Origin view, states and voice, performance budgets. Roadmap §14 fixes the app's *architecture*;
+   `docs/interface/` fixes everything §14 leaves open, and §14's wireframe is not a visual spec. Candidate until prompt
+   26 graduates it.
+4. **`docs/prompts/`** — the work plan. 36 numbered feature prompts with their own README defining prompt anatomy and
    execution rules. Implementation happens by executing prompts in dependency order (see the `prompt-stack` skill).
 
 If code and these documents disagree, either the code is wrong or the document needs a deliberate repair — never let
@@ -33,6 +37,7 @@ them drift silently.
 | `apps/musa-desktop` | thin Tauri shell + Svelte UI over musa-project |
 | `examples/` | `.musa` fixtures — executable specifications, not demos |
 | `docs/kernel/` | the temporal-kernel specification (candidate until prompt 12) |
+| `docs/interface/` | the desktop interface specification (candidate until prompt 26) |
 | `docs/prompts/` | numbered implementation prompts + README |
 
 Dependency direction is one-way: language → compiler → {render, audio} → engine → project → {cli, desktop}, with

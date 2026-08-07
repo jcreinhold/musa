@@ -1,8 +1,8 @@
 ---
-id: 30
+id: 35
 slug: annotations-harmony
 status: pending
-depends_on: [22]
+depends_on: [27]
 phase: 3
 ---
 
@@ -41,7 +41,7 @@ nothing. Per roadmap §8.2, harmony is annotation, not ontology.
   that notes fit the chord, no voice-leading opinion (§8.2 — that restraint is the feature).
 - Notation: harmony lane renders above the staff in MEI (`<harm>`) and LilyPond (`\chordmode` or markup — pick what
   Verovio/LilyPond render best; document). Phrase/section markers render as rehearsal marks/text. MusicXML: `<harmony>`
-  elements (extend prompt 27 — this prompt touches that backend too).
+  elements (extend prompt 32 — this prompt touches that backend too).
 - GUI: harmony symbols visible in the score (Verovio renders `<harm>`); a parts-list level outline (sections/phrases)
   for navigation — click a section, scroll the score. No editing UI beyond source (entry via source is acceptable here;
   note it).

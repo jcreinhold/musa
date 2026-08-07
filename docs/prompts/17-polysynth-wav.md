@@ -27,9 +27,9 @@ deterministic WAV file offline.
   - A `VoiceAllocator` (fixed voice pool, e.g. 16 voices, steal-oldest policy) turning `NoteOn`/`NoteOff` events into
     per-voice gate + frequency control.
   - A sine polysynth instrument built from prompt 16's processors: per-voice oscillator + simple attack/release gain
-    smoothing (a full ADSR is prompt 25; a short linear ramp now to avoid clicks — document that it is a placeholder
+    smoothing (a full ADSR is prompt 30; a short linear ramp now to avoid clicks — document that it is a placeholder
     envelope, not an articulation model).
-  - A **default instrument**: when the source has no `studio` block (always, until prompt 24), every part gets this sine
+  - A **default instrument**: when the source has no `studio` block (always, until prompt 29), every part gets this sine
     polysynth (§14.8: a new piece is immediately audible).
   - Offline renderer:
 
@@ -76,6 +76,6 @@ Commit as `Add polyphonic sine synth and WAV export`.
 ## Stop
 
 - No CPAL live playback (prompt 18).
-- No ADSR/LFO/filter/effects, no studio DSL (prompts 24–26).
-- No MIDI export (prompt 23).
+- No ADSR/LFO/filter/effects, no studio DSL (prompts 29–31).
+- No MIDI export (prompt 28).
 - Do not add project/session orchestration beyond the marked shim.

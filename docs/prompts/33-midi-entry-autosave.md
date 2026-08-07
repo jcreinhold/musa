@@ -1,8 +1,8 @@
 ---
-id: 28
+id: 33
 slug: midi-entry-autosave
 status: pending
-depends_on: [21, 26]
+depends_on: [25, 31]
 phase: 2
 ---
 
@@ -19,7 +19,7 @@ edit commands, not because their scope changed.
 
 - Roadmap §12.5 (live MIDI input belongs in the engine through `midir`), §14.5 (note entry: pitch from MIDI keyboard,
   duration from numeric shortcuts), §15.6 (engine owns MIDI input), §15.7 (autosave is project-owned).
-- Prompt 18's engine, prompt 21's edit commands and entry UX.
+- Prompt 18's engine, prompt 25's edit commands and entry UX.
 
 ## Design
 
@@ -28,7 +28,7 @@ edit commands, not because their scope changed.
   queue — the callback never touches midir callbacks directly beyond queueing (§13.2 rules apply to the MIDI thread too:
   no allocation, no locks; midir gives you a callback thread, treat it like the audio one).
 - Step entry flow: desktop receives input events (engine → project → Tauri event), the Compose workspace in entry mode
-  maps note-on pitch → `InsertNote` at the cursor with the currently selected duration (prompt 21's command path —
+  maps note-on pitch → `InsertNote` at the cursor with the currently selected duration (prompt 25's command path —
   nothing new semantically), cursor advances. Held-chord entry: overlapping note-ons within a small window (or a chord
   modifier) issue one chord insertion. MIDI note number → `WrittenPitch` spelling happens at this edge (§12.5: MIDI is
   an edge format); spelling heuristic: prefer sharps in sharp keys, flats in flat keys, diatonic preference in the

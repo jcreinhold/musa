@@ -1,8 +1,8 @@
 ---
-id: 27
+id: 32
 slug: musicxml-export
 status: pending
-depends_on: [22]
+depends_on: [27]
 phase: 2
 ---
 
@@ -17,7 +17,7 @@ an edge format: the `NotationPlan` drives it, and no MusicXML convention enters 
 
 - Roadmap §12.4 (interchange role, why it's not the internal model), §12.1 (plan → backend pipeline), §17.4 (open output
   in two independent consumers).
-- Prompt 13's MEI writer (same plan, analogous structure), prompt 22's annotation support.
+- Prompt 13's MEI writer (same plan, analogous structure), prompt 27's annotation support.
 
 ## Design
 

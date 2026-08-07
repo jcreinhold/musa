@@ -2,13 +2,18 @@
 
 This directory is the executable work plan for building musa according to
 [`../initial-design-roadmap.md`](../initial-design-roadmap.md) as course-corrected by
-[`../course-correction.md`](../course-correction.md). Each numbered prompt delivers one feature and builds on the
-prompts it depends on. Work them in dependency order; when in doubt, work them in numeric order.
+[`../course-correction.md`](../course-correction.md), with the desktop interface governed by
+[`../interface/`](../interface/README.md). Each numbered prompt delivers one feature and builds on the prompts it
+depends on. Work them in dependency order; when in doubt, work them in numeric order.
 
-**Where the two documents disagree** — most importantly, the course correction's rule that the surface grammar does not
-define the ontology and that a small temporal kernel (`timeline` / `sequence` / `overlay` over exact rational ambient
-time) is the semantic core — the course correction wins. Prompts 08–12 specify, implement, prove, and install that
-kernel; prompts 13+ proceed exactly as before on top of it.
+**Where the roadmap and the course correction disagree** — most importantly, the course correction's rule that the
+surface grammar does not define the ontology and that a small temporal kernel (`timeline` / `sequence` / `overlay` over
+exact rational ambient time) is the semantic core — the course correction wins. Prompts 08–12 specify, implement, prove,
+and install that kernel; prompts 13+ proceed exactly as before on top of it.
+
+**Where the roadmap is silent on the desktop interface** — its visual language, engraving quality, interaction model,
+states, and performance budgets — `docs/interface/` is the authority. Roadmap §14 still fixes the architecture. Prompts
+20–26 implement `docs/interface/`; prompt 26 graduates it from candidate, as prompt 12 did for the kernel.
 
 ## Prompt anatomy
 
@@ -111,18 +116,23 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 17 | polysynth-wav | 1 | `musa render --to wav` |
 | 18 | engine-transport | 1 | `musa play`; CPAL + transport |
 | 19 | project-session | 1.5 | ProjectSession, undo, exports |
-| 20 | desktop-shell | 1.5 | Tauri + Svelte + Verovio preview |
-| 21 | score-editing | 1.5 | Semantic edit commands → text edits |
-| 22 | notation-details | 2 | Ties, slurs, dynamics, articulations, tuplets |
-| 23 | performance-profiles | 2 | Interpretation profiles; MIDI export |
-| 24 | studio-language | 2 | Studio DSL → StudioSpec |
-| 25 | dsp-modulation | 2 | ADSR, LFO, filters, typed parameters |
-| 26 | dsp-effects-mix | 2 | Delay, chorus, reverb, buses, sends |
-| 27 | musicxml-export | 2 | `musa render --to musicxml` |
-| 28 | midi-entry-autosave | 2 | Live MIDI input, step entry, autosave |
-| 29 | transforms-variation | 3 | stretch/retrograde/invert as elaboration-time functions, specialization |
-| 30 | annotations-harmony | 3 | Phrase/form and harmony as typed interval payloads |
-| 31 | imports-and-curves | 3 | Relative imports, tempo/expression curves |
+| 20 | interface-prototype | 1.5 | Design system, bundled fonts, worker engraver, static Compose screen, screenshot goldens |
+| 21 | desktop-shell | 1.5 | Tauri command boundary, live snapshots, stale-revision behavior |
+| 22 | score-engraving | 1.5 | Anchored re-render, zoom re-layout, virtualization, raster goldens |
+| 23 | score-interaction | 1.5 | Selection + caret, keyboard map, palette, playhead, a11y floor |
+| 24 | origin-view | 1.5 | Provenance lens, occurrence selection, diagnostics into the score |
+| 25 | score-editing | 1.5 | Semantic edit commands → text edits; keyboard entry |
+| 26 | source-workspace | 1.5 | CodeMirror 6 + musa language, two-way linking; graduates `docs/interface/` |
+| 27 | notation-details | 2 | Ties, slurs, dynamics, articulations, tuplets |
+| 28 | performance-profiles | 2 | Interpretation profiles; MIDI export |
+| 29 | studio-language | 2 | Studio DSL → StudioSpec |
+| 30 | dsp-modulation | 2 | ADSR, LFO, filters, typed parameters |
+| 31 | dsp-effects-mix | 2 | Delay, chorus, reverb, buses, sends |
+| 32 | musicxml-export | 2 | `musa render --to musicxml` |
+| 33 | midi-entry-autosave | 2 | Live MIDI input, step entry, autosave |
+| 34 | transforms-variation | 3 | stretch/retrograde/invert as elaboration-time functions, specialization |
+| 35 | annotations-harmony | 3 | Phrase/form and harmony as typed interval payloads |
+| 36 | imports-and-curves | 3 | Relative imports, tempo/expression curves |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 is **frozen as
 the regression oracle** once prompt 11 lands: the new kernel elaboration must reproduce its snapshots exactly
@@ -130,9 +140,17 @@ the regression oracle** once prompt 11 lands: the new kernel elaboration must re
 lossless parsing, formatting, exact rational time, provenance, `ScoreSnapshot`, and `NotationPlan` are explicitly
 preserved by the course correction (§29, §35.2).
 
+Prompts 20–26 are the interface block. They replace a single "Tauri + Svelte + Verovio" prompt that treated the desktop
+app as plumbing and left its design, engraving quality, interaction model, and performance entirely unspecified — which
+would have produced exactly the four-panel toolbar application this project exists to improve on. The block is ordered
+so that **the design is settled before any plumbing exists** (prompt 20 is a fixture-driven prototype with real Verovio,
+real fonts, and committed screenshot goldens, and nothing else), then wired (21), then made to hold up under real use
+(22, 23), then given its distinguishing interaction (24) and its editing story (25, 26). `docs/interface/` is the
+specification all seven implement.
+
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
 ("Verovio score preview", "play, stop, seek, loop") but which this sequence deliberately runs after the CLI-provable
-slice. Prompt 28 is roadmap Phase 2 scope ("MIDI step entry", "autosave") ordered after the desktop prompts it depends
+slice. Prompt 33 is roadmap Phase 2 scope ("MIDI step entry", "autosave") ordered after the desktop prompts it depends
 on; phases describe scope, not strict order.
 
 ## Out of scope for this sequence (roadmap §18 Phase 4)
@@ -147,5 +165,5 @@ Do not create prompts for these until the native system is stable and the user a
 
 Also deferred: the **theory libraries** of roadmap §8.2 (tonal analysis, Roman numerals, neo-Riemannian operations,
 scales/modes, voice-leading, counterpoint, auto-voicing). The roadmap lists them under Phase 3 but defines them as
-open-ended algorithms over the compositional model, not core features; prompt 30 builds the annotation and chord-symbol
+open-ended algorithms over the compositional model, not core features; prompt 35 builds the annotation and chord-symbol
 model they would consume. Scope a theory library as its own prompt sequence when a concrete operation is requested.

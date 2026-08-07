@@ -86,7 +86,7 @@ Commit as `Add project session facade and rebuild CLI on it`.
 
 ## Stop
 
-- No structured score-edit commands (prompt 21) — only whole-source and text-edit commands.
-- No autosave (prompt 28), no directory/album projects (§16 later part).
+- No structured score-edit commands (prompt 25) — only whole-source and text-edit commands.
+- No autosave (prompt 33), no directory/album projects (§16 later part).
 - No compilation on a worker thread or Salsa (§10.7).
-- No Tauri/desktop code (prompt 20).
+- No Tauri/desktop code (prompt 21).

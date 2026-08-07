@@ -1,8 +1,8 @@
 ---
-id: 26
+id: 31
 slug: dsp-effects-mix
 status: pending
-depends_on: [25]
+depends_on: [30]
 phase: 2
 ---
 
@@ -19,7 +19,7 @@ buses, sends, and levels are visible and adjustable — as structured editors of
 - Roadmap §13.3 (feedback only through explicit delay), §13.6 (time effects, routing: mixer/splitter/send/return;
   limiter on master), §5.6 (feedback causality is visible), §14.4 (Sound and Mix workspaces), §11 (`AssignPatch` edit
   command — workspace controls produce source edits).
-- Prompt 24's bus/send/modulate spec, prompt 25's processors.
+- Prompt 29's bus/send/modulate spec, prompt 30's processors.
 
 ## Design
 
@@ -68,6 +68,6 @@ Commit as `Add time effects, buses, and mix workspaces`.
 ## Stop
 
 - No convolution reverb, compressor, tape/distortion (§13.6 later list).
-- No automation lanes/curves in the GUI (language-level curves are prompt 31).
+- No automation lanes/curves in the GUI (language-level curves are prompt 36).
 - No visual node-graph canvas (pannable/zoomable); the chain view is the design.
 - No plugin hosting of any kind (§4, Phase 4).

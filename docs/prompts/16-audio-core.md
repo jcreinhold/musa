@@ -56,7 +56,7 @@ rendering. No CPAL, no live stream — this prompt produces the pure DSP engine 
 - Processors at this prompt: sine oscillator (phase-continuous, §13.5 formula), noise (deterministic seed), constant
   control, gain, pan, mixer (n-in), splitter, mono↔stereo adapters (§13.4's explicit adapters).
 - Parameter system skeleton (§13.7): `ParameterDescriptor { unit, range, default, smoothing, combination }` — no
-  modulation sources yet (prompt 25), but descriptors exist now so adding modulation is additive.
+  modulation sources yet (prompt 30), but descriptors exist now so adding modulation is additive.
 - The render function must satisfy the §13.2 rules even though nothing is live yet: preallocate everything in
   `compile_graph`; `render` takes `&mut self` and never allocates. Test this with an allocation-counting harness (a
   test-only global allocator wrapper) — it is the cheapest way to make the RT contract a test, not a hope.
@@ -69,7 +69,7 @@ rendering. No CPAL, no live stream — this prompt produces the pure DSP engine 
 - Tests (§17.5): oscillator frequency accuracy (zero-crossing/FFT-lite) and phase continuity across blocks; mixer/gain
   arithmetic; cycle rejection; disconnected-graph silence; determinism (two renders, byte equality); NaN/infinity
   absence with adversarial parameters; allocation-free `render`.
-- insta snapshots of validation diagnostics (they will become user-facing via prompt 24's language).
+- insta snapshots of validation diagnostics (they will become user-facing via prompt 29's language).
 
 ## Check
 
@@ -84,6 +84,6 @@ Commit as `Add audio graph compiler and offline renderer`.
 ## Stop
 
 - No voice allocation or note-event → oscillator routing (prompt 17).
-- No ADSR/LFO/filters/effects (prompts 25–26).
+- No ADSR/LFO/filters/effects (prompts 30–31).
 - No CPAL or threads (prompt 18).
 - No fundsp types in public API; if undecided, hand-roll.
