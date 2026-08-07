@@ -1,9 +1,9 @@
 # 10 — The Kernel Term Calculus
 
-**Status: candidate.** This document specifies a term language for the temporal kernel. Nothing implements it yet:
-prompt 47 builds the `Term` type and its evaluator, prompt 48 gives it a text form and graduates this document, prompt
-49 makes elaboration emit terms. Until then this is a design under review, exactly as `03`–`05` were between prompts 08
-and 12, and it may be revised or struck without a migration.
+**Status: governing** (graduated at prompt 48). Prompt 47 built the `Term` type and its evaluator, prompt 48 gave it a
+text form (`01-grammar.md`) and a second producer/consumer; prompt 49 makes elaboration emit terms. Nothing in this
+document was revised on the way through implementation — the two repairs prompt 48 made were to `01-grammar.md`'s
+payload syntax and to `05-normalization.md`'s claim about N5, neither of which is a claim this document makes.
 
 The kernel has been an algebra of *values*: you build a `Timeline` and the building is gone. This document adds a
 syntax whose meanings are those same values — no new semantic domain, no new operation, no new equality. What it buys

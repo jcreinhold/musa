@@ -47,8 +47,15 @@ that is:
 - **injective on values** — distinct values serialize distinctly (so semantic equality of payloads is equality of
   serializations).
 
-For the first-order payload schemas of `01-grammar.md` this is: fields in declaration order, `name = value;` pairs,
-rationals in reduced `p/q` form, text escaped minimally and consistently.
+N3 is the **equality** serialization, and that is all it is. It may — and for `ScoreFact` does — quotient away detail
+the value carries: two facts differing only in their definition span and declaration id are the same fact for ordering,
+equality, and hashing, so the key omits both. That is what makes the semantic hash *semantic*.
+
+The consequence, discovered while implementing prompt 48: **N3 is not an interchange form.** An interchange form must
+reproduce the value, so it carries what N3 drops, and the two are separate functions with separate jobs
+(`Canonical::canonical_key` and `TextPayload::to_text`). The prompt asked for this to be checked before a second
+function was written, and this is the answer. Where a payload has nothing to quotient — `Progress` below — the two
+coincide, and one function serves.
 
 ### The canonical form of a `Progress`
 
@@ -91,8 +98,16 @@ Rules:
 - Payloads in canonical payload serialization (N3).
 - Trailing newline after the closing brace; no timestamps, no comments, no version headers.
 
-This is a strict subset of the `01-grammar.md` syntax (a `timeline-expression` alone), so a future kernel-file parser
-reads today's golden files unchanged.
+N5 is **not** kernel-file syntax, and an earlier draft of this section claimed it was. Two differences, each of them
+the point of the form it belongs to:
+
+- N5 writes the payload's N3 key bare, where a file writes an interchange payload as a quoted string. The key is not
+  parseable and does not need to be — nothing reads N5, it is hashed and compared.
+- N5 has no version header, because it is not a file.
+
+So the two serializations coexist: N5 for identity, `01-grammar.md` for exchange. `musa kernel --normalized` prints the
+*interchange* spelling of the normal form — a single flat `timeline` in a kernel file — which is parseable, and which
+`musa kernel --check` therefore accepts. Nothing about N5's bytes changed, and no golden moved.
 
 ## N6 — Semantic hashing
 

@@ -36,6 +36,13 @@ pub(crate) struct ValidArtifacts {
     pub(crate) mei: String,
     /// The compiled score, kept for exports and playback preparation.
     pub(crate) score: musa_compiler::ScoreSnapshot,
+    /// The source that produced it.
+    ///
+    /// Kept because one export — kernel text — is a projection of the
+    /// *document*, not of the score snapshot: a term carries provenance the
+    /// snapshot has already spent. One string per successful compile, beside
+    /// a history that already holds one per edit.
+    pub(crate) source: String,
     /// The compiled studio from the same compilation. Kept beside the score
     /// rather than inside it: they are two documents, and pairing them here
     /// is what stops a render from using one piece's sound with another's

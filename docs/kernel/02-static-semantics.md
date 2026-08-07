@@ -59,9 +59,9 @@ Occurrences form a finite **multiset**, not a set (§6): two occurrences identic
 occurrences. No operation in the kernel may deduplicate them. Two performers playing the same note must not collapse
 merely because all visible values coincide.
 
-## K7 — Term well-formedness *(candidate: prompt 46)*
+## K7 — Term well-formedness *(specified prompt 46, implemented prompt 47)*
 
-Rules for the term calculus of `10-term-calculus.md`, which is itself candidate. They are checkable on the term alone,
+Rules for the term calculus of `10-term-calculus.md`. They are checkable on the term alone,
 without evaluating it.
 
 - **Scoping.** Every name occurring in a term is bound by an enclosing `let`. A term with a free name is rejected, not

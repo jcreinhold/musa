@@ -8,51 +8,35 @@ exchange. **It is not the syntax musicians write** (course correction §24); the
 **Grammar here, calculus there.** This document says how a term is written; `10-term-calculus.md` says what it means,
 which terms are well-formed (with `02-static-semantics.md` K7), and which theorems hold. Neither is complete without
 the other, and where they disagree the calculus is right — a notation cannot promise a meaning the semantics does not
-define. Both are candidate until prompt 48 graduates them together.
+define.
 
-Implementation note: prompt 09 implemented **canonical serialization** (kernel value → this text form, in the normal
-form of `05-normalization.md`) only. A parser for the full grammar arrives at prompt 48, which is the second
-producer/consumer `08-open-questions.md` Q6 was waiting for; N5's output is a strict subset of this grammar, so today's
-golden files are already readable by it.
+Implemented at prompt 48 in `musa-kernel/src/text.rs` (printer and parser) with `musa-compiler`'s `ScoreFact` payload
+form; `musa kernel` is the CLI, and `examples/kernel/*.kernel` is the committed corpus. That corpus and its second
+producer/consumer are what `08-open-questions.md` Q6 was waiting for.
 
 ## Lexical conventions
 
 - Whitespace-separated tokens; `%` begins a line comment.
-- `string-literal` — double-quoted, backslash escapes for `"` and `\`.
-- `name` — `[A-Za-z_][A-Za-z0-9_-]*` (composition names, payload type names, payload field names).
+- The **first line of a file is the version header**, `% ` followed by the format version (`musa-kernel-1`). It is
+  lexically a comment and semantically required: a consumer must be able to refuse a format it does not know, and a
+  file that merely omitted the line would otherwise read as a valid file of an unknown vintage.
+- `string-literal` — double-quoted, backslash escapes for `"`, `\`, and `\n`.
+- `name` — `[A-Za-z_][A-Za-z0-9_-]*` (composition names, payload type names).
 - `rational-literal` — `integer-literal | integer-literal "/" positive-integer-literal`; always reduced on reading.
 - `duration-literal`, `position-literal` — `rational-literal`, interpreted as beats (exact rationals; never floats).
 - `positive-rational-literal` — a `rational-literal` denoting a value in `ℚ>0`; scaling by zero or a negative factor is
   a static error (`02-static-semantics.md` K2).
-- Keywords are reserved: `kernel`, `payload`, `composition`, `timeline`, `occurrence`, `from`, `to`, `sequence`,
-  `overlay`, `let`, `in`, `scale`, `restrict`, `shift`, `by`.
+- Keywords are reserved: `kernel`, `composition`, `timeline`, `occurrence`, `from`, `to`, `sequence`, `overlay`, `let`,
+  `in`, `scale`, `restrict`, `shift`, `by`, `Timeline`.
 
 ## Grammar
 
 ```ebnf
 kernel-file
-    = "kernel", string-literal, "{",
-          { declaration },
+    = version-header,
+      "kernel", string-literal, "{",
+          composition-declaration,
       "}"
-    ;
-
-declaration
-    = payload-type-declaration
-    | composition-declaration
-    ;
-
-payload-type-declaration
-    = "payload", payload-type, "{",
-          { payload-field, ";"},
-      "}"
-    ;
-
-payload-field
-    = field-name, ":", field-type
-    ;
-
-field-type
-    = "text" | "rational" | "integer" | "bool" | payload-type
     ;
 
 composition-declaration
@@ -88,12 +72,15 @@ occurrence-statement
       ";"
     ;
 
+payload-value
+    = string-literal
+    ;
+
 sequence-expression
     = "sequence", "{",
           composition-expression,
           ";",
-          composition-expression,
-          { ";", composition-expression },
+          { composition-expression, ";" },
       "}"
     ;
 
@@ -101,8 +88,7 @@ overlay-expression
     = "overlay", "{",
           composition-expression,
           ";",
-          composition-expression,
-          { ";", composition-expression },
+          { composition-expression, ";" },
       "}"
     ;
 
@@ -123,58 +109,39 @@ let-expression
     ;
 ```
 
-`scale`, `restrict`, `shift`, and `let` are the forms this document gained when the calculus was specified. Three notes
-a reader needs:
+Three notes a reader needs:
 
-- **`shift by d t` is sugar** for `sequence { timeline d { }; t }` (`10-term-calculus.md`). It may be written and it is
-  never printed: canonical serialization emits the expansion, so N5 output stays unique.
-- **`let` scopes over the expression after `in`**, and shadowing is rejected (K7). A `composition` declaration is the
-  file-level form of the same idea; `let` is the expression-level one, and a file may use either.
+- **`shift by d t` is sugar** for `sequence { timeline d { }; t }` (`10-term-calculus.md`). It may be written; it is
+  never printed, because the printer prints the term it is given and `Term::shift` records the sugar rather than the
+  expansion only when a producer wrote it.
+- **`let` scopes over the expression after `in`**, and shadowing is rejected (K7). A file declares exactly one
+  composition, so `let` is the only sharing form a file has — which is deliberate: two file-level declarations would be
+  two ways to say the same thing, and one of them would have to be canonical anyway.
 - **There is no `map`**, deliberately: naming a payload function would require a syntax for functions
   (`10-term-calculus.md`). Payloads arrive already transformed.
 
 ## Payload values
 
-Payload schemas are first-order and deliberately boring (course correction §24): named records over `text`, `rational`,
-`integer`, `bool`, and previously-declared payload types. No functions, no sums with payloads of different shapes per
-constructor, no recursion.
+**A payload is an opaque quoted string.** The kernel is generic in its payload type (§12) and never looks inside one:
+it reads the string and hands it to the consumer that owns the payload — `musa-compiler` for `ScoreFact`. The
+`payload-type` in the composition's type annotation exists so a reader can *refuse* a file whose payloads it does not
+own, not so it can validate one it does.
 
-```ebnf
-payload-value
-    = payload-type, "{", { field-name, "=", field-value, ";" }, "}"
-    ;
-
-field-value
-    = string-literal
-    | rational-literal
-    | integer-literal
-    | "true" | "false"
-    | payload-value
-    ;
-```
-
-Example (for a toy payload; real score payloads belong to the score adapter, `07-backend-contract.md`):
+This is a repair to an earlier draft of this document, which specified a `payload` declaration and record-shaped
+payload values. That design would have made a kernel file self-describing at the cost of the invariant the crate exists
+to hold: a kernel that reads `Note { letter = "c"; octave = 4; }` knows what a note is. The layering is worth more than
+the self-description, and the payload's own text form is specified where the payload is —
+`06-surface-elaboration.md` for `ScoreFact`.
 
 ```text
+% musa-kernel-1
 kernel "example" {
-    payload Note {
-        letter: text;
-        accidental: integer;
-        octave: integer;
-    }
-
-    composition melody : Timeline[Note] = sequence {
-        timeline 1 {
-            occurrence Note { letter = "c"; accidental = 0; octave = 4; } from 0 to 1;
-        };
-        timeline 2 {
-            occurrence Note { letter = "e"; accidental = 0; octave = 4; } from 0 to 2;
-        };
-    };
-
-    composition piece : Timeline[Note] = overlay {
-        melody;
-        melody;
+  composition main : Timeline[ScoreFact] =
+    let subject = timeline 1 {
+      occurrence "voice@0@0|note@c4@1/4;1/4;1/4@|10:16|10:16|0|" from 0 to 1/4;
+    } in overlay {
+      subject;
+      shift by 1/2 subject;
     };
 }
 ```
@@ -182,12 +149,15 @@ kernel "example" {
 ## Design rules
 
 - **Clear names, no unexplained shorthand** (§24): `sequence`/`overlay`/`occurrence`, never `par`/`seq`/`atom`.
-- Durations and positions are beats as exact rationals. `0` and `3/2` are legal; `0.75` is not.
+- Durations and positions are beats as exact rationals. `0` and `3/2` are legal; `0.75` is not. This holds inside
+  payload text too — a hairpin shape crosses as rational breakpoints, and a consumer that rounds it produces different
+  sound from the same file (`07-backend-contract.md`).
 - A `composition` reference denotes the value of its declaration; references must be acyclic (`02-static-semantics.md`
   K4), as `let`-bound names are by construction (K7).
-- The normal form (every composition reduced to a single flat `timeline` with canonically ordered occurrences) and its
-  serialization rules are in `05-normalization.md`. Writing is normalizing: a file *read* may share and abbreviate, a
-  file *written* by this implementation never does.
+- **Writing is not normalizing.** An earlier draft said it was, when the only writer was N5's serializer. Prompt 48
+  made the printer print the term it is given: a canon prints as a `let` and two `shift`s, which is the capability that
+  makes this a format worth exchanging rather than a dump. Normalizing first is a separate call the caller may make,
+  and `05-normalization.md` says what it produces.
 - Nothing here means anything on its own. Every production above denotes through `10-term-calculus.md`, and a
   production that denoted nothing would be a syntax for a meaning the kernel does not have — which is the failure this
   split exists to prevent.

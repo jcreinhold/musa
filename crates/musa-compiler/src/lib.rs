@@ -31,8 +31,10 @@
 pub mod bench;
 mod compile;
 mod elaborate;
+mod factext;
 mod harmony;
 mod imports;
+mod kernel_text;
 mod origin;
 mod performance;
 mod pitch;
@@ -48,6 +50,10 @@ pub use crate::compile::{Compilation, CompileOptions, Diagnostic, Severity, Sour
 pub use crate::elaborate::kernel_normal_form;
 pub use crate::harmony::{ChordQuality, ChordSymbol, Seventh};
 pub use crate::imports::{ImportSources, resolve_import};
+#[doc(hidden)]
+pub use crate::kernel_text::{
+    KernelCheck, check_kernel_text, kernel_normalized_text, kernel_text, kernel_text_meaning,
+};
 pub use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 pub use crate::performance::{
     IntegratedTempoMap, ParameterId, PerformanceError, PerformanceEvent, PerformanceLane, PerformanceOptions,

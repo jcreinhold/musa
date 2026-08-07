@@ -407,7 +407,10 @@ impl From<&ProjectError> for ErrorDto {
             | ProjectError::Uneditable(_)
             | ProjectError::NotYetImplemented { .. } => ErrorKindDto::Document,
             ProjectError::NothingTo(_) | ProjectError::NoValidScore => ErrorKindDto::Nothing,
-            ProjectError::Performance(_) | ProjectError::Notation(_) | ProjectError::Engine(_) => ErrorKindDto::Backend,
+            ProjectError::Performance(_)
+            | ProjectError::Notation(_)
+            | ProjectError::Engine(_)
+            | ProjectError::Kernel(_) => ErrorKindDto::Backend,
         };
         Self {
             kind,

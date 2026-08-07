@@ -16,6 +16,7 @@ fn main() -> ExitCode {
         Some("check") => cmd_check(args.get(1..).unwrap_or_default()),
         Some("render") => cmd_render(args.get(1..).unwrap_or_default()),
         Some("play") => cmd_play(args.get(1..).unwrap_or_default()),
+        Some("kernel") => cmd_kernel(args.get(1..).unwrap_or_default()),
         _ => {
             print_usage();
             if args.is_empty() {
@@ -38,6 +39,8 @@ fn print_usage() {
     );
     println!("      --mode score|performance             for --to midi (default: score)");
     println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
+    println!("  musa kernel <file.musa> [--normalized] print the piece as kernel interchange text");
+    println!("  musa kernel --check <file.kernel>      parse, check, and evaluate kernel text");
 }
 
 /// Open a project, or report why not.
@@ -134,6 +137,88 @@ fn cmd_render(args: &[String]) -> ExitCode {
         | ExportRequest::PerformanceDump
         | ExportRequest::NotationPlanDump
         | _ => write_artifact(path, &artifact, output, request.extension()),
+    }
+}
+
+/// `musa kernel <file.musa> [--normalized] [-o <path>]` /
+/// `musa kernel --check <file.kernel>`
+///
+/// One direction only: kernel text is a projection of a piece, and a
+/// `.kernel` file is never read back into a document (AGENTS.md — the source
+/// is canonical). `--check` is a reader, not an importer.
+fn cmd_kernel(args: &[String]) -> ExitCode {
+    let mut path: Option<&str> = None;
+    let mut output: Option<&str> = None;
+    let mut normalized = false;
+    let mut check = false;
+    let mut index = 0;
+    while index < args.len() {
+        let Some(arg) = args.get(index).map(String::as_str) else {
+            break;
+        };
+        match arg {
+            "--normalized" => {
+                normalized = true;
+                index = index.saturating_add(1);
+            }
+            "--check" => {
+                check = true;
+                index = index.saturating_add(1);
+            }
+            "-o" => {
+                output = args.get(index.saturating_add(1)).map(String::as_str);
+                index = index.saturating_add(2);
+            }
+            other => {
+                path = Some(other);
+                index = index.saturating_add(1);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("error: kernel needs a file");
+        return ExitCode::FAILURE;
+    };
+    if check {
+        let text = match std::fs::read_to_string(path) {
+            Ok(text) => text,
+            Err(error) => {
+                eprintln!("error: cannot read {path}: {error}");
+                return ExitCode::FAILURE;
+            }
+        };
+        return match musa_project::check_kernel(&text) {
+            Ok(report) => {
+                println!(
+                    "{path}: ok — piece {:?}, {} occurrences, extent {}",
+                    report.name, report.occurrences, report.extent
+                );
+                ExitCode::SUCCESS
+            }
+            Err(error) => {
+                eprintln!("error: {path}: {error}");
+                ExitCode::FAILURE
+            }
+        };
+    }
+    let session = match open(path) {
+        Ok(session) => session,
+        Err(code) => return code,
+    };
+    let request = ExportRequest::Kernel { normalized };
+    match session.export(request) {
+        Ok(artifact) => {
+            if output.is_none() {
+                print!("{}", artifact.as_text().unwrap_or_default());
+                ExitCode::SUCCESS
+            } else {
+                write_artifact(path, &artifact, output, request.extension())
+            }
+        }
+        Err(error) => {
+            eprintln!("error: {path}: {error}");
+            ExitCode::FAILURE
+        }
     }
 }
 

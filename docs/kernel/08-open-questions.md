@@ -54,7 +54,7 @@ needs them (§32). Working stance: surface programs must have finite observable 
 is a surface-language static property (as with motif ordering today, roadmap §6.5). *Settle when:* a surface recursion
 proposal exists; its elaboration must produce finite observations or be rejected.
 
-## Q6 — Kernel-file parser *(trigger fired: prompt 46)*
+## Q6 — Kernel-file parser — **RESOLVED (prompt 48)**
 
 `01-grammar.md` defines the full interchange grammar (un-normalized expressions, named compositions), but prompt 09
 implemented canonical **serialization** only (N5). The working stance was: no parser until a second producer/consumer
@@ -66,10 +66,22 @@ second implementation the stance was waiting for. What made it worth building is
 says "this is that material again", which no serialization of *values* can say, and which is the difference between a
 canon's interchange file being one subject or four copies of one.
 
-The order the stance implies is being followed rather than short-circuited: specify first (prompt 46,
-`10-term-calculus.md`, candidate), implement and prove (prompt 47), and only then parse (prompt 48), which is also
-where this document's Q6 is closed and the calculus graduates. Today's golden files remain parseable by the grammar
-that arrives — N5 is a strict subset of it, as it has been since prompt 09.
+The order the stance implies was followed rather than short-circuited: specify first (prompt 46,
+`10-term-calculus.md`), implement and prove (prompt 47), and only then parse (prompt 48).
+
+**Resolution.** `musa-kernel/src/text.rs` holds a printer and a parser over an opaque payload; `musa-compiler` supplies
+`ScoreFact`'s form; `musa kernel <file.musa>` prints and `musa kernel --check <file.kernel>` reads. The deliverable is
+`examples/kernel/*.kernel` — nine committed files a second implementation is validated against by reading one,
+computing its normal form and semantic hash, and comparing. The round-trip law holds over generated terms
+(`musa-kernel/tests/terms.rs`) and over every fixture (`musa-compiler/tests/kernel_interop.rs`).
+
+Two things the stance predicted wrong, both repaired in place:
+
+- **N5 is not a subset of the grammar.** It writes the N3 key bare and has no version header, and the N3 key is the
+  *equality* serialization — for `ScoreFact` it deliberately omits provenance an interchange file must carry. The two
+  serializations are separate and both stayed exactly as they were; `05-normalization.md` N5 states the repair.
+- **The payload grammar in `01-grammar.md` had to go.** Record-shaped payload values would make the kernel know what a
+  note is (§12). A payload is now an opaque quoted string, and `01-grammar.md` states that repair.
 
 ## Q7 — Chord regrouping fidelity
 
@@ -99,6 +111,17 @@ Q4 was named here as the most likely source of that third rule, and it landed on
 one**. `Progress` is a payload *value* sampled by whichever consumer holds it, not a rule the kernel evaluates, so the
 `Ramp` behaviour an envelope would have wanted turned out to be the consumer's sampling policy. The count of rules is
 still one (`prevailing`), and the threshold is unmet by a wider margin than before.
+
+- **Prompt 48 (interchange format):** two documents were repaired against the implementation rather than the other way
+  round. (1) `01-grammar.md`'s record-shaped `payload` declaration was struck for an opaque quoted string — a
+  self-describing file is not worth the kernel knowing what a note is (§12). (2) `05-normalization.md`'s "N5 is a
+  strict subset of the grammar" was false in both directions: N5 writes the N3 key bare and has no version header, and
+  the N3 key for `ScoreFact` quotients away the definition span and declaration id an interchange file must carry. The
+  key stayed untouched, the interchange text became a second function, and no golden or semantic hash moved.
+  Consequently `musa kernel --normalized` prints the *interchange* spelling of the normal form, which `--check`
+  accepts — a strictly better artifact than N5 bytes, which nothing can read. Also: `examples/kernel/*.kernel` are
+  plain files rather than insta snapshots, because a corpus that exists to be read by another implementation must be
+  readable as kernel text, not wrapped in a `.snap` preamble.
 
 ## Falsification corpus status (§33)
 

@@ -130,6 +130,25 @@ rhythm. A consumer that samples per onset, per frame, or per control-rate tick i
 the endpoints and may differ between them. That is the same latitude a consumer already has over tempo realization
 (§22), and it is stated here so nobody encodes musa's sampling choice as though it were the specification.
 
+## What a conforming consumer of a kernel file owes (prompt 48)
+
+`examples/kernel/*.kernel` is the corpus a second implementation is validated against. Reading one, a consumer owes
+three things and nothing more:
+
+1. **Refuse a version you do not know.** The first line is `% musa-kernel-1`. A file without it is not a kernel file.
+2. **Honour the shape, choose your own sampling.** Every rational in a file — a span, a scale factor, a duration, a
+   hairpin's breakpoints — is exact and must stay exact. A consumer that reads a shape through `f64` and writes it back
+   has produced a different piece, and the semantic hash will say so. Where to sample is still free, exactly as above.
+3. **Agree on the meaning, not the spelling.** Two consumers conform when they evaluate a file to timelines with the
+   same normal form (N5) and therefore the same semantic hash (N6). How they got there — whether they expanded `let`
+   eagerly, kept the sharing, or restricted before evaluating — is their business, because the calculus's theorems
+   (`10-term-calculus.md` T1–T5) say those choices cannot change the answer.
+
+What a consumer does **not** owe: understanding the payload. A file's payloads are opaque strings typed by
+`Timeline[<PayloadType>]`, and a consumer that does not own that payload type may still check the file's structure,
+report its extent, and compare two files' shapes. It simply cannot say what the music is — which is the correct
+division, and the reason the kernel never learned music theory.
+
 ## Falsification duty (§33)
 
 Consumers built against this contract are evidence for or against it. If several materially different musical examples

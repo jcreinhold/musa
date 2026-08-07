@@ -292,6 +292,20 @@ impl ProjectSession {
             ExportRequest::Wav => Ok(ExportArtifact::Bytes(playback::to_wav(score, &valid.studio)?)),
             ExportRequest::Midi(mode) => Ok(ExportArtifact::Bytes(playback::to_midi(score, mode)?)),
             ExportRequest::PerformanceDump => Ok(ExportArtifact::Text(playback::performance_dump(score)?)),
+            ExportRequest::Kernel { normalized } => {
+                let document = musa_compiler::SourceDocument::new(&valid.source, &self.name);
+                let printer = if normalized {
+                    musa_compiler::kernel_normalized_text
+                } else {
+                    musa_compiler::kernel_text
+                };
+                printer(&document)
+                    .map(ExportArtifact::Text)
+                    // The source compiled, so it elaborates; this arm exists
+                    // because the printer is total in its signature, not
+                    // because it is reachable.
+                    .ok_or(ProjectError::NoValidScore)
+            }
             ExportRequest::NotationPlanDump => {
                 let plan = musa_render::plan_notation(score, &musa_render::NotationOptions::default())
                     .map_err(|error| ProjectError::Notation(error.to_string()))?;
@@ -540,6 +554,7 @@ impl ProjectSession {
                     self.valid = Some(ValidArtifacts {
                         mei,
                         score,
+                        source: self.source.clone(),
                         studio,
                         facts,
                         studio_facts,

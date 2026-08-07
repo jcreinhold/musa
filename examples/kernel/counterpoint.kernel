@@ -1,0 +1,25 @@
+% musa-kernel-1
+% generated from examples/counterpoint.musa by musa-compiler
+kernel "Counterpoint Study" {
+  composition main : Timeline[ScoreFact] =
+    overlay {
+      timeline 2 {
+        occurrence "voice@0@0|note@d4@1/2;1/2;1/2@|187:194|187:194|4|" from 0 to 1/2;
+        occurrence "voice@0@0|note@f4@1/2;1/2;1/2@|211:218|211:218|4|" from 1/2 to 1;
+        occurrence "voice@0@0|note@e4@1/2;1/2;1/2@|235:242|235:242|4|" from 1 to 3/2;
+        occurrence "voice@0@0|note@d4@1/2;1/2;1/2@|259:283|259:283|4|" from 3/2 to 2;
+        occurrence "voice@0@0|note@fs4@1/2;1/2;1/2@|259:283|259:283|4|" from 3/2 to 2;
+        occurrence "voice@0@0|note@a4@1/2;1/2;1/2@|259:283|259:283|4|" from 3/2 to 2;
+      };
+      timeline 2 {
+        occurrence "voice@1@0|note@d3@1/2;1/2;1/2@|395:402|395:402|5|" from 0 to 1/2;
+        occurrence "voice@1@0|note@a2@1/2;1/2;1/2@|419:426|419:426|5|" from 1/2 to 1;
+        occurrence "voice@1@0|note@bf2@1/2;1/2;1/2@|443:451|443:451|5|" from 1 to 3/2;
+        occurrence "voice@1@0|note@a2@1/2;1/2;1/2@|468:475|468:475|5|" from 3/2 to 2;
+      };
+      timeline 2 {
+        occurrence "piece|meter@4@4|52:67|52:67|0|" from 0 to 2;
+        occurrence "piece|key@d@minor|67:84|67:84|0|" from 0 to 2;
+      }
+    };
+}

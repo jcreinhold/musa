@@ -40,6 +40,14 @@ pub enum KernelError {
         /// The offending name.
         name: String,
     },
+    /// Kernel text that is not a term (docs/kernel/01).
+    #[error("kernel text at byte {offset}: {message}")]
+    Parse {
+        /// The byte offset the reader stopped at.
+        offset: usize,
+        /// What was expected there.
+        message: String,
+    },
     /// Time scaling by a non-positive factor (K2/D5).
     #[error("scale factor must be a positive rational, got {factor}")]
     NonPositiveScale {

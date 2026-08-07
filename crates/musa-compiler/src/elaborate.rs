@@ -76,7 +76,7 @@ impl Scope {
 /// without moving the note — so making it an occurrence would only force the
 /// projection to re-join it by span, which is the information loss this
 /// design exists to delete, inverted. A slur has both.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum FactKind {
     /// A sounding note. `duration` is notation intent: how many noteheads
     /// spell the span (roadmap §2 — notated ≠ performed).
@@ -161,7 +161,7 @@ impl FactKind {
 
 /// One elaborated fact of a score: what is stated, where in the score's
 /// structure it belongs, and why it exists (docs/kernel/06).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ScoreFact {
     pub(crate) scope: Scope,
     pub(crate) kind: FactKind,
@@ -1496,6 +1496,20 @@ fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
 /// key, meter, form markers and chord symbols included.
 #[doc(hidden)]
 pub fn kernel_normal_form(source: &SourceDocument) -> Option<String> {
+    let (_, term) = piece_term(source)?;
+    Some(musa_kernel::evaluate(&term).to_string())
+}
+
+/// The piece as a **term** (docs/kernel/10): its name, and an `over` of one
+/// literal per voice plus one for the piece-wide context.
+///
+/// This is the structure elaboration has today, not the structure it will
+/// have: prompt 49 is what turns `repeat` into a `let` and a canon's imitation
+/// into a `shift`, and until then a voice is one literal because that is
+/// honestly what `elaborate_voice` produces. Printing it is still worth doing
+/// — the overlay of voices survives, and the round-trip law is testable now
+/// rather than after the structure lands.
+pub(crate) fn piece_term(source: &SourceDocument) -> Option<(String, musa_kernel::Term<ScoreFact>)> {
     let document = musa_language::parse(source.text());
     if !document.errors().is_empty() {
         return None;
@@ -1520,8 +1534,19 @@ pub fn kernel_normal_form(source: &SourceDocument) -> Option<String> {
             ));
         }
     }
-    let music = overlay(lanes);
-    let extent = music.extent();
+    // The overlay's extent without building the overlay: D3 says it is the
+    // maximum of the parts', and the context facts need it before they exist.
+    let extent = lanes
+        .iter()
+        .map(musa_kernel::Timeline::extent)
+        .max()
+        .unwrap_or(musa_kernel::Beat::ZERO);
     let context = context_facts(&mut resolver, &piece, &score, &mut snapshot, extent);
-    Some(overlay(vec![music, context]).to_string())
+    let parts: Vec<musa_kernel::Term<ScoreFact>> = lanes
+        .into_iter()
+        .chain(std::iter::once(context))
+        .map(musa_kernel::Term::literal)
+        .collect();
+    let term = musa_kernel::Term::over(parts).ok()?;
+    Some((piece.name().unwrap_or_default(), term))
 }

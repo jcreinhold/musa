@@ -34,7 +34,7 @@ pub struct Term<A> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-enum Form<A> {
+pub(crate) enum Form<A> {
     /// A literal timeline (E-Timeline).
     Literal(Timeline<A>),
     /// Temporal succession (E-Seq).
@@ -162,6 +162,12 @@ impl<A> Term<A> {
                 body: Box::new(body),
             },
         }
+    }
+
+    /// The term's form, for the in-crate printer (`text.rs`). Not public:
+    /// a public enum is a public layout.
+    pub(crate) fn form(&self) -> &Form<A> {
+        &self.form
     }
 
     /// A reference to a `let`-bound name.

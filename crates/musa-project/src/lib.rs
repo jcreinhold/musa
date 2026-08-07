@@ -52,7 +52,7 @@ pub use crate::command::{ProjectCommand, ProjectUpdate, Revision, TextEdit, Tran
 pub use crate::diagnostic::{Diagnostic, Severity, Span};
 pub use crate::edit::{EditCommand, EditImpact, GeneratedEditMode, InsertAt, NoteSpec};
 pub use crate::error::ProjectError;
-pub use crate::export::{ExportArtifact, ExportRequest};
+pub use crate::export::{ExportArtifact, ExportRequest, KernelReport, check_kernel};
 pub use crate::facts::{
     EventFacts, EventKind, Fraction, OccurrenceFacts, OriginFacts, OutlineFacts, OutlineKind, PartFacts, ScoreFacts,
     VoiceFacts,

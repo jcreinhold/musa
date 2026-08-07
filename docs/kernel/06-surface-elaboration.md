@@ -85,6 +85,49 @@ one invariant, stated on the function and asserted in debug builds: **a region f
 boundaries in its own scope**, because a region is built from the extent of the items it encloses. If that is ever
 violated, the elaboration that violated it is the bug.
 
+## `ScoreFact`'s interchange text form (prompt 48)
+
+A kernel file carries payloads as opaque quoted strings (`01-grammar.md`); this is what `ScoreFact` puts inside one.
+It is specified here, with the payload, rather than in the grammar, because the kernel neither writes it nor reads it.
+
+```text
+<scope> | <kind> | <source-span> | <definition-span> | <declaration> | <expansion-path>
+
+scope       = "piece" | "voice" "@" <part> "@" <voice>
+kind        = "note" "@" <pitch> "@" <duration> "@" <articulations>
+            | "rest" "@" <duration> "@" <articulations>
+            | "slur" | "phrase" "@" <name> | "tuplet" "@" <n> "@" <d>
+            | "dynamic" "@" <mark>
+            | "hairpin" "@" ("cres" | "dim") "@" <mark> "@" <progress>
+            | "key" "@" <tonic> "@" ("major" | "minor")
+            | "meter" "@" <n> "@" <d>
+            | "section" "@" <name> | "harmony" "@" <symbol>
+duration    = <spelling> ";" <value> ";" <piece> { "," <piece> }
+span        = <start> ":" <end>
+path        = <step> { "," <step> }         (* empty for a directly authored fact *)
+step        = "motif" ":" <span> | "repeat" ":" <n> | "transpose" ":" <steps> ":" <semitones>
+            | "stretch" ":" <p> "/" <q> | "retrograde" | "invert" ":" <axis>
+            | "special" ":" <span>
+progress    = <u> ":" <v> { "," <u> ":" <v> }        (* N3's canonical form *)
+```
+
+Four rules make it read back:
+
+- **Delimiters nest by escaping.** Each level escapes `\` and its own separator in every field it joins, and unescapes
+  exactly the level it splits. A phrase name containing `|`, `@`, `,` and `:` survives all of them, and no producer
+  needs to know how deeply it is nested.
+- **Every rational is `p/q`.** Durations carry both the written spelling *and* the exact value *and* the tied pieces,
+  because a tuplet keeps the symbol while changing what it sounds for (§2) and no one of the three derives the others.
+- **A hairpin's shape is its `Progress` in canonical form** — the one place where N3's key and the interchange text
+  coincide, because a `Progress` has no provenance to quotient away.
+- **`tied` is absent.** It is elaboration-only and false on every fact that leaves elaboration: a tie says two
+  noteheads spell one occurrence, which is resolved before a timeline exists. A file carrying it would describe a state
+  no timeline is ever in.
+
+Everything the value holds is present, including the definition span and the declaration id that `canonical_key` (N3)
+deliberately drops. That is why these are two functions and not one: N3 is the *equality* serialization and may
+quotient; interchange must reproduce. `05-normalization.md` N3 states the same repair from the other side.
+
 ## Key, meter, harmony: the present shape
 
 Course correction §21 places key/meter/harmony **regions** in the kernel as typed interval payloads whenever their

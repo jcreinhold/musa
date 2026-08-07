@@ -24,6 +24,17 @@ pub enum ExportRequest {
     PerformanceDump,
     /// The notation plan, as a debug dump.
     NotationPlanDump,
+    /// The piece as kernel interchange text (docs/kernel/01).
+    ///
+    /// Unlike every other target this is a projection of the *document*, not
+    /// of the score snapshot: a term carries the provenance the snapshot has
+    /// already spent. It is still an export — one direction, never read back
+    /// into a piece.
+    Kernel {
+        /// Print the term evaluated to a value rather than as written.
+        /// Two decisions, taken in sequence: the printer never normalizes.
+        normalized: bool,
+    },
 }
 
 impl ExportRequest {
@@ -36,6 +47,7 @@ impl ExportRequest {
             Self::Wav => "wav",
             Self::Midi(_) => "mid",
             Self::PerformanceDump | Self::NotationPlanDump => "txt",
+            Self::Kernel { .. } => "kernel",
         }
     }
 }
@@ -71,4 +83,36 @@ impl ExportArtifact {
             Self::Bytes(_) => None,
         }
     }
+}
+
+/// What reading a kernel file established: the piece it names, and what its
+/// term denotes.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KernelReport {
+    /// The piece name the file declares.
+    pub name: String,
+    /// How many occurrences the term evaluates to.
+    pub occurrences: usize,
+    /// The evaluated timeline's extent, as an exact rational.
+    pub extent: String,
+}
+
+/// Read kernel interchange text: parse, check well-formedness (K7), evaluate.
+///
+/// The other direction from [`ExportRequest::Kernel`], and deliberately not a
+/// session method — checking a file is not an operation on a project, and a
+/// `.kernel` file never becomes a document (AGENTS.md: the source is
+/// canonical).
+///
+/// # Errors
+///
+/// The parse error positioned in the input, or the well-formedness violation.
+pub fn check_kernel(text: &str) -> Result<KernelReport, crate::error::ProjectError> {
+    musa_compiler::check_kernel_text(text)
+        .map(|check| KernelReport {
+            name: check.name,
+            occurrences: check.occurrences,
+            extent: check.extent,
+        })
+        .map_err(crate::error::ProjectError::Kernel)
 }

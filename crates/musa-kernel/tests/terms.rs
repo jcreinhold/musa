@@ -281,3 +281,113 @@ fn shift_denotes_its_stated_expansion() {
         "shift d t = seq (timeline d {{}}) t"
     );
 }
+
+/// A payload for the interchange tests: text that exercises the escaping the
+/// format has to survive — quotes, backslashes, and the keywords the grammar
+/// reserves.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct Awkward(String);
+
+impl musa_kernel::Canonical for Awkward {
+    fn canonical_key(&self) -> String {
+        self.0.clone()
+    }
+}
+
+impl musa_kernel::TextPayload for Awkward {
+    fn to_text(&self) -> String {
+        self.0.clone()
+    }
+
+    fn from_text(text: &str) -> Option<Self> {
+        Some(Self(text.to_owned()))
+    }
+
+    fn type_name() -> &'static str {
+        "Awkward"
+    }
+}
+
+fn awkward_term() -> Term<Awkward> {
+    let payloads = [
+        r#"a "quoted" name"#,
+        r"a\backslash",
+        "from to timeline occurrence let in;",
+        "",
+    ];
+    let occurrences = payloads
+        .iter()
+        .enumerate()
+        .map(|(index, text)| {
+            let at = i64::try_from(index).expect("small");
+            let span = Span::new(quarters(at), quarters(at + 1)).expect("ordered");
+            Occurrence::new(span, Awkward((*text).to_owned()))
+        })
+        .collect();
+    let subject = Term::literal(timeline(quarters(4), occurrences).expect("in bounds"));
+    // A canon: the subject stated once and entered twice, which is the shape
+    // the format exists to express.
+    Term::bind(
+        "subject",
+        subject,
+        Term::over(vec![
+            Term::var("subject"),
+            Term::shift(quarters(2), Term::var("subject")).expect("non-negative"),
+            Term::scale(Ratio::new(3, 2), Term::var("subject")).expect("positive"),
+        ])
+        .expect("ne"),
+    )
+}
+
+/// The round-trip law: printing a term and reading it back yields the same
+/// canonical form and the same semantic hash. Payload escaping is what this
+/// catches — real payloads contain the characters a generator will not think
+/// of.
+#[test]
+fn printing_and_parsing_a_term_preserves_its_meaning() {
+    let term = awkward_term();
+    let text = musa_kernel::print("awkward", &term);
+    let (name, parsed) = musa_kernel::parse::<Awkward>(&text).expect("its own output parses");
+    assert_eq!(name, "awkward");
+    assert!(parsed.check().is_ok(), "its own output is well formed");
+    let (before, after) = (evaluate(&term), evaluate(&parsed));
+    assert!(before.semantic_eq(&after), "the round trip preserves meaning");
+    assert_eq!(before.semantic_hash(), after.semantic_hash());
+    assert_eq!(parsed, term, "and the structure, not only the denotation");
+}
+
+/// Sharing survives the round trip *as sharing*: the printed text says `let`
+/// once rather than repeating the material. This is the property that makes
+/// the format worth having.
+#[test]
+fn printed_kernel_text_shares_rather_than_repeats() {
+    let text = musa_kernel::print("awkward", &awkward_term());
+    assert_eq!(text.matches("let subject =").count(), 1);
+    let occurrence_lines = text
+        .lines()
+        .filter(|line| line.trim_start().starts_with("occurrence "))
+        .count();
+    assert_eq!(occurrence_lines, 4, "the subject is written once, not three times");
+    assert!(
+        text.contains(musa_kernel::FORMAT_VERSION),
+        "the header names the version"
+    );
+}
+
+/// Kernel text that is not a term is rejected with a byte offset rather than
+/// silently producing an empty piece.
+#[test]
+fn malformed_kernel_text_is_rejected() {
+    for text in [
+        "",
+        "kernel \"x\" {",
+        "kernel \"x\" { composition main : Timeline[Nope] = timeline 0 {}; }",
+        "kernel \"x\" { composition main : Timeline[Awkward] = scale by 0 timeline 0 {}; }",
+        "kernel \"x\" { composition main : Timeline[Awkward] = timeline 0 {}; } trailing",
+    ] {
+        assert!(
+            musa_kernel::parse::<Awkward>(text).is_err(),
+            "`{text}` is not a kernel file"
+        );
+    }
+}

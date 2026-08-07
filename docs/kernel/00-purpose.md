@@ -95,8 +95,8 @@ typed value* — never what a `Note` means.
 
 ## The calculus, and why it does not cross that line
 
-Prompt 46 adds `10-term-calculus.md` (candidate): a *syntax* whose meanings are the timelines above. It exists for
-three things values cannot express — sharing (`let`, so a canon's subject is stated once), deferred observation
+Prompt 46 adds `10-term-calculus.md` (governing since prompt 48): a *syntax* whose meanings are the timelines
+above. It exists for three things values cannot express — sharing (`let`, so a canon's subject is stated once), deferred observation
 (restricting before evaluating), and interchange (a syntax a second implementation can read) — and it adds no
 semantic operation: every term denotes something `03-denotational-semantics.md` already defines.
 
@@ -149,4 +149,4 @@ musician-facing Musa source
 | `07-backend-contract.md` | What downstream consumers may assume. |
 | `08-open-questions.md` | What is deliberately undecided. |
 | `09-performance.md` | The measured cost of the kernel path, prompt by prompt. |
-| `10-term-calculus.md` | The term calculus: syntax, evaluation, soundness theorems *(candidate)*. |
+| `10-term-calculus.md` | The term calculus: syntax, evaluation, soundness theorems. |

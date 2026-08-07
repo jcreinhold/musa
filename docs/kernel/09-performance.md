@@ -229,6 +229,18 @@ The fixture is the thing to fix, not this row, and it is deliberately not fixed 
 place is the prompt that next needs the fixture to grow, and it should say so in its own row.
 
 
+### Prompt 48 — off every measured path
+
+No row, and this paragraph is why. The interchange printer and parser are reachable only from `musa kernel` and from
+the corpus test: compiling, projecting, planning notation, and lowering performance never construct a `Term`, print
+one, or parse one. P1–P5 exercise exactly those five, so a row would be five re-measurements of unchanged code.
+
+The one change on a measured path is `kernel_normal_form`, which now builds an `over` of literal terms and evaluates
+it instead of calling `overlay` directly. `evaluate` on a literal is a clone and `Form::Over` hands straight to
+`overlay`, so the work is identical up to one `Vec` of terms — and `kernel_normal_form` is itself a test-and-golden
+entry point, not a pipeline stage. Printing a piece is linear in its occurrences and allocates one string; that is the
+whole cost, and it is paid only by someone who asked for a file.
+
 ## The rule
 
 The table is a record, not a gate — machines differ, and a row taken on another laptop is not comparable to this one.

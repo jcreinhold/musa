@@ -1,7 +1,7 @@
 ---
 id: 48
 slug: kernel-interop
-status: pending
+status: done
 depends_on: [47]
 phase: 3
 ---
@@ -126,6 +126,48 @@ grep -L "Status: candidate" docs/kernel/10-term-calculus.md
 ```
 
 Commit as `Add the kernel interchange format`.
+
+## Repairs made while implementing
+
+**Two functions, not one — the canonical key cannot be the payload text.** The prompt asked for this to be checked
+first. `ScoreFact::canonical_key` is the N3 *equality* serialization and deliberately omits `definition_span` and
+`declaration`, because two facts differing only in those are the same fact for ordering, equality, and hashing. That
+quotient is what makes the semantic hash semantic, and it is exactly what an interchange form must not do. Making the
+key parseable would have meant widening it, which would have moved every golden and every stored hash and made a fact
+stop being equal to itself compiled from a reformatted source. So `TextPayload::to_text` is a second function,
+`canonical_key` is untouched, and nothing downstream moved. Where a payload has no provenance to quotient —
+`Progress` — the two coincide and one function serves, which is the case the prompt predicted.
+
+**"N5 is a strict subset of the grammar" was false, and `--normalized` prints interchange text.** N5 writes the N3 key
+bare (unquoted, unparseable) and has no version header; it is not a file. Both `01-grammar.md` and
+`05-normalization.md` claimed otherwise and are repaired. `musa kernel --normalized` therefore prints the *interchange*
+spelling of the normal form — a single flat `timeline` inside a kernel file — which `--check` accepts, where N5 bytes
+never could. `kernel_normal_form` and its snapshots are byte-identical to before, which is the sense in which the
+prompt's "existing goldens do not change" held.
+
+**`01-grammar.md`'s payload declaration was struck.** The document specified `payload Note { letter: text; … }` and
+record-shaped payload values. That contradicts the prompt's own choice of option A: a kernel that reads a payload
+record knows what a note is, and §12 dies. A payload is now an opaque quoted string, the type name in
+`Timeline[<T>]` exists only so a reader can *refuse* a file it does not own, and `ScoreFact`'s form is specified in
+`06-surface-elaboration.md` where the payload lives.
+
+**The corpus is plain files, not insta snapshots.** The prompt asked for "the same insta mechanism as the other
+backends". A `.snap` wraps its payload in a YAML preamble, and `examples/kernel/*.kernel` exists to be read *as kernel
+text* by a second implementation. The test owns the corpus and regenerates it under `UPDATE_KERNEL_GOLDENS=1`, which
+gives the same staleness guarantee without making the artifact unreadable.
+
+**The version header is required, not decorative.** `%` begins a comment, so a file missing its header would have
+parsed as a valid file of unknown vintage. `parse` checks the first line before the lexer sees it. This is what makes
+"refuse a version you do not know" a rule a consumer can actually follow.
+
+**Nothing is shared with the surface lexer.** The prompt asked for the question to be answered explicitly. Kernel text
+has a different comment syntax, different keywords, no pitch or duration literals, and payloads that are opaque
+strings; the only overlap is reading `p/q`, which is four lines of `split_once` and `parse`. Sharing it would couple
+two languages that change independently for no saving.
+
+**The term a piece prints is an `over` of literals, not yet a `let`.** `elaborate_voice` produces timelines, so that is
+honestly what there is to print until prompt 49. The overlay structure does survive printing, and the round-trip law is
+testable now rather than after the structure lands.
 
 ## Stop
 
