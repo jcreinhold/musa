@@ -1,7 +1,7 @@
 ---
 id: 49
 slug: elaboration-emits-terms
-status: pending
+status: in-progress
 depends_on: [48]
 phase: 3
 ---

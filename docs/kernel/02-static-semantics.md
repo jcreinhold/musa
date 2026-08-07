@@ -61,7 +61,9 @@ merely because all visible values coincide.
 
 ## K7 — Term well-formedness *(specified prompt 46, implemented prompt 47)*
 
-Rules for the term calculus of `10-term-calculus.md`. They are checkable on the term alone,
+Rules for the term calculus of `10-term-calculus.md`. A reference's mark is not checked — it is an opaque string the
+kernel does not interpret (T6), so there is nothing here that could be wrong about it. They are checkable on the term
+alone,
 without evaluating it.
 
 - **Scoping.** Every name occurring in a term is bound by an enclosing `let`. A term with a free name is rejected, not

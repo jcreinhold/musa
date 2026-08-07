@@ -43,13 +43,40 @@ t, u ::= timeline d { (s, e, a)* }     % literal                      — D1
        | restrict [i, j) t             % observation                  — D6
        | let x = t in u                % sharing; x scopes over u
        | x                             % reference
+       | x @ m                         % marked reference                — T6
 ```
 
 `d`, `s`, `e`, `i`, `j` are exact rationals; `r` is a positive exact rational; `a` is a payload value
-(`01-grammar.md`); `x` ranges over names.
+(`01-grammar.md`); `x` ranges over names; `m` is an opaque **mark**, a string the kernel never interprets.
 
 Six forms and a reference. Each of the first five is exactly one of `03`'s definitions, so the calculus adds no
 meaning; `let` and `x` add sharing, which is a statement about *structure*, not about meaning (T2).
+
+### The mark on a reference (prompt 49)
+
+A marked reference `x @ m` denotes the same timeline as `x`, with the consumer's payload map applied once to the
+instantiated copy. It exists because sharing and provenance pull in opposite directions and one of them was going to
+lose.
+
+Concretely: `repeat 3 { … }` elaborates to a `let` and three references, which is the whole saving — but every
+occurrence of the third repetition must still carry `RepeatIteration(2)` in its origin, and the occurrences inside the
+`let` are stated once and cannot each carry a different one. Either the payloads distinguish the uses and there is no
+sharing, or the *references* do. The mark is the reference doing it.
+
+Three constraints make this narrow enough to be worth having, and they are the whole of the addition:
+
+1. **The mark is opaque.** It is a string; the kernel neither reads it nor gives it meaning. §12 is untouched — this is
+   the same discipline payloads already live under (`01-grammar.md`).
+2. **It selects a payload map, and nothing else.** Evaluation applies `Timeline(f)` (D7) to the instantiated value,
+   where `f` is chosen by the consumer from `m`. Spans, extent, occurrence count and order are untouched, because D7
+   already guarantees that (L9–L12). This is not a new operation: `map` is still not a term — no function is written
+   down, and the consumer that owns the payload chooses the map, exactly as it chooses what the payload text means.
+3. **An unmarked reference is the identity case.** `x` is `x @ m` with the identity map, so E-Var stays as it was and
+   a consumer with no marks (every consumer but `musa-compiler`) is unaffected.
+
+What this buys, and it is the point: the interchange file both *shares* and reproduces the compiled snapshot's
+provenance byte for byte. Without it, prompt 49 has to choose, and either choice loses something the project already
+promised — `06-surface-elaboration.md` records that the choice was faced.
 
 ### `shift` is sugar, and stays sugar
 
@@ -141,7 +168,15 @@ where `ρ` maps names to values `(d, E)`. `ρ(x)` is the value bound to `x`; `ρ
                    x ∈ dom(ρ)
 (E-Var)       ──────────────────────
               ρ ⊢ x ⇓ ρ(x)
+
+
+                   x ∈ dom(ρ)        f = φ(m)
+(E-Mark)      ──────────────────────────────────
+              ρ ⊢ x @ m ⇓ Timeline(f)(ρ(x))                            (D7)
 ```
+
+E-Mark is parameterized by the consumer's `φ`, a function from marks to payload maps, fixed for one evaluation.
+`φ(m) = id` for every `m` recovers E-Var, which is why an evaluator with no marks needs no `φ` at all.
 
 Three properties of these rules are load-bearing and easy to lose:
 
@@ -213,6 +248,23 @@ closed well-formed `t`; equality is semantic equality (N4).
   same window in the parts. The push-inward rule for `seq` has to translate the window, and stating it is prompt 50's
   job, with the measurement that justifies doing it at all.
 
+- **T6 — instantiation preserves the denotation up to payloads.** For any `φ`, any closed well-formed
+  `let x = t in u`, and `u'` the term `u` with every mark erased:
+
+  ```text
+  spans(⟦let x = t in u⟧_φ)  =  spans(⟦let x = t in u'⟧)
+  ```
+
+  and the two agree occurrence-for-occurrence in canonical order, differing only in payloads. Marks therefore cannot
+  change *when* anything sounds, only what a payload says about itself — which is exactly the latitude provenance
+  needs and the only latitude it gets. Immediate from D7's L9–L12 (mapping preserves support and distributes over `;`
+  and `⊕`), stated separately because it is the property prompt 49's "provenance must be byte-identical" rests on.
+  Test: `a_mark_changes_payloads_and_nothing_else`.
+
+  The converse warning: T6 does **not** say marks preserve semantic equality (N4), and they must not — two references
+  to one body marked differently denote timelines that are *deliberately* unequal, because their occurrences carry
+  different provenance. That is the whole reason the mark exists.
+
 ### What the suite checks beyond the five theorems
 
 - `the_algebra_transports_to_terms` and `synchronized_interchange_holds_of_terms` — L1, L4, L5 and L18 asked at the
@@ -259,6 +311,6 @@ Recorded with reasons, so that each stays absent for a reason rather than by omi
 | `01-grammar.md` | The concrete syntax *of these terms*. This document is the semantics; that one is the notation, and prompt 48 implements it. |
 | `02-static-semantics.md` | K7 states well-formedness for terms. |
 | `03-denotational-semantics.md` | Every term's meaning. The calculus adds no operation to D1–D12. |
-| `04-algebraic-laws.md` | L1–L19 transport to terms through T1; L24 needs no transport, being a fact about payloads. |
+| `04-algebraic-laws.md` | L1–L19 transport to terms through T1; L24 needs no transport, being a fact about payloads. L9–L12 are what T6 rests on. |
 | `05-normalization.md` | N1–N6 apply to the *values* terms evaluate to. T3 is what ties the two together. |
 | `08-open-questions.md` | Q6's trigger; Q1, Q2, Q5, Q9 stay open. Q4 is **resolved** — see below. |

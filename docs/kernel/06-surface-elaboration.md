@@ -85,6 +85,35 @@ one invariant, stated on the function and asserted in debug builds: **a region f
 boundaries in its own scope**, because a region is built from the extent of the items it encloses. If that is ever
 violated, the elaboration that violated it is the bug.
 
+## Sharing and provenance: how `repeat` and `use` elaborate (prompt 49)
+
+Elaboration emits a **term** (`10-term-calculus.md`), evaluated at the compiler's boundary. `repeat n { body }`
+elaborates the body **once** into a `let` and references it `n` times; a `use motif(args)` elaborates the motif's body
+once per distinct argument tuple and references it at each call site. Course correction §19 is the sentence being
+implemented: normalization is a semantic boundary, not the internal representation of every compiler pass — "nothing
+requires duplicating thousands of nodes merely to obey the normalized model".
+
+**The provenance question, and its answer.** Every occurrence of the third repetition must carry
+`RepeatIteration(2)`, and the Origin view depends on it. If the body is elaborated once, the occurrences inside the
+`let` cannot each carry a different iteration — that is the saving. Two options were on the table; the resolution is
+**provenance at the reference**:
+
+> A reference carries a **mark** naming the expansion step that distinguishes this use. Evaluation applies a payload
+> map chosen from that mark, appending the step to each instantiated occurrence's `Origin`.
+
+The mark's text is exactly one `step` of the expansion-path grammar below, so it round-trips through a file with no
+second encoding. Provenance is byte-identical to what direct expansion produced: the same steps, in the same order,
+on the same occurrences. The saving is in elaboration — the CST is walked once, pitches resolved once, diagnostics
+emitted once — not in evaluation, which still materializes every occurrence.
+
+The rejected option was to share only where the expansion path would be identical, which for `repeat` is never, and
+which would therefore have bought nothing. What was *not* an option was dropping the iteration index: the Origin view
+is a promise the project already made.
+
+**What does not share.** `transpose`, `invert` and `stretch` bodies are payload maps and time scaling applied during
+elaboration; `scale` has a term and the payload maps do not, and inventing one would breach the calculus's absent list.
+Voices become `over` and voice items `seq` — structural, and what makes a printed file legible.
+
 ## `ScoreFact`'s interchange text form (prompt 48)
 
 A kernel file carries payloads as opaque quoted strings (`01-grammar.md`); this is what `ScoreFact` puts inside one.
