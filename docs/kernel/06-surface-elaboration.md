@@ -45,23 +45,41 @@ Decisions recorded against course correction §32:
 
 | Surface construct | Elaboration |
 | --- | --- |
-| `note c5 1/4;` | One occurrence of `NotePayload` over the current position's span; the voice cursor advances by `1/4`. |
-| `rest 1/2;` | One occurrence of `RestPayload` over the current position's span; the voice cursor advances by `1/2`. A *written* rest is notation an author asked for, and export and provenance both need it; what stays absent is unwritten silence (§2). |
-| `chord (c5 e5 g5) 1/2;` | `overlay` of one `NotePayload` occurrence per pitch over the same span (§30 Step 4). The snapshot adapter regroups same-span, same-voice, same-origin occurrences into `ScoreEventKind::Chord`. |
+| `note c5 1/4;` | One occurrence of `ScoreFact::Note` over the current position's span, carrying pitch, written duration, and any articulations; the voice cursor advances by `1/4`. |
+| `rest 1/2;` | One occurrence of `ScoreFact::Rest` over the current position's span; the voice cursor advances by `1/2`. A *written* rest is notation an author asked for, and export and provenance both need it; what stays absent is unwritten silence (§2). |
+| `chord (c5 e5 g5) 1/2;` | `overlay` of one `Note` occurrence per pitch over the same span (§30 Step 4). The projection regroups same-span, same-scope, same-origin note occurrences into `ScoreEventKind::Chord`. |
 | voice body | `sequence` of its items in source order (cursor semantics = left-fold of successive extents). |
-| part | `overlay` of its voice timelines. Voice identity stays separable via payload metadata. |
+| part | `overlay` of its voice timelines. Voice identity is the fact's `Scope`, not a timeline of its own. |
+| piece score | `overlay` of its part timelines: **one** `Timeline<ScoreFact>` per compilation. |
 | `use motif(args);` | Binding + reference at the HIR level: the motif body elaborates with bound arguments; each resulting occurrence's `Origin` gains the `MotifApplication` step. Not a kernel concept. |
 | `repeat n { … }` | HIR-level `sequence` of `n` evaluations (§19); each iteration's occurrences gain the `RepeatIteration(i)` provenance step. |
 | `transpose up P5 { … }` | `map_payload` with the transposition function on `pitch` (§13); occurrences gain the `Transposition` provenance step. |
-| `c4 1/4 ~;` (tie) | **No kernel construct.** The tie is a mark on the payload; the adapter merges the tied statement with the next one into a single occurrence whose span is their sum and whose `NotatedDuration` spells as two noteheads. A tie onto a different pitch, or with nothing after it, is a diagnostic. |
-| `c4 1/4 accent staccato;` | `map_payload` marks; the adapter emits one `ArticulationMarking` per name, in written order, against the merged event's id. |
-| `dynamic mf;` | **No occurrence and no cursor advance.** The mark is pending until the next occurrence in the same voice — reaching into whatever block follows — and becomes a `DynamicMarking` against it. Nothing after it is a diagnostic. |
-| `slur { … }` | The body elaborates unchanged; its occurrences carry a group id, and the adapter emits one `SlurSpan` over the first and last event of each group. One expansion of a motif is one group. |
-| `tuplet n/d { … }` | The body elaborates with the voice's duration scale multiplied by `d/n`, so written values become exact rationals (`3/2` of eighths gives `1/12`). The adapter emits a `TupletSpan` carrying the unreduced `n/d`, which is what the backends need to print the bracket. A tuplet that would cross a barline is a diagnostic. |
+| `c4 1/4 ~;` (tie) | **No kernel construct, and no fact.** A tie says two written noteheads spell *one* occurrence, so elaboration merges the tied statement with its continuation on the spot: one occurrence, span the sum, `NotatedDuration` the compound spelling. Merging happens at every nesting level, so a tie inside a `retrograde` is gone before the block is reversed and needs no repair. A tie onto a different pitch, or with nothing after it, is a diagnostic. |
+| `c4 1/4 accent staccato;` | Articulations are a **field of the note fact**, not facts of their own: a staccato dot has no extent and no identity apart from its note. The projection emits one `ArticulationMarking` per name, in written order, against the event's id. |
+| `dynamic mf;` | A **point** occurrence of `ScoreFact::Dynamic` at the cursor, with no cursor advance. The projection resolves it to the first event at or after it in the same voice; nothing after it is a diagnostic. |
+| `slur { … }` | The body elaborates unchanged, and one `ScoreFact::Slur` occurrence is **overlaid** over `[0, extent)` of it. Nothing is copied onto the notes. The projection emits a `SlurSpan` naming the first event at or after the region's start and the last ending at or before its end. `phrase` and `crescendo`/`diminuendo` work identically. |
+| `tuplet n/d { … }` | The body elaborates with the voice's duration scale multiplied by `d/n`, so written values become exact rationals (`3/2` of eighths gives `1/12`). A `ScoreFact::Tuplet` occurrence is overlaid over the body, and the projection emits a `TupletSpan` carrying the unreduced `n/d`, which is what the backends need to print the bracket. A tuplet that would cross a barline is a diagnostic. |
 | `performance { profile v { … } }` | **Nothing elaborates.** A profile is a reading of marks, not material: it produces no occurrence, occupies no time, and is carried on the snapshot beside the motif table for the performance layer to consult. Written marks stay written (§6.4). |
 | `profile v;` inside a part | **A binding, not an occurrence.** It names which profile realizes this part; naming an undeclared one is a diagnostic. Both semantic paths read it through the same `part_metadata`, so it cannot drift between them. |
 | `key`, `meter`, `tempo` declarations | **Context, not occurrences**, in the current grammar: they populate the snapshot's `KeyMap`/`MeterMap`/`TempoMap` exactly as the old lowerer does. |
-| piece | The part timelines, the context maps, and the annotation store — packaged by the adapter into `ScoreSnapshot`. |
+| piece | The one timeline, the context maps, and the profiles — **projected** into `ScoreSnapshot` (`musa-compiler/src/project.rs`). |
+
+## The payload, and the adapter contract
+
+A `ScoreFact` has exactly three axes, and they vary independently:
+
+- **`scope`** — where in the score's *structure* the fact sits (which voice of which part). Not where it is in time.
+- **`kind`** — what is stated: a note, a rest, a slur, a phrase, a tuplet, a dynamic, a hairpin.
+- **`origin`** — why it exists (§20). Provenance stays above the kernel.
+
+*Where it is in time is the occurrence's span*, and is never a field. Keeping the three apart is the point: a slur moves
+in time without changing voice, a voice is renamed without moving anything, a dynamic changes from `mf` to `f` in place.
+
+The projection (`project.rs`) visits the canonically ordered occurrences **once**, buckets them by scope, assigns
+`EventId`s to note and rest facts in visit order, and resolves region facts to the event ids at their ends. It relies on
+one invariant, stated on the function and asserted in debug builds: **a region fact's boundaries coincide with event
+boundaries in its own scope**, because a region is built from the extent of the items it encloses. If that is ever
+violated, the elaboration that violated it is the bug.
 
 ## Key, meter, harmony: the future shape
 

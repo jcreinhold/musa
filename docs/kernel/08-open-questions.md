@@ -157,3 +157,15 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   occurrence the wider one reported (`the_final_instant_survives_narrowing`). D6 now states that rule positively, and
   L16 is derived from it. `06-surface-elaboration.md`'s rest row, which prompt 11 had already contradicted, is repaired
   to match the code.
+- **Prompt 39 (every notated fact is an occurrence):** slurs, phrases, tuplets, dynamics, and hairpins became
+  occurrences with their own spans, and the kernel gained **nothing** — no constructor, no variant, no change of any
+  kind. That is the evidence §34 asks for on heterogeneity: a payload type with seven variants is a payload, and the
+  kernel never looks inside one. **Q3 is answered as far as evidence can answer it:** there is now exactly one timeline
+  per compilation, with part and voice identity carried in the fact's `Scope`, and every fixture projects back to
+  byte-identical events and annotations — a temporal voice primitive would have had nothing to do. **Q7** is
+  strengthened for the same reason: chord regrouping by (span, scope, origin) still holds when the timeline also
+  contains regions and points, because those are neither. The thing that went is `retie`: a tie was encoded as a flag
+  copied onto notes, so reversing time broke a relation that had to be repaired afterwards. Merging tied noteheads at
+  elaboration — at *every* nesting level, so an inner block's ties are resolved before it is reversed or scaled —
+  deletes the relation instead of repairing it, and prompt 34's double-reversal law now passes for a simpler reason
+  than it used to.

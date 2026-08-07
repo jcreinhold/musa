@@ -64,14 +64,14 @@ impl Timelines {
         self.voices.iter().map(|timeline| timeline.occurrences().len()).sum()
     }
 
-    /// The snapshot projection (P3): adapt every voice timeline back into
-    /// score events. Returns the event count so the work cannot be optimized
-    /// away.
+    /// The snapshot projection (P3): the piece's timeline read back as score
+    /// events. Returns the event count so the work cannot be optimized away.
     pub fn project(&self) -> usize {
         let mut lowering = Lowering::new();
-        self.voices
-            .iter()
-            .map(|timeline| crate::elaborate::adapt_voice(&mut lowering, timeline).events.len())
+        let piece = musa_kernel::overlay(self.voices.clone());
+        crate::project::project(&mut lowering, &piece)
+            .values()
+            .map(|voice| voice.events.len())
             .sum()
     }
 

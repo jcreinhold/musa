@@ -54,6 +54,14 @@ per iteration and are exact rather than sampled.
 | 38 | P3 | large | 150 µs | 4 755 | 700 KB |
 | 38 | P4 | small | 37 µs | 367 | 16.5 KB |
 | 38 | P4 | large | 1.70 ms | 21 993 | 1.26 MB |
+| 39 | P1 | small | 57 µs | 2 024 | 133 KB |
+| 39 | P1 | large | 1.33 ms | 50 824 | 3.45 MB |
+| 39 | P2 | small | 41 µs | 1 776 | 112 KB |
+| 39 | P2 | large | 1.19 ms | 49 123 | 3.25 MB |
+| 39 | P3 | small | 3.3 µs | 127 | 11.1 KB |
+| 39 | P3 | large | 220 µs | 7 852 | 853 KB |
+| 39 | P4 | small | 38 µs | 367 | 13.1 KB |
+| 39 | P4 | large | 2.13 ms | 30 934 | 1.09 MB |
 
 Two things the baseline already says, recorded here rather than acted on (prompt 38 changes nothing it measures):
 
@@ -61,6 +69,17 @@ Two things the baseline already says, recorded here rather than acted on (prompt
 - **Canonical form costs more than producing the score does.** P4 on the large workload exceeds P2, on a timeline that
   is already materialized — the `String` keys `Canonical` produces are the obvious suspect, and confirming or refuting
   that is prompt 43's job, with this row as its before.
+
+Prompt 39's row, read against 38's: **P1 large +8%, P2 large +13%** — the latter over the block's 10% gate, and
+declared as the prompt requires. The large workload's timeline now holds 1572 occurrences rather than 1560, because
+slurs, tuplets, and hairpins are occurrences instead of tags copied onto notes, and elaboration additionally groups
+occurrences into statements to merge ties. P3 grew for the same reason with the opposite sign: work that used to happen
+during elaboration (rebuilding annotation spans from per-note tags) is now the projection's, which is where it belongs
+and where it can be measured. Allocation is where the cost shows, as prompt 38 predicted it would.
+
+The trade is the one the migration was for: a slur is stored once instead of once per note it covers, and the
+`Vec<u32>` every note carried is gone. Prompt 43 is where the `Canonical` `String` keys — still the largest single
+line in P4 — get their measurement.
 
 ## The rule
 

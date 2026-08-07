@@ -4,7 +4,7 @@
 //! This is the second semantic path: the same CST, the same declaration
 //! table, motif registration, and unit checks as the direct lowerer (shared
 //! helpers from `lower.rs`), but voice content elaborates into
-//! `Timeline<VoicePayload>` values built from kernel `sequence`/`overlay`,
+//! `Timeline<ScoreFact>` values built from kernel `sequence`/`overlay`,
 //! then adapts back into the existing `ScoreSnapshot` (§27). The direct
 //! lowerer remains the regression oracle until prompt 12.
 //!
@@ -26,13 +26,12 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use crate::compile::{Compilation, SourceDocument};
-use crate::lower::{self, ExpandCx, GroupInfo, GroupKind, Lowering};
+use crate::lower::{self, ExpandCx, Lowering};
 use crate::origin::{ExpansionStep, Origin, SourceSpan};
 use crate::pitch::WrittenPitch;
 use crate::score::{
-    ArticulationMark, ArticulationMarking, DynamicMark, DynamicMarking, HairpinSpan, HarmonyMark, NotatedDuration,
-    Part, PartId, PhraseSpan, ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoChange,
-    TupletSpan, Voice, VoiceId,
+    ArticulationMark, DynamicMark, HarmonyMark, NotatedDuration, Part, PartId, ScoreSnapshot, SectionMark, TempoChange,
+    Voice, VoiceId,
 };
 use crate::time::MusicalTime;
 use musa_kernel::{Beat, Occurrence, Span, Timeline, overlay, sequence, timeline};
@@ -40,143 +39,198 @@ use musa_language::SyntaxNode;
 use musa_language::ast::{AstNode as _, PieceDecl, VoiceItem};
 use num_rational::Ratio;
 
-/// What is written *about* an occurrence rather than in it: the marks that
-/// become annotations once the events they belong to have identities
-/// (roadmap §6.3).
-#[derive(Clone, Debug, Default)]
-struct Marks {
-    /// This event is tied to the one that follows it.
-    tie: bool,
-    /// Articulations written on the event, in source order.
-    articulations: Vec<ArticulationMark>,
-    /// A dynamic marking that takes effect at this event.
-    dynamic: Option<(DynamicMark, Origin)>,
-    /// The slur and tuplet blocks enclosing it, outermost first.
-    groups: Vec<u32>,
+/// Where a fact sits in the score's *structure*.
+///
+/// Never where it sits in time — that is the occurrence's span, and keeping
+/// the two apart is the point (docs/kernel/03). A slur moves in time without
+/// changing voice; a voice is renamed without moving anything.
+///
+/// Piece and part scopes arrive with the score-level facts of prompt 40; a
+/// variant with no producer would be a public item with no caller.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Scope {
+    /// One voice of one part, by the ids the snapshot uses.
+    Voice { part: u32, voice: u32 },
 }
 
-impl Marks {
-    fn is_empty(&self) -> bool {
-        !self.tie && self.articulations.is_empty() && self.dynamic.is_none() && self.groups.is_empty()
-    }
-
-    /// A deterministic, injective rendering for the canonical key. Empty
-    /// marks contribute nothing, so a piece without them keeps the key it
-    /// had before phase 2.
-    fn canonical_key(&self) -> String {
-        if self.is_empty() {
-            return String::new();
+impl Scope {
+    /// The (part, voice) pair, for bucketing during projection.
+    pub(crate) fn voice(self) -> (u32, u32) {
+        match self {
+            Self::Voice { part, voice } => (part, voice),
         }
-        let articulations: Vec<&str> = self.articulations.iter().map(|mark| mark.name()).collect();
-        let groups: Vec<String> = self.groups.iter().map(u32::to_string).collect();
-        format!(
-            "|tie:{}|artic:{}|dyn:{}|groups:{}",
-            self.tie,
-            articulations.join(","),
-            self.dynamic.as_ref().map_or("-", |(mark, _)| mark.name()),
-            groups.join(","),
-        )
     }
 }
 
-/// A dynamic marking waiting for the event it applies from.
-struct PendingDynamic {
-    mark: DynamicMark,
-    origin: Origin,
-    span: SourceSpan,
-}
-
-/// The elaborated fact of one voice item: notation intent plus provenance,
-/// opaque to the kernel (docs/kernel/06).
+/// What a fact *states*. Where it is in time is the span; where it is in the
+/// score is the scope; why it exists is the origin.
+///
+/// Articulations are a field of `Note`/`Rest` rather than facts of their own,
+/// by the rule that decides the question: does it have an extent and an
+/// identity? A staccato dot has neither — no span but its note's, unmovable
+/// without moving the note — so making it an occurrence would only force the
+/// projection to re-join it by span, which is the information loss this
+/// design exists to delete, inverted. A slur has both.
 #[derive(Clone, Debug)]
-pub(crate) struct VoicePayload {
-    part: u32,
-    voice: u32,
-    kind: PayloadKind,
-    origin: Origin,
-    /// The written duration, kept whole: the kernel span says how long the
-    /// occurrence is, but only this says how many noteheads spell it.
-    duration: NotatedDuration,
-    marks: Marks,
-}
-
-/// What the occurrence states: a sounding note, or a notated rest (typed
-/// intent — never a silence object).
-#[derive(Clone, Debug)]
-enum PayloadKind {
-    Note { pitch: WrittenPitch },
-    Rest,
-}
-
-impl VoicePayload {
-    fn note(
-        part: u32,
-        voice: u32,
+pub(crate) enum FactKind {
+    /// A sounding note. `duration` is notation intent: how many noteheads
+    /// spell the span (roadmap §2 — notated ≠ performed).
+    Note {
         pitch: WrittenPitch,
-        origin: Origin,
         duration: NotatedDuration,
-        marks: Marks,
-    ) -> Self {
+        articulations: Vec<ArticulationMark>,
+    },
+    /// A written rest — notation intent, not a silence object (§2).
+    Rest {
+        duration: NotatedDuration,
+        articulations: Vec<ArticulationMark>,
+    },
+    /// A slur over the region it spans.
+    Slur,
+    /// A named phrase over the region it spans.
+    Phrase { name: String },
+    /// A tuplet bracket, unreduced as the backends need it.
+    Tuplet { num: u32, den: u32 },
+    /// A dynamic marking: a point at the onset it applies from.
+    Dynamic { mark: DynamicMark },
+    /// A hairpin over the region it spans, and the mark it arrives at.
+    Hairpin { grows: bool, target: DynamicMark },
+}
+
+impl FactKind {
+    /// Whether this fact is a note or a rest — the facts that become events
+    /// and are given identities.
+    pub(crate) fn is_event(&self) -> bool {
+        matches!(self, Self::Note { .. } | Self::Rest { .. })
+    }
+
+    /// The articulations written on this fact, if any.
+    pub(crate) fn articulations_of(&self) -> &[ArticulationMark] {
+        match self {
+            Self::Note { articulations, .. } | Self::Rest { articulations, .. } => articulations,
+            Self::Slur | Self::Phrase { .. } | Self::Tuplet { .. } | Self::Dynamic { .. } | Self::Hairpin { .. } => &[],
+        }
+    }
+
+    /// The written duration, for the facts that have one.
+    pub(crate) fn duration_of(&self) -> Option<&NotatedDuration> {
+        match self {
+            Self::Note { duration, .. } | Self::Rest { duration, .. } => Some(duration),
+            Self::Slur | Self::Phrase { .. } | Self::Tuplet { .. } | Self::Dynamic { .. } | Self::Hairpin { .. } => {
+                None
+            }
+        }
+    }
+}
+
+/// One elaborated fact of a score: what is stated, where in the score's
+/// structure it belongs, and why it exists (docs/kernel/06).
+#[derive(Clone, Debug)]
+pub(crate) struct ScoreFact {
+    pub(crate) scope: Scope,
+    pub(crate) kind: FactKind,
+    pub(crate) origin: Origin,
+    /// Elaboration-only: this written notehead is tied to the next one.
+    ///
+    /// A tie is not a fact — it says two noteheads spell **one** occurrence —
+    /// so it is resolved by merging during elaboration and is `false` on
+    /// every fact that leaves [`elaborate_items`]. Nothing downstream reads
+    /// it; the projection asserts as much in debug builds.
+    pub(crate) tied: bool,
+}
+
+impl ScoreFact {
+    fn new(scope: Scope, kind: FactKind, origin: Origin) -> Self {
         Self {
-            part,
-            voice,
-            kind: PayloadKind::Note { pitch },
+            scope,
+            kind,
             origin,
-            duration,
-            marks,
+            tied: false,
         }
     }
 
     /// The same fact sounding and notated `factor` times as long.
     fn stretched(&self, factor: Ratio<i64>) -> Self {
         let mut stretched = self.clone();
-        stretched.duration = self.duration.stretched(factor);
+        match &mut stretched.kind {
+            FactKind::Note { duration, .. } | FactKind::Rest { duration, .. } => {
+                *duration = duration.stretched(factor);
+            }
+            FactKind::Slur
+            | FactKind::Phrase { .. }
+            | FactKind::Tuplet { .. }
+            | FactKind::Dynamic { .. }
+            | FactKind::Hairpin { .. } => {}
+        }
         stretched
     }
 
     /// The same fact with its pitch mirrored about `axis`, or `None` when
     /// the mirror image is not spellable (roadmap §5.4's meaningful failure).
     fn inverted(&self, axis: WrittenPitch) -> Option<Self> {
-        let PayloadKind::Note { pitch } = self.kind else {
+        let FactKind::Note { pitch, .. } = &self.kind else {
             return Some(self.clone());
         };
+        let mirrored = pitch.invert(axis)?;
         let mut inverted = self.clone();
-        inverted.kind = PayloadKind::Note {
-            pitch: pitch.invert(axis)?,
-        };
+        if let FactKind::Note { pitch, .. } = &mut inverted.kind {
+            *pitch = mirrored;
+        }
         Some(inverted)
     }
 
-    fn rest(part: u32, voice: u32, origin: Origin, duration: NotatedDuration, marks: Marks) -> Self {
-        Self {
-            part,
-            voice,
-            kind: PayloadKind::Rest,
-            origin,
-            duration,
-            marks,
+    /// The pitch, for the facts that have one.
+    pub(crate) fn pitch_of(&self) -> Option<WrittenPitch> {
+        match &self.kind {
+            FactKind::Note { pitch, .. } => Some(*pitch),
+            FactKind::Rest { .. }
+            | FactKind::Slur
+            | FactKind::Phrase { .. }
+            | FactKind::Tuplet { .. }
+            | FactKind::Dynamic { .. }
+            | FactKind::Hairpin { .. } => None,
         }
     }
 }
 
-impl musa_kernel::Canonical for VoicePayload {
+impl musa_kernel::Canonical for ScoreFact {
     /// Deterministic, injective key for canonical ordering and semantic
     /// equality (docs/kernel/05 N3): identity, kind, and full provenance.
+    ///
+    /// A note or rest with nothing written on it keys exactly as it did
+    /// before facts were heterogeneous, so a piece of plain notes has the
+    /// normal form it has always had.
     fn canonical_key(&self) -> String {
+        let (part, voice) = self.scope.voice();
+        let articulations = |marks: &[ArticulationMark]| {
+            if marks.is_empty() {
+                String::new()
+            } else {
+                let names: Vec<&str> = marks.iter().map(|mark| mark.name()).collect();
+                format!("|artic:{}", names.join(","))
+            }
+        };
         let kind = match &self.kind {
-            PayloadKind::Note { pitch } => format!("note:{pitch}"),
-            PayloadKind::Rest => "rest".to_string(),
+            FactKind::Note {
+                pitch,
+                duration,
+                articulations: marks,
+            } => format!("note:{pitch}|{}{}", duration.spelling, articulations(marks)),
+            FactKind::Rest {
+                duration,
+                articulations: marks,
+            } => format!("rest|{}{}", duration.spelling, articulations(marks)),
+            FactKind::Slur => "slur|".to_owned(),
+            FactKind::Phrase { name } => format!("phrase:{name}|"),
+            FactKind::Tuplet { num, den } => format!("tuplet:{num}/{den}|"),
+            FactKind::Dynamic { mark } => format!("dynamic:{}|", mark.name()),
+            FactKind::Hairpin { grows, target } => {
+                format!("hairpin:{}:{}|", if *grows { "cres" } else { "dim" }, target.name())
+            }
         };
         format!(
-            "{}|{}|{}|{}|{}|{}|{:?}{}",
-            self.part,
-            self.voice,
-            kind,
-            self.duration.spelling,
-            self.origin.source_span.start,
-            self.origin.source_span.end,
-            self.origin.expansion_path,
-            self.marks.canonical_key(),
+            "{}|{}|{}|{}|{}|{:?}",
+            part, voice, kind, self.origin.source_span.start, self.origin.source_span.end, self.origin.expansion_path,
         )
     }
 }
@@ -190,7 +244,7 @@ pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions
 }
 
 /// One voice's elaborated timeline, before the snapshot adapter sees it.
-pub(crate) type VoiceTimeline = Timeline<VoicePayload>;
+pub(crate) type VoiceTimeline = Timeline<ScoreFact>;
 
 /// Everything after parsing (docs/kernel/06): elaborate, adapt, check.
 ///
@@ -254,14 +308,22 @@ pub(crate) fn elaborate_parsed(
     Compilation::new(Some(snapshot), std::mem::take(&mut lowering.diagnostics)).with_studio(studio)
 }
 
-/// Walk parts and voices exactly as the direct lowerer does, but elaborate
-/// each voice into a kernel timeline and adapt it back to events.
+/// Walk parts and voices exactly as the direct lowerer does, elaborating
+/// each voice into kernel facts — and then overlay every one of them into a
+/// single `Timeline<ScoreFact>` for the whole piece, which is projected once.
+///
+/// One compilation, one temporal object (course correction §21). Part and
+/// voice identity live in `Scope`, not in a timeline per voice, which is the
+/// evidence Q3's working stance asked for.
 fn elaborate_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDecl, snapshot: &mut ScoreSnapshot) {
+    let mut voice_names: indexmap::IndexMap<PartId, indexmap::IndexMap<VoiceId, String>> = indexmap::IndexMap::new();
+    let mut metadata: Vec<(PartId, String, Option<crate::score::Clef>)> = Vec::new();
+    let mut lanes: Vec<Timeline<ScoreFact>> = Vec::new();
     for part in score.parts() {
         let name = part.name().unwrap_or_default();
         let part_key = lowering.declare(crate::lower::DeclInfo::Part);
         let _ = lower::ordinal(lowering, part_key);
-        if snapshot.parts.iter().any(|(_, existing)| existing.name == name) {
+        if metadata.iter().any(|(_, existing, _)| *existing == name) {
             lowering.error(format!("duplicate part `{name}`"), lower::span_of(part.syntax()));
             continue;
         }
@@ -273,13 +335,12 @@ fn elaborate_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDec
             snapshot.profiles.assign(&name, profile);
         }
 
-        let mut voices = indexmap::IndexMap::new();
-        let mut voice_names = indexmap::IndexMap::new();
+        let mut names = indexmap::IndexMap::new();
         for (index, voice) in part.voices().iter().enumerate() {
             let voice_name = voice.name().unwrap_or_default();
             let voice_key = lowering.declare(crate::lower::DeclInfo::Voice);
             let declaration = lower::ordinal(lowering, voice_key);
-            if voice_names.values().any(|existing| *existing == voice_name) {
+            if names.values().any(|existing| *existing == voice_name) {
                 lowering.error(
                     format!("duplicate voice `{voice_name}` in part `{name}`"),
                     lower::span_of(voice.syntax()),
@@ -288,14 +349,27 @@ fn elaborate_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDec
             }
             let voice_id = VoiceId(u32::try_from(index).unwrap_or(u32::MAX));
             let timeline = elaborate_voice(lowering, voice, declaration, id.0, voice_id.0);
-            let adapted = adapt_voice(lowering, &timeline);
             if let Some(sink) = &mut lowering.timeline_sink {
-                sink.push(timeline);
+                sink.push(timeline.clone());
             }
-            voices.insert(voice_id, adapted);
-            voice_names.insert(voice_id, voice_name);
+            lanes.push(timeline);
+            names.insert(voice_id, voice_name);
         }
+        voice_names.insert(id, names);
+        metadata.push((id, name, clef));
+    }
 
+    let piece = overlay(lanes);
+    let mut projected = crate::project::project(lowering, &piece);
+    for (id, name, clef) in metadata {
+        let names = voice_names.swap_remove(&id).unwrap_or_default();
+        let mut voices = indexmap::IndexMap::with_capacity(names.len());
+        for voice_id in names.keys() {
+            let voice = projected
+                .swap_remove(&(id.0, voice_id.0))
+                .unwrap_or_else(|| Voice { events: Vec::new() });
+            voices.insert(*voice_id, voice);
+        }
         snapshot.parts.insert(
             id,
             Part {
@@ -303,7 +377,7 @@ fn elaborate_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDec
                 name,
                 clef,
                 voices,
-                voice_names,
+                voice_names: names,
             },
         );
     }
@@ -484,7 +558,7 @@ fn elaborate_voice(
     declaration: crate::origin::DeclarationId,
     part: u32,
     voice_id: u32,
-) -> Timeline<VoicePayload> {
+) -> Timeline<ScoreFact> {
     let cx = ExpandCx {
         params: indexmap::IndexMap::new(),
         intervals: Vec::new(),
@@ -494,45 +568,28 @@ fn elaborate_voice(
         max_motif: usize::MAX,
         scale: Ratio::ONE,
     };
-    let mut pending = None;
-    let timeline = elaborate_items(lowering, &voice.items(), &cx, part, voice_id, &[], &mut pending);
-    if let Some(pending) = pending {
-        lowering.error("this dynamic marking has no note after it", pending.span);
-    }
-    timeline
+    let timeline = elaborate_items(lowering, &voice.items(), &cx, Scope::Voice { part, voice: voice_id });
+    check_dangling_tie(lowering, timeline)
 }
 
-/// Elaborate voice items into a kernel timeline (sequence of item segments).
+/// Elaborate voice items into a kernel timeline (sequence of item segments),
+/// with tied noteheads merged.
 ///
-/// `groups` are the slur and tuplet blocks enclosing these items, outermost
-/// first; `pending` carries a dynamic marking forward to the first event
-/// written after it, however deeply nested that event turns out to be.
-fn elaborate_items(
-    lowering: &mut Lowering,
-    items: &[VoiceItem],
-    cx: &ExpandCx,
-    part: u32,
-    voice: u32,
-    groups: &[u32],
-    pending: &mut Option<PendingDynamic>,
-) -> Timeline<VoicePayload> {
+/// Merging here rather than once per voice is what makes a tie invisible to
+/// everything above: an inner block's ties are resolved before the block is
+/// reversed or scaled, so `retrograde` mirrors ordinary occurrences and needs
+/// no repair, and a tie that crosses a block boundary merges at the level
+/// that contains both sides.
+fn elaborate_items(lowering: &mut Lowering, items: &[VoiceItem], cx: &ExpandCx, scope: Scope) -> Timeline<ScoreFact> {
     let mut segments = Vec::new();
     for item in items {
-        segments.push(elaborate_item(lowering, item, cx, part, voice, groups, pending));
+        segments.push(elaborate_item(lowering, item, cx, scope));
     }
-    sequence(segments)
+    merge_ties(lowering, sequence(segments))
 }
 
-/// The marks a note or chord statement carries, with the pending dynamic
-/// consumed if there is one.
-fn marks_for(
-    lowering: &mut Lowering,
-    names: &[String],
-    tied: bool,
-    groups: &[u32],
-    span: SourceSpan,
-    pending: &mut Option<PendingDynamic>,
-) -> Marks {
+/// The articulations written on a note or chord statement.
+fn articulations_of(lowering: &mut Lowering, names: &[String], span: SourceSpan) -> Vec<ArticulationMark> {
     let mut articulations = Vec::new();
     for name in names {
         match ArticulationMark::parse(name) {
@@ -540,25 +597,12 @@ fn marks_for(
             None => lowering.error(format!("unknown articulation `{name}`"), span),
         }
     }
-    Marks {
-        tie: tied,
-        articulations,
-        dynamic: pending.take().map(|pending| (pending.mark, pending.origin)),
-        groups: groups.to_vec(),
-    }
+    articulations
 }
 
 /// Elaborate one item; malformed items elaborate to the empty segment
 /// `(0, ∅)` — the direct lowerer's `continue` (diagnostic already emitted).
-fn elaborate_item(
-    lowering: &mut Lowering,
-    item: &VoiceItem,
-    cx: &ExpandCx,
-    part: u32,
-    voice: u32,
-    groups: &[u32],
-    pending: &mut Option<PendingDynamic>,
-) -> Timeline<VoicePayload> {
+fn elaborate_item(lowering: &mut Lowering, item: &VoiceItem, cx: &ExpandCx, scope: Scope) -> Timeline<ScoreFact> {
     match item {
         VoiceItem::Note(note) => {
             let Some(duration) = resolve_scaled_duration(lowering, note.syntax(), cx) else {
@@ -569,23 +613,36 @@ fn elaborate_item(
                 return empty_segment();
             };
             let span = lower::trimmed_span(note.syntax());
-            let marks = marks_for(lowering, &note.articulations(), note.tied(), groups, span, pending);
+            let articulations = articulations_of(lowering, &note.articulations(), span);
             let origin = origin_of(cx, span);
-            single(
-                &duration,
-                VoicePayload::note(part, voice, pitch, origin, duration.clone(), marks),
-            )
+            let mut fact = ScoreFact::new(
+                scope,
+                FactKind::Note {
+                    pitch,
+                    duration: duration.clone(),
+                    articulations,
+                },
+                origin,
+            );
+            fact.tied = note.tied();
+            single(&duration, fact)
         }
         VoiceItem::Rest(rest) => {
             let Some(duration) = resolve_scaled_duration(lowering, rest.syntax(), cx) else {
                 return empty_segment();
             };
             let span = lower::trimmed_span(rest.syntax());
-            let marks = marks_for(lowering, &[], false, groups, span, pending);
             let origin = origin_of(cx, span);
             single(
                 &duration,
-                VoicePayload::rest(part, voice, origin, duration.clone(), marks),
+                ScoreFact::new(
+                    scope,
+                    FactKind::Rest {
+                        duration: duration.clone(),
+                        articulations: Vec::new(),
+                    },
+                    origin,
+                ),
             )
         }
         VoiceItem::Chord(chord) => {
@@ -593,27 +650,23 @@ fn elaborate_item(
                 return empty_segment();
             };
             let node_span = lower::trimmed_span(chord.syntax());
-            let marks = marks_for(
-                lowering,
-                &chord.articulations(),
-                chord.tied(),
-                groups,
-                node_span,
-                pending,
-            );
+            let articulations = articulations_of(lowering, &chord.articulations(), node_span);
             let mut pitches = Vec::new();
             for text in chord.pitches() {
                 match WrittenPitch::parse(&text).map(|pitch| apply_intervals(lowering, pitch, cx, chord.syntax())) {
                     Some(Some(pitch)) => {
                         let origin = origin_of(cx, node_span);
-                        pitches.push(VoicePayload::note(
-                            part,
-                            voice,
-                            pitch,
+                        let mut fact = ScoreFact::new(
+                            scope,
+                            FactKind::Note {
+                                pitch,
+                                duration: duration.clone(),
+                                articulations: articulations.clone(),
+                            },
                             origin,
-                            duration.clone(),
-                            marks.clone(),
-                        ));
+                        );
+                        fact.tied = chord.tied();
+                        pitches.push(fact);
                     }
                     Some(None) => break,
                     None => {
@@ -631,7 +684,7 @@ fn elaborate_item(
             )
             .unwrap_or_else(|_| musa_kernel::zero())
         }
-        VoiceItem::Use(call) => elaborate_use(lowering, call, cx, part, voice, groups, pending),
+        VoiceItem::Use(call) => elaborate_use(lowering, call, cx, scope),
         VoiceItem::Transpose(transpose) => {
             let text = transpose.interval().unwrap_or_default();
             let Some(interval) = crate::origin::Interval::parse(&text, transpose.is_down()) else {
@@ -641,7 +694,7 @@ fn elaborate_item(
             let mut inner = cx.clone();
             inner.intervals.push(interval);
             inner.path.push(ExpansionStep::Transposition(interval));
-            elaborate_items(lowering, &transpose.items(), &inner, part, voice, groups, pending)
+            elaborate_items(lowering, &transpose.items(), &inner, scope)
         }
         VoiceItem::Repeat(repeat) => {
             let count: u32 = repeat.count().and_then(|text| text.parse().ok()).unwrap_or(0);
@@ -649,37 +702,20 @@ fn elaborate_item(
             for iteration in 0..count {
                 let mut inner = cx.clone();
                 inner.path.push(ExpansionStep::RepeatIteration(iteration));
-                segments.push(elaborate_items(
-                    lowering,
-                    &repeat.items(),
-                    &inner,
-                    part,
-                    voice,
-                    groups,
-                    pending,
-                ));
+                segments.push(elaborate_items(lowering, &repeat.items(), &inner, scope));
             }
             sequence(segments)
         }
         VoiceItem::Slur(slur) => {
             let origin = origin_of(cx, lower::trimmed_span(slur.syntax()));
-            let id = lowering.group(GroupInfo {
-                kind: GroupKind::Slur,
-                origin,
-            });
-            let inner: Vec<u32> = groups.iter().copied().chain(std::iter::once(id)).collect();
-            elaborate_items(lowering, &slur.items(), cx, part, voice, &inner, pending)
+            let body = elaborate_items(lowering, &slur.items(), cx, scope);
+            over(body, ScoreFact::new(scope, FactKind::Slur, origin))
         }
         VoiceItem::Phrase(phrase) => {
             let origin = origin_of(cx, lower::trimmed_span(phrase.syntax()));
-            let id = lowering.group(GroupInfo {
-                kind: GroupKind::Phrase {
-                    name: phrase.name().unwrap_or_default(),
-                },
-                origin,
-            });
-            let inner: Vec<u32> = groups.iter().copied().chain(std::iter::once(id)).collect();
-            elaborate_items(lowering, &phrase.items(), cx, part, voice, &inner, pending)
+            let name = phrase.name().unwrap_or_default();
+            let body = elaborate_items(lowering, &phrase.items(), cx, scope);
+            over(body, ScoreFact::new(scope, FactKind::Phrase { name }, origin))
         }
         VoiceItem::Hairpin(hairpin) => {
             let span = lower::trimmed_span(hairpin.syntax());
@@ -688,15 +724,10 @@ fn elaborate_item(
                 lowering.error(format!("unknown dynamic marking `{text}`"), span);
                 return empty_segment();
             };
-            let id = lowering.group(GroupInfo {
-                kind: GroupKind::Hairpin {
-                    grows: hairpin.grows(),
-                    target,
-                },
-                origin: origin_of(cx, span),
-            });
-            let inner: Vec<u32> = groups.iter().copied().chain(std::iter::once(id)).collect();
-            elaborate_items(lowering, &hairpin.items(), cx, part, voice, &inner, pending)
+            let origin = origin_of(cx, span);
+            let grows = hairpin.grows();
+            let body = elaborate_items(lowering, &hairpin.items(), cx, scope);
+            over(body, ScoreFact::new(scope, FactKind::Hairpin { grows, target }, origin))
         }
         VoiceItem::Tuplet(tuplet) => {
             let text = tuplet.ratio().unwrap_or_default();
@@ -706,14 +737,10 @@ fn elaborate_item(
                 return empty_segment();
             };
             let origin = origin_of(cx, span);
-            let id = lowering.group(GroupInfo {
-                kind: GroupKind::Tuplet { num, den },
-                origin,
-            });
-            let inner_groups: Vec<u32> = groups.iter().copied().chain(std::iter::once(id)).collect();
             let mut inner = cx.clone();
             inner.scale = cx.scale * Ratio::new(i64::from(den), i64::from(num));
-            elaborate_items(lowering, &tuplet.items(), &inner, part, voice, &inner_groups, pending)
+            let body = elaborate_items(lowering, &tuplet.items(), &inner, scope);
+            over(body, ScoreFact::new(scope, FactKind::Tuplet { num, den }, origin))
         }
         VoiceItem::Stretch(stretch) => {
             let text = stretch.factor().unwrap_or_default();
@@ -725,7 +752,7 @@ fn elaborate_item(
             };
             let mut inner = cx.clone();
             inner.path.push(ExpansionStep::Stretch(factor));
-            let elaborated = elaborate_items(lowering, &stretch.items(), &inner, part, voice, groups, pending);
+            let elaborated = elaborate_items(lowering, &stretch.items(), &inner, scope);
             // The kernel's time-scaling action (course correction §14) plus
             // the matching renotation: a stretched quarter is *written* as a
             // half, not as a quarter that lasts twice as long.
@@ -737,7 +764,7 @@ fn elaborate_item(
         VoiceItem::Retrograde(retrograde) => {
             let mut inner = cx.clone();
             inner.path.push(ExpansionStep::Retrograde);
-            let elaborated = elaborate_items(lowering, &retrograde.items(), &inner, part, voice, groups, pending);
+            let elaborated = elaborate_items(lowering, &retrograde.items(), &inner, scope);
             reverse(&elaborated)
         }
         VoiceItem::Invert(invert) => {
@@ -749,7 +776,7 @@ fn elaborate_item(
             };
             let mut inner = cx.clone();
             inner.path.push(ExpansionStep::Inversion { axis: text.clone() });
-            let elaborated = elaborate_items(lowering, &invert.items(), &inner, part, voice, groups, pending);
+            let elaborated = elaborate_items(lowering, &invert.items(), &inner, scope);
             // Inversion is a payload map (course correction §13). A note
             // whose mirror image is unspellable is reported where it is
             // written and left alone, so one impossible note does not take
@@ -757,7 +784,7 @@ fn elaborate_item(
             let refused = std::cell::RefCell::new(Vec::new());
             let inverted = elaborated.map_payload(|payload| {
                 payload.inverted(axis).unwrap_or_else(|| {
-                    if let PayloadKind::Note { pitch } = payload.kind {
+                    if let Some(pitch) = payload.pitch_of() {
                         refused.borrow_mut().push((pitch, payload.origin.definition_span));
                     }
                     payload.clone()
@@ -775,16 +802,12 @@ fn elaborate_item(
             let text = dynamic.mark().unwrap_or_default();
             let span = lower::trimmed_span(dynamic.syntax());
             match DynamicMark::parse(&text) {
-                Some(mark) => {
-                    *pending = Some(PendingDynamic {
-                        mark,
-                        origin: origin_of(cx, span),
-                        span,
-                    });
+                Some(mark) => point(ScoreFact::new(scope, FactKind::Dynamic { mark }, origin_of(cx, span))),
+                None => {
+                    lowering.error(format!("unknown dynamic marking `{text}`"), span);
+                    empty_segment()
                 }
-                None => lowering.error(format!("unknown dynamic marking `{text}`"), span),
             }
-            empty_segment()
         }
     }
 }
@@ -813,11 +836,8 @@ fn elaborate_use(
     lowering: &mut Lowering,
     call: &musa_language::ast::UseStmt,
     cx: &ExpandCx,
-    part: u32,
-    voice: u32,
-    groups: &[u32],
-    pending: &mut Option<PendingDynamic>,
-) -> Timeline<VoicePayload> {
+    scope: Scope,
+) -> Timeline<ScoreFact> {
     let name = call.motif().unwrap_or_default();
     let found = lowering
         .motifs
@@ -878,7 +898,7 @@ fn elaborate_use(
         max_motif: index,
         scale: cx.scale,
     };
-    let elaborated = elaborate_items(lowering, &body, &inner, part, voice, groups, pending);
+    let elaborated = elaborate_items(lowering, &body, &inner, scope);
     specialize(lowering, call, &elaborated)
 }
 
@@ -901,22 +921,28 @@ fn elaborate_use(
 fn specialize(
     lowering: &mut Lowering,
     call: &musa_language::ast::UseStmt,
-    elaborated: &Timeline<VoicePayload>,
-) -> Timeline<VoicePayload> {
+    elaborated: &Timeline<ScoreFact>,
+) -> Timeline<ScoreFact> {
     let overrides = call.overrides();
     if overrides.is_empty() {
         return elaborated.clone();
     }
-    // The positions of this occurrence: one entry per group of occurrences
-    // sharing a span, which is how a chord's pitches become one position.
+    // The positions of this occurrence: one entry per group of *event*
+    // occurrences sharing a span, which is how a chord's pitches become one
+    // position. A slur laid over the body is a fact, not a position, so a
+    // motif that brackets its notes is still counted `note 1`, `note 2`.
     let mut positions: Vec<(usize, usize)> = Vec::new();
     for (index, occurrence) in elaborated.occurrences().iter().enumerate() {
+        if !occurrence.payload().kind.is_event() {
+            continue;
+        }
         match positions.last_mut() {
             Some(&mut (start, ref mut end))
                 if elaborated
                     .occurrences()
                     .get(start)
-                    .is_some_and(|first| first.span() == occurrence.span()) =>
+                    .is_some_and(|first| first.span() == occurrence.span())
+                    && end.saturating_add(0) == index =>
             {
                 *end = index.saturating_add(1);
             }
@@ -957,10 +983,12 @@ fn specialize(
             );
             continue;
         }
-        if !matches!(
-            elaborated.occurrences().get(start).map(|it| &it.payload().kind),
-            Some(&PayloadKind::Note { .. })
-        ) {
+        if elaborated
+            .occurrences()
+            .get(start)
+            .and_then(|it| it.payload().pitch_of())
+            .is_none()
+        {
             lowering.error(format!("`note {position}` is a rest; an override respells a note"), at);
             continue;
         }
@@ -972,7 +1000,7 @@ fn specialize(
         return elaborated.clone();
     }
 
-    let occurrences: Vec<Occurrence<VoicePayload>> = elaborated
+    let occurrences: Vec<Occurrence<ScoreFact>> = elaborated
         .occurrences()
         .iter()
         .enumerate()
@@ -981,7 +1009,9 @@ fn specialize(
                 return occurrence.clone();
             };
             let mut payload = occurrence.payload().clone();
-            payload.kind = PayloadKind::Note { pitch };
+            if let FactKind::Note { pitch: written, .. } = &mut payload.kind {
+                *written = pitch;
+            }
             payload
                 .origin
                 .expansion_path
@@ -1001,12 +1031,12 @@ fn specialize(
 /// basis.
 ///
 /// Every mark stays with the note that carries it — a staccato is written on
-/// a note, and reversing time does not move it. The tie is the exception,
-/// because it is a relation *between* two notes rather than a property of
-/// one: reversed, the tie belongs to what is now the earlier of the pair.
-fn reverse(timeline: &Timeline<VoicePayload>) -> Timeline<VoicePayload> {
+/// a note, and reversing time does not move it. Ties need no repair: they
+/// were merged when the enclosed items were elaborated, so what reverses is
+/// an ordinary occurrence with an ordinary span.
+fn reverse(timeline: &Timeline<ScoreFact>) -> Timeline<ScoreFact> {
     let extent = timeline.extent();
-    let mut mirrored: Vec<Occurrence<VoicePayload>> = timeline
+    let mut mirrored: Vec<Occurrence<ScoreFact>> = timeline
         .occurrences()
         .iter()
         .map(|occurrence| {
@@ -1018,51 +1048,19 @@ fn reverse(timeline: &Timeline<VoicePayload>) -> Timeline<VoicePayload> {
         })
         .collect();
     // Stable by start, so the members of a chord stay adjacent and in the
-    // order the adapter expects.
+    // order the projection expects.
     mirrored.sort_by_key(|occurrence| (occurrence.span().start(), occurrence.span().end()));
-    timeline_or_empty(extent, retie(&mirrored))
-}
-
-/// Move tie marks back one sounding position, in the reversed order.
-///
-/// A tie says "and the next one continues this". After reversal the pair
-/// still sounds together, in the other order, so the mark moves from the
-/// note that had it to the note it pointed at.
-fn retie(occurrences: &[Occurrence<VoicePayload>]) -> Vec<Occurrence<VoicePayload>> {
-    let mut groups: Vec<(usize, usize)> = Vec::new();
-    for (index, occurrence) in occurrences.iter().enumerate() {
-        let span = occurrence.span();
-        match groups.last_mut() {
-            Some(&mut (start, ref mut end)) if occurrences.get(start).is_some_and(|first| first.span() == span) => {
-                *end = index.saturating_add(1);
-            }
-            _ => groups.push((index, index.saturating_add(1))),
-        }
-    }
-    let ties: Vec<bool> = groups
-        .iter()
-        .map(|&(start, _)| occurrences.get(start).is_some_and(|first| first.payload().marks.tie))
-        .collect();
-    let mut retied = Vec::with_capacity(occurrences.len());
-    for (position, &(start, end)) in groups.iter().enumerate() {
-        let tie = ties.get(position.saturating_add(1)).copied().unwrap_or(false);
-        for occurrence in occurrences.get(start..end).unwrap_or_default() {
-            let mut payload = occurrence.payload().clone();
-            payload.marks.tie = tie;
-            retied.push(Occurrence::new(occurrence.span(), payload));
-        }
-    }
-    retied
+    timeline_or_empty(extent, mirrored)
 }
 
 /// A timeline over `extent`, or the empty segment when the occurrences do
 /// not fit it (unreachable for elaborated music; never a panic).
-fn timeline_or_empty(extent: Beat, occurrences: Vec<Occurrence<VoicePayload>>) -> Timeline<VoicePayload> {
+fn timeline_or_empty(extent: Beat, occurrences: Vec<Occurrence<ScoreFact>>) -> Timeline<ScoreFact> {
     timeline(extent, occurrences).unwrap_or_else(|_| musa_kernel::zero())
 }
 
 /// The empty segment `(0, ∅)` — contributes nothing to the sequence.
-fn empty_segment() -> Timeline<VoicePayload> {
+fn empty_segment() -> Timeline<ScoreFact> {
     musa_kernel::zero()
 }
 
@@ -1075,9 +1073,30 @@ fn span_of_duration(duration: &NotatedDuration) -> Span {
 
 /// A segment holding one occurrence over `[0, d)`. Bounds hold by
 /// construction; the empty segment is the dead fallback.
-fn single(duration: &NotatedDuration, payload: VoicePayload) -> Timeline<VoicePayload> {
+fn single(duration: &NotatedDuration, payload: ScoreFact) -> Timeline<ScoreFact> {
     let span = span_of_duration(duration);
     timeline(span.end(), vec![Occurrence::new(span, payload)]).unwrap_or_else(|_| musa_kernel::zero())
+}
+
+/// A region fact laid over the body it encloses: one occurrence spanning
+/// `[0, extent)` of `body`, overlaid onto it.
+///
+/// The region's boundaries coincide with event boundaries by construction —
+/// the extent *is* the extent of the items it encloses — which is the
+/// invariant the projection relies on to name the events at its ends.
+fn over(body: Timeline<ScoreFact>, fact: ScoreFact) -> Timeline<ScoreFact> {
+    let extent = body.extent();
+    let Ok(span) = Span::new(Beat::ZERO, extent) else {
+        return body;
+    };
+    let region = timeline_or_empty(extent, vec![Occurrence::new(span, fact)]);
+    overlay(vec![body, region])
+}
+
+/// A point fact at the cursor: an occurrence of zero extent in a segment of
+/// zero extent, so sequencing places it exactly where it was written.
+fn point(fact: ScoreFact) -> Timeline<ScoreFact> {
+    timeline_or_empty(Beat::ZERO, vec![Occurrence::new(Span::ZERO, fact)])
 }
 
 /// The origin for an event under this expansion context (mirrors the direct
@@ -1112,180 +1131,152 @@ fn apply_intervals(
     Some(current)
 }
 
-/// Adapt a voice's kernel timeline back into snapshot events
-/// (docs/kernel/06 adapter contract): per-pitch occurrences sharing span,
-/// voice, and origin regroup into chords; a `Rest` payload becomes a rest
-/// event. Event ids are assigned in traversal order, matching the oracle.
-pub(crate) fn adapt_voice(lowering: &mut Lowering, timeline: &Timeline<VoicePayload>) -> Voice {
-    let mut adapted = Vec::new();
-    let mut index = 0;
-    let occurrences = timeline.occurrences();
-    while index < occurrences.len() {
-        let Some(first) = occurrences.get(index) else { break };
-        let span = first.span();
-        let payload = first.payload();
-        let onset = MusicalTime::new(span.start().as_ratio());
-        match &payload.kind {
-            PayloadKind::Rest => {
-                adapted.push(Adapted {
-                    onset,
-                    duration: payload.duration.clone(),
-                    kind: ScoreEventKind::Rest,
-                    origin: payload.origin.clone(),
-                    marks: payload.marks.clone(),
-                });
-                index = index.saturating_add(1);
-            }
-            PayloadKind::Note { pitch } => {
-                let mut pitches = vec![*pitch];
-                let mut consumed = 1;
-                while let Some(next) = occurrences.get(index.saturating_add(consumed)) {
-                    let same_group = next.span() == span
-                        && next.payload().origin == payload.origin
-                        && matches!(next.payload().kind, PayloadKind::Note { .. });
-                    if !same_group {
-                        break;
-                    }
-                    if let PayloadKind::Note { pitch } = &next.payload().kind {
-                        pitches.push(*pitch);
-                    }
-                    consumed = consumed.saturating_add(1);
-                }
-                let kind = if pitches.len() == 1 {
-                    ScoreEventKind::Note {
-                        pitch: pitches.first().copied().unwrap_or(*pitch),
-                    }
-                } else {
-                    ScoreEventKind::Chord { pitches }
-                };
-                adapted.push(Adapted {
-                    onset,
-                    duration: payload.duration.clone(),
-                    kind,
-                    origin: payload.origin.clone(),
-                    marks: payload.marks.clone(),
-                });
-                index = index.saturating_add(consumed);
-            }
-        }
+/// Join tied noteheads into single occurrences (roadmap §6.3: a tie is
+/// duration structure, not an annotation).
+///
+/// A tie says two written noteheads spell **one** sound, so this is where a
+/// tie stops existing: the merged occurrence's span is the sum, its written
+/// duration is the compound spelling, and nothing downstream ever sees a tie
+/// flag. A tie onto a different pitch, or with nothing after it, is a
+/// diagnostic here rather than a shape the projection has to cope with.
+fn merge_ties(lowering: &mut Lowering, timeline: Timeline<ScoreFact>) -> Timeline<ScoreFact> {
+    if !timeline.occurrences().iter().any(|it| it.payload().tied) {
+        return timeline;
     }
-    let adapted = merge_ties(lowering, adapted);
-    identify(lowering, adapted)
-}
-
-/// One adapted occurrence, before it has an identity: ties still have to
-/// merge, and merging changes how many events there are.
-struct Adapted {
-    onset: MusicalTime,
-    duration: NotatedDuration,
-    kind: ScoreEventKind,
-    origin: Origin,
-    marks: Marks,
-}
-
-/// Join tied runs into single sounding events (roadmap §6.3: a tie is
-/// duration structure, not an annotation). The merged event keeps the first
-/// piece's onset, provenance, and marks, and its written pieces are the
-/// noteheads the composer asked for.
-fn merge_ties(lowering: &mut Lowering, adapted: Vec<Adapted>) -> Vec<Adapted> {
-    let mut merged: Vec<Adapted> = Vec::with_capacity(adapted.len());
-    for item in adapted {
-        let joins = merged.last().is_some_and(|previous| previous.marks.tie);
+    let extent = timeline.extent();
+    let statements = statements(timeline.occurrences());
+    let mut merged: Vec<Vec<Occurrence<ScoreFact>>> = Vec::with_capacity(statements.len());
+    for statement in statements {
+        let joins = merged
+            .last()
+            .and_then(|previous| previous.first())
+            .is_some_and(|first| first.payload().tied);
         if !joins {
-            merged.push(item);
+            merged.push(statement);
             continue;
         }
         let Some(previous) = merged.last_mut() else {
-            merged.push(item);
+            merged.push(statement);
             continue;
         };
-        if previous.kind != item.kind || matches!(item.kind, ScoreEventKind::Rest) {
-            lowering.error(
-                "a tie must be followed by the same pitch or chord",
-                item.origin.definition_span,
-            );
-            previous.marks.tie = false;
-            merged.push(item);
+        if !same_sound(previous, &statement) {
+            let at = statement
+                .first()
+                .map_or_else(|| SourceSpan::new(0, 0), |first| first.payload().origin.definition_span);
+            lowering.error("a tie must be followed by the same pitch or chord", at);
+            for occurrence in previous.iter_mut() {
+                untie(occurrence);
+            }
+            merged.push(statement);
             continue;
         }
-        previous.duration = previous.duration.tied_to(&item.duration);
-        previous.marks.tie = item.marks.tie;
-        previous.marks.articulations.extend(item.marks.articulations);
+        join(previous, &statement);
     }
-    if let Some(last) = merged.last()
-        && last.marks.tie
-    {
-        lowering.error("this tie has no note after it", last.origin.definition_span);
-    }
-    merged
+    let occurrences: Vec<Occurrence<ScoreFact>> = merged.into_iter().flatten().collect();
+    timeline_or_empty(extent, occurrences)
 }
 
-/// Give the voice's events their identities, and turn the marks they carry
-/// into annotations now that there is something to anchor to.
-fn identify(lowering: &mut Lowering, adapted: Vec<Adapted>) -> Voice {
-    let mut events = Vec::with_capacity(adapted.len());
-    // `IndexMap` rather than a hash map: the annotation order is part of the
-    // snapshot, and it follows the order the blocks were entered.
-    let mut ranges: indexmap::IndexMap<u32, (crate::score::EventId, crate::score::EventId)> = indexmap::IndexMap::new();
-    for item in adapted {
-        let id = lowering.event_id();
-        for group in &item.marks.groups {
-            ranges
-                .entry(*group)
-                .and_modify(|range| range.1 = id)
-                .or_insert((id, id));
-        }
-        for mark in item.marks.articulations {
-            lowering.annotations.push_articulation(ArticulationMarking {
-                at: id,
-                mark,
-                origin: item.origin.clone(),
-            });
-        }
-        if let Some((mark, origin)) = item.marks.dynamic {
-            lowering
-                .annotations
-                .push_dynamic(DynamicMarking { at: id, mark, origin });
-        }
-        events.push(ScoreEvent {
-            id,
-            origin: item.origin,
-            onset: item.onset,
-            notated_duration: item.duration,
-            kind: item.kind,
+/// The occurrences grouped into *statements*: one written note or rest, or
+/// the pitches of one chord, which share a span and an origin.
+///
+/// Region and point facts are statements of one, and never merge: only a
+/// notehead can be tied.
+fn statements(occurrences: &[Occurrence<ScoreFact>]) -> Vec<Vec<Occurrence<ScoreFact>>> {
+    let mut grouped: Vec<Vec<Occurrence<ScoreFact>>> = Vec::with_capacity(occurrences.len());
+    for occurrence in occurrences {
+        let joins = grouped.last().and_then(|group| group.first()).is_some_and(|first| {
+            first.span() == occurrence.span()
+                && first.payload().origin == occurrence.payload().origin
+                && first.payload().pitch_of().is_some()
+                && occurrence.payload().pitch_of().is_some()
         });
-    }
-    ranges.sort_keys();
-    for (group, (from, to)) in ranges {
-        let Some(info) = lowering.groups.get(&group) else {
-            continue;
-        };
-        let origin = info.origin.clone();
-        match info.kind {
-            GroupKind::Slur => lowering.annotations.push_slur(SlurSpan { from, to, origin }),
-            GroupKind::Phrase { ref name } => lowering.annotations.push_phrase(PhraseSpan {
-                name: name.clone(),
-                from,
-                to,
-                origin,
-            }),
-            GroupKind::Hairpin { grows, target } => lowering.annotations.push_hairpin(HairpinSpan {
-                from,
-                to,
-                grows,
-                target,
-                origin,
-            }),
-            GroupKind::Tuplet { num, den } => lowering.annotations.push_tuplet(TupletSpan {
-                from,
-                to,
-                num,
-                den,
-                origin,
-            }),
+        match (joins, grouped.last_mut()) {
+            (true, Some(group)) => group.push(occurrence.clone()),
+            _ => grouped.push(vec![occurrence.clone()]),
         }
     }
-    Voice { events }
+    grouped
+}
+
+/// Whether two statements are the same sound: the same pitches, in order.
+fn same_sound(left: &[Occurrence<ScoreFact>], right: &[Occurrence<ScoreFact>]) -> bool {
+    let pitches = |statement: &[Occurrence<ScoreFact>]| -> Option<Vec<WrittenPitch>> {
+        statement.iter().map(|it| it.payload().pitch_of()).collect()
+    };
+    match (pitches(left), pitches(right)) {
+        (Some(left), Some(right)) => !left.is_empty() && left == right,
+        _ => false,
+    }
+}
+
+/// Extend `previous` through `statement`: one occurrence per pitch, spanning
+/// both, spelled as the noteheads the composer wrote.
+fn join(previous: &mut [Occurrence<ScoreFact>], statement: &[Occurrence<ScoreFact>]) {
+    let Some(end) = statement.first().map(|first| first.span().end()) else {
+        return;
+    };
+    let tied = statement.first().is_some_and(|first| first.payload().tied);
+    for (index, occurrence) in previous.iter_mut().enumerate() {
+        let mut fact = occurrence.payload().clone();
+        fact.tied = tied;
+        if let (
+            FactKind::Note {
+                duration,
+                articulations,
+                ..
+            },
+            Some(next),
+        ) = (&mut fact.kind, statement.get(index).map(Occurrence::payload))
+        {
+            if let Some(added) = next.kind.duration_of() {
+                *duration = duration.tied_to(added);
+            }
+            if let FactKind::Note {
+                articulations: more, ..
+            } = &next.kind
+            {
+                articulations.extend(more.iter().copied());
+            }
+        }
+        let span = Span::new(occurrence.span().start(), end).unwrap_or_else(|_| occurrence.span());
+        *occurrence = Occurrence::new(span, fact);
+    }
+}
+
+/// A tie at the very end of a voice points at nothing.
+///
+/// It is only an error *here*: a tie at the end of a slur or a repeat block
+/// continues into whatever follows the block, and merges at the level that
+/// contains both sides. Reported once, and cleared, so no fact leaves
+/// elaboration still claiming to be tied.
+fn check_dangling_tie(lowering: &mut Lowering, timeline: Timeline<ScoreFact>) -> Timeline<ScoreFact> {
+    if !timeline.occurrences().iter().any(|it| it.payload().tied) {
+        return timeline;
+    }
+    let extent = timeline.extent();
+    let mut occurrences: Vec<Occurrence<ScoreFact>> = timeline.occurrences().to_vec();
+    let mut reported = false;
+    for occurrence in &mut occurrences {
+        if !occurrence.payload().tied {
+            continue;
+        }
+        if !reported {
+            lowering.error(
+                "this tie has no note after it",
+                occurrence.payload().origin.definition_span,
+            );
+            reported = true;
+        }
+        untie(occurrence);
+    }
+    timeline_or_empty(extent, occurrences)
+}
+
+/// Clear a tie that could not be honoured, so nothing downstream sees it.
+fn untie(occurrence: &mut Occurrence<ScoreFact>) {
+    let mut fact = occurrence.payload().clone();
+    fact.tied = false;
+    *occurrence = Occurrence::new(occurrence.span(), fact);
 }
 
 /// A tuplet has to be spellable, and a group split across a barline is not:

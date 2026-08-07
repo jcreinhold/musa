@@ -1,7 +1,7 @@
 ---
 id: 39
 slug: score-facts
-status: pending
+status: done
 depends_on: [36, 38]
 phase: 3
 ---
@@ -147,3 +147,33 @@ Commit as `Elaborate every notated fact as a kernel occurrence`.
 - Key, meter, tempo, section, and harmony are **not** in scope; they are prompt 40.
 - Do not delete the oracle or the differential suite; they are this prompt's safety net.
 - No render, project, or desktop changes. If one is needed, the projection is not faithful — fix the projection.
+
+## Repairs made while implementing
+
+- **`Scope` has one variant, not three.** `Piece` and `Part` have no producer until prompt 40, and the workspace denies
+  warnings, so a variant nobody constructs is a build failure — and AGENTS.md's "no public item without a caller" says
+  the same thing more usefully. `Scope::Voice { part, voice }` is what this prompt needs; 40 adds the other two with
+  their producers.
+- **The tie flag is a field of `ScoreFact`, cleared before the fact leaves elaboration.** The prompt says nothing
+  carries a tie flag afterwards, which is true — but merging needs lookahead, so the flag has to exist somewhere while
+  the statement and its continuation are both in hand. It is documented as elaboration-only and the projection asserts
+  it is `false` in debug builds.
+- **Merging happens in `elaborate_items`, at every nesting level**, not once per voice. That is what makes the
+  `retrograde` consequence true: an inner block's ties are already merged when the block is reversed. A tie that
+  crosses a block boundary merges at the level containing both sides. The one thing that must stay at voice level is
+  the *dangling* tie diagnostic — a tie at the end of a `slur` block continues into what follows the block, so
+  complaining per level would reject valid music.
+- **`grep -rn "struct Marks\|fn retie" crates/` returns 1, not 0**: `musa-render/src/plan.rs` has an unrelated
+  `struct Marks` — the notation planner's per-event annotation index, which predates this prompt and has nothing to do
+  with payload tags. Scoped to `crates/musa-compiler`, the check returns 0.
+- **`cargo insta test --unreferenced=reject` is not runnable here** (`cargo-insta` is not installed). The stronger
+  statement was checked instead and holds: `git status` shows **no snapshot file changed at all**, and all 430
+  workspace tests pass. The canonical key was deliberately shaped so a note or rest with nothing written on it keys
+  exactly as it did before, which is why the kernel normal-form goldens are untouched.
+- **Motif note overrides count events, not facts.** `with { note 2 = g5; }` numbers positions by groups of occurrences
+  sharing a span; once a `slur` inside a motif body is an occurrence of its own, that numbering had to skip non-event
+  facts, or bracketing a motif would have silently renumbered its notes.
+- **P2 on the large workload is +13% against prompt 38's row**, over the block's 10% gate and declared here as the rule
+  requires, with the reasoning in `docs/kernel/09-performance.md`: the timeline holds more occurrences because regions
+  are occurrences now, and elaboration groups statements to merge ties. The trade is that a slur is stored once instead
+  of once per note it covers, and the `Vec<u32>` every note used to carry is gone.

@@ -38,6 +38,7 @@ mod origin;
 mod performance;
 mod pitch;
 mod profile;
+mod project;
 mod score;
 mod studio;
 mod time;

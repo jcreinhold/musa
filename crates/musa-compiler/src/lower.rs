@@ -81,34 +81,6 @@ pub(crate) struct ExpandCx {
     pub(crate) scale: Ratio<i64>,
 }
 
-/// What a slur or tuplet block declared, kept aside while its events are
-/// still being built: the events it covers are only identified once the
-/// voice is adapted, so the block records itself here and the adapter
-/// resolves the two ends.
-pub(crate) struct GroupInfo {
-    pub(crate) kind: GroupKind,
-    pub(crate) origin: Origin,
-}
-
-/// Which bracket a group came from.
-pub(crate) enum GroupKind {
-    Slur,
-    /// A named phrase.
-    Phrase {
-        name: String,
-    },
-    /// A hairpin, and the mark it arrives at.
-    Hairpin {
-        grows: bool,
-        target: crate::score::DynamicMark,
-    },
-    /// `num` written values in the time of `den`.
-    Tuplet {
-        num: u32,
-        den: u32,
-    },
-}
-
 /// Mutable lowering state.
 pub(crate) struct Lowering {
     pub(crate) declarations: SlotMap<DeclKey, DeclInfo>,
@@ -116,9 +88,6 @@ pub(crate) struct Lowering {
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) next_event: u64,
     pub(crate) next_part: u32,
-    /// Slur and tuplet blocks by group id, in the order they were entered.
-    pub(crate) groups: IndexMap<u32, GroupInfo>,
-    pub(crate) next_group: u32,
     pub(crate) annotations: AnnotationStore,
     /// Where each voice's kernel timeline goes on its way to the adapter.
     ///
@@ -137,19 +106,9 @@ impl Lowering {
             diagnostics: Vec::new(),
             next_event: 0,
             next_part: 0,
-            groups: IndexMap::new(),
-            next_group: 0,
             annotations: AnnotationStore::default(),
             timeline_sink: None,
         }
-    }
-
-    /// Register a slur or tuplet block, returning its group id.
-    pub(crate) fn group(&mut self, info: GroupInfo) -> u32 {
-        let id = self.next_group;
-        self.next_group = self.next_group.saturating_add(1);
-        self.groups.insert(id, info);
-        id
     }
 
     pub(crate) fn declare(&mut self, info: DeclInfo) -> DeclKey {
