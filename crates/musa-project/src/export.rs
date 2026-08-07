@@ -14,6 +14,9 @@ pub enum ExportRequest {
     LilyPond,
     /// A deterministic offline audio render, 32-bit float stereo WAV.
     Wav,
+    /// A Standard MIDI File. Two documents, not one setting: `Score` is the
+    /// neutral reading, `Performance` the profiled one (roadmap §12.5).
+    Midi(musa_render::MidiMode),
     /// The performance lowering, as a debug dump.
     PerformanceDump,
     /// The notation plan, as a debug dump.
@@ -27,6 +30,7 @@ impl ExportRequest {
             Self::Mei => "mei",
             Self::LilyPond => "ly",
             Self::Wav => "wav",
+            Self::Midi(_) => "mid",
             Self::PerformanceDump | Self::NotationPlanDump => "txt",
         }
     }

@@ -26,6 +26,9 @@ struct Voice {
     frequency: f32,
     phase: f64,
     envelope: f32,
+    /// The interpreted loudness the note-on asked for; `1.0` is neutral, so
+    /// an unprofiled piece renders exactly the samples it always did.
+    amplitude: f32,
     /// Frames since (re)trigger — the steal-oldest criterion.
     age: u64,
 }
@@ -37,6 +40,7 @@ impl Voice {
         frequency: 0.0,
         phase: 0.0,
         envelope: 0.0,
+        amplitude: 1.0,
         age: 0,
     };
 }
@@ -64,10 +68,10 @@ impl VoiceAllocator {
         }
     }
 
-    /// Gate a voice for `instance` at `frequency`, stealing the oldest when
-    /// the pool is full. The envelope restarts from its current value — a
-    /// stolen voice never clicks.
-    pub fn note_on(&mut self, instance: VoiceInstanceId, frequency: f32) {
+    /// Gate a voice for `instance` at `frequency` and `amplitude`, stealing
+    /// the oldest when the pool is full. The envelope restarts from its
+    /// current value — a stolen voice never clicks.
+    pub fn note_on(&mut self, instance: VoiceInstanceId, frequency: f32, amplitude: f32) {
         let slot = self
             .voices
             .iter()
@@ -83,6 +87,7 @@ impl VoiceAllocator {
             voice.state = VoiceState::Active;
             voice.instance = instance;
             voice.frequency = frequency;
+            voice.amplitude = amplitude;
             voice.phase = 0.0;
             voice.age = 0;
         }
@@ -144,7 +149,11 @@ impl VoiceAllocator {
                     }
                     VoiceState::Free => {}
                 }
-                mix += sample * voice.envelope;
+                // Fused: one rounding for the scale-and-accumulate, which is
+                // both cheaper and closer than the two-step form. With the
+                // neutral amplitude of 1 it is bit-identical to a plain add,
+                // which is what keeps unprofiled audio golden.
+                mix = (sample * voice.envelope).mul_add(voice.amplitude, mix);
             }
             if let Some(slot) = output.get_mut(i) {
                 *slot = mix;

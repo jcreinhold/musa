@@ -18,10 +18,12 @@
 mod error;
 mod ly;
 mod mei;
+mod midi;
 mod plan;
 mod render;
 
 pub use crate::error::{NotationError, RenderError};
+pub use crate::midi::{MidiMode, MidiOptions, render_midi};
 pub use crate::plan::{
     ARTICULATION_PLACEMENT, BeamGroup, DYNAMIC_PLACEMENT, KeySignature, MeasurePlan, NotatedItem, NotatedKind,
     NotationOptions, NotationPlan, Placement, SLUR_PLACEMENT, SlurRange, StaffPlan, TupletMark, VoiceLane,

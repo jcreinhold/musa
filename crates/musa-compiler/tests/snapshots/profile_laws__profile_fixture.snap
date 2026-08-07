@@ -1,0 +1,933 @@
+---
+source: crates/musa-compiler/tests/profile_laws.rs
+expression: "format!(\"{snapshot:#?}\")"
+---
+ScoreSnapshot {
+    title: "Profile Fixture",
+    parts: PartMap {
+        parts: {
+            PartId(
+                0,
+            ): Part {
+                id: PartId(
+                    0,
+                ),
+                name: "flute",
+                clef: Some(
+                    Treble,
+                ),
+                voices: {
+                    VoiceId(
+                        0,
+                    ): Voice {
+                        events: [
+                            ScoreEvent {
+                                id: EventId(
+                                    0,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 1362,
+                                        end: 1378,
+                                    },
+                                    definition_span: SourceSpan {
+                                        start: 1362,
+                                        end: 1378,
+                                    },
+                                    declaration: DeclarationId(
+                                        5,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 0,
+                                        denom: 1,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 4,
+                                        },
+                                    ),
+                                    spelling: "1/4",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 4,
+                                            },
+                                        ),
+                                    ],
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: C,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 5,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    1,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 1395,
+                                        end: 1411,
+                                    },
+                                    definition_span: SourceSpan {
+                                        start: 1395,
+                                        end: 1411,
+                                    },
+                                    declaration: DeclarationId(
+                                        5,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 1,
+                                        denom: 4,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 4,
+                                        },
+                                    ),
+                                    spelling: "1/4",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 4,
+                                            },
+                                        ),
+                                    ],
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: D,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 5,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    2,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 1428,
+                                        end: 1435,
+                                    },
+                                    definition_span: SourceSpan {
+                                        start: 1428,
+                                        end: 1435,
+                                    },
+                                    declaration: DeclarationId(
+                                        5,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 1,
+                                        denom: 2,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: E,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 5,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    3,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 1479,
+                                        end: 1495,
+                                    },
+                                    definition_span: SourceSpan {
+                                        start: 1479,
+                                        end: 1495,
+                                    },
+                                    declaration: DeclarationId(
+                                        5,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 1,
+                                        denom: 1,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 4,
+                                        },
+                                    ),
+                                    spelling: "1/4",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 4,
+                                            },
+                                        ),
+                                    ],
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: G,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 5,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    4,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 1512,
+                                        end: 1519,
+                                    },
+                                    definition_span: SourceSpan {
+                                        start: 1512,
+                                        end: 1519,
+                                    },
+                                    declaration: DeclarationId(
+                                        5,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 5,
+                                        denom: 4,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 4,
+                                        },
+                                    ),
+                                    spelling: "1/4",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 4,
+                                            },
+                                        ),
+                                    ],
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: A,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 5,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    5,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 1536,
+                                        end: 1543,
+                                    },
+                                    definition_span: SourceSpan {
+                                        start: 1536,
+                                        end: 1543,
+                                    },
+                                    declaration: DeclarationId(
+                                        5,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 3,
+                                        denom: 2,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: B,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 5,
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+                voice_names: {
+                    VoiceId(
+                        0,
+                    ): "lead",
+                },
+            },
+            PartId(
+                1,
+            ): Part {
+                id: PartId(
+                    1,
+                ),
+                name: "cello",
+                clef: Some(
+                    Bass,
+                ),
+                voices: {
+                    VoiceId(
+                        0,
+                    ): Voice {
+                        events: [
+                            ScoreEvent {
+                                id: EventId(
+                                    6,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 1712,
+                                        end: 1728,
+                                    },
+                                    definition_span: SourceSpan {
+                                        start: 1712,
+                                        end: 1728,
+                                    },
+                                    declaration: DeclarationId(
+                                        7,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 0,
+                                        denom: 1,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 4,
+                                        },
+                                    ),
+                                    spelling: "1/4",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 4,
+                                            },
+                                        ),
+                                    ],
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: C,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 3,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    7,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 1745,
+                                        end: 1759,
+                                    },
+                                    definition_span: SourceSpan {
+                                        start: 1745,
+                                        end: 1759,
+                                    },
+                                    declaration: DeclarationId(
+                                        7,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 1,
+                                        denom: 4,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 4,
+                                        },
+                                    ),
+                                    spelling: "1/4",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 4,
+                                            },
+                                        ),
+                                    ],
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: E,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 3,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    8,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 1776,
+                                        end: 1790,
+                                    },
+                                    definition_span: SourceSpan {
+                                        start: 1776,
+                                        end: 1790,
+                                    },
+                                    declaration: DeclarationId(
+                                        7,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 1,
+                                        denom: 2,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: G,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 3,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    9,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 1834,
+                                        end: 1841,
+                                    },
+                                    definition_span: SourceSpan {
+                                        start: 1834,
+                                        end: 1841,
+                                    },
+                                    declaration: DeclarationId(
+                                        7,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 1,
+                                        denom: 1,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: C,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 3,
+                                    },
+                                },
+                            },
+                            ScoreEvent {
+                                id: EventId(
+                                    10,
+                                ),
+                                origin: Origin {
+                                    source_span: SourceSpan {
+                                        start: 1858,
+                                        end: 1865,
+                                    },
+                                    definition_span: SourceSpan {
+                                        start: 1858,
+                                        end: 1865,
+                                    },
+                                    declaration: DeclarationId(
+                                        7,
+                                    ),
+                                    expansion_path: [],
+                                },
+                                onset: MusicalTime(
+                                    Ratio {
+                                        numer: 3,
+                                        denom: 2,
+                                    },
+                                ),
+                                notated_duration: NotatedDuration {
+                                    value: MusicalDuration(
+                                        Ratio {
+                                            numer: 1,
+                                            denom: 2,
+                                        },
+                                    ),
+                                    spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
+                                },
+                                kind: Note {
+                                    pitch: WrittenPitch {
+                                        letter: G,
+                                        accidental: Accidental(
+                                            0,
+                                        ),
+                                        octave: 2,
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+                voice_names: {
+                    VoiceId(
+                        0,
+                    ): "bass",
+                },
+            },
+        },
+    },
+    tempo_map: TempoMap {
+        beat: Ratio {
+            numer: 1,
+            denom: 4,
+        },
+        bpm: 100,
+    },
+    meter_map: MeterMap {
+        numerator: 4,
+        denominator: 4,
+    },
+    key_map: Some(
+        KeyMap {
+            tonic: PitchClass {
+                letter: C,
+                accidental: Accidental(
+                    0,
+                ),
+            },
+            mode: Major,
+        },
+    ),
+    annotations: AnnotationStore {
+        slurs: [],
+        tuplets: [],
+        dynamics: [
+            DynamicMarking {
+                at: EventId(
+                    0,
+                ),
+                mark: P,
+                origin: Origin {
+                    source_span: SourceSpan {
+                        start: 1335,
+                        end: 1345,
+                    },
+                    definition_span: SourceSpan {
+                        start: 1335,
+                        end: 1345,
+                    },
+                    declaration: DeclarationId(
+                        5,
+                    ),
+                    expansion_path: [],
+                },
+            },
+            DynamicMarking {
+                at: EventId(
+                    3,
+                ),
+                mark: F,
+                origin: Origin {
+                    source_span: SourceSpan {
+                        start: 1452,
+                        end: 1462,
+                    },
+                    definition_span: SourceSpan {
+                        start: 1452,
+                        end: 1462,
+                    },
+                    declaration: DeclarationId(
+                        5,
+                    ),
+                    expansion_path: [],
+                },
+            },
+            DynamicMarking {
+                at: EventId(
+                    6,
+                ),
+                mark: Mf,
+                origin: Origin {
+                    source_span: SourceSpan {
+                        start: 1684,
+                        end: 1695,
+                    },
+                    definition_span: SourceSpan {
+                        start: 1684,
+                        end: 1695,
+                    },
+                    declaration: DeclarationId(
+                        7,
+                    ),
+                    expansion_path: [],
+                },
+            },
+            DynamicMarking {
+                at: EventId(
+                    9,
+                ),
+                mark: P,
+                origin: Origin {
+                    source_span: SourceSpan {
+                        start: 1807,
+                        end: 1817,
+                    },
+                    definition_span: SourceSpan {
+                        start: 1807,
+                        end: 1817,
+                    },
+                    declaration: DeclarationId(
+                        7,
+                    ),
+                    expansion_path: [],
+                },
+            },
+        ],
+        articulations: [
+            ArticulationMarking {
+                at: EventId(
+                    0,
+                ),
+                mark: Staccato,
+                origin: Origin {
+                    source_span: SourceSpan {
+                        start: 1362,
+                        end: 1378,
+                    },
+                    definition_span: SourceSpan {
+                        start: 1362,
+                        end: 1378,
+                    },
+                    declaration: DeclarationId(
+                        5,
+                    ),
+                    expansion_path: [],
+                },
+            },
+            ArticulationMarking {
+                at: EventId(
+                    1,
+                ),
+                mark: Staccato,
+                origin: Origin {
+                    source_span: SourceSpan {
+                        start: 1395,
+                        end: 1411,
+                    },
+                    definition_span: SourceSpan {
+                        start: 1395,
+                        end: 1411,
+                    },
+                    declaration: DeclarationId(
+                        5,
+                    ),
+                    expansion_path: [],
+                },
+            },
+            ArticulationMarking {
+                at: EventId(
+                    3,
+                ),
+                mark: Staccato,
+                origin: Origin {
+                    source_span: SourceSpan {
+                        start: 1479,
+                        end: 1495,
+                    },
+                    definition_span: SourceSpan {
+                        start: 1479,
+                        end: 1495,
+                    },
+                    declaration: DeclarationId(
+                        5,
+                    ),
+                    expansion_path: [],
+                },
+            },
+            ArticulationMarking {
+                at: EventId(
+                    6,
+                ),
+                mark: Staccato,
+                origin: Origin {
+                    source_span: SourceSpan {
+                        start: 1712,
+                        end: 1728,
+                    },
+                    definition_span: SourceSpan {
+                        start: 1712,
+                        end: 1728,
+                    },
+                    declaration: DeclarationId(
+                        7,
+                    ),
+                    expansion_path: [],
+                },
+            },
+            ArticulationMarking {
+                at: EventId(
+                    7,
+                ),
+                mark: Tenuto,
+                origin: Origin {
+                    source_span: SourceSpan {
+                        start: 1745,
+                        end: 1759,
+                    },
+                    definition_span: SourceSpan {
+                        start: 1745,
+                        end: 1759,
+                    },
+                    declaration: DeclarationId(
+                        7,
+                    ),
+                    expansion_path: [],
+                },
+            },
+            ArticulationMarking {
+                at: EventId(
+                    8,
+                ),
+                mark: Accent,
+                origin: Origin {
+                    source_span: SourceSpan {
+                        start: 1776,
+                        end: 1790,
+                    },
+                    definition_span: SourceSpan {
+                        start: 1776,
+                        end: 1790,
+                    },
+                    declaration: DeclarationId(
+                        7,
+                    ),
+                    expansion_path: [],
+                },
+            },
+        ],
+    },
+    motifs: [],
+    profiles: ProfileSet {
+        profiles: {
+            "strings": PerformanceProfile {
+                name: "strings",
+                articulations: {
+                    Staccato: ArticulationRealization {
+                        gate: Ratio {
+                            numer: 1,
+                            denom: 2,
+                        },
+                        attack: Ratio {
+                            numer: 1,
+                            denom: 125,
+                        },
+                    },
+                    Tenuto: ArticulationRealization {
+                        gate: Ratio {
+                            numer: 1,
+                            denom: 1,
+                        },
+                        attack: Ratio {
+                            numer: 3,
+                            denom: 100,
+                        },
+                    },
+                    Accent: ArticulationRealization {
+                        gate: Ratio {
+                            numer: 9,
+                            denom: 10,
+                        },
+                        attack: Ratio {
+                            numer: 0,
+                            denom: 1,
+                        },
+                    },
+                },
+                dynamics: {
+                    P: Ratio {
+                        numer: 7,
+                        denom: 20,
+                    },
+                    Mf: Ratio {
+                        numer: 3,
+                        denom: 5,
+                    },
+                    F: Ratio {
+                        numer: 17,
+                        denom: 20,
+                    },
+                },
+            },
+            "winds": PerformanceProfile {
+                name: "winds",
+                articulations: {
+                    Staccato: ArticulationRealization {
+                        gate: Ratio {
+                            numer: 7,
+                            denom: 10,
+                        },
+                        attack: Ratio {
+                            numer: 1,
+                            denom: 250,
+                        },
+                    },
+                },
+                dynamics: {
+                    P: Ratio {
+                        numer: 9,
+                        denom: 20,
+                    },
+                    F: Ratio {
+                        numer: 19,
+                        denom: 20,
+                    },
+                },
+            },
+        },
+        parts: {
+            "flute": "winds",
+            "cello": "strings",
+        },
+    },
+}

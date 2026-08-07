@@ -94,6 +94,89 @@ impl PieceDecl {
     pub fn score(&self) -> Option<ScoreDecl> {
         child(&self.0)
     }
+
+    /// The `performance` block, if present.
+    pub fn performance(&self) -> Option<PerformanceDecl> {
+        child(&self.0)
+    }
+}
+
+/// `performance { profile violin { ... } }` — how marks are realized.
+pub struct PerformanceDecl(SyntaxNode);
+wrapper!(PerformanceDecl, SyntaxKind::PerformanceDecl);
+
+impl PerformanceDecl {
+    /// The declared profiles, in source order.
+    pub fn profiles(&self) -> Vec<ProfileDecl> {
+        children(&self.0)
+    }
+}
+
+/// `profile violin { articulation staccato { ... } dynamic p { ... } }`
+pub struct ProfileDecl(SyntaxNode);
+wrapper!(ProfileDecl, SyntaxKind::ProfileDecl);
+
+impl ProfileDecl {
+    /// The profile name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The articulation rules, in source order.
+    pub fn articulations(&self) -> Vec<ArticulationRule> {
+        children(&self.0)
+    }
+
+    /// The dynamic rules, in source order.
+    pub fn dynamics(&self) -> Vec<DynamicRule> {
+        children(&self.0)
+    }
+}
+
+/// One rule's head name and its settings; `articulation` and `dynamic` rules
+/// share the shape, so they share the accessors.
+macro_rules! rule_wrapper {
+    ($name:ident, $kind:expr, $what:literal) => {
+        #[doc = concat!("`", $what, " <name> { <setting>* }` inside a profile.")]
+        pub struct $name(SyntaxNode);
+        wrapper!($name, $kind);
+
+        impl $name {
+            #[doc = concat!("The ", $what, " this rule realizes.")]
+            pub fn mark(&self) -> Option<String> {
+                token_text(&self.0, SyntaxKind::Identifier)
+            }
+
+            /// The rule's settings, in source order.
+            pub fn settings(&self) -> Vec<SettingStmt> {
+                children(&self.0)
+            }
+        }
+    };
+}
+
+rule_wrapper!(ArticulationRule, SyntaxKind::ArticulationRule, "articulation");
+rule_wrapper!(DynamicRule, SyntaxKind::DynamicRule, "dynamic");
+
+/// `gate = 0.55;`, `attack = 8 ms;`
+pub struct SettingStmt(SyntaxNode);
+wrapper!(SettingStmt, SyntaxKind::SettingStmt);
+
+impl SettingStmt {
+    /// The setting name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The written number, without its unit.
+    pub fn value(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Float).or_else(|| token_text(&self.0, SyntaxKind::Integer))
+    }
+
+    /// The unit written after the number (`ms`, `s`), if any.
+    pub fn unit(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::UnitMs).or_else(|| token_text(&self.0, SyntaxKind::UnitS))
+    }
 }
 
 /// `tempo quarter = 72;`
@@ -200,6 +283,22 @@ impl PartDecl {
     /// The part's voices.
     pub fn voices(&self) -> Vec<VoiceDecl> {
         children(&self.0)
+    }
+
+    /// The performance profile named for this part, if declared.
+    pub fn profile(&self) -> Option<ProfileStmt> {
+        child(&self.0)
+    }
+}
+
+/// `profile violin;` inside a part.
+pub struct ProfileStmt(SyntaxNode);
+wrapper!(ProfileStmt, SyntaxKind::ProfileStmt);
+
+impl ProfileStmt {
+    /// The named profile.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
     }
 }
 

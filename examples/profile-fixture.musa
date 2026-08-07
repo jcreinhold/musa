@@ -1,0 +1,80 @@
+// Interpretation profiles (docs/prompts/28). The score says what is
+// written; the profile says what this instrument makes of it. Both parts
+// play the same marks and read them differently, which is the point: a
+// staccato is not a number until an instrument says so.
+piece "Profile Fixture" {
+    tempo 1/4 = 100;
+    meter 4/4;
+    key c major;
+
+    performance {
+        profile strings {
+            articulation staccato {
+                gate = 0.5;
+                attack = 8 ms;
+            }
+            articulation tenuto {
+                gate = 1;
+                attack = 30 ms;
+            }
+            articulation accent {
+                gate = 0.9;
+            }
+            dynamic p {
+                amplitude = 0.35;
+            }
+            dynamic mf {
+                amplitude = 0.6;
+            }
+            dynamic f {
+                amplitude = 0.85;
+            }
+        }
+
+        profile winds {
+            articulation staccato {
+                gate = 0.7;
+                attack = 4 ms;
+            }
+            dynamic p {
+                amplitude = 0.45;
+            }
+            dynamic f {
+                amplitude = 0.95;
+            }
+        }
+    }
+
+    score {
+        part flute {
+            clef treble;
+            profile winds;
+
+            voice lead {
+                dynamic p;
+                c5 1/4 staccato;
+                d5 1/4 staccato;
+                e5 1/2;
+                dynamic f;
+                g5 1/4 staccato;
+                a5 1/4;
+                b5 1/2;
+            }
+        }
+
+        part cello {
+            clef bass;
+            profile strings;
+
+            voice bass {
+                dynamic mf;
+                c3 1/4 staccato;
+                e3 1/4 tenuto;
+                g3 1/2 accent;
+                dynamic p;
+                c3 1/2;
+                g2 1/2;
+            }
+        }
+    }
+}

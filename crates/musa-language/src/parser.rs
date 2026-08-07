@@ -69,13 +69,22 @@ const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::KeyKw,
     SyntaxKind::MotifKw,
     SyntaxKind::ScoreKw,
+    SyntaxKind::PerformanceKw,
 ];
 const SCORE_RECOVERY: &[SyntaxKind] = &[SyntaxKind::RBrace, SyntaxKind::PartKw];
 const PART_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::Semicolon,
     SyntaxKind::RBrace,
     SyntaxKind::ClefKw,
+    SyntaxKind::ProfileKw,
     SyntaxKind::VoiceKw,
+];
+const PERFORMANCE_RECOVERY: &[SyntaxKind] = &[SyntaxKind::RBrace, SyntaxKind::ProfileKw];
+const PROFILE_RECOVERY: &[SyntaxKind] = &[
+    SyntaxKind::Semicolon,
+    SyntaxKind::RBrace,
+    SyntaxKind::ArticulationKw,
+    SyntaxKind::DynamicKw,
 ];
 const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::Semicolon,
@@ -267,8 +276,10 @@ impl<'a> Parser<'a> {
                 self.motif_decl();
             } else if self.at(SyntaxKind::ScoreKw) {
                 self.score_decl();
+            } else if self.at(SyntaxKind::PerformanceKw) {
+                self.performance_decl();
             } else {
-                self.error_here("expected a tempo, meter, key, motif, or score declaration");
+                self.error_here("expected a tempo, meter, key, motif, score, or performance declaration");
                 self.recover(PIECE_RECOVERY);
             }
         }
@@ -383,10 +394,12 @@ impl<'a> Parser<'a> {
             }
             if self.at(SyntaxKind::ClefKw) {
                 self.clef_stmt();
+            } else if self.at(SyntaxKind::ProfileKw) {
+                self.profile_stmt();
             } else if self.at(SyntaxKind::VoiceKw) {
                 self.voice_decl();
             } else {
-                self.error_here("expected `clef` or `voice`");
+                self.error_here("expected `clef`, `profile`, or `voice`");
                 self.recover(PART_RECOVERY);
             }
         }
@@ -398,6 +411,109 @@ impl<'a> Parser<'a> {
         self.start(SyntaxKind::ClefStmt);
         self.bump(); // clef
         self.expect(SyntaxKind::Identifier, "a clef name");
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `profile <name>;` — which performance profile realizes this part.
+    fn profile_stmt(&mut self) {
+        self.start(SyntaxKind::ProfileStmt);
+        self.bump(); // profile
+        self.expect(SyntaxKind::Identifier, "a profile name");
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `performance { profile ... }`
+    fn performance_decl(&mut self) {
+        self.start(SyntaxKind::PerformanceDecl);
+        self.bump(); // performance
+        self.expect(SyntaxKind::LBrace, "`{`");
+        loop {
+            if self.at(SyntaxKind::RBrace) {
+                self.bump();
+                break;
+            }
+            if self.current().is_none() {
+                self.error_here("unclosed `performance` block");
+                break;
+            }
+            if self.at(SyntaxKind::ProfileKw) {
+                self.profile_decl();
+            } else {
+                self.error_here("expected a `profile` declaration");
+                self.recover(PERFORMANCE_RECOVERY);
+            }
+        }
+        self.finish();
+    }
+
+    /// `profile name { articulation ... dynamic ... }`
+    fn profile_decl(&mut self) {
+        self.start(SyntaxKind::ProfileDecl);
+        self.bump(); // profile
+        self.expect(SyntaxKind::Identifier, "a profile name");
+        self.expect(SyntaxKind::LBrace, "`{`");
+        loop {
+            if self.at(SyntaxKind::RBrace) {
+                self.bump();
+                break;
+            }
+            if self.current().is_none() {
+                self.error_here("unclosed `profile` block");
+                break;
+            }
+            if self.at(SyntaxKind::ArticulationKw) {
+                self.rule(SyntaxKind::ArticulationRule, "an articulation name");
+            } else if self.at(SyntaxKind::DynamicKw) {
+                self.rule(SyntaxKind::DynamicRule, "a dynamic marking");
+            } else {
+                self.error_here("expected an `articulation` or `dynamic` rule");
+                self.recover(PROFILE_RECOVERY);
+            }
+        }
+        self.finish();
+    }
+
+    /// `articulation|dynamic <name> { <setting>* }` — one shape, two heads.
+    fn rule(&mut self, kind: SyntaxKind, what: &str) {
+        self.start(kind);
+        self.bump(); // articulation | dynamic
+        self.expect(SyntaxKind::Identifier, what);
+        self.expect(SyntaxKind::LBrace, "`{`");
+        loop {
+            if self.at(SyntaxKind::RBrace) {
+                self.bump();
+                break;
+            }
+            if self.current().is_none() {
+                self.error_here("unclosed rule block");
+                break;
+            }
+            if self.at(SyntaxKind::Identifier) {
+                self.setting_stmt();
+            } else {
+                self.error_here("expected a setting such as `gate = 0.55;`");
+                self.recover(&[SyntaxKind::Semicolon, SyntaxKind::RBrace]);
+            }
+        }
+        self.finish();
+    }
+
+    /// `<name> = <number> [unit];` — the unit is the value's, not the
+    /// setting's, so `attack = 8 ms;` and `attack = 0.008 s;` both parse.
+    fn setting_stmt(&mut self) {
+        self.start(SyntaxKind::SettingStmt);
+        self.bump(); // setting name
+        self.expect(SyntaxKind::Equals, "`=`");
+        if self.at_any(&[SyntaxKind::Float, SyntaxKind::Integer]) {
+            self.bump();
+        } else {
+            self.error_here("expected a number");
+        }
+        if self.at_any(&[SyntaxKind::UnitMs, SyntaxKind::UnitS]) {
+            self.bump();
+        }
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }

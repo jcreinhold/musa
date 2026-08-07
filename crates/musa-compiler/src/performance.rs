@@ -8,9 +8,11 @@
 //! until this boundary; floats (frequency, seconds→frames) appear only here.
 //!
 //! Neutrality is the point (roadmap §2): a written A4 becomes a frequency
-//! only through the tuning service; symbolic dynamics are not velocities;
-//! notated durations are full gates until interpretation profiles
-//! (prompt 23) shorten them.
+//! only through the tuning service, and symbolic dynamics are not
+//! velocities. Interpretation enters here and only here: the part's profile
+//! (`profile.rs`) turns the written marks into a gate, an amplitude, and an
+//! attack request. A part with no profile is scheduled exactly as it was
+//! before profiles existed — full gate, neutral amplitude.
 
 // Time accumulation uses `MusicalTime`/`MusicalDuration` operators, total
 // for musa's magnitudes (see `time.rs`); the workspace arithmetic lint is
@@ -19,8 +21,10 @@
 
 use crate::origin::Origin;
 use crate::pitch::WrittenPitch;
+use crate::profile::ArticulationRealization;
 use crate::score::{EventId, PartId, ScoreEvent, ScoreEventKind, ScoreSnapshot};
 use crate::time::MusicalTime;
+use num_rational::Ratio;
 
 /// Equal temperament with a configurable concert A (roadmap §8.1: the
 /// concrete default now, a service boundary later).
@@ -109,6 +113,17 @@ impl IntegratedTempoMap {
         }
     }
 
+    /// Seconds per quarter note at the start of the piece — what a metrical
+    /// MIDI file's tempo meta-event states.
+    pub fn seconds_per_quarter(&self) -> f64 {
+        self.points.first().map_or(0.5, |point| point.seconds_per_whole() / 4.0)
+    }
+
+    /// The sample rate the frames were scheduled against.
+    pub fn sample_rate(&self) -> u32 {
+        self.points.first().map_or(48_000, |point| point.sample_rate)
+    }
+
     /// The absolute frame of a symbolic position (monotone; §22).
     pub fn frames(&self, position: MusicalTime) -> u64 {
         let Some(point) = self
@@ -138,6 +153,10 @@ pub struct ParameterId(pub u32);
 
 /// A sounding note: written pitch plus derived frequency, with provenance.
 /// Frequency is derived at this boundary, never stored in the score.
+///
+/// The interpreted fields come from the part's profile (roadmap §6.4). With
+/// no profile they are exactly neutral, which is what keeps a piece that
+/// declares none sounding bit-for-bit as it did before profiles existed.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PerformedNote {
     /// The written pitch (post-transposition; sounding = written until
@@ -149,6 +168,17 @@ pub struct PerformedNote {
     pub event: EventId,
     /// Why the event exists.
     pub origin: Origin,
+    /// Interpreted loudness in `0..=1`, from the prevailing dynamic marking.
+    /// Abstract, not decibels and not a MIDI velocity (§2); `1.0` is neutral.
+    pub amplitude: f32,
+    /// The attack time in seconds the profile asks for. A request carried to
+    /// the instrument, not an envelope: prompt 30's parameter system decides
+    /// what an instrument does with it.
+    pub attack: f32,
+    /// The frame the *written* value ends at, before the profile's gate.
+    /// Notated duration ≠ performed duration (§2) and both are facts: score
+    /// MIDI wants this one, performance MIDI wants the note-off's.
+    pub notated_off: u64,
 }
 
 /// One scheduled performance event.
@@ -163,7 +193,7 @@ pub enum PerformanceEvent {
         /// Instance identity for the matching note-off.
         instance: VoiceInstanceId,
     },
-    /// A note ends (full notated gate until prompt 23 profiles).
+    /// A note ends, at the profile's gate of the written value.
     NoteOff {
         /// Absolute frame.
         frame: u64,
@@ -255,13 +285,33 @@ pub fn lower_performance(
     options: &PerformanceOptions,
 ) -> Result<PerformancePlan, PerformanceError> {
     let tempo = IntegratedTempoMap::new(score, options);
+    let marks = Interpretation::collect(score);
     let mut lanes = Vec::new();
     let mut next_instance = 0u32;
     for (_, part) in score.parts.iter() {
+        let profile = score.profiles.for_part(&part.name);
         let mut events = Vec::new();
         for voice in part.voices.values() {
+            // The prevailing dynamic is per voice: a marking applies from its
+            // event onward in the voice that wrote it, not across the part.
+            let mut dynamic = None;
             for event in &voice.events {
-                lower_event(score, options, &tempo, event, &mut events, &mut next_instance);
+                if let Some(mark) = marks.dynamics.get(&event.id) {
+                    dynamic = Some(*mark);
+                }
+                let realization = profile.map_or(ArticulationRealization::NEUTRAL, |profile| {
+                    profile.realize(marks.articulations_of(event.id))
+                });
+                let amplitude = dynamic
+                    .zip(profile)
+                    .and_then(|(mark, profile)| profile.amplitude(mark))
+                    .unwrap_or(Ratio::ONE);
+                let interpreted = Interpreted {
+                    gate: realization.gate,
+                    attack: ratio_to_f32(realization.attack),
+                    amplitude: ratio_to_f32(amplitude),
+                };
+                lower_event(options, &tempo, event, &interpreted, &mut events, &mut next_instance);
             }
         }
         sort_events(&mut events);
@@ -274,13 +324,57 @@ pub fn lower_performance(
     Ok(PerformancePlan { tempo, lanes })
 }
 
+/// What the part's profile makes of one event, resolved once per event.
+struct Interpreted {
+    /// Fraction of the written value that actually sounds.
+    gate: Ratio<i64>,
+    /// Requested attack in seconds.
+    attack: f32,
+    /// Loudness in `0..=1`.
+    amplitude: f32,
+}
+
+/// The score's marks indexed by the event they belong to, so interpretation
+/// is a lookup per event rather than a scan per event.
+struct Interpretation {
+    dynamics: std::collections::HashMap<EventId, crate::score::DynamicMark>,
+    articulations: std::collections::HashMap<EventId, Vec<crate::score::ArticulationMark>>,
+}
+
+impl Interpretation {
+    fn collect(score: &ScoreSnapshot) -> Self {
+        let mut dynamics = std::collections::HashMap::new();
+        for marking in score.annotations.dynamics() {
+            dynamics.insert(marking.at, marking.mark);
+        }
+        let mut articulations: std::collections::HashMap<_, Vec<_>> = std::collections::HashMap::new();
+        for marking in score.annotations.articulations() {
+            articulations.entry(marking.at).or_default().push(marking.mark);
+        }
+        Self {
+            dynamics,
+            articulations,
+        }
+    }
+
+    fn articulations_of(&self, event: EventId) -> &[crate::score::ArticulationMark] {
+        self.articulations.get(&event).map_or(&[], Vec::as_slice)
+    }
+}
+
+/// Exact ratio → the float the DSP edge needs. This is the boundary the
+/// roadmap allows floats to appear at, and the only one.
+fn ratio_to_f32(value: Ratio<i64>) -> f32 {
+    *value.numer() as f32 / *value.denom() as f32
+}
+
 /// Lower one score event: notes and chord tones become on/off pairs; rests
 /// schedule nothing (absence is silence; course correction §2).
 fn lower_event(
-    _score: &ScoreSnapshot,
     options: &PerformanceOptions,
     tempo: &IntegratedTempoMap,
     event: &ScoreEvent,
+    interpreted: &Interpreted,
     events: &mut Vec<PerformanceEvent>,
     next_instance: &mut u32,
 ) {
@@ -289,9 +383,12 @@ fn lower_event(
         ScoreEventKind::Chord { pitches } => pitches,
         ScoreEventKind::Rest => &[],
     };
-    let end = event.onset + event.notated_duration.value;
+    let written = event.notated_duration.value;
+    let notated_end = event.onset + written;
+    let sounded_end = event.onset + crate::time::MusicalDuration::new(written.as_ratio() * interpreted.gate);
     let on_frame = tempo.frames(event.onset);
-    let off_frame = tempo.frames(end);
+    let off_frame = tempo.frames(sounded_end);
+    let notated_off = tempo.frames(notated_end);
     for pitch in pitches {
         let instance = VoiceInstanceId(*next_instance);
         *next_instance = next_instance.saturating_add(1);
@@ -300,6 +397,9 @@ fn lower_event(
             frequency: options.tuning.frequency(pitch),
             event: event.id,
             origin: event.origin.clone(),
+            amplitude: interpreted.amplitude,
+            attack: interpreted.attack,
+            notated_off,
         };
         events.push(PerformanceEvent::NoteOn {
             frame: on_frame,

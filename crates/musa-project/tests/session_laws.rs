@@ -150,6 +150,35 @@ fn wav_export_is_deterministic() -> Result {
     Ok(())
 }
 
+/// A 64-bit FNV-1a digest. Enough to pin a byte stream in a test without
+/// taking a hashing dependency for one assertion.
+fn digest(bytes: &[u8]) -> u64 {
+    let mut hash = 0xcbf2_9ce4_8422_2325u64;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash
+}
+
+/// The golden-audio guard for prompt 28's neutrality claim.
+///
+/// A piece that declares no profile must render the audio it rendered before
+/// interpretation existed. Determinism alone cannot catch that: a gate applied
+/// where none was written is perfectly deterministic and perfectly wrong. The
+/// digest is the missing oracle — if a future change to the performance layer
+/// touches an unprofiled piece by even one sample, this fails.
+#[test]
+fn an_unprofiled_piece_renders_the_golden_audio() -> Result {
+    let bytes = session().export(ExportRequest::Wav)?;
+    assert_eq!(
+        digest(bytes.as_bytes()),
+        0x0a45_f099_f55c_767d,
+        "interpretation reached a piece that asked for none"
+    );
+    Ok(())
+}
+
 /// Every export target produces something from a compiled score.
 #[test]
 fn every_export_target_produces_an_artifact() -> Result {
@@ -157,6 +186,8 @@ fn every_export_target_produces_an_artifact() -> Result {
     for request in [
         ExportRequest::Mei,
         ExportRequest::LilyPond,
+        ExportRequest::Midi(musa_project::MidiMode::Score),
+        ExportRequest::Midi(musa_project::MidiMode::Performance),
         ExportRequest::PerformanceDump,
         ExportRequest::NotationPlanDump,
     ] {

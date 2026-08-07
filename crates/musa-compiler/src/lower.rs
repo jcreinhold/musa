@@ -15,7 +15,9 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use indexmap::IndexMap;
-use musa_language::ast::{AstNode as _, KeyStmt, PieceDecl, TempoStmt, VoiceItem};
+use musa_language::ast::{
+    ArticulationRule, AstNode as _, DynamicRule, KeyStmt, PerformanceDecl, PieceDecl, SettingStmt, TempoStmt, VoiceItem,
+};
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 use slotmap::{SlotMap, new_key_type};
@@ -23,9 +25,10 @@ use slotmap::{SlotMap, new_key_type};
 use crate::compile::{Compilation, Diagnostic, SourceDocument};
 use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
+use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
 use crate::score::{
-    AnnotationStore, Clef, EventId, KeyMap, MeterMap, Mode, NotatedDuration, Part, PartId, ScoreEvent, ScoreEventKind,
-    ScoreSnapshot, TempoMap, Voice, VoiceId,
+    AnnotationStore, ArticulationMark, Clef, DynamicMark, EventId, KeyMap, MeterMap, Mode, NotatedDuration, Part,
+    PartId, ScoreEvent, ScoreEventKind, ScoreSnapshot, TempoMap, Voice, VoiceId,
 };
 use crate::time::{MusicalDuration, MusicalTime};
 
@@ -249,6 +252,9 @@ pub(crate) fn lower_header(lowering: &mut Lowering, piece: &PieceDecl, snapshot:
             None => lowering.error("invalid key declaration", span_of(key.syntax())),
         }
     }
+    if let Some(performance) = piece.performance() {
+        snapshot.profiles = parse_profiles(lowering, &performance);
+    }
     for motif in piece.motifs() {
         let name = motif.name().unwrap_or_default();
         if lowering.motifs.contains_key(&name) {
@@ -267,6 +273,157 @@ pub(crate) fn lower_header(lowering: &mut Lowering, piece: &PieceDecl, snapshot:
         });
         lowering.motifs.insert(name, definition);
     }
+}
+
+/// Read the `performance` block into a [`ProfileSet`]. Declarations only —
+/// nothing here is applied until `lower_performance` (roadmap §6.4).
+fn parse_profiles(lowering: &mut Lowering, performance: &PerformanceDecl) -> ProfileSet {
+    let mut set = ProfileSet::default();
+    for declaration in performance.profiles() {
+        let name = declaration.name().unwrap_or_default();
+        if set.declares(&name) {
+            lowering.error(
+                format!("duplicate profile `{name}`"),
+                trimmed_span(declaration.syntax()),
+            );
+            continue;
+        }
+        let mut profile = PerformanceProfile::named(&name);
+        for rule in declaration.articulations() {
+            let written = rule.mark().unwrap_or_default();
+            let Some(mark) = ArticulationMark::parse(&written) else {
+                lowering.error(format!("unknown articulation `{written}`"), trimmed_span(rule.syntax()));
+                continue;
+            };
+            profile.set_articulation(mark, articulation_settings(lowering, &rule));
+        }
+        for rule in declaration.dynamics() {
+            let written = rule.mark().unwrap_or_default();
+            let Some(mark) = DynamicMark::parse(&written) else {
+                lowering.error(
+                    format!("unknown dynamic marking `{written}`"),
+                    trimmed_span(rule.syntax()),
+                );
+                continue;
+            };
+            if let Some(amplitude) = dynamic_settings(lowering, &rule) {
+                profile.set_dynamic(mark, amplitude);
+            }
+        }
+        set.insert(profile);
+    }
+    set
+}
+
+/// `gate` (a ratio of the written value) and `attack` (a time).
+fn articulation_settings(lowering: &mut Lowering, rule: &ArticulationRule) -> ArticulationRealization {
+    let mut realization = ArticulationRealization::NEUTRAL;
+    for setting in rule.settings() {
+        let name = setting.name().unwrap_or_default();
+        match name.as_str() {
+            "gate" => {
+                if let Some(gate) = ratio_setting(lowering, &setting) {
+                    realization.gate = gate;
+                }
+            }
+            "attack" => {
+                if let Some(attack) = time_setting(lowering, &setting) {
+                    realization.attack = attack;
+                }
+            }
+            other => lowering.error(
+                format!("unknown setting `{other}` (expected `gate` or `attack`)"),
+                trimmed_span(setting.syntax()),
+            ),
+        }
+    }
+    realization
+}
+
+/// `amplitude` — abstract loudness, not decibels (§2).
+fn dynamic_settings(lowering: &mut Lowering, rule: &DynamicRule) -> Option<Ratio<i64>> {
+    let mut amplitude = None;
+    for setting in rule.settings() {
+        let name = setting.name().unwrap_or_default();
+        if name == "amplitude" {
+            amplitude = ratio_setting(lowering, &setting);
+        } else {
+            lowering.error(
+                format!("unknown setting `{name}` (expected `amplitude`)"),
+                trimmed_span(setting.syntax()),
+            );
+        }
+    }
+    if amplitude.is_none() {
+        lowering.error("a `dynamic` rule needs an `amplitude`", trimmed_span(rule.syntax()));
+    }
+    amplitude
+}
+
+/// A unitless ratio in `0..=1`. A unit here is a category error: a gate is a
+/// fraction of the written value, not a length of time.
+fn ratio_setting(lowering: &mut Lowering, setting: &SettingStmt) -> Option<Ratio<i64>> {
+    let name = setting.name().unwrap_or_default();
+    let span = trimmed_span(setting.syntax());
+    if let Some(unit) = setting.unit() {
+        lowering.error(format!("`{name}` is a ratio, not a `{unit}` value"), span);
+        return None;
+    }
+    let value = crate::profile::parse_decimal(&setting.value()?)?;
+    if value < Ratio::ZERO || value > Ratio::ONE {
+        lowering.error(format!("`{name}` must be between 0 and 1"), span);
+        return None;
+    }
+    Some(value)
+}
+
+/// A time in seconds, written with its unit (roadmap §7.2: units are syntax).
+fn time_setting(lowering: &mut Lowering, setting: &SettingStmt) -> Option<Ratio<i64>> {
+    let name = setting.name().unwrap_or_default();
+    let span = trimmed_span(setting.syntax());
+    let value = crate::profile::parse_decimal(&setting.value()?)?;
+    let seconds = match setting.unit().as_deref() {
+        Some("ms") => value / 1000,
+        Some("s") => value,
+        _ => {
+            lowering.error(format!("`{name}` needs a time unit (`ms` or `s`)"), span);
+            return None;
+        }
+    };
+    if seconds < Ratio::ZERO {
+        lowering.error(format!("`{name}` cannot be negative"), span);
+        return None;
+    }
+    Some(seconds)
+}
+
+/// The part-level facts both semantic paths read the same way: the written
+/// clef and the profile that realizes the part.
+pub(crate) fn part_metadata(
+    lowering: &mut Lowering,
+    part: &musa_language::ast::PartDecl,
+    profiles: &ProfileSet,
+) -> (Option<Clef>, Option<String>) {
+    let mut clef = None;
+    for node in part.syntax().children() {
+        if node.kind() != SyntaxKind::ClefStmt {
+            continue;
+        }
+        match token_text(&node, SyntaxKind::Identifier).and_then(|text| Clef::parse(&text)) {
+            Some(parsed) => clef = Some(parsed),
+            None => lowering.error("unknown clef", span_of(&node)),
+        }
+    }
+    let mut profile = None;
+    if let Some(statement) = part.profile() {
+        let name = statement.name().unwrap_or_default();
+        if profiles.declares(&name) {
+            profile = Some(name);
+        } else {
+            lowering.error(format!("unknown profile `{name}`"), trimmed_span(statement.syntax()));
+        }
+    }
+    (clef, profile)
 }
 
 fn parse_tempo(lowering: &mut Lowering, tempo: &TempoStmt) -> TempoMap {
@@ -340,15 +497,9 @@ fn lower_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDecl, s
         let id = PartId(lowering.next_part);
         lowering.next_part = lowering.next_part.saturating_add(1);
 
-        let mut clef = None;
-        for node in part.syntax().children() {
-            if node.kind() != SyntaxKind::ClefStmt {
-                continue;
-            }
-            match token_text(&node, SyntaxKind::Identifier).and_then(|text| Clef::parse(&text)) {
-                Some(parsed) => clef = Some(parsed),
-                None => lowering.error("unknown clef", span_of(&node)),
-            }
+        let (clef, profile) = part_metadata(lowering, &part, &snapshot.profiles);
+        if let Some(profile) = profile {
+            snapshot.profiles.assign(&name, profile);
         }
 
         let mut voices = IndexMap::new();

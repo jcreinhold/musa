@@ -7,7 +7,7 @@
 
 use std::process::ExitCode;
 
-use musa_project::{ExportArtifact, ExportRequest, ProjectCommand, ProjectSession, TransportRequest};
+use musa_project::{ExportArtifact, ExportRequest, MidiMode, ProjectCommand, ProjectSession, TransportRequest};
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -33,7 +33,8 @@ fn print_usage() {
     println!("Commands:");
     println!("  musa check <file.musa>                 parse + compile diagnostics");
     println!("  musa format <file.musa> [--check]      format in place (--check to diff)");
-    println!("  musa render <file.musa> --to <target>  plan (debug) | mei | lilypond | performance | wav");
+    println!("  musa render <file.musa> --to <target>  plan (debug) | mei | lilypond | performance | wav | midi");
+    println!("      --mode score|performance             for --to midi (default: score)");
     println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
 }
 
@@ -49,6 +50,7 @@ fn open(path: &str) -> Result<ProjectSession, ExitCode> {
 fn cmd_render(args: &[String]) -> ExitCode {
     let mut path: Option<&str> = None;
     let mut target = "plan";
+    let mut mode = "score";
     let mut output: Option<&str> = None;
     let mut index = 0;
     while index < args.len() {
@@ -58,6 +60,10 @@ fn cmd_render(args: &[String]) -> ExitCode {
         match arg {
             "--to" => {
                 target = args.get(index.saturating_add(1)).map_or("plan", String::as_str);
+                index = index.saturating_add(2);
+            }
+            "--mode" => {
+                mode = args.get(index.saturating_add(1)).map_or("score", String::as_str);
                 index = index.saturating_add(2);
             }
             "-o" => {
@@ -80,8 +86,16 @@ fn cmd_render(args: &[String]) -> ExitCode {
         "mei" => ExportRequest::Mei,
         "lilypond" => ExportRequest::LilyPond,
         "wav" => ExportRequest::Wav,
+        "midi" => match mode {
+            "score" => ExportRequest::Midi(MidiMode::Score),
+            "performance" => ExportRequest::Midi(MidiMode::Performance),
+            other => {
+                eprintln!("error: --mode {other} is not a MIDI mode (score | performance)");
+                return ExitCode::FAILURE;
+            }
+        },
         other => {
-            eprintln!("error: --to {other} is not implemented yet (plan | mei | lilypond | performance | wav)");
+            eprintln!("error: --to {other} is not implemented yet (plan | mei | lilypond | performance | wav | midi)");
             return ExitCode::FAILURE;
         }
     };

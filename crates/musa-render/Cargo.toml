@@ -15,6 +15,8 @@ serde = { version = "1", features = ["derive"] }
 num-rational = "0.4"
 quick-xml = "0.37"
 thiserror = "2"
+# `parallel` (rayon) is for parsing huge files; we only write.
+midly = { version = "0.5", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 insta = "1"

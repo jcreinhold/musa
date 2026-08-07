@@ -1,0 +1,42 @@
+---
+source: crates/musa-render/tests/lilypond.rs
+expression: lilypond_of(source)
+---
+\version "2.24.0"
+\language "english"
+
+partFlute = {
+  \clef "treble"
+  \time 4/4
+  \key c \major
+  {
+    c''4^.\p % event:0
+    d''4^. % event:1
+    e''2 % event:2
+    |
+    g''4^.\f % event:3
+    a''4 % event:4
+    b''2 % event:5
+    |
+  }
+}
+partCello = {
+  \clef "bass"
+  \time 4/4
+  \key c \major
+  {
+    c4^.\mf % event:6
+    e4^- % event:7
+    g2^> % event:8
+    |
+    c2\p % event:9
+    g,2 % event:a
+    |
+  }
+}
+\score {
+  <<
+    \new Staff \partFlute
+    \new Staff \partCello
+  >>
+}

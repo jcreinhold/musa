@@ -31,6 +31,7 @@ mod lower;
 mod origin;
 mod performance;
 mod pitch;
+mod profile;
 mod score;
 mod time;
 
@@ -43,6 +44,7 @@ pub use crate::performance::{
     PerformancePlan, PerformedNote, Tuning, VoiceInstanceId, lower_performance,
 };
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
+pub use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
 pub use crate::score::{
     AnnotationStore, ArticulationMark, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, KeyMap,
     MeterMap, Mode, MotifDeclaration, NotatedDuration, Part, PartId, PartMap, ScoreEvent, ScoreEventKind,

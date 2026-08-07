@@ -58,6 +58,8 @@ Decisions recorded against course correction §32:
 | `dynamic mf;` | **No occurrence and no cursor advance.** The mark is pending until the next occurrence in the same voice — reaching into whatever block follows — and becomes a `DynamicMarking` against it. Nothing after it is a diagnostic. |
 | `slur { … }` | The body elaborates unchanged; its occurrences carry a group id, and the adapter emits one `SlurSpan` over the first and last event of each group. One expansion of a motif is one group. |
 | `tuplet n/d { … }` | The body elaborates with the voice's duration scale multiplied by `d/n`, so written values become exact rationals (`3/2` of eighths gives `1/12`). The adapter emits a `TupletSpan` carrying the unreduced `n/d`, which is what the backends need to print the bracket. A tuplet that would cross a barline is a diagnostic. |
+| `performance { profile v { … } }` | **Nothing elaborates.** A profile is a reading of marks, not material: it produces no occurrence, occupies no time, and is carried on the snapshot beside the motif table for the performance layer to consult. Written marks stay written (§6.4). |
+| `profile v;` inside a part | **A binding, not an occurrence.** It names which profile realizes this part; naming an undeclared one is a diagnostic. Both semantic paths read it through the same `part_metadata`, so it cannot drift between them. |
 | `key`, `meter`, `tempo` declarations | **Context, not occurrences**, in the current grammar: they populate the snapshot's `KeyMap`/`MeterMap`/`TempoMap` exactly as the old lowerer does. |
 | piece | The part timelines, the context maps, and the annotation store — packaged by the adapter into `ScoreSnapshot`. |
 

@@ -233,6 +233,7 @@ impl ProjectSession {
                 musa_render::NotationTarget::LilyPond,
             )?)),
             ExportRequest::Wav => Ok(ExportArtifact::Bytes(playback::to_wav(score)?)),
+            ExportRequest::Midi(mode) => Ok(ExportArtifact::Bytes(playback::to_midi(score, mode)?)),
             ExportRequest::PerformanceDump => Ok(ExportArtifact::Text(playback::performance_dump(score)?)),
             ExportRequest::NotationPlanDump => {
                 let plan = musa_render::plan_notation(score, &musa_render::NotationOptions::default())

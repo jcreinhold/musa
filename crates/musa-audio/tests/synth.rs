@@ -47,12 +47,12 @@ fn render_events(events: &[PerformanceEvent], frames: u64) -> Vec<f32> {
 #[test]
 fn allocator_steals_the_oldest_voice() {
     let mut allocator = VoiceAllocator::new(2, RATE);
-    allocator.note_on(VoiceInstanceId(0), 220.0);
+    allocator.note_on(VoiceInstanceId(0), 220.0, 1.0);
     // Age the first voice so it is the steal candidate.
     let mut buffer = vec![0.0f32; 64];
     allocator.render(&mut buffer, 64, f64::from(RATE));
-    allocator.note_on(VoiceInstanceId(1), 330.0);
-    allocator.note_on(VoiceInstanceId(2), 440.0);
+    allocator.note_on(VoiceInstanceId(1), 330.0, 1.0);
+    allocator.note_on(VoiceInstanceId(2), 440.0, 1.0);
     assert_eq!(allocator.gated(), 2, "pool is full");
     // Note-off for the stolen instance must match nothing...
     allocator.note_off(VoiceInstanceId(0));
@@ -67,13 +67,13 @@ fn allocator_steals_the_oldest_voice() {
 #[test]
 fn allocator_reuses_fully_released_voices() {
     let mut allocator = VoiceAllocator::new(1, RATE);
-    allocator.note_on(VoiceInstanceId(0), 440.0);
+    allocator.note_on(VoiceInstanceId(0), 440.0, 1.0);
     allocator.note_off(VoiceInstanceId(0));
     // Render past the 50 ms release: the voice returns to the pool.
     let mut buffer = vec![0.0f32; 4800];
     allocator.render(&mut buffer, 4800, f64::from(RATE));
     assert_eq!(allocator.sounding(), 0);
-    allocator.note_on(VoiceInstanceId(1), 440.0);
+    allocator.note_on(VoiceInstanceId(1), 440.0, 1.0);
     assert_eq!(allocator.gated(), 1, "released voice is reusable");
 }
 

@@ -30,13 +30,13 @@ use crate::lower::{self, ExpandCx, GroupInfo, GroupKind, Lowering};
 use crate::origin::{ExpansionStep, Origin, SourceSpan};
 use crate::pitch::WrittenPitch;
 use crate::score::{
-    ArticulationMark, ArticulationMarking, Clef, DynamicMark, DynamicMarking, NotatedDuration, Part, PartId,
-    ScoreEvent, ScoreEventKind, ScoreSnapshot, SlurSpan, TupletSpan, Voice, VoiceId,
+    ArticulationMark, ArticulationMarking, DynamicMark, DynamicMarking, NotatedDuration, Part, PartId, ScoreEvent,
+    ScoreEventKind, ScoreSnapshot, SlurSpan, TupletSpan, Voice, VoiceId,
 };
 use crate::time::MusicalTime;
 use musa_kernel::{Beat, Occurrence, Span, Timeline, overlay, sequence, timeline};
+use musa_language::SyntaxNode;
 use musa_language::ast::{AstNode as _, PieceDecl, VoiceItem};
-use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 
 /// What is written *about* an occurrence rather than in it: the marks that
@@ -216,15 +216,9 @@ fn elaborate_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDec
         let id = PartId(lowering.next_part);
         lowering.next_part = lowering.next_part.saturating_add(1);
 
-        let mut clef = None;
-        for node in part.syntax().children() {
-            if node.kind() != SyntaxKind::ClefStmt {
-                continue;
-            }
-            match lower::token_text(&node, SyntaxKind::Identifier).and_then(|text| Clef::parse(&text)) {
-                Some(parsed) => clef = Some(parsed),
-                None => lowering.error("unknown clef", lower::span_of(&node)),
-            }
+        let (clef, profile) = lower::part_metadata(lowering, &part, &snapshot.profiles);
+        if let Some(profile) = profile {
+            snapshot.profiles.assign(&name, profile);
         }
 
         let mut voices = indexmap::IndexMap::new();

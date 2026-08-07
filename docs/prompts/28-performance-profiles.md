@@ -1,7 +1,7 @@
 ---
 id: 28
 slug: performance-profiles
-status: pending
+status: done
 depends_on: [27]
 phase: 2
 ---
@@ -70,6 +70,39 @@ cmp /tmp/gm4.wav /tmp/gm.wav   # no profile ⇒ unchanged audio
 ```
 
 Commit as `Add performance profiles and MIDI export`.
+
+## Repairs made while implementing
+
+- **Profiles live on `ScoreSnapshot`, not `PerformanceOptions`.** The Design said the options gain the resolved
+  profiles, but `PerformanceOptions` is `Copy` and shared by every caller (CLI, project, engine); threading a
+  `ProfileSet` through all of them invites rendering one piece against another's profiles. A profile is a *source
+  declaration* — it belongs beside `motifs`, inert until read. No call site changed as a result.
+- **Realization values are exact rationals, not floats.** `ScoreSnapshot` derives `Eq`, which floats forbid, and the
+  repo's exact-time rule already says numbers become floats only at the DSP edge. `gate = 0.55` is stored as `11/20`,
+  so it neither drifts nor prints as `0.55000000000000004` in a snapshot. `parse_decimal` does the conversion.
+- **Grammar as built:** `performance { profile <name> { articulation <mark> { gate = <ratio>; attack = <n> ms; }
+  dynamic <mark> { amplitude = <ratio>; } } }`, with `profile <name>;` inside a part choosing one. The unit belongs to
+  the value, not the setting, so `8 ms` and `0.008 s` both parse.
+- **A profile is a *partial* reading.** A mark the profile says nothing about is neutral, not an error — requiring
+  every profile to name all ten dynamics and every articulation would make profiles unusable. Gates from several marks
+  on one note multiply; `attack` takes the last written.
+- **`part_metadata` extracted.** Clef reading was duplicated between `lower.rs` and `elaborate.rs`; both paths now call
+  one function, which is also how the profile binding reached both without a parity risk.
+- **Score vs. performance MIDI from one plan** needed `PerformedNote::notated_off`: the plan now carries the written
+  extent alongside the performed one, because §2 says they are two facts, not one fact and a setting.
+- **`an_unprofiled_piece_is_timed_the_same_in_both_modes`, not byte-identical.** The two modes necessarily differ in
+  velocity — score MIDI states its neutral 80, performance MIDI states the amplitude it was handed, which with nothing
+  realized is full. The invariant worth asserting is that *no gate shortened anything*, so the test compares spans.
+- **A permanent golden-audio guard was added** (`an_unprofiled_piece_renders_the_golden_audio` in
+  `musa-project`): the Check's `cmp` against a WAV rendered by hand cannot survive the session. The pinned digest was
+  verified against a build of `f76f1cf` rather than merely recorded from this one, and byte-identity was confirmed for
+  all six existing examples the same way.
+- **MIDI details:** channel 10 is skipped (percussion by convention), `NEUTRAL_VELOCITY = 80` rather than 127 because a
+  file full of 127 is an opinion, and `midly` is taken with `default-features = false` (its `parallel` feature is for
+  parsing huge files; we only write).
+- **`attack` is carried, not realized.** `PerformedNote::attack` reaches the audio layer, but the placeholder synth
+  applies only amplitude — the Stop section limits realization to that, and prompt 30's parameter system is where an
+  instrument decides what an attack request means.
 
 ## Stop
 

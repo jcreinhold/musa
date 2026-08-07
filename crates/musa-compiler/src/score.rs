@@ -509,4 +509,7 @@ pub struct ScoreSnapshot {
     pub annotations: AnnotationStore,
     /// Every motif declared in the piece, in source order.
     pub motifs: Vec<MotifDeclaration>,
+    /// The piece's interpretation profiles and their part assignments.
+    /// Declarations only: no `ScoreEvent` is touched by them (§6.4).
+    pub profiles: crate::profile::ProfileSet,
 }

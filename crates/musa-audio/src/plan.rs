@@ -91,7 +91,7 @@ impl ProcessorInstance {
         };
         match event {
             PerformanceEvent::NoteOn { note, instance, .. } => {
-                allocator.note_on(*instance, note.frequency as f32);
+                allocator.note_on(*instance, note.frequency as f32, note.amplitude);
             }
             PerformanceEvent::NoteOff { instance, .. } => allocator.note_off(*instance),
             PerformanceEvent::Parameter { .. } => {}

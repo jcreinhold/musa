@@ -509,4 +509,8 @@ ScoreSnapshot {
         articulations: [],
     },
     motifs: [],
+    profiles: ProfileSet {
+        profiles: {},
+        parts: {},
+    },
 }

@@ -54,3 +54,4 @@ pub use crate::facts::{
 pub use crate::session::ProjectSession;
 pub use crate::snapshot::{PlaybackState, ProjectSnapshot};
 pub use crate::template::Template;
+pub use musa_render::MidiMode;

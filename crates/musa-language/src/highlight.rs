@@ -218,6 +218,12 @@ impl TokenClass {
             | SyntaxKind::DynamicStmt
             | SyntaxKind::TupletStmt
             | SyntaxKind::ArticulationList
+            | SyntaxKind::PerformanceDecl
+            | SyntaxKind::ProfileDecl
+            | SyntaxKind::ArticulationRule
+            | SyntaxKind::DynamicRule
+            | SyntaxKind::SettingStmt
+            | SyntaxKind::ProfileStmt
             | SyntaxKind::Block => return None,
         };
         Some(class)

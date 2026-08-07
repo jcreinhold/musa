@@ -64,6 +64,21 @@ pub(crate) fn to_wav(score: &ScoreSnapshot) -> Result<Vec<u8>, ProjectError> {
     wav_bytes(&audio)
 }
 
+/// The same score as a Standard MIDI File.
+///
+/// # Errors
+/// [`ProjectError::Performance`] if lowering fails, or
+/// [`ProjectError::Notation`] if a written pitch is outside MIDI's range.
+pub(crate) fn to_midi(score: &ScoreSnapshot, mode: musa_render::MidiMode) -> Result<Vec<u8>, ProjectError> {
+    let performance = musa_compiler::lower_performance(score, &PerformanceOptions::default())
+        .map_err(|error| ProjectError::Performance(error.to_string()))?;
+    let options = musa_render::MidiOptions {
+        mode,
+        ..musa_render::MidiOptions::default()
+    };
+    musa_render::render_midi(&performance, &options).map_err(|error| ProjectError::Notation(error.to_string()))
+}
+
 /// All lanes' events merged into one frame-sorted slice.
 fn collect_events(performance: &PerformancePlan) -> Vec<PerformanceEvent> {
     let mut events: Vec<PerformanceEvent> = performance

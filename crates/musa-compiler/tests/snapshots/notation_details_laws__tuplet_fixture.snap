@@ -1382,4 +1382,8 @@ ScoreSnapshot {
             },
         },
     ],
+    profiles: ProfileSet {
+        profiles: {},
+        parts: {},
+    },
 }

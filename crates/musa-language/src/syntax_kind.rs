@@ -199,6 +199,18 @@ pub enum SyntaxKind {
     /// node so a pitch reference and an articulation name — both bare
     /// identifiers — never have to be told apart by position.
     ArticulationList,
+    /// `performance { ... }`
+    PerformanceDecl,
+    /// `profile name { ... }` inside a `performance` block.
+    ProfileDecl,
+    /// `articulation <name> { ... }` inside a profile.
+    ArticulationRule,
+    /// `dynamic <mark> { ... }` inside a profile.
+    DynamicRule,
+    /// `<name> = <number> [unit];` inside a rule.
+    SettingStmt,
+    /// `profile <name>;` inside a part: which profile realizes it.
+    ProfileStmt,
     /// `{ ... }` body of a motif, transpose, or repeat.
     Block,
 }
