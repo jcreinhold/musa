@@ -100,7 +100,7 @@
 
   .hint {
     margin-left: auto;
-    color: var(--ink-faint);
+    color: var(--ink-muted);
   }
 
   .problems {

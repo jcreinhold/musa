@@ -60,6 +60,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "onsetFrames": 0,
+        "endFrames": 80000,
         "origin": {
           "generated": true,
           "path": [
@@ -90,6 +92,8 @@
           "numerator": 3,
           "denominator": 1
         },
+        "onsetFrames": 80000,
+        "endFrames": 120000,
         "origin": {
           "generated": true,
           "path": [
@@ -122,6 +126,8 @@
           "numerator": 4,
           "denominator": 1
         },
+        "onsetFrames": 120000,
+        "endFrames": 200000,
         "origin": {
           "generated": true,
           "path": [
@@ -154,6 +160,8 @@
           "numerator": 2,
           "denominator": 1
         },
+        "onsetFrames": 200000,
+        "endFrames": 240000,
         "origin": {
           "generated": true,
           "path": [
@@ -186,6 +194,8 @@
           "numerator": 3,
           "denominator": 1
         },
+        "onsetFrames": 240000,
+        "endFrames": 320000,
         "origin": {
           "generated": true,
           "path": [
@@ -218,6 +228,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "onsetFrames": 320000,
+        "endFrames": 400000,
         "origin": {
           "generated": true,
           "path": [
@@ -249,6 +261,8 @@
           "numerator": 3,
           "denominator": 1
         },
+        "onsetFrames": 400000,
+        "endFrames": 440000,
         "origin": {
           "generated": true,
           "path": [
@@ -282,6 +296,8 @@
           "numerator": 4,
           "denominator": 1
         },
+        "onsetFrames": 440000,
+        "endFrames": 520000,
         "origin": {
           "generated": true,
           "path": [
@@ -315,6 +331,8 @@
           "numerator": 2,
           "denominator": 1
         },
+        "onsetFrames": 520000,
+        "endFrames": 560000,
         "origin": {
           "generated": true,
           "path": [
@@ -348,6 +366,8 @@
           "numerator": 3,
           "denominator": 1
         },
+        "onsetFrames": 560000,
+        "endFrames": 640000,
         "origin": {
           "generated": true,
           "path": [
@@ -381,6 +401,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "onsetFrames": 0,
+        "endFrames": 160000,
         "origin": {
           "generated": false,
           "path": [],
@@ -411,6 +433,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "onsetFrames": 160000,
+        "endFrames": 320000,
         "origin": {
           "generated": false,
           "path": [],
@@ -441,6 +465,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "onsetFrames": 320000,
+        "endFrames": 480000,
         "origin": {
           "generated": false,
           "path": [],
@@ -471,6 +497,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "onsetFrames": 480000,
+        "endFrames": 640000,
         "origin": {
           "generated": false,
           "path": [],
@@ -501,6 +529,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "onsetFrames": 0,
+        "endFrames": 160000,
         "origin": {
           "generated": false,
           "path": [],
@@ -531,6 +561,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "onsetFrames": 160000,
+        "endFrames": 320000,
         "origin": {
           "generated": false,
           "path": [],
@@ -561,6 +593,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "onsetFrames": 320000,
+        "endFrames": 480000,
         "origin": {
           "generated": false,
           "path": [],
@@ -591,6 +625,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "onsetFrames": 480000,
+        "endFrames": 640000,
         "origin": {
           "generated": false,
           "path": [],

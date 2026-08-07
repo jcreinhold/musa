@@ -102,13 +102,13 @@
     "title": "Command palette",
     "section": "view",
     "accelerator": "CmdOrCtrl+K",
-    "available": false
+    "available": true
   },
   {
     "id": "help.keys",
     "title": "Keyboard sheet",
     "section": "help",
     "accelerator": "?",
-    "available": false
+    "available": true
   }
 ]

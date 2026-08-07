@@ -82,7 +82,7 @@
     font-size: var(--t-small-size);
     line-height: var(--t-small-line);
     font-variant-numeric: tabular-nums;
-    color: var(--ink-faint);
+    color: var(--ink-muted);
   }
 
   .facts {
@@ -104,7 +104,7 @@
     font-weight: 500;
     letter-spacing: var(--tracking-micro);
     text-transform: uppercase;
-    color: var(--ink-faint);
+    color: var(--ink-muted);
   }
 
   dd {

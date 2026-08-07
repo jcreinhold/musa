@@ -1,7 +1,7 @@
 ---
 id: 23
 slug: score-interaction
-status: pending
+status: done
 depends_on: [22]
 phase: 1.5
 ---

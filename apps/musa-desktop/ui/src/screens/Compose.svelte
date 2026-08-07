@@ -3,9 +3,9 @@
    * The Compose workspace: leaf and margin, exactly the arrangement of
    * `01-visual-language.md` §7.
    *
-   * The score, the playhead, and the keyboard map belong to later prompts.
-   * What is here is everything the session can already answer: the piece, its
-   * problems, its transport, and the source you edit it through.
+   * Everything musical is read from the snapshot and everything interactive
+   * is owned above: the workspace, the playhead, and the keyboard all belong
+   * to the application, so this screen only arranges them.
    */
   import { untrack } from "svelte";
 
@@ -17,31 +17,40 @@
   import TransportReadout from "../lib/ui/TransportReadout.svelte";
   import { REPEAT_RIGHT_LEFT } from "../lib/ui/glyphs";
   import type { Session } from "../lib/session/session.svelte";
-  import { Workspace } from "../lib/state/selection.svelte";
-  import type { ProjectSnapshot } from "../lib/state/snapshot";
+  import type { Workspace } from "../lib/state/selection.svelte";
   import Drawer from "./Drawer.svelte";
   import Inspector from "./Inspector.svelte";
   import PartsList from "./PartsList.svelte";
 
   let {
     session,
+    workspace,
     zoom,
     mode,
+    playing,
+    loop,
+    follow,
     onzoom,
     onpinch,
     onmode,
+    onloop,
+    onfollow,
   }: {
     session: Session;
+    workspace: Workspace;
     zoom: number;
     mode: ViewMode;
+    /** The event ids sounding right now. */
+    playing: string[];
+    /** The looped range, as its first and last event ids. */
+    loop: [string, string] | null;
+    follow: "off" | "page" | "continuous";
     onzoom: (by: number) => void;
     onpinch: (factor: number) => void;
     onmode: (mode: ViewMode) => void;
+    onloop: () => void;
+    onfollow: () => void;
   } = $props();
-
-  // Read through, never copied: the session replaces the snapshot on every
-  // revision, and a selection is only meaningful against the current one.
-  const workspace = new Workspace(() => session.snapshot as ProjectSnapshot);
 
   const snapshot = $derived(session.snapshot);
   const score = $derived(snapshot?.score ?? null);
@@ -85,7 +94,8 @@
             type="button"
             class="text"
             disabled={!session.live}
-            onclick={() => void session.play()}>Play</button
+            aria-pressed={snapshot.playback.playing}
+            onclick={() => void session.toggle()}>{snapshot.playback.playing ? "Pause" : "Play"}</button
           >
           <button
             type="button"
@@ -93,7 +103,19 @@
             disabled={!session.live || !snapshot.playback.playing}
             onclick={() => void session.stop()}>Stop</button
           >
-          <GlyphButton glyph={REPEAT_RIGHT_LEFT} label="Loop the selection" disabled />
+          <GlyphButton
+            glyph={REPEAT_RIGHT_LEFT}
+            label="Loop the selection"
+            active={loop !== null}
+            disabled={!session.live}
+            onclick={onloop}
+          />
+          <button
+            type="button"
+            class="text"
+            aria-pressed={follow !== "off"}
+            onclick={onfollow}>Follow</button
+          >
         </div>
         <TransportReadout
           {score}
@@ -139,7 +161,7 @@
         <PartsList parts={score.parts} {workspace} />
       </Margin>
 
-      <div class="stage" class:continuous={mode === "continuous"}>
+      <main class="stage" class:continuous={mode === "continuous"}>
         <Leaf stale={session.stale}>
           <Score
             mei={snapshot.mei ?? ""}
@@ -148,12 +170,19 @@
             {mode}
             {workspace}
             {onpinch}
+            {playing}
+            {loop}
+            {follow}
           />
         </Leaf>
-      </div>
+      </main>
 
       <Margin side="right" label="Inspector">
-        <Inspector event={focused} adrift={workspace.adrift} />
+        <Inspector
+          event={focused}
+          adrift={workspace.adrift}
+          onorigin={(depth) => workspace.selectOrigin(depth)}
+        />
       </Margin>
     </div>
 
@@ -174,6 +203,10 @@
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
     height: 100%;
+    /* The workspace fills the window and never exceeds it sideways: the score
+       scrolls inside the leaf, the layout itself does not. */
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   .title {
@@ -248,7 +281,7 @@
     font-size: var(--t-small-size);
     line-height: var(--t-small-line);
     font-variant-numeric: tabular-nums;
-    color: var(--ink-faint);
+    color: var(--ink-muted);
     min-width: 5ch;
     text-align: center;
   }
@@ -300,6 +333,31 @@
 
     .controls {
       gap: var(--s-4);
+    }
+  }
+
+  /*
+   * Narrow — a small window, or 200 % browser zoom, which WCAG asks to work
+   * without loss of content. Three columns cannot hold their minimums here,
+   * so the margins stop being margins and become sections above and below
+   * the leaf. Nothing is hidden: a control that disappears at a zoom level
+   * is a control someone cannot reach.
+   */
+  @media (max-width: 860px) {
+    .body {
+      grid-template-columns: minmax(0, 1fr);
+      grid-auto-rows: min-content;
+      overflow-y: auto;
+    }
+
+    .stage {
+      /* Tall enough to be a page rather than a letterbox. */
+      min-height: 60vh;
+    }
+
+    .controls {
+      flex-wrap: wrap;
+      gap: var(--s-2) var(--s-4);
     }
   }
 </style>

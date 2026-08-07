@@ -25,7 +25,7 @@
   import { modeOptions, pageFor, pixelsPerUnit, type ViewMode } from "../engrave/options";
   import type { Workspace } from "../state/selection.svelte";
   import Page from "./Page.svelte";
-  import { boxesFor, pad, type Rect } from "./geometry";
+  import { boxesFor, pad, NOTHING, type Marks, type Rect } from "./geometry";
   import { eventIdOf } from "./ids";
 
   let {
@@ -35,6 +35,9 @@
     mode = "page",
     workspace,
     onpinch,
+    playing = [],
+    loop = null,
+    follow = "off",
   }: {
     mei: string;
     revision: number;
@@ -44,6 +47,12 @@
     workspace?: Workspace;
     /** A settled pinch, as a factor on the current zoom (§5). */
     onpinch?: (factor: number) => void;
+    /** The event ids sounding right now (`03-interaction.md` §4). */
+    playing?: string[];
+    /** The looped range, as its first and last event ids. */
+    loop?: [string, string] | null;
+    /** How the page follows the playhead: off, a page turn, or a scroll. */
+    follow?: "off" | "page" | "continuous";
   } = $props();
 
   /** Selection halo padding, in staff spaces (§8). */
@@ -59,8 +68,8 @@
   let layout = $state<Layout | undefined>();
   let resident = $state<Map<number, PageSvg>>(new Map());
   let visible = $state<Set<number>>(new Set([1]));
-  let selectionRects = $state<Rect[]>([]);
-  let hoverRects = $state<Rect[]>([]);
+  /** Every mark on every resident page, measured in that page's own units. */
+  let marks = $state<Map<number, Marks>>(new Map());
   let width = $state(0);
   let height = $state(0);
   let gesture = $state(1);
@@ -210,16 +219,113 @@
     void resident;
     const ids = workspace ? workspace.selected : [];
     const hovered = workspace?.hovered ?? null;
+    const sounding = playing;
+    const looped = loop;
+    const caret = workspace?.caretAt ?? null;
     const container = host;
     if (!container || resident.size === 0) {
-      selectionRects = [];
-      hoverRects = [];
+      marks = new Map();
       return;
     }
     const grow = (rect: Rect) => pad(rect, HALO_SPACES, staffSpace);
-    selectionRects = ids.flatMap((id) => boxesFor(container, id)).map(grow);
-    hoverRects = hovered && !ids.includes(hovered) ? boxesFor(container, hovered).map(grow) : [];
+    const measured = new Map<number, Marks>();
+    for (const page of container.querySelectorAll<HTMLElement>(".page")) {
+      // The arriving ink only: a page mid-cross-fade still holds the outgoing
+      // engraving, and measuring that would both double every box and take
+      // the coordinates from the wrong root (`02-engraving.md` §6).
+      const element = page.querySelector<HTMLElement>(".arriving");
+      if (!element) continue;
+      const number = Number(page.dataset.page);
+      const boxes = (id: string) => boxesFor(element, id);
+      const first = (id: string) => boxesFor(element, id)[0] ?? null;
+      const from = looped ? first(looped[0]) : null;
+      const to = looped ? first(looped[1]) : null;
+      measured.set(number, {
+        selection: ids.flatMap(boxes).map(grow),
+        hover: hovered && !ids.includes(hovered) ? boxes(hovered).map(grow) : [],
+        playing: sounding.flatMap(boxes).map(grow),
+        caret: caret ? caretRect(first(caret.id), caret.side) : null,
+        loop: from && to ? { from, to } : null,
+      });
+    }
+    marks = measured;
+    mark("halo");
   });
+
+  /**
+   * The caret is a hairline at an edge of the event it is pinned to: its left
+   * edge before it, its right edge after the voice's last (§1). Half a staff
+   * space of air keeps it off the notehead it belongs in front of.
+   */
+  function caretRect(rect: Rect | null, side: "before" | "after"): Rect | null {
+    if (rect === null) return null;
+    const x = side === "before" ? rect.x - staffSpace / 2 : rect.x + rect.width + staffSpace / 2;
+    return { ...rect, x, width: 0 };
+  }
+
+  /**
+   * Follow the playhead (§4).
+   *
+   * A page turn, not a scroll: in page view the sounding note's page is
+   * brought into view whole, exactly as a page turner would. Continuous has
+   * no pages to turn, so there it is a scroll, and only when the note has
+   * actually left the viewport — a viewport that re-centres every note is a
+   * viewport nobody can read from.
+   */
+  $effect(() => {
+    const [first] = playing;
+    const container = host;
+    if (follow === "off" || first === undefined || !container) return;
+    void marks;
+    untrack(() => {
+      const element = container.querySelector<SVGGraphicsElement>(`[id="${first}"]`);
+      if (!element) return;
+      const seen = container.getBoundingClientRect();
+      const at = element.getBoundingClientRect();
+      const inside =
+        at.top >= seen.top &&
+        at.bottom <= seen.bottom &&
+        at.left >= seen.left &&
+        at.right <= seen.right;
+      if (inside) return;
+      if (follow === "page") element.closest(".page")?.scrollIntoView({ block: "start" });
+      else element.scrollIntoView({ block: "nearest", inline: "center" });
+    });
+  });
+
+  /**
+   * Name every engraved event for a screen reader (`03-interaction.md` §5).
+   *
+   * Verovio writes the geometry; the names come from the snapshot, so what is
+   * read out is a musical sentence rather than a path element. Done once per
+   * page swap rather than per frame, because the names change only when the
+   * music does.
+   */
+  $effect(() => {
+    const arrived = resident;
+    const container = host;
+    if (!container || !workspace) return;
+    const describe = workspace.describe.bind(workspace);
+    untrack(() => {
+      void arrived;
+      const named = new Map(
+        (workspace.snapshot?.score?.events ?? []).map((event) => [event.id, describe(event)]),
+      );
+      for (const element of container.querySelectorAll<SVGGraphicsElement>('g[id^="event-"]')) {
+        const label = named.get(eventIdOf(element) ?? "");
+        if (label === undefined) continue;
+        // `img` is the honest role for an engraved note: a graphic with a
+        // name. `option`/`listitem` would demand a parent Verovio does not
+        // write, and a `g` with no role may not carry a name at all.
+        element.setAttribute("role", "img");
+        element.setAttribute("aria-label", label);
+        element.setAttribute("tabindex", "-1");
+      }
+    });
+  });
+
+  /** What the pane reports as its current item: the focused event (§5). */
+  const activeDescendant = $derived(workspace?.selected[0] ?? undefined);
 
   function observe(element: HTMLElement): { destroy: () => void } {
     observer?.observe(element);
@@ -228,6 +334,7 @@
 
   function onpointerdown(event: PointerEvent): void {
     if (!workspace) return;
+    mark("select");
     const id = eventIdOf(event.target as Element);
     if (id) workspace.select(id, event.shiftKey);
     else workspace.clear();
@@ -277,6 +384,7 @@
   bind:clientHeight={height}
   role="application"
   aria-label="Engraved score"
+  aria-activedescendant={activeDescendant}
   tabindex="0"
   {onpointerdown}
   {onpointermove}
@@ -292,8 +400,7 @@
           {box}
           {scale}
           {staffSpace}
-          selection={selectionRects}
-          hover={hoverRects}
+          marks={marks.get(number) ?? NOTHING}
         />
       </div>
     {/each}

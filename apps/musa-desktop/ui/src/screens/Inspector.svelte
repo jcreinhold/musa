@@ -4,6 +4,7 @@
    * (`01-visual-language.md` §7). Every value here was computed by the core;
    * the frontend spells none of it (`03-interaction.md` §7).
    */
+  import { mark } from "../lib/perf";
   import Fraction from "../lib/ui/Fraction.svelte";
   import Position from "../lib/ui/Position.svelte";
   import TypographicRow from "../lib/ui/TypographicRow.svelte";
@@ -12,6 +13,7 @@
   let {
     event,
     adrift = null,
+    onorigin,
   }: {
     event: EventFacts | undefined;
     /**
@@ -21,9 +23,22 @@
      * (`02-engraving.md` §6).
      */
     adrift?: string | null;
+    /**
+     * Ask for everything this generator produced, given how many segments of
+     * the origin path were clicked. Absent where there is no score to select
+     * in — the engraving goldens.
+     */
+    onorigin?: (depth: number) => void;
   } = $props();
 
   const sounds = $derived(event && event.kind !== "rest");
+
+  // B4: the inspector is populated from the same snapshot the halo came from,
+  // so this marks the frame the composer can actually read the facts in.
+  $effect(() => {
+    void event?.id;
+    mark("inspector");
+  });
 
   // `durationSpelling` is how the composer wrote it. Showing it beside the
   // exact value earns its space only when the two differ — a dotted quarter
@@ -63,16 +78,25 @@
       The Origin row of 04-provenance.md §3: always present, held or not. It
       reads outside-in, in containment order — the `use` that produced these
       notes sits inside the transform block, and the path says so. Its
-      segments become clickable in prompt 24.
+      Its segments are clickable: each selects what that generator produced in
+      this voice (`03-interaction.md` §1). The held lens is prompt 24.
     -->
     <TypographicRow label="Origin">
       {#snippet trailing()}line {event.origin.line}{/snippet}
       {#if event.origin.generated}
         <span class="path">
           {#each event.origin.path as segment, index (index)}
-            {#if index > 0}<span class="sep">▸</span>{/if}<span class="segment">{segment}</span>
+            {#if index > 0}<span class="sep">▸</span>{/if}<button
+              type="button"
+              class="segment"
+              disabled={onorigin === undefined}
+              onclick={() => {
+                mark("origin");
+                onorigin?.(index + 1);
+              }}>{segment}</button
+            >
           {/each}
-          {#if event.origin.noteIndex !== null}<span class="sep">▸</span><span class="segment"
+          {#if event.origin.noteIndex !== null}<span class="sep">▸</span><span class="segment note"
               >note {event.origin.noteIndex}</span
             >{/if}
         </span>
@@ -115,6 +139,28 @@
     color: var(--plate);
   }
 
+  /*
+   * A segment is a control that looks like the text it is. Underlining it on
+   * hover is the whole affordance: a row of buttons in the margin would read
+   * as a form, which this is not.
+   */
+  button.segment {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  button.segment:hover:not(:disabled),
+  button.segment:focus-visible {
+    text-decoration: underline;
+  }
+
+  button.segment:disabled {
+    cursor: default;
+  }
+
   .path {
     display: inline;
     overflow-wrap: anywhere;
@@ -124,6 +170,6 @@
     margin: 0;
     font-size: var(--t-small-size);
     line-height: var(--t-small-line);
-    color: var(--ink-faint);
+    color: var(--ink-muted);
   }
 </style>

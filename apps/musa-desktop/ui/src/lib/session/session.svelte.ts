@@ -26,6 +26,18 @@ import type { ProjectSnapshot } from "../state/snapshot";
  */
 export const SETTLE_MS = 180;
 
+/**
+ * A frame count on its way to the shell.
+ *
+ * `ts-rs` spells Rust's `u64` as `bigint`, but the bridge is JSON and
+ * `JSON.stringify` refuses a `BigInt`. A frame count is exact as a number
+ * well past the length of any performance, so the number is what crosses and
+ * the cast is the honest way to say so in one place.
+ */
+function frames(count: number): bigint {
+  return Math.max(Math.round(count), 0) as unknown as bigint;
+}
+
 /** What the top margin is currently saying, and in what voice. */
 export interface Notice {
   tone: "result" | "failure";
@@ -236,6 +248,26 @@ export class Session {
 
   async stop(): Promise<void> {
     await this.move({ kind: "stop" });
+  }
+
+  /** `Space`: play, or stop if the transport is already running. */
+  async toggle(): Promise<void> {
+    await (this.snapshot?.playback.playing === true ? this.stop() : this.play());
+  }
+
+  /** `⇧Space`: play from a point in the performance, in frames. */
+  async playFrom(frame: number): Promise<void> {
+    await this.move({ kind: "seek", frame: frames(frame) });
+    await this.play();
+  }
+
+  /** Loop a region of the performance, or stop looping. */
+  async loop(region: [number, number] | null): Promise<void> {
+    await this.move(
+      region === null
+        ? { kind: "clearLoop" }
+        : { kind: "setLoop", start: frames(region[0]), end: frames(region[1]) },
+    );
   }
 
   /** Write an export where the user chooses, and name the file it wrote. */

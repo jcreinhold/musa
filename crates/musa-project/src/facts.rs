@@ -10,7 +10,10 @@
 //! rational so the interface can typeset a real fraction
 //! (`01-visual-language.md` §3) rather than a decimal.
 
-use musa_compiler::{ExpansionStep, Interval, Mode, Origin, PitchClass, ScoreEventKind, ScoreSnapshot, WrittenPitch};
+use musa_compiler::{
+    ExpansionStep, IntegratedTempoMap, Interval, Mode, Origin, PerformanceOptions, PitchClass, ScoreEventKind,
+    ScoreSnapshot, WrittenPitch,
+};
 use serde::Serialize;
 
 /// An exact rational, as a fraction rather than a decimal.
@@ -88,6 +91,16 @@ pub struct EventFacts {
     pub bar: u32,
     /// 1-based beat within the bar, exact.
     pub beat: Fraction,
+    /// The frame this event starts at, in the performance's sample rate —
+    /// the same clock the engine reports positions in.
+    ///
+    /// Written time and sounding time are different layers (roadmap §2), and
+    /// only the performance lowering knows the second. It is stated here so
+    /// the interface can tint the sounding note and seek to a selection
+    /// without computing anything temporal (`03-interaction.md` §7).
+    pub onset_frames: u64,
+    /// The frame it stops, at full notated gate.
+    pub end_frames: u64,
     /// Provenance.
     pub origin: OriginFacts,
 }
@@ -142,6 +155,9 @@ impl ScoreFacts {
     /// interface shows a composer a line, not an offset.
     pub(crate) fn derive(score: &ScoreSnapshot, source: &str) -> Self {
         let lines = LineIndex::new(source);
+        // The same tempo integration the performance lowering uses, at the
+        // same options, so a frame here is the frame the engine will report.
+        let tempo = IntegratedTempoMap::new(score, &PerformanceOptions::default());
         let measure = score.meter_map.measure_len().as_ratio();
         let beat = num_rational::Ratio::new(1, i64::from(score.meter_map.denominator).max(1));
 
@@ -175,6 +191,10 @@ impl ScoreFacts {
                     let onset = event.onset.as_ratio();
                     let (bar, beat_in_bar) = position(onset, measure, beat);
                     let pitches = pitches_of(&event.kind);
+                    // Exact rational arithmetic on musical time, which is not
+                    // the integer arithmetic the lint is about.
+                    #[expect(clippy::arithmetic_side_effects, reason = "exact rational musical time")]
+                    let end = event.onset + event.notated_duration.value;
                     events.push(EventFacts {
                         id: format!("event-{:x}", event.id.0),
                         part: part.name.clone(),
@@ -186,6 +206,8 @@ impl ScoreFacts {
                         duration_spelling: event.notated_duration.spelling.clone(),
                         bar,
                         beat: Fraction::from_ratio(beat_in_bar),
+                        onset_frames: tempo.frames(event.onset),
+                        end_frames: tempo.frames(end),
                         origin,
                     });
                 }

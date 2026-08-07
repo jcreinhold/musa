@@ -46,7 +46,9 @@ test.describe("launch", () => {
       );
       shell.push(await at(page, "shell"));
     }
-    expect(p95(shell), `shell painted at p95 ${Math.round(p95(shell))} ms`).toBeLessThanOrEqual(400);
+    expect(p95(shell), `shell painted at p95 ${Math.round(p95(shell))} ms`).toBeLessThanOrEqual(
+      400,
+    );
   });
 
   test("B7: the score is on the leaf within 1.5 s", async ({ page }) => {
@@ -88,8 +90,112 @@ test("B1: a keystroke reaches diagnostics within 120 ms of the debounce", async 
     );
     samples.push((await at(page, "snapshot")) - (await at(page, "edit")) - SETTLE_MS);
   }
-  expect(p95(samples), `diagnostics at p95 ${Math.round(p95(samples))} ms after settling`)
-    .toBeLessThanOrEqual(120);
+  expect(
+    p95(samples),
+    `diagnostics at p95 ${Math.round(p95(samples))} ms after settling`,
+  ).toBeLessThanOrEqual(120);
+});
+
+/**
+ * Selection: the most frequent action in the application, and the one budget
+ * that forbids a round trip outright (`06-performance.md` §3.2).
+ */
+test.describe("selection", () => {
+  /**
+   * Distinct events, in engraved order. A tied note is drawn as several
+   * elements with the same id, so clicking "the next element" is not
+   * necessarily clicking a different note — and a trial that re-selects what
+   * is already selected measures nothing.
+   */
+  async function distinctNotes(page: Page): Promise<string[]> {
+    return page.evaluate(() => [
+      ...new Set(
+        [...document.querySelectorAll('.engraving g[id^="event-"]')].map((element) =>
+          element.id.replace(/-t\d+$/, ""),
+        ),
+      ),
+    ]);
+  }
+
+  test("B3: the halo is drawn in the frame the click happened in", async ({ page }) => {
+    await stubShell(page);
+    await page.goto("/?perf=1");
+    await engraved(page);
+    const notes = await distinctNotes(page);
+
+    const samples: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      await page.evaluate(() => performance.clearMarks());
+      // Two different notes, alternately: re-selecting what is already
+      // selected is not an interaction, and would measure nothing.
+      await page
+        .locator(`[id="${(trial % 2 === 0 ? notes[1] : notes[2]) ?? ""}"]`)
+        .first()
+        .click({ force: true });
+      await page.waitForFunction(
+        () => performance.getEntriesByName("musa:halo", "mark").length > 0,
+      );
+      samples.push((await at(page, "halo")) - (await at(page, "select")));
+    }
+    expect(
+      p95(samples),
+      `halo drawn at p95 ${Math.round(p95(samples))} ms after the click`,
+    ).toBeLessThanOrEqual(16);
+  });
+
+  test("B4: the inspector is populated within 100 ms", async ({ page }) => {
+    await stubShell(page);
+    await page.goto("/?perf=1");
+    await engraved(page);
+    const notes = await distinctNotes(page);
+
+    const samples: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      await page.evaluate(() => performance.clearMarks());
+      // Two different notes, alternately: re-selecting what is already
+      // selected is not an interaction, and would measure nothing.
+      await page
+        .locator(`[id="${(trial % 2 === 0 ? notes[1] : notes[2]) ?? ""}"]`)
+        .first()
+        .click({ force: true });
+      await page.waitForFunction(
+        () => performance.getEntriesByName("musa:inspector", "mark").length > 0,
+      );
+      samples.push((await at(page, "inspector")) - (await at(page, "select")));
+    }
+    expect(
+      p95(samples),
+      `inspector populated at p95 ${Math.round(p95(samples))} ms`,
+    ).toBeLessThanOrEqual(100);
+  });
+
+  /**
+   * B9 is stated for the Origin *view*, which is prompt 24. What exists now
+   * is the Origin row's segments, and they are the same interaction with the
+   * same rule: it is an ink change, and it must cost like one.
+   */
+  test("B9: following an origin segment costs no more than an ink change", async ({ page }) => {
+    await stubShell(page);
+    await page.goto("/?perf=1");
+    await engraved(page);
+    await page.locator('.engraving g[id^="event-"]').first().click({ force: true });
+    const segment = page.locator(".inspector button.segment").first();
+    await expect(segment).toBeVisible();
+
+    const samples: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      await page.evaluate(() => performance.clearMarks());
+      await segment.click();
+      await page.waitForFunction(
+        () => performance.getEntriesByName("musa:halo", "mark").length > 0,
+      );
+      samples.push((await at(page, "halo")) - (await at(page, "origin")));
+    }
+    expect(
+      p95(samples),
+      `origin followed at p95 ${Math.round(p95(samples))} ms`,
+    ).toBeLessThanOrEqual(120);
+  });
 });
 
 /**
@@ -119,8 +225,10 @@ test.describe("the large score", () => {
       // what the composer waits is from the keystroke, not from the compile.
       samples.push((await at(page, "score")) - (await at(page, "edit")));
     }
-    expect(p95(samples), `re-engraved at p95 ${Math.round(p95(samples))} ms after the keystroke`)
-      .toBeLessThanOrEqual(400);
+    expect(
+      p95(samples),
+      `re-engraved at p95 ${Math.round(p95(samples))} ms after the keystroke`,
+    ).toBeLessThanOrEqual(400);
     expect(p95(samples)).toBeGreaterThanOrEqual(SETTLE_MS);
   });
 
@@ -140,8 +248,10 @@ test.describe("the large score", () => {
       );
       samples.push((await at(page, "score")) - (await at(page, "zoom")));
     }
-    expect(p95(samples), `re-laid out at p95 ${Math.round(p95(samples))} ms after the step`)
-      .toBeLessThanOrEqual(250);
+    expect(
+      p95(samples),
+      `re-laid out at p95 ${Math.round(p95(samples))} ms after the step`,
+    ).toBeLessThanOrEqual(250);
   });
 });
 

@@ -183,3 +183,38 @@ fn undo_at_the_start_of_history_is_refused() {
     let mut session = session();
     assert!(matches!(session.undo(), Err(ProjectError::NothingTo("undo"))));
 }
+
+/// Sounding time agrees with written time and with the sample rate the
+/// engine reports positions in. At 120 bpm a quarter note is half a second,
+/// and the interface's playhead is only as truthful as this.
+#[test]
+fn event_frames_are_the_engine_s_clock() {
+    let session = session();
+    let snapshot = session.snapshot();
+    let rate = u64::from(snapshot.playback().sample_rate);
+    let events = snapshot.score().map(|score| score.events.clone()).unwrap_or_default();
+    assert_eq!(events.len(), 2, "the fixture is two quarter notes");
+
+    let first = events.first();
+    let second = events.get(1);
+    assert_eq!(
+        first.map(|event| event.onset_frames),
+        Some(0),
+        "the first note starts at the start"
+    );
+    assert_eq!(
+        first.map(|event| event.end_frames),
+        rate.checked_div(2),
+        "a quarter at 120 bpm lasts half a second"
+    );
+    assert_eq!(
+        second.map(|event| event.onset_frames),
+        first.map(|event| event.end_frames),
+        "the second follows the first"
+    );
+    assert_eq!(
+        second.map(|event| event.end_frames > event.onset_frames),
+        Some(true),
+        "an event lasts a positive time"
+    );
+}

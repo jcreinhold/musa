@@ -69,9 +69,26 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
         return command.kind === "setSource" ? setSource(command.source ?? "") : current;
       },
       transport: (args) => {
-        const command = args.command as { kind: string };
-        const playback = current.playback as Record<string, unknown>;
-        current = { ...current, playback: { ...playback, playing: command.kind === "play" } };
+        const command = args.command as {
+          kind: string;
+          frame?: number;
+          start?: number;
+          end?: number;
+        };
+        const playback = { ...(current.playback as Record<string, unknown>) };
+        // Every transport command the facade offers, answered in the shape
+        // prompt 18 guarantees. Anything less and a test would prove the
+        // interface works against a stub that ignores what it asked for.
+        if (command.kind === "play") playback.playing = true;
+        if (command.kind === "pause" || command.kind === "stop") playback.playing = false;
+        if (command.kind === "stop") playback.positionFrames = 0;
+        if (command.kind === "seek") playback.positionFrames = command.frame ?? 0;
+        if (command.kind === "setLoop") playback.loopRegion = [command.start ?? 0, command.end ?? 0];
+        if (command.kind === "clearLoop") playback.loopRegion = null;
+        current = { ...current, playback };
+        // The tests read this to prove the interface asked for the loop it
+        // drew, rather than drawing one it never sent.
+        window.__musaLoop = (playback.loopRegion as [number, number] | null) ?? null;
         return current;
       },
       export: () => ({ path: "/tmp/glass-mountain.mei" }),
@@ -115,5 +132,7 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
 declare global {
   interface Window {
     __musaEmit: (name: string, payload: unknown) => void;
+    /** The loop region the interface last asked the shell for. */
+    __musaLoop: [number, number] | null;
   }
 }

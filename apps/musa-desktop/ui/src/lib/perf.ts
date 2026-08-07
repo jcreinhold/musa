@@ -19,7 +19,15 @@ export type Moment =
   /** A zoom step was asked for, so a re-layout is owed (B8). */
   | "zoom"
   /** A snapshot arrived, so diagnostics are current (B1). */
-  | "snapshot";
+  | "snapshot"
+  /** A note was chosen, by pointer or by key (B3, B4). */
+  | "select"
+  /** The selection halo is measured and drawn (B3). */
+  | "halo"
+  /** The inspector is showing the chosen note's facts (B4). */
+  | "inspector"
+  /** An origin segment was clicked, so a new selection is owed (B9). */
+  | "origin";
 
 const enabled =
   typeof globalThis.location !== "undefined" &&

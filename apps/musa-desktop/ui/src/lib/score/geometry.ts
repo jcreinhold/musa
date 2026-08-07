@@ -54,6 +54,29 @@ export function boxesFor(container: ParentNode, id: string): Rect[] {
     .filter((rect): rect is Rect => rect !== null && rect.width > 0 && rect.height > 0);
 }
 
+/**
+ * Everything drawn over one page.
+ *
+ * Marks are per page, not per score: each page has its own coordinate system,
+ * and a box measured on one page would land somewhere arbitrary on another.
+ */
+export interface Marks {
+  selection: Rect[];
+  hover: Rect[];
+  playing: Rect[];
+  caret: Rect | null;
+  loop: { from: Rect; to: Rect } | null;
+}
+
+/** A page with nothing on it — the shared empty value, allocated once. */
+export const NOTHING: Marks = Object.freeze({
+  selection: [],
+  hover: [],
+  playing: [],
+  caret: null,
+  loop: null,
+});
+
 /** A box grown by `spaces` staff spaces on every side. */
 export function pad(rect: Rect, spaces: number, staffSpace: number): Rect {
   const grow = spaces * staffSpace;

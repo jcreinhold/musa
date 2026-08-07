@@ -47,6 +47,13 @@ export interface EventFacts {
   durationSpelling: string;
   bar: number;
   beat: Fraction;
+  /**
+   * When this event sounds, in the frames the engine reports positions in.
+   * Written time and sounding time are different layers; the frontend is
+   * given the second rather than deriving it (`03-interaction.md` §7).
+   */
+  onsetFrames: number;
+  endFrames: number;
   origin: OriginFacts;
 }
 

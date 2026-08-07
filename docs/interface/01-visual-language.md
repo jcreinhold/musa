@@ -72,6 +72,11 @@ lifted object; it does not dissolve into the background.
   enough for 3:1 against paper is a rule twice the weight of the staff lines beside it — the accessibility rule for
   non-text contrast applies to graphics that convey information, and a hairline that separates does not. Every one of
   these is checked by an automated test over the token file, not by eye.
+- **`--ink-faint` is not a text color.** It is for disabled controls, placeholders, and decorative separators — things a
+  reader is meant to skip. Anything a reader is meant to *read*, including the `--t-micro` labels above inspector and
+  readout values, takes `--ink-muted` and therefore holds the 4.5:1 floor. A label small enough to need a magnifier is
+  not a quiet label, it is an unreadable one; the automated accessibility scan (prompt 23) asserts this on the running
+  screen rather than on the token file.
 - **`--plate` means one thing:** derived from something else, or currently live. Generated material, the Origin trace,
   the focus ring, the playhead hairline, the "playing" state. Nothing else.
 - **`--chalk` means one thing:** something the compiler is telling you is wrong, or that what you are hearing is not what

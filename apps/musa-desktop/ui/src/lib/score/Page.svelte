@@ -15,7 +15,7 @@
    */
   import type { Box, PageSvg } from "../engrave/engraver";
   import Overlay from "./Overlay.svelte";
-  import type { Rect } from "./geometry";
+  import type { Marks } from "./geometry";
 
   let {
     number,
@@ -23,8 +23,7 @@
     box,
     scale,
     staffSpace,
-    selection,
-    hover,
+    marks,
   }: {
     /** 1-based page number, which the observer reports back. */
     number: number;
@@ -40,8 +39,8 @@
      */
     scale?: number;
     staffSpace: number;
-    selection: Rect[];
-    hover: Rect[];
+    /** What is drawn over this page, measured in its own coordinates. */
+    marks: Marks;
   } = $props();
 
   /** How long the cross-fade lasts (`01-visual-language.md` §6). */
@@ -79,7 +78,15 @@
   {#if showing && page}
     <div class="ink arriving">
       {@html showing}
-      <Overlay box={page.box} {staffSpace} {selection} {hover} />
+      <Overlay
+        box={page.box}
+        {staffSpace}
+        selection={marks.selection}
+        hover={marks.hover}
+        playing={marks.playing}
+        caret={marks.caret}
+        loop={marks.loop}
+      />
     </div>
   {/if}
 </div>

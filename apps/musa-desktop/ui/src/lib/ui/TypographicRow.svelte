@@ -36,7 +36,7 @@
     font-weight: 500;
     letter-spacing: var(--tracking-micro);
     text-transform: uppercase;
-    color: var(--ink-faint);
+    color: var(--ink-muted);
   }
 
   .line {
@@ -66,7 +66,7 @@
   .trailing {
     font-size: var(--t-small-size);
     line-height: var(--t-small-line);
-    color: var(--ink-faint);
+    color: var(--ink-muted);
     white-space: nowrap;
   }
 </style>

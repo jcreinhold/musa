@@ -91,14 +91,12 @@ pub const COMMANDS: &[CommandDescriptor] = &[
         true,
     ),
     command("view.theme", "Switch theme", Section::View, None, true),
-    // Prompt 23 gives these behavior; they are listed now so the menu and the
-    // keyboard sheet agree from the first version the user sees.
     command(
         "view.palette",
         "Command palette",
         Section::View,
         Some("CmdOrCtrl+K"),
-        false,
+        true,
     ),
-    command("help.keys", "Keyboard sheet", Section::Help, Some("?"), false),
+    command("help.keys", "Keyboard sheet", Section::Help, Some("?"), true),
 ];
