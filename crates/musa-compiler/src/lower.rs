@@ -191,6 +191,7 @@ pub(crate) fn lower(source: &SourceDocument) -> Compilation {
 /// Tempo, meter, key — plus registration of motif declarations (expansion
 /// is prompt 06).
 pub(crate) fn lower_header(lowering: &mut Lowering, piece: &PieceDecl, snapshot: &mut ScoreSnapshot) {
+    snapshot.title = piece.name().unwrap_or_default();
     if let Some(tempo) = piece.tempo() {
         lowering.declare(DeclInfo::Tempo);
         snapshot.tempo_map = parse_tempo(lowering, &tempo);

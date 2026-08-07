@@ -326,7 +326,13 @@ impl ProjectSession {
             match render_notation(&score, musa_render::NotationTarget::Mei) {
                 Ok(mei) => {
                     score_changed = self.valid.as_ref().is_none_or(|valid| valid.mei != mei);
-                    self.valid = Some(ValidArtifacts { mei, score, revision });
+                    let facts = crate::facts::ScoreFacts::derive(&score, &self.source);
+                    self.valid = Some(ValidArtifacts {
+                        mei,
+                        score,
+                        facts,
+                        revision,
+                    });
                     if score_changed {
                         self.reinstall_plan();
                     }

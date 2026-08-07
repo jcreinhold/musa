@@ -2,6 +2,7 @@
 
 use crate::command::Revision;
 use crate::diagnostic::Diagnostic;
+use crate::facts::ScoreFacts;
 
 /// Everything a caller may observe, borrowed from the session.
 ///
@@ -32,6 +33,8 @@ pub(crate) struct ValidArtifacts {
     pub(crate) mei: String,
     /// The compiled score, kept for exports and playback preparation.
     pub(crate) score: musa_compiler::ScoreSnapshot,
+    /// Everything the interface displays about that score.
+    pub(crate) facts: ScoreFacts,
     pub(crate) revision: Revision,
 }
 
@@ -72,6 +75,13 @@ impl ProjectSnapshot<'_> {
         self.valid.as_ref().map(|valid| valid.mei.as_str())
     }
 
+    /// The musical facts the interface displays: title, tempo, key, parts,
+    /// and every event's pitch, position, and provenance. From the same
+    /// revision as [`Self::mei`].
+    pub fn score(&self) -> Option<&ScoreFacts> {
+        self.valid.as_ref().map(|valid| &valid.facts)
+    }
+
     /// The revision the engraved score and playback plan came from.
     pub fn score_revision(&self) -> Option<Revision> {
         self.valid.as_ref().map(|valid| valid.revision)
@@ -88,8 +98,48 @@ impl ProjectSnapshot<'_> {
     }
 }
 
+/// The snapshot as the interface receives it — one flat object, with the
+/// last-valid artifacts lifted out of their internal container.
+///
+/// Serialization lives here rather than in the frontend because the shape of
+/// this object is part of the facade: a fixture generated from this type
+/// cannot drift from it (prompt 20).
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SnapshotWire<'a> {
+    name: &'a str,
+    source: &'a str,
+    revision: u64,
+    compiles: bool,
+    unsaved: bool,
+    diagnostics: &'a [Diagnostic],
+    mei: Option<&'a str>,
+    score: Option<&'a ScoreFacts>,
+    score_revision: Option<u64>,
+    playback: PlaybackState,
+}
+
+impl serde::Serialize for ProjectSnapshot<'_> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        SnapshotWire {
+            name: self.name,
+            source: self.source,
+            revision: self.revision.0,
+            compiles: self.compiles,
+            unsaved: self.unsaved,
+            diagnostics: self.diagnostics,
+            mei: self.mei(),
+            score: self.score(),
+            score_revision: self.score_revision().map(|revision| revision.0),
+            playback: self.playback,
+        }
+        .serialize(serializer)
+    }
+}
+
 /// Transport state as the interface needs to display it.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PlaybackState {
     /// Whether audio is running.
     pub playing: bool,

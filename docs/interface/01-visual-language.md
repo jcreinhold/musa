@@ -66,8 +66,12 @@ lifted object; it does not dissolve into the background.
 - **`--ink` and `--leaf` are the notation's colors.** Verovio output is plumbed through `currentColor` (see
   `02-engraving.md` §3) so that switching theme re-inks the score rather than filtering it. Never apply a CSS
   `filter: invert()` to a score. Ever.
-- **Contrast.** `--ink-muted` on `--surround` and on `--leaf` must hold ≥ 4.5:1; `--rule` and `--plate` must hold ≥ 3:1
-  against both surfaces. This is checked by an automated contrast test over the token file, not by eye.
+- **Contrast.** `--ink` and `--ink-muted` on `--surround` and on `--leaf` must hold ≥ 4.5:1; `--plate` and `--chalk`
+  must hold ≥ 3:1 against both surfaces, because they carry meaning on their own. `--rule` is exempt from the 3:1 floor
+  and holds ≥ 1.3:1 instead: it is a decorative hairline that matches the engraving's own line weights, and a rule dark
+  enough for 3:1 against paper is a rule twice the weight of the staff lines beside it — the accessibility rule for
+  non-text contrast applies to graphics that convey information, and a hairline that separates does not. Every one of
+  these is checked by an automated test over the token file, not by eye.
 - **`--plate` means one thing:** derived from something else, or currently live. Generated material, the Origin trace,
   the focus ring, the playhead hairline, the "playing" state. Nothing else.
 - **`--chalk` means one thing:** something the compiler is telling you is wrong, or that what you are hearing is not what

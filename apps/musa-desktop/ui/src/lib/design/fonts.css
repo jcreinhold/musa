@@ -1,0 +1,42 @@
+/*
+ * The four bundled faces (docs/interface/01-visual-language.md §3). All OFL,
+ * all local: the application makes no network font request, ever, because
+ * roadmap §14.8 requires it to work offline with zero setup.
+ */
+
+@font-face {
+  font-family: "Bravura";
+  /* block, not swap: a fallback glyph in a score is worse than a blank frame. */
+  font-display: block;
+  src: url("./fonts/Bravura.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Academico";
+  font-display: swap;
+  src: url("./fonts/Academico.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Instrument Sans";
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/InstrumentSans-400.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Instrument Sans";
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/InstrumentSans-500.woff2") format("woff2");
+}
+
+/* Recursive's mono cut: MONO 1, CASL 0, CRSV 0 — a linear mono with real
+   tabular figures and no code ligatures, because musa's `/` is a fraction
+   bar and must not be prettified into anything else. */
+@font-face {
+  font-family: "Recursive Mono";
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./fonts/RecursiveMono.woff2") format("woff2");
+}

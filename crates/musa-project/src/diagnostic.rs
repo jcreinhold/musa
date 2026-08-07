@@ -6,7 +6,8 @@
 //! `musa_compiler::Severity` would be coupled to the compiler forever.
 
 /// How serious a diagnostic is.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub enum Severity {
     /// The source does not compile.
     Error,
@@ -15,7 +16,7 @@ pub enum Severity {
 }
 
 /// A byte range in the current source text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
 pub struct Span {
     /// First byte.
     pub start: u32,
@@ -24,7 +25,7 @@ pub struct Span {
 }
 
 /// A problem with the source, positioned where the interface can show it.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct Diagnostic {
     /// How serious it is.
     pub severity: Severity,

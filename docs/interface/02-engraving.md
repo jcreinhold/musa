@@ -78,6 +78,9 @@ svgViewBox:        true            // the leaf scales without rasterizing
 svgRemoveXlink:    true
 svgHtml5:          false
 justifyVertically: true
+unit:              11              // rastral: half a staff space in 1/10 mm. Verovio's default 9 is an A4
+                                   // engraving size and is too small to read on a display; 11 is the
+                                   // on-screen default, and staff size stays a separate preference (§5)
 spacingStaff:      8               // slightly open — musa scores are read on screen, not printed at A4
 spacingSystem:     10
 spacingNonLinear:  0.55

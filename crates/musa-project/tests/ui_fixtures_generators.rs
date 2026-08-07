@@ -1,0 +1,68 @@
+//! Generates the interface's fixtures from the real types.
+//!
+//! The desktop prototype (prompt 20) is driven by committed fixtures rather
+//! than hand-written mocks, so that the shape the UI codes against is the
+//! shape the facade actually produces. This test writes them; it fails when
+//! the committed copy is stale, so a change to `ProjectSnapshot` shows up as
+//! a red test rather than as a UI that quietly renders the wrong thing.
+//!
+//! Run `UPDATE_UI_FIXTURES=1 cargo test -p musa-project` to refresh.
+
+use std::path::{Path, PathBuf};
+
+use musa_project::{ExportRequest, ProjectSession};
+
+type Result = std::result::Result<(), Box<dyn std::error::Error>>;
+
+fn fixtures_dir() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../apps/musa-desktop/ui/fixtures")
+}
+
+fn example(name: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples").join(name)
+}
+
+/// Write `contents` to `path`, or — when the fixture is committed and stale —
+/// report exactly which one and how to refresh it.
+fn write_or_compare(path: &Path, contents: &str) -> Result {
+    let current = std::fs::read_to_string(path).ok();
+    if current.as_deref() == Some(contents) {
+        return Ok(());
+    }
+    if current.is_some() && std::env::var_os("UPDATE_UI_FIXTURES").is_none() {
+        return Err(format!(
+            "{} is stale — rerun with UPDATE_UI_FIXTURES=1 and commit the result",
+            path.display()
+        )
+        .into());
+    }
+    std::fs::create_dir_all(path.parent().unwrap_or_else(|| Path::new(".")))?;
+    std::fs::write(path, contents)?;
+    Ok(())
+}
+
+/// The snapshot the Compose screen is built against.
+#[test]
+fn snapshot_fixture_is_current() -> Result {
+    // From text, not from the path, so the committed fixture does not carry
+    // whichever machine generated it.
+    let source = std::fs::read_to_string(example("glass-mountain.musa"))?;
+    let session = ProjectSession::from_text(source, "glass-mountain.musa");
+    assert!(session.snapshot().compiles(), "the fixture piece must compile");
+
+    let mut json = serde_json::to_string_pretty(&session.snapshot())?;
+    json.push('\n');
+    write_or_compare(&fixtures_dir().join("glass-mountain.snapshot.json"), &json)
+}
+
+/// One MEI per engraving fixture (`docs/interface/02-engraving.md` §9).
+#[test]
+fn mei_fixtures_are_current() -> Result {
+    for name in ["glass-mountain", "counterpoint", "twinkle"] {
+        let session = ProjectSession::open(example(&format!("{name}.musa")))?;
+        let artifact = session.export(ExportRequest::Mei)?;
+        let mei = artifact.as_text().unwrap_or_default();
+        write_or_compare(&fixtures_dir().join(format!("{name}.mei")), mei)?;
+    }
+    Ok(())
+}

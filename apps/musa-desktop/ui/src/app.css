@@ -1,0 +1,54 @@
+/*
+ * Application-wide rules. Everything here reads a token; nothing here states
+ * a colour, a family, or a size of its own.
+ */
+
+@import "./lib/design/fonts.css";
+@import "./lib/design/tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--surround);
+  color: var(--ink);
+  font-family: var(--f-ui);
+  font-size: var(--t-body-size);
+  line-height: var(--t-body-line);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#app {
+  height: 100%;
+}
+
+/*
+ * 02-engraving.md §3 — the score is re-inked, never filtered. `currentColor`
+ * is declared per group rather than once at the root: on an inherited
+ * property it resolves where it is declared, so a group that sets its own
+ * `color` (a generated run under the Origin lens) re-inks correctly, while a
+ * single root declaration would freeze every glyph at the root's ink.
+ */
+.engraving {
+  color: var(--ink);
+}
+
+.engraving g {
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+/* One focus ring in the application: 03-interaction.md §3. */
+:focus-visible {
+  outline: 2px solid var(--plate);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}

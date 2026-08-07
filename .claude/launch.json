@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "musa-ui",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps/musa-desktop/ui", "run", "dev"],
+      "port": 5173
+    }
+  ]
+}

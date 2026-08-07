@@ -1,0 +1,615 @@
+{
+  "name": "glass-mountain.musa",
+  "source": "piece \"Glass Mountain\" {\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: pitch = e5) {\n        root 1/2;\n        rest 1/4;\n        c5 1/2;\n        b4 1/4;\n        a4 1/2;\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh();\n\n                transpose down P5 {\n                    use sigh();\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5 1;\n                c5 1;\n                a4 1;\n                gs4 1;\n            }\n\n            voice bass {\n                a2 1;\n                f2 1;\n                d2 1;\n                e2 1;\n            }\n        }\n    }\n}\n",
+  "revision": 0,
+  "compiles": true,
+  "unsaved": true,
+  "diagnostics": [],
+  "mei": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n  <music>\n    <body>\n      <mdiv>\n        <score>\n          <scoreDef meter.count=\"4\" meter.unit=\"4\" key.sig=\"0\" key.mode=\"minor\">\n            <staffGrp>\n              <staffDef n=\"1\" lines=\"5\" clef.shape=\"G\" clef.line=\"2\"/>\n              <staffDef n=\"2\" lines=\"5\"/>\n            </staffGrp>\n          </scoreDef>\n          <section>\n            <measure n=\"1\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-0\" dur=\"2\" oct=\"5\" pname=\"e\"/>\n                  <rest xml:id=\"event-1\" dur=\"4\"/>\n                  <note xml:id=\"event-2\" dur=\"4\" oct=\"5\" pname=\"c\" tie=\"i\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-a\" dur=\"1\" oct=\"5\" pname=\"c\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-e\" dur=\"1\" oct=\"2\" pname=\"a\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"2\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-2-t2\" dur=\"4\" oct=\"5\" pname=\"c\" tie=\"t\"/>\n                  <note xml:id=\"event-3\" dur=\"4\" oct=\"4\" pname=\"b\"/>\n                  <note xml:id=\"event-4\" dur=\"2\" oct=\"4\" pname=\"a\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-b\" dur=\"1\" oct=\"5\" pname=\"c\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-f\" dur=\"1\" oct=\"2\" pname=\"f\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"3\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-5\" dur=\"2\" oct=\"4\" pname=\"a\"/>\n                  <rest xml:id=\"event-6\" dur=\"4\"/>\n                  <note xml:id=\"event-7\" dur=\"4\" oct=\"4\" pname=\"f\" tie=\"i\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-c\" dur=\"1\" oct=\"4\" pname=\"a\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-10\" dur=\"1\" oct=\"2\" pname=\"d\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"4\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-7-t2\" dur=\"4\" oct=\"4\" pname=\"f\" tie=\"t\"/>\n                  <note xml:id=\"event-8\" dur=\"4\" oct=\"4\" pname=\"e\"/>\n                  <note xml:id=\"event-9\" dur=\"2\" oct=\"4\" pname=\"d\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-d\" dur=\"1\" oct=\"4\" pname=\"g\" accid=\"s\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-11\" dur=\"1\" oct=\"2\" pname=\"e\"/>\n                </layer>\n              </staff>\n            </measure>\n          </section>\n        </score>\n      </mdiv>\n    </body>\n  </music>\n</mei>",
+  "score": {
+    "title": "Glass Mountain",
+    "tempoBpm": 72,
+    "tempoBeat": {
+      "numerator": 1,
+      "denominator": 4
+    },
+    "key": "A minor",
+    "meterCount": 4,
+    "meterUnit": 4,
+    "parts": [
+      {
+        "name": "violin",
+        "voices": [
+          {
+            "name": "lead",
+            "generated": true
+          }
+        ]
+      },
+      {
+        "name": "strings",
+        "voices": [
+          {
+            "name": "upper",
+            "generated": false
+          },
+          {
+            "name": "bass",
+            "generated": false
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-0",
+        "part": "violin",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "E5",
+        "pitches": [
+          "E5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": true,
+          "path": [
+            "sigh()"
+          ],
+          "noteIndex": 1,
+          "line": 19,
+          "span": {
+            "start": 309,
+            "end": 320
+          }
+        }
+      },
+      {
+        "id": "event-1",
+        "part": "violin",
+        "voice": "lead",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": true,
+          "path": [
+            "sigh()"
+          ],
+          "noteIndex": 2,
+          "line": 19,
+          "span": {
+            "start": 309,
+            "end": 320
+          }
+        }
+      },
+      {
+        "id": "event-2",
+        "part": "violin",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "C5",
+        "pitches": [
+          "C5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 1,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": true,
+          "path": [
+            "sigh()"
+          ],
+          "noteIndex": 3,
+          "line": 19,
+          "span": {
+            "start": 309,
+            "end": 320
+          }
+        }
+      },
+      {
+        "id": "event-3",
+        "part": "violin",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "B4",
+        "pitches": [
+          "B4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 2,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": true,
+          "path": [
+            "sigh()"
+          ],
+          "noteIndex": 4,
+          "line": 19,
+          "span": {
+            "start": 309,
+            "end": 320
+          }
+        }
+      },
+      {
+        "id": "event-4",
+        "part": "violin",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "A4",
+        "pitches": [
+          "A4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 2,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": true,
+          "path": [
+            "sigh()"
+          ],
+          "noteIndex": 5,
+          "line": 19,
+          "span": {
+            "start": 309,
+            "end": 320
+          }
+        }
+      },
+      {
+        "id": "event-5",
+        "part": "violin",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "A4",
+        "pitches": [
+          "A4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 3,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": true,
+          "path": [
+            "transpose down P5",
+            "sigh()"
+          ],
+          "noteIndex": 1,
+          "line": 22,
+          "span": {
+            "start": 378,
+            "end": 389
+          }
+        }
+      },
+      {
+        "id": "event-6",
+        "part": "violin",
+        "voice": "lead",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 3,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": true,
+          "path": [
+            "transpose down P5",
+            "sigh()"
+          ],
+          "noteIndex": 2,
+          "line": 22,
+          "span": {
+            "start": 378,
+            "end": 389
+          }
+        }
+      },
+      {
+        "id": "event-7",
+        "part": "violin",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "F4",
+        "pitches": [
+          "F4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 3,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": true,
+          "path": [
+            "transpose down P5",
+            "sigh()"
+          ],
+          "noteIndex": 3,
+          "line": 22,
+          "span": {
+            "start": 378,
+            "end": 389
+          }
+        }
+      },
+      {
+        "id": "event-8",
+        "part": "violin",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "E4",
+        "pitches": [
+          "E4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 4,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": true,
+          "path": [
+            "transpose down P5",
+            "sigh()"
+          ],
+          "noteIndex": 4,
+          "line": 22,
+          "span": {
+            "start": 378,
+            "end": 389
+          }
+        }
+      },
+      {
+        "id": "event-9",
+        "part": "violin",
+        "voice": "lead",
+        "kind": "note",
+        "pitch": "D4",
+        "pitches": [
+          "D4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 4,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": true,
+          "path": [
+            "transpose down P5",
+            "sigh()"
+          ],
+          "noteIndex": 5,
+          "line": 22,
+          "span": {
+            "start": 378,
+            "end": 389
+          }
+        }
+      },
+      {
+        "id": "event-a",
+        "part": "strings",
+        "voice": "upper",
+        "kind": "note",
+        "pitch": "C5",
+        "pitches": [
+          "C5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "durationSpelling": "1",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "line": 29,
+          "span": {
+            "start": 498,
+            "end": 503
+          }
+        }
+      },
+      {
+        "id": "event-b",
+        "part": "strings",
+        "voice": "upper",
+        "kind": "note",
+        "pitch": "C5",
+        "pitches": [
+          "C5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "durationSpelling": "1",
+        "bar": 2,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "line": 30,
+          "span": {
+            "start": 520,
+            "end": 525
+          }
+        }
+      },
+      {
+        "id": "event-c",
+        "part": "strings",
+        "voice": "upper",
+        "kind": "note",
+        "pitch": "A4",
+        "pitches": [
+          "A4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "durationSpelling": "1",
+        "bar": 3,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "line": 31,
+          "span": {
+            "start": 542,
+            "end": 547
+          }
+        }
+      },
+      {
+        "id": "event-d",
+        "part": "strings",
+        "voice": "upper",
+        "kind": "note",
+        "pitch": "G♯4",
+        "pitches": [
+          "G♯4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "durationSpelling": "1",
+        "bar": 4,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "line": 32,
+          "span": {
+            "start": 564,
+            "end": 570
+          }
+        }
+      },
+      {
+        "id": "event-e",
+        "part": "strings",
+        "voice": "bass",
+        "kind": "note",
+        "pitch": "A2",
+        "pitches": [
+          "A2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "durationSpelling": "1",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "line": 36,
+          "span": {
+            "start": 627,
+            "end": 632
+          }
+        }
+      },
+      {
+        "id": "event-f",
+        "part": "strings",
+        "voice": "bass",
+        "kind": "note",
+        "pitch": "F2",
+        "pitches": [
+          "F2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "durationSpelling": "1",
+        "bar": 2,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "line": 37,
+          "span": {
+            "start": 649,
+            "end": 654
+          }
+        }
+      },
+      {
+        "id": "event-10",
+        "part": "strings",
+        "voice": "bass",
+        "kind": "note",
+        "pitch": "D2",
+        "pitches": [
+          "D2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "durationSpelling": "1",
+        "bar": 3,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "line": 38,
+          "span": {
+            "start": 671,
+            "end": 676
+          }
+        }
+      },
+      {
+        "id": "event-11",
+        "part": "strings",
+        "voice": "bass",
+        "kind": "note",
+        "pitch": "E2",
+        "pitches": [
+          "E2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "durationSpelling": "1",
+        "bar": 4,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "line": 39,
+          "span": {
+            "start": 693,
+            "end": 698
+          }
+        }
+      }
+    ]
+  },
+  "scoreRevision": 0,
+  "playback": {
+    "playing": false,
+    "positionFrames": 0,
+    "totalFrames": 0,
+    "sampleRate": 48000,
+    "loopRegion": null
+  }
+}

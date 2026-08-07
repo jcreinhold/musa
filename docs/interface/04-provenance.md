@@ -30,7 +30,7 @@ While held, over 120 ms:
 - **Generated music fades to `--plate` at 65 % opacity.** The page separates into what you wrote and what the language
   produced. Nothing moves; only ink changes.
 - Each generated **run** gets a `⟨` bracket in the left margin of its system, in `--plate`, labelled with the occurrence
-  in `--t-micro`: `sigh()`, `sigh() ▸ transpose down P5`. Colour is never the only signal (`03-interaction.md` §5).
+  in `--t-micro`: `sigh()`, `transpose down P5 ▸ sigh()`. Colour is never the only signal (`03-interaction.md` §5).
 - The parts list dims voices with no generated material, so the structure of the piece is legible at a glance.
 - The source drawer, if open, highlights the `use` statement and the enclosing transform blocks that produced what is
   on screen.
@@ -54,10 +54,11 @@ Origin      authored          line 31
 For a generated event, the expansion path as a real path, in mono, each segment clickable:
 
 ```
-Origin      sigh() ▸ transpose down P5 ▸ note 3        line 12
+Origin      transpose down P5 ▸ sigh() ▸ note 3        line 22
 ```
 
-Clicking `sigh()` selects the occurrence. Clicking the motif name reveals its declaration in the drawer. The line number
+The path reads outside-in, in containment order: the `use sigh()` that produced these notes sits *inside* the
+`transpose down P5` block, and the path says so. Clicking `sigh()` selects the occurrence. Clicking the motif name reveals its declaration in the drawer. The line number
 opens the source at that line. This row is how the answer to "where did this come from" is available without holding a
 key.
 

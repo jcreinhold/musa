@@ -3,6 +3,7 @@ source: crates/musa-compiler/tests/compiler.rs
 expression: "format!(\"{snapshot:#?}\")"
 ---
 ScoreSnapshot {
+    title: "Counterpoint Study",
     parts: PartMap {
         parts: {
             PartId(

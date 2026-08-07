@@ -1,7 +1,7 @@
 ---
 id: 20
 slug: interface-prototype
-status: pending
+status: done
 depends_on: [13, 19]
 phase: 1.5
 ---
@@ -32,6 +32,11 @@ nothing later in the sequence fixes that.
 
 - Create `apps/musa-desktop/ui` as a Vite + Svelte 5 + TypeScript app. **No `src-tauri` yet** (prompt 21). It runs under
   `npm run dev` in a browser.
+- **The snapshot must carry the musical facts the screen shows.** `03-interaction.md` §7 forbids the frontend from
+  computing bar numbers, beats, pitch names, or provenance, and prompt 19's `ProjectSnapshot` carried none of them. Add
+  `ScoreFacts` to `musa-project` — title, tempo, key, meter, parts and voices, and one `EventFacts` per event (engraved
+  `xml:id`, part, voice, spelled pitch, exact duration, `bar`/`beat` as exact fractions, and the origin path) — derived
+  once per successful compile. This is the field the design said the snapshot would gain.
 - **Fixtures, not mocks.** Commit under `apps/musa-desktop/ui/fixtures/`:
   - `glass-mountain.snapshot.json` — a real `ProjectSnapshot` serialized by a small `#[test]` in `musa-project` that
     writes it (so the fixture cannot drift from the type);

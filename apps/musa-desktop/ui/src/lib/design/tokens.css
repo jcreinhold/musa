@@ -1,0 +1,128 @@
+/*
+ * The whole design system, per docs/interface/01-visual-language.md.
+ *
+ * This file is the only place in the UI that states a colour, a font family,
+ * a type size, a duration, or an easing curve. A hex literal or a font name
+ * anywhere else is a bug.
+ */
+
+:root {
+  /* §2 — light: paper, matte margin, blue-black ink, verdigris, sanguine. */
+  --leaf: #fcfcfa;
+  --leaf-edge: #e2e0da;
+  --surround: #e8e6e1;
+  --surround-in: #dedcd6;
+  --ink: #14161c;
+  --ink-muted: #5c5f68;
+  --ink-faint: #8e9099;
+  --rule: #c9c6c0;
+  --plate: #0e6b63;
+  --plate-wash: #0e6b631f;
+  --chalk: #a83a2b;
+  --chalk-wash: #a83a2b14;
+
+  /* §5 — the one shadow in the application. */
+  --leaf-shadow: 0 1px 2px #0000000a, 0 8px 24px #00000010;
+  --radius-leaf: 0;
+  --radius-control: 3px;
+
+  /* §3 — four families, four roles, all bundled. */
+  --f-notation: "Bravura", serif;
+  --f-score-text: "Academico", "Iowan Old Style", Charter, Georgia, serif;
+  --f-ui: "Instrument Sans", "Helvetica Neue", system-ui, sans-serif;
+  --f-mono: "Recursive Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* §3 — the scale. Chrome uses no size between these steps. */
+  --t-micro-size: 10px;
+  --t-micro-line: 1.4;
+  --t-small-size: 12px;
+  --t-small-line: 1.5;
+  --t-body-size: 13px;
+  --t-body-line: 1.5;
+  --t-value-size: 13px;
+  --t-value-line: 1.5;
+  --t-name-size: 15px;
+  --t-name-line: 1.3;
+  --t-title-size: 24px;
+  --t-title-line: 1.2;
+  --t-large-size: 34px;
+  --t-large-line: 1;
+  --tracking-micro: 0.08em;
+
+  /* §4 — the 4px chrome scale. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* §6 — motion exists for three reasons. */
+  --m-fast: 90ms;
+  --m-base: 120ms;
+  --m-slow: 200ms;
+  --e-out: cubic-bezier(0.2, 0, 0, 1);
+
+  /* §8 (02-engraving) — overlay marks are measured in staff spaces. The
+     engraver sets --sp per page; this is the value before a page loads. */
+  --sp: 6px;
+  --halo-pad: 0.6;
+}
+
+/*
+ * §2 — dark is not an inversion: the leaf becomes a graphite sheet that is
+ * still a distinct, slightly lifted object.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --leaf: #1b1d21;
+    --leaf-edge: #2c2f35;
+    --surround: #101114;
+    --surround-in: #0a0b0d;
+    --ink: #e9e6df;
+    --ink-muted: #9b9da5;
+    --ink-faint: #6a6c74;
+    --rule: #3a3d44;
+    --plate: #45b3a6;
+    --plate-wash: #45b3a626;
+    --chalk: #d9705e;
+    --chalk-wash: #d9705e1f;
+    --leaf-shadow: 0 1px 2px #00000059, 0 10px 30px #00000040;
+  }
+}
+
+/* The explicit theme always wins over the system preference, in both
+   directions, so the toggle works on a machine set to either. */
+:root[data-theme="dark"] {
+  --leaf: #1b1d21;
+  --leaf-edge: #2c2f35;
+  --surround: #101114;
+  --surround-in: #0a0b0d;
+  --ink: #e9e6df;
+  --ink-muted: #9b9da5;
+  --ink-faint: #6a6c74;
+  --rule: #3a3d44;
+  --plate: #45b3a6;
+  --plate-wash: #45b3a626;
+  --chalk: #d9705e;
+  --chalk-wash: #d9705e1f;
+  --leaf-shadow: 0 1px 2px #00000059, 0 10px 30px #00000040;
+}
+
+:root[data-theme="light"] {
+  --leaf: #fcfcfa;
+  --leaf-edge: #e2e0da;
+  --surround: #e8e6e1;
+  --surround-in: #dedcd6;
+  --ink: #14161c;
+  --ink-muted: #5c5f68;
+  --ink-faint: #8e9099;
+  --rule: #c9c6c0;
+  --plate: #0e6b63;
+  --plate-wash: #0e6b631f;
+  --chalk: #a83a2b;
+  --chalk-wash: #a83a2b14;
+  --leaf-shadow: 0 1px 2px #0000000a, 0 8px 24px #00000010;
+}

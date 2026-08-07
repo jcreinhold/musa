@@ -232,6 +232,8 @@ pub struct AnnotationStore {
 /// (roadmap §6.3).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ScoreSnapshot {
+    /// The piece's title, as written in its `piece` declaration.
+    pub title: String,
     /// Parts in source order.
     pub parts: PartMap,
     /// Tempo information.
