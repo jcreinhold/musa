@@ -12,7 +12,7 @@
 //!
 //! Facade (docs/kernel/03, §26): [`timeline`], [`sequence`], [`overlay`],
 //! [`Timeline::extend`], [`Timeline::restrict`], [`Timeline::map_payload`],
-//! [`Timeline::scale`], [`Timeline::normalize`], [`Timeline::semantic_eq`].
+//! [`Timeline::scale`], [`Timeline::normalize`], [`Timeline::semantic_eq`], [`Timeline::semantic_hash`].
 //! `Timeline` stores flat timelines directly — construction IS normalization
 //! (docs/kernel/05 N1); `normalize` re-canonicalizes occurrence order.
 //!
@@ -22,11 +22,13 @@
 //! never of construction history (§25).
 
 mod error;
+mod hash;
 mod occurrence;
 mod time;
 mod timeline;
 
 pub use crate::error::KernelError;
+pub use crate::hash::SemanticHash;
 pub use crate::occurrence::{Canonical, Occurrence};
 pub use crate::time::{Beat, Span};
 pub use crate::timeline::{Observation, Timeline, overlay, sequence, timeline, zero};

@@ -1,8 +1,8 @@
 ---
-id: 46
+id: 48
 slug: kernel-interop
 status: pending
-depends_on: [45]
+depends_on: [47]
 phase: 3
 ---
 
@@ -20,7 +20,7 @@ This graduates `docs/kernel/10-term-calculus.md` from candidate to governing.
 
 ## Read
 
-- `docs/kernel/01-grammar.md` (the text form, repaired at prompt 44), `10-term-calculus.md`,
+- `docs/kernel/01-grammar.md` (the text form, repaired at prompt 46), `10-term-calculus.md`,
   `05-normalization.md` N5–N6 (canonical serialization and hash — the printer's output for a *normalized* term must
   remain exactly N5's, which is what today's goldens contain).
 - `docs/kernel/08-open-questions.md` Q6 — quote its condition in the prompt's commit message: the second
@@ -95,7 +95,7 @@ what Q6 was waiting for.
 - `crates/musa-kernel/src/text.rs` (new): printer and parser over the payload trait pair; `KernelError` gains parse
   positions.
 - `crates/musa-compiler`: `ScoreFact`'s payload text form; the piece-to-term entry point (still `#[doc(hidden)]` until
-  prompt 47 makes terms the elaboration output).
+  prompt 49 makes terms the elaboration output).
 - `crates/musa-project/src/export.rs`, `crates/musa-cli/src/main.rs`: the `kernel` target and help text.
 - `examples/kernel/*.kernel`: goldens for every `examples/*.musa`.
 - `docs/kernel/01-grammar.md`: the implemented grammar, candidate banner lifted from `10-term-calculus.md`;

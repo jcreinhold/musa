@@ -339,8 +339,10 @@ pub(crate) fn elaborate_parsed(
     let libraries = crate::imports::load(resolver, name, &piece, &options.imports);
     elaborate_libraries(resolver, &libraries, &mut snapshot);
     resolve::lower_header(resolver, &piece, &mut snapshot);
+    let mut identity = musa_kernel::SemanticHash::default();
     if let Some(score) = piece.score() {
         let context = elaborate_score(resolver, &piece, &score, &mut snapshot);
+        identity = context.identity;
         elaborate_tempo_changes(resolver, &piece, &mut snapshot, &context);
     }
     snapshot.set_annotations(std::mem::take(&mut resolver.annotations));
@@ -363,7 +365,9 @@ pub(crate) fn elaborate_parsed(
     {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
-    Compilation::new(Some(snapshot), std::mem::take(&mut resolver.diagnostics)).with_studio(studio)
+    Compilation::new(Some(snapshot), std::mem::take(&mut resolver.diagnostics))
+        .with_studio(studio)
+        .with_identity(identity)
 }
 
 /// What the piece timeline says about the piece as a whole, for the callers
@@ -377,6 +381,8 @@ pub(crate) struct PieceContext {
     extent: MusicalTime,
     /// The meter that governs it.
     meter: MeterMap,
+    /// The semantic identity of the whole piece (docs/kernel/05 N6).
+    identity: musa_kernel::SemanticHash,
 }
 
 /// Walk parts and voices exactly as the direct lowerer does, elaborating
@@ -440,6 +446,10 @@ fn elaborate_score(
     let extent = music.extent();
     let context = context_facts(resolver, piece, score, snapshot, extent);
     let whole = overlay(vec![music, context]);
+    // The piece's identity, taken where the piece exists as one temporal
+    // object and nowhere else: after this line the timeline is a projection,
+    // and a hash of the projection would be a hash of a view.
+    let identity = whole.semantic_hash();
     let projection = crate::project::project(resolver, &whole);
     snapshot.set_key(projection.key);
     snapshot.set_meter(projection.meter);
@@ -461,6 +471,7 @@ fn elaborate_score(
     PieceContext {
         extent: MusicalTime::new(extent.as_ratio()),
         meter,
+        identity,
     }
 }
 

@@ -85,8 +85,26 @@ reads today's golden files unchanged.
 ## N6 — Semantic hashing
 
 Because N5 is deterministic, `hash(serialize(normalize(C)))` is a well-defined **semantic hash**: equal-in-meaning
-compositions hash equal regardless of how they were constructed. Uses: golden tests, cache keys, differential testing
-between semantic paths (prompt 11). The hash algorithm is a consumer choice; the serialized bytes are the contract.
+compositions hash equal regardless of how they were constructed. Uses: golden tests, cache keys, and deciding whether
+work that depends on the meaning of a piece has to be redone.
+
+`Timeline::semantic_hash` computes it. The algorithm is **FNV-1a, 128 bits**, over exactly the bytes N5 defines, and it
+is named here rather than left to the consumer because an identity that varies between runs or processes is not an
+identity — a stored digest has to still mean the same thing after a restart. The same writer produces the canonical
+text and feeds the digest, so the two can never drift apart.
+
+Invariants:
+
+- **Stable.** Same timeline, same bytes, same digest — every run, every process, every machine. Rust's `DefaultHasher`
+  is excluded by this: its output is not stable across releases and `HashMap`'s is randomly seeded.
+- **Agrees with N4.** `M ≡ N ⟹ hash(M) = hash(N)`. The converse holds up to the collision probability of 128 bits, so
+  an unequal digest *proves* the meanings differ — which is the direction a caller deciding whether to rebuild needs.
+- **Not cryptographic.** FNV-1a resists accident, not an adversary. Signing a published score would need a different
+  function, chosen then.
+- **Covers whatever the payload key covers**, including provenance (N3). For musa's score facts that means source
+  spans: re-indenting a file changes the digest. That is correct — the question is "is this the same compiled piece",
+  not "does it sound the same" — and a sounds-the-same digest, if one is ever wanted, is a second function over a
+  provenance-free projection, not a weaker reading of this one.
 
 ## N7 — What normalization forgets (on purpose)
 

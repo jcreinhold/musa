@@ -1,7 +1,7 @@
 ---
 id: 43
 slug: semantic-identity
-status: pending
+status: done
 depends_on: [42]
 phase: 3
 ---
@@ -99,6 +99,59 @@ Do not reach for parallelism, arena allocation, interning, or a faster hash func
 - `crates/musa-project/src/session.rs`: plan installation and any other consumer moved off the counter; new tests.
 - `docs/kernel/05-normalization.md`: N6 made concrete — algorithm named, invariants stated, the provenance caveat.
 - `docs/kernel/09-performance.md`: P1/P4 rows before and after any intervention.
+
+## Repairs made while implementing
+
+**The algorithm is FNV-1a 128, and the doc comment's "cryptographic-collision probability" is wrong.** The dependency
+lists in roadmap §15 are closed and contain no hash crate, so adding `blake3` or `sha2` for this would have been a
+dependency the roadmap did not sanction, for a property nothing needs: the caller is an editor deciding whether to
+reinstall a playback plan, not a signature scheme. FNV-1a 128 is written out in `musa-kernel/src/hash.rs` (~30 lines),
+is stable by construction, and is named in `05-normalization.md`. The claim recorded there is the honest one —
+accident-resistant, not adversary-resistant — and the test asserts a fixed digest so a change of algorithm, basis, or
+byte order fails loudly instead of silently invalidating every stored identity.
+
+**The digest and the canonical text are the same writer.** `Timeline::write_canonical` serves both `Display` and
+`semantic_hash`, with `Digest` implementing `std::fmt::Write`. Two serializations that could drift apart is the one bug
+a semantic hash cannot survive, and this makes drift unrepresentable rather than tested for.
+
+**The installed-plan key is two documents, not one.** The prompt says `installed_revision` becomes "the semantic hash
+of the installed plan's source of truth". A playback plan is built from `(score, studio)` — `playback::prepare` takes
+both — so keying on the piece's semantic hash alone would have made a changed instrument inaudible until the next note
+edit, which the old revision counter did catch. The field is therefore `installed: Option<InstalledPlan>` holding the
+music's hash *and* the `StudioSpec`, compared by value. The studio is a small declaration set with no timeline in it;
+digesting it would cost more than comparing it.
+
+**The staleness check moved into `install_current_plan`.** Two callers were asking "is the installed plan stale" two
+different ways: `recompile` compared engraved MEI, `ensure_playable` compared revisions. Now one function answers it
+once and returns early when the answer is no, which is what makes it *correct* for both rather than accidentally right
+for each. `score_changed` keeps its real job — telling the interface to redraw — and no longer decides playback.
+
+**`ValidArtifacts::revision` stays.** It is what `ProjectSnapshot::score_revision` reports: "the score you are looking
+at came from revision N, and you are editing N+3". That is a fact about the *document*, and the prompt's instruction
+not to convert consumers reflexively applies to it exactly.
+
+**"Editing a comment does not reinstall" had to be tested with a trailing comment.** The identity covers provenance, as
+the prompt requires; inserting a comment *above* the notes moves every source span and therefore does change the hash.
+The test appends the comment after the piece, which is the honest form of "the text changed and the music did not".
+This is the caveat the prompt predicted someone would file as a bug, met on the first test written against it.
+
+**The tests live in `session.rs`, not `tests/`.** Installing a plan needs a sound card, so the observable is the key
+`install_current_plan` compares, not the engine — a private `plan_identity()` that both the installer and the tests
+call. Testing it from outside would have meant a new public accessor whose only caller is a test, which the Stop
+section forbids. Three tests: a comment does not change it, a note does, and a studio-only edit does.
+
+**The measurement, and the one intervention it justified.** Full numbers and reasoning are in
+`docs/kernel/09-performance.md`; a fifth benchmark, **P5**, was added because P4 no longer measures what the session
+asks for.
+
+- P1 large **1.41 ms → 1.95 ms (+38%)** and P2 large **+33%** — over the block's 10% gate, declared here. Hashing the
+  piece is what `compile` now does that it did not before, and no design removes that work while still answering the
+  question. Against B1's 120 ms keystroke budget it is 1.6%.
+- P4 large **1.67 ms → 389 µs (−77%)**, allocations **30 934 → 9 457 (−69%)**, from `sort_by_cached_key` in
+  `canonical_occurrences`: `sort_by_key` was rebuilding a `String` key on every comparison. This is the first candidate
+  on the prompt's list and the only one applied.
+- Not applied, and recorded so they are not re-derived: `Canonical::write_canonical` with a shared buffer, and hashing
+  without materializing keys. Both change a public trait to buy time nothing is short of.
 
 ## Check
 

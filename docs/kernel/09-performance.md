@@ -35,7 +35,8 @@ path — exactly what prompts 39–41 rewrite — would regress unmeasured.
 | P1 | `compile` end to end | B1's server-side share: a keystroke costs a compile |
 | P2 | elaboration only, parse excluded | isolates what prompts 39–41 change |
 | P3 | the snapshot projection (the adapter) | the stage prompt 39 creates, and the one most likely to regress |
-| P4 | canonical form of the whole piece | what prompt 43's semantic identity pays on every edit |
+| P4 | canonical form of the whole piece | the order a semantic identity needs before it can hash anything |
+| P5 | the semantic hash of the whole piece | what the session asks for on every recompile (prompt 43) |
 
 ## Baseline
 
@@ -86,6 +87,16 @@ per iteration and are exact rather than sampled.
 | 42 | P3 | large | 223 µs | 7 852 | 853 KB |
 | 42 | P4 | small | 29 µs | 367 | 17.6 KB |
 | 42 | P4 | large | 1.67 ms | 30 934 | 1.51 MB |
+| 43 | P1 | small | 70 µs | 2 118 | 141 KB |
+| 43 | P1 | large | 1.95 ms | 57 230 | 3.95 MB |
+| 43 | P2 | small | 52 µs | 1 870 | 120 KB |
+| 43 | P2 | large | 1.75 ms | 55 529 | 3.75 MB |
+| 43 | P3 | small | 3.3 µs | 127 | 11.1 KB |
+| 43 | P3 | large | 227 µs | 7 852 | 853 KB |
+| 43 | P4 | small | 6.6 µs | 136 | 8.6 KB |
+| 43 | P4 | large | 389 µs | 9 457 | 636 KB |
+| 43 | P5 | small | 11 µs | 125 | 8.5 KB |
+| 43 | P5 | large | 660 µs | 9 520 | 645 KB |
 
 Two things the baseline already says, recorded here rather than acted on (prompt 38 changes nothing it measures):
 
@@ -133,6 +144,31 @@ region membership is computed: `plan.rs` and `performance.rs` each stopped rebui
 pair of linear scans in the other) and now call `ScoreSnapshot::events_in`. That work is in neither P3 nor P4, which
 measure projection and canonicalization; it is in notation planning and performance lowering, which this harness does
 not yet time. Prompt 48's windowed observation is where it will be.
+
+Prompt 43 added a fifth measurement, **P5 — the semantic hash of the whole piece**, because that is what the session
+now asks for on every recompile; P4 stays because the difference between the two is what the digest itself costs on top
+of the canonical order it needs.
+
+Read the row in two halves.
+
+**The identity is not free, and P1 declares it.** P1 large moved 1.41 ms → 1.95 ms (**+38%**, over the block's 10%
+gate) and P2 large 1.32 ms → 1.75 ms (**+33%**), because `compile` now hashes the piece timeline before projecting it.
+The trade is stated rather than hidden: the whole point of the prompt is that the session can ask "did the meaning
+change" instead of "did the counter move", and nothing can answer that without reading the meaning once. In budget
+terms it is not close to a problem — `docs/interface/06-performance.md` B1 allows 120 ms from keystroke to
+diagnostics, and 1.95 ms is 1.6% of it.
+
+**Canonicalization got much cheaper, and that is where the prompt's optimization went.** `canonical_occurrences`
+sorted with `sort_by_key`, which rebuilds the key on *every comparison* — n log n serializations of a `String` per
+occurrence. `sort_by_cached_key` builds each key once. P4 large: 1.67 ms → **389 µs (−77%)**, allocations 30 934 →
+**9 457 (−69%)**. P4 small: 29 µs → 6.6 µs. This is the intervention prompt 38 predicted and prompt 43 was told to
+make only if measured; it was measured, and it is the only one applied. The two further candidates the prompt listed —
+a `write_canonical` on the `Canonical` trait so callers share one buffer, and hashing without materializing keys at all
+— were **not** applied: with P5 at 660 µs inside a 120 ms budget, neither is justified, and both change a public trait
+to buy time nobody is short of. Recorded so the next person does not have to re-derive that they were considered.
+
+Net against prompt 42, on the phases that existed then: P1 +38%, P2 +33%, P3 unchanged, P4 −77%. A keystroke costs
+about half a millisecond more and gets an answer to a question it could not previously ask.
 
 ## The rule
 

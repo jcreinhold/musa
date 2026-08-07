@@ -238,7 +238,10 @@ impl<A: Canonical> Timeline<A> {
     /// are all retained (K6).
     pub fn canonical_occurrences(&self) -> Vec<&Occurrence<A>> {
         let mut ordered: Vec<&Occurrence<A>> = self.occurrences.iter().collect();
-        ordered.sort_by_key(|occurrence| occurrence.canonical_key());
+        // Cached: the payload key is a fresh `String`, and `sort_by_key`
+        // rebuilds it on every comparison. Building it once per occurrence is
+        // the difference between O(n log n) serializations and n.
+        ordered.sort_by_cached_key(|occurrence| occurrence.canonical_key());
         ordered
     }
 
@@ -269,22 +272,51 @@ impl<A: Canonical> Timeline<A> {
             occurrences: self.canonical_occurrences().into_iter().cloned().collect(),
         }
     }
-}
 
-impl<A: Canonical> std::fmt::Display for Timeline<A> {
-    /// The canonical serialization (N5): deterministic bytes for golden
-    /// tests and semantic hashes.
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "timeline {} {{", self.extent)?;
+    /// A stable digest of the canonical form (N6).
+    ///
+    /// Equal canonical forms hash equal, in every run and every process:
+    /// `self.semantic_eq(other)` implies `self.semantic_hash() ==
+    /// other.semantic_hash()`. The converse holds up to the collision
+    /// probability of a 128-bit digest, so an unequal hash *proves* the
+    /// semantics differ — which is the direction a caller deciding whether to
+    /// rebuild something actually needs.
+    ///
+    /// The digest is over exactly the bytes [`Display`](std::fmt::Display)
+    /// writes, produced by the same writer, so the two can never disagree.
+    /// It therefore covers whatever the payload's
+    /// [`canonical_key`](Canonical::canonical_key) covers — for musa's score
+    /// facts, provenance included. A pure re-indentation moves source spans
+    /// and changes the hash: the question this answers is "is this the same
+    /// compiled piece", never "does it sound the same".
+    pub fn semantic_hash(&self) -> crate::SemanticHash {
+        let mut digest = crate::hash::Digest::new();
+        // Writing to a `Digest` cannot fail, so there is no error to report.
+        let _ = self.write_canonical(&mut digest);
+        digest.finish()
+    }
+
+    /// The canonical serialization (N5). One writer serves both
+    /// [`Display`](std::fmt::Display) and [`Self::semantic_hash`].
+    fn write_canonical<W: std::fmt::Write>(&self, out: &mut W) -> std::fmt::Result {
+        writeln!(out, "timeline {} {{", self.extent)?;
         for occurrence in self.canonical_occurrences() {
             writeln!(
-                f,
+                out,
                 "  occurrence {} from {} to {};",
                 occurrence.payload().canonical_key(),
                 occurrence.span().start(),
                 occurrence.span().end()
             )?;
         }
-        writeln!(f, "}}")
+        writeln!(out, "}}")
+    }
+}
+
+impl<A: Canonical> std::fmt::Display for Timeline<A> {
+    /// The canonical serialization (N5): deterministic bytes for golden
+    /// tests and semantic hashes.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.write_canonical(f)
     }
 }

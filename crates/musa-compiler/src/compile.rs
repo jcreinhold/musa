@@ -94,6 +94,7 @@ pub struct Compilation {
     snapshot: Option<ScoreSnapshot>,
     studio: crate::studio::StudioSpec,
     diagnostics: Vec<Diagnostic>,
+    identity: musa_kernel::SemanticHash,
 }
 
 impl Compilation {
@@ -102,12 +103,34 @@ impl Compilation {
             snapshot,
             studio: crate::studio::StudioSpec::default(),
             diagnostics,
+            identity: musa_kernel::SemanticHash::default(),
         }
     }
 
     pub(crate) fn with_studio(mut self, studio: crate::studio::StudioSpec) -> Self {
         self.studio = studio;
         self
+    }
+
+    pub(crate) fn with_identity(mut self, identity: musa_kernel::SemanticHash) -> Self {
+        self.identity = identity;
+        self
+    }
+
+    /// What this compilation *means*, as a digest of the piece's timeline
+    /// (docs/kernel/05 N6).
+    ///
+    /// Two compilations with the same identity are the same music, whatever
+    /// their sources looked like; two with different identities differ in
+    /// something a listener or an engraver would see. Provenance is part of
+    /// the timeline's payloads, so moving a note's text without changing the
+    /// note changes the identity — the question it answers is "is this the
+    /// same compiled piece", not "does it sound the same".
+    ///
+    /// A compilation that produced no score has the identity of the empty
+    /// piece, which is what a caller keying on it wants: nothing to install.
+    pub fn identity(&self) -> musa_kernel::SemanticHash {
+        self.identity
     }
 
     /// The compiled studio. Empty when the piece declares no `studio` block,

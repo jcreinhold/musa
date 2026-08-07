@@ -1,8 +1,8 @@
 ---
-id: 45
+id: 47
 slug: kernel-terms
 status: pending
-depends_on: [44]
+depends_on: [46]
 phase: 3
 ---
 
@@ -10,9 +10,9 @@ phase: 3
 
 ## Task
 
-Implement prompt 44's calculus inside `musa-kernel`: the `Term` type, the evaluator, well-formedness checking, and
-property tests for T1–T5. The public surface added here is small and has exactly two callers, both named: prompt 46's
-text form and prompt 47's elaboration. Nothing in the compiler changes.
+Implement prompt 46's calculus inside `musa-kernel`: the `Term` type, the evaluator, well-formedness checking, and
+property tests for T1–T5. The public surface added here is small and has exactly two callers, both named: prompt 48's
+text form and prompt 49's elaboration. Nothing in the compiler changes.
 
 ## Read
 
@@ -34,7 +34,7 @@ text form and prompt 47's elaboration. Nothing in the compiler changes.
   (the existing `NonPositiveScale` pattern); a literal timeline's occurrences are bounds-checked by `timeline` as they
   are today. These need no check because there is no way to build the bad term.
 - **A real error a caller can act on** — a free variable, or a `restrict` window outside the term's extent. These belong
-  in one `check` that returns the first violation with enough detail to point at it, since prompt 46's parser is the
+  in one `check` that returns the first violation with enough detail to point at it, since prompt 48's parser is the
   caller that must report them against source text.
 - **Not an error at all** — a `restrict` window that merely exceeds the extent is clamped by intersection (prompt 37
   made observation total). Do not invent a diagnostic for it.
@@ -47,8 +47,8 @@ goal; if the design cannot reach it, say which case forced a `Result` and why it
 `let` must not be implemented by substitution-then-evaluate, or the whole point — that `repeat 200 { … }` is one
 evaluated body — is lost. The environment binds a name to an **evaluated value**, evaluated once, and references clone
 or share it. Since a `Timeline<A>` is a `Vec` of occurrences, "share" means the evaluator must decide between `Rc` and
-cloning. Decide on evidence: prompt 47 will produce terms with heavy reuse, so measure both there. For this prompt,
-clone, and leave a comment naming prompt 47 as the measurement that may change it. Do not build an `Rc`-threaded
+cloning. Decide on evidence: prompt 49 will produce terms with heavy reuse, so measure both there. For this prompt,
+clone, and leave a comment naming prompt 49 as the measurement that may change it. Do not build an `Rc`-threaded
 evaluator speculatively.
 
 T2 (`let` is transparent) is what licenses either choice; it is the first property test to write.
@@ -67,7 +67,7 @@ impl<A> Term<A> {
 pub fn evaluate<A: Clone>(term: &Term<A>) -> Timeline<A>;
 ```
 
-`Term` is public because prompts 46 and 47 build and consume it across crate boundaries. Nothing else becomes public:
+`Term` is public because prompts 48 and 49 build and consume it across crate boundaries. Nothing else becomes public:
 the environment, the evaluation stack, and any internal sharing representation stay private. If `Term`'s variants must
 be public for the parser to build them, they are; if a constructor function set is enough, prefer that — a public enum
 is a public layout.
@@ -84,7 +84,7 @@ One property test per theorem, in `crates/musa-kernel/tests/terms.rs`, using gen
 - T5 observation commutes with sharing.
 
 Plus the transported laws: generate two terms, assert L1/L4/L5/L18 hold at the term level through evaluation. If any
-fails, the calculus and the algebra disagree and the *specification* is wrong — repair prompt 44 first, then implement.
+fails, the calculus and the algebra disagree and the *specification* is wrong — repair prompt 46 first, then implement.
 
 ## Target
 
@@ -107,8 +107,8 @@ Commit as `Implement the kernel term calculus`.
 
 ## Stop
 
-- No text syntax, no parser, no printer — prompt 46.
-- No compiler changes — prompt 47.
-- No `Rc`, arena, or interning without prompt 47's measurement.
+- No text syntax, no parser, no printer — prompt 48.
+- No compiler changes — prompt 49.
+- No `Rc`, arena, or interning without prompt 49's measurement.
 - No `map`, no functions, no recursion, no `Pattern`. The absent list in `10-term-calculus.md` is normative.
 - If a theorem will not go through, stop and repair the specification. Do not weaken a test to make it pass.

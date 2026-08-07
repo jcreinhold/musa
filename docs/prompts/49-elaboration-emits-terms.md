@@ -1,8 +1,8 @@
 ---
-id: 47
+id: 49
 slug: elaboration-emits-terms
 status: pending
-depends_on: [46]
+depends_on: [48]
 phase: 3
 ---
 
@@ -109,6 +109,6 @@ Commit as `Elaborate into kernel terms`.
 ## Stop
 
 - Provenance must be byte-identical in the projected snapshot. Not "equivalent", not "reordered". If it is not, stop.
-- No lazy evaluation, no deferred observation — prompt 48, and only if measured.
+- No lazy evaluation, no deferred observation — prompt 50, and only if measured.
 - No caching of evaluated bindings across compilations.
 - No new term form. If sharing wants one, the specification is repaired first and the evidence recorded.

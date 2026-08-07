@@ -46,6 +46,9 @@ pub(crate) struct ValidArtifacts {
     /// Everything the Sound and Mix workspaces display about that studio.
     pub(crate) studio_facts: crate::studio::StudioFacts,
     pub(crate) revision: Revision,
+    /// What this score *means* (docs/kernel/05 N6), so a consumer can ask
+    /// whether an edit changed the music rather than only the text.
+    pub(crate) identity: musa_compiler::SemanticHash,
 }
 
 impl ProjectSnapshot<'_> {

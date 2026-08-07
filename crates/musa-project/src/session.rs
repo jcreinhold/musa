@@ -78,9 +78,14 @@ pub struct ProjectSession {
     loop_region: Option<(u64, u64)>,
     /// Length of the plan currently installed in the engine.
     total_frames: u64,
-    /// The revision whose plan is installed, so an edit that does not change
-    /// the score does not rebuild it.
-    installed_revision: Option<Revision>,
+    /// What the installed playback plan was built from, so an edit that does
+    /// not change the music does not interrupt it.
+    ///
+    /// Two documents, because a plan is built from two: the piece's semantic
+    /// identity (docs/kernel/05 N6) and the studio that voices it. Keying on
+    /// the score alone would let a changed instrument go unheard until the
+    /// next note edit.
+    installed: Option<InstalledPlan>,
     /// Work a previous session left behind, until this one keeps or discards
     /// it (roadmap §15.7).
     recovery: Option<String>,
@@ -89,6 +94,18 @@ pub struct ProjectSession {
     midi: Option<MidiInput>,
     /// Presses waiting to be grouped into chords.
     entry: EntryBuffer,
+}
+
+/// What the plan currently in the engine was built from.
+///
+/// Compared, never read: the session installs a new plan when this differs
+/// and leaves the running one alone when it does not. The studio is held by
+/// value because it is a small declaration set with no timeline in it, and
+/// comparing two of them is cheaper than digesting either.
+#[derive(Debug, PartialEq)]
+struct InstalledPlan {
+    music: musa_compiler::SemanticHash,
+    studio: musa_compiler::StudioSpec,
 }
 
 /// One state of the document.
@@ -364,7 +381,7 @@ impl ProjectSession {
             audio: None,
             loop_region: None,
             total_frames: 0,
-            installed_revision: None,
+            installed: None,
             recovery: None,
             midi: None,
             entry: EntryBuffer::default(),
@@ -503,6 +520,7 @@ impl ProjectSession {
         self.diagnostics = diagnostics;
 
         let revision = self.revision;
+        let identity = compilation.identity();
         // A snapshot alongside error diagnostics is a partial recovery, not a
         // score: taking it would show the user something they did not write.
         let (score, studio) = if compilation.has_errors() {
@@ -526,10 +544,13 @@ impl ProjectSession {
                         facts,
                         studio_facts,
                         revision,
+                        identity,
                     });
-                    if score_changed {
-                        self.reinstall_plan();
-                    }
+                    // `score_changed` is about the *engraving*: it decides
+                    // whether the interface redraws. Whether playback is
+                    // stale is a different question, and `install_current_plan`
+                    // is the one place that answers it.
+                    self.reinstall_plan();
                 }
                 Err(error) => {
                     // Engraving failed on a score that compiled: report it
@@ -564,7 +585,26 @@ impl ProjectSession {
         }
     }
 
+    /// What a plan built right now would be built from: the music and the
+    /// studio. `None` before anything has compiled.
+    fn plan_identity(&self) -> Option<InstalledPlan> {
+        self.valid.as_ref().map(|valid| InstalledPlan {
+            music: valid.identity,
+            studio: valid.studio.clone(),
+        })
+    }
+
+    /// Build and install the plan, unless the one in the engine already says
+    /// the same thing.
+    ///
+    /// The guard is here rather than at each caller because "is the installed
+    /// plan stale" is one question with one answer, and the two callers —
+    /// recompiling and starting playback — were asking it two different ways.
     fn install_current_plan(&mut self) -> Result<(), ProjectError> {
+        let installed = self.plan_identity().ok_or(ProjectError::NoValidScore)?;
+        if self.installed.as_ref() == Some(&installed) {
+            return Ok(());
+        }
         let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
         let plan = playback::prepare(&valid.score, &valid.studio)?;
         self.total_frames = plan.total_frames();
@@ -575,7 +615,7 @@ impl ProjectSession {
         audio
             .install(plan)
             .map_err(|error| ProjectError::Engine(error.to_string()))?;
-        self.installed_revision = Some(valid.revision);
+        self.installed = Some(installed);
         Ok(())
     }
 
@@ -620,11 +660,7 @@ impl ProjectSession {
             };
             self.audio = Some(AudioEngine::open(config).map_err(|error| ProjectError::Engine(error.to_string()))?);
         }
-        let current = self.valid.as_ref().map(|valid| valid.revision);
-        if self.installed_revision != current {
-            self.install_current_plan()?;
-        }
-        Ok(())
+        self.install_current_plan()
     }
 
     fn playback_state(&self) -> PlaybackState {
@@ -677,4 +713,112 @@ fn render_notation(
     musa_render::render_notation(score, target, &musa_render::NotationOptions::default())
         .map(|rendered| rendered.text().to_owned())
         .map_err(|error| ProjectError::Notation(error.to_string()))
+}
+
+#[cfg(test)]
+mod playback_identity_laws {
+    use super::{ProjectCommand, ProjectSession};
+
+    const PIECE: &str = concat!(
+        "piece \"Test\" {\n",
+        "    tempo quarter = 120;\n",
+        "    meter 4/4;\n",
+        "    score {\n",
+        "        part piano {\n",
+        "            voice upper {\n",
+        "                c4 1/4;\n",
+        "                e4 1/4;\n",
+        "            }\n",
+        "        }\n",
+        "    }\n",
+        "}\n",
+    );
+
+    /// The claim playback rests on: an edit that does not change the music
+    /// does not change what the engine was given, so the plan is not
+    /// reinstalled and a note being held is not cut off.
+    ///
+    /// Asserted on the key `install_current_plan` compares rather than on the
+    /// engine, because installing needs a sound card and a test does not have
+    /// one — and because the key is the decision. The old counter failed this
+    /// test by construction: every keystroke minted a revision.
+    #[test]
+    fn an_edit_that_does_not_change_the_music_does_not_change_the_plan() {
+        let mut session = ProjectSession::from_text(PIECE, "test.musa");
+        let before = session.plan_identity();
+        assert!(before.is_some(), "the fixture compiles");
+
+        // Appended after the piece, so that no note's source span moves: the
+        // identity covers provenance on purpose (`Compilation::identity`), so
+        // "the text changed and the music did not" means the notes' own text
+        // did not move either.
+        let commented = format!("{PIECE}\n// a note to self\n");
+        assert!(
+            session.apply(ProjectCommand::SetSource(commented)).is_ok(),
+            "a comment is valid"
+        );
+        assert!(session.snapshot().compiles());
+        assert_eq!(
+            session.plan_identity(),
+            before,
+            "a comment is not music, so the plan it would build is the same plan"
+        );
+    }
+
+    /// And the other direction, without which the first test would pass for a
+    /// hash that never changes at all.
+    #[test]
+    fn an_edit_that_changes_a_note_changes_the_plan() {
+        let mut session = ProjectSession::from_text(PIECE, "test.musa");
+        let before = session.plan_identity();
+
+        assert!(
+            session
+                .apply(ProjectCommand::SetSource(PIECE.replace("e4 1/4;", "g4 1/4;")))
+                .is_ok(),
+            "still valid"
+        );
+        assert!(session.snapshot().compiles());
+        assert_ne!(session.plan_identity(), before, "a different note is different music");
+    }
+
+    /// A studio edit is inaudible in the score and audible in the sound, so it
+    /// must reinstall: the plan is built from two documents, and semantic
+    /// identity covers only one of them.
+    #[test]
+    fn an_edit_that_changes_only_the_studio_still_changes_the_plan() {
+        // The studio block goes inside the piece, before its closing brace —
+        // which is the only `\n}\n` in the fixture.
+        let with_studio = PIECE.replace(
+            "\n}\n",
+            concat!(
+                "\n",
+                "    studio {\n",
+                "        patch lead {\n",
+                "            oscillator(sine) |> gain(-6 dB) |> output;\n",
+                "        }\n",
+                "\n",
+                "        assign piano -> lead;\n",
+                "        route piano -> master;\n",
+                "    }\n",
+                "}\n",
+            ),
+        );
+        let mut session = ProjectSession::from_text(&with_studio, "test.musa");
+        assert!(session.snapshot().compiles(), "fixture with a studio must compile");
+        let before = session.plan_identity();
+
+        assert!(
+            session
+                .apply(ProjectCommand::SetSource(with_studio.replace("-6 dB", "-12 dB")))
+                .is_ok(),
+            "still valid"
+        );
+        assert!(session.snapshot().compiles());
+        assert_ne!(
+            session.plan_identity(),
+            before,
+            "the notes are the same and the sound is not"
+        );
+    }
 }

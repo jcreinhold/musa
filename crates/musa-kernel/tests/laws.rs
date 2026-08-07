@@ -253,6 +253,53 @@ proptest! {
         prop_assert!(sequence(vec![m.clone(), n.clone()]).semantic_eq(&sequence(vec![rebuilt.clone(), n.clone()])));
         prop_assert!(overlay(vec![m, n.clone()]).semantic_eq(&overlay(vec![rebuilt, n])));
     }
+
+    /// N6: the semantic hash agrees with semantic equality. Equal meaning,
+    /// equal digest — the direction a caller relies on when an unequal digest
+    /// makes it rebuild something.
+    #[test]
+    fn semantic_equality_implies_equal_hashes(m in arb_timeline(), n in arb_timeline()) {
+        let shuffled: Vec<Occurrence<u8>> = m.occurrences().iter().rev().cloned().collect();
+        let rebuilt = timeline(m.extent(), shuffled).expect("same spans");
+        prop_assert!(m.semantic_eq(&rebuilt));
+        prop_assert_eq!(m.semantic_hash(), rebuilt.semantic_hash());
+        prop_assert_eq!(
+            sequence(vec![m.clone(), n.clone()]).semantic_hash(),
+            sequence(vec![rebuilt.clone(), n.clone()]).semantic_hash()
+        );
+        prop_assert_eq!(
+            overlay(vec![m.clone(), n.clone()]).semantic_hash(),
+            overlay(vec![rebuilt, n]).semantic_hash()
+        );
+        // And the contrapositive is what makes the digest worth computing:
+        // a timeline that says something else digests differently.
+        let stretched = Beat::new(m.extent().as_ratio() + quarters(1).as_ratio());
+        let longer = timeline(stretched, m.occurrences().to_vec()).expect("wider extent still contains them");
+        prop_assert_ne!(m.semantic_hash(), longer.semantic_hash());
+    }
+}
+
+/// N6: the digest is over exactly the canonical bytes, so it is reproducible
+/// from the serialization alone — by another process, another run, or a tool
+/// that never linked this crate.
+#[test]
+fn the_digest_is_the_canonical_text_and_nothing_else() {
+    let m = timeline(quarters(8), vec![occurrence_at(0, 4, 1), occurrence_at(4, 8, 2)]).expect("valid");
+    assert_eq!(m.semantic_hash().to_string(), fnv1a_128(m.to_string().as_bytes()));
+    // Fixed here so a change of algorithm, offset basis, or byte order fails
+    // loudly rather than silently invalidating every stored identity.
+    assert_eq!(m.semantic_hash().to_string(), "b5e6067cdac4672b72b3eb478b05170b");
+}
+
+/// The published FNV-1a 128 parameters, written out independently of the
+/// kernel's implementation so the test can disagree with it.
+fn fnv1a_128(bytes: &[u8]) -> String {
+    let mut state: u128 = 0x6c62_272e_07bb_0142_62b8_2175_6295_c58d;
+    for byte in bytes {
+        state ^= u128::from(*byte);
+        state = state.wrapping_mul(0x0000_0000_0100_0000_0000_0000_0000_013b);
+    }
+    format!("{state:032x}")
 }
 
 /// X2: sequence does not distribute over overlay (§10). The left side has one

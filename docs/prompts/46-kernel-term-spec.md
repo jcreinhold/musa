@@ -1,8 +1,8 @@
 ---
-id: 44
+id: 46
 slug: kernel-term-spec
 status: pending
-depends_on: [43]
+depends_on: [45]
 phase: 3
 ---
 
@@ -15,8 +15,8 @@ already has: constructors, `let` for sharing, an evaluation relation into `(d, E
 evaluation and normalization the same thing. This turns the kernel from an algebra of values into a calculus with a
 syntax, which is what a second implementation, an interchange file, and sharing-without-expansion all require.
 
-Specification only. Prompt 45 implements it; prompt 46 gives it a text form; prompt 47 makes elaboration produce it.
-Marked candidate until prompt 46 graduates it, exactly as prompts 08–12 handled the kernel itself.
+Specification only. Prompt 45 implements it; prompt 48 gives it a text form; prompt 49 makes elaboration produce it.
+Marked candidate until prompt 48 graduates it, exactly as prompts 08–12 handled the kernel itself.
 
 ## Read
 
@@ -25,7 +25,7 @@ Marked candidate until prompt 46 graduates it, exactly as prompts 08–12 handle
   a fresh design.
 - `docs/kernel/03-denotational-semantics.md` (D0–D7 — the semantic domain the terms denote),
   `05-normalization.md` (N1–N6 — normalization, equality, serialization, hash),
-  `08-open-questions.md` **Q6** (no parser until a second producer/consumer exists — prompt 46 is that consumer, so this
+  `08-open-questions.md` **Q6** (no parser until a second producer/consumer exists — prompt 48 is that consumer, so this
   block is the trigger firing, not an end-run around it) and **Q1/Q5** (patterns and recursion stay out).
 - Course correction §5 (named references for sharing are part of the initial basis), §16 (no monadic `join`), §18 (the
   kernel is finite), §32 (do not prematurely decide), §34 (semantic necessity).
@@ -82,10 +82,10 @@ state the theorems that make this a calculus rather than a serialization format:
   and every constructor is finite. State the well-formedness rules (`02-static-semantics.md` gains a section: scoping,
   `restrict` windows within extent, `scale` positive, no free variables) so "well-formed" is checkable.
 - **T5 — observation commutes with sharing.** `restrict I (let x = t in u) = let x = t in restrict I u`. This is the
-  law that makes deferred observation *sound*, and therefore the one prompt 48 depends on; if it cannot be stated
-  cleanly, prompt 48 has no foundation and should be struck.
+  law that makes deferred observation *sound*, and therefore the one prompt 50 depends on; if it cannot be stated
+  cleanly, prompt 50 has no foundation and should be struck.
 
-Each theorem names the property test that will implement it at prompt 45, in the style `04-algebraic-laws.md` already
+Each theorem names the property test that will implement it at prompt 47, in the style `04-algebraic-laws.md` already
 uses.
 
 ### What is deliberately absent
@@ -99,7 +99,7 @@ retrograde needs no primitive, and a calculus is not a reason to revisit that.
 - `docs/kernel/10-term-calculus.md` (new): scope rule, grammar, evaluation relation, T1–T5, the absent list, status
   banner **candidate**.
 - `docs/kernel/01-grammar.md`: repaired to be the surface syntax *of these terms*, with `let`, `shift`, and the removal
-  of anything it promises that the calculus does not have; the split between "grammar" (prompt 46's text form) and
+  of anything it promises that the calculus does not have; the split between "grammar" (prompt 48's text form) and
   "calculus" (this document) stated in both.
 - `docs/kernel/02-static-semantics.md`: well-formedness for terms.
 - `docs/kernel/08-open-questions.md`: Q6 restated — the trigger has fired, and here is what fires it.
@@ -125,4 +125,4 @@ Commit as `Specify the kernel term calculus`.
 - No new *semantic* operation. Every term denotes something D1–D7 already define; if one does not, it is out of scope
   and the specification says so.
 - Do not settle Q1, Q2, Q4, or Q5 in passing. A calculus makes patterns look tractable; they are still open.
-- Do not specify a binary format, a version negotiation scheme, or a schema. One text form, prompt 46.
+- Do not specify a binary format, a version negotiation scheme, or a schema. One text form, prompt 48.

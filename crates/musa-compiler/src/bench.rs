@@ -76,11 +76,18 @@ impl Timelines {
             .sum()
     }
 
-    /// Canonical form of the whole piece (P4): every voice overlaid into one
-    /// timeline and normalized — the sort and the `Canonical` keys that
-    /// prompt 43's semantic identity will pay on every edit.
-    pub fn canonical(&self) -> usize {
-        let piece: Timeline<_> = overlay(
+    /// The semantic hash of the whole piece (P5): the digest prompt 43 makes
+    /// the session ask for on every recompile. It canonicalizes exactly as
+    /// P4 does and then absorbs the bytes, so P5 − P4 is the price of the
+    /// identity itself.
+    pub fn hash(&self) -> u128 {
+        self.piece().semantic_hash().to_u128()
+    }
+
+    /// Every voice overlaid into one timeline — what P4 and P5 both start
+    /// from.
+    fn piece(&self) -> Timeline<crate::elaborate::ScoreFact> {
+        overlay(
             self.voices
                 .iter()
                 .map(|timeline| {
@@ -97,7 +104,13 @@ impl Timelines {
                     })
                 })
                 .collect(),
-        );
-        piece.normalize().occurrences().len()
+        )
+    }
+
+    /// Canonical form of the whole piece (P4): every voice overlaid into one
+    /// timeline and normalized — the sort and the `Canonical` keys that
+    /// prompt 43's semantic identity will pay on every edit.
+    pub fn canonical(&self) -> usize {
+        self.piece().normalize().occurrences().len()
     }
 }

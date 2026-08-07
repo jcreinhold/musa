@@ -65,3 +65,6 @@ pub use crate::studio::{
     Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,
 };
 pub use crate::time::{MusicalDuration, MusicalTime};
+/// The kernel's semantic digest, re-exported so a consumer can hold a
+/// compilation's identity without depending on the kernel directly.
+pub use musa_kernel::SemanticHash;

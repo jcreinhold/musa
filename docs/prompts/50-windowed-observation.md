@@ -1,8 +1,8 @@
 ---
-id: 48
+id: 50
 slug: windowed-observation
 status: pending
-depends_on: [47]
+depends_on: [49]
 phase: 3
 ---
 
@@ -11,8 +11,8 @@ phase: 3
 ## Task
 
 Decide, on measurement, whether to evaluate terms lazily through a window — `restrict I t` answered without
-materializing the whole of `t` — and implement it if the measurement says so. The lever exists because prompt 44 proved
-T5 (observation commutes with sharing) and prompt 47 made elaboration produce terms with real sharing in them.
+materializing the whole of `t` — and implement it if the measurement says so. The lever exists because prompt 46 proved
+T5 (observation commutes with sharing) and prompt 49 made elaboration produce terms with real sharing in them.
 
 **This prompt has two legitimate outcomes.** One is a lazy evaluator and a windowed projection. The other is a recorded
 measurement showing the eager path is inside budget, the prompt closed as not needed, and the block finished. Do not
@@ -25,7 +25,7 @@ assume the first.
   is measured to fail on a real piece, and it becomes its own prompt with the measurement as its justification". This is
   that prompt; the measurement is its entry condition, not its conclusion.
 - `docs/kernel/09-performance.md` — every row from prompts 38–47.
-- `docs/kernel/10-term-calculus.md` T5, and prompt 45's `evaluate`.
+- `docs/kernel/10-term-calculus.md` T5, and prompt 47's `evaluate`.
 - `apps/musa-desktop/ui/src/lib/score/Score.svelte` — the resident-page window the UI already maintains, and
   `docs/interface/02-engraving.md` §7 (page virtualization). If a window is going to be pushed down, this is where its
   bounds come from.

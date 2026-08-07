@@ -9,6 +9,7 @@
 //! | P2 | elaboration only, parse excluded | what prompts 39–41 change |
 //! | P3 | the snapshot projection | the stage prompt 39 creates, most likely to regress |
 //! | P4 | canonical form of the whole piece | what prompt 43 pays on every edit |
+//! | P5 | the semantic hash of the whole piece | what prompt 43 actually asks for |
 //!
 //! P2–P4 report allocation counts as well as time, because the migration's
 //! risk is allocation and hashing rather than arithmetic: replacing one
@@ -73,6 +74,15 @@ fn p3_project(bencher: divan::Bencher<'_, '_>, workload: &str) {
 fn p4_canonical(bencher: divan::Bencher<'_, '_>, workload: &str) {
     let timelines = bench::timelines(&bench::parse(&source(workload)), &CompileOptions::default());
     bencher.bench_local(|| divan::black_box(&timelines).canonical());
+}
+
+/// P5 — the semantic hash of the whole piece: P4's canonical order plus the
+/// digest of its bytes. Prompt 43's session asks for this on every recompile,
+/// so the difference between this row and P4's is what identity costs.
+#[divan::bench(args = WORKLOADS)]
+fn p5_hash(bencher: divan::Bencher<'_, '_>, workload: &str) {
+    let timelines = bench::timelines(&bench::parse(&source(workload)), &CompileOptions::default());
+    bencher.bench_local(|| divan::black_box(&timelines).hash());
 }
 
 fn main() {
