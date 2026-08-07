@@ -86,12 +86,14 @@ fn both_semantic_paths_resolve_the_studio_identically() {
         &document,
         &CompileOptions {
             elaboration: Elaboration::Kernel,
+            ..CompileOptions::default()
         },
     );
     let direct = compile(
         &document,
         &CompileOptions {
             elaboration: Elaboration::Direct,
+            ..CompileOptions::default()
         },
     );
     assert_eq!(format!("{:#?}", kernel.studio()), format!("{:#?}", direct.studio()));

@@ -11,6 +11,7 @@ use crate::error::ProjectError;
 use crate::export::{ExportArtifact, ExportRequest};
 use crate::midi::{EntryBuffer, MidiEntry};
 use crate::playback;
+use crate::project::ProjectMeta;
 use crate::snapshot::{PlaybackState, ProjectSnapshot, ValidArtifacts};
 use crate::template::Template;
 
@@ -44,6 +45,15 @@ pub struct ProjectSession {
     revision: Revision,
     /// The next revision number to mint.
     next_revision: u64,
+    /// The project this piece is filed under, if a `musa.toml` is above it.
+    project: Option<crate::project::ProjectMeta>,
+    /// The files the current source imports, transitively, and their text.
+    /// Refreshed on every recompile: a library edited on disk is picked up
+    /// the next time the piece compiles, which is what "recompile-on-save of
+    /// the library file" means with one document open.
+    imports: musa_compiler::ImportSources,
+    /// The paths behind those imports, for callers that watch them.
+    import_paths: Vec<PathBuf>,
     /// Diagnostics for the *current* source.
     diagnostics: Vec<Diagnostic>,
     /// Whether the current source compiles.
@@ -100,6 +110,7 @@ impl ProjectSession {
         let source = std::fs::read_to_string(path).map_err(|error| ProjectError::io(path.display(), error))?;
         let mut session = Self::from_source(source.clone(), path.to_string_lossy().into_owned());
         session.path = Some(path.to_path_buf());
+        session.project = crate::project::find(path);
         session.recovery = crate::autosave::take(path, &source);
         session.on_disk = Some(source);
         session.recompile();
@@ -334,6 +345,9 @@ impl ProjectSession {
         let revision = Revision(0);
         Self {
             path: None,
+            project: None,
+            imports: musa_compiler::ImportSources::default(),
+            import_paths: Vec::new(),
             name,
             history: vec![HistoryEntry {
                 source: source.clone(),
@@ -396,10 +410,29 @@ impl ProjectSession {
         Ok(self.set_source(candidate))
     }
 
+    /// The compile options this session compiles under: the import closure
+    /// it last read, and nothing else.
+    fn options(&self) -> CompileOptions {
+        CompileOptions {
+            imports: self.imports.clone(),
+            ..CompileOptions::default()
+        }
+    }
+
+    /// The project this piece belongs to, if it was opened from inside one.
+    pub fn project(&self) -> Option<&ProjectMeta> {
+        self.project.as_ref()
+    }
+
+    /// The files this piece imports, transitively, in path order.
+    pub fn imports(&self) -> &[PathBuf] {
+        &self.import_paths
+    }
+
     /// The first error a candidate source would produce, if any.
     fn first_error(&self, candidate: &str) -> Option<String> {
         let document = SourceDocument::new(candidate.to_owned(), self.name.clone());
-        let compilation = musa_compiler::compile(&document, &CompileOptions::default());
+        let compilation = musa_compiler::compile(&document, &self.options());
         compilation
             .diagnostics()
             .iter()
@@ -457,8 +490,11 @@ impl ProjectSession {
     /// stays on screen and playback keeps running from the last revision
     /// that made sense (roadmap §14.7).
     fn recompile(&mut self) -> ProjectUpdate {
+        let (imports, import_paths) = crate::imports::closure(&self.name, &self.source);
+        self.imports = imports;
+        self.import_paths = import_paths;
         let document = SourceDocument::new(self.source.clone(), self.name.clone());
-        let compilation = musa_compiler::compile(&document, &CompileOptions::default());
+        let compilation = musa_compiler::compile(&document, &self.options());
         let diagnostics: Vec<Diagnostic> = compilation
             .diagnostics()
             .iter()

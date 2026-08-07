@@ -97,6 +97,11 @@ pub(crate) enum GroupKind {
     Phrase {
         name: String,
     },
+    /// A hairpin, and the mark it arrives at.
+    Hairpin {
+        grows: bool,
+        target: crate::score::DynamicMark,
+    },
     /// `num` written values in the time of `den`.
     Tuplet {
         num: u32,
@@ -219,6 +224,12 @@ pub(crate) fn lower(source: &SourceDocument) -> Compilation {
 
     let mut snapshot = ScoreSnapshot::default();
     lower_header(&mut lowering, &piece, &mut snapshot);
+    for import in piece.imports() {
+        reject(&mut lowering, "use", import.syntax());
+    }
+    for tempo in piece.tempos().iter().filter(|tempo| tempo.position().is_some()) {
+        reject(&mut lowering, "tempo change", tempo.syntax());
+    }
     if let Some(score) = piece.score() {
         lower_score(&mut lowering, &score, &mut snapshot);
     }
@@ -230,7 +241,7 @@ pub(crate) fn lower(source: &SourceDocument) -> Compilation {
     {
         return Compilation::new(None, lowering.diagnostics);
     }
-    let studio = lower_studio(&mut lowering, &piece, &snapshot);
+    let studio = lower_studio(&mut lowering, &piece, &snapshot, &[]);
     if lowering
         .diagnostics
         .iter()
@@ -250,12 +261,14 @@ pub(crate) fn lower_studio(
     lowering: &mut Lowering,
     piece: &PieceDecl,
     snapshot: &ScoreSnapshot,
+    imported: &[musa_language::ast::StudioDecl],
 ) -> crate::studio::StudioSpec {
-    let Some(studio) = piece.studio() else {
+    let studio = piece.studio();
+    if studio.is_none() && imported.is_empty() {
         return crate::studio::StudioSpec::default();
-    };
+    }
     let parts: Vec<String> = snapshot.parts.iter().map(|(_, part)| part.name.clone()).collect();
-    crate::studio::resolve(&studio, &parts, &mut lowering.diagnostics)
+    crate::studio::resolve(studio.as_ref(), imported, &parts, &mut lowering.diagnostics)
 }
 
 /// Tempo, meter, key — plus registration of motif declarations (expansion
@@ -265,6 +278,14 @@ pub(crate) fn lower_header(lowering: &mut Lowering, piece: &PieceDecl, snapshot:
     if let Some(tempo) = piece.tempo() {
         lowering.declare(DeclInfo::Tempo);
         snapshot.tempo_map = parse_tempo(lowering, &tempo);
+    }
+    // A second tempo without a position would leave two answers to "how fast
+    // does this piece start" — the one thing a header may not do.
+    for extra in piece.tempos().iter().filter(|tempo| tempo.position().is_none()).skip(1) {
+        lowering.error(
+            "the piece already has a starting tempo; write `at <measure>:<beat>` to change it",
+            span_of(extra.syntax()),
+        );
     }
     if let Some(meter) = piece.meter() {
         lowering.declare(DeclInfo::Meter);
@@ -282,12 +303,28 @@ pub(crate) fn lower_header(lowering: &mut Lowering, piece: &PieceDecl, snapshot:
         }
     }
     if let Some(performance) = piece.performance() {
-        snapshot.profiles = parse_profiles(lowering, &performance);
+        let profiles = parse_profiles(lowering, &performance);
+        merge_profiles(lowering, snapshot, &profiles, span_of(performance.syntax()), None);
     }
-    for motif in piece.motifs() {
+    register_motifs(lowering, snapshot, &piece.motifs(), None);
+}
+
+/// Register a set of motif declarations, refusing to shadow.
+///
+/// `from` names the library a declaration was imported from; `None` is the
+/// piece's own. Two motifs with one name is always an error — an imported
+/// name that quietly loses to a local one would make a piece sound different
+/// depending on what it imported.
+pub(crate) fn register_motifs(
+    lowering: &mut Lowering,
+    snapshot: &mut ScoreSnapshot,
+    motifs: &[musa_language::ast::MotifDecl],
+    from: Option<&str>,
+) {
+    for motif in motifs {
         let name = motif.name().unwrap_or_default();
         if lowering.motifs.contains_key(&name) {
-            lowering.error(format!("duplicate motif `{name}`"), span_of(motif.syntax()));
+            lowering.error(duplicate(&format!("motif `{name}`"), from), span_of(motif.syntax()));
             continue;
         }
         let key = lowering.declare(DeclInfo::Motif);
@@ -304,9 +341,38 @@ pub(crate) fn lower_header(lowering: &mut Lowering, piece: &PieceDecl, snapshot:
     }
 }
 
+/// Merge a `performance` block's profiles into the snapshot, refusing to
+/// shadow for the same reason motifs do.
+pub(crate) fn merge_profiles(
+    lowering: &mut Lowering,
+    snapshot: &mut ScoreSnapshot,
+    profiles: &ProfileSet,
+    span: SourceSpan,
+    from: Option<&str>,
+) {
+    let names: Vec<String> = profiles.names().map(str::to_owned).collect();
+    for name in names {
+        if snapshot.profiles.declares(&name) {
+            lowering.error(duplicate(&format!("profile `{name}`"), from), span);
+            continue;
+        }
+        if let Some(profile) = profiles.get(&name) {
+            snapshot.profiles.insert(profile.clone());
+        }
+    }
+}
+
+/// "duplicate X" — and, when it came from a library, which one.
+fn duplicate(what: &str, from: Option<&str>) -> String {
+    from.map_or_else(
+        || format!("duplicate {what}"),
+        |path| format!("`{path}` declares {what}, which this piece already has"),
+    )
+}
+
 /// Read the `performance` block into a [`ProfileSet`]. Declarations only —
 /// nothing here is applied until `lower_performance` (roadmap §6.4).
-fn parse_profiles(lowering: &mut Lowering, performance: &PerformanceDecl) -> ProfileSet {
+pub(crate) fn parse_profiles(lowering: &mut Lowering, performance: &PerformanceDecl) -> ProfileSet {
     let mut set = ProfileSet::default();
     for declaration in performance.profiles() {
         let name = declaration.name().unwrap_or_default();
@@ -455,7 +521,8 @@ pub(crate) fn part_metadata(
     (clef, profile)
 }
 
-fn parse_tempo(lowering: &mut Lowering, tempo: &TempoStmt) -> TempoMap {
+/// The beat unit and bpm a `tempo` statement writes.
+pub(crate) fn tempo_reading(lowering: &mut Lowering, tempo: &TempoStmt) -> (Ratio<i64>, u32) {
     let syntax = tempo.syntax();
     let beat = token_text(syntax, SyntaxKind::Rational)
         .and_then(|text| parse_ratio(&text))
@@ -467,7 +534,16 @@ fn parse_tempo(lowering: &mut Lowering, tempo: &TempoStmt) -> TempoMap {
             lowering.error("tempo needs a bpm value", span_of(syntax));
             120
         });
-    TempoMap { beat, bpm }
+    (beat, bpm)
+}
+
+fn parse_tempo(lowering: &mut Lowering, tempo: &TempoStmt) -> TempoMap {
+    let (beat, bpm) = tempo_reading(lowering, tempo);
+    TempoMap {
+        beat,
+        bpm,
+        changes: Vec::new(),
+    }
 }
 
 fn parse_meter(meter: &musa_language::ast::MeterStmt) -> Option<MeterMap> {
@@ -688,6 +764,7 @@ fn lower_items(
             VoiceItem::Retrograde(item) => reject(lowering, "retrograde", item.syntax()),
             VoiceItem::Invert(item) => reject(lowering, "invert", item.syntax()),
             VoiceItem::Phrase(item) => reject(lowering, "phrase", item.syntax()),
+            VoiceItem::Hairpin(item) => reject(lowering, "crescendo", item.syntax()),
         }
     }
 }

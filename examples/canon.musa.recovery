@@ -1,0 +1,30 @@
+piece "canon" {
+    tempo 1/4 = 96;
+    meter 3/4;
+    key g major;
+
+    motif theme() {
+        g4 1/4;
+        a4 1/4;
+        b4 1/4;
+        g4 1/4;
+        c5 1/2;
+        b4 1/2;
+        a4 1/2;
+        g4 1/2;
+    }
+
+    score {
+        part strings {
+            voice dux {
+                use theme();
+            }
+            voice comes {
+                rest 3/4;
+                transpose up P5 {
+                    use theme();
+                }
+            }
+        }
+    }
+}

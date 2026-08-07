@@ -1,0 +1,6 @@
+# A directory project (roadmap 16): a title the pieces share, and nothing a
+# piece needs in order to compile. `pieces/01-opening.musa` opens on its own,
+# with or without this file beside it.
+[project]
+name = "Album"
+composer = "musa"

@@ -10,6 +10,7 @@ partFlute = {
   \time 4/4
   \key c \major
   {
+    \tempo 4 = 96
     \tuplet 3/2 {
       c''8\mf % event:0
       d''8 % event:1

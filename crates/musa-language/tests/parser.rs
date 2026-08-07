@@ -263,7 +263,8 @@ fn typed_views_read_the_new_statements() {
             | VoiceItem::Stretch(_)
             | VoiceItem::Retrograde(_)
             | VoiceItem::Invert(_)
-            | VoiceItem::Phrase(_) => panic!("unexpected item"),
+            | VoiceItem::Phrase(_)
+            | VoiceItem::Hairpin(_) => panic!("unexpected item"),
         }
     }
     assert_eq!(mark.as_deref(), Some("mf"));
@@ -312,7 +313,8 @@ fn the_transformations_and_their_bodies_are_typed_views() {
             | VoiceItem::Slur(_)
             | VoiceItem::Dynamic(_)
             | VoiceItem::Tuplet(_)
-            | VoiceItem::Phrase(_) => panic!("unexpected item"),
+            | VoiceItem::Phrase(_)
+            | VoiceItem::Hairpin(_) => panic!("unexpected item"),
         }
     }
     assert_eq!(factor.as_deref(), Some("3/2"));
@@ -349,7 +351,8 @@ fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
             | VoiceItem::Stretch(_)
             | VoiceItem::Retrograde(_)
             | VoiceItem::Invert(_)
-            | VoiceItem::Phrase(_) => None,
+            | VoiceItem::Phrase(_)
+            | VoiceItem::Hairpin(_) => None,
         })
         .collect();
     assert_eq!(calls.len(), 2);
@@ -373,4 +376,134 @@ fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
             (Some("3".to_owned()), Some("ef5".to_owned())),
         ]
     );
+}
+
+// --- Phase 3: imports and curves (docs/prompts/36) ------------------------
+
+const OPENING: &str = include_str!("../../../examples/album/pieces/01-opening.musa");
+const LIBRARY: &str = include_str!("../../../examples/album/library/motifs.musa");
+
+/// The album fixture parses cleanly and round-trips, both halves of it: a
+/// piece that imports, and the library it imports.
+#[test]
+fn the_album_fixture_parses_cleanly() {
+    for source in [OPENING, LIBRARY] {
+        let doc = parse(source);
+        assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
+        assert_round_trip(source);
+    }
+}
+
+/// A library is its own root. `PieceDecl` finds nothing in one, which is what
+/// makes "an imported file has no score" a fact about the grammar rather than
+/// a rule the compiler has to enforce.
+#[test]
+fn a_library_is_a_different_root_than_a_piece() {
+    let doc = parse(LIBRARY);
+    assert!(
+        PieceDecl::from_root(&doc.syntax()).is_none(),
+        "a library is not a piece"
+    );
+    let library = musa_language::ast::LibraryDecl::from_root(&doc.syntax()).expect("a library");
+    let names: Vec<Option<String>> = library
+        .motifs()
+        .iter()
+        .map(musa_language::ast::MotifDecl::name)
+        .collect();
+    assert_eq!(names, [Some("rise".to_owned()), Some("fall".to_owned())]);
+}
+
+/// The typed view separates the tempo a piece starts in from the tempos it
+/// changes to: `tempo()` is the one without a position, and it stays that way
+/// however many changes follow it.
+#[test]
+fn a_positioned_tempo_is_a_change_and_not_the_starting_tempo() {
+    let doc = parse(OPENING);
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("a piece");
+    assert_eq!(piece.tempos().len(), 2);
+    let start = piece.tempo().expect("a starting tempo");
+    assert!(start.position().is_none(), "the starting tempo has no position");
+    let positions: Vec<Option<(Option<String>, Option<String>)>> = piece
+        .tempos()
+        .iter()
+        .map(|tempo| tempo.position().map(|at| (at.measure(), at.beat())))
+        .collect();
+    assert_eq!(positions, [None, Some((Some("3".to_owned()), Some("1".to_owned())))]);
+}
+
+/// A `use` at the top of a piece is a path, not a motif call: the same word
+/// means two things and the parser tells them apart by what follows it.
+#[test]
+fn an_import_is_a_path_and_a_motif_use_is_a_call() {
+    let doc = parse(OPENING);
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("a piece");
+    let paths: Vec<Option<String>> = piece
+        .imports()
+        .iter()
+        .map(musa_language::ast::ImportStmt::path)
+        .collect();
+    assert_eq!(
+        paths,
+        [
+            Some("../library/motifs.musa".to_owned()),
+            Some("../library/patches.musa".to_owned())
+        ]
+    );
+    // And inside the voice, `use rise();` is still a call.
+    let items = piece
+        .score()
+        .and_then(|score| score.parts().into_iter().next())
+        .and_then(|part| part.voices().into_iter().next())
+        .map(|voice| voice.items())
+        .unwrap_or_default();
+    assert!(items.iter().any(|item| matches!(item, VoiceItem::Use(_))));
+}
+
+/// A hairpin is a block with a direction and a mark it arrives at, and the
+/// notes it covers are its items.
+#[test]
+fn a_hairpin_names_its_direction_and_its_mark() {
+    let doc = parse(
+        "piece \"P\" { score { part p { voice v {\n    crescendo to f { c5 1/4; d5 1/4; }\n    diminuendo to pp { e5 1/4; }\n} } } }",
+    );
+    assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("a piece");
+    let items = piece
+        .score()
+        .and_then(|score| score.parts().into_iter().next())
+        .and_then(|part| part.voices().into_iter().next())
+        .map(|voice| voice.items())
+        .unwrap_or_default();
+    let hairpins: Vec<(bool, Option<String>, usize)> = items
+        .iter()
+        .filter_map(|item| match item {
+            VoiceItem::Hairpin(hairpin) => Some((hairpin.grows(), hairpin.target(), hairpin.items().len())),
+            VoiceItem::Note(_)
+            | VoiceItem::Rest(_)
+            | VoiceItem::Chord(_)
+            | VoiceItem::Use(_)
+            | VoiceItem::Transpose(_)
+            | VoiceItem::Repeat(_)
+            | VoiceItem::Slur(_)
+            | VoiceItem::Dynamic(_)
+            | VoiceItem::Tuplet(_)
+            | VoiceItem::Stretch(_)
+            | VoiceItem::Retrograde(_)
+            | VoiceItem::Invert(_)
+            | VoiceItem::Phrase(_) => None,
+        })
+        .collect();
+    assert_eq!(
+        hairpins,
+        [(true, Some("f".to_owned()), 2), (false, Some("pp".to_owned()), 1)]
+    );
+}
+
+/// The one-word constructs stay one word through the formatter: a coordinate
+/// is `3:1` and a chord symbol is `fmaj7`, not `3: 1` and `fmaj 7`.
+#[test]
+fn a_coordinate_and_a_chord_symbol_format_as_one_word() {
+    let source = "piece \"P\" {\n    score {\n        section \"A\" at 3:1;\n        harmony {\n            at 1:1 fmaj7;\n        }\n    }\n}\n";
+    let formatted = musa_language::format(&parse(source));
+    assert_eq!(formatted.text(), source);
 }

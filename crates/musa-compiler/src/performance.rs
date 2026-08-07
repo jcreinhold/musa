@@ -68,60 +68,94 @@ impl Default for PerformanceOptions {
 
 /// A piecewise-monotone tempo map (course correction §22).
 ///
-/// Tempo points give beats-per-minute from a position onward. One point
-/// today (the grammar has a single tempo); prompt 31's curves extend the
-/// data, not the code.
+/// One segment per written tempo. Each segment carries the exact frame at
+/// which it begins, accumulated as a rational: the rounding to whole frames
+/// happens once, at the position being asked about, so a tempo change never
+/// accumulates the drift that rounding each segment's start would.
 #[derive(Clone, Debug, PartialEq)]
 pub struct IntegratedTempoMap {
     points: Vec<TempoPoint>,
-}
-
-/// One tempo segment: from `position` (whole notes), `bpm` beats of
-/// `beat`-fractions per minute, and the cumulative frame offset at
-/// `position` (precomputed against the target sample rate).
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct TempoPoint {
-    position: MusicalTime,
-    bpm: u32,
-    beat: num_rational::Ratio<i64>,
-    frame_offset: u64,
     sample_rate: u32,
 }
 
-impl TempoPoint {
-    /// Seconds per whole note inside this segment.
-    fn seconds_per_whole(&self) -> f64 {
-        // `beat` is the beat unit as a fraction of a whole note; a whole
-        // note holds `1/beat` beats.
-        let beats_per_whole = 1.0 / (*self.beat.numer() as f64 / *self.beat.denom() as f64);
-        60.0 * beats_per_whole / f64::from(self.bpm)
-    }
+/// One tempo segment: from `position` (whole notes), at `frames_per_whole`
+/// frames per whole note, starting `frame_offset` frames into the piece.
+/// Both rates are exact — the map's whole job is to stay exact until the
+/// answer is a frame number.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct TempoPoint {
+    position: MusicalTime,
+    frames_per_whole: Ratio<i64>,
+    seconds_per_whole: Ratio<i64>,
+    frame_offset: Ratio<i64>,
+}
+
+/// Seconds per whole note at `bpm` beats of `beat` whole notes each.
+///
+/// A whole note holds `1/beat` beats, so it lasts `60 / (beat * bpm)`
+/// seconds. Both inputs come from the grammar, which cannot write a zero
+/// beat unit; a zero bpm is guarded so the map stays total.
+fn seconds_per_whole(beat: Ratio<i64>, bpm: u32) -> Ratio<i64> {
+    let bpm = i64::from(bpm.max(1));
+    let beats_per_whole = beat.recip();
+    Ratio::new(60, bpm) * beats_per_whole
 }
 
 impl IntegratedTempoMap {
-    /// Build the map from a snapshot's tempo declaration.
+    /// Build the map from a snapshot's tempo declarations.
     pub fn new(snapshot: &ScoreSnapshot, options: &PerformanceOptions) -> Self {
         let tempo = &snapshot.tempo_map;
+        let rate = Ratio::from_integer(i64::from(options.sample_rate.max(1)));
+        let segment = |position: MusicalTime, beat: Ratio<i64>, bpm: u32, frame_offset: Ratio<i64>| {
+            let seconds = seconds_per_whole(beat, bpm);
+            TempoPoint {
+                position,
+                frames_per_whole: seconds * rate,
+                seconds_per_whole: seconds,
+                frame_offset,
+            }
+        };
+        let mut points = vec![segment(MusicalTime::ZERO, tempo.beat, tempo.bpm, Ratio::ZERO)];
+        for change in &tempo.changes {
+            // Where the previous segment has carried the music to by the time
+            // this one starts. Changes are in playing order (the elaborator
+            // sorts them), so `last` is always the segment being left.
+            let offset = points.last().map_or(Ratio::ZERO, |previous| {
+                previous.frame_offset
+                    + (change.at.as_ratio() - previous.position.as_ratio()) * previous.frames_per_whole
+            });
+            points.push(segment(change.at, change.beat, change.bpm, offset));
+        }
         Self {
-            points: vec![TempoPoint {
-                position: MusicalTime::ZERO,
-                bpm: tempo.bpm,
-                beat: tempo.beat,
-                frame_offset: 0,
-                sample_rate: options.sample_rate,
-            }],
+            points,
+            sample_rate: options.sample_rate,
         }
     }
 
     /// Seconds per quarter note at the start of the piece — what a metrical
     /// MIDI file's tempo meta-event states.
     pub fn seconds_per_quarter(&self) -> f64 {
-        self.points.first().map_or(0.5, |point| point.seconds_per_whole() / 4.0)
+        self.points
+            .first()
+            .map_or(0.5, |point| ratio_to_f64(point.seconds_per_whole) / 4.0)
     }
 
     /// The sample rate the frames were scheduled against.
     pub fn sample_rate(&self) -> u32 {
-        self.points.first().map_or(48_000, |point| point.sample_rate)
+        self.sample_rate
+    }
+
+    /// The tempo segments, in playing order: what an exporter needs to write
+    /// a tempo change into a file that counts in beats rather than frames.
+    pub fn segments(&self) -> Vec<TempoSegment> {
+        self.points
+            .iter()
+            .map(|point| TempoSegment {
+                position: point.position,
+                frame: ratio_to_f64(point.frame_offset).round().max(0.0) as u64,
+                seconds_per_quarter: ratio_to_f64(point.seconds_per_whole) / 4.0,
+            })
+            .collect()
     }
 
     /// The absolute frame of a symbolic position (monotone; §22).
@@ -135,11 +169,27 @@ impl IntegratedTempoMap {
         else {
             return 0;
         };
-        let whole_notes = position.as_ratio() - point.position.as_ratio();
-        let whole_notes = *whole_notes.numer() as f64 / *whole_notes.denom() as f64;
-        let frames = whole_notes * point.seconds_per_whole() * f64::from(point.sample_rate);
-        point.frame_offset.saturating_add(frames.round().max(0.0) as u64)
+        let frames = point.frame_offset + (position.as_ratio() - point.position.as_ratio()) * point.frames_per_whole;
+        // One rounding, at the end: the segment offsets above are exact.
+        ratio_to_f64(frames).round().max(0.0) as u64
     }
+}
+
+/// One tempo segment as an exporter sees it: where it starts, in both
+/// symbolic and frame time, and how fast it goes.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TempoSegment {
+    /// The symbolic position the segment starts at.
+    pub position: MusicalTime,
+    /// The absolute frame the segment starts at.
+    pub frame: u64,
+    /// Seconds per quarter note inside the segment.
+    pub seconds_per_quarter: f64,
+}
+
+/// The one place a musical rational becomes a float.
+fn ratio_to_f64(value: Ratio<i64>) -> f64 {
+    *value.numer() as f64 / *value.denom() as f64
 }
 
 /// Identity of one sounding note instance, matching note-on to note-off.
@@ -295,6 +345,10 @@ pub fn lower_performance(
             // The prevailing dynamic is per voice: a marking applies from its
             // event onward in the voice that wrote it, not across the part.
             let mut dynamic = None;
+            let curves = hairpin_curves(score, voice);
+            // The loudness a hairpin grows from: whatever was in force at its
+            // first note, which is what a hairpin means on the page.
+            let mut curve_from: Option<Ratio<i64>> = None;
             for event in &voice.events {
                 if let Some(mark) = marks.dynamics.get(&event.id) {
                     dynamic = Some(*mark);
@@ -302,10 +356,34 @@ pub fn lower_performance(
                 let realization = profile.map_or(ArticulationRealization::NEUTRAL, |profile| {
                     profile.realize(marks.articulations_of(event.id))
                 });
-                let amplitude = dynamic
+                let level = dynamic
                     .zip(profile)
                     .and_then(|(mark, profile)| profile.amplitude(mark))
                     .unwrap_or(Ratio::ONE);
+                let amplitude = match curves.get(&event.id) {
+                    None => {
+                        curve_from = None;
+                        level
+                    }
+                    Some(curve) => {
+                        let from = *curve_from.get_or_insert(level);
+                        let to = profile
+                            .and_then(|profile| profile.amplitude(curve.target))
+                            .unwrap_or(Ratio::ONE);
+                        let reached = if curve.last == 0 {
+                            to
+                        } else {
+                            from + (to - from) * Ratio::new(i64::from(curve.step), i64::from(curve.last))
+                        };
+                        // A hairpin arrives at its mark, and leaves it in
+                        // force for what follows.
+                        if curve.step == curve.last {
+                            dynamic = Some(curve.target);
+                            curve_from = None;
+                        }
+                        reached
+                    }
+                };
                 let interpreted = Interpreted {
                     gate: realization.gate,
                     attack: ratio_to_f32(realization.attack),
@@ -360,6 +438,48 @@ impl Interpretation {
     fn articulations_of(&self, event: EventId) -> &[crate::score::ArticulationMark] {
         self.articulations.get(&event).map_or(&[], Vec::as_slice)
     }
+}
+
+/// Where one event sits inside a hairpin: `step` of `last` steps, arriving
+/// at `target`.
+#[derive(Clone, Copy, Debug)]
+struct Curve {
+    target: crate::score::DynamicMark,
+    step: u32,
+    last: u32,
+}
+
+/// Index a voice's events by the hairpin they fall under.
+///
+/// A hairpin is written around notes, so it interpolates over notes rather
+/// than over time: each event under it takes an equal share of the distance,
+/// and the last one arrives exactly at the written mark. Interpolating over
+/// frames instead would make the arrival depend on the rhythm, which is not
+/// what the sign says.
+fn hairpin_curves(score: &ScoreSnapshot, voice: &crate::score::Voice) -> std::collections::HashMap<EventId, Curve> {
+    let mut curves = std::collections::HashMap::new();
+    for hairpin in score.annotations.hairpins() {
+        let start = voice.events.iter().position(|event| event.id == hairpin.from);
+        let end = voice.events.iter().position(|event| event.id == hairpin.to);
+        let (Some(start), Some(end)) = (start, end) else {
+            continue;
+        };
+        let Some(span) = end.checked_sub(start) else {
+            continue;
+        };
+        let last = u32::try_from(span).unwrap_or(u32::MAX);
+        for (step, event) in voice.events.iter().skip(start).take(span.saturating_add(1)).enumerate() {
+            curves.insert(
+                event.id,
+                Curve {
+                    target: hairpin.target,
+                    step: u32::try_from(step).unwrap_or(u32::MAX),
+                    last,
+                },
+            );
+        }
+    }
+    curves
 }
 
 /// Exact ratio → the float the DSP edge needs. This is the boundary the

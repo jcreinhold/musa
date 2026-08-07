@@ -32,6 +32,15 @@ expression: musicxml_of(source)
           <line>2</line>
         </clef>
       </attributes>
+      <direction placement="above">
+        <direction-type>
+          <metronome>
+            <beat-unit>quarter</beat-unit>
+            <per-minute>96</per-minute>
+          </metronome>
+        </direction-type>
+        <sound tempo="96"/>
+      </direction>
       <note>
         <pitch>
           <step>C</step>

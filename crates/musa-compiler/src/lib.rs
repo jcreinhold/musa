@@ -28,6 +28,7 @@
 mod compile;
 mod elaborate;
 mod harmony;
+mod imports;
 mod lower;
 mod origin;
 mod performance;
@@ -41,17 +42,19 @@ pub use crate::compile::{Compilation, CompileOptions, Diagnostic, Elaboration, S
 #[doc(hidden)]
 pub use crate::elaborate::kernel_normal_form;
 pub use crate::harmony::{ChordQuality, ChordSymbol, Seventh};
+pub use crate::imports::{ImportSources, resolve_import};
 pub use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 pub use crate::performance::{
     IntegratedTempoMap, ParameterId, PerformanceError, PerformanceEvent, PerformanceLane, PerformanceOptions,
-    PerformancePlan, PerformedNote, Tuning, VoiceInstanceId, lower_performance,
+    PerformancePlan, PerformedNote, TempoSegment, Tuning, VoiceInstanceId, lower_performance,
 };
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
 pub use crate::score::{
-    AnnotationStore, ArticulationMark, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, HarmonyMark,
-    KeyMap, MeterMap, Mode, MotifDeclaration, NotatedDuration, Part, PartId, PartMap, PhraseSpan, ScoreEvent,
-    ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoMap, TupletSpan, Voice, VoiceId,
+    AnnotationStore, ArticulationMark, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, HairpinSpan,
+    HarmonyMark, KeyMap, MeterMap, Mode, MotifDeclaration, NotatedDuration, Part, PartId, PartMap, PhraseSpan,
+    ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoChange, TempoMap, TupletSpan, Voice,
+    VoiceId,
 };
 pub use crate::studio::{
     Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,

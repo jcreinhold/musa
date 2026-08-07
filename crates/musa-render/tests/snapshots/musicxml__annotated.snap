@@ -34,6 +34,15 @@ expression: musicxml_of(source)
       </attributes>
       <direction placement="above">
         <direction-type>
+          <metronome>
+            <beat-unit>quarter</beat-unit>
+            <per-minute>96</per-minute>
+          </metronome>
+        </direction-type>
+        <sound tempo="96"/>
+      </direction>
+      <direction placement="above">
+        <direction-type>
           <rehearsal>Exposition</rehearsal>
         </direction-type>
       </direction>

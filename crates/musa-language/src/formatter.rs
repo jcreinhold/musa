@@ -43,6 +43,9 @@ pub fn format(document: &ParsedDocument) -> FormattedSource {
 }
 
 fn format_node(node: &SyntaxNode, writer: &mut Writer) {
+    // Set once the first token of a one-word construct has been written, so
+    // the rest of it joins on without a space.
+    let mut tight = false;
     for element in node.children_with_tokens() {
         match element {
             SyntaxElement::Node(child) => {
@@ -63,6 +66,15 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer) {
                     continue;
                 }
                 writer.blank_line_if_pending();
+                // Some constructs are one word with punctuation in them: a
+                // `measure:beat` coordinate is written `3:1` the way a bar
+                // number is, and a chord symbol is `fmaj7` however many
+                // tokens it happens to lex as. Their insides take no spaces.
+                if matches!(node.kind(), SyntaxKind::Position | SyntaxKind::ChordSymbol) {
+                    writer.write_word(kind, token.text(), tight);
+                    tight = true;
+                    continue;
+                }
                 format_token(kind, token.text(), writer);
             }
         }
@@ -227,6 +239,18 @@ impl Writer {
             self.at_line_start = false;
         }
         self.out.push_str(text);
+    }
+
+    /// Write one token of a construct that is spelled as a single word:
+    /// spaced from what came before unless it is joining a word already
+    /// started.
+    fn write_word(&mut self, kind: SyntaxKind, text: &str, joining: bool) {
+        self.prep_line();
+        if !joining && self.needs_word_space() {
+            self.space();
+        }
+        self.write(text);
+        self.after_significant(kind);
     }
 
     fn space(&mut self) {

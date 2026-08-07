@@ -182,3 +182,77 @@ fn a_piece_with_no_file_autosaves_nothing() {
     assert!(session.apply(ProjectCommand::SetSource(edited)).is_ok());
     assert!(!session.snapshot().autosaved());
 }
+
+// --- Directory projects (docs/prompts/36; roadmap §16) --------------------
+
+/// The album fixture, as a session opened from its real path.
+fn album_piece() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/album/pieces/01-opening.musa")
+}
+
+/// A piece inside a directory project opens, compiles, and knows what it read
+/// — including the library its library imported, which nobody wrote a `use`
+/// for in the piece itself.
+#[test]
+fn a_piece_in_a_project_compiles_with_the_libraries_it_imports() -> Result {
+    let session = ProjectSession::open(album_piece())?;
+    let snapshot = session.snapshot();
+    assert!(snapshot.compiles(), "{:?}", snapshot.diagnostics());
+
+    let names: Vec<String> = session
+        .imports()
+        .iter()
+        .filter_map(|path| path.file_name().map(|name| name.to_string_lossy().into_owned()))
+        .collect();
+    assert_eq!(names, ["motifs.musa", "patches.musa"]);
+    Ok(())
+}
+
+/// `musa.toml` is metadata and nothing else: the session finds it by walking
+/// up from the piece, and the piece compiles the same with or without it.
+#[test]
+fn a_project_file_is_found_from_the_piece_and_carries_only_metadata() -> Result {
+    let session = ProjectSession::open(album_piece())?;
+    let project = session.project().ok_or("expected a project")?;
+    assert_eq!(project.name.as_deref(), Some("Album"));
+    assert!(project.root.ends_with("album"));
+
+    // The same source, compiled with no project and no files around it, is
+    // the piece that no longer resolves its imports — the project file is not
+    // what made it work.
+    let source = std::fs::read_to_string(album_piece())?;
+    let orphan = ProjectSession::from_text(source, "01-opening.musa");
+    assert!(orphan.project().is_none());
+    assert!(
+        !orphan.snapshot().compiles(),
+        "an import that resolves nowhere is an error"
+    );
+    Ok(())
+}
+
+/// A library edited on disk reaches the piece the next time it compiles: the
+/// session re-reads its import closure on every compile, which is what
+/// "recompile on save of the library" means with one document open.
+#[test]
+fn a_library_edited_on_disk_reaches_the_piece_that_imports_it() -> Result {
+    let dir = tempfile::tempdir()?;
+    let library = dir.path().join("lib.musa");
+    let piece = dir.path().join("piece.musa");
+    std::fs::write(&library, "library { motif tune() { c5 1/4; } }")?;
+    std::fs::write(
+        &piece,
+        "piece \"P\" { use \"lib.musa\"; tempo 1/4 = 60; meter 4/4; key c major;
+         score { part p { voice v { use tune(); } } } }",
+    )?;
+
+    let mut session = ProjectSession::open(&piece)?;
+    assert!(session.snapshot().compiles());
+
+    // Rename the motif out from under the piece; the next compile says so.
+    std::fs::write(&library, "library { motif other() { c5 1/4; } }")?;
+    session.apply(ProjectCommand::SetSource(
+        std::fs::read_to_string(&piece)?.replace("key c major", "key c major;"),
+    ))?;
+    assert!(!session.snapshot().compiles(), "the piece uses a motif that is gone");
+    Ok(())
+}

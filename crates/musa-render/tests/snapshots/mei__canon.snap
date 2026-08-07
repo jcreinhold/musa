@@ -25,6 +25,7 @@ expression: mei_of(source)
                   <rest xml:id="event-8" dur="2" dots="1"/>
                 </layer>
               </staff>
+              <tempo staff="1" tstamp="1" place="above" mm="96" mm.unit="4" midi.bpm="96"/>
             </measure>
             <measure n="2">
               <staff n="1">

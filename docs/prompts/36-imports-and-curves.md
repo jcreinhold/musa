@@ -1,7 +1,7 @@
 ---
 id: 36
 slug: imports-and-curves
-status: pending
+status: done
 depends_on: [34, 35]
 phase: 3
 ---
@@ -57,6 +57,41 @@ dynamic curves over time) flowing from source through the integrated tempo map t
 - Tests: import resolution (shared, cycles, missing files, score-in-library rejection); exact tempo-integration tests
   (frame boundaries across a tempo change); hairpin interpolation endpoints; backend snapshots; end-to-end WAV with an
   audible tempo change.
+
+## Repairs made while implementing
+
+- **A library is its own file root, not a piece with restrictions.** `library { ... }` is a second root production, so
+  "a score in an imported file" is a parse error rather than a rule the compiler enforces after the fact. The prompt
+  offered a choice between ignoring-with-warning and rejecting; the grammar makes rejecting free.
+- **The compiler reads no files.** `CompileOptions::imports` carries an `ImportSources` map (resolved path → text) and
+  `resolve_import` joins paths lexically, so compilation stays a pure function of its inputs and every import test runs
+  without a filesystem. `musa-project` owns the I/O: it walks the closure on every recompile, which is what
+  "recompile-on-save of the library" means with one document open.
+- **Names are flat and collisions are errors**, as the prompt proposed. `register_motifs`/`merge_profiles` take the
+  library a declaration came from so the message names the file rather than saying "duplicate motif" twice.
+- **A library's `studio` declares patches and signals only.** A library does not know what parts a score has, so
+  `assign`/`route`/`send`/`bus`/`modulate` inside one are reported rather than applied. This is why `lower_studio` now
+  runs even when the piece writes no `studio` block.
+- **Tempo changes are written where form markers are**: `tempo 1/4 = 108 at 3:1;`, resolved against the meter after the
+  parts exist, so a tempo nobody reaches is an error. A second unpositioned `tempo` (two answers to "how fast does this
+  start") and a change at `1:1` are both refused.
+- **`IntegratedTempoMap` accumulates segment offsets as exact rationals** and rounds once, at the position asked about.
+  Rounding each segment's start would drift at every change; `the_frame_at_a_tempo_change_is_the_sum_of_what_came_before`
+  is the test that pins it.
+- **MIDI export became piecewise too.** Frames → ticks with one factor would misplace every note after a change, so
+  `IntegratedTempoMap::segments()` is exported and `midi.rs` writes one tempo meta-event per segment.
+- **Hairpins interpolate over notes, not over frames.** `crescendo to f { ... }` gives each event under it an equal
+  share of the distance from the prevailing amplitude to the target's, and the last one arrives exactly at the mark —
+  which then stays in force. Interpolating over time would make the arrival depend on the rhythm.
+- **Every export now carries the piece's starting tempo**, which none of them did before: the plan's `tempos()` begins
+  with it and each backend writes it (`<tempo mm>`, `\tempo 4 = 72`, `<metronome>` + `<sound tempo>`). The example
+  snapshots were regenerated for that reason.
+- **The formatter learned two one-word constructs.** `3:1` and `fmaj7` were being written `3: 1` and `fmaj 7` — a
+  prompt-35 gap that the album fixture surfaced, since `tempo ... at 3:1;` is the first positioned statement in a
+  canonical example.
+- **`musa.toml` is metadata and nothing else.** `ProjectSession::project()` finds it by walking up from the piece and
+  reads a name and a composer; the piece compiles identically with or without it, which the test asserts by compiling
+  the same source with no project around it.
 
 ## Check
 

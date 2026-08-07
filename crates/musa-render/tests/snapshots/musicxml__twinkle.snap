@@ -28,6 +28,15 @@ expression: musicxml_of(source)
           <beat-type>4</beat-type>
         </time>
       </attributes>
+      <direction placement="above">
+        <direction-type>
+          <metronome>
+            <beat-unit>quarter</beat-unit>
+            <per-minute>104</per-minute>
+          </metronome>
+        </direction-type>
+        <sound tempo="104"/>
+      </direction>
       <note>
         <pitch>
           <step>C</step>

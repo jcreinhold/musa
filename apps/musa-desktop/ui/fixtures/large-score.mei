@@ -53,6 +53,7 @@
                   <note xml:id="event-578" dur="1" oct="2" pname="d"/>
                 </layer>
               </staff>
+              <tempo staff="1" tstamp="1" place="above" mm="96" mm.unit="4" midi.bpm="96"/>
             </measure>
             <measure n="2">
               <staff n="1">

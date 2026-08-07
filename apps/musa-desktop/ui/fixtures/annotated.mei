@@ -20,6 +20,7 @@
               </staff>
               <phrase staff="1" startid="#event-0" endid="#event-4" label="antecedent"/>
               <dir staff="1" startid="#event-0" place="above" type="phrase">antecedent</dir>
+              <tempo staff="1" tstamp="1" place="above" mm="96" mm.unit="4" midi.bpm="96"/>
               <dir staff="1" tstamp="1" place="above" type="section">Exposition</dir>
               <harm staff="1" tstamp="1" place="above">am</harm>
             </measure>

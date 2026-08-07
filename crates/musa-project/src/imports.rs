@@ -1,0 +1,61 @@
+//! The import closure of an open document (roadmap §16).
+//!
+//! The compiler resolves imports but reads no files: it is handed the text of
+//! everything a piece may `use`, keyed by resolved path. This module is the
+//! other half — the part that owns the filesystem. It walks the `use`
+//! statements of the document and of every library it reaches, reads each
+//! file once, and hands the compiler a closed world.
+//!
+//! A file that cannot be read is left out rather than reported here. The
+//! compiler already has the one diagnostic worth showing — "cannot find
+//! `../library/patches.musa`", pointed at the `use` that asked for it — and
+//! an I/O error phrased against the same path would say it twice.
+
+use std::collections::HashSet;
+use std::path::PathBuf;
+
+use musa_compiler::{ImportSources, resolve_import};
+use musa_language::ast::{ImportStmt, LibraryDecl, PieceDecl};
+
+/// Everything `source` imports, transitively.
+///
+/// `name` is the document name the compiler will see, because imports
+/// resolve against it: the paths this returns are exactly the keys the
+/// compiler will look up.
+pub(crate) fn closure(name: &str, source: &str) -> (ImportSources, Vec<PathBuf>) {
+    let mut sources = ImportSources::default();
+    let mut files = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+    let mut pending: Vec<(String, String)> = vec![(name.to_owned(), source.to_owned())];
+    while let Some((importer, text)) = pending.pop() {
+        for written in written_imports(&text) {
+            let path = resolve_import(&importer, &written);
+            if !seen.insert(path.clone()) {
+                continue;
+            }
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            sources.insert(path.clone(), text.clone());
+            files.push(PathBuf::from(&path));
+            pending.push((path, text));
+        }
+    }
+    files.sort();
+    (sources, files)
+}
+
+/// The paths one file's `use` statements name, as written.
+fn written_imports(text: &str) -> Vec<String> {
+    let document = musa_language::parse(text);
+    let root = document.syntax();
+    let statements = PieceDecl::from_root(&root).map_or_else(
+        || {
+            LibraryDecl::from_root(&root)
+                .map(|library| library.imports())
+                .unwrap_or_default()
+        },
+        |piece| piece.imports(),
+    );
+    statements.iter().filter_map(ImportStmt::path).collect()
+}

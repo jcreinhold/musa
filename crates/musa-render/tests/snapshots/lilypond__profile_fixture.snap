@@ -10,6 +10,7 @@ partFlute = {
   \time 4/4
   \key c \major
   {
+    \tempo 4 = 100
     c''4^.\p % event:0
     d''4^. % event:1
     e''2 % event:2

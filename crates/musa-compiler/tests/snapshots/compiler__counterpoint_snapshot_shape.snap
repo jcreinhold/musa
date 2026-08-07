@@ -486,6 +486,7 @@ ScoreSnapshot {
             denom: 4,
         },
         bpm: 90,
+        changes: [],
     },
     meter_map: MeterMap {
         numerator: 4,
@@ -508,6 +509,7 @@ ScoreSnapshot {
         dynamics: [],
         articulations: [],
         phrases: [],
+        hairpins: [],
         sections: [],
         harmony: [],
     },

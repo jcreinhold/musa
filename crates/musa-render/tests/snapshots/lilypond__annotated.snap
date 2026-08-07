@@ -19,6 +19,7 @@ partPiano = {
   \time 4/4
   \key a \minor
   {
+    \tempo 4 = 96
     \mark \markup { \bold "Exposition" }
     a'4^\markup { \italic "antecedent" } % event:0
     c''4 % event:1

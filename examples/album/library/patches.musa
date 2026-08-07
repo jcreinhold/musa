@@ -1,0 +1,27 @@
+// The sounds the album is played with, written once. A library's `studio`
+// declares patches and signals — the building blocks — and leaves the wiring
+// to the piece, which is the only thing that knows what parts it has.
+library {
+    studio {
+        patch reed {
+            oscillator(sine)
+                |> envelope(adsr(attack: 20 ms, decay: 0.4 s, sustain: 0.7, release: 0.6 s))
+                |> lowpass(cutoff: 2200 Hz, q: 0.6)
+                |> output;
+        }
+    }
+
+    performance {
+        profile album {
+            dynamic p {
+                amplitude = 0.35;
+            }
+            dynamic mf {
+                amplitude = 0.6;
+            }
+            dynamic f {
+                amplitude = 0.9;
+            }
+        }
+    }
+}

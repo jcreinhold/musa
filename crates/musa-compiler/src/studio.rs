@@ -533,18 +533,48 @@ use musa_language::ast::{
 use crate::compile::Diagnostic;
 use crate::lower::{span_of, trimmed_span};
 
+/// What a library's `studio` may not write.
+fn complain(node: &musa_language::SyntaxNode, what: &str, diagnostics: &mut Vec<Diagnostic>) {
+    diagnostics.push(Diagnostic::error(
+        format!("a library's `studio` declares patches and signals; `{what}` belongs to the piece"),
+        Some(span_of(node)),
+    ));
+}
+
 /// Resolve a `studio` block into a [`StudioSpec`], reporting every unresolved
 /// name and mis-united value against `diagnostics`.
 ///
 /// `parts` is the set of part names the score declared: `assign` is the one
 /// place the two layers meet, so it is the one place a studio name is checked
 /// against a score name.
-pub(crate) fn resolve(decl: &StudioDecl, parts: &[String], diagnostics: &mut Vec<Diagnostic>) -> StudioSpec {
+/// `imported` holds the `studio` block of each library the piece imports. A
+/// library ships building blocks — patches and signals — and nothing that
+/// wires them to a particular score, because it does not know the score;
+/// anything else it writes is reported rather than silently applied.
+pub(crate) fn resolve(
+    decl: Option<&StudioDecl>,
+    imported: &[StudioDecl],
+    parts: &[String],
+    diagnostics: &mut Vec<Diagnostic>,
+) -> StudioSpec {
     let mut spec = StudioSpec {
-        span: Some(span_of(decl.syntax())),
+        span: decl.map(|decl| span_of(decl.syntax())),
         ..StudioSpec::default()
     };
-    let items = decl.items();
+    let mut items: Vec<StudioItem> = Vec::new();
+    for library in imported {
+        for item in library.items() {
+            match item {
+                StudioItem::Patch(_) | StudioItem::Signal(_) => items.push(item),
+                StudioItem::Bus(ref node) => complain(node.syntax(), "bus", diagnostics),
+                StudioItem::Modulate(ref node) => complain(node.syntax(), "modulate", diagnostics),
+                StudioItem::Assign(ref node) => complain(node.syntax(), "assign", diagnostics),
+                StudioItem::Route(ref node) => complain(node.syntax(), "route", diagnostics),
+                StudioItem::Send(ref node) => complain(node.syntax(), "send", diagnostics),
+            }
+        }
+    }
+    items.extend(decl.map(StudioDecl::items).unwrap_or_default());
 
     // Two passes: patches, buses, and signals first, so the bindings that
     // follow can be checked against them regardless of writing order. A

@@ -78,7 +78,7 @@ be the first construct that does, so the question is unchanged rather than answe
 | 3 | Canon (reuse, delay, transformation, overlay) | **proven** (prompt 11): `examples/canon.musa` — motif reuse, delay by ambient extent, transposition, overlay |
 | 4 | Tuplets / polyrhythm (exact rationals) | blocked on surface syntax (prompt 27) |
 | 5 | Changing meter and key | blocked on surface syntax (see Q8) |
-| 6 | Accelerando / ritardando | blocked on tempo curves (prompt 36); tempo-map semantics already settled (§22) |
+| 6 | Accelerando / ritardando | **partly proven** (prompt 36): stepwise tempo changes integrate exactly; a continuous ramp still needs surface syntax |
 | 7 | Glissando / crescendo | blocked on Q4 |
 | 8 | Loop-based electronic music | blocked on surface loops (Phase 2/3; see Q1) |
 | 9 | Controlled aleatory | blocked on Q2 |
@@ -133,3 +133,13 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   *time*, because a bar line is a place whether or not a note starts there. Positions (`at 3:1`) are resolved against
   the meter map during elaboration and refused when they fall past the end of the piece — a marker nobody reaches is a
   mistake, not a marker. Q8 is untouched by any of this (see above).
+- **Prompt 36 (imports and curves):** neither half touched the kernel, for the same reason and in two different ways.
+  An **import** is resolved before elaboration begins: a library contributes declarations, and a declaration is not an
+  occurrence until something uses it, so an imported motif and a locally written one elaborate through identical code
+  (`import_laws.rs` asserts the two produce the same events). A **tempo change** is a change to the map from beats to
+  seconds (§22), not to the timeline — every note keeps its symbolic position and the performance layer integrates the
+  segments, which is why `a_hairpin_moves_no_note` and the tempo laws can both be stated as "the score is unchanged".
+  A **hairpin** is an annotation with extent, like prompt 35's phrase, anchored to events; it is read at the
+  performance boundary and nowhere else. §33 item 6 is therefore partly answered: stepwise tempo is exact, and a
+  continuous ramp remains a surface-syntax question rather than a kernel one — the piecewise map already has the shape
+  a ramp would lower into.

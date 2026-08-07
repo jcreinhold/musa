@@ -27,6 +27,7 @@
                   <note xml:id="event-e" dur="1" oct="2" pname="a"/>
                 </layer>
               </staff>
+              <tempo staff="1" tstamp="1" place="above" mm="72" mm.unit="4" midi.bpm="72"/>
             </measure>
             <measure n="2">
               <staff n="1">

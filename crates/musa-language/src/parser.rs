@@ -64,6 +64,7 @@ enum Event<'a> {
 const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::Semicolon,
     SyntaxKind::RBrace,
+    SyntaxKind::UseKw,
     SyntaxKind::TempoKw,
     SyntaxKind::MeterKw,
     SyntaxKind::KeyKw,
@@ -113,6 +114,8 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::RepeatKw,
     SyntaxKind::SlurKw,
     SyntaxKind::PhraseKw,
+    SyntaxKind::CrescendoKw,
+    SyntaxKind::DiminuendoKw,
     SyntaxKind::DynamicKw,
     SyntaxKind::TupletKw,
     SyntaxKind::StretchKw,
@@ -142,7 +145,15 @@ impl<'a> Parser<'a> {
     /// Parse the whole document and build the tree.
     fn run(mut self) -> (SyntaxNode, Vec<SyntaxError>) {
         self.start(SyntaxKind::Root);
-        self.piece_decl();
+        // A file is a piece or a library. Which one it is is written at the
+        // top of it rather than inferred from what it happens to contain: a
+        // library with a `score` in it is then a parse error rather than a
+        // rule someone has to remember.
+        if self.at(SyntaxKind::LibraryKw) {
+            self.library_decl();
+        } else {
+            self.piece_decl();
+        }
         self.eat_trivia();
         self.finish();
         let node = SyntaxNode::new_root(self.build_tree());
@@ -308,7 +319,9 @@ impl<'a> Parser<'a> {
                 self.error_here("unclosed `piece` block");
                 break;
             }
-            if self.at(SyntaxKind::TempoKw) {
+            if self.at(SyntaxKind::UseKw) {
+                self.import_stmt();
+            } else if self.at(SyntaxKind::TempoKw) {
                 self.tempo_stmt();
             } else if self.at(SyntaxKind::MeterKw) {
                 self.meter_stmt();
@@ -323,7 +336,7 @@ impl<'a> Parser<'a> {
             } else if self.at(SyntaxKind::StudioKw) {
                 self.studio_decl();
             } else {
-                self.error_here("expected a tempo, meter, key, motif, score, performance, or studio declaration");
+                self.error_here("expected a use, tempo, meter, key, motif, score, performance, or studio declaration");
                 self.recover(PIECE_RECOVERY);
             }
         }
@@ -341,6 +354,56 @@ impl<'a> Parser<'a> {
         }
         self.expect(SyntaxKind::Equals, "`=`");
         self.expect(SyntaxKind::Integer, "a tempo in bpm");
+        // `tempo 1/4 = 96 at 9:1;` — a tempo change, written the way a form
+        // marker is. Without the `at`, it is the tempo the piece starts in.
+        if self.at(SyntaxKind::AtKw) {
+            self.bump();
+            self.position();
+        }
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `library { ... }` — shared declarations, importable by a piece.
+    fn library_decl(&mut self) {
+        self.start(SyntaxKind::LibraryDecl);
+        self.bump(); // library
+        self.expect(SyntaxKind::LBrace, "`{`");
+        loop {
+            if self.at(SyntaxKind::RBrace) {
+                self.bump();
+                break;
+            }
+            if self.current().is_none() {
+                self.error_here("unclosed `library` block");
+                break;
+            }
+            if self.at(SyntaxKind::UseKw) {
+                self.import_stmt();
+            } else if self.at(SyntaxKind::MotifKw) {
+                self.motif_decl();
+            } else if self.at(SyntaxKind::PerformanceKw) {
+                self.performance_decl();
+            } else if self.at(SyntaxKind::StudioKw) {
+                self.studio_decl();
+            } else {
+                // A library holds what can be shared. Music belongs to a
+                // piece, which is why `score` is not in this list.
+                self.error_here("expected a use, motif, performance, or studio declaration");
+                self.recover(PIECE_RECOVERY);
+            }
+        }
+        self.finish();
+    }
+
+    /// `use "../library/motifs.musa";` — a relative import.
+    ///
+    /// Told apart from a motif call by what follows `use`: a string is a
+    /// file, a name is a motif.
+    fn import_stmt(&mut self) {
+        self.start(SyntaxKind::ImportStmt);
+        self.bump(); // use
+        self.expect(SyntaxKind::String, "a relative path in quotes");
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }
@@ -869,9 +932,11 @@ impl<'a> Parser<'a> {
                 self.invert_stmt();
             } else if self.at(SyntaxKind::PhraseKw) {
                 self.phrase_stmt();
+            } else if self.at_any(&[SyntaxKind::CrescendoKw, SyntaxKind::DiminuendoKw]) {
+                self.hairpin_stmt();
             } else {
                 self.error_here(
-                    "expected a note, rest, chord, use, transpose, stretch, retrograde, invert, repeat, slur, phrase, dynamic, or tuplet",
+                    "expected a note, rest, chord, use, transpose, stretch, retrograde, invert, repeat, slur, phrase, crescendo, diminuendo, dynamic, or tuplet",
                 );
                 self.recover(VOICE_RECOVERY);
             }
@@ -1054,6 +1119,19 @@ impl<'a> Parser<'a> {
         self.start(SyntaxKind::PhraseStmt);
         self.bump(); // phrase
         self.expect(SyntaxKind::String, "a phrase name in quotes");
+        self.block();
+        self.finish();
+    }
+
+    /// `crescendo to f { ... }` — a hairpin over the notes it wraps.
+    ///
+    /// The mark it grows to is written; the mark it grows *from* is whatever
+    /// dynamic is in force, because that is what a hairpin means on a page.
+    fn hairpin_stmt(&mut self) {
+        self.start(SyntaxKind::HairpinStmt);
+        self.bump(); // crescendo or diminuendo
+        self.expect(SyntaxKind::ToKw, "`to`");
+        self.expect(SyntaxKind::Identifier, "a dynamic such as `f`");
         self.block();
         self.finish();
     }

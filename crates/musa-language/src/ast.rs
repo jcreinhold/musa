@@ -70,9 +70,21 @@ impl PieceDecl {
         token_text(&self.0, SyntaxKind::String).map(|text| text.trim_matches('"').to_string())
     }
 
-    /// The `tempo` statement, if present.
+    /// The `tempo` statement the piece starts in: the first one written
+    /// without a position.
     pub fn tempo(&self) -> Option<TempoStmt> {
-        child(&self.0)
+        self.tempos().into_iter().find(|tempo| tempo.position().is_none())
+    }
+
+    /// Every `tempo` statement, in source order — the initial one and the
+    /// changes.
+    pub fn tempos(&self) -> Vec<TempoStmt> {
+        children(&self.0)
+    }
+
+    /// The files this piece imports, in source order.
+    pub fn imports(&self) -> Vec<ImportStmt> {
+        children(&self.0)
     }
 
     /// The `meter` statement, if present.
@@ -187,6 +199,84 @@ impl SettingStmt {
 /// `tempo quarter = 72;`
 pub struct TempoStmt(SyntaxNode);
 wrapper!(TempoStmt, SyntaxKind::TempoStmt);
+
+impl TempoStmt {
+    /// Where the change takes effect, when it is a change rather than the
+    /// tempo the piece starts in.
+    pub fn position(&self) -> Option<Position> {
+        child(&self.0)
+    }
+}
+
+/// `library { motif ...; studio { ... } }` — a file of shared declarations.
+///
+/// A library is not a piece: it has no score, and the parser refuses one, so
+/// "what happens to the music in an imported file" is a question that cannot
+/// be asked.
+pub struct LibraryDecl(SyntaxNode);
+wrapper!(LibraryDecl, SyntaxKind::LibraryDecl);
+
+impl LibraryDecl {
+    /// Cast the root node of a document to its library declaration.
+    pub fn from_root(node: &SyntaxNode) -> Option<Self> {
+        child(node)
+    }
+
+    /// The files this library imports, in source order.
+    pub fn imports(&self) -> Vec<ImportStmt> {
+        children(&self.0)
+    }
+
+    /// The motifs it declares.
+    pub fn motifs(&self) -> Vec<MotifDecl> {
+        children(&self.0)
+    }
+
+    /// Its `performance` block, if it has one.
+    pub fn performance(&self) -> Option<PerformanceDecl> {
+        child(&self.0)
+    }
+
+    /// Its `studio` block, if it has one.
+    pub fn studio(&self) -> Option<StudioDecl> {
+        child(&self.0)
+    }
+}
+
+/// `use "../library/motifs.musa";`
+pub struct ImportStmt(SyntaxNode);
+wrapper!(ImportStmt, SyntaxKind::ImportStmt);
+
+impl ImportStmt {
+    /// The path as written, without its quotes.
+    pub fn path(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::String).map(|text| text.trim_matches('"').to_string())
+    }
+}
+
+/// `crescendo to f { ... }` / `diminuendo to p { ... }`
+pub struct HairpinStmt(SyntaxNode);
+wrapper!(HairpinStmt, SyntaxKind::HairpinStmt);
+
+impl HairpinStmt {
+    /// Whether it grows or fades.
+    pub fn grows(&self) -> bool {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .any(|token| token.kind() == SyntaxKind::CrescendoKw)
+    }
+
+    /// The mark it arrives at, as written.
+    pub fn target(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The music it covers, in source order.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
+    }
+}
 
 /// `meter 4/4;`
 pub struct MeterStmt(SyntaxNode);
@@ -370,6 +460,8 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             InvertStmt::cast(child).map(VoiceItem::Invert)
         } else if kind == SyntaxKind::PhraseStmt {
             PhraseStmt::cast(child).map(VoiceItem::Phrase)
+        } else if kind == SyntaxKind::HairpinStmt {
+            HairpinStmt::cast(child).map(VoiceItem::Hairpin)
         } else {
             None
         };
@@ -407,6 +499,8 @@ pub enum VoiceItem {
     Invert(InvertStmt),
     /// `phrase "A" { ... }`
     Phrase(PhraseStmt),
+    /// `crescendo to f { ... }`
+    Hairpin(HairpinStmt),
 }
 
 /// The articulation names trailing a note or chord's duration.

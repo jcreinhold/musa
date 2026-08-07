@@ -414,7 +414,16 @@ fn write_lane(
         if let Some(dynamic) = item.dynamic() {
             write_dynamic(xml, dynamic)?;
         }
+        if let Some(hairpin) = item.hairpin().filter(|hairpin| hairpin.start) {
+            write_wedge(xml, if hairpin.grows { "crescendo" } else { "diminuendo" })?;
+        }
         write_item(xml, item, &beams(items, index), voice, divisions, open_slurs)?;
+        if let Some(hairpin) = item.hairpin().filter(|hairpin| hairpin.stop) {
+            write_wedge(xml, "stop")?;
+            // The wedge stops; the mark it stopped at is what the reader
+            // plays, so it is printed too.
+            write_dynamic(xml, hairpin.target)?;
+        }
         if let Some(phrase) = item.phrase().filter(|phrase| phrase.stop) {
             write_phrase(xml, &phrase.name, false)?;
         }
@@ -430,6 +439,21 @@ fn write_lane(
 /// independently of where it sits in the document, and a measure whose voices
 /// backup and forward has no single place that means "here".
 fn write_positioned(xml: &mut Xml, plan: &NotationPlan, measure: u32, divisions: i64) -> Result<(), RenderError> {
+    for tempo in plan.tempos().iter().filter(|mark| mark.measure == measure) {
+        xml.open("direction", &[("placement", "above")])?;
+        xml.open("direction-type", &[])?;
+        xml.open("metronome", &[])?;
+        xml.leaf("beat-unit", &[], beat_unit_name(*tempo.what.beat.denom()))?;
+        xml.leaf("per-minute", &[], &tempo.what.bpm.to_string())?;
+        xml.close("metronome")?;
+        xml.close("direction-type")?;
+        write_offset(xml, tempo.onset_in_measure.as_ratio(), divisions)?;
+        // `<sound>` is the same fact for a player rather than a reader: the
+        // tempo in quarter notes per minute, which is what playback uses.
+        let quarters = Ratio::from_integer(i64::from(tempo.what.bpm)) * tempo.what.beat * Ratio::from_integer(4);
+        xml.empty("sound", &[("tempo", &format_number(quarters))])?;
+        xml.close("direction")?;
+    }
     for section in plan.sections().iter().filter(|mark| mark.measure == measure) {
         xml.open("direction", &[("placement", "above")])?;
         xml.open("direction-type", &[])?;
@@ -442,6 +466,28 @@ fn write_positioned(xml: &mut Xml, plan: &NotationPlan, measure: u32, divisions:
         write_harmony(xml, &chord.what, chord.onset_in_measure.as_ratio(), divisions)?;
     }
     Ok(())
+}
+
+/// `MusicXML` names its note values rather than numbering them.
+fn beat_unit_name(denominator: i64) -> &'static str {
+    match denominator {
+        1 => "whole",
+        2 => "half",
+        8 => "eighth",
+        16 => "16th",
+        32 => "32nd",
+        64 => "64th",
+        _ => "quarter",
+    }
+}
+
+/// A rational as a decimal `MusicXML` will accept, without a trailing `.0`
+/// where the value is whole.
+fn format_number(value: Ratio<i64>) -> String {
+    if *value.denom() == 1 {
+        return value.numer().to_string();
+    }
+    format!("{:.4}", *value.numer() as f64 / *value.denom() as f64)
 }
 
 /// `<offset>`, omitted at the start of a measure where it would say nothing.
@@ -542,6 +588,16 @@ fn write_phrase(xml: &mut Xml, name: &str, start: bool) -> Result<(), RenderErro
             ("line-end", "down"),
         ],
     )?;
+    xml.close("direction-type")?;
+    xml.close("direction")
+}
+
+/// One end of a hairpin: `<wedge>` opens with the shape and closes with
+/// `stop`, which is how `MusicXML` spans one.
+fn write_wedge(xml: &mut Xml, kind: &str) -> Result<(), RenderError> {
+    xml.open("direction", &[("placement", place(DYNAMIC_PLACEMENT))])?;
+    xml.open("direction-type", &[])?;
+    xml.empty("wedge", &[("type", kind), ("number", "1")])?;
     xml.close("direction-type")?;
     xml.close("direction")
 }

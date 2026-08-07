@@ -10,6 +10,7 @@ partStrings = {
   \key g \major
   <<
     {
+      \tempo 4 = 96
       g'4 % event:0
       a'4 % event:1
       b'4 % event:2

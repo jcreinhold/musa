@@ -2,10 +2,11 @@ events 20
 tags
   defs 1
   desc 1
-  g 103
+  g 104
   path 93
   style 1
   svg 1
+  text 1
   use 26
 classes
   accid 1
@@ -32,6 +33,7 @@ classes
   system 1
   systemMilestone 1
   systemMilestoneEnd 1
+  tempo 1
   tie 2
 paint
 

@@ -240,14 +240,35 @@ impl PartMap {
     }
 }
 
-/// The initial tempo (roadmap §6.3's tempo map; prompt 26 makes it a
-/// piecewise curve).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// A tempo written at a place in the piece (roadmap §6.3).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TempoChange {
+    /// Where the new tempo takes effect.
+    pub at: MusicalTime,
+    /// The beat unit as a fraction of a whole note (`1/4` for a quarter).
+    pub beat: Ratio<i64>,
+    /// Beats per minute from `at` onward.
+    pub bpm: u32,
+    /// The statement that wrote it.
+    pub origin: Origin,
+}
+
+/// The piece's tempo: what it starts in, and every change after that
+/// (roadmap §6.3's tempo map, piecewise since prompt 36).
+///
+/// The map is symbolic. It says what is written, in beats and beats per
+/// minute; turning that into frames is the performance layer's job
+/// ([`crate::IntegratedTempoMap`]), and no note in the score moves because a
+/// tempo changed.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TempoMap {
     /// The beat unit as a fraction of a whole note (`1/4` for a quarter).
     pub beat: Ratio<i64>,
     /// Beats per minute.
     pub bpm: u32,
+    /// Later tempos, in playing order, each starting where it says.
+    #[serde(default)]
+    pub changes: Vec<TempoChange>,
 }
 
 impl Default for TempoMap {
@@ -255,6 +276,7 @@ impl Default for TempoMap {
         Self {
             beat: Ratio::new(1, 4),
             bpm: 120,
+            changes: Vec::new(),
         }
     }
 }
@@ -502,6 +524,25 @@ pub struct PhraseSpan {
     pub origin: Origin,
 }
 
+/// A hairpin: a growth or fade over the notes it covers.
+///
+/// The mark it arrives at is written; the mark it leaves from is whatever
+/// dynamic is in force at its first note, which is what a hairpin means on a
+/// page and what the performance layer interpolates between.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HairpinSpan {
+    /// The first event under it.
+    pub from: EventId,
+    /// The last event under it.
+    pub to: EventId,
+    /// True for a crescendo, false for a diminuendo.
+    pub grows: bool,
+    /// The dynamic it arrives at.
+    pub target: DynamicMark,
+    /// Why this hairpin exists.
+    pub origin: Origin,
+}
+
 /// A form marker at a position in the piece.
 ///
 /// Anchored to *time*, unlike a phrase: a section begins where the composer
@@ -543,6 +584,7 @@ pub struct AnnotationStore {
     dynamics: Vec<DynamicMarking>,
     articulations: Vec<ArticulationMarking>,
     phrases: Vec<PhraseSpan>,
+    hairpins: Vec<HairpinSpan>,
     sections: Vec<SectionMark>,
     harmony: Vec<HarmonyMark>,
 }
@@ -573,6 +615,11 @@ impl AnnotationStore {
         &self.phrases
     }
 
+    /// Hairpins, in source order.
+    pub fn hairpins(&self) -> &[HairpinSpan] {
+        &self.hairpins
+    }
+
     /// Form markers, in the order they occur in the piece.
     pub fn sections(&self) -> &[SectionMark] {
         &self.sections
@@ -585,6 +632,10 @@ impl AnnotationStore {
 
     pub(crate) fn push_phrase(&mut self, phrase: PhraseSpan) {
         self.phrases.push(phrase);
+    }
+
+    pub(crate) fn push_hairpin(&mut self, hairpin: HairpinSpan) {
+        self.hairpins.push(hairpin);
     }
 
     /// Record a form marker, keeping the lane sorted by position: markers are

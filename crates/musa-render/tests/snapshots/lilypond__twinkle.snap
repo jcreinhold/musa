@@ -9,6 +9,7 @@ partPiano = {
   \time 4/4
   \key c \major
   {
+    \tempo 4 = 104
     c'4 % event:0
     c'4 % event:1
     g'4 % event:2

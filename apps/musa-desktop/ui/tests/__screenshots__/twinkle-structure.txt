@@ -2,10 +2,11 @@ events 15
 tags
   defs 1
   desc 1
-  g 80
+  g 81
   path 51
   style 1
   svg 1
+  text 1
   use 17
 classes
   barLine 5
@@ -30,5 +31,6 @@ classes
   system 1
   systemMilestone 1
   systemMilestoneEnd 1
+  tempo 1
 paint
 

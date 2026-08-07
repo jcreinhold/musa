@@ -70,8 +70,8 @@ pub(crate) fn render_lilypond(plan: &NotationPlan) -> Result<String, RenderError
         // Form markers are score-wide, so they are written once, in the
         // topmost staff: `\mark` is a Score-level event and LilyPond prints it
         // above the system however many staves the system has.
-        let sections = if index == 0 { plan.sections() } else { &[] };
-        let body = staff_body(staff, sections)?;
+        let marks = if index == 0 { score_marks(plan) } else { Vec::new() };
+        let body = staff_body(staff, &marks)?;
         score_children.push(LyNode::Command(format!("\\new Staff \\{variable}")));
         variables.push((variable, body));
     }
@@ -85,7 +85,7 @@ pub(crate) fn render_lilypond(plan: &NotationPlan) -> Result<String, RenderError
 
 /// One staff's music: header commands, then measures; multi-voice staves
 /// become simultaneous voice blocks.
-fn staff_body(staff: &StaffPlan, sections: &[PositionedMark<String>]) -> Result<LyNode, RenderError> {
+fn staff_body(staff: &StaffPlan, sections: &[PositionedMark<ScoreMark>]) -> Result<LyNode, RenderError> {
     let mut head = Vec::new();
     if let Some(clef) = staff.clef() {
         let name = match clef {
@@ -113,7 +113,7 @@ fn staff_body(staff: &StaffPlan, sections: &[PositionedMark<String>]) -> Result<
         for (lane_index, lane) in measure.lanes().iter().enumerate() {
             let nodes = lanes.get_mut(lane_index);
             if let Some(nodes) = nodes {
-                let here: Vec<&PositionedMark<String>> = if lane_index == 0 {
+                let here: Vec<&PositionedMark<ScoreMark>> = if lane_index == 0 {
                     sections
                         .iter()
                         .filter(|mark| mark.measure == measure.number())
@@ -140,14 +140,14 @@ fn lane_body(
     lane: &VoiceLane,
     count: u32,
     unit: u32,
-    sections: &[&PositionedMark<String>],
+    sections: &[&PositionedMark<ScoreMark>],
 ) -> Result<Vec<LyNode>, RenderError> {
     if lane.items().is_empty() {
         // An uncovered measure of this voice renders as spacer skips — a
         // notation decision (docs/kernel/02): the kernel stored nothing.
         let mut nodes = Vec::new();
         for mark in sections {
-            nodes.push(rehearsal_mark(&mark.what));
+            nodes.push(mark_node(&mark.what));
         }
         for piece in spell_pieces(i64::from(count), i64::from(unit)) {
             nodes.push(LyNode::Note {
@@ -168,7 +168,7 @@ fn lane_body(
         // the note that follows it; a marker past the last note of the measure
         // lands after them all, below.
         while let Some(mark) = next_mark.filter(|mark| mark.onset_in_measure <= item.onset_in_measure()) {
-            nodes.push(rehearsal_mark(&mark.what));
+            nodes.push(mark_node(&mark.what));
             next_mark = pending.next();
         }
         if let Some(tuplet) = item.tuplet()
@@ -194,17 +194,56 @@ fn lane_body(
         nodes.push(LyNode::Tuplet { num, den, body });
     }
     while let Some(mark) = next_mark {
-        nodes.push(rehearsal_mark(&mark.what));
+        nodes.push(mark_node(&mark.what));
         next_mark = pending.next();
     }
     Ok(nodes)
 }
 
-/// A form marker as `LilyPond` writes one: a rehearsal mark carrying the name
-/// rather than the automatic letter.
-fn rehearsal_mark(name: &str) -> LyNode {
-    let escaped = name.replace('\\', "").replace('"', "'");
-    LyNode::Command(format!("\\mark \\markup {{ \\bold \"{escaped}\" }}"))
+/// A symbol the whole score reads, written into the topmost staff at the
+/// place it falls.
+enum ScoreMark {
+    /// A form marker.
+    Section(String),
+    /// A tempo mark.
+    Tempo(crate::plan::TempoText),
+}
+
+/// The score-level marks in playing order: at one place, the tempo is read
+/// before the section name, the way a conductor reads the top of a page.
+fn score_marks(plan: &NotationPlan) -> Vec<PositionedMark<ScoreMark>> {
+    let mut marks: Vec<PositionedMark<ScoreMark>> = Vec::new();
+    for tempo in plan.tempos() {
+        marks.push(PositionedMark {
+            measure: tempo.measure,
+            onset_in_measure: tempo.onset_in_measure,
+            what: ScoreMark::Tempo(tempo.what),
+        });
+    }
+    for section in plan.sections() {
+        marks.push(PositionedMark {
+            measure: section.measure,
+            onset_in_measure: section.onset_in_measure,
+            what: ScoreMark::Section(section.what.clone()),
+        });
+    }
+    marks.sort_by_key(|mark| (mark.measure, mark.onset_in_measure.as_ratio()));
+    marks
+}
+
+/// A score-level mark as `LilyPond` writes it: a rehearsal mark carrying the
+/// name rather than the automatic letter, or a metronome mark.
+fn mark_node(mark: &ScoreMark) -> LyNode {
+    match mark {
+        ScoreMark::Section(name) => {
+            let escaped = name.replace('\\', "").replace('"', "'");
+            LyNode::Command(format!("\\mark \\markup {{ \\bold \"{escaped}\" }}"))
+        }
+        ScoreMark::Tempo(tempo) => {
+            let unit = spell_duration(*tempo.beat.numer(), *tempo.beat.denom()).unwrap_or_else(|| "4".to_owned());
+            LyNode::Command(format!("\\tempo {unit} = {}", tempo.bpm))
+        }
+    }
 }
 
 /// The harmony lane as a `\chordmode` sequence: skips up to each symbol, then
@@ -355,6 +394,17 @@ fn item_node(item: &NotatedItem) -> Result<LyNode, RenderError> {
         let escaped = phrase.name.replace('\\', "").replace('"', "'");
         let markup = format!("^\\markup {{ \\italic \"{escaped}\" }}");
         body.push_str(&markup);
+    }
+    // A wedge opens on its first note and closes on the mark it arrives at,
+    // which is exactly how it is written by hand: `c\< d e f\f`.
+    if let Some(hairpin) = item.hairpin() {
+        if hairpin.start {
+            body.push_str(if hairpin.grows { "\\<" } else { "\\>" });
+        }
+        if hairpin.stop {
+            body.push('\\');
+            body.push_str(hairpin.target.name());
+        }
     }
     if item.slur_start() {
         body.push('(');

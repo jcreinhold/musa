@@ -213,6 +213,19 @@ fn write_control_events(writer: &mut Writer<Vec<u8>>, staff: &str, lane: &VoiceL
             .write_event(Event::Empty(element))
             .map_err(|error| RenderError::xml(&error))?;
     }
+    for hairpin in lane.hairpins() {
+        let start_ref = format!("#event-{:x}", hairpin.from.0);
+        let end_ref = format!("#event-{:x}", hairpin.to.0);
+        let mut element = element("hairpin");
+        element.push_attribute(("staff", staff));
+        element.push_attribute(("startid", start_ref.as_str()));
+        element.push_attribute(("endid", end_ref.as_str()));
+        element.push_attribute(("form", if hairpin.grows { "cres" } else { "dim" }));
+        element.push_attribute(("place", place(DYNAMIC_PLACEMENT)));
+        writer
+            .write_event(Event::Empty(element))
+            .map_err(|error| RenderError::xml(&error))?;
+    }
     for slur in lane.slurs() {
         let start_ref = format!("#event-{:x}", slur.from.0);
         let end_ref = format!("#event-{:x}", slur.to.0);
@@ -244,6 +257,22 @@ fn write_control_events(writer: &mut Writer<Vec<u8>>, staff: &str, lane: &VoiceL
                 .write_event(Event::Text(quick_xml::events::BytesText::new(&phrase.name)))
                 .map_err(|error| RenderError::xml(&error))?;
             end(writer, "dir")?;
+        }
+        // A hairpin arrives at a mark, and the mark is printed where it
+        // arrives: without it the reader sees a wedge that grows to nothing.
+        if let Some(hairpin) = item.hairpin().filter(|hairpin| hairpin.stop) {
+            let start_ref = format!("#event-{:x}", item.event().0);
+            let mut dynam = element("dynam");
+            dynam.push_attribute(("staff", staff));
+            dynam.push_attribute(("startid", start_ref.as_str()));
+            dynam.push_attribute(("place", place(DYNAMIC_PLACEMENT)));
+            writer
+                .write_event(Event::Start(dynam))
+                .map_err(|error| RenderError::xml(&error))?;
+            writer
+                .write_event(Event::Text(quick_xml::events::BytesText::new(hairpin.target.name())))
+                .map_err(|error| RenderError::xml(&error))?;
+            end(writer, "dynam")?;
         }
         if let Some(mark) = item.dynamic() {
             let start_ref = format!("#event-{:x}", item.event().0);
@@ -282,6 +311,24 @@ fn timestamp(beats: num_rational::Ratio<i64>) -> String {
 fn write_positioned(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan, index: usize) -> Result<(), RenderError> {
     let measure = u32::try_from(index.saturating_add(1)).unwrap_or(1);
     let unit = plan.staves().first().map_or(4, |staff| staff.time_signature().1);
+    for tempo in plan.tempos().iter().filter(|mark| mark.measure == measure) {
+        let stamp = timestamp(tempo.beat(unit));
+        let bpm = tempo.what.bpm.to_string();
+        let note_value = tempo.what.beat.denom().to_string();
+        let mut element = element("tempo");
+        element.push_attribute(("staff", "1"));
+        element.push_attribute(("tstamp", stamp.as_str()));
+        element.push_attribute(("place", "above"));
+        element.push_attribute(("mm", bpm.as_str()));
+        element.push_attribute(("mm.unit", note_value.as_str()));
+        element.push_attribute(("midi.bpm", bpm.as_str()));
+        // No text: `mm`/`mm.unit` say the same thing in the form an engraver
+        // can set as a note glyph and a number, which is how a tempo mark is
+        // printed. Text would be a second, worse spelling of it.
+        writer
+            .write_event(Event::Empty(element))
+            .map_err(|error| RenderError::xml(&error))?;
+    }
     for section in plan.sections().iter().filter(|mark| mark.measure == measure) {
         let stamp = timestamp(section.beat(unit));
         let mut dir = element("dir");

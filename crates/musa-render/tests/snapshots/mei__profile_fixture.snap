@@ -42,6 +42,7 @@ expression: mei_of(source)
               </staff>
               <dynam staff="1" startid="#event-0" place="below">p</dynam>
               <dynam staff="2" startid="#event-6" place="below">mf</dynam>
+              <tempo staff="1" tstamp="1" place="above" mm="100" mm.unit="4" midi.bpm="100"/>
             </measure>
             <measure n="2">
               <staff n="1">

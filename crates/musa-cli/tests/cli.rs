@@ -115,3 +115,36 @@ fn wav_export_is_deterministic_for_all_examples() -> std::io::Result<()> {
     assert!(count >= 3, "expected at least 3 examples, found {count}");
     Ok(())
 }
+
+/// The album fixture, end to end: a piece in a directory project renders to
+/// audio through the libraries it imports, and its tempo change is in the
+/// audio rather than only in the notation.
+///
+/// The check is the length. Sixteen quarter notes at 72 bpm would last
+/// 13⅓ seconds; the same sixteen with the second half at 108 last 11⅑. A
+/// render that ignored the change would be over two seconds longer, which no
+/// tail or rounding accounts for.
+#[test]
+fn the_album_piece_renders_through_its_imports_at_the_tempos_it_writes() -> std::io::Result<()> {
+    let source = format!(
+        "{}/../../examples/album/pieces/01-opening.musa",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let wav = std::env::temp_dir().join(format!("musa-cli-album-{}.wav", std::process::id()));
+    let output = musa(&["render", &source, "--to", "wav", "-o", &wav.to_string_lossy()])?;
+    assert!(
+        output.status.success(),
+        "stderr: {:?}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let bytes = std::fs::read(&wav)?;
+    assert_eq!(bytes.get(0..4), Some(b"RIFF".as_slice()));
+    // 32-bit float, two channels, 48 kHz: eight bytes a frame.
+    let seconds = (bytes.len().saturating_sub(44) / 8) as f64 / 48_000.0;
+    let written = 8.0 * 60.0 / 72.0 + 8.0 * 60.0 / 108.0;
+    assert!(
+        seconds > written && seconds < written + 4.0,
+        "expected about {written:.2} s of music plus a release tail, got {seconds:.2} s"
+    );
+    std::fs::remove_file(&wav)
+}

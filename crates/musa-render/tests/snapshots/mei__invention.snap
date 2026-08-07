@@ -23,6 +23,7 @@ expression: mei_of(source)
                   <note xml:id="event-3" dur="4" oct="4" pname="f"/>
                 </layer>
               </staff>
+              <tempo staff="1" tstamp="1" place="above" mm="96" mm.unit="4" midi.bpm="96"/>
             </measure>
             <measure n="2">
               <staff n="1">

@@ -1,0 +1,19 @@
+// Shared material (roadmap 16). A library declares; it does not sound. There
+// is no `score` here, and there cannot be one: an imported file is a
+// `library`, so "a piece inside an import" is a parse error rather than a
+// rule somebody has to remember.
+library {
+    motif rise(root: pitch = c5) {
+        root 1/4;
+        d5 1/4;
+        e5 1/4;
+        g5 1/4;
+    }
+
+    motif fall(root: pitch = g5) {
+        root 1/4;
+        e5 1/4;
+        d5 1/4;
+        c5 1/4;
+    }
+}

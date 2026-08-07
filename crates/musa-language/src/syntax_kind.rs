@@ -169,6 +169,14 @@ pub enum SyntaxKind {
     SectionKw,
     /// `harmony`
     HarmonyKw,
+    /// `library`
+    LibraryKw,
+    /// `crescendo`
+    CrescendoKw,
+    /// `diminuendo`
+    DiminuendoKw,
+    /// `to`
+    ToKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -238,6 +246,14 @@ pub enum SyntaxKind {
     Position,
     /// `fmaj7` — a chord symbol, as written.
     ChordSymbol,
+    /// `library { ... }` — a file of shared declarations, importable by a
+    /// piece. Root of a library file, in place of a [`SyntaxKind::PieceDecl`].
+    LibraryDecl,
+    /// `use "../library/motifs.musa";` — a relative import.
+    ImportStmt,
+    /// `crescendo to f { ... }` / `diminuendo to p { ... }` — a hairpin over
+    /// the notes it wraps.
+    HairpinStmt,
     /// The articulation names trailing a note or chord's duration. Their own
     /// node so a pitch reference and an articulation name — both bare
     /// identifiers — never have to be told apart by position.

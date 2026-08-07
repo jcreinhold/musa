@@ -10,6 +10,7 @@ partViolin = {
   \time 4/4
   \key a \minor
   {
+    \tempo 4 = 72
     e''2 % event:0
     r4 % event:1
     c''4~ % event:2

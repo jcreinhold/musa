@@ -49,6 +49,10 @@ pub struct CompileOptions {
     /// makes the kernel path canonical.
     #[doc(hidden)]
     pub elaboration: Elaboration,
+    /// The text of every file this compilation may `use` (roadmap §16),
+    /// keyed by the path an importer resolves to. The compiler reads no
+    /// files: whoever owns the filesystem fills this in.
+    pub imports: crate::imports::ImportSources,
 }
 
 /// The semantic path used by [`compile`] (course correction §30 Step 6).
@@ -169,7 +173,7 @@ impl Compilation {
 /// (prompts 05–06) remains selectable as the differential regression oracle.
 pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation {
     match options.elaboration {
-        Elaboration::Kernel => crate::elaborate::elaborate(source),
+        Elaboration::Kernel => crate::elaborate::elaborate(source, options),
         Elaboration::Direct => crate::lower::lower(source),
     }
 }

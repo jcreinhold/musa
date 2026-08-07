@@ -50,6 +50,7 @@ expression: mei_of(source)
               <slur staff="1" startid="#event-3" endid="#event-4" curvedir="above"/>
               <dynam staff="1" startid="#event-0" place="below">mf</dynam>
               <dynam staff="2" startid="#event-e" place="below">p</dynam>
+              <tempo staff="1" tstamp="1" place="above" mm="96" mm.unit="4" midi.bpm="96"/>
             </measure>
             <measure n="2">
               <staff n="1">

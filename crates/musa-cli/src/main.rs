@@ -314,6 +314,16 @@ fn cmd_check_one(path: &str) -> ExitCode {
     }
     if snapshot.compiles() {
         println!("{path}: ok");
+        // What a piece is filed under and what it reads: the two facts a
+        // directory project adds, and the two a reader would otherwise have
+        // to reconstruct from the `use` statements themselves.
+        if let Some(project) = session.project() {
+            let name = project.name.as_deref().unwrap_or("untitled");
+            println!("  project: {name} ({})", project.root.display());
+        }
+        for import in session.imports() {
+            println!("  imports: {}", import.display());
+        }
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE

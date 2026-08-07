@@ -24,6 +24,7 @@ pub struct NotationOptions {}
 #[derive(Clone, Debug)]
 pub struct NotationPlan {
     staves: Vec<StaffPlan>,
+    tempos: Vec<PositionedMark<TempoText>>,
     sections: Vec<PositionedMark<String>>,
     harmony: Vec<PositionedMark<ChordSymbol>>,
 }
@@ -32,6 +33,12 @@ impl NotationPlan {
     /// One staff per part, in source order.
     pub fn staves(&self) -> &[StaffPlan] {
         &self.staves
+    }
+
+    /// Tempo marks, in the order they are reached: the piece's starting
+    /// tempo first, then each change.
+    pub fn tempos(&self) -> &[PositionedMark<TempoText>] {
+        &self.tempos
     }
 
     /// Form markers, in the order they are reached.
@@ -69,6 +76,15 @@ impl<T> PositionedMark<T> {
     pub fn beat(&self, unit: u32) -> Ratio<i64> {
         self.onset_in_measure.as_ratio() * Ratio::from_integer(i64::from(unit.max(1))) + Ratio::ONE
     }
+}
+
+/// A tempo mark as a reader sees it: a note value and a number.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TempoText {
+    /// The beat unit as a fraction of a whole note (`1/4` for a quarter).
+    pub beat: Ratio<i64>,
+    /// Beats per minute.
+    pub bpm: u32,
 }
 
 /// A key signature element: fifths plus mode. Affects the signature only,
@@ -145,6 +161,20 @@ pub struct VoiceLane {
     items: Vec<NotatedItem>,
     slurs: Vec<SlurRange>,
     phrases: Vec<PhraseRange>,
+    hairpins: Vec<HairpinRange>,
+}
+
+/// A hairpin that begins in this lane's measure, by the events it covers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HairpinRange {
+    /// The first event under it.
+    pub from: EventId,
+    /// The last event under it.
+    pub to: EventId,
+    /// True for a crescendo, false for a diminuendo.
+    pub grows: bool,
+    /// The dynamic it arrives at, printed where it closes.
+    pub target: DynamicMark,
 }
 
 /// A phrase that begins in this lane's measure, by the events it brackets.
@@ -201,6 +231,11 @@ impl VoiceLane {
     pub fn phrases(&self) -> &[PhraseRange] {
         &self.phrases
     }
+
+    /// Hairpins beginning in this measure, in onset order.
+    pub fn hairpins(&self) -> &[HairpinRange] {
+        &self.hairpins
+    }
 }
 
 /// A beam group identifier within a lane's measure (the beat index).
@@ -228,6 +263,19 @@ pub struct PhraseMark {
     /// The phrase opens at this item.
     pub start: bool,
     /// The phrase closes at this item.
+    pub stop: bool,
+}
+
+/// A hairpin over a run of items, for the backends that write one inline.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HairpinMark {
+    /// True for a crescendo, false for a diminuendo.
+    pub grows: bool,
+    /// The dynamic it arrives at.
+    pub target: DynamicMark,
+    /// The hairpin opens at this item.
+    pub start: bool,
+    /// The hairpin closes at this item.
     pub stop: bool,
 }
 
@@ -281,6 +329,7 @@ pub struct NotatedItem {
     tuplet: Option<TupletMark>,
     slur: Edges,
     phrase: Option<PhraseMark>,
+    hairpin: Option<HairpinMark>,
     dynamic: Option<DynamicMark>,
     articulations: Vec<ArticulationMark>,
 }
@@ -341,6 +390,11 @@ impl NotatedItem {
         self.phrase.as_ref()
     }
 
+    /// The hairpin this item is under, if any.
+    pub fn hairpin(&self) -> Option<HairpinMark> {
+        self.hairpin
+    }
+
     /// The dynamic marking printed at this item, if any.
     pub fn dynamic(&self) -> Option<DynamicMark> {
         self.dynamic
@@ -392,6 +446,25 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
     for (_, part) in score.parts.iter() {
         staves.push(plan_staff(part, score.meter_map, measure_len, key, &marks)?);
     }
+    let tempo = &score.tempo_map;
+    let mut tempos = vec![positioned(
+        MusicalTime::ZERO,
+        measure_len,
+        TempoText {
+            beat: tempo.beat,
+            bpm: tempo.bpm,
+        },
+    )];
+    tempos.extend(tempo.changes.iter().map(|change| {
+        positioned(
+            change.at,
+            measure_len,
+            TempoText {
+                beat: change.beat,
+                bpm: change.bpm,
+            },
+        )
+    }));
     let sections = score
         .annotations
         .sections()
@@ -406,6 +479,7 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
         .collect();
     Ok(NotationPlan {
         staves,
+        tempos,
         sections,
         harmony,
     })
@@ -422,6 +496,8 @@ struct Marks {
     articulations: HashMap<EventId, Vec<ArticulationMark>>,
     phrases: HashMap<EventId, PhraseMark>,
     phrase_ends: HashMap<EventId, EventId>,
+    hairpins: HashMap<EventId, HairpinMark>,
+    hairpin_ends: HashMap<EventId, EventId>,
 }
 
 impl Marks {
@@ -453,6 +529,20 @@ impl Marks {
                         name: phrase.name.clone(),
                         start: raw == phrase.from.0,
                         stop: raw == phrase.to.0,
+                    },
+                );
+            }
+        }
+        for hairpin in annotations.hairpins() {
+            marks.hairpin_ends.insert(hairpin.from, hairpin.to);
+            for raw in hairpin.from.0..=hairpin.to.0 {
+                marks.hairpins.insert(
+                    EventId(raw),
+                    HairpinMark {
+                        grows: hairpin.grows,
+                        target: hairpin.target,
+                        start: raw == hairpin.from.0,
+                        stop: raw == hairpin.to.0,
                     },
                 );
             }
@@ -541,6 +631,7 @@ fn plan_staff(
                 items: lane.items,
                 slurs: lane.slurs,
                 phrases: lane.phrases,
+                hairpins: lane.hairpins,
             });
         }
         measures.push(MeasurePlan {
@@ -645,6 +736,11 @@ fn plan_lane(
                     stop: phrase.stop && is_last,
                     name: phrase.name.clone(),
                 }),
+                hairpin: marks.hairpins.get(&event.id).map(|hairpin| HairpinMark {
+                    start: hairpin.start && is_first,
+                    stop: hairpin.stop && is_last,
+                    ..*hairpin
+                }),
                 dynamic: if is_first {
                     marks.dynamics.get(&event.id).copied()
                 } else {
@@ -681,7 +777,25 @@ fn plan_lane(
             })
         })
         .collect();
-    Ok(Lane { items, slurs, phrases })
+    let hairpins = items
+        .iter()
+        .filter_map(|item| {
+            let hairpin = item.hairpin.filter(|hairpin| hairpin.start)?;
+            let to = *marks.hairpin_ends.get(&item.event)?;
+            Some(HairpinRange {
+                from: item.event,
+                to,
+                grows: hairpin.grows,
+                target: hairpin.target,
+            })
+        })
+        .collect();
+    Ok(Lane {
+        items,
+        slurs,
+        phrases,
+        hairpins,
+    })
 }
 
 /// One lane's plan for one measure, before it is named.
@@ -689,6 +803,7 @@ struct Lane {
     items: Vec<NotatedItem>,
     slurs: Vec<SlurRange>,
     phrases: Vec<PhraseRange>,
+    hairpins: Vec<HairpinRange>,
 }
 
 fn kind_of(event: &ScoreEvent) -> NotatedKind {

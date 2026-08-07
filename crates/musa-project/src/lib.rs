@@ -39,8 +39,10 @@ mod edit;
 mod error;
 mod export;
 mod facts;
+mod imports;
 mod midi;
 mod playback;
+mod project;
 mod session;
 mod snapshot;
 mod studio;
@@ -56,6 +58,7 @@ pub use crate::facts::{
     VoiceFacts,
 };
 pub use crate::midi::MidiEntry;
+pub use crate::project::ProjectMeta;
 pub use crate::session::ProjectSession;
 pub use crate::snapshot::{PlaybackState, ProjectSnapshot};
 pub use crate::studio::{

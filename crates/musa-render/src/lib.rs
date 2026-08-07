@@ -27,8 +27,8 @@ mod render;
 pub use crate::error::{NotationError, RenderError};
 pub use crate::midi::{MidiMode, MidiOptions, render_midi};
 pub use crate::plan::{
-    ARTICULATION_PLACEMENT, BeamGroup, DYNAMIC_PLACEMENT, KeySignature, MeasurePlan, NotatedItem, NotatedKind,
-    NotationOptions, NotationPlan, PhraseMark, PhraseRange, Placement, PositionedMark, SLUR_PLACEMENT, SlurRange,
-    StaffPlan, TupletMark, VoiceLane, plan_notation,
+    ARTICULATION_PLACEMENT, BeamGroup, DYNAMIC_PLACEMENT, HairpinMark, HairpinRange, KeySignature, MeasurePlan,
+    NotatedItem, NotatedKind, NotationOptions, NotationPlan, PhraseMark, PhraseRange, Placement, PositionedMark,
+    SLUR_PLACEMENT, SlurRange, StaffPlan, TempoText, TupletMark, VoiceLane, plan_notation,
 };
 pub use crate::render::{NotationTarget, RenderedNotation, render_notation};

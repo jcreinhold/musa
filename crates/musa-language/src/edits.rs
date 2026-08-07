@@ -481,6 +481,7 @@ fn item_syntax(item: &crate::ast::VoiceItem) -> &SyntaxNode {
         crate::ast::VoiceItem::Retrograde(ref it) => it.syntax(),
         crate::ast::VoiceItem::Invert(ref it) => it.syntax(),
         crate::ast::VoiceItem::Phrase(ref it) => it.syntax(),
+        crate::ast::VoiceItem::Hairpin(ref it) => it.syntax(),
     }
 }
 

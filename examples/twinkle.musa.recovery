@@ -1,0 +1,27 @@
+piece "twinkle" {
+    tempo 1/4 = 104;
+    meter 4/4;
+    key c major;
+
+    score {
+        part piano {
+            voice melody {
+                c4 1/4;
+                c4 1/4;
+                g4 1/4;
+                g4 1/4;
+                a4 1/4;
+                a4 1/4;
+                g4 1/2;
+                f4 1/4;
+                f4 1/4;
+                e4 1/4;
+                e4 1/4;
+                d4 1/4;
+                d4 1/4;
+                c4 1/2;
+                rest 1;
+            }
+        }
+    }
+}

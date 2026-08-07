@@ -19,7 +19,13 @@ const TWINKLE: &str = include_str!("../../../examples/twinkle.musa");
 const CANON: &str = include_str!("../../../examples/canon.musa");
 
 fn compile_with(text: &str, elaboration: Elaboration) -> Compilation {
-    compile(&SourceDocument::new(text, "diff.musa"), &CompileOptions { elaboration })
+    compile(
+        &SourceDocument::new(text, "diff.musa"),
+        &CompileOptions {
+            elaboration,
+            ..CompileOptions::default()
+        },
+    )
 }
 
 /// Full parity: snapshot equality (positions, durations, spelling, identity,
@@ -81,6 +87,7 @@ fn phase_two_constructs_are_kernel_only() {
             &document,
             &CompileOptions {
                 elaboration: Elaboration::Direct,
+                ..CompileOptions::default()
             },
         );
         // The refusal drops the construct's items, so the bar-length warning
@@ -100,6 +107,7 @@ fn phase_two_constructs_are_kernel_only() {
             &document,
             &CompileOptions {
                 elaboration: Elaboration::Kernel,
+                ..CompileOptions::default()
             },
         );
         assert!(

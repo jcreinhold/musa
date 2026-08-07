@@ -30,8 +30,9 @@ use crate::lower::{self, ExpandCx, GroupInfo, GroupKind, Lowering};
 use crate::origin::{ExpansionStep, Origin, SourceSpan};
 use crate::pitch::WrittenPitch;
 use crate::score::{
-    ArticulationMark, ArticulationMarking, DynamicMark, DynamicMarking, HarmonyMark, NotatedDuration, Part, PartId,
-    PhraseSpan, ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TupletSpan, Voice, VoiceId,
+    ArticulationMark, ArticulationMarking, DynamicMark, DynamicMarking, HairpinSpan, HarmonyMark, NotatedDuration,
+    Part, PartId, PhraseSpan, ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoChange,
+    TupletSpan, Voice, VoiceId,
 };
 use crate::time::MusicalTime;
 use musa_kernel::{Beat, Occurrence, Span, Timeline, overlay, sequence, timeline};
@@ -182,7 +183,7 @@ impl musa_kernel::Canonical for VoicePayload {
 
 /// Elaborate `source` through the temporal kernel and adapt the result into
 /// a `ScoreSnapshot` (docs/kernel/06, prompt 11).
-pub(crate) fn elaborate(source: &SourceDocument) -> Compilation {
+pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions) -> Compilation {
     let document = musa_language::parse(source.text());
     let mut lowering = Lowering::new();
     for error in document.errors() {
@@ -205,10 +206,13 @@ pub(crate) fn elaborate(source: &SourceDocument) -> Compilation {
     };
 
     let mut snapshot = ScoreSnapshot::default();
+    let libraries = crate::imports::load(&mut lowering, source.name(), &piece, &options.imports);
+    elaborate_libraries(&mut lowering, &libraries, &mut snapshot);
     lower::lower_header(&mut lowering, &piece, &mut snapshot);
     if let Some(score) = piece.score() {
         elaborate_score(&mut lowering, &score, &mut snapshot);
         elaborate_annotations(&mut lowering, &score, &snapshot);
+        elaborate_tempo_changes(&mut lowering, &piece, &mut snapshot);
     }
     snapshot.annotations = std::mem::take(&mut lowering.annotations);
     lower::check_measure_sanity(&mut lowering, &snapshot);
@@ -220,7 +224,9 @@ pub(crate) fn elaborate(source: &SourceDocument) -> Compilation {
     {
         return Compilation::new(None, lowering.diagnostics);
     }
-    let studio = lower::lower_studio(&mut lowering, &piece, &snapshot);
+    let imported_studios: Vec<musa_language::ast::StudioDecl> =
+        libraries.each().filter_map(|(_, library)| library.studio()).collect();
+    let studio = lower::lower_studio(&mut lowering, &piece, &snapshot, &imported_studios);
     if lowering
         .diagnostics
         .iter()
@@ -344,6 +350,69 @@ fn elaborate_annotations(lowering: &mut Lowering, score: &musa_language::ast::Sc
             },
         });
     }
+}
+
+/// Register everything the imported libraries declare, before the piece's
+/// own declarations, so a collision is reported against the library that
+/// caused it (roadmap §16).
+fn elaborate_libraries(lowering: &mut Lowering, libraries: &crate::imports::Libraries, snapshot: &mut ScoreSnapshot) {
+    for (path, library) in libraries.each() {
+        if let Some(performance) = library.performance() {
+            let profiles = lower::parse_profiles(lowering, &performance);
+            lower::merge_profiles(
+                lowering,
+                snapshot,
+                &profiles,
+                lower::span_of(performance.syntax()),
+                Some(path),
+            );
+        }
+        lower::register_motifs(lowering, snapshot, &library.motifs(), Some(path));
+    }
+}
+
+/// Resolve the piece's tempo changes against the meter (roadmap §6.3).
+///
+/// A tempo change is written where a form marker is written — `at 9:1` — and
+/// for the same reason: a tempo belongs to a place in the piece, not to a
+/// note. Positions are resolved after the parts exist so that a tempo nobody
+/// ever reaches is an error rather than a silent segment.
+fn elaborate_tempo_changes(
+    lowering: &mut Lowering,
+    piece: &musa_language::ast::PieceDecl,
+    snapshot: &mut ScoreSnapshot,
+) {
+    let declaration = crate::origin::DeclarationId::default();
+    let extent = piece_extent(snapshot);
+    let mut changes: Vec<TempoChange> = Vec::new();
+    for tempo in piece.tempos().iter().filter(|tempo| tempo.position().is_some()) {
+        let span = lower::trimmed_span(tempo.syntax());
+        let Some(at) = resolve_position(lowering, tempo.position().as_ref(), span, snapshot, extent) else {
+            continue;
+        };
+        if at == MusicalTime::ZERO {
+            lowering.error("the tempo at `1:1` is the piece's tempo; write it without `at`", span);
+            continue;
+        }
+        if changes.iter().any(|existing| existing.at == at) {
+            lowering.error("two tempos at the same place", span);
+            continue;
+        }
+        let (beat, bpm) = lower::tempo_reading(lowering, tempo);
+        changes.push(TempoChange {
+            at,
+            beat,
+            bpm,
+            origin: Origin {
+                source_span: span,
+                definition_span: span,
+                declaration,
+                expansion_path: Vec::new(),
+            },
+        });
+    }
+    changes.sort_by_key(|change| change.at);
+    snapshot.tempo_map.changes = changes;
 }
 
 /// How long the piece is: where its last event ends.
@@ -591,6 +660,23 @@ fn elaborate_item(
             });
             let inner: Vec<u32> = groups.iter().copied().chain(std::iter::once(id)).collect();
             elaborate_items(lowering, &phrase.items(), cx, part, voice, &inner, pending)
+        }
+        VoiceItem::Hairpin(hairpin) => {
+            let span = lower::trimmed_span(hairpin.syntax());
+            let text = hairpin.target().unwrap_or_default();
+            let Some(target) = DynamicMark::parse(&text) else {
+                lowering.error(format!("unknown dynamic marking `{text}`"), span);
+                return empty_segment();
+            };
+            let id = lowering.group(GroupInfo {
+                kind: GroupKind::Hairpin {
+                    grows: hairpin.grows(),
+                    target,
+                },
+                origin: origin_of(cx, span),
+            });
+            let inner: Vec<u32> = groups.iter().copied().chain(std::iter::once(id)).collect();
+            elaborate_items(lowering, &hairpin.items(), cx, part, voice, &inner, pending)
         }
         VoiceItem::Tuplet(tuplet) => {
             let text = tuplet.ratio().unwrap_or_default();
@@ -1161,6 +1247,13 @@ fn identify(lowering: &mut Lowering, adapted: Vec<Adapted>) -> Voice {
                 name: name.clone(),
                 from,
                 to,
+                origin,
+            }),
+            GroupKind::Hairpin { grows, target } => lowering.annotations.push_hairpin(HairpinSpan {
+                from,
+                to,
+                grows,
+                target,
                 origin,
             }),
             GroupKind::Tuplet { num, den } => lowering.annotations.push_tuplet(TupletSpan {

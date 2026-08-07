@@ -72,7 +72,7 @@ pub fn render_midi(performance: &PerformancePlan, options: &MidiOptions) -> Resu
         Format::Parallel,
         Timing::Metrical(u15::new(options.ticks_per_quarter)),
     ));
-    smf.tracks.push(tempo_track(performance));
+    smf.tracks.push(tempo_track(performance, &ticks));
     for (index, lane) in performance.lanes().iter().enumerate() {
         // Channel 10 (index 9) is percussion by convention; skipping it keeps
         // a tenth part from being silently rewritten to a drum kit.
@@ -86,45 +86,85 @@ pub fn render_midi(performance: &PerformancePlan, options: &MidiOptions) -> Resu
     Ok(bytes)
 }
 
-/// Frames → ticks. The plan is scheduled in frames against a sample rate and
-/// a tempo; the file is metrical, so one conversion factor recovers ticks.
+/// Frames → ticks, one segment per tempo.
+///
+/// The plan is scheduled in frames; the file is metrical, so ticks are beats
+/// and the conversion factor changes wherever the tempo does. Each segment
+/// carries the tick its first frame lands on, so a note after a tempo change
+/// is placed against the tempo actually in force there rather than against
+/// the tempo the piece started in.
 struct Ticks {
+    segments: Vec<TickSegment>,
+}
+
+#[derive(Clone, Copy)]
+struct TickSegment {
+    frame: u64,
+    tick: u64,
     per_frame: f64,
 }
 
 impl Ticks {
     fn new(performance: &PerformancePlan, ticks_per_quarter: u16) -> Self {
-        let seconds_per_quarter = performance.tempo().seconds_per_quarter();
-        let frames_per_quarter = seconds_per_quarter * f64::from(performance.tempo().sample_rate());
-        let per_frame = if frames_per_quarter > 0.0 {
-            f64::from(ticks_per_quarter) / frames_per_quarter
-        } else {
-            0.0
-        };
-        Self { per_frame }
+        let rate = f64::from(performance.tempo().sample_rate());
+        let mut segments: Vec<TickSegment> = Vec::new();
+        for segment in performance.tempo().segments() {
+            let frames_per_quarter = segment.seconds_per_quarter * rate;
+            let per_frame = if frames_per_quarter > 0.0 {
+                f64::from(ticks_per_quarter) / frames_per_quarter
+            } else {
+                0.0
+            };
+            let tick = segments.last().map_or(0, |previous: &TickSegment| {
+                let frames = segment.frame.saturating_sub(previous.frame) as f64;
+                previous
+                    .tick
+                    .saturating_add((frames * previous.per_frame).round().max(0.0) as u64)
+            });
+            segments.push(TickSegment {
+                frame: segment.frame,
+                tick,
+                per_frame,
+            });
+        }
+        Self { segments }
     }
 
     fn of(&self, frame: u64) -> u64 {
-        (frame as f64 * self.per_frame).round().max(0.0) as u64
+        let Some(segment) = self
+            .segments
+            .iter()
+            .rev()
+            .find(|segment| segment.frame <= frame)
+            .or_else(|| self.segments.first())
+        else {
+            return 0;
+        };
+        let frames = frame.saturating_sub(segment.frame) as f64;
+        segment
+            .tick
+            .saturating_add((frames * segment.per_frame).round().max(0.0) as u64)
     }
 }
 
-/// One tempo meta-event at the top of the file. Constant tempo per piece;
-/// curves are prompt 36's.
-fn tempo_track(performance: &PerformancePlan) -> Track<'static> {
-    let micros = (performance.tempo().seconds_per_quarter() * 1_000_000.0)
-        .round()
-        .max(1.0) as u32;
-    vec![
-        TrackEvent {
-            delta: u28::new(0),
+/// One tempo meta-event per written tempo, at the tick it takes effect.
+fn tempo_track(performance: &PerformancePlan, ticks: &Ticks) -> Track<'static> {
+    let mut events = Vec::new();
+    let mut previous = 0u64;
+    for segment in performance.tempo().segments() {
+        let micros = (segment.seconds_per_quarter * 1_000_000.0).round().max(1.0) as u32;
+        let tick = ticks.of(segment.frame);
+        events.push(TrackEvent {
+            delta: u28::new(u32::try_from(tick.saturating_sub(previous)).unwrap_or(u32::MAX)),
             kind: TrackEventKind::Meta(MetaMessage::Tempo(u24::new(micros.min(0x00FF_FFFF)))),
-        },
-        TrackEvent {
-            delta: u28::new(0),
-            kind: TrackEventKind::Meta(MetaMessage::EndOfTrack),
-        },
-    ]
+        });
+        previous = tick;
+    }
+    events.push(TrackEvent {
+        delta: u28::new(0),
+        kind: TrackEventKind::Meta(MetaMessage::EndOfTrack),
+    });
+    events
 }
 
 /// One track per part, named, with its notes on one channel.
