@@ -1,7 +1,7 @@
 ---
 id: 41
 slug: retire-the-oracle
-status: pending
+status: done
 depends_on: [40]
 phase: 3
 ---
@@ -119,3 +119,44 @@ Commit the split as `Separate resolution from the frozen lowerer`, then the dele
 - Do not take the opportunity to refactor `resolve.rs` beyond the rename. It has been moved; that is enough churn for
   one commit.
 - Do not delete `examples/` fixtures or "consolidate" them. They are the net now.
+
+## Repairs made while implementing
+
+### The split (`Separate resolution from the frozen lowerer`)
+
+- **`Lowering` became `Resolver`, and the module `resolve.rs`.** The struct holds the tables names resolve against, the
+  counters that issue identities, the annotations resolved to those identities, and the diagnostics for what could not
+  be resolved — one honest name, so it did not need splitting further.
+- **`apply_intervals` is shared, not oracle-shaped.** The prompt's item list omits it; `resolve_pitch` calls it, so it
+  moved with resolution. (`elaborate.rs` still has a second copy with the same semantics. That duplication predates
+  this prompt and outlives it: removing it is a behaviour-preserving refactor of the *live* path, and the Stop section
+  says not to take the opportunity.)
+
+### The deletion (`Delete the direct lowering path`)
+
+- **`CompileOptions` survives.** Prompt 36 put `imports` in it, so it is not empty and `compile(source, &options)`
+  keeps its shape; three call sites lost a now-pointless `..CompileOptions::default()`.
+- **`tests/elaboration.rs` was rewritten, not deleted.** Deleting the file would have taken `kernel_normal_forms_snapshot`
+  and `repeat_unrolls_to_the_same_kernel` with it — the very goldens the prompt names as part of the replacement net —
+  and renaming the file would have churned every `elaboration__*.snap`. The differential tests are gone; the rest
+  stayed and the module doc now says what the file is.
+- **Coverage checked before deleting, and two of the three "error fixtures" turned out to assert nothing.**
+  `fixtures_have_errors_under_both_paths` compared three sources: `use nope()` (a real error, and the only one),
+  a motif forward-reference in a piece with **no `score` block** (never expanded, so never an error — the real
+  coverage is `compiler.rs::motifs_only_see_earlier_motifs`), and `css4` carried up two octaves and a minor second
+  (`dss6`, perfectly spellable — the real coverage is
+  `transform_laws.rs::a_mirror_image_the_language_cannot_write_is_reported`). All three are now stated as what they
+  actually are. Everything else the suite asserted — positions, durations, spelling, identity, multiplicity, ordering,
+  provenance — is pinned absolutely by the backend goldens, the law suites, and the kernel normal forms.
+- **The generated corpus now checks itself against its own text**, since there is no second path to compare to: the
+  strategies carry how many statements they wrote and how long those statements last, and the property is that the
+  piece elaborates to exactly that. This immediately found a bug the differential suite had been hiding: its chord arm
+  generated `chord (c4 c4)`, which is a **syntax error** — the real syntax is `chord [c4, c4]` — so a third of the
+  generated corpus had been exercising the parser's error recovery rather than chords, and the comparison never
+  noticed because both paths rejected it identically. That is the argument for the whole prompt in one line: two
+  implementations agreeing proves nothing about either.
+- **`phase_two_constructs_are_kernel_only` is gone with the boundary it pinned.** The kernel half of what it asserted —
+  that slurs, dynamics and tuplets compile — is covered by `annotation_laws` and `notation_details_laws`.
+- **The performance row is a non-measurement, deliberately recorded.** Every allocation count is identical to prompt
+  40's in all four phases; the timings sit 5–8% higher because the machine was contended during the run. Recorded with
+  that reasoning rather than silently, since the alternative is a table that looks like a regression nobody explained.

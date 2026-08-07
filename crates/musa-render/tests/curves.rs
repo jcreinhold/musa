@@ -25,10 +25,7 @@ fn opening() -> ScoreSnapshot {
     imports.insert("examples/album/library/patches.musa", PATCHES);
     compile(
         &SourceDocument::new(OPENING, "examples/album/pieces/01-opening.musa"),
-        &CompileOptions {
-            imports,
-            ..CompileOptions::default()
-        },
+        &CompileOptions { imports },
     )
     .into_snapshot()
     .expect("the album fixture compiles")

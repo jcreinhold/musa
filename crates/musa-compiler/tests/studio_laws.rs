@@ -16,7 +16,7 @@
 #![allow(clippy::panic)]
 #![allow(clippy::unwrap_used)]
 
-use musa_compiler::{CompileOptions, Elaboration, Processor, Severity, SourceDocument, StudioSpec, Unit, compile};
+use musa_compiler::{CompileOptions, Processor, Severity, SourceDocument, StudioSpec, Unit, compile};
 
 const GLASS_MOUNTAIN: &str = include_str!("../../../examples/glass-mountain.musa");
 
@@ -73,30 +73,6 @@ fn a_studio_block_changes_nothing_about_the_score() {
     );
     assert!(!studio.is_empty());
     assert!(empty.is_empty(), "no `studio` block means no studio");
-}
-
-#[test]
-fn both_semantic_paths_resolve_the_studio_identically() {
-    // The studio says nothing about notes, so unlike the phase-2 notation
-    // constructs it is *not* kernel-only: one implementation serves both
-    // paths, and this pins that they agree.
-    let source = piece("patch p { oscillator(sine) |> output; } assign violin -> p; route violin -> master;");
-    let document = SourceDocument::new(&source, "test.musa");
-    let kernel = compile(
-        &document,
-        &CompileOptions {
-            elaboration: Elaboration::Kernel,
-            ..CompileOptions::default()
-        },
-    );
-    let direct = compile(
-        &document,
-        &CompileOptions {
-            elaboration: Elaboration::Direct,
-            ..CompileOptions::default()
-        },
-    );
-    assert_eq!(format!("{:#?}", kernel.studio()), format!("{:#?}", direct.studio()));
 }
 
 // --- Structure --------------------------------------------------------------

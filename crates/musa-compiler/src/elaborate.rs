@@ -1,12 +1,12 @@
 //! Elaboration of the surface language through the temporal kernel
 //! (docs/kernel/06, course correction §19–20, §30 Step 4).
 //!
-//! This is the second semantic path: the same CST, the same declaration
-//! table, motif registration, and unit checks as the direct lowerer (shared
-//! helpers from `lower.rs`), but voice content elaborates into
-//! `Timeline<ScoreFact>` values built from kernel `sequence`/`overlay`,
-//! then adapts back into the existing `ScoreSnapshot` (§27). The direct
-//! lowerer remains the regression oracle until prompt 12.
+//! This is *the* semantic path: name resolution, motif registration and unit
+//! checks come from `resolve.rs`, voice content elaborates into
+//! `Timeline<ScoreFact>` values built from kernel `sequence`/`overlay`, and
+//! `project.rs` reads a `ScoreSnapshot` back out of the result (§27). It was
+//! the second path until prompt 41 deleted the direct lowerer it was
+//! validated against.
 //!
 //! Design decisions recorded in docs/kernel/06 and 08:
 //! - a `rest` statement elaborates to a `Rest` payload occurrence — notation

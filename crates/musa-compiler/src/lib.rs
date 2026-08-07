@@ -2,9 +2,9 @@
 //!
 //! Pipeline (course correction §26, prompt 12): CST → expansion-aware
 //! elaboration → temporal kernel (`musa-kernel`) → `ScoreSnapshot` adapter.
-//! The direct lowerer of prompts 05–06 remains as the differential
-//! regression oracle; the kernel — not the surface grammar — defines the
-//! ontology.
+//! One semantic path: the direct lowerer of prompts 05–06 was the migration's
+//! regression oracle and was deleted at prompt 41. The kernel — not the
+//! surface grammar — defines the ontology.
 //!
 //! Owns: name resolution, unit checking, semantic diagnostics, the high-level
 //! compositional model (motifs, transformations, references), motif expansion,
@@ -33,7 +33,6 @@ mod compile;
 mod elaborate;
 mod harmony;
 mod imports;
-mod lower;
 mod origin;
 mod performance;
 mod pitch;
@@ -44,7 +43,7 @@ mod score;
 mod studio;
 mod time;
 
-pub use crate::compile::{Compilation, CompileOptions, Diagnostic, Elaboration, Severity, SourceDocument, compile};
+pub use crate::compile::{Compilation, CompileOptions, Diagnostic, Severity, SourceDocument, compile};
 #[doc(hidden)]
 pub use crate::elaborate::kernel_normal_form;
 pub use crate::harmony::{ChordQuality, ChordSymbol, Seventh};

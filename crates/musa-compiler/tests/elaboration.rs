@@ -1,121 +1,54 @@
-//! Differential validation (course correction §30 Step 5): the kernel
-//! elaboration path must reproduce the direct lowerer's snapshots exactly —
-//! positions, durations, spelling, identity, multiplicity, ordering, and
-//! provenance — on fixtures and a generated corpus. Also the first
-//! falsification fixtures (§33): twinkle, canon, counterpoint normal forms.
+//! What elaboration through the temporal kernel guarantees, stated without an
+//! oracle to compare against.
+//!
+//! Through prompt 40 this file was the *differential* suite: the kernel path
+//! had to reproduce the frozen direct lowerer's snapshots exactly, on fixtures
+//! and on a generated corpus. Prompt 41 deleted the lowerer, so the questions
+//! it answered by comparison are answered here directly:
+//!
+//! - **fixtures** — positions, durations, spelling, identity, multiplicity,
+//!   ordering and provenance are pinned absolutely by the backend goldens
+//!   (`musa-render`), the law suites, and the kernel normal forms below;
+//! - **the generated corpus** — arbitrary pieces still have to elaborate, and
+//!   what a random piece *means* is checkable without a second implementation:
+//!   one event per written statement, and a voice as long as the durations
+//!   written in it. Checking the text rather than a second path immediately
+//!   found that the old generator's chord arm wrote `chord (c4 c4)` — a
+//!   syntax error the comparison never noticed, because both paths rejected
+//!   it identically;
+//! - **error cases** — each has an absolute home (`compiler.rs` for motif
+//!   order and unknown motifs, `transform_laws.rs` for double accidentals).
+//!
+//! Also the falsification fixtures (§33): twinkle, canon, counterpoint normal
+//! forms.
 
 // Test helpers use expect() on statically-valid inputs: a failure is a bug in
 // the test itself, and panicking is the correct behavior there.
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
+// The generators do exact rational arithmetic on small literals; the workspace
+// arithmetic lint has nothing to protect here.
+#![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{Compilation, CompileOptions, Elaboration, Severity, SourceDocument, compile, kernel_normal_form};
+use musa_compiler::{CompileOptions, ScoreSnapshot, Severity, SourceDocument, compile, kernel_normal_form};
+use num_rational::Ratio;
 use proptest::prelude::*;
 
-const GLASS_MOUNTAIN: &str = include_str!("../../../examples/glass-mountain.musa");
-const INVENTION: &str = include_str!("../../../examples/invention.musa");
 const COUNTERPOINT: &str = include_str!("../../../examples/counterpoint.musa");
 const TWINKLE: &str = include_str!("../../../examples/twinkle.musa");
 const CANON: &str = include_str!("../../../examples/canon.musa");
 
-fn compile_with(text: &str, elaboration: Elaboration) -> Compilation {
-    compile(
-        &SourceDocument::new(text, "diff.musa"),
-        &CompileOptions {
-            elaboration,
-            ..CompileOptions::default()
-        },
-    )
+fn snapshot_of(text: &str) -> Option<ScoreSnapshot> {
+    compile(&SourceDocument::new(text, "gen.musa"), &CompileOptions::default()).into_snapshot()
 }
 
-/// Full parity: snapshot equality (positions, durations, spelling, identity,
-/// multiplicity, ordering, provenance) plus identical diagnostics.
-fn assert_parity(text: &str) {
-    let direct = compile_with(text, Elaboration::Direct);
-    let kernel = compile_with(text, Elaboration::Kernel);
-    let direct_diags: Vec<String> = direct
+fn errors_of(text: &str) -> Vec<String> {
+    compile(&SourceDocument::new(text, "gen.musa"), &CompileOptions::default())
         .diagnostics()
         .iter()
-        .map(|d| format!("{:?}:{}:{:?}", d.severity, d.message, d.span))
-        .collect();
-    let kernel_diags: Vec<String> = kernel
-        .diagnostics()
-        .iter()
-        .map(|d| format!("{:?}:{}:{:?}", d.severity, d.message, d.span))
-        .collect();
-    assert_eq!(direct_diags, kernel_diags, "diagnostics diverged");
-    let direct_snap = direct.into_snapshot();
-    let kernel_snap = kernel.into_snapshot();
-    assert_eq!(direct_snap.is_some(), kernel_snap.is_some(), "success diverged");
-    if let (Some(old), Some(new)) = (direct_snap, kernel_snap) {
-        assert_eq!(old, new, "snapshots diverged");
-    }
-}
-
-#[test]
-fn fixtures_have_full_parity() {
-    for source in [GLASS_MOUNTAIN, INVENTION, COUNTERPOINT, TWINKLE, CANON] {
-        assert_parity(source);
-    }
-}
-
-#[test]
-fn fixtures_have_errors_under_both_paths() {
-    // Error and warning cases must behave identically, not just successes.
-    let bad_motif_order = "piece \"x\" { motif a() { use b(); } motif b() { c4 1/4; } }";
-    let unknown_motif = "piece \"x\" { score { part p { voice v { use nope(); } } } }";
-    let double_accidental = "piece \"x\" { score { part p { voice v { transpose up P8 { transpose up P8 { transpose up m2 { css4 1/4; } } } } } } }";
-    for source in [bad_motif_order, unknown_motif, double_accidental] {
-        assert_parity(source);
-    }
-}
-
-/// The direct lowerer is frozen (see `lower.rs`): the expressive notation
-/// layer of prompt 27 lives only on the kernel path. Parity is kept by the
-/// direct path *refusing* those constructs, not by re-implementing them, so
-/// the boundary itself is the contract worth pinning.
-#[test]
-fn phase_two_constructs_are_kernel_only() {
-    for (construct, body) in [
-        ("slur", "slur { c4 1/4; d4 1/4; } rest 1/2;"),
-        ("dynamic", "dynamic mf; c4 1;"),
-        ("tuplet", "tuplet 3/2 { c4 1/8; d4 1/8; e4 1/8; } rest 3/4;"),
-    ] {
-        let source = format!("piece \"x\" {{ meter 4/4; score {{ part p {{ voice v {{ {body} }} }} }} }}");
-        let document = SourceDocument::new(&source, "phase2.musa");
-        let direct = compile(
-            &document,
-            &CompileOptions {
-                elaboration: Elaboration::Direct,
-                ..CompileOptions::default()
-            },
-        );
-        // The refusal drops the construct's items, so the bar-length warning
-        // fires too; the error is the fact under test.
-        let errors: Vec<&str> = direct
-            .diagnostics()
-            .iter()
-            .filter(|d| d.severity == Severity::Error)
-            .map(|d| d.message.as_str())
-            .collect();
-        assert_eq!(
-            errors,
-            vec![format!("`{construct}` needs the kernel elaboration path")],
-            "the direct path must refuse `{construct}`, not mis-lower it"
-        );
-        let kernel = compile(
-            &document,
-            &CompileOptions {
-                elaboration: Elaboration::Kernel,
-                ..CompileOptions::default()
-            },
-        );
-        assert!(
-            kernel.diagnostics().is_empty(),
-            "the kernel path accepts `{construct}`: {:?}",
-            kernel.diagnostics()
-        );
-    }
+        .filter(|diagnostic| diagnostic.severity == Severity::Error)
+        .map(|diagnostic| diagnostic.message.clone())
+        .collect()
 }
 
 #[test]
@@ -128,10 +61,6 @@ fn kernel_normal_forms_snapshot() {
 
 /// The key and the meter are occurrences, and the snapshot's context maps are
 /// a reading of them (prompt 40).
-///
-/// `fixtures_have_full_parity` already proves the reading reproduces the
-/// direct lowerer's answer; this says where the answer now comes from, which
-/// is the thing a refactor could quietly undo.
 #[test]
 fn the_key_and_the_meter_are_facts_of_the_timeline() {
     let source = "piece \"x\" { meter 3/4; key bf major; score { part p { voice v { c4 1/4; } } } }";
@@ -139,9 +68,7 @@ fn the_key_and_the_meter_are_facts_of_the_timeline() {
     assert!(form.contains("meter:3/4"), "meter is not an occurrence: {form}");
     assert!(form.contains("key:bf:major"), "key is not an occurrence: {form}");
 
-    let snapshot = compile_with(source, Elaboration::Kernel)
-        .into_snapshot()
-        .expect("compiles");
+    let snapshot = snapshot_of(source).expect("compiles");
     assert_eq!((snapshot.meter_map.numerator, snapshot.meter_map.denominator), (3, 4));
     assert_eq!(snapshot.key_map.map(|key| key.tonic.to_string()), Some("bf".to_owned()));
 }
@@ -171,70 +98,185 @@ fn repeat_unrolls_to_the_same_kernel() {
     assert_eq!(heads_and_spans(&a), heads_and_spans(&b));
 }
 
+/// The three "error fixtures" the differential suite carried, asserted
+/// against what the compiler actually says rather than against a second path.
+///
+/// Only one of the three was ever an error. The other two — a motif used
+/// before its declaration in a piece with no `score`, and a doubly-sharp note
+/// carried up two octaves and a semitone — compile cleanly, and the
+/// comparison agreed on that silence without anybody noticing. The real
+/// coverage for those behaviours is `compiler.rs::motifs_only_see_earlier_motifs`
+/// and `transform_laws.rs::a_mirror_image_the_language_cannot_write_is_reported`;
+/// what is left here is the one fixture that carried its own weight, plus the
+/// two silences stated as the successes they are.
+#[test]
+fn the_fixtures_the_oracle_used_to_agree_about_still_say_what_they_said() {
+    let unknown_motif = "piece \"x\" { score { part p { voice v { use nope(); } } } }";
+    let errors = errors_of(unknown_motif);
+    assert!(
+        errors.iter().any(|message| message.contains("unknown motif")),
+        "expected `unknown motif`, got {errors:?}"
+    );
+    assert!(
+        snapshot_of(unknown_motif).is_none(),
+        "a rejected piece must not produce a score"
+    );
+
+    // A motif nobody uses is not resolved, so declaration order is not
+    // checked here; `compiler.rs` checks it where a `score` reaches it.
+    let unused_forward_reference = "piece \"x\" { motif a() { use b(); } motif b() { c4 1/4; } }";
+    assert!(errors_of(unused_forward_reference).is_empty());
+
+    // `css4` two octaves and a minor second up is `dss6` — spellable, so no
+    // error. Unspellable mirrors are `transform_laws`'s.
+    let stacked = "piece \"x\" { score { part p { voice v { transpose up P8 { transpose up P8 { transpose up m2 { css4 1/4; } } } } } } }";
+    assert!(errors_of(stacked).is_empty());
+    let snapshot = snapshot_of(stacked).expect("compiles");
+    let (count, _) = measured(&snapshot, 0);
+    assert_eq!(count, 1);
+}
+
 // --- Generated corpus -------------------------------------------------------
+//
+// The strategies carry what they wrote — how many statements, and how long —
+// so an arbitrary piece can be checked against its own text. That is what the
+// oracle used to supply and is strictly more direct: a bug both paths shared
+// was invisible to the comparison and is visible here.
+
+/// A generated voice: its text, how many statements it spells, and how long
+/// those statements last.
+#[derive(Clone, Debug)]
+struct GeneratedVoice {
+    body: String,
+    statements: usize,
+    duration: Ratio<i64>,
+}
 
 fn pitch_strategy() -> impl Strategy<Value = &'static str> {
     prop::sample::select(vec!["c4", "d4", "e4", "f4", "g4", "a4", "b4", "c5", "ef4", "fs4"])
 }
 
-fn duration_strategy() -> impl Strategy<Value = &'static str> {
-    prop::sample::select(vec!["1/8", "1/4", "3/8", "1/2", "3/4", "1"])
+fn duration_strategy() -> impl Strategy<Value = (&'static str, Ratio<i64>)> {
+    prop::sample::select(vec![
+        ("1/8", Ratio::new(1, 8)),
+        ("1/4", Ratio::new(1, 4)),
+        ("3/8", Ratio::new(3, 8)),
+        ("1/2", Ratio::new(1, 2)),
+        ("3/4", Ratio::new(3, 4)),
+        ("1", Ratio::new(1, 1)),
+    ])
 }
 
-fn item_strategy() -> impl Strategy<Value = String> {
+/// One statement: a note, a rest, or a two-pitch chord. Each spells exactly
+/// one event, whatever its pitch count.
+fn item_strategy() -> impl Strategy<Value = (String, Ratio<i64>)> {
     prop::sample::select(vec![0u8, 1, 2]).prop_flat_map(|kind| match kind {
         0 => (pitch_strategy(), duration_strategy())
-            .prop_map(|(pitch, dur)| format!("{pitch} {dur};"))
+            .prop_map(|(pitch, (text, value))| (format!("{pitch} {text};"), value))
             .boxed(),
-        1 => duration_strategy().prop_map(|dur| format!("rest {dur};")).boxed(),
+        1 => duration_strategy()
+            .prop_map(|(text, value)| (format!("rest {text};"), value))
+            .boxed(),
         _ => (pitch_strategy(), pitch_strategy(), duration_strategy())
-            .prop_map(|(a, b, dur)| format!("chord ({a} {b}) {dur};"))
+            .prop_map(|(a, b, (text, value))| (format!("chord [{a}, {b}] {text};"), value))
             .boxed(),
     })
 }
 
-fn voice_body_strategy() -> impl Strategy<Value = String> {
+fn voice_strategy() -> impl Strategy<Value = GeneratedVoice> {
     prop::collection::vec(item_strategy(), 1..=8).prop_flat_map(|items| {
-        let body = items.concat();
-        // Optionally wrap a middle segment in repeat/transpose.
+        let body: String = items.iter().map(|(text, _)| text.as_str()).collect();
+        let duration: Ratio<i64> = items.iter().map(|(_, value)| *value).sum();
+        let statements = items.len();
+        // Optionally wrap the whole body in repeat/transpose. `repeat 2`
+        // doubles both counts; `transpose` changes neither.
         prop::sample::select(vec![0u8, 1, 2]).prop_map(move |wrap| match wrap {
-            0 => body.clone(),
-            1 => format!("repeat 2 {{ {body} }}"),
-            _ => format!("transpose up P5 {{ {body} }}"),
+            0 => GeneratedVoice {
+                body: body.clone(),
+                statements,
+                duration,
+            },
+            1 => GeneratedVoice {
+                body: format!("repeat 2 {{ {body} }}"),
+                statements: statements * 2,
+                duration: duration * 2,
+            },
+            _ => GeneratedVoice {
+                body: format!("transpose up P5 {{ {body} }}"),
+                statements,
+                duration,
+            },
         })
     })
 }
 
-fn source_strategy() -> impl Strategy<Value = String> {
-    (voice_body_strategy(), voice_body_strategy()).prop_map(|(upper, lower)| {
-        format!(
-            "piece \"gen\" {{ tempo 1/4 = 96; meter 4/4; key c major; score {{ part p {{ voice a {{ {upper} }} voice b {{ {lower} }} }} }} }}"
-        )
+fn source_strategy() -> impl Strategy<Value = (String, GeneratedVoice, GeneratedVoice)> {
+    (voice_strategy(), voice_strategy()).prop_map(|(upper, lower)| {
+        let source = format!(
+            "piece \"gen\" {{ tempo 1/4 = 96; meter 4/4; key c major; score {{ part p {{ voice a {{ {} }} voice b {{ {} }} }} }} }}",
+            upper.body, lower.body
+        );
+        (source, upper, lower)
     })
 }
 
-/// A source with a motif used through repeat and transpose.
-fn motif_source_strategy() -> impl Strategy<Value = String> {
-    (pitch_strategy(), pitch_strategy(), duration_strategy()).prop_map(|(root, other, dur)| {
-        format!(
-            "piece \"gen\" {{ meter 4/4; motif m(root: pitch = c4) {{ root {dur}; {other} {dur}; }} score {{ part p {{ voice v {{ use m({root}); repeat 2 {{ transpose down P5 {{ use m(); }} }} }} }} }} }}"
-        )
+/// A source with a motif used through repeat and transpose: three uses of a
+/// two-statement motif.
+fn motif_source_strategy() -> impl Strategy<Value = (String, GeneratedVoice)> {
+    (pitch_strategy(), pitch_strategy(), duration_strategy()).prop_map(|(root, other, (text, value))| {
+        let source = format!(
+            "piece \"gen\" {{ meter 4/4; motif m(root: pitch = c4) {{ root {text}; {other} {text}; }} score {{ part p {{ voice v {{ use m({root}); repeat 2 {{ transpose down P5 {{ use m(); }} }} }} }} }} }}"
+        );
+        let expected = GeneratedVoice {
+            body: String::new(),
+            statements: 6,
+            duration: value * 6,
+        };
+        (source, expected)
     })
+}
+
+/// What the voice at `index` actually contains: how many events, and how far
+/// the last one reaches.
+fn measured(snapshot: &ScoreSnapshot, index: usize) -> (usize, Ratio<i64>) {
+    let voice = snapshot
+        .parts
+        .iter()
+        .flat_map(|(_, part)| part.voices.values())
+        .nth(index)
+        .expect("the voice exists");
+    let end = voice
+        .events
+        .iter()
+        .map(|event| (event.onset + event.notated_duration.value).as_ratio())
+        .max()
+        .unwrap_or_default();
+    (voice.events.len(), end)
 }
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
-    /// Parity on the generated corpus of plain items with repeat/transpose
-    /// wrappers.
+    /// An arbitrary piece of plain items, with optional `repeat`/`transpose`
+    /// wrappers, elaborates to exactly what it wrote: one event per statement,
+    /// and a voice as long as the durations in it.
+    ///
+    /// Bar-length warnings are expected — the generator writes any durations
+    /// it likes — so only errors are refused.
     #[test]
-    fn generated_sources_have_parity(source in source_strategy()) {
-        assert_parity(&source);
+    fn generated_sources_elaborate_to_what_they_wrote((source, upper, lower) in source_strategy()) {
+        prop_assert!(errors_of(&source).is_empty(), "{source}");
+        let snapshot = snapshot_of(&source).expect("compiles");
+        prop_assert_eq!(measured(&snapshot, 0), (upper.statements, upper.duration));
+        prop_assert_eq!(measured(&snapshot, 1), (lower.statements, lower.duration));
     }
 
-    /// Parity with motifs, positional arguments, defaults, nesting.
+    /// The same, through motifs with positional arguments, defaults, and
+    /// nesting: expansion adds events, never time out of nowhere.
     #[test]
-    fn motif_sources_have_parity(source in motif_source_strategy()) {
-        assert_parity(&source);
+    fn motif_expansion_produces_what_the_uses_spell((source, expected) in motif_source_strategy()) {
+        prop_assert!(errors_of(&source).is_empty(), "{source}");
+        let snapshot = snapshot_of(&source).expect("compiles");
+        prop_assert_eq!(measured(&snapshot, 0), (expected.statements, expected.duration));
     }
 }

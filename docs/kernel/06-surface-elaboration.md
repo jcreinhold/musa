@@ -122,22 +122,29 @@ map `Beat → Second` applied to symbolic positions at realization time (`07-bac
 
 ## Adapter contract (ScoreSnapshot)
 
-The adapter projects normalized `Timeline[NotePayload]` values into the existing `ScoreSnapshot`:
+The projection reads the piece's one `Timeline[ScoreFact]` back out as a `ScoreSnapshot`:
 
-- occurrences → `ScoreEvent`s (id assignment deterministic: canonical order per part, voice-major);
-- same-span/same-voice/same-origin groups → `Chord`; singletons → `Note`;
-- payload `voice` → part/voice lanes; payload `origin` → event `Origin` verbatim;
-- extent per voice → `Voice::span`; part extent = max over voices;
-- context maps and annotations → as the old lowerer emits them.
+- note and rest occurrences → `ScoreEvent`s (id assignment deterministic: visit order, part- and voice-major);
+- same-span/same-scope/same-origin groups → `Chord`; singletons → `Note`;
+- payload `scope` → part/voice lanes; payload `origin` → event `Origin` verbatim;
+- region and point occurrences → the annotation lanes, resolved to the ids at their ends;
+- piece-scoped occurrences → `KeyMap` and `MeterMap`.
 
-**Parity requirement (§30 Step 5):** for every fixture, the adapter's snapshot must equal the old lowerer's snapshot on
-positions, durations, spelling, part/voice identity, multiplicity, ordering, and provenance. The old lowerer is the
-regression oracle until prompt 12, and remains runnable permanently.
+**The regression net (was: the parity requirement, §30 Step 5).** Through prompt 40 this section required the adapter's
+snapshot to equal the frozen direct lowerer's on positions, durations, spelling, part/voice identity, multiplicity,
+ordering, and provenance. Prompt 41 deleted that lowerer — a frozen second implementation of a shrinking subset is a
+second answer to "what does this piece mean", not a safety net — and the net is now what it should always have been:
 
-The phase-2 constructs above (tie, articulation, dynamic, slur, tuplet) are **kernel-path only**. The old lowerer is
-frozen, so instead of re-implementing them it rejects them with `` `<construct>` needs the kernel elaboration path ``;
-parity therefore still holds on everything the oracle accepts. `phase_two_constructs_are_kernel_only` in
-`crates/musa-compiler/tests/elaboration.rs` pins that boundary so neither path can quietly drift across it.
+- the `examples/*.musa` corpus with `insta` goldens at every backend (MEI, `LilyPond`, `MusicXML`, MIDI, `NotationPlan`);
+- the law suites (`transform_laws`, `notation_details_laws`, `annotation_laws`, `profile_laws`, `import_laws`);
+- the kernel's own property tests, and the kernel normal form of every fixture;
+- a generated corpus checked against **its own text** — one event per written statement, a voice as long as the
+  durations written in it — which is strictly more direct than a comparison, since a bug both paths shared was
+  invisible to the comparison.
+
+The phase-2 constructs above (tie, articulation, dynamic, slur, tuplet) needed no such boundary once there was one
+path; the rejection diagnostics the frozen lowerer carried (`` `<construct>` needs the kernel elaboration path ``) went
+with it.
 
 ## What elaboration must never do
 

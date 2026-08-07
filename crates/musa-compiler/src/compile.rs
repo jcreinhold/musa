@@ -44,28 +44,10 @@ impl SourceDocument {
 /// (12-TET tuning arrives with prompt 15's performance options).
 #[derive(Clone, Debug, Default)]
 pub struct CompileOptions {
-    /// Which semantic path `compile` takes (course correction §30 Steps
-    /// 5–6). The direct lowerer is the regression oracle until prompt 12
-    /// makes the kernel path canonical.
-    #[doc(hidden)]
-    pub elaboration: Elaboration,
     /// The text of every file this compilation may `use` (roadmap §16),
     /// keyed by the path an importer resolves to. The compiler reads no
     /// files: whoever owns the filesystem fills this in.
     pub imports: crate::imports::ImportSources,
-}
-
-/// The semantic path used by [`compile`] (course correction §30 Step 6).
-#[doc(hidden)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Elaboration {
-    /// Elaboration through the temporal kernel (prompt 11; canonical since
-    /// prompt 12).
-    #[default]
-    Kernel,
-    /// The direct CST→snapshot lowerer (prompts 05–06), frozen as the
-    /// regression oracle for the differential suite.
-    Direct,
 }
 
 /// Diagnostic severity.
@@ -169,11 +151,9 @@ impl Compilation {
 /// correction §26).
 ///
 /// Pipeline: parse → expansion-aware elaboration (motifs, repeat, transpose)
-/// → temporal kernel → `ScoreSnapshot` adapter. The direct lowerer
-/// (prompts 05–06) remains selectable as the differential regression oracle.
+/// → temporal kernel → `ScoreSnapshot` adapter. There is one semantic path;
+/// the direct lowerer that shadowed it through the kernel migration was
+/// deleted at prompt 41.
 pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation {
-    match options.elaboration {
-        Elaboration::Kernel => crate::elaborate::elaborate(source, options),
-        Elaboration::Direct => crate::lower::lower(source),
-    }
+    crate::elaborate::elaborate(source, options)
 }

@@ -146,9 +146,12 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 47 | elaboration-emits-terms | 3 | Sharing: `repeat` and motifs become `let` |
 | 48 | windowed-observation | 3 | Deferred observation, if measurement justifies it |
 
-Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 is **frozen as
-the regression oracle** once prompt 11 lands: the new kernel elaboration must reproduce its snapshots exactly
-(differential parity), and prompt 12 makes the kernel path canonical. Nothing built before prompt 08 is discarded —
+Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
+the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
+(differential parity), and prompt 12 made the kernel path canonical. The oracle was retained through prompt 40 and
+**deleted at prompt 41**, once the migration it guarded was finished; what replaced it is the `examples/` corpus with
+goldens at every backend, the law suites, the kernel's property tests, and the kernel normal forms. Nothing built
+before prompt 08 is discarded —
 lossless parsing, formatting, exact rational time, provenance, `ScoreSnapshot`, and `NotationPlan` are explicitly
 preserved by the course correction (§29, §35.2).
 

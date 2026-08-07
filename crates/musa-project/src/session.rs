@@ -415,7 +415,6 @@ impl ProjectSession {
     fn options(&self) -> CompileOptions {
         CompileOptions {
             imports: self.imports.clone(),
-            ..CompileOptions::default()
         }
     }
 

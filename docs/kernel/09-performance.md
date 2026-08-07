@@ -70,6 +70,14 @@ per iteration and are exact rather than sampled.
 | 40 | P3 | large | 208 µs | 7 852 | 853 KB |
 | 40 | P4 | small | 29 µs | 367 | 17.6 KB |
 | 40 | P4 | large | 1.56 ms | 30 934 | 1.51 MB |
+| 41 | P1 | small | 68 µs | 2 036 | 137 KB |
+| 41 | P1 | large | 1.33 ms | 50 836 | 3.75 MB |
+| 41 | P2 | small | 43 µs | 1 788 | 116 KB |
+| 41 | P2 | large | 1.15 ms | 49 135 | 3.55 MB |
+| 41 | P3 | small | 3.4 µs | 127 | 11.1 KB |
+| 41 | P3 | large | 224 µs | 7 852 | 853 KB |
+| 41 | P4 | small | 30 µs | 367 | 17.6 KB |
+| 41 | P4 | large | 1.72 ms | 30 934 | 1.51 MB |
 
 Two things the baseline already says, recorded here rather than acted on (prompt 38 changes nothing it measures):
 
@@ -99,6 +107,13 @@ it now writes into a single `String` sized up front. Allocation *count* is ident
 P4 measure the voice lanes only), but reallocation is not: `grow` fell from 24 478 per iteration to 310. That is the
 first of the two `Canonical` costs prompt 38 flagged; the `String` keys themselves are still there, and still prompt
 43's to measure.
+
+Prompt 41's row deleted code and measured nothing new: **every allocation count is identical to prompt 40's**, in all
+four phases and both workloads, which is exactly what deleting a path `compile` never took should do. The timings run
+5–8% above prompt 40's and should not be read as a regression — the three runs taken for this row were on a contended
+machine (divan's slowest sample reached 158 ms against a 1.3 ms median, where prompt 40's worst sample was 1.7 ms), and
+the medians above are the best of the three. When a row's allocation counts are unchanged and its timings are not, the
+timings are the thing that is lying.
 
 ## The rule
 
