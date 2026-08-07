@@ -59,10 +59,10 @@ npx playwright install chromium
 
 ### Updating the goldens
 
-`tests/__screenshots__/` is the design's regression net for the rest of the sequence. It holds two kinds of golden:
-the raster images — Playwright screenshots at 2×, with the tolerance stated in `playwright.config.ts`, rather than a
-`resvg` rasterization, so that what is compared is what a browser actually draws — and the `*-structure.txt` digests
-of what each page is made of. The images catch a design regression; the digests say what changed in words.
+`tests/__screenshots__/` is the design's regression net for the rest of the sequence. It holds two kinds of golden: the
+raster images — Playwright screenshots at 2×, with the tolerance stated in `playwright.config.ts`, rather than a `resvg`
+rasterization, so that what is compared is what a browser actually draws — and the `*-structure.txt` digests of what
+each page is made of. The images catch a design regression; the digests say what changed in words.
 
 Regenerate only when a change to the design is intended, and read every file the run rewrites:
 
@@ -82,9 +82,10 @@ UPDATE_UI_FIXTURES=1 cargo nextest run -p musa-desktop
 ### The fixtures
 
 Every file in `fixtures/` is written by a test in `crates/musa-project`, so none of them can drift from the types they
-serialize. The large-score pair — `large-score.mei` and `large-score.snapshot.json` — is the 100-bar, four-part
-workload the performance budgets are measured on; its source, `tests/fixtures/large-score.musa` at the repository
-root, is generated from a rule by the same test rather than written by hand. If a fixture goes stale the Rust test fails; regenerate with:
+serialize. The large-score pair — `large-score.mei` and `large-score.snapshot.json` — is the 100-bar, four-part workload
+the performance budgets are measured on; its source, `tests/fixtures/large-score.musa` at the repository root, is
+generated from a rule by the same test rather than written by hand. If a fixture goes stale the Rust test fails;
+regenerate with:
 
 ```sh
 UPDATE_UI_FIXTURES=1 cargo nextest run -p musa-project

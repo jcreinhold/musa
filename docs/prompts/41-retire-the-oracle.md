@@ -12,9 +12,9 @@ phase: 3
 
 Delete the prompt-05/06 CST→snapshot lowerer, the `Elaboration` switch that selects it, and the differential suite that
 compared the two paths. It was retained at prompt 12 as the regression oracle for the kernel migration; that migration
-finished at prompt 40, and the oracle has been unable to compile most of the language since prompt 27 — it rejects
-ties, slurs, dynamics, tuplets, phrases, sections, and harmony by name. A frozen second implementation of a shrinking
-subset is no longer a safety net; it is a second answer to "what does this piece mean" that has to be kept compiling.
+finished at prompt 40, and the oracle has been unable to compile most of the language since prompt 27 — it rejects ties,
+slurs, dynamics, tuplets, phrases, sections, and harmony by name. A frozen second implementation of a shrinking subset
+is no longer a safety net; it is a second answer to "what does this piece mean" that has to be kept compiling.
 
 Separate the shared resolution helpers out of `lower.rs` first, so the deletion removes an implementation and not the
 parts of it the live path depends on.
@@ -30,8 +30,8 @@ parts of it the live path depends on.
   `GroupKind`, `span_of`, `trimmed_span`, `ordinal`, `token_text`, `declare`, `group`, `error`, `event_id`,
   `lower_header`, `lower_studio`, `register_motifs`, `merge_profiles`, `parse_profiles`, `part_metadata`,
   `tempo_reading`, `parse_ratio`, `parse_duration`, `resolve_pitch`, `resolve_duration`, `bind_argument`,
-  `check_measure_sanity`. The oracle set is `lower`, `lower_score`, `lower_voice`, `lower_items`, `lower_use`.
-  Verify the split against the compiler rather than trusting this list.
+  `check_measure_sanity`. The oracle set is `lower`, `lower_score`, `lower_voice`, `lower_items`, `lower_use`. Verify
+  the split against the compiler rather than trusting this list.
 - `crates/musa-compiler/tests/elaboration.rs` (the differential suite, including
   `phase_two_constructs_are_kernel_only`), `crates/musa-compiler/tests/studio_laws.rs` (one test still selects
   `Elaboration::Direct`).
@@ -45,9 +45,9 @@ parts of it the live path depends on.
 
 `lower.rs` is two modules wearing one name. Separate them along the line of what each *hides*:
 
-- **`resolve.rs`** — names, declarations, ordinals, motif registration, argument binding, pitch and duration
-  resolution, header/studio/profile reading, source spans, and the diagnostic sink. This is the vocabulary both paths
-  spoke, and it is what elaboration keeps. It hides the declaration table and the expansion context.
+- **`resolve.rs`** — names, declarations, ordinals, motif registration, argument binding, pitch and duration resolution,
+  header/studio/profile reading, source spans, and the diagnostic sink. This is the vocabulary both paths spoke, and it
+  is what elaboration keeps. It hides the declaration table and the expansion context.
 - what remains in `lower.rs` is the oracle, and only the oracle.
 
 The split is mechanical and must change no behaviour: same functions, same signatures, new home. Commit it on its own so
@@ -72,12 +72,12 @@ accordingly. If prompt 36's work has put a real option in it, keep it and say so
 
 ### What replaces the safety net
 
-Nothing needs to. The regression net is now what it should have been: the `examples/*.musa` corpus with `insta`
-goldens at every backend, the law suites (`transform_laws`, `notation_details_laws`, `annotation_laws`,
-`profile_laws`), the kernel's own property tests, and the kernel normal form of every fixture. Confirm before deleting,
-by checking that each behaviour the differential suite asserted has a home in that set — positions, durations,
-spelling, part/voice identity, multiplicity, ordering, provenance. Anything that does not, gets a test in this commit
-**before** the suite is deleted. List them in "Repairs made while implementing".
+Nothing needs to. The regression net is now what it should have been: the `examples/*.musa` corpus with `insta` goldens
+at every backend, the law suites (`transform_laws`, `notation_details_laws`, `annotation_laws`, `profile_laws`), the
+kernel's own property tests, and the kernel normal form of every fixture. Confirm before deleting, by checking that each
+behaviour the differential suite asserted has a home in that set — positions, durations, spelling, part/voice identity,
+multiplicity, ordering, provenance. Anything that does not, gets a test in this commit **before** the suite is deleted.
+List them in "Repairs made while implementing".
 
 ### The documents
 
@@ -128,33 +128,33 @@ Commit the split as `Separate resolution from the frozen lowerer`, then the dele
   counters that issue identities, the annotations resolved to those identities, and the diagnostics for what could not
   be resolved — one honest name, so it did not need splitting further.
 - **`apply_intervals` is shared, not oracle-shaped.** The prompt's item list omits it; `resolve_pitch` calls it, so it
-  moved with resolution. (`elaborate.rs` still has a second copy with the same semantics. That duplication predates
-  this prompt and outlives it: removing it is a behaviour-preserving refactor of the *live* path, and the Stop section
-  says not to take the opportunity.)
+  moved with resolution. (`elaborate.rs` still has a second copy with the same semantics. That duplication predates this
+  prompt and outlives it: removing it is a behaviour-preserving refactor of the *live* path, and the Stop section says
+  not to take the opportunity.)
 
 ### The deletion (`Delete the direct lowering path`)
 
-- **`CompileOptions` survives.** Prompt 36 put `imports` in it, so it is not empty and `compile(source, &options)`
-  keeps its shape; three call sites lost a now-pointless `..CompileOptions::default()`.
-- **`tests/elaboration.rs` was rewritten, not deleted.** Deleting the file would have taken `kernel_normal_forms_snapshot`
-  and `repeat_unrolls_to_the_same_kernel` with it — the very goldens the prompt names as part of the replacement net —
-  and renaming the file would have churned every `elaboration__*.snap`. The differential tests are gone; the rest
-  stayed and the module doc now says what the file is.
+- **`CompileOptions` survives.** Prompt 36 put `imports` in it, so it is not empty and `compile(source, &options)` keeps
+  its shape; three call sites lost a now-pointless `..CompileOptions::default()`.
+- **`tests/elaboration.rs` was rewritten, not deleted.** Deleting the file would have taken
+  `kernel_normal_forms_snapshot` and `repeat_unrolls_to_the_same_kernel` with it — the very goldens the prompt names as
+  part of the replacement net — and renaming the file would have churned every `elaboration__*.snap`. The differential
+  tests are gone; the rest stayed and the module doc now says what the file is.
 - **Coverage checked before deleting, and two of the three "error fixtures" turned out to assert nothing.**
-  `fixtures_have_errors_under_both_paths` compared three sources: `use nope()` (a real error, and the only one),
-  a motif forward-reference in a piece with **no `score` block** (never expanded, so never an error — the real
-  coverage is `compiler.rs::motifs_only_see_earlier_motifs`), and `css4` carried up two octaves and a minor second
-  (`dss6`, perfectly spellable — the real coverage is
-  `transform_laws.rs::a_mirror_image_the_language_cannot_write_is_reported`). All three are now stated as what they
-  actually are. Everything else the suite asserted — positions, durations, spelling, identity, multiplicity, ordering,
-  provenance — is pinned absolutely by the backend goldens, the law suites, and the kernel normal forms.
+  `fixtures_have_errors_under_both_paths` compared three sources: `use nope()` (a real error, and the only one), a motif
+  forward-reference in a piece with **no `score` block** (never expanded, so never an error — the real coverage is
+  `compiler.rs::motifs_only_see_earlier_motifs`), and `css4` carried up two octaves and a minor second (`dss6`,
+  perfectly spellable — the real coverage is `transform_laws.rs::a_mirror_image_the_language_cannot_write_is_reported`).
+  All three are now stated as what they actually are. Everything else the suite asserted — positions, durations,
+  spelling, identity, multiplicity, ordering, provenance — is pinned absolutely by the backend goldens, the law suites,
+  and the kernel normal forms.
 - **The generated corpus now checks itself against its own text**, since there is no second path to compare to: the
-  strategies carry how many statements they wrote and how long those statements last, and the property is that the
-  piece elaborates to exactly that. This immediately found a bug the differential suite had been hiding: its chord arm
+  strategies carry how many statements they wrote and how long those statements last, and the property is that the piece
+  elaborates to exactly that. This immediately found a bug the differential suite had been hiding: its chord arm
   generated `chord (c4 c4)`, which is a **syntax error** — the real syntax is `chord [c4, c4]` — so a third of the
-  generated corpus had been exercising the parser's error recovery rather than chords, and the comparison never
-  noticed because both paths rejected it identically. That is the argument for the whole prompt in one line: two
-  implementations agreeing proves nothing about either.
+  generated corpus had been exercising the parser's error recovery rather than chords, and the comparison never noticed
+  because both paths rejected it identically. That is the argument for the whole prompt in one line: two implementations
+  agreeing proves nothing about either.
 - **`phase_two_constructs_are_kernel_only` is gone with the boundary it pinned.** The kernel half of what it asserted —
   that slurs, dynamics and tuplets compile — is covered by `annotation_laws` and `notation_details_laws`.
 - **The performance row is a non-measurement, deliberately recorded.** Every allocation count is identical to prompt

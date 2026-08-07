@@ -135,8 +135,16 @@
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
       backgroundColor: "var(--plate-wash)",
     },
-    // Provenance, in the one hue that ever means it.
+    /*
+     * Provenance, in the one hue that ever means it. Inside the mark the hue
+     * is the ground, so the type goes back to full ink: `--plate` on
+     * `--plate-wash` is the same colour twice and reads at 3.9:1, and the
+     * muted greys the highlighter uses for identifiers and punctuation are no
+     * better. Marked text is the text this screen is *about* — setting it in
+     * the darkest ink is what it deserves anyway.
+     */
     ".cm-musa-origin": { backgroundColor: "var(--plate-wash)" },
+    ".cm-musa-origin, .cm-musa-origin span": { color: "var(--ink)" },
     ".cm-lintRange-error": {
       backgroundImage: "none",
       borderBottom: "1px solid var(--chalk)",

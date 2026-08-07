@@ -147,15 +147,15 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 48 | kernel-interop | 3 | `musa kernel`; `.kernel` round-trip; graduates the calculus |
 | 49 | elaboration-emits-terms | 3 | Sharing: `repeat` and motifs become `let` |
 | 50 | windowed-observation | 3 | Deferred observation, if measurement justifies it |
+| 51 | pointer-editing | 2 | The score writes the source: token-scoped pointer edits |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
 (differential parity), and prompt 12 made the kernel path canonical. The oracle was retained through prompt 40 and
 **deleted at prompt 41**, once the migration it guarded was finished; what replaced it is the `examples/` corpus with
-goldens at every backend, the law suites, the kernel's property tests, and the kernel normal forms. Nothing built
-before prompt 08 is discarded —
-lossless parsing, formatting, exact rational time, provenance, `ScoreSnapshot`, and `NotationPlan` are explicitly
-preserved by the course correction (§29, §35.2).
+goldens at every backend, the law suites, the kernel's property tests, and the kernel normal forms. Nothing built before
+prompt 08 is discarded — lossless parsing, formatting, exact rational time, provenance, `ScoreSnapshot`, and
+`NotationPlan` are explicitly preserved by the course correction (§29, §35.2).
 
 Prompts 20–26 are the interface block. They replace a single "Tauri + Svelte + Verovio" prompt that treated the desktop
 app as plumbing and left its design, engraving quality, interaction model, and performance entirely unspecified — which
@@ -164,6 +164,11 @@ so that **the design is settled before any plumbing exists** (prompt 20 is a fix
 real fonts, and committed screenshot goldens, and nothing else), then wired (21), then made to hold up under real use
 (22, 23), then given its distinguishing interaction (24) and its editing story (25, 26). `docs/interface/` is the
 specification all seven implement.
+
+Prompt 51 returns to the interface block from the other side. Prompts 25 and 26 made the text canonical and gave it a
+keyboard; 51 makes the page a way to write it, under a rule narrow enough to survive roadmap §14.5's objection — a
+pointer gesture replaces one token with one value, and nothing else. It is numbered here rather than inside 20–26
+because it depends on prompt 27's constructs existing before it can refuse to create them.
 
 Prompts 37–50 are the kernel consolidation block. Prompt 12 made the kernel canonical but deliberately kept what the
 migration needed: the direct lowerer as a regression oracle, and a `ScoreSnapshot` shaped exactly as the pre-kernel
@@ -177,15 +182,15 @@ consumers were each writing privately and differently (`covering`, `prevailing`)
 *shape* in the denotation instead of inside `performance.rs` — closing Q4, and closing it with a payload value that
 needs no new operation and breaks no law. **46–50 add the term calculus** — `docs/kernel/01-grammar.md`'s long-promised
 syntax, with `let` for sharing, an evaluator, soundness theorems, and the interchange format that Q6 said would justify
-a parser. The block follows the 08–12 shape: specify (46), implement and prove (47), install (48–49), and measure
-before optimizing (38, 50).
+a parser. The block follows the 08–12 shape: specify (46), implement and prove (47), install (48–49), and measure before
+optimizing (38, 50).
 
 Read 44 and 45 together as the answer to a fair objection: the kernel was supposed to be a simpler interop target than
-the surface language, but no backend consumed it and no consumer asked it anything. 39–43 made it *total* — the
-snapshot is now a projection of one timeline. 44 gives it an interface, 45 gives it the one thing it genuinely could
-not say, and 48 makes the artifact real. Each of the three is a payoff the earlier prompts were only setting up. That
-44 and 45 need **zero** new constructors is the standing evidence for course correction §34: the operation set was
-right; the *surface* was not.
+the surface language, but no backend consumed it and no consumer asked it anything. 39–43 made it *total* — the snapshot
+is now a projection of one timeline. 44 gives it an interface, 45 gives it the one thing it genuinely could not say, and
+48 makes the artifact real. Each of the three is a payoff the earlier prompts were only setting up. That 44 and 45 need
+**zero** new constructors is the standing evidence for course correction §34: the operation set was right; the *surface*
+was not.
 
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
 ("Verovio score preview", "play, stop, seek, loop") but which this sequence deliberately runs after the CLI-provable

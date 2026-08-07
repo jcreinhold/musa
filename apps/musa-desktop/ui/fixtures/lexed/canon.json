@@ -1,397 +1,397 @@
 [
   {
     "class": "keyword",
-    "end": 5,
-    "start": 0
+    "start": 0,
+    "end": 5
   },
   {
     "class": "text",
-    "end": 13,
-    "start": 6
+    "start": 6,
+    "end": 13
   },
   {
     "class": "punctuation",
-    "end": 15,
-    "start": 14
+    "start": 14,
+    "end": 15
   },
   {
     "class": "keyword",
-    "end": 25,
-    "start": 20
+    "start": 20,
+    "end": 25
   },
   {
     "class": "duration",
-    "end": 29,
-    "start": 26
+    "start": 26,
+    "end": 29
   },
   {
     "class": "punctuation",
-    "end": 31,
-    "start": 30
+    "start": 30,
+    "end": 31
   },
   {
     "class": "number",
-    "end": 34,
-    "start": 32
+    "start": 32,
+    "end": 34
   },
   {
     "class": "punctuation",
-    "end": 35,
-    "start": 34
+    "start": 34,
+    "end": 35
   },
   {
     "class": "keyword",
-    "end": 45,
-    "start": 40
+    "start": 40,
+    "end": 45
   },
   {
     "class": "duration",
-    "end": 49,
-    "start": 46
+    "start": 46,
+    "end": 49
   },
   {
     "class": "punctuation",
-    "end": 50,
-    "start": 49
+    "start": 49,
+    "end": 50
   },
   {
     "class": "keyword",
-    "end": 58,
-    "start": 55
+    "start": 55,
+    "end": 58
   },
   {
     "class": "name",
-    "end": 60,
-    "start": 59
+    "start": 59,
+    "end": 60
   },
   {
     "class": "name",
-    "end": 66,
-    "start": 61
+    "start": 61,
+    "end": 66
   },
   {
     "class": "punctuation",
-    "end": 67,
-    "start": 66
+    "start": 66,
+    "end": 67
   },
   {
     "class": "keyword",
-    "end": 78,
-    "start": 73
+    "start": 73,
+    "end": 78
   },
   {
     "class": "name",
-    "end": 84,
-    "start": 79
+    "start": 79,
+    "end": 84
   },
   {
     "class": "punctuation",
-    "end": 85,
-    "start": 84
+    "start": 84,
+    "end": 85
   },
   {
     "class": "punctuation",
-    "end": 86,
-    "start": 85
+    "start": 85,
+    "end": 86
   },
   {
     "class": "punctuation",
-    "end": 88,
-    "start": 87
+    "start": 87,
+    "end": 88
   },
   {
     "class": "pitch",
-    "end": 99,
-    "start": 97
+    "start": 97,
+    "end": 99
   },
   {
     "class": "duration",
-    "end": 103,
-    "start": 100
+    "start": 100,
+    "end": 103
   },
   {
     "class": "punctuation",
-    "end": 104,
-    "start": 103
+    "start": 103,
+    "end": 104
   },
   {
     "class": "pitch",
-    "end": 107,
-    "start": 105
+    "start": 105,
+    "end": 107
   },
   {
     "class": "duration",
-    "end": 111,
-    "start": 108
+    "start": 108,
+    "end": 111
   },
   {
     "class": "punctuation",
-    "end": 112,
-    "start": 111
+    "start": 111,
+    "end": 112
   },
   {
     "class": "pitch",
-    "end": 115,
-    "start": 113
+    "start": 113,
+    "end": 115
   },
   {
     "class": "duration",
-    "end": 119,
-    "start": 116
+    "start": 116,
+    "end": 119
   },
   {
     "class": "punctuation",
-    "end": 120,
-    "start": 119
+    "start": 119,
+    "end": 120
   },
   {
     "class": "pitch",
-    "end": 123,
-    "start": 121
+    "start": 121,
+    "end": 123
   },
   {
     "class": "duration",
-    "end": 127,
-    "start": 124
+    "start": 124,
+    "end": 127
   },
   {
     "class": "punctuation",
-    "end": 128,
-    "start": 127
+    "start": 127,
+    "end": 128
   },
   {
     "class": "pitch",
-    "end": 139,
-    "start": 137
+    "start": 137,
+    "end": 139
   },
   {
     "class": "duration",
-    "end": 143,
-    "start": 140
+    "start": 140,
+    "end": 143
   },
   {
     "class": "punctuation",
-    "end": 144,
-    "start": 143
+    "start": 143,
+    "end": 144
   },
   {
     "class": "pitch",
-    "end": 147,
-    "start": 145
+    "start": 145,
+    "end": 147
   },
   {
     "class": "duration",
-    "end": 151,
-    "start": 148
+    "start": 148,
+    "end": 151
   },
   {
     "class": "punctuation",
-    "end": 152,
-    "start": 151
+    "start": 151,
+    "end": 152
   },
   {
     "class": "pitch",
-    "end": 155,
-    "start": 153
+    "start": 153,
+    "end": 155
   },
   {
     "class": "duration",
-    "end": 159,
-    "start": 156
+    "start": 156,
+    "end": 159
   },
   {
     "class": "punctuation",
-    "end": 160,
-    "start": 159
+    "start": 159,
+    "end": 160
   },
   {
     "class": "pitch",
-    "end": 163,
-    "start": 161
+    "start": 161,
+    "end": 163
   },
   {
     "class": "duration",
-    "end": 167,
-    "start": 164
+    "start": 164,
+    "end": 167
   },
   {
     "class": "punctuation",
-    "end": 168,
-    "start": 167
+    "start": 167,
+    "end": 168
   },
   {
     "class": "punctuation",
-    "end": 174,
-    "start": 173
+    "start": 173,
+    "end": 174
   },
   {
     "class": "keyword",
-    "end": 185,
-    "start": 180
+    "start": 180,
+    "end": 185
   },
   {
     "class": "punctuation",
-    "end": 187,
-    "start": 186
+    "start": 186,
+    "end": 187
   },
   {
     "class": "keyword",
-    "end": 200,
-    "start": 196
+    "start": 196,
+    "end": 200
   },
   {
     "class": "name",
-    "end": 208,
-    "start": 201
+    "start": 201,
+    "end": 208
   },
   {
     "class": "punctuation",
-    "end": 210,
-    "start": 209
+    "start": 209,
+    "end": 210
   },
   {
     "class": "keyword",
-    "end": 228,
-    "start": 223
+    "start": 223,
+    "end": 228
   },
   {
     "class": "name",
-    "end": 232,
-    "start": 229
+    "start": 229,
+    "end": 232
   },
   {
     "class": "punctuation",
-    "end": 234,
-    "start": 233
+    "start": 233,
+    "end": 234
   },
   {
     "class": "use",
-    "end": 254,
-    "start": 251
+    "start": 251,
+    "end": 254
   },
   {
     "class": "name",
-    "end": 260,
-    "start": 255
+    "start": 255,
+    "end": 260
   },
   {
     "class": "punctuation",
-    "end": 261,
-    "start": 260
+    "start": 260,
+    "end": 261
   },
   {
     "class": "punctuation",
-    "end": 262,
-    "start": 261
+    "start": 261,
+    "end": 262
   },
   {
     "class": "punctuation",
-    "end": 263,
-    "start": 262
+    "start": 262,
+    "end": 263
   },
   {
     "class": "punctuation",
-    "end": 277,
-    "start": 276
+    "start": 276,
+    "end": 277
   },
   {
     "class": "keyword",
-    "end": 295,
-    "start": 290
+    "start": 290,
+    "end": 295
   },
   {
     "class": "name",
-    "end": 301,
-    "start": 296
+    "start": 296,
+    "end": 301
   },
   {
     "class": "punctuation",
-    "end": 303,
-    "start": 302
+    "start": 302,
+    "end": 303
   },
   {
     "class": "keyword",
-    "end": 324,
-    "start": 320
+    "start": 320,
+    "end": 324
   },
   {
     "class": "duration",
-    "end": 328,
-    "start": 325
+    "start": 325,
+    "end": 328
   },
   {
     "class": "punctuation",
-    "end": 329,
-    "start": 328
+    "start": 328,
+    "end": 329
   },
   {
     "class": "keyword",
-    "end": 355,
-    "start": 346
+    "start": 346,
+    "end": 355
   },
   {
     "class": "keyword",
-    "end": 358,
-    "start": 356
+    "start": 356,
+    "end": 358
   },
   {
     "class": "pitch",
-    "end": 361,
-    "start": 359
+    "start": 359,
+    "end": 361
   },
   {
     "class": "punctuation",
-    "end": 363,
-    "start": 362
+    "start": 362,
+    "end": 363
   },
   {
     "class": "use",
-    "end": 367,
-    "start": 364
+    "start": 364,
+    "end": 367
   },
   {
     "class": "name",
-    "end": 373,
-    "start": 368
+    "start": 368,
+    "end": 373
   },
   {
     "class": "punctuation",
-    "end": 374,
-    "start": 373
+    "start": 373,
+    "end": 374
   },
   {
     "class": "punctuation",
-    "end": 375,
-    "start": 374
+    "start": 374,
+    "end": 375
   },
   {
     "class": "punctuation",
-    "end": 376,
-    "start": 375
+    "start": 375,
+    "end": 376
   },
   {
     "class": "punctuation",
-    "end": 378,
-    "start": 377
+    "start": 377,
+    "end": 378
   },
   {
     "class": "punctuation",
-    "end": 392,
-    "start": 391
+    "start": 391,
+    "end": 392
   },
   {
     "class": "punctuation",
-    "end": 402,
-    "start": 401
+    "start": 401,
+    "end": 402
   },
   {
     "class": "punctuation",
-    "end": 408,
-    "start": 407
+    "start": 407,
+    "end": 408
   },
   {
     "class": "punctuation",
-    "end": 410,
-    "start": 409
+    "start": 409,
+    "end": 410
   }
 ]

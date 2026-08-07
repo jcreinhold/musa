@@ -50,7 +50,7 @@ fn annotated_fixture_is_current() -> Result {
     let session = ProjectSession::from_text(source, "annotated.musa");
     assert!(session.snapshot().compiles(), "the fixture piece must compile");
 
-    let mut json = serde_json::to_string_pretty(&session.snapshot())?;
+    let mut json = serde_json::to_string_pretty(&session.snapshot().to_wire())?;
     json.push('\n');
     write_or_compare(&fixtures_dir().join("annotated.snapshot.json"), &json)
 }
@@ -64,9 +64,28 @@ fn snapshot_fixture_is_current() -> Result {
     let session = ProjectSession::from_text(source, "glass-mountain.musa");
     assert!(session.snapshot().compiles(), "the fixture piece must compile");
 
-    let mut json = serde_json::to_string_pretty(&session.snapshot())?;
+    let mut json = serde_json::to_string_pretty(&session.snapshot().to_wire())?;
     json.push('\n');
     write_or_compare(&fixtures_dir().join("glass-mountain.snapshot.json"), &json)
+}
+
+/// The piece whose text is not ASCII.
+///
+/// Every other fixture here is, and while that is true a wire snapshot that
+/// forgot to restate its spans in UTF-16 code units would look exactly like
+/// one that remembered (`crate`-level: `musa_project::utf16`). This one makes
+/// the difference visible: the UI's linking and highlighting tests run
+/// against it, and they fail if the spans arrive in bytes.
+#[test]
+fn unicode_fixture_is_current() -> Result {
+    let source = std::fs::read_to_string(example("unicode-fixture.musa"))?;
+    assert!(!source.is_ascii(), "the point of this fixture is that it is not ASCII");
+    let session = ProjectSession::from_text(source, "unicode-fixture.musa");
+    assert!(session.snapshot().compiles(), "the fixture piece must compile");
+
+    let mut json = serde_json::to_string_pretty(&session.snapshot().to_wire())?;
+    json.push('\n');
+    write_or_compare(&fixtures_dir().join("unicode-fixture.snapshot.json"), &json)
 }
 
 /// One MEI per engraving fixture (`docs/interface/02-engraving.md` §9).

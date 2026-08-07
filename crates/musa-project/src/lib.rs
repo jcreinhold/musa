@@ -47,6 +47,7 @@ mod session;
 mod snapshot;
 mod studio;
 mod template;
+mod utf16;
 
 pub use crate::command::{ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 pub use crate::diagnostic::{Diagnostic, Severity, Span};
@@ -66,4 +67,5 @@ pub use crate::studio::{
     StudioFacts,
 };
 pub use crate::template::Template;
+pub use crate::utf16::Utf16Offsets;
 pub use musa_render::MidiMode;

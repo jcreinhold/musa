@@ -95,10 +95,10 @@ typed value* — never what a `Note` means.
 
 ## The calculus, and why it does not cross that line
 
-Prompt 46 adds `10-term-calculus.md` (governing since prompt 48): a *syntax* whose meanings are the timelines
-above. It exists for three things values cannot express — sharing (`let`, so a canon's subject is stated once), deferred observation
-(restricting before evaluating), and interchange (a syntax a second implementation can read) — and it adds no
-semantic operation: every term denotes something `03-denotational-semantics.md` already defines.
+Prompt 46 adds `10-term-calculus.md` (governing since prompt 48): a *syntax* whose meanings are the timelines above. It
+exists for three things values cannot express — sharing (`let`, so a canon's subject is stated once), deferred
+observation (restricting before evaluating), and interchange (a syntax a second implementation can read) — and it adds
+no semantic operation: every term denotes something `03-denotational-semantics.md` already defines.
 
 It therefore stays under the "not a general-purpose programming language" line above rather than testing it. The
 calculus has a binder but no abstraction: `let x = t in u` names a *value*, and there is no way to write a function, an

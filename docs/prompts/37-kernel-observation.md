@@ -71,8 +71,8 @@ Three decisions, each with a reason:
 `extend` has no caller: `sequence` and `overlay` compute extents themselves, and no surface construct asks a timeline to
 grow without adding material. Deleting it removes a public constructor, an error variant
 (`KernelError::ShrinkingExtension`), and laws L7–L8 from the maintained set. Under §34 this is the correct direction:
-the basis shrinks when the evidence says a construct is not needed. Record the deletion in
-`08-open-questions.md`'s implementation log with the argument, so re-adding it requires new evidence rather than taste.
+the basis shrinks when the evidence says a construct is not needed. Record the deletion in `08-open-questions.md`'s
+implementation log with the argument, so re-adding it requires new evidence rather than taste.
 
 Ambient extension as a *concept* stays — it is what `overlay` does to the shorter argument and what `(d, ∅)` means. It
 is the standalone operation that goes.
@@ -80,9 +80,9 @@ is the standalone operation that goes.
 ### Specification repairs, committed with the code
 
 - **D6** gains the two refinements the log already records: a point occurrence at `s` is visible through `[i, j)` when
-  `s ∈ [i, j)`, and a window whose end equals the observed timeline's extent is closed at its right end. State the second
-  as the rule it is — "the final instant of a timeline is observable" — rather than as an exception, and note that L16
-  follows from it.
+  `s ∈ [i, j)`, and a window whose end equals the observed timeline's extent is closed at its right end. State the
+  second as the rule it is — "the final instant of a timeline is observable" — rather than as an exception, and note
+  that L16 follows from it.
 - **D4 and L7–L8** are struck, with a one-line note that the operation was removed at this prompt and why.
 - **`06-surface-elaboration.md`'s `rest` row** still says "No occurrence"; since prompt 11 a `rest` elaborates to a
   `Rest` payload occurrence. Repair the row to match the code and the log entry. AGENTS.md forbids leaving this
@@ -121,11 +121,10 @@ Commit as `Make kernel observation composable and drop ambient extension`.
   is only correct where the two overlap, and a *fabricated* empty span can land on the extent — where the
   point-at-the-end rule would then read an occurrence that neither window shows. The proptest found this immediately
   once L17 was generalized to arbitrary windows, which is the argument for generalizing it.
-- `docs/kernel/02-static-semantics.md` K3 also stated the extension rule; the prompt named 03, 04, and 06 but not 02.
-  It is struck with the same note rather than left contradicting the code.
+- `docs/kernel/02-static-semantics.md` K3 also stated the extension rule; the prompt named 03, 04, and 06 but not 02. It
+  is struck with the same note rather than left contradicting the code.
 - `restrict_composition` is now stated as `restrict_K ∘ restrict_J = restrict_{J ∩ K}` over two independently generated
-  windows, with "observes nothing" as the law for windows that do not meet; the strictly-nested case is kept as a
-  worked example (`restrict_composition_strictly_nested`) since it is
-  the case the law was originally written for.
+  windows, with "observes nothing" as the law for windows that do not meet; the strictly-nested case is kept as a worked
+  example (`restrict_composition_strictly_nested`) since it is the case the law was originally written for.
 - Added `the_final_instant_survives_narrowing`: the point-at-the-extent rule is the reason `Observation` carries the
   source extent, and nothing else pinned that narrowing preserves it.

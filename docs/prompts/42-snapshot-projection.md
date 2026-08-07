@@ -38,9 +38,9 @@ decision, and the next representation change is another workspace-wide edit.
 PoSD ch. 11 and the module-design rule for a non-trivial boundary: write down two accessor sets before implementing
 either.
 
-- **Set A — field-for-field accessors.** `parts()`, `meter()`, `key()`, `annotations()`. Mechanical, small diff,
-  and it preserves every existing awkwardness: `plan.rs` still loops `annotations.slurs()` and re-joins them to events
-  by id, `facts.rs` still walks `parts → voices → events` to answer "what is at this time".
+- **Set A — field-for-field accessors.** `parts()`, `meter()`, `key()`, `annotations()`. Mechanical, small diff, and it
+  preserves every existing awkwardness: `plan.rs` still loops `annotations.slurs()` and re-joins them to events by id,
+  `facts.rs` still walks `parts → voices → events` to answer "what is at this time".
 - **Set B — question-shaped accessors.** The operations consumers actually perform: iterate the events of a part in
   order; find the event at a time in a voice; ask what marks attach to an event; ask what regions cover an event; ask
   the piece's extent and its meter at a time.
@@ -57,9 +57,9 @@ pushing them down deletes the same loop from four backends (PoSD ch. 8, pull com
 
 ### Keep the shapes public where they are values
 
-`ScoreEvent`, `EventId`, `WrittenPitch`, `NotatedDuration`, `Clef`, `DynamicMark`, `ArticulationMark`, `ChordSymbol`
-are values a consumer reads and matches on; they stay public with public fields where the field *is* the value. The
-types that close are the containers whose layout is a decision: `ScoreSnapshot`, `Part`, `Voice`, `PartMap`,
+`ScoreEvent`, `EventId`, `WrittenPitch`, `NotatedDuration`, `Clef`, `DynamicMark`, `ArticulationMark`, `ChordSymbol` are
+values a consumer reads and matches on; they stay public with public fields where the field *is* the value. The types
+that close are the containers whose layout is a decision: `ScoreSnapshot`, `Part`, `Voice`, `PartMap`,
 `AnnotationStore`, `KeyMap`, `MeterMap`.
 
 ### `AnnotationStore` is the one to watch
@@ -86,10 +86,10 @@ workspace is the proof.
 
 ## Repairs made while implementing
 
-**The Set B motivation above was wrong about where the duplication is.** The Design section claims *marks attached to
-an event* is re-derived "from `annotations` by id" in each of MEI, LilyPond and MusicXML. It is not: those three
-backends consume `NotationPlan`, and `NotationPlan` is built once, in `musa-render/src/plan.rs`. Exactly two places in
-the workspace read `annotations` and rebuild anything from it, and they do the *same* rebuild two different ways:
+**The Set B motivation above was wrong about where the duplication is.** The Design section claims *marks attached to an
+event* is re-derived "from `annotations` by id" in each of MEI, LilyPond and MusicXML. It is not: those three backends
+consume `NotationPlan`, and `NotationPlan` is built once, in `musa-render/src/plan.rs`. Exactly two places in the
+workspace read `annotations` and rebuild anything from it, and they do the *same* rebuild two different ways:
 
 - `plan.rs::Marks::collect` walks `from.0..=to.0` for phrases, hairpins and tuplets — raw id arithmetic that assumes
   contiguity without saying so, and that silently invents ids for events that do not exist if a region ever spans two
@@ -99,8 +99,8 @@ the workspace read `annotations` and rebuild anything from it, and they do the *
 
 So the Set B accessor that earned its place is neither of the two the prompt guessed. It is **one**:
 `ScoreSnapshot::events_in(from, to) -> &[ScoreEvent]` — the events a region annotation covers. Both call sites above
-became a single `for event in score.events_in(a, b)`, and `hairpin_curves` additionally collapsed from once-per-voice
-to once-per-piece, since an event belongs to exactly one voice and the map is keyed by event id.
+became a single `for event in score.events_in(a, b)`, and `hairpin_curves` additionally collapsed from once-per-voice to
+once-per-piece, since an event belongs to exactly one voice and the map is keyed by event id.
 
 **Everything else is Set A, on purpose.** `parts()`, `meter()`, `key()`, `annotations()`, `motifs()`, `profiles()`,
 `tempo()`, `Part::{id,name,clef,voices,voice,voice_name}`, `Voice::events`. Each renames a field and nothing more; by
@@ -110,13 +110,13 @@ recorded as such: `Voice::span` already existed as a method, and `Part::span` re
 `part.voices.values().map(Voice::span).max().unwrap_or_default()` — one call site today, but a fold over a container
 whose layout just became private, so the caller can no longer write it.
 
-**`AnnotationStore` stays**, with the reason the Design section asked for: it is kind-major, and kind-major is what
-its callers want — the outline pane lists sections, MEI writes dynamics as a lane, LilyPond emits articulations per
-note. Only region membership was the duplicated question, and `events_in` answers that. It is not a struct that exists
-because it used to.
+**`AnnotationStore` stays**, with the reason the Design section asked for: it is kind-major, and kind-major is what its
+callers want — the outline pane lists sections, MEI writes dynamics as a lane, LilyPond emits articulations per note.
+Only region membership was the duplicated question, and `events_in` answers that. It is not a struct that exists because
+it used to.
 
-**`KeyMap::new` is public, not `pub(crate)`.** `musa-project`'s MIDI entry buffer spells incoming notes against a key
-it was handed and holds no score; naming a key is not a snapshot-building privilege. Every other constructor
+**`KeyMap::new` is public, not `pub(crate)`.** `musa-project`'s MIDI entry buffer spells incoming notes against a key it
+was handed and holds no score; naming a key is not a snapshot-building privilege. Every other constructor
 (`ScoreSnapshot`'s mutators, `Part::new`, `Voice::new`, `MeterMap::new`) is `pub(crate)`: a snapshot is produced by
 projecting a timeline and by nothing else.
 

@@ -63,14 +63,13 @@ merely because all visible values coincide.
 
 Rules for the term calculus of `10-term-calculus.md`. A reference's mark is not checked — it is an opaque string the
 kernel does not interpret (T6), so there is nothing here that could be wrong about it. They are checkable on the term
-alone,
-without evaluating it.
+alone, without evaluating it.
 
 - **Scoping.** Every name occurring in a term is bound by an enclosing `let`. A term with a free name is rejected, not
   resolved against an ambient environment: a term means one thing on its own or it does not mean anything.
-- **No shadowing.** `let x = t in (let x = u in v)` is rejected. Nothing needs it, alpha-renaming is not a burden a
-  file format should impose on its readers, and forbidding it makes substitution textual, which is what lets T2 be
-  stated without a capture-avoidance apparatus.
+- **No shadowing.** `let x = t in (let x = u in v)` is rejected. Nothing needs it, alpha-renaming is not a burden a file
+  format should impose on its readers, and forbidding it makes substitution textual, which is what lets T2 be stated
+  without a capture-avoidance apparatus.
 - **Payload uniformity.** All arguments of one `seq` or `over` share a payload type, as K4 already requires of
   composition expressions. `let` binds a term of one payload type; a name's type is its bound term's.
 - **Arity.** `seq` and `over` take at least one argument. Zero arguments would need a unit, and the two units differ
@@ -88,9 +87,9 @@ every theorem in `10-term-calculus.md`.
 **Only two of these rules are ever checked.** Prompt 47's implementation makes the rest unrepresentable: `Term` is
 opaque and built through constructors, so a non-positive `scale` factor, a negative `shift`, an empty `seq` or `over`,
 and a disordered window are rejected where they are written and never become terms. Payload uniformity is the type
-parameter. Acyclicity is free, as above. What is left is the two rules that are **not local to one node** — a free
-name and a shadowed one — because a reference is built before the binder that encloses it. Those are what
-`Term::check` answers, and a term that passes it evaluates (T4).
+parameter. Acyclicity is free, as above. What is left is the two rules that are **not local to one node** — a free name
+and a shadowed one — because a reference is built before the binder that encloses it. Those are what `Term::check`
+answers, and a term that passes it evaluates (T4).
 
 ## Error surface
 

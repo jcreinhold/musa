@@ -11,7 +11,7 @@
    * The keyboard is handled here rather than in the score pane because a
    * binding belongs to the application, not to whatever happens to have focus
    * (`03-interaction.md` §3). Scope is the only thing focus decides: the
-   * unmodified keys are the score's, so typing `f` in the drawer is an `f`.
+   * unmodified keys are the score's, so typing `f` in the source column is an `f`.
    */
   import { onMount, untrack } from "svelte";
 
@@ -77,7 +77,7 @@
   /**
    * Origin view (`04-provenance.md` §2): a held lens, not a mode with state to
    * get lost in. It is held here rather than in the score pane because the
-   * parts list and the source drawer answer to it too — and because a key
+   * parts list and the source column answer to it too — and because a key
    * released while the pointer is over a menu must still release the lens.
    */
   let held = $state(false);
@@ -170,14 +170,14 @@
   }
 
   /**
-   * Open the source at a span, opening the drawer if it is shut.
+   * Open the source at a span, opening the source column if it is shut.
    *
    * `focus` is whether going there also takes the keyboard: true when the
    * composer asked to go and fix something, false when the text is merely
    * keeping up with the page.
    */
   function open(span: Span, focus = true): void {
-    session.drawerOpen = true;
+    session.sourceOpen = true;
     // A new object every time, so asking for the same span twice reveals twice.
     reveal = { span: { ...span }, focus };
   }
@@ -213,7 +213,7 @@
     transportSaid = follow === "off" ? "Follow off" : `Follow ${follow}`;
   }
 
-  /** `Esc`: the choice first, then entry, then the selection, then the drawer. */
+  /** `Esc`: the choice first, then entry, then the selection, then the source column. */
   function escape(): void {
     if (paletteOpen || keysOpen) {
       paletteOpen = false;
@@ -227,7 +227,7 @@
     }
     if (entry.on) return entry.set(false);
     if (workspace.selection.kind !== "none") workspace.clear();
-    else session.drawerOpen = false;
+    else session.sourceOpen = false;
   }
 
   /**
@@ -301,7 +301,7 @@
     naming = { events };
   }
 
-  /** Name it, and the source in the drawer says so. */
+  /** Name it, and the source column says so. */
   async function nameMotif(name: string): Promise<void> {
     const pending = naming;
     naming = null;
@@ -360,7 +360,7 @@
     }
     // The lens is a hold, not a command: it lasts exactly as long as the key
     // is down (`04-provenance.md` §2). `o` belongs to the score pane, so it is
-    // still an `o` while the composer is typing in the drawer; `⌥` is the
+    // still an `o` while the composer is typing in the source column; `⌥` is the
     // second way in, and works wherever the pointer is.
     if (lensKey(event) && !event.repeat) {
       mark("lens");

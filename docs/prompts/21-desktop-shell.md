@@ -16,8 +16,8 @@ is the only new concept: a narrow, typed command surface with no semantics in it
 
 ## Read
 
-- `docs/interface/05-states.md` (empty, loading, **stale revision** — the headline behavior), `06-performance.md`
-  (B1, B6, B7, B10 land here).
+- `docs/interface/05-states.md` (empty, loading, **stale revision** — the headline behavior), `06-performance.md` (B1,
+  B6, B7, B10 land here).
 - Roadmap §14.2 (state ownership), §14.7 (invalid edits), §15.9 (the shell is thin: command adaptation, window
   lifecycle, file dialogs, event delivery — nothing else), §14.8 (bundled, zero setup).
 - Prompt 19's `ProjectSession`, `ProjectSnapshot`, `ProjectCommand`, `ExportRequest`; prompt 18's transport.
@@ -70,8 +70,8 @@ is the only new concept: a narrow, typed command surface with no semantics in it
   dialogs.
 - `apps/musa-desktop/ui`: `session` store, live snapshot rendering, debounced source editing, stale-revision and empty
   states, theme following the OS with a manual override.
-- Tests: Rust tests for DTO round-trips and that `open → apply(invalid) → snapshot` retains the last-valid artifacts;
-  a Playwright smoke test (open a piece, score appears, edit to invalid, score unchanged and edge is chalk, revert, play
+- Tests: Rust tests for DTO round-trips and that `open → apply(invalid) → snapshot` retains the last-valid artifacts; a
+  Playwright smoke test (open a piece, score appears, edit to invalid, score unchanged and edge is chalk, revert, play
   issues transport); perf assertions for B1, B6, B7, B10.
 
   The smoke test runs against the Vite dev server with a stubbed IPC layer, not against `tauri dev`: `tauri-driver` has

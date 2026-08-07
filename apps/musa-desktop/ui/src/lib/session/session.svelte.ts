@@ -5,7 +5,7 @@
  * The core owns the document; this class owns nothing musical. It holds the
  * latest snapshot the shell sent, the words currently in the top margin, and
  * the small amount of interface state that is genuinely about *editing* — the
- * draft the user is typing, and whether the drawer has opened itself yet.
+ * draft the user is typing, and whether the source column has opened itself yet.
  *
  * Roadmap §14.2: state has one owner. When a command answers and an event
  * also arrives, both carry the same snapshot, and taking the newer revision
@@ -107,10 +107,10 @@ export class Session {
   draft = $state<string | null>(null);
 
   /**
-   * The drawer opens itself the first time a session's source goes invalid,
+   * The source column opens itself the first time a session's source goes invalid,
    * and thereafter respects whatever the user last chose (`05-states.md` §4).
    */
-  drawerOpen = $state(false);
+  sourceOpen = $state(false);
 
   /**
    * What to do with notes played in on a MIDI keyboard.
@@ -170,7 +170,7 @@ export class Session {
     if (this.draft !== null && this.draft === snapshot.source) this.draft = null;
     if (!snapshot.compiles && !this.#announcedProblems) {
       this.#announcedProblems = true;
-      this.drawerOpen = true;
+      this.sourceOpen = true;
     }
   }
 

@@ -11,7 +11,7 @@
 import { expect, test } from "@playwright/test";
 
 import { engraved } from "./engraved";
-import { drawer, rewrite } from "./source";
+import { toggleSource, rewrite } from "./source";
 import { stubShell } from "./shell";
 
 /** How far the reader's anchor may drift across a re-engraving (§6). */
@@ -26,10 +26,10 @@ test("a re-engraving neither moves the page nor blinks", async ({ page }) => {
   await page.goto("/");
   await engraved(page);
 
-  // The drawer is opened first and allowed to settle: it changes the leaf's
+  // The source column is opened first and allowed to settle: it changes the leaf's
   // height, so it re-lays the score out for a reason that has nothing to do
   // with the edit under test.
-  await drawer(page).click();
+  await toggleSource(page);
   await page.waitForTimeout(500);
 
   const anchor = page.locator('.engraving g[id^="event-"]').first();

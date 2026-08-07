@@ -67,8 +67,8 @@ This is a headline behavior and it gets a real design, not a badge:
   The revision number is included because it is genuinely the information: it tells a user who has been editing for a
   minute how far behind the page is.
 - Playback keeps working, and the transport shows the same `--chalk` treatment on its position readout.
-- Diagnostics appear in the drawer, which **opens itself the first time** the source becomes invalid in a session, and
-  thereafter respects whatever the user last chose.
+- Diagnostics appear in the source column, which **shows itself the first time** the source becomes invalid in a
+  session, and thereafter respects whatever the user last chose.
 - When the source compiles again, the edge returns to `--leaf-edge` and the message is removed — no success toast. A
   return to normal is not an event.
 
@@ -83,8 +83,8 @@ This is a headline behavior and it gets a real design, not a badge:
 
 ## 6. Confirmations and results
 
-- Destructive or wide-reaching operations state their scope before they run, inline, with counts
-  (`04-provenance.md` §4). Nothing musical requires a modal.
+- Destructive or wide-reaching operations state their scope before they run, inline, with counts (`04-provenance.md`
+  §4). Nothing musical requires a modal.
 - Completed operations report in a small `--t-small` line in the top margin for 3 s, then fade: *"Exported
   glass-mountain.wav."* Undo is always the reversal path; there is no "Undo" button in the toast — `⌘Z` is the answer
   and the keyboard sheet says so.

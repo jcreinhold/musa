@@ -23,7 +23,7 @@
   import type { Reveal } from "../lib/state/reveal";
   import type { Diagnostic, EditImpact, OutlineFacts, Span } from "../lib/state/snapshot";
   import type { NoteEntry } from "../lib/state/entry.svelte";
-  import Drawer from "./Drawer.svelte";
+  import SourcePane from "../lib/ui/SourcePane.svelte";
   import Inspector from "./Inspector.svelte";
   import Outline from "./Outline.svelte";
   import PartsList from "./PartsList.svelte";
@@ -132,8 +132,8 @@
   });
 
   /**
-   * What the drawer marks: the declaration and the use of the expansion in
-   * view. The workspace decides which expansion that is, so the drawer and
+   * What the source column marks: the declaration and the use of the expansion in
+   * view. The workspace decides which expansion that is, so the column and
    * the Source workspace cannot mark different things.
    */
   const highlight = $derived(workspace.sourceSpans(origin));
@@ -312,7 +312,28 @@
       </div>
     </Margin>
 
-    <div class="body">
+    <div class="body" class:with-source={session.sourceOpen}>
+      <!--
+        The source, when it is asked for: a column at the left edge on its own
+        material, not a band across the bottom. It takes width, which this
+        screen has spare, and gives back height, which the page needs — and it
+        stands where the Source workspace puts it, so `⌘4` changes the
+        proportion rather than the arrangement (`01-visual-language.md` §7).
+      -->
+      {#if session.sourceOpen}
+        <SourcePane
+          source={session.text}
+          editable={session.live}
+          diagnostics={snapshot.diagnostics}
+          {highlight}
+          {reveal}
+          onedit={(text) => session.edit(text)}
+          {oncaret}
+          {ondiagnostic}
+          onhide={() => (session.sourceOpen = false)}
+        />
+      {/if}
+
       <Margin side="left" label="Parts">
         <PartsList parts={score.parts} {workspace} {origin} />
         <Outline outline={score.outline} active={outlineAt} onselect={onoutline} />
@@ -358,27 +379,13 @@
         />
       </Margin>
     </div>
-
-    <Margin side="bottom">
-      <Drawer
-        source={session.text}
-        editable={session.live}
-        diagnostics={snapshot.diagnostics}
-        {highlight}
-        {reveal}
-        onedit={(text) => session.edit(text)}
-        {oncaret}
-        {ondiagnostic}
-        bind:open={session.drawerOpen}
-      />
-    </Margin>
   </div>
 {/if}
 
 <style>
   .workspace {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
     height: 100%;
     /* The workspace fills the window and never exceeds it sideways: the score
        scrolls inside the leaf, the layout itself does not. */
@@ -565,6 +572,25 @@
   }
 
   /*
+   * The source column sizes itself; the track just follows. What this screen
+   * owns is the cap: the page is the subject here, so it is served first, and
+   * the text gets what is left over after the two margins and a stage wide
+   * enough to hold an upright A4 leaf. Above about 1250px that arithmetic
+   * comes out larger than the measure and the measure wins, which is every
+   * window this app is happy in; below it the column narrows a character at a
+   * time rather than the page collapsing all at once.
+   *
+   * The floor stops the trade before the column becomes a gutter: 300px is
+   * still wider than nine in ten lines in the language.
+   */
+  .body.with-source {
+    --source-cap: max(300px, calc(100vw - 440px - var(--stage-floor)));
+    --stage-floor: 420px;
+
+    grid-template-columns: auto minmax(0, 200px) minmax(0, 1fr) minmax(0, 240px);
+  }
+
+  /*
    * Page view is the default, so the leaf is a page: an upright sheet of
    * portrait proportions, centred, with the surround visible around it. A
    * leaf stretched to the window is a text editor with staves in it — the
@@ -602,6 +628,13 @@
     .body {
       grid-template-columns: minmax(0, 150px) minmax(0, 1fr) minmax(0, 200px);
     }
+
+    .body.with-source {
+      /* Narrower margins here, so the column gets the difference back. */
+      --source-cap: max(300px, calc(100vw - 350px - var(--stage-floor)));
+
+      grid-template-columns: auto minmax(0, 150px) minmax(0, 1fr) minmax(0, 200px);
+    }
   }
 
   /*
@@ -612,7 +645,8 @@
    * is a control someone cannot reach.
    */
   @media (max-width: 860px) {
-    .body {
+    .body,
+    .body.with-source {
       grid-template-columns: minmax(0, 1fr);
       grid-auto-rows: min-content;
       overflow-y: auto;

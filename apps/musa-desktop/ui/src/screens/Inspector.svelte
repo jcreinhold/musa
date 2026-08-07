@@ -232,7 +232,7 @@
       Every part of it is a control. A transform segment selects what it
       produced in this voice; the innermost segment is the occurrence itself,
       so it selects the whole expansion and reveals the motif's declaration in
-      the drawer; the line number opens the source at the `use` statement.
+      the source column; the line number opens the source at the `use` statement.
     -->
     <TypographicRow label="Origin">
       {#snippet trailing()}

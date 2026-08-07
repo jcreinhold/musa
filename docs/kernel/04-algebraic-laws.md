@@ -46,10 +46,9 @@ laws described an operation nothing used.
 - **L16 — identity.** `restrict_I = id` when `I` is the whole extent: every occurrence's visible span equals its whole
   span, and no occurrence is dropped. Test: `restrict_identity`.
 - **L17 — composition.** For **any** windows `J` and `K` that meet: `restrict_K(restrict_J(M)) = restrict_{J ∩ K}(M)`;
-  windows that do not meet observe nothing. Narrowing
-  an observation intersects the windows, so the law holds without a nesting precondition (it specializes to
-  `restrict_K(restrict_J(M)) = restrict_K(M)` when `K ⊆ J`). Whole spans are **preserved**: restricting twice never
-  moves an occurrence's origin claim (§17). Test: `restrict_composition`,
+  windows that do not meet observe nothing. Narrowing an observation intersects the windows, so the law holds without a
+  nesting precondition (it specializes to `restrict_K(restrict_J(M)) = restrict_K(M)` when `K ⊆ J`). Whole spans are
+  **preserved**: restricting twice never moves an occurrence's origin claim (§17). Test: `restrict_composition`,
   `restrict_composition_strictly_nested`.
 
 ## Query laws

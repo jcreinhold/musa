@@ -40,9 +40,10 @@ from candidate to the governing interface specification, the same way prompt 12 
 - **Two-way linking**, the point of the workspace:
   - selecting an event on the score reveals and highlights its source span;
   - moving the source caret highlights the corresponding event(s) on the score;
-  - in Origin view, `use` statements and their generated notes highlight together (prompt 24's trace, now bidirectional).
-- **Formatting**: `⇧⌥F` runs prompt 04's formatter through `ProjectCommand::ApplyEdits`, preserving selection and scroll.
-  Format-on-save is a preference, default off.
+  - in Origin view, `use` statements and their generated notes highlight together (prompt 24's trace, now
+    bidirectional).
+- **Formatting**: `⇧⌥F` runs prompt 04's formatter through `ProjectCommand::ApplyEdits`, preserving selection and
+  scroll. Format-on-save is a preference, default off.
 - **Source workspace layout**: a real workspace, not the drawer — source and score side by side (source left, leaf
   right), diagnostics beneath the source. The drawer remains available inside Compose for a quick look. Workspace
   switching is `⌘1` (Compose) / `⌘4` (Source), registered in prompt 23's command map; `⌘2`/`⌘3` are reserved for Sound
@@ -71,11 +72,10 @@ from candidate to the governing interface specification, the same way prompt 12 
   nothing gained; `03-interaction.md` §3 now records the binding it has.
 - **Highlighting is derived twice over, and neither derivation can drift.** `musa-language` gained `TokenClass` (an
   exhaustive match over `SyntaxKind` — a new kind is a compile error) and `SPELLINGS` (a table proven against the lexer
-  by `spellings_lex_as_their_kind`); the frontend tokenizer is then checked token-for-token against the Rust lexer's
-  own reading of every file in `examples/` (`tests/unit/highlighting.test.ts`).
-- **Folding is the brace, not a keyword list.** `piece`/`score`/`part`/`voice`/`motif` are all braced blocks, and so
-  are `transpose` and `overlay`; a list of foldable keywords would have gone stale the first time the language grew
-  one.
+  by `spellings_lex_as_their_kind`); the frontend tokenizer is then checked token-for-token against the Rust lexer's own
+  reading of every file in `examples/` (`tests/unit/highlighting.test.ts`).
+- **Folding is the brace, not a keyword list.** `piece`/`score`/`part`/`voice`/`motif` are all braced blocks, and so are
+  `transpose` and `overlay`; a list of foldable keywords would have gone stale the first time the language grew one.
 - **Bindings without ⌘ or ⌥ belong to the score pane, read off the accelerator.** Scope had been declared per command
   group, which made `F`, `L`, `Space` and `Return` global — so typing `forte` in the drawer toggled follow. The rule is
   now derived from the binding itself.
@@ -86,8 +86,8 @@ from candidate to the governing interface specification, the same way prompt 12 
 - **Revealing a span does not always take the keyboard.** A diagnostic is somewhere the composer is going to type, so
   the caret arrives focused; choosing a note on the page is not, so the text follows without the hands leaving the
   score. That distinction is now part of the request (`src/lib/state/reveal.ts`).
-- **The budgets run alone.** `06-performance.md`'s numbers are measured on an unloaded machine, so `perf.spec.ts` is
-  its own Playwright project that runs after the rest rather than beside it.
+- **The budgets run alone.** `06-performance.md`'s numbers are measured on an unloaded machine, so `perf.spec.ts` is its
+  own Playwright project that runs after the rest rather than beside it.
 
 ## Check
 

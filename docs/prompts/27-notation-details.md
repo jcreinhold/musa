@@ -63,18 +63,18 @@ travels the full pipeline in one prompt so no layer drifts ahead of another.
 ## Repairs made while implementing
 
 - **Punctuation, as the Design section asked to be chosen and recorded.** Ties are the postfix `~` on the first
-  statement (`g5 1/4 ~;`), not a `tie` prefix: the tie belongs to a notehead, and putting it before two statements
-  would have made the statement separator ambiguous. Articulations are postfix bare identifiers (`a5 1/4 accent;`),
-  not prefixes: a prefix would have collided with a motif parameter reference, which is also a bare identifier in head
+  statement (`g5 1/4 ~;`), not a `tie` prefix: the tie belongs to a notehead, and putting it before two statements would
+  have made the statement separator ambiguous. Articulations are postfix bare identifiers (`a5 1/4 accent;`), not
+  prefixes: a prefix would have collided with a motif parameter reference, which is also a bare identifier in head
   position. Dynamics are `dynamic <mark>;` and attach to the **next** sounding event, reaching into whatever block
   follows. Tuplets are `tuplet 3/2 { … }` with a `Rational` token rather than `3:2`: the lexer already has the token,
   LilyPond spells it the same way, and `:` would have needed a context-sensitive rule in the formatter for no gain.
 - **Articulations get their own CST node.** `root 1/8 tenuto;` has two bare identifiers in one statement, and
-  `token_text` reads direct children only. `ArticulationList` keeps the pitch reference and the articulation names
-  apart by structure instead of by position.
+  `token_text` reads direct children only. `ArticulationList` keeps the pitch reference and the articulation names apart
+  by structure instead of by position.
 - **A tie is one event with a multi-piece `NotatedDuration`,** as the Design section preferred. `pieces` holds
-  *sounding* values, so the invariant is simply that they sum to `value`; the tuplet annotation supplies the ratio
-  that converts back to symbol values in the renderer. This is the same tie concept prompt 07 already used for
+  *sounding* values, so the invariant is simply that they sum to `value`; the tuplet annotation supplies the ratio that
+  converts back to symbol values in the renderer. This is the same tie concept prompt 07 already used for
   measure-crossing decomposition — that pass now has a second source feeding it.
 - **The frozen direct lowerer refuses the new constructs** rather than growing to match them. `lower.rs` says it must
   not grow with new features, and parity with the kernel path is what the differential test protects; a refusal keeps
@@ -83,17 +83,17 @@ travels the full pipeline in one prompt so no layer drifts ahead of another.
   many events exist. Marks ride along in the kernel payload and become annotations in `identify`, which also means a
   group's members are always a contiguous id range — that is what lets the notation plan expand a `TupletSpan` by
   iterating the range.
-- **Tuplets must fit inside one measure** (diagnostic: `a tuplet must fit inside one measure`). A tuplet split across
-  a barline would need the bracket itself decomposed, which neither MEI nor LilyPond expresses cleanly; the
-  restriction is checked once on the finished snapshot.
+- **Tuplets must fit inside one measure** (diagnostic: `a tuplet must fit inside one measure`). A tuplet split across a
+  barline would need the bracket itself decomposed, which neither MEI nor LilyPond expresses cleanly; the restriction is
+  checked once on the finished snapshot.
 - **The fixture's comments are ASCII, deliberately.** Written with em dashes, it became the first non-ASCII file in
   `examples/`, and `tests/unit/highlighting.test.ts` failed: the Rust lexer reports **byte** offsets, the CM6 tokenizer
-  reports JavaScript string indices, and they diverge on any character outside ASCII. That is a real prompt-26 defect
-  in the editor's span contract, not a notation one; the fixture stays ASCII so this prompt does not carry it, and the
+  reports JavaScript string indices, and they diverge on any character outside ASCII. That is a real prompt-26 defect in
+  the editor's span contract, not a notation one; the fixture stays ASCII so this prompt does not carry it, and the
   defect is recorded for its own repair.
-- **A beaming bug the fixture found.** `assign_beams` compared each item's onset (real time) against its
-  duration's *symbol* value, which put the third triplet eighth outside its own beam. It now converts the symbol
-  value through the tuplet ratio before advancing the running onset.
+- **A beaming bug the fixture found.** `assign_beams` compared each item's onset (real time) against its duration's
+  *symbol* value, which put the third triplet eighth outside its own beam. It now converts the symbol value through the
+  tuplet ratio before advancing the running onset.
 
 ## Check
 

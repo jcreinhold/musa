@@ -22,12 +22,22 @@ const pieces = readdirSync(LEXED)
   .filter((name) => name.endsWith(".json"))
   .map((name) => name.replace(/\.json$/, ""));
 
+const sourceOf = (piece: string) => readFileSync(`${EXAMPLES}${piece}.musa`, "utf8");
+
 describe.each(pieces)("%s", (piece) => {
   it("tokenizes exactly as the compiler's lexer does", () => {
-    const source = readFileSync(`${EXAMPLES}${piece}.musa`, "utf8");
     const lexed = JSON.parse(readFileSync(`${LEXED}${piece}.json`, "utf8")) as Token[];
-    expect(tokenize(source)).toEqual(lexed);
+    expect(tokenize(sourceOf(piece))).toEqual(lexed);
   });
+});
+
+it("is checked against a source that is not ASCII", () => {
+  // The comparison above is between offsets the lexer counted in bytes and
+  // offsets this tokenizer counts in UTF-16 code units — two numbers that are
+  // equal for every ASCII file and diverge for every other one
+  // (`03-interaction.md` §7.1). If every example were ASCII, the suite would
+  // pass whether or not the two sides agreed about the measure.
+  expect(pieces.some((piece) => /[^\u0000-\u007f]/.test(sourceOf(piece)))).toBe(true);
 });
 
 describe("half-typed source", () => {

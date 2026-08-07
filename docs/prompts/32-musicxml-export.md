@@ -76,14 +76,14 @@ cargo run -p musa-cli -- render examples/counterpoint.musa --to musicxml -o /tmp
   eighth is `<type>eighth</type>` with a `<time-modification>` and a duration two thirds of one.
 - **Beams carry their levels and their hooks.** A beamed run is not one flag repeated: level *n* of a note is `begin`,
   `continue`, or `end` by what its neighbors in the group carry, and a level neither neighbor has is a hook — which is
-  how `MusicXML` spells the short side of a dotted-eighth/sixteenth pair. A beam group of one is not written at all;
-  the note keeps its flags.
+  how `MusicXML` spells the short side of a dotted-eighth/sixteenth pair. A beam group of one is not written at all; the
+  note keeps its flags.
 - **A voice that does not sound gets `<rest measure="yes"/>`, and a gap inside one gets `<forward>`.** The plan can
   leave a lane silent without writing a rest for it, and a partwise document has elements for both cases; inventing a
   rest instead would have put a symbol on the page that the source never wrote.
 - **Slur numbers are allocated, not fixed.** `MusicXML` distinguishes concurrent slurs 1–6 and the number has to match
-  across the pair, so the open ones are a per-voice stack: a slur takes the lowest free number and gives it back when
-  it closes. A chain of slurs therefore reads `1`, `1`, `1` rather than climbing until it runs out.
+  across the pair, so the open ones are a per-voice stack: a slur takes the lowest free number and gives it back when it
+  closes. A chain of slurs therefore reads `1`, `1`, `1` rather than climbing until it runs out.
 - **The tuplet bracket marks its ends only.** The notes between them carry `<time-modification>` — how long they last —
   and nothing printed, so `<notations>` is written only when something goes in it.
 - **The encoder string carries no version and no date.** An export of one source is the same bytes on every machine and

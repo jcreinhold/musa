@@ -6,7 +6,7 @@ import type { ErrorKindDto } from "./ErrorKindDto";
  *
  * `05-states.md` §1: errors say what is wrong and where, and never
  * apologize. `kind` exists so the webview can decide *where* to put the
- * message — a rejected edit belongs in the drawer, an unreadable file
+ * message — a rejected edit belongs in the source column, an unreadable file
  * belongs in the top margin — without parsing the sentence.
  */
 export type ErrorDto = { kind: ErrorKindDto, message: string, };

@@ -97,9 +97,9 @@ incoming notes against a key it was handed, and holds no score.
 
 Prompt 42 closed the *snapshot* so that guarantees travel by accessor. Prompt 44 does the same one layer down, for the
 timeline itself. Before it, four places answered "what is in force here" and "what does this cover" — `project_piece`,
-`project_regions`, `plan.rs`'s membership rebuild, and `lower_performance`'s dynamic scan — and they disagreed about
-end instants, point occurrences, and coincident onsets. Two of them were keyed on *source position* rather than time,
-which is correct only while every context fact spans the whole piece.
+`project_regions`, `plan.rs`'s membership rebuild, and `lower_performance`'s dynamic scan — and they disagreed about end
+instants, point occurrences, and coincident onsets. Two of them were keyed on *source position* rather than time, which
+is correct only while every context fact spans the whole piece.
 
 The guarantee the kernel now carries is simple, and is the reason these are queries rather than four conventions:
 

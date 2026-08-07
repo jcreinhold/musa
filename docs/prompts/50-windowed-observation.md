@@ -36,8 +36,8 @@ assume the first.
 
 ### The gate, stated as a procedure
 
-1. Measure B1 and B2 p95 on `tests/fixtures/large-score.musa` through the existing Playwright harness, and P1–P4
-   through `cargo bench`. Twenty trials, current `main`.
+1. Measure B1 and B2 p95 on `tests/fixtures/large-score.musa` through the existing Playwright harness, and P1–P4 through
+   `cargo bench`. Twenty trials, current `main`.
 2. **If B1 and B2 pass with ≥ 20% headroom**, stop. Write the numbers into `09-performance.md`, mark this prompt `done`
    with a one-paragraph statement that deferred observation was not built and what would reopen it (a fixture that fails
    the budget). Delete nothing, add nothing. That is a complete outcome.
@@ -66,12 +66,12 @@ so laziness is a cost decision that cannot change a meaning. Push `restrict` inw
 `scale`, and `let` — T1 and T5 are exactly the licences for those pushes — and note that the win comes from `seq`, where
 a window inside one part of a long sequence lets every other part go unevaluated.
 
-The consumer is the projection: `ScoreSnapshot` (closed at prompt 42, which is why this is now possible without
-touching a single backend) gains a windowed constructor, and `musa-project` asks for the pages the UI has resident plus
-its overscan. The snapshot's public interface does not change shape — a windowed snapshot answers the same questions
-about the window it covers, and asking outside it is a bug the type should prevent. Decide how: a distinct type, or a
-window on the snapshot that accessors respect. State the invariant either way — *a consumer must never silently receive
-a partial answer to a whole-piece question.* That is the one way this feature can do real damage.
+The consumer is the projection: `ScoreSnapshot` (closed at prompt 42, which is why this is now possible without touching
+a single backend) gains a windowed constructor, and `musa-project` asks for the pages the UI has resident plus its
+overscan. The snapshot's public interface does not change shape — a windowed snapshot answers the same questions about
+the window it covers, and asking outside it is a bug the type should prevent. Decide how: a distinct type, or a window
+on the snapshot that accessors respect. State the invariant either way — *a consumer must never silently receive a
+partial answer to a whole-piece question.* That is the one way this feature can do real damage.
 
 ### Re-measure, including what could regress
 
@@ -121,25 +121,25 @@ produced.
 The measurement is in `docs/kernel/09-performance.md`, "Prompt 50 — the gate, measured, and closed". In short:
 
 **B1 passes with 98% headroom (2 ms of 120 ms). B2 does not clear the 20% bar — 373 ms of 400 ms, 6.8% headroom — so
-step 3 applied, and step 3 is decisive.** Splitting B2 into its stages shows 180 ms of debounce (fixed by design), 2
-ms of round trip, and **191 ms of engraving**. The compiler is not in that number at all: the Playwright harness
-stubs the shell, and the core's real share is measured separately at P1 large = 1.87 ms.
+step 3 applied, and step 3 is decisive.** Splitting B2 into its stages shows 180 ms of debounce (fixed by design), 2 ms
+of round trip, and **191 ms of engraving**. The compiler is not in that number at all: the Playwright harness stubs the
+shell, and the core's real share is measured separately at P1 large = 1.87 ms.
 
-A perfect lazy evaluator would move B2 from 373 ms to 371 ms. Deferred observation is therefore **not built**, and
-per this prompt's own step 3 the finding belongs to prompt 22's surface: B2's headroom is thin, and the way to widen
-it is incremental or page-windowed engraving.
+A perfect lazy evaluator would move B2 from 373 ms to 371 ms. Deferred observation is therefore **not built**, and per
+this prompt's own step 3 the finding belongs to prompt 22's surface: B2's headroom is thin, and the way to widen it is
+incremental or page-windowed engraving.
 
-Nothing was deleted and nothing was added to the kernel. `Term::observe` does not exist; `restrict` is still
-evaluated eagerly, which T5 says is the same answer.
+Nothing was deleted and nothing was added to the kernel. `Term::observe` does not exist; `restrict` is still evaluated
+eagerly, which T5 says is the same answer.
 
 ### What was added
 
 One thing, and it is a measurement rather than a feature: `perf.spec.ts` now prints each budget's measured p95 on
-stdout, and splits B2 into round trip and engraving. Before this, a green run said "within budget" and nothing else,
-so the headroom a decision like this turns on could only be read by breaking an assertion. `06-performance.md` §2
-already asks for measurements rather than verdicts; this makes a passing run obey it too.
+stdout, and splits B2 into round trip and engraving. Before this, a green run said "within budget" and nothing else, so
+the headroom a decision like this turns on could only be read by breaking an assertion. `06-performance.md` §2 already
+asks for measurements rather than verdicts; this makes a passing run obey it too.
 
 ### What would reopen it
 
-A fixture where elaboration is a material fraction of B1 — roughly 25 ms, which on the measured shape is about
-20 000 occurrences, an order of magnitude past `large-score.musa`. The measurement reopens it, not an argument.
+A fixture where elaboration is a material fraction of B1 — roughly 25 ms, which on the measured shape is about 20 000
+occurrences, an order of magnitude past `large-score.musa`. The measurement reopens it, not an argument.

@@ -21,7 +21,12 @@ use ts_rs::TS;
 
 use crate::session::Request;
 
-/// A span of the source, in byte offsets.
+/// A range of the source, in UTF-16 code units.
+///
+/// The webview's measure, not Rust's — the same one the spans in the snapshot
+/// arrive in, so an edit can be built from a diagnostic without converting
+/// anything. [`crate::session`] restates it in bytes before the session
+/// applies it; see [`crate::offsets`] for why the boundary is here.
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "../../ui/src/lib/session/generated/")]
@@ -372,7 +377,7 @@ impl From<TemplateDto> for Template {
 ///
 /// `05-states.md` §1: errors say what is wrong and where, and never
 /// apologize. `kind` exists so the webview can decide *where* to put the
-/// message — a rejected edit belongs in the drawer, an unreadable file
+/// message — a rejected edit belongs in the source column, an unreadable file
 /// belongs in the top margin — without parsing the sentence.
 #[derive(Clone, Debug, Deserialize, Serialize, TS, thiserror::Error)]
 #[serde(rename_all = "camelCase")]
@@ -561,7 +566,7 @@ mod dto_laws {
         }
     }
 
-    /// An unreadable file belongs in the top margin, not in the drawer.
+    /// An unreadable file belongs in the top margin, not in the source column.
     #[test]
     fn unreadable_files_are_file_failures() {
         let failure = ProjectSession::open(std::path::Path::new("/nonexistent/piece.musa")).err();

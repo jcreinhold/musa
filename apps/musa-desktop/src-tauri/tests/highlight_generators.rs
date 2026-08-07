@@ -105,6 +105,13 @@ fn lexed_examples_are_current() -> Result {
         };
         let source = std::fs::read_to_string(&path)?;
 
+        // Offsets in the editor's measure, not the lexer's: these are compared
+        // against a CodeMirror tokenizer walking a JavaScript string, and the
+        // two disagree from the first character above U+007F onwards. The
+        // translation is the same one every span in the snapshot gets, so this
+        // fixture cannot drift from what the running application sends.
+        let offsets = musa_project::Utf16Offsets::new(&source);
+
         // Trivia is skipped: whitespace carries no ink, and an editor that
         // agreed with the lexer about where the spaces are would still be
         // wrong about the words.
@@ -118,8 +125,8 @@ fn lexed_examples_are_current() -> Result {
                 }
                 Some(serde_json::json!({
                     "class": class.name(),
-                    "start": usize::from(token.range.start()),
-                    "end": usize::from(token.range.end()),
+                    "start": offsets.to_utf16(u32::from(token.range.start())),
+                    "end": offsets.to_utf16(u32::from(token.range.end())),
                 }))
             })
             .collect();

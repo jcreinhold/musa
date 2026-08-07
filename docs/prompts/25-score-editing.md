@@ -42,8 +42,8 @@ canonical, and editing generated music surfaces a real choice instead of silentl
 - **Impact counts.** A command against a generated event returns, before applying, how many occurrences and events an
   `EditDefinition` would change — `04-provenance.md` §4 states the consequence in counts, and the frontend must not
   compute them. Add this to the command's result type.
-- Transactional: if the computed edits produce invalid source, the whole command fails and the session is unchanged
-  (the stale-revision behavior covers the UI).
+- Transactional: if the computed edits produce invalid source, the whole command fails and the session is unchanged (the
+  stale-revision behavior covers the UI).
 - **GUI** (Compose workspace), extending prompt 23's map rather than inventing a second one:
   - number keys pick duration (whole→1, half→2, quarter→4, eighth→8, sixteenth→6, thirty-second→3), `.` toggles dotted;
     letter keys `c d e f g a b` enter pitch at the caret; `↑`/`↓` with a modifier adjust octave and accidental; `r`
@@ -65,12 +65,12 @@ Four deliberate deviations, each repaired in the governing document before the c
 
 - **Entry is a mode, toggled with `N`.** The keyboard map of `03-interaction.md` §3 already spends the unmodified
   letters — `F` follows, `L` loops, `O` is the lens — so a bare `f` cannot also be the note F. The mode is never
-  invisible: the duration glyph sits in the top margin while it is on. The bindings are now written into §3 as their
-  own table.
+  invisible: the duration glyph sits in the top margin while it is on. The bindings are now written into §3 as their own
+  table.
 - **`r` inserts a rest, not `Space`.** `Space` is play, and a transport key that stopped playback from inside a mode
   would be worse than one more letter to learn.
-- **No tie shortcut.** The language has no tie construct until prompt 27, and a key that spells nothing is worse than
-  a key that is not there yet. `~` arrives with the constructs it would write.
+- **No tie shortcut.** The language has no tie construct until prompt 27, and a key that spells nothing is worse than a
+  key that is not there yet. `~` arrives with the constructs it would write.
 - **`ChangeDuration` carries a `GeneratedEditMode` too.** Roadmap §11 gave it only to `ChangePitch`, but renotating a
   generated note changes every occurrence exactly as respelling one does, and §9 forbids making that choice silently.
   The roadmap snippet is repaired.
@@ -78,8 +78,8 @@ Four deliberate deviations, each repaired in the governing document before the c
 Two facts the implementation settled, rather than deviations:
 
 - **The impact rule is one line.** `Origin` gains a `definition_span` — the statement that literally spells the event,
-  which for a generated note is inside the `motif` body — so an edit-definition edit is the *same* token replacement
-  as an authored one, and the events that change together are exactly those sharing a `definition_span`.
+  which for a generated note is inside the `motif` body — so an edit-definition edit is the *same* token replacement as
+  an authored one, and the events that change together are exactly those sharing a `definition_span`.
 - **`04-provenance.md` §4's worked example said "changes 2 occurrences, 10 notes"**; the honest count for a one-note
   edit is 2, and the document is repaired. A screen that overstates its own consequence teaches a composer to stop
   reading it.

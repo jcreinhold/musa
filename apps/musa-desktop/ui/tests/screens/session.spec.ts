@@ -9,7 +9,7 @@
 import { expect, test } from "@playwright/test";
 
 import { engraved } from "./engraved";
-import { drawer, rewrite } from "./source";
+import { pane, toggleSource, rewrite } from "./source";
 import { stubShell } from "./shell";
 
 const LEAF = ".stage > div";
@@ -17,7 +17,7 @@ const LEAF = ".stage > div";
 /**
  * What is engraved, by identity: every event on the page, in order. Verovio
  * mints fresh symbol-definition ids on each load and the leaf re-lays out
- * whenever the drawer changes height, so neither the markup nor the geometry
+ * whenever the source column changes its width, so neither the markup nor the geometry
  * is the invariant — the music is. These ids come from the MEI
  * (`02-engraving.md` §5), so an unchanged set is an unchanged score.
  *
@@ -42,14 +42,14 @@ test.beforeEach(async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
 });
 
-test("a piece opens engraved, with its source behind the drawer", async ({ page }) => {
+test("a piece opens engraved, with its source not yet shown", async ({ page }) => {
   await page.goto("/");
   await engraved(page);
 
   await expect(page.locator("h1")).toHaveText("Glass Mountain");
   await expect(page.getByRole("textbox", { name: "Source" })).toHaveCount(0);
 
-  await drawer(page).click();
+  await toggleSource(page);
   await expect(page.getByRole("textbox", { name: "Source" })).toContainText("piece");
 });
 
@@ -57,16 +57,16 @@ test("breaking the source keeps the score and says how far behind it is", async 
   await page.goto("/");
   await engraved(page);
 
-  // Opened first, so the leaf has already settled at its shorter height: the
-  // drawer pushes the leaf, and that re-layout is not what is under test.
-  await drawer(page).click();
+  // Opened first, so the leaf has already settled at its narrower width: the
+  // column pushes the leaf, and that re-layout is not what is under test.
+  await toggleSource(page);
   await engraved(page);
   const before = await engravedEvents(page);
   const edge = await page.locator(LEAF).evaluate((leaf) => getComputedStyle(leaf).borderTopColor);
 
   await rewrite(page, 'piece "Glass Mountain" {');
 
-  // The drawer opened itself the first time, and the message names the
+  // The column opened itself the first time, and the message names the
   // revision on screen and counts the problems.
   await expect(page.getByRole("status")).toContainText(/Showing revision \d+/);
   await expect(page.getByRole("status")).toContainText(/1\s+problem/);
@@ -76,7 +76,7 @@ test("breaking the source keeps the score and says how far behind it is", async 
   const stale = await page.locator(LEAF).evaluate((leaf) => getComputedStyle(leaf).borderTopColor);
   expect(stale).not.toBe(edge);
 
-  // Diagnostics are in the drawer, in the compiler's own words.
+  // Diagnostics are in the source column, in the compiler's own words.
   await expect(page.locator(".diagnostics li")).toHaveCount(1);
 });
 
@@ -84,7 +84,7 @@ test("fixing the source removes the message without announcing it", async ({ pag
   await page.goto("/");
   await engraved(page);
 
-  await drawer(page).click();
+  await toggleSource(page);
   await rewrite(page, 'piece "Glass Mountain" {');
   await expect(page.getByRole("status")).toBeVisible();
 
@@ -106,9 +106,9 @@ test("a menu selection runs the same command the interface does", async ({ page 
   await page.goto("/");
   await engraved(page);
 
-  await expect(page.locator(".panes")).toHaveCount(0);
-  await page.evaluate(() => window.__musaEmit("musa://command", "view.drawer"));
-  await expect(page.locator(".panes")).toHaveCount(1);
+  await expect(pane(page)).toHaveCount(0);
+  await toggleSource(page);
+  await expect(pane(page)).toHaveCount(1);
 });
 
 test("the position event moves the readout without a snapshot", async ({ page }) => {

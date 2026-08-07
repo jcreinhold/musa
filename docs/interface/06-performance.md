@@ -7,9 +7,9 @@ measured on a real workload, checked in the prompt that introduces the surface. 
 
 ## 1. Budgets
 
-Measured on the reference workload — `examples/glass-mountain.musa` for the small case and a generated 100-bar,
-4-part score (`tests/fixtures/large-score.musa`, created at prompt 22) for the large case — on the developer machine,
-p95 over 20 trials.
+Measured on the reference workload — `examples/glass-mountain.musa` for the small case and a generated 100-bar, 4-part
+score (`tests/fixtures/large-score.musa`, created at prompt 22) for the large case — on the developer machine, p95 over
+20 trials.
 
 | # | Interaction | Budget | Why this number |
 | --- | --- | --- | --- |
@@ -20,7 +20,7 @@ p95 over 20 trials.
 | B5 | Playhead jitter | **< 1 frame** deviation from linear between engine position events | A stepping playhead is worse than none (`03-interaction.md` §4). |
 | B6 | App launch → shell painted | ≤ 400 ms | Before the score; the frame must never wait on Verovio. |
 | B7 | App launch → score painted, small case | **≤ 1.5 s** cold, ≤ 600 ms warm | The first impression of the whole product. |
-| B8 | Zoom step → re-laid-out page | ≤ 250 ms, previous page visible throughout | |
+| B8 | Zoom step → re-laid-out page | ≤ 250 ms, previous page visible throughout |  |
 | B9 | Origin view enter/leave | ≤ 120 ms, no layout reflow | It is an ink change; it must cost like one. |
 | B10 | Idle CPU with playback stopped | **≈ 0 %** — no polling timers, no rAF loop | An editor that heats a laptop while nothing happens will not be used. |
 

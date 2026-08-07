@@ -136,17 +136,17 @@ describe("the stale revision", () => {
     expect(session.snapshot?.diagnostics).toHaveLength(1);
   });
 
-  it("opens the drawer the first time, and not again after the user closes it", () => {
+  it("shows the source the first time, and not again after the user hides it", () => {
     const session = new Session(recorder());
     session.receive(VALID);
-    expect(session.drawerOpen).toBe(false);
+    expect(session.sourceOpen).toBe(false);
 
     session.receive(snapshotOf("piece {", VALID.revision + 1, false));
-    expect(session.drawerOpen).toBe(true);
+    expect(session.sourceOpen).toBe(true);
 
-    session.drawerOpen = false;
+    session.sourceOpen = false;
     session.receive(snapshotOf("piece {{", VALID.revision + 2, false));
-    expect(session.drawerOpen).toBe(false);
+    expect(session.sourceOpen).toBe(false);
   });
 });
 

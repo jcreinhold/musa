@@ -21,7 +21,7 @@ use std::thread;
 use std::time::Duration;
 
 use musa_project::{
-    EditCommand, ExportRequest, PlaybackState, ProjectCommand, ProjectSession, Template, TransportRequest,
+    EditCommand, ExportRequest, PlaybackState, ProjectCommand, ProjectSession, Template, TransportRequest, Utf16Offsets,
 };
 use serde_json::Value;
 use tauri::{AppHandle, Emitter};
@@ -200,8 +200,13 @@ fn emit<T: serde::Serialize>(app: &AppHandle, event: &str, payload: &T) {
     app.emit(event, payload).ok();
 }
 
+/// The snapshot as the webview receives it.
+///
+/// `musa-project` owns the shape *and* the unit: `to_wire` states every span
+/// in UTF-16 code units, which is what `CodeMirror` and every JavaScript string
+/// index count in (`musa_project::Utf16Offsets`).
 fn snapshot_json(session: &ProjectSession) -> Value {
-    serde_json::to_value(session.snapshot()).unwrap_or(Value::Null)
+    session.snapshot().to_wire()
 }
 
 /// Run one job against the session.
@@ -221,6 +226,16 @@ fn perform(session: &mut Option<ProjectSession>, job: Job) -> Reply {
         Job::Apply(request) => {
             let open = session.as_mut().ok_or_else(no_project)?;
             let outcome = match request {
+                // The webview states an edit's range in its own measure; the
+                // session applies it to a Rust string, which is measured in
+                // bytes. This is the inbound half of the same contract
+                // `snapshot_json` keeps on the way out.
+                Request::Command(ProjectCommand::ApplyEdits(edits)) => {
+                    let offsets = Utf16Offsets::new(open.snapshot().source());
+                    open.apply(ProjectCommand::ApplyEdits(
+                        edits.into_iter().map(|edit| to_bytes(edit, &offsets)).collect(),
+                    ))
+                }
                 Request::Command(command) => open.apply(command),
                 Request::Undo => open.undo(),
                 Request::Redo => open.redo(),
@@ -256,6 +271,17 @@ fn perform(session: &mut Option<ProjectSession>, job: Job) -> Reply {
             Ok(snapshot_json(open))
         }
     }
+}
+
+/// One text edit, restated in the measure the session applies it in.
+fn to_bytes(edit: musa_project::TextEdit, offsets: &Utf16Offsets) -> musa_project::TextEdit {
+    musa_project::TextEdit::new(
+        musa_project::Span {
+            start: offsets.to_bytes(edit.span.start),
+            end: offsets.to_bytes(edit.span.end),
+        },
+        edit.replacement,
+    )
 }
 
 /// Install a newly opened project and answer with its snapshot.
@@ -312,6 +338,75 @@ mod session_laws {
             source: source.to_owned(),
         };
         perform(session, Job::Apply(command.into_request()))
+    }
+
+    /// Every place in the wire format where a `{start, end}` object appears,
+    /// paired with the field it appeared under.
+    fn start_end_objects(value: &Value, under: &str, found: &mut Vec<(String, u32)>) {
+        match *value {
+            Value::Object(ref fields) => {
+                let pair = fields.len() == 2 && fields.contains_key("start") && fields.contains_key("end");
+                if pair {
+                    let start = fields.get("start").and_then(Value::as_u64).unwrap_or(0);
+                    found.push((under.to_owned(), u32::try_from(start).unwrap_or(0)));
+                    return;
+                }
+                for (name, field) in fields {
+                    start_end_objects(field, name, found);
+                }
+            }
+            Value::Array(ref items) => {
+                for item in items {
+                    start_end_objects(item, under, found);
+                }
+            }
+            Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
+        }
+    }
+
+    /// The claim [`crate::offsets::translate_spans`] rests on: in the wire
+    /// format a `{start, end}` object is *always* a source span, so
+    /// translating them all translates exactly the right set. If a future
+    /// field of that shape means something else — a frame range, a bar range
+    /// — this fails, and the walk has to stop being structural.
+    #[test]
+    fn every_start_end_object_in_the_wire_format_is_a_source_span() -> Result {
+        let mut session = opened();
+        let snapshot: Value = apply(&mut session, PIECE)?;
+        let mut found = Vec::new();
+        start_end_objects(&snapshot, "", &mut found);
+        let spans = ["declaration", "definitionSpan", "span", "useSite"];
+        assert!(!found.is_empty(), "the piece serialized to no spans at all");
+        for (name, _) in found {
+            assert!(
+                spans.contains(&name.as_str()),
+                "`{name}` is a `{{start, end}}` object that is not a source span; the walk can no longer be structural"
+            );
+        }
+        Ok(())
+    }
+
+    /// The contract `docs/interface/03-interaction.md` §7 fixes: the webview
+    /// is handed UTF-16 code units, never bytes.
+    ///
+    /// Stated without arithmetic: an em dash and a hyphen are both one code
+    /// unit, and differ only in how many bytes they take (three against one).
+    /// So in the measure the webview reads, the two comments are the same
+    /// length and every span in the piece below them must land in exactly the
+    /// same place. Untranslated, each em dash pushes them two further along.
+    #[test]
+    fn a_wider_character_does_not_move_the_spans_below_it() -> Result {
+        let heading = |dash: &str| PIECE.replace("piece", &format!("// a heading {dash} and its piece\npiece"));
+        let mut session = opened();
+        let wide: Value = apply(&mut session, &heading("—"))?;
+        let narrow: Value = apply(&mut session, &heading("-"))?;
+
+        let (mut from_wide, mut from_narrow) = (Vec::new(), Vec::new());
+        start_end_objects(&wide, "", &mut from_wide);
+        start_end_objects(&narrow, "", &mut from_narrow);
+        assert!(!from_wide.is_empty(), "the piece serialized to no spans at all");
+        assert_eq!(from_wide, from_narrow);
+        Ok(())
     }
 
     /// Roadmap §14.7, and `05-states.md` §4: a source that does not compile is

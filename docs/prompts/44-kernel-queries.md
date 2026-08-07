@@ -31,8 +31,8 @@ The four rebuilds, read them before designing anything:
 - `crates/musa-render/src/plan.rs` `Marks::collect` — converts back, calling `score.events_in(from, to)` to rebuild
   which events a phrase or hairpin contains. Span → ids → membership: the projection destroys the containment the
   timeline had, and the plan reconstructs it.
-- `crates/musa-compiler/src/performance.rs` `lower_performance` — carries `dynamic = Some(mark)` forward per voice.
-  A prevailing-value scan, written a third time, with its own answer for what happens at a coincident onset.
+- `crates/musa-compiler/src/performance.rs` `lower_performance` — carries `dynamic = Some(mark)` forward per voice. A
+  prevailing-value scan, written a third time, with its own answer for what happens at a coincident onset.
 
 Then:
 
@@ -42,8 +42,8 @@ Then:
 - Prompt 42 (in progress) — its Set B accessors *regions covering an event* and *marks attached to an event* are the
   snapshot-level consumers of this prompt's `covering`. Do not duplicate prompt 42; re-implement its accessor on top of
   the kernel query and delete the hand-rolled scan underneath it.
-- The module-design pressures this clears: *information loss* (callers rebuild what the module had), *repetition*
-  (the same scan four times), and PoSD ch. 8 (pull complexity downward).
+- The module-design pressures this clears: *information loss* (callers rebuild what the module had), *repetition* (the
+  same scan four times), and PoSD ch. 8 (pull complexity downward).
 
 ## Design
 
@@ -57,9 +57,9 @@ Then:
 
 **Take Design 1.** Design 2 buys a vocabulary and costs a trait with one implementor per rule, closures at every call
 site, and a sampling protocol (`sample_over(window, step)`) that no current caller wants. The module-design rules are
-explicit: generalize the interface, not unused functionality; a one-implementor trait is a concrete type. Record Design 2
-in `docs/kernel/08-open-questions.md` as the shape to revisit **if** a third rule appears with two callers — that is the
-evidence that would justify it, and until then it is speculative generality.
+explicit: generalize the interface, not unused functionality; a one-implementor trait is a concrete type. Record Design
+2 in `docs/kernel/08-open-questions.md` as the shape to revisit **if** a third rule appears with two callers — that is
+the evidence that would justify it, and until then it is speculative generality.
 
 ### The two operations
 
@@ -86,13 +86,13 @@ Two things this design is careful about:
   context?", which is musical knowledge (§12). A closure lets the *caller* say "the `Key` facts" without the kernel
   learning what a key is. It also means one timeline supports many independent prevailing values — key, meter, clef,
   dynamic — without a new type per kind.
-- **`covering` returns occurrences, not spans or ids.** Event identity is the score layer's invention (prompt 39
-  assigns `EventId` during projection); the kernel must not learn it.
+- **`covering` returns occurrences, not spans or ids.** Event identity is the score layer's invention (prompt 39 assigns
+  `EventId` during projection); the kernel must not learn it.
 
 ### The boundary conventions, decided once
 
-These are the decisions currently made four times and not identically. State each in `03-denotational-semantics.md`
-with its reason, and test it:
+These are the decisions currently made four times and not identically. State each in `03-denotational-semantics.md` with
+its reason, and test it:
 
 | Question | Ruling | Why |
 | --- | --- | --- |
@@ -105,8 +105,8 @@ with its reason, and test it:
 
 In `04-algebraic-laws.md`, with property tests in `tests/laws.rs`:
 
-- **L20 — coverage agrees with observation.** `m.covering(t)` yields exactly the occurrences observed by
-  `m.restrict(w)` for every window `w` containing `t`. The two ways of asking cannot disagree.
+- **L20 — coverage agrees with observation.** `m.covering(t)` yields exactly the occurrences observed by `m.restrict(w)`
+  for every window `w` containing `t`. The two ways of asking cannot disagree.
 - **L21 — coverage is stable under time transformation.** `scale_r(m).covering(r·t)` corresponds to `m.covering(t)`;
   `(m ; n).covering(d + t)` corresponds to `n.covering(t)` for `d = extent(m)`. The queries commute with the algebra.
 - **L22 — prevailing is the last selected start.** For every `t`, `prevailing` equals the `select`-image of the
@@ -116,8 +116,8 @@ In `04-algebraic-laws.md`, with property tests in `tests/laws.rs`:
 
 ### The performance rule, stated because a point query invites O(n²)
 
-Both queries are linear scans. That is correct for a one-off ask (the interface's "what covers the selection") and
-wrong for bulk derivation: calling `covering` once per event is O(events × facts), and benchmark P3 will say so.
+Both queries are linear scans. That is correct for a one-off ask (the interface's "what covers the selection") and wrong
+for bulk derivation: calling `covering` once per event is O(events × facts), and benchmark P3 will say so.
 
 The rule, in the projection's module docs and in this prompt's Check: **the kernel defines what the answer is; bulk
 derivation does one ordered pass.** The projection keeps its single sweep and uses the queries' *definitions* — the
@@ -163,14 +163,14 @@ here were the three in `musa-compiler`.
 
 **`lower_performance`'s scan was documented, not replaced.** The prompt lists it as a scan to delete, but it is already
 the correct shape: one ordered pass per voice carrying the last marking forward, which is exactly D11 applied in bulk.
-Replacing it with a `prevailing` call per event is precisely what D10's performance rule forbids and what P3 would
-have caught. The repair it actually needed was authority — it now cites D11 and states, at the point of the code, how
-it answers the two conventions it used to answer implicitly (a marking is in force *at* its own event; of two markings
-at one instant the canonically later wins, because `Marks::collect`'s last insertion keeps the key).
+Replacing it with a `prevailing` call per event is precisely what D10's performance rule forbids and what P3 would have
+caught. The repair it actually needed was authority — it now cites D11 and states, at the point of the code, how it
+answers the two conventions it used to answer implicitly (a marking is in force *at* its own event; of two markings at
+one instant the canonically later wins, because `Marks::collect`'s last insertion keeps the key).
 
 **`project_regions` also moved off `definition_span`, and its sort with it.** The Check line only requires
-`project_piece` to be clean, but `project_regions` sorted brackets by `origin.definition_span` for the same wrong
-reason — source position standing in for time. It now sorts by `(span.start(), Reverse(span.end()))`, which keeps the
+`project_piece` to be clean, but `project_regions` sorted brackets by `origin.definition_span` for the same wrong reason
+— source position standing in for time. It now sorts by `(span.start(), Reverse(span.end()))`, which keeps the
 outermost-first nesting order the annotation lanes have always had while making it a fact about time. Membership is the
 D10 convention (`s ≤ onset < e`, point regions holding their own instant) computed in a single pass over the already
 ordered event extents, replacing the pair of `find`/`rev().find` scans that asked "entirely inside" — a different
@@ -180,9 +180,10 @@ question that happened to agree on every fixture. All 438 tests pass and no gold
 convention row 4 ("a fact starting exactly at `t` prevails at `t`") expressed in time, and its only `definition_span`
 use is the span of a diagnostic — which is what a diagnostic span is for.
 
-**Design 2 is recorded as Q9, and points at Q4.** `08-open-questions.md` states the `Behavior<V>` shape (numbered Q9, since
-prompt 40 answered and deleted an earlier Q8), why it was declined, and the evidence that would settle it (a third rule with two callers each) — plus the observation that Q4's
-continuous controls are the most likely source of that third rule, so the two questions should be reopened together.
+**Design 2 is recorded as Q9, and points at Q4.** `08-open-questions.md` states the `Behavior<V>` shape (numbered Q9,
+since prompt 40 answered and deleted an earlier Q8), why it was declined, and the evidence that would settle it (a third
+rule with two callers each) — plus the observation that Q4's continuous controls are the most likely source of that
+third rule, so the two questions should be reopened together.
 
 **The measurement.** P3 large 227 µs → 232 µs (+2%), allocations unchanged; P1 large +3.3%, P2 large +1.8%, all noise
 and all inside the block's gate. The one real cost is five allocations, from `project_piece` building a canonical key

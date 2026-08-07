@@ -1,0 +1,49 @@
+// Text above U+007F, in every place a piece can carry it — the title, a
+// section name, a phrase name, and these comments.
+//
+// It is here because the two sides of the desktop app measure the source
+// differently: Rust counts bytes, JavaScript and CodeMirror count UTF-16
+// code units, and the two agree only while the text is ASCII. The em dash on
+// the line above is three bytes and one code unit; the flat sign below is
+// three and one; the treble clef is four and two. Every span the interface
+// receives from a piece like this one is wrong by the accumulated difference
+// unless the shell restates it — see docs/interface/03-interaction.md §7.
+//
+// Nothing here is about notation. The notes are the plainest possible, so
+// that when a linking or highlighting test fails it is the measure that is
+// wrong and not the music.
+piece "Étude en sol — 𝄞" {
+    tempo 1/4 = 88;
+    meter 3/4;
+    key g major;
+
+    motif sigh(root: pitch = d5) {
+        root 1/4;
+        c5 1/4;
+        b4 1/4;
+    }
+
+    score {
+        section "Ouverture" at 1:1;
+        section "Réponse — variée" at 3:1;
+
+        part piano {
+            clef treble;
+
+            voice lead {
+                phrase "première idée" {
+                    g4 1/4;
+                    b4 1/4;
+                    d5 1/4;
+                }
+                use sigh();
+                use sigh(g5);
+                phrase "cadence — ♭VII" {
+                    f5 1/4;
+                    d5 1/4;
+                    g4 1/4;
+                }
+            }
+        }
+    }
+}

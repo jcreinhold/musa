@@ -5,8 +5,10 @@
    * are two views of one document.
    *
    * Source on the left, leaf on the right, problems beneath the source where
-   * the caret they move is. The drawer inside Compose stays what it is — a
-   * quick look — and this is where the writing happens.
+   * the caret they move is — the same column, on the same material, behind
+   * the same hairline as in Compose. What this workspace changes is the
+   * proportion, not the arrangement: the score's margins retire and the page
+   * takes everything the text does not (`01-visual-language.md` §8).
    *
    * Nothing here is computed: the highlighting comes from the language
    * package, the diagnostics from the compiler, and which notes a caret
@@ -16,7 +18,7 @@
   import type { ViewMode } from "../lib/engrave/options";
   import Leaf from "../lib/ui/Leaf.svelte";
   import Margin from "../lib/ui/Margin.svelte";
-  import SourceEditor from "../lib/ui/SourceEditor.svelte";
+  import SourcePane from "../lib/ui/SourcePane.svelte";
   import Workspaces from "../lib/ui/Workspaces.svelte";
   import type { Screen } from "../lib/commands/map";
   import type { Session } from "../lib/session/session.svelte";
@@ -69,8 +71,7 @@
     </Margin>
 
     <div class="panes">
-    <section class="text" aria-label="Source">
-      <SourceEditor
+      <SourcePane
         source={session.text}
         editable={session.live}
         {diagnostics}
@@ -78,38 +79,21 @@
         {reveal}
         onedit={(text) => session.edit(text)}
         {oncaret}
+        {ondiagnostic}
       />
 
-      <!--
-        Problems, beneath the text they are about. With none the pane shows
-        nothing at all — not "0 problems" (`05-states.md` §2).
-      -->
-      {#if diagnostics.length > 0}
-        <ul class="problems">
-          {#each diagnostics as diagnostic, index (index)}
-            <li>
-              <button type="button" class="problem" onclick={() => ondiagnostic?.(diagnostic)}>
-                <span class="glyph {diagnostic.severity}" aria-hidden="true"></span>
-                <span class="message">{diagnostic.message}</span>
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </section>
-
-    <main class="stage">
-      <Leaf stale={session.stale}>
-        <Score
-          mei={snapshot.mei ?? ""}
-          revision={snapshot.scoreRevision ?? snapshot.revision}
-          {zoom}
-          {mode}
-          {workspace}
-          {origin}
-        />
-      </Leaf>
-    </main>
+      <main class="stage" class:continuous={mode === "continuous"}>
+        <Leaf stale={session.stale}>
+          <Score
+            mei={snapshot.mei ?? ""}
+            revision={snapshot.scoreRevision ?? snapshot.revision}
+            {zoom}
+            {mode}
+            {workspace}
+            {origin}
+          />
+        </Leaf>
+      </main>
     </div>
   </div>
 {:else}
@@ -127,11 +111,17 @@
     background: var(--surround);
   }
 
-  /* Source left, page right: the claim of the workspace is that they are two
-     views of one document, so neither is a panel beside the other. */
+  /*
+   * Source left, page right: the claim of the workspace is that they are two
+   * views of one document, so neither is a panel beside the other.
+   *
+   * The text takes its measure and the page takes the rest (§8). A fraction
+   * would give the text a width that has nothing to do with how long its
+   * lines are — which it did, and the right third of every file was empty.
+   */
   .panes {
     display: grid;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    grid-template-columns: auto minmax(0, 1fr);
     min-height: 0;
   }
 
@@ -164,72 +154,31 @@
   }
 
   /*
-   * The text sits on its own surface, the page on the surround: the same
-   * distinction the leaf makes, so the two halves read as two materials
-   * rather than two panels (`01-visual-language.md` §7).
+   * The page is a page here too. Compose already shapes the leaf to the
+   * paper, and the claim of this workspace is that it is the same screen at a
+   * different proportion — a leaf that changed shape when the margins retired
+   * would make that a lie.
    */
-  .text {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    min-height: 0;
-    padding: var(--s-4) var(--s-5);
-    background: var(--surround-in);
-    border-right: 1px solid var(--rule);
-    overflow: hidden;
-  }
-
   .stage {
+    display: flex;
+    justify-content: center;
     min-width: 0;
     min-height: 0;
     overflow: auto;
     padding: var(--s-5);
   }
 
-  .problems {
-    flex: 0 0 auto;
-    max-height: 30%;
-    margin: var(--s-3) 0 0;
-    padding: var(--s-3) 0 0;
-    border-top: 1px solid var(--rule);
-    list-style: none;
-    overflow: auto;
-    font-family: var(--f-ui);
-    font-size: var(--t-small-size);
-    line-height: var(--t-small-line);
+  .stage :global(> *) {
+    height: 100%;
+    aspect-ratio: 210 / 297;
+    max-width: 100%;
+    min-width: 0;
   }
 
-  /* Severity is a shape as well as a colour (`03-interaction.md` §5). */
-  .glyph {
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    margin-right: var(--s-1);
-  }
-
-  .glyph.error {
-    background: var(--chalk);
-  }
-
-  .glyph.warning {
-    border: 1px solid var(--chalk);
-  }
-
-  .problem {
-    display: block;
+  /* Continuous is not a page, so the leaf stops pretending to be one (§4). */
+  .stage.continuous :global(> *) {
+    aspect-ratio: auto;
     width: 100%;
-    background: none;
-    border: 0;
-    padding: 0;
-    font: inherit;
-    color: var(--ink);
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .problem:hover .message,
-  .problem:focus-visible .message {
-    text-decoration: underline;
   }
 
   .empty {

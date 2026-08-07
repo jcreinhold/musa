@@ -10,7 +10,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
-import { drawer, rewrite, source, text } from "./source";
+import { toggleSource, rewrite, source, text } from "./source";
 import { stubShell } from "./shell";
 
 /**
@@ -72,10 +72,10 @@ test("the selected note is haloed and named for a screen reader", async ({ page 
   expect(described).toMatch(/bar \d+ beat \d+/);
 });
 
-test("the arrows belong to the score, and the drawer keeps its own letters", async ({ page }) => {
-  await drawer(page).click();
+test("the arrows belong to the score, and the source keeps its own letters", async ({ page }) => {
+  await toggleSource(page);
   await source(page).click();
-  // `f` is the follow binding in the score; in the drawer it is an `f`, and
+  // `f` is the follow binding in the score; in the source it is an `f`, and
   // `o` — origin view — is an `o`.
   await page.keyboard.type("fof");
   await expect.poll(() => text(page)).toContain("fof");
@@ -143,7 +143,7 @@ test("the selection survives a re-engraving", async ({ page }) => {
 
   // A new score revision with the same events: the ids are unchanged, so the
   // selection is too (`02-engraving.md` §6).
-  await drawer(page).click();
+  await toggleSource(page);
   await rewrite(page, `${await text(page)}\n`);
   await page.waitForTimeout(400);
 

@@ -316,7 +316,7 @@ fn large_score_fixture_is_current() -> Result {
     // Compact rather than pretty: 1500 events pretty-printed is half a
     // megabyte of whitespace, and nobody reads this file — the generator is
     // what is read.
-    let mut json = serde_json::to_string(&snapshot)?;
+    let mut json = serde_json::to_string(&snapshot.to_wire())?;
     json.push('\n');
     write_or_compare(
         &repository().join("apps/musa-desktop/ui/fixtures/large-score.snapshot.json"),

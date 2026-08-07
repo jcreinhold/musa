@@ -70,35 +70,35 @@ Commit as `Add phrase, form, and harmony annotations`.
 ## Repairs made while implementing
 
 - **The three annotations are anchored two different ways.** A phrase is anchored to the events it brackets, like a
-  slur, so re-spelling or re-barring keeps it on its notes. A section and a chord symbol are anchored to *time*,
-  because a bar line is a place whether or not a note starts there — `section "Coda" at 9:1;` in a piece that stops
-  at bar 8 is a diagnostic, not a marker that silently lands on the last note.
+  slur, so re-spelling or re-barring keeps it on its notes. A section and a chord symbol are anchored to *time*, because
+  a bar line is a place whether or not a note starts there — `section "Coda" at 9:1;` in a piece that stops at bar 8 is
+  a diagnostic, not a marker that silently lands on the last note.
 - **`harmony` is one lane per score.** Two lanes would be two answers to "what chord is sounding", and neither the
   formats nor a reader has a way to prefer one. A second lane is refused by name.
-- **A chord symbol needs no new token.** A symbol is one word, and the lexer already reads that word as an
-  `Identifier`, a `PitchLiteral` (`e7` lexes as a pitch), or an identifier followed by an integer. The parser takes the
-  word; the compiler checks it is one word and parses the grammar. `dsus4` was the case that made the grammar earn its
-  tests: the `s` belongs to `sus`, not to a sharpened root.
+- **A chord symbol needs no new token.** A symbol is one word, and the lexer already reads that word as an `Identifier`,
+  a `PitchLiteral` (`e7` lexes as a pitch), or an identifier followed by an integer. The parser takes the word; the
+  compiler checks it is one word and parses the grammar. `dsus4` was the case that made the grammar earn its tests: the
+  `s` belongs to `sus`, not to a sharpened root.
 - **`LilyPond` gets `\new ChordNames \chordmode`, not markup.** It is what LilyPond engraves best — its own line above
   the system, spaced against the music — and what a LilyPond user would write by hand. The cost is that each symbol is
   translated into chordmode's vocabulary (`cmmaj7` → `c:m7+`, LilyPond's spelling of a raised seventh) rather than
   printed verbatim, which is exactly what parsing the symbol bought. Form markers are `\mark \markup`, placed in the
   topmost staff because `\mark` is a Score-level event.
-- **A phrase prints as its name in `LilyPond`, without a bracket.** LilyPond has no phrase bracket that does not need
-  an engraver added to the layout, and a prompt about annotations is not the place to start emitting `\layout` blocks.
-  MEI gets a real `<phrase>` (plus a `<dir>`, because not every consumer draws the bracket) and MusicXML a `<bracket>`
-  pair with `<words>`.
-- **`MusicXML`'s `<kind>` vocabulary is coarser than the symbols musa reads.** It has no name for a suspended chord
-  with a seventh and none for an augmented major seventh. Those fall back to the triad they are built on, and the
-  `text` attribute carries what the composer wrote — nothing is invented, and no symbol becomes a different chord.
+- **A phrase prints as its name in `LilyPond`, without a bracket.** LilyPond has no phrase bracket that does not need an
+  engraver added to the layout, and a prompt about annotations is not the place to start emitting `\layout` blocks. MEI
+  gets a real `<phrase>` (plus a `<dir>`, because not every consumer draws the bracket) and MusicXML a `<bracket>` pair
+  with `<words>`.
+- **`MusicXML`'s `<kind>` vocabulary is coarser than the symbols musa reads.** It has no name for a suspended chord with
+  a seventh and none for an augmented major seventh. Those fall back to the triad they are built on, and the `text`
+  attribute carries what the composer wrote — nothing is invented, and no symbol becomes a different chord.
 - **The outline is a table of contents, not an editor.** Sections and phrases become `OutlineFacts` on `ScoreFacts`,
   each carrying the event to reveal, the bar, and the frames it is reached at — resolved by the core, so the interface
-  scrolls to a notehead rather than guessing at a coordinate. Rows light for *every* passage the selection is inside,
-  so a phrase and the section around it are both marked. Entry is via source, as the prompt allows.
+  scrolls to a notehead rather than guessing at a coordinate. Rows light for *every* passage the selection is inside, so
+  a phrase and the section around it are both marked. Entry is via source, as the prompt allows.
 - **`examples/annotated.musa` is a new fixture, not an extension of `glass-mountain.musa`.** The demo score is the
-  subject of the interface's raster goldens and of most engraving tests; adding chord symbols above its staff would
-  have rewritten all of them to prove something a second fixture proves on its own. The desktop reads the new one
-  through `FIXTURES`, which is what the outline screens tests drive.
+  subject of the interface's raster goldens and of most engraving tests; adding chord symbols above its staff would have
+  rewritten all of them to prove something a second fixture proves on its own. The desktop reads the new one through
+  `FIXTURES`, which is what the outline screens tests drive.
 - **The frozen phase-1 oracle rejects `section` and `harmony` by name**, as it already did `phrase`, rather than
   ignoring score-level declarations it does not know.
 

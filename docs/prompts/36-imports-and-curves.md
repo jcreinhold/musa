@@ -76,8 +76,8 @@ dynamic curves over time) flowing from source through the integrated tempo map t
   parts exist, so a tempo nobody reaches is an error. A second unpositioned `tempo` (two answers to "how fast does this
   start") and a change at `1:1` are both refused.
 - **`IntegratedTempoMap` accumulates segment offsets as exact rationals** and rounds once, at the position asked about.
-  Rounding each segment's start would drift at every change; `the_frame_at_a_tempo_change_is_the_sum_of_what_came_before`
-  is the test that pins it.
+  Rounding each segment's start would drift at every change;
+  `the_frame_at_a_tempo_change_is_the_sum_of_what_came_before` is the test that pins it.
 - **MIDI export became piecewise too.** Frames → ticks with one factor would misplace every note after a change, so
   `IntegratedTempoMap::segments()` is exported and `midi.rs` writes one tempo meta-event per segment.
 - **Hairpins interpolate over notes, not over frames.** `crescendo to f { ... }` gives each event under it an equal

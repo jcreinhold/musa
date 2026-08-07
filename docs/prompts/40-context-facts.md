@@ -77,8 +77,8 @@ The "the piece ends before `9:1`" diagnostic must keep firing on the same inputs
 ### Ordering inside the canonical form
 
 Score-level facts now sort into the same canonical order as notes. `Canonical::canonical_key` must place them
-deterministically — key and meter before the notes at the same instant, since that is how a reader encounters them —
-and the canonical serialization (`kernel_normal_form`) gains them. Existing kernel-normal-form goldens **will** change;
+deterministically — key and meter before the notes at the same instant, since that is how a reader encounters them — and
+the canonical serialization (`kernel_normal_form`) gains them. Existing kernel-normal-form goldens **will** change;
 re-record them in this commit and say so, since every other golden in the repo must not.
 
 ## Target
@@ -126,21 +126,21 @@ Commit as `Elaborate key, meter, and score annotations as occurrences`.
 - **`elaborate_annotations` became `context_facts`, and returns a timeline.** It no longer pushes into the annotation
   store; it produces the occurrences for the piece's key, meter, sections and chord symbols, and `project.rs` does the
   pushing. It also *takes* the key and meter out of the snapshot on the way past — `lower_header` still parses them,
-  because parsing a header is not a temporal act and the direct oracle needs it until prompt 41 — so the only thing
-  that puts either back is the projection.
+  because parsing a header is not a temporal act and the direct oracle needs it until prompt 41 — so the only thing that
+  puts either back is the projection.
 - **`kernel_normal_form` prints one timeline, not one per part.** The goldens changed more than the prompt implies:
   after prompt 39 a compilation has exactly one temporal object, and score-level facts belong to no part, so a normal
   form built per part had nowhere to put them. Multi-part goldens (`counterpoint`) therefore lose their second
-  `timeline` block and gain its occurrences in canonical order. Only the three kernel-normal-form goldens changed;
-  every other golden in the repo is byte-identical, which is what `fixtures_have_full_parity` also proves — the direct
-  lowerer and the kernel path still produce equal `KeyMap`s and `MeterMap`s.
-- **Piece-scoped facts key as `*|*`.** Occurrences sort by `(start, end, key)`, so the scope prefix is what orders
-  facts sharing a span; `*` sorts before any part number, which is the "key and meter before the notes at the same
-  instant" the Design asks for, and reads as the wildcard scope it is.
+  `timeline` block and gain its occurrences in canonical order. Only the three kernel-normal-form goldens changed; every
+  other golden in the repo is byte-identical, which is what `fixtures_have_full_parity` also proves — the direct lowerer
+  and the kernel path still produce equal `KeyMap`s and `MeterMap`s.
+- **Piece-scoped facts key as `*|*`.** Occurrences sort by `(start, end, key)`, so the scope prefix is what orders facts
+  sharing a span; `*` sorts before any part number, which is the "key and meter before the notes at the same instant"
+  the Design asks for, and reads as the wildcard scope it is.
 - **`PitchClass` gained a `Display`, and `WrittenPitch`'s delegates to it.** The key fact needed a tonic spelling and
   the only one in the codebase was buried inside `WrittenPitch`'s formatter. One place spells a pitch class now, so a
   written pitch and a key tonic cannot disagree.
 - **`Canonical::canonical_key` was repaired while it was open.** It built its scope prefix with one `format!` and the
-  whole key with another; it now writes into a single `String` sized up front. Allocation count is unchanged and
-  `grow` per iteration fell from 24 478 to 310 — P4 on the large workload is **27% faster** than prompt 39's row. See
+  whole key with another; it now writes into a single `String` sized up front. Allocation count is unchanged and `grow`
+  per iteration fell from 24 478 to 310 — P4 on the large workload is **27% faster** than prompt 39's row. See
   `docs/kernel/09-performance.md`; no phase regressed.

@@ -9,6 +9,11 @@
  * example is compared token for token against the lexer's own
  * (`tests/unit/highlighting.test.ts`).
  *
+ * The offsets below are JavaScript string indices — UTF-16 code units — which
+ * is what CodeMirror wants and what the lexer's own offsets are restated in
+ * before they are written to a fixture (`03-interaction.md` §7.1). Nothing
+ * here converts anything; that is the point of the contract.
+ *
  * One function does the reading — [`read`] — so the whole-document tokenizer
  * the tests use and the line-at-a-time one CodeMirror needs cannot disagree
  * about what a token is.

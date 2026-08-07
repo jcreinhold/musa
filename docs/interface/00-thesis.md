@@ -32,8 +32,8 @@ The app has one job:
 > score was produced from text you control.**
 
 Everything below follows from that sentence. The score must be genuinely well engraved, because it is what the user
-looks at for hours. The provenance must be visible, because that is the one thing musa knows that no other program
-does. The text must be one keystroke away and never in the way.
+looks at for hours. The provenance must be visible, because that is the one thing musa knows that no other program does.
+The text must be one keystroke away and never in the way.
 
 ## 3. The design thesis: the leaf and the margin
 

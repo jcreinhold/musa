@@ -116,7 +116,7 @@ pub const COMMANDS: &[CommandDescriptor] = &[
         true,
     ),
     command(
-        "view.drawer",
+        "view.source",
         "Show the source",
         Section::View,
         Some("CmdOrCtrl+'"),

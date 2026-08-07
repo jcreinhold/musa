@@ -11,11 +11,11 @@ phase: 3
 ## Task
 
 Make the kernel timeline the *only* place a temporal fact lives. Today notes are occurrences while slurs, phrases,
-tuplets, dynamics, hairpins, and ties are tags copied onto every note payload they cover
-(`elaborate.rs`'s `Marks`), reconstructed afterwards by the adapter into `AnnotationStore` spans keyed by event ids the
-adapter itself assigns. Replace that with a heterogeneous payload — `ScoreFact` — so each of those is an occurrence with
-its own span, its own provenance, and no copy of itself on anything else. `ScoreSnapshot` keeps its exact public shape
-and is computed from the timeline by projection.
+tuplets, dynamics, hairpins, and ties are tags copied onto every note payload they cover (`elaborate.rs`'s `Marks`),
+reconstructed afterwards by the adapter into `AnnotationStore` spans keyed by event ids the adapter itself assigns.
+Replace that with a heterogeneous payload — `ScoreFact` — so each of those is an occurrence with its own span, its own
+provenance, and no copy of itself on anything else. `ScoreSnapshot` keeps its exact public shape and is computed from
+the timeline by projection.
 
 This prompt adds **no kernel constructor**. That it needs none is the evidence course correction §34 asks for.
 
@@ -62,9 +62,9 @@ complecting this prompt removes.
 | --- | --- | --- |
 | `Note { pitch, duration, articulations }` | the sounding extent | `duration: NotatedDuration` is *notation intent* — how many noteheads spell the span — and stays in the payload (roadmap §2: notated ≠ performed) |
 | `Rest { duration, articulations }` | the notated extent | notation intent, not silence; the kernel gains no silence object (§2) |
-| `Slur` / `Phrase { name }` | first onset → last end | |
+| `Slur` / `Phrase { name }` | first onset → last end |  |
 | `Tuplet { num, den }` | the bracketed region | unreduced, as the backends need |
-| `Dynamic { mark }` | a point at the onset it applies from | |
+| `Dynamic { mark }` | a point at the onset it applies from |  |
 | `Hairpin { grows, target }` | the region it spans | prompt 36 introduced it |
 
 ### What stays inside a note, and why
@@ -72,7 +72,8 @@ complecting this prompt removes.
 Articulations stay a field of `Note`/`Rest`; they are not occurrences. The rule applied is the one from the reading:
 **does it have an extent and an identity of its own?** A staccato dot has neither — it has no span but the note's, it
 cannot be moved without moving the note, and making it a separate occurrence would force the projection to re-join it to
-its note by span-and-voice, which is the information loss this prompt exists to delete, merely inverted. A slur has both.
+its note by span-and-voice, which is the information loss this prompt exists to delete, merely inverted. A slur has
+both.
 
 ### Ties disappear entirely
 
@@ -159,17 +160,17 @@ Commit as `Elaborate every notated fact as a kernel occurrence`.
   the statement and its continuation are both in hand. It is documented as elaboration-only and the projection asserts
   it is `false` in debug builds.
 - **Merging happens in `elaborate_items`, at every nesting level**, not once per voice. That is what makes the
-  `retrograde` consequence true: an inner block's ties are already merged when the block is reversed. A tie that
-  crosses a block boundary merges at the level containing both sides. The one thing that must stay at voice level is
-  the *dangling* tie diagnostic — a tie at the end of a `slur` block continues into what follows the block, so
-  complaining per level would reject valid music.
+  `retrograde` consequence true: an inner block's ties are already merged when the block is reversed. A tie that crosses
+  a block boundary merges at the level containing both sides. The one thing that must stay at voice level is the
+  *dangling* tie diagnostic — a tie at the end of a `slur` block continues into what follows the block, so complaining
+  per level would reject valid music.
 - **`grep -rn "struct Marks\|fn retie" crates/` returns 1, not 0**: `musa-render/src/plan.rs` has an unrelated
   `struct Marks` — the notation planner's per-event annotation index, which predates this prompt and has nothing to do
   with payload tags. Scoped to `crates/musa-compiler`, the check returns 0.
 - **`cargo insta test --unreferenced=reject` is not runnable here** (`cargo-insta` is not installed). The stronger
-  statement was checked instead and holds: `git status` shows **no snapshot file changed at all**, and all 430
-  workspace tests pass. The canonical key was deliberately shaped so a note or rest with nothing written on it keys
-  exactly as it did before, which is why the kernel normal-form goldens are untouched.
+  statement was checked instead and holds: `git status` shows **no snapshot file changed at all**, and all 430 workspace
+  tests pass. The canonical key was deliberately shaped so a note or rest with nothing written on it keys exactly as it
+  did before, which is why the kernel normal-form goldens are untouched.
 - **Motif note overrides count events, not facts.** `with { note 2 = g5; }` numbers positions by groups of occurrences
   sharing a span; once a `slur` inside a motif body is an occurrence of its own, that numbering had to skip non-event
   facts, or bracketing a motif would have silently renumbered its notes.

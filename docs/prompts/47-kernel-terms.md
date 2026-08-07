@@ -101,10 +101,10 @@ fails, the calculus and the algebra disagree and the *specification* is wrong �
 ## Repairs made while implementing
 
 **`Term` is an opaque struct, not a public enum, and that is what made `evaluate` infallible.** The prompt offered the
-choice and preferred constructors if they sufficed; they do. With `Term::seq`/`over`/`shift`/`scale` returning
-`Result`, four of `02-static-semantics.md` K7's rules become unrepresentable — an empty composition, a non-positive
-factor, a backwards delay, a disordered window — and payload uniformity is the type parameter. `check` is left with
-exactly the two rules that are **not local to one node**, and both are about names.
+choice and preferred constructors if they sufficed; they do. With `Term::seq`/`over`/`shift`/`scale` returning `Result`,
+four of `02-static-semantics.md` K7's rules become unrepresentable — an empty composition, a non-positive factor, a
+backwards delay, a disordered window — and payload uniformity is the type parameter. `check` is left with exactly the
+two rules that are **not local to one node**, and both are about names.
 
 **The one case that could not be pushed into construction is a free name**, because a reference is built before the
 binder that encloses it: `Term::var("x")` exists before `Term::bind("x", …)` wraps it. `evaluate` still returns a
@@ -114,9 +114,9 @@ asserts that `check` passed. Panicking in a library on a caller's mistake is wor
 caller can hold. This is the case the prompt asked to be named.
 
 **Shadowing is rejected, and that shaped the term generator.** K7 forbids it so substitution stays textual and T2 needs
-no capture-avoidance apparatus. The recursive `proptest` strategy therefore names each binding after its depth
-(`x2`, `x1`, …); the first version reused `x` at every level and every nested term was ill-formed — which is the rule
-catching a real mistake on its first use rather than a test being bent to fit.
+no capture-avoidance apparatus. The recursive `proptest` strategy therefore names each binding after its depth (`x2`,
+`x1`, …); the first version reused `x` at every level and every nested term was ill-formed — which is the rule catching
+a real mistake on its first use rather than a test being bent to fit.
 
 **T2's reference is the substituted term, written out, not a substituting evaluator.** The prompt asked for a reference
 evaluator that expands `let` by substitution. `Term` is opaque, so substitution is not expressible from a test file —
@@ -126,13 +126,13 @@ fewer moving parts, and no second evaluator to keep correct.
 
 **`restrict` needed D6 materialized as a value, and it is private.** `Timeline::restrict` returns an `Observation`,
 which is a view; E-Restrict must yield a timeline. The evaluator materializes it — visible occurrences, **whole** spans
-preserved (§17), the observed extent kept so L16 still makes full-extent restriction the identity — in a private
-helper. It is not a new public operation, because it is not a new meaning and nothing outside the evaluator wants one.
-The T1 test writes the same materialization independently so the `restrict` case compares two implementations rather
-than one against itself.
+preserved (§17), the observed extent kept so L16 still makes full-extent restriction the identity — in a private helper.
+It is not a new public operation, because it is not a new meaning and nothing outside the evaluator wants one. The T1
+test writes the same materialization independently so the `restrict` case compares two implementations rather than one
+against itself.
 
-**`shift` is expanded by the evaluator, not denoted.** `Form::Shift` exists so a parser and a printer can round-trip
-the sugar, but E-Shift is not a rule: evaluation builds `seq (timeline d {}) t` and hands off. A dedicated test
+**`shift` is expanded by the evaluator, not denoted.** `Form::Shift` exists so a parser and a printer can round-trip the
+sugar, but E-Shift is not a rule: evaluation builds `seq (timeline d {}) t` and hands off. A dedicated test
 (`shift_denotes_its_stated_expansion`) pins that, so the sugar cannot drift into a primitive.
 
 **References clone; the comment names prompt 49.** As instructed. `Rc` was not introduced, and the place the decision

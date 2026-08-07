@@ -50,7 +50,7 @@ export interface Surface {
   show(which: Screen): void;
   palette(open: boolean): void;
   keys(open: boolean): void;
-  /** Clear the selection, or — with nothing selected — close the drawer. */
+  /** Clear the selection, or — with nothing selected — put the source column away. */
   escape(): void;
 }
 
@@ -64,7 +64,7 @@ export interface Command {
   /**
    * Where the binding applies. `score` bindings are the ones without ⌘ or ⌥ —
    * arrows, `Tab`, `F`, `Space` — which belong to the score pane and must not
-   * fire while the composer is typing in the drawer or the palette.
+   * fire while the composer is typing in the source column or the palette.
    */
   scope: "global" | "score";
   run(surface: Surface): void;
@@ -157,7 +157,7 @@ export const COMMANDS: readonly Command[] = [
   // in a dialog that would take the notes off the screen.
   own("score.extract", "Extract a motif", "Score", "M", (surface) => surface.extract()),
   // Escape is the one Score command that is global: giving up is answered
-  // wherever the composer happens to be, including the drawer.
+  // wherever the composer happens to be, including the source column.
   own(
     "score.clear",
     "Clear the selection",
@@ -204,7 +204,7 @@ export const COMMANDS: readonly Command[] = [
   command("view.zoom.out", "View", (surface) => surface.zoom(-1)),
   command("view.zoom.in", "View", (surface) => surface.zoom(1)),
   command("view.zoom.reset", "View", (surface) => surface.resetZoom()),
-  command("view.drawer", "View", ({ session }) => (session.drawerOpen = !session.drawerOpen)),
+  command("view.source", "View", ({ session }) => (session.sourceOpen = !session.sourceOpen)),
   command("view.theme", "View", ({ theme }) => theme.toggle()),
   command("view.palette", "View", (surface) => surface.palette(true)),
 
@@ -259,7 +259,7 @@ export function matches(accelerator: string, event: KeyboardEvent): boolean {
  *
  * `within` is where the keystroke happened: `score` when the score pane has
  * focus, `global` anywhere else. Unmodified keys belong to the score, so that
- * typing an `f` in the drawer is an `f` and not a follow-mode toggle.
+ * typing an `f` in the source column is an `f` and not a follow-mode toggle.
  */
 export function commandFor(
   event: KeyboardEvent,

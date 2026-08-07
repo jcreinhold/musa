@@ -16,7 +16,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
-import { drawer, source } from "./source";
+import { pane, source } from "./source";
 import { stubShell } from "./shell";
 
 /** The outline's rows, as they read. */
@@ -60,10 +60,10 @@ test("choosing a section selects the note it names", async ({ page }) => {
 });
 
 test("choosing a marker opens the source at the statement that wrote it", async ({ page }) => {
-  // The drawer is shut until something asks for it.
+  // The source column is shut until something asks for it.
   await expect(source(page)).toBeHidden();
   await page.getByRole("navigation", { name: "Structure" }).getByText("Exposition").click();
-  await expect(drawer(page)).toBeVisible();
+  await expect(pane(page)).toBeVisible();
   await expect(source(page)).toBeVisible();
   await expect(source(page)).toContainText('section "Exposition" at 1:1;');
 });

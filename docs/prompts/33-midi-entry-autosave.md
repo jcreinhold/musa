@@ -67,25 +67,25 @@ Commit as `Add MIDI step entry and autosave`.
   open audio stream would make "write a melody" require a working output device. `MidiInput::open` is therefore a small
   independent type in `musa-engine`, and `ProjectSession::listen_to_midi` opens it on demand.
 - **The keyboard is read while note entry is on, and at no other time.** There is no MIDI thread polling in the
-  background: the desktop session thread blocks until something happens, and only entry mode gives it a 15 ms tick.
-  This keeps roadmap §14.8's "nothing is scheduled at rest" true of the keyboard as well as of the transport.
+  background: the desktop session thread blocks until something happens, and only entry mode gives it a 15 ms tick. This
+  keeps roadmap §14.8's "nothing is scheduled at rest" true of the keyboard as well as of the transport.
 - **Spelling and chord grouping live in `musa-project`, not in the frontend.** Both are musical judgements — which
   letter a black key is, and whether two presses are one chord — and `docs/interface/03-interaction.md` §7 forbids the
   frontend from computing musical facts. `MidiEntry` crosses the bridge already spelled and already grouped; the
   interface's only contribution is the notated duration, which the keyboard cannot know.
 - **The spelling rule is stated and table-tested.** A note the key already spells is written the key's way; a note
-  outside the key is an alteration of its neighbour, raised in a sharp signature and lowered in a flat one. A second
-  law asserts that every spelling sounds back at the note it came from, including where the letter and the number
-  disagree about the octave (`bs3` is 60).
-- **Velocity does not cross the queue.** The Stop list rejects velocity interpretation, so carrying it would be a
-  public field with no caller; `decode` uses it to tell a zero-velocity note-on from a press and then drops it.
+  outside the key is an alteration of its neighbour, raised in a sharp signature and lowered in a flat one. A second law
+  asserts that every spelling sounds back at the note it came from, including where the letter and the number disagree
+  about the octave (`bs3` is 60).
+- **Velocity does not cross the queue.** The Stop list rejects velocity interpretation, so carrying it would be a public
+  field with no caller; `decode` uses it to tell a zero-velocity note-on from a press and then drops it.
 - **Autosave is a recovery copy beside the file, not a write-through to the file itself.** The Design offered a choice;
   this is the simplest correct one. Writing through would mean a crash could leave the *file* half-rewritten, and would
-  make "save" meaningless as an act. The copy is written atomically (temp + rename) after every command that changes
-  the source, and removed on save.
+  make "save" meaningless as an act. The copy is written atomically (temp + rename) after every command that changes the
+  source, and removed on save.
 - **No debounce inside the session.** The Design asked for "write-through after N seconds idle", but the editor already
-  debounces keystrokes before they reach the session (roadmap §10.7), so a command is already a settled
-  edit. A second timer would mean the session owning a clock and a thread to answer a question the caller has answered.
+  debounces keystrokes before they reach the session (roadmap §10.7), so a command is already a settled edit. A second
+  timer would mean the session owning a clock and a thread to answer a question the caller has answered.
 - **Undo history is not saved.** It is a session's working memory, and a recovered file that claimed a history it could
   no longer reach would misreport what undo does.
 - **Recovery is offered, never applied.** `open` reports a differing copy as `snapshot.recovery`; `RestoreRecovery`

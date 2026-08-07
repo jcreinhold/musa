@@ -81,7 +81,7 @@ export interface OccurrenceFacts {
   label: string;
   /** The motif's name, when a motif produced this. */
   motif: string | null;
-  /** Where that motif is declared, for revealing it in the drawer. */
+  /** Where that motif is declared, for revealing it in the source column. */
   declaration: Span | null;
   /** The `use` statement that ran. */
   useSite: Span;

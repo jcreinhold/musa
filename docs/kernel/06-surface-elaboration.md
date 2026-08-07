@@ -93,10 +93,10 @@ once per distinct argument tuple and references it at each call site. Course cor
 implemented: normalization is a semantic boundary, not the internal representation of every compiler pass — "nothing
 requires duplicating thousands of nodes merely to obey the normalized model".
 
-**The provenance question, and its answer.** Every occurrence of the third repetition must carry
-`RepeatIteration(2)`, and the Origin view depends on it. If the body is elaborated once, the occurrences inside the
-`let` cannot each carry a different iteration — that is the saving. Two options were on the table; the resolution is
-**provenance at the reference**:
+**The provenance question, and its answer.** Every occurrence of the third repetition must carry `RepeatIteration(2)`,
+and the Origin view depends on it. If the body is elaborated once, the occurrences inside the `let` cannot each carry a
+different iteration — that is the saving. Two options were on the table; the resolution is **provenance at the
+reference**:
 
 > A reference carries a **mark** naming what distinguishes this use. Evaluation applies a payload map chosen from that
 > mark, rewriting each instantiated occurrence's `Origin` and nothing else.
@@ -110,22 +110,21 @@ depth = <integer>                      (* where in the expansion path the steps 
 steps = <step> { "," <step> }          (* the expansion-path grammar below *)
 ```
 
-`origin-span` and `scope` are `-` when the reference does not rewrite them. The steps come **last** so they are
-escaped once rather than twice: nothing before them contains a `|`, so a reader splits three times and takes the rest
-verbatim.
+`origin-span` and `scope` are `-` when the reference does not rewrite them. The steps come **last** so they are escaped
+once rather than twice: nothing before them contains a `|`, so a reader splits three times and takes the rest verbatim.
 
 Three things this had to get right, none of them obvious from the option alone:
 
 - **Depth, not append.** A repeat's iteration index belongs *before* the steps of everything nested inside the body,
-  which is where direct expansion puts it. Appending would put it after. So the mark says where to splice, and a
-  repeat splices at its body's own depth while a motif call splices at zero.
+  which is where direct expansion puts it. Appending would put it after. So the mark says where to splice, and a repeat
+  splices at its body's own depth while a motif call splices at zero.
 - **A motif body is elaborated with no path at all**, because two call sites in different places must reach the same
   body. The path leading to the call — every enclosing transposition and motif application — travels on the mark
   instead, and is spliced back at depth zero.
-- **Placeholders for what the call supplies.** A motif body's occurrences take their `source_span` from the *call*
-  and their `scope` from the *voice*, and neither can be baked into a shared body. The body carries `u32::MAX` in
-  both, and the mark says what to put there. This is visible in `examples/kernel/*.kernel` as `4294967295` inside a
-  shared binding's payloads, and it is not corrupt data: it is the hole the reference fills.
+- **Placeholders for what the call supplies.** A motif body's occurrences take their `source_span` from the *call* and
+  their `scope` from the *voice*, and neither can be baked into a shared body. The body carries `u32::MAX` in both, and
+  the mark says what to put there. This is visible in `examples/kernel/*.kernel` as `4294967295` inside a shared
+  binding's payloads, and it is not corrupt data: it is the hole the reference fills.
 
 Provenance is byte-identical to what direct expansion produced: the same steps, in the same order, on the same
 occurrences. The saving is in elaboration — the CST is walked once, pitches resolved once, diagnostics emitted once —
@@ -135,13 +134,13 @@ not in evaluation, which still materializes every occurrence.
 four: a tie crossing an item boundary (merging joins two occurrences into one, which no payload map can do),
 `retrograde` and `invert` and `stretch` (payload maps and mirroring, applied during elaboration), and a `use` with
 `with { … }` overrides (which respell notes of *this* call). Each of these evaluates its reference, which instantiates
-the body exactly as direct expansion would have built it — so the sharing is spent, not lost, and the binding it made
-is pruned when the piece's term is closed. This is why `examples/kernel/variation.kernel` has one `let` for five
-`use`s: four of its five are inside a transformation.
+the body exactly as direct expansion would have built it — so the sharing is spent, not lost, and the binding it made is
+pruned when the piece's term is closed. This is why `examples/kernel/variation.kernel` has one `let` for five `use`s:
+four of its five are inside a transformation.
 
 The rejected option was to share only where the expansion path would be identical, which for `repeat` is never, and
-which would therefore have bought nothing. What was *not* an option was dropping the iteration index: the Origin view
-is a promise the project already made.
+which would therefore have bought nothing. What was *not* an option was dropping the iteration index: the Origin view is
+a promise the project already made.
 
 **What does not share.** `transpose`, `invert` and `stretch` bodies are payload maps and time scaling applied during
 elaboration; `scale` has a term and the payload maps do not, and inventing one would breach the calculus's absent list.
@@ -149,8 +148,8 @@ Voices become `over` and voice items `seq` — structural, and what makes a prin
 
 ## `ScoreFact`'s interchange text form (prompt 48)
 
-A kernel file carries payloads as opaque quoted strings (`01-grammar.md`); this is what `ScoreFact` puts inside one.
-It is specified here, with the payload, rather than in the grammar, because the kernel neither writes it nor reads it.
+A kernel file carries payloads as opaque quoted strings (`01-grammar.md`); this is what `ScoreFact` puts inside one. It
+is specified here, with the payload, rather than in the grammar, because the kernel neither writes it nor reads it.
 
 ```text
 <scope> | <kind> | <source-span> | <definition-span> | <declaration> | <expansion-path>
@@ -182,9 +181,9 @@ Four rules make it read back:
   because a tuplet keeps the symbol while changing what it sounds for (§2) and no one of the three derives the others.
 - **A hairpin's shape is its `Progress` in canonical form** — the one place where N3's key and the interchange text
   coincide, because a `Progress` has no provenance to quotient away.
-- **`tied` is absent.** It is elaboration-only and false on every fact that leaves elaboration: a tie says two
-  noteheads spell one occurrence, which is resolved before a timeline exists. A file carrying it would describe a state
-  no timeline is ever in.
+- **`tied` is absent.** It is elaboration-only and false on every fact that leaves elaboration: a tie says two noteheads
+  spell one occurrence, which is resolved before a timeline exists. A file carrying it would describe a state no
+  timeline is ever in.
 
 Everything the value holds is present, including the definition span and the declaration id that `canonical_key` (N3)
 deliberately drops. That is why these are two functions and not one: N3 is the *equality* serialization and may
@@ -202,9 +201,8 @@ So today:
 
 - `Key { tonic, mode }` and `Meter { numerator, denominator }` are occurrences over `[0, d]`, scoped `Scope::Piece`.
 - `Section { name }` and `Harmony { symbol }` are point occurrences at the time their `measure:beat` coordinate names.
-- `KeyMap`, `MeterMap`, and the section and harmony lanes of `AnnotationStore` are **projections** of those
-  occurrences, reproducing byte for byte what the direct lowerer emits — which is what `fixtures_have_full_parity`
-  checks.
+- `KeyMap`, `MeterMap`, and the section and harmony lanes of `AnnotationStore` are **projections** of those occurrences,
+  reproducing byte for byte what the direct lowerer emits — which is what `fixtures_have_full_parity` checks.
 
 The promise of §21 — that these arrive "without any kernel change" — is therefore demonstrated rather than asserted:
 prompt 40 touched no file in `musa-kernel`. When `modulate` or a mid-piece `meter` arrives, the elaboration emits a
@@ -213,11 +211,11 @@ region with a narrower span and nothing else changes; this document is extended,
 Two consequences worth stating, because a later reader will otherwise re-derive them:
 
 - **Positions resolve against the meter *occurrence*, and against the timeline's own extent.** Neither is recomputed
-  from the snapshot. The extent is exact rather than a maximum over event ends, and the two agree only because a
-  written rest is an occurrence (prompt 39) — a piece that ends in silence ends where the silence ends, which
+  from the snapshot. The extent is exact rather than a maximum over event ends, and the two agree only because a written
+  rest is an occurrence (prompt 39) — a piece that ends in silence ends where the silence ends, which
   `a_piece_that_ends_in_a_rest_ends_where_the_rest_ends` fixes as a fixture.
-- **Piece-scoped facts sort first at a shared instant.** Their canonical key begins `*|*`, and `*` sorts before any
-  part number, so the normal form prints the context a reader meets first.
+- **Piece-scoped facts sort first at a shared instant.** Their canonical key begins `*|*`, and `*` sorts before any part
+  number, so the normal form prints the context a reader meets first.
 
 ## Tempo stays out (§22)
 
@@ -240,16 +238,17 @@ snapshot to equal the frozen direct lowerer's on positions, durations, spelling,
 ordering, and provenance. Prompt 41 deleted that lowerer — a frozen second implementation of a shrinking subset is a
 second answer to "what does this piece mean", not a safety net — and the net is now what it should always have been:
 
-- the `examples/*.musa` corpus with `insta` goldens at every backend (MEI, `LilyPond`, `MusicXML`, MIDI, `NotationPlan`);
+- the `examples/*.musa` corpus with `insta` goldens at every backend (MEI, `LilyPond`, `MusicXML`, MIDI,
+  `NotationPlan`);
 - the law suites (`transform_laws`, `notation_details_laws`, `annotation_laws`, `profile_laws`, `import_laws`);
 - the kernel's own property tests, and the kernel normal form of every fixture;
 - a generated corpus checked against **its own text** — one event per written statement, a voice as long as the
-  durations written in it — which is strictly more direct than a comparison, since a bug both paths shared was
-  invisible to the comparison.
+  durations written in it — which is strictly more direct than a comparison, since a bug both paths shared was invisible
+  to the comparison.
 
-The phase-2 constructs above (tie, articulation, dynamic, slur, tuplet) needed no such boundary once there was one
-path; the rejection diagnostics the frozen lowerer carried (`` `<construct>` needs the kernel elaboration path ``) went
-with it.
+The phase-2 constructs above (tie, articulation, dynamic, slur, tuplet) needed no such boundary once there was one path;
+the rejection diagnostics the frozen lowerer carried (`` `<construct>` needs the kernel elaboration path ``) went with
+it.
 
 ## What elaboration must never do
 

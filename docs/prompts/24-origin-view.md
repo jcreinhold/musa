@@ -25,10 +25,10 @@ program can, and it is the precondition for prompt 25's editing choice being com
 ## Design
 
 - **Snapshot first.** Origin view must be drawable entirely from `ProjectSnapshot` (`03-interaction.md` §7: the frontend
-  computes nothing about provenance). Audit what it needs and add it to the snapshot in `musa-project`:
-  per-event `origin` (authored with a source span, or generated with an occurrence id and expansion path), and an
-  occurrence table mapping occurrence id → declaration span, use-site span, and the events it produced. If a field is
-  missing, extend the snapshot — do not derive it in TypeScript.
+  computes nothing about provenance). Audit what it needs and add it to the snapshot in `musa-project`: per-event
+  `origin` (authored with a source span, or generated with an occurrence id and expansion path), and an occurrence table
+  mapping occurrence id → declaration span, use-site span, and the events it produced. If a field is missing, extend the
+  snapshot — do not derive it in TypeScript.
 - **The lens** (`04-provenance.md` §2): hold `O` or `⌥`; 120 ms cross-fade (B9); authored stays full `--ink`, generated
   falls to `--plate` at 65 %; **no layout reflow** — ink and margin only. A pinned toggle in the top margin exists for
   users who cannot hold a key.
@@ -37,9 +37,8 @@ program can, and it is the precondition for prompt 25's editing choice being com
   (`03-interaction.md` §5). `04-provenance.md` §2 first put this bracket in the system's left margin; that is repaired
   in this prompt, because glass-mountain's two occurrences share one system and two margin brackets at the same height
   answer nothing.
-- **Trace on hover**: one `1px --plate` hairline from the note to its bracket, plus source highlighting of
-  the `motif` declaration and the `use` statement when the drawer is open. Drawn instantly; it does not animate along
-  its path.
+- **Trace on hover**: one `1px --plate` hairline from the note to its bracket, plus source highlighting of the `motif`
+  declaration and the `use` statement when the drawer is open. Drawn instantly; it does not animate along its path.
 - **Click selects the occurrence**: all events that expansion produced, across bars and staves. This becomes the
   selection unit prompt 25's edit-definition path acts through.
 - **Inspector Origin row** (§3) upgraded from prompt 23's read-only display: each path segment clickable — occurrence

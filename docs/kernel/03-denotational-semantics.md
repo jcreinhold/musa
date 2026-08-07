@@ -165,8 +165,8 @@ tempo map maps them to seconds. A dynamic marking is still not a decibel.
 > `p(u)` evaluated at corresponding absolute instants agrees before and after.
 
 This is why the design is safe, and it is a consequence of normalizing `u` rather than a property that had to be
-arranged. `scale r` multiplies the span; `u` is a fraction of the span, so it is unchanged. `sequence` translates;
-same. `overlay` does not touch spans. `map_payload` never inspects a payload at all.
+arranged. `scale r` multiplies the span; `u` is a fraction of the span, so it is unchanged. `sequence` translates; same.
+`overlay` does not touch spans. `map_payload` never inspects a payload at all.
 
 An **absolute-time** curve would have to be rewritten by `scale` and by `sequence` — which means the kernel would have
 to look inside payloads to transform them. That is precisely the §12 violation the kernel exists to prevent, and it
@@ -194,8 +194,8 @@ prompt 39's total timeline and prompt 44's queries — that the operation set is
 - **An easing catalogue.** No `ease_in`, no exponential, no Bézier: breakpoints approximate any of them, and a catalogue
   is a vocabulary two implementations would then have to agree on.
 
-Ill-formed curves are unrepresentable rather than diagnosed (PoSD ch. 6): construction is the only place the
-breakpoints are checked, so a `Progress` that exists is well-formed and no consumer validates one.
+Ill-formed curves are unrepresentable rather than diagnosed (PoSD ch. 6): construction is the only place the breakpoints
+are checked, so a `Progress` that exists is well-formed and no consumer validates one.
 
 ## D10 — Coverage (which occurrences are in force at an instant)
 
@@ -213,8 +213,8 @@ Coverage is an **observation, not a constructor**: it stores nothing, changes no
 not already give. It exists because every consumer that wanted "what is sounding here" was computing it privately, and
 they did not agree (prompt 44).
 
-Coverage yields *occurrences*, not identities: which events a score gave names to is the score layer's invention
-(§12), and the kernel must not learn it.
+Coverage yields *occurrences*, not identities: which events a score gave names to is the score layer's invention (§12),
+and the kernel must not learn it.
 
 Coverage and restriction are the same question asked two ways, which L20 states: `covering(M, t)` is exactly what
 `restrict(M, I)` observes for every window `I` containing `t`, filtered to those occurrences containing `t`.

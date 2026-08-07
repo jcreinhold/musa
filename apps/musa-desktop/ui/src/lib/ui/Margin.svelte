@@ -10,7 +10,7 @@
    *
    * Each side is also a landmark, so a screen reader can move between the
    * regions of the workspace the way a pointer moves between them: the top
-   * margin is the header, the drawer the footer, the side margins are asides
+   * margin is the header, the bottom the footer, the side margins are asides
    * named by what they hold (`03-interaction.md` §5).
    */
   import type { Snippet } from "svelte";

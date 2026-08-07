@@ -9,12 +9,19 @@ import { expect, type Locator, type Page } from "@playwright/test";
  * the tests need to know about that.
  */
 
+/** The source column, when Compose is showing one. */
+export function pane(page: Page): Locator {
+  return page.locator("section.source-pane");
+}
+
 /**
- * The drawer's handle, which is not the workspace switcher's Source button:
- * one shows the text under the page, the other opens the workspace.
+ * Show or hide Compose's source column, the way `⌘'`, the View menu, and the
+ * palette all do — by running the command. This is not the workspace
+ * switcher's Source button: one shows the text beside the page, the other
+ * opens the workspace.
  */
-export function drawer(page: Page): Locator {
-  return page.locator(".drawer button.handle");
+export async function toggleSource(page: Page): Promise<void> {
+  await page.evaluate(() => window.__musaEmit("musa://command", "view.source"));
 }
 
 /** The editable surface, by the name it announces itself with. */

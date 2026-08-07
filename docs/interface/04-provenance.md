@@ -21,8 +21,8 @@ paths, prompt 06 — and the interface's job is to show it without wrecking the 
 
 ## 2. The interaction
 
-**Hold `O` (or `⌥`) to enter Origin view. Release to leave.** It is a held lens, not a mode with state to get lost in.
-A `⌥`-click on the toggle in the top margin pins it for users who cannot hold a key.
+**Hold `O` (or `⌥`) to enter Origin view. Release to leave.** It is a held lens, not a mode with state to get lost in. A
+`⌥`-click on the toggle in the top margin pins it for users who cannot hold a key.
 
 While held, over 120 ms:
 
@@ -40,11 +40,11 @@ While held, over 120 ms:
   would draw it, and says by its own extent which notes it means. It is still drawn in the overlay layer, still ink
   only, and still moves nothing.
 - The parts list dims voices with no generated material, so the structure of the piece is legible at a glance.
-- The source drawer, if open, highlights the `use` statement and the enclosing transform blocks that produced what is
+- The source column, if showing, highlights the `use` statement and the enclosing transform blocks that produced what is
   on screen.
 
 **Hovering a generated note while Origin view is held** draws the trace: a `1px --plate` hairline from the note, out to
-the bracket of its occurrence, and — when the drawer is open — a matching highlight on the `motif` declaration
+the bracket of its occurrence, and — when the source column is showing — a matching highlight on the `motif` declaration
 and the `use` statement in the source. One line, one highlight, drawn instantly; it does not animate along its path.
 
 **Clicking a generated note while Origin view is held** selects the whole occurrence — all the notes that expansion
@@ -66,9 +66,9 @@ Origin      transpose down P5 ▸ sigh() ▸ note 3        line 22
 ```
 
 The path reads outside-in, in containment order: the `use sigh()` that produced these notes sits *inside* the
-`transpose down P5` block, and the path says so. Clicking `sigh()` selects the occurrence. Clicking the motif name reveals its declaration in the drawer. The line number
-opens the source at that line. This row is how the answer to "where did this come from" is available without holding a
-key.
+`transpose down P5` block, and the path says so. Clicking `sigh()` selects the occurrence. Clicking the motif name
+reveals its declaration in the source column. The line number opens the source at that line. This row is how the answer
+to "where did this come from" is available without holding a key.
 
 ## 4. Editing generated music
 
@@ -93,8 +93,8 @@ When an edit is issued against a generated event (prompt 25), the interface:
    one note per occurrence — and a screen that overstates its own consequence teaches a composer to stop reading it.
 
 3. previews the affected notes with the selection halo while the choice is open — exactly the notes the count names;
-4. on confirm, applies the command and reports what happened in the interface's own vocabulary:
-   *"Edited sigh() — 2 occurrences updated."*
+4. on confirm, applies the command and reports what happened in the interface's own vocabulary: *"Edited sigh() — 2
+   occurrences updated."*
 
 Until prompt 34 lands, the second option is present, disabled, and explains itself. It is never hidden — the user should
 learn that the choice exists, and see the day it becomes available.

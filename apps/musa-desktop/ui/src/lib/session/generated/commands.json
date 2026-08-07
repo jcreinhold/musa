@@ -119,7 +119,7 @@
     "available": true
   },
   {
-    "id": "view.drawer",
+    "id": "view.source",
     "title": "Show the source",
     "section": "view",
     "accelerator": "CmdOrCtrl+'",

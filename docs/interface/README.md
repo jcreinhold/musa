@@ -24,8 +24,8 @@ to improve on. The desktop app is the product for most users; its quality is not
 | [`06-performance.md`](06-performance.md) | Ten named budgets, how they are measured, the structure they imply |
 
 [`prototype.html`](prototype.html) is a static reference mockup of the Compose workspace: the real token system, real
-Verovio/Bravura engraving of `examples/glass-mountain.musa`, both themes, selection, Origin view, and the
-stale-revision state. Open it in a browser. It is a **design reference, not code** — prompt 20 rebuilds it properly in
+Verovio/Bravura engraving of `examples/glass-mountain.musa`, both themes, selection, Origin view, and the stale-revision
+state. Open it in a browser. It is a **design reference, not code** — prompt 20 rebuilds it properly in
 Svelte/TypeScript with bundled fonts and a worker-based engraver. Its SVG was produced by a throwaway script outside the
 repository; nothing generates it in CI, and when the spec and the mockup disagree, the spec wins.
 

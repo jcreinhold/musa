@@ -70,10 +70,10 @@ operation acts on the span and leaves the payload bytes identical**:
 - `overlay` does not touch spans at all.
 - `map_payload` is still an arbitrary `A → B` and still functorial — the kernel never inspects a `Progress`.
 
-That is the property that makes this safe. An absolute-time curve would have to be rewritten by `scale` and
-`sequence`, which means the kernel would have to *look inside payloads* to transform them — precisely the §12
-violation the design exists to avoid, and it would break L11–L15. State this as a theorem in
-`03-denotational-semantics.md` and test it: **a curve-bearing occurrence transforms by its span alone.**
+That is the property that makes this safe. An absolute-time curve would have to be rewritten by `scale` and `sequence`,
+which means the kernel would have to *look inside payloads* to transform them — precisely the §12 violation the design
+exists to avoid, and it would break L11–L15. State this as a theorem in `03-denotational-semantics.md` and test it: **a
+curve-bearing occurrence transforms by its span alone.**
 
 So Q4's answer is that the kernel needed a *value*, not an *operation*. Record that in §32 and in
 `docs/kernel/08-open-questions.md`: it is the third piece of §34 evidence, alongside prompts 39 and 44, that the
@@ -101,33 +101,32 @@ This is the distinction that keeps `performance.rs` honest and keeps every golde
   note's onset, at `u = (onset − start) / span`" — is the performance layer's interpretation.
 
 `hairpin_curves` keeps its current index-based sampling; it stops inventing the shape and reads it from the payload
-instead. **No WAV, MIDI, or notation golden changes in this prompt.** Document the sampling choice in
-`performance.rs`'s module docs with the rhythm-independence reason, so the next reader knows it is a decision rather
-than an accident, and note in `07-backend-contract.md` that a conforming consumer must honour the shape and may choose
-its own sampling.
+instead. **No WAV, MIDI, or notation golden changes in this prompt.** Document the sampling choice in `performance.rs`'s
+module docs with the rhythm-independence reason, so the next reader knows it is a decision rather than an accident, and
+note in `07-backend-contract.md` that a conforming consumer must honour the shape and may choose its own sampling.
 
 ### Where it lives, and the argument for the kernel over the compiler
 
 `Progress` could be a compiler-side type — prompt 48's payload grammar is compiler-supplied, so it would serialize
-either way. It belongs in `musa-kernel` for one reason: **the invariance theorem above is a statement about the
-kernel's operations**, and it must be stated and property-tested where those operations are. A payload type whose
-correctness argument is "the kernel's operations leave it alone" cannot have its proof live in a crate that does not
-contain the kernel's operations.
+either way. It belongs in `musa-kernel` for one reason: **the invariance theorem above is a statement about the kernel's
+operations**, and it must be stated and property-tested where those operations are. A payload type whose correctness
+argument is "the kernel's operations leave it alone" cannot have its proof live in a crate that does not contain the
+kernel's operations.
 
-Its exactness and its canonical form follow from that placement: `Ratio` breakpoints (§4), a `Canonical`
-implementation, and therefore a stable contribution to prompt 43's semantic hash.
+Its exactness and its canonical form follow from that placement: `Ratio` breakpoints (§4), a `Canonical` implementation,
+and therefore a stable contribution to prompt 43's semantic hash.
 
 ### What this unlocks, and builds none of
 
 With `Progress` present and prompt 44's `prevailing` present, each of these is a new `FactKind` and zero kernel change:
-`gliss` (a note carrying a pitch progress), non-linear crescendo, `rit.`/`accel.` as a tempo-map input, studio
-parameter automation, `modulate` mid-piece. **Build none of them.** The grammar freeze (§35.1) holds; this prompt adds
-a value type and one use of it. Listing the payoff is how the prompt justifies the construct; implementing the payoff
-is a different prompt with a different check.
+`gliss` (a note carrying a pitch progress), non-linear crescendo, `rit.`/`accel.` as a tempo-map input, studio parameter
+automation, `modulate` mid-piece. **Build none of them.** The grammar freeze (§35.1) holds; this prompt adds a value
+type and one use of it. Listing the payoff is how the prompt justifies the construct; implementing the payoff is a
+different prompt with a different check.
 
 `TempoSegment` (prompt 36) *may* be re-expressed in terms of `Progress` as a shared value type — tempo would still be
-computed above the kernel and §22 would be untouched. Only do it if it deletes code; if it merely relocates it, leave
-it and say so.
+computed above the kernel and §22 would be untouched. Only do it if it deletes code; if it merely relocates it, leave it
+and say so.
 
 ## Target
 
@@ -154,8 +153,8 @@ it and say so.
 payload value type is not a reason to widen it. `musa-compiler/src/score.rs` therefore carries a ~30-line
 `progress_serde` adapter that writes breakpoints as exact `(numer, denom, numer, denom)` quadruples through the
 already-public `Progress::points`/`Progress::piecewise`. The adapter is arithmetic-free and cannot admit a curve the
-constructor would reject, because deserialization goes through `piecewise` — an invalid file is a deserialization
-error, not an ill-formed value.
+constructor would reject, because deserialization goes through `piecewise` — an invalid file is a deserialization error,
+not an ill-formed value.
 
 **`Curve` became `Reached`, which is a smaller thing.** The prompt says delete `Curve` and it is deleted, but the
 sampling policy still needs somewhere to put its answer per event. The replacement holds the target mark and the
@@ -173,9 +172,9 @@ a segment plus its starting frame; there is no curve in it. Rewriting it in term
 rather than delete any, which is the condition the prompt set for leaving it alone.
 
 **`Progress::at` clamps rather than erroring.** Asking a curve about `u` outside `[0, 1]` is a question about its
-endpoints — a consumer sampling at an onset slightly outside the region should get the endpoint value, not an
-`Option`. The lookup loop also ends in a total fallback that the `uₙ = 1` invariant makes unreachable, because a
-total function is cheaper than a `panic!` guarding an invariant construction already enforces.
+endpoints — a consumer sampling at an onset slightly outside the region should get the endpoint value, not an `Option`.
+The lookup loop also ends in a total fallback that the `uₙ = 1` invariant makes unreachable, because a total function is
+cheaper than a `panic!` guarding an invariant construction already enforces.
 
 **L24 tests both halves.** Byte-identity of the payload alone would pass for an absolute-time curve that happened to be
 copied unchanged and therefore be *wrong*; the test also evaluates `at(u)` at corresponding absolute instants after

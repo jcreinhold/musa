@@ -11,7 +11,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
-import { drawer } from "./source";
+import { toggleSource } from "./source";
 import { stubShell } from "./shell";
 
 /**
@@ -35,12 +35,12 @@ for (const theme of ["light", "dark"] as const) {
   });
 }
 
-test("the drawer, the palette, and the sheet are clean too", async ({ page }) => {
+test("the source column, the palette, and the sheet are clean too", async ({ page }) => {
   await stubShell(page);
   await page.goto("/");
   await engraved(page);
 
-  await drawer(page).click();
+  await toggleSource(page);
   await expect(page.getByRole("textbox", { name: "Source" })).toBeVisible();
   expect((await scan(page).analyze()).violations.map((violation) => violation.id)).toEqual([]);
 

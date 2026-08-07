@@ -9,7 +9,8 @@
 import { expect, test } from "@playwright/test";
 
 import { engraved } from "./engraved";
-import { drawer } from "./source";
+import { stubShell } from "./shell";
+import { pane, toggleSource } from "./source";
 
 const SIZES = [
   { name: "1440x900", width: 1440, height: 900 },
@@ -26,6 +27,26 @@ for (const size of SIZES) {
       await page.goto("/");
       await engraved(page);
       await expect(page).toHaveScreenshot(`compose-${size.name}-${theme}.png`);
+    });
+  }
+}
+
+// The source showing is the other half of the workspace, and the thing the
+// margins and the leaf have to make room for (`01-visual-language.md` §7).
+// Photographed at both widths because what gives way differs: at 1440 the
+// column holds its measure, at 1100 it trades characters for the page.
+for (const size of SIZES) {
+  for (const theme of THEMES) {
+    test(`compose with source ${size.name} ${theme}`, async ({ page }) => {
+      await page.setViewportSize({ width: size.width, height: size.height });
+      await page.emulateMedia({ colorScheme: theme });
+      // Showing the source is a command, and commands come from the shell.
+      await stubShell(page);
+      await page.goto("/");
+      await engraved(page);
+      await toggleSource(page);
+      await engraved(page);
+      await expect(page).toHaveScreenshot(`compose-source-${size.name}-${theme}.png`);
     });
   }
 }
@@ -63,14 +84,23 @@ test("clicking empty leaf clears the selection", async ({ page }) => {
   await expect(page.locator(".overlay rect.selection")).toHaveCount(0);
 });
 
-test("the drawer pushes the leaf rather than covering it", async ({ page }) => {
+test("the source column pushes the leaf sideways and never covers it", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await stubShell(page);
   await page.goto("/");
   await engraved(page);
-  const before = await page.locator(".engraving").boundingBox();
+  const before = await page.locator(".stage").boundingBox();
 
-  await drawer(page).click();
-  const after = await page.locator(".engraving").boundingBox();
+  await toggleSource(page);
+  await engraved(page);
+  const after = await page.locator(".stage").boundingBox();
+  const column = await pane(page).boundingBox();
 
-  expect(before?.height ?? 0).toBeGreaterThan(after?.height ?? 0);
+  // It takes width, which this screen has spare, and gives back height,
+  // which the page needs (`01-visual-language.md` §7).
+  expect(after?.width ?? 0).toBeLessThan(before?.width ?? 0);
+  expect(after?.height ?? 0).toBe(before?.height ?? 0);
+
+  // And it stands beside the page rather than over it.
+  expect((column?.x ?? 0) + (column?.width ?? 0)).toBeLessThanOrEqual(after?.x ?? 0);
 });

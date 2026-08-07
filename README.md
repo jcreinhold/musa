@@ -68,8 +68,8 @@ The CLI underneath is `musa`:
 cargo run -p musa-cli -- render examples/glass-mountain.musa --to lilypond -o mountain.ly
 ```
 
-`examples/` holds the pieces the test suite compiles on every run. They are executable specifications rather than
-demos — `glass-mountain.musa` exercises motifs, transposition, and the studio; `tuplet-fixture.musa` and
+`examples/` holds the pieces the test suite compiles on every run. They are executable specifications rather than demos
+— `glass-mountain.musa` exercises motifs, transposition, and the studio; `tuplet-fixture.musa` and
 `profile-fixture.musa` pin down timing and dynamics.
 
 ## How it fits together
@@ -92,8 +92,8 @@ language → compiler → { render, audio } → engine → project → { cli, de
 | `musa-cli`, `apps/musa-desktop` | thin shells over `musa-project` |
 
 Dependencies point one way only, and the boundaries are load-bearing: written pitch is not a MIDI number, notated
-duration is not performed duration, a voice is not a mixer track, a dynamic marking is not a number of decibels. Time
-is exact rational arithmetic everywhere except the audio edge, and the audio callback never allocates or locks.
+duration is not performed duration, a voice is not a mixer track, a dynamic marking is not a number of decibels. Time is
+exact rational arithmetic everywhere except the audio edge, and the audio callback never allocates or locks.
 
 ## Where the design lives
 
@@ -102,8 +102,8 @@ Three documents govern this repository, and the code is expected to agree with t
 - [`docs/initial-design-roadmap.md`](docs/initial-design-roadmap.md) — the architecture: layers, crate ownership,
   language design, DSP rules, and what is deliberately rejected or deferred.
 - [`docs/course-correction.md`](docs/course-correction.md) — the semantic correction that makes a small temporal kernel
-  the ontology and the surface language an elaboration into it. Its specification is
-  [`docs/kernel/`](docs/kernel/). Where it and the roadmap disagree, it wins.
+  the ontology and the surface language an elaboration into it. Its specification is [`docs/kernel/`](docs/kernel/).
+  Where it and the roadmap disagree, it wins.
 - [`docs/prompts/`](docs/prompts/) — the work plan: numbered implementation prompts executed in dependency order, each
   one commit with its own acceptance check.
 

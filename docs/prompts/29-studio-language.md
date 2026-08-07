@@ -77,14 +77,14 @@ Commit as `Add studio language and StudioSpec`.
   one piece's sound with another's notes.
 - **The one `Unit` declaration lives in `musa-compiler`** and `musa-audio` re-exports it. The prompt asked for one
   declaration rather than two; since the dependency runs compiler → audio, the language side is where it has to be. The
-  per-processor *descriptors* still differ — the language names `lowpass`, the DSP names `Sine` — and unify when
-  prompts 30–31 give those processors real implementations.
+  per-processor *descriptors* still differ — the language names `lowpass`, the DSP names `Sine` — and unify when prompts
+  30–31 give those processors real implementations.
 - **The expression parser is a loop, not a Pratt table.** `|>` is the only operator in the language and it is
   left-associative, so a precedence table would have exactly one entry. What the studio grammar actually needed was
   *lookahead*: `name =`, `name(`, and a bare `name` share a first token. `Parser::nth_significant` is that, and it is
   the only lookahead in the parser.
-- **`.` is a new token.** The lexer had every studio keyword reserved but no path separator, so `glass_pad.lowpass.cutoff`
-  could not be written.
+- **`.` is a new token.** The lexer had every studio keyword reserved but no path separator, so
+  `glass_pad.lowpass.cutoff` could not be written.
 - **The formatter stacks long chains.** A chain of three or more stages is written one stage per line, which is how §7.1
   writes them and how a signal path is read. Two stages stay inline. `-` also became word-spaced, so `at -18 dB` no
   longer formats as `at-18 dB`.

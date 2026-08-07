@@ -32,14 +32,13 @@ generated.
   - 90 ms cross-fade, no white frame, no scrollbar jump, instant swap under `prefers-reduced-motion`.
 - **Zoom as re-layout** (§5): discrete steps 50–200 %, `⌘−`/`⌘=`/`⌘0`, transient CSS transform during a pinch gesture
   replaced by a true re-layout 120 ms after it settles. Staff size (rastral) is a separate remembered preference. A
-  persistent CSS-transform zoom is explicitly rejected — it is the reason score apps look like PDF viewers.
-  Rastral itself gets no control here — it stays at Verovio's `unit: 11` — because the Target of this prompt is the
-  zoom *mechanism*; a staff-size preference is an engraving preference and belongs with the others.
+  persistent CSS-transform zoom is explicitly rejected — it is the reason score apps look like PDF viewers. Rastral
+  itself gets no control here — it stays at Verovio's `unit: 11` — because the Target of this prompt is the zoom
+  *mechanism*; a staff-size preference is an engraving preference and belongs with the others.
 - **Page and continuous modes** (§4): page is default; continuous sets `breaks: "none"` with horizontal scroll and is
   what follow mode prefers. The mode is remembered per piece. Continuous keeps the page's *height*, and so the staff
   size, and gives away only the width — a mode toggle that re-scaled the music would be a second zoom control. That
-  means the page element's scale is stated rather than derived from its container, which is what `pixelsPerUnit` is
-  for.
+  means the page element's scale is stated rather than derived from its container, which is what `pixelsPerUnit` is for.
 - **Virtualization** (§7): current page ± 1, `IntersectionObserver` over placeholders sized from the layout result so
   the scrollbar is honest from the first layout. Off-window SVG is dropped.
 - **Overlay layer** (§8) generalized: one SVG overlay in the page's coordinate system, all marks in staff spaces
@@ -50,9 +49,9 @@ generated.
   output are committed: the generator (`crates/musa-project/tests/large_score_generators.rs`) because it is the only
   readable description of what the fixture is, the output because the UI imports it and the suites run offline. The
   generator fails when the committed copy is stale, so the two cannot drift.
-- **Goldens** (§9): sanitized-SVG structure snapshots plus raster goldens at 2× for
-  `glass-mountain` / `counterpoint` / `twinkle`, **in both themes**, with a documented tolerance and an update command.
-  The dark golden is what proves `currentColor` plumbing rather than a filter.
+- **Goldens** (§9): sanitized-SVG structure snapshots plus raster goldens at 2× for `glass-mountain` / `counterpoint` /
+  `twinkle`, **in both themes**, with a documented tolerance and an update command. The dark golden is what proves
+  `currentColor` plumbing rather than a filter.
   - The rasters are **Playwright screenshots**, as established in prompt 20, not a `resvg` rasterization: the claim
     worth defending is what a browser draws from the sanitized SVG plus the tokens, and a separate rasterizer would
     prove something the application never runs. Tolerance and scale live in `playwright.config.ts`.

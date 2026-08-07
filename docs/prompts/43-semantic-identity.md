@@ -11,10 +11,10 @@ phase: 3
 ## Task
 
 The kernel computes canonical forms and semantic equality (`05-normalization.md` N4–N6) and nothing in the application
-asks. `ProjectSession` decides whether to reinstall the playback plan by comparing a revision counter
-(`session.rs`: `if self.installed_revision != current`), so editing a comment, reformatting, or touching an unrelated
-part reinstalls the plan mid-playback. Give the kernel a semantic hash, make the session key on it, and — because
-prompts 39–40 made the timeline total — make that hash mean *the whole piece*, not just its notes.
+asks. `ProjectSession` decides whether to reinstall the playback plan by comparing a revision counter (`session.rs`:
+`if self.installed_revision != current`), so editing a comment, reformatting, or touching an unrelated part reinstalls
+the plan mid-playback. Give the kernel a semantic hash, make the session key on it, and — because prompts 39–40 made the
+timeline total — make that hash mean *the whole piece*, not just its notes.
 
 Then make canonicalization fast enough to be asked on every keystroke, using prompt 38's measurements and nothing else.
 
@@ -114,12 +114,12 @@ byte order fails loudly instead of silently invalidating every stored identity.
 `semantic_hash`, with `Digest` implementing `std::fmt::Write`. Two serializations that could drift apart is the one bug
 a semantic hash cannot survive, and this makes drift unrepresentable rather than tested for.
 
-**The installed-plan key is two documents, not one.** The prompt says `installed_revision` becomes "the semantic hash
-of the installed plan's source of truth". A playback plan is built from `(score, studio)` — `playback::prepare` takes
-both — so keying on the piece's semantic hash alone would have made a changed instrument inaudible until the next note
-edit, which the old revision counter did catch. The field is therefore `installed: Option<InstalledPlan>` holding the
-music's hash *and* the `StudioSpec`, compared by value. The studio is a small declaration set with no timeline in it;
-digesting it would cost more than comparing it.
+**The installed-plan key is two documents, not one.** The prompt says `installed_revision` becomes "the semantic hash of
+the installed plan's source of truth". A playback plan is built from `(score, studio)` — `playback::prepare` takes both
+— so keying on the piece's semantic hash alone would have made a changed instrument inaudible until the next note edit,
+which the old revision counter did catch. The field is therefore `installed: Option<InstalledPlan>` holding the music's
+hash *and* the `StudioSpec`, compared by value. The studio is a small declaration set with no timeline in it; digesting
+it would cost more than comparing it.
 
 **The staleness check moved into `install_current_plan`.** Two callers were asking "is the installed plan stale" two
 different ways: `recompile` compared engraved MEI, `ensure_playable` compared revisions. Now one function answers it
@@ -127,18 +127,18 @@ once and returns early when the answer is no, which is what makes it *correct* f
 for each. `score_changed` keeps its real job — telling the interface to redraw — and no longer decides playback.
 
 **`ValidArtifacts::revision` stays.** It is what `ProjectSnapshot::score_revision` reports: "the score you are looking
-at came from revision N, and you are editing N+3". That is a fact about the *document*, and the prompt's instruction
-not to convert consumers reflexively applies to it exactly.
+at came from revision N, and you are editing N+3". That is a fact about the *document*, and the prompt's instruction not
+to convert consumers reflexively applies to it exactly.
 
 **"Editing a comment does not reinstall" had to be tested with a trailing comment.** The identity covers provenance, as
 the prompt requires; inserting a comment *above* the notes moves every source span and therefore does change the hash.
-The test appends the comment after the piece, which is the honest form of "the text changed and the music did not".
-This is the caveat the prompt predicted someone would file as a bug, met on the first test written against it.
+The test appends the comment after the piece, which is the honest form of "the text changed and the music did not". This
+is the caveat the prompt predicted someone would file as a bug, met on the first test written against it.
 
 **The tests live in `session.rs`, not `tests/`.** Installing a plan needs a sound card, so the observable is the key
 `install_current_plan` compares, not the engine — a private `plan_identity()` that both the installer and the tests
-call. Testing it from outside would have meant a new public accessor whose only caller is a test, which the Stop
-section forbids. Three tests: a comment does not change it, a note does, and a studio-only edit does.
+call. Testing it from outside would have meant a new public accessor whose only caller is a test, which the Stop section
+forbids. Three tests: a comment does not change it, a note does, and a studio-only edit does.
 
 **The measurement, and the one intervention it justified.** Full numbers and reasoning are in
 `docs/kernel/09-performance.md`; a fifth benchmark, **P5**, was added because P4 no longer measures what the session

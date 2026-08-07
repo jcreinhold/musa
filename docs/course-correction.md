@@ -1337,8 +1337,8 @@ indexing by local time makes every operation act on the span and leave the paylo
 `docs/kernel/03-denotational-semantics.md`, tested as L24). A behavior layer would have been a second way to say what
 occurrences already say; an absolute-time curve would have forced the kernel to look inside payloads, violating §12.
 
-The warning that produced this section still stands for what remains: `Progress` says *how far along*, never how loud
-or how fast, and it expresses no steps, no units, no periodic shapes. Continuous control was not forced into discrete
+The warning that produced this section still stands for what remains: `Progress` says *how far along*, never how loud or
+how fast, and it expresses no steps, no units, no periodic shapes. Continuous control was not forced into discrete
 occurrences — the occurrence supplies the span, the value supplies the shape, and the meaning stays above the kernel.
 
 ### Recursive/generative source programs

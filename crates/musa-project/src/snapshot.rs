@@ -171,9 +171,18 @@ struct SnapshotWire<'a> {
     playback: PlaybackState,
 }
 
-impl serde::Serialize for ProjectSnapshot<'_> {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        SnapshotWire {
+impl ProjectSnapshot<'_> {
+    /// The snapshot as a frontend receives it, with every span restated in
+    /// UTF-16 code units.
+    ///
+    /// This is the *only* way to serialize a snapshot: `ProjectSnapshot` does
+    /// not implement `Serialize`, so no caller can produce a wire snapshot
+    /// that still measures the source in bytes. See [`crate::utf16`] for why
+    /// the two measures differ and where the line between them is drawn.
+    #[must_use]
+    pub fn to_wire(&self) -> serde_json::Value {
+        let offsets = crate::Utf16Offsets::new(self.source);
+        let mut wire = serde_json::to_value(SnapshotWire {
             name: self.name,
             source: self.source,
             revision: self.revision.0,
@@ -188,8 +197,13 @@ impl serde::Serialize for ProjectSnapshot<'_> {
             studio: self.studio(),
             score_revision: self.score_revision().map(|revision| revision.0),
             playback: self.playback,
-        }
-        .serialize(serializer)
+        })
+        // `SnapshotWire` is a plain struct of strings, numbers, and derived
+        // types; `to_value` fails only on things it cannot contain, such as a
+        // map with non-string keys.
+        .unwrap_or(serde_json::Value::Null);
+        crate::utf16::translate_spans(&mut wire, &offsets);
+        wire
     }
 }
 

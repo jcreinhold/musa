@@ -14,7 +14,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
-import { caret, drawer, marked, rewrite, selected, source } from "./source";
+import { caret, toggleSource, marked, rewrite, selected, source } from "./source";
 import { stubShell } from "./shell";
 
 /** Where the generated notes are, and what colour they are in, right now. */
@@ -128,7 +128,7 @@ test("the lens can be pinned for anyone who cannot hold a key", async ({ page })
 });
 
 test("the source says where too, and the parts list dims what is authored", async ({ page }) => {
-  await drawer(page).click();
+  await toggleSource(page);
   await page.locator('.engraving .arriving [id="event-4"]').first().click({ force: true });
 
   // The declaration and the use statement, both marked, neither invented here.
@@ -153,7 +153,7 @@ test("the origin row's line number opens the source at the use statement", async
 });
 
 test("a diagnostic is a place in the source, not a notification", async ({ page }) => {
-  await drawer(page).click();
+  await toggleSource(page);
   await rewrite(page, 'piece "Glass Mountain" {');
   // Wait for the *compiler's* answer, not for a list of the right length: the
   // piece opens with warnings of its own, and a count alone cannot tell them

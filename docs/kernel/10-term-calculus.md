@@ -5,21 +5,21 @@ text form (`01-grammar.md`) and a second producer/consumer; prompt 49 makes elab
 document was revised on the way through implementation — the two repairs prompt 48 made were to `01-grammar.md`'s
 payload syntax and to `05-normalization.md`'s claim about N5, neither of which is a claim this document makes.
 
-The kernel has been an algebra of *values*: you build a `Timeline` and the building is gone. This document adds a
-syntax whose meanings are those same values — no new semantic domain, no new operation, no new equality. What it buys
-is three things values cannot express, listed next.
+The kernel has been an algebra of *values*: you build a `Timeline` and the building is gone. This document adds a syntax
+whose meanings are those same values — no new semantic domain, no new operation, no new equality. What it buys is three
+things values cannot express, listed next.
 
 ## Why a calculus at all (the scope rule)
 
 A term language is worth adding **only** for what values cannot express:
 
-1. **Sharing.** A canon states its subject once and uses it four times. As a value, "four times" means four timelines
-   in memory and four copies in every downstream walk; the fact that they are the *same* material is lost the moment
-   the value exists. `let` records it.
-2. **Deferred observation.** Asking what sounds in bars 40–44 of a piece should not require building bars 1–39.
-   A term can be restricted before it is evaluated; a value cannot, because building it *is* evaluating it.
-3. **Interchange.** A second implementation, a visualizer, or a test oracle needs a syntax to read. `01-grammar.md`
-   has promised one since prompt 08; this document is the semantics that promise needs before a parser is honest.
+1. **Sharing.** A canon states its subject once and uses it four times. As a value, "four times" means four timelines in
+   memory and four copies in every downstream walk; the fact that they are the *same* material is lost the moment the
+   value exists. `let` records it.
+2. **Deferred observation.** Asking what sounds in bars 40–44 of a piece should not require building bars 1–39. A term
+   can be restricted before it is evaluated; a value cannot, because building it *is* evaluating it.
+3. **Interchange.** A second implementation, a visualizer, or a test oracle needs a syntax to read. `01-grammar.md` has
+   promised one since prompt 08; this document is the semantics that promise needs before a parser is honest.
 
 Everything else is out of scope. This is not an invitation to binders-in-general, functions, application, recursion, or
 computation. Concretely, the acceptance test for any proposed term form, applying §34's rule:
@@ -27,8 +27,8 @@ computation. Concretely, the acceptance test for any proposed term form, applyin
 > A form belongs in the calculus only if it serves sharing, deferred observation, or interchange, **and** its meaning is
 > a timeline `03-denotational-semantics.md` already defines.
 
-A form that introduces a meaning `03` does not define is not a term — it is a proposal to change the kernel, and it
-goes through `08-open-questions.md` and §34 like any other.
+A form that introduces a meaning `03` does not define is not a term — it is a proposal to change the kernel, and it goes
+through `08-open-questions.md` and §34 like any other.
 
 Terms are finite. Every term has a denotation in `(d, E)`. There is no term whose evaluation can fail to terminate,
 because there is nothing to recur through (T4).
@@ -46,11 +46,11 @@ t, u ::= timeline d { (s, e, a)* }     % literal                      — D1
        | x @ m                         % marked reference                — T6
 ```
 
-`d`, `s`, `e`, `i`, `j` are exact rationals; `r` is a positive exact rational; `a` is a payload value
-(`01-grammar.md`); `x` ranges over names; `m` is an opaque **mark**, a string the kernel never interprets.
+`d`, `s`, `e`, `i`, `j` are exact rationals; `r` is a positive exact rational; `a` is a payload value (`01-grammar.md`);
+`x` ranges over names; `m` is an opaque **mark**, a string the kernel never interprets.
 
-Six forms and a reference. Each of the first five is exactly one of `03`'s definitions, so the calculus adds no
-meaning; `let` and `x` add sharing, which is a statement about *structure*, not about meaning (T2).
+Six forms and a reference. Each of the first five is exactly one of `03`'s definitions, so the calculus adds no meaning;
+`let` and `x` add sharing, which is a statement about *structure*, not about meaning (T2).
 
 ### The mark on a reference (prompt 49)
 
@@ -71,8 +71,8 @@ Three constraints make this narrow enough to be worth having, and they are the w
    where `f` is chosen by the consumer from `m`. Spans, extent, occurrence count and order are untouched, because D7
    already guarantees that (L9–L12). This is not a new operation: `map` is still not a term — no function is written
    down, and the consumer that owns the payload chooses the map, exactly as it chooses what the payload text means.
-3. **An unmarked reference is the identity case.** `x` is `x @ m` with the identity map, so E-Var stays as it was and
-   a consumer with no marks (every consumer but `musa-compiler`) is unaffected.
+3. **An unmarked reference is the identity case.** `x` is `x @ m` with the identity map, so E-Var stays as it was and a
+   consumer with no marks (every consumer but `musa-compiler`) is unaffected.
 
 What this buys, and it is the point: the interchange file both *shares* and reproduces the compiled snapshot's
 provenance byte for byte. Without it, prompt 49 has to choose, and either choice loses something the project already
@@ -89,10 +89,10 @@ shift d t   ≝   seq (timeline d { }) t          % d ≥ 0
 
 This is D8's `delay` under another name, and D8 is already derived. It is therefore specified here as **sugar with a
 stated expansion**: a reader may write `shift`, and a well-formedness checker, evaluator, or printer may expand it
-before doing anything else. Sugar with a mechanical expansion costs nothing semantically — there is one meaning, and
-it is the sequence's. A *primitive* `shift` would cost something: another form for every consumer to match on, another
-case in every proof, and a second way to say what `seq` already says. Under §34 that is not a bargain, and D4's
-striking at prompt 37 is the precedent — an operation that only restates another is not part of the basis.
+before doing anything else. Sugar with a mechanical expansion costs nothing semantically — there is one meaning, and it
+is the sequence's. A *primitive* `shift` would cost something: another form for every consumer to match on, another case
+in every proof, and a second way to say what `seq` already says. Under §34 that is not a bargain, and D4's striking at
+prompt 37 is the precedent — an operation that only restates another is not part of the basis.
 
 Printers write the expansion, not the sugar, so canonical text stays unique (N5). `shift` is an input convenience.
 
@@ -111,16 +111,16 @@ as it does today — transposition applies eagerly and the timeline it produces 
 (`06-surface-elaboration.md`). Terms carry already-mapped payloads. `Timeline(f)` remains available as a *function on
 values* (D7, L9–L12) for the code that has an `f` in hand; what does not exist is a way to write `f` down in a file.
 
-The cost is real and worth naming: an interchange file cannot say "this section is that section, transposed", only
-"this section is these notes". It can still say "this section *is* that section" (`let`), which is the sharing case
-that motivated the calculus. If a future consumer genuinely needs transposition-preserving interchange, the answer is a
-*payload-level* concept — a named interval in the payload schema — not a function in the term language. Recorded here
-so the next person does not reopen it by accident.
+The cost is real and worth naming: an interchange file cannot say "this section is that section, transposed", only "this
+section is these notes". It can still say "this section *is* that section" (`let`), which is the sharing case that
+motivated the calculus. If a future consumer genuinely needs transposition-preserving interchange, the answer is a
+*payload-level* concept — a named interval in the payload schema — not a function in the term language. Recorded here so
+the next person does not reopen it by accident.
 
 ## Static semantics
 
-Well-formedness is `02-static-semantics.md` K7 (scoping and term shape), which this document adds. In summary, a term
-is well-formed when: every name is bound by an enclosing `let`; `let` does not shadow; `scale`'s factor is positive;
+Well-formedness is `02-static-semantics.md` K7 (scoping and term shape), which this document adds. In summary, a term is
+well-formed when: every name is bound by an enclosing `let`; `let` does not shadow; `scale`'s factor is positive;
 `restrict`'s window is ordered; `seq` and `over` have at least one argument, all of the same payload type; and every
 literal satisfies K1. A well-formed **closed** term (no free names) is the input to evaluation.
 
@@ -183,21 +183,21 @@ Three properties of these rules are load-bearing and easy to lose:
 - **`let` is call-by-value.** `t` is evaluated once, when the binding is made, and its *value* is bound. This is what
   makes sharing a cost saving rather than a duplication in disguise, and it is safe precisely because there is no
   effect, no failure, and no divergence to observe (T4).
-- **`;` and `⊕` are the operations of `03`, not new ones.** E-Seq and E-Over do not define anything; they hand off. If
-  a reading of these rules disagrees with `03`, `03` is right.
+- **`;` and `⊕` are the operations of `03`, not new ones.** E-Seq and E-Over do not define anything; they hand off. If a
+  reading of these rules disagrees with `03`, `03` is right.
 - **`restrict` in a term evaluates its argument first.** That is the *specification*; it is not the implementation
   strategy. T5 is what licenses an implementation to push the restriction inward and build less, and prompt 50 is where
   that is measured and only then done.
 
 `restrict` deserves one more line, because D6 makes it an *observation* with both spans. Evaluating a `restrict` term
-yields the timeline of visible occurrences, with whole spans preserved as D6 requires — restriction never rewrites
-where an occurrence began, in a term any more than in a value.
+yields the timeline of visible occurrences, with whole spans preserved as D6 requires — restriction never rewrites where
+an occurrence began, in a term any more than in a value.
 
 ## Theorems
 
-These are the theorems that make this a calculus rather than a file format. Each names the property test that
-implements it (prompt 47, `crates/musa-kernel/tests/terms.rs`), in the style `04-algebraic-laws.md` uses. `⟦t⟧` abbreviates the `v` with `∅ ⊢ t ⇓ v`, for
-closed well-formed `t`; equality is semantic equality (N4).
+These are the theorems that make this a calculus rather than a file format. Each names the property test that implements
+it (prompt 47, `crates/musa-kernel/tests/terms.rs`), in the style `04-algebraic-laws.md` uses. `⟦t⟧` abbreviates the `v`
+with `∅ ⊢ t ⇓ v`, for closed well-formed `t`; equality is semantic equality (N4).
 
 - **T1 — the constructors are a homomorphism.** For all closed well-formed terms,
 
@@ -212,8 +212,8 @@ closed well-formed `t`; equality is semantic equality (N4).
 
 - **T2 — `let` is transparent.** `⟦let x = t in u⟧ = ⟦u[t/x]⟧`, where `u[t/x]` is capture-avoiding substitution (K7's
   no-shadowing rule makes capture impossible, so substitution is textual). Sharing changes cost, never meaning: a term
-  with `let` and its expansion are indistinguishable in the semantics, which is exactly why an implementation is free
-  to choose either. Test: `let_is_transparent`.
+  with `let` and its expansion are indistinguishable in the semantics, which is exactly why an implementation is free to
+  choose either. Test: `let_is_transparent`.
 
 - **T3 — evaluation is normalization.** For closed well-formed `t`, `normalize(⟦t⟧)` is the canonical form (N1–N2), and
   for any `t`, `u`:
@@ -248,8 +248,8 @@ closed well-formed `t`; equality is semantic equality (N4).
   same window in the parts. The push-inward rule for `seq` has to translate the window, and stating it is prompt 50's
   job, with the measurement that justifies doing it at all.
 
-- **T6 — instantiation preserves the denotation up to payloads.** For any `φ`, any closed well-formed
-  `let x = t in u`, and `u'` the term `u` with every mark erased:
+- **T6 — instantiation preserves the denotation up to payloads.** For any `φ`, any closed well-formed `let x = t in u`,
+  and `u'` the term `u` with every mark erased:
 
   ```text
   spans(⟦let x = t in u⟧_φ)  =  spans(⟦let x = t in u'⟧)
@@ -267,20 +267,19 @@ closed well-formed `t`; equality is semantic equality (N4).
 
 ### What the suite checks beyond the five theorems
 
-- `the_algebra_transports_to_terms` and `synchronized_interchange_holds_of_terms` — L1, L4, L5 and L18 asked at the
-  term level. They are T1's consequence, and they are tested rather than argued because a disagreement between the
-  calculus and the algebra would be a bug in *this document*, not in the code.
+- `the_algebra_transports_to_terms` and `synchronized_interchange_holds_of_terms` — L1, L4, L5 and L18 asked at the term
+  level. They are T1's consequence, and they are tested rather than argued because a disagreement between the calculus
+  and the algebra would be a bug in *this document*, not in the code.
 - `shift_denotes_its_stated_expansion` — the sugar's expansion, so `shift` cannot quietly become a primitive.
-- `ill_formed_terms_are_rejected` — the two rules `check` answers, plus the four the constructors make
-  unrepresentable.
+- `ill_formed_terms_are_rejected` — the two rules `check` answers, plus the four the constructors make unrepresentable.
 
 ## What is deliberately absent
 
 Recorded with reasons, so that each stays absent for a reason rather than by omission:
 
-- **No functions, no application, no lambda.** The door to general computation, and the line `00-purpose.md` draws.
-  The calculus has binders (`let`) but no abstractions — a distinction worth keeping sharp, since `let` here is a name
-  for a *value*, not a parameter.
+- **No functions, no application, no lambda.** The door to general computation, and the line `00-purpose.md` draws. The
+  calculus has binders (`let`) but no abstractions — a distinction worth keeping sharp, since `let` here is a name for a
+  *value*, not a parameter.
 - **No recursion, no fixpoint, no cyclic references.** Q5 keeps recursion a surface-language question, and K4 already
   requires the reference graph to be acyclic. Recursion would also destroy T4, which every consumer relies on.
 - **No `Pattern` type, no loops, no infinite terms.** Q1 stays open, and §18 puts patterns *above* the finite kernel as
@@ -291,16 +290,15 @@ Recorded with reasons, so that each stays absent for a reason rather than by omi
 - **No conditionals, no arithmetic on terms.** Both are computation. Rationals appear in terms as *literals*; nothing
   computes them.
 - **No `map`.** See above — payload transformation is not temporal structure.
-- **No `reverse`.** Prompt 34 established that retrograde is elaboration reading material backwards and needs no
-  kernel primitive. A calculus is not new evidence, and this document does not reopen it.
+- **No `reverse`.** Prompt 34 established that retrograde is elaboration reading material backwards and needs no kernel
+  primitive. A calculus is not new evidence, and this document does not reopen it.
 - **No queries as term forms.** `covering` and `prevailing` (D10–D11) are questions asked of a value, not ways of
   building one: a term denotes a timeline, and neither query does. They apply to `⟦t⟧` like any other observation, and
   giving them syntax would mean a term language with two kinds of result.
 - **No curve form.** Continuous shape landed one prompt before this one as a payload *value* (`Progress`, §32 Q4
-  resolved), which is why `a` in a literal already carries it and the grammar above needs no `curve` production. This
-  is the scope rule paying off exactly once, on the first construct that tested it: a form that would have added a
-  meaning `03` does not define was not needed, because `03` was extended with a value instead of the calculus with a
-  form.
+  resolved), which is why `a` in a literal already carries it and the grammar above needs no `curve` production. This is
+  the scope rule paying off exactly once, on the first construct that tested it: a form that would have added a meaning
+  `03` does not define was not needed, because `03` was extended with a value instead of the calculus with a form.
 - **No binary format, no versioning, no schema negotiation.** One text form, prompt 48.
 
 ## Relationship to the other documents

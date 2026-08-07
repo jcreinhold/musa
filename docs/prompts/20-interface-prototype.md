@@ -48,10 +48,10 @@ nothing later in the sequence fixes that.
 - **Fonts bundled** as woff2 in `src/lib/design/fonts/`: Bravura, Academico (both from the Verovio distribution),
   Instrument Sans, Recursive Mono Linear. `@font-face` with `font-display: block` for Bravura (a fallback glyph in a
   score is worse than a blank frame). No network requests at runtime — assert this in the smoke test.
-- **Primitives** in `src/lib/ui/`, each doing one job:
-  `Leaf`, `Margin`, `TypographicRow` (label + value, hairline on focus), `Fraction` (true diagonal fraction,
-  `01-visual-language.md` §3), `Position` (`bar:beat`, bar dominant), `PartBracket` (the real staff bracket for the
-  parts list), `TransportReadout`, `GlyphButton` (SMuFL glyph + accessible name, no icon font of our own).
+- **Primitives** in `src/lib/ui/`, each doing one job: `Leaf`, `Margin`, `TypographicRow` (label + value, hairline on
+  focus), `Fraction` (true diagonal fraction, `01-visual-language.md` §3), `Position` (`bar:beat`, bar dominant),
+  `PartBracket` (the real staff bracket for the parts list), `TransportReadout`, `GlyphButton` (SMuFL glyph + accessible
+  name, no icon font of our own).
 - **Engraver module** in `src/lib/engrave/` behind the `Engraver` interface of `02-engraving.md` §1, already running in
   a Web Worker with a persistent toolkit and generation tokens. Layout options exactly as `02-engraving.md` §4. The
   `currentColor` sanitizer (§3) is implemented here and unit-tested — dark mode must re-ink, not filter.

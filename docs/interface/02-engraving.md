@@ -58,9 +58,9 @@ The CSS side matters as much as the sanitizer:
 #score g     { fill: currentColor; stroke: currentColor; }  /* re-resolved per group */
 ```
 
-`currentColor` on an inherited property resolves **where it is declared** and inherits as a resolved color. Declaring
-it once on the root would freeze every glyph at the root's ink and make Origin view impossible; declaring it per `g`
-lets any group that sets its own `color` — a generated-note group under the lens — re-ink correctly. Verified in
+`currentColor` on an inherited property resolves **where it is declared** and inherits as a resolved color. Declaring it
+once on the root would freeze every glyph at the root's ink and make Origin view impossible; declaring it per `g` lets
+any group that sets its own `color` — a generated-note group under the lens — re-ink correctly. Verified in
 `prototype.html`.
 
 `filter: invert()` on a score is forbidden. It ruins glyph weight, breaks colored annotation, and prints wrong.
@@ -142,9 +142,9 @@ Engraving quality without a regression net decays within three prompts. The net:
 
 - **Structure snapshots** (`insta`-style, in the UI test suite): the sanitized SVG for each fixture page, so an option
   change or sanitizer regression is visible in a diff.
-- **Raster goldens**: rasterize fixture pages (via `resvg`) at 2× and compare to committed PNGs with a small
-  per-pixel tolerance. Fixtures: `glass-mountain.musa` (multi-part, motif expansion), `counterpoint.musa` (dense two-
-  voice), `twinkle.musa` (single line — the small-score case where bad spacing is most visible).
+- **Raster goldens**: rasterize fixture pages (via `resvg`) at 2× and compare to committed PNGs with a small per-pixel
+  tolerance. Fixtures: `glass-mountain.musa` (multi-part, motif expansion), `counterpoint.musa` (dense two- voice),
+  `twinkle.musa` (single line — the small-score case where bad spacing is most visible).
 - **Both themes** are rasterized; the dark golden proves `currentColor` plumbing rather than a filter.
 - **Stability test**: apply an edit to a fixture, re-render, and assert the anchor event's viewport y-offset moved by
   less than 2 px and that no frame between the two renders was empty.

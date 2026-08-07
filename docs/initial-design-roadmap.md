@@ -1996,6 +1996,7 @@ musa-render
 musa-audio
 musa-engine
 serde
+serde_json
 toml
 tracing
 ```
@@ -2064,8 +2065,8 @@ divan       benchmarks of the semantic pipeline (§17.7)
 
 `divan` runs under a plain `cargo bench` with no separate driver binary to install, and reports **per-iteration
 allocation counts** alongside time. That second property is why it is here rather than `criterion`: the semantic
-pipeline's risk under the prompt 39–43 migration is allocation and hashing, not arithmetic, and a harness that
-measures only wall time cannot see the thing most likely to regress.
+pipeline's risk under the prompt 39–43 migration is allocation and hashing, not arithmetic, and a harness that measures
+only wall time cannot see the thing most likely to regress.
 
 ---
 
@@ -2208,9 +2209,9 @@ The examples are executable specifications, not merely demos.
 
 ## 17.7 Benchmarks
 
-Benchmarks measure the semantic pipeline on the two reference workloads named in `docs/interface/06-performance.md`
-(one small piece, one large one) and report allocations as well as time. They exist to make a regression visible, not
-to justify speculative optimization (§4 of that document): a benchmark is added before a migration that could slow
+Benchmarks measure the semantic pipeline on the two reference workloads named in `docs/interface/06-performance.md` (one
+small piece, one large one) and report allocations as well as time. They exist to make a regression visible, not to
+justify speculative optimization (§4 of that document): a benchmark is added before a migration that could slow
 something down, and its baseline is recorded in a checked-in table.
 
 Benchmarks never widen a crate's public interface. Where a phase must be measured on its own, it is reached through a

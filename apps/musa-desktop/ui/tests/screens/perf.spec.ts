@@ -14,7 +14,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
-import { drawer, rewrite } from "./source";
+import { toggleSource, rewrite } from "./source";
 import { stubShell } from "./shell";
 
 /** The debounce the budget is stated relative to (`06-performance.md` §1). */
@@ -93,7 +93,7 @@ test("B1: a keystroke reaches diagnostics within 120 ms of the debounce", async 
   await stubShell(page);
   await page.goto("/?perf=1");
   await engraved(page);
-  await drawer(page).click();
+  await toggleSource(page);
 
   const samples: number[] = [];
   for (let trial = 0; trial < TRIALS; trial += 1) {
@@ -255,7 +255,7 @@ test.describe("the large score", () => {
     await stubShell(page, "large-score");
     await page.goto("/?perf=1");
     await engraved(page);
-    await drawer(page).click();
+    await toggleSource(page);
 
     const samples: number[] = [];
     // B2 split where a fix would have to land: what the round trip costs, and

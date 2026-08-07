@@ -84,9 +84,9 @@ Commit as `Add stretch, retrograde, invert, and occurrence specialization`.
 - **`invert around c5`, not `invert axis c5`.** It reads as English at the point of use, and `around` is a keyword only
   after `invert`.
 - **Stretch renotates, it does not only rescale.** Augmentation is a notational act as well as a temporal one: a bar of
-  quarters stretched by two is *written* as halves. `NotatedDuration::stretched` scales the value and its written
-  pieces and respells them, which is what separates `stretch` from a tuplet (whose written values deliberately stay put
-  while their sounding value changes).
+  quarters stretched by two is *written* as halves. `NotatedDuration::stretched` scales the value and its written pieces
+  and respells them, which is what separates `stretch` from a tuplet (whose written values deliberately stay put while
+  their sounding value changes).
 - **Inversion is diatonic, then spelled.** The mirror keeps the letter distance and the semitone distance, so `c5 e5 g5`
   about `c5` becomes `c5 af4 f4` — an engraver's inversion, not a chromatic one that would write `gs4`. A result past a
   double accidental is a diagnostic naming the pitch and the axis (roadmap §5.4's meaningful failure).
@@ -98,8 +98,8 @@ Commit as `Add stretch, retrograde, invert, and occurrence specialization`.
   position off the score and typing it into a `with` clause is naming the note they are looking at. Positions now match,
   and a position that is a rest or a chord is an error naming which.
 - **A `with` clause cannot specialize a call that runs more than once.** The clause belongs to the call, so a `use`
-  inside a `repeat` would change every run — the thing the mode exists to avoid. `EditImpact` carries `specializable`
-  so the interface can say why the second answer is unavailable instead of offering it and failing.
+  inside a `repeat` would change every run — the thing the mode exists to avoid. `EditImpact` carries `specializable` so
+  the interface can say why the second answer is unavailable instead of offering it and failing.
 - **Only a pitch can be specialized.** `ChangeDuration` with `Specialize` is refused by name: an override respells one
   note, and renotating one inside an occurrence would move every note after it.
 - **`EditIntent::Specialize` is the language's job.** Adding, merging, and ordering `note n = p;` overrides is syntax
