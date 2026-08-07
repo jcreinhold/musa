@@ -22,6 +22,22 @@ const SETTLE_MS = 180;
 
 const TRIALS = 20;
 
+/**
+ * Report a budget's measured p95 where a *passing* run can be read.
+ *
+ * An assertion message is only printed when the assertion fails, which makes
+ * a green suite say "within budget" and nothing else. §2 asks for
+ * measurements rather than verdicts — "a regression that misses B2 by 40 ms
+ * says so" — and the same is true of headroom: a prompt deciding whether to
+ * build a faster path needs to know it is at 30% of the budget or at 95%, and
+ * should not have to break a test to find out. One line per budget, on
+ * stdout, which every reporter carries.
+ */
+function record(budget: string, measured: number, unit = "ms"): number {
+  process.stdout.write(`  ${budget}: p95 ${Math.round(measured)} ${unit}\n`);
+  return measured;
+}
+
 function p95(samples: number[]): number {
   const sorted = [...samples].sort((a, b) => a - b);
   const at = Math.min(Math.ceil(sorted.length * 0.95) - 1, sorted.length - 1);
@@ -47,7 +63,7 @@ test.describe("launch", () => {
       );
       shell.push(await at(page, "shell"));
     }
-    expect(p95(shell), `shell painted at p95 ${Math.round(p95(shell))} ms`).toBeLessThanOrEqual(
+    expect(record("B6", p95(shell)), `shell painted at p95 ${Math.round(p95(shell))} ms`).toBeLessThanOrEqual(
       400,
     );
   });
@@ -60,7 +76,7 @@ test.describe("launch", () => {
       await engraved(page);
       score.push(await at(page, "score"));
     }
-    expect(p95(score), `score painted at p95 ${Math.round(p95(score))} ms`).toBeLessThanOrEqual(
+    expect(record("B7", p95(score)), `score painted at p95 ${Math.round(p95(score))} ms`).toBeLessThanOrEqual(
       1500,
     );
   });
@@ -91,7 +107,7 @@ test("B1: a keystroke reaches diagnostics within 120 ms of the debounce", async 
     samples.push((await at(page, "snapshot")) - (await at(page, "edit")) - SETTLE_MS);
   }
   expect(
-    p95(samples),
+    record("B1", p95(samples)),
     `diagnostics at p95 ${Math.round(p95(samples))} ms after settling`,
   ).toBeLessThanOrEqual(120);
 });
@@ -138,7 +154,7 @@ test.describe("selection", () => {
       samples.push((await at(page, "halo")) - (await at(page, "select")));
     }
     expect(
-      p95(samples),
+      record("B3", p95(samples)),
       `halo drawn at p95 ${Math.round(p95(samples))} ms after the click`,
     ).toBeLessThanOrEqual(16);
   });
@@ -164,7 +180,7 @@ test.describe("selection", () => {
       samples.push((await at(page, "inspector")) - (await at(page, "select")));
     }
     expect(
-      p95(samples),
+      record("B4", p95(samples)),
       `inspector populated at p95 ${Math.round(p95(samples))} ms`,
     ).toBeLessThanOrEqual(100);
   });
@@ -193,7 +209,7 @@ test.describe("selection", () => {
       await page.keyboard.up("o");
     }
     expect(
-      p95(samples),
+      record("B9", p95(samples)),
       `Origin view opened at p95 ${Math.round(p95(samples))} ms`,
     ).toBeLessThanOrEqual(120);
   });
@@ -220,7 +236,7 @@ test.describe("selection", () => {
       samples.push((await at(page, "halo")) - (await at(page, "origin")));
     }
     expect(
-      p95(samples),
+      record("B9-follow", p95(samples)),
       `origin followed at p95 ${Math.round(p95(samples))} ms`,
     ).toBeLessThanOrEqual(120);
   });
@@ -242,6 +258,12 @@ test.describe("the large score", () => {
     await drawer(page).click();
 
     const samples: number[] = [];
+    // B2 split where a fix would have to land: what the round trip costs, and
+    // what the engraver costs. Prompt 50 needed this to decide whether a
+    // faster semantic core could move B2 at all — it cannot, and a number is
+    // the only way to know that without guessing.
+    const round: number[] = [];
+    const engrave: number[] = [];
     for (let trial = 0; trial < TRIALS; trial += 1) {
       await page.evaluate(() => performance.clearMarks());
       await rewrite(page, trial % 2 === 0 ? `piece "A" {}` : `piece "B" {}`);
@@ -250,12 +272,21 @@ test.describe("the large score", () => {
       );
       // The 180 ms debounce is inside this number, as the budget states it:
       // what the composer waits is from the keystroke, not from the compile.
-      samples.push((await at(page, "score")) - (await at(page, "edit")));
+      const [edit, snapshot, score] = [
+        await at(page, "edit"),
+        await at(page, "snapshot"),
+        await at(page, "score"),
+      ];
+      samples.push(score - edit);
+      round.push(snapshot - edit - SETTLE_MS);
+      engrave.push(score - snapshot);
     }
     expect(
-      p95(samples),
+      record("B2", p95(samples)),
       `re-engraved at p95 ${Math.round(p95(samples))} ms after the keystroke`,
     ).toBeLessThanOrEqual(400);
+    record("B2 round trip", p95(round));
+    record("B2 engraving", p95(engrave));
     expect(p95(samples)).toBeGreaterThanOrEqual(SETTLE_MS);
   });
 
@@ -276,7 +307,7 @@ test.describe("the large score", () => {
       samples.push((await at(page, "score")) - (await at(page, "zoom")));
     }
     expect(
-      p95(samples),
+      record("B8", p95(samples)),
       `re-laid out at p95 ${Math.round(p95(samples))} ms after the step`,
     ).toBeLessThanOrEqual(250);
   });

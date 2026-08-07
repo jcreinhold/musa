@@ -314,6 +314,48 @@ to show: `canon` and `glass-mountain` have motifs, `variation` has a motif and t
 slurs, phrases and hairpins, whose region facts now print as the `overlay` they always were. The rule the printer
 follows is the one the prompt wanted: **show the structure a composer wrote, and no structure they did not.**
 
+### Prompt 50 — the gate, measured, and closed
+
+Prompt 50's entry condition was a measurement, not an intuition: build a lazy windowed evaluator **only** if B1 or B2
+fails, or passes with less than 20% headroom, *and* the stage that costs is evaluate-or-project. Both halves were
+measured. The second is what closed it.
+
+**B1 and B2** (Playwright, `apps/musa-desktop/ui/tests/screens/perf.spec.ts`, p95 over 20 trials, large fixture):
+
+| budget | measured | budget | headroom |
+| --- | --- | --- | --- |
+| B1 keystroke → diagnostics | **2 ms** after the debounce | 120 ms | 98% |
+| B2 keystroke → re-engraved | **373 ms** | 400 ms | **6.8%** |
+
+So B1 passes with room to spare and **B2 does not clear the 20% bar** — the gate's step 2 does not apply, and step 3
+does. Step 3 asks which stage costs, and this prompt added the split that answers it:
+
+| B2, decomposed | p95 |
+| --- | --- |
+| debounce (fixed, `06-performance.md` §3.4) | 180 ms |
+| edit → snapshot, the round trip | 2 ms |
+| snapshot → score, the engraver | **191 ms** |
+
+**The answer is engraving, and it is not close.** 191 of the 193 milliseconds that are not the debounce are Verovio
+laying out 100 bars and the browser painting it. The harness stubs the shell (`tests/screens/shell.ts`), so the
+compiler contributes *nothing* to that 373 ms — and its real contribution is known independently: P1 large is
+**1.87 ms**, and a full parse → compile → MEI export of the same fixture through `musa-cli` is ~10 ms wall including
+process start.
+
+**Therefore no lazy evaluator.** A perfect one — evaluation reduced to zero — would take B2 from 373 ms to 371 ms.
+That is 0.5% of a budget that needs 7% to be comfortable, bought with a second evaluation path, a second projection
+path, and a new class of bug (a partial answer escaping to a caller that asked a whole-piece question) that the
+prompt itself named as the one way the feature could do real damage. The trade is not close either.
+
+Per the prompt's own step 3, the finding **belongs to prompt 22's surface**: B2's headroom is 6.8% and the way to
+widen it is incremental or page-windowed *engraving*, not incremental evaluation. It is recorded here and the
+measurement now runs on every UI test run rather than being reconstructible only by breaking an assertion.
+
+**What would reopen this.** A fixture where P1 or P2 is a material fraction of B1's 120 ms — concretely, elaboration
+above ~25 ms, which on the measured shape means roughly 20 000 occurrences, an order of magnitude past
+`large-score.musa`. The prompt-49 row is the evidence that the semantic core has that order of magnitude in hand:
+1 560 occurrences elaborate in 1.6 ms. When a real piece does not, the measurement — not this paragraph — reopens it.
+
 ## The rule
 
 The table is a record, not a gate — machines differ, and a row taken on another laptop is not comparable to this one.

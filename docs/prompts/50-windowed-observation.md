@@ -1,7 +1,7 @@
 ---
 id: 50
 slug: windowed-observation
-status: pending
+status: done
 depends_on: [49]
 phase: 3
 ---
@@ -115,3 +115,31 @@ produced.
 - No partial answers escaping to a caller that asked a whole-piece question — not for the outline, not for export, not
   for playback.
 - No parallel evaluation. If the profile points there, it is a different prompt with a different set of risks.
+
+## Outcome: the gate closed — no deferred observation was built
+
+The measurement is in `docs/kernel/09-performance.md`, "Prompt 50 — the gate, measured, and closed". In short:
+
+**B1 passes with 98% headroom (2 ms of 120 ms). B2 does not clear the 20% bar — 373 ms of 400 ms, 6.8% headroom — so
+step 3 applied, and step 3 is decisive.** Splitting B2 into its stages shows 180 ms of debounce (fixed by design), 2
+ms of round trip, and **191 ms of engraving**. The compiler is not in that number at all: the Playwright harness
+stubs the shell, and the core's real share is measured separately at P1 large = 1.87 ms.
+
+A perfect lazy evaluator would move B2 from 373 ms to 371 ms. Deferred observation is therefore **not built**, and
+per this prompt's own step 3 the finding belongs to prompt 22's surface: B2's headroom is thin, and the way to widen
+it is incremental or page-windowed engraving.
+
+Nothing was deleted and nothing was added to the kernel. `Term::observe` does not exist; `restrict` is still
+evaluated eagerly, which T5 says is the same answer.
+
+### What was added
+
+One thing, and it is a measurement rather than a feature: `perf.spec.ts` now prints each budget's measured p95 on
+stdout, and splits B2 into round trip and engraving. Before this, a green run said "within budget" and nothing else,
+so the headroom a decision like this turns on could only be read by breaking an assertion. `06-performance.md` §2
+already asks for measurements rather than verdicts; this makes a passing run obey it too.
+
+### What would reopen it
+
+A fixture where elaboration is a material fraction of B1 — roughly 25 ms, which on the measured shape is about
+20 000 occurrences, an order of magnitude past `large-score.musa`. The measurement reopens it, not an argument.
