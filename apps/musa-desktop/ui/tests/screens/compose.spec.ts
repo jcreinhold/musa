@@ -50,6 +50,10 @@ test("selecting a note halos it and fills the inspector", async ({ page }) => {
 });
 
 test("clicking empty leaf clears the selection", async ({ page }) => {
+  // Sized, like its neighbours: the point clicked below is 600px down the
+  // page, and whether that point is on screen depends on how many rows the
+  // top margin took (`01-visual-language.md` §7).
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
   await engraved(page);
   await page.locator('.engraving [id="event-4"] use').click({ force: true });

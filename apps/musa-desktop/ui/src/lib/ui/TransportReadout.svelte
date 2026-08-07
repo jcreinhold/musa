@@ -62,8 +62,9 @@
    */
   .readout {
     display: flex;
+    flex: none;
     align-items: center;
-    gap: var(--s-6);
+    gap: var(--s-5);
   }
 
   .where {
@@ -85,11 +86,32 @@
     color: var(--ink-muted);
   }
 
+  /*
+   * Tempo, key and meter are one group and are set tighter than the gap that
+   * separates them from the position: proximity is what says "these three are
+   * the score's facts and that one is where you are", and it does it without
+   * a rule between them.
+   */
   .facts {
     display: flex;
     align-items: baseline;
-    gap: var(--s-6);
+    gap: var(--s-4);
     margin: 0;
+  }
+
+  /*
+   * And because they are one group, they go as one. Below the width where the
+   * inspector already gives way, the readout keeps the position and stops
+   * printing the score's facts: tempo, key and meter belong to the piece and
+   * are engraved at the head of the page in the score's own hand, while the
+   * position belongs to where you are working and is printed nowhere else. A
+   * margin short of room should stop repeating the page before it stops
+   * saying anything the page does not (`01-visual-language.md` §7).
+   */
+  @media (max-width: 1100px) {
+    .facts {
+      display: none;
+    }
   }
 
   .fact {

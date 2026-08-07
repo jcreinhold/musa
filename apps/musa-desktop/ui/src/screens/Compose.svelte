@@ -391,17 +391,33 @@
   .identity {
     display: flex;
     align-items: baseline;
-    gap: var(--s-5);
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-4);
     min-width: 0;
   }
 
+  /*
+   * The title is the one thing in the band whose length nobody controls, so it
+   * is the one thing that gives way: it sets on one line and truncates, rather
+   * than wrapping to a second line inside a row that is one line tall. A
+   * control never gives way to a long name.
+   */
   .title {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-family: var(--f-score-text);
     font-size: var(--t-title-size);
     line-height: var(--t-title-line);
     font-weight: 400;
     margin: 0;
     color: var(--ink);
+  }
+
+  .state {
+    flex: none;
   }
 
   .state,
@@ -445,16 +461,32 @@
     color: var(--chalk);
   }
 
+  /*
+   * The controls keep the right edge of the band whether they share the first
+   * row with the title or take a row of their own — `margin-left: auto` does
+   * both, where `justify-content` can only do the first. They wrap among
+   * themselves for the same reason the band does: at the window's own minimum
+   * size there is more here than one line holds, and every one of these is
+   * either the only way to reach something (the view mode) or a control a
+   * pointer user at 200 % zoom still has to be able to click.
+   */
   .controls {
     display: flex;
     align-items: center;
-    gap: var(--s-6);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-left: auto;
+    gap: var(--s-2) var(--s-5);
   }
 
+  /* Each of these is one control that happens to be several buttons, so each
+     breaks whole: "Zoom out 100 % Zoom in" split across two rows is not a
+     zoom control any more. */
   .transport,
   .view,
   .zoom {
     display: flex;
+    flex: none;
     align-items: center;
     gap: var(--s-1);
   }
@@ -570,10 +602,6 @@
     .body {
       grid-template-columns: minmax(0, 150px) minmax(0, 1fr) minmax(0, 200px);
     }
-
-    .controls {
-      gap: var(--s-4);
-    }
   }
 
   /*
@@ -593,11 +621,6 @@
     .stage {
       /* Tall enough to be a page rather than a letterbox. */
       min-height: 60vh;
-    }
-
-    .controls {
-      flex-wrap: wrap;
-      gap: var(--s-2) var(--s-4);
     }
   }
 </style>

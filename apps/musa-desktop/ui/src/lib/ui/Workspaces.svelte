@@ -43,13 +43,21 @@
 </nav>
 
 <style>
+  /*
+   * Four names and their bindings are one object, and they break as one: the
+   * switcher wraps to its own row rather than splitting "Mix" from "Source",
+   * because a list you have to read across two rows is no longer a list of
+   * four places.
+   */
   .workspaces {
     display: flex;
+    flex: none;
     align-items: center;
     gap: var(--s-1);
   }
 
   .text {
+    white-space: nowrap;
     background: none;
     border: 0;
     border-radius: var(--radius-control);

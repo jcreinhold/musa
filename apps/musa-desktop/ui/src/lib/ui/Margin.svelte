@@ -35,12 +35,24 @@
     min-width: 0;
   }
 
+  /*
+   * The top margin is a band of 48px rows, not a 48px bar.
+   *
+   * A fixed height here is the one thing that can make chrome hide itself:
+   * what does not fit is not clipped, it is drawn on top of whatever is
+   * already there, and the composer gets a piece title printed through a key
+   * signature. So the height is a floor and the band wraps — one row while one
+   * row holds it, another row when it does not (`01-visual-language.md` §7).
+   * This is also what makes 200 % browser zoom reflow instead of collide.
+   */
   .top {
     display: flex;
     align-items: center;
+    align-content: center;
     justify-content: space-between;
-    gap: var(--s-6);
-    height: var(--s-12);
+    flex-wrap: wrap;
+    gap: var(--s-2) var(--s-6);
+    min-height: var(--s-12);
     padding: 0 var(--s-6);
   }
 

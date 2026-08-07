@@ -186,9 +186,9 @@ The Compose workspace, as an arrangement of the elements roadmap §14.3 requires
    └───────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Top margin** (48px): piece title in Academico at the left, with the workspace switcher beside it; transport,
-  position, tempo, and key at the right. No background fill, no bottom border. The leaf's shadow provides the
-  separation.
+- **Top margin** (48px minimum, one row where one row holds it): piece title in Academico at the left, with the
+  workspace switcher beside it; transport, position, tempo, and key at the right. No background fill, no bottom border.
+  The leaf's shadow provides the separation. It is a band of rows rather than a bar — see below.
 - **Left margin**: the parts list, right-aligned toward the leaf and connected by a **real staff bracket** drawn in
   `--rule` — the same brace/bracket grouping the score itself uses at the left edge of every system. Part names in
   Academico; voice names one step down in `--ink-muted`. The list is a miniature of the score's own left margin, which
@@ -200,9 +200,35 @@ The Compose workspace, as an arrangement of the elements roadmap §14.3 requires
   grew with its text would move the page under the reader on every keystroke, which §7's whole claim forbids. The
   source scrolls inside it.
 
-Responsive behavior: below 1100px the inspector collapses to a toggled overlay in the *right margin only*; below 840px
-the parts list collapses to a single active-part readout. The leaf never shrinks below a legible staff size — the window
-scrolls instead.
+**The top margin is a band of rows, not a bar.** 48px is its minimum, not its height. What it carries has grown past
+what one row holds at the window's own minimum width — the transport, note entry, the Origin pin, the position and the
+score's facts, the view mode, the zoom, and whatever the interface currently has to say — and a fixed-height row does
+not clip what will not fit, it prints it on top of what is already there. A piece title struck through a key signature
+is a worse header than a header two lines tall. So the band wraps, by these rules:
+
+- **Groups break whole.** The workspace switcher, the transport, the view toggle, the zoom, and the position readout
+  each move to the next row entire. "Zoom out · 100 % · Zoom in" split across two rows is not a zoom control any more.
+- **The title gives way first.** It is the one thing in the band whose length nobody controls, so it sets on one line
+  and truncates. A control never gives way to a long name.
+- **The controls keep the right edge**, on a row of their own exactly as on a shared one, so they are found in the same
+  place at every width.
+- **The seam falls between identity and controls.** Where two rows are needed, the first says where you are — title,
+  save state, workspace — and the second what you can do there. Where the interface has something to say, its line
+  takes a row of its own rather than competing with either.
+
+This is also what makes 200 % browser zoom reflow instead of collide, which WCAG asks for and a fixed-height header
+cannot give.
+
+Responsive behavior:
+
+- Below 1100px the inspector collapses to a toggled overlay in the *right margin only*.
+- Below 1100px the position readout stops printing the score's facts — tempo, key, and meter. They belong to the piece
+  and are engraved at the head of the page in the score's own hand, while the position belongs to where you are working
+  and is printed nowhere else. This is the band's **only** drop, and what it drops is *reporting the page already
+  does* — never a control. A control that disappears at a window size or a zoom level is a control someone cannot
+  reach; when there is not room, the band takes another row instead.
+- Below 840px the parts list collapses to a single active-part readout.
+- The leaf never shrinks below a legible staff size — the window scrolls instead.
 
 ## 8. Layout: the Source workspace
 
