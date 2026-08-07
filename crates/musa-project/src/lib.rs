@@ -11,8 +11,7 @@
 //! the single persistent truth (roadmap §11), and score/studio interfaces
 //! are structured editors of that source.
 //!
-//! Intended facade (roadmap §15.7), to be implemented by prompts 14, 16, and
-//! 23:
+//! Intended facade (roadmap §15.7), to be implemented by prompts 19 and 25:
 //!
 //! ```text
 //! pub struct ProjectSession { /* hidden */ }

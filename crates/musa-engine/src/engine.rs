@@ -28,16 +28,42 @@ impl Default for EngineConfig {
     }
 }
 
+/// Capacity of both real-time queues.
+///
+/// Sizing them equally is what makes the callback's no-drop guarantee
+/// (§13.2) structural. Only an `Install` retires a plan, [`AudioEngine::install`]
+/// drains the retirement queue before it enqueues one, and the command queue
+/// holds at most `COMMAND_CAPACITY` messages — so at most `COMMAND_CAPACITY`
+/// retirements can be outstanding, and the retirement queue cannot fill. The
+/// callback's hold-back path is therefore unreachable in this configuration
+/// and exists only so that misuse degrades into back-pressure rather than
+/// into a `RenderPlan` being destroyed on the audio thread.
+const COMMAND_CAPACITY: usize = 64;
+
 /// The audio engine (§15.6). Owns the stream and queue ends; the rest of
 /// the application never sees CPAL types.
 pub struct AudioEngine {
     /// Kept alive for the stream's lifetime; dropping stops the stream.
     _stream: cpal::Stream,
-    /// Control-side lock (never taken in the callback, §13.2).
-    commands: Mutex<rtrb::Producer<Message>>,
-    retired: rtrb::Consumer<Box<PreparedPlaybackPlan>>,
+    /// Both control-side queue ends under one lock, so an install drains and
+    /// enqueues atomically. Taken only on the control thread — never in the
+    /// callback (§13.2).
+    channels: Mutex<Channels>,
     position: Arc<AtomicU64>,
     playing: Arc<AtomicBool>,
+}
+
+/// The control thread's ends of the two real-time queues.
+struct Channels {
+    commands: rtrb::Producer<Message>,
+    retired: rtrb::Consumer<Box<PreparedPlaybackPlan>>,
+}
+
+impl Channels {
+    /// Drop every plan the callback has handed back.
+    fn drain_retired(&mut self) {
+        while self.retired.pop().is_ok() {}
+    }
 }
 
 impl AudioEngine {
@@ -52,8 +78,8 @@ impl AudioEngine {
         let device = host.default_output_device().ok_or(EngineError::NoOutputDevice)?;
         let stream_config = negotiate(&device, config.sample_rate)?;
 
-        let (command_producer, command_consumer) = rtrb::RingBuffer::<Message>::new(64);
-        let (retired_producer, retired_consumer) = rtrb::RingBuffer::<Box<PreparedPlaybackPlan>>::new(8);
+        let (command_producer, command_consumer) = rtrb::RingBuffer::<Message>::new(COMMAND_CAPACITY);
+        let (retired_producer, retired_consumer) = rtrb::RingBuffer::<Box<PreparedPlaybackPlan>>::new(COMMAND_CAPACITY);
         let position = Arc::new(AtomicU64::new(0));
         let playing = Arc::new(AtomicBool::new(false));
         let mut core = CallbackCore::new(
@@ -74,21 +100,33 @@ impl AudioEngine {
         cpal::traits::StreamTrait::play(&stream).map_err(|error| EngineError::Stream(error.to_string()))?;
         Ok(Self {
             _stream: stream,
-            commands: Mutex::new(command_producer),
-            retired: retired_consumer,
+            channels: Mutex::new(Channels {
+                commands: command_producer,
+                retired: retired_consumer,
+            }),
             position,
             playing,
         })
     }
 
-    /// Install a prepared plan (replaces the current one; the replaced plan
-    /// returns on the retired queue and is dropped on the control side,
-    /// latest when the engine drops).
+    /// Install a prepared plan, replacing the current one.
+    ///
+    /// The replaced plan returns on the retirement queue and is destroyed
+    /// here on the control thread, never in the callback (§13.2). Draining
+    /// before enqueuing is what keeps that queue from ever filling — see
+    /// [`COMMAND_CAPACITY`] — and it frees the previous plan's graph promptly
+    /// rather than at engine shutdown, which matters once the GUI reinstalls
+    /// a plan after every edit.
     ///
     /// # Errors
     /// [`EngineError::QueueFull`] if the command queue is full.
     pub fn install(&self, plan: PreparedPlaybackPlan) -> Result<(), EngineError> {
-        self.push(Message::Install(Box::new(plan)))
+        let mut channels = self.lock()?;
+        channels.drain_retired();
+        channels
+            .commands
+            .push(Message::Install(Box::new(plan)))
+            .map_err(|_| EngineError::QueueFull)
     }
 
     /// Send a transport command.
@@ -96,16 +134,17 @@ impl AudioEngine {
     /// # Errors
     /// [`EngineError::QueueFull`] if the command queue is full.
     pub fn command(&self, command: TransportCommand) -> Result<(), EngineError> {
-        self.push(Message::Transport(command))
+        self.lock()?
+            .commands
+            .push(Message::Transport(command))
+            .map_err(|_| EngineError::QueueFull)
     }
 
-    /// Push onto the command queue (control-side lock).
-    fn push(&self, message: Message) -> Result<(), EngineError> {
-        let mut producer = self
-            .commands
+    /// Take the control-side lock.
+    fn lock(&self) -> Result<std::sync::MutexGuard<'_, Channels>, EngineError> {
+        self.channels
             .lock()
-            .map_err(|_| EngineError::Stream("command lock poisoned".to_string()))?;
-        producer.push(message).map_err(|_| EngineError::QueueFull)
+            .map_err(|_| EngineError::Stream("command lock poisoned".to_string()))
     }
 
     /// The transport's current frame (telemetry; eventually consistent).
@@ -121,7 +160,11 @@ impl AudioEngine {
 
 impl Drop for AudioEngine {
     fn drop(&mut self) {
-        while self.retired.pop().is_ok() {}
+        // The stream is torn down after this, so any plan still in flight is
+        // released here rather than leaked.
+        if let Ok(channels) = self.channels.get_mut() {
+            channels.drain_retired();
+        }
     }
 }
 

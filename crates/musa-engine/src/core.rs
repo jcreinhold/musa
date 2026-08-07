@@ -6,8 +6,12 @@
 //! Real-time rules (§13.2): `CallbackCore::process` never allocates, locks,
 //! does I/O, logs, or destroys large objects. Retired plans cross to the
 //! control thread on an `rtrb` queue and are dropped there; if the queue is
-//! full the plan waits in `pending_retire` for the next block.
-#![allow(clippy::arithmetic_side_effects)]
+//! full the plan waits in `pending_retire` and the core stops consuming
+//! commands until it drains, so a plan is never destroyed here.
+//!
+//! Arithmetic in this module is per-block, never per-sample, so the checked
+//! and saturating forms below cost nothing measurable and remove every
+//! overflow and underflow path from the audio thread.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -75,7 +79,9 @@ pub struct CallbackCore {
     commands: rtrb::Consumer<Message>,
     retired: rtrb::Producer<Box<PreparedPlaybackPlan>>,
     /// A retired plan that did not fit the queue last block; retried each
-    /// block (dropping it here would violate §13.2).
+    /// block (dropping it here would violate §13.2). While it is occupied
+    /// the core stops consuming commands, so at most one plan is ever held
+    /// back and none is ever destroyed on the audio thread.
     pending_retire: Option<Box<PreparedPlaybackPlan>>,
     installed: Option<Box<PreparedPlaybackPlan>>,
     playing: bool,
@@ -107,24 +113,36 @@ impl CallbackCore {
     /// Retire a plan to the control thread; never drop one here. If the
     /// queue is full the plan waits in `pending_retire` for the next block.
     fn retire(&mut self, plan: Box<PreparedPlaybackPlan>) {
+        debug_assert!(
+            self.pending_retire.is_none(),
+            "retire is only reached with room to hold back"
+        );
         match self.retired.push(plan) {
             Ok(()) => {}
-            Err(rtrb::PushError::Full(plan)) => {
-                debug_assert!(self.pending_retire.is_none());
-                self.pending_retire = Some(plan);
-            }
+            Err(rtrb::PushError::Full(plan)) => self.pending_retire = Some(plan),
         }
     }
 
-    /// Apply all pending control messages at a block boundary.
+    /// Apply pending control messages at a block boundary.
+    ///
+    /// Consumption stops while a plan is held back, which is what makes the
+    /// no-drop guarantee structural rather than a hope: a command that would
+    /// retire a second plan simply stays queued until the control thread
+    /// drains the retirement queue. Transport commands behind it are delayed
+    /// by a block or two, which is inaudible; destroying a `RenderPlan` in
+    /// the callback would not be (§13.2).
     fn consume_commands(&mut self) {
         if let Some(pending) = self.pending_retire.take() {
             match self.retired.push(pending) {
                 Ok(()) => {}
-                Err(rtrb::PushError::Full(plan)) => self.pending_retire = Some(plan),
+                Err(rtrb::PushError::Full(plan)) => {
+                    self.pending_retire = Some(plan);
+                    return;
+                }
             }
         }
-        while let Ok(message) = self.commands.pop() {
+        while self.pending_retire.is_none() {
+            let Ok(message) = self.commands.pop() else { break };
             match message {
                 Message::Install(plan) => {
                     if let Some(old) = self.installed.replace(plan) {
@@ -154,8 +172,14 @@ impl CallbackCore {
                     self.position.store(frame, Ordering::Relaxed);
                 }
             }
+            // A region whose end is not strictly after its start describes no
+            // frames at all. Honouring it would seek back to `start` forever
+            // without filling a sample, wedging the audio thread, so it is
+            // rejected here — the one place that can still refuse it cheaply.
             TransportCommand::SetLoop { start, end } => {
-                self.loop_region = Some((start, end));
+                if start < end {
+                    self.loop_region = Some((start, end));
+                }
             }
             TransportCommand::ClearLoop => self.loop_region = None,
         }
@@ -165,7 +189,7 @@ impl CallbackCore {
     /// Underruns emit silence — never panic, never block (§13.2).
     pub fn process(&mut self, output: &mut [f32]) {
         self.consume_commands();
-        let frames = output.len() / 2;
+        let frames = output.len().saturating_div(2);
         let Some(installed) = self.installed.as_mut() else {
             output.fill(0.0);
             return;
@@ -182,28 +206,39 @@ impl CallbackCore {
                 .loop_region
                 .map_or(installed.total_frames, |(_, end)| end.min(installed.total_frames));
             if cursor >= boundary {
-                if let Some((start, _)) = self.loop_region {
-                    installed.render_plan.seek(start);
-                } else {
-                    self.playing = false;
-                    self.playing_flag.store(false, Ordering::Relaxed);
-                    break;
+                // Wrap only to a start that lies before the boundary;
+                // otherwise the region is unplayable against this plan and
+                // wrapping would make no progress. Stop instead.
+                match self.loop_region {
+                    Some((start, _)) if start < boundary => installed.render_plan.seek(start),
+                    Some(_) | None => {
+                        self.playing = false;
+                        self.playing_flag.store(false, Ordering::Relaxed);
+                        break;
+                    }
                 }
                 continue;
             }
-            let count = ((boundary - cursor) as usize).min(frames - done);
-            let Some(chunk) = output.get_mut(2 * done..2 * (done + count)) else {
+            // `cursor < boundary` and `done < frames`, so `count >= 1`: every
+            // iteration that reaches here advances, which is what bounds the
+            // loop at `frames` iterations.
+            let remaining = boundary.saturating_sub(cursor);
+            let count = usize::try_from(remaining)
+                .unwrap_or(usize::MAX)
+                .min(frames.saturating_sub(done));
+            let Some(chunk) = output.get_mut(done.saturating_mul(2)..done.saturating_add(count).saturating_mul(2))
+            else {
                 break;
             };
             installed
                 .render_plan
                 .render(&EventSlice::new(&installed.events), chunk, count);
-            done += count;
+            done = done.saturating_add(count);
         }
         self.position.store(installed.render_plan.cursor(), Ordering::Relaxed);
         // Anything after an early stop is silence.
         if done < frames
-            && let Some(rest) = output.get_mut(2 * done..)
+            && let Some(rest) = output.get_mut(done.saturating_mul(2)..)
         {
             rest.fill(0.0);
         }
