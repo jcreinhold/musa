@@ -18,6 +18,7 @@ mod instrument;
 mod offline;
 mod plan;
 mod spec;
+mod studio;
 mod voice;
 
 pub use crate::error::GraphError;
@@ -27,4 +28,5 @@ pub use crate::plan::{EventSlice, RenderPlan, compile_graph};
 pub use crate::spec::{
     Combination, GraphOptions, NodeId, ParameterDescriptor, PortKind, ProcessorSpec, Smoothing, StudioGraphSpec, Unit,
 };
+pub use crate::studio::{StudioLowering, lower_studio};
 pub use crate::voice::VoiceAllocator;

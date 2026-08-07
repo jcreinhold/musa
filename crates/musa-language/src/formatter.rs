@@ -47,7 +47,14 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer) {
         match element {
             SyntaxElement::Node(child) => {
                 writer.blank_line_if_pending();
+                let wrap = wraps_across_lines(&child);
+                if wrap {
+                    writer.open_chain();
+                }
                 format_node(&child, writer);
+                if wrap {
+                    writer.close_chain();
+                }
             }
             SyntaxElement::Token(token) => {
                 let kind = token.kind();
@@ -90,6 +97,13 @@ fn format_token(kind: SyntaxKind, text: &str, writer: &mut Writer) {
     } else if kind == SyntaxKind::Colon {
         writer.write(":");
         writer.space();
+    } else if kind == SyntaxKind::PipeForward && writer.in_wrapped_chain() {
+        // A long chain reads as a stack of stages, which is how the roadmap
+        // writes it and how a patch is actually thought about.
+        writer.indent_continuations();
+        writer.newline();
+        writer.write("|>");
+        writer.space();
     } else if kind == SyntaxKind::Arrow || kind == SyntaxKind::PipeForward {
         writer.space();
         writer.write(text);
@@ -100,12 +114,11 @@ fn format_token(kind: SyntaxKind, text: &str, writer: &mut Writer) {
             writer.space();
         }
         writer.write(text);
-    } else if kind == SyntaxKind::LParen
-        || kind == SyntaxKind::RBracket
-        || kind == SyntaxKind::RParen
-        || kind == SyntaxKind::Minus
-    {
+    } else if kind == SyntaxKind::LParen || kind == SyntaxKind::RBracket || kind == SyntaxKind::RParen {
         writer.write(text);
+    } else if kind == SyntaxKind::Dot {
+        // A modulation path is one word with dots in it, not three words.
+        writer.write(".");
     } else {
         if writer.needs_word_space() {
             writer.space();
@@ -127,6 +140,23 @@ struct Writer {
     pending_newlines: usize,
     /// Kind of the last significant token written.
     prev: Option<SyntaxKind>,
+    /// One entry per enclosing stacked chain: whether its continuation
+    /// indent has been applied yet.
+    chains: Vec<bool>,
+}
+
+/// Whether a signal chain is long enough to be worth stacking.
+///
+/// Two stages (`oscillator(sine) |> gain(-15 dB)`) read fine on one line;
+/// three or more is where a patch stops being a phrase and starts being a
+/// signal path, and the roadmap's §7.1 example writes those stacked.
+fn wraps_across_lines(node: &SyntaxNode) -> bool {
+    node.kind() == SyntaxKind::SignalChain
+        && node
+            .children_with_tokens()
+            .filter(|element| element.kind() == SyntaxKind::PipeForward)
+            .count()
+            >= 2
 }
 
 impl Writer {
@@ -138,6 +168,34 @@ impl Writer {
             need_newline: false,
             pending_newlines: 0,
             prev: None,
+            chains: Vec::new(),
+        }
+    }
+
+    /// Enter a chain that is written one stage per line.
+    fn open_chain(&mut self) {
+        self.chains.push(false);
+    }
+
+    fn close_chain(&mut self) {
+        if self.chains.pop() == Some(true) {
+            self.indent_less();
+        }
+    }
+
+    fn in_wrapped_chain(&self) -> bool {
+        !self.chains.is_empty()
+    }
+
+    /// Indent the continuation lines — once per chain, and only when the
+    /// first `|>` proves there will be any. The chain's head stays on the
+    /// line its statement started.
+    fn indent_continuations(&mut self) {
+        if let Some(indented) = self.chains.last_mut()
+            && !*indented
+        {
+            *indented = true;
+            self.indent_more();
         }
     }
 
@@ -229,6 +287,7 @@ impl Writer {
                 | SyntaxKind::Equals
                 | SyntaxKind::Arrow
                 | SyntaxKind::PipeForward
+                | SyntaxKind::Dot
         )
     }
 

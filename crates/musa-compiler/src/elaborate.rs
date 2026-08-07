@@ -199,7 +199,15 @@ pub(crate) fn elaborate(source: &SourceDocument) -> Compilation {
     {
         return Compilation::new(None, lowering.diagnostics);
     }
-    Compilation::new(Some(snapshot), lowering.diagnostics)
+    let studio = lower::lower_studio(&mut lowering, &piece, &snapshot);
+    if lowering
+        .diagnostics
+        .iter()
+        .any(|d| d.severity == crate::compile::Severity::Error)
+    {
+        return Compilation::new(None, lowering.diagnostics);
+    }
+    Compilation::new(Some(snapshot), lowering.diagnostics).with_studio(studio)
 }
 
 /// Walk parts and voices exactly as the direct lowerer does, but elaborate

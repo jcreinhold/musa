@@ -33,6 +33,7 @@ mod performance;
 mod pitch;
 mod profile;
 mod score;
+mod studio;
 mod time;
 
 pub use crate::compile::{Compilation, CompileOptions, Diagnostic, Elaboration, Severity, SourceDocument, compile};
@@ -49,5 +50,8 @@ pub use crate::score::{
     AnnotationStore, ArticulationMark, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, KeyMap,
     MeterMap, Mode, MotifDeclaration, NotatedDuration, Part, PartId, PartMap, ScoreEvent, ScoreEventKind,
     ScoreSnapshot, SlurSpan, TempoMap, TupletSpan, Voice, VoiceId,
+};
+pub use crate::studio::{
+    Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,
 };
 pub use crate::time::{MusicalDuration, MusicalTime};

@@ -201,6 +201,8 @@ enum RawToken {
     Minus,
     #[token("~")]
     Tilde,
+    #[token(".")]
+    Dot,
 
     #[token("piece", priority = 3)]
     PieceKw,
@@ -306,6 +308,7 @@ impl RawToken {
             | Self::Equals
             | Self::Minus
             | Self::Tilde
+            | Self::Dot
             | Self::PieceKw
             | Self::TempoKw
             | Self::MeterKw
@@ -374,6 +377,7 @@ impl RawToken {
             Self::Equals => SyntaxKind::Equals,
             Self::Minus => SyntaxKind::Minus,
             Self::Tilde => SyntaxKind::Tilde,
+            Self::Dot => SyntaxKind::Dot,
             Self::PieceKw => SyntaxKind::PieceKw,
             Self::TempoKw => SyntaxKind::TempoKw,
             Self::MeterKw => SyntaxKind::MeterKw,

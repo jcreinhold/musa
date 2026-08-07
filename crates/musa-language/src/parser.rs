@@ -70,6 +70,7 @@ const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::MotifKw,
     SyntaxKind::ScoreKw,
     SyntaxKind::PerformanceKw,
+    SyntaxKind::StudioKw,
 ];
 const SCORE_RECOVERY: &[SyntaxKind] = &[SyntaxKind::RBrace, SyntaxKind::PartKw];
 const PART_RECOVERY: &[SyntaxKind] = &[
@@ -85,6 +86,16 @@ const PROFILE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::RBrace,
     SyntaxKind::ArticulationKw,
     SyntaxKind::DynamicKw,
+];
+const STUDIO_RECOVERY: &[SyntaxKind] = &[
+    SyntaxKind::Semicolon,
+    SyntaxKind::RBrace,
+    SyntaxKind::PatchKw,
+    SyntaxKind::BusKw,
+    SyntaxKind::ModulateKw,
+    SyntaxKind::AssignKw,
+    SyntaxKind::RouteKw,
+    SyntaxKind::SendKw,
 ];
 const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::Semicolon,
@@ -193,6 +204,28 @@ impl<'a> Parser<'a> {
         self.current().is_some_and(|kind| kinds.contains(&kind))
     }
 
+    /// The kind `n` significant tokens ahead (`0` is [`Self::current`]).
+    ///
+    /// The studio grammar is the only place that needs lookahead: `name =`,
+    /// `name(`, and a bare `name` are three different productions that share
+    /// a first token, and distinguishing them by backtracking would cost the
+    /// tree its losslessness.
+    fn nth_significant(&self, n: usize) -> Option<SyntaxKind> {
+        let mut seen = 0usize;
+        let mut idx = self.pos;
+        while let Some(token) = self.tokens.get(idx) {
+            idx = idx.saturating_add(1);
+            if token.kind.is_trivia() {
+                continue;
+            }
+            if seen == n {
+                return Some(token.kind);
+            }
+            seen = seen.saturating_add(1);
+        }
+        None
+    }
+
     /// Consume `kind` if present; otherwise record an error and continue.
     fn expect(&mut self, kind: SyntaxKind, what: &str) {
         if self.at(kind) {
@@ -278,8 +311,10 @@ impl<'a> Parser<'a> {
                 self.score_decl();
             } else if self.at(SyntaxKind::PerformanceKw) {
                 self.performance_decl();
+            } else if self.at(SyntaxKind::StudioKw) {
+                self.studio_decl();
             } else {
-                self.error_here("expected a tempo, meter, key, motif, score, or performance declaration");
+                self.error_here("expected a tempo, meter, key, motif, score, performance, or studio declaration");
                 self.recover(PIECE_RECOVERY);
             }
         }
@@ -514,6 +549,266 @@ impl<'a> Parser<'a> {
         if self.at_any(&[SyntaxKind::UnitMs, SyntaxKind::UnitS]) {
             self.bump();
         }
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `studio { patch ... bus ... assign ... }` (roadmap §7.1).
+    ///
+    /// The studio never mentions notes: everything inside it names signals,
+    /// patches, buses, and the bindings between them (§6.5).
+    fn studio_decl(&mut self) {
+        self.start(SyntaxKind::StudioDecl);
+        self.bump(); // studio
+        self.expect(SyntaxKind::LBrace, "`{`");
+        loop {
+            if self.at(SyntaxKind::RBrace) {
+                self.bump();
+                break;
+            }
+            if self.current().is_none() {
+                self.error_here("unclosed `studio` block");
+                break;
+            }
+            if self.at(SyntaxKind::PatchKw) {
+                self.patch_decl();
+            } else if self.at(SyntaxKind::BusKw) {
+                self.bus_decl();
+            } else if self.at(SyntaxKind::ModulateKw) {
+                self.modulate_stmt();
+            } else if self.at(SyntaxKind::AssignKw) {
+                self.binding_stmt(SyntaxKind::AssignStmt, "a part name", "a patch name");
+            } else if self.at(SyntaxKind::RouteKw) {
+                self.binding_stmt(SyntaxKind::RouteStmt, "a source name", "a destination");
+            } else if self.at(SyntaxKind::SendKw) {
+                self.send_stmt();
+            } else if self.at(SyntaxKind::Identifier) {
+                self.signal_binding();
+            } else {
+                self.error_here("expected `patch`, `bus`, `modulate`, `assign`, `route`, `send`, or a signal binding");
+                self.recover(STUDIO_RECOVERY);
+            }
+        }
+        self.finish();
+    }
+
+    /// `patch <name> { <signal bindings and chains> }`
+    fn patch_decl(&mut self) {
+        self.start(SyntaxKind::PatchDecl);
+        self.bump(); // patch
+        self.expect(SyntaxKind::Identifier, "a patch name");
+        self.expect(SyntaxKind::LBrace, "`{`");
+        self.chain_body("patch");
+        self.finish();
+    }
+
+    /// `bus <name> { <chains> }`
+    fn bus_decl(&mut self) {
+        self.start(SyntaxKind::BusDecl);
+        self.bump(); // bus
+        self.expect(SyntaxKind::Identifier, "a bus name");
+        self.expect(SyntaxKind::LBrace, "`{`");
+        self.chain_body("bus");
+        self.finish();
+    }
+
+    /// The shared body of a patch or bus: named signals and bare chains, in
+    /// any order, until the closing brace.
+    fn chain_body(&mut self, what: &str) {
+        loop {
+            if self.at(SyntaxKind::RBrace) {
+                self.bump();
+                break;
+            }
+            if self.current().is_none() {
+                self.error_here(format!("unclosed `{what}` block"));
+                break;
+            }
+            if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::Equals) {
+                self.signal_binding();
+            } else if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::OutputKw]) {
+                self.chain_stmt();
+            } else {
+                self.error_here("expected a signal binding or a signal chain");
+                self.recover(STUDIO_RECOVERY);
+            }
+        }
+    }
+
+    /// `<name> = <chain>;`
+    fn signal_binding(&mut self) {
+        self.start(SyntaxKind::SignalBinding);
+        self.bump(); // name
+        self.expect(SyntaxKind::Equals, "`=`");
+        self.signal_chain();
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `<chain>;` — unnamed, so its value is the enclosing patch or bus's.
+    fn chain_stmt(&mut self) {
+        self.start(SyntaxKind::ChainStmt);
+        self.signal_chain();
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `<stage> |> <stage> |> ...`
+    ///
+    /// `|>` is left-associative and the only operator in the language, so the
+    /// "expression parser" §10.2 anticipates is this loop: a precedence table
+    /// would be machinery with one entry.
+    fn signal_chain(&mut self) {
+        self.start(SyntaxKind::SignalChain);
+        self.stage();
+        while self.at(SyntaxKind::PipeForward) {
+            self.bump();
+            self.stage();
+        }
+        self.finish();
+    }
+
+    /// One stage: a construction `name(args)`, or a bare name (another
+    /// signal, or the `output` terminal).
+    fn stage(&mut self) {
+        if self.at(SyntaxKind::OutputKw) || self.at(SyntaxKind::MasterKw) {
+            self.start(SyntaxKind::NameRef);
+            self.bump();
+            self.finish();
+        } else if self.at(SyntaxKind::Identifier) {
+            if self.nth_significant(1) == Some(SyntaxKind::LParen) {
+                self.call_expr();
+            } else {
+                self.start(SyntaxKind::NameRef);
+                self.bump();
+                self.finish();
+            }
+        } else {
+            self.error_here("expected a processor, a signal name, or `output`");
+            self.recover(STUDIO_RECOVERY);
+        }
+    }
+
+    /// `<name>(<args>)`
+    fn call_expr(&mut self) {
+        self.start(SyntaxKind::CallExpr);
+        self.bump(); // processor name
+        self.start(SyntaxKind::ArgList);
+        self.expect(SyntaxKind::LParen, "`(`");
+        loop {
+            if self.at(SyntaxKind::RParen) {
+                self.bump();
+                break;
+            }
+            if self.current().is_none() {
+                self.error_here("unclosed argument list");
+                break;
+            }
+            self.arg();
+            if self.at(SyntaxKind::Comma) {
+                self.bump();
+            }
+        }
+        self.finish(); // ArgList
+        self.finish(); // CallExpr
+    }
+
+    /// `<name>: <value>` or a positional `<value>`.
+    fn arg(&mut self) {
+        self.start(SyntaxKind::Arg);
+        if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::Colon) {
+            self.bump(); // argument name
+            self.bump(); // :
+        }
+        self.value();
+        self.finish();
+    }
+
+    /// A number with an optional unit, a nested construction, or a name.
+    fn value(&mut self) {
+        if self.at_any(&[
+            SyntaxKind::Minus,
+            SyntaxKind::Float,
+            SyntaxKind::Integer,
+            SyntaxKind::Rational,
+        ]) {
+            self.start(SyntaxKind::ValueLiteral);
+            if self.at(SyntaxKind::Minus) {
+                self.bump();
+            }
+            if self.at_any(&[SyntaxKind::Float, SyntaxKind::Integer, SyntaxKind::Rational]) {
+                self.bump();
+            } else {
+                self.error_here("expected a number");
+            }
+            if self.at_any(&[
+                SyntaxKind::UnitHz,
+                SyntaxKind::UnitMs,
+                SyntaxKind::UnitS,
+                SyntaxKind::UnitDb,
+            ]) {
+                self.bump();
+            }
+            self.finish();
+        } else if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::LParen) {
+            self.call_expr();
+        } else if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::OutputKw, SyntaxKind::MasterKw]) {
+            self.start(SyntaxKind::NameRef);
+            self.bump();
+            self.finish();
+        } else {
+            self.error_here("expected a value");
+            self.recover(&[
+                SyntaxKind::Comma,
+                SyntaxKind::RParen,
+                SyntaxKind::Semicolon,
+                SyntaxKind::RBrace,
+            ]);
+        }
+    }
+
+    /// `modulate <signal> -> <patch>.<stage>.<parameter>;`
+    fn modulate_stmt(&mut self) {
+        self.start(SyntaxKind::ModulateStmt);
+        self.bump(); // modulate
+        self.expect(SyntaxKind::Identifier, "a signal name");
+        self.expect(SyntaxKind::Arrow, "`->`");
+        self.start(SyntaxKind::ParamPath);
+        self.expect(SyntaxKind::Identifier, "a patch name");
+        while self.at(SyntaxKind::Dot) {
+            self.bump();
+            self.expect(SyntaxKind::Identifier, "a stage or parameter name");
+        }
+        self.finish();
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `assign <a> -> <b>;` and `route <a> -> <b>;` — the same shape with
+    /// different names on each side, so one production serves both.
+    fn binding_stmt(&mut self, kind: SyntaxKind, source: &str, destination: &str) {
+        self.start(kind);
+        self.bump(); // assign / route
+        self.expect(SyntaxKind::Identifier, source);
+        self.expect(SyntaxKind::Arrow, "`->`");
+        if self.at(SyntaxKind::MasterKw) {
+            self.bump();
+        } else {
+            self.expect(SyntaxKind::Identifier, destination);
+        }
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `send <source> -> <bus> at <gain> dB;`
+    fn send_stmt(&mut self) {
+        self.start(SyntaxKind::SendStmt);
+        self.bump(); // send
+        self.expect(SyntaxKind::Identifier, "a source name");
+        self.expect(SyntaxKind::Arrow, "`->`");
+        self.expect(SyntaxKind::Identifier, "a bus name");
+        self.expect(SyntaxKind::AtKw, "`at`");
+        self.value();
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }

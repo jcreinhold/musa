@@ -1,7 +1,7 @@
 ---
 id: 29
 slug: studio-language
-status: pending
+status: done
 depends_on: [28]
 phase: 2
 ---
@@ -68,6 +68,42 @@ cargo run -p musa-cli -- render examples/glass-mountain.musa --to wav -o /tmp/gm
 ```
 
 Commit as `Add studio language and StudioSpec`.
+
+## Repairs made while implementing
+
+- **`StudioSpec` rides on `Compilation`, not `PerformanceOptions` or `ScoreSnapshot`.** The pipeline produces two
+  documents (§10.6), and putting the studio inside the score would conflate the two layers §2 keeps apart. `Compilation`
+  gained `studio()` and `into_parts()`; `ProjectSession` keeps the pair in `ValidArtifacts`, so a render can never use
+  one piece's sound with another's notes.
+- **The one `Unit` declaration lives in `musa-compiler`** and `musa-audio` re-exports it. The prompt asked for one
+  declaration rather than two; since the dependency runs compiler → audio, the language side is where it has to be. The
+  per-processor *descriptors* still differ — the language names `lowpass`, the DSP names `Sine` — and unify when
+  prompts 30–31 give those processors real implementations.
+- **The expression parser is a loop, not a Pratt table.** `|>` is the only operator in the language and it is
+  left-associative, so a precedence table would have exactly one entry. What the studio grammar actually needed was
+  *lookahead*: `name =`, `name(`, and a bare `name` share a first token. `Parser::nth_significant` is that, and it is
+  the only lookahead in the parser.
+- **`.` is a new token.** The lexer had every studio keyword reserved but no path separator, so `glass_pad.lowpass.cutoff`
+  could not be written.
+- **The formatter stacks long chains.** A chain of three or more stages is written one stage per line, which is how §7.1
+  writes them and how a signal path is read. Two stages stay inline. `-` also became word-spaced, so `at -18 dB` no
+  longer formats as `at-18 dB`.
+- **A modulation path addresses a stage by its binding name or its processor name**, and an ambiguous path (two unnamed
+  `lowpass` stages) is a diagnostic rather than a silent pick.
+- **`adsr(...)` flattens rather than nesting.** It is an argument group for readability, not a second node: its
+  arguments are the envelope's.
+- **A patch's source section is the polyphonic synth.** Until prompt 30's parameter system and envelope exist, the
+  note-producing head of every patch is the existing `PolySine`, and each stage downstream of it lowers to a real
+  processor or a `Passthrough`. The graph has the shape the patch describes from the first day; later prompts change
+  processors, not topology.
+- **All patches share one note stream**, because `RenderPlan` delivers one. `lower_studio` says so in its notes when a
+  studio assigns parts to more than one patch, rather than silently mis-routing. Per-part event routing is a later
+  prompt's.
+- **Two new audio processors**: `StereoGain` (sends and bus levels operate on already-panned signal) and
+  `Passthrough { channels }` (the placeholder). Both were needed for the graph to be *valid*, not merely representable.
+- **`examples/glass-mountain.musa` stays ASCII.** Its studio comment cites "roadmap 7.1" without the section sign: the
+  Rust lexer reports byte offsets and the TypeScript tokenizer reports UTF-16 indices, and until that is reconciled a
+  non-ASCII example breaks the highlighting fixture. Tracked separately.
 
 ## Stop
 

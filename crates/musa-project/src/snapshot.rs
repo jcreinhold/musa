@@ -33,6 +33,11 @@ pub(crate) struct ValidArtifacts {
     pub(crate) mei: String,
     /// The compiled score, kept for exports and playback preparation.
     pub(crate) score: musa_compiler::ScoreSnapshot,
+    /// The compiled studio from the same compilation. Kept beside the score
+    /// rather than inside it: they are two documents, and pairing them here
+    /// is what stops a render from using one piece's sound with another's
+    /// notes (§6.5).
+    pub(crate) studio: musa_compiler::StudioSpec,
     /// Everything the interface displays about that score.
     pub(crate) facts: ScoreFacts,
     pub(crate) revision: Revision,

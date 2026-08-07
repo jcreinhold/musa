@@ -1,0 +1,231 @@
+---
+source: crates/musa-compiler/tests/studio_laws.rs
+expression: "format!(\"{studio:#?}\")"
+---
+StudioSpec {
+    patches: {
+        "glass_pad": Patch {
+            nodes: [
+                StudioNode {
+                    processor: Oscillator,
+                    label: Some(
+                        "carrier",
+                    ),
+                    params: [
+                        Value {
+                            magnitude: 440.0,
+                            unit: Hz,
+                        },
+                        Value {
+                            magnitude: 1.0,
+                            unit: Linear,
+                        },
+                    ],
+                    inputs: [],
+                },
+                StudioNode {
+                    processor: Oscillator,
+                    label: None,
+                    params: [
+                        Value {
+                            magnitude: 440.0,
+                            unit: Hz,
+                        },
+                        Value {
+                            magnitude: 2.0,
+                            unit: Linear,
+                        },
+                    ],
+                    inputs: [],
+                },
+                StudioNode {
+                    processor: Gain,
+                    label: Some(
+                        "shimmer",
+                    ),
+                    params: [
+                        Value {
+                            magnitude: -15.0,
+                            unit: Decibels,
+                        },
+                    ],
+                    inputs: [
+                        1,
+                    ],
+                },
+                StudioNode {
+                    processor: Mix,
+                    label: None,
+                    params: [],
+                    inputs: [
+                        0,
+                        2,
+                    ],
+                },
+                StudioNode {
+                    processor: Envelope,
+                    label: None,
+                    params: [
+                        Value {
+                            magnitude: 0.03,
+                            unit: Seconds,
+                        },
+                        Value {
+                            magnitude: 1.8,
+                            unit: Seconds,
+                        },
+                        Value {
+                            magnitude: 0.65,
+                            unit: Linear,
+                        },
+                        Value {
+                            magnitude: 3.5,
+                            unit: Seconds,
+                        },
+                    ],
+                    inputs: [
+                        3,
+                    ],
+                },
+                StudioNode {
+                    processor: Lowpass,
+                    label: None,
+                    params: [
+                        Value {
+                            magnitude: 1400.0,
+                            unit: Hz,
+                        },
+                        Value {
+                            magnitude: 0.7,
+                            unit: Linear,
+                        },
+                    ],
+                    inputs: [
+                        4,
+                    ],
+                },
+            ],
+            output: Some(
+                5,
+            ),
+        },
+    },
+    buses: {
+        "hall": Patch {
+            nodes: [
+                StudioNode {
+                    processor: Reverb,
+                    label: None,
+                    params: [
+                        Value {
+                            magnitude: 0.82,
+                            unit: Linear,
+                        },
+                        Value {
+                            magnitude: 0.55,
+                            unit: Linear,
+                        },
+                    ],
+                    inputs: [],
+                },
+            ],
+            output: Some(
+                0,
+            ),
+        },
+    },
+    signals: {
+        "lfo": Patch {
+            nodes: [
+                StudioNode {
+                    processor: Oscillator,
+                    label: None,
+                    params: [
+                        Value {
+                            magnitude: 0.08,
+                            unit: Hz,
+                        },
+                        Value {
+                            magnitude: 1.0,
+                            unit: Linear,
+                        },
+                    ],
+                    inputs: [],
+                },
+                StudioNode {
+                    processor: Scale,
+                    label: None,
+                    params: [
+                        Value {
+                            magnitude: 250.0,
+                            unit: Hz,
+                        },
+                    ],
+                    inputs: [
+                        0,
+                    ],
+                },
+                StudioNode {
+                    processor: Bias,
+                    label: None,
+                    params: [
+                        Value {
+                            magnitude: 1400.0,
+                            unit: Hz,
+                        },
+                    ],
+                    inputs: [
+                        1,
+                    ],
+                },
+            ],
+            output: Some(
+                2,
+            ),
+        },
+    },
+    assignments: {
+        "violin": "glass_pad",
+        "strings": "glass_pad",
+    },
+    routes: [
+        Route {
+            source: "violin",
+            destination: "master",
+        },
+        Route {
+            source: "strings",
+            destination: "master",
+        },
+        Route {
+            source: "hall",
+            destination: "master",
+        },
+    ],
+    sends: [
+        Send {
+            source: "violin",
+            bus: "hall",
+            level: Value {
+                magnitude: -18.0,
+                unit: Decibels,
+            },
+        },
+        Send {
+            source: "strings",
+            bus: "hall",
+            level: Value {
+                magnitude: -14.0,
+                unit: Decibels,
+            },
+        },
+    ],
+    modulations: [
+        Modulation {
+            source: "lfo",
+            patch: "glass_pad",
+            node: 5,
+            param: "cutoff",
+        },
+    ],
+}

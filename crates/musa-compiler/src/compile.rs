@@ -102,16 +102,40 @@ impl Diagnostic {
     }
 }
 
-/// The result of compiling a document: diagnostics always, a snapshot when
-/// no error-severity diagnostic was produced.
+/// The result of compiling a document: diagnostics always, a snapshot and a
+/// studio when no error-severity diagnostic was produced.
 pub struct Compilation {
     snapshot: Option<ScoreSnapshot>,
+    studio: crate::studio::StudioSpec,
     diagnostics: Vec<Diagnostic>,
 }
 
 impl Compilation {
     pub(crate) fn new(snapshot: Option<ScoreSnapshot>, diagnostics: Vec<Diagnostic>) -> Self {
-        Self { snapshot, diagnostics }
+        Self {
+            snapshot,
+            studio: crate::studio::StudioSpec::default(),
+            diagnostics,
+        }
+    }
+
+    pub(crate) fn with_studio(mut self, studio: crate::studio::StudioSpec) -> Self {
+        self.studio = studio;
+        self
+    }
+
+    /// The compiled studio. Empty when the piece declares no `studio` block,
+    /// which is the zero-setup case: every part keeps the default instrument
+    /// (§14.8).
+    pub fn studio(&self) -> &crate::studio::StudioSpec {
+        &self.studio
+    }
+
+    /// The score and the studio together, consuming the compilation. They are
+    /// two documents produced by one pass (§10.6), and the callers that
+    /// render sound need both.
+    pub fn into_parts(self) -> (Option<ScoreSnapshot>, crate::studio::StudioSpec) {
+        (self.snapshot, self.studio)
     }
 
     /// The expanded score, if compilation succeeded.

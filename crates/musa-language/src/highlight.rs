@@ -72,6 +72,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("=", SyntaxKind::Equals),
     ("-", SyntaxKind::Minus),
     ("~", SyntaxKind::Tilde),
+    (".", SyntaxKind::Dot),
 ];
 
 /// What a token is, for setting purposes.
@@ -159,7 +160,8 @@ impl TokenClass {
             | SyntaxKind::PipeForward
             | SyntaxKind::Equals
             | SyntaxKind::Minus
-            | SyntaxKind::Tilde => Self::Punctuation,
+            | SyntaxKind::Tilde
+            | SyntaxKind::Dot => Self::Punctuation,
 
             SyntaxKind::UseKw => Self::Use,
 
@@ -224,6 +226,22 @@ impl TokenClass {
             | SyntaxKind::DynamicRule
             | SyntaxKind::SettingStmt
             | SyntaxKind::ProfileStmt
+            | SyntaxKind::StudioDecl
+            | SyntaxKind::PatchDecl
+            | SyntaxKind::BusDecl
+            | SyntaxKind::SignalBinding
+            | SyntaxKind::ChainStmt
+            | SyntaxKind::SignalChain
+            | SyntaxKind::CallExpr
+            | SyntaxKind::ArgList
+            | SyntaxKind::Arg
+            | SyntaxKind::ValueLiteral
+            | SyntaxKind::NameRef
+            | SyntaxKind::ModulateStmt
+            | SyntaxKind::ParamPath
+            | SyntaxKind::AssignStmt
+            | SyntaxKind::RouteStmt
+            | SyntaxKind::SendStmt
             | SyntaxKind::Block => return None,
         };
         Some(class)

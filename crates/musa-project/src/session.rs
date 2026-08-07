@@ -232,7 +232,7 @@ impl ProjectSession {
                 score,
                 musa_render::NotationTarget::LilyPond,
             )?)),
-            ExportRequest::Wav => Ok(ExportArtifact::Bytes(playback::to_wav(score)?)),
+            ExportRequest::Wav => Ok(ExportArtifact::Bytes(playback::to_wav(score, &valid.studio)?)),
             ExportRequest::Midi(mode) => Ok(ExportArtifact::Bytes(playback::to_midi(score, mode)?)),
             ExportRequest::PerformanceDump => Ok(ExportArtifact::Text(playback::performance_dump(score)?)),
             ExportRequest::NotationPlanDump => {
@@ -377,10 +377,10 @@ impl ProjectSession {
         let revision = self.revision;
         // A snapshot alongside error diagnostics is a partial recovery, not a
         // score: taking it would show the user something they did not write.
-        let score = if compilation.has_errors() {
-            None
+        let (score, studio) = if compilation.has_errors() {
+            (None, musa_compiler::StudioSpec::default())
         } else {
-            compilation.into_snapshot()
+            compilation.into_parts()
         };
         self.compiles = score.is_some();
         let mut score_changed = false;
@@ -392,6 +392,7 @@ impl ProjectSession {
                     self.valid = Some(ValidArtifacts {
                         mei,
                         score,
+                        studio,
                         facts,
                         revision,
                     });
@@ -434,7 +435,7 @@ impl ProjectSession {
 
     fn install_current_plan(&mut self) -> Result<(), ProjectError> {
         let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
-        let plan = playback::prepare(&valid.score)?;
+        let plan = playback::prepare(&valid.score, &valid.studio)?;
         self.total_frames = plan.total_frames();
         let audio = self
             .audio

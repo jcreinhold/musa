@@ -79,6 +79,8 @@ pub enum SyntaxKind {
     Minus,
     /// `~` — the tie mark, postfix on a note or chord statement.
     Tilde,
+    /// `.` — the path separator in a modulation target.
+    Dot,
 
     // --- Structural keywords. Processor names (`oscillator`, `lowpass`, …)
     /// are deliberately *not* keywords: they lex as identifiers so the
@@ -211,6 +213,38 @@ pub enum SyntaxKind {
     SettingStmt,
     /// `profile <name>;` inside a part: which profile realizes it.
     ProfileStmt,
+    /// `studio { ... }`
+    StudioDecl,
+    /// `patch <name> { ... }`
+    PatchDecl,
+    /// `bus <name> { ... }`
+    BusDecl,
+    /// `<name> = <chain>;` — a named signal.
+    SignalBinding,
+    /// `<chain>;` — an unnamed chain, terminal in its patch or bus.
+    ChainStmt,
+    /// `<stage> |> <stage> |> ...` — the signal chain itself.
+    SignalChain,
+    /// `<name>(<args>)` — a processor construction.
+    CallExpr,
+    /// The parenthesized arguments of a [`SyntaxKind::CallExpr`].
+    ArgList,
+    /// One argument: `<name>: <value>` or a positional `<value>`.
+    Arg,
+    /// A number with an optional unit suffix, possibly negated.
+    ValueLiteral,
+    /// A bare name used as a value: another signal, or `output`.
+    NameRef,
+    /// `modulate <signal> -> <patch>.<stage>.<parameter>;`
+    ModulateStmt,
+    /// `<patch>.<stage>.<parameter>` — a modulation target.
+    ParamPath,
+    /// `assign <part> -> <patch>;`
+    AssignStmt,
+    /// `route <source> -> <destination>;`
+    RouteStmt,
+    /// `send <source> -> <bus> at <gain> dB;`
+    SendStmt,
     /// `{ ... }` body of a motif, transpose, or repeat.
     Block,
 }

@@ -40,4 +40,39 @@ piece "Glass Mountain" {
             }
         }
     }
+
+    // The sound side (roadmap 7.1). Stages whose DSP has not been written
+    // yet render as pass-through and say so, so the patch can be written
+    // before the filter exists.
+    studio {
+        patch glass_pad {
+            carrier = oscillator(sine);
+            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);
+
+            mix(carrier, shimmer)
+                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))
+                |> lowpass(cutoff: 1400 Hz, q: 0.7)
+                |> output;
+        }
+
+        lfo = oscillator(sine, frequency: 0.08 Hz)
+            |> scale(250 Hz)
+            |> bias(1400 Hz);
+
+        modulate lfo -> glass_pad.lowpass.cutoff;
+
+        bus hall {
+            reverb(room: 0.82, damping: 0.55);
+        }
+
+        assign violin -> glass_pad;
+        assign strings -> glass_pad;
+
+        route violin -> master;
+        route strings -> master;
+
+        send violin -> hall at -18 dB;
+        send strings -> hall at -14 dB;
+        route hall -> master;
+    }
 }

@@ -34,19 +34,12 @@ impl std::fmt::Display for PortKind {
     }
 }
 
-/// A parameter's physical unit (§13.7; language-side units are checked
-/// against the same descriptors in prompt 24).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Unit {
-    /// Hertz.
-    Hz,
-    /// Dimensionless ratio.
-    Linear,
-    /// Decibels.
-    Decibels,
-    /// Seconds.
-    Seconds,
-}
+/// A parameter's physical unit (§13.7).
+///
+/// Re-exported from `musa-compiler` rather than declared again: the language
+/// checks `1400 Hz` against the same `Hz` the DSP descriptor names, so the
+/// two cannot drift apart (prompt 29).
+pub use musa_compiler::Unit;
 
 /// Parameter smoothing applied to value changes (§13.7).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -113,6 +106,21 @@ pub enum ProcessorSpec {
     MonoToStereo,
     /// Stereo → mono adapter (average).
     StereoToMono,
+    /// Stereo gain stage. Params: `gain` (linear). In/out: stereo.
+    ///
+    /// The mono [`ProcessorSpec::Gain`] sits inside a voice; this one sits on
+    /// a bus or a send, where the signal has already been panned.
+    StereoGain,
+    /// Identity: input copied to output, `channels` wide.
+    ///
+    /// This is what a studio stage whose DSP has not been written yet lowers
+    /// to (prompts 30–31). The graph keeps its real shape — the node is
+    /// there, connected where the patch says — so replacing it later changes
+    /// one match arm and no topology.
+    Passthrough {
+        /// Channel count of the signal passing through.
+        channels: u8,
+    },
     /// Polyphonic sine synthesizer (§13.5: voice allocator → oscillator
     /// bank → placeholder envelope). Input: note events; output: stereo.
     PolySine {
@@ -128,6 +136,8 @@ impl ProcessorSpec {
             Self::Sine | Self::Noise | Self::Constant => Vec::new(),
             Self::PolySine { .. } => vec![PortKind::NoteEvents],
             Self::Gain | Self::Splitter | Self::MonoToStereo | Self::Pan => vec![PortKind::Audio { channels: 1 }],
+            Self::StereoGain => vec![PortKind::Audio { channels: 2 }],
+            Self::Passthrough { channels } => vec![PortKind::Audio { channels: *channels }],
             Self::Mixer { inputs } => vec![PortKind::Audio { channels: 2 }; usize::from(*inputs)],
             Self::StereoToMono => vec![PortKind::Audio { channels: 2 }],
         }
@@ -139,9 +149,10 @@ impl ProcessorSpec {
             Self::Sine | Self::Noise | Self::Gain => vec![PortKind::Audio { channels: 1 }],
             Self::Splitter => vec![PortKind::Audio { channels: 1 }, PortKind::Audio { channels: 1 }],
             Self::Constant => vec![PortKind::Control],
-            Self::Pan | Self::MonoToStereo | Self::Mixer { .. } | Self::PolySine { .. } => {
+            Self::Pan | Self::MonoToStereo | Self::Mixer { .. } | Self::PolySine { .. } | Self::StereoGain => {
                 vec![PortKind::Audio { channels: 2 }]
             }
+            Self::Passthrough { channels } => vec![PortKind::Audio { channels: *channels }],
             Self::StereoToMono => vec![PortKind::Audio { channels: 1 }],
         }
     }
@@ -183,9 +194,10 @@ impl ProcessorSpec {
         match self {
             Self::Sine => &[FREQUENCY],
             Self::Constant => &[VALUE],
-            Self::Gain => &[GAIN],
+            Self::Gain | Self::StereoGain => &[GAIN],
             Self::Pan => &[PAN],
             Self::Noise
+            | Self::Passthrough { .. }
             | Self::Mixer { .. }
             | Self::Splitter
             | Self::MonoToStereo

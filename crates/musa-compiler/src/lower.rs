@@ -226,7 +226,32 @@ pub(crate) fn lower(source: &SourceDocument) -> Compilation {
     {
         return Compilation::new(None, lowering.diagnostics);
     }
-    Compilation::new(Some(snapshot), lowering.diagnostics)
+    let studio = lower_studio(&mut lowering, &piece, &snapshot);
+    if lowering
+        .diagnostics
+        .iter()
+        .any(|d| d.severity == crate::compile::Severity::Error)
+    {
+        return Compilation::new(None, lowering.diagnostics);
+    }
+    Compilation::new(Some(snapshot), lowering.diagnostics).with_studio(studio)
+}
+
+/// Resolve the piece's `studio` block, if it has one.
+///
+/// Shared by both semantic paths: the studio says nothing about notes, so
+/// there is nothing here for the two elaborations to disagree about, and one
+/// implementation is one fewer place for them to drift.
+pub(crate) fn lower_studio(
+    lowering: &mut Lowering,
+    piece: &PieceDecl,
+    snapshot: &ScoreSnapshot,
+) -> crate::studio::StudioSpec {
+    let Some(studio) = piece.studio() else {
+        return crate::studio::StudioSpec::default();
+    };
+    let parts: Vec<String> = snapshot.parts.iter().map(|(_, part)| part.name.clone()).collect();
+    crate::studio::resolve(&studio, &parts, &mut lowering.diagnostics)
 }
 
 /// Tempo, meter, key — plus registration of motif declarations (expansion

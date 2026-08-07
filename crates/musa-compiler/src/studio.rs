@@ -1,0 +1,859 @@
+//! The studio layer (roadmap §6.5, §7.1): patches, buses, and the bindings
+//! that connect a score to a sound.
+//!
+//! The bridge from score to studio is deliberately narrow — a part is
+//! *assigned* to a patch and a patch output is *routed* to a bus, and that is
+//! the whole of it. Nothing in this module knows what a note is, and nothing
+//! in the score knows what an oscillator is (§2: part ≠ synthesizer).
+//!
+//! ```text
+//! studio {
+//!     patch glass_pad {
+//!         carrier = oscillator(sine);
+//!         mix(carrier, shimmer) |> lowpass(cutoff: 1400 Hz) |> output;
+//!     }
+//!     assign violin -> glass_pad;
+//!     route violin -> master;
+//! }
+//! ```
+//!
+//! A `StudioSpec` is **editable intent**, not a render plan: written values
+//! keep the unit they were written in (`-15 dB` stays decibels), and the
+//! conversion to whatever the DSP wants happens once, at the graph boundary
+//! in `musa-audio`. That is what lets a studio UI show the user what they
+//! typed rather than what the compiler made of it.
+
+use indexmap::IndexMap;
+
+/// A parameter's physical unit (§7.2: units are part of the syntax).
+///
+/// This is the **one** unit declaration in the workspace: `musa-audio`
+/// re-exports it rather than defining its own, so a language-level `1400 Hz`
+/// and a DSP-level cutoff descriptor cannot disagree about what `Hz` is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Unit {
+    /// Hertz.
+    Hz,
+    /// Dimensionless ratio.
+    Linear,
+    /// Decibels.
+    Decibels,
+    /// Seconds.
+    Seconds,
+}
+
+impl Unit {
+    /// How the unit is written in source, or `None` for a bare number.
+    pub fn spelling(self) -> Option<&'static str> {
+        match self {
+            Self::Hz => Some("Hz"),
+            Self::Linear => None,
+            Self::Decibels => Some("dB"),
+            Self::Seconds => Some("s"),
+        }
+    }
+
+    /// The unit a written suffix denotes. `ms` is seconds, scaled at parse
+    /// time: a millisecond is not a different dimension.
+    fn from_suffix(suffix: &str) -> Option<Self> {
+        match suffix {
+            "Hz" => Some(Self::Hz),
+            "dB" => Some(Self::Decibels),
+            "s" | "ms" => Some(Self::Seconds),
+            _ => None,
+        }
+    }
+}
+
+/// A written parameter value, in the unit it was written in.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Value {
+    /// The magnitude, normalized to the unit's base (`ms` becomes seconds).
+    pub magnitude: f64,
+    /// The dimension it carries.
+    pub unit: Unit,
+}
+
+impl Value {
+    /// The value as a linear multiplier: decibels become a ratio, everything
+    /// else is already one. The single place dB→linear happens.
+    pub fn as_linear(self) -> f64 {
+        match self.unit {
+            Unit::Decibels => 10f64.powf(self.magnitude / 20.0),
+            Unit::Hz | Unit::Linear | Unit::Seconds => self.magnitude,
+        }
+    }
+}
+
+/// A processor the studio language can name.
+///
+/// Deliberately a closed set: §7.2 forbids raw backend escapes, so a patch
+/// can only say things the compiler understands and can check.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Processor {
+    /// `oscillator(sine, frequency: 220 Hz)`
+    Oscillator,
+    /// `gain(-15 dB)`
+    Gain,
+    /// `mix(a, b, ...)`
+    Mix,
+    /// `envelope(adsr(...))`
+    Envelope,
+    /// `lowpass(cutoff: 1400 Hz, q: 0.7)`
+    Lowpass,
+    /// `reverb(room: 0.82, damping: 0.55)`
+    Reverb,
+    /// `scale(250 Hz)` — multiply a control signal.
+    Scale,
+    /// `bias(1400 Hz)` — offset a control signal.
+    Bias,
+}
+
+/// One declared parameter of a processor.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ParamSpec {
+    /// The name it is written with.
+    pub name: &'static str,
+    /// The unit it must be written in.
+    pub unit: Unit,
+    /// Its value when the patch does not say.
+    pub default: f64,
+}
+
+impl Processor {
+    /// The processor a written name denotes.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Some(match name {
+            "oscillator" => Self::Oscillator,
+            "gain" => Self::Gain,
+            "mix" => Self::Mix,
+            "envelope" => Self::Envelope,
+            "lowpass" => Self::Lowpass,
+            "reverb" => Self::Reverb,
+            "scale" => Self::Scale,
+            "bias" => Self::Bias,
+            _ => return None,
+        })
+    }
+
+    /// How it is written.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Oscillator => "oscillator",
+            Self::Gain => "gain",
+            Self::Mix => "mix",
+            Self::Envelope => "envelope",
+            Self::Lowpass => "lowpass",
+            Self::Reverb => "reverb",
+            Self::Scale => "scale",
+            Self::Bias => "bias",
+        }
+    }
+
+    /// Its parameters, in declaration order. A positional argument binds to
+    /// the first parameter, so the order is part of the contract.
+    pub fn params(self) -> &'static [ParamSpec] {
+        const fn spec(name: &'static str, unit: Unit, default: f64) -> ParamSpec {
+            ParamSpec { name, unit, default }
+        }
+        const OSCILLATOR: &[ParamSpec] = &[spec("frequency", Unit::Hz, 440.0), spec("ratio", Unit::Linear, 1.0)];
+        const GAIN: &[ParamSpec] = &[spec("gain", Unit::Decibels, 0.0)];
+        const ENVELOPE: &[ParamSpec] = &[
+            spec("attack", Unit::Seconds, 0.005),
+            spec("decay", Unit::Seconds, 0.1),
+            spec("sustain", Unit::Linear, 1.0),
+            spec("release", Unit::Seconds, 0.2),
+        ];
+        const LOWPASS: &[ParamSpec] = &[spec("cutoff", Unit::Hz, 20_000.0), spec("q", Unit::Linear, 0.707)];
+        const REVERB: &[ParamSpec] = &[spec("room", Unit::Linear, 0.5), spec("damping", Unit::Linear, 0.5)];
+        const SCALE: &[ParamSpec] = &[spec("factor", Unit::Hz, 1.0)];
+        const BIAS: &[ParamSpec] = &[spec("offset", Unit::Hz, 0.0)];
+        match self {
+            Self::Oscillator => OSCILLATOR,
+            Self::Gain => GAIN,
+            Self::Mix => &[],
+            Self::Envelope => ENVELOPE,
+            Self::Lowpass => LOWPASS,
+            Self::Reverb => REVERB,
+            Self::Scale => SCALE,
+            Self::Bias => BIAS,
+        }
+    }
+
+    /// A named parameter's declaration.
+    pub fn param(self, name: &str) -> Option<ParamSpec> {
+        self.params().iter().copied().find(|param| param.name == name)
+    }
+
+    /// Whether `musa-audio` can actually render this yet (prompts 30–31).
+    ///
+    /// A processor without DSP is not an error: the language has to be
+    /// writable before the sound exists, or every studio feature would wait
+    /// on a filter. It renders as pass-through and says so.
+    pub fn is_placeholder(self) -> bool {
+        !matches!(self, Self::Oscillator | Self::Gain | Self::Mix)
+    }
+}
+
+/// A node's index within its patch.
+pub type NodeIndex = usize;
+
+/// One processor instance inside a patch.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StudioNode {
+    /// What it runs.
+    pub processor: Processor,
+    /// The name it was bound to, if it was written as `name = ...`. This is
+    /// what a `modulate` path addresses.
+    pub label: Option<String>,
+    /// Resolved parameter values, in the processor's declaration order.
+    pub params: Vec<Value>,
+    /// The nodes feeding it, in argument order.
+    pub inputs: Vec<NodeIndex>,
+}
+
+/// A patch or a bus: a graph of nodes with one designated output.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Patch {
+    nodes: Vec<StudioNode>,
+    output: Option<NodeIndex>,
+}
+
+impl Patch {
+    /// Its nodes, in creation order.
+    pub fn nodes(&self) -> &[StudioNode] {
+        &self.nodes
+    }
+
+    /// The node whose signal leaves the patch.
+    pub fn output(&self) -> Option<NodeIndex> {
+        self.output
+    }
+
+    pub(crate) fn push(&mut self, node: StudioNode) -> NodeIndex {
+        self.nodes.push(node);
+        self.nodes.len().saturating_sub(1)
+    }
+
+    pub(crate) fn set_output(&mut self, node: NodeIndex) {
+        self.output = Some(node);
+    }
+
+    pub(crate) fn nodes_mut(&mut self) -> &mut Vec<StudioNode> {
+        &mut self.nodes
+    }
+}
+
+/// `modulate lfo -> glass_pad.lowpass.cutoff;` — a typed control connection
+/// (§13.7), resolved to the node it addresses.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Modulation {
+    /// The modulating signal's name.
+    pub source: String,
+    /// The patch owning the modulated node.
+    pub patch: String,
+    /// Which node in that patch.
+    pub node: NodeIndex,
+    /// Which of its parameters.
+    pub param: &'static str,
+}
+
+/// `send violin -> hall at -18 dB;`
+#[derive(Clone, Debug, PartialEq)]
+pub struct Send {
+    /// The part or bus sending.
+    pub source: String,
+    /// The bus receiving.
+    pub bus: String,
+    /// How much of the signal is sent.
+    pub level: Value,
+}
+
+/// `route violin -> master;`
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Route {
+    /// The part or bus whose output is routed.
+    pub source: String,
+    /// Where it goes: a bus name, or `master`.
+    pub destination: String,
+}
+
+/// The compiled studio: everything a graph builder needs, with every name
+/// already resolved (§10.6).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct StudioSpec {
+    patches: IndexMap<String, Patch>,
+    buses: IndexMap<String, Patch>,
+    signals: IndexMap<String, Patch>,
+    assignments: IndexMap<String, String>,
+    routes: Vec<Route>,
+    sends: Vec<Send>,
+    modulations: Vec<Modulation>,
+}
+
+impl StudioSpec {
+    /// Whether the piece declared no studio at all, in which case the default
+    /// instrument graph applies to everything (§14.8).
+    pub fn is_empty(&self) -> bool {
+        self.patches.is_empty() && self.buses.is_empty() && self.assignments.is_empty()
+    }
+
+    /// A patch by name.
+    pub fn patch(&self, name: &str) -> Option<&Patch> {
+        self.patches.get(name)
+    }
+
+    /// The declared patches, in source order.
+    pub fn patches(&self) -> impl Iterator<Item = (&str, &Patch)> {
+        self.patches.iter().map(|(name, patch)| (name.as_str(), patch))
+    }
+
+    /// The declared buses, in source order.
+    pub fn buses(&self) -> impl Iterator<Item = (&str, &Patch)> {
+        self.buses.iter().map(|(name, bus)| (name.as_str(), bus))
+    }
+
+    /// The top-level named signals (modulation sources), in source order.
+    pub fn signals(&self) -> impl Iterator<Item = (&str, &Patch)> {
+        self.signals.iter().map(|(name, signal)| (name.as_str(), signal))
+    }
+
+    /// Which patch realizes a part, if the studio says.
+    ///
+    /// A part the studio does not mention keeps the default instrument: a
+    /// partial `studio` block must not silence the rest of the piece (§14.8).
+    pub fn patch_for_part(&self, part: &str) -> Option<&str> {
+        self.assignments.get(part).map(String::as_str)
+    }
+
+    /// The part→patch assignments, in source order.
+    pub fn assignments(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.assignments
+            .iter()
+            .map(|(part, patch)| (part.as_str(), patch.as_str()))
+    }
+
+    /// The declared routes, in source order.
+    pub fn routes(&self) -> &[Route] {
+        &self.routes
+    }
+
+    /// The declared sends, in source order.
+    pub fn sends(&self) -> &[Send] {
+        &self.sends
+    }
+
+    /// The declared modulation connections, in source order.
+    pub fn modulations(&self) -> &[Modulation] {
+        &self.modulations
+    }
+
+    pub(crate) fn insert_patch(&mut self, name: String, patch: Patch) -> bool {
+        self.patches.insert(name, patch).is_none()
+    }
+
+    pub(crate) fn insert_bus(&mut self, name: String, bus: Patch) -> bool {
+        self.buses.insert(name, bus).is_none()
+    }
+
+    pub(crate) fn insert_signal(&mut self, name: String, signal: Patch) -> bool {
+        self.signals.insert(name, signal).is_none()
+    }
+
+    pub(crate) fn assign(&mut self, part: String, patch: String) {
+        self.assignments.insert(part, patch);
+    }
+
+    pub(crate) fn push_route(&mut self, route: Route) {
+        self.routes.push(route);
+    }
+
+    pub(crate) fn push_send(&mut self, send: Send) {
+        self.sends.push(send);
+    }
+
+    pub(crate) fn push_modulation(&mut self, modulation: Modulation) {
+        self.modulations.push(modulation);
+    }
+
+    /// Whether a name denotes something signal-shaped: a bus, or a part that
+    /// has been assigned a patch. Used to check `route` and `send` sources.
+    pub(crate) fn is_routable(&self, name: &str) -> bool {
+        self.buses.contains_key(name) || self.assignments.contains_key(name)
+    }
+
+    pub(crate) fn has_bus(&self, name: &str) -> bool {
+        self.buses.contains_key(name)
+    }
+
+    pub(crate) fn has_patch(&self, name: &str) -> bool {
+        self.patches.contains_key(name)
+    }
+
+    pub(crate) fn has_signal(&self, name: &str) -> bool {
+        self.signals.contains_key(name)
+    }
+}
+
+/// Read a written number and unit suffix into a [`Value`].
+///
+/// `ms` is folded into seconds here, which is why the spec carries no
+/// millisecond unit: the dimension is time, and the suffix is a scale.
+pub(crate) fn parse_value(number: &str, suffix: Option<&str>) -> Option<Value> {
+    let magnitude: f64 = number.parse().ok()?;
+    match suffix {
+        None => Some(Value {
+            magnitude,
+            unit: Unit::Linear,
+        }),
+        Some("ms") => Some(Value {
+            magnitude: magnitude / 1000.0,
+            unit: Unit::Seconds,
+        }),
+        Some(other) => Unit::from_suffix(other).map(|unit| Value { magnitude, unit }),
+    }
+}
+
+// --- Resolution -------------------------------------------------------------
+
+use musa_language::ast::{
+    Arg, AstNode as _, BusDecl, CallExpr, PatchDecl, SendStmt, SignalChain, SignalStage, StudioDecl, StudioItem,
+};
+
+use crate::compile::Diagnostic;
+use crate::lower::span_of;
+
+/// Resolve a `studio` block into a [`StudioSpec`], reporting every unresolved
+/// name and mis-united value against `diagnostics`.
+///
+/// `parts` is the set of part names the score declared: `assign` is the one
+/// place the two layers meet, so it is the one place a studio name is checked
+/// against a score name.
+pub(crate) fn resolve(decl: &StudioDecl, parts: &[String], diagnostics: &mut Vec<Diagnostic>) -> StudioSpec {
+    let mut spec = StudioSpec::default();
+    let items = decl.items();
+
+    // Two passes: patches, buses, and signals first, so the bindings that
+    // follow can be checked against them regardless of writing order. A
+    // studio reads top-down, but it does not have to be written that way.
+    for item in &items {
+        match item {
+            StudioItem::Patch(patch) => declare_patch(patch, &mut spec, diagnostics),
+            StudioItem::Bus(bus) => declare_bus(bus, &mut spec, diagnostics),
+            StudioItem::Signal(signal) => {
+                let name = signal.name().unwrap_or_default();
+                let mut built = Patch::default();
+                let Some(chain) = signal.chain() else { continue };
+                if lower_chain(&chain, &mut built, diagnostics).is_some() && !spec.insert_signal(name.clone(), built) {
+                    diagnostics.push(Diagnostic::error(
+                        format!("duplicate signal `{name}`"),
+                        Some(span_of(signal.syntax())),
+                    ));
+                }
+            }
+            StudioItem::Modulate(_) | StudioItem::Assign(_) | StudioItem::Route(_) | StudioItem::Send(_) => {}
+        }
+    }
+
+    for item in &items {
+        match item {
+            StudioItem::Assign(assign) => {
+                let (Some(part), Some(patch)) = (assign.source(), assign.destination()) else {
+                    continue;
+                };
+                let span = Some(span_of(assign.syntax()));
+                if !parts.contains(&part) {
+                    diagnostics.push(Diagnostic::error(format!("unknown part `{part}`"), span));
+                } else if !spec.has_patch(&patch) {
+                    diagnostics.push(Diagnostic::error(format!("unknown patch `{patch}`"), span));
+                } else {
+                    spec.assign(part, patch);
+                }
+            }
+            StudioItem::Route(route) => {
+                let (Some(source), Some(destination)) = (route.source(), route.destination()) else {
+                    continue;
+                };
+                let span = Some(span_of(route.syntax()));
+                if !spec.is_routable(&source) {
+                    diagnostics.push(Diagnostic::error(
+                        format!("`{source}` is not an assigned part or a bus"),
+                        span,
+                    ));
+                } else if destination != "master" && !spec.has_bus(&destination) {
+                    diagnostics.push(Diagnostic::error(format!("unknown destination `{destination}`"), span));
+                } else {
+                    spec.push_route(Route { source, destination });
+                }
+            }
+            StudioItem::Send(send) => resolve_send(send, &mut spec, diagnostics),
+            StudioItem::Modulate(modulate) => {
+                let Some(source) = modulate.source() else { continue };
+                let span = Some(span_of(modulate.syntax()));
+                if !spec.has_signal(&source) {
+                    diagnostics.push(Diagnostic::error(format!("unknown signal `{source}`"), span));
+                    continue;
+                }
+                if let Some(modulation) = resolve_target(&source, &modulate.target(), &spec, span, diagnostics) {
+                    spec.push_modulation(modulation);
+                }
+            }
+            StudioItem::Patch(_) | StudioItem::Bus(_) | StudioItem::Signal(_) => {}
+        }
+    }
+    spec
+}
+
+fn resolve_send(send: &SendStmt, spec: &mut StudioSpec, diagnostics: &mut Vec<Diagnostic>) {
+    let (Some(source), Some(bus)) = (send.source(), send.destination()) else {
+        return;
+    };
+    let span = Some(span_of(send.syntax()));
+    if !spec.is_routable(&source) {
+        diagnostics.push(Diagnostic::error(
+            format!("`{source}` is not an assigned part or a bus"),
+            span,
+        ));
+        return;
+    }
+    if !spec.has_bus(&bus) {
+        diagnostics.push(Diagnostic::error(format!("unknown bus `{bus}`"), span));
+        return;
+    }
+    let level = send
+        .level()
+        .and_then(|literal| parse_value(&literal.number()?, literal.unit().as_deref()));
+    let Some(level) = level else {
+        diagnostics.push(Diagnostic::error("a send level must be a number", span));
+        return;
+    };
+    if level.unit != Unit::Decibels {
+        diagnostics.push(Diagnostic::error("a send level is written in `dB`", span));
+        return;
+    }
+    spec.push_send(Send { source, bus, level });
+}
+
+/// `glass_pad.lowpass.cutoff` → the node and parameter it names.
+///
+/// A stage is addressed by its binding name when it has one and by its
+/// processor name otherwise. Two unnamed `lowpass` stages in one patch are
+/// therefore ambiguous, and saying so is better than silently picking one.
+fn resolve_target(
+    source: &str,
+    path: &[String],
+    spec: &StudioSpec,
+    span: Option<crate::origin::SourceSpan>,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Option<Modulation> {
+    let written = path.join(".");
+    let [patch_name, stage, param] = path else {
+        diagnostics.push(Diagnostic::error(
+            format!("`{written}` is not a `<patch>.<stage>.<parameter>` path"),
+            span,
+        ));
+        return None;
+    };
+    let Some(patch) = spec.patch(patch_name) else {
+        diagnostics.push(Diagnostic::error(format!("unknown patch `{patch_name}`"), span));
+        return None;
+    };
+    let matches: Vec<NodeIndex> = patch
+        .nodes()
+        .iter()
+        .enumerate()
+        .filter(|(_, node)| node.label.as_deref() == Some(stage.as_str()) || node.processor.name() == stage)
+        .map(|(index, _)| index)
+        .collect();
+    let [node] = matches.as_slice() else {
+        let message = if matches.is_empty() {
+            format!("`{patch_name}` has no stage named `{stage}`")
+        } else {
+            format!("`{patch_name}` has more than one `{stage}`; name the stage to address it")
+        };
+        diagnostics.push(Diagnostic::error(message, span));
+        return None;
+    };
+    let processor = patch.nodes().get(*node)?.processor;
+    let Some(declared) = processor.param(param) else {
+        diagnostics.push(Diagnostic::error(format!("`{stage}` has no parameter `{param}`"), span));
+        return None;
+    };
+    Some(Modulation {
+        source: source.to_owned(),
+        patch: patch_name.clone(),
+        node: *node,
+        param: declared.name,
+    })
+}
+
+fn declare_patch(decl: &PatchDecl, spec: &mut StudioSpec, diagnostics: &mut Vec<Diagnostic>) {
+    let name = decl.name().unwrap_or_default();
+    let Some(patch) = build_container(&decl.signals(), &decl.chains(), diagnostics) else {
+        return;
+    };
+    if patch.output().is_none() {
+        diagnostics.push(Diagnostic::error(
+            format!("patch `{name}` never reaches `output`"),
+            Some(span_of(decl.syntax())),
+        ));
+        return;
+    }
+    if !spec.insert_patch(name.clone(), patch) {
+        diagnostics.push(Diagnostic::error(
+            format!("duplicate patch `{name}`"),
+            Some(span_of(decl.syntax())),
+        ));
+    }
+}
+
+fn declare_bus(decl: &BusDecl, spec: &mut StudioSpec, diagnostics: &mut Vec<Diagnostic>) {
+    let name = decl.name().unwrap_or_default();
+    // A bus's input is whatever is sent to it, so its chain needs no
+    // `output` terminal: the last stage *is* the output.
+    let Some(mut bus) = build_container(&decl.signals(), &decl.chains(), diagnostics) else {
+        return;
+    };
+    if bus.output().is_none() {
+        let last = bus.nodes().len().checked_sub(1);
+        match last {
+            Some(index) => bus.set_output(index),
+            None => {
+                diagnostics.push(Diagnostic::error(
+                    format!("bus `{name}` is empty"),
+                    Some(span_of(decl.syntax())),
+                ));
+                return;
+            }
+        }
+    }
+    if !spec.insert_bus(name.clone(), bus) {
+        diagnostics.push(Diagnostic::error(
+            format!("duplicate bus `{name}`"),
+            Some(span_of(decl.syntax())),
+        ));
+    }
+}
+
+/// The shared body of a patch or a bus: named signals, then chains, with the
+/// names visible to the chains that follow them.
+fn build_container(
+    signals: &[musa_language::ast::SignalBinding],
+    chains: &[musa_language::ast::ChainStmt],
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Option<Patch> {
+    let mut patch = Patch::default();
+    let mut locals: IndexMap<String, NodeIndex> = IndexMap::new();
+    for binding in signals {
+        let Some(chain) = binding.chain() else { continue };
+        let name = binding.name().unwrap_or_default();
+        if let Some(node) = lower_chain_into(&chain, &mut patch, &locals, diagnostics) {
+            if let Some(entry) = patch.nodes_mut().get_mut(node) {
+                entry.label = Some(name.clone());
+            }
+            locals.insert(name, node);
+        }
+    }
+    for statement in chains {
+        let Some(chain) = statement.chain() else { continue };
+        lower_chain_into(&chain, &mut patch, &locals, diagnostics);
+    }
+    Some(patch)
+}
+
+/// A top-level signal chain, which has no enclosing patch's local names.
+fn lower_chain(chain: &SignalChain, patch: &mut Patch, diagnostics: &mut Vec<Diagnostic>) -> Option<NodeIndex> {
+    let locals = IndexMap::new();
+    let node = lower_chain_into(chain, patch, &locals, diagnostics)?;
+    patch.set_output(node);
+    Some(node)
+}
+
+/// Flatten `a |> b |> c` into nodes: each stage takes the previous stage's
+/// node as its input, and `output` marks rather than adds one.
+fn lower_chain_into(
+    chain: &SignalChain,
+    patch: &mut Patch,
+    locals: &IndexMap<String, NodeIndex>,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Option<NodeIndex> {
+    let mut previous: Option<NodeIndex> = None;
+    for stage in chain.stages() {
+        match &stage {
+            SignalStage::Name(name) => {
+                let text = name.text().unwrap_or_default();
+                if text == "output" {
+                    match previous {
+                        Some(node) => patch.set_output(node),
+                        None => diagnostics.push(Diagnostic::error(
+                            "`output` needs a signal before it",
+                            Some(span_of(stage.syntax())),
+                        )),
+                    }
+                    continue;
+                }
+                match locals.get(&text) {
+                    Some(node) => previous = Some(*node),
+                    None => {
+                        diagnostics.push(Diagnostic::error(
+                            format!("unknown signal `{text}`"),
+                            Some(span_of(stage.syntax())),
+                        ));
+                        return None;
+                    }
+                }
+            }
+            SignalStage::Call(call) => {
+                previous = Some(lower_call(call, previous, patch, locals, diagnostics)?);
+            }
+            SignalStage::Literal(_) => {
+                diagnostics.push(Diagnostic::error(
+                    "a number is not a signal",
+                    Some(span_of(stage.syntax())),
+                ));
+                return None;
+            }
+        }
+    }
+    previous
+}
+
+/// One `name(args)` construction, with its upstream stage already lowered.
+fn lower_call(
+    call: &CallExpr,
+    upstream: Option<NodeIndex>,
+    patch: &mut Patch,
+    locals: &IndexMap<String, NodeIndex>,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Option<NodeIndex> {
+    let span = Some(span_of(call.syntax()));
+    let written = call.callee().unwrap_or_default();
+    let Some(processor) = Processor::from_name(&written) else {
+        diagnostics.push(Diagnostic::error(format!("unknown processor `{written}`"), span));
+        return None;
+    };
+    if processor.is_placeholder() {
+        diagnostics.push(Diagnostic::warning(
+            format!("`{written}` has no DSP yet and renders as pass-through"),
+            span,
+        ));
+    }
+
+    let mut params: Vec<Value> = processor
+        .params()
+        .iter()
+        .map(|declared| Value {
+            magnitude: declared.default,
+            unit: declared.unit,
+        })
+        .collect();
+    let mut inputs: Vec<NodeIndex> = upstream.into_iter().collect();
+    let mut positional = 0usize;
+
+    for arg in call.args() {
+        match arg.value() {
+            // `envelope(adsr(...))`: the inner construction's arguments are
+            // the outer processor's, so it flattens rather than nesting. The
+            // shape exists for readability, not for a second node.
+            Some(SignalStage::Call(inner)) if is_argument_group(&inner) => {
+                for nested in inner.args() {
+                    bind_argument(&nested, processor, &mut params, &mut positional, diagnostics);
+                }
+            }
+            Some(SignalStage::Call(inner)) => {
+                if let Some(node) = lower_call(&inner, None, patch, locals, diagnostics) {
+                    inputs.push(node);
+                }
+            }
+            Some(SignalStage::Name(name)) => {
+                let text = name.text().unwrap_or_default();
+                match locals.get(&text) {
+                    Some(node) => inputs.push(*node),
+                    // A bare word that names no signal is a mode selector
+                    // (`oscillator(sine)`), which today has one legal value.
+                    None if text == "sine" => {}
+                    None => diagnostics.push(Diagnostic::error(
+                        format!("unknown signal `{text}`"),
+                        Some(span_of(name.syntax())),
+                    )),
+                }
+            }
+            Some(SignalStage::Literal(_)) | None => {
+                bind_argument(&arg, processor, &mut params, &mut positional, diagnostics);
+            }
+        }
+    }
+
+    Some(patch.push(StudioNode {
+        processor,
+        label: None,
+        params,
+        inputs,
+    }))
+}
+
+/// Whether a construction is an argument group (`adsr(...)`) rather than a
+/// processor. Argument groups exist to make a long parameter list readable.
+fn is_argument_group(call: &CallExpr) -> bool {
+    call.callee().as_deref() == Some("adsr")
+}
+
+/// Bind one written argument to a declared parameter, checking its unit.
+fn bind_argument(
+    arg: &Arg,
+    processor: Processor,
+    params: &mut [Value],
+    positional: &mut usize,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
+    let span = Some(span_of(arg.syntax()));
+    let index = match arg.name() {
+        Some(name) => {
+            let Some(found) = processor.params().iter().position(|param| param.name == name) else {
+                diagnostics.push(Diagnostic::error(
+                    format!("`{}` has no parameter `{name}`", processor.name()),
+                    span,
+                ));
+                return;
+            };
+            found
+        }
+        None => {
+            let index = *positional;
+            *positional = positional.saturating_add(1);
+            if index >= processor.params().len() {
+                diagnostics.push(Diagnostic::error(
+                    format!("`{}` takes no argument in that position", processor.name()),
+                    span,
+                ));
+                return;
+            }
+            index
+        }
+    };
+    let Some(declared) = processor.params().get(index).copied() else {
+        return;
+    };
+    let Some(SignalStage::Literal(literal)) = arg.value() else {
+        diagnostics.push(Diagnostic::error(format!("`{}` must be a number", declared.name), span));
+        return;
+    };
+    let Some(number) = literal.number() else { return };
+    let Some(value) = parse_value(&number, literal.unit().as_deref()) else {
+        diagnostics.push(Diagnostic::error(format!("`{number}` is not a number"), span));
+        return;
+    };
+    if value.unit != declared.unit {
+        // §7.2: units are syntax, so a missing one is a diagnostic and not a
+        // guess. The message names the unit the parameter is declared in.
+        let message = match declared.unit.spelling() {
+            Some(expected) => format!("`{}` is written in `{expected}`", declared.name),
+            None => format!("`{}` is a plain ratio, written without a unit", declared.name),
+        };
+        diagnostics.push(Diagnostic::error(message, span));
+        return;
+    }
+    if let Some(slot) = params.get_mut(index) {
+        *slot = value;
+    }
+}

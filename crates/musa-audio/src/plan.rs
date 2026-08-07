@@ -75,6 +75,8 @@ enum ProcessorInstance {
     Noise { state: u32 },
     Constant { value: f32 },
     Gain { gain: f32 },
+    StereoGain { gain: f32 },
+    Passthrough,
     Pan { pan: f32 },
     Mixer,
     Splitter,
@@ -116,6 +118,8 @@ impl ProcessorInstance {
             },
             ProcessorSpec::Constant => Self::Constant { value: param("value") },
             ProcessorSpec::Gain => Self::Gain { gain: param("gain") },
+            ProcessorSpec::StereoGain => Self::StereoGain { gain: param("gain") },
+            ProcessorSpec::Passthrough { .. } => Self::Passthrough,
             ProcessorSpec::Pan => Self::Pan { pan: param("pan") },
             ProcessorSpec::Mixer { .. } => Self::Mixer,
             ProcessorSpec::PolySine { voices } => Self::PolySine {
@@ -476,6 +480,31 @@ fn process(
                     if let Some(slot) = out.get_mut(i) {
                         *slot = input(0, i) * *gain;
                     }
+                }
+            }
+        }
+        ProcessorInstance::StereoGain { gain } => {
+            if let Some(out) = outputs.first_mut() {
+                for i in 0..count {
+                    let right = block.saturating_add(i);
+                    if let Some(slot) = out.get_mut(i) {
+                        *slot = input(0, i) * *gain;
+                    }
+                    if let Some(slot) = out.get_mut(right) {
+                        *slot = channel(0).and_then(|buffer| buffer.get(right)).copied().unwrap_or(0.0) * *gain;
+                    }
+                }
+            }
+        }
+        ProcessorInstance::Passthrough => {
+            // Every channel copied, so a stage whose DSP does not exist yet
+            // is silent about itself rather than silent full stop.
+            if let Some(out) = outputs.first_mut()
+                && let Some(buffer) = channel(0)
+            {
+                let width = out.len().min(buffer.len());
+                if let (Some(target), Some(source)) = (out.get_mut(..width), buffer.get(..width)) {
+                    target.copy_from_slice(source);
                 }
             }
         }

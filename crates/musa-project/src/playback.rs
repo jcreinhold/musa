@@ -5,13 +5,12 @@
 //! single preparation; [`prepare`] hands it to the engine and [`to_wav`]
 //! runs it offline.
 
-use musa_compiler::{PerformanceEvent, PerformanceOptions, PerformancePlan, ScoreSnapshot, lower_performance};
+use musa_compiler::{
+    PerformanceEvent, PerformanceOptions, PerformancePlan, ScoreSnapshot, StudioSpec, lower_performance,
+};
 use musa_engine::PreparedPlaybackPlan;
 
 use crate::error::ProjectError;
-
-/// Voices the default instrument graph can sound at once.
-const POLYPHONY: u8 = 16;
 
 /// Audio block size for the studio graph.
 const BLOCK_SIZE: usize = 128;
@@ -23,16 +22,21 @@ pub(crate) fn sample_rate() -> u32 {
 }
 
 /// Performance lowering → default instrument graph → frame-sorted events.
-fn build(score: &ScoreSnapshot) -> Result<(musa_audio::RenderPlan, Vec<PerformanceEvent>, u64), ProjectError> {
+fn build(
+    score: &ScoreSnapshot,
+    studio: &StudioSpec,
+) -> Result<(musa_audio::RenderPlan, Vec<PerformanceEvent>, u64), ProjectError> {
     let performance = lower_performance(score, &PerformanceOptions::default())
         .map_err(|e| ProjectError::Performance(e.to_string()))?;
     let sample_rate = sample_rate();
     let events = collect_events(&performance);
-    let spec = musa_audio::poly_sine_spec(POLYPHONY);
     let options = musa_audio::GraphOptions {
         sample_rate,
         block_size: BLOCK_SIZE,
     };
+    // An empty studio lowers to the default instrument, so this one call
+    // covers both the zero-setup piece and the fully patched one (§14.8).
+    let (spec, _) = musa_audio::lower_studio(studio, &options);
     let plan = musa_audio::compile_graph(&spec, &options).map_err(|e| ProjectError::Performance(e.to_string()))?;
     let tail = u64::from(sample_rate); // 1 s release tail until envelopes exist
     let frames = events
@@ -48,8 +52,8 @@ fn build(score: &ScoreSnapshot) -> Result<(musa_audio::RenderPlan, Vec<Performan
 ///
 /// # Errors
 /// [`ProjectError::Performance`] if lowering or graph compilation fails.
-pub(crate) fn prepare(score: &ScoreSnapshot) -> Result<PreparedPlaybackPlan, ProjectError> {
-    let (plan, events, frames) = build(score)?;
+pub(crate) fn prepare(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<PreparedPlaybackPlan, ProjectError> {
+    let (plan, events, frames) = build(score, studio)?;
     Ok(PreparedPlaybackPlan::new(plan, events, frames))
 }
 
@@ -58,8 +62,8 @@ pub(crate) fn prepare(score: &ScoreSnapshot) -> Result<PreparedPlaybackPlan, Pro
 /// # Errors
 /// [`ProjectError::Performance`] if lowering, graph compilation, or WAV
 /// encoding fails.
-pub(crate) fn to_wav(score: &ScoreSnapshot) -> Result<Vec<u8>, ProjectError> {
-    let (mut plan, events, frames) = build(score)?;
+pub(crate) fn to_wav(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<Vec<u8>, ProjectError> {
+    let (mut plan, events, frames) = build(score, studio)?;
     let audio = musa_audio::render_offline(&mut plan, &events, frames);
     wav_bytes(&audio)
 }
