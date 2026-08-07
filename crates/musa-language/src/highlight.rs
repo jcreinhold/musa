@@ -36,6 +36,9 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("rest", SyntaxKind::RestKw),
     ("chord", SyntaxKind::ChordKw),
     ("repeat", SyntaxKind::RepeatKw),
+    ("slur", SyntaxKind::SlurKw),
+    ("dynamic", SyntaxKind::DynamicKw),
+    ("tuplet", SyntaxKind::TupletKw),
     ("performance", SyntaxKind::PerformanceKw),
     ("profile", SyntaxKind::ProfileKw),
     ("articulation", SyntaxKind::ArticulationKw),
@@ -68,6 +71,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("|>", SyntaxKind::PipeForward),
     ("=", SyntaxKind::Equals),
     ("-", SyntaxKind::Minus),
+    ("~", SyntaxKind::Tilde),
 ];
 
 /// What a token is, for setting purposes.
@@ -154,7 +158,8 @@ impl TokenClass {
             | SyntaxKind::Arrow
             | SyntaxKind::PipeForward
             | SyntaxKind::Equals
-            | SyntaxKind::Minus => Self::Punctuation,
+            | SyntaxKind::Minus
+            | SyntaxKind::Tilde => Self::Punctuation,
 
             SyntaxKind::UseKw => Self::Use,
 
@@ -173,6 +178,9 @@ impl TokenClass {
             | SyntaxKind::RestKw
             | SyntaxKind::ChordKw
             | SyntaxKind::RepeatKw
+            | SyntaxKind::SlurKw
+            | SyntaxKind::DynamicKw
+            | SyntaxKind::TupletKw
             | SyntaxKind::PerformanceKw
             | SyntaxKind::ProfileKw
             | SyntaxKind::ArticulationKw
@@ -206,6 +214,10 @@ impl TokenClass {
             | SyntaxKind::UseStmt
             | SyntaxKind::TransposeStmt
             | SyntaxKind::RepeatStmt
+            | SyntaxKind::SlurStmt
+            | SyntaxKind::DynamicStmt
+            | SyntaxKind::TupletStmt
+            | SyntaxKind::ArticulationList
             | SyntaxKind::Block => return None,
         };
         Some(class)

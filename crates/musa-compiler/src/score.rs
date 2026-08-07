@@ -56,9 +56,57 @@ pub struct ScoreEvent {
 pub struct NotatedDuration {
     /// Exact temporal value in whole notes.
     pub value: MusicalDuration,
-    /// The written form (`1/2`, `3/8`, `1`). Later prompts give this
-    /// structured spellings (dots, ties); the source text is preserved now.
+    /// The written form as the composer typed it (`1/2`, `3/8`, `1/4 ~ 1/8`).
     pub spelling: String,
+    /// The written pieces this duration is spelled with, in order, joined by
+    /// ties. Non-empty, and they sum to `value` exactly.
+    ///
+    /// A single written value is the common case. An explicit tie
+    /// (`c4 1/4 ~;` then `c4 1/8;`) makes one event with two pieces: the
+    /// composer asked for two noteheads, and a renderer that re-derived the
+    /// spelling from `value` would print the dotted quarter they did not
+    /// write.
+    ///
+    /// These are *sounding* values. Inside a tuplet a written eighth sounds
+    /// `1/12` and is stored as `1/12`; the tuplet annotation carries the
+    /// ratio that turns it back into the eighth-note symbol.
+    pub pieces: Vec<MusicalDuration>,
+}
+
+impl NotatedDuration {
+    /// A duration spelled with one written value.
+    pub fn single(value: MusicalDuration, spelling: impl Into<String>) -> Self {
+        Self {
+            value,
+            spelling: spelling.into(),
+            pieces: vec![value],
+        }
+    }
+
+    /// The same duration sounding `factor` times as long — how a tuplet
+    /// scales the values written inside it.
+    pub(crate) fn scaled(&self, factor: Ratio<i64>) -> Self {
+        Self {
+            value: MusicalDuration::new(self.value.as_ratio() * factor),
+            spelling: self.spelling.clone(),
+            pieces: self
+                .pieces
+                .iter()
+                .map(|piece| MusicalDuration::new(piece.as_ratio() * factor))
+                .collect(),
+        }
+    }
+
+    /// This duration tied to `next`: one sounding event, two written pieces.
+    pub(crate) fn tied_to(&self, next: &Self) -> Self {
+        let mut pieces = self.pieces.clone();
+        pieces.extend(next.pieces.iter().copied());
+        Self {
+            value: self.value + next.value,
+            spelling: format!("{} ~ {}", self.spelling, next.spelling),
+            pieces,
+        }
+    }
 }
 
 /// A voice lane: identified, sequential, sorted by onset (roadmap §5.3:
@@ -221,11 +269,212 @@ pub struct KeyMap {
     pub mode: Mode,
 }
 
-/// Score-level annotations (slurs, dynamics, phrases, harmony). Empty until
-/// prompts 17 and 25; the store exists so the snapshot shape is stable.
+/// A dynamic marking as written (roadmap §2: a marking is not a decibel
+/// value — what it does to a note is prompt 28's business, not this one's).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum DynamicMark {
+    /// `ppp`
+    Ppp,
+    /// `pp`
+    Pp,
+    /// `p`
+    P,
+    /// `mp`
+    Mp,
+    /// `mf`
+    Mf,
+    /// `f`
+    F,
+    /// `ff`
+    Ff,
+    /// `fff`
+    Fff,
+    /// `sf`
+    Sf,
+    /// `sfz`
+    Sfz,
+    /// `fp`
+    Fp,
+}
+
+impl DynamicMark {
+    /// Read a marking as the language spells it.
+    pub fn parse(text: &str) -> Option<Self> {
+        let mark = match text {
+            "ppp" => Self::Ppp,
+            "pp" => Self::Pp,
+            "p" => Self::P,
+            "mp" => Self::Mp,
+            "mf" => Self::Mf,
+            "f" => Self::F,
+            "ff" => Self::Ff,
+            "fff" => Self::Fff,
+            "sf" => Self::Sf,
+            "sfz" => Self::Sfz,
+            "fp" => Self::Fp,
+            _ => return None,
+        };
+        Some(mark)
+    }
+
+    /// The marking's name, spelled as it is written and printed.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Ppp => "ppp",
+            Self::Pp => "pp",
+            Self::P => "p",
+            Self::Mp => "mp",
+            Self::Mf => "mf",
+            Self::F => "f",
+            Self::Ff => "ff",
+            Self::Fff => "fff",
+            Self::Sf => "sf",
+            Self::Sfz => "sfz",
+            Self::Fp => "fp",
+        }
+    }
+}
+
+/// An articulation as written (roadmap §2: not a gate multiplier).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum ArticulationMark {
+    /// `staccato`
+    Staccato,
+    /// `staccatissimo`
+    Staccatissimo,
+    /// `tenuto`
+    Tenuto,
+    /// `accent`
+    Accent,
+    /// `marcato`
+    Marcato,
+}
+
+impl ArticulationMark {
+    /// Read an articulation as the language spells it.
+    pub fn parse(text: &str) -> Option<Self> {
+        let mark = match text {
+            "staccato" => Self::Staccato,
+            "staccatissimo" => Self::Staccatissimo,
+            "tenuto" => Self::Tenuto,
+            "accent" => Self::Accent,
+            "marcato" => Self::Marcato,
+            _ => return None,
+        };
+        Some(mark)
+    }
+
+    /// The articulation's name, spelled as it is written.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Staccato => "staccato",
+            Self::Staccatissimo => "staccatissimo",
+            Self::Tenuto => "tenuto",
+            Self::Accent => "accent",
+            Self::Marcato => "marcato",
+        }
+    }
+}
+
+/// A slur over a run of events in one voice, inclusive of both ends.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SlurSpan {
+    /// The first slurred event.
+    pub from: EventId,
+    /// The last slurred event.
+    pub to: EventId,
+    /// Why this slur exists.
+    pub origin: Origin,
+}
+
+/// A tuplet over a run of events in one voice, inclusive of both ends:
+/// `num` written values sounding in the time of `den` of them.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TupletSpan {
+    /// The first event in the group.
+    pub from: EventId,
+    /// The last event in the group.
+    pub to: EventId,
+    /// How many written values the group holds.
+    pub num: u32,
+    /// How many of those values the group actually lasts.
+    pub den: u32,
+    /// Why this tuplet exists.
+    pub origin: Origin,
+}
+
+/// A dynamic marking anchored to the event it applies from.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DynamicMarking {
+    /// The event the marking is written at.
+    pub at: EventId,
+    /// The marking.
+    pub mark: DynamicMark,
+    /// Why this marking exists.
+    pub origin: Origin,
+}
+
+/// An articulation on one event.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArticulationMarking {
+    /// The event the articulation belongs to.
+    pub at: EventId,
+    /// The articulation.
+    pub mark: ArticulationMark,
+    /// Why this articulation exists.
+    pub origin: Origin,
+}
+
+/// Score-level annotations (roadmap §6.3): symbols that are *about* events
+/// rather than events themselves, each carrying its own provenance.
+///
+/// Anchored by [`EventId`] rather than by time: an annotation belongs to the
+/// notes it was written on, and it must survive those notes being re-spelled
+/// or re-barred.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AnnotationStore {
-    // Prompt 17: slur/dynamic/articulation spans; prompt 25: phrase/harmony.
+    slurs: Vec<SlurSpan>,
+    tuplets: Vec<TupletSpan>,
+    dynamics: Vec<DynamicMarking>,
+    articulations: Vec<ArticulationMarking>,
+}
+
+impl AnnotationStore {
+    /// Slurs, in source order.
+    pub fn slurs(&self) -> &[SlurSpan] {
+        &self.slurs
+    }
+
+    /// Tuplet groups, in source order.
+    pub fn tuplets(&self) -> &[TupletSpan] {
+        &self.tuplets
+    }
+
+    /// Dynamic markings, in source order.
+    pub fn dynamics(&self) -> &[DynamicMarking] {
+        &self.dynamics
+    }
+
+    /// Articulations, in source order.
+    pub fn articulations(&self) -> &[ArticulationMarking] {
+        &self.articulations
+    }
+
+    pub(crate) fn push_slur(&mut self, slur: SlurSpan) {
+        self.slurs.push(slur);
+    }
+
+    pub(crate) fn push_tuplet(&mut self, tuplet: TupletSpan) {
+        self.tuplets.push(tuplet);
+    }
+
+    pub(crate) fn push_dynamic(&mut self, dynamic: DynamicMarking) {
+        self.dynamics.push(dynamic);
+    }
+
+    pub(crate) fn push_articulation(&mut self, articulation: ArticulationMarking) {
+        self.articulations.push(articulation);
+    }
 }
 
 /// A motif declaration, kept so a consumer can point at where a motif is

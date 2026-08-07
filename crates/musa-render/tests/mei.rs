@@ -9,12 +9,13 @@
 use musa_compiler::{CompileOptions, EventId, ScoreSnapshot, SourceDocument, compile};
 use musa_render::{NotationOptions, NotationTarget, render_notation};
 
-const EXAMPLES: [(&str, &str); 5] = [
+const EXAMPLES: [(&str, &str); 6] = [
     ("glass_mountain", include_str!("../../../examples/glass-mountain.musa")),
     ("invention", include_str!("../../../examples/invention.musa")),
     ("counterpoint", include_str!("../../../examples/counterpoint.musa")),
     ("twinkle", include_str!("../../../examples/twinkle.musa")),
     ("canon", include_str!("../../../examples/canon.musa")),
+    ("tuplet_fixture", include_str!("../../../examples/tuplet-fixture.musa")),
 ];
 
 fn score_of(text: &str) -> ScoreSnapshot {

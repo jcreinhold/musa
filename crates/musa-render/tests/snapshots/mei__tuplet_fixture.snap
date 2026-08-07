@@ -1,0 +1,97 @@
+---
+source: crates/musa-render/tests/mei.rs
+expression: mei_of(source)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.0">
+  <music>
+    <body>
+      <mdiv>
+        <score>
+          <scoreDef meter.count="4" meter.unit="4" key.sig="0" key.mode="major">
+            <staffGrp>
+              <staffDef n="1" lines="5" clef.shape="G" clef.line="2"/>
+              <staffDef n="2" lines="5" clef.shape="F" clef.line="4"/>
+            </staffGrp>
+          </scoreDef>
+          <section>
+            <measure n="1">
+              <staff n="1">
+                <layer xml:id="layer-1-1" n="1">
+                  <tuplet num="3" numbase="2">
+                    <beam>
+                      <note xml:id="event-0" dur="8" oct="5" pname="c"/>
+                      <note xml:id="event-1" dur="8" oct="5" pname="d"/>
+                      <note xml:id="event-2" dur="8" oct="5" pname="e"/>
+                    </beam>
+                  </tuplet>
+                  <beam>
+                    <note xml:id="event-3" dur="8" oct="5" pname="f"/>
+                    <note xml:id="event-4" dur="8" oct="5" pname="g"/>
+                  </beam>
+                  <note xml:id="event-5" dur="4" oct="5" pname="a">
+                    <artic artic="acc" place="above"/>
+                  </note>
+                  <note xml:id="event-6" dur="4" oct="5" pname="g" tie="i">
+                    <artic artic="stacc" place="above"/>
+                  </note>
+                </layer>
+              </staff>
+              <staff n="2">
+                <layer xml:id="layer-2-1" n="1">
+                  <chord xml:id="event-e" dur="2">
+                    <note oct="3" pname="c"/>
+                    <note oct="3" pname="g"/>
+                  </chord>
+                  <note xml:id="event-f" dur="4" oct="3" pname="e"/>
+                  <note xml:id="event-10" dur="4" oct="3" pname="g" tie="i"/>
+                </layer>
+              </staff>
+              <slur staff="1" startid="#event-3" endid="#event-4" curvedir="above"/>
+              <dynam staff="1" startid="#event-0" place="below">mf</dynam>
+              <dynam staff="2" startid="#event-e" place="below">p</dynam>
+            </measure>
+            <measure n="2">
+              <staff n="1">
+                <layer xml:id="layer-1-1" n="1">
+                  <note xml:id="event-6-t2" dur="4" oct="5" pname="g" tie="t"/>
+                  <beam>
+                    <note xml:id="event-7" dur="8" oct="4" pname="a">
+                      <artic artic="ten" place="above"/>
+                    </note>
+                    <note xml:id="event-8" dur="8" oct="5" pname="d"/>
+                  </beam>
+                  <tuplet num="3" numbase="2">
+                    <beam>
+                      <note xml:id="event-9" dur="8" oct="5" pname="c"/>
+                      <note xml:id="event-a" dur="8" oct="5" pname="d"/>
+                      <note xml:id="event-b" dur="8" oct="5" pname="e"/>
+                    </beam>
+                  </tuplet>
+                  <beam>
+                    <note xml:id="event-c" dur="8" oct="4" pname="b">
+                      <artic artic="marc" place="above"/>
+                    </note>
+                    <note xml:id="event-d" dur="8" oct="5" pname="c"/>
+                  </beam>
+                </layer>
+              </staff>
+              <staff n="2">
+                <layer xml:id="layer-2-1" n="1">
+                  <note xml:id="event-10-t2" dur="2" oct="3" pname="g" tie="t"/>
+                  <note xml:id="event-11" dur="4" oct="3" pname="a">
+                    <artic artic="ten" place="above"/>
+                  </note>
+                  <note xml:id="event-12" dur="4" oct="3" pname="g"/>
+                </layer>
+              </staff>
+              <slur staff="1" startid="#event-c" endid="#event-d" curvedir="above"/>
+              <dynam staff="1" startid="#event-7" place="below">p</dynam>
+              <slur staff="2" startid="#event-11" endid="#event-12" curvedir="above"/>
+            </measure>
+          </section>
+        </score>
+      </mdiv>
+    </body>
+  </music>
+</mei>

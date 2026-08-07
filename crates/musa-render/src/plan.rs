@@ -7,9 +7,11 @@
 //! `musa-compiler/src/time.rs` for the totality argument).
 #![allow(clippy::arithmetic_side_effects)]
 
+use std::collections::{HashMap, HashSet};
+
 use musa_compiler::{
-    Clef, EventId, KeyMap, MeterMap, Mode, MusicalDuration, MusicalTime, NotatedDuration, Part, ScoreEvent,
-    ScoreEventKind, ScoreSnapshot, Voice, VoiceId, WrittenPitch,
+    ArticulationMark, Clef, DynamicMark, EventId, KeyMap, MeterMap, Mode, MusicalDuration, MusicalTime,
+    NotatedDuration, Part, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice, VoiceId, WrittenPitch,
 };
 use num_rational::Ratio;
 
@@ -103,6 +105,21 @@ pub struct VoiceLane {
     voice: VoiceId,
     name: String,
     items: Vec<NotatedItem>,
+    slurs: Vec<SlurRange>,
+}
+
+/// A slur that begins in this lane's measure, by the events it joins.
+///
+/// The items carry the same fact as start/stop flags, which is what an
+/// inline syntax like `LilyPond`'s wants; a backend that anchors a slur by
+/// identity needs both ends at once, and the far end is often in a later
+/// measure.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SlurRange {
+    /// The first slurred event.
+    pub from: EventId,
+    /// The last slurred event.
+    pub to: EventId,
 }
 
 impl VoiceLane {
@@ -120,11 +137,65 @@ impl VoiceLane {
     pub fn items(&self) -> &[NotatedItem] {
         &self.items
     }
+
+    /// Slurs beginning in this measure, in onset order.
+    pub fn slurs(&self) -> &[SlurRange] {
+        &self.slurs
+    }
 }
 
 /// A beam group identifier within a lane's measure (the beat index).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct BeamGroup(pub u32);
+
+/// Which side of the staff a symbol is printed on.
+///
+/// The plan decides this so the backends cannot disagree about it: a slur
+/// that arched above in MEI and below in `LilyPond` would be two different
+/// engravings of one score.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Placement {
+    /// Above the staff.
+    Above,
+    /// Below the staff.
+    Below,
+}
+
+/// A tuplet bracket over a run of items: `num` written values in the time of
+/// `den` of them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TupletMark {
+    /// How many written values the group holds.
+    pub num: u32,
+    /// How many of those values it lasts.
+    pub den: u32,
+    /// The bracket opens at this item.
+    pub start: bool,
+    /// The bracket closes at this item.
+    pub stop: bool,
+}
+
+/// Where one item sits inside a spanning mark: the span may open here, close
+/// here, both (a one-item span), or neither.
+#[derive(Clone, Copy, Default)]
+struct Edges {
+    start: bool,
+    stop: bool,
+}
+
+/// One word per item in the plan snapshots, which are the review surface for
+/// this module: two nested `bool` fields per span would bury the change under
+/// the shape that carries it.
+impl std::fmt::Debug for Edges {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match (self.start, self.stop) {
+            (false, false) => "none",
+            (true, false) => "start",
+            (false, true) => "stop",
+            (true, true) => "start+stop",
+        })
+    }
+}
 
 /// One notated symbol: a note, rest, or chord with one spelled duration.
 /// Cross-measure events appear once per piece; all pieces of one event share
@@ -135,9 +206,12 @@ pub struct NotatedItem {
     kind: NotatedKind,
     onset_in_measure: MusicalDuration,
     duration: NotatedDuration,
-    tie_start: bool,
-    tie_stop: bool,
+    tie: Edges,
     beam: Option<BeamGroup>,
+    tuplet: Option<TupletMark>,
+    slur: Edges,
+    dynamic: Option<DynamicMark>,
+    articulations: Vec<ArticulationMark>,
 }
 
 impl NotatedItem {
@@ -163,19 +237,54 @@ impl NotatedItem {
 
     /// A tie starts here (the event continues in the next piece).
     pub fn tie_start(&self) -> bool {
-        self.tie_start
+        self.tie.start
     }
 
     /// A tie ends here (the event began in an earlier piece).
     pub fn tie_stop(&self) -> bool {
-        self.tie_stop
+        self.tie.stop
     }
 
     /// The beam group, when this item beams with its beat neighbors.
     pub fn beam(&self) -> Option<BeamGroup> {
         self.beam
     }
+
+    /// The tuplet bracket this item belongs to, if any.
+    pub fn tuplet(&self) -> Option<TupletMark> {
+        self.tuplet
+    }
+
+    /// A slur begins at this item.
+    pub fn slur_start(&self) -> bool {
+        self.slur.start
+    }
+
+    /// A slur ends at this item.
+    pub fn slur_stop(&self) -> bool {
+        self.slur.stop
+    }
+
+    /// The dynamic marking printed at this item, if any.
+    pub fn dynamic(&self) -> Option<DynamicMark> {
+        self.dynamic
+    }
+
+    /// Articulations printed on this item, in written order.
+    pub fn articulations(&self) -> &[ArticulationMark] {
+        &self.articulations
+    }
 }
+
+/// Where slurs are printed. One rule, because the plan has no stem
+/// directions to reason from and a convention beats an inconsistency.
+pub const SLUR_PLACEMENT: Placement = Placement::Above;
+
+/// Where articulations are printed.
+pub const ARTICULATION_PLACEMENT: Placement = Placement::Above;
+
+/// Where dynamic markings are printed.
+pub const DYNAMIC_PLACEMENT: Placement = Placement::Below;
 
 /// The content of a notated item.
 #[derive(Clone, Debug)]
@@ -202,11 +311,68 @@ pub enum NotatedKind {
 pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Result<NotationPlan, crate::NotationError> {
     let measure_len = score.meter_map.measure_len().as_ratio();
     let key = score.key_map.map(key_signature);
+    let marks = Marks::collect(score);
     let mut staves = Vec::new();
     for (_, part) in score.parts.iter() {
-        staves.push(plan_staff(part, score.meter_map, measure_len, key)?);
+        staves.push(plan_staff(part, score.meter_map, measure_len, key, &marks)?);
     }
     Ok(NotationPlan { staves })
+}
+
+/// The annotation store, indexed the way planning reads it: by the event a
+/// symbol belongs to.
+#[derive(Default)]
+struct Marks {
+    tuplets: HashMap<EventId, TupletMark>,
+    slur_ends: HashMap<EventId, EventId>,
+    slur_stops: HashSet<EventId>,
+    dynamics: HashMap<EventId, DynamicMark>,
+    articulations: HashMap<EventId, Vec<ArticulationMark>>,
+}
+
+impl Marks {
+    fn collect(score: &ScoreSnapshot) -> Self {
+        let annotations = &score.annotations;
+        let mut marks = Self::default();
+        for slur in annotations.slurs() {
+            marks.slur_ends.insert(slur.from, slur.to);
+            marks.slur_stops.insert(slur.to);
+        }
+        for dynamic in annotations.dynamics() {
+            marks.dynamics.insert(dynamic.at, dynamic.mark);
+        }
+        for articulation in annotations.articulations() {
+            marks
+                .articulations
+                .entry(articulation.at)
+                .or_default()
+                .push(articulation.mark);
+        }
+        // Event ids run consecutively within a voice, so a group's members
+        // are exactly the ids between its ends (musa-compiler's `identify`).
+        for tuplet in annotations.tuplets() {
+            for raw in tuplet.from.0..=tuplet.to.0 {
+                marks.tuplets.insert(
+                    EventId(raw),
+                    TupletMark {
+                        num: tuplet.num,
+                        den: tuplet.den,
+                        start: raw == tuplet.from.0,
+                        stop: raw == tuplet.to.0,
+                    },
+                );
+            }
+        }
+        marks
+    }
+
+    /// What a tuplet does to a written value: a `3/2` triplet eighth sounds
+    /// `1/12` and is printed as the `1/8` it was written as.
+    fn symbol_scale(&self, event: EventId) -> Ratio<i64> {
+        self.tuplets.get(&event).map_or(Ratio::ONE, |tuplet| {
+            Ratio::new(i64::from(tuplet.num), i64::from(tuplet.den))
+        })
+    }
 }
 
 fn key_signature(key: KeyMap) -> KeySignature {
@@ -233,6 +399,7 @@ fn plan_staff(
     meter: MeterMap,
     measure_len: Ratio<i64>,
     key: Option<KeySignature>,
+    marks: &Marks,
 ) -> Result<StaffPlan, crate::NotationError> {
     let span = part.voices.values().map(Voice::span).max().unwrap_or_default();
     let measure_count = if measure_len == Ratio::ZERO {
@@ -254,11 +421,12 @@ fn plan_staff(
         let mut lanes = Vec::new();
         for (voice_id, voice) in &part.voices {
             let name = part.voice_names.get(voice_id).cloned().unwrap_or_default();
-            let items = plan_lane(voice, meter, measure_len, start, end)?;
+            let lane = plan_lane(voice, meter, measure_len, start, end, marks)?;
             lanes.push(VoiceLane {
                 voice: *voice_id,
                 name,
-                items,
+                items: lane.items,
+                slurs: lane.slurs,
             });
         }
         measures.push(MeasurePlan {
@@ -292,39 +460,103 @@ fn plan_lane(
     measure_len: Ratio<i64>,
     start: MusicalTime,
     end: MusicalTime,
-) -> Result<Vec<NotatedItem>, crate::NotationError> {
+    marks: &Marks,
+) -> Result<Lane, crate::NotationError> {
     let mut items = Vec::new();
     for event in &voice.events {
         let event_end = event.onset + event.notated_duration.value;
         if event_end <= start || event.onset >= end {
             continue;
         }
-        let piece_start = event.onset.max(start);
-        let piece_end = event_end.min(end);
-        let piece_len = MusicalDuration::new(piece_end.as_ratio() - piece_start.as_ratio());
-        let onset_in_measure = MusicalDuration::new(piece_start.as_ratio() - start.as_ratio());
-        let pieces = decompose(event, piece_len)?;
+        let scale = marks.symbol_scale(event.id);
+        // The noteheads this event needs here: the pieces the composer wrote,
+        // each clipped to this measure and then split into standard values.
+        let mut pieces: Vec<(MusicalTime, NotatedDuration)> = Vec::new();
+        let mut cursor = event.onset;
+        for written in &event.notated_duration.pieces {
+            let piece_start = cursor;
+            let piece_end = cursor + *written;
+            cursor = piece_end;
+            if piece_end <= start || piece_start >= end {
+                continue;
+            }
+            let clipped_start = piece_start.max(start);
+            let clipped_end = piece_end.min(end);
+            let sounding = MusicalDuration::new(clipped_end.as_ratio() - clipped_start.as_ratio());
+            let symbol = MusicalDuration::new(sounding.as_ratio() * scale);
+            let mut at = clipped_start;
+            for value in decompose(event, symbol)? {
+                let sounds = MusicalDuration::new(value.value.as_ratio() / scale);
+                pieces.push((at, value));
+                at = at + sounds;
+            }
+        }
         let piece_count = pieces.len();
         let continues_after = event_end > end;
         let started_before = event.onset < start;
-        for (piece_index, piece) in pieces.into_iter().enumerate() {
+        let tuplet = marks.tuplets.get(&event.id).copied();
+        for (piece_index, (at, piece)) in pieces.into_iter().enumerate() {
             let is_first = piece_index == 0 && !started_before;
             let is_last = piece_index + 1 == piece_count && !continues_after;
             let tied = !matches!(event.kind, ScoreEventKind::Rest);
-            let (tie_start, tie_stop) = if tied { (!is_last, !is_first) } else { (false, false) };
+            let tie = if tied {
+                Edges {
+                    start: !is_last,
+                    stop: !is_first,
+                }
+            } else {
+                Edges::default()
+            };
+            // A symbol that spells one event only once carries what was
+            // written on that event: an accent on the first notehead of a
+            // tied pair, not on both.
             items.push(NotatedItem {
                 event: event.id,
                 kind: kind_of(event),
-                onset_in_measure,
+                onset_in_measure: MusicalDuration::new(at.as_ratio() - start.as_ratio()),
                 duration: piece,
-                tie_start,
-                tie_stop,
+                tie,
                 beam: None,
+                tuplet: tuplet.map(|tuplet| TupletMark {
+                    start: tuplet.start && is_first,
+                    stop: tuplet.stop && is_last,
+                    ..tuplet
+                }),
+                slur: Edges {
+                    start: is_first && marks.slur_ends.contains_key(&event.id),
+                    stop: is_last && marks.slur_stops.contains(&event.id),
+                },
+                dynamic: if is_first {
+                    marks.dynamics.get(&event.id).copied()
+                } else {
+                    None
+                },
+                articulations: if is_first {
+                    marks.articulations.get(&event.id).cloned().unwrap_or_default()
+                } else {
+                    Vec::new()
+                },
             });
         }
     }
     assign_beams(&mut items, meter, measure_len);
-    Ok(items)
+    let slurs = items
+        .iter()
+        .filter(|item| item.slur.start)
+        .filter_map(|item| {
+            marks.slur_ends.get(&item.event).map(|to| SlurRange {
+                from: item.event,
+                to: *to,
+            })
+        })
+        .collect();
+    Ok(Lane { items, slurs })
+}
+
+/// One lane's plan for one measure, before it is named.
+struct Lane {
+    items: Vec<NotatedItem>,
+    slurs: Vec<SlurRange>,
 }
 
 fn kind_of(event: &ScoreEvent) -> NotatedKind {
@@ -342,13 +574,20 @@ fn assign_beams(items: &mut [NotatedItem], meter: MeterMap, measure_len: Ratio<i
     let unit = beam_unit(meter);
     let eighth = Ratio::new(1, 8);
     for item in items.iter_mut() {
-        let short = item.duration.value.as_ratio() <= eighth;
+        // Whether a symbol beams is a question about the symbol: a triplet
+        // eighth beams because it is written as an eighth. Where it *ends*
+        // is a question about time, and inside a tuplet the two differ.
+        let symbol = item.duration.value.as_ratio();
+        let short = symbol <= eighth;
         let pitched = !matches!(item.kind, NotatedKind::Rest);
         if !short || !pitched {
             continue;
         }
+        let sounding = item.tuplet.map_or(symbol, |tuplet| {
+            symbol * Ratio::new(i64::from(tuplet.den), i64::from(tuplet.num))
+        });
         let onset = item.onset_in_measure.as_ratio();
-        let item_end = onset + item.duration.value.as_ratio();
+        let item_end = onset + sounding;
         if item_end > measure_len {
             continue;
         }
@@ -377,10 +616,10 @@ fn decompose(event: &ScoreEvent, duration: MusicalDuration) -> Result<Vec<Notate
     let mut pieces = Vec::new();
     while remaining > Ratio::ZERO {
         let piece = largest_value(remaining);
-        pieces.push(NotatedDuration {
-            value: MusicalDuration::new(piece),
-            spelling: event.notated_duration.spelling.clone(),
-        });
+        pieces.push(NotatedDuration::single(
+            MusicalDuration::new(piece),
+            event.notated_duration.spelling.clone(),
+        ));
         remaining -= piece;
     }
     Ok(pieces)

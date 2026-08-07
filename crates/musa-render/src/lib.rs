@@ -23,7 +23,8 @@ mod render;
 
 pub use crate::error::{NotationError, RenderError};
 pub use crate::plan::{
-    BeamGroup, KeySignature, MeasurePlan, NotatedItem, NotatedKind, NotationOptions, NotationPlan, StaffPlan,
-    VoiceLane, plan_notation,
+    ARTICULATION_PLACEMENT, BeamGroup, DYNAMIC_PLACEMENT, KeySignature, MeasurePlan, NotatedItem, NotatedKind,
+    NotationOptions, NotationPlan, Placement, SLUR_PLACEMENT, SlurRange, StaffPlan, TupletMark, VoiceLane,
+    plan_notation,
 };
 pub use crate::render::{NotationTarget, RenderedNotation, render_notation};

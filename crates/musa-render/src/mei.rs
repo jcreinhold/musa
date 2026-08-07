@@ -19,7 +19,10 @@ use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
 use crate::RenderError;
-use crate::plan::{NotatedItem, NotatedKind, NotationPlan, StaffPlan, VoiceLane};
+use crate::plan::{
+    ARTICULATION_PLACEMENT, DYNAMIC_PLACEMENT, NotatedItem, NotatedKind, NotationPlan, Placement, SLUR_PLACEMENT,
+    StaffPlan, VoiceLane,
+};
 
 /// An element builder with an independent lifetime so locally-computed
 /// attribute values can be borrowed for the duration of one write.
@@ -170,7 +173,62 @@ fn write_measure(
         }
         end(writer, "staff")?;
     }
+    // Control events are measure children in MEI, not layer children: they
+    // point at the notes they belong to rather than sitting among them.
+    for (staff_index, staff) in plan.staves().iter().enumerate() {
+        let Some(measure_plan) = staff.measures().get(index) else {
+            continue;
+        };
+        let staff_n = staff_index.saturating_add(1).to_string();
+        for lane in measure_plan.lanes() {
+            write_control_events(writer, &staff_n, lane)?;
+        }
+    }
     end(writer, "measure")
+}
+
+/// The side of the staff a symbol takes, as MEI spells it.
+fn place(placement: Placement) -> &'static str {
+    match placement {
+        Placement::Above => "above",
+        Placement::Below => "below",
+    }
+}
+
+/// `<slur>` and `<dynam>` for one lane, anchored by `startid`/`endid`.
+///
+/// A slur is written in the measure it starts in; its `endid` may point into
+/// a later measure, which is what those attributes are for.
+fn write_control_events(writer: &mut Writer<Vec<u8>>, staff: &str, lane: &VoiceLane) -> Result<(), RenderError> {
+    for slur in lane.slurs() {
+        let start_ref = format!("#event-{:x}", slur.from.0);
+        let end_ref = format!("#event-{:x}", slur.to.0);
+        let mut element = element("slur");
+        element.push_attribute(("staff", staff));
+        element.push_attribute(("startid", start_ref.as_str()));
+        element.push_attribute(("endid", end_ref.as_str()));
+        element.push_attribute(("curvedir", place(SLUR_PLACEMENT)));
+        writer
+            .write_event(Event::Empty(element))
+            .map_err(|error| RenderError::xml(&error))?;
+    }
+    for item in lane.items() {
+        if let Some(mark) = item.dynamic() {
+            let start_ref = format!("#event-{:x}", item.event().0);
+            let mut dynam = element("dynam");
+            dynam.push_attribute(("staff", staff));
+            dynam.push_attribute(("startid", start_ref.as_str()));
+            dynam.push_attribute(("place", place(DYNAMIC_PLACEMENT)));
+            writer
+                .write_event(Event::Start(dynam))
+                .map_err(|error| RenderError::xml(&error))?;
+            writer
+                .write_event(Event::Text(quick_xml::events::BytesText::new(mark.name())))
+                .map_err(|error| RenderError::xml(&error))?;
+            end(writer, "dynam")?;
+        }
+    }
+    Ok(())
 }
 
 fn write_layer(
@@ -202,6 +260,18 @@ fn write_layer(
                 .checked_sub(1)
                 .is_none_or(|before| items.get(before).and_then(NotatedItem::beam) != beam);
         let closes_beam = beam.is_some() && items.get(index.saturating_add(1)).and_then(NotatedItem::beam) != beam;
+        // A tuplet contains its beams, not the other way round: the bracket
+        // is about how long the notes are, the beam about how they group.
+        if let Some(tuplet) = item.tuplet().filter(|tuplet| tuplet.start) {
+            let num = tuplet.num.to_string();
+            let numbase = tuplet.den.to_string();
+            let mut element = element("tuplet");
+            element.push_attribute(("num", num.as_str()));
+            element.push_attribute(("numbase", numbase.as_str()));
+            writer
+                .write_event(Event::Start(element))
+                .map_err(|error| RenderError::xml(&error))?;
+        }
         if opens_beam {
             start(writer, "beam")?;
         }
@@ -209,8 +279,35 @@ fn write_layer(
         if closes_beam {
             end(writer, "beam")?;
         }
+        if item.tuplet().is_some_and(|tuplet| tuplet.stop) {
+            end(writer, "tuplet")?;
+        }
     }
     end(writer, "layer")
+}
+
+/// MEI's `@artic` value for one articulation.
+fn artic_value(mark: musa_compiler::ArticulationMark) -> &'static str {
+    match mark {
+        musa_compiler::ArticulationMark::Staccato => "stacc",
+        musa_compiler::ArticulationMark::Staccatissimo => "stacciss",
+        musa_compiler::ArticulationMark::Tenuto => "ten",
+        musa_compiler::ArticulationMark::Accent => "acc",
+        musa_compiler::ArticulationMark::Marcato => "marc",
+    }
+}
+
+/// `<artic>` children for an item, when it carries any.
+fn write_artics(writer: &mut Writer<Vec<u8>>, item: &NotatedItem) -> Result<(), RenderError> {
+    for mark in item.articulations() {
+        let mut artic = element("artic");
+        artic.push_attribute(("artic", artic_value(*mark)));
+        artic.push_attribute(("place", place(ARTICULATION_PLACEMENT)));
+        writer
+            .write_event(Event::Empty(artic))
+            .map_err(|error| RenderError::xml(&error))?;
+    }
+    Ok(())
 }
 
 /// The `xml:id` for one item: base `event-<hex>`, later tie pieces suffixed
@@ -305,9 +402,17 @@ fn write_item(
             if let Some(tie) = tie_attr(item) {
                 note.push_attribute(("tie", tie));
             }
-            writer
-                .write_event(Event::Empty(note))
-                .map_err(|error| RenderError::xml(&error))?;
+            if item.articulations().is_empty() {
+                writer
+                    .write_event(Event::Empty(note))
+                    .map_err(|error| RenderError::xml(&error))?;
+            } else {
+                writer
+                    .write_event(Event::Start(note))
+                    .map_err(|error| RenderError::xml(&error))?;
+                write_artics(writer, item)?;
+                end(writer, "note")?;
+            }
         }
         NotatedKind::Chord { pitches } => {
             let mut chord = element("chord");
@@ -322,6 +427,7 @@ fn write_item(
             writer
                 .write_event(Event::Start(chord))
                 .map_err(|error| RenderError::xml(&error))?;
+            write_artics(writer, item)?;
             for pitch in pitches {
                 let mut tone = element("note");
                 push_note_pitch(&mut tone, *pitch, &pitch.octave.to_string());

@@ -53,6 +53,11 @@ Decisions recorded against course correction §32:
 | `use motif(args);` | Binding + reference at the HIR level: the motif body elaborates with bound arguments; each resulting occurrence's `Origin` gains the `MotifApplication` step. Not a kernel concept. |
 | `repeat n { … }` | HIR-level `sequence` of `n` evaluations (§19); each iteration's occurrences gain the `RepeatIteration(i)` provenance step. |
 | `transpose up P5 { … }` | `map_payload` with the transposition function on `pitch` (§13); occurrences gain the `Transposition` provenance step. |
+| `c4 1/4 ~;` (tie) | **No kernel construct.** The tie is a mark on the payload; the adapter merges the tied statement with the next one into a single occurrence whose span is their sum and whose `NotatedDuration` spells as two noteheads. A tie onto a different pitch, or with nothing after it, is a diagnostic. |
+| `c4 1/4 accent staccato;` | `map_payload` marks; the adapter emits one `ArticulationMarking` per name, in written order, against the merged event's id. |
+| `dynamic mf;` | **No occurrence and no cursor advance.** The mark is pending until the next occurrence in the same voice — reaching into whatever block follows — and becomes a `DynamicMarking` against it. Nothing after it is a diagnostic. |
+| `slur { … }` | The body elaborates unchanged; its occurrences carry a group id, and the adapter emits one `SlurSpan` over the first and last event of each group. One expansion of a motif is one group. |
+| `tuplet n/d { … }` | The body elaborates with the voice's duration scale multiplied by `d/n`, so written values become exact rationals (`3/2` of eighths gives `1/12`). The adapter emits a `TupletSpan` carrying the unreduced `n/d`, which is what the backends need to print the bracket. A tuplet that would cross a barline is a diagnostic. |
 | `key`, `meter`, `tempo` declarations | **Context, not occurrences**, in the current grammar: they populate the snapshot's `KeyMap`/`MeterMap`/`TempoMap` exactly as the old lowerer does. |
 | piece | The part timelines, the context maps, and the annotation store — packaged by the adapter into `ScoreSnapshot`. |
 
@@ -84,6 +89,11 @@ The adapter projects normalized `Timeline[NotePayload]` values into the existing
 **Parity requirement (§30 Step 5):** for every fixture, the adapter's snapshot must equal the old lowerer's snapshot on
 positions, durations, spelling, part/voice identity, multiplicity, ordering, and provenance. The old lowerer is the
 regression oracle until prompt 12, and remains runnable permanently.
+
+The phase-2 constructs above (tie, articulation, dynamic, slur, tuplet) are **kernel-path only**. The old lowerer is
+frozen, so instead of re-implementing them it rejects them with `` `<construct>` needs the kernel elaboration path ``;
+parity therefore still holds on everything the oracle accepts. `phase_two_constructs_are_kernel_only` in
+`crates/musa-compiler/tests/elaboration.rs` pins that boundary so neither path can quietly drift across it.
 
 ## What elaboration must never do
 

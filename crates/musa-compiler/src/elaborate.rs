@@ -26,14 +26,64 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use crate::compile::{Compilation, SourceDocument};
-use crate::lower::{self, ExpandCx, Lowering};
+use crate::lower::{self, ExpandCx, GroupInfo, GroupKind, Lowering};
 use crate::origin::{ExpansionStep, Origin, SourceSpan};
 use crate::pitch::WrittenPitch;
-use crate::score::{Clef, NotatedDuration, Part, PartId, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice, VoiceId};
-use crate::time::{MusicalDuration, MusicalTime};
+use crate::score::{
+    ArticulationMark, ArticulationMarking, Clef, DynamicMark, DynamicMarking, NotatedDuration, Part, PartId,
+    ScoreEvent, ScoreEventKind, ScoreSnapshot, SlurSpan, TupletSpan, Voice, VoiceId,
+};
+use crate::time::MusicalTime;
 use musa_kernel::{Beat, Occurrence, Span, Timeline, overlay, sequence, timeline};
 use musa_language::ast::{AstNode as _, PieceDecl, VoiceItem};
 use musa_language::{SyntaxKind, SyntaxNode};
+use num_rational::Ratio;
+
+/// What is written *about* an occurrence rather than in it: the marks that
+/// become annotations once the events they belong to have identities
+/// (roadmap §6.3).
+#[derive(Clone, Debug, Default)]
+struct Marks {
+    /// This event is tied to the one that follows it.
+    tie: bool,
+    /// Articulations written on the event, in source order.
+    articulations: Vec<ArticulationMark>,
+    /// A dynamic marking that takes effect at this event.
+    dynamic: Option<(DynamicMark, Origin)>,
+    /// The slur and tuplet blocks enclosing it, outermost first.
+    groups: Vec<u32>,
+}
+
+impl Marks {
+    fn is_empty(&self) -> bool {
+        !self.tie && self.articulations.is_empty() && self.dynamic.is_none() && self.groups.is_empty()
+    }
+
+    /// A deterministic, injective rendering for the canonical key. Empty
+    /// marks contribute nothing, so a piece without them keeps the key it
+    /// had before phase 2.
+    fn canonical_key(&self) -> String {
+        if self.is_empty() {
+            return String::new();
+        }
+        let articulations: Vec<&str> = self.articulations.iter().map(|mark| mark.name()).collect();
+        let groups: Vec<String> = self.groups.iter().map(u32::to_string).collect();
+        format!(
+            "|tie:{}|artic:{}|dyn:{}|groups:{}",
+            self.tie,
+            articulations.join(","),
+            self.dynamic.as_ref().map_or("-", |(mark, _)| mark.name()),
+            groups.join(","),
+        )
+    }
+}
+
+/// A dynamic marking waiting for the event it applies from.
+struct PendingDynamic {
+    mark: DynamicMark,
+    origin: Origin,
+    span: SourceSpan,
+}
 
 /// The elaborated fact of one voice item: notation intent plus provenance,
 /// opaque to the kernel (docs/kernel/06).
@@ -43,7 +93,10 @@ pub(crate) struct VoicePayload {
     voice: u32,
     kind: PayloadKind,
     origin: Origin,
-    spelling: String,
+    /// The written duration, kept whole: the kernel span says how long the
+    /// occurrence is, but only this says how many noteheads spell it.
+    duration: NotatedDuration,
+    marks: Marks,
 }
 
 /// What the occurrence states: a sounding note, or a notated rest (typed
@@ -55,23 +108,32 @@ enum PayloadKind {
 }
 
 impl VoicePayload {
-    fn note(part: u32, voice: u32, pitch: WrittenPitch, origin: Origin, spelling: String) -> Self {
+    fn note(
+        part: u32,
+        voice: u32,
+        pitch: WrittenPitch,
+        origin: Origin,
+        duration: NotatedDuration,
+        marks: Marks,
+    ) -> Self {
         Self {
             part,
             voice,
             kind: PayloadKind::Note { pitch },
             origin,
-            spelling,
+            duration,
+            marks,
         }
     }
 
-    fn rest(part: u32, voice: u32, origin: Origin, spelling: String) -> Self {
+    fn rest(part: u32, voice: u32, origin: Origin, duration: NotatedDuration, marks: Marks) -> Self {
         Self {
             part,
             voice,
             kind: PayloadKind::Rest,
             origin,
-            spelling,
+            duration,
+            marks,
         }
     }
 }
@@ -85,14 +147,15 @@ impl musa_kernel::Canonical for VoicePayload {
             PayloadKind::Rest => "rest".to_string(),
         };
         format!(
-            "{}|{}|{}|{}|{}|{}|{:?}",
+            "{}|{}|{}|{}|{}|{}|{:?}{}",
             self.part,
             self.voice,
             kind,
-            self.spelling,
+            self.duration.spelling,
             self.origin.source_span.start,
             self.origin.source_span.end,
-            self.origin.expansion_path
+            self.origin.expansion_path,
+            self.marks.canonical_key(),
         )
     }
 }
@@ -126,7 +189,9 @@ pub(crate) fn elaborate(source: &SourceDocument) -> Compilation {
     if let Some(score) = piece.score() {
         elaborate_score(&mut lowering, &score, &mut snapshot);
     }
+    snapshot.annotations = std::mem::take(&mut lowering.annotations);
     lower::check_measure_sanity(&mut lowering, &snapshot);
+    check_tuplets(&mut lowering, &snapshot);
     if lowering
         .diagnostics
         .iter()
@@ -210,23 +275,60 @@ fn elaborate_voice(
         declaration,
         origin_span: None,
         max_motif: usize::MAX,
+        scale: Ratio::ONE,
     };
-    elaborate_items(lowering, &voice.items(), &cx, part, voice_id)
+    let mut pending = None;
+    let timeline = elaborate_items(lowering, &voice.items(), &cx, part, voice_id, &[], &mut pending);
+    if let Some(pending) = pending {
+        lowering.error("this dynamic marking has no note after it", pending.span);
+    }
+    timeline
 }
 
 /// Elaborate voice items into a kernel timeline (sequence of item segments).
+///
+/// `groups` are the slur and tuplet blocks enclosing these items, outermost
+/// first; `pending` carries a dynamic marking forward to the first event
+/// written after it, however deeply nested that event turns out to be.
 fn elaborate_items(
     lowering: &mut Lowering,
     items: &[VoiceItem],
     cx: &ExpandCx,
     part: u32,
     voice: u32,
+    groups: &[u32],
+    pending: &mut Option<PendingDynamic>,
 ) -> Timeline<VoicePayload> {
     let mut segments = Vec::new();
     for item in items {
-        segments.push(elaborate_item(lowering, item, cx, part, voice));
+        segments.push(elaborate_item(lowering, item, cx, part, voice, groups, pending));
     }
     sequence(segments)
+}
+
+/// The marks a note or chord statement carries, with the pending dynamic
+/// consumed if there is one.
+fn marks_for(
+    lowering: &mut Lowering,
+    names: &[String],
+    tied: bool,
+    groups: &[u32],
+    span: SourceSpan,
+    pending: &mut Option<PendingDynamic>,
+) -> Marks {
+    let mut articulations = Vec::new();
+    for name in names {
+        match ArticulationMark::parse(name) {
+            Some(mark) => articulations.push(mark),
+            None => lowering.error(format!("unknown articulation `{name}`"), span),
+        }
+    }
+    Marks {
+        tie: tied,
+        articulations,
+        dynamic: pending.take().map(|pending| (pending.mark, pending.origin)),
+        groups: groups.to_vec(),
+    }
 }
 
 /// Elaborate one item; malformed items elaborate to the empty segment
@@ -237,47 +339,63 @@ fn elaborate_item(
     cx: &ExpandCx,
     part: u32,
     voice: u32,
+    groups: &[u32],
+    pending: &mut Option<PendingDynamic>,
 ) -> Timeline<VoicePayload> {
     match item {
         VoiceItem::Note(note) => {
-            let Some(duration) = lower::resolve_duration(lowering, note.syntax(), cx) else {
+            let Some(duration) = resolve_scaled_duration(lowering, note.syntax(), cx) else {
                 return empty_segment();
             };
             let pitch_text = note.pitch().unwrap_or_default();
             let Some(pitch) = lower::resolve_pitch(lowering, &pitch_text, note.syntax(), cx) else {
                 return empty_segment();
             };
-            let origin = origin_of(cx, lower::trimmed_span(note.syntax()));
+            let span = lower::trimmed_span(note.syntax());
+            let marks = marks_for(lowering, &note.articulations(), note.tied(), groups, span, pending);
+            let origin = origin_of(cx, span);
             single(
                 &duration,
-                VoicePayload::note(part, voice, pitch, origin, duration.spelling.clone()),
+                VoicePayload::note(part, voice, pitch, origin, duration.clone(), marks),
             )
         }
         VoiceItem::Rest(rest) => {
-            let Some(duration) = lower::resolve_duration(lowering, rest.syntax(), cx) else {
+            let Some(duration) = resolve_scaled_duration(lowering, rest.syntax(), cx) else {
                 return empty_segment();
             };
-            let origin = origin_of(cx, lower::trimmed_span(rest.syntax()));
+            let span = lower::trimmed_span(rest.syntax());
+            let marks = marks_for(lowering, &[], false, groups, span, pending);
+            let origin = origin_of(cx, span);
             single(
                 &duration,
-                VoicePayload::rest(part, voice, origin, duration.spelling.clone()),
+                VoicePayload::rest(part, voice, origin, duration.clone(), marks),
             )
         }
         VoiceItem::Chord(chord) => {
-            let Some(duration) = lower::resolve_duration(lowering, chord.syntax(), cx) else {
+            let Some(duration) = resolve_scaled_duration(lowering, chord.syntax(), cx) else {
                 return empty_segment();
             };
+            let node_span = lower::trimmed_span(chord.syntax());
+            let marks = marks_for(
+                lowering,
+                &chord.articulations(),
+                chord.tied(),
+                groups,
+                node_span,
+                pending,
+            );
             let mut pitches = Vec::new();
             for text in chord.pitches() {
                 match WrittenPitch::parse(&text).map(|pitch| apply_intervals(lowering, pitch, cx, chord.syntax())) {
                     Some(Some(pitch)) => {
-                        let origin = origin_of(cx, lower::trimmed_span(chord.syntax()));
+                        let origin = origin_of(cx, node_span);
                         pitches.push(VoicePayload::note(
                             part,
                             voice,
                             pitch,
                             origin,
-                            duration.spelling.clone(),
+                            duration.clone(),
+                            marks.clone(),
                         ));
                     }
                     Some(None) => break,
@@ -296,7 +414,7 @@ fn elaborate_item(
             )
             .unwrap_or_else(|_| musa_kernel::zero())
         }
-        VoiceItem::Use(call) => elaborate_use(lowering, call, cx, part, voice),
+        VoiceItem::Use(call) => elaborate_use(lowering, call, cx, part, voice, groups, pending),
         VoiceItem::Transpose(transpose) => {
             let text = transpose.interval().unwrap_or_default();
             let Some(interval) = crate::origin::Interval::parse(&text, transpose.is_down()) else {
@@ -306,7 +424,7 @@ fn elaborate_item(
             let mut inner = cx.clone();
             inner.intervals.push(interval);
             inner.path.push(ExpansionStep::Transposition(interval));
-            elaborate_items(lowering, &transpose.items(), &inner, part, voice)
+            elaborate_items(lowering, &transpose.items(), &inner, part, voice, groups, pending)
         }
         VoiceItem::Repeat(repeat) => {
             let count: u32 = repeat.count().and_then(|text| text.parse().ok()).unwrap_or(0);
@@ -314,11 +432,79 @@ fn elaborate_item(
             for iteration in 0..count {
                 let mut inner = cx.clone();
                 inner.path.push(ExpansionStep::RepeatIteration(iteration));
-                segments.push(elaborate_items(lowering, &repeat.items(), &inner, part, voice));
+                segments.push(elaborate_items(
+                    lowering,
+                    &repeat.items(),
+                    &inner,
+                    part,
+                    voice,
+                    groups,
+                    pending,
+                ));
             }
             sequence(segments)
         }
+        VoiceItem::Slur(slur) => {
+            let origin = origin_of(cx, lower::trimmed_span(slur.syntax()));
+            let id = lowering.group(GroupInfo {
+                kind: GroupKind::Slur,
+                origin,
+            });
+            let inner: Vec<u32> = groups.iter().copied().chain(std::iter::once(id)).collect();
+            elaborate_items(lowering, &slur.items(), cx, part, voice, &inner, pending)
+        }
+        VoiceItem::Tuplet(tuplet) => {
+            let text = tuplet.ratio().unwrap_or_default();
+            let span = lower::trimmed_span(tuplet.syntax());
+            let Some((num, den)) = parse_tuplet_ratio(&text) else {
+                lowering.error(format!("`{text}` is not a tuplet ratio such as `3/2`"), span);
+                return empty_segment();
+            };
+            let origin = origin_of(cx, span);
+            let id = lowering.group(GroupInfo {
+                kind: GroupKind::Tuplet { num, den },
+                origin,
+            });
+            let inner_groups: Vec<u32> = groups.iter().copied().chain(std::iter::once(id)).collect();
+            let mut inner = cx.clone();
+            inner.scale = cx.scale * Ratio::new(i64::from(den), i64::from(num));
+            elaborate_items(lowering, &tuplet.items(), &inner, part, voice, &inner_groups, pending)
+        }
+        VoiceItem::Dynamic(dynamic) => {
+            let text = dynamic.mark().unwrap_or_default();
+            let span = lower::trimmed_span(dynamic.syntax());
+            match DynamicMark::parse(&text) {
+                Some(mark) => {
+                    *pending = Some(PendingDynamic {
+                        mark,
+                        origin: origin_of(cx, span),
+                        span,
+                    });
+                }
+                None => lowering.error(format!("unknown dynamic marking `{text}`"), span),
+            }
+            empty_segment()
+        }
     }
+}
+
+/// A tuplet ratio `n/d`, read without reducing: `4/4` is four in the time of
+/// four, not one in the time of one.
+fn parse_tuplet_ratio(text: &str) -> Option<(u32, u32)> {
+    let (num, den) = text.split_once('/')?;
+    let num: u32 = num.parse().ok()?;
+    let den: u32 = den.parse().ok()?;
+    (num > 0 && den > 0).then_some((num, den))
+}
+
+/// The written duration of a statement, scaled by the enclosing tuplets.
+fn resolve_scaled_duration(lowering: &mut Lowering, node: &SyntaxNode, cx: &ExpandCx) -> Option<NotatedDuration> {
+    let duration = lower::resolve_duration(lowering, node, cx)?;
+    Some(if cx.scale == Ratio::ONE {
+        duration
+    } else {
+        duration.scaled(cx.scale)
+    })
 }
 
 /// Expand a `use` statement, mirroring the direct lowerer's binding rules.
@@ -328,6 +514,8 @@ fn elaborate_use(
     cx: &ExpandCx,
     part: u32,
     voice: u32,
+    groups: &[u32],
+    pending: &mut Option<PendingDynamic>,
 ) -> Timeline<VoicePayload> {
     let name = call.motif().unwrap_or_default();
     let found = lowering
@@ -387,8 +575,9 @@ fn elaborate_use(
         declaration,
         origin_span: Some(call_span),
         max_motif: index,
+        scale: cx.scale,
     };
-    elaborate_items(lowering, &body, &inner, part, voice)
+    elaborate_items(lowering, &body, &inner, part, voice, groups, pending)
 }
 
 /// The empty segment `(0, ∅)` — contributes nothing to the sequence.
@@ -447,7 +636,7 @@ fn apply_intervals(
 /// voice, and origin regroup into chords; a `Rest` payload becomes a rest
 /// event. Event ids are assigned in traversal order, matching the oracle.
 fn adapt_voice(lowering: &mut Lowering, timeline: &Timeline<VoicePayload>) -> Voice {
-    let mut events = Vec::new();
+    let mut adapted = Vec::new();
     let mut index = 0;
     let occurrences = timeline.occurrences();
     while index < occurrences.len() {
@@ -455,18 +644,14 @@ fn adapt_voice(lowering: &mut Lowering, timeline: &Timeline<VoicePayload>) -> Vo
         let span = first.span();
         let payload = first.payload();
         let onset = MusicalTime::new(span.start().as_ratio());
-        let duration = NotatedDuration {
-            value: MusicalDuration::new(span.duration()),
-            spelling: payload.spelling.clone(),
-        };
         match &payload.kind {
             PayloadKind::Rest => {
-                events.push(ScoreEvent {
-                    id: lowering.event_id(),
-                    origin: payload.origin.clone(),
+                adapted.push(Adapted {
                     onset,
-                    notated_duration: duration,
+                    duration: payload.duration.clone(),
                     kind: ScoreEventKind::Rest,
+                    origin: payload.origin.clone(),
+                    marks: payload.marks.clone(),
                 });
                 index = index.saturating_add(1);
             }
@@ -492,18 +677,159 @@ fn adapt_voice(lowering: &mut Lowering, timeline: &Timeline<VoicePayload>) -> Vo
                 } else {
                     ScoreEventKind::Chord { pitches }
                 };
-                events.push(ScoreEvent {
-                    id: lowering.event_id(),
-                    origin: payload.origin.clone(),
+                adapted.push(Adapted {
                     onset,
-                    notated_duration: duration,
+                    duration: payload.duration.clone(),
                     kind,
+                    origin: payload.origin.clone(),
+                    marks: payload.marks.clone(),
                 });
                 index = index.saturating_add(consumed);
             }
         }
     }
+    let adapted = merge_ties(lowering, adapted);
+    identify(lowering, adapted)
+}
+
+/// One adapted occurrence, before it has an identity: ties still have to
+/// merge, and merging changes how many events there are.
+struct Adapted {
+    onset: MusicalTime,
+    duration: NotatedDuration,
+    kind: ScoreEventKind,
+    origin: Origin,
+    marks: Marks,
+}
+
+/// Join tied runs into single sounding events (roadmap §6.3: a tie is
+/// duration structure, not an annotation). The merged event keeps the first
+/// piece's onset, provenance, and marks, and its written pieces are the
+/// noteheads the composer asked for.
+fn merge_ties(lowering: &mut Lowering, adapted: Vec<Adapted>) -> Vec<Adapted> {
+    let mut merged: Vec<Adapted> = Vec::with_capacity(adapted.len());
+    for item in adapted {
+        let joins = merged.last().is_some_and(|previous| previous.marks.tie);
+        if !joins {
+            merged.push(item);
+            continue;
+        }
+        let Some(previous) = merged.last_mut() else {
+            merged.push(item);
+            continue;
+        };
+        if previous.kind != item.kind || matches!(item.kind, ScoreEventKind::Rest) {
+            lowering.error(
+                "a tie must be followed by the same pitch or chord",
+                item.origin.definition_span,
+            );
+            previous.marks.tie = false;
+            merged.push(item);
+            continue;
+        }
+        previous.duration = previous.duration.tied_to(&item.duration);
+        previous.marks.tie = item.marks.tie;
+        previous.marks.articulations.extend(item.marks.articulations);
+    }
+    if let Some(last) = merged.last()
+        && last.marks.tie
+    {
+        lowering.error("this tie has no note after it", last.origin.definition_span);
+    }
+    merged
+}
+
+/// Give the voice's events their identities, and turn the marks they carry
+/// into annotations now that there is something to anchor to.
+fn identify(lowering: &mut Lowering, adapted: Vec<Adapted>) -> Voice {
+    let mut events = Vec::with_capacity(adapted.len());
+    // `IndexMap` rather than a hash map: the annotation order is part of the
+    // snapshot, and it follows the order the blocks were entered.
+    let mut ranges: indexmap::IndexMap<u32, (crate::score::EventId, crate::score::EventId)> = indexmap::IndexMap::new();
+    for item in adapted {
+        let id = lowering.event_id();
+        for group in &item.marks.groups {
+            ranges
+                .entry(*group)
+                .and_modify(|range| range.1 = id)
+                .or_insert((id, id));
+        }
+        for mark in item.marks.articulations {
+            lowering.annotations.push_articulation(ArticulationMarking {
+                at: id,
+                mark,
+                origin: item.origin.clone(),
+            });
+        }
+        if let Some((mark, origin)) = item.marks.dynamic {
+            lowering
+                .annotations
+                .push_dynamic(DynamicMarking { at: id, mark, origin });
+        }
+        events.push(ScoreEvent {
+            id,
+            origin: item.origin,
+            onset: item.onset,
+            notated_duration: item.duration,
+            kind: item.kind,
+        });
+    }
+    ranges.sort_keys();
+    for (group, (from, to)) in ranges {
+        let Some(info) = lowering.groups.get(&group) else {
+            continue;
+        };
+        let origin = info.origin.clone();
+        match info.kind {
+            GroupKind::Slur => lowering.annotations.push_slur(SlurSpan { from, to, origin }),
+            GroupKind::Tuplet { num, den } => lowering.annotations.push_tuplet(TupletSpan {
+                from,
+                to,
+                num,
+                den,
+                origin,
+            }),
+        }
+    }
     Voice { events }
+}
+
+/// A tuplet has to be spellable, and a group split across a barline is not:
+/// the notes on either side would need their own bracket and their own
+/// ratio, which is a different piece of music from the one that was written.
+fn check_tuplets(lowering: &mut Lowering, snapshot: &ScoreSnapshot) {
+    let measure = snapshot.meter_map.measure_len().as_ratio();
+    if measure == Ratio::ZERO {
+        return;
+    }
+    let mut offenders = Vec::new();
+    for tuplet in snapshot.annotations.tuplets() {
+        let mut start = None;
+        let mut end = None;
+        for (_, part) in snapshot.parts.iter() {
+            for voice in part.voices.values() {
+                for event in &voice.events {
+                    if event.id < tuplet.from || event.id > tuplet.to {
+                        continue;
+                    }
+                    let event_end = event.onset + event.notated_duration.value;
+                    start = Some(start.map_or(event.onset, |current: MusicalTime| current.min(event.onset)));
+                    end = Some(end.map_or(event_end, |current: MusicalTime| current.max(event_end)));
+                }
+            }
+        }
+        let (Some(start), Some(end)) = (start, end) else {
+            continue;
+        };
+        let first_bar = (start.as_ratio() / measure).floor();
+        let last_bar = ((end.as_ratio() - Ratio::new(1, 1_000_000)) / measure).floor();
+        if first_bar != last_bar {
+            offenders.push(tuplet.origin.definition_span);
+        }
+    }
+    for span in offenders {
+        lowering.error("a tuplet must fit inside one measure", span);
+    }
 }
 
 /// The normalized kernel text of a source's part timelines, for golden

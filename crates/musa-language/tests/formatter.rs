@@ -10,6 +10,7 @@ use proptest::prelude::*;
 
 const GLASS_MOUNTAIN: &str = include_str!("../../../examples/glass-mountain.musa");
 const INVENTION: &str = include_str!("../../../examples/invention.musa");
+const TUPLET_FIXTURE: &str = include_str!("../../../examples/tuplet-fixture.musa");
 
 fn fmt(source: &str) -> String {
     format(&parse(source)).text().to_string()
@@ -38,6 +39,7 @@ fn assert_semantics_preserved(source: &str, formatted: &str) {
 fn examples_format_to_themselves() {
     assert_eq!(fmt(GLASS_MOUNTAIN), GLASS_MOUNTAIN);
     assert_eq!(fmt(INVENTION), INVENTION);
+    assert_eq!(fmt(TUPLET_FIXTURE), TUPLET_FIXTURE);
 }
 
 #[test]

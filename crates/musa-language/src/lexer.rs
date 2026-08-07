@@ -199,6 +199,8 @@ enum RawToken {
     Equals,
     #[token("-")]
     Minus,
+    #[token("~")]
+    Tilde,
 
     #[token("piece", priority = 3)]
     PieceKw,
@@ -232,6 +234,12 @@ enum RawToken {
     ChordKw,
     #[token("repeat", priority = 3)]
     RepeatKw,
+    #[token("slur", priority = 3)]
+    SlurKw,
+    #[token("dynamic", priority = 3)]
+    DynamicKw,
+    #[token("tuplet", priority = 3)]
+    TupletKw,
     #[token("performance", priority = 3)]
     PerformanceKw,
     #[token("profile", priority = 3)]
@@ -297,6 +305,7 @@ impl RawToken {
             | Self::PipeForward
             | Self::Equals
             | Self::Minus
+            | Self::Tilde
             | Self::PieceKw
             | Self::TempoKw
             | Self::MeterKw
@@ -313,6 +322,9 @@ impl RawToken {
             | Self::RestKw
             | Self::ChordKw
             | Self::RepeatKw
+            | Self::SlurKw
+            | Self::DynamicKw
+            | Self::TupletKw
             | Self::PerformanceKw
             | Self::ProfileKw
             | Self::ArticulationKw
@@ -361,6 +373,7 @@ impl RawToken {
             Self::PipeForward => SyntaxKind::PipeForward,
             Self::Equals => SyntaxKind::Equals,
             Self::Minus => SyntaxKind::Minus,
+            Self::Tilde => SyntaxKind::Tilde,
             Self::PieceKw => SyntaxKind::PieceKw,
             Self::TempoKw => SyntaxKind::TempoKw,
             Self::MeterKw => SyntaxKind::MeterKw,
@@ -377,6 +390,9 @@ impl RawToken {
             Self::RestKw => SyntaxKind::RestKw,
             Self::ChordKw => SyntaxKind::ChordKw,
             Self::RepeatKw => SyntaxKind::RepeatKw,
+            Self::SlurKw => SyntaxKind::SlurKw,
+            Self::DynamicKw => SyntaxKind::DynamicKw,
+            Self::TupletKw => SyntaxKind::TupletKw,
             Self::PerformanceKw => SyntaxKind::PerformanceKw,
             Self::ProfileKw => SyntaxKind::ProfileKw,
             Self::ArticulationKw => SyntaxKind::ArticulationKw,

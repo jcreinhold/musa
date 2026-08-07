@@ -53,6 +53,14 @@ ScoreSnapshot {
                                         },
                                     ),
                                     spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
                                 },
                                 kind: Note {
                                     pitch: WrittenPitch {
@@ -96,6 +104,14 @@ ScoreSnapshot {
                                         },
                                     ),
                                     spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
                                 },
                                 kind: Note {
                                     pitch: WrittenPitch {
@@ -139,6 +155,14 @@ ScoreSnapshot {
                                         },
                                     ),
                                     spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
                                 },
                                 kind: Note {
                                     pitch: WrittenPitch {
@@ -182,6 +206,14 @@ ScoreSnapshot {
                                         },
                                     ),
                                     spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
                                 },
                                 kind: Chord {
                                     pitches: [
@@ -265,6 +297,14 @@ ScoreSnapshot {
                                         },
                                     ),
                                     spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
                                 },
                                 kind: Note {
                                     pitch: WrittenPitch {
@@ -308,6 +348,14 @@ ScoreSnapshot {
                                         },
                                     ),
                                     spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
                                 },
                                 kind: Note {
                                     pitch: WrittenPitch {
@@ -351,6 +399,14 @@ ScoreSnapshot {
                                         },
                                     ),
                                     spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
                                 },
                                 kind: Note {
                                     pitch: WrittenPitch {
@@ -394,6 +450,14 @@ ScoreSnapshot {
                                         },
                                     ),
                                     spelling: "1/2",
+                                    pieces: [
+                                        MusicalDuration(
+                                            Ratio {
+                                                numer: 1,
+                                                denom: 2,
+                                            },
+                                        ),
+                                    ],
                                 },
                                 kind: Note {
                                     pitch: WrittenPitch {
@@ -438,6 +502,11 @@ ScoreSnapshot {
             mode: Minor,
         },
     ),
-    annotations: AnnotationStore,
+    annotations: AnnotationStore {
+        slurs: [],
+        tuplets: [],
+        dynamics: [],
+        articulations: [],
+    },
     motifs: [],
 }

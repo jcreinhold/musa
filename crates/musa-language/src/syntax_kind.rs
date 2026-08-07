@@ -77,6 +77,8 @@ pub enum SyntaxKind {
     Equals,
     /// `-` (signs are assembled by the parser, not the lexer)
     Minus,
+    /// `~` — the tie mark, postfix on a note or chord statement.
+    Tilde,
 
     // --- Structural keywords. Processor names (`oscillator`, `lowpass`, …)
     /// are deliberately *not* keywords: they lex as identifiers so the
@@ -113,6 +115,12 @@ pub enum SyntaxKind {
     ChordKw,
     /// `repeat`
     RepeatKw,
+    /// `slur`
+    SlurKw,
+    /// `dynamic`
+    DynamicKw,
+    /// `tuplet`
+    TupletKw,
     /// `performance`
     PerformanceKw,
     /// `profile`
@@ -181,6 +189,16 @@ pub enum SyntaxKind {
     TransposeStmt,
     /// `repeat <n> { ... }`
     RepeatStmt,
+    /// `slur { ... }`
+    SlurStmt,
+    /// `dynamic <mark>;`
+    DynamicStmt,
+    /// `tuplet <n>/<d> { ... }`
+    TupletStmt,
+    /// The articulation names trailing a note or chord's duration. Their own
+    /// node so a pitch reference and an articulation name — both bare
+    /// identifiers — never have to be told apart by position.
+    ArticulationList,
     /// `{ ... }` body of a motif, transpose, or repeat.
     Block,
 }

@@ -9,7 +9,7 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{Compilation, CompileOptions, Elaboration, SourceDocument, compile, kernel_normal_form};
+use musa_compiler::{Compilation, CompileOptions, Elaboration, Severity, SourceDocument, compile, kernel_normal_form};
 use proptest::prelude::*;
 
 const GLASS_MOUNTAIN: &str = include_str!("../../../examples/glass-mountain.musa");
@@ -61,6 +61,52 @@ fn fixtures_have_errors_under_both_paths() {
     let double_accidental = "piece \"x\" { score { part p { voice v { transpose up P8 { transpose up P8 { transpose up m2 { css4 1/4; } } } } } } }";
     for source in [bad_motif_order, unknown_motif, double_accidental] {
         assert_parity(source);
+    }
+}
+
+/// The direct lowerer is frozen (see `lower.rs`): the expressive notation
+/// layer of prompt 27 lives only on the kernel path. Parity is kept by the
+/// direct path *refusing* those constructs, not by re-implementing them, so
+/// the boundary itself is the contract worth pinning.
+#[test]
+fn phase_two_constructs_are_kernel_only() {
+    for (construct, body) in [
+        ("slur", "slur { c4 1/4; d4 1/4; } rest 1/2;"),
+        ("dynamic", "dynamic mf; c4 1;"),
+        ("tuplet", "tuplet 3/2 { c4 1/8; d4 1/8; e4 1/8; } rest 3/4;"),
+    ] {
+        let source = format!("piece \"x\" {{ meter 4/4; score {{ part p {{ voice v {{ {body} }} }} }} }}");
+        let document = SourceDocument::new(&source, "phase2.musa");
+        let direct = compile(
+            &document,
+            &CompileOptions {
+                elaboration: Elaboration::Direct,
+            },
+        );
+        // The refusal drops the construct's items, so the bar-length warning
+        // fires too; the error is the fact under test.
+        let errors: Vec<&str> = direct
+            .diagnostics()
+            .iter()
+            .filter(|d| d.severity == Severity::Error)
+            .map(|d| d.message.as_str())
+            .collect();
+        assert_eq!(
+            errors,
+            vec![format!("`{construct}` needs the kernel elaboration path")],
+            "the direct path must refuse `{construct}`, not mis-lower it"
+        );
+        let kernel = compile(
+            &document,
+            &CompileOptions {
+                elaboration: Elaboration::Kernel,
+            },
+        );
+        assert!(
+            kernel.diagnostics().is_empty(),
+            "the kernel path accepts `{construct}`: {:?}",
+            kernel.diagnostics()
+        );
     }
 }
 

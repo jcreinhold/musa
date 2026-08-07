@@ -64,6 +64,18 @@
     "keyword"
   ],
   [
+    "slur",
+    "keyword"
+  ],
+  [
+    "dynamic",
+    "keyword"
+  ],
+  [
+    "tuplet",
+    "keyword"
+  ],
+  [
     "performance",
     "keyword"
   ],
@@ -189,6 +201,10 @@
   ],
   [
     "-",
+    "punctuation"
+  ],
+  [
+    "~",
     "punctuation"
   ]
 ]

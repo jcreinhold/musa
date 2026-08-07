@@ -241,6 +241,12 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             TransposeStmt::cast(child).map(VoiceItem::Transpose)
         } else if kind == SyntaxKind::RepeatStmt {
             RepeatStmt::cast(child).map(VoiceItem::Repeat)
+        } else if kind == SyntaxKind::SlurStmt {
+            SlurStmt::cast(child).map(VoiceItem::Slur)
+        } else if kind == SyntaxKind::DynamicStmt {
+            DynamicStmt::cast(child).map(VoiceItem::Dynamic)
+        } else if kind == SyntaxKind::TupletStmt {
+            TupletStmt::cast(child).map(VoiceItem::Tuplet)
         } else {
             None
         };
@@ -264,6 +270,32 @@ pub enum VoiceItem {
     Transpose(TransposeStmt),
     /// `repeat n { ... }`
     Repeat(RepeatStmt),
+    /// `slur { ... }`
+    Slur(SlurStmt),
+    /// `dynamic p;`
+    Dynamic(DynamicStmt),
+    /// `tuplet 3/2 { ... }`
+    Tuplet(TupletStmt),
+}
+
+/// The articulation names trailing a note or chord's duration.
+fn articulation_names(node: &SyntaxNode) -> Vec<String> {
+    node.children()
+        .find(|child| child.kind() == SyntaxKind::ArticulationList)
+        .into_iter()
+        .flat_map(|list| {
+            list.children_with_tokens()
+                .filter_map(SyntaxElement::into_token)
+                .filter(|token| token.kind() == SyntaxKind::Identifier)
+                .map(|token| token.text().to_string())
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+/// Whether a statement carries the postfix tie mark.
+fn has_tie(node: &SyntaxNode) -> bool {
+    find_token(node, SyntaxKind::Tilde).is_some()
 }
 
 /// `<pitch-or-ref> <duration>;`
@@ -279,6 +311,16 @@ impl NoteStmt {
     /// The duration text (`1/2`, `3/8`, `1`).
     pub fn duration(&self) -> Option<String> {
         token_text(&self.0, SyntaxKind::Rational).or_else(|| token_text(&self.0, SyntaxKind::Integer))
+    }
+
+    /// The articulation names written after the duration, in source order.
+    pub fn articulations(&self) -> Vec<String> {
+        articulation_names(&self.0)
+    }
+
+    /// Whether this note is tied to the statement that follows it.
+    pub fn tied(&self) -> bool {
+        has_tie(&self.0)
     }
 }
 
@@ -306,6 +348,16 @@ impl ChordStmt {
             .filter(|token| token.kind() == SyntaxKind::PitchLiteral)
             .map(|token| token.text().to_string())
             .collect()
+    }
+
+    /// The articulation names written after the duration, in source order.
+    pub fn articulations(&self) -> Vec<String> {
+        articulation_names(&self.0)
+    }
+
+    /// Whether this chord is tied to the statement that follows it.
+    pub fn tied(&self) -> bool {
+        has_tie(&self.0)
     }
 }
 
@@ -356,6 +408,44 @@ impl TransposeStmt {
     }
 
     /// The block's items.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
+    }
+}
+
+/// `slur { ... }`
+pub struct SlurStmt(SyntaxNode);
+wrapper!(SlurStmt, SyntaxKind::SlurStmt);
+
+impl SlurStmt {
+    /// The slurred items, in source order.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
+    }
+}
+
+/// `dynamic mf;`
+pub struct DynamicStmt(SyntaxNode);
+wrapper!(DynamicStmt, SyntaxKind::DynamicStmt);
+
+impl DynamicStmt {
+    /// The marking text (`p`, `mf`, `ff`).
+    pub fn mark(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+}
+
+/// `tuplet 3/2 { ... }`
+pub struct TupletStmt(SyntaxNode);
+wrapper!(TupletStmt, SyntaxKind::TupletStmt);
+
+impl TupletStmt {
+    /// The ratio text (`3/2`), unreduced: `4/4` is not `1/1`.
+    pub fn ratio(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Rational)
+    }
+
+    /// The block's items, in source order.
     pub fn items(&self) -> Vec<VoiceItem> {
         voice_items(&self.0)
     }

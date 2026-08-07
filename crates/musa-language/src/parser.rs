@@ -86,6 +86,9 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::UseKw,
     SyntaxKind::TransposeKw,
     SyntaxKind::RepeatKw,
+    SyntaxKind::SlurKw,
+    SyntaxKind::DynamicKw,
+    SyntaxKind::TupletKw,
 ];
 
 struct Parser<'a> {
@@ -428,8 +431,14 @@ impl<'a> Parser<'a> {
                 self.transpose_stmt();
             } else if self.at(SyntaxKind::RepeatKw) {
                 self.repeat_stmt();
+            } else if self.at(SyntaxKind::SlurKw) {
+                self.slur_stmt();
+            } else if self.at(SyntaxKind::DynamicKw) {
+                self.dynamic_stmt();
+            } else if self.at(SyntaxKind::TupletKw) {
+                self.tuplet_stmt();
             } else {
-                self.error_here("expected a note, rest, chord, use, transpose, or repeat");
+                self.error_here("expected a note, rest, chord, use, transpose, repeat, slur, dynamic, or tuplet");
                 self.recover(VOICE_RECOVERY);
             }
         }
@@ -444,13 +453,39 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `<pitch-or-ref> <duration>;`
+    /// `<pitch-or-ref> <duration> <articulation>* ~? ;`
     fn note_stmt(&mut self) {
         self.start(SyntaxKind::NoteStmt);
         self.bump(); // pitch literal or pitch reference
         self.duration();
+        self.articulations();
+        self.tie();
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
+    }
+
+    /// Zero or more articulation names after a duration (`accent staccato`).
+    ///
+    /// They live in their own node: a bare identifier in a note statement is
+    /// otherwise a pitch or duration parameter reference, and telling the two
+    /// apart by counting tokens is exactly the kind of positional rule that
+    /// breaks the next time the statement grows a part.
+    fn articulations(&mut self) {
+        if !self.at(SyntaxKind::Identifier) {
+            return;
+        }
+        self.start(SyntaxKind::ArticulationList);
+        while self.at(SyntaxKind::Identifier) {
+            self.bump();
+        }
+        self.finish();
+    }
+
+    /// The postfix tie mark, tying this statement to the next.
+    fn tie(&mut self) {
+        if self.at(SyntaxKind::Tilde) {
+            self.bump();
+        }
     }
 
     /// `rest <duration>;`
@@ -474,6 +509,8 @@ impl<'a> Parser<'a> {
         }
         self.expect(SyntaxKind::RBracket, "`]`");
         self.duration();
+        self.articulations();
+        self.tie();
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }
@@ -528,6 +565,32 @@ impl<'a> Parser<'a> {
         self.start(SyntaxKind::RepeatStmt);
         self.bump(); // repeat
         self.expect(SyntaxKind::Integer, "a repeat count");
+        self.block();
+        self.finish();
+    }
+
+    /// `slur { ... }`
+    fn slur_stmt(&mut self) {
+        self.start(SyntaxKind::SlurStmt);
+        self.bump(); // slur
+        self.block();
+        self.finish();
+    }
+
+    /// `dynamic <mark>;` — the marking applies from the next event on.
+    fn dynamic_stmt(&mut self) {
+        self.start(SyntaxKind::DynamicStmt);
+        self.bump(); // dynamic
+        self.expect(SyntaxKind::Identifier, "a dynamic marking such as `p` or `mf`");
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `tuplet <n>/<d> { ... }` — `n` written values in the time of `d`.
+    fn tuplet_stmt(&mut self) {
+        self.start(SyntaxKind::TupletStmt);
+        self.bump(); // tuplet
+        self.expect(SyntaxKind::Rational, "a tuplet ratio such as `3/2`");
         self.block();
         self.finish();
     }

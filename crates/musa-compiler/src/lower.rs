@@ -24,8 +24,8 @@ use crate::compile::{Compilation, Diagnostic, SourceDocument};
 use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::score::{
-    Clef, EventId, KeyMap, MeterMap, Mode, NotatedDuration, Part, PartId, ScoreEvent, ScoreEventKind, ScoreSnapshot,
-    TempoMap, Voice, VoiceId,
+    AnnotationStore, Clef, EventId, KeyMap, MeterMap, Mode, NotatedDuration, Part, PartId, ScoreEvent, ScoreEventKind,
+    ScoreSnapshot, TempoMap, Voice, VoiceId,
 };
 use crate::time::{MusicalDuration, MusicalTime};
 
@@ -72,6 +72,29 @@ pub(crate) struct ExpandCx {
     /// Only motifs declared before this index are visible; this makes
     /// cyclic expansion impossible by construction (roadmap §6.5).
     pub(crate) max_motif: usize,
+    /// How the enclosing tuplets scale the durations written here (`2/3`
+    /// inside a `3/2` tuplet). Always `1` on the direct path, which rejects
+    /// tuplets outright.
+    pub(crate) scale: Ratio<i64>,
+}
+
+/// What a slur or tuplet block declared, kept aside while its events are
+/// still being built: the events it covers are only identified once the
+/// voice is adapted, so the block records itself here and the adapter
+/// resolves the two ends.
+pub(crate) struct GroupInfo {
+    pub(crate) kind: GroupKind,
+    pub(crate) origin: Origin,
+}
+
+/// Which bracket a group came from.
+pub(crate) enum GroupKind {
+    Slur,
+    /// `num` written values in the time of `den`.
+    Tuplet {
+        num: u32,
+        den: u32,
+    },
 }
 
 /// Mutable lowering state.
@@ -81,6 +104,10 @@ pub(crate) struct Lowering {
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) next_event: u64,
     pub(crate) next_part: u32,
+    /// Slur and tuplet blocks by group id, in the order they were entered.
+    pub(crate) groups: IndexMap<u32, GroupInfo>,
+    pub(crate) next_group: u32,
+    pub(crate) annotations: AnnotationStore,
 }
 
 impl Lowering {
@@ -91,7 +118,18 @@ impl Lowering {
             diagnostics: Vec::new(),
             next_event: 0,
             next_part: 0,
+            groups: IndexMap::new(),
+            next_group: 0,
+            annotations: AnnotationStore::default(),
         }
+    }
+
+    /// Register a slur or tuplet block, returning its group id.
+    pub(crate) fn group(&mut self, info: GroupInfo) -> u32 {
+        let id = self.next_group;
+        self.next_group = self.next_group.saturating_add(1);
+        self.groups.insert(id, info);
+        id
     }
 
     pub(crate) fn declare(&mut self, info: DeclInfo) -> DeclKey {
@@ -287,10 +325,7 @@ pub(crate) fn parse_duration(node: &SyntaxNode) -> Option<NotatedDuration> {
     } else {
         Ratio::from_integer(text.parse().ok()?)
     };
-    Some(NotatedDuration {
-        value: MusicalDuration::new(value),
-        spelling: text,
-    })
+    Some(NotatedDuration::single(MusicalDuration::new(value), text))
 }
 
 fn lower_score(lowering: &mut Lowering, score: &musa_language::ast::ScoreDecl, snapshot: &mut ScoreSnapshot) {
@@ -362,6 +397,7 @@ fn lower_voice(lowering: &mut Lowering, voice: &musa_language::ast::VoiceDecl, d
         declaration,
         origin_span: None,
         max_motif: usize::MAX,
+        scale: Ratio::ONE,
     };
     lower_items(lowering, &voice.items(), &cx, &mut events, &mut onset);
     Voice { events }
@@ -453,8 +489,23 @@ fn lower_items(
                     lower_items(lowering, &repeat.items(), &inner, events, onset);
                 }
             }
+            // The frozen oracle predates phase 2 and does not grow with it
+            // (module docs above). Saying so is the honest answer: silently
+            // dropping a tuplet would make this pass disagree with the
+            // canonical one about how long a bar is.
+            VoiceItem::Slur(item) => reject(lowering, "slur", item.syntax()),
+            VoiceItem::Dynamic(item) => reject(lowering, "dynamic", item.syntax()),
+            VoiceItem::Tuplet(item) => reject(lowering, "tuplet", item.syntax()),
         }
     }
+}
+
+/// Refuse a construct this pass was frozen before.
+fn reject(lowering: &mut Lowering, what: &str, node: &SyntaxNode) {
+    lowering.error(
+        format!("`{what}` needs the kernel elaboration path"),
+        trimmed_span(node),
+    );
 }
 
 /// Append an event and advance the onset.
@@ -603,6 +654,7 @@ fn lower_use(
         declaration,
         origin_span: Some(call_span),
         max_motif: index,
+        scale: cx.scale,
     };
     lower_items(lowering, &body, &inner, events, onset);
 }
@@ -629,10 +681,10 @@ pub(crate) fn bind_argument(
         }
         "duration" => {
             if let Some(value) = parse_ratio(text).or_else(|| text.parse::<i64>().ok().map(Ratio::from_integer)) {
-                Some(BoundValue::Duration(NotatedDuration {
-                    value: MusicalDuration::new(value),
-                    spelling: text.to_string(),
-                }))
+                Some(BoundValue::Duration(NotatedDuration::single(
+                    MusicalDuration::new(value),
+                    text,
+                )))
             } else if let Some(BoundValue::Duration(duration)) = cx.params.get(text) {
                 Some(BoundValue::Duration(duration.clone()))
             } else {

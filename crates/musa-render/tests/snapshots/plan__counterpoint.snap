@@ -56,10 +56,21 @@ NotationPlan {
                                             },
                                         ),
                                         spelling: "1/2",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 2,
+                                                },
+                                            ),
+                                        ],
                                     },
-                                    tie_start: false,
-                                    tie_stop: false,
+                                    tie: none,
                                     beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    dynamic: None,
+                                    articulations: [],
                                 },
                                 NotatedItem {
                                     event: EventId(
@@ -88,12 +99,24 @@ NotationPlan {
                                             },
                                         ),
                                         spelling: "1/2",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 2,
+                                                },
+                                            ),
+                                        ],
                                     },
-                                    tie_start: false,
-                                    tie_stop: false,
+                                    tie: none,
                                     beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    dynamic: None,
+                                    articulations: [],
                                 },
                             ],
+                            slurs: [],
                         },
                     ],
                 },
@@ -133,10 +156,21 @@ NotationPlan {
                                             },
                                         ),
                                         spelling: "1/2",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 2,
+                                                },
+                                            ),
+                                        ],
                                     },
-                                    tie_start: false,
-                                    tie_stop: false,
+                                    tie: none,
                                     beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    dynamic: None,
+                                    articulations: [],
                                 },
                                 NotatedItem {
                                     event: EventId(
@@ -181,12 +215,24 @@ NotationPlan {
                                             },
                                         ),
                                         spelling: "1/2",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 2,
+                                                },
+                                            ),
+                                        ],
                                     },
-                                    tie_start: false,
-                                    tie_stop: false,
+                                    tie: none,
                                     beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    dynamic: None,
+                                    articulations: [],
                                 },
                             ],
+                            slurs: [],
                         },
                     ],
                 },
@@ -244,10 +290,21 @@ NotationPlan {
                                             },
                                         ),
                                         spelling: "1/2",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 2,
+                                                },
+                                            ),
+                                        ],
                                     },
-                                    tie_start: false,
-                                    tie_stop: false,
+                                    tie: none,
                                     beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    dynamic: None,
+                                    articulations: [],
                                 },
                                 NotatedItem {
                                     event: EventId(
@@ -276,12 +333,24 @@ NotationPlan {
                                             },
                                         ),
                                         spelling: "1/2",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 2,
+                                                },
+                                            ),
+                                        ],
                                     },
-                                    tie_start: false,
-                                    tie_stop: false,
+                                    tie: none,
                                     beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    dynamic: None,
+                                    articulations: [],
                                 },
                             ],
+                            slurs: [],
                         },
                     ],
                 },
@@ -321,10 +390,21 @@ NotationPlan {
                                             },
                                         ),
                                         spelling: "1/2",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 2,
+                                                },
+                                            ),
+                                        ],
                                     },
-                                    tie_start: false,
-                                    tie_stop: false,
+                                    tie: none,
                                     beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    dynamic: None,
+                                    articulations: [],
                                 },
                                 NotatedItem {
                                     event: EventId(
@@ -353,12 +433,24 @@ NotationPlan {
                                             },
                                         ),
                                         spelling: "1/2",
+                                        pieces: [
+                                            MusicalDuration(
+                                                Ratio {
+                                                    numer: 1,
+                                                    denom: 2,
+                                                },
+                                            ),
+                                        ],
                                     },
-                                    tie_start: false,
-                                    tie_stop: false,
+                                    tie: none,
                                     beam: None,
+                                    tuplet: None,
+                                    slur: none,
+                                    dynamic: None,
+                                    articulations: [],
                                 },
                             ],
+                            slurs: [],
                         },
                     ],
                 },

@@ -4,6 +4,11 @@
 //! text; regenerating them requires intent (`INSTA_UPDATE=always`), so a
 //! parser change that alters trees or messages shows up for review.
 
+// Test helpers use expect()/panic! on statically-valid inputs: a failure is a
+// bug in the test itself, and panicking is the correct behavior there.
+#![allow(clippy::expect_used)]
+#![allow(clippy::panic)]
+
 use musa_language::ast::{PieceDecl, VoiceItem};
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode, parse};
 
@@ -188,4 +193,76 @@ fn typed_wrappers_expose_the_document_structure() {
     assert_eq!(items.len(), 2);
     assert!(matches!(items.first(), Some(VoiceItem::Use(_))));
     assert!(matches!(items.get(1), Some(VoiceItem::Transpose(_))));
+}
+
+// --- Phase 2: ties, slurs, dynamics, articulations, tuplets ---------------
+
+const TUPLET_FIXTURE: &str = include_str!("../../../examples/tuplet-fixture.musa");
+
+#[test]
+fn tuplet_fixture_parses_cleanly() {
+    let doc = parse(TUPLET_FIXTURE);
+    assert_eq!(print_errors(&doc), "", "fixture must parse without diagnostics");
+    assert_eq!(doc.syntax().text().to_string(), TUPLET_FIXTURE, "losslessness");
+}
+
+/// An articulation and a pitch reference are both bare identifiers, and the
+/// tree has to keep them apart without counting tokens.
+#[test]
+fn articulations_do_not_shadow_the_pitch_or_the_duration() {
+    let source = "piece \"x\" { motif m(root: pitch = c4, len: duration = 1/4) { root len accent staccato; } \
+                  score { part p { voice v { use m(); } } } }";
+    let doc = parse(source);
+    assert_eq!(print_errors(&doc), "");
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");
+    let motif = piece.motifs().into_iter().next().expect("motif");
+    let items = motif.items();
+    let Some(VoiceItem::Note(note)) = items.into_iter().next() else {
+        panic!("expected a note statement");
+    };
+    assert_eq!(note.pitch().as_deref(), Some("root"));
+    assert_eq!(note.duration(), None, "a duration parameter is not a literal");
+    assert_eq!(note.articulations(), vec!["accent".to_string(), "staccato".to_string()]);
+    assert!(!note.tied());
+}
+
+#[test]
+fn typed_views_read_the_new_statements() {
+    let source = "piece \"x\" { score { part p { voice v { \
+                  dynamic mf; tuplet 3/2 { c4 1/8; } slur { d4 1/4 ~; d4 1/4; } } } } }";
+    let doc = parse(source);
+    assert_eq!(print_errors(&doc), "");
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");
+    let voice = piece
+        .score()
+        .and_then(|score| score.parts().into_iter().next())
+        .and_then(|part| part.voices().into_iter().next())
+        .expect("voice");
+    let items = voice.items();
+    assert_eq!(items.len(), 3, "dynamic, tuplet, slur");
+    let mut ratio = None;
+    let mut slurred = Vec::new();
+    let mut mark = None;
+    for item in items {
+        match item {
+            VoiceItem::Dynamic(dynamic) => mark = dynamic.mark(),
+            VoiceItem::Tuplet(tuplet) => ratio = tuplet.ratio(),
+            VoiceItem::Slur(slur) => {
+                for inner in slur.items() {
+                    if let VoiceItem::Note(note) = inner {
+                        slurred.push(note.tied());
+                    }
+                }
+            }
+            VoiceItem::Note(_)
+            | VoiceItem::Rest(_)
+            | VoiceItem::Chord(_)
+            | VoiceItem::Use(_)
+            | VoiceItem::Transpose(_)
+            | VoiceItem::Repeat(_) => panic!("unexpected item"),
+        }
+    }
+    assert_eq!(mark.as_deref(), Some("mf"));
+    assert_eq!(ratio.as_deref(), Some("3/2"));
+    assert_eq!(slurred, vec![true, false], "only the first note is tied");
 }

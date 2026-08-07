@@ -19,10 +19,10 @@
 // module scope for that reason.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{Clef, EventId, Mode, WrittenPitch};
+use musa_compiler::{ArticulationMark, Clef, EventId, Mode, WrittenPitch};
 
 use crate::RenderError;
-use crate::plan::{NotatedItem, NotatedKind, NotationPlan, StaffPlan, VoiceLane};
+use crate::plan::{ARTICULATION_PLACEMENT, NotatedItem, NotatedKind, NotationPlan, Placement, StaffPlan, VoiceLane};
 
 /// The typed document node tree (§12.3). Private to the backend.
 enum LyNode {
@@ -32,6 +32,8 @@ enum LyNode {
     Simultaneous(Vec<Self>),
     /// One note/chord/rest token with its event for the source map.
     Note { body: String, event: EventId },
+    /// `\tuplet n/d { ... }` — a tuplet bracket over its items.
+    Tuplet { num: u32, den: u32, body: Vec<Self> },
     /// A bar check `|` between measures.
     BarCheck,
     /// A lilypond command line (`\clef "treble"`, `\time 4/4`, `\key a \minor`).
@@ -128,14 +130,39 @@ fn lane_body(lane: &VoiceLane, count: u32, unit: u32) -> Result<Vec<LyNode>, Ren
         }
         return Ok(nodes);
     }
+    // A tuplet bracket wraps the items it covers, so the lane is built as a
+    // stack: items go to the innermost open bracket.
     let mut nodes = Vec::new();
+    let mut open: Option<(u32, u32, Vec<LyNode>)> = None;
     for item in lane.items() {
-        nodes.push(item_node(item)?);
+        if let Some(tuplet) = item.tuplet()
+            && tuplet.start
+            && open.is_none()
+        {
+            open = Some((tuplet.num, tuplet.den, Vec::new()));
+        }
+        let node = item_node(item)?;
+        match open.as_mut() {
+            Some((_, _, body)) => body.push(node),
+            None => nodes.push(node),
+        }
+        if item.tuplet().is_some_and(|tuplet| tuplet.stop)
+            && let Some((num, den, body)) = open.take()
+        {
+            nodes.push(LyNode::Tuplet { num, den, body });
+        }
+    }
+    // A bracket the measure did not close (the compiler forbids it, but the
+    // printer must still produce a document): close it here.
+    if let Some((num, den, body)) = open.take() {
+        nodes.push(LyNode::Tuplet { num, den, body });
     }
     Ok(nodes)
 }
 
-/// One plan item as a `LilyPond` note/chord/rest token with tie syntax.
+/// One plan item as a `LilyPond` note/chord/rest token, with the marks that
+/// attach to it in `LilyPond`'s own order: duration, tie, articulations,
+/// dynamic, slur.
 fn item_node(item: &NotatedItem) -> Result<LyNode, RenderError> {
     let value = item.duration().value.as_ratio();
     let Some(duration) = spell_duration(*value.numer(), *value.denom()) else {
@@ -145,7 +172,7 @@ fn item_node(item: &NotatedItem) -> Result<LyNode, RenderError> {
         });
     };
     let tie = if item.tie_start() { "~" } else { "" };
-    let body = match item.kind() {
+    let head = match item.kind() {
         NotatedKind::Rest => format!("r{duration}{tie}"),
         NotatedKind::Note { pitch } => format!("{}{duration}{tie}", pitch_name(*pitch)),
         NotatedKind::Chord { pitches } => {
@@ -153,10 +180,44 @@ fn item_node(item: &NotatedItem) -> Result<LyNode, RenderError> {
             format!("<{}>{duration}{tie}", tones.join(" "))
         }
     };
+    let mut body = head;
+    for mark in item.articulations() {
+        body.push_str(articulation_script(*mark));
+    }
+    if let Some(dynamic) = item.dynamic() {
+        body.push('\\');
+        body.push_str(dynamic.name());
+    }
+    if item.slur_start() {
+        body.push('(');
+    }
+    if item.slur_stop() {
+        body.push(')');
+    }
     Ok(LyNode::Note {
         body,
         event: item.event(),
     })
+}
+
+/// `LilyPond`'s articulation scripts, with the direction the plan chose.
+fn articulation_script(mark: ArticulationMark) -> &'static str {
+    let side = match ARTICULATION_PLACEMENT {
+        Placement::Above => '^',
+        Placement::Below => '_',
+    };
+    match (mark, side) {
+        (ArticulationMark::Staccato, '^') => "^.",
+        (ArticulationMark::Staccato, _) => "_.",
+        (ArticulationMark::Staccatissimo, '^') => "^!",
+        (ArticulationMark::Staccatissimo, _) => "_!",
+        (ArticulationMark::Tenuto, '^') => "^-",
+        (ArticulationMark::Tenuto, _) => "_-",
+        (ArticulationMark::Accent, '^') => "^>",
+        (ArticulationMark::Accent, _) => "_>",
+        (ArticulationMark::Marcato, '^') => "^^",
+        (ArticulationMark::Marcato, _) => "_^",
+    }
 }
 
 /// Absolute-octave English note name (`cs'`, `eff,`).
@@ -277,7 +338,11 @@ fn print_document(document: &LyDocument) -> String {
             }
             out.push_str("  >>\n");
         }
-        single @ (LyNode::Sequential(_) | LyNode::Note { .. } | LyNode::BarCheck | LyNode::Command(_)) => {
+        single @ (LyNode::Sequential(_)
+        | LyNode::Note { .. }
+        | LyNode::Tuplet { .. }
+        | LyNode::BarCheck
+        | LyNode::Command(_)) => {
             print_node(&mut out, single, 2);
             out.push('\n');
         }
@@ -286,20 +351,24 @@ fn print_document(document: &LyDocument) -> String {
     out
 }
 
+/// `{ ... }` with one child per line at `indent + 1`.
+fn print_sequence(out: &mut String, children: &[LyNode], indent: usize) {
+    let pad = "  ".repeat(indent);
+    out.push_str("{\n");
+    for child in children {
+        out.push_str(&pad);
+        out.push_str("  ");
+        print_node(out, child, indent.saturating_add(1));
+        out.push('\n');
+    }
+    out.push_str(&pad);
+    out.push('}');
+}
+
 fn print_node(out: &mut String, node: &LyNode, indent: usize) {
     let pad = "  ".repeat(indent);
     match node {
-        LyNode::Sequential(children) => {
-            out.push_str("{\n");
-            for child in children {
-                out.push_str(&pad);
-                out.push_str("  ");
-                print_node(out, child, indent.saturating_add(1));
-                out.push('\n');
-            }
-            out.push_str(&pad);
-            out.push('}');
-        }
+        LyNode::Sequential(children) => print_sequence(out, children, indent),
         LyNode::Simultaneous(children) => {
             out.push_str("<<\n");
             let last = children.len().saturating_sub(1);
@@ -321,6 +390,11 @@ fn print_node(out: &mut String, node: &LyNode, indent: usize) {
                 let comment = format!(" % event:{:x}", event.0);
                 out.push_str(&comment);
             }
+        }
+        LyNode::Tuplet { num, den, body } => {
+            let bracket = format!("\\tuplet {num}/{den} ");
+            out.push_str(&bracket);
+            print_sequence(out, body, indent);
         }
         LyNode::BarCheck => out.push('|'),
         LyNode::Command(text) => out.push_str(text),
