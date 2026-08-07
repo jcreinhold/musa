@@ -1,7 +1,7 @@
 ---
 id: 38
 slug: semantic-benchmarks
-status: pending
+status: in-progress
 depends_on: [37]
 phase: 3
 ---

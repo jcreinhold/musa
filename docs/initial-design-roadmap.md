@@ -2051,6 +2051,22 @@ The Tauri shell should be deliberately thin:
 
 All project semantics remain in `musa-project`.
 
+## 15.10 Development dependencies
+
+These are workspace-wide and never appear in a shipped binary. The list is closed for the same reason the per-crate
+lists are: a test tool is still a dependency.
+
+```text
+insta       reviewable snapshots of complex textual output (§17.1)
+proptest    algebraic laws and generated score fragments (§17.2)
+divan       benchmarks of the semantic pipeline (§17.7)
+```
+
+`divan` runs under a plain `cargo bench` with no separate driver binary to install, and reports **per-iteration
+allocation counts** alongside time. That second property is why it is here rather than `criterion`: the semantic
+pipeline's risk under the prompt 39–43 migration is allocation and hashing, not arithmetic, and a harness that
+measures only wall time cannot see the thing most likely to regress.
+
 ---
 
 # 16. Project and album organization
@@ -2189,6 +2205,17 @@ Maintain a small musical corpus:
 - multi-part LilyPond export.
 
 The examples are executable specifications, not merely demos.
+
+## 17.7 Benchmarks
+
+Benchmarks measure the semantic pipeline on the two reference workloads named in `docs/interface/06-performance.md`
+(one small piece, one large one) and report allocations as well as time. They exist to make a regression visible, not
+to justify speculative optimization (§4 of that document): a benchmark is added before a migration that could slow
+something down, and its baseline is recorded in a checked-in table.
+
+Benchmarks never widen a crate's public interface. Where a phase must be measured on its own, it is reached through a
+`#[doc(hidden)]` entry point documented as existing for measurement only — an interface that grew because a benchmark
+wanted a seam is a benchmark leaking into a design.
 
 ---
 
