@@ -5,7 +5,10 @@
 # a script, so any target can also be typed out by hand.
 
 UI      := apps/musa-desktop/ui
-SHELL_D := apps/musa-desktop/src-tauri
+# Tauri is run from the app directory, not from `src-tauri`: it resolves the
+# config's `beforeDevCommand` relative to where it was started, and `../ui`
+# only means the UI from here.
+SHELL_D := apps/musa-desktop
 TAURI   := $(CURDIR)/$(UI)/node_modules/.bin/tauri
 NPM     := npm --prefix $(UI)
 CARGO   := cargo
