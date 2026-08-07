@@ -9,7 +9,19 @@
   import TypographicRow from "../lib/ui/TypographicRow.svelte";
   import type { EventFacts } from "../lib/state/snapshot";
 
-  let { event }: { event: EventFacts | undefined } = $props();
+  let {
+    event,
+    adrift = null,
+  }: {
+    event: EventFacts | undefined;
+    /**
+     * Set when a re-render moved the selection because the event it was on is
+     * gone. Saying so is the difference between a selection that followed the
+     * edit and one that silently describes a different note
+     * (`02-engraving.md` §6).
+     */
+    adrift?: string | null;
+  } = $props();
 
   const sounds = $derived(event && event.kind !== "rest");
 
@@ -25,6 +37,10 @@
 
 {#if event}
   <div class="inspector">
+    {#if adrift}
+      <p class="adrift" role="status">{adrift} — this is the nearest note in the same voice.</p>
+    {/if}
+
     <TypographicRow label={event.kind === "chord" ? "Pitches" : "Pitch"} editable>
       {#if sounds}{event.pitches.join(" ")}{:else}<span class="rest">rest</span>{/if}
     </TypographicRow>
@@ -74,6 +90,14 @@
     display: flex;
     flex-direction: column;
     gap: var(--s-4);
+  }
+
+  .adrift {
+    margin: 0;
+    font-family: var(--f-ui);
+    font-size: var(--t-small-size);
+    line-height: var(--t-small-line);
+    color: var(--chalk);
   }
 
   .rest,

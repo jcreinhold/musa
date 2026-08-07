@@ -16,6 +16,8 @@ export type Moment =
   | "score"
   /** A keystroke started the debounce (B1). */
   | "edit"
+  /** A zoom step was asked for, so a re-layout is owed (B8). */
+  | "zoom"
   /** A snapshot arrived, so diagnostics are current (B1). */
   | "snapshot";
 

@@ -15,6 +15,39 @@ import type { LayoutOptions } from "./protocol";
  */
 const UNITS_PER_PIXEL = (25.4 / 96) * 10;
 
+/**
+ * How the score is broken into pages (§4).
+ *
+ * Page is the default — a leaf, per the thesis. Continuous lays the whole
+ * piece out as one system and scrolls horizontally; it is what following the
+ * playhead prefers, and what a single line is easiest to write in.
+ */
+export type ViewMode = "page" | "continuous";
+
+/**
+ * How wide a continuous layout is allowed to run before Verovio breaks it:
+ * a hundred metres of paper, which is longer than any single system musa can
+ * currently produce. The page is trimmed back to its content, so this is a
+ * ceiling rather than a size.
+ */
+const CONTINUOUS_WIDTH = 1_000_000;
+
+/**
+ * The layout a view mode implies.
+ *
+ * Continuous keeps the page's *height* — the height is what fixes the staff
+ * size, and a continuous view that re-scaled the music would make the mode
+ * toggle a zoom control. Only the width is given away, to the one system and
+ * the horizontal scrollbar.
+ */
+export function modeOptions(
+  mode: ViewMode,
+): Pick<LayoutOptions, "breaks" | "adjustPageHeight" | "adjustPageWidth"> {
+  return mode === "continuous"
+    ? { breaks: "none", adjustPageHeight: false, adjustPageWidth: true }
+    : { breaks: "auto", adjustPageHeight: false, adjustPageWidth: false };
+}
+
 /** The discrete zoom steps (§5). Zoom is a re-layout, never a transform. */
 export const ZOOM_STEPS = [50, 75, 90, 100, 125, 150, 200] as const;
 
@@ -27,6 +60,7 @@ export const DEFAULT_LAYOUT: LayoutOptions = {
   // shrink to its content turns the sheet into a strip of music floating on
   // the surround, which is the continuous view and an explicit mode.
   adjustPageHeight: false,
+  adjustPageWidth: false,
 };
 
 /**
@@ -42,12 +76,29 @@ export function pageFor(
   width: number,
   height: number,
   zoom: number,
+  mode: ViewMode = "page",
 ): Pick<LayoutOptions, "pageWidth" | "pageHeight"> {
   const units = (UNITS_PER_PIXEL * 100) / Math.max(zoom, 1);
   return {
-    pageWidth: Math.max(Math.round(width * units), 500),
+    // Continuous is one system, so the width is the scroll rather than the
+    // leaf; `adjustPageWidth` trims what this allows down to the music.
+    pageWidth:
+      mode === "continuous" ? CONTINUOUS_WIDTH : Math.max(Math.round(width * units), 500),
     pageHeight: Math.max(Math.round(height * units), 500),
   };
+}
+
+/**
+ * CSS pixels per SVG user unit at a given zoom.
+ *
+ * Verovio states page sizes in tenths of a millimetre but draws in hundredths
+ * — the `definition-scale` viewBox is ten times the page — so a caller that
+ * sizes an element from a rendered box works in these units, not in page
+ * units. Continuous view needs it: with no page width to fill, the scale is
+ * the only thing that fixes how large the music is drawn.
+ */
+export function pixelsPerUnit(zoom: number): number {
+  return zoom / 100 / (UNITS_PER_PIXEL * 10);
 }
 
 /** The Verovio option object for a layout. */
@@ -58,6 +109,7 @@ export function verovioOptions(options: LayoutOptions): Record<string, unknown> 
     pageWidth: options.pageWidth,
     pageHeight: options.pageHeight,
     adjustPageHeight: options.adjustPageHeight,
+    adjustPageWidth: options.adjustPageWidth,
     // Zoom lives in the page size, never in `scale`: see `pageFor`.
     scale: 100,
     svgViewBox: true,

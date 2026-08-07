@@ -34,6 +34,16 @@ export class Workspace {
   selection = $state<Selection>({ kind: "none" });
   hovered = $state<string | null>(null);
 
+  /**
+   * Set when a re-render moved the selection because the event it was on no
+   * longer exists. The inspector says so rather than silently describing a
+   * different note (`02-engraving.md` §6).
+   */
+  adrift = $state<string | null>(null);
+
+  /** The events as they were before the last reconcile, for the fallback. */
+  #previous: EventFacts[] = [];
+
   constructor(read: () => ProjectSnapshot) {
     this.#read = read;
   }
@@ -80,6 +90,7 @@ export class Workspace {
    * answers, and safe because it changes nothing semantic (§2).
    */
   select(id: string, extend = false): void {
+    this.adrift = null;
     const events = this.snapshot.score?.events ?? [];
     const [anchorId] = this.selected;
     const anchor = events.find((candidate) => candidate.id === anchorId);
@@ -100,6 +111,7 @@ export class Workspace {
 
   /** Click a voice in the left margin: active voice, caret at its start. */
   selectVoice(part: string, voice: string): void {
+    this.adrift = null;
     const [first] = voiceEvents(this.snapshot, part, voice);
     this.selection = first
       ? { kind: "event", events: [first.id] }
@@ -108,6 +120,52 @@ export class Workspace {
 
   clear(): void {
     this.selection = { kind: "none" };
+    this.adrift = null;
+  }
+
+  /**
+   * Carry the selection across a re-render (`02-engraving.md` §6).
+   *
+   * Selection is by id, so it usually survives untouched. When the selected
+   * event is gone — the user deleted the note they were on — it moves to the
+   * nearest surviving neighbour in the same voice, in the order the score had
+   * before the edit, and says that it moved.
+   */
+  reconcile(): void {
+    const events = this.snapshot.score?.events ?? [];
+    const previous = this.#previous;
+    this.#previous = events;
+
+    const [first] = this.selected;
+    if (first === undefined) return;
+    if (events.some((event) => event.id === first)) {
+      this.adrift = null;
+      return;
+    }
+
+    const gone = previous.find((event) => event.id === first);
+    const surviving = gone
+      ? previous.filter(
+          (event) =>
+            event.part === gone.part &&
+            event.voice === gone.voice &&
+            events.some((kept) => kept.id === event.id),
+        )
+      : [];
+    const at = gone ? previous.indexOf(gone) : -1;
+    const nearest = surviving.reduce<EventFacts | undefined>((best, candidate) => {
+      if (!best) return candidate;
+      const distance = (event: EventFacts) => Math.abs(previous.indexOf(event) - at);
+      return distance(candidate) < distance(best) ? candidate : best;
+    }, undefined);
+
+    if (nearest) {
+      this.selection = { kind: "event", events: [nearest.id] };
+      this.adrift = "The note this described is gone";
+    } else {
+      this.selection = { kind: "none" };
+      this.adrift = null;
+    }
   }
 
   /**

@@ -7,16 +7,16 @@
  */
 
 import { DEFAULT_LAYOUT } from "./options";
-import type { Layout, LayoutOptions, PageSvg, Request, Response } from "./protocol";
+import type { Box, Layout, LayoutOptions, PageSvg, Request, Response } from "./protocol";
 
-export type { Layout, LayoutOptions, PageSvg };
+export type { Box, Layout, LayoutOptions, PageSvg };
 
 export interface Engraver {
   load(mei: string, revision: number, options?: Partial<LayoutOptions>): Promise<Layout>;
   page(n: number): Promise<PageSvg>;
   relayout(options: Partial<LayoutOptions>): Promise<Layout>;
-  /** The engraved element for an event id, once a page is in the document. */
-  locate(eventId: string): Element | null;
+  /** The page an event was engraved on, for scroll-to and anchoring. */
+  locate(eventId: string): Promise<number | null>;
   dispose(): void;
 }
 
@@ -39,12 +39,19 @@ class WorkerEngraver implements Engraver {
       const pending = this.#pending.get(response.id);
       if (!pending) return;
       this.#pending.delete(response.id);
-      if (response.kind === "error") {
-        pending.reject(new Error(response.message));
-      } else if (response.kind === "layout") {
-        (pending.resolve as (value: Layout) => void)(response.layout);
-      } else {
-        (pending.resolve as (value: PageSvg) => void)(response.page);
+      switch (response.kind) {
+        case "error":
+          pending.reject(new Error(response.message));
+          break;
+        case "layout":
+          (pending.resolve as (value: Layout) => void)(response.layout);
+          break;
+        case "page":
+          (pending.resolve as (value: PageSvg) => void)(response.page);
+          break;
+        case "located":
+          (pending.resolve as (value: number | null) => void)(response.page);
+          break;
       }
     };
   }
@@ -72,15 +79,23 @@ class WorkerEngraver implements Engraver {
   relayout(options: Partial<LayoutOptions>): Promise<Layout> {
     this.#options = { ...this.#options, ...options };
     this.#generation += 1;
-    return this.#send<Layout>({ kind: "relayout", generation: this.#generation, options: this.#options });
+    return this.#send<Layout>({
+      kind: "relayout",
+      generation: this.#generation,
+      options: this.#options,
+    });
   }
 
   page(n: number): Promise<PageSvg> {
     return this.#send<PageSvg>({ kind: "page", generation: this.#generation, page: n });
   }
 
-  locate(eventId: string): Element | null {
-    return document.getElementById(eventId);
+  locate(eventId: string): Promise<number | null> {
+    return this.#send<number | null>({
+      kind: "locate",
+      generation: this.#generation,
+      eventId,
+    });
   }
 
   dispose(): void {

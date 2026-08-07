@@ -1,0 +1,37 @@
+events 20
+tags
+  defs 1
+  desc 1
+  g 103
+  path 93
+  style 1
+  svg 1
+  use 26
+classes
+  accid 1
+  barLine 4
+  below 4
+  clef 1
+  definition-scale 1
+  keySig 2
+  layer 12
+  ledgerLines 4
+  mdiv 1
+  measure 4
+  meterSig 2
+  note 18
+  notehead 18
+  page-margin 1
+  pageMilestone 2
+  pageMilestoneEnd 2
+  rest 2
+  score 1
+  section 1
+  staff 8
+  stem 10
+  system 1
+  systemMilestone 1
+  systemMilestoneEnd 1
+  tie 2
+paint
+

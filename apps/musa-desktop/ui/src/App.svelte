@@ -20,17 +20,31 @@
   import { ThemeChoice } from "./lib/session/theme.svelte";
   import { mark } from "./lib/perf";
   import { fixture } from "./lib/state/fixtures";
+  import { ViewPreferences, stepForPinch } from "./lib/state/view.svelte";
 
   const parameters = new URLSearchParams(globalThis.location?.search ?? "");
   const session = new Session();
   const theme = new ThemeChoice();
+  const chosen = fixture(parameters.get("score"));
 
   const DEFAULT_STEP = ZOOM_STEPS.indexOf(100);
   let zoomStep = $state(DEFAULT_STEP);
   const zoom = $derived(ZOOM_STEPS[zoomStep] ?? 100);
 
+  const views = new ViewPreferences();
+  const piece = $derived(session.snapshot?.name ?? chosen.key);
+  const mode = $derived(views.mode(piece));
+
   function stepZoom(by: number): void {
-    zoomStep = Math.min(Math.max(zoomStep + by, 0), ZOOM_STEPS.length - 1);
+    const next = Math.min(Math.max(zoomStep + by, 0), ZOOM_STEPS.length - 1);
+    if (next === zoomStep) return;
+    mark("zoom");
+    zoomStep = next;
+  }
+
+  /** A settled pinch lands on the nearest rung of the zoom ladder (§5). */
+  function pinch(factor: number): void {
+    zoomStep = stepForPinch(zoomStep, factor);
   }
 
   const surface = {
@@ -43,7 +57,6 @@
   const pinned = parameters.get("theme");
   if (pinned === "light" || pinned === "dark") theme.chosen = pinned;
 
-  const chosen = fixture(parameters.get("score"));
   if (!session.live && chosen.snapshot) session.snapshot = chosen.snapshot;
 
   onMount(() => {
@@ -66,7 +79,14 @@
 {#if !session.live && parameters.get("view") === "sheet"}
   <Sheet fixture={chosen} />
 {:else if session.snapshot}
-  <Compose {session} {zoom} onzoom={stepZoom} />
+  <Compose
+    {session}
+    {zoom}
+    {mode}
+    onzoom={stepZoom}
+    onpinch={pinch}
+    onmode={(chosenMode) => views.choose(piece, chosenMode)}
+  />
 {:else}
   <Launch onopen={() => void session.open()} onnew={() => void session.create()} />
 {/if}

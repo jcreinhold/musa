@@ -16,13 +16,21 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 
-const SNAPSHOT = fileURLToPath(
-  new URL("../../fixtures/glass-mountain.snapshot.json", import.meta.url),
-);
+/** The pieces the stub can open, both written by `musa-project`'s tests. */
+export type Piece = "glass-mountain" | "large-score";
 
-/** Install the stub. Call before the page navigates. */
-export async function stubShell(page: Page): Promise<void> {
-  const valid: unknown = JSON.parse(readFileSync(SNAPSHOT, "utf8"));
+function snapshotOf(piece: Piece): string {
+  return fileURLToPath(new URL(`../../fixtures/${piece}.snapshot.json`, import.meta.url));
+}
+
+/**
+ * Install the stub. Call before the page navigates.
+ *
+ * The piece is the workload: Glass Mountain is `06-performance.md`'s small
+ * case, `large-score` its 100-bar, 4-part large case.
+ */
+export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Promise<void> {
+  const valid: unknown = JSON.parse(readFileSync(snapshotOf(piece), "utf8"));
   await page.addInitScript((seed: Record<string, unknown>) => {
     const handlers = new Map<number, (payload: unknown) => void>();
     const events = new Map<string, number[]>();
@@ -34,13 +42,19 @@ export async function stubShell(page: Page): Promise<void> {
 
     function setSource(source: string): Record<string, unknown> {
       const compiles = balanced(source);
+      const revision = (current.revision as number) + 1;
       current = {
         ...current,
         source,
-        revision: (current.revision as number) + 1,
+        revision,
         compiles,
-        // The last valid score, its MEI, and its revision are untouched —
-        // roadmap §14.7, and the whole point of `05-states.md` §4.
+        // A valid edit produces a new score; an invalid one leaves the last
+        // valid score, its MEI, and its revision untouched — roadmap §14.7,
+        // and the whole point of `05-states.md` §4. The MEI the stub returns
+        // is always the fixture's, because the stub is not a compiler; what
+        // it reproduces faithfully is that a new score revision means the
+        // engraver has a page to lay out again, which is what B2 measures.
+        scoreRevision: compiles ? revision : current.scoreRevision,
         diagnostics: compiles ? [] : [{ severity: "error", message: "expected `}`", span: null }],
       };
       return current;

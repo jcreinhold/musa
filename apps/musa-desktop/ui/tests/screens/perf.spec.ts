@@ -1,6 +1,6 @@
 /**
  * The budgets this prompt owns, asserted as measurements
- * (`06-performance.md` §1–§2): B1, B6, B7, B10.
+ * (`06-performance.md` §1–§2): B1, B2, B6, B7, B8, B10.
  *
  * The harness drives the Vite dev server with the stubbed shell, which §2
  * sanctions where a window is impractical. That means these numbers are the
@@ -90,6 +90,59 @@ test("B1: a keystroke reaches diagnostics within 120 ms of the debounce", async 
   }
   expect(p95(samples), `diagnostics at p95 ${Math.round(p95(samples))} ms after settling`)
     .toBeLessThanOrEqual(120);
+});
+
+/**
+ * The large case: 100 bars in four parts (`tests/fixtures/large-score.musa`).
+ * This is the workload B2 and B8 are stated on, because a budget met only on
+ * a sixteen-bar sketch is not a budget.
+ */
+test.describe("the large score", () => {
+  // A 100-bar layout is real work, and each trial does it twenty times.
+  test.slow();
+
+  test("B2: an edit is re-engraved within 400 ms of the keystroke", async ({ page }) => {
+    await stubShell(page, "large-score");
+    await page.goto("/?perf=1");
+    await engraved(page);
+    await page.getByRole("button", { name: /Source/ }).click();
+    const source = page.getByRole("textbox", { name: "Source" });
+
+    const samples: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      await page.evaluate(() => performance.clearMarks());
+      await source.fill(trial % 2 === 0 ? `piece "A" {}` : `piece "B" {}`);
+      await page.waitForFunction(
+        () => performance.getEntriesByName("musa:score", "mark").length > 0,
+      );
+      // The 180 ms debounce is inside this number, as the budget states it:
+      // what the composer waits is from the keystroke, not from the compile.
+      samples.push((await at(page, "score")) - (await at(page, "edit")));
+    }
+    expect(p95(samples), `re-engraved at p95 ${Math.round(p95(samples))} ms after the keystroke`)
+      .toBeLessThanOrEqual(400);
+    expect(p95(samples)).toBeGreaterThanOrEqual(SETTLE_MS);
+  });
+
+  test("B8: a zoom step is re-laid out within 250 ms", async ({ page }) => {
+    await stubShell(page, "large-score");
+    await page.goto("/?perf=1");
+    await engraved(page);
+
+    const samples: number[] = [];
+    for (let trial = 0; trial < TRIALS; trial += 1) {
+      await page.evaluate(() => performance.clearMarks());
+      // In and out alternately, so no trial runs off the end of the ladder
+      // and measures a step that never happened.
+      await page.getByRole("button", { name: trial % 2 === 0 ? "Zoom in" : "Zoom out" }).click();
+      await page.waitForFunction(
+        () => performance.getEntriesByName("musa:score", "mark").length > 0,
+      );
+      samples.push((await at(page, "score")) - (await at(page, "zoom")));
+    }
+    expect(p95(samples), `re-laid out at p95 ${Math.round(p95(samples))} ms after the step`)
+      .toBeLessThanOrEqual(250);
+  });
 });
 
 test("B10: nothing is scheduled while the transport is stopped", async ({ page }) => {

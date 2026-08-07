@@ -3,13 +3,14 @@
  *
  * They are imported, never fetched: roadmap §14.8 asks for an application
  * that works with zero setup and no network, and the smoke test holds the
- * page to exactly that. `glass-mountain.snapshot.json` is written by a test in
- * `musa-project`, so it cannot drift from the type it serializes; the `.mei`
- * files come from `musa render --to mei`.
+ * page to exactly that. Every file here is written by a test in `musa-project`
+ * — the snapshot from the type it serializes, the `.mei` from the real export
+ * path — so none of them can drift from the core without a red test.
  */
 
 import counterpointMei from "../../../fixtures/counterpoint.mei?raw";
 import glassMountainMei from "../../../fixtures/glass-mountain.mei?raw";
+import largeScoreMei from "../../../fixtures/large-score.mei?raw";
 import twinkleMei from "../../../fixtures/twinkle.mei?raw";
 import glassMountainSnapshot from "../../../fixtures/glass-mountain.snapshot.json";
 import type { ProjectSnapshot } from "./snapshot";
@@ -34,6 +35,10 @@ export const FIXTURES: readonly Fixture[] = [
   GLASS_MOUNTAIN,
   { key: "counterpoint", title: "Counterpoint Study", mei: counterpointMei },
   { key: "twinkle", title: "Twinkle", mei: twinkleMei },
+  // The large-case workload of `06-performance.md` §1 — 100 bars in four
+  // parts. It is here so the budgets can be measured through the real screen
+  // rather than through a harness that skips it.
+  { key: "large-score", title: "Large Score", mei: largeScoreMei },
 ];
 
 /** The named fixture, or Glass Mountain — the score the Compose screen shows. */

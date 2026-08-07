@@ -5,7 +5,7 @@
 
 /** Verovio layout options. Defaults are fixed in `options.ts`. */
 export interface LayoutOptions {
-  /** Page width in Verovio units (1/100 mm). */
+  /** Page width in Verovio units (1/10 mm). */
   pageWidth: number;
   /** Page height in Verovio units. */
   pageHeight: number;
@@ -13,8 +13,16 @@ export interface LayoutOptions {
   zoom: number;
   /** System breaking. */
   breaks: "auto" | "encoded" | "none";
-  /** Continuous view lets the page grow to its content. */
+  /** Page view keeps the sheet's height; nothing currently grows it. */
   adjustPageHeight: boolean;
+  /** Continuous view trims the page to the width its one system needs. */
+  adjustPageWidth: boolean;
+}
+
+/** A page's own coordinate system, which the overlay layer adopts. */
+export interface Box {
+  width: number;
+  height: number;
 }
 
 /** What a load or relayout produced. */
@@ -25,6 +33,12 @@ export interface Layout {
   staffSpace: number;
   /** Every engraved event id, in document order. */
   ids: string[];
+  /**
+   * The box every page of this layout occupies. Placeholders are sized from
+   * it, so the scrollbar is honest from the first layout and does not grow as
+   * pages arrive (§7).
+   */
+  box: Box;
   /** The generation this layout belongs to. */
   generation: number;
 }
@@ -36,7 +50,7 @@ export interface PageSvg {
   /** Sanitized SVG markup. */
   svg: string;
   /** The page's own coordinate system, which the overlay layer adopts. */
-  box: { width: number; height: number };
+  box: Box;
   /** The generation this page belongs to; stale ones are dropped. */
   generation: number;
 }
@@ -44,9 +58,11 @@ export interface PageSvg {
 export type Request =
   | { kind: "load"; generation: number; mei: string; options: LayoutOptions }
   | { kind: "relayout"; generation: number; options: LayoutOptions }
-  | { kind: "page"; generation: number; page: number };
+  | { kind: "page"; generation: number; page: number }
+  | { kind: "locate"; generation: number; eventId: string };
 
 export type Response =
   | { kind: "layout"; id: number; layout: Layout }
   | { kind: "page"; id: number; page: PageSvg }
+  | { kind: "located"; id: number; page: number | null }
   | { kind: "error"; id: number; message: string };

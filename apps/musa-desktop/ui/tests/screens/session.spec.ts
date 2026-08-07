@@ -18,12 +18,21 @@ const LEAF = ".stage > div";
  * mints fresh symbol-definition ids on each load and the leaf re-lays out
  * whenever the drawer changes height, so neither the markup nor the geometry
  * is the invariant — the music is. These ids come from the MEI
- * (`02-engraving.md` §5), so an unchanged list is an unchanged score.
+ * (`02-engraving.md` §5), so an unchanged set is an unchanged score.
+ *
+ * Deduplicated because a page mid-swap holds the outgoing engraving under the
+ * incoming one for 90 ms, and both carry the same ids (§6).
  */
 async function engravedEvents(page: import("@playwright/test").Page): Promise<string> {
   return page.evaluate(() =>
-    [...document.querySelectorAll('.engraving g[id^="event-"]')]
-      .map((element) => element.id)
+    [
+      ...new Set(
+        [...document.querySelectorAll('.engraving g[id^="event-"]')].map(
+          (element) => element.id,
+        ),
+      ),
+    ]
+      .sort()
       .join(" "),
   );
 }
@@ -119,4 +128,24 @@ test("the position event moves the readout without a snapshot", async ({ page })
     }),
   );
   await expect(page.locator(".time")).toHaveText("0:03");
+});
+
+test("the view mode is a choice the piece keeps", async ({ page }) => {
+  await page.goto("/");
+  await engraved(page);
+  await expect(page.locator(".stage.continuous")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Continuous" }).click();
+  await expect(page.locator(".stage.continuous")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Continuous" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  // Remembered per piece (§4): reopening the same score reopens the view it
+  // was left in, and a preference that did not survive a reload would not be
+  // one.
+  await page.reload();
+  await engraved(page);
+  await expect(page.locator(".stage.continuous")).toHaveCount(1);
 });

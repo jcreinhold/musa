@@ -7,7 +7,10 @@
    * What is here is everything the session can already answer: the piece, its
    * problems, its transport, and the source you edit it through.
    */
+  import { untrack } from "svelte";
+
   import Score from "../lib/score/Score.svelte";
+  import type { ViewMode } from "../lib/engrave/options";
   import Leaf from "../lib/ui/Leaf.svelte";
   import Margin from "../lib/ui/Margin.svelte";
   import GlyphButton from "../lib/ui/GlyphButton.svelte";
@@ -23,8 +26,18 @@
   let {
     session,
     zoom,
+    mode,
     onzoom,
-  }: { session: Session; zoom: number; onzoom: (by: number) => void } = $props();
+    onpinch,
+    onmode,
+  }: {
+    session: Session;
+    zoom: number;
+    mode: ViewMode;
+    onzoom: (by: number) => void;
+    onpinch: (factor: number) => void;
+    onmode: (mode: ViewMode) => void;
+  } = $props();
 
   // Read through, never copied: the session replaces the snapshot on every
   // revision, and a selection is only meaningful against the current one.
@@ -34,6 +47,14 @@
   const score = $derived(snapshot?.score ?? null);
   const focused = $derived(workspace.focused);
   const problems = $derived(snapshot?.diagnostics.filter((d) => d.severity === "error") ?? []);
+
+  // A new score is a new set of events. The selection is by id and usually
+  // survives it untouched; when the note it was on is gone, this is what moves
+  // it to a neighbour and tells the inspector to say so (`02-engraving.md` §6).
+  $effect(() => {
+    void snapshot?.scoreRevision;
+    untrack(() => workspace.reconcile());
+  });
 </script>
 
 {#if snapshot && score}
@@ -81,6 +102,26 @@
           bar={focused?.bar ?? 1}
           beat={focused?.beat ?? { numerator: 1, denominator: 1 }}
         />
+        <!--
+          Two words, one of them current: page or continuous (§4). A toggle
+          named for what it shows, rather than a pair of icons a reader has to
+          learn.
+        -->
+        <div class="view" role="group" aria-label="View">
+          <button
+            type="button"
+            class="text"
+            aria-pressed={mode === "page"}
+            onclick={() => onmode("page")}>Pages</button
+          >
+          <button
+            type="button"
+            class="text"
+            aria-pressed={mode === "continuous"}
+            onclick={() => onmode("continuous")}>Continuous</button
+          >
+        </div>
+
         <div class="zoom">
           <button type="button" class="text" onclick={() => onzoom(-1)} aria-label="Zoom out"
             >−</button
@@ -98,19 +139,21 @@
         <PartsList parts={score.parts} {workspace} />
       </Margin>
 
-      <div class="stage">
+      <div class="stage" class:continuous={mode === "continuous"}>
         <Leaf stale={session.stale}>
           <Score
             mei={snapshot.mei ?? ""}
             revision={snapshot.scoreRevision ?? snapshot.revision}
             {zoom}
+            {mode}
             {workspace}
+            {onpinch}
           />
         </Leaf>
       </div>
 
       <Margin side="right" label="Inspector">
-        <Inspector event={focused} />
+        <Inspector event={focused} adrift={workspace.adrift} />
       </Margin>
     </div>
 
@@ -162,10 +205,16 @@
   }
 
   .transport,
+  .view,
   .zoom {
     display: flex;
     align-items: center;
     gap: var(--s-1);
+  }
+
+  /* The current view is the one set in ink; the other is an offer. */
+  .text[aria-pressed="true"] {
+    color: var(--ink);
   }
 
   /*
@@ -229,6 +278,15 @@
     aspect-ratio: 210 / 297;
     max-width: 100%;
     min-width: 0;
+  }
+
+  /*
+   * Continuous is not a page, so the leaf stops pretending to be one: it
+   * takes the full width and the music scrolls sideways through it (§4).
+   */
+  .stage.continuous :global(> *) {
+    aspect-ratio: auto;
+    width: 100%;
   }
 
   /*

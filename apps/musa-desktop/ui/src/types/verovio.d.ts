@@ -17,5 +17,7 @@ declare module "verovio/esm" {
     redoLayout(): void;
     getPageCount(): number;
     renderToSVG(page: number): string;
+    /** 1-based page holding an element, or 0 when it holds none. */
+    getPageWithElement(xmlId: string): number;
   }
 }
