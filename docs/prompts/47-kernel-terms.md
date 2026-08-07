@@ -2,7 +2,7 @@
 id: 47
 slug: kernel-terms
 status: pending
-depends_on: [46]
+depends_on: [45, 46]
 phase: 3
 ---
 
@@ -66,6 +66,10 @@ impl<A> Term<A> {
 /// Evaluate a checked term to its denotation (10-term-calculus, T3–T4).
 pub fn evaluate<A: Clone>(term: &Term<A>) -> Timeline<A>;
 ```
+
+Payloads containing a `Progress` (prompt 45) need **no** term-level treatment: they ride inside `a`, the evaluator never
+inspects them, and prompt 45's span-alone theorem is what makes that safe under `scale` and `shift`. If the evaluator
+ever needs to look at a payload, something has gone wrong — say what and stop.
 
 `Term` is public because prompts 48 and 49 build and consume it across crate boundaries. Nothing else becomes public:
 the environment, the evaluation stack, and any internal sharing representation stay private. If `Term`'s variants must

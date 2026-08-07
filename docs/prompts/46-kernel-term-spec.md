@@ -2,7 +2,7 @@
 id: 46
 slug: kernel-term-spec
 status: pending
-depends_on: [45]
+depends_on: [43]
 phase: 3
 ---
 
@@ -15,7 +15,7 @@ already has: constructors, `let` for sharing, an evaluation relation into `(d, E
 evaluation and normalization the same thing. This turns the kernel from an algebra of values into a calculus with a
 syntax, which is what a second implementation, an interchange file, and sharing-without-expansion all require.
 
-Specification only. Prompt 45 implements it; prompt 48 gives it a text form; prompt 49 makes elaboration produce it.
+Specification only. Prompt 47 implements it; prompt 48 gives it a text form; prompt 49 makes elaboration produce it.
 Marked candidate until prompt 48 graduates it, exactly as prompts 08–12 handled the kernel itself.
 
 ## Read
@@ -121,8 +121,9 @@ Commit as `Specify the kernel term calculus`.
 
 ## Stop
 
-- No implementation, no `Term` type, no parser. Prompts 45–46.
+- No implementation, no `Term` type, no parser. Prompts 47–48.
 - No new *semantic* operation. Every term denotes something D1–D7 already define; if one does not, it is out of scope
   and the specification says so.
-- Do not settle Q1, Q2, Q4, or Q5 in passing. A calculus makes patterns look tractable; they are still open.
+- Do not settle Q1, Q2, or Q5 in passing. A calculus makes patterns look tractable; they are still open. Q4 is prompt
+  45's, and its answer is a payload *value* — cite it if it has landed, do not give the calculus a curve form.
 - Do not specify a binary format, a version negotiation scheme, or a schema. One text form, prompt 48.

@@ -14,7 +14,7 @@ phase: 3
 `annotations`, `motifs`, `profiles`, and inside them `Part::voices`, `Voice::events`, `ScoreEvent::onset`, and the rest.
 Since prompt 40 those fields are no longer where the data lives — they are a projection of the timeline, materialized
 eagerly because the field type demands it. Close the type: private fields, accessors that say what a caller wants rather
-than how it is stored, and a projection free to become lazy when prompt 48 measures that it should.
+than how it is stored, and a projection free to become lazy when prompt 50 measures that it should.
 
 This is the deep-module change that makes prompts 39–40 durable. Without it, every consumer is still coupled to a layout
 decision, and the next representation change is another workspace-wide edit.
@@ -144,7 +144,7 @@ Commit as `Close the score snapshot behind its interface`.
 
 ## Stop
 
-- No representation change. The projection still materializes eagerly; laziness is prompt 48, and only if measured.
+- No representation change. The projection still materializes eagerly; laziness is prompt 50, and only if measured.
 - No new information in the snapshot — no field gains a value it did not have.
-- No accessor without a caller in this prompt. "A backend might want it" is prompt 48's problem, with evidence.
+- No accessor without a caller in this prompt. "A backend might want it" is prompt 50's problem, with evidence.
 - No UI-facing (TypeScript) API change; the Tauri command boundary's JSON shape stays exactly as prompt 21 fixed it.

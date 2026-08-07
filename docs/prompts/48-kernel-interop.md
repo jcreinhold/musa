@@ -56,6 +56,17 @@ Take **A**. It means one trait pair — a payload writer and a payload reader �
 it means `ScoreFact`'s text form is specified in `docs/kernel/06-surface-elaboration.md` where the payload is defined,
 not in the grammar document. The cost is one indirection; the alternative is the kernel learning music theory.
 
+**`Progress` is the payload text form's hardest case, and the reason prompt 45 exists.** A hairpin's shape must survive
+the round trip exactly — rational breakpoints, no float anywhere — because a second implementation that reads this file
+and guesses the shape produces different sound from the same artifact. That is the difference between an interchange
+format and a lossy dump, and it is why the shape had to be in the denotation rather than in `performance.rs`. Give
+`Progress` a text form in this prompt's payload grammar, and make one of the round-trip fixtures a multi-segment,
+non-dyadic curve so an accidental float conversion fails the test rather than rounding quietly.
+
+State in `07-backend-contract.md` what a conforming consumer owes: it must honour the printed shape, and it chooses its
+own sampling (prompt 45's distinction). A file that pins the shape and leaves sampling free is exactly as normative as
+this format can honestly be.
+
 `Canonical` already produces a payload key. Check before adding anything whether the canonical key *is* the payload text
 — if it is injective and parseable, one function serves both, and N3's injectivity requirement is exactly the
 round-trip property. If it is not parseable (today's `format!("{}|{}|…")` may not be), decide deliberately between making
