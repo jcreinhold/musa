@@ -172,6 +172,7 @@ fn divisions_for(plan: &NotationPlan) -> Result<i64, RenderError> {
     for staff in plan.staves() {
         divisions = widen(divisions, measure_length(staff))?;
         for measure in staff.measures() {
+            divisions = widen(divisions, meter_length(measure.meter()))?;
             for lane in measure.lanes() {
                 for item in lane.items() {
                     divisions = widen(divisions, item.onset_in_measure().as_ratio())?;
@@ -190,6 +191,15 @@ fn measure_length(staff: &StaffPlan) -> Ratio<i64> {
         Ratio::ZERO
     } else {
         Ratio::new(i64::from(count), i64::from(unit))
+    }
+}
+
+/// The same, for one measure's own meter.
+fn meter_length(meter: musa_compiler::Meter) -> Ratio<i64> {
+    if meter.denominator() == 0 {
+        Ratio::ZERO
+    } else {
+        Ratio::new(i64::from(meter.numerator()), i64::from(meter.denominator()))
     }
 }
 
@@ -391,6 +401,16 @@ fn write_part(
         xml.open("measure", &[("number", &number)])?;
         if index == 0 {
             write_attributes(xml, staff, divisions)?;
+        } else if let Some((count, unit)) = measure.time_signature() {
+            // A measure that changes meter carries the change and nothing
+            // else: divisions, key and clef are still what the first
+            // measure's `<attributes>` said.
+            xml.open("attributes", &[])?;
+            xml.open("time", &[])?;
+            xml.leaf("beats", &[], &count.to_string())?;
+            xml.leaf("beat-type", &[], &unit.to_string())?;
+            xml.close("time")?;
+            xml.close("attributes")?;
         }
         let barline = marks.get(&measure.number());
         if let Some(barline) = barline {
@@ -406,7 +426,7 @@ fn write_part(
             write_positioned(xml, plan, measure.number(), divisions)?;
         }
         let lanes = measure.lanes();
-        let full = ticks(measure_length(staff), divisions);
+        let full = ticks(meter_length(measure.meter()), divisions);
         for (lane_index, lane) in lanes.iter().enumerate() {
             let consumed = write_lane(
                 xml,

@@ -212,6 +212,8 @@ impl StaffPlan {
 #[derive(Clone, Debug)]
 pub struct MeasurePlan {
     number: u32,
+    meter: Meter,
+    time_signature: Option<(u32, u32)>,
     lanes: Vec<VoiceLane>,
 }
 
@@ -219,6 +221,22 @@ impl MeasurePlan {
     /// The 1-based measure number.
     pub fn number(&self) -> u32 {
         self.number
+    }
+
+    /// The meter in force across this measure.
+    pub fn meter(&self) -> Meter {
+        self.meter
+    }
+
+    /// The time signature this measure *prints*, or `None` when it inherits
+    /// the one before it.
+    ///
+    /// A backend writes a time signature exactly where this is `Some`, which
+    /// is the same question every backend was asking and none of them could
+    /// answer: the first measure prints the piece's meter, and after that a
+    /// measure prints one only when it differs from the measure before.
+    pub fn time_signature(&self) -> Option<(u32, u32)> {
+        self.time_signature
     }
 
     /// Voice lanes sounding in this measure (one per voice of the part).
@@ -517,11 +535,11 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
     // twice, so a written measure is not a sounding measure; the snapshot's
     // own `bars()` is the unfolded one, and mixing them would number the page
     // by what it sounds like.
-    let meter = score.meter_at(Scope::Piece, MusicalTime::ZERO);
-    let bars = BarLines::uniform(meter);
+    let fold = Fold::of(score);
+    let bars = page_bars(score, &fold);
+    let meter = bars.meter_at(MusicalTime::ZERO);
     let key = score.key_at(Scope::Piece, MusicalTime::ZERO).map(key_signature);
     let marks = Marks::collect(score);
-    let fold = Fold::of(score);
     let mut staves = Vec::new();
     for (_, part) in score.parts().iter() {
         staves.push(plan_staff(score, part, meter, &bars, key, &marks, &fold)?);
@@ -572,6 +590,29 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
         harmony,
         repeats,
     })
+}
+
+/// Where the barlines fall **on the page**.
+///
+/// The snapshot's own [`ScoreSnapshot::bars`] is built over performed time; a
+/// repeat prints once and plays twice, so a meter change after a repeat sits
+/// at a different measure on the page than in the performance. Folding the
+/// changes before folding them into barlines is the whole difference, and it
+/// is why the two coordinates are two values rather than one with a flag.
+///
+/// A change the page does not print — one inside a stretch a repeat swallows
+/// — is dropped, as is one that does not land on a page barline. Both are
+/// conditions the compiler refuses; rendering has to stay total.
+fn page_bars(score: &ScoreSnapshot, fold: &Fold) -> BarLines {
+    let mut changes = score.meters().changes(Scope::Piece);
+    let opening = changes.next().map_or_else(Meter::default, |(_, meter)| meter);
+    let mut bars = BarLines::uniform(opening);
+    for (at, meter) in changes {
+        if let Some(printed) = fold.at(at) {
+            let _ = bars.change(printed, meter);
+        }
+    }
+    bars
 }
 
 /// Performed time folded onto the page.
@@ -822,11 +863,14 @@ fn plan_staff(
         .max()
         .unwrap_or(MusicalDuration::ZERO);
     let mut measures = Vec::new();
+    // What the last measure printed, so a measure prints a time signature
+    // exactly when it says something the one before it did not.
+    let mut printed: Option<Meter> = None;
     for measure in bars.measures_through(span) {
         let (start, end) = (measure.start, measure.end);
         let mut plans = Vec::with_capacity(lanes.len());
         for (voice_id, name, events) in &lanes {
-            let lane = plan_lane(events, meter, measure.length().as_ratio(), start, end, marks)?;
+            let lane = plan_lane(events, measure.meter, measure.length().as_ratio(), start, end, marks)?;
             plans.push(VoiceLane {
                 voice: *voice_id,
                 name: name.clone(),
@@ -837,8 +881,12 @@ fn plan_staff(
             });
         }
         let lanes = plans;
+        let changed = printed != Some(measure.meter);
+        printed = Some(measure.meter);
         measures.push(MeasurePlan {
             number: measure.number,
+            meter: measure.meter,
+            time_signature: changed.then(|| (measure.meter.numerator(), measure.meter.denominator())),
             lanes,
         });
     }

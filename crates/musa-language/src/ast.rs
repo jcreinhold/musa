@@ -570,6 +570,8 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             PhraseStmt::cast(child).map(VoiceItem::Phrase)
         } else if kind == SyntaxKind::HairpinStmt {
             HairpinStmt::cast(child).map(VoiceItem::Hairpin)
+        } else if kind == SyntaxKind::MeterStmt {
+            MeterStmt::cast(child).map(VoiceItem::Meter)
         } else {
             None
         };
@@ -613,6 +615,8 @@ pub enum VoiceItem {
     Phrase(PhraseStmt),
     /// `crescendo to f { ... }`
     Hairpin(HairpinStmt),
+    /// `meter 3/4;` — written where the music reaches it.
+    Meter(MeterStmt),
 }
 
 /// The articulation names trailing a note or chord's duration.

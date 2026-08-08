@@ -725,9 +725,30 @@ both. Where a motif may be used is settled by declaration order; where a bar may
 bar both declares and sounds: a `use` that starts before the bar's own text ends is either a forward reference or the
 bar quoting itself, and both are refused. Recursion stays impossible without a cycle-checker.
 
-Irregular bar lengths (`bar 5/4 { … }`, and pickups) are deliberately not accepted. They are meter occurrences, and
-until the meter map is a map rather than one meter — with §12.2, §12.3, and §12.4 all able to write a change mid-piece —
-accepting them would produce a page that disagrees with the source.
+### The meter changes where the music changes
+
+`meter 3/4;` is a voice item, legal wherever a note is, and it takes effect from the place it is written. Not
+`meter 3/4 at 9:1;`: a measure coordinate is a position in bars, and where the bars fall is what the meter decides, so
+the `at` form is a fixpoint. The composer is already writing at a place in the voice — say the thing where it happens.
+The `meter` in the header is the same statement, and means "from the beginning".
+
+A meter written in one voice is the *piece's* meter from that point. A voice that keeps its own is polymeter, which is
+a different feature with a different inheritance rule.
+
+Two rules keep the coordinate system well-formed, and both are refusals rather than repairs:
+
+- **A change must land on a barline.** Otherwise the measure it starts is neither length, `BarLines::at` and
+  `BarLines::time_of` stop being inverses, and the engraver would have to invent a bar nobody wrote.
+- **A change may not be written inside material.** A motif body is elaborated once and can stand at several places, so
+  a meter written inside one would be in force at places that have nothing to do with each other (§2: motif definition
+  ≠ its expansions). This is the same reason a bar checks only its own total: inside a motif the absolute position is
+  unknowable, and a meter change is nothing but an absolute position.
+
+Irregular bar lengths follow from this — `meter 5/4; bar { … } meter 4/4;` is a 5/4 bar — and the sugar
+`bar 5/4 { … }` is not accepted, because it would be sugar for the two statements above and nothing else. Pickups are
+still not accepted, and the reason is no longer the meter: a pickup is an **uncounted** measure, so it is a question
+about measure *numbering* — `\partial`, `<measure implicit="yes">`, `@metcon="false"` — and musa has no way to say a
+measure is not counted. Writing one as a short first bar would number it 1 and every measure after it one too high.
 
 ### A repeat is notation, and it plays every pass
 

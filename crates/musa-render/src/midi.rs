@@ -147,16 +147,37 @@ impl Ticks {
     }
 }
 
-/// One tempo meta-event per written tempo, at the tick it takes effect.
+/// The conductor's track: every tempo and every meter, at the tick each takes
+/// effect.
+///
+/// SMF has one of each for the whole file, which is what makes them a track
+/// rather than a property of a part — and what will make polytempo lossy
+/// here and nowhere else.
 fn tempo_track(performance: &PerformancePlan, ticks: &Ticks) -> Track<'static> {
-    let mut events = Vec::new();
-    let mut previous = 0u64;
+    let mut absolute: Vec<(u64, u8, MetaMessage<'static>)> = Vec::new();
     for segment in performance.tempo().segments() {
         let micros = (segment.seconds_per_quarter * 1_000_000.0).round().max(1.0) as u32;
-        let tick = ticks.of(segment.frame);
+        absolute.push((
+            ticks.of(segment.frame),
+            1,
+            MetaMessage::Tempo(u24::new(micros.min(0x00FF_FFFF))),
+        ));
+    }
+    for change in performance.meters() {
+        let Some(message) = time_signature(change.meter) else {
+            continue;
+        };
+        absolute.push((ticks.of(change.frame), 0, message));
+    }
+    // A meter before a tempo at the same tick, which is the order a conductor
+    // reads them in and the order every other writer emits.
+    absolute.sort_by_key(|(tick, rank, _)| (*tick, *rank));
+    let mut events = Vec::new();
+    let mut previous = 0u64;
+    for (tick, _, message) in absolute {
         events.push(TrackEvent {
             delta: u28::new(u32::try_from(tick.saturating_sub(previous)).unwrap_or(u32::MAX)),
-            kind: TrackEventKind::Meta(MetaMessage::Tempo(u24::new(micros.min(0x00FF_FFFF)))),
+            kind: TrackEventKind::Meta(message),
         });
         previous = tick;
     }
@@ -165,6 +186,25 @@ fn tempo_track(performance: &PerformancePlan, ticks: &Ticks) -> Track<'static> {
         kind: TrackEventKind::Meta(MetaMessage::EndOfTrack),
     });
     events
+}
+
+/// A meter as SMF writes one, or `None` when SMF cannot say it.
+///
+/// The denominator is written as a power of two, so a meter whose denominator
+/// is not one — `4/6`, which real music does use — has no MIDI spelling at
+/// all. Dropping it leaves the previous signature standing, which is wrong in
+/// exactly the way MIDI is always wrong about notation; the page says the
+/// truth.
+fn time_signature(meter: musa_compiler::Meter) -> Option<MetaMessage<'static>> {
+    let denominator = meter.denominator();
+    if !denominator.is_power_of_two() {
+        return None;
+    }
+    let numerator = u8::try_from(meter.numerator()).ok()?;
+    let power = u8::try_from(denominator.trailing_zeros()).ok()?;
+    // 24 MIDI clocks to the quarter and 8 thirty-second notes to 24 clocks:
+    // the conventional values, and the ones every sequencer writes.
+    Some(MetaMessage::TimeSignature(numerator, power, 24, 8))
 }
 
 /// One track per part, named, with its notes on one channel.

@@ -91,6 +91,10 @@ brace.
 
 ### Irregular lengths are deferred, and the reason is honest
 
+*(Paid by prompt 64. `MeterMap` is a `ContextTrack<Meter>`, the meter changes where the music changes, and all four
+exporters write the change. An irregular bar is written as the two meter statements it is; the `bar 5/4 { … }` sugar
+and the pickup stayed out, for the reasons prompt 64 records.)*
+
 This prompt was designed with `bar 5/4 { … }` and a `bar 1/4 { … }` pickup, on the argument that an irregular length is
 a meter occurrence and goes where prompt 40 put meter. Prompt 40 did not put it there. `MeterMap` holds **one** meter
 for the piece, and `plan.rs`, MEI, LilyPond, and MusicXML all read it as one — no exporter can emit a meter change

@@ -138,6 +138,26 @@ pub(crate) struct Resolver {
     /// against.
     pub(crate) meter: Meter,
     pub(crate) meter_written: bool,
+    /// Where elaboration has reached, in the piece's own time.
+    ///
+    /// Maintained by `elaborate_items`, which is the one place that knows how
+    /// long each item is; everything that needs to know *where* it is —
+    /// a `meter` statement, a bar waiting to be measured — reads it here
+    /// rather than recomputing a sum that has already been computed.
+    pub(crate) cursor: crate::MusicalTime,
+    /// Every mid-piece `meter`, in the order the voices were read.
+    ///
+    /// Collected rather than applied, because the meters have to be sorted
+    /// and folded before any of them can be checked: whether a change lands
+    /// on a barline is a question about the changes before it.
+    pub(crate) meter_changes: Vec<(crate::MusicalTime, Meter, SourceSpan)>,
+    /// Bars whose length is still to be checked.
+    ///
+    /// A bar is checked against the meter in force where it sits, and where
+    /// the meters change is not known until every voice has been read — so
+    /// the check waits, and `elaborate_score` runs it once the barlines are
+    /// known.
+    pub(crate) pending_bars: Vec<crate::elaborate::PendingBar>,
     /// The key the header wrote, on its way into the timeline.
     ///
     /// Staged here rather than on the snapshot because the snapshot's answer
@@ -165,6 +185,9 @@ impl Resolver {
             annotations: AnnotationStore::default(),
             meter: Meter::default(),
             meter_written: false,
+            cursor: crate::MusicalTime::ZERO,
+            meter_changes: Vec::new(),
+            pending_bars: Vec::new(),
             key: None,
             timeline_sink: None,
         }
@@ -784,7 +807,7 @@ fn parse_tempo(resolver: &mut Resolver, tempo: &TempoStmt) -> TempoMap {
     }
 }
 
-fn parse_meter(meter: &musa_language::ast::MeterStmt) -> Option<Meter> {
+pub(crate) fn parse_meter(meter: &musa_language::ast::MeterStmt) -> Option<Meter> {
     let text = meter.value()?;
     let (numerator, denominator) = text.split_once('/')?;
     Some(Meter::new(numerator.parse().ok()?, denominator.parse().ok()?))

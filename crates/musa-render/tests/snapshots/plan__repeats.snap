@@ -29,6 +29,16 @@ NotationPlan {
             measures: [
                 MeasurePlan {
                     number: 1,
+                    meter: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                    time_signature: Some(
+                        (
+                            4,
+                            4,
+                        ),
+                    ),
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -225,6 +235,11 @@ NotationPlan {
                 },
                 MeasurePlan {
                     number: 2,
+                    meter: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                    time_signature: None,
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -331,6 +346,11 @@ NotationPlan {
                 },
                 MeasurePlan {
                     number: 3,
+                    meter: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                    time_signature: None,
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -437,6 +457,11 @@ NotationPlan {
                 },
                 MeasurePlan {
                     number: 4,
+                    meter: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                    time_signature: None,
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -516,6 +541,16 @@ NotationPlan {
             measures: [
                 MeasurePlan {
                     number: 1,
+                    meter: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                    time_signature: Some(
+                        (
+                            4,
+                            4,
+                        ),
+                    ),
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -622,6 +657,11 @@ NotationPlan {
                 },
                 MeasurePlan {
                     number: 2,
+                    meter: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                    time_signature: None,
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -728,6 +768,11 @@ NotationPlan {
                 },
                 MeasurePlan {
                     number: 3,
+                    meter: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                    time_signature: None,
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -834,6 +879,11 @@ NotationPlan {
                 },
                 MeasurePlan {
                     number: 4,
+                    meter: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                    time_signature: None,
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(

@@ -19,11 +19,9 @@
 //! - **A context change belongs to a place in the piece, not to material.**
 //!   A body elaborated once and referenced many times (`elaborate`'s `Share`)
 //!   sits at several absolute times, so a meter written inside it would give
-//!   its bar checks several answers. Meter statements inside motif and bar
-//!   bodies are therefore forbidden. Nothing can violate this yet — there is
-//!   one meter per piece — and the rule is written down so that the prompt
-//!   which makes meter positional has something to enforce rather than
-//!   something to discover.
+//!   its bar checks several answers. A `meter` statement is therefore legal
+//!   only among a voice's own items, and `elaborate` refuses one written
+//!   anywhere else.
 
 // Rational arithmetic on `Ratio<i64>` is exact mathematical arithmetic, not
 // raw integer ops; clippy::arithmetic_side_effects does not apply to it.
@@ -105,10 +103,8 @@ pub struct BarLines {
 }
 
 impl BarLines {
-    /// One meter for the whole piece.
-    ///
-    /// The only constructor there is a caller for. Mid-piece meter adds the
-    /// other one in the commit that needs it.
+    /// One meter, from the beginning. Where every piece starts, and where a
+    /// piece that never changes meter stays.
     pub fn uniform(meter: Meter) -> Self {
         Self {
             first: Stretch {
@@ -118,6 +114,50 @@ impl BarLines {
             },
             rest: Vec::new(),
         }
+    }
+
+    /// Change meter at `at`, and report whether that was possible.
+    ///
+    /// Returns `false` — leaving the barlines exactly as they were — when
+    /// `at` is not a barline. That is the one thing that would make the
+    /// coordinate system ill-formed: a measure that begins where the
+    /// numbering says it is half over stops [`BarLines::at`] and
+    /// [`BarLines::time_of`] being inverses, and the engraver would have to
+    /// invent a bar that is neither length. Elaboration turns the `false`
+    /// into a diagnostic; rendering, which must be total, drops the change
+    /// and prints a piece the composer has already been told about.
+    ///
+    /// Changes arrive ascending. One stated where the last one is replaces
+    /// it, because the meter in force at an instant is the last meter stated
+    /// there — which is what makes the header's meter an ordinary first
+    /// change rather than a special case.
+    pub fn change(&mut self, at: MusicalTime, meter: Meter) -> bool {
+        let last = self.rest.last().copied().unwrap_or(self.first);
+        if at < last.start {
+            return false;
+        }
+        if at == last.start {
+            let replacement = Stretch {
+                start: at,
+                first: last.first,
+                meter,
+            };
+            match self.rest.last_mut() {
+                Some(slot) => *slot = replacement,
+                None => self.first = replacement,
+            }
+            return true;
+        }
+        let here = self.measure_at(at);
+        if here.start != at {
+            return false;
+        }
+        self.rest.push(Stretch {
+            start: at,
+            first: here.number,
+            meter,
+        });
+        true
     }
 
     /// Whether barlines fall anywhere at all.

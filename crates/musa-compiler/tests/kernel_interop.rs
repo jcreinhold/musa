@@ -26,6 +26,7 @@ use musa_compiler::{
 const EXAMPLES: &[(&str, &str)] = &[
     ("annotated", include_str!("../../../examples/annotated.musa")),
     ("canon", include_str!("../../../examples/canon.musa")),
+    ("changing-meter", include_str!("../../../examples/changing-meter.musa")),
     ("counterpoint", include_str!("../../../examples/counterpoint.musa")),
     ("glass-mountain", include_str!("../../../examples/glass-mountain.musa")),
     ("invention", include_str!("../../../examples/invention.musa")),

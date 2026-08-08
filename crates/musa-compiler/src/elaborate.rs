@@ -404,13 +404,13 @@ pub(crate) fn elaborate_parsed(
 /// that need it after the projection has run.
 ///
 /// Both fields are read *off the timeline* — the extent is the kernel's own,
-/// and the meter is the meter occurrence's payload — which is why no function
-/// in this module recomputes either from the snapshot.
+/// and the barlines are folded from the meter occurrences — which is why no
+/// function in this module recomputes either from the snapshot.
 pub(crate) struct PieceContext {
     /// Where the piece ends, in whole notes.
     extent: MusicalTime,
-    /// The meter that governs it.
-    meter: Meter,
+    /// Where its barlines fall.
+    bars: crate::BarLines,
     /// The semantic identity of the whole piece (docs/kernel/05 N6).
     identity: musa_kernel::SemanticHash,
 }
@@ -502,7 +502,13 @@ fn elaborate_score(
         .map(|lane| lane.extent)
         .max()
         .unwrap_or(musa_kernel::Beat::ZERO);
-    let context = context_facts(resolver, piece, score, &clefs, extent);
+    // The meters first: every check below is measured against the barlines,
+    // and where the barlines fall is what the meters decide.
+    let bars = resolve_meters(resolver);
+    for bar in std::mem::take(&mut resolver.pending_bars) {
+        check_bar_length(resolver, &bar, &bars);
+    }
+    let context = context_facts(resolver, piece, score, &clefs, &bars, extent);
     if let Some(sink) = &mut resolver.timeline_sink {
         // Measurement only, and the one place a voice is wanted on its own;
         // the piece itself is evaluated once, below.
@@ -523,11 +529,6 @@ fn elaborate_score(
     // and a hash of the projection would be a hash of a view.
     let identity = whole.semantic_hash();
     let projection = crate::project::project(resolver, &whole);
-    let meter = projection
-        .contexts
-        .meters
-        .at(Scope::Piece, MusicalTime::ZERO)
-        .unwrap_or_default();
     snapshot.set_contexts(projection.contexts);
     let mut projected = projection.voices;
     for (id, name) in metadata {
@@ -543,7 +544,7 @@ fn elaborate_score(
     }
     PieceContext {
         extent: MusicalTime::new(extent.as_ratio()),
-        meter,
+        bars,
         identity,
     }
 }
@@ -566,6 +567,7 @@ fn context_facts(
     piece: &PieceDecl,
     score: &musa_language::ast::ScoreDecl,
     clefs: &[(u32, crate::score::Clef, SourceSpan)],
+    bars: &crate::BarLines,
     extent: Beat,
 ) -> Timeline<ScoreFact> {
     let declaration = crate::origin::DeclarationId::default();
@@ -635,7 +637,7 @@ fn context_facts(
     let extent_time = MusicalTime::new(extent.as_ratio());
     for section in score.sections() {
         let span = resolve::trimmed_span(section.syntax());
-        let Some(at) = resolve_position(resolver, section.position().as_ref(), span, meter, extent_time) else {
+        let Some(at) = resolve_position(resolver, section.position().as_ref(), span, bars, extent_time) else {
             continue;
         };
         occurrences.push(point_at(
@@ -660,7 +662,7 @@ fn context_facts(
     }
     for chord in lanes.iter().flat_map(musa_language::ast::HarmonyDecl::chords) {
         let span = resolve::trimmed_span(chord.syntax());
-        let Some(at) = resolve_position(resolver, chord.position().as_ref(), span, meter, extent_time) else {
+        let Some(at) = resolve_position(resolver, chord.position().as_ref(), span, bars, extent_time) else {
             continue;
         };
         let Some(written) = chord.symbol() else {
@@ -735,7 +737,7 @@ fn elaborate_tempo_changes(
     let mut changes: Vec<TempoChange> = Vec::new();
     for tempo in piece.tempos().iter().filter(|tempo| tempo.position().is_some()) {
         let span = resolve::trimmed_span(tempo.syntax());
-        let Some(at) = resolve_position(resolver, tempo.position().as_ref(), span, context.meter, context.extent)
+        let Some(at) = resolve_position(resolver, tempo.position().as_ref(), span, &context.bars, context.extent)
         else {
             continue;
         };
@@ -779,16 +781,16 @@ fn elaborate_tempo_changes(
 /// page, and a position past the end of the piece is an error: a chord symbol
 /// nobody will ever reach is a mistake, not a comment.
 ///
-/// `meter` is the meter *occurrence*'s payload and `extent` is the timeline's
-/// own extent — neither is recomputed from the snapshot, which is the point
-/// of prompt 40. The extent is exact rather than a maximum over event ends,
+/// `bars` are folded from the meter *occurrences* and `extent` is the
+/// timeline's own extent — neither is recomputed from the snapshot, which is
+/// the point of prompt 40. The extent is exact rather than a maximum over event ends,
 /// and a piece that ends in a rest still ends where the rest ends, because a
 /// rest is an occurrence.
 fn resolve_position(
     resolver: &mut Resolver,
     position: Option<&musa_language::ast::Position>,
     span: SourceSpan,
-    meter: Meter,
+    bars: &crate::BarLines,
     extent: MusicalTime,
 ) -> Option<MusicalTime> {
     let position = position?;
@@ -805,7 +807,7 @@ fn resolve_position(
         return None;
     }
     let measure = u32::try_from(measure).unwrap_or(u32::MAX);
-    let at = crate::BarLines::uniform(meter).time_of(measure, beat)?;
+    let at = bars.time_of(measure, beat)?;
     if at >= extent && extent > MusicalTime::default() {
         resolver.error(
             Code::OutOfRange,
@@ -1077,12 +1079,14 @@ fn elaborate_voice(
         max_motif: usize::MAX,
         scale: Ratio::ONE,
     };
-    let segment = elaborate_items(
+    resolver.cursor = MusicalTime::ZERO;
+    let segment = elaborate_place(
         resolver,
         share,
         &voice.items(),
         &cx,
         Scope::Voice { part, voice: voice_id },
+        Place::Voice,
     );
     if !segment.tied {
         return segment;
@@ -1108,10 +1112,46 @@ fn elaborate_items(
     cx: &ExpandCx,
     scope: Scope,
 ) -> Segment {
+    elaborate_place(resolver, share, items, cx, scope, Place::Material)
+}
+
+/// Whether these items are a voice's own music or the inside of something
+/// reusable.
+///
+/// The distinction exists for one statement. A `meter` change is a fact about
+/// a *place in the piece*; a motif body is elaborated once and can stand at
+/// several places, so a meter written inside one would be in force at places
+/// that have nothing to do with each other (§2: motif definition ≠ its
+/// expansions). Every body is `Material`; only a voice's own item list is
+/// `Voice`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Place {
+    /// A voice's own items, at absolute time.
+    Voice,
+    /// The inside of a motif, bar, repeat, or any other reusable body.
+    Material,
+}
+
+fn elaborate_place(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    items: &[VoiceItem],
+    cx: &ExpandCx,
+    scope: Scope,
+    place: Place,
+) -> Segment {
+    let opened_at = resolver.cursor;
+    let mut at = opened_at;
     let mut segments = Vec::with_capacity(items.len());
     for item in items {
-        segments.push(elaborate_item(resolver, share, item, cx, scope));
+        resolver.cursor = at;
+        let segment = elaborate_item(resolver, share, item, cx, scope, place);
+        at = MusicalTime::new(at.as_ratio() + segment.extent.as_ratio());
+        segments.push(segment);
     }
+    // Left as it was found: the caller's loop sets the cursor for each of its
+    // own items, and a body that moved it would move the item after itself.
+    resolver.cursor = opened_at;
     if segments.is_empty() {
         return Segment::empty();
     }
@@ -1168,8 +1208,10 @@ fn elaborate_item(
     item: &VoiceItem,
     cx: &ExpandCx,
     scope: Scope,
+    place: Place,
 ) -> Segment {
     match item {
+        VoiceItem::Meter(stmt) => elaborate_meter(resolver, stmt, cx, place),
         VoiceItem::Note(note) => {
             let Some(duration) = resolve_scaled_duration(resolver, note.syntax(), cx) else {
                 return Segment::empty();
@@ -1648,15 +1690,63 @@ fn elaborate_bar(
     cx: &ExpandCx,
     scope: Scope,
 ) -> Segment {
+    let at = resolver.cursor;
     let before = errors_so_far(resolver);
     let body = elaborate_items(resolver, share, &bar.items(), cx, scope);
     // A bar whose contents did not resolve has no length worth reporting, and
     // "this bar is 1/4 short" underneath "`sigb` is not a pitch" is the second
     // sentence of a two-sentence complaint about one mistake.
     if errors_so_far(resolver) == before {
-        check_bar_length(resolver, bar, body.extent);
+        resolver.pending_bars.push(PendingBar {
+            at,
+            extent: body.extent,
+            span: resolve::trimmed_span(bar.syntax()),
+            content_end: bar.content_end(),
+        });
     }
     body
+}
+
+/// A `meter` written where the music reaches it.
+///
+/// It contributes a point occurrence to the piece — `Scope::Piece`, because a
+/// meter written in one voice is the piece's meter from there (per-voice
+/// meter is polymeter, and has its own prompt) — and nothing else. Where the
+/// barlines then fall is [`crate::BarLines`]'s answer, computed once every
+/// voice has been read, because whether *this* change lands on a barline
+/// depends on the changes before it.
+fn elaborate_meter(
+    resolver: &mut Resolver,
+    stmt: &musa_language::ast::MeterStmt,
+    cx: &ExpandCx,
+    place: Place,
+) -> Segment {
+    let span = resolve::trimmed_span(stmt.syntax());
+    if place == Place::Material {
+        resolver.report(
+            Diagnostic::error(Code::Misplaced, "a meter change belongs to the piece, not to material")
+                .at(span, "written inside a body")
+                .help("write it among the voice's own items, before the material that is in it")
+                .note(
+                    "material is written once and can be played in several places, so where its barlines fall is a property of the place, not of the notes",
+                ),
+        );
+        return Segment::empty();
+    }
+    let Some(meter) = resolve::parse_meter(stmt) else {
+        resolver.error(Code::NotAValue, "this meter cannot be read", span, "expected `4/4`");
+        return Segment::empty();
+    };
+    resolver.meter_written = true;
+    resolver.meter_changes.push((resolver.cursor, meter, span));
+    Segment::literal(point(ScoreFact::new(
+        Scope::Piece,
+        FactKind::Meter {
+            numerator: meter.numerator(),
+            denominator: meter.denominator(),
+        },
+        origin_of(cx, span),
+    )))
 }
 
 fn errors_so_far(resolver: &Resolver) -> usize {
@@ -1680,13 +1770,79 @@ fn reported_an_error(resolver: &Resolver) -> bool {
 /// does not produce an error — it produces every later bar being wrong,
 /// silently, and a page the composer has to proofread against their own
 /// intentions. Writing the bar down turns that into this.
-fn check_bar_length(resolver: &mut Resolver, bar: &musa_language::ast::BarStmt, extent: Beat) {
-    let bars = crate::BarLines::uniform(resolver.meter);
+/// A bar that has been elaborated and not yet measured.
+///
+/// Held rather than checked on the spot because the meter in force at `at` is
+/// not known until every voice has been read: a `meter` written in the second
+/// voice governs the first voice's bars too.
+pub(crate) struct PendingBar {
+    /// Where the bar begins, in the piece's own time.
+    at: MusicalTime,
+    /// How long its contents came to.
+    extent: Beat,
+    /// The whole statement, for the diagnostic to point at.
+    span: SourceSpan,
+    /// Where a filling rest would go, if there is a place for one.
+    content_end: Option<u32>,
+}
+
+/// Fold the meters the piece states into barlines, refusing any change that
+/// does not land on one.
+///
+/// Ascending, because the question "is this a barline" is answered by the
+/// changes before it and by nothing else. This is why the meters are a pass
+/// of their own rather than a lookup: a measure coordinate is a position in
+/// bars, and where the bars fall is what the meters decide.
+fn resolve_meters(resolver: &mut Resolver) -> crate::BarLines {
+    let mut changes = std::mem::take(&mut resolver.meter_changes);
+    changes.sort_by_key(|(at, _, span)| (*at, span.start));
+    let mut bars = crate::BarLines::uniform(resolver.meter);
+    let mut stated: Vec<(MusicalTime, Meter, SourceSpan)> = Vec::new();
+    for (at, meter, span) in changes {
+        if let Some((_, already, first)) = stated.iter().find(|(other, _, _)| *other == at) {
+            // Two voices naming the same change is how a composer writes it,
+            // and repeating a fact is not a mistake. Naming two different
+            // meters for one place is.
+            if *already != meter {
+                resolver.report(
+                    Diagnostic::error(Code::Misplaced, "two meters at the same place")
+                        .at(span, "the second of two")
+                        .also(*first, "the first is here"),
+                );
+            }
+            continue;
+        }
+        if !bars.change(at, meter) {
+            let here = bars.at(at);
+            resolver.report(
+                Diagnostic::error(Code::DoesNotAddUp, "a meter change must land on a barline")
+                    .at(
+                        span,
+                        format!(
+                            "this is {} into measure {}",
+                            fraction(here.into.as_ratio()),
+                            here.measure
+                        ),
+                    )
+                    .help(format!(
+                        "add {} before it, or move it past the next barline",
+                        fraction(bars.measure_at(at).end.as_ratio() - at.as_ratio())
+                    )),
+            );
+            continue;
+        }
+        stated.push((at, meter, span));
+    }
+    bars
+}
+
+fn check_bar_length(resolver: &mut Resolver, bar: &PendingBar, bars: &crate::BarLines) {
     if !bars.is_measured() {
         return;
     }
-    let measure = bars.measure_at(MusicalTime::ZERO).length().as_ratio();
-    let written = extent.as_ratio();
+    let here = bars.measure_at(bar.at);
+    let measure = here.length().as_ratio();
+    let written = bar.extent.as_ratio();
     if written == measure {
         return;
     }
@@ -1704,15 +1860,12 @@ fn check_bar_length(resolver: &mut Resolver, bar: &musa_language::ast::BarStmt, 
             if long { "too long" } else { "short" }
         ),
     )
-    .at(
-        resolve::trimmed_span(bar.syntax()),
-        format!("these add up to {}", fraction(written)),
-    )
+    .at(bar.span, format!("these add up to {}", fraction(written)))
     .note(if resolver.meter_written {
         format!(
             "`meter {}/{}` makes a bar {}",
-            resolver.meter.numerator(),
-            resolver.meter.denominator(),
+            here.meter.numerator(),
+            here.meter.denominator(),
             fraction(measure)
         )
     } else {
@@ -1728,7 +1881,7 @@ fn check_bar_length(resolver: &mut Resolver, bar: &musa_language::ast::BarStmt, 
     } else {
         let rest = format!("rest {};", fraction(difference));
         let filled = diagnostic.help(format!("add `{rest}`, or lengthen one of the durations"));
-        match bar.content_end() {
+        match bar.content_end {
             Some(at) => filled.fix(format!("add `{rest}`"), SourceSpan::new(at, at), format!(" {rest}")),
             None => filled,
         }
@@ -2394,7 +2547,8 @@ pub(crate) fn piece_term(source: &SourceDocument) -> Option<(String, musa_kernel
         .map(|lane| lane.extent)
         .max()
         .unwrap_or(musa_kernel::Beat::ZERO);
-    let context = context_facts(&mut resolver, &piece, &score, &clefs, extent);
+    let bars = resolve_meters(&mut resolver);
+    let context = context_facts(&mut resolver, &piece, &score, &clefs, &bars, extent);
     let parts: Vec<musa_kernel::Term<ScoreFact>> = lanes
         .into_iter()
         .map(|lane| lane.term)

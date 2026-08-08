@@ -954,7 +954,17 @@ impl ScoreSnapshot {
     /// numbers a folded repeat differently and builds its own (see
     /// [`crate::BarLines`]'s module documentation).
     pub fn bars(&self) -> crate::BarLines {
-        crate::BarLines::uniform(self.meter_at(Scope::Piece, MusicalTime::ZERO))
+        let mut changes = self.contexts.meters.changes(Scope::Piece);
+        let opening = changes.next().map_or_else(Meter::default, |(_, meter)| meter);
+        let mut bars = crate::BarLines::uniform(opening);
+        for (at, meter) in changes {
+            // A change that does not land on a barline is an error the
+            // compiler already reported, and dropping it keeps a piece that
+            // does not compile printable — which is what the desktop shows
+            // while the composer is still typing.
+            let _ = bars.change(at, meter);
+        }
+        bars
     }
 
     /// The key signature in force at a moment, as a reader in `scope` sees

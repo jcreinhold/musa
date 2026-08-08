@@ -1,0 +1,20 @@
+// A meter change has to land on a barline. Otherwise the measure it starts
+// is neither length, `BarLines::at` and `BarLines::time_of` stop being
+// inverses, and every measure number after it is a number for a bar nobody
+// wrote. The refusal says how far into the measure the change fell, which is
+// also how much music is missing.
+piece "Mid-Bar" {
+    tempo quarter = 96;
+    meter 4/4;
+
+    score {
+        part piano {
+            voice right {
+                bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }
+                g4 1/4;
+                meter 3/4;
+                a4 1/4; b4 1/4; c5 1/4;
+            }
+        }
+    }
+}

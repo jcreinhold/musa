@@ -143,6 +143,7 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::TransposeKw,
     SyntaxKind::RepeatKw,
     SyntaxKind::BarKw,
+    SyntaxKind::MeterKw,
     SyntaxKind::EndingKw,
     SyntaxKind::SlurKw,
     SyntaxKind::PhraseKw,
@@ -1141,6 +1142,10 @@ impl<'a> Parser<'a> {
                 self.repeat_stmt();
             } else if self.at(SyntaxKind::BarKw) {
                 self.bar_stmt();
+            } else if self.at(SyntaxKind::MeterKw) {
+                // The same statement the header writes, written where the
+                // music reaches it: one kind, one node, two places.
+                self.meter_stmt();
             } else if self.at(SyntaxKind::EndingKw) {
                 self.ending_stmt();
             } else if self.at(SyntaxKind::SlurKw) {

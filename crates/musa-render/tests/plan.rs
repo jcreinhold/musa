@@ -161,3 +161,37 @@ proptest! {
         }
     }
 }
+
+/// The page's barlines and the performance's stop being the same barlines.
+///
+/// A repeat prints its body once and plays it twice, so a meter change written
+/// after one sits at measure 3 on the page and measure 5 in the performance.
+/// Prompt 61 built the two `BarLines` instances and could not tell them apart,
+/// because until the meter could change there was nothing for them to disagree
+/// about. This is that disagreement, asserted from both sides.
+#[test]
+#[expect(clippy::expect_used, reason = "a fixture that does not compile is a failed test")]
+fn a_meter_change_after_a_repeat_is_numbered_twice() {
+    let source = "piece \"p\" { meter 4/4; score { part a { voice b { \
+                  repeat 2 { bar { c4 1; } bar { d4 1; } } \
+                  meter 3/4; bar { e4 3/4; } } } } }";
+    let score = compile_score(source).expect("it compiles");
+    let played = score.bars();
+    let at = musa_compiler::MusicalTime::new(Ratio::from_integer(4));
+
+    // Performed: two passes of two measures, so the change opens measure 5.
+    assert_eq!(played.at(at).measure, 5);
+    assert_eq!(played.meter_at(at).numerator(), 3);
+
+    // Printed: the body is on the page once, so it opens measure 3.
+    let plan = plan(source).expect("it plans");
+    let staff = plan.staves().first().expect("one part");
+    let changed: Vec<u32> = staff
+        .measures()
+        .iter()
+        .filter(|measure| measure.time_signature().is_some())
+        .map(musa_render::MeasurePlan::number)
+        .collect();
+    assert_eq!(changed, vec![1, 3], "the opening meter and the change");
+    assert_eq!(staff.measures().len(), 3);
+}

@@ -442,6 +442,25 @@ fn write_measure(
     piece_counts: &mut std::collections::HashMap<EventId, u32>,
 ) -> Result<(), RenderError> {
     let number = u32::try_from(index.saturating_add(1)).unwrap_or(u32::MAX);
+    // A meter change is a `<scoreDef>` between measures, which is how MEI
+    // says "from here on" — the opening one is written before the first
+    // measure, so only the changes after it are written here.
+    if index > 0
+        && let Some((count, unit)) = plan
+            .staves()
+            .first()
+            .and_then(|staff| staff.measures().get(index))
+            .and_then(crate::plan::MeasurePlan::time_signature)
+    {
+        let mut score_def = element("scoreDef");
+        let count_text = count.to_string();
+        let unit_text = unit.to_string();
+        score_def.push_attribute(("meter.count", count_text.as_str()));
+        score_def.push_attribute(("meter.unit", unit_text.as_str()));
+        writer
+            .write_event(Event::Empty(score_def))
+            .map_err(|error| RenderError::xml(&error))?;
+    }
     let n_text = index.saturating_add(1).to_string();
     let mut measure = element("measure");
     measure.push_attribute(("n", n_text.as_str()));

@@ -297,10 +297,25 @@ impl PerformanceLane {
     }
 }
 
+/// A time signature and the frame it takes effect at.
+///
+/// Meter is notation, and a performance does not hear it — which is exactly
+/// why it is carried here rather than derived: MIDI is an *edge* format that
+/// writes a time-signature meta event, and the only alternative would be for
+/// the exporter to hold a second score.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MeterChange {
+    /// Where it starts, in frames.
+    pub frame: u64,
+    /// What it is.
+    pub meter: crate::score::Meter,
+}
+
 /// The scheduled performance of a score.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PerformancePlan {
     tempo: IntegratedTempoMap,
+    meters: Vec<MeterChange>,
     lanes: Vec<PerformanceLane>,
 }
 
@@ -308,6 +323,12 @@ impl PerformancePlan {
     /// The tempo map used for scheduling.
     pub fn tempo(&self) -> &IntegratedTempoMap {
         &self.tempo
+    }
+
+    /// Every meter the piece states, in playing order, beginning with the one
+    /// it opens in.
+    pub fn meters(&self) -> &[MeterChange] {
+        &self.meters
     }
 
     /// One lane per part, in source order.
@@ -407,7 +428,15 @@ pub fn lower_performance(
             events,
         });
     }
-    Ok(PerformancePlan { tempo, lanes })
+    let meters = score
+        .meters()
+        .changes(crate::Scope::Piece)
+        .map(|(at, meter)| MeterChange {
+            frame: tempo.frames(at),
+            meter,
+        })
+        .collect();
+    Ok(PerformancePlan { tempo, meters, lanes })
 }
 
 /// What the part's profile makes of one event, resolved once per event.

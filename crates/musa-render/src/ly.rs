@@ -63,8 +63,8 @@ pub(crate) fn render_lilypond(plan: &NotationPlan) -> Result<String, RenderError
     let mut variables = Vec::new();
     let mut score_children = Vec::new();
     if !plan.harmony().is_empty() {
-        let measure_len = measure_length(plan);
-        variables.push(("chords".to_owned(), chord_names(plan.harmony(), measure_len)));
+        let measures = measure_bounds(plan);
+        variables.push(("chords".to_owned(), chord_names(plan.harmony(), &measures)));
         score_children.push(LyNode::Command("\\new ChordNames \\chords".to_owned()));
     }
     for (index, staff) in plan.staves().iter().enumerate() {
@@ -197,10 +197,21 @@ fn staff_body(
 
     let lane_count = staff.measures().first().map_or(0, |m| m.lanes().len());
     let mut lanes: Vec<Vec<LyNode>> = (0..lane_count).map(|_| Vec::new()).collect();
-    for measure in staff.measures() {
+    for (index, measure) in staff.measures().iter().enumerate() {
+        let (count, unit) = (measure.meter().numerator(), measure.meter().denominator());
         for (lane_index, lane) in measure.lanes().iter().enumerate() {
             let nodes = lanes.get_mut(lane_index);
             if let Some(nodes) = nodes {
+                // The opening time signature is already in the staff's head;
+                // `\time` inside the music is a *change*, and LilyPond's
+                // Timing is shared across a staff's lanes, so it is written
+                // once, in the first.
+                if lane_index == 0
+                    && index > 0
+                    && let Some((count, unit)) = measure.time_signature()
+                {
+                    nodes.push(LyNode::Command(format!("\\time {count}/{unit}")));
+                }
                 let here: Vec<&PositionedMark<ScoreMark>> = if lane_index == 0 {
                     sections
                         .iter()
@@ -352,12 +363,11 @@ fn mark_node(mark: &ScoreMark) -> LyNode {
 /// `LilyPond` user would write by hand. It costs one thing markup would not:
 /// the chord has to be spelled in `chordmode`'s vocabulary rather than printed
 /// verbatim, which is exactly what parsing the symbol bought.
-fn chord_names(harmony: &[PositionedMark<ChordSymbol>], measure_len: num_rational::Ratio<i64>) -> LyNode {
+fn chord_names(harmony: &[PositionedMark<ChordSymbol>], measures: &[num_rational::Ratio<i64>]) -> LyNode {
     let mut nodes = Vec::new();
     let mut at = num_rational::Ratio::ZERO;
     for (index, chord) in harmony.iter().enumerate() {
-        let start = measure_len * num_rational::Ratio::from_integer(i64::from(chord.measure.saturating_sub(1)))
-            + chord.onset_in_measure.as_ratio();
+        let start = place(measures, chord.measure) + chord.onset_in_measure.as_ratio();
         for piece in spell_ratio(start - at) {
             nodes.push(LyNode::Note {
                 body: format!("s{piece}"),
@@ -367,13 +377,14 @@ fn chord_names(harmony: &[PositionedMark<ChordSymbol>], measure_len: num_rationa
         let next = harmony.get(index.saturating_add(1)).map_or_else(
             // The last symbol holds to the end of its measure; nothing after
             // it disagrees, and a chord with no length prints nothing.
-            || (start / measure_len).floor() * measure_len + measure_len,
-            |next| {
-                measure_len * num_rational::Ratio::from_integer(i64::from(next.measure.saturating_sub(1)))
-                    + next.onset_in_measure.as_ratio()
-            },
+            || place(measures, chord.measure.saturating_add(1)),
+            |next| place(measures, next.measure) + next.onset_in_measure.as_ratio(),
         );
-        let held = if next > start { next - start } else { measure_len };
+        let held = if next > start {
+            next - start
+        } else {
+            place(measures, chord.measure.saturating_add(1)) - place(measures, chord.measure)
+        };
         let modifier = chordmode_modifier(&chord.what);
         for (piece_index, piece) in spell_ratio(held).into_iter().enumerate() {
             let body = if piece_index == 0 {
@@ -448,12 +459,33 @@ fn chordmode_modifier(chord: &ChordSymbol) -> String {
     }
 }
 
-/// One measure's length in whole notes, from the first staff's meter.
-fn measure_length(plan: &NotationPlan) -> num_rational::Ratio<i64> {
-    plan.staves().first().map_or(num_rational::Ratio::ONE, |staff| {
-        let (count, unit) = staff.time_signature();
-        num_rational::Ratio::new(i64::from(count), i64::from(unit.max(1)))
-    })
+/// Where each measure begins and where the last one ends, in whole notes.
+///
+/// The chord lane is a stream of skips, so a symbol's place is a distance
+/// from the start of the piece — and a piece whose measures are not all one
+/// length cannot get there by multiplying a measure number.
+fn measure_bounds(plan: &NotationPlan) -> Vec<num_rational::Ratio<i64>> {
+    let mut bounds = vec![num_rational::Ratio::ZERO];
+    let Some(staff) = plan.staves().first() else {
+        return bounds;
+    };
+    let mut at = num_rational::Ratio::ZERO;
+    for measure in staff.measures() {
+        let meter = measure.meter();
+        at += num_rational::Ratio::new(i64::from(meter.numerator()), i64::from(meter.denominator().max(1)));
+        bounds.push(at);
+    }
+    bounds
+}
+
+/// Where a 1-based measure begins, saturating at the end of the piece.
+fn place(bounds: &[num_rational::Ratio<i64>], measure: u32) -> num_rational::Ratio<i64> {
+    let index = usize::try_from(measure.saturating_sub(1)).unwrap_or(0);
+    bounds
+        .get(index)
+        .or_else(|| bounds.last())
+        .copied()
+        .unwrap_or(num_rational::Ratio::ZERO)
 }
 
 /// One plan item as a `LilyPond` note/chord/rest token, with the marks that
