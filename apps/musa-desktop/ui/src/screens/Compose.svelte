@@ -18,7 +18,7 @@
   import Workspaces from "../lib/ui/Workspaces.svelte";
   import { REPEAT_RIGHT_LEFT } from "../lib/ui/glyphs";
   import type { Screen } from "../lib/commands/map";
-  import type { Preferences } from "../lib/session/preferences.svelte";
+  import { SOURCE_FLOOR, type Preferences } from "../lib/session/preferences.svelte";
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
@@ -151,6 +151,16 @@
   // is happening: with nothing picked it shows the piece instead (prompt 54).
   const chosen = $derived(workspace.chosen);
   const problems = $derived(snapshot?.diagnostics.filter((d) => d.severity === "error") ?? []);
+
+  /**
+   * The narrowest a leaf is still a page. Below this the staves are a ribbon
+   * and the composer has stopped looking at music, so it is where the source
+   * column stops taking room (prompt 60).
+   */
+  const STAGE_MIN = 320;
+
+  /** The stage, so the seam can ask how much of it is still spare. */
+  let stage: HTMLElement | null = $state(null);
 
   /**
    * Where the selection is in the piece's structure: every passage that
@@ -374,6 +384,11 @@
           onsave={() => void session.save()}
           {ondiagnostic}
           onhide={() => (session.sourceOpen = false)}
+          width={preferences.sourceWidth}
+          floor={SOURCE_FLOOR}
+          spare={() => (stage?.clientWidth ?? STAGE_MIN) - STAGE_MIN}
+          onwiden={(width) => preferences.widenSource(width)}
+          onreset={() => preferences.resetSource()}
         />
       {/if}
 
@@ -382,7 +397,7 @@
         <Outline outline={score.outline} active={outlineAt} onselect={onoutline} />
       </Margin>
 
-      <main class="stage" class:continuous={mode === "continuous"}>
+      <main class="stage" class:continuous={mode === "continuous"} bind:this={stage}>
         <Leaf stale={session.stale}>
           <Score
             mei={snapshot.mei ?? ""}
@@ -640,6 +655,10 @@
    */
   .body.with-source {
     --source-cap: max(300px, calc(100vw - 440px - var(--stage-floor)));
+    /* What a *deliberate* ask may take: the same arithmetic against the floor
+       below which a leaf stops being a page, rather than the roomier one the
+       automatic width is held to (prompt 60). */
+    --source-room: max(300px, calc(100vw - 440px - 320px));
     --stage-floor: 420px;
 
     grid-template-columns: auto minmax(0, 200px) minmax(0, 1fr) minmax(0, 240px);
@@ -687,6 +706,7 @@
     .body.with-source {
       /* Narrower margins here, so the column gets the difference back. */
       --source-cap: max(300px, calc(100vw - 350px - var(--stage-floor)));
+      --source-room: max(300px, calc(100vw - 350px - 320px));
 
       grid-template-columns: auto minmax(0, 150px) minmax(0, 1fr) minmax(0, 200px);
     }

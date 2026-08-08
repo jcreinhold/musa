@@ -21,7 +21,7 @@
   import SourcePane from "../lib/ui/SourcePane.svelte";
   import Workspaces from "../lib/ui/Workspaces.svelte";
   import type { Screen } from "../lib/commands/map";
-  import type { Preferences } from "../lib/session/preferences.svelte";
+  import { SOURCE_FLOOR, type Preferences } from "../lib/session/preferences.svelte";
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
@@ -78,6 +78,12 @@
   /** What the text marks: where the expansion in view came from. */
   const highlight = $derived(workspace.sourceSpans(origin));
   const diagnostics = $derived(snapshot?.diagnostics ?? []);
+
+  /** The narrowest a leaf is still a page, as in Compose (prompt 60). */
+  const STAGE_MIN = 320;
+
+  /** The stage, so the seam can ask how much of it is still spare. */
+  let stage: HTMLElement | null = $state(null);
 </script>
 
 {#if snapshot}
@@ -112,9 +118,14 @@
         onredo={() => void session.redo()}
         onsave={() => void session.save()}
         {ondiagnostic}
+        width={preferences.sourceWidth}
+        floor={SOURCE_FLOOR}
+        spare={() => (stage?.clientWidth ?? STAGE_MIN) - STAGE_MIN}
+        onwiden={(width) => preferences.widenSource(width)}
+        onreset={() => preferences.resetSource()}
       />
 
-      <main class="stage" class:continuous={mode === "continuous"}>
+      <main class="stage" class:continuous={mode === "continuous"} bind:this={stage}>
         <Leaf stale={session.stale}>
           <Score
             mei={snapshot.mei ?? ""}
@@ -159,6 +170,9 @@
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     min-height: 0;
+    /* What a deliberate ask may take here: everything but a page (prompt 60).
+       There are no margins in this workspace to protect. */
+    --source-room: max(300px, calc(100vw - 320px));
   }
 
   .identity {

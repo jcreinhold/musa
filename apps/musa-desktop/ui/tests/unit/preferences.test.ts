@@ -8,7 +8,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { Preferences, TEXT_SIZES } from "../../src/lib/session/preferences.svelte";
+import { Preferences, SOURCE_FLOOR, TEXT_SIZES } from "../../src/lib/session/preferences.svelte";
 
 /** The unit suite runs in node, which has no `localStorage`. */
 function shelf(): Storage {
@@ -102,5 +102,52 @@ describe("vim mode", () => {
     const later = new Preferences();
     later.start();
     expect(later.vim).toBe(false);
+  });
+});
+
+/**
+ * The source column's width (prompt 60).
+ *
+ * It joins the other three because it is the same kind of thing — the app's,
+ * not the document's — and because a column a composer widens once and has to
+ * widen again next launch is not a preference.
+ */
+describe("the source width", () => {
+  it("is the measure until it is dragged, which is stored as nothing", () => {
+    const chosen = new Preferences();
+    chosen.start();
+    expect(chosen.sourceWidth).toBeNull();
+
+    chosen.widenSource(700);
+
+    const later = new Preferences();
+    later.start();
+    expect(later.sourceWidth).toBe(700);
+
+    // Back to the default stores *no* width rather than the measure's pixels,
+    // so the column follows the measure when the type size changes.
+    later.resetSource();
+    expect(globalThis.localStorage?.getItem("musa.source-width")).toBeNull();
+    const after = new Preferences();
+    after.start();
+    expect(after.sourceWidth).toBeNull();
+  });
+
+  it("refuses to be dragged below the floor", () => {
+    const preferences = new Preferences();
+    preferences.widenSource(40);
+    expect(preferences.sourceWidth).toBe(SOURCE_FLOOR);
+  });
+
+  it("ignores a stored width that is not one", () => {
+    // The same reasoning as the text size: `localStorage` is writable by
+    // anything that can reach the origin, and a column three characters wide
+    // is a broken window rather than a preference.
+    for (const junk of ["", "wide", "-1", "12"]) {
+      globalThis.localStorage?.setItem("musa.source-width", junk);
+      const preferences = new Preferences();
+      preferences.start();
+      expect(preferences.sourceWidth, junk).toBeNull();
+    }
   });
 });

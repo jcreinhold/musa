@@ -27,10 +27,25 @@ export const TEXT_SIZES: readonly TextSize[] = ["small", "normal", "large", "lar
 
 const SIZE_KEY = "musa.text-size";
 const VIM_KEY = "musa.vim";
+const WIDTH_KEY = "musa.source-width";
+
+/**
+ * The narrowest the source column may be asked to go, in pixels.
+ *
+ * Still wider than nine in ten lines in the language (§8), which is the point:
+ * a floor is not a collapse. `⌘'` is how the column goes away.
+ */
+export const SOURCE_FLOOR = 300;
 
 function storedSize(): TextSize | null {
   const stored = globalThis.localStorage?.getItem(SIZE_KEY);
   return TEXT_SIZES.find((size) => size === stored) ?? null;
+}
+
+/** A stored width is a number at or above the floor, or it is not a width. */
+function storedWidth(): number | null {
+  const stored = Number(globalThis.localStorage?.getItem(WIDTH_KEY));
+  return Number.isFinite(stored) && stored >= SOURCE_FLOOR ? stored : null;
 }
 
 export class Preferences {
@@ -38,6 +53,14 @@ export class Preferences {
   textSize = $state<TextSize>("normal");
   /** Whether the source column is modal. */
   vim = $state(false);
+  /**
+   * How wide the source column was left, in pixels. `null` is the measure.
+   *
+   * Stored as *nothing* rather than as the measure's pixel value, so a column
+   * at the default follows the measure when the type size changes instead of
+   * freezing at the pixels the measure happened to be (prompt 60).
+   */
+  sourceWidth = $state<number | null>(null);
 
   /** The multiplier the tokens are written against. */
   get scale(): number {
@@ -55,6 +78,7 @@ export class Preferences {
   start(): void {
     this.textSize = storedSize() ?? "normal";
     this.vim = globalThis.localStorage?.getItem(VIM_KEY) === "on";
+    this.sourceWidth = storedWidth();
     this.apply();
   }
 
@@ -86,6 +110,26 @@ export class Preferences {
   setVim(on: boolean): void {
     this.vim = on;
     globalThis.localStorage?.setItem(VIM_KEY, on ? "on" : "off");
+  }
+
+  /**
+   * Ask for a source column this wide.
+   *
+   * Only the floor is enforced here. The ceiling belongs to the seam, which
+   * measures what the page can spare at the moment of the gesture, and to the
+   * layout, which holds the column narrower than the ask on a window with no
+   * room for it. What is *stored* is the ask itself, so a width chosen on a
+   * large display comes back whole (`01-visual-language.md` §7).
+   */
+  widenSource(width: number): void {
+    this.sourceWidth = Math.round(Math.max(width, SOURCE_FLOOR));
+    globalThis.localStorage?.setItem(WIDTH_KEY, String(this.sourceWidth));
+  }
+
+  /** Back to the measure, which is stored as no width at all. */
+  resetSource(): void {
+    this.sourceWidth = null;
+    globalThis.localStorage?.removeItem(WIDTH_KEY);
   }
 
   #size(next: TextSize): void {

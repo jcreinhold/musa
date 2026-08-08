@@ -295,3 +295,99 @@ test("the frame at Larger, in the dark", async ({ page }) => {
   await run(page, "settings.text.larger");
   await expect(page).toHaveScreenshot("larger-1440x900-dark.png");
 });
+
+/**
+ * The seam (prompt 60).
+ *
+ * `01-visual-language.md` §7 puts one hairline between the source column and
+ * the page, and it looks exactly like a splitter. These tests are that it is
+ * one — by pointer, by key, and across a launch — and that the page never
+ * loses so much room that it stops being a page.
+ */
+test.describe("the source column's width", () => {
+  const seam = (page: Page) => page.getByRole("separator", { name: "Source width" });
+
+  /** What the column measures right now, in pixels. */
+  async function wide(page: Page): Promise<number> {
+    return (await pane(page).boundingBox())?.width ?? 0;
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await toggleSource(page);
+    await expect(pane(page)).toHaveCount(1);
+  });
+
+  test("drags wider, and the page keeps its room", async ({ page }) => {
+    const before = await wide(page);
+    const box = await seam(page).boundingBox();
+    if (!box) throw new Error("no seam");
+
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    // Further than the page can give, so this is the bound as well as the drag.
+    await page.mouse.move(box.x + 800, box.y + box.height / 2, { steps: 8 });
+    await page.mouse.up();
+
+    expect(await wide(page)).toBeGreaterThan(before);
+    // The leaf is still a leaf. A column that could take the whole body would
+    // be a text editor with a margin, which is the other application.
+    const stage = await page.locator("main.stage").boundingBox();
+    expect(stage?.width ?? 0).toBeGreaterThanOrEqual(320);
+  });
+
+  test("double-clicking the seam gives the measure back", async ({ page }) => {
+    const measure = await wide(page);
+    await seam(page).click({ position: { x: 4, y: 40 } });
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => wide(page)).toBeGreaterThan(measure);
+
+    await seam(page).dblclick();
+    await expect.poll(() => wide(page)).toBeCloseTo(measure, 0);
+  });
+
+  /**
+   * WCAG 2.5.7: the drag adds a second way to reach the width, never the only
+   * one (`03-interaction.md` §2). The seam is chrome and is reached by `Tab`,
+   * so its unmodified arrows are its own and not the score's.
+   */
+  test("the arrows do what the drag does", async ({ page }) => {
+    await seam(page).focus();
+    const before = await wide(page);
+
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => wide(page)).toBeGreaterThan(before);
+    const nudged = await wide(page);
+
+    // A stride is bigger than a nudge, which is the whole reason it exists.
+    await page.keyboard.press("Shift+ArrowRight");
+    await expect.poll(() => wide(page)).toBeGreaterThan(nudged + (nudged - before));
+
+    await page.keyboard.press("Home");
+    await expect.poll(() => wide(page)).toBeCloseTo(before, 0);
+  });
+
+  test("the width outlives the window it was chosen in", async ({ page }) => {
+    const before = await wide(page);
+    await seam(page).focus();
+    for (let step = 0; step < 4; step += 1) await page.keyboard.press("Shift+ArrowRight");
+    const chosen = await wide(page);
+    expect(chosen).toBeGreaterThan(before);
+
+    await page.reload();
+    await engraved(page);
+    await toggleSource(page);
+    await expect.poll(() => wide(page)).toBeCloseTo(chosen, 0);
+  });
+
+  test("says what it is and how wide it is", async ({ page }) => {
+    const { default: AxeBuilder } = await import("@axe-core/playwright");
+    // A separator that does not report its value is a separator a screen
+    // reader can move and never describe.
+    await expect(seam(page)).toHaveAttribute("aria-valuenow", /\d+/);
+    await expect(seam(page)).toHaveAttribute("aria-orientation", "vertical");
+
+    const { violations } = await new AxeBuilder({ page }).disableRules(["svg-img-alt"]).analyze();
+    expect(violations.map((violation) => violation.id)).toEqual([]);
+  });
+});

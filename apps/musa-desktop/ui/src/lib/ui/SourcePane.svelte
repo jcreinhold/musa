@@ -15,6 +15,7 @@
    * place it is complaining about (`05-states.md` §5). Both arrive as spans
    * from the core; this file turns spans into marks and never reads the text.
    */
+  import Seam from "./Seam.svelte";
   import SourceEditor from "./SourceEditor.svelte";
   import Ticked from "./Ticked.svelte";
   import { applyFix, asControl, labelOf, onlyFix, placeOf } from "../state/fix";
@@ -31,6 +32,11 @@
     candidate = null,
     reveal = null,
     modal = false,
+    width = null,
+    floor = 0,
+    spare,
+    onwiden,
+    onreset,
     onedit,
     oncaret,
     onpoint,
@@ -55,6 +61,23 @@
     reveal?: Reveal | null;
     /** Vim mode in the editor — the composer's preference (prompt 55). */
     modal?: boolean;
+    /**
+     * What the composer asked this column to be, in pixels. `null` is the
+     * source measure, which is what it opens at (prompt 60). The ask is not
+     * the answer: a window with no room for it renders the cap instead.
+     */
+    width?: number | null;
+    /** The narrowest the seam may drag this column (prompt 60). */
+    floor?: number;
+    /** How much more room the column may take right now, measured on demand. */
+    spare?: () => number;
+    /**
+     * What to do with a width the composer dragged to, and how to go back to
+     * the measure. Given both, the column grows a seam; given neither, it is
+     * the fixed column it was.
+     */
+    onwiden?: (width: number) => void;
+    onreset?: () => void;
     onedit?: (source: string) => void;
     /** Where the caret is now, so the score can follow it (prompt 26). */
     oncaret?: (offset: number) => void;
@@ -76,6 +99,13 @@
   const errors = $derived(diagnostics.filter((diagnostic) => diagnostic.severity === "error"));
 
   /**
+   * What this column actually measures, for the seam to speak and to drag
+   * from — which is not the same as `width`, the ask: the layout may hold the
+   * column narrower than what was asked for (prompt 60).
+   */
+  let measured = $state(0);
+
+  /**
    * Apply a diagnostic's fix by rewriting the source, the same way a keystroke
    * does. There is no separate edit path and there should not be: an applied
    * fix is undoable with `⌘Z` because it is an ordinary edit.
@@ -87,7 +117,12 @@
   }
 </script>
 
-<section class="source-pane" aria-label="Source">
+<section
+  class="source-pane"
+  aria-label="Source"
+  style={width === null ? undefined : `--asked: min(${width}px, var(--source-room, 60vw))`}
+  bind:clientWidth={measured}
+>
   {#if onhide}
     <div class="head">
       <span class="what">Source</span>
@@ -167,6 +202,14 @@
       {/each}
     </ul>
   {/if}
+
+  <!--
+    The seam, last so it is over everything, and inside the column so it is
+    inside the column's landmark (prompt 60).
+  -->
+  {#if onwiden && onreset}
+    <Seam label="Source" width={measured} {floor} spare={spare ?? (() => 0)} {onwiden} {onreset} />
+  {/if}
 </section>
 
 <style>
@@ -188,8 +231,18 @@
    * a page that gives way stops being a page. A screen that sets no cap gets
    * 42 % of the window, which is the Source workspace, where the page has the
    * whole of the rest.
+   *
+   * `--asked` is the width the composer dragged the seam to (prompt 60), and
+   * it replaces the whole expression rather than sitting inside it. `--source-cap`
+   * keeps the *default* from crushing a small window — there the column is
+   * asking for room nobody granted it — and a composer who drags the seam has
+   * granted it. What still bounds the ask is `--source-room`: the same
+   * arithmetic with the page's own floor rather than the automatic one, so a
+   * width chosen on a large display narrows on a laptop and comes back whole.
    */
   .source-pane {
+    /* The seam is positioned against this edge (prompt 60). */
+    position: relative;
     font-family: var(--f-mono);
     font-size: var(--t-value-size);
     /* 48 characters, the line-number gutter, and the column's own margins. */
@@ -197,7 +250,7 @@
 
     display: flex;
     flex-direction: column;
-    width: min(var(--measure), var(--source-cap, 42vw));
+    width: var(--asked, min(var(--measure), var(--source-cap, 42vw)));
     min-width: 0;
     min-height: 0;
     padding: var(--s-3) var(--s-5) var(--s-4);

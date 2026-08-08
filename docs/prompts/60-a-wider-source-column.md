@@ -1,7 +1,7 @@
 ---
 id: 60
 slug: a-wider-source-column
-status: pending
+status: done
 depends_on: [26, 55, 59]
 phase: 2
 ---
@@ -64,15 +64,21 @@ and it paints that hairline in the inspector's three weights: `--rule` at rest, 
 focus (§7). No handle, no grip dots, no widening bar — the hairline already is the affordance, and this is the whole of
 its feedback.
 
-### Two guards, doing two different jobs
+### Two guards, and only one of them governs an ask
 
-- **The composer's bound**, in the seam: no narrower than 300px and no wider than three fifths of the body. Measured
-  from the body element, so it is right at every window size, and it stops an ask that would leave no page.
-- **The layout's cap**, in CSS, unchanged: `width: min(asked, var(--source-cap))`. A window that shrinks below what was
-  asked for narrows the column rather than crushing the page, and a window that grows again gives the asked width back.
+- **The layout's cap**, `--source-cap`, unchanged and still in CSS: `min(measure, cap)`. It exists because the *default*
+  is the column asking for room nobody granted it, and on a window too small to spare that room the page must win.
+- **The composer's bound**, three fifths of the body, measured from the body element: no page should ever be a minority
+  of the screen. It is applied where the drag lands *and* at every render, because the window resizes without anybody
+  dragging and a column widened on a large display would otherwise leave nothing on a laptop.
 
-They are not the same guard. The first is about what the composer may ask for; the second is about what this window can
-honor today. Keeping them apart is what lets a width chosen on a large display survive a session on a laptop.
+A composer who drags the seam has granted the room the cap was protecting, so an explicit width **replaces** the capped
+expression rather than being clamped by it — `width: var(--asked, min(measure, cap))`. What is stored is the ask itself,
+never the bounded result, which is what lets a width chosen on a large display come back whole.
+
+This is the one thing the implementation had to be taught. Clamping the ask by the cap as well looked conservative and
+was simply a broken control: the cap reserves the two margins and a stage wide enough for an upright leaf, so on a
+1440px window it stops at 580px and the seam refuses to move past it for no reason the composer can see.
 
 ### The width is a preference
 
@@ -108,6 +114,20 @@ cd apps/musa-desktop/ui && npm run check && npm run test
 ```
 
 Commit as `Let the composer widen the source column`.
+
+## Found along the way
+
+- **The seam lives inside the column, not between the halves.** A separator standing between two landmarks is page
+  content belonging to neither, and axe says so — `region`, "all page content should be contained by landmarks". So
+  `SourcePane` grows its own seam on its right edge, absolutely positioned over the hairline that was already there.
+  The layout is unchanged, the component tree is simpler, and the screens pass callbacks rather than placing a sibling.
+- **A `$effect` that reads what it writes is an effect Svelte drops.** An early version measured with
+  `width = pane ? … : width`, which made the effect depend on `width` and silently stopped updating — the separator
+  announced a number from before the drag. Splitting the write from the read fixed it; measuring by `bind:clientWidth`
+  and handing the number down removed the need for either.
+- **`ResizeObserver` and `requestAnimationFrame` do not run in a hidden tab.** Half an hour went into a phantom
+  "`ResizeObserver` stops delivering in this app" — it was the preview browser being backgrounded. Worth knowing before
+  the next person concludes the same thing: check `document.visibilityState` first.
 
 ## Stop
 
