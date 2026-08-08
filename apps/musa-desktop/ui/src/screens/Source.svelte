@@ -26,6 +26,7 @@
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
   import type { Focus } from "../lib/state/focus.svelte";
+  import type { Candidate } from "../lib/state/gesture.svelte";
   import type { Diagnostic, Span } from "../lib/state/snapshot";
 
   let {
@@ -39,6 +40,9 @@
     focus,
     sounding = [],
     onvisible,
+    candidate = null,
+    onedit,
+    oncandidate,
     oncaret,
     ondiagnostic,
     onshow,
@@ -58,6 +62,12 @@
     sounding?: Span[];
     /** The score reports what it has engraved on screen. */
     onvisible?: (ids: string[]) => void;
+    /** What a pointer gesture in flight would write, drawn in the text (prompt 53). */
+    candidate?: { start: number; end: number; text: string } | null;
+    /** A gesture came up on the preview: write it. */
+    onedit?: (candidate: Candidate) => void;
+    /** A gesture moved: ask what it would write. */
+    oncandidate?: (candidate: Candidate | null) => void;
     /** The caret moved; the score follows it (§14.4's other direction). */
     oncaret?: (offset: number) => void;
     ondiagnostic?: (diagnostic: Diagnostic) => void;
@@ -93,6 +103,7 @@
         {reveal}
         focus={focus.marked}
         {sounding}
+        {candidate}
         onpoint={(line) => focus.pointLine(line)}
         modal={preferences.vim}
         onedit={(text) => session.edit(text)}
@@ -114,6 +125,8 @@
             {origin}
             {focus}
             {onvisible}
+            onedit={session.live ? onedit : undefined}
+            oncandidate={session.live ? oncandidate : undefined}
           />
         </Leaf>
       </main>

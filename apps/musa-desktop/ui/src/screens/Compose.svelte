@@ -23,6 +23,7 @@
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
   import type { Focus } from "../lib/state/focus.svelte";
+  import type { Candidate } from "../lib/state/gesture.svelte";
   import type { Diagnostic, EditImpact, OutlineFacts, Span } from "../lib/state/snapshot";
   import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";
   import type { NoteEntry } from "../lib/state/entry.svelte";
@@ -62,6 +63,10 @@
     oncancel,
     onname,
     oncancelname,
+    candidate,
+    onedit,
+    oncandidate,
+    oninsert,
     onpitch,
     onduration,
     onheader,
@@ -116,6 +121,14 @@
     oncancel: () => void;
     onname: (name: string) => void;
     oncancelname: () => void;
+    /** What a pointer gesture in flight would write, drawn in the source (prompt 53). */
+    candidate: { start: number; end: number; text: string } | null;
+    /** A gesture came up: write it. */
+    onedit: (candidate: Candidate) => void;
+    /** A gesture moved: ask what it would write. */
+    oncandidate: (candidate: Candidate | null) => void;
+    /** A click on an empty staff step, with entry armed. */
+    oninsert: (pitch: string) => void;
     onpitch: (event: string, pitch: string) => void;
     onduration: (event: string, duration: string) => void;
     /** Rewrite one of the piece's own statements (prompt 54). */
@@ -351,6 +364,7 @@
           {reveal}
           focus={focus.marked}
           {sounding}
+          {candidate}
           onpoint={(line) => focus.pointLine(line)}
           modal={preferences.vim}
           onedit={(text) => session.edit(text)}
@@ -383,6 +397,11 @@
             {origin}
             {focus}
             {onvisible}
+            {entry}
+            spell={!session.sourceOpen}
+            onedit={session.live ? onedit : undefined}
+            oncandidate={session.live ? oncandidate : undefined}
+            oninsert={session.live ? oninsert : undefined}
             {flash}
             {bring}
             header={score.header}

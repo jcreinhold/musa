@@ -49,6 +49,15 @@ export interface Surface {
   entry(): void;
   /** Lift the selected notes into a motif, naming it inline (prompt 25). */
   extract(): void;
+  /**
+   * Respell the selected note by a diatonic step, and by the accidental
+   * ladder when the step is held with `⇧`.
+   *
+   * The keyboard half of prompt 53's vertical drag. It exists so the drag adds
+   * a second way to reach a capability rather than a capability only a pointer
+   * has (WCAG 2.5.7).
+   */
+  respell(steps: number, accidental: boolean): void;
   /** Open a workspace (roadmap §14.4). */
   show(which: Screen): void;
   palette(open: boolean): void;
@@ -133,6 +142,14 @@ export const COMMANDS: readonly Command[] = [
     workspace?.step(-1),
   ),
   own("score.next", "Next note", "Score", "ArrowRight", ({ workspace }) => workspace?.step(1)),
+  // The keyboard's half of the horizontal drag: the range a composer would
+  // otherwise have to drag out (`03-interaction.md` §2, WCAG 2.5.7).
+  own("score.extend.previous", "Extend the selection back", "Score", "Shift+ArrowLeft", ({
+    workspace,
+  }) => workspace?.stretch(-1)),
+  own("score.extend.next", "Extend the selection forward", "Score", "Shift+ArrowRight", ({
+    workspace,
+  }) => workspace?.stretch(1)),
   own("score.voice.up", "Voice above", "Score", "ArrowUp", ({ workspace }) => workspace?.voice(-1)),
   own("score.voice.down", "Voice below", "Score", "ArrowDown", ({ workspace }) =>
     workspace?.voice(1),
@@ -159,6 +176,18 @@ export const COMMANDS: readonly Command[] = [
   // twice; `M` for motif, and the name is asked for in the margin rather than
   // in a dialog that would take the notes off the screen.
   own("score.extract", "Extract a motif", "Score", "M", (surface) => surface.extract()),
+  // The keyboard equivalents of the vertical drag. `⌥` because the bare
+  // arrows are navigation and the shifted ones are entry's accidental.
+  own("score.step.up", "Up a step", "Score", "Alt+ArrowUp", (surface) => surface.respell(1, false)),
+  own("score.step.down", "Down a step", "Score", "Alt+ArrowDown", (surface) =>
+    surface.respell(-1, false),
+  ),
+  own("score.accidental.up", "Raise the accidental", "Score", "Alt+Shift+ArrowUp", (surface) =>
+    surface.respell(1, true),
+  ),
+  own("score.accidental.down", "Lower the accidental", "Score", "Alt+Shift+ArrowDown", (surface) =>
+    surface.respell(-1, true),
+  ),
   // Escape is the one Score command that is global: giving up is answered
   // wherever the composer happens to be, including the source column.
   own(

@@ -83,6 +83,45 @@ describe("matching a keystroke", () => {
   });
 });
 
+/**
+ * WCAG 2.5.7: nothing a drag does may be reachable only by dragging
+ * (`03-interaction.md` §2). Every pointer gesture prompt 53 adds is listed
+ * here with the key that does the same thing, and the test is that the key is
+ * really in the map.
+ */
+describe("the pointer gestures have keys", () => {
+  const GESTURES = [
+    { gesture: "drag a notehead up", key: press("ArrowUp", { altKey: true }) },
+    { gesture: "drag a notehead down", key: press("ArrowDown", { altKey: true }) },
+    { gesture: "⌥-drag up", key: press("ArrowUp", { altKey: true, shiftKey: true }) },
+    { gesture: "⌥-drag down", key: press("ArrowDown", { altKey: true, shiftKey: true }) },
+    { gesture: "drag sideways for a range", key: press("ArrowRight", { shiftKey: true }) },
+  ];
+
+  for (const { gesture, key } of GESTURES) {
+    it(`answers "${gesture}" with a key`, () => {
+      expect(commandFor(key, "score"), gesture).toBeDefined();
+    });
+  }
+
+  // The right-edge drag renotates, which is what a number key does to a
+  // selected note, and the empty-step click writes one, which is what a letter
+  // does. Both of those are entry's, and `state/compose.ts` holds them.
+  it("binds all four respellings, and shows them in the sheet", () => {
+    for (const id of [
+      "score.step.up",
+      "score.step.down",
+      "score.accidental.up",
+      "score.accidental.down",
+    ]) {
+      const command = COMMANDS.find((candidate) => candidate.id === id);
+      expect(command, id).toBeDefined();
+      expect(command?.group, id).toBe("Score");
+      expect(command?.accelerator, id).not.toBeNull();
+    }
+  });
+});
+
 describe("spelling a binding", () => {
   it("sets modifiers as glyphs, run together", () => {
     expect(spell("CmdOrCtrl+K")).toBe("⌘K");

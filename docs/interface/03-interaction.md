@@ -72,7 +72,10 @@ documentation cannot drift from bindings.
 | --- | --- |
 | `←` `→` | Previous / next event in the active voice |
 | `↑` `↓` | Previous / next voice in the active part (staff order) |
+| `⇧←` `⇧→` | Extend the selection back / forward from its anchor |
 | `⌥←` `⌥→` | Previous / next bar |
+| `⌥↑` `⌥↓` | Respell the selected note up / down a diatonic step (prompt 53) |
+| `⌥⇧↑` `⌥⇧↓` | Raise / lower its accidental, leaving the step alone |
 | `Home` `End` | First / last event in the voice |
 | `Tab` | Next part |
 | `Esc` | Clear selection; if none, hide the source column — except in vim mode, below |

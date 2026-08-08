@@ -87,6 +87,7 @@
         selection={marks.selection}
         hover={marks.hover}
         focus={marks.focus}
+        candidate={marks.candidate}
         playing={marks.playing}
         caret={marks.caret}
         loop={marks.loop}

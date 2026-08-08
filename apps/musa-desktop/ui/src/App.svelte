@@ -36,7 +36,9 @@
   import type { Diagnostic, OutlineFacts, Span } from "./lib/state/snapshot";
   import { Playhead, soundingAt } from "./lib/state/playhead.svelte";
   import { NoteEntry } from "./lib/state/entry.svelte";
-  import { played, stroke } from "./lib/state/compose";
+  import { anchorFor, played, stroke } from "./lib/state/compose";
+  import type { Candidate } from "./lib/state/gesture.svelte";
+  import { shiftAccidental, shiftStep } from "./lib/score/steps";
   import type { EditDto } from "./lib/session/generated/EditDto";
   import type { InsertAtDto } from "./lib/session/generated/InsertAtDto";
   import type { EditImpact } from "./lib/state/snapshot";
@@ -94,6 +96,48 @@
     }
     return spans;
   });
+
+  /**
+   * What a pointer gesture in flight would write (prompt 53).
+   *
+   * The core answers this — the same query that decides whether an edit needs
+   * the §4 choice also returns the text edits it would make — so the token the
+   * source column stands in is the token the edit will replace, not a guess
+   * the frontend re-derived.
+   */
+  let candidate = $state<{ start: number; end: number; text: string } | null>(null);
+
+  /** The candidate the core was last asked about, so a stale answer is dropped. */
+  let asking: string | null = null;
+
+  /** The edit a released gesture issues, which is the keyboard's edit exactly. */
+  function editFor(moving: Candidate): EditDto {
+    return moving.kind === "pitch"
+      ? { kind: "changePitch", event: moving.event, pitch: moving.value, mode: "editDefinition" }
+      : {
+          kind: "changeDuration",
+          event: moving.event,
+          duration: moving.value,
+          mode: "editDefinition",
+        };
+  }
+
+  /** Ask what the gesture would write, and show it where it would go. */
+  async function preview(moving: Candidate | null): Promise<void> {
+    if (!moving) {
+      asking = null;
+      candidate = null;
+      return;
+    }
+    const key = `${moving.event}:${moving.kind}:${moving.value}`;
+    if (asking === key) return;
+    asking = key;
+    const impact = await session.impact(editFor(moving));
+    // The pointer does not wait for the core. An answer to a question the
+    // gesture has already moved past is thrown away rather than drawn.
+    if (asking !== key) return;
+    candidate = impact?.writes[0] ?? null;
+  }
 
   /** Follow is a cycle, not a checkbox: three states, one key (§4). */
   const FOLLOWS = ["page", "continuous", "off"] as const;
@@ -353,6 +397,23 @@
     choice = null;
   }
 
+  /**
+   * The keyboard's half of the respelling gestures (`03-interaction.md` §2).
+   *
+   * Every pointer gesture has a key that does the same thing, so a composer
+   * who never touches the trackpad can write everything a drag can. The
+   * arithmetic is the same as the drag's, on the same spelling the core
+   * published, so the two roads reach the same note.
+   */
+  function respell(steps: number, accidental: boolean): void {
+    const note = workspace.chosen;
+    const spelling = note?.pitchSpellings[0];
+    if (!note || spelling === undefined) return;
+    const pitch = accidental ? shiftAccidental(spelling, steps) : shiftStep(spelling, steps);
+    if (pitch === null || pitch === spelling) return;
+    void issue({ kind: "changePitch", event: note.id, pitch, mode: "editDefinition" });
+  }
+
   const surface: Surface = {
     session,
     theme,
@@ -364,6 +425,7 @@
     loop: toggleLoop,
     origin: () => (pinned = !pinned),
     entry: toggleEntry,
+    respell,
     extract,
     show: (which) => (screen = which),
     palette: (open) => (paletteOpen = open),
@@ -586,6 +648,9 @@
     {focus}
     {sounding}
     onvisible={(ids) => (onPage = ids)}
+    {candidate}
+    onedit={(moving) => void issue(editFor(moving))}
+    oncandidate={(moving) => void preview(moving)}
     oncaret={followCaret}
     ondiagnostic={showDiagnostic}
     onshow={(which) => (screen = which)}
@@ -622,6 +687,14 @@
     oncancel={cancelChoice}
     onname={(name) => void nameMotif(name)}
     oncancelname={() => (naming = null)}
+    {candidate}
+    onedit={(moving) => void issue(editFor(moving))}
+    oncandidate={(moving) => void preview(moving)}
+    oninsert={(pitch) => {
+      const at = anchorFor(workspace);
+      const note = { kind: "note", pitch, duration: entry.duration } as const;
+      if (at) void write({ kind: "insertNote", at, note }, at);
+    }}
     onpitch={(event, pitch) =>
       void issue({ kind: "changePitch", event, pitch, mode: "editDefinition" })}
     onduration={(event, duration) =>

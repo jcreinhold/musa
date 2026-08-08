@@ -39,6 +39,7 @@
     highlightActiveLineGutter,
     keymap,
     lineNumbers,
+    WidgetType,
     type DecorationSet,
   } from "@codemirror/view";
 
@@ -56,6 +57,7 @@
     highlight = [],
     focus = null,
     sounding = [],
+    candidate = null,
     reveal = null,
     modal = false,
     onedit,
@@ -82,6 +84,12 @@
      * line that is scaffolding, which is the shape of a musa file at a glance.
      */
     sounding?: Span[];
+    /**
+     * The token a live pointer gesture would replace, and what it would put
+     * there (prompt 53). Shown in the text, in the file it will be written
+     * into, before anything is committed.
+     */
+    candidate?: { start: number; end: number; text: string } | null;
     /** A place to put the caret, once, when it changes. */
     reveal?: Reveal | null;
     /** Vim mode: the composer's preference, not the document's (prompt 55). */
@@ -150,6 +158,53 @@
         const span = effect.value.definition;
         const fits = span && span.end > span.start && span.end <= transaction.newDoc.length;
         return fits && span ? Decoration.set([spelling.range(span.start, span.end)]) : Decoration.none;
+      }
+      return current.map(transaction.changes);
+    },
+    provide: (field) => EditorView.decorations.from(field),
+  });
+
+  /**
+   * The candidate a live gesture would write (prompt 53).
+   *
+   * Drawn as a replacement over the token, not as an edit to the document:
+   * the text is untouched until the pointer comes up, so `Esc` costs nothing
+   * and undo has one step rather than one per pixel.
+   */
+  const setCandidate = StateEffect.define<{ start: number; end: number; text: string } | null>();
+
+  class Candidate extends WidgetType {
+    readonly #text: string;
+
+    constructor(text: string) {
+      super();
+      this.#text = text;
+    }
+
+    override eq(other: Candidate): boolean {
+      return other.#text === this.#text;
+    }
+
+    override toDOM(): HTMLElement {
+      const span = document.createElement("span");
+      span.className = "cm-musa-candidate";
+      span.textContent = this.#text;
+      return span;
+    }
+  }
+
+  const candidateMark = StateField.define<DecorationSet>({
+    create: () => Decoration.none,
+    update(current, transaction) {
+      for (const effect of transaction.effects) {
+        if (!effect.is(setCandidate)) continue;
+        const write = effect.value;
+        if (!write || write.end > transaction.newDoc.length || write.end < write.start) {
+          return Decoration.none;
+        }
+        return Decoration.set([
+          Decoration.replace({ widget: new Candidate(write.text) }).range(write.start, write.end),
+        ]);
       }
       return current.map(transaction.changes);
     },
@@ -246,6 +301,12 @@
      */
     ".cm-musa-focus-line": { color: "var(--plate)" },
     ".cm-musa-focus": { borderBottom: "1px solid var(--plate)" },
+    /*
+     * The candidate a live gesture would write (prompt 53), standing where
+     * the token it would replace stands. `--plate` because it is not in the
+     * file yet: the hue that already means *derived, or live*.
+     */
+    ".cm-musa-candidate": { color: "var(--plate)", borderBottom: "1px solid var(--plate)" },
     /*
      * And the quiet permanent one: a line that made music on the page in view
      * gets a tick beside its number. Not a hue and not a count — just the
@@ -374,6 +435,7 @@
       marks,
       focusMarks,
       gutterMarks,
+      candidateMark,
       appearance,
       writable.of(EditorState.readOnly.of(!editable)),
       EditorView.lineWrapping,
@@ -526,6 +588,11 @@
         sounding: lines,
       }),
     });
+  });
+
+  $effect(() => {
+    const write = candidate;
+    view?.dispatch({ effects: setCandidate.of(write) });
   });
 
   // Diagnostics arrive as the compiler's own list, with the compiler's own

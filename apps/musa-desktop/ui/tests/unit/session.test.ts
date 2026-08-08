@@ -65,6 +65,7 @@ function recorder(): Recorder {
       occurrences: 0,
       events: [],
       specializable: false,
+      writes: [],
     })),
     transport: vi.fn(async () => VALID),
     exportTo: vi.fn(async () => ({ path: "/tmp/out.mei" })),

@@ -116,9 +116,42 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
      * because the snapshot carries `definitionSpan` — it is a lookup, not a
      * compilation.
      */
+    /**
+     * The token the edit would replace, and what it would put there.
+     *
+     * A note statement is a pitch, a duration, and a semicolon, so the two
+     * tokens can be found by position inside the statement the snapshot
+     * already points at. The core finds them by parsing; the stub finds them
+     * by shape, which is enough to prove the interface marks what it is told
+     * to and shows what it is given.
+     */
+    function writesOf(
+      edit: Record<string, unknown>,
+      span: Span | undefined,
+    ): Record<string, unknown>[] {
+      const kind = edit.kind as string;
+      const value = (kind === "changePitch" ? edit.pitch : edit.duration) as string | undefined;
+      if (!span || value === undefined) return [];
+      const text = (current.source as string).slice(span.start, span.end);
+      const written = /^(\s*)(\S+)(\s+)(\S+?);?\s*$/.exec(text);
+      if (!written) return [];
+      const [, lead, pitch, gap, duration] = written;
+      const at = span.start + (lead ?? "").length;
+      return kind === "changePitch"
+        ? [{ start: at, end: at + (pitch ?? "").length, text: value }]
+        : [
+            {
+              start: at + (pitch ?? "").length + (gap ?? "").length,
+              end: at + (pitch ?? "").length + (gap ?? "").length + (duration ?? "").length,
+              text: value,
+            },
+          ];
+    }
+
     function impactOf(edit: Record<string, unknown>): Record<string, unknown> {
       const target = notes().find((note) => note.id === (edit.event as string | undefined));
       const origin = target?.origin;
+      const writes = writesOf(edit, origin?.definitionSpan);
       if (!origin?.generated) {
         const events = target ? [target.id] : [];
         return {
@@ -128,6 +161,7 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
           occurrences: 0,
           events,
           specializable: false,
+          writes,
         };
       }
       const kin = notes().filter(
@@ -154,6 +188,7 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
         occurrences: occurrences.size,
         events: kin.map((note) => note.id),
         specializable: runs === 1,
+        writes,
       };
     }
 

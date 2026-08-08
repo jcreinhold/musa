@@ -249,8 +249,16 @@ impl ProjectSession {
     /// What a structured edit would change, before it is made.
     ///
     /// This is the source of the counts in `04-provenance.md` §4's inline
-    /// choice and of the events it haloes. It is a query: nothing is applied,
-    /// and asking twice is free.
+    /// choice and of the events it haloes, and of the token a live pointer
+    /// gesture marks in the source before it commits (prompt 53). It is a
+    /// query: nothing is applied, and asking twice is free.
+    ///
+    /// The text it would write is computed by the same code that would write
+    /// it, so what the composer is shown mid-gesture is not a second guess at
+    /// the edit. A command this source cannot express writes nothing and says
+    /// so by returning no writes; the counts are still true, so the caller
+    /// gets an answer rather than an error for a question it can ask at
+    /// pointer rate.
     ///
     /// # Errors
     /// [`ProjectError::NoSuchEvent`] if the command names an event this
@@ -258,7 +266,19 @@ impl ProjectSession {
     /// has never compiled and so has no events at all.
     pub fn edit_impact(&self, command: &crate::edit::EditCommand) -> Result<crate::EditImpact, ProjectError> {
         let facts = &self.valid.as_ref().ok_or(ProjectError::NoValidScore)?.facts;
-        crate::edit::impact_of(facts, command)
+        let mut impact = crate::edit::impact_of(facts, command)?;
+        impact.writes = crate::edit::intent_of(facts, command)
+            .ok()
+            .and_then(|intent| musa_language::compute_edits(&self.source, &intent).ok())
+            .unwrap_or_default()
+            .iter()
+            .map(|edit| crate::edit::CandidateEdit {
+                start: u32::from(edit.range.start()),
+                end: u32::from(edit.range.end()),
+                text: edit.replacement.clone(),
+            })
+            .collect();
+        Ok(impact)
     }
 
     /// Move to the previous state.

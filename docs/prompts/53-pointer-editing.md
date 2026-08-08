@@ -1,7 +1,7 @@
 ---
 id: 53
 slug: pointer-editing
-status: pending
+status: done
 depends_on: [25, 26, 27, 52]
 phase: 2
 ---
@@ -114,6 +114,26 @@ Both are governing documents, so both are repaired and committed *before* any co
 If either repair proves unwritable — if the argument does not survive being written into the governing document — this
 prompt is wrong and should be deleted rather than implemented.
 
+### The geometry is relative, not absolute
+
+The Target below asks for `page coordinate → (staff, step)`. Implementing it that way would mean reading the clef, the
+key signature, and the staff's own position out of Verovio's SVG — which is the frontend deciding what pitch a place on
+the page is, and so exactly what `03-interaction.md` §7 forbids.
+
+The gesture does not need it. Every gesture starts *on a note the core already spelled*, so the only thing the pointer
+has to say is **how far it went**. A diatonic step is half a staff space on every clef, in every key, at every zoom, so
+`stepsFor(dy, staffSpace)` is the whole of it, and `shiftStep` is letter-and-octave arithmetic on the token the source
+already contains — the same kind `state/compose.ts` does for the letter keys. No clef is read and no pitch is guessed.
+
+The one gesture with no note under it — the empty-step click — measures from the nearest note on the same staff, which
+the core also spelled. That is the same relative rule, and it is also how a reader would answer the question.
+
+### The label spells the source, not the score
+
+The Design says the candidate is printed as `f♯5`. It is printed as `fs5`: the text the gesture will write, in the
+language's own spelling. A label that says `f♯5` while the source column would say `fs5` is two vocabularies for one
+value, and the whole point of the signature is that the composer is watching the text they are about to write.
+
 ## Target
 
 - `musa-language`: nothing new. `ChangePitch`, `ChangeDuration`, and `InsertNote` already compute the edits.
@@ -149,6 +169,25 @@ cd apps/musa-desktop && cargo tauri dev
 ```
 
 Commit as `Add pointer editing to the score`.
+
+## Found along the way
+
+- **The impact query answers the preview.** `EditImpact` gained `writes: Vec<CandidateEdit>` — the text edits the
+  command *would* make, from the same `intent_of` / `compute_edits` path that applies them. One entry point, as the
+  Target asked: the query that decides whether an edit needs §4's choice is the query that says which token it replaces.
+- **The duration handle is a third of the note, not a staff space.** A whole note is barely wider than one staff space,
+  so a fixed `1sp` handle swallowed its middle and every drag on it became a renotation. The handle is
+  `min(1sp, width / 3)`, which leaves every note a middle to respell.
+- **The blank staff had to be made pointable.** An SVG group is hit only where something is drawn, so the space between
+  two staff lines — the one place a new note goes — was the one place a click could not land. `g.staff` gets
+  `pointer-events: bounding-box`, the same answer prompt 51 gave for hollow noteheads.
+- **`⌥`-drag and Origin view share a modifier.** Holding `⌥` is the Origin lens (§2 of `04-provenance.md`), and a press
+  on *generated* music while the lens is held already means "select this expansion" — so on generated notes the lens
+  wins and the accidental drag does not start. Authored notes drag normally, and `⌥⇧↑` / `⌥⇧↓` reach the accidental
+  everywhere, so nothing is unreachable. Left as it is: the lens is the older meaning and the more common one.
+- **The range drag had no key.** WCAG 2.5.7 is a rule about every gesture, and the horizontal drag — which this prompt
+  keeps rather than adds — had no keyboard equivalent. `⇧←` / `⇧→` (`score.extend.previous`, `score.extend.next`) grow
+  the selection from its anchor, and the parity test in `tests/unit/commands.test.ts` is what found the gap.
 
 ## Stop
 

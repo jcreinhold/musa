@@ -181,6 +181,39 @@ export class Workspace {
     this.#land(events[at < 0 ? 0 : next]);
   }
 
+  /**
+   * `⇧←` `⇧→`: grow the selection by one event, in the active voice.
+   *
+   * The keyboard's half of the horizontal drag (`03-interaction.md` §2): the
+   * anchor stays where the selection started and the far end moves, so
+   * pressing the other arrow shrinks the range rather than starting a new one.
+   */
+  stretch(by: number): void {
+    const active = this.#voice;
+    if (!active) return;
+    const events = voiceEvents(this.snapshot, active.part, active.voice);
+    const selection = this.selection;
+    const chosen = this.selected;
+    const anchorId = selection.kind === "range" ? selection.from : chosen[0];
+    const farId = selection.kind === "range" ? selection.to : chosen[0];
+    const anchor = events.findIndex((event) => event.id === anchorId);
+    const far = events.findIndex((event) => event.id === farId);
+    // Nothing to grow from is a move: the first ⇧→ on an empty selection
+    // selects a note, which is what the bare arrow would have done.
+    if (anchor < 0 || far < 0) {
+      this.step(by);
+      return;
+    }
+    const from = events[anchor];
+    const to = events[Math.min(Math.max(far + by, 0), events.length - 1)];
+    if (!from || !to) return;
+    this.adrift = null;
+    this.selection =
+      from.id === to.id
+        ? { kind: "event", events: [from.id] }
+        : { kind: "range", part: active.part, voice: active.voice, from: from.id, to: to.id };
+  }
+
   /** `Home` `End`: the first or last event in the active voice. */
   edge(which: "first" | "last"): void {
     const active = this.#voice;

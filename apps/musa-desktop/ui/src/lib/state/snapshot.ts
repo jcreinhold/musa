@@ -106,6 +106,19 @@ export interface EditImpact {
    * more than once: an override belongs to the call, not to one run of it.
    */
   specializable: boolean;
+  /**
+   * The text the edit would write, and where — one entry per replacement.
+   * This is what a live pointer gesture marks in the source before it commits
+   * (prompt 53), and it is the same edit the command would apply.
+   */
+  writes: CandidateEdit[];
+}
+
+/** One replacement a pending edit would make. */
+export interface CandidateEdit {
+  start: number;
+  end: number;
+  text: string;
 }
 
 /**

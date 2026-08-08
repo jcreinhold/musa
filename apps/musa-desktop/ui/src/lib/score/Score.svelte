@@ -33,12 +33,20 @@
     pad,
     runsFor,
     traceTo,
+    nearestNote,
+    pointIn,
     NOTHING,
     type Bracket,
+    type Ghost,
     type Marks,
     type Rect,
   } from "./geometry";
+  import { HANDLE_SPACES, RUNG_SPACES, STEP_SPACES, THRESHOLD_PX, shiftStep, stepsFor } from "./steps";
   import type { Focus } from "../state/focus.svelte";
+  import { Gesture } from "../state/gesture.svelte";
+  import type { Candidate } from "../state/gesture.svelte";
+  import type { NoteEntry } from "../state/entry.svelte";
+  import type { EventFacts } from "../state/snapshot";
   import { eventIdOf } from "./ids";
   import { frontFieldOf, measureFront, type FrontMatterAt } from "./front-matter";
   import type { HeaderFieldDto } from "../session/generated/HeaderFieldDto";
@@ -50,7 +58,12 @@
     mode = "page",
     workspace,
     focus,
+    entry,
+    spell = false,
     onvisible,
+    onedit,
+    oncandidate,
+    oninsert,
     onpinch,
     playing = [],
     loop = null,
@@ -73,11 +86,36 @@
      */
     focus?: Focus;
     /**
+     * Note entry, for the one gesture that writes rather than rewrites: a
+     * click on an empty staff step, which only means anything while entry is
+     * armed (prompt 53).
+     */
+    entry?: NoteEntry;
+    /**
+     * Whether a live gesture prints what it would write beside the pointer.
+     * It does when the source column is not showing — with the column open
+     * the text says it, in the file it will be written into.
+     */
+    spell?: boolean;
+    /**
      * The events engraved on the pages currently in view, reported when they
      * change. The source column ticks the lines that made them, which is a
      * question about *this page* and so can only be answered here.
      */
     onvisible?: (ids: string[]) => void;
+    /**
+     * A pointer gesture came up on a note: respell it, or renotate it. One
+     * command, the same one the keyboard issues (`03-interaction.md` §2).
+     */
+    onedit?: (candidate: Candidate) => void;
+    /**
+     * The gesture moved: what it would write, or null when it would write
+     * nothing. The source column stands the token in, so it has to be asked
+     * while the pointer is still down.
+     */
+    oncandidate?: (candidate: Candidate | null) => void;
+    /** A click on an empty staff step, with entry armed: write a note there. */
+    oninsert?: (pitch: string) => void;
     /** A settled pinch, as a factor on the current zoom (§5). */
     onpinch?: (factor: number) => void;
     /** The event ids sounding right now (`03-interaction.md` §4). */
@@ -110,6 +148,12 @@
 
   /** Selection halo padding, in staff spaces (§8). */
   const HALO_SPACES = 0.6;
+
+  /**
+   * The live pointer gesture (prompt 53). It owns what the drag means; this
+   * pane owns the geometry that feeds it and the ink that shows it.
+   */
+  const drag = new Gesture();
 
   /** How many pages either side of the visible ones stay resident (§7). */
   const NEIGHBOURS = 1;
@@ -326,6 +370,7 @@
     const flashing = flash;
     const bracketed = brackets;
     const focused = focus?.marked.events ?? [];
+    const pending = drag.candidate;
     const traced = origin ? hovered : null;
     const caret = workspace?.caretAt ?? null;
     const container = host;
@@ -350,6 +395,7 @@
         selection: ids.flatMap(boxes).map(grow),
         hover: hovered && !ids.includes(hovered) ? boxes(hovered).map(grow) : [],
         focus: focused.flatMap((id) => headsFor(element, id)),
+        candidate: pending ? ghostFor(element, pending) : null,
         playing: sounding.flatMap(boxes).map(grow),
         caret: caret ? caretRect(first(caret.id), caret.side) : null,
         loop: from && to ? { from, to } : null,
@@ -573,6 +619,9 @@
    */
   let hovered = $state<FrontMatterAt | null>(null);
 
+  /** Whether the pointer is over a note's duration handle, which sets the cursor. */
+  let handled = $state(false);
+
   function hoverFront(target: Element): void {
     const which = frontFieldOf(target);
     if (!which) hovered = null;
@@ -608,7 +657,7 @@
     mark("select");
     const id = eventIdOf(event.target as Element);
     if (!id) {
-      workspace.clear();
+      if (!writeAt(event)) workspace.clear();
       return;
     }
     // Held lens: a click asks about provenance, so the unit is the whole
@@ -619,6 +668,108 @@
       return;
     }
     workspace.select(id, event.shiftKey);
+    // The press is also where a gesture would start. It is still a click
+    // until the pointer travels, so nothing about selection changes here
+    // (`03-interaction.md` §2).
+    if (onedit) hold(event, generated ?? null);
+  }
+
+  /**
+   * Start a gesture on the note that was just pressed.
+   *
+   * Everything it needs is measured once, here: the note's own box in page
+   * units, whether the press landed in the duration handle at its right edge,
+   * and what the core says the note is spelled and notated as.
+   */
+  function hold(event: PointerEvent, note: EventFacts | null): void {
+    const element = (event.target as Element).closest<HTMLElement>(".arriving");
+    const at = element ? pointIn(element, event.clientX, event.clientY) : null;
+    if (!element || !at || !note) return;
+    (event.currentTarget as Element).setPointerCapture(event.pointerId);
+    drag.begin({
+      event: note.id,
+      pitch: note.pitchSpellings[0] ?? null,
+      duration: note.durationSpelling,
+      atEdge: onHandle(event, note.id),
+      alt: event.altKey,
+      x: at.x,
+      y: at.y,
+      threshold: THRESHOLD_PX * at.perPixel,
+    });
+  }
+
+  /**
+   * Whether the pointer is in a note's duration handle: the strip at its right
+   * edge, one staff space wide, where a drag renotates rather than respells.
+   *
+   * Measured only when there is a note under the pointer, so blank paper costs
+   * nothing.
+   */
+  function onHandle(event: PointerEvent, id: string): boolean {
+    const element = (event.target as Element).closest<HTMLElement>(".arriving");
+    const at = element ? pointIn(element, event.clientX, event.clientY) : null;
+    const [box] = element ? boxesFor(element, id) : [];
+    if (!at || !box) return false;
+    // Never more than a third of the note: a whole note is barely wider than
+    // the handle, and a note whose middle asks about its duration has no
+    // middle left to ask about its pitch.
+    const handle = Math.min(staffSpace * HANDLE_SPACES, box.width / 3);
+    return at.x >= box.x + box.width - handle;
+  }
+
+  /**
+   * A click on empty staff, with entry armed: write a note at the step
+   * clicked (`03-interaction.md` §2).
+   *
+   * The step is measured from the nearest note on the same staff, whose
+   * spelling the core published — so no clef is read and no pitch is guessed.
+   * With no note on that staff to measure from there is nothing to write
+   * against, and the click stays a click.
+   */
+  function writeAt(event: PointerEvent): boolean {
+    if (!oninsert || entry?.on !== true) return false;
+    const staff = (event.target as Element).closest("g.staff");
+    const element = (event.target as Element).closest<HTMLElement>(".arriving");
+    const at = element ? pointIn(element, event.clientX, event.clientY) : null;
+    if (!staff || !element || !at) return false;
+    const anchor = nearestNote(element, staff, at.x);
+    const note = workspace?.snapshot?.score?.events.find((each) => each.id === anchor);
+    const spelling = note?.pitchSpellings[0];
+    const [head] = anchor === null ? [] : headsFor(element, anchor);
+    if (!head || spelling === undefined) return false;
+    const pitch = shiftStep(spelling, stepsFor(at.y - (head.y + head.height / 2), staffSpace));
+    if (pitch === null) return false;
+    oninsert(pitch);
+    return true;
+  }
+
+  // What the gesture would write is reported out as it snaps, so the source
+  // column can stand the token in while the pointer is still down.
+  $effect(() => {
+    const pending = drag.candidate;
+    untrack(() => oncandidate?.(pending));
+  });
+
+  /** Where the candidate would be drawn, in this page's own coordinates. */
+  function ghostFor(element: HTMLElement, candidate: Candidate): Ghost | null {
+    const label = spell ? candidate.value : null;
+    if (candidate.kind === "pitch") {
+      const [head] = headsFor(element, candidate.event);
+      if (!head) return null;
+      const rise = candidate.distance * staffSpace * STEP_SPACES;
+      return { kind: "pitch", rect: { ...head, y: head.y - rise }, label };
+    }
+    const [box] = boxesFor(element, candidate.event);
+    if (!box) return null;
+    const reach = candidate.distance * staffSpace * RUNG_SPACES;
+    // A shortening drag never draws a span narrower than the note itself:
+    // the shape says how far along the ladder the gesture is, and the text
+    // says what it would write.
+    return {
+      kind: "duration",
+      rect: { ...box, width: Math.max(box.width + reach, staffSpace) },
+      label,
+    };
   }
 
   /** A click on a margin bracket selects what that expansion produced. */
@@ -628,19 +779,72 @@
   }
 
   function onpointermove(event: PointerEvent): void {
+    if (drag.event !== null) {
+      const element = (event.target as Element).closest<HTMLElement>(".arriving") ?? host;
+      const at = element ? pointIn(element, event.clientX, event.clientY) : null;
+      if (at) drag.move(at.x, at.y, staffSpace);
+      // A drag that turned out to be horizontal is a range selection, which
+      // is what a drag on the leaf has always meant (§2).
+      if (drag.axis === "range") extend(event);
+      return;
+    }
     hoverFront(event.target as Element);
     const id = eventIdOf(event.target as Element);
     // The focus is reported whether or not there is a note under the pointer:
     // blank paper marks nothing, which is a different answer from "the
     // pointer is elsewhere" (prompt 52).
     focus?.point(id);
+    // The one cursor change on the page: the handle says, before the press,
+    // that a drag here asks about the duration (`03-interaction.md` §2).
+    handled = id !== null && onedit !== undefined && onHandle(event, id);
     if (!workspace) return;
     workspace.hovered = id;
   }
 
+  /**
+   * The horizontal drag: extend the selection to the note under the pointer.
+   *
+   * The press captured the pointer, so every later event is aimed at the pane
+   * rather than at what is under it. What is under it is the question, so it
+   * is asked of the document directly.
+   */
+  function extend(event: PointerEvent): void {
+    const under = document.elementFromPoint(event.clientX, event.clientY);
+    const to = under ? eventIdOf(under) : null;
+    const from = drag.event;
+    if (!workspace || to === null || from === null || to === from) return;
+    workspace.select(from);
+    workspace.select(to, true);
+  }
+
+  function onpointerup(): void {
+    const written = drag.release();
+    if (written) onedit?.(written);
+  }
+
+  /**
+   * `Esc` gives up on a gesture, and the document is untouched.
+   *
+   * On the window rather than on the pane, because a drag captures the
+   * pointer and the keyboard focus may be anywhere — the composer pressing
+   * `Esc` mid-drag is not thinking about which element has focus.
+   */
+  $effect(() => {
+    if (!drag.editing) return;
+    const abort = (pressed: KeyboardEvent) => {
+      if (pressed.key !== "Escape") return;
+      pressed.preventDefault();
+      drag.cancel();
+    };
+    globalThis.addEventListener("keydown", abort, true);
+    return () => globalThis.removeEventListener("keydown", abort, true);
+  });
+
   function onpointerleave(): void {
     hovered = null;
+    handled = false;
     focus?.leave();
+    drag.cancel();
     if (workspace) workspace.hovered = null;
   }
 
@@ -676,6 +880,7 @@
   class:continuous={mode === "continuous"}
   class:origin
   class:editable
+  class:handled
   bind:this={host}
   bind:clientWidth={width}
   bind:clientHeight={height}
@@ -685,6 +890,8 @@
   tabindex="0"
   {onpointerdown}
   {onpointermove}
+  {onpointerup}
+  onpointercancel={() => drag.cancel()}
   {onpointerleave}
   {onwheel}
 >
@@ -791,6 +998,11 @@
     cursor: text;
   }
 
+  /* Over a note's duration handle: the pointer says which way it would go. */
+  .engraving.handled {
+    cursor: ew-resize;
+  }
+
   .hairline {
     position: absolute;
     z-index: 1;
@@ -826,6 +1038,18 @@
    * clickable as a quarter.
    */
   .engraving :global(g[id^="event-"]) {
+    pointer-events: bounding-box;
+  }
+
+  /*
+   * The blank staff is pointable too, because entry writes where the composer
+   * points (`03-interaction.md` §2) and the space between two lines is where
+   * a note goes. An SVG group is otherwise hit only where something is drawn,
+   * which would make the one place a new note belongs the one place a click
+   * cannot land. Notes are drawn inside the staff and are hit first, so this
+   * costs nothing that was already hittable.
+   */
+  .engraving :global(g.staff) {
     pointer-events: bounding-box;
   }
 

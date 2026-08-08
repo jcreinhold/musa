@@ -165,6 +165,23 @@ pub enum EditCommand {
     },
 }
 
+/// One replacement a pending edit would make, in the source it would make it in.
+///
+/// This is what lets a live gesture show the composer the text it is about to
+/// write, in the file it will be written into, before anything is committed
+/// (prompt 53). It is the same edit the command would apply — computed by the
+/// same code, not a second guess at it.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CandidateEdit {
+    /// Byte offset the replaced text starts at.
+    pub start: u32,
+    /// Byte offset it ends at.
+    pub end: u32,
+    /// What would go in its place.
+    pub text: String,
+}
+
 /// What an edit would change, stated the way `04-provenance.md` §4 states it.
 ///
 /// Computed before the edit is applied, so the interface can show the choice
@@ -195,6 +212,10 @@ pub struct EditImpact {
     /// clause belongs to the call, so there is no "just this one" there, and
     /// the interface says so instead of offering it and failing.
     pub specializable: bool,
+    /// What the edit would write, and where. Empty when the command cannot be
+    /// expressed in this source — the counts above are still true, and the
+    /// interface simply has no text to show.
+    pub writes: Vec<CandidateEdit>,
 }
 
 impl EditImpact {
@@ -207,6 +228,7 @@ impl EditImpact {
             occurrences: 0,
             events: vec![event.to_owned()],
             specializable: false,
+            writes: Vec::new(),
         }
     }
 }
@@ -268,6 +290,7 @@ pub(crate) fn impact(facts: &ScoreFacts, id: &str) -> Result<EditImpact, Project
         occurrences: u32::try_from(occurrences.len()).unwrap_or(u32::MAX),
         events: affected.iter().map(|event| event.id.clone()).collect(),
         specializable: override_site(facts, target).is_ok(),
+        writes: Vec::new(),
     })
 }
 
@@ -285,6 +308,7 @@ pub(crate) fn impact_of(facts: &ScoreFacts, command: &EditCommand) -> Result<Edi
             occurrences: 0,
             events: Vec::new(),
             specializable: false,
+            writes: Vec::new(),
         }),
         EditCommand::SetHeader { .. } => Ok(EditImpact {
             generated: false,
@@ -293,6 +317,7 @@ pub(crate) fn impact_of(facts: &ScoreFacts, command: &EditCommand) -> Result<Edi
             occurrences: 0,
             events: Vec::new(),
             specializable: false,
+            writes: Vec::new(),
         }),
         EditCommand::ExtractMotif { ref events, .. } => Ok(EditImpact {
             generated: false,
@@ -301,6 +326,7 @@ pub(crate) fn impact_of(facts: &ScoreFacts, command: &EditCommand) -> Result<Edi
             occurrences: 0,
             events: events.clone(),
             specializable: false,
+            writes: Vec::new(),
         }),
     }
 }

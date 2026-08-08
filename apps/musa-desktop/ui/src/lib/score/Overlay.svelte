@@ -12,7 +12,7 @@
    * Loop is a pair of repeat brackets in the margin, never a coloured
    * rectangle.
    */
-  import { TICK_SPACES, type Bracket, type Rect, type Trace } from "./geometry";
+  import { TICK_SPACES, type Bracket, type Ghost, type Rect, type Trace } from "./geometry";
 
   let {
     box,
@@ -20,6 +20,7 @@
     selection,
     hover,
     focus = [],
+    candidate = null,
     playing = [],
     caret = null,
     loop = null,
@@ -36,6 +37,8 @@
     hover: Rect[];
     /** The noteheads the focus marks (prompt 52), as heads, not event boxes. */
     focus?: Rect[];
+    /** What a live pointer gesture would write (prompt 53). */
+    candidate?: Ghost | null;
     /** The notes sounding right now. */
     playing?: Rect[];
     /** Where the caret sits, if it is placed on this page. */
@@ -69,6 +72,12 @@
 
   /** How far it clears the head, in staff spaces: enough to not be a stem. */
   const FOCUS_CLEARANCE = 0.35;
+
+  /** How far the candidate's label sits from the ink it names, in staff spaces. */
+  const LABEL_CLEARANCE = 1.6;
+
+  /** The candidate label's size, in the score's own unit rather than in pixels. */
+  const CANDIDATE_SIZE = $derived(staffSpace * 1.2);
 </script>
 
 <svg
@@ -118,6 +127,41 @@
       y2={rect.y + rect.height + staffSpace * FOCUS_CLEARANCE}
     />
   {/each}
+
+  <!--
+    A live gesture, before anything is written (prompt 53). A respelling draws
+    the head where it would land; a renotation draws the span the note would
+    take. Both in `--plate`, which already means *derived, or live*, and both
+    over the engraving rather than in it: the page does not move while a
+    gesture is deciding what to ask for.
+  -->
+  {#if candidate}
+    {#if candidate.kind === "pitch"}
+      <ellipse
+        class="candidate"
+        cx={candidate.rect.x + candidate.rect.width / 2}
+        cy={candidate.rect.y + candidate.rect.height / 2}
+        rx={candidate.rect.width / 2}
+        ry={candidate.rect.height / 2}
+      />
+    {:else}
+      {@const right = candidate.rect.x + candidate.rect.width}
+      {@const tick = staffSpace * TICK_SPACES}
+      <path
+        class="candidate span"
+        d="M {candidate.rect.x} {candidate.rect.y - tick} L {candidate.rect.x} {candidate.rect
+          .y} L {right} {candidate.rect.y} L {right} {candidate.rect.y - tick}"
+      />
+    {/if}
+    {#if candidate.label}
+      <text
+        class="candidate label"
+        x={candidate.rect.x + candidate.rect.width / 2}
+        y={candidate.rect.y - staffSpace * LABEL_CLEARANCE}
+        font-size={CANDIDATE_SIZE}>{candidate.label}</text
+      >
+    {/if}
+  {/if}
 
   {#each selection as rect, index (index)}
     <rect
@@ -260,6 +304,26 @@
     stroke: var(--plate);
     stroke-width: 1;
     vector-effect: non-scaling-stroke;
+  }
+
+  /* No transition and no ease: a candidate appears and disappears (§6). */
+  .candidate {
+    fill: none;
+    stroke: var(--plate);
+    stroke-width: 1.5;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .candidate.span {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .candidate.label {
+    fill: var(--plate);
+    stroke: none;
+    font-family: var(--f-mono);
+    text-anchor: middle;
   }
 
   .loop {

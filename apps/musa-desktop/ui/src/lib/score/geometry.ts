@@ -7,7 +7,7 @@
  * can be measured in staff spaces and stay correct at every zoom.
  */
 
-import { elementsOf } from "./ids";
+import { elementsOf, eventIdOf } from "./ids";
 
 export interface Rect {
   x: number;
@@ -74,6 +74,52 @@ export function headsFor(container: ParentNode, id: string): Rect[] {
     })
     .map((element) => boxOf(root, element))
     .filter((rect): rect is Rect => rect !== null && rect.width > 0 && rect.height > 0);
+}
+
+/** A screen point in page units, with the scale that got it there. */
+export interface PagePoint {
+  x: number;
+  y: number;
+  /** How much of a page unit one screen pixel is: a threshold's conversion. */
+  perPixel: number;
+}
+
+/**
+ * A point on the screen, in the page's own coordinates.
+ *
+ * Everything a gesture measures — the note it started on, the staff space it
+ * snaps to, how far the pointer went — is in page units, so the pointer is
+ * converted once on the way in rather than the geometry being converted back
+ * out at every step (prompt 53).
+ */
+export function pointIn(container: ParentNode, x: number, y: number): PagePoint | null {
+  const root = pageRoot(container);
+  const matrix = root?.getScreenCTM();
+  if (!root || !matrix) return null;
+  const point = new DOMPoint(x, y).matrixTransform(matrix.inverse());
+  return { x: point.x, y: point.y, perPixel: matrix.a === 0 ? 1 : 1 / matrix.a };
+}
+
+/**
+ * The note nearest `x` whose head is drawn inside `staff`.
+ *
+ * A click on empty paper has to be measured from something the core spelled,
+ * and the nearest note on the same staff is the one a reader would measure
+ * from too. Nothing here decides what pitch that is — it names an event, and
+ * the snapshot says the rest.
+ */
+export function nearestNote(container: ParentNode, staff: Element, x: number): string | null {
+  const root = pageRoot(container);
+  if (!root) return null;
+  let best: { id: string; off: number } | null = null;
+  for (const drawn of staff.querySelectorAll<SVGGraphicsElement>('g[id^="event-"]')) {
+    const rect = boxOf(root, drawn);
+    if (!rect) continue;
+    const off = Math.abs(rect.x + rect.width / 2 - x);
+    const id = eventIdOf(drawn);
+    if (id !== null && (!best || off < best.off)) best = { id, off };
+  }
+  return best?.id ?? null;
 }
 
 /** The smallest box containing both. */
@@ -207,6 +253,25 @@ export function bracketNear(brackets: Bracket[], id: string, rect: Rect): Bracke
 }
 
 /**
+ * What a live pointer gesture would write, drawn over the unmoved engraving
+ * (prompt 53).
+ *
+ * A candidate is never a change to the engraving: the page keeps its ink and
+ * its layout, and this is drawn on top in `--plate` until the release turns it
+ * into an edit or the `Esc` throws it away.
+ */
+export interface Ghost {
+  /**
+   * A respelling draws the head where it would land; a renotation draws the
+   * span the note would take. Two gestures, two shapes.
+   */
+  kind: "pitch" | "duration";
+  rect: Rect;
+  /** The text the gesture would write, when the source column is not showing. */
+  label: string | null;
+}
+
+/**
  * Everything drawn over one page.
  *
  * Marks are per page, not per score: each page has its own coordinate system,
@@ -221,6 +286,8 @@ export interface Marks {
    * and never grown — a halo says *chosen*, a hairline says *this one*.
    */
   focus: Rect[];
+  /** What a live pointer gesture would write (prompt 53). */
+  candidate: Ghost | null;
   playing: Rect[];
   caret: Rect | null;
   loop: { from: Rect; to: Rect } | null;
@@ -236,6 +303,7 @@ export const NOTHING: Marks = Object.freeze({
   selection: [],
   hover: [],
   focus: [],
+  candidate: null,
   playing: [],
   caret: null,
   loop: null,

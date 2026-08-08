@@ -28,6 +28,7 @@
     highlight = [],
     focus = null,
     sounding = [],
+    candidate = null,
     reveal = null,
     modal = false,
     onedit,
@@ -48,6 +49,8 @@
     focus?: { definition: Span | null; place: Span | null } | null;
     /** The statements that made the music on the page in view (prompt 52). */
     sounding?: Span[];
+    /** The token a live pointer gesture would replace, and what it would write. */
+    candidate?: { start: number; end: number; text: string } | null;
     /** A place to put the caret, once, when it changes. */
     reveal?: Reveal | null;
     /** Vim mode in the editor — the composer's preference (prompt 55). */
@@ -113,6 +116,7 @@
       {highlight}
       {focus}
       {sounding}
+      {candidate}
       {reveal}
       {modal}
       {onedit}

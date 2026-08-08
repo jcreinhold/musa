@@ -77,6 +77,61 @@ fn an_authored_note_changes_only_itself() {
 }
 
 #[test]
+fn an_impact_carries_the_text_the_edit_would_write() {
+    let session = session("glass-mountain.musa");
+    let facts = score_facts(&session);
+    let id = nth_event(&facts, "upper", 3); // `gs4 1;`
+
+    let impact = session
+        .edit_impact(&EditCommand::ChangePitch {
+            event: id,
+            pitch: "g4".to_owned(),
+            mode: GeneratedEditMode::EditDefinition,
+        })
+        .expect("the event exists");
+
+    // One token, named exactly, so a live gesture can mark the text it is
+    // about to replace rather than the statement around it (prompt 53).
+    let [write] = impact.writes.as_slice() else {
+        panic!("one replacement, not {}", impact.writes.len());
+    };
+    assert_eq!(write.text, "g4");
+    let source = source(&session);
+    let start = usize::try_from(write.start).expect("an offset");
+    let end = usize::try_from(write.end).expect("an offset");
+    assert_eq!(&source[start..end], "gs4");
+}
+
+#[test]
+fn what_an_impact_says_it_writes_is_what_applying_it_writes() {
+    let mut session = session("glass-mountain.musa");
+    let facts = score_facts(&session);
+    // A generated note, where the token is inside the motif and not where the
+    // composer pointed — the case the preview exists for.
+    let id = nth_event(&facts, "lead", 2);
+    let edit = EditCommand::ChangePitch {
+        event: id,
+        pitch: "d5".to_owned(),
+        mode: GeneratedEditMode::EditDefinition,
+    };
+
+    let before = source(&session);
+    let writes = session.edit_impact(&edit).expect("the event exists").writes;
+    session
+        .apply(ProjectCommand::EditScore(edit))
+        .expect("a legal respelling");
+
+    let mut expected = before.clone();
+    for write in writes.iter().rev() {
+        let start = usize::try_from(write.start).expect("an offset");
+        let end = usize::try_from(write.end).expect("an offset");
+        expected.replace_range(start..end, &write.text);
+    }
+    assert_eq!(source(&session), expected);
+    assert_ne!(source(&session), before, "something was written");
+}
+
+#[test]
 fn a_generated_note_states_its_consequence_in_counts() {
     let session = session("glass-mountain.musa");
     let facts = score_facts(&session);
