@@ -74,6 +74,7 @@ ScoreSnapshot {
                                         octave: 5,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -125,6 +126,7 @@ ScoreSnapshot {
                                         octave: 5,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -176,6 +178,7 @@ ScoreSnapshot {
                                         octave: 5,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -227,6 +230,7 @@ ScoreSnapshot {
                                         octave: 5,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -278,6 +282,7 @@ ScoreSnapshot {
                                         octave: 5,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -329,6 +334,7 @@ ScoreSnapshot {
                                         octave: 5,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -386,6 +392,7 @@ ScoreSnapshot {
                                         octave: 5,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -444,6 +451,7 @@ ScoreSnapshot {
                                         octave: 4,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -502,6 +510,7 @@ ScoreSnapshot {
                                         octave: 5,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -553,6 +562,7 @@ ScoreSnapshot {
                                         octave: 5,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -604,6 +614,7 @@ ScoreSnapshot {
                                         octave: 5,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -655,6 +666,7 @@ ScoreSnapshot {
                                         octave: 5,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -706,6 +718,7 @@ ScoreSnapshot {
                                         octave: 4,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -757,6 +770,7 @@ ScoreSnapshot {
                                         octave: 5,
                                     },
                                 },
+                                free: None,
                             },
                         ],
                     },
@@ -838,6 +852,7 @@ ScoreSnapshot {
                                         },
                                     ],
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -889,6 +904,7 @@ ScoreSnapshot {
                                         octave: 3,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -946,6 +962,7 @@ ScoreSnapshot {
                                         octave: 3,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -997,6 +1014,7 @@ ScoreSnapshot {
                                         octave: 3,
                                     },
                                 },
+                                free: None,
                             },
                             ScoreEvent {
                                 id: EventId(
@@ -1048,6 +1066,7 @@ ScoreSnapshot {
                                         octave: 3,
                                     },
                                 },
+                                free: None,
                             },
                         ],
                     },
@@ -1435,6 +1454,7 @@ ScoreSnapshot {
         sections: [],
         harmony: [],
         repeats: [],
+        open: [],
     },
     motifs: [
         MotifDeclaration {

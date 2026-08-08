@@ -163,18 +163,19 @@ fn free_text(free: Option<&crate::score::FreeDuration>) -> String {
     })
 }
 
-fn read_free(text: &str) -> Option<Option<crate::score::FreeDuration>> {
-    if text.is_empty() {
-        return Some(None);
-    }
+/// Reads what `free_text` wrote for a note that does have a freedom. Absence
+/// is the empty field, and the two callers spell that case out: a malformed
+/// field is a broken fact rather than a missing one, so the two must not
+/// collapse into the same `None`.
+fn read_free(text: &str) -> Option<crate::score::FreeDuration> {
     let fields = split_escaped(text, ';');
     let [least, most] = fields.as_slice() else {
         return None;
     };
-    Some(Some(crate::score::FreeDuration {
+    Some(crate::score::FreeDuration {
         least: MusicalDuration::new(read_ratio(least)?),
         most: MusicalDuration::new(read_ratio(most)?),
-    }))
+    })
 }
 
 fn articulations_text(marks: &[Mark]) -> String {
@@ -263,12 +264,18 @@ fn read_kind(text: &str) -> Option<FactKind> {
             pitch: WrittenPitch::parse(arg(1)?)?,
             duration: read_duration(arg(2)?)?,
             articulations: read_articulations(arg(3)?)?,
-            free: read_free(arg(4)?)?,
+            free: match arg(4)? {
+                "" => None,
+                free => Some(read_free(free)?),
+            },
         }),
         ("rest", 4) => Some(FactKind::Rest {
             duration: read_duration(arg(1)?)?,
             articulations: read_articulations(arg(2)?)?,
-            free: read_free(arg(3)?)?,
+            free: match arg(3)? {
+                "" => None,
+                free => Some(read_free(free)?),
+            },
         }),
         ("mobile", 3) => Some(FactKind::Mobile {
             fragments: split_escaped(arg(1)?, ','),

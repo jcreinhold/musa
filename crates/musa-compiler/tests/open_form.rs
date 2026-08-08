@@ -9,6 +9,7 @@
 // A failure of these is a bug in the fixture, not in a caller's input.
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
+#![allow(clippy::panic)]
 
 use musa_compiler::{
     Compilation, CompileOptions, Decision, OpenKind, Realization, ScoreSnapshot, SourceDocument, compile,
@@ -42,7 +43,7 @@ fn pitches(snapshot: &ScoreSnapshot) -> Vec<String> {
             }
         }
     }
-    events.sort_by(|left, right| left.0.cmp(&right.0));
+    events.sort_by_key(|(onset, _)| *onset);
     events.into_iter().map(|(_, kind)| kind).collect()
 }
 
@@ -83,7 +84,7 @@ fn the_seed_decides_the_order_and_decides_it_once() {
                 .iter()
                 .find_map(|(_, decision)| match decision {
                     Decision::Order(order) => Some(order.clone()),
-                    _ => None,
+                    Decision::Count(_) | Decision::Duration(_) => None,
                 })
         })
         .collect();

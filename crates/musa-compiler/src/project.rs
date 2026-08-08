@@ -426,7 +426,7 @@ fn event_from(
         origin: fact.origin.clone(),
         onset: MusicalTime::new(first.span().start().as_ratio()),
         notated_duration: duration,
-        free: fact.kind.free_of().cloned(),
+        free: fact.kind.free_of().copied(),
         kind,
     })
 }

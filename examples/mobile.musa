@@ -18,25 +18,115 @@ piece "Nineteen" {
     meter 4/4;
     key c major;
 
-    fragment group_one { b5 1/8; g4 1/8; af5 1/4; d5 1/2; }
-    fragment group_two { bf4 1/2; cs5 1/2; }
-    fragment group_three { fs5 1; c5 1; }
-    fragment group_four { d5 1/16; e5 1/16; bf4 1/16; cs5 1/16; ef4 1/4; a4 1/4; ds5 1/4; }
-    fragment group_five { a4 1/2; ds5 1/2; }
-    fragment group_six { g4 1/2; af5 1/4; d5 1/4; }
-    fragment group_seven { cs5 1/4; ef4 1/4; a4 1/4; ds5 1/4; }
-    fragment group_eight { c5 3/4; b5 1/4; }
-    fragment group_nine { e5 1/4; bf4 1/8; cs5 1/8; ef4 1/2; }
-    fragment group_ten { ds5 1/4; fs5 1/2; c5 1/4; }
-    fragment group_eleven { af5 1/8; d5 1/4; e5 1/8; bf4 1/8; cs5 1/4; ef4 1/8; }
-    fragment group_twelve { ef4 1/8; a4 1/8; ds5 1/8; fs5 1/8; c5 1/8; b5 1/8; g4 1/8; af5 1/8; }
-    fragment group_thirteen { b5 1/8; g4 1/8; af5 1/4; d5 1/2; }
-    fragment group_fourteen { bf4 1/2; cs5 1/2; }
-    fragment group_fifteen { fs5 1; c5 1; }
-    fragment group_sixteen { d5 1/16; e5 1/16; bf4 1/16; cs5 1/16; ef4 1/4; a4 1/4; ds5 1/4; }
-    fragment group_seventeen { a4 1/2; ds5 1/2; }
-    fragment group_eighteen { g4 1/2; af5 1/4; d5 1/4; }
-    fragment group_nineteen { cs5 1/4; ef4 1/4; a4 1/4; ds5 1/4; }
+    fragment group_one {
+        b5 1/8;
+        g4 1/8;
+        af5 1/4;
+        d5 1/2;
+    }
+    fragment group_two {
+        bf4 1/2;
+        cs5 1/2;
+    }
+    fragment group_three {
+        fs5 1;
+        c5 1;
+    }
+    fragment group_four {
+        d5 1/16;
+        e5 1/16;
+        bf4 1/16;
+        cs5 1/16;
+        ef4 1/4;
+        a4 1/4;
+        ds5 1/4;
+    }
+    fragment group_five {
+        a4 1/2;
+        ds5 1/2;
+    }
+    fragment group_six {
+        g4 1/2;
+        af5 1/4;
+        d5 1/4;
+    }
+    fragment group_seven {
+        cs5 1/4;
+        ef4 1/4;
+        a4 1/4;
+        ds5 1/4;
+    }
+    fragment group_eight {
+        c5 3/4;
+        b5 1/4;
+    }
+    fragment group_nine {
+        e5 1/4;
+        bf4 1/8;
+        cs5 1/8;
+        ef4 1/2;
+    }
+    fragment group_ten {
+        ds5 1/4;
+        fs5 1/2;
+        c5 1/4;
+    }
+    fragment group_eleven {
+        af5 1/8;
+        d5 1/4;
+        e5 1/8;
+        bf4 1/8;
+        cs5 1/4;
+        ef4 1/8;
+    }
+    fragment group_twelve {
+        ef4 1/8;
+        a4 1/8;
+        ds5 1/8;
+        fs5 1/8;
+        c5 1/8;
+        b5 1/8;
+        g4 1/8;
+        af5 1/8;
+    }
+    fragment group_thirteen {
+        b5 1/8;
+        g4 1/8;
+        af5 1/4;
+        d5 1/2;
+    }
+    fragment group_fourteen {
+        bf4 1/2;
+        cs5 1/2;
+    }
+    fragment group_fifteen {
+        fs5 1;
+        c5 1;
+    }
+    fragment group_sixteen {
+        d5 1/16;
+        e5 1/16;
+        bf4 1/16;
+        cs5 1/16;
+        ef4 1/4;
+        a4 1/4;
+        ds5 1/4;
+    }
+    fragment group_seventeen {
+        a4 1/2;
+        ds5 1/2;
+    }
+    fragment group_eighteen {
+        g4 1/2;
+        af5 1/4;
+        d5 1/4;
+    }
+    fragment group_nineteen {
+        cs5 1/4;
+        ef4 1/4;
+        a4 1/4;
+        ds5 1/4;
+    }
 
     score {
         part piano {

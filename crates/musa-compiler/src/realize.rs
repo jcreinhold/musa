@@ -21,6 +21,12 @@
 //! it — the same failure a span-based identity has, arriving later and much
 //! less visibly, because the first few decisions would still look right.
 
+// Rational arithmetic on `Ratio<i64>` is exact mathematical arithmetic, not
+// raw integer ops; clippy::arithmetic_side_effects does not apply to it. The
+// integer arithmetic in `Stream` and in the shuffle is written checked, so
+// this allow covers only the rationals it is claimed for.
+#![allow(clippy::arithmetic_side_effects)]
+
 use std::collections::BTreeMap;
 
 use num_rational::Ratio;
@@ -137,7 +143,15 @@ impl Realization {
         let mut index = order.len();
         while index > 1 {
             index = index.saturating_sub(1);
-            let swap = usize::try_from(stream.next() % (index as u128).saturating_add(1)).unwrap_or(0);
+            // `index` is at least 1 here, so the bound is at least 2 and the
+            // remainder always exists; `checked_rem` says so rather than
+            // leaving a reader to reconstruct it from the loop condition.
+            let bound = u128::from(index as u64).saturating_add(1);
+            let swap = stream
+                .next()
+                .checked_rem(bound)
+                .and_then(|slot| usize::try_from(slot).ok())
+                .unwrap_or(0);
             order.swap(index, swap);
         }
         order
@@ -197,7 +211,7 @@ fn draw(seed: u64, path: &ChoicePath) -> u128 {
 ///
 /// A shuffle needs `n - 1` draws and they must not repeat. This is still *per
 /// path* — the stream is seeded by the site and by nothing before it, so the
-/// property that makes an edit elsewhere harmless is unaffected. SplitMix64's
+/// property that makes an edit elsewhere harmless is unaffected. `SplitMix64`'s
 /// mixing function, which is four lines and needs no dependency.
 struct Stream(u64);
 

@@ -1,7 +1,7 @@
 ---
 id: 68
 slug: open-form
-status: in-progress
+status: done
 depends_on: [67]
 phase: 3
 ---
@@ -108,6 +108,48 @@ realization and nothing else; that is exact for what MIDI is.
   `changes.musa` (a chart with an improvised chorus).
 - `docs/course-correction.md` §33: rows 7–10 marked proven, or the reason they are not.
 - `docs/kernel/11-realization.md`: graduated from candidate to governing.
+
+## Repairs made while implementing
+
+Six places where the design above was wrong or underspecified. Each is repaired here so a later prompt reads the
+truth rather than the plan.
+
+**A free duration is a field on the note, not a fact beside it.** The Design table proposes
+`FactKind::FreeDuration { min, max }` "on the note". There is no such position: a fact is an occurrence over a span,
+so a second occurrence sharing the note's span would have to be matched back to its note by coincidence of extent —
+and two free-duration notes at the same onset in different voices would be indistinguishable. The freedom is a
+property *of* the note, so it is `free: Option<FreeDuration>` on `FactKind::Note` and `FactKind::Rest`. `Mobile` and
+`Improvise` remain facts as designed, because those genuinely are regions rather than properties.
+
+**The stored notated value is the decision, not the minimum.** The Design says "the notated duration is the minimum;
+the performed duration is the decision", then says "the performance plan uses the drawn value". Both cannot hold: if
+the occurrence spans the minimum, every note after a held note lands too early. What is stored is the decided
+duration — so the timeline is right — and `FreeDuration { least, most }` carries the written range alongside it, from
+which the engraver draws `least` with a bracket. §2's row is kept, with the *written* value in the payload rather
+than in the span.
+
+**A voice is not bar-checked after a free duration.** `resolve.rs::check_measure_sanity` would report every bar after
+a held note as mismeasured. How far such a voice reaches is the performance's answer, so the complaint would be about
+the freedom rather than about a mistake: a voice with any `free` event is skipped from that check.
+
+**A ranged repeat inside shared material does not warn.** Prompt 67's repeat-agreement check reports a repeat whose
+passes disagree, because a disagreeing repeat cannot be one barline. *In C*'s fifty-three figures are exactly that
+and are not a defect — shared material stands at places that have nothing to do with each other, so there was never a
+system-crossing barline to lose. `project.rs::agreed_repeats` now writes such a repeat out silently when its
+`expansion_path` contains a `MotifApplication`. A ranged repeat among a voice's own items still warns.
+
+**`in-c.musa` is one voice, not "fifty-three fragments in each of several parts".** The Design names the
+several-parts case as the one that tests `ChoicePath`. It does not: a site written among a voice's own items has its
+ordinal counted per voice, so the k-th site in every voice is *one* site by construction — several parts would test
+nothing that one part does not. What does test the identity is the fifty-three-way edit, which
+`editing_one_figure_leaves_the_other_fifty_two_decisions_alone` checks directly. The example is written as one voice
+of fifty-three fragments plus a pulse, and the figures are original rather than Riley's, because *In C* (1964) is in
+copyright; the file's header says so.
+
+**`ExportArtifact` became a struct.** A lossy export must say what it dropped, so a rendered artifact has to carry
+warnings. The alternative — a second `export_with_warnings` method — is a shallow module, and changing `export`'s
+return type touches fourteen call sites. Only `session.rs` constructed the variants, so `ExportArtifact` is now a
+struct of a body and its warnings, with `text`/`bytes`/`warn` constructors.
 
 ## Check
 

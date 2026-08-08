@@ -708,7 +708,7 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
                     Some(PositionedMark {
                         measure: measure.number(),
                         onset_in_measure: item.onset_in_measure(),
-                        what: item.free()?.clone(),
+                        what: *item.free()?,
                     })
                 })
             })
@@ -1188,7 +1188,7 @@ fn plan_lane(
                 },
                 // The bracket is drawn from the first notehead of the symbol,
                 // like every other thing written once on a tied pair.
-                free: if is_first { event.free.clone() } else { None },
+                free: if is_first { event.free } else { None },
             });
         }
     }

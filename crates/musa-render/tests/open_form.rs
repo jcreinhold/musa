@@ -10,6 +10,7 @@
 // A failure of these is a bug in the fixture, not in a caller's input.
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
+#![allow(clippy::panic)]
 
 use musa_compiler::{CompileOptions, Realization, ScoreSnapshot, SourceDocument, compile};
 use musa_render::{NotationOptions, NotationTarget, plan_notation, render_notation};

@@ -97,6 +97,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    free: None,
                                 },
                                 NotatedItem {
                                     event: EventId(
@@ -142,6 +143,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    free: None,
                                 },
                                 NotatedItem {
                                     event: EventId(
@@ -187,6 +189,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    free: None,
                                 },
                                 NotatedItem {
                                     event: EventId(
@@ -232,6 +235,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    free: None,
                                 },
                             ],
                             slurs: [],
@@ -300,6 +304,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    free: None,
                                 },
                                 NotatedItem {
                                     event: EventId(
@@ -345,6 +350,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    free: None,
                                 },
                                 NotatedItem {
                                     event: EventId(
@@ -390,6 +396,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    free: None,
                                 },
                             ],
                             slurs: [],
@@ -422,4 +429,6 @@ NotationPlan {
     sections: [],
     harmony: [],
     repeats: [],
+    open: [],
+    holds: [],
 }
