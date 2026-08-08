@@ -1,7 +1,7 @@
 ---
 id: 55
 slug: reading-preferences
-status: pending
+status: done
 depends_on: [26]
 phase: 2
 ---
@@ -66,6 +66,12 @@ CodeMirror instance and nowhere else. What makes this worth its dependency is th
 editor and musa's thesis is that the source is canonical — an editor a vim user cannot type in makes the canonical
 artifact the one that is least pleasant to touch.
 
+**The mode says which mode it is in.** The package's own status line is turned on — `--NORMAL--`, `--INSERT--`, and the
+line `:` is typed into — restyled to the tokens like every other piece of chrome. A modal editor that does not say what
+mode it is in is the one thing worse than a modeless one, and `:w` needs somewhere to be typed; this is the package's
+default surface and nothing beyond it. It appears only while vim mode is on, so the source column a composer who never
+asked for vim reads is unchanged.
+
 **The three conflicts, named, because each of them is a way to get this wrong.**
 
 - **`Esc`.** The app's `Esc` clears the selection, or — with nothing selected — puts the source column away. In vim it is
@@ -99,9 +105,14 @@ badly for somebody; a preferences surface that grows past what can be answered t
   - `package.json` — `@replit/codemirror-vim`.
 - Tests:
   - unit: the preference persists, restores, and clamps to the four steps; an unknown stored value falls back to Normal.
-  - Playwright: a step changes the frame's type and leaves the engraved staff size alone; vim mode takes `i` then `Esc`
-    without the source column closing; `u` moves the *project* revision back; the mode and the size survive a reload;
-    with vim off, `Esc` still puts the column away.
+  - Playwright: a step changes the frame's type and leaves the engraving alone; vim mode takes `i` then `Esc` without
+    the source column closing; `u` moves the *project* revision back; `:w` reaches the project's save; the mode and the
+    size survive a reload; with vim off, `Esc` still puts the column away.
+
+    "Leaves the engraving alone" is asserted as a **ratio** — one staff's height over its page's — and not as a pixel
+    height, because a larger frame legitimately leaves the leaf less room and the page is fitted to what is left. That
+    is the same thing a window resize does. What must not change is the engraving inside the page, and a staff taking a
+    larger share of it is exactly what a second zoom would look like.
   - a golden of the frame at Larger, 1440, both themes.
 - Docs: `01-visual-language.md` §3 gains the scale and its steps; `03-interaction.md` §3 gains the four commands and the
   `Esc` row; `05-states.md` gains the one-line statement that preferences are app state and never reach the document.

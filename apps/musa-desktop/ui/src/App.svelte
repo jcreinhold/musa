@@ -28,6 +28,7 @@
   import { bridge } from "./lib/session/bridge";
   import type { Reveal } from "./lib/state/reveal";
   import { commandFor, dispatch, type Screen, type Surface } from "./lib/commands/map";
+  import { Preferences } from "./lib/session/preferences.svelte";
   import { Session } from "./lib/session/session.svelte";
   import { ThemeChoice } from "./lib/session/theme.svelte";
   import { mark } from "./lib/perf";
@@ -46,6 +47,7 @@
   const parameters = new URLSearchParams(globalThis.location?.search ?? "");
   const session = new Session();
   const theme = new ThemeChoice();
+  const preferences = new Preferences();
   const chosen = fixture(parameters.get("score"));
 
   const DEFAULT_STEP = ZOOM_STEPS.indexOf(100);
@@ -322,6 +324,7 @@
   const surface: Surface = {
     session,
     theme,
+    preferences,
     workspace,
     zoom: stepZoom,
     resetZoom: () => (zoomStep = DEFAULT_STEP),
@@ -346,6 +349,11 @@
     const element = target instanceof Element ? target : null;
     if (element?.closest("input, textarea, [contenteditable]")) return "global";
     return element?.closest('[role="application"]') ? "score" : "global";
+  }
+
+  /** Whether a keystroke happened inside the source column's editor. */
+  function inSource(target: EventTarget | null): boolean {
+    return target instanceof Element && target.closest(".cm-editor") !== null;
   }
 
   function onkeydown(event: KeyboardEvent): void {
@@ -378,6 +386,12 @@
         return;
       }
     }
+    // The one binding vim mode moves (`03-interaction.md` §3). `Esc` is the
+    // app's "give up", and it is also the most-pressed key in a modal editor:
+    // an editor that cannot leave insert mode is not an editor. So while vim
+    // mode is on and the caret is in the source, `Esc` is vim's. Everywhere
+    // else, and with vim off, it is unchanged.
+    if (event.key === "Escape" && preferences.vim && inSource(event.target)) return;
     const command = commandFor(event, scopeOf(event.target));
     if (!command) return;
     event.preventDefault();
@@ -505,6 +519,7 @@
     // laid it out, and must never have been waited for (B6, `05-states.md` §3).
     requestAnimationFrame(() => mark("shell"));
     const stopFollowing = theme.start();
+    preferences.start();
     const listening = session.start();
     const commands = session.live
       ? bridge.on("musa://command", (id) => dispatch(id, surface))
@@ -530,6 +545,7 @@
 {:else if session.snapshot && screen === "source"}
   <Source
     {session}
+    {preferences}
     {workspace}
     {zoom}
     {mode}
@@ -542,6 +558,7 @@
 {:else if session.snapshot}
   <Compose
     {session}
+    {preferences}
     {workspace}
     {zoom}
     {mode}

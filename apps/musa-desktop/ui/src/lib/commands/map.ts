@@ -15,6 +15,7 @@
 
 import registry from "../session/generated/commands.json";
 import type { CommandDescriptor } from "../session/generated/CommandDescriptor";
+import type { Preferences } from "../session/preferences.svelte";
 import type { Session } from "../session/session.svelte";
 import type { ThemeChoice } from "../session/theme.svelte";
 import type { Workspace } from "../state/selection.svelte";
@@ -32,6 +33,8 @@ export type Group = "File" | "Edit" | "Score" | "Transport" | "View" | "Help";
 export interface Surface {
   session: Session;
   theme: ThemeChoice;
+  /** Text size and vim mode — app state, never the document's (prompt 55). */
+  preferences: Preferences;
   /** Absent on the launch screen, where there is no score to navigate. */
   workspace?: Workspace;
   zoom(by: number): void;
@@ -205,6 +208,12 @@ export const COMMANDS: readonly Command[] = [
   command("view.zoom.in", "View", (surface) => surface.zoom(1)),
   command("view.zoom.reset", "View", (surface) => surface.resetZoom()),
   command("view.source", "View", ({ session }) => (session.sourceOpen = !session.sourceOpen)),
+  // The frame's text, which is a different question from the score's size
+  // (prompt 55). `⌘⌥=` rather than `⌘=` for exactly that reason.
+  command("view.text.larger", "View", ({ preferences }) => preferences.stepText(1)),
+  command("view.text.smaller", "View", ({ preferences }) => preferences.stepText(-1)),
+  command("view.text.reset", "View", ({ preferences }) => preferences.resetText()),
+  command("view.vim", "View", ({ preferences }) => preferences.toggleVim()),
   command("view.theme", "View", ({ theme }) => theme.toggle()),
   command("view.palette", "View", (surface) => surface.palette(true)),
 

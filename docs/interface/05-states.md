@@ -102,3 +102,11 @@ This is a headline behavior and it gets a real design, not a badge:
 - **Unsaved work is never lost silently.** Until autosave arrives (prompt 33), a close request with unsaved edits states
   the count of edits and offers *Save*, *Discard*, *Cancel* — the only place in the application where a modal is
   correct, because the window is going away.
+
+## 8. Preferences are state of the application
+
+The theme, the frame's text size, and vim mode in the source column are states of the *app*, not of the document. They
+live in `localStorage`, they are restored on start, and they never appear in the file, in a revision, or in the undo
+history — a composer who changes the text size and then presses `⌘Z` undoes the last thing they wrote, which is the only
+answer that makes sense. Two consequences follow: a preference is never a reason to mark the document unsaved, and
+opening the same piece on another machine gives that machine's reading and this machine's music.

@@ -32,20 +32,31 @@
   --f-ui: "Instrument Sans", "Helvetica Neue", system-ui, sans-serif;
   --f-mono: "Recursive Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* §3 — the scale. Chrome uses no size between these steps. */
-  --t-micro-size: 10px;
+  /*
+   * §3 — the scale. Chrome uses no size between these steps.
+   *
+   * Every size is read through one multiplier, so a text-size preference
+   * (prompt 55) is the same typographic system read from further away rather
+   * than a different one: the steps stay discrete and the ratios between them
+   * are preserved. It is the *frame's* size — the score's is zoom, which is a
+   * re-layout, and two zooms that disagree is neither being trusted.
+   *
+   * Unset is `1`, so the default lives here and the preference only ever
+   * overrides it.
+   */
+  --t-micro-size: calc(10px * var(--type-scale, 1));
   --t-micro-line: 1.4;
-  --t-small-size: 12px;
+  --t-small-size: calc(12px * var(--type-scale, 1));
   --t-small-line: 1.5;
-  --t-body-size: 13px;
+  --t-body-size: calc(13px * var(--type-scale, 1));
   --t-body-line: 1.5;
-  --t-value-size: 13px;
+  --t-value-size: calc(13px * var(--type-scale, 1));
   --t-value-line: 1.5;
-  --t-name-size: 15px;
+  --t-name-size: calc(15px * var(--type-scale, 1));
   --t-name-line: 1.3;
-  --t-title-size: 24px;
+  --t-title-size: calc(24px * var(--type-scale, 1));
   --t-title-line: 1.2;
-  --t-large-size: 34px;
+  --t-large-size: calc(34px * var(--type-scale, 1));
   --t-large-line: 1;
   --tracking-micro: 0.08em;
 

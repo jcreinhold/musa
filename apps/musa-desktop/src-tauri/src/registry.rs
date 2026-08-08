@@ -122,6 +122,30 @@ pub const COMMANDS: &[CommandDescriptor] = &[
         Some("CmdOrCtrl+'"),
         true,
     ),
+    // The frame's text, not the score's — deliberately not `⌘=`/`⌘-`, which
+    // are zoom and must stay zoom (prompt 55).
+    command(
+        "view.text.larger",
+        "Larger text",
+        Section::View,
+        Some("CmdOrCtrl+Alt+="),
+        true,
+    ),
+    command(
+        "view.text.smaller",
+        "Smaller text",
+        Section::View,
+        Some("CmdOrCtrl+Alt+-"),
+        true,
+    ),
+    command(
+        "view.text.reset",
+        "Reset text size",
+        Section::View,
+        Some("CmdOrCtrl+Alt+0"),
+        true,
+    ),
+    command("view.vim", "Vim mode in the source", Section::View, None, true),
     command("view.theme", "Switch theme", Section::View, None, true),
     command(
         "view.palette",

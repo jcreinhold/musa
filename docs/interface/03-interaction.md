@@ -56,7 +56,7 @@ documentation cannot drift from bindings.
 | `⌥←` `⌥→` | Previous / next bar |
 | `Home` `End` | First / last event in the voice |
 | `Tab` | Next part |
-| `Esc` | Clear selection; if none, hide the source column |
+| `Esc` | Clear selection; if none, hide the source column — except in vim mode, below |
 
 **Transport**
 
@@ -74,11 +74,16 @@ documentation cannot drift from bindings.
 | --- | --- |
 | `O` (hold) or `⌥` (hold) | Origin view (`04-provenance.md`) |
 | `⌘1` `⌘2` `⌘3` `⌘4` | Compose / Sound / Mix / Source workspace |
-| `⌘−` `⌘=` `⌘0` | Zoom out / in / reset |
+| `⌘−` `⌘=` `⌘0` | Zoom out / in / reset — the **score**, which is a re-layout (`02-engraving.md` §5) |
+| `⌘⌥−` `⌘⌥=` `⌘⌥0` | Smaller / larger / reset the **frame's** text, in four steps (prompt 55) |
 | `⌘'` | Show or hide the source column |
 | `⌘⇧F` | Format the source |
 | `⌘K` | Command palette |
 | `?` | Keyboard sheet |
+
+Text size is deliberately not `⌘=`/`⌘−`: those are the score's zoom and must stay the score's zoom. Vim mode has no
+binding at all — it is a preference a composer sets once, from the View menu or the palette, not a mode they flip
+mid-phrase.
 
 All four workspaces exist as of prompt 31; before that `⌘2` and `⌘3` were bound to nothing and the switcher showed only
 the two that were real, because a tab that opens an empty room is a promise the application cannot keep.
@@ -113,6 +118,23 @@ the same gesture changes a selection where there is one and writes at the caret 
 second letter to learn. `16` and `32` take the nearest free digits — `6` and `3` — because they do not fit on one key.
 Ties have no binding: the language has no tie construct until prompt 27, and a key that spells nothing is worse than a
 key that is not there yet.
+
+**Vim mode** (prompt 55 — only while it is on, and only in the source column)
+
+`@replit/codemirror-vim`, off by default, persisted with the text size. The keymap lives inside the one CodeMirror
+instance; nothing about the language, the score, the command model, or the document changes. Three keys are not vim's:
+
+| Key | Action |
+| --- | --- |
+| `Esc` | Vim's, while vim mode is on *and* the caret is in the source. Everywhere else it is the row above. |
+| `u` `⌃r` | The **project's** undo and redo, over revisions — not a second history inside the editor |
+| `:w` | Save the project: one save, one path, the same command the menu runs. `:q` does nothing. |
+
+`Esc` is the one binding the mode moves, and it has to move: it is the most-pressed key in a modal editor, and an editor
+that cannot leave insert mode is not an editor. `u` and `⌃r` are rebound because `SourceEditor` deliberately keeps no
+history of its own — two stacks over one document disagree about what the document is, and a vim mode that quietly
+reintroduced one would be a worse bug than not having vim mode. Nothing else needs a new rule: the scope rule above
+already keeps `n`, `f`, and the arrows from firing while a text field has focus, which is exactly what vim needs.
 
 **Focus.** There is one focus ring: `2px --plate`, `2px` offset, `3px` radius, and it is always visible on keyboard
 focus — never suppressed. Focus order is: top margin → source column → parts list → score → inspector. The score pane is

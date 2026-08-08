@@ -25,8 +25,12 @@
     editable = false,
     highlight = [],
     reveal = null,
+    modal = false,
     onedit,
     oncaret,
+    onundo,
+    onredo,
+    onsave,
     ondiagnostic,
     onhide,
   }: {
@@ -37,9 +41,15 @@
     highlight?: Span[];
     /** A place to put the caret, once, when it changes. */
     reveal?: Reveal | null;
+    /** Vim mode in the editor — the composer's preference (prompt 55). */
+    modal?: boolean;
     onedit?: (source: string) => void;
     /** Where the caret is now, so the score can follow it (prompt 26). */
     oncaret?: (offset: number) => void;
+    /** What vim's `u`, `⌃r`, and `:w` reach: the project's own commands. */
+    onundo?: () => void;
+    onredo?: () => void;
+    onsave?: () => void;
     ondiagnostic?: (diagnostic: Diagnostic) => void;
     /**
      * How to put the column away — given only where putting it away is a
@@ -74,7 +84,19 @@
     lie.
   -->
   <div class="field">
-    <SourceEditor {source} {diagnostics} {editable} {highlight} {reveal} {onedit} {oncaret} />
+    <SourceEditor
+      {source}
+      {diagnostics}
+      {editable}
+      {highlight}
+      {reveal}
+      {modal}
+      {onedit}
+      {oncaret}
+      {onundo}
+      {onredo}
+      {onsave}
+    />
   </div>
 
   <!--

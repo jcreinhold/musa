@@ -21,6 +21,7 @@
   import SourcePane from "../lib/ui/SourcePane.svelte";
   import Workspaces from "../lib/ui/Workspaces.svelte";
   import type { Screen } from "../lib/commands/map";
+  import type { Preferences } from "../lib/session/preferences.svelte";
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
@@ -28,6 +29,7 @@
 
   let {
     session,
+    preferences,
     workspace,
     zoom,
     mode,
@@ -38,6 +40,8 @@
     onshow,
   }: {
     session: Session;
+    /** Text size and vim mode, for the source column (prompt 55). */
+    preferences: Preferences;
     workspace: Workspace;
     zoom: number;
     mode: ViewMode;
@@ -77,8 +81,12 @@
         {diagnostics}
         {highlight}
         {reveal}
+        modal={preferences.vim}
         onedit={(text) => session.edit(text)}
         {oncaret}
+        onundo={() => void session.undo()}
+        onredo={() => void session.redo()}
+        onsave={() => void session.save()}
         {ondiagnostic}
       />
 

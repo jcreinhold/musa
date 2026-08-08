@@ -126,6 +126,34 @@
     "available": true
   },
   {
+    "id": "view.text.larger",
+    "title": "Larger text",
+    "section": "view",
+    "accelerator": "CmdOrCtrl+Alt+=",
+    "available": true
+  },
+  {
+    "id": "view.text.smaller",
+    "title": "Smaller text",
+    "section": "view",
+    "accelerator": "CmdOrCtrl+Alt+-",
+    "available": true
+  },
+  {
+    "id": "view.text.reset",
+    "title": "Reset text size",
+    "section": "view",
+    "accelerator": "CmdOrCtrl+Alt+0",
+    "available": true
+  },
+  {
+    "id": "view.vim",
+    "title": "Vim mode in the source",
+    "section": "view",
+    "accelerator": null,
+    "available": true
+  },
+  {
     "id": "view.theme",
     "title": "Switch theme",
     "section": "view",

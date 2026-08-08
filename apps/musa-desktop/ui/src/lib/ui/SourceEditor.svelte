@@ -42,6 +42,7 @@
   import { musa, musaHighlighting } from "../lang-musa";
   import type { Reveal } from "../state/reveal";
   import type { Diagnostic, Span } from "../state/snapshot";
+  import { modal as modalKeymap, serve } from "./vim";
 
   let {
     source,
@@ -49,8 +50,12 @@
     editable = true,
     highlight = [],
     reveal = null,
+    modal = false,
     onedit,
     oncaret,
+    onundo,
+    onredo,
+    onsave,
   }: {
     source: string;
     /** The compiler's own, never recomputed here (`05-states.md` §5). */
@@ -60,9 +65,22 @@
     highlight?: Span[];
     /** A place to put the caret, once, when it changes. */
     reveal?: Reveal | null;
+    /** Vim mode: the composer's preference, not the document's (prompt 55). */
+    modal?: boolean;
     onedit?: (source: string) => void;
     /** Where the caret is now, so the score can follow it. */
     oncaret?: (offset: number) => void;
+    /**
+     * What `u`, `⌃r`, and `:w` do — the project's undo, redo, and save.
+     *
+     * They are props rather than anything the editor owns because the whole
+     * point is that they are *not* the editor's: vim's own history would be a
+     * second stack over one document, which is the thing this editor exists
+     * to not have.
+     */
+    onundo?: () => void;
+    onredo?: () => void;
+    onsave?: () => void;
   } = $props();
 
   /** The provenance marks, carried in the editor's own state. */
@@ -87,6 +105,16 @@
   });
 
   const writable = new Compartment();
+  const modality = new Compartment();
+
+  // `u`, `⌃r`, and `:w` are the project's, not the editor's (see `./vim`).
+  $effect(() => {
+    serve({
+      undo: () => onundo?.(),
+      redo: () => onredo?.(),
+      save: () => onsave?.(),
+    });
+  });
 
   /**
    * The look. Set here rather than in a stylesheet because CodeMirror owns
@@ -154,6 +182,28 @@
       borderBottom: "1px dotted var(--chalk)",
     },
     ".cm-lint-marker-error": { content: "none" },
+    /*
+     * Vim's own status line, in the interface's type rather than the
+     * package's. It is a caption about the editor, not text in the document,
+     * so it takes the caption face and the muted ink — and one hairline above
+     * it, which is the only rule the source column has ever needed.
+     */
+    ".cm-vim-panel": {
+      backgroundColor: "transparent",
+      borderTop: "1px solid var(--rule)",
+      color: "var(--ink-muted)",
+      fontFamily: "var(--f-mono)",
+      fontSize: "var(--t-small-size)",
+      padding: "var(--s-1) 0",
+    },
+    ".cm-vim-panel input": {
+      backgroundColor: "transparent",
+      border: "0",
+      color: "var(--ink)",
+      font: "inherit",
+      outline: "none",
+      width: "100%",
+    },
     ".cm-tooltip": {
       backgroundColor: "var(--leaf)",
       border: "1px solid var(--rule)",
@@ -185,6 +235,10 @@
 
   function extensions(): Extension[] {
     return [
+      // First, because the package asks for it: an extension listed earlier
+      // wins the key, and a modal editor whose `d` is the default keymap's is
+      // not modal.
+      modality.of(modal ? modalKeymap() : []),
       lineNumbers(),
       foldGutter({ markerDOM: marker }),
       highlightActiveLine(),
@@ -313,6 +367,13 @@
 
   $effect(() => {
     view?.dispatch({ effects: writable.reconfigure(EditorState.readOnly.of(!editable)) });
+  });
+
+  // Turning the mode on and off is a reconfiguration, not a rebuild: the
+  // caret, the scroll, and the text are the document's and survive it.
+  $effect(() => {
+    const on = modal;
+    view?.dispatch({ effects: modality.reconfigure(on ? modalKeymap() : []) });
   });
 
   $effect(() => {

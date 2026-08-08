@@ -119,6 +119,20 @@ Fixed steps. Chrome does not use sizes between them.
 --t-large: 34px/1.0  Recursive Mono Linear 300, tabular                /* transport bar number */
 ```
 
+### The scale is read through one multiplier
+
+Every size above is stated as `calc(<its px> * var(--type-scale, 1))`, and the composer chooses the multiplier from four
+steps: **Small** 0.85, **Normal** 1, **Large** 1.15, **Larger** 1.3. The steps stay fixed and discrete and the ratios
+between them are preserved, so Large is this same typographic system read from further away rather than a different one.
+
+It is the **frame's** type, and never the score's. The score's size is zoom, which is a re-layout with its own control,
+its own binding, and `02-engraving.md` §5; a text-size preference that also grew the staves would be a second zoom that
+disagrees with the first. A larger frame leaves the leaf less room and the page is fitted to what is left — the same
+thing that happens when the window is resized, and not a change to the engraving.
+
+The source measure is stated in `ch` (§8), so it scales with the type and its arithmetic still holds: larger type simply
+reaches §7's 300px floor at a wider window, which is the behaviour that rule was written for.
+
 ### Two typographic rules that carry meaning
 
 1. **Exact time is always set as a real fraction, never as a decimal.** `7/8`, not `0.875`. A `<Fraction>` primitive

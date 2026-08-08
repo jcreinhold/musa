@@ -138,6 +138,7 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
      */
     const history: Record<string, unknown>[] = [];
     window.__musaEdits = [];
+    window.__musaSaves = 0;
     window.__musaRevision = current.revision as number;
 
     /** Every answer goes out through here, so the tests can watch the revision. */
@@ -209,6 +210,14 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
         }
         if (command.kind === "discardRecovery") {
           current = { ...current, recovery: null };
+          return answer();
+        }
+        // Saving is unobservable unless the stub says it happened: the core
+        // clears the unsaved flag, and a test that wants to prove `:w` is the
+        // project's save has to be able to see one.
+        if (command.kind === "save") {
+          window.__musaSaves += 1;
+          current = { ...current, unsaved: false };
           return answer();
         }
         if (command.kind === "undo") {
@@ -306,5 +315,7 @@ declare global {
     __musaEdits: Record<string, unknown>[];
     /** The revision the stub last answered with, so undo can be seen to land. */
     __musaRevision: number;
+    /** How many times the interface has asked the shell to save. */
+    __musaSaves: number;
   }
 }
