@@ -20,8 +20,8 @@
 
 use indexmap::IndexMap;
 use musa_language::ast::{
-    ArticulationRule, AstNode as _, DynamicRule, FrontMatterRole, KeyStmt, PerformanceDecl, PieceDecl, SettingStmt,
-    TempoStmt, VoiceItem,
+    AstNode as _, DynamicRule, FrontMatterRole, KeyStmt, MarkRule, PerformanceDecl, PieceDecl, SettingStmt, TempoStmt,
+    VoiceItem,
 };
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
@@ -32,8 +32,7 @@ use crate::origin::{DeclarationId, ExpansionStep, Interval, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
 use crate::score::{
-    AnnotationStore, ArticulationMark, Clef, DynamicMark, EventId, KeyMap, MeterMap, Mode, NotatedDuration,
-    ScoreSnapshot, TempoMap,
+    AnnotationStore, Clef, DynamicMark, EventId, KeyMap, MeterMap, Mode, NotatedDuration, ScoreSnapshot, TempoMap,
 };
 use crate::time::MusicalDuration;
 
@@ -553,17 +552,17 @@ pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceD
             continue;
         }
         let mut profile = PerformanceProfile::named(&name);
-        for rule in declaration.articulations() {
+        for rule in declaration.marks() {
             let written = rule.mark().unwrap_or_default();
-            let Some(mark) = ArticulationMark::parse(&written) else {
+            let Some(mark) = crate::Mark::parse(&written) else {
                 resolver.report(
-                    Diagnostic::error(Code::UnknownWord, format!("`{written}` is not an articulation"))
-                        .at(trimmed_span(rule.syntax()), "unknown articulation")
-                        .help(suggest(&written, ArticulationMark::NAMES, "articulations")),
+                    Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a mark"))
+                        .at(trimmed_span(rule.syntax()), "unknown mark")
+                        .help(suggest(&written, &crate::marks::names(), "marks")),
                 );
                 continue;
             };
-            profile.set_articulation(mark, articulation_settings(resolver, &rule));
+            profile.set_mark(mark, mark_settings(resolver, &rule));
         }
         for rule in declaration.dynamics() {
             let written = rule.mark().unwrap_or_default();
@@ -585,7 +584,7 @@ pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceD
 }
 
 /// `gate` (a ratio of the written value) and `attack` (a time).
-fn articulation_settings(resolver: &mut Resolver, rule: &ArticulationRule) -> ArticulationRealization {
+fn mark_settings(resolver: &mut Resolver, rule: &MarkRule) -> ArticulationRealization {
     let mut realization = ArticulationRealization::NEUTRAL;
     for setting in rule.settings() {
         let name = setting.name().unwrap_or_default();
@@ -601,12 +600,9 @@ fn articulation_settings(resolver: &mut Resolver, rule: &ArticulationRule) -> Ar
                 }
             }
             other => resolver.report(
-                Diagnostic::error(
-                    Code::UnknownWord,
-                    format!("an articulation has no setting called `{other}`"),
-                )
-                .at(trimmed_span(setting.syntax()), "unknown setting")
-                .help(suggest(other, &["gate", "attack"], "settings")),
+                Diagnostic::error(Code::UnknownWord, format!("a mark has no setting called `{other}`"))
+                    .at(trimmed_span(setting.syntax()), "unknown setting")
+                    .help(suggest(other, &["gate", "attack"], "settings")),
             ),
         }
     }

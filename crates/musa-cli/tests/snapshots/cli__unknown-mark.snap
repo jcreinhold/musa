@@ -1,0 +1,17 @@
+---
+source: crates/musa-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unknown-word
+
+  × `stacatto` is not a mark
+   ╭─[examples/broken/unknown-mark.musa:7:17]
+ 6 │             voice line {
+ 7 │                 c5 1/4 stacatto; d5 1/4; e5 1/4; f5 1/4;
+   ·                 ────────┬───────
+   ·                         ╰── unknown mark
+ 8 │             }
+   ╰────
+  help: did you mean `staccato`?
+
+1 problem (1 error)

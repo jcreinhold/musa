@@ -104,11 +104,7 @@ fn a_piece_without_profiles_is_scheduled_neutrally() {
 
 #[test]
 fn a_part_without_a_profile_is_neutral_even_when_the_piece_declares_one() {
-    let source = piece(
-        "profile violin { articulation staccato { gate = 0.5; } }",
-        "",
-        "c4 1 staccato;",
-    );
+    let source = piece("profile violin { mark staccato { gate = 0.5; } }", "", "c4 1 staccato;");
     let notes = notes_of(&score_of(&source));
     assert_eq!(notes, vec![(0, 4 * 48_000, 1.0)], "declared is not the same as chosen");
 }
@@ -118,7 +114,7 @@ fn a_part_without_a_profile_is_neutral_even_when_the_piece_declares_one() {
 #[test]
 fn a_gate_shortens_the_sounding_value_and_leaves_the_onset_alone() {
     let source = piece(
-        "profile violin { articulation staccato { gate = 0.25; } }",
+        "profile violin { mark staccato { gate = 0.25; } }",
         "profile violin;",
         "c4 1/2 staccato; c4 1/2;",
     );
@@ -134,7 +130,7 @@ fn a_gate_shortens_the_sounding_value_and_leaves_the_onset_alone() {
 #[test]
 fn gates_multiply_when_a_note_carries_two_realized_marks() {
     let source = piece(
-        "profile violin { articulation staccato { gate = 0.5; } articulation accent { gate = 0.5; } }",
+        "profile violin { mark staccato { gate = 0.5; } mark accent { gate = 0.5; } }",
         "profile violin;",
         "c4 1 staccato accent;",
     );
@@ -158,7 +154,7 @@ fn an_undeclared_mark_is_neutral_rather_than_an_error() {
     // A profile is a partial reading: what it says nothing about, it does
     // nothing to. Requiring every mark would make profiles unusable.
     let source = piece(
-        "profile violin { articulation staccato { gate = 0.5; } }",
+        "profile violin { mark staccato { gate = 0.5; } }",
         "profile violin;",
         "c4 1 tenuto; dynamic ff; c4 1;",
     );
@@ -202,11 +198,8 @@ fn a_part_naming_an_undeclared_profile_is_an_error() {
 
 #[test]
 fn rules_reject_marks_the_language_does_not_have() {
-    let source = piece("profile violin { articulation sideways { gate = 0.5; } }", "", "c4 1;");
-    assert_eq!(
-        errors_of(&source),
-        vec!["`sideways` is not an articulation".to_string()]
-    );
+    let source = piece("profile violin { mark sideways { gate = 0.5; } }", "", "c4 1;");
+    assert_eq!(errors_of(&source), vec!["`sideways` is not a mark".to_string()]);
     let source = piece("profile violin { dynamic loud { amplitude = 0.5; } }", "", "c4 1;");
     assert_eq!(errors_of(&source), vec!["`loud` is not a dynamic marking".to_string()]);
 }
@@ -215,19 +208,16 @@ fn rules_reject_marks_the_language_does_not_have() {
 fn settings_are_checked_by_name_range_and_unit() {
     let cases = [
         (
-            "profile v { articulation staccato { swing = 0.5; } }",
-            "an articulation has no setting called `swing`",
+            "profile v { mark staccato { swing = 0.5; } }",
+            "a mark has no setting called `swing`",
         ),
+        ("profile v { mark staccato { gate = 2; } }", "`gate` is outside 0 to 1"),
         (
-            "profile v { articulation staccato { gate = 2; } }",
-            "`gate` is outside 0 to 1",
-        ),
-        (
-            "profile v { articulation staccato { gate = 8 ms; } }",
+            "profile v { mark staccato { gate = 8 ms; } }",
             "`gate` does not take a unit",
         ),
         (
-            "profile v { articulation staccato { attack = 8; } }",
+            "profile v { mark staccato { attack = 8; } }",
             "`attack` is a length of time",
         ),
         (
@@ -266,7 +256,7 @@ proptest! {
         let gate = f64::from(numerator) / f64::from(denominator);
         let written = format!("{gate:.4}");
         let source = piece(
-            &format!("profile v {{ articulation staccato {{ gate = {written}; }} }}"),
+            &format!("profile v {{ mark staccato {{ gate = {written}; }} }}"),
             "profile v;",
             &format!("c4 {beats}/4 staccato; rest {}/4;", 4 - beats),
         );

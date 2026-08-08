@@ -24,9 +24,10 @@ use num_rational::Ratio;
 
 use crate::elaborate::{FactKind, Scope, ScoreFact};
 use crate::harmony::ChordSymbol;
+use crate::marks::Mark;
 use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
-use crate::score::{ArticulationMark, DynamicMark, Mode, NotatedDuration};
+use crate::score::{DynamicMark, Mode, NotatedDuration};
 use crate::time::MusicalDuration;
 
 impl TextPayload for ScoreFact {
@@ -146,19 +147,16 @@ fn read_duration(text: &str) -> Option<NotatedDuration> {
     })
 }
 
-fn articulations_text(marks: &[ArticulationMark]) -> String {
+fn articulations_text(marks: &[Mark]) -> String {
     let names: Vec<String> = marks.iter().map(|mark| mark.name().to_owned()).collect();
     join(&names, ',')
 }
 
-fn read_articulations(text: &str) -> Option<Vec<ArticulationMark>> {
+fn read_articulations(text: &str) -> Option<Vec<Mark>> {
     if text.is_empty() {
         return Some(Vec::new());
     }
-    split_escaped(text, ',')
-        .iter()
-        .map(|name| ArticulationMark::parse(name))
-        .collect()
+    split_escaped(text, ',').iter().map(|name| Mark::parse(name)).collect()
 }
 
 fn kind_text(kind: &FactKind) -> String {
@@ -463,7 +461,7 @@ mod tests {
             FactKind::Note {
                 pitch: WrittenPitch::parse("cs5")?,
                 duration: duration(),
-                articulations: vec![ArticulationMark::Staccato, ArticulationMark::Accent],
+                articulations: vec![Mark::parse("staccato")?, Mark::parse("accent")?],
             },
             FactKind::Rest {
                 duration: duration(),

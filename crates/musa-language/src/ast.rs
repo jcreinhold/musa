@@ -187,7 +187,7 @@ impl PerformanceDecl {
     }
 }
 
-/// `profile violin { articulation staccato { ... } dynamic p { ... } }`
+/// `profile violin { mark staccato { ... } dynamic p { ... } }`
 pub struct ProfileDecl(SyntaxNode);
 wrapper!(ProfileDecl, SyntaxKind::ProfileDecl);
 
@@ -197,8 +197,8 @@ impl ProfileDecl {
         token_text(&self.0, SyntaxKind::Identifier)
     }
 
-    /// The articulation rules, in source order.
-    pub fn articulations(&self) -> Vec<ArticulationRule> {
+    /// The mark rules, in source order.
+    pub fn marks(&self) -> Vec<MarkRule> {
         children(&self.0)
     }
 
@@ -208,7 +208,7 @@ impl ProfileDecl {
     }
 }
 
-/// One rule's head name and its settings; `articulation` and `dynamic` rules
+/// One rule's head name and its settings; `mark` and `dynamic` rules
 /// share the shape, so they share the accessors.
 macro_rules! rule_wrapper {
     ($name:ident, $kind:expr, $what:literal) => {
@@ -230,7 +230,7 @@ macro_rules! rule_wrapper {
     };
 }
 
-rule_wrapper!(ArticulationRule, SyntaxKind::ArticulationRule, "articulation");
+rule_wrapper!(MarkRule, SyntaxKind::MarkRule, "mark");
 rule_wrapper!(DynamicRule, SyntaxKind::DynamicRule, "dynamic");
 
 /// `gate = 0.55;`, `attack = 8 ms;`

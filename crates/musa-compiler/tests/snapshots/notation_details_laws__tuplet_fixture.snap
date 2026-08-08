@@ -1275,7 +1275,7 @@ ScoreSnapshot {
                 at: EventId(
                     5,
                 ),
-                mark: Accent,
+                mark: Mark("accent"),
                 origin: Origin {
                     source_span: SourceSpan {
                         start: 735,
@@ -1295,7 +1295,7 @@ ScoreSnapshot {
                 at: EventId(
                     6,
                 ),
-                mark: Staccato,
+                mark: Mark("staccato"),
                 origin: Origin {
                     source_span: SourceSpan {
                         start: 766,
@@ -1315,7 +1315,7 @@ ScoreSnapshot {
                 at: EventId(
                     7,
                 ),
-                mark: Tenuto,
+                mark: Mark("tenuto"),
                 origin: Origin {
                     source_span: SourceSpan {
                         start: 852,
@@ -1342,7 +1342,7 @@ ScoreSnapshot {
                 at: EventId(
                     12,
                 ),
-                mark: Marcato,
+                mark: Mark("marcato"),
                 origin: Origin {
                     source_span: SourceSpan {
                         start: 1040,
@@ -1362,7 +1362,7 @@ ScoreSnapshot {
                 at: EventId(
                     17,
                 ),
-                mark: Tenuto,
+                mark: Mark("tenuto"),
                 origin: Origin {
                     source_span: SourceSpan {
                         start: 1377,

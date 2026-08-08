@@ -1,0 +1,11 @@
+piece "Unknown Mark" {
+    meter 4/4;
+
+    score {
+        part voice_part {
+            voice line {
+                c5 1/4 stacatto; d5 1/4; e5 1/4; f5 1/4;
+            }
+        }
+    }
+}

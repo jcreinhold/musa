@@ -37,6 +37,7 @@ mod factext;
 mod harmony;
 mod imports;
 mod kernel_text;
+mod marks;
 mod origin;
 mod performance;
 mod pitch;
@@ -58,6 +59,7 @@ pub use crate::imports::{ImportSources, resolve_import};
 pub use crate::kernel_text::{
     KernelCheck, check_kernel_text, kernel_normalized_text, kernel_text, kernel_text_meaning,
 };
+pub use crate::marks::{Mark, MarkDef, VOCABULARY, lookup_mark};
 pub use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 pub use crate::performance::{
     IntegratedTempoMap, ParameterId, PerformanceError, PerformanceEvent, PerformanceLane, PerformanceOptions,
@@ -66,10 +68,10 @@ pub use crate::performance::{
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
 pub use crate::score::{
-    AnnotationStore, ArticulationMark, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, FrontMatter,
-    HairpinSpan, HarmonyMark, KeyMap, MeterMap, Mode, MotifDeclaration, NotatedDuration, Part, PartId, PartMap,
-    PhraseSpan, ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoChange, TempoMap, TupletSpan,
-    Voice, VoiceId,
+    AnnotationStore, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, FrontMatter, HairpinSpan,
+    HarmonyMark, KeyMap, MeterMap, Mode, MotifDeclaration, NotatedDuration, Part, PartId, PartMap, PhraseSpan,
+    ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoChange, TempoMap, TupletSpan, Voice,
+    VoiceId,
 };
 pub use crate::studio::{
     Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,

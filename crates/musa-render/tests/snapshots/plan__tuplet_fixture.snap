@@ -348,7 +348,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [
-                                        Accent,
+                                        Mark("accent"),
                                     ],
                                 },
                                 NotatedItem {
@@ -395,7 +395,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [
-                                        Staccato,
+                                        Mark("staccato"),
                                     ],
                                 },
                             ],
@@ -518,7 +518,7 @@ NotationPlan {
                                         P,
                                     ),
                                     articulations: [
-                                        Tenuto,
+                                        Mark("tenuto"),
                                     ],
                                 },
                                 NotatedItem {
@@ -786,7 +786,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [
-                                        Marcato,
+                                        Mark("marcato"),
                                     ],
                                 },
                                 NotatedItem {
@@ -1132,7 +1132,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [
-                                        Tenuto,
+                                        Mark("tenuto"),
                                     ],
                                 },
                                 NotatedItem {

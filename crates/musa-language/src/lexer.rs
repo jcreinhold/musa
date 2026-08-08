@@ -254,8 +254,8 @@ enum RawToken {
     PerformanceKw,
     #[token("profile", priority = 3)]
     ProfileKw,
-    #[token("articulation", priority = 3)]
-    ArticulationKw,
+    #[token("mark", priority = 3)]
+    MarkKw,
     #[token("studio", priority = 3)]
     StudioKw,
     #[token("patch", priority = 3)]
@@ -372,7 +372,7 @@ impl RawToken {
             | Self::TupletKw
             | Self::PerformanceKw
             | Self::ProfileKw
-            | Self::ArticulationKw
+            | Self::MarkKw
             | Self::StudioKw
             | Self::PatchKw
             | Self::ModulateKw
@@ -460,7 +460,7 @@ impl RawToken {
             Self::TupletKw => SyntaxKind::TupletKw,
             Self::PerformanceKw => SyntaxKind::PerformanceKw,
             Self::ProfileKw => SyntaxKind::ProfileKw,
-            Self::ArticulationKw => SyntaxKind::ArticulationKw,
+            Self::MarkKw => SyntaxKind::MarkKw,
             Self::StudioKw => SyntaxKind::StudioKw,
             Self::PatchKw => SyntaxKind::PatchKw,
             Self::ModulateKw => SyntaxKind::ModulateKw,

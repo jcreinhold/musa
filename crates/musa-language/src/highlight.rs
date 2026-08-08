@@ -47,7 +47,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("tuplet", SyntaxKind::TupletKw),
     ("performance", SyntaxKind::PerformanceKw),
     ("profile", SyntaxKind::ProfileKw),
-    ("articulation", SyntaxKind::ArticulationKw),
+    ("mark", SyntaxKind::MarkKw),
     ("studio", SyntaxKind::StudioKw),
     ("patch", SyntaxKind::PatchKw),
     ("modulate", SyntaxKind::ModulateKw),
@@ -208,7 +208,7 @@ impl TokenClass {
             | SyntaxKind::TupletKw
             | SyntaxKind::PerformanceKw
             | SyntaxKind::ProfileKw
-            | SyntaxKind::ArticulationKw
+            | SyntaxKind::MarkKw
             | SyntaxKind::StudioKw
             | SyntaxKind::PatchKw
             | SyntaxKind::ModulateKw
@@ -275,7 +275,7 @@ impl TokenClass {
             | SyntaxKind::ArticulationList
             | SyntaxKind::PerformanceDecl
             | SyntaxKind::ProfileDecl
-            | SyntaxKind::ArticulationRule
+            | SyntaxKind::MarkRule
             | SyntaxKind::DynamicRule
             | SyntaxKind::SettingStmt
             | SyntaxKind::ProfileStmt

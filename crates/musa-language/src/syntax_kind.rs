@@ -135,8 +135,8 @@ pub enum SyntaxKind {
     PerformanceKw,
     /// `profile`
     ProfileKw,
-    /// `articulation`
-    ArticulationKw,
+    /// `mark`
+    MarkKw,
     /// `studio`
     StudioKw,
     /// `patch`
@@ -277,8 +277,8 @@ pub enum SyntaxKind {
     PerformanceDecl,
     /// `profile name { ... }` inside a `performance` block.
     ProfileDecl,
-    /// `articulation <name> { ... }` inside a profile.
-    ArticulationRule,
+    /// `mark <name> { ... }` inside a profile.
+    MarkRule,
     /// `dynamic <mark> { ... }` inside a profile.
     DynamicRule,
     /// `<name> = <number> [unit];` inside a rule.

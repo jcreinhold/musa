@@ -240,7 +240,8 @@ whole vocabulary of notation. **Every prompt in this block adds nothing to the k
 no constructor. That is the block's own falsification test, and §34's, applied sixteen times.
 
 **61–63 are three refactors that ship no feature**, and they run first because each is provable by the strongest
-check available: every existing golden stays byte-identical. 61 makes measure numbering a function of the meters in
+check available: the rendered output — MEI, LilyPond, MusicXML, MIDI, audio — stays byte-identical, and any golden
+that does move moves for a reason the prompt names in advance. 61 makes measure numbering a function of the meters in
 force rather than a scalar threaded through nine functions in `plan.rs`. 62 makes the mark vocabulary a table, after
 counting the cost of the enum it replaces — 65 references across 13 files, which is why musa has no fermata. 63
 unifies the four context mechanisms into scoped facts with real spans, with per-kind inheritance, because a single

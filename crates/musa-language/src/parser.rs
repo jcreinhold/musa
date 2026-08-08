@@ -120,7 +120,7 @@ const PERFORMANCE_RECOVERY: &[SyntaxKind] = &[SyntaxKind::RBrace, SyntaxKind::Pr
 const PROFILE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::Semicolon,
     SyntaxKind::RBrace,
-    SyntaxKind::ArticulationKw,
+    SyntaxKind::MarkKw,
     SyntaxKind::DynamicKw,
 ];
 const STUDIO_RECOVERY: &[SyntaxKind] = &[
@@ -770,7 +770,7 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `profile name { articulation ... dynamic ... }`
+    /// `profile name { mark ... dynamic ... }`
     fn profile_decl(&mut self) {
         self.start(SyntaxKind::ProfileDecl);
         self.bump(); // profile
@@ -787,22 +787,22 @@ impl<'a> Parser<'a> {
                 }
                 break;
             }
-            if self.at(SyntaxKind::ArticulationKw) {
-                self.rule(SyntaxKind::ArticulationRule, "an articulation name");
+            if self.at(SyntaxKind::MarkKw) {
+                self.rule(SyntaxKind::MarkRule, "a mark name");
             } else if self.at(SyntaxKind::DynamicKw) {
                 self.rule(SyntaxKind::DynamicRule, "a dynamic marking");
             } else {
-                self.expected("an `articulation` or `dynamic` rule");
+                self.expected("a `mark` or `dynamic` rule");
                 self.recover(PROFILE_RECOVERY);
             }
         }
         self.finish();
     }
 
-    /// `articulation|dynamic <name> { <setting>* }` — one shape, two heads.
+    /// `mark|dynamic <name> { <setting>* }` — one shape, two heads.
     fn rule(&mut self, kind: SyntaxKind, what: &str) {
         self.start(kind);
-        self.bump(); // articulation | dynamic
+        self.bump(); // mark | dynamic
         self.expect(SyntaxKind::Identifier, what);
         self.expect(SyntaxKind::LBrace, "`{`");
         loop {

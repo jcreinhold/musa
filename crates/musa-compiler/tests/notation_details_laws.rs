@@ -20,7 +20,7 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use musa_compiler::{
-    ArticulationMark, CompileOptions, DynamicMark, MusicalDuration, ScoreEvent, ScoreSnapshot, SourceDocument, compile,
+    CompileOptions, DynamicMark, Mark, MusicalDuration, ScoreEvent, ScoreSnapshot, SourceDocument, compile,
 };
 use num_rational::Ratio;
 use proptest::prelude::*;
@@ -161,15 +161,18 @@ fn a_dynamic_with_nothing_after_it_is_an_error() {
 #[test]
 fn articulations_keep_their_written_order_and_reject_unknown_names() {
     let snapshot = score_of(&voice_source("c4 1 accent staccato;"));
-    let marks: Vec<ArticulationMark> = snapshot
+    let marks: Vec<Mark> = snapshot
         .annotations()
         .articulations()
         .iter()
         .map(|articulation| articulation.mark)
         .collect();
-    assert_eq!(marks, vec![ArticulationMark::Accent, ArticulationMark::Staccato]);
+    assert_eq!(
+        marks.iter().map(|mark| mark.name()).collect::<Vec<_>>(),
+        vec!["accent", "staccato"]
+    );
     let errors = errors_of(&voice_source("c4 1 sideways;"));
-    assert_eq!(errors, vec!["`sideways` is not an articulation".to_string()]);
+    assert_eq!(errors, vec!["`sideways` is not a mark".to_string()]);
 }
 
 #[test]

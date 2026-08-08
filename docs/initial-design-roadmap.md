@@ -639,7 +639,7 @@ piece "Glass Mountain" {
 
     performance {
         profile violin {
-            articulation staccato {
+            mark staccato {
                 gate = 0.55;
                 attack = 8 ms;
             }

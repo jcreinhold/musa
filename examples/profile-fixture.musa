@@ -9,15 +9,15 @@ piece "Profile Fixture" {
 
     performance {
         profile strings {
-            articulation staccato {
+            mark staccato {
                 gate = 0.5;
                 attack = 8 ms;
             }
-            articulation tenuto {
+            mark tenuto {
                 gate = 1;
                 attack = 30 ms;
             }
-            articulation accent {
+            mark accent {
                 gate = 0.9;
             }
             dynamic p {
@@ -32,7 +32,7 @@ piece "Profile Fixture" {
         }
 
         profile winds {
-            articulation staccato {
+            mark staccato {
                 gate = 0.7;
                 attack = 4 ms;
             }

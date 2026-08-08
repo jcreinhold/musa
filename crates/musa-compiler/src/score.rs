@@ -9,6 +9,7 @@ use indexmap::IndexMap;
 use num_rational::Ratio;
 use serde::{Deserialize, Serialize};
 
+use crate::marks::Mark;
 use crate::origin::Origin;
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::time::{MusicalDuration, MusicalTime};
@@ -525,50 +526,6 @@ impl DynamicMark {
     }
 }
 
-/// An articulation as written (roadmap §2: not a gate multiplier).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub enum ArticulationMark {
-    /// `staccato`
-    Staccato,
-    /// `staccatissimo`
-    Staccatissimo,
-    /// `tenuto`
-    Tenuto,
-    /// `accent`
-    Accent,
-    /// `marcato`
-    Marcato,
-}
-
-impl ArticulationMark {
-    /// Read an articulation as the language spells it.
-    /// Every articulation musa reads, for the diagnostic that lists them.
-    pub const NAMES: &'static [&'static str] = &["staccato", "staccatissimo", "tenuto", "accent", "marcato"];
-
-    pub fn parse(text: &str) -> Option<Self> {
-        let mark = match text {
-            "staccato" => Self::Staccato,
-            "staccatissimo" => Self::Staccatissimo,
-            "tenuto" => Self::Tenuto,
-            "accent" => Self::Accent,
-            "marcato" => Self::Marcato,
-            _ => return None,
-        };
-        Some(mark)
-    }
-
-    /// The articulation's name, spelled as it is written.
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::Staccato => "staccato",
-            Self::Staccatissimo => "staccatissimo",
-            Self::Tenuto => "tenuto",
-            Self::Accent => "accent",
-            Self::Marcato => "marcato",
-        }
-    }
-}
-
 /// A slur over a run of events in one voice, inclusive of both ends.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SlurSpan {
@@ -613,7 +570,7 @@ pub struct ArticulationMarking {
     /// The event the articulation belongs to.
     pub at: EventId,
     /// The articulation.
-    pub mark: ArticulationMark,
+    pub mark: Mark,
     /// Why this articulation exists.
     pub origin: Origin,
 }

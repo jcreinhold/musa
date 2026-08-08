@@ -424,7 +424,7 @@ struct Interpreted {
 /// is a lookup per event rather than a scan per event.
 struct Interpretation {
     dynamics: std::collections::HashMap<EventId, crate::score::DynamicMark>,
-    articulations: std::collections::HashMap<EventId, Vec<crate::score::ArticulationMark>>,
+    articulations: std::collections::HashMap<EventId, Vec<crate::Mark>>,
 }
 
 impl Interpretation {
@@ -443,7 +443,7 @@ impl Interpretation {
         }
     }
 
-    fn articulations_of(&self, event: EventId) -> &[crate::score::ArticulationMark] {
+    fn articulations_of(&self, event: EventId) -> &[crate::Mark] {
         self.articulations.get(&event).map_or(&[], Vec::as_slice)
     }
 }

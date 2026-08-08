@@ -1,7 +1,7 @@
 ---
 id: 62
 slug: mark-vocabulary
-status: pending
+status: done
 depends_on: [27, 42]
 phase: 3
 ---
@@ -137,13 +137,70 @@ consistently defends. If a column starts to look like performance, it belongs in
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo insta test --workspace --unreferenced=reject
-grep -rn "ArticulationMark" crates --include="*.rs" | wc -l        # 0
-git diff --stat -- examples/ crates/*/tests/snapshots              # empty
-cargo run -p musa-cli -- check examples/broken/unknown-articulation.musa
+cd apps/musa-desktop/ui && npm test
+for f in examples/*.musa; do cargo run -q -p musa-cli -- check "$f"; done
+grep -rn "ArticulationMark\b" crates --include="*.rs" | grep -v marks.rs | wc -l   # 0
+git diff --stat -- examples/ crates/*/tests/snapshots              # see the repair below
+cargo run -p musa-cli -- check examples/broken/unknown-mark.musa
 ```
 
 Commit as `Make the mark vocabulary a table`.
+
+## Repairs made while implementing
+
+**The claim, measured.** Adding `portato` before this prompt touched **four files**: `score.rs` (an enum variant, a
+`NAMES` entry, a `parse` arm and a `name` arm), `mei.rs` (one arm), `ly.rs` (two — one per stem direction), and
+`musicxml.rs` (one). After, it touches **one**: a row in `marks.rs`. The parser needed no edit either way, because
+`parser.rs::articulations` has accepted a greedy list of bare identifiers since prompt 27 — the plan that produced
+this prompt said six files, and six was wrong. Four to one is still well inside the prompt's own "strike it if the
+count after is above two".
+
+**`Placement`, `Param`, `ParamTy`, `params` and `args` were not written.** The Design specifies them; none has a
+producer in this prompt, and the module-design rule that prompt 47 applied to `Term` applies here unchanged. Two
+facts make deferring them free rather than merely cheaper:
+
+- an empty argument list serializes identically to no argument list, so prompt 70 adds `args` with zero golden
+  movement;
+- a `Placement` with one variant carries no information, and the emitter it would select is the only emitter there
+  is.
+
+`Mark` is therefore `&'static MarkDef` — a row, not a name plus arguments — which also makes "what does MEI call
+this" total rather than fallible.
+
+**Backend columns are `&'static str`, not `Option<&'static str>`.** All five marks exist in all three formats, so
+the `None` case and its export warning have no producer and could not be tested. Widening the field is a one-line
+change in one file at the moment prompt 70 adds a row that needs it, which is exactly the cost the table exists to
+make cheap. The warning is prompt 70's, stated there rather than shipped dead here.
+
+**Six goldens moved, and each movement is a decision this prompt was told to make.**
+
+- `examples/profile-fixture.musa` and `examples/kernel/profile-fixture.kernel`: the Design renames the profile rule
+  head `articulation` to `mark`, which is eight characters shorter, so every provenance span after the first rule
+  shifts. The occurrence *keys* are unchanged; only byte offsets moved. Regenerated with `UPDATE_KERNEL_GOLDENS=1`
+  and read line by line.
+- `crates/musa-compiler/tests/snapshots/profile_laws__profile_fixture.snap`: the same span shift, same fixture.
+- `crates/musa-compiler/tests/snapshots/notation_details_laws__tuplet_fixture.snap` and
+  `crates/musa-render/tests/snapshots/plan__tuplet_fixture.snap`: `Accent` became `Mark("accent")`. `Mark`'s
+  *derived* `Debug` printed the whole vocabulary row, which would have made an annotation snapshot move whenever a
+  *backend* spelling changed — a fact about the exporter, not about the score being snapshotted. The hand-written
+  `Debug` prints the name alone, and that is what the goldens now hold. These are debug renderings; the rendered
+  MEI, LilyPond and MusicXML for the same fixture did not move.
+
+- `apps/musa-desktop/ui/src/lib/session/generated/spellings.json` and `fixtures/lexed/profile-fixture.json`: both
+  are generated from the real lexer by prompt 26's rule, so the keyword list gained `mark` in place of
+  `articulation` and the fixture's token offsets shifted with the source. Regenerated with `UPDATE_UI_FIXTURES=1`;
+  no other lexed example moved.
+
+MEI, LilyPond, MusicXML, MIDI, the notation plans, and every other UI fixture are byte-identical, which is the part
+of the promise that was about behaviour.
+
+**The rename reached further than the profile head.** `is not an articulation` became `is not a mark` in both places
+a name is refused — the profile rule and the mark attached to a note — because a vocabulary that will hold `pedal`
+and `sample` cannot call every row an articulation. `examples/broken/unknown-articulation.musa` is therefore
+`unknown-mark.musa`, and `PerformanceProfile::set_articulation` is `set_mark`. The profile's *settings* keep their
+names: `gate` and `attack` describe what an instrument does with a mark, and that is still articulation. The new
+fixture brings a new golden, `crates/musa-cli/tests/snapshots/cli__unknown-mark.snap`, which is the diagnostic in
+full — the refusal names the mark, points at it, and suggests `staccato`.
 
 ## Stop
 

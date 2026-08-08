@@ -19,7 +19,7 @@
 // module scope for that reason.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{ArticulationMark, ChordQuality, ChordSymbol, Clef, EventId, Mode, Seventh, WrittenPitch};
+use musa_compiler::{ChordQuality, ChordSymbol, Clef, EventId, Mark, Mode, Seventh, WrittenPitch};
 
 use crate::RenderError;
 use crate::plan::{
@@ -478,7 +478,7 @@ fn item_node(item: &NotatedItem) -> Result<LyNode, RenderError> {
     };
     let mut body = head;
     for mark in item.articulations() {
-        body.push_str(articulation_script(*mark));
+        body.push_str(&articulation_script(*mark));
     }
     if let Some(dynamic) = item.dynamic() {
         body.push('\\');
@@ -516,24 +516,14 @@ fn item_node(item: &NotatedItem) -> Result<LyNode, RenderError> {
     })
 }
 
-/// `LilyPond`'s articulation scripts, with the direction the plan chose.
-fn articulation_script(mark: ArticulationMark) -> &'static str {
+/// `LilyPond`'s articulation script for one mark: the direction the plan
+/// chose, then the vocabulary row's suffix.
+fn articulation_script(mark: Mark) -> String {
     let side = match ARTICULATION_PLACEMENT {
         Placement::Above => '^',
         Placement::Below => '_',
     };
-    match (mark, side) {
-        (ArticulationMark::Staccato, '^') => "^.",
-        (ArticulationMark::Staccato, _) => "_.",
-        (ArticulationMark::Staccatissimo, '^') => "^!",
-        (ArticulationMark::Staccatissimo, _) => "_!",
-        (ArticulationMark::Tenuto, '^') => "^-",
-        (ArticulationMark::Tenuto, _) => "_-",
-        (ArticulationMark::Accent, '^') => "^>",
-        (ArticulationMark::Accent, _) => "_>",
-        (ArticulationMark::Marcato, '^') => "^^",
-        (ArticulationMark::Marcato, _) => "_^",
-    }
+    format!("{side}{}", mark.def().lilypond)
 }
 
 /// Absolute-octave English note name (`cs'`, `eff,`).

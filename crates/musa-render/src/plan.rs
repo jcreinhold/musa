@@ -10,8 +10,8 @@
 use std::collections::{HashMap, HashSet};
 
 use musa_compiler::{
-    ArticulationMark, BarLines, ChordSymbol, Clef, DynamicMark, EventId, KeyMap, MeterMap, Mode, MusicalDuration,
-    MusicalTime, NotatedDuration, Part, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice, VoiceId, WrittenPitch,
+    BarLines, ChordSymbol, Clef, DynamicMark, EventId, KeyMap, Mark, MeterMap, Mode, MusicalDuration, MusicalTime,
+    NotatedDuration, Part, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice, VoiceId, WrittenPitch,
 };
 use num_rational::Ratio;
 
@@ -405,7 +405,7 @@ pub struct NotatedItem {
     phrase: Option<PhraseMark>,
     hairpin: Option<HairpinMark>,
     dynamic: Option<DynamicMark>,
-    articulations: Vec<ArticulationMark>,
+    articulations: Vec<Mark>,
 }
 
 impl NotatedItem {
@@ -475,7 +475,7 @@ impl NotatedItem {
     }
 
     /// Articulations printed on this item, in written order.
-    pub fn articulations(&self) -> &[ArticulationMark] {
+    pub fn articulations(&self) -> &[Mark] {
         &self.articulations
     }
 }
@@ -699,7 +699,7 @@ struct Marks {
     slur_ends: HashMap<EventId, EventId>,
     slur_stops: HashSet<EventId>,
     dynamics: HashMap<EventId, DynamicMark>,
-    articulations: HashMap<EventId, Vec<ArticulationMark>>,
+    articulations: HashMap<EventId, Vec<Mark>>,
     phrases: HashMap<EventId, PhraseMark>,
     phrase_ends: HashMap<EventId, EventId>,
     hairpins: HashMap<EventId, HairpinMark>,

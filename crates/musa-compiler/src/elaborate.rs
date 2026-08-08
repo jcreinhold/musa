@@ -31,8 +31,7 @@ use crate::origin::{ExpansionStep, Origin, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::resolve::{self, ExpandCx, Resolver};
 use crate::score::{
-    ArticulationMark, DynamicMark, MeterMap, Mode, NotatedDuration, Part, PartId, ScoreSnapshot, TempoChange, Voice,
-    VoiceId,
+    DynamicMark, MeterMap, Mode, NotatedDuration, Part, PartId, ScoreSnapshot, TempoChange, Voice, VoiceId,
 };
 use crate::time::MusicalTime;
 use musa_kernel::{Beat, Occurrence, Span, Term, Timeline, sequence, timeline};
@@ -84,12 +83,12 @@ pub(crate) enum FactKind {
     Note {
         pitch: WrittenPitch,
         duration: NotatedDuration,
-        articulations: Vec<ArticulationMark>,
+        articulations: Vec<crate::Mark>,
     },
     /// A written rest — notation intent, not a silence object (§2).
     Rest {
         duration: NotatedDuration,
-        articulations: Vec<ArticulationMark>,
+        articulations: Vec<crate::Mark>,
     },
     /// A slur over the region it spans.
     Slur,
@@ -139,7 +138,7 @@ impl FactKind {
     }
 
     /// The articulations written on this fact, if any.
-    pub(crate) fn articulations_of(&self) -> &[ArticulationMark] {
+    pub(crate) fn articulations_of(&self) -> &[crate::Mark] {
         match self {
             Self::Note { articulations, .. } | Self::Rest { articulations, .. } => articulations,
             Self::Slur
@@ -265,7 +264,7 @@ impl musa_kernel::Canonical for ScoreFact {
     /// before facts were heterogeneous, so a piece of plain notes has the
     /// normal form it has always had.
     fn canonical_key(&self) -> String {
-        let articulations = |marks: &[ArticulationMark]| {
+        let articulations = |marks: &[crate::Mark]| {
             if marks.is_empty() {
                 String::new()
             } else {
@@ -1139,15 +1138,15 @@ fn elaborate_items(
 }
 
 /// The articulations written on a note or chord statement.
-fn articulations_of(resolver: &mut Resolver, names: &[String], span: SourceSpan) -> Vec<ArticulationMark> {
+fn articulations_of(resolver: &mut Resolver, names: &[String], span: SourceSpan) -> Vec<crate::Mark> {
     let mut articulations = Vec::new();
     for name in names {
-        match ArticulationMark::parse(name) {
+        match crate::Mark::parse(name) {
             Some(mark) => articulations.push(mark),
             None => resolver.report(
-                Diagnostic::error(Code::UnknownWord, format!("`{name}` is not an articulation"))
-                    .at(span, "unknown articulation")
-                    .help(crate::resolve::suggest(name, ArticulationMark::NAMES, "articulations")),
+                Diagnostic::error(Code::UnknownWord, format!("`{name}` is not a mark"))
+                    .at(span, "unknown mark")
+                    .help(crate::resolve::suggest(name, &crate::marks::names(), "marks")),
             ),
         }
     }

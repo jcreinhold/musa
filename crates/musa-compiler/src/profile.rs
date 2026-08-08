@@ -33,7 +33,8 @@ use indexmap::IndexMap;
 use num_rational::Ratio;
 use serde::{Deserialize, Serialize};
 
-use crate::score::{ArticulationMark, DynamicMark};
+use crate::marks::Mark;
+use crate::score::DynamicMark;
 
 /// What an articulation does to a note, per profile.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,7 +59,7 @@ impl ArticulationRealization {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PerformanceProfile {
     name: String,
-    articulations: IndexMap<ArticulationMark, ArticulationRealization>,
+    articulations: IndexMap<Mark, ArticulationRealization>,
     dynamics: IndexMap<DynamicMark, Ratio<i64>>,
 }
 
@@ -73,7 +74,7 @@ impl PerformanceProfile {
     /// Gates **multiply** — two shortening marks shorten twice — while the
     /// attack is the last written rule's, because two attack times cannot be
     /// combined into a third that either performer would recognize.
-    pub fn realize(&self, marks: &[ArticulationMark]) -> ArticulationRealization {
+    pub fn realize(&self, marks: &[Mark]) -> ArticulationRealization {
         let mut realization = ArticulationRealization::NEUTRAL;
         for mark in marks {
             let Some(rule) = self.articulations.get(mark) else {
@@ -92,7 +93,7 @@ impl PerformanceProfile {
         self.dynamics.get(&mark).copied()
     }
 
-    pub(crate) fn set_articulation(&mut self, mark: ArticulationMark, rule: ArticulationRealization) {
+    pub(crate) fn set_mark(&mut self, mark: Mark, rule: ArticulationRealization) {
         self.articulations.insert(mark, rule);
     }
 

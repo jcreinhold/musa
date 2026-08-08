@@ -723,22 +723,11 @@ fn write_layer(
     end(writer, "layer")
 }
 
-/// MEI's `@artic` value for one articulation.
-fn artic_value(mark: musa_compiler::ArticulationMark) -> &'static str {
-    match mark {
-        musa_compiler::ArticulationMark::Staccato => "stacc",
-        musa_compiler::ArticulationMark::Staccatissimo => "stacciss",
-        musa_compiler::ArticulationMark::Tenuto => "ten",
-        musa_compiler::ArticulationMark::Accent => "acc",
-        musa_compiler::ArticulationMark::Marcato => "marc",
-    }
-}
-
 /// `<artic>` children for an item, when it carries any.
 fn write_artics(writer: &mut Writer<Vec<u8>>, item: &NotatedItem) -> Result<(), RenderError> {
     for mark in item.articulations() {
         let mut artic = element("artic");
-        artic.push_attribute(("artic", artic_value(*mark)));
+        artic.push_attribute(("artic", mark.def().mei));
         artic.push_attribute(("place", place(ARTICULATION_PLACEMENT)));
         writer
             .write_event(Event::Empty(artic))

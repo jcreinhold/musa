@@ -386,7 +386,7 @@ fn event_from(
 
 /// The articulations of the statement at `index` — a chord writes them once,
 /// on every pitch, so the first occurrence is the one that carries them.
-fn articulations(occurrences: &[&Occurrence<ScoreFact>], index: usize) -> Vec<crate::score::ArticulationMark> {
+fn articulations(occurrences: &[&Occurrence<ScoreFact>], index: usize) -> Vec<crate::Mark> {
     occurrences
         .get(index)
         .map(|occurrence| occurrence.payload().kind.articulations_of().to_vec())

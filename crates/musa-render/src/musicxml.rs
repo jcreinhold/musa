@@ -37,7 +37,7 @@
 
 use std::collections::HashMap;
 
-use musa_compiler::{ArticulationMark, ChordQuality, ChordSymbol, Clef, DynamicMark, Mode, Seventh, WrittenPitch};
+use musa_compiler::{ChordQuality, ChordSymbol, Clef, DynamicMark, Mode, Seventh, WrittenPitch};
 use num_rational::Ratio;
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
@@ -285,18 +285,6 @@ fn place(placement: Placement) -> &'static str {
     match placement {
         Placement::Above => "above",
         Placement::Below => "below",
-    }
-}
-
-/// `MusicXML`'s articulation element for one mark. Every one of these is a
-/// standard child of `<articulations>`.
-fn articulation_element(mark: ArticulationMark) -> &'static str {
-    match mark {
-        ArticulationMark::Staccato => "staccato",
-        ArticulationMark::Staccatissimo => "staccatissimo",
-        ArticulationMark::Tenuto => "tenuto",
-        ArticulationMark::Accent => "accent",
-        ArticulationMark::Marcato => "strong-accent",
     }
 }
 
@@ -888,10 +876,7 @@ fn write_notations(xml: &mut Xml, note: &NoteSpelling<'_>, open_slurs: &mut Vec<
         if !item.articulations().is_empty() {
             xml.open("articulations", &[])?;
             for mark in item.articulations() {
-                xml.empty(
-                    articulation_element(*mark),
-                    &[("placement", place(ARTICULATION_PLACEMENT))],
-                )?;
+                xml.empty(mark.def().musicxml, &[("placement", place(ARTICULATION_PLACEMENT))])?;
             }
             xml.close("articulations")?;
         }
