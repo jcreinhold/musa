@@ -692,6 +692,37 @@ Newlines should be trivia, not syntax. That makes formatting, copy-and-paste, an
 
 Inside a `voice` or `motif`, items occur sequentially unless an explicit parallel construct is used.
 
+### Bars are written down, and checked
+
+A run of events may be enclosed in a bar, which asserts that it fills one measure of the prevailing meter:
+
+```text
+bar { c5 1/4; e5 1/4; g5 1/4; e5 1/4; }
+bar head { a4 1/2; c5 1/2; }             // sounds here, and binds `head`
+use head;                                // plays it again, anywhere later
+```
+
+A bar means nothing. Its contents elaborate to exactly what they would elaborate to without it, and there is no bar in
+the kernel, in `ScoreSnapshot`, or in the notation plan — §12.1 already computes where the barlines fall. What the brace
+buys is the assertion: a voice is a flat stream of durations, so a dropped `1/4` in the fourth bar is not an error, it
+is every later barline in the part being one quarter out of place, silently. The bar is the composer stating the
+intention the compiler can then check, and it is the first construct in the language that can be wrong in a way the
+compiler can point at.
+
+Only the bar's own total is checked, not where it starts; inside a motif the absolute position is unknowable, which is
+the point of a motif. Bars do not nest. Bars and loose events mix freely in one voice — adopting bars is per-bar and
+voluntary.
+
+A named bar joins the namespace motifs live in, as material with no parameters, and `use name;` plays it. One namespace,
+because "material with a name" is one idea and the composer who mistypes it deserves one diagnostic that knows about
+both. Where a motif may be used is settled by declaration order; where a bar may be used is settled by position, since a
+bar both declares and sounds: a `use` that starts before the bar's own text ends is either a forward reference or the
+bar quoting itself, and both are refused. Recursion stays impossible without a cycle-checker.
+
+Irregular bar lengths (`bar 5/4 { … }`, and pickups) are deliberately not accepted. They are meter occurrences, and
+until the meter map is a map rather than one meter — with §12.2, §12.3, and §12.4 all able to write a change mid-piece —
+accepting them would produce a page that disagrees with the source.
+
 ### Parallelism through identified voices
 
 Do not use implicit chord inference from simultaneous cursor positions. Chords are explicit:

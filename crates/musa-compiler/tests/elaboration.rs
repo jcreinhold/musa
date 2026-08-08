@@ -88,9 +88,7 @@ fn without_spans(form: &str) -> String {
 /// reason to add one.
 #[test]
 fn bars_are_erased_after_they_are_checked() {
-    let piece = |body: &str| {
-        format!("piece \"b\" {{ meter 4/4; score {{ part p {{ voice v {{ {body} }} }} }} }}")
-    };
+    let piece = |body: &str| format!("piece \"b\" {{ meter 4/4; score {{ part p {{ voice v {{ {body} }} }} }} }}");
     let flat = piece("c4 1/4; d4 1/4; e4 1/4; f4 1/4; g4 1/2; a4 1/2;");
     let barred = piece("bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; } bar { g4 1/2; a4 1/2; }");
     let form = |source: &str| kernel_normal_form(&SourceDocument::new(source, "b")).expect("elaborates");
@@ -167,9 +165,7 @@ fn the_fixtures_the_oracle_used_to_agree_about_still_say_what_they_said() {
     let unknown_motif = "piece \"x\" { score { part p { voice v { use nope(); } } } }";
     let errors = errors_of(unknown_motif);
     assert!(
-        errors
-            .iter()
-            .any(|message| message.contains("cannot find `nope`")),
+        errors.iter().any(|message| message.contains("cannot find `nope`")),
         "expected the motif to be named, got {errors:?}"
     );
     assert!(

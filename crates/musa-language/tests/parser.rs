@@ -550,18 +550,22 @@ fn bars_are_voice_items_and_a_name_is_played_without_parentheses() {
         .items();
     let described: Vec<String> = items
         .iter()
-        .map(|item| match *item {
-            VoiceItem::Bar(ref bar) => format!(
-                "bar {} of {}",
-                bar.name().unwrap_or_else(|| "-".to_owned()),
-                bar.items().len()
-            ),
-            VoiceItem::Use(ref call) => format!(
-                "use {} with {} args",
-                call.motif().unwrap_or_default(),
-                call.args().len()
-            ),
-            _ => "other".to_owned(),
+        .map(|item| {
+            if let VoiceItem::Bar(bar) = item {
+                format!(
+                    "bar {} of {}",
+                    bar.name().unwrap_or_else(|| "-".to_owned()),
+                    bar.items().len()
+                )
+            } else if let VoiceItem::Use(call) = item {
+                format!(
+                    "use {} with {} args",
+                    call.motif().unwrap_or_default(),
+                    call.args().len()
+                )
+            } else {
+                "other".to_owned()
+            }
         })
         .collect();
     assert_eq!(described, ["bar head of 2", "bar - of 1", "use head with 0 args"]);

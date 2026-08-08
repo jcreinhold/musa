@@ -1342,9 +1342,8 @@ impl<'a> Parser<'a> {
 
     /// `bar { ... }` / `bar head { ... }`
     fn bar_stmt(&mut self) {
-        if self.bar_depth > 0 {
-            let error = self.nested_bar();
-            self.errors.extend(error);
+        if let Some(error) = self.nested_bar() {
+            self.errors.push(error);
         }
         self.start(SyntaxKind::BarStmt);
         self.bump(); // bar
@@ -1359,9 +1358,9 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// A `bar` inside a `bar`.
-    fn nested_bar(&mut self) -> Option<SyntaxError> {
-        if self.cascading() {
+    /// A `bar` inside a `bar`, if that is where the parser is.
+    fn nested_bar(&self) -> Option<SyntaxError> {
+        if self.bar_depth == 0 || self.cascading() {
             return None;
         }
         let range = self

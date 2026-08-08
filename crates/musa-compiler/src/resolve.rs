@@ -390,7 +390,11 @@ pub(crate) fn register_motifs(
 /// has to exist before the thing that plays it is read. Whether a `use` is
 /// *allowed* to reach a given bar is a separate question, and one the spans
 /// answer — see [`MotifDef::span`].
-pub(crate) fn register_bars(resolver: &mut Resolver, snapshot: &mut ScoreSnapshot, score: &musa_language::ast::ScoreDecl) {
+pub(crate) fn register_bars(
+    resolver: &mut Resolver,
+    snapshot: &mut ScoreSnapshot,
+    score: &musa_language::ast::ScoreDecl,
+) {
     for bar in named_bars(score) {
         let Some(name) = bar.name() else { continue };
         let span = trimmed_span(bar.syntax());

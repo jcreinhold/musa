@@ -1541,7 +1541,10 @@ fn check_bar_length(resolver: &mut Resolver, bar: &musa_language::ast::BarStmt, 
             fraction(measure)
         )
     } else {
-        format!("a piece that writes no `meter` is in 4/4, so a bar is {}", fraction(measure))
+        format!(
+            "a piece that writes no `meter` is in 4/4, so a bar is {}",
+            fraction(measure)
+        )
     });
     diagnostic = if long {
         // Which note to remove is the composer's decision, and a fix that
@@ -1551,11 +1554,7 @@ fn check_bar_length(resolver: &mut Resolver, bar: &musa_language::ast::BarStmt, 
         let rest = format!("rest {};", fraction(difference));
         let filled = diagnostic.help(format!("add `{rest}`, or lengthen one of the durations"));
         match bar.content_end() {
-            Some(at) => filled.fix(
-                format!("add `{rest}`"),
-                SourceSpan::new(at, at),
-                format!(" {rest}"),
-            ),
+            Some(at) => filled.fix(format!("add `{rest}`"), SourceSpan::new(at, at), format!(" {rest}")),
             None => filled,
         }
     };
@@ -1627,7 +1626,9 @@ fn elaborate_use(
         resolver.report(
             Diagnostic::error(Code::Misplaced, format!("{word} `{name}` is declared after this one"))
                 .at(call_span, "used before it exists")
-                .help(format!("move the declaration above the motif that uses it, or write the {word}'s notes out here"))
+                .help(format!(
+                    "move the declaration above the motif that uses it, or write the {word}'s notes out here"
+                ))
                 .note("a motif sees only the material above it, which is what makes a cycle impossible"),
         );
         return Segment::empty();
