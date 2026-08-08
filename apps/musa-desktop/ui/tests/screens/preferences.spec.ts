@@ -58,7 +58,12 @@ test("a step larger is the frame's type, and only the frame's", async ({ page })
   // The score's size is zoom, it is a re-layout, and it already has a control.
   // A text-size preference that also grew the staves would be a second zoom
   // that disagrees with the first (`02-engraving.md` §5).
-  expect(await staffShare(page)).toBeCloseTo(share, 4);
+  //
+  // Polled, because the claim is about where the engraving lands and not about
+  // the moment in between: taller chrome resizes the leaf before the layout it
+  // asked for comes back, and read in that gap the ratio is last layout's staff
+  // over this layout's page — a number that belongs to neither.
+  await expect.poll(() => staffShare(page)).toBeCloseTo(share, 4);
 
   await run(page, "view.text.reset");
   await expect.poll(() => frameType(page)).toBeCloseTo(before, 1);

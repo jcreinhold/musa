@@ -20,7 +20,7 @@ score (`tests/fixtures/large-score.musa`, created at prompt 22) for the large ca
 | B5 | Playhead jitter | **< 1 frame** deviation from linear between engine position events | A stepping playhead is worse than none (`03-interaction.md` §4). |
 | B6 | App launch → shell painted | ≤ 400 ms | Before the score; the frame must never wait on Verovio. |
 | B7 | App launch → score painted, small case | **≤ 1.5 s** cold, ≤ 600 ms warm | The first impression of the whole product. |
-| B8 | Zoom step → re-laid-out page | ≤ 250 ms, previous page visible throughout |  |
+| B8 | Zoom step → re-laid-out page | ≤ 250 ms, previous page visible throughout | Zoom is a full Verovio layout at a new page size, so it cannot be a frame; it can be quick enough that the composer reads it as the same page, larger. |
 | B9 | Origin view enter/leave | ≤ 120 ms, no layout reflow | It is an ink change; it must cost like one. |
 | B10 | Idle CPU with playback stopped | **≈ 0 %** — no polling timers, no rAF loop | An editor that heats a laptop while nothing happens will not be used. |
 
@@ -32,6 +32,18 @@ score (`tests/fixtures/large-score.musa`, created at prompt 22) for the large ca
   window is impractical) drives each interaction 20 times on both fixtures and asserts the p95. This runs as part of the
   UI test suite for the prompt that owns the surface, and the budget table above is the assertion table.
 - Failures are reported as measurements, not as "slow". A regression that misses B2 by 40 ms says so.
+- **One gesture per trial.** The engraver marks `musa:score` for every page that arrives, and that includes the
+  neighbour pages the observer renders in the background (`02-engraving.md` §7). A trial must therefore settle before
+  it starts and read the first mark *after* its own gesture; otherwise it either ends on the previous trial's
+  background page and measures nothing, or inherits the layout that trial walked away from and measures two gestures
+  as one. Both were happening in B8 — in strict alternation, so a quarter of every run was double-counted and p95, by
+  construction, reported one of the doubles at 267–275 ms. Isolated, the same build measures 117–194 ms per step,
+  p95 183–194 ms. B8 asserts a floor as well as a ceiling for this reason: a step that measured nothing is not a fast
+  step.
+- These are **per-gesture** budgets. Stepping zoom again before the previous layout has finished queues a second full
+  Verovio layout behind the first, and the second step costs roughly the sum. That is the honest cost of a gesture the
+  composer made while the machine was still working on the last one, and no per-step number covers it; coalescing
+  rapid steps would, and is not implemented.
 
 ## 3. The structural rules the budgets imply
 

@@ -52,6 +52,46 @@ async function at(page: Page, moment: string): Promise<number> {
   );
 }
 
+/**
+ * Wait until the interface has stopped putting ink on the leaf.
+ *
+ * `musa:score` is marked by every page that arrives, which includes the
+ * neighbour pages the observer renders in the background (`02-engraving.md`
+ * §7) — so "a score mark exists" is not "the thing I just did has finished".
+ * A trial that starts before the previous one is quiet inherits its work and
+ * measures two gestures as one; a trial that ends on the *previous* trial's
+ * background page measures none. Both were happening, in strict alternation
+ * (see B8 below).
+ *
+ * Settling on silence rather than on a count keeps that out of every trial
+ * without the test needing to know how many pages a layout will render.
+ */
+async function quiet(page: Page): Promise<void> {
+  await page.waitForFunction(async () => {
+    const drawn = (): number => performance.getEntriesByName("musa:score", "mark").length;
+    const before = drawn();
+    await new Promise((settle) => setTimeout(settle, 150));
+    return drawn() === before;
+  });
+}
+
+/**
+ * The first ink that is this gesture's: the earliest `musa:score` mark after
+ * the mark the gesture itself left. Marks are cleared before each trial, so
+ * `from` is unambiguous; what is not unambiguous without this is whether the
+ * score mark being read came before the gesture or after it.
+ */
+async function after(page: Page, from: string): Promise<number> {
+  return page.evaluate((name) => {
+    const gesture = performance.getEntriesByName(`musa:${name}`, "mark")[0]?.startTime;
+    if (gesture === undefined) return Number.NaN;
+    const ink = performance
+      .getEntriesByName("musa:score", "mark")
+      .find((mark) => mark.startTime > gesture);
+    return ink === undefined ? Number.NaN : ink.startTime - gesture;
+  }, from);
+}
+
 test.describe("launch", () => {
   test("B6: the shell paints before the score, within 400 ms", async ({ page }) => {
     const shell: number[] = [];
@@ -256,6 +296,7 @@ test.describe("the large score", () => {
     await page.goto("/?perf=1");
     await engraved(page);
     await toggleSource(page);
+    await quiet(page);
 
     const samples: number[] = [];
     // B2 split where a fix would have to land: what the round trip costs, and
@@ -272,15 +313,17 @@ test.describe("the large score", () => {
       );
       // The 180 ms debounce is inside this number, as the budget states it:
       // what the composer waits is from the keystroke, not from the compile.
-      const [edit, snapshot, score] = [
-        await at(page, "edit"),
-        await at(page, "snapshot"),
-        await at(page, "score"),
-      ];
-      samples.push(score - edit);
+      // The ink read is the ink that came *after* the keystroke, for the
+      // reason `after` gives: the first two trials of this loop used to land
+      // on the opening layout's background pages and report 79 ms and −26 ms.
+      const [edit, snapshot] = [await at(page, "edit"), await at(page, "snapshot")];
+      const drawn = await after(page, "edit");
+      samples.push(drawn);
       round.push(snapshot - edit - SETTLE_MS);
-      engrave.push(score - snapshot);
+      engrave.push(edit + drawn - snapshot);
+      await quiet(page);
     }
+    expect(Math.min(...samples)).toBeGreaterThan(SETTLE_MS);
     expect(
       record("B2", p95(samples)),
       `re-engraved at p95 ${Math.round(p95(samples))} ms after the keystroke`,
@@ -290,10 +333,30 @@ test.describe("the large score", () => {
     expect(p95(samples)).toBeGreaterThanOrEqual(SETTLE_MS);
   });
 
+  /**
+   * One step, and one step only.
+   *
+   * This trial loop settles before it starts and reads the ink that came
+   * *after* the click, because for a long time it did neither and the number
+   * it produced was not a zoom step. The samples said so plainly, in a
+   * four-trial cycle that repeated all the way down a run:
+   *
+   * ```
+   * 194  -19  288  117  180  -20  287  117  181  -18  281  114  …
+   * ```
+   *
+   * The negative trials ended on a background neighbour page left over from
+   * the trial before and measured nothing at all; the trials after them
+   * inherited the layout those had walked away from and measured two zoom
+   * steps as one. A quarter of every run was double-counted, and p95 — by
+   * construction — reported one of the doubles. Isolated, the same build
+   * measures 117–194 ms, and that is the number this asserts.
+   */
   test("B8: a zoom step is re-laid out within 250 ms", async ({ page }) => {
     await stubShell(page, "large-score");
     await page.goto("/?perf=1");
     await engraved(page);
+    await quiet(page);
 
     const samples: number[] = [];
     for (let trial = 0; trial < TRIALS; trial += 1) {
@@ -301,15 +364,27 @@ test.describe("the large score", () => {
       // In and out alternately, so no trial runs off the end of the ladder
       // and measures a step that never happened.
       await page.getByRole("button", { name: trial % 2 === 0 ? "Zoom in" : "Zoom out" }).click();
-      await page.waitForFunction(
-        () => performance.getEntriesByName("musa:score", "mark").length > 0,
-      );
-      samples.push((await at(page, "score")) - (await at(page, "zoom")));
+      await page.waitForFunction(() => {
+        const zoom = performance.getEntriesByName("musa:zoom", "mark")[0];
+        return (
+          zoom !== undefined &&
+          performance
+            .getEntriesByName("musa:score", "mark")
+            .some((mark) => mark.startTime > zoom.startTime)
+        );
+      });
+      samples.push(await after(page, "zoom"));
+      // The neighbour pages this step set going are not the next step's
+      // problem: waiting for them here is what keeps each sample one gesture.
+      await quiet(page);
     }
     expect(
       record("B8", p95(samples)),
       `re-laid out at p95 ${Math.round(p95(samples))} ms after the step`,
     ).toBeLessThanOrEqual(250);
+    // A step that measured nothing is not a fast step. Guarding the floor is
+    // what stops this loop from quietly going back to timing stale ink.
+    expect(Math.min(...samples)).toBeGreaterThan(0);
   });
 });
 
