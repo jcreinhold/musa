@@ -35,6 +35,10 @@ pub(crate) struct ValidArtifacts {
     /// The engraved score, rendered once per successful compile rather than
     /// once per observation.
     pub(crate) mei: String,
+    /// What MEI could not say about this score, once per kind — computed with
+    /// the render and kept with it, because an export asked for later must
+    /// report the same losses as the one that produced this text.
+    pub(crate) mei_warnings: Vec<String>,
     /// The compiled score, kept for exports and playback preparation.
     pub(crate) score: musa_compiler::ScoreSnapshot,
     /// The source that produced it.

@@ -165,6 +165,26 @@ consumer, and only two:
 What a consumer does **not** owe, again: understanding the freedom. An open repeat reaches it as an ordinary
 occurrence with a payload it may or may not know, on the same terms as every other payload.
 
+## A notation export of a freedom is lossy, and says so (prompt 68)
+
+Prompt 68 gives three of those freedoms a surface — a mobile's order, a freely-held duration, an improvised frame —
+and none of MEI, `LilyPond`, or `MusicXML` has an element that means any of them. What each export therefore carries is:
+
+- the **realized** music, written out in full, exactly as this compilation read the piece; and
+- the **instruction** as a text direction over it — `any order — this reading: …`, `hold to 2`, `improvise over Dm7 |
+  G7` — placed at the region's start, and at its end where it spans more than a measure.
+
+That is a reading of the work rather than the work, so `render_notation` reports it: one warning per lost kind, per
+render, on `RenderedNotation::warnings` and out of the CLI on stderr. **A silent lossy export is a contract
+violation**; a loud one is the format's limit, honestly stated. A consumer reading such a file gets a complete,
+exactly-timed piece and a human-readable note that it was one of several — which is the most either format can carry,
+and more than a bare export would.
+
+MIDI carries the realization and nothing else, and warns about nothing: a performance is exactly what MIDI is for.
+
+The `.kernel` file remains the lossless one. A consumer that needs the freedom itself reads the occurrence payload,
+where the fragments, their chosen order, and the bounds of a held note all survive.
+
 ## Falsification duty (§33)
 
 Consumers built against this contract are evidence for or against it. If several materially different musical examples

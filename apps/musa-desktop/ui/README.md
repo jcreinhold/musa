@@ -14,8 +14,8 @@ the code is wrong or the document needs a deliberate repair — never let them d
 ## Run it
 
 ```sh
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 Then <http://localhost:5173>. Query parameters, for review only:
@@ -45,10 +45,10 @@ snapshot (`03-interaction.md` §7); if one is needed and absent, the snapshot ga
 ## Tests
 
 ```sh
-npm run check        # svelte-check
-npm run test:unit    # sanitizer, token contrast, session store, in node
-npm run test:screens # Playwright: screenshot goldens, selection, offline, session, budgets
-npm run test         # both
+pnpm run check        # svelte-check
+pnpm run test:unit    # sanitizer, token contrast, session store, in node
+pnpm run test:screens # Playwright: screenshot goldens, selection, offline, session, budgets
+pnpm run test         # both
 ```
 
 The first Playwright run on a machine needs its browser:
@@ -67,7 +67,7 @@ each page is made of. The images catch a design regression; the digests say what
 Regenerate only when a change to the design is intended, and read every file the run rewrites:
 
 ```sh
-npm run screens:update
+pnpm run screens:update
 ```
 
 ### The generated types

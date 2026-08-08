@@ -59,29 +59,65 @@ impl ExportRequest {
 /// of the session is what lets the CLI and the desktop app share this code
 /// without sharing a file-naming convention.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum ExportArtifact {
-    /// A textual artifact.
+pub struct ExportArtifact {
+    body: Body,
+    warnings: Vec<String>,
+}
+
+/// Text or bytes: which one an artifact is, and nothing else.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Body {
     Text(String),
-    /// A binary artifact.
     Bytes(Vec<u8>),
 }
 
 impl ExportArtifact {
+    /// A textual artifact that lost nothing.
+    pub(crate) fn text(text: impl Into<String>) -> Self {
+        Self {
+            body: Body::Text(text.into()),
+            warnings: Vec::new(),
+        }
+    }
+
+    /// A binary artifact that lost nothing.
+    pub(crate) fn bytes(bytes: Vec<u8>) -> Self {
+        Self {
+            body: Body::Bytes(bytes),
+            warnings: Vec::new(),
+        }
+    }
+
+    pub(crate) fn warn(mut self, warnings: Vec<String>) -> Self {
+        self.warnings = warnings;
+        self
+    }
+
     /// The artifact as raw bytes, whichever kind it is.
     pub fn as_bytes(&self) -> &[u8] {
-        match self {
-            Self::Text(text) => text.as_bytes(),
-            Self::Bytes(bytes) => bytes,
+        match &self.body {
+            Body::Text(text) => text.as_bytes(),
+            Body::Bytes(bytes) => bytes,
         }
     }
 
     /// The artifact as text, or `None` if it is binary.
     pub fn as_text(&self) -> Option<&str> {
-        match self {
-            Self::Text(text) => Some(text),
-            Self::Bytes(_) => None,
+        match &self.body {
+            Body::Text(text) => Some(text),
+            Body::Bytes(_) => None,
         }
+    }
+
+    /// What the target format could not say about this piece, once per kind.
+    ///
+    /// Empty for every export that lost nothing, which is nearly all of them.
+    /// A format with no element for a written freedom carries the realized
+    /// music and a text direction instead — a reading of the work rather than
+    /// the work — and whoever asked for the file is told so here rather than
+    /// finding out from a reader (`docs/kernel/07-backend-contract.md`).
+    pub fn warnings(&self) -> &[String] {
+        &self.warnings
     }
 }
 

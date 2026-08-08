@@ -107,7 +107,7 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-cd apps/musa-desktop/ui && npm test          # screenshot goldens for the spacing change
+cd apps/musa-desktop/ui && pnpm test          # screenshot goldens for the spacing change
 cargo run -p musa-cli -- check examples/cadenza.musa
 cargo run -p musa-cli -- render examples/chant.musa --to lilypond | grep -c cadenzaOn   # 1
 # the cadenza is inside measure 42, not measure 43:

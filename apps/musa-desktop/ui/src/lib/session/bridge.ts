@@ -4,7 +4,7 @@
  * Everything else reads the session store. Keeping `invoke`, `listen`, and
  * the file dialogs behind this one file is what lets the same components run
  * in a plain browser against the committed fixtures — which is how the
- * engraving goldens are taken, and how `npm run dev` works without a build of
+ * engraving goldens are taken, and how `pnpm run dev` works without a build of
  * the shell.
  */
 

@@ -189,6 +189,14 @@ pub enum SyntaxKind {
     BarKw,
     /// `ending`
     EndingKw,
+    /// `fragment`
+    FragmentKw,
+    /// `mobile`
+    MobileKw,
+    /// `improvise`
+    ImproviseKw,
+    /// `over`
+    OverKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -323,6 +331,14 @@ pub enum SyntaxKind {
     BarStmt,
     /// `ending 1 { ... }` — what a repeat plays on one of its passes.
     EndingStmt,
+    /// `fragment a { ... }` — material a performance may reorder or repeat.
+    FragmentDecl,
+    /// `mobile { a; b; c; }` — its fragments in an order the performance
+    /// chooses.
+    MobileStmt,
+    /// `improvise 8/1 over "Dm7 | G7";` — a notated frame with unnotated
+    /// contents.
+    ImproviseStmt,
 }
 
 impl SyntaxKind {

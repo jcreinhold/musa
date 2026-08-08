@@ -5,22 +5,22 @@ kernel "Profile Fixture" {
     overlay {
       timeline 2 {
         occurrence "voice@0@0|dynamic@p|1303:1313|1303:1313|4|" from 0 to 0;
-        occurrence "voice@0@0|note@c5@1/4;1/4;1/4@staccato|1330:1346|1330:1346|4|" from 0 to 1/4;
-        occurrence "voice@0@0|note@d5@1/4;1/4;1/4@staccato|1363:1379|1363:1379|4|" from 1/4 to 1/2;
-        occurrence "voice@0@0|note@e5@1/2;1/2;1/2@|1396:1403|1396:1403|4|" from 1/2 to 1;
+        occurrence "voice@0@0|note@c5@1/4;1/4;1/4@staccato@|1330:1346|1330:1346|4|" from 0 to 1/4;
+        occurrence "voice@0@0|note@d5@1/4;1/4;1/4@staccato@|1363:1379|1363:1379|4|" from 1/4 to 1/2;
+        occurrence "voice@0@0|note@e5@1/2;1/2;1/2@@|1396:1403|1396:1403|4|" from 1/2 to 1;
         occurrence "voice@0@0|dynamic@f|1420:1430|1420:1430|4|" from 1 to 1;
-        occurrence "voice@0@0|note@g5@1/4;1/4;1/4@staccato|1447:1463|1447:1463|4|" from 1 to 5/4;
-        occurrence "voice@0@0|note@a5@1/4;1/4;1/4@|1480:1487|1480:1487|4|" from 5/4 to 3/2;
-        occurrence "voice@0@0|note@b5@1/2;1/2;1/2@|1504:1511|1504:1511|4|" from 3/2 to 2;
+        occurrence "voice@0@0|note@g5@1/4;1/4;1/4@staccato@|1447:1463|1447:1463|4|" from 1 to 5/4;
+        occurrence "voice@0@0|note@a5@1/4;1/4;1/4@@|1480:1487|1480:1487|4|" from 5/4 to 3/2;
+        occurrence "voice@0@0|note@b5@1/2;1/2;1/2@@|1504:1511|1504:1511|4|" from 3/2 to 2;
       };
       timeline 2 {
         occurrence "voice@1@0|dynamic@mf|1652:1663|1652:1663|5|" from 0 to 0;
-        occurrence "voice@1@0|note@c3@1/4;1/4;1/4@staccato|1680:1696|1680:1696|5|" from 0 to 1/4;
-        occurrence "voice@1@0|note@e3@1/4;1/4;1/4@tenuto|1713:1727|1713:1727|5|" from 1/4 to 1/2;
-        occurrence "voice@1@0|note@g3@1/2;1/2;1/2@accent|1744:1758|1744:1758|5|" from 1/2 to 1;
+        occurrence "voice@1@0|note@c3@1/4;1/4;1/4@staccato@|1680:1696|1680:1696|5|" from 0 to 1/4;
+        occurrence "voice@1@0|note@e3@1/4;1/4;1/4@tenuto@|1713:1727|1713:1727|5|" from 1/4 to 1/2;
+        occurrence "voice@1@0|note@g3@1/2;1/2;1/2@accent@|1744:1758|1744:1758|5|" from 1/2 to 1;
         occurrence "voice@1@0|dynamic@p|1775:1785|1775:1785|5|" from 1 to 1;
-        occurrence "voice@1@0|note@c3@1/2;1/2;1/2@|1802:1809|1802:1809|5|" from 1 to 3/2;
-        occurrence "voice@1@0|note@g2@1/2;1/2;1/2@|1826:1833|1826:1833|5|" from 3/2 to 2;
+        occurrence "voice@1@0|note@c3@1/2;1/2;1/2@@|1802:1809|1802:1809|5|" from 1 to 3/2;
+        occurrence "voice@1@0|note@g2@1/2;1/2;1/2@@|1826:1833|1826:1833|5|" from 3/2 to 2;
       };
       timeline 2 {
         occurrence "piece|meter@4@4|318:333|318:333|0|" from 0 to 2;

@@ -187,6 +187,11 @@ fn cmd_render(args: &[String], realization: &Realization) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+    // What the target could not say, said once — before the bytes go
+    // anywhere, so it is read whether the file is written or piped.
+    for warning in artifact.warnings() {
+        eprintln!("warning: {warning}");
+    }
     // The debug dumps go to stdout by default; the file formats go to a file.
     match request {
         ExportRequest::NotationPlanDump | ExportRequest::PerformanceDump if output.is_none() => {

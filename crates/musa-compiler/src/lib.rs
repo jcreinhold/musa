@@ -74,9 +74,10 @@ pub use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet
 pub use crate::realize::{Decision, Realization};
 pub use crate::scope::{ContextKind, Scope};
 pub use crate::score::{
-    AnnotationStore, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, FrontMatter, HairpinSpan,
-    HarmonyMark, Key, Meter, Mode, MotifDeclaration, NotatedDuration, Part, PartId, PartMap, PhraseSpan, ScoreEvent,
-    ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoChange, TempoMap, TupletSpan, Voice, VoiceId,
+    AnnotationStore, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, FreeDuration, FrontMatter,
+    HairpinSpan, HarmonyMark, Key, Meter, Mode, MotifDeclaration, NotatedDuration, OpenKind, OpenRegion, Part, PartId,
+    PartMap, PhraseSpan, ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoChange, TempoMap,
+    TupletSpan, Voice, VoiceId,
 };
 pub use crate::studio::{
     Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,

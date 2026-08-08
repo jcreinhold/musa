@@ -10,7 +10,7 @@ UI      := apps/musa-desktop/ui
 # only means the UI from here.
 SHELL_D := apps/musa-desktop
 TAURI   := $(CURDIR)/$(UI)/node_modules/.bin/tauri
-NPM     := npm --prefix $(UI)
+PNPM    := pnpm --dir $(UI)
 CARGO   := cargo
 
 # The dev server's port. Fixed rather than negotiated: `vite.config.ts` sets
@@ -34,7 +34,7 @@ desktop: node_modules ## Start the desktop app (Tauri shell + Svelte UI, hot rel
 
 .PHONY: ui
 ui: node_modules ## Start the UI alone in a browser, against the stubbed shell
-	$(NPM) run dev
+	$(PNPM) run dev
 
 .PHONY: stop
 stop: ## Stop a running desktop app or UI dev server, however it was started
@@ -79,13 +79,13 @@ build: ## Build the whole Rust workspace (debug)
 release: node_modules ## Bundle the desktop app for distribution
 	cd $(SHELL_D) && $(TAURI) build
 
-node_modules: $(UI)/package-lock.json ## Install the UI's dependencies
-	$(NPM) ci
+node_modules: $(UI)/pnpm-lock.yaml ## Install the UI's dependencies
+	$(PNPM) install --frozen-lockfile
 	@touch $(UI)/node_modules
 
 .PHONY: setup
 setup: node_modules ## Install everything a fresh checkout needs
-	$(NPM) exec -- playwright install chromium
+	$(PNPM) exec playwright install chromium
 
 ## ----------------------------------------------------------------- testing --
 
@@ -102,11 +102,11 @@ test-rust: ## Run the Rust test suite (nextest if present, else cargo test)
 
 .PHONY: test-ui
 test-ui: node_modules ## Run the UI unit tests and the Playwright screen tests
-	$(NPM) test
+	$(PNPM) test
 
 .PHONY: test-unit
 test-unit: node_modules ## Run the UI unit tests only (fast)
-	$(NPM) run test:unit
+	$(PNPM) run test:unit
 
 ## ------------------------------------------------------------------- gates --
 
@@ -121,7 +121,7 @@ lint: ## Clippy over the workspace, warnings denied
 
 .PHONY: typecheck
 typecheck: node_modules ## Svelte + TypeScript check of the UI
-	$(NPM) run check
+	$(PNPM) run check
 
 .PHONY: deny
 deny: ## Audit dependencies (licences, advisories); no-op if cargo-deny is absent
@@ -144,7 +144,7 @@ snapshots: node_modules ## Re-record the golden snapshots after a deliberate cha
 	INSTA_UPDATE=always $(CARGO) test --workspace
 	UPDATE_UI_FIXTURES=1 $(CARGO) test -p musa-project
 	UPDATE_UI_FIXTURES=1 $(CARGO) test -p musa-desktop
-	$(NPM) run screens:update
+	$(PNPM) run screens:update
 	@find . -name '*.snap.new' -delete
 
 .PHONY: clean

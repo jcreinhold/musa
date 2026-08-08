@@ -1,0 +1,1620 @@
+% musa-kernel-1
+% generated from examples/in-c.musa by musa-compiler
+% realization seed=42 pins=0
+% decision figure_one ▸ #0 count=8
+% decision figure_two ▸ #0 count=7
+% decision figure_three ▸ #0 count=11
+% decision figure_four ▸ #0 count=9
+% decision figure_five ▸ #0 count=8
+% decision figure_six ▸ #0 count=3
+% decision figure_seven ▸ #0 count=8
+% decision figure_eight ▸ #0 count=12
+% decision figure_nine ▸ #0 count=8
+% decision figure_ten ▸ #0 count=8
+% decision figure_eleven ▸ #0 count=7
+% decision figure_twelve ▸ #0 count=8
+% decision figure_thirteen ▸ #0 count=10
+% decision figure_fourteen ▸ #0 count=14
+% decision figure_fifteen ▸ #0 count=5
+% decision figure_sixteen ▸ #0 count=8
+% decision figure_seventeen ▸ #0 count=12
+% decision figure_eighteen ▸ #0 count=7
+% decision figure_nineteen ▸ #0 count=8
+% decision figure_twenty ▸ #0 count=4
+% decision figure_twenty_one ▸ #0 count=6
+% decision figure_twenty_two ▸ #0 count=8
+% decision figure_twenty_three ▸ #0 count=10
+% decision figure_twenty_four ▸ #0 count=8
+% decision figure_twenty_five ▸ #0 count=8
+% decision figure_twenty_six ▸ #0 count=8
+% decision figure_twenty_seven ▸ #0 count=3
+% decision figure_twenty_eight ▸ #0 count=8
+% decision figure_twenty_nine ▸ #0 count=6
+% decision figure_thirty ▸ #0 count=8
+% decision figure_thirty_one ▸ #0 count=4
+% decision figure_thirty_two ▸ #0 count=5
+% decision figure_thirty_three ▸ #0 count=11
+% decision figure_thirty_four ▸ #0 count=6
+% decision figure_thirty_five ▸ #0 count=5
+% decision figure_thirty_six ▸ #0 count=7
+% decision figure_thirty_seven ▸ #0 count=9
+% decision figure_thirty_eight ▸ #0 count=8
+% decision figure_thirty_nine ▸ #0 count=7
+% decision figure_forty ▸ #0 count=7
+% decision figure_forty_one ▸ #0 count=8
+% decision figure_forty_two ▸ #0 count=4
+% decision figure_forty_three ▸ #0 count=7
+% decision figure_forty_four ▸ #0 count=13
+% decision figure_forty_five ▸ #0 count=2
+% decision figure_forty_six ▸ #0 count=7
+% decision figure_forty_seven ▸ #0 count=10
+% decision figure_forty_eight ▸ #0 count=3
+% decision figure_forty_nine ▸ #0 count=13
+% decision figure_fifty ▸ #0 count=8
+% decision figure_fifty_one ▸ #0 count=8
+% decision figure_fifty_two ▸ #0 count=4
+% decision figure_fifty_three ▸ #0 count=10
+kernel "Fifty-Three" {
+  composition main : Timeline[ScoreFact] =
+    let shared0 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@c6@1/8;1/8;1/8@@|4294967295:4294967295|6783:6790|57|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@c6@1/8;1/8;1/8@@|4294967295:4294967295|6791:6798|57|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@c6@1/8;1/8;1/8@@|4294967295:4294967295|6799:6806|57|" from 1/4 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@c6@1/8;1/8;1/8@@|4294967295:4294967295|6807:6814|57|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@c6@1/8;1/8;1/8@@|4294967295:4294967295|6815:6822|57|" from 1/2 to 5/8;
+        occurrence "voice@4294967295@4294967295|note@c6@1/8;1/8;1/8@@|4294967295:4294967295|6823:6830|57|" from 5/8 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@c6@1/8;1/8;1/8@@|4294967295:4294967295|6831:6838|57|" from 3/4 to 7/8;
+        occurrence "voice@4294967295@4294967295|note@c6@1/8;1/8;1/8@@|4294967295:4294967295|6839:6846|57|" from 7/8 to 1;
+      }
+    in let shared1 = overlay {
+        sequence {
+          shared0 @ "0|-|-|repeat:0";
+          shared0 @ "0|-|-|repeat:1";
+          shared0 @ "0|-|-|repeat:2";
+          shared0 @ "0|-|-|repeat:3";
+          shared0 @ "0|-|-|repeat:4";
+          shared0 @ "0|-|-|repeat:5";
+          shared0 @ "0|-|-|repeat:6";
+          shared0 @ "0|-|-|repeat:7";
+          shared0 @ "0|-|-|repeat:8";
+          shared0 @ "0|-|-|repeat:9";
+          shared0 @ "0|-|-|repeat:10";
+          shared0 @ "0|-|-|repeat:11";
+          shared0 @ "0|-|-|repeat:12";
+          shared0 @ "0|-|-|repeat:13";
+          shared0 @ "0|-|-|repeat:14";
+          shared0 @ "0|-|-|repeat:15";
+          shared0 @ "0|-|-|repeat:16";
+          shared0 @ "0|-|-|repeat:17";
+          shared0 @ "0|-|-|repeat:18";
+          shared0 @ "0|-|-|repeat:19";
+          shared0 @ "0|-|-|repeat:20";
+          shared0 @ "0|-|-|repeat:21";
+          shared0 @ "0|-|-|repeat:22";
+          shared0 @ "0|-|-|repeat:23";
+          shared0 @ "0|-|-|repeat:24";
+          shared0 @ "0|-|-|repeat:25";
+          shared0 @ "0|-|-|repeat:26";
+          shared0 @ "0|-|-|repeat:27";
+          shared0 @ "0|-|-|repeat:28";
+          shared0 @ "0|-|-|repeat:29";
+          shared0 @ "0|-|-|repeat:30";
+          shared0 @ "0|-|-|repeat:31";
+          shared0 @ "0|-|-|repeat:32";
+          shared0 @ "0|-|-|repeat:33";
+          shared0 @ "0|-|-|repeat:34";
+          shared0 @ "0|-|-|repeat:35";
+          shared0 @ "0|-|-|repeat:36";
+          shared0 @ "0|-|-|repeat:37";
+          shared0 @ "0|-|-|repeat:38";
+          shared0 @ "0|-|-|repeat:39";
+          shared0 @ "0|-|-|repeat:40";
+          shared0 @ "0|-|-|repeat:41";
+          shared0 @ "0|-|-|repeat:42";
+          shared0 @ "0|-|-|repeat:43";
+          shared0 @ "0|-|-|repeat:44";
+          shared0 @ "0|-|-|repeat:45";
+          shared0 @ "0|-|-|repeat:46";
+          shared0 @ "0|-|-|repeat:47";
+          shared0 @ "0|-|-|repeat:48";
+          shared0 @ "0|-|-|repeat:49";
+          shared0 @ "0|-|-|repeat:50";
+          shared0 @ "0|-|-|repeat:51";
+          shared0 @ "0|-|-|repeat:52";
+          shared0 @ "0|-|-|repeat:53";
+          shared0 @ "0|-|-|repeat:54";
+          shared0 @ "0|-|-|repeat:55";
+          shared0 @ "0|-|-|repeat:56";
+          shared0 @ "0|-|-|repeat:57";
+          shared0 @ "0|-|-|repeat:58";
+          shared0 @ "0|-|-|repeat:59";
+          shared0 @ "0|-|-|repeat:60";
+          shared0 @ "0|-|-|repeat:61";
+          shared0 @ "0|-|-|repeat:62";
+          shared0 @ "0|-|-|repeat:63";
+          shared0 @ "0|-|-|repeat:64";
+          shared0 @ "0|-|-|repeat:65";
+          shared0 @ "0|-|-|repeat:66";
+          shared0 @ "0|-|-|repeat:67";
+          shared0 @ "0|-|-|repeat:68";
+          shared0 @ "0|-|-|repeat:69";
+          shared0 @ "0|-|-|repeat:70";
+          shared0 @ "0|-|-|repeat:71";
+          shared0 @ "0|-|-|repeat:72";
+          shared0 @ "0|-|-|repeat:73";
+          shared0 @ "0|-|-|repeat:74";
+          shared0 @ "0|-|-|repeat:75";
+          shared0 @ "0|-|-|repeat:76";
+          shared0 @ "0|-|-|repeat:77";
+          shared0 @ "0|-|-|repeat:78";
+          shared0 @ "0|-|-|repeat:79";
+          shared0 @ "0|-|-|repeat:80";
+          shared0 @ "0|-|-|repeat:81";
+          shared0 @ "0|-|-|repeat:82";
+          shared0 @ "0|-|-|repeat:83";
+          shared0 @ "0|-|-|repeat:84";
+          shared0 @ "0|-|-|repeat:85";
+          shared0 @ "0|-|-|repeat:86";
+          shared0 @ "0|-|-|repeat:87";
+          shared0 @ "0|-|-|repeat:88";
+          shared0 @ "0|-|-|repeat:89";
+          shared0 @ "0|-|-|repeat:90";
+          shared0 @ "0|-|-|repeat:91";
+          shared0 @ "0|-|-|repeat:92";
+          shared0 @ "0|-|-|repeat:93";
+          shared0 @ "0|-|-|repeat:94";
+          shared0 @ "0|-|-|repeat:95";
+          shared0 @ "0|-|-|repeat:96";
+          shared0 @ "0|-|-|repeat:97";
+          shared0 @ "0|-|-|repeat:98";
+          shared0 @ "0|-|-|repeat:99";
+          shared0 @ "0|-|-|repeat:100";
+          shared0 @ "0|-|-|repeat:101";
+          shared0 @ "0|-|-|repeat:102";
+          shared0 @ "0|-|-|repeat:103";
+          shared0 @ "0|-|-|repeat:104";
+          shared0 @ "0|-|-|repeat:105";
+          shared0 @ "0|-|-|repeat:106";
+          shared0 @ "0|-|-|repeat:107";
+          shared0 @ "0|-|-|repeat:108";
+          shared0 @ "0|-|-|repeat:109";
+          shared0 @ "0|-|-|repeat:110";
+          shared0 @ "0|-|-|repeat:111";
+          shared0 @ "0|-|-|repeat:112";
+          shared0 @ "0|-|-|repeat:113";
+          shared0 @ "0|-|-|repeat:114";
+          shared0 @ "0|-|-|repeat:115";
+          shared0 @ "0|-|-|repeat:116";
+          shared0 @ "0|-|-|repeat:117";
+          shared0 @ "0|-|-|repeat:118";
+          shared0 @ "0|-|-|repeat:119";
+          shared0 @ "0|-|-|repeat:120";
+          shared0 @ "0|-|-|repeat:121";
+          shared0 @ "0|-|-|repeat:122";
+          shared0 @ "0|-|-|repeat:123";
+          shared0 @ "0|-|-|repeat:124";
+          shared0 @ "0|-|-|repeat:125";
+          shared0 @ "0|-|-|repeat:126";
+          shared0 @ "0|-|-|repeat:127";
+          shared0 @ "0|-|-|repeat:128";
+          shared0 @ "0|-|-|repeat:129";
+          shared0 @ "0|-|-|repeat:130";
+          shared0 @ "0|-|-|repeat:131";
+          shared0 @ "0|-|-|repeat:132";
+          shared0 @ "0|-|-|repeat:133";
+          shared0 @ "0|-|-|repeat:134";
+          shared0 @ "0|-|-|repeat:135";
+          shared0 @ "0|-|-|repeat:136";
+          shared0 @ "0|-|-|repeat:137";
+          shared0 @ "0|-|-|repeat:138";
+          shared0 @ "0|-|-|repeat:139";
+          shared0 @ "0|-|-|repeat:140";
+          shared0 @ "0|-|-|repeat:141";
+          shared0 @ "0|-|-|repeat:142";
+          shared0 @ "0|-|-|repeat:143";
+          shared0 @ "0|-|-|repeat:144";
+          shared0 @ "0|-|-|repeat:145";
+          shared0 @ "0|-|-|repeat:146";
+          shared0 @ "0|-|-|repeat:147";
+          shared0 @ "0|-|-|repeat:148";
+          shared0 @ "0|-|-|repeat:149";
+          shared0 @ "0|-|-|repeat:150";
+          shared0 @ "0|-|-|repeat:151";
+          shared0 @ "0|-|-|repeat:152";
+          shared0 @ "0|-|-|repeat:153";
+          shared0 @ "0|-|-|repeat:154";
+          shared0 @ "0|-|-|repeat:155";
+          shared0 @ "0|-|-|repeat:156";
+          shared0 @ "0|-|-|repeat:157";
+          shared0 @ "0|-|-|repeat:158";
+          shared0 @ "0|-|-|repeat:159";
+          shared0 @ "0|-|-|repeat:160";
+          shared0 @ "0|-|-|repeat:161";
+          shared0 @ "0|-|-|repeat:162";
+          shared0 @ "0|-|-|repeat:163";
+          shared0 @ "0|-|-|repeat:164";
+          shared0 @ "0|-|-|repeat:165";
+          shared0 @ "0|-|-|repeat:166";
+          shared0 @ "0|-|-|repeat:167";
+          shared0 @ "0|-|-|repeat:168";
+          shared0 @ "0|-|-|repeat:169";
+          shared0 @ "0|-|-|repeat:170";
+          shared0 @ "0|-|-|repeat:171";
+          shared0 @ "0|-|-|repeat:172";
+          shared0 @ "0|-|-|repeat:173";
+          shared0 @ "0|-|-|repeat:174";
+          shared0 @ "0|-|-|repeat:175";
+          shared0 @ "0|-|-|repeat:176";
+          shared0 @ "0|-|-|repeat:177";
+          shared0 @ "0|-|-|repeat:178";
+          shared0 @ "0|-|-|repeat:179";
+          shared0 @ "0|-|-|repeat:180";
+          shared0 @ "0|-|-|repeat:181";
+          shared0 @ "0|-|-|repeat:182";
+          shared0 @ "0|-|-|repeat:183";
+          shared0 @ "0|-|-|repeat:184";
+          shared0 @ "0|-|-|repeat:185";
+          shared0 @ "0|-|-|repeat:186";
+          shared0 @ "0|-|-|repeat:187";
+          shared0 @ "0|-|-|repeat:188";
+          shared0 @ "0|-|-|repeat:189";
+          shared0 @ "0|-|-|repeat:190";
+          shared0 @ "0|-|-|repeat:191";
+          shared0 @ "0|-|-|repeat:192";
+          shared0 @ "0|-|-|repeat:193";
+          shared0 @ "0|-|-|repeat:194";
+          shared0 @ "0|-|-|repeat:195";
+          shared0 @ "0|-|-|repeat:196";
+          shared0 @ "0|-|-|repeat:197";
+          shared0 @ "0|-|-|repeat:198";
+          shared0 @ "0|-|-|repeat:199";
+          shared0 @ "0|-|-|repeat:200";
+          shared0 @ "0|-|-|repeat:201";
+          shared0 @ "0|-|-|repeat:202";
+          shared0 @ "0|-|-|repeat:203";
+          shared0 @ "0|-|-|repeat:204";
+          shared0 @ "0|-|-|repeat:205";
+          shared0 @ "0|-|-|repeat:206";
+          shared0 @ "0|-|-|repeat:207";
+          shared0 @ "0|-|-|repeat:208";
+          shared0 @ "0|-|-|repeat:209";
+          shared0 @ "0|-|-|repeat:210";
+          shared0 @ "0|-|-|repeat:211";
+          shared0 @ "0|-|-|repeat:212";
+          shared0 @ "0|-|-|repeat:213";
+          shared0 @ "0|-|-|repeat:214";
+          shared0 @ "0|-|-|repeat:215";
+          shared0 @ "0|-|-|repeat:216";
+          shared0 @ "0|-|-|repeat:217";
+          shared0 @ "0|-|-|repeat:218";
+          shared0 @ "0|-|-|repeat:219";
+          shared0 @ "0|-|-|repeat:220";
+          shared0 @ "0|-|-|repeat:221";
+          shared0 @ "0|-|-|repeat:222";
+          shared0 @ "0|-|-|repeat:223";
+          shared0 @ "0|-|-|repeat:224";
+          shared0 @ "0|-|-|repeat:225";
+          shared0 @ "0|-|-|repeat:226";
+          shared0 @ "0|-|-|repeat:227";
+          shared0 @ "0|-|-|repeat:228";
+          shared0 @ "0|-|-|repeat:229";
+          shared0 @ "0|-|-|repeat:230";
+          shared0 @ "0|-|-|repeat:231";
+          shared0 @ "0|-|-|repeat:232";
+          shared0 @ "0|-|-|repeat:233";
+          shared0 @ "0|-|-|repeat:234";
+          shared0 @ "0|-|-|repeat:235";
+          shared0 @ "0|-|-|repeat:236";
+          shared0 @ "0|-|-|repeat:237";
+          shared0 @ "0|-|-|repeat:238";
+          shared0 @ "0|-|-|repeat:239";
+          shared0 @ "0|-|-|repeat:240";
+          shared0 @ "0|-|-|repeat:241";
+          shared0 @ "0|-|-|repeat:242";
+          shared0 @ "0|-|-|repeat:243";
+          shared0 @ "0|-|-|repeat:244";
+          shared0 @ "0|-|-|repeat:245";
+          shared0 @ "0|-|-|repeat:246";
+          shared0 @ "0|-|-|repeat:247";
+          shared0 @ "0|-|-|repeat:248";
+          shared0 @ "0|-|-|repeat:249";
+          shared0 @ "0|-|-|repeat:250";
+          shared0 @ "0|-|-|repeat:251";
+          shared0 @ "0|-|-|repeat:252";
+          shared0 @ "0|-|-|repeat:253";
+          shared0 @ "0|-|-|repeat:254";
+          shared0 @ "0|-|-|repeat:255";
+          shared0 @ "0|-|-|repeat:256";
+          shared0 @ "0|-|-|repeat:257";
+          shared0 @ "0|-|-|repeat:258";
+          shared0 @ "0|-|-|repeat:259";
+          shared0 @ "0|-|-|repeat:260";
+          shared0 @ "0|-|-|repeat:261";
+          shared0 @ "0|-|-|repeat:262";
+          shared0 @ "0|-|-|repeat:263";
+          shared0 @ "0|-|-|repeat:264";
+          shared0 @ "0|-|-|repeat:265";
+          shared0 @ "0|-|-|repeat:266";
+          shared0 @ "0|-|-|repeat:267";
+          shared0 @ "0|-|-|repeat:268";
+          shared0 @ "0|-|-|repeat:269";
+          shared0 @ "0|-|-|repeat:270";
+          shared0 @ "0|-|-|repeat:271";
+          shared0 @ "0|-|-|repeat:272";
+          shared0 @ "0|-|-|repeat:273";
+          shared0 @ "0|-|-|repeat:274";
+          shared0 @ "0|-|-|repeat:275";
+          shared0 @ "0|-|-|repeat:276";
+          shared0 @ "0|-|-|repeat:277";
+          shared0 @ "0|-|-|repeat:278";
+          shared0 @ "0|-|-|repeat:279";
+          shared0 @ "0|-|-|repeat:280";
+          shared0 @ "0|-|-|repeat:281";
+          shared0 @ "0|-|-|repeat:282";
+          shared0 @ "0|-|-|repeat:283";
+          shared0 @ "0|-|-|repeat:284";
+          shared0 @ "0|-|-|repeat:285";
+          shared0 @ "0|-|-|repeat:286";
+          shared0 @ "0|-|-|repeat:287";
+          shared0 @ "0|-|-|repeat:288";
+          shared0 @ "0|-|-|repeat:289";
+          shared0 @ "0|-|-|repeat:290";
+          shared0 @ "0|-|-|repeat:291";
+          shared0 @ "0|-|-|repeat:292";
+          shared0 @ "0|-|-|repeat:293";
+          shared0 @ "0|-|-|repeat:294";
+          shared0 @ "0|-|-|repeat:295";
+          shared0 @ "0|-|-|repeat:296";
+          shared0 @ "0|-|-|repeat:297";
+          shared0 @ "0|-|-|repeat:298";
+          shared0 @ "0|-|-|repeat:299";
+          shared0 @ "0|-|-|repeat:300";
+          shared0 @ "0|-|-|repeat:301";
+          shared0 @ "0|-|-|repeat:302";
+          shared0 @ "0|-|-|repeat:303";
+          shared0 @ "0|-|-|repeat:304";
+          shared0 @ "0|-|-|repeat:305";
+          shared0 @ "0|-|-|repeat:306";
+          shared0 @ "0|-|-|repeat:307";
+          shared0 @ "0|-|-|repeat:308";
+          shared0 @ "0|-|-|repeat:309";
+          shared0 @ "0|-|-|repeat:310";
+          shared0 @ "0|-|-|repeat:311";
+          shared0 @ "0|-|-|repeat:312";
+          shared0 @ "0|-|-|repeat:313";
+          shared0 @ "0|-|-|repeat:314";
+          shared0 @ "0|-|-|repeat:315";
+          shared0 @ "0|-|-|repeat:316";
+          shared0 @ "0|-|-|repeat:317";
+          shared0 @ "0|-|-|repeat:318";
+          shared0 @ "0|-|-|repeat:319";
+          shared0 @ "0|-|-|repeat:320";
+          shared0 @ "0|-|-|repeat:321";
+          shared0 @ "0|-|-|repeat:322";
+          shared0 @ "0|-|-|repeat:323";
+          shared0 @ "0|-|-|repeat:324";
+          shared0 @ "0|-|-|repeat:325";
+          shared0 @ "0|-|-|repeat:326";
+          shared0 @ "0|-|-|repeat:327";
+          shared0 @ "0|-|-|repeat:328";
+          shared0 @ "0|-|-|repeat:329";
+          shared0 @ "0|-|-|repeat:330";
+          shared0 @ "0|-|-|repeat:331";
+          shared0 @ "0|-|-|repeat:332";
+          shared0 @ "0|-|-|repeat:333";
+          shared0 @ "0|-|-|repeat:334";
+          shared0 @ "0|-|-|repeat:335";
+          shared0 @ "0|-|-|repeat:336";
+          shared0 @ "0|-|-|repeat:337";
+          shared0 @ "0|-|-|repeat:338";
+          shared0 @ "0|-|-|repeat:339";
+          shared0 @ "0|-|-|repeat:340";
+          shared0 @ "0|-|-|repeat:341";
+          shared0 @ "0|-|-|repeat:342";
+          shared0 @ "0|-|-|repeat:343";
+          shared0 @ "0|-|-|repeat:344";
+          shared0 @ "0|-|-|repeat:345";
+          shared0 @ "0|-|-|repeat:346";
+          shared0 @ "0|-|-|repeat:347";
+          shared0 @ "0|-|-|repeat:348";
+          shared0 @ "0|-|-|repeat:349";
+          shared0 @ "0|-|-|repeat:350";
+          shared0 @ "0|-|-|repeat:351";
+          shared0 @ "0|-|-|repeat:352";
+          shared0 @ "0|-|-|repeat:353";
+          shared0 @ "0|-|-|repeat:354";
+          shared0 @ "0|-|-|repeat:355";
+          shared0 @ "0|-|-|repeat:356";
+          shared0 @ "0|-|-|repeat:357";
+          shared0 @ "0|-|-|repeat:358";
+          shared0 @ "0|-|-|repeat:359";
+          shared0 @ "0|-|-|repeat:360";
+          shared0 @ "0|-|-|repeat:361";
+          shared0 @ "0|-|-|repeat:362";
+          shared0 @ "0|-|-|repeat:363";
+          shared0 @ "0|-|-|repeat:364";
+          shared0 @ "0|-|-|repeat:365";
+          shared0 @ "0|-|-|repeat:366";
+          shared0 @ "0|-|-|repeat:367";
+          shared0 @ "0|-|-|repeat:368";
+          shared0 @ "0|-|-|repeat:369";
+          shared0 @ "0|-|-|repeat:370";
+          shared0 @ "0|-|-|repeat:371";
+          shared0 @ "0|-|-|repeat:372";
+          shared0 @ "0|-|-|repeat:373";
+          shared0 @ "0|-|-|repeat:374";
+          shared0 @ "0|-|-|repeat:375";
+          shared0 @ "0|-|-|repeat:376";
+          shared0 @ "0|-|-|repeat:377";
+          shared0 @ "0|-|-|repeat:378";
+          shared0 @ "0|-|-|repeat:379";
+          shared0 @ "0|-|-|repeat:380";
+          shared0 @ "0|-|-|repeat:381";
+          shared0 @ "0|-|-|repeat:382";
+          shared0 @ "0|-|-|repeat:383"
+        };
+        timeline 384 {
+          occurrence "voice@4294967295@4294967295|repeat@384|4294967295:4294967295|6770:6848|57|" from 0 to 384;
+        }
+      }
+    in let shared2 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@c5@1/8;1/8;1/8@@|4294967295:4294967295|1328:1335|4|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|1336:1343|4|" from 1/8 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@g4@1/8;1/8;1/8@@|4294967295:4294967295|1344:1351|4|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|1352:1359|4|" from 1/2 to 5/8;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|1360:1367|4|" from 5/8 to 7/8;
+        occurrence "voice@4294967295@4294967295|note@c5@1/8;1/8;1/8@@|4294967295:4294967295|1368:1375|4|" from 7/8 to 1;
+      }
+    in let shared3 = overlay {
+        sequence {
+          shared2 @ "0|-|-|repeat:0";
+          shared2 @ "0|-|-|repeat:1";
+          shared2 @ "0|-|-|repeat:2";
+          shared2 @ "0|-|-|repeat:3";
+          shared2 @ "0|-|-|repeat:4";
+          shared2 @ "0|-|-|repeat:5";
+          shared2 @ "0|-|-|repeat:6";
+          shared2 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|1311:1377|4|" from 0 to 8;
+        }
+      }
+    in let shared4 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@e5@3/4;3/4;3/4@@|4294967295:4294967295|1436:1443|5|" from 0 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|1444:1451|5|" from 3/4 to 1;
+      }
+    in let shared5 = overlay {
+        sequence {
+          shared4 @ "0|-|-|repeat:0";
+          shared4 @ "0|-|-|repeat:1";
+          shared4 @ "0|-|-|repeat:2";
+          shared4 @ "0|-|-|repeat:3";
+          shared4 @ "0|-|-|repeat:4";
+          shared4 @ "0|-|-|repeat:5";
+          shared4 @ "0|-|-|repeat:6"
+        };
+        timeline 7 {
+          occurrence "voice@4294967295@4294967295|repeat@7|4294967295:4294967295|1419:1453|5|" from 0 to 7;
+        }
+      }
+    in let shared6 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|1514:1521|6|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|1522:1529|6|" from 1/4 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@c5@1/8;1/8;1/8@@|4294967295:4294967295|1530:1537|6|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@e5@1/2;1/2;1/2@@|4294967295:4294967295|1538:1545|6|" from 1/2 to 1;
+      }
+    in let shared7 = overlay {
+        sequence {
+          shared6 @ "0|-|-|repeat:0";
+          shared6 @ "0|-|-|repeat:1";
+          shared6 @ "0|-|-|repeat:2";
+          shared6 @ "0|-|-|repeat:3";
+          shared6 @ "0|-|-|repeat:4";
+          shared6 @ "0|-|-|repeat:5";
+          shared6 @ "0|-|-|repeat:6";
+          shared6 @ "0|-|-|repeat:7";
+          shared6 @ "0|-|-|repeat:8";
+          shared6 @ "0|-|-|repeat:9";
+          shared6 @ "0|-|-|repeat:10"
+        };
+        timeline 11 {
+          occurrence "voice@4294967295@4294967295|repeat@11|4294967295:4294967295|1497:1547|6|" from 0 to 11;
+        }
+      }
+    in let shared8 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@e5@1/16;1/16;1/16@@|4294967295:4294967295|1607:1615|7|" from 0 to 1/16;
+        occurrence "voice@4294967295@4294967295|note@g4@1/16;1/16;1/16@@|4294967295:4294967295|1616:1624|7|" from 1/16 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|1625:1632|7|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|1633:1640|7|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@c5@1/2;1/2;1/2@@|4294967295:4294967295|1641:1648|7|" from 1/2 to 1;
+      }
+    in let shared9 = overlay {
+        sequence {
+          shared8 @ "0|-|-|repeat:0";
+          shared8 @ "0|-|-|repeat:1";
+          shared8 @ "0|-|-|repeat:2";
+          shared8 @ "0|-|-|repeat:3";
+          shared8 @ "0|-|-|repeat:4";
+          shared8 @ "0|-|-|repeat:5";
+          shared8 @ "0|-|-|repeat:6";
+          shared8 @ "0|-|-|repeat:7";
+          shared8 @ "0|-|-|repeat:8"
+        };
+        timeline 9 {
+          occurrence "voice@4294967295@4294967295|repeat@9|4294967295:4294967295|1590:1650|7|" from 0 to 9;
+        }
+      }
+    in let shared10 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|1710:1717|8|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|1718:1725|8|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|1726:1733|8|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|1734:1741|8|" from 3/4 to 1;
+      }
+    in let shared11 = overlay {
+        sequence {
+          shared10 @ "0|-|-|repeat:0";
+          shared10 @ "0|-|-|repeat:1";
+          shared10 @ "0|-|-|repeat:2";
+          shared10 @ "0|-|-|repeat:3";
+          shared10 @ "0|-|-|repeat:4";
+          shared10 @ "0|-|-|repeat:5";
+          shared10 @ "0|-|-|repeat:6";
+          shared10 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|1693:1743|8|" from 0 to 8;
+        }
+      }
+    in let shared12 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@g5@1/2;1/2;1/2@@|4294967295:4294967295|1801:1808|9|" from 0 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|1809:1816|9|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|1817:1824|9|" from 3/4 to 1;
+      }
+    in let shared13 = overlay {
+        sequence {
+          shared12 @ "0|-|-|repeat:0";
+          shared12 @ "0|-|-|repeat:1";
+          shared12 @ "0|-|-|repeat:2"
+        };
+        timeline 3 {
+          occurrence "voice@4294967295@4294967295|repeat@3|4294967295:4294967295|1785:1826|9|" from 0 to 3;
+        }
+      }
+    in let shared14 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@g4@1/4;1/4;1/4@@|4294967295:4294967295|1887:1894|10|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@e5@1/2;1/2;1/2@@|4294967295:4294967295|1895:1902|10|" from 1/4 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|1903:1910|10|" from 3/4 to 1;
+      }
+    in let shared15 = overlay {
+        sequence {
+          shared14 @ "0|-|-|repeat:0";
+          shared14 @ "0|-|-|repeat:1";
+          shared14 @ "0|-|-|repeat:2";
+          shared14 @ "0|-|-|repeat:3";
+          shared14 @ "0|-|-|repeat:4";
+          shared14 @ "0|-|-|repeat:5";
+          shared14 @ "0|-|-|repeat:6";
+          shared14 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|1870:1912|10|" from 0 to 8;
+        }
+      }
+    in let shared16 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@c5@1/16;1/16;1/16@@|4294967295:4294967295|1973:1981|11|" from 0 to 1/16;
+        occurrence "voice@4294967295@4294967295|note@e5@1/16;1/16;1/16@@|4294967295:4294967295|1982:1990|11|" from 1/16 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@g5@1/16;1/16;1/16@@|4294967295:4294967295|1991:1999|11|" from 1/8 to 3/16;
+        occurrence "voice@4294967295@4294967295|note@c5@1/16;1/16;1/16@@|4294967295:4294967295|2000:2008|11|" from 3/16 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|2009:2016|11|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@g4@1/4;1/4;1/4@@|4294967295:4294967295|2017:2024|11|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|2025:2032|11|" from 3/4 to 1;
+      }
+    in let shared17 = overlay {
+        sequence {
+          shared16 @ "0|-|-|repeat:0";
+          shared16 @ "0|-|-|repeat:1";
+          shared16 @ "0|-|-|repeat:2";
+          shared16 @ "0|-|-|repeat:3";
+          shared16 @ "0|-|-|repeat:4";
+          shared16 @ "0|-|-|repeat:5";
+          shared16 @ "0|-|-|repeat:6";
+          shared16 @ "0|-|-|repeat:7";
+          shared16 @ "0|-|-|repeat:8";
+          shared16 @ "0|-|-|repeat:9";
+          shared16 @ "0|-|-|repeat:10";
+          shared16 @ "0|-|-|repeat:11"
+        };
+        timeline 12 {
+          occurrence "voice@4294967295@4294967295|repeat@12|4294967295:4294967295|1956:2034|11|" from 0 to 12;
+        }
+      }
+    in let shared18 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@c5@1;1/1;1/1@@|4294967295:4294967295|2094:2099|12|" from 0 to 1;
+      }
+    in let shared19 = overlay {
+        sequence {
+          shared18 @ "0|-|-|repeat:0";
+          shared18 @ "0|-|-|repeat:1";
+          shared18 @ "0|-|-|repeat:2";
+          shared18 @ "0|-|-|repeat:3";
+          shared18 @ "0|-|-|repeat:4";
+          shared18 @ "0|-|-|repeat:5";
+          shared18 @ "0|-|-|repeat:6";
+          shared18 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|2077:2101|12|" from 0 to 8;
+        }
+      }
+    in let shared20 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@e5@1/2;1/2;1/2@@|4294967295:4294967295|2159:2166|13|" from 0 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@c5@1/2;1/2;1/2@@|4294967295:4294967295|2167:2174|13|" from 1/2 to 1;
+      }
+    in let shared21 = overlay {
+        sequence {
+          shared20 @ "0|-|-|repeat:0";
+          shared20 @ "0|-|-|repeat:1";
+          shared20 @ "0|-|-|repeat:2";
+          shared20 @ "0|-|-|repeat:3";
+          shared20 @ "0|-|-|repeat:4";
+          shared20 @ "0|-|-|repeat:5";
+          shared20 @ "0|-|-|repeat:6";
+          shared20 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|2143:2176|13|" from 0 to 8;
+        }
+      }
+    in let shared22 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|2238:2245|14|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|2246:2253|14|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|2254:2261|14|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@e5@1/2;1/2;1/2@@|4294967295:4294967295|2262:2269|14|" from 1/2 to 1;
+      }
+    in let shared23 = overlay {
+        sequence {
+          shared22 @ "0|-|-|repeat:0";
+          shared22 @ "0|-|-|repeat:1";
+          shared22 @ "0|-|-|repeat:2";
+          shared22 @ "0|-|-|repeat:3";
+          shared22 @ "0|-|-|repeat:4";
+          shared22 @ "0|-|-|repeat:5";
+          shared22 @ "0|-|-|repeat:6"
+        };
+        timeline 7 {
+          occurrence "voice@4294967295@4294967295|repeat@7|4294967295:4294967295|2221:2271|14|" from 0 to 7;
+        }
+      }
+    in let shared24 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|2333:2340|15|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@g4@1/8;1/8;1/8@@|4294967295:4294967295|2341:2348|15|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|2349:2356|15|" from 1/4 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@c5@1/8;1/8;1/8@@|4294967295:4294967295|2357:2364|15|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@c5@1/8;1/8;1/8@@|4294967295:4294967295|2365:2372|15|" from 1/2 to 5/8;
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|2373:2380|15|" from 5/8 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|2381:2388|15|" from 3/4 to 7/8;
+        occurrence "voice@4294967295@4294967295|note@c5@1/8;1/8;1/8@@|4294967295:4294967295|2389:2396|15|" from 7/8 to 1;
+      }
+    in let shared25 = overlay {
+        sequence {
+          shared24 @ "0|-|-|repeat:0";
+          shared24 @ "0|-|-|repeat:1";
+          shared24 @ "0|-|-|repeat:2";
+          shared24 @ "0|-|-|repeat:3";
+          shared24 @ "0|-|-|repeat:4";
+          shared24 @ "0|-|-|repeat:5";
+          shared24 @ "0|-|-|repeat:6";
+          shared24 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|2316:2398|15|" from 0 to 8;
+        }
+      }
+    in let shared26 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@c5@1/8;1/8;1/8@@|4294967295:4294967295|2462:2469|16|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|2470:2477|16|" from 1/8 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|2478:2485|16|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|2486:2493|16|" from 1/2 to 5/8;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|2494:2501|16|" from 5/8 to 7/8;
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|2502:2509|16|" from 7/8 to 1;
+      }
+    in let shared27 = overlay {
+        sequence {
+          shared26 @ "0|-|-|repeat:0";
+          shared26 @ "0|-|-|repeat:1";
+          shared26 @ "0|-|-|repeat:2";
+          shared26 @ "0|-|-|repeat:3";
+          shared26 @ "0|-|-|repeat:4";
+          shared26 @ "0|-|-|repeat:5";
+          shared26 @ "0|-|-|repeat:6";
+          shared26 @ "0|-|-|repeat:7";
+          shared26 @ "0|-|-|repeat:8";
+          shared26 @ "0|-|-|repeat:9"
+        };
+        timeline 10 {
+          occurrence "voice@4294967295@4294967295|repeat@10|4294967295:4294967295|2445:2511|16|" from 0 to 10;
+        }
+      }
+    in let shared28 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@g5@3/4;3/4;3/4@@|4294967295:4294967295|2575:2582|17|" from 0 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|2583:2590|17|" from 3/4 to 1;
+      }
+    in let shared29 = overlay {
+        sequence {
+          shared28 @ "0|-|-|repeat:0";
+          shared28 @ "0|-|-|repeat:1";
+          shared28 @ "0|-|-|repeat:2";
+          shared28 @ "0|-|-|repeat:3";
+          shared28 @ "0|-|-|repeat:4";
+          shared28 @ "0|-|-|repeat:5";
+          shared28 @ "0|-|-|repeat:6";
+          shared28 @ "0|-|-|repeat:7";
+          shared28 @ "0|-|-|repeat:8";
+          shared28 @ "0|-|-|repeat:9";
+          shared28 @ "0|-|-|repeat:10";
+          shared28 @ "0|-|-|repeat:11";
+          shared28 @ "0|-|-|repeat:12";
+          shared28 @ "0|-|-|repeat:13"
+        };
+        timeline 14 {
+          occurrence "voice@4294967295@4294967295|repeat@14|4294967295:4294967295|2558:2592|17|" from 0 to 14;
+        }
+      }
+    in let shared30 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@fs5@1/4;1/4;1/4@@|4294967295:4294967295|2654:2662|18|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@a4@1/8;1/8;1/8@@|4294967295:4294967295|2663:2670|18|" from 1/4 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|2671:2678|18|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@e5@1/2;1/2;1/2@@|4294967295:4294967295|2679:2686|18|" from 1/2 to 1;
+      }
+    in let shared31 = overlay {
+        sequence {
+          shared30 @ "0|-|-|repeat:0";
+          shared30 @ "0|-|-|repeat:1";
+          shared30 @ "0|-|-|repeat:2";
+          shared30 @ "0|-|-|repeat:3";
+          shared30 @ "0|-|-|repeat:4"
+        };
+        timeline 5 {
+          occurrence "voice@4294967295@4294967295|repeat@5|4294967295:4294967295|2638:2688|18|" from 0 to 5;
+        }
+      }
+    in let shared32 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@e5@1/16;1/16;1/16@@|4294967295:4294967295|2751:2759|19|" from 0 to 1/16;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/16;1/16;1/16@@|4294967295:4294967295|2760:2769|19|" from 1/16 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|2770:2777|19|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|2778:2785|19|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@c5@1/2;1/2;1/2@@|4294967295:4294967295|2786:2793|19|" from 1/2 to 1;
+      }
+    in let shared33 = overlay {
+        sequence {
+          shared32 @ "0|-|-|repeat:0";
+          shared32 @ "0|-|-|repeat:1";
+          shared32 @ "0|-|-|repeat:2";
+          shared32 @ "0|-|-|repeat:3";
+          shared32 @ "0|-|-|repeat:4";
+          shared32 @ "0|-|-|repeat:5";
+          shared32 @ "0|-|-|repeat:6";
+          shared32 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|2734:2795|19|" from 0 to 8;
+        }
+      }
+    in let shared34 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|2860:2867|20|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|2868:2875|20|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/4;1/4;1/4@@|4294967295:4294967295|2876:2884|20|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@a4@1/4;1/4;1/4@@|4294967295:4294967295|2885:2892|20|" from 3/4 to 1;
+      }
+    in let shared35 = overlay {
+        sequence {
+          shared34 @ "0|-|-|repeat:0";
+          shared34 @ "0|-|-|repeat:1";
+          shared34 @ "0|-|-|repeat:2";
+          shared34 @ "0|-|-|repeat:3";
+          shared34 @ "0|-|-|repeat:4";
+          shared34 @ "0|-|-|repeat:5";
+          shared34 @ "0|-|-|repeat:6";
+          shared34 @ "0|-|-|repeat:7";
+          shared34 @ "0|-|-|repeat:8";
+          shared34 @ "0|-|-|repeat:9";
+          shared34 @ "0|-|-|repeat:10";
+          shared34 @ "0|-|-|repeat:11"
+        };
+        timeline 12 {
+          occurrence "voice@4294967295@4294967295|repeat@12|4294967295:4294967295|2843:2894|20|" from 0 to 12;
+        }
+      }
+    in let shared36 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@a4@1/2;1/2;1/2@@|4294967295:4294967295|2958:2965|21|" from 0 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|2966:2973|21|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|2974:2981|21|" from 3/4 to 1;
+      }
+    in let shared37 = overlay {
+        sequence {
+          shared36 @ "0|-|-|repeat:0";
+          shared36 @ "0|-|-|repeat:1";
+          shared36 @ "0|-|-|repeat:2";
+          shared36 @ "0|-|-|repeat:3";
+          shared36 @ "0|-|-|repeat:4";
+          shared36 @ "0|-|-|repeat:5";
+          shared36 @ "0|-|-|repeat:6"
+        };
+        timeline 7 {
+          occurrence "voice@4294967295@4294967295|repeat@7|4294967295:4294967295|2941:2983|21|" from 0 to 7;
+        }
+      }
+    in let shared38 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@fs5@1/4;1/4;1/4@@|4294967295:4294967295|3047:3055|22|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/2;1/2;1/2@@|4294967295:4294967295|3056:3063|22|" from 1/4 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|3064:3071|22|" from 3/4 to 1;
+      }
+    in let shared39 = overlay {
+        sequence {
+          shared38 @ "0|-|-|repeat:0";
+          shared38 @ "0|-|-|repeat:1";
+          shared38 @ "0|-|-|repeat:2";
+          shared38 @ "0|-|-|repeat:3";
+          shared38 @ "0|-|-|repeat:4";
+          shared38 @ "0|-|-|repeat:5";
+          shared38 @ "0|-|-|repeat:6";
+          shared38 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|3030:3073|22|" from 0 to 8;
+        }
+      }
+    in let shared40 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@c5@1/16;1/16;1/16@@|4294967295:4294967295|3135:3143|23|" from 0 to 1/16;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/16;1/16;1/16@@|4294967295:4294967295|3144:3153|23|" from 1/16 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@a4@1/16;1/16;1/16@@|4294967295:4294967295|3154:3162|23|" from 1/8 to 3/16;
+        occurrence "voice@4294967295@4294967295|note@g5@1/16;1/16;1/16@@|4294967295:4294967295|3163:3171|23|" from 3/16 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|3172:3179|23|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/4;1/4;1/4@@|4294967295:4294967295|3180:3188|23|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|3189:3196|23|" from 3/4 to 1;
+      }
+    in let shared41 = overlay {
+        sequence {
+          shared40 @ "0|-|-|repeat:0";
+          shared40 @ "0|-|-|repeat:1";
+          shared40 @ "0|-|-|repeat:2";
+          shared40 @ "0|-|-|repeat:3"
+        };
+        timeline 4 {
+          occurrence "voice@4294967295@4294967295|repeat@4|4294967295:4294967295|3118:3198|23|" from 0 to 4;
+        }
+      }
+    in let shared42 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@g5@1;1/1;1/1@@|4294967295:4294967295|3263:3268|24|" from 0 to 1;
+      }
+    in let shared43 = overlay {
+        sequence {
+          shared42 @ "0|-|-|repeat:0";
+          shared42 @ "0|-|-|repeat:1";
+          shared42 @ "0|-|-|repeat:2";
+          shared42 @ "0|-|-|repeat:3";
+          shared42 @ "0|-|-|repeat:4";
+          shared42 @ "0|-|-|repeat:5"
+        };
+        timeline 6 {
+          occurrence "voice@4294967295@4294967295|repeat@6|4294967295:4294967295|3247:3270|24|" from 0 to 6;
+        }
+      }
+    in let shared44 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@g5@1/2;1/2;1/2@@|4294967295:4294967295|3336:3343|25|" from 0 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@e5@1/2;1/2;1/2@@|4294967295:4294967295|3344:3351|25|" from 1/2 to 1;
+      }
+    in let shared45 = overlay {
+        sequence {
+          shared44 @ "0|-|-|repeat:0";
+          shared44 @ "0|-|-|repeat:1";
+          shared44 @ "0|-|-|repeat:2";
+          shared44 @ "0|-|-|repeat:3";
+          shared44 @ "0|-|-|repeat:4";
+          shared44 @ "0|-|-|repeat:5";
+          shared44 @ "0|-|-|repeat:6";
+          shared44 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|3319:3353|25|" from 0 to 8;
+        }
+      }
+    in let shared46 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@fs5@1/8;1/8;1/8@@|4294967295:4294967295|3421:3429|26|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@a4@1/8;1/8;1/8@@|4294967295:4294967295|3430:3437|26|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|3438:3445|26|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@e5@1/2;1/2;1/2@@|4294967295:4294967295|3446:3453|26|" from 1/2 to 1;
+      }
+    in let shared47 = overlay {
+        sequence {
+          shared46 @ "0|-|-|repeat:0";
+          shared46 @ "0|-|-|repeat:1";
+          shared46 @ "0|-|-|repeat:2";
+          shared46 @ "0|-|-|repeat:3";
+          shared46 @ "0|-|-|repeat:4";
+          shared46 @ "0|-|-|repeat:5";
+          shared46 @ "0|-|-|repeat:6";
+          shared46 @ "0|-|-|repeat:7";
+          shared46 @ "0|-|-|repeat:8";
+          shared46 @ "0|-|-|repeat:9"
+        };
+        timeline 10 {
+          occurrence "voice@4294967295@4294967295|repeat@10|4294967295:4294967295|3404:3455|26|" from 0 to 10;
+        }
+      }
+    in let shared48 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|3522:3529|27|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/8;1/8;1/8@@|4294967295:4294967295|3530:3538|27|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|3539:3546|27|" from 1/4 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|3547:3554|27|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@c5@1/8;1/8;1/8@@|4294967295:4294967295|3555:3562|27|" from 1/2 to 5/8;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/8;1/8;1/8@@|4294967295:4294967295|3563:3571|27|" from 5/8 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@a4@1/8;1/8;1/8@@|4294967295:4294967295|3572:3579|27|" from 3/4 to 7/8;
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|3580:3587|27|" from 7/8 to 1;
+      }
+    in let shared49 = overlay {
+        sequence {
+          shared48 @ "0|-|-|repeat:0";
+          shared48 @ "0|-|-|repeat:1";
+          shared48 @ "0|-|-|repeat:2";
+          shared48 @ "0|-|-|repeat:3";
+          shared48 @ "0|-|-|repeat:4";
+          shared48 @ "0|-|-|repeat:5";
+          shared48 @ "0|-|-|repeat:6";
+          shared48 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|3505:3589|27|" from 0 to 8;
+        }
+      }
+    in let shared50 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|3655:3662|28|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|3663:3670|28|" from 1/8 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/8;1/8;1/8@@|4294967295:4294967295|3671:3679|28|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@a4@1/8;1/8;1/8@@|4294967295:4294967295|3680:3687|28|" from 1/2 to 5/8;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|3688:3695|28|" from 5/8 to 7/8;
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|3696:3703|28|" from 7/8 to 1;
+      }
+    in let shared51 = overlay {
+        sequence {
+          shared50 @ "0|-|-|repeat:0";
+          shared50 @ "0|-|-|repeat:1";
+          shared50 @ "0|-|-|repeat:2";
+          shared50 @ "0|-|-|repeat:3";
+          shared50 @ "0|-|-|repeat:4";
+          shared50 @ "0|-|-|repeat:5";
+          shared50 @ "0|-|-|repeat:6";
+          shared50 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|3639:3705|28|" from 0 to 8;
+        }
+      }
+    in let shared52 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@a4@3/4;3/4;3/4@@|4294967295:4294967295|3771:3778|29|" from 0 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|3779:3786|29|" from 3/4 to 1;
+      }
+    in let shared53 = overlay {
+        sequence {
+          shared52 @ "0|-|-|repeat:0";
+          shared52 @ "0|-|-|repeat:1";
+          shared52 @ "0|-|-|repeat:2";
+          shared52 @ "0|-|-|repeat:3";
+          shared52 @ "0|-|-|repeat:4";
+          shared52 @ "0|-|-|repeat:5";
+          shared52 @ "0|-|-|repeat:6";
+          shared52 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|3754:3788|29|" from 0 to 8;
+        }
+      }
+    in let shared54 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@fs5@1/4;1/4;1/4@@|4294967295:4294967295|3856:3864|30|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|3865:3872|30|" from 1/4 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|3873:3880|30|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@c5@1/2;1/2;1/2@@|4294967295:4294967295|3881:3888|30|" from 1/2 to 1;
+      }
+    in let shared55 = overlay {
+        sequence {
+          shared54 @ "0|-|-|repeat:0";
+          shared54 @ "0|-|-|repeat:1";
+          shared54 @ "0|-|-|repeat:2"
+        };
+        timeline 3 {
+          occurrence "voice@4294967295@4294967295|repeat@3|4294967295:4294967295|3839:3890|30|" from 0 to 3;
+        }
+      }
+    in let shared56 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@c5@1/16;1/16;1/16@@|4294967295:4294967295|3958:3966|31|" from 0 to 1/16;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/16;1/16;1/16@@|4294967295:4294967295|3967:3976|31|" from 1/16 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@a4@1/8;1/8;1/8@@|4294967295:4294967295|3977:3984|31|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|3985:3992|31|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@e5@1/2;1/2;1/2@@|4294967295:4294967295|3993:4000|31|" from 1/2 to 1;
+      }
+    in let shared57 = overlay {
+        sequence {
+          shared56 @ "0|-|-|repeat:0";
+          shared56 @ "0|-|-|repeat:1";
+          shared56 @ "0|-|-|repeat:2";
+          shared56 @ "0|-|-|repeat:3";
+          shared56 @ "0|-|-|repeat:4";
+          shared56 @ "0|-|-|repeat:5";
+          shared56 @ "0|-|-|repeat:6";
+          shared56 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|3941:4002|31|" from 0 to 8;
+        }
+      }
+    in let shared58 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@d5@1/4;1/4;1/4@@|4294967295:4294967295|4069:4076|32|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|4077:4084|32|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@b5@1/4;1/4;1/4@@|4294967295:4294967295|4085:4092|32|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@a5@1/4;1/4;1/4@@|4294967295:4294967295|4093:4100|32|" from 3/4 to 1;
+      }
+    in let shared59 = overlay {
+        sequence {
+          shared58 @ "0|-|-|repeat:0";
+          shared58 @ "0|-|-|repeat:1";
+          shared58 @ "0|-|-|repeat:2";
+          shared58 @ "0|-|-|repeat:3";
+          shared58 @ "0|-|-|repeat:4";
+          shared58 @ "0|-|-|repeat:5"
+        };
+        timeline 6 {
+          occurrence "voice@4294967295@4294967295|repeat@6|4294967295:4294967295|4052:4102|32|" from 0 to 6;
+        }
+      }
+    in let shared60 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@a5@1/2;1/2;1/2@@|4294967295:4294967295|4163:4170|33|" from 0 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|4171:4178|33|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/4;1/4;1/4@@|4294967295:4294967295|4179:4187|33|" from 3/4 to 1;
+      }
+    in let shared61 = overlay {
+        sequence {
+          shared60 @ "0|-|-|repeat:0";
+          shared60 @ "0|-|-|repeat:1";
+          shared60 @ "0|-|-|repeat:2";
+          shared60 @ "0|-|-|repeat:3";
+          shared60 @ "0|-|-|repeat:4";
+          shared60 @ "0|-|-|repeat:5";
+          shared60 @ "0|-|-|repeat:6";
+          shared60 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|4147:4189|33|" from 0 to 8;
+        }
+      }
+    in let shared62 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|4255:4262|34|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@b4@1/2;1/2;1/2@@|4294967295:4294967295|4263:4270|34|" from 1/4 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@d5@1/4;1/4;1/4@@|4294967295:4294967295|4271:4278|34|" from 3/4 to 1;
+      }
+    in let shared63 = overlay {
+        sequence {
+          shared62 @ "0|-|-|repeat:0";
+          shared62 @ "0|-|-|repeat:1";
+          shared62 @ "0|-|-|repeat:2";
+          shared62 @ "0|-|-|repeat:3"
+        };
+        timeline 4 {
+          occurrence "voice@4294967295@4294967295|repeat@4|4294967295:4294967295|4238:4280|34|" from 0 to 4;
+        }
+      }
+    in let shared64 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@g5@1/16;1/16;1/16@@|4294967295:4294967295|4346:4354|35|" from 0 to 1/16;
+        occurrence "voice@4294967295@4294967295|note@b5@1/16;1/16;1/16@@|4294967295:4294967295|4355:4363|35|" from 1/16 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@a5@1/16;1/16;1/16@@|4294967295:4294967295|4364:4372|35|" from 1/8 to 3/16;
+        occurrence "voice@4294967295@4294967295|note@g5@1/16;1/16;1/16@@|4294967295:4294967295|4373:4381|35|" from 3/16 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/4;1/4;1/4@@|4294967295:4294967295|4382:4390|35|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|4391:4398|35|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@b4@1/4;1/4;1/4@@|4294967295:4294967295|4399:4406|35|" from 3/4 to 1;
+      }
+    in let shared65 = overlay {
+        sequence {
+          shared64 @ "0|-|-|repeat:0";
+          shared64 @ "0|-|-|repeat:1";
+          shared64 @ "0|-|-|repeat:2";
+          shared64 @ "0|-|-|repeat:3";
+          shared64 @ "0|-|-|repeat:4"
+        };
+        timeline 5 {
+          occurrence "voice@4294967295@4294967295|repeat@5|4294967295:4294967295|4329:4408|35|" from 0 to 5;
+        }
+      }
+    in let shared66 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@g5@1;1/1;1/1@@|4294967295:4294967295|4476:4481|36|" from 0 to 1;
+      }
+    in let shared67 = overlay {
+        sequence {
+          shared66 @ "0|-|-|repeat:0";
+          shared66 @ "0|-|-|repeat:1";
+          shared66 @ "0|-|-|repeat:2";
+          shared66 @ "0|-|-|repeat:3";
+          shared66 @ "0|-|-|repeat:4";
+          shared66 @ "0|-|-|repeat:5";
+          shared66 @ "0|-|-|repeat:6";
+          shared66 @ "0|-|-|repeat:7";
+          shared66 @ "0|-|-|repeat:8";
+          shared66 @ "0|-|-|repeat:9";
+          shared66 @ "0|-|-|repeat:10"
+        };
+        timeline 11 {
+          occurrence "voice@4294967295@4294967295|repeat@11|4294967295:4294967295|4459:4483|36|" from 0 to 11;
+        }
+      }
+    in let shared68 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@b4@1/2;1/2;1/2@@|4294967295:4294967295|4550:4557|37|" from 0 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@d5@1/2;1/2;1/2@@|4294967295:4294967295|4558:4565|37|" from 1/2 to 1;
+      }
+    in let shared69 = overlay {
+        sequence {
+          shared68 @ "0|-|-|repeat:0";
+          shared68 @ "0|-|-|repeat:1";
+          shared68 @ "0|-|-|repeat:2";
+          shared68 @ "0|-|-|repeat:3";
+          shared68 @ "0|-|-|repeat:4";
+          shared68 @ "0|-|-|repeat:5"
+        };
+        timeline 6 {
+          occurrence "voice@4294967295@4294967295|repeat@6|4294967295:4294967295|4533:4567|37|" from 0 to 6;
+        }
+      }
+    in let shared70 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@b5@1/8;1/8;1/8@@|4294967295:4294967295|4634:4641|38|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@a5@1/8;1/8;1/8@@|4294967295:4294967295|4642:4649|38|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|4650:4657|38|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/2;1/2;1/2@@|4294967295:4294967295|4658:4666|38|" from 1/2 to 1;
+      }
+    in let shared71 = overlay {
+        sequence {
+          shared70 @ "0|-|-|repeat:0";
+          shared70 @ "0|-|-|repeat:1";
+          shared70 @ "0|-|-|repeat:2";
+          shared70 @ "0|-|-|repeat:3";
+          shared70 @ "0|-|-|repeat:4"
+        };
+        timeline 5 {
+          occurrence "voice@4294967295@4294967295|repeat@5|4294967295:4294967295|4617:4668|38|" from 0 to 5;
+        }
+      }
+    in let shared72 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@fs5@1/8;1/8;1/8@@|4294967295:4294967295|4733:4741|39|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@e5@1/8;1/8;1/8@@|4294967295:4294967295|4742:4749|39|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@b4@1/8;1/8;1/8@@|4294967295:4294967295|4750:4757|39|" from 1/4 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@d5@1/8;1/8;1/8@@|4294967295:4294967295|4758:4765|39|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|4766:4773|39|" from 1/2 to 5/8;
+        occurrence "voice@4294967295@4294967295|note@b5@1/8;1/8;1/8@@|4294967295:4294967295|4774:4781|39|" from 5/8 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@a5@1/8;1/8;1/8@@|4294967295:4294967295|4782:4789|39|" from 3/4 to 7/8;
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|4790:4797|39|" from 7/8 to 1;
+      }
+    in let shared73 = overlay {
+        sequence {
+          shared72 @ "0|-|-|repeat:0";
+          shared72 @ "0|-|-|repeat:1";
+          shared72 @ "0|-|-|repeat:2";
+          shared72 @ "0|-|-|repeat:3";
+          shared72 @ "0|-|-|repeat:4";
+          shared72 @ "0|-|-|repeat:5";
+          shared72 @ "0|-|-|repeat:6"
+        };
+        timeline 7 {
+          occurrence "voice@4294967295@4294967295|repeat@7|4294967295:4294967295|4717:4799|39|" from 0 to 7;
+        }
+      }
+    in let shared74 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@d5@1/8;1/8;1/8@@|4294967295:4294967295|4867:4874|40|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|4875:4882|40|" from 1/8 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@b5@1/8;1/8;1/8@@|4294967295:4294967295|4883:4890|40|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@a5@1/8;1/8;1/8@@|4294967295:4294967295|4891:4898|40|" from 1/2 to 5/8;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|4899:4906|40|" from 5/8 to 7/8;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/8;1/8;1/8@@|4294967295:4294967295|4907:4915|40|" from 7/8 to 1;
+      }
+    in let shared75 = overlay {
+        sequence {
+          shared74 @ "0|-|-|repeat:0";
+          shared74 @ "0|-|-|repeat:1";
+          shared74 @ "0|-|-|repeat:2";
+          shared74 @ "0|-|-|repeat:3";
+          shared74 @ "0|-|-|repeat:4";
+          shared74 @ "0|-|-|repeat:5";
+          shared74 @ "0|-|-|repeat:6";
+          shared74 @ "0|-|-|repeat:7";
+          shared74 @ "0|-|-|repeat:8"
+        };
+        timeline 9 {
+          occurrence "voice@4294967295@4294967295|repeat@9|4294967295:4294967295|4850:4917|40|" from 0 to 9;
+        }
+      }
+    in let shared76 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@a5@3/4;3/4;3/4@@|4294967295:4294967295|4985:4992|41|" from 0 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|4993:5000|41|" from 3/4 to 1;
+      }
+    in let shared77 = overlay {
+        sequence {
+          shared76 @ "0|-|-|repeat:0";
+          shared76 @ "0|-|-|repeat:1";
+          shared76 @ "0|-|-|repeat:2";
+          shared76 @ "0|-|-|repeat:3";
+          shared76 @ "0|-|-|repeat:4";
+          shared76 @ "0|-|-|repeat:5";
+          shared76 @ "0|-|-|repeat:6";
+          shared76 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|4968:5002|41|" from 0 to 8;
+        }
+      }
+    in let shared78 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|5069:5076|42|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@b4@1/8;1/8;1/8@@|4294967295:4294967295|5077:5084|42|" from 1/4 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@d5@1/8;1/8;1/8@@|4294967295:4294967295|5085:5092|42|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@g5@1/2;1/2;1/2@@|4294967295:4294967295|5093:5100|42|" from 1/2 to 1;
+      }
+    in let shared79 = overlay {
+        sequence {
+          shared78 @ "0|-|-|repeat:0";
+          shared78 @ "0|-|-|repeat:1";
+          shared78 @ "0|-|-|repeat:2";
+          shared78 @ "0|-|-|repeat:3";
+          shared78 @ "0|-|-|repeat:4";
+          shared78 @ "0|-|-|repeat:5";
+          shared78 @ "0|-|-|repeat:6"
+        };
+        timeline 7 {
+          occurrence "voice@4294967295@4294967295|repeat@7|4294967295:4294967295|5052:5102|42|" from 0 to 7;
+        }
+      }
+    in let shared80 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@g5@1/16;1/16;1/16@@|4294967295:4294967295|5162:5170|43|" from 0 to 1/16;
+        occurrence "voice@4294967295@4294967295|note@b5@1/16;1/16;1/16@@|4294967295:4294967295|5171:5179|43|" from 1/16 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@a5@1/8;1/8;1/8@@|4294967295:4294967295|5180:5187|43|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|5188:5195|43|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/2;1/2;1/2@@|4294967295:4294967295|5196:5204|43|" from 1/2 to 1;
+      }
+    in let shared81 = overlay {
+        sequence {
+          shared80 @ "0|-|-|repeat:0";
+          shared80 @ "0|-|-|repeat:1";
+          shared80 @ "0|-|-|repeat:2";
+          shared80 @ "0|-|-|repeat:3";
+          shared80 @ "0|-|-|repeat:4";
+          shared80 @ "0|-|-|repeat:5";
+          shared80 @ "0|-|-|repeat:6"
+        };
+        timeline 7 {
+          occurrence "voice@4294967295@4294967295|repeat@7|4294967295:4294967295|5146:5206|43|" from 0 to 7;
+        }
+      }
+    in let shared82 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|5271:5278|44|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@fs5@1/4;1/4;1/4@@|4294967295:4294967295|5279:5287|44|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@e5@1/4;1/4;1/4@@|4294967295:4294967295|5288:5295|44|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@b4@1/4;1/4;1/4@@|4294967295:4294967295|5296:5303|44|" from 3/4 to 1;
+      }
+    in let shared83 = overlay {
+        sequence {
+          shared82 @ "0|-|-|repeat:0";
+          shared82 @ "0|-|-|repeat:1";
+          shared82 @ "0|-|-|repeat:2";
+          shared82 @ "0|-|-|repeat:3";
+          shared82 @ "0|-|-|repeat:4";
+          shared82 @ "0|-|-|repeat:5";
+          shared82 @ "0|-|-|repeat:6";
+          shared82 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|5254:5305|44|" from 0 to 8;
+        }
+      }
+    in let shared84 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@d5@1/2;1/2;1/2@@|4294967295:4294967295|5370:5377|45|" from 0 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@bf4@1/4;1/4;1/4@@|4294967295:4294967295|5378:5386|45|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|5387:5394|45|" from 3/4 to 1;
+      }
+    in let shared85 = overlay {
+        sequence {
+          shared84 @ "0|-|-|repeat:0";
+          shared84 @ "0|-|-|repeat:1";
+          shared84 @ "0|-|-|repeat:2";
+          shared84 @ "0|-|-|repeat:3"
+        };
+        timeline 4 {
+          occurrence "voice@4294967295@4294967295|repeat@4|4294967295:4294967295|5353:5396|45|" from 0 to 4;
+        }
+      }
+    in let shared86 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@f5@1/4;1/4;1/4@@|4294967295:4294967295|5463:5470|46|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@bf4@1/2;1/2;1/2@@|4294967295:4294967295|5471:5479|46|" from 1/4 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@c5@1/4;1/4;1/4@@|4294967295:4294967295|5480:5487|46|" from 3/4 to 1;
+      }
+    in let shared87 = overlay {
+        sequence {
+          shared86 @ "0|-|-|repeat:0";
+          shared86 @ "0|-|-|repeat:1";
+          shared86 @ "0|-|-|repeat:2";
+          shared86 @ "0|-|-|repeat:3";
+          shared86 @ "0|-|-|repeat:4";
+          shared86 @ "0|-|-|repeat:5";
+          shared86 @ "0|-|-|repeat:6"
+        };
+        timeline 7 {
+          occurrence "voice@4294967295@4294967295|repeat@7|4294967295:4294967295|5446:5489|46|" from 0 to 7;
+        }
+      }
+    in let shared88 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@g4@1/16;1/16;1/16@@|4294967295:4294967295|5555:5563|47|" from 0 to 1/16;
+        occurrence "voice@4294967295@4294967295|note@f5@1/16;1/16;1/16@@|4294967295:4294967295|5564:5572|47|" from 1/16 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@d5@1/16;1/16;1/16@@|4294967295:4294967295|5573:5581|47|" from 1/8 to 3/16;
+        occurrence "voice@4294967295@4294967295|note@bf4@1/16;1/16;1/16@@|4294967295:4294967295|5582:5591|47|" from 3/16 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|5592:5599|47|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@f5@1/4;1/4;1/4@@|4294967295:4294967295|5600:5607|47|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@bf4@1/4;1/4;1/4@@|4294967295:4294967295|5608:5616|47|" from 3/4 to 1;
+      }
+    in let shared89 = overlay {
+        sequence {
+          shared88 @ "0|-|-|repeat:0";
+          shared88 @ "0|-|-|repeat:1";
+          shared88 @ "0|-|-|repeat:2";
+          shared88 @ "0|-|-|repeat:3";
+          shared88 @ "0|-|-|repeat:4";
+          shared88 @ "0|-|-|repeat:5";
+          shared88 @ "0|-|-|repeat:6";
+          shared88 @ "0|-|-|repeat:7";
+          shared88 @ "0|-|-|repeat:8";
+          shared88 @ "0|-|-|repeat:9";
+          shared88 @ "0|-|-|repeat:10";
+          shared88 @ "0|-|-|repeat:11";
+          shared88 @ "0|-|-|repeat:12"
+        };
+        timeline 13 {
+          occurrence "voice@4294967295@4294967295|repeat@13|4294967295:4294967295|5538:5618|47|" from 0 to 13;
+        }
+      }
+    in let shared90 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@bf4@1;1/1;1/1@@|4294967295:4294967295|5683:5689|48|" from 0 to 1;
+      }
+    in let shared91 = overlay {
+        sequence {
+          shared90 @ "0|-|-|repeat:0";
+          shared90 @ "0|-|-|repeat:1"
+        };
+        timeline 2 {
+          occurrence "voice@4294967295@4294967295|repeat@2|4294967295:4294967295|5667:5691|48|" from 0 to 2;
+        }
+      }
+    in let shared92 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@bf4@1/2;1/2;1/2@@|4294967295:4294967295|5756:5764|49|" from 0 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@c5@1/2;1/2;1/2@@|4294967295:4294967295|5765:5772|49|" from 1/2 to 1;
+      }
+    in let shared93 = overlay {
+        sequence {
+          shared92 @ "0|-|-|repeat:0";
+          shared92 @ "0|-|-|repeat:1";
+          shared92 @ "0|-|-|repeat:2";
+          shared92 @ "0|-|-|repeat:3";
+          shared92 @ "0|-|-|repeat:4";
+          shared92 @ "0|-|-|repeat:5";
+          shared92 @ "0|-|-|repeat:6"
+        };
+        timeline 7 {
+          occurrence "voice@4294967295@4294967295|repeat@7|4294967295:4294967295|5739:5774|49|" from 0 to 7;
+        }
+      }
+    in let shared94 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@f5@1/8;1/8;1/8@@|4294967295:4294967295|5841:5848|50|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@d5@1/8;1/8;1/8@@|4294967295:4294967295|5849:5856|50|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@bf4@1/4;1/4;1/4@@|4294967295:4294967295|5857:5865|50|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@g5@1/2;1/2;1/2@@|4294967295:4294967295|5866:5873|50|" from 1/2 to 1;
+      }
+    in let shared95 = overlay {
+        sequence {
+          shared94 @ "0|-|-|repeat:0";
+          shared94 @ "0|-|-|repeat:1";
+          shared94 @ "0|-|-|repeat:2";
+          shared94 @ "0|-|-|repeat:3";
+          shared94 @ "0|-|-|repeat:4";
+          shared94 @ "0|-|-|repeat:5";
+          shared94 @ "0|-|-|repeat:6";
+          shared94 @ "0|-|-|repeat:7";
+          shared94 @ "0|-|-|repeat:8";
+          shared94 @ "0|-|-|repeat:9"
+        };
+        timeline 10 {
+          occurrence "voice@4294967295@4294967295|repeat@10|4294967295:4294967295|5824:5875|50|" from 0 to 10;
+        }
+      }
+    in let shared96 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|5942:5949|51|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@f5@1/8;1/8;1/8@@|4294967295:4294967295|5950:5957|51|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@bf4@1/8;1/8;1/8@@|4294967295:4294967295|5958:5966|51|" from 1/4 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@c5@1/8;1/8;1/8@@|4294967295:4294967295|5967:5974|51|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@g4@1/8;1/8;1/8@@|4294967295:4294967295|5975:5982|51|" from 1/2 to 5/8;
+        occurrence "voice@4294967295@4294967295|note@f5@1/8;1/8;1/8@@|4294967295:4294967295|5983:5990|51|" from 5/8 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@d5@1/8;1/8;1/8@@|4294967295:4294967295|5991:5998|51|" from 3/4 to 7/8;
+        occurrence "voice@4294967295@4294967295|note@bf4@1/8;1/8;1/8@@|4294967295:4294967295|5999:6007|51|" from 7/8 to 1;
+      }
+    in let shared97 = overlay {
+        sequence {
+          shared96 @ "0|-|-|repeat:0";
+          shared96 @ "0|-|-|repeat:1";
+          shared96 @ "0|-|-|repeat:2"
+        };
+        timeline 3 {
+          occurrence "voice@4294967295@4294967295|repeat@3|4294967295:4294967295|5925:6009|51|" from 0 to 3;
+        }
+      }
+    in let shared98 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@c5@1/8;1/8;1/8@@|4294967295:4294967295|6075:6082|52|" from 0 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@g4@1/4;1/4;1/4@@|4294967295:4294967295|6083:6090|52|" from 1/8 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@f5@1/8;1/8;1/8@@|4294967295:4294967295|6091:6098|52|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@d5@1/8;1/8;1/8@@|4294967295:4294967295|6099:6106|52|" from 1/2 to 5/8;
+        occurrence "voice@4294967295@4294967295|note@bf4@1/4;1/4;1/4@@|4294967295:4294967295|6107:6115|52|" from 5/8 to 7/8;
+        occurrence "voice@4294967295@4294967295|note@g5@1/8;1/8;1/8@@|4294967295:4294967295|6116:6123|52|" from 7/8 to 1;
+      }
+    in let shared99 = overlay {
+        sequence {
+          shared98 @ "0|-|-|repeat:0";
+          shared98 @ "0|-|-|repeat:1";
+          shared98 @ "0|-|-|repeat:2";
+          shared98 @ "0|-|-|repeat:3";
+          shared98 @ "0|-|-|repeat:4";
+          shared98 @ "0|-|-|repeat:5";
+          shared98 @ "0|-|-|repeat:6";
+          shared98 @ "0|-|-|repeat:7";
+          shared98 @ "0|-|-|repeat:8";
+          shared98 @ "0|-|-|repeat:9";
+          shared98 @ "0|-|-|repeat:10";
+          shared98 @ "0|-|-|repeat:11";
+          shared98 @ "0|-|-|repeat:12"
+        };
+        timeline 13 {
+          occurrence "voice@4294967295@4294967295|repeat@13|4294967295:4294967295|6058:6125|52|" from 0 to 13;
+        }
+      }
+    in let shared100 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@d5@3/4;3/4;3/4@@|4294967295:4294967295|6186:6193|53|" from 0 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@bf4@1/4;1/4;1/4@@|4294967295:4294967295|6194:6202|53|" from 3/4 to 1;
+      }
+    in let shared101 = overlay {
+        sequence {
+          shared100 @ "0|-|-|repeat:0";
+          shared100 @ "0|-|-|repeat:1";
+          shared100 @ "0|-|-|repeat:2";
+          shared100 @ "0|-|-|repeat:3";
+          shared100 @ "0|-|-|repeat:4";
+          shared100 @ "0|-|-|repeat:5";
+          shared100 @ "0|-|-|repeat:6";
+          shared100 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|6169:6204|53|" from 0 to 8;
+        }
+      }
+    in let shared102 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@f5@1/4;1/4;1/4@@|4294967295:4294967295|6268:6275|54|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@bf4@1/8;1/8;1/8@@|4294967295:4294967295|6276:6284|54|" from 1/4 to 3/8;
+        occurrence "voice@4294967295@4294967295|note@c5@1/8;1/8;1/8@@|4294967295:4294967295|6285:6292|54|" from 3/8 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@g4@1/2;1/2;1/2@@|4294967295:4294967295|6293:6300|54|" from 1/2 to 1;
+      }
+    in let shared103 = overlay {
+        sequence {
+          shared102 @ "0|-|-|repeat:0";
+          shared102 @ "0|-|-|repeat:1";
+          shared102 @ "0|-|-|repeat:2";
+          shared102 @ "0|-|-|repeat:3";
+          shared102 @ "0|-|-|repeat:4";
+          shared102 @ "0|-|-|repeat:5";
+          shared102 @ "0|-|-|repeat:6";
+          shared102 @ "0|-|-|repeat:7"
+        };
+        timeline 8 {
+          occurrence "voice@4294967295@4294967295|repeat@8|4294967295:4294967295|6252:6302|54|" from 0 to 8;
+        }
+      }
+    in let shared104 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@g4@1/16;1/16;1/16@@|4294967295:4294967295|6367:6375|55|" from 0 to 1/16;
+        occurrence "voice@4294967295@4294967295|note@f5@1/16;1/16;1/16@@|4294967295:4294967295|6376:6384|55|" from 1/16 to 1/8;
+        occurrence "voice@4294967295@4294967295|note@d5@1/8;1/8;1/8@@|4294967295:4294967295|6385:6392|55|" from 1/8 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@bf4@1/4;1/4;1/4@@|4294967295:4294967295|6393:6401|55|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@g5@1/2;1/2;1/2@@|4294967295:4294967295|6402:6409|55|" from 1/2 to 1;
+      }
+    in let shared105 = overlay {
+        sequence {
+          shared104 @ "0|-|-|repeat:0";
+          shared104 @ "0|-|-|repeat:1";
+          shared104 @ "0|-|-|repeat:2";
+          shared104 @ "0|-|-|repeat:3"
+        };
+        timeline 4 {
+          occurrence "voice@4294967295@4294967295|repeat@4|4294967295:4294967295|6350:6411|55|" from 0 to 4;
+        }
+      }
+    in let shared106 = timeline 1 {
+        occurrence "voice@4294967295@4294967295|note@bf4@1/4;1/4;1/4@@|4294967295:4294967295|6478:6486|56|" from 0 to 1/4;
+        occurrence "voice@4294967295@4294967295|note@g5@1/4;1/4;1/4@@|4294967295:4294967295|6487:6494|56|" from 1/4 to 1/2;
+        occurrence "voice@4294967295@4294967295|note@f5@1/4;1/4;1/4@@|4294967295:4294967295|6495:6502|56|" from 1/2 to 3/4;
+        occurrence "voice@4294967295@4294967295|note@bf4@1/4;1/4;1/4@@|4294967295:4294967295|6503:6511|56|" from 3/4 to 1;
+      }
+    in let shared107 = overlay {
+        sequence {
+          shared106 @ "0|-|-|repeat:0";
+          shared106 @ "0|-|-|repeat:1";
+          shared106 @ "0|-|-|repeat:2";
+          shared106 @ "0|-|-|repeat:3";
+          shared106 @ "0|-|-|repeat:4";
+          shared106 @ "0|-|-|repeat:5";
+          shared106 @ "0|-|-|repeat:6";
+          shared106 @ "0|-|-|repeat:7";
+          shared106 @ "0|-|-|repeat:8";
+          shared106 @ "0|-|-|repeat:9"
+        };
+        timeline 10 {
+          occurrence "voice@4294967295@4294967295|repeat@10|4294967295:4294967295|6461:6513|56|" from 0 to 10;
+        }
+      }
+    in overlay {
+      shared1 @ "0|6931:6948|voice@0@0|motif:6931\\\\:6948";
+      sequence {
+        shared3 @ "0|7037:7052|voice@1@0|motif:7037\\\\:7052";
+        shared5 @ "0|7069:7084|voice@1@0|motif:7069\\\\:7084";
+        shared7 @ "0|7101:7118|voice@1@0|motif:7101\\\\:7118";
+        shared9 @ "0|7135:7151|voice@1@0|motif:7135\\\\:7151";
+        shared11 @ "0|7168:7184|voice@1@0|motif:7168\\\\:7184";
+        shared13 @ "0|7201:7216|voice@1@0|motif:7201\\\\:7216";
+        shared15 @ "0|7233:7250|voice@1@0|motif:7233\\\\:7250";
+        shared17 @ "0|7267:7284|voice@1@0|motif:7267\\\\:7284";
+        shared19 @ "0|7301:7317|voice@1@0|motif:7301\\\\:7317";
+        shared21 @ "0|7334:7349|voice@1@0|motif:7334\\\\:7349";
+        shared23 @ "0|7366:7384|voice@1@0|motif:7366\\\\:7384";
+        shared25 @ "0|7401:7419|voice@1@0|motif:7401\\\\:7419";
+        shared27 @ "0|7436:7456|voice@1@0|motif:7436\\\\:7456";
+        shared29 @ "0|7473:7493|voice@1@0|motif:7473\\\\:7493";
+        shared31 @ "0|7510:7529|voice@1@0|motif:7510\\\\:7529";
+        shared33 @ "0|7546:7565|voice@1@0|motif:7546\\\\:7565";
+        shared35 @ "0|7582:7603|voice@1@0|motif:7582\\\\:7603";
+        shared37 @ "0|7620:7640|voice@1@0|motif:7620\\\\:7640";
+        shared39 @ "0|7657:7677|voice@1@0|motif:7657\\\\:7677";
+        shared41 @ "0|7694:7712|voice@1@0|motif:7694\\\\:7712";
+        shared43 @ "0|7729:7751|voice@1@0|motif:7729\\\\:7751";
+        shared45 @ "0|7768:7790|voice@1@0|motif:7768\\\\:7790";
+        shared47 @ "0|7807:7831|voice@1@0|motif:7807\\\\:7831";
+        shared49 @ "0|7848:7871|voice@1@0|motif:7848\\\\:7871";
+        shared51 @ "0|7888:7911|voice@1@0|motif:7888\\\\:7911";
+        shared53 @ "0|7928:7950|voice@1@0|motif:7928\\\\:7950";
+        shared55 @ "0|7967:7991|voice@1@0|motif:7967\\\\:7991";
+        shared57 @ "0|8008:8032|voice@1@0|motif:8008\\\\:8032";
+        shared59 @ "0|8049:8072|voice@1@0|motif:8049\\\\:8072";
+        shared61 @ "0|8089:8107|voice@1@0|motif:8089\\\\:8107";
+        shared63 @ "0|8124:8146|voice@1@0|motif:8124\\\\:8146";
+        shared65 @ "0|8163:8185|voice@1@0|motif:8163\\\\:8185";
+        shared67 @ "0|8202:8226|voice@1@0|motif:8202\\\\:8226";
+        shared69 @ "0|8243:8266|voice@1@0|motif:8243\\\\:8266";
+        shared71 @ "0|8283:8306|voice@1@0|motif:8283\\\\:8306";
+        shared73 @ "0|8323:8345|voice@1@0|motif:8323\\\\:8345";
+        shared75 @ "0|8362:8386|voice@1@0|motif:8362\\\\:8386";
+        shared77 @ "0|8403:8427|voice@1@0|motif:8403\\\\:8427";
+        shared79 @ "0|8444:8467|voice@1@0|motif:8444\\\\:8467";
+        shared81 @ "0|8484:8501|voice@1@0|motif:8484\\\\:8501";
+        shared83 @ "0|8518:8539|voice@1@0|motif:8518\\\\:8539";
+        shared85 @ "0|8556:8577|voice@1@0|motif:8556\\\\:8577";
+        shared87 @ "0|8594:8617|voice@1@0|motif:8594\\\\:8617";
+        shared89 @ "0|8634:8656|voice@1@0|motif:8634\\\\:8656";
+        shared91 @ "0|8673:8695|voice@1@0|motif:8673\\\\:8695";
+        shared93 @ "0|8712:8733|voice@1@0|motif:8712\\\\:8733";
+        shared95 @ "0|8750:8773|voice@1@0|motif:8750\\\\:8773";
+        shared97 @ "0|8790:8813|voice@1@0|motif:8790\\\\:8813";
+        shared99 @ "0|8830:8852|voice@1@0|motif:8830\\\\:8852";
+        shared101 @ "0|8869:8886|voice@1@0|motif:8869\\\\:8886";
+        shared103 @ "0|8903:8924|voice@1@0|motif:8903\\\\:8924";
+        shared105 @ "0|8941:8962|voice@1@0|motif:8941\\\\:8962";
+        shared107 @ "0|8979:9002|voice@1@0|motif:8979\\\\:9002"
+      };
+      timeline 404 {
+        occurrence "piece|meter@4@4|1243:1258|1243:1258|0|" from 0 to 404;
+        occurrence "piece|key@c@major|1258:1275|1258:1275|0|" from 0 to 404;
+      }
+    };
+}

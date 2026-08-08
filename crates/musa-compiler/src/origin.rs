@@ -147,6 +147,8 @@ pub struct ChoicePath(Vec<ChoiceStep>);
 pub enum ChoiceStep {
     /// A motif, by the name it was declared under.
     Motif(Box<str>),
+    /// A fragment, by name.
+    Fragment(Box<str>),
     /// A named bar.
     Bar(Box<str>),
     /// Which site this is among the unnamed siblings in the innermost named
@@ -186,6 +188,7 @@ impl ChoicePath {
         for step in &self.0 {
             let (letter, name) = match step {
                 ChoiceStep::Motif(name) => ('m', name.to_string()),
+                ChoiceStep::Fragment(name) => ('f', name.to_string()),
                 ChoiceStep::Bar(name) => ('b', name.to_string()),
                 ChoiceStep::Ordinal(index) => ('#', index.to_string()),
             };
@@ -214,7 +217,7 @@ impl std::fmt::Display for ChoicePath {
             }
             first = false;
             match step {
-                ChoiceStep::Motif(name) | ChoiceStep::Bar(name) => {
+                ChoiceStep::Motif(name) | ChoiceStep::Fragment(name) | ChoiceStep::Bar(name) => {
                     formatter.write_str(name)?;
                 }
                 ChoiceStep::Ordinal(index) => write!(formatter, "#{index}")?,

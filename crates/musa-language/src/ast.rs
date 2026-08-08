@@ -160,6 +160,11 @@ impl PieceDecl {
         children(&self.0)
     }
 
+    /// All fragment declarations.
+    pub fn fragments(&self) -> Vec<FragmentDecl> {
+        children(&self.0)
+    }
+
     /// The `score` block, if present.
     pub fn score(&self) -> Option<ScoreDecl> {
         child(&self.0)
@@ -287,6 +292,11 @@ impl LibraryDecl {
 
     /// The motifs it declares.
     pub fn motifs(&self) -> Vec<MotifDecl> {
+        children(&self.0)
+    }
+
+    /// The fragments it declares.
+    pub fn fragments(&self) -> Vec<FragmentDecl> {
         children(&self.0)
     }
 
@@ -587,6 +597,10 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             KeyStmt::cast(child).map(VoiceItem::Key)
         } else if kind == SyntaxKind::ClefStmt {
             ClefStmt::cast(child).map(VoiceItem::Clef)
+        } else if kind == SyntaxKind::MobileStmt {
+            MobileStmt::cast(child).map(VoiceItem::Mobile)
+        } else if kind == SyntaxKind::ImproviseStmt {
+            ImproviseStmt::cast(child).map(VoiceItem::Improvise)
         } else {
             None
         };
@@ -636,6 +650,10 @@ pub enum VoiceItem {
     Key(KeyStmt),
     /// `clef bass;` — likewise.
     Clef(ClefStmt),
+    /// `mobile { a; b; c; }`
+    Mobile(MobileStmt),
+    /// `improvise 8/1 over "Dm7 | G7";`
+    Improvise(ImproviseStmt),
 }
 
 /// The articulation names trailing a note or chord's duration.
@@ -651,6 +669,23 @@ fn articulation_names(node: &SyntaxNode) -> Vec<String> {
                 .collect::<Vec<_>>()
         })
         .collect()
+}
+
+/// The duration written after `to`, when the statement gives the performer a
+/// range (`g4 1/4 to 2/1;`).
+///
+/// Read as "the token after `to`" rather than "the second duration token",
+/// because a note's duration may be a parameter reference and a parameter
+/// reference is an identifier — counting tokens by kind would mistake an
+/// articulation for a duration.
+fn held_to(node: &SyntaxNode) -> Option<String> {
+    let mut tokens = node
+        .children_with_tokens()
+        .filter_map(SyntaxElement::into_token)
+        .filter(|token| !token.kind().is_trivia())
+        .skip_while(|token| token.kind() != SyntaxKind::ToKw);
+    drop(tokens.next());
+    tokens.next().map(|token| token.text().to_string())
 }
 
 /// Whether a statement carries the postfix tie mark.
@@ -678,6 +713,12 @@ impl NoteStmt {
         articulation_names(&self.0)
     }
 
+    /// The longest this note may be held, when the performer was given a
+    /// range (`g4 1/4 to 2/1;`).
+    pub fn held_to(&self) -> Option<String> {
+        held_to(&self.0)
+    }
+
     /// Whether this note is tied to the statement that follows it.
     pub fn tied(&self) -> bool {
         has_tie(&self.0)
@@ -692,6 +733,59 @@ impl RestStmt {
     /// The duration text.
     pub fn duration(&self) -> Option<String> {
         token_text(&self.0, SyntaxKind::Rational).or_else(|| token_text(&self.0, SyntaxKind::Integer))
+    }
+
+    /// The longest this rest may be held.
+    pub fn held_to(&self) -> Option<String> {
+        held_to(&self.0)
+    }
+}
+
+/// `fragment a { c5 1/4; e5 1/4; }`
+pub struct FragmentDecl(SyntaxNode);
+wrapper!(FragmentDecl, SyntaxKind::FragmentDecl);
+
+impl FragmentDecl {
+    /// The fragment name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The items in its body.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
+    }
+}
+
+/// `mobile { a; b; c; }`
+pub struct MobileStmt(SyntaxNode);
+wrapper!(MobileStmt, SyntaxKind::MobileStmt);
+
+impl MobileStmt {
+    /// The fragment names it arranges, in written order.
+    pub fn fragments(&self) -> Vec<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .map(|token| token.text().to_string())
+            .collect()
+    }
+}
+
+/// `improvise 8/1 over "Dm7 | G7";`
+pub struct ImproviseStmt(SyntaxNode);
+wrapper!(ImproviseStmt, SyntaxKind::ImproviseStmt);
+
+impl ImproviseStmt {
+    /// How long the frame lasts.
+    pub fn duration(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Rational).or_else(|| token_text(&self.0, SyntaxKind::Integer))
+    }
+
+    /// The changes to play over, if any were written.
+    pub fn over(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::String).map(|text| unquote(&text))
     }
 }
 

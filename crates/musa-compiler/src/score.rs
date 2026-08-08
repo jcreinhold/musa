@@ -50,6 +50,25 @@ pub struct ScoreEvent {
     pub notated_duration: NotatedDuration,
     /// What the event is.
     pub kind: ScoreEventKind,
+    /// The freedom written on this note, when the performer was given one
+    /// (`g4 1/4 to 2/1;`).
+    ///
+    /// `notated_duration` holds what the note *sounds* — the realization's
+    /// answer — exactly as it does inside a tuplet, and this is what recovers
+    /// the symbol: the engraver draws `least` and brackets it up to `most`.
+    /// Roadmap §2's row, notated duration ≠ performed duration, with both
+    /// values present instead of one standing in for the other.
+    pub free: Option<FreeDuration>,
+}
+
+/// How long a note may be held: the written value, and the longest the
+/// performer may take it to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FreeDuration {
+    /// The written value — what the notehead is.
+    pub least: MusicalDuration,
+    /// The longest it may be held.
+    pub most: MusicalDuration,
 }
 
 /// How the language writes a duration value: `1`, `1/4`, `3/8`.
@@ -712,6 +731,46 @@ pub struct RepeatRegion {
     pub origin: Origin,
 }
 
+/// A stretch whose realization the performance chose, and the instruction
+/// the page prints over it.
+///
+/// Anchored to *time* rather than to events for the reason [`RepeatRegion`] is:
+/// a box drawn round a passage is drawn between barlines, and an improvised
+/// frame holds no events at all — there are no event ids to name it by.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpenRegion {
+    /// Where the region begins.
+    pub start: MusicalTime,
+    /// Where it ends.
+    pub end: MusicalTime,
+    /// What freedom was written here.
+    pub kind: OpenKind,
+    /// Why this region exists.
+    pub origin: Origin,
+}
+
+/// The kinds of written freedom a page has to print.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum OpenKind {
+    /// `mobile { a; b; c; }` — the fragments as written, and the order this
+    /// performance plays them in, as indices into `fragments`.
+    ///
+    /// Both, because they answer different questions: the page prints the
+    /// boxes in the order they are *written*, and the Origin view has to be
+    /// able to say which reading produced the music underneath.
+    Mobile {
+        /// The fragment names, in written order.
+        fragments: Vec<String>,
+        /// The played order, as indices into `fragments`.
+        order: Vec<u32>,
+    },
+    /// `improvise 8/1 over "Dm7 | G7";` — a frame with unnotated contents.
+    Improvise {
+        /// The changes to play over, if any were written.
+        over: Option<String>,
+    },
+}
+
 /// One volta bracket: the passes it is labelled with, and the stretch of the
 /// timeline it prints from.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -742,12 +801,18 @@ pub struct AnnotationStore {
     sections: Vec<SectionMark>,
     harmony: Vec<HarmonyMark>,
     repeats: Vec<RepeatRegion>,
+    open: Vec<OpenRegion>,
 }
 
 impl AnnotationStore {
     /// Slurs, in source order.
     pub fn slurs(&self) -> &[SlurSpan] {
         &self.slurs
+    }
+
+    /// The regions whose realization the performance chose, in time order.
+    pub fn open(&self) -> &[OpenRegion] {
+        &self.open
     }
 
     /// Tuplet groups, in source order.
@@ -829,6 +894,10 @@ impl AnnotationStore {
 
     pub(crate) fn set_repeats(&mut self, repeats: Vec<RepeatRegion>) {
         self.repeats = repeats;
+    }
+
+    pub(crate) fn push_open(&mut self, region: OpenRegion) {
+        self.open.push(region);
     }
 }
 

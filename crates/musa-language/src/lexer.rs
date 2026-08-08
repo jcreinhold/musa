@@ -308,6 +308,14 @@ enum RawToken {
     BarKw,
     #[token("ending", priority = 3)]
     EndingKw,
+    #[token("fragment", priority = 3)]
+    FragmentKw,
+    #[token("mobile", priority = 3)]
+    MobileKw,
+    #[token("improvise", priority = 3)]
+    ImproviseKw,
+    #[token("over", priority = 3)]
+    OverKw,
 }
 
 impl RawToken {
@@ -397,6 +405,10 @@ impl RawToken {
             | Self::CrescendoKw
             | Self::DiminuendoKw
             | Self::ToKw
+            | Self::FragmentKw
+            | Self::MobileKw
+            | Self::ImproviseKw
+            | Self::OverKw
             | Self::BarKw
             | Self::EndingKw => None,
         }
@@ -485,6 +497,10 @@ impl RawToken {
             Self::CrescendoKw => SyntaxKind::CrescendoKw,
             Self::DiminuendoKw => SyntaxKind::DiminuendoKw,
             Self::ToKw => SyntaxKind::ToKw,
+            Self::FragmentKw => SyntaxKind::FragmentKw,
+            Self::MobileKw => SyntaxKind::MobileKw,
+            Self::ImproviseKw => SyntaxKind::ImproviseKw,
+            Self::OverKw => SyntaxKind::OverKw,
             Self::BarKw => SyntaxKind::BarKw,
             Self::EndingKw => SyntaxKind::EndingKw,
         }

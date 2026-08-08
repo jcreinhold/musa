@@ -322,18 +322,15 @@ impl ProjectSession {
         let score = &valid.score;
         match request {
             // Already rendered when the score last compiled.
-            ExportRequest::Mei => Ok(ExportArtifact::Text(valid.mei.clone())),
-            ExportRequest::LilyPond => Ok(ExportArtifact::Text(render_notation(
-                score,
-                musa_render::NotationTarget::LilyPond,
-            )?)),
-            ExportRequest::MusicXml => Ok(ExportArtifact::Text(render_notation(
-                score,
-                musa_render::NotationTarget::MusicXml,
-            )?)),
-            ExportRequest::Wav => Ok(ExportArtifact::Bytes(playback::to_wav(score, &valid.studio)?)),
-            ExportRequest::Midi(mode) => Ok(ExportArtifact::Bytes(playback::to_midi(score, mode)?)),
-            ExportRequest::PerformanceDump => Ok(ExportArtifact::Text(playback::performance_dump(score)?)),
+            // Already rendered when the score last compiled, so the text is
+            // taken from there; the losses are a fact about the target and
+            // are the same either way.
+            ExportRequest::Mei => Ok(ExportArtifact::text(valid.mei.clone()).warn(valid.mei_warnings.clone())),
+            ExportRequest::LilyPond => Ok(render_notation(score, musa_render::NotationTarget::LilyPond)?),
+            ExportRequest::MusicXml => Ok(render_notation(score, musa_render::NotationTarget::MusicXml)?),
+            ExportRequest::Wav => Ok(ExportArtifact::bytes(playback::to_wav(score, &valid.studio)?)),
+            ExportRequest::Midi(mode) => Ok(ExportArtifact::bytes(playback::to_midi(score, mode)?)),
+            ExportRequest::PerformanceDump => Ok(ExportArtifact::text(playback::performance_dump(score)?)),
             ExportRequest::Kernel { normalized } => {
                 let document = musa_compiler::SourceDocument::new(&valid.source, &self.name);
                 let printer = if normalized {
@@ -342,7 +339,7 @@ impl ProjectSession {
                     musa_compiler::kernel_text
                 };
                 printer(&document, &self.realization)
-                    .map(ExportArtifact::Text)
+                    .map(ExportArtifact::text)
                     // The source compiled, so it elaborates; this arm exists
                     // because the printer is total in its signature, not
                     // because it is reachable.
@@ -351,7 +348,7 @@ impl ProjectSession {
             ExportRequest::NotationPlanDump => {
                 let plan = musa_render::plan_notation(score, &musa_render::NotationOptions::default())
                     .map_err(|error| ProjectError::Notation(error.to_string()))?;
-                Ok(ExportArtifact::Text(format!("{plan:#?}")))
+                Ok(ExportArtifact::text(format!("{plan:#?}")))
             }
         }
     }
@@ -650,13 +647,15 @@ impl ProjectSession {
                 score.inherit_composer(composer);
             }
             match render_notation(&score, musa_render::NotationTarget::Mei) {
-                Ok(mei) => {
+                Ok(rendered) => {
+                    let mei = rendered.as_text().unwrap_or_default().to_owned();
                     score_changed = self.valid.as_ref().is_none_or(|valid| valid.mei != mei);
                     let facts = crate::facts::ScoreFacts::derive(&score, &self.source);
                     let parts: Vec<String> = facts.parts.iter().map(|part| part.name.clone()).collect();
                     let studio_facts = crate::studio::StudioFacts::derive(&studio, &parts);
                     self.valid = Some(ValidArtifacts {
                         mei,
+                        mei_warnings: rendered.warnings().to_vec(),
                         score,
                         source: self.source.clone(),
                         studio,
@@ -833,9 +832,9 @@ impl ProjectSession {
 fn render_notation(
     score: &musa_compiler::ScoreSnapshot,
     target: musa_render::NotationTarget,
-) -> Result<String, ProjectError> {
+) -> Result<ExportArtifact, ProjectError> {
     musa_render::render_notation(score, target, &musa_render::NotationOptions::default())
-        .map(|rendered| rendered.text().to_owned())
+        .map(|rendered| ExportArtifact::text(rendered.text()).warn(rendered.warnings().to_vec()))
         .map_err(|error| ProjectError::Notation(error.to_string()))
 }
 

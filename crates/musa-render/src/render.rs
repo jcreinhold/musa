@@ -24,6 +24,7 @@ pub enum NotationTarget {
 pub struct RenderedNotation {
     target: NotationTarget,
     text: String,
+    warnings: Vec<String>,
 }
 
 impl RenderedNotation {
@@ -36,6 +37,54 @@ impl RenderedNotation {
     pub fn text(&self) -> &str {
         &self.text
     }
+
+    /// What this target could not say, once per kind.
+    ///
+    /// A backend that has no element for a written freedom carries the
+    /// realized music plus a text direction, which is a reading of the piece
+    /// rather than the piece. That is a fact about the format, so it is
+    /// reported here rather than discovered by whoever opens the file
+    /// (`docs/kernel/07-backend-contract.md`).
+    pub fn warnings(&self) -> &[String] {
+        &self.warnings
+    }
+}
+
+/// What `target` cannot say about `plan`, once per kind.
+fn losses(plan: &crate::plan::NotationPlan, target: NotationTarget) -> Vec<String> {
+    let format = match target {
+        NotationTarget::Mei => "MEI",
+        NotationTarget::LilyPond => "LilyPond",
+        NotationTarget::MusicXml => "MusicXML",
+    };
+    let mut losses = Vec::new();
+    if plan
+        .open()
+        .iter()
+        .any(|region| region.kind == crate::plan::OpenShape::Mobile)
+    {
+        losses.push(format!(
+            "{format} has no mobile form: the fragments are exported in the order this reading chose, \
+             under a text direction saying they may be played in any"
+        ));
+    }
+    if plan
+        .open()
+        .iter()
+        .any(|region| region.kind == crate::plan::OpenShape::Improvise)
+    {
+        losses.push(format!(
+            "{format} has no improvised region: the frame is exported as its length of rests, \
+             under a text direction saying to improvise"
+        ));
+    }
+    if !plan.holds().is_empty() {
+        losses.push(format!(
+            "{format} has no free-duration bracket: each held note is exported at its written value, \
+             under a text direction saying how far it may be held"
+        ));
+    }
+    losses
 }
 
 /// Plan and render a score to a notation backend.
@@ -54,5 +103,6 @@ pub fn render_notation(
         NotationTarget::LilyPond => crate::ly::render_lilypond(&plan)?,
         NotationTarget::MusicXml => crate::musicxml::render_musicxml(&plan)?,
     };
-    Ok(RenderedNotation { target, text })
+    let warnings = losses(&plan, target);
+    Ok(RenderedNotation { target, text, warnings })
 }

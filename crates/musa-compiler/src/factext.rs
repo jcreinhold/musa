@@ -152,6 +152,31 @@ fn read_duration(text: &str) -> Option<NotatedDuration> {
     })
 }
 
+/// A free duration, as `least;most` — or empty, which is the common case of a
+/// note whose written value is the value it sounds.
+fn free_text(free: Option<&crate::score::FreeDuration>) -> String {
+    free.map_or_else(String::new, |free| {
+        join(
+            &[ratio_text(free.least.as_ratio()), ratio_text(free.most.as_ratio())],
+            ';',
+        )
+    })
+}
+
+fn read_free(text: &str) -> Option<Option<crate::score::FreeDuration>> {
+    if text.is_empty() {
+        return Some(None);
+    }
+    let fields = split_escaped(text, ';');
+    let [least, most] = fields.as_slice() else {
+        return None;
+    };
+    Some(Some(crate::score::FreeDuration {
+        least: MusicalDuration::new(read_ratio(least)?),
+        most: MusicalDuration::new(read_ratio(most)?),
+    }))
+}
+
 fn articulations_text(marks: &[Mark]) -> String {
     let names: Vec<String> = marks.iter().map(|mark| mark.name().to_owned()).collect();
     join(&names, ',')
@@ -170,19 +195,23 @@ fn kind_text(kind: &FactKind) -> String {
             pitch,
             duration,
             articulations,
+            free,
         } => vec![
             "note".to_owned(),
             pitch.to_string(),
             duration_text(duration),
             articulations_text(articulations),
+            free_text(free.as_ref()),
         ],
         FactKind::Rest {
             duration,
             articulations,
+            free,
         } => vec![
             "rest".to_owned(),
             duration_text(duration),
             articulations_text(articulations),
+            free_text(free.as_ref()),
         ],
         FactKind::Slur => vec!["slur".to_owned()],
         FactKind::Phrase { name } => vec!["phrase".to_owned(), name.clone()],
@@ -213,6 +242,14 @@ fn kind_text(kind: &FactKind) -> String {
         FactKind::Ending { bracket, pass } => {
             vec!["ending".to_owned(), bracket.to_string(), pass.to_string()]
         }
+        FactKind::Mobile { fragments, order } => vec![
+            "mobile".to_owned(),
+            join(fragments, ','),
+            join(&order.iter().map(u32::to_string).collect::<Vec<_>>(), ','),
+        ],
+        FactKind::Improvise { over } => {
+            vec!["improvise".to_owned(), over.clone().unwrap_or_default()]
+        }
     };
     join(&fields, '@')
 }
@@ -222,14 +259,26 @@ fn read_kind(text: &str) -> Option<FactKind> {
     let tag = fields.first()?.as_str();
     let arg = |index: usize| fields.get(index).map(String::as_str);
     match (tag, fields.len()) {
-        ("note", 4) => Some(FactKind::Note {
+        ("note", 5) => Some(FactKind::Note {
             pitch: WrittenPitch::parse(arg(1)?)?,
             duration: read_duration(arg(2)?)?,
             articulations: read_articulations(arg(3)?)?,
+            free: read_free(arg(4)?)?,
         }),
-        ("rest", 3) => Some(FactKind::Rest {
+        ("rest", 4) => Some(FactKind::Rest {
             duration: read_duration(arg(1)?)?,
             articulations: read_articulations(arg(2)?)?,
+            free: read_free(arg(3)?)?,
+        }),
+        ("mobile", 3) => Some(FactKind::Mobile {
+            fragments: split_escaped(arg(1)?, ','),
+            order: split_escaped(arg(2)?, ',')
+                .iter()
+                .map(|index| index.parse().ok())
+                .collect::<Option<Vec<u32>>>()?,
+        }),
+        ("improvise", 2) => Some(FactKind::Improvise {
+            over: Some(arg(1)?.to_owned()).filter(|over| !over.is_empty()),
         }),
         ("slur", 1) => Some(FactKind::Slur),
         ("phrase", 2) => Some(FactKind::Phrase {
@@ -471,10 +520,22 @@ mod tests {
                 pitch: WrittenPitch::parse("cs5")?,
                 duration: duration(),
                 articulations: vec![Mark::parse("staccato")?, Mark::parse("accent")?],
+                free: None,
             },
             FactKind::Rest {
                 duration: duration(),
                 articulations: Vec::new(),
+                free: Some(crate::score::FreeDuration {
+                    least: MusicalDuration::new(Ratio::new(1, 4)),
+                    most: MusicalDuration::new(Ratio::new(2, 1)),
+                }),
+            },
+            FactKind::Mobile {
+                fragments: vec!["a|name@with,commas".to_owned(), "b".to_owned()],
+                order: vec![1, 0],
+            },
+            FactKind::Improvise {
+                over: Some("Dm7 | G7".to_owned()),
             },
             FactKind::Slur,
             FactKind::Phrase {

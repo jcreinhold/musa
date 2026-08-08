@@ -115,6 +115,20 @@ fn agreed_repeats(
             .zip(stated)
             .any(|(voice, theirs)| sounds(voice) && !theirs.iter().any(|other| same(other, repeat)));
         if dissenting {
+            // A repeat inside a motif, bar, or fragment is the *material's*
+            // rather than the page's: shared material stands at places that
+            // have nothing to do with each other, so there was never a
+            // system-crossing barline to lose. It is written out, and
+            // silently — the composer did not ask for one. The same argument
+            // the elaboration makes for a `meter` written inside a body.
+            if repeat
+                .origin
+                .expansion_path
+                .iter()
+                .any(|step| matches!(step, crate::origin::ExpansionStep::MotifApplication { .. }))
+            {
+                continue;
+            }
             resolver.report(
                 crate::diagnose::Diagnostic::warning(
                     crate::diagnose::Code::Ignored,
@@ -193,7 +207,9 @@ fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
             | FactKind::Dynamic { .. }
             | FactKind::Hairpin { .. }
             | FactKind::Repeat { .. }
-            | FactKind::Ending { .. } => {}
+            | FactKind::Ending { .. }
+            | FactKind::Mobile { .. }
+            | FactKind::Improvise { .. } => {}
         }
     }
     contexts
@@ -247,6 +263,30 @@ fn project_voice(
             }
             FactKind::Repeat { .. } | FactKind::Ending { .. } => {
                 repeats.push(occurrence);
+                index = index.saturating_add(1);
+            }
+            // An open region spans real time rather than events: what it
+            // covers was chosen by the performance, so there is no event id
+            // either end that survives a different reading of the piece.
+            FactKind::Mobile { fragments, order } => {
+                resolver.annotations.push_open(crate::score::OpenRegion {
+                    start: MusicalTime::new(occurrence.span().start().as_ratio()),
+                    end: MusicalTime::new(occurrence.span().end().as_ratio()),
+                    kind: crate::score::OpenKind::Mobile {
+                        fragments: fragments.clone(),
+                        order: order.clone(),
+                    },
+                    origin: fact.origin.clone(),
+                });
+                index = index.saturating_add(1);
+            }
+            FactKind::Improvise { over } => {
+                resolver.annotations.push_open(crate::score::OpenRegion {
+                    start: MusicalTime::new(occurrence.span().start().as_ratio()),
+                    end: MusicalTime::new(occurrence.span().end().as_ratio()),
+                    kind: crate::score::OpenKind::Improvise { over: over.clone() },
+                    origin: fact.origin.clone(),
+                });
                 index = index.saturating_add(1);
             }
             // Piece-scoped facts were bucketed away before this ran; they are
@@ -386,6 +426,7 @@ fn event_from(
         origin: fact.origin.clone(),
         onset: MusicalTime::new(first.span().start().as_ratio()),
         notated_duration: duration,
+        free: fact.kind.free_of().cloned(),
         kind,
     })
 }
@@ -507,9 +548,10 @@ fn project_regions(
                 shape: shape.clone(),
                 origin,
             }),
-            // A repeat is answered in time, not in event ids: barlines fall
-            // between measures and apply to the whole system. Collected by
-            // [`repeats_of`] instead.
+            // A repeat and an open region are answered in time, not in event
+            // ids: a barline falls between measures and applies to the whole
+            // system, and what an open region covers is not fixed. Collected
+            // by [`repeats_of`] and in [`project_voice`] instead.
             FactKind::Note { .. }
             | FactKind::Rest { .. }
             | FactKind::Dynamic { .. }
@@ -519,7 +561,9 @@ fn project_regions(
             | FactKind::Section { .. }
             | FactKind::Harmony { .. }
             | FactKind::Repeat { .. }
-            | FactKind::Ending { .. } => {}
+            | FactKind::Ending { .. }
+            | FactKind::Mobile { .. }
+            | FactKind::Improvise { .. } => {}
         }
     }
 }

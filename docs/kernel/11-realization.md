@@ -1,6 +1,6 @@
 # 11 — Realization
 
-**Status: candidate** (written at prompt 66; graduates when prompt 67 implements it and prompt 68 gives it a surface).
+**Status: governing** (written at prompt 66, implemented at prompt 67, given its surface at prompt 68).
 
 This document answers **Q2** — aleatory semantics — by the trigger Q2 itself named: the first aleatory surface feature
 is now being designed. The answer is the working stance Q2 already held, confirmed by design rather than reversed:

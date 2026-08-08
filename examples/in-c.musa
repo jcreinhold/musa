@@ -1,0 +1,311 @@
+// Terry Riley's *In C* is fifty-three short figures. Each player repeats each
+// figure as many times as they like, then moves on; the piece ends when the
+// last player reaches the end. This file is that *form* — the figures below
+// are written for musa rather than transcribed, because the 1964 work is not
+// ours to copy — and it is here as a test of one thing: fifty-three decision
+// sites in one piece, each of which must survive an edit to any of the others.
+//
+// Each figure is `repeat n to m { … }`, so its path is `figure_seven ▸ #0` —
+// named by the fragment it sits in, not by its position in the voice. Adding a
+// fifty-fourth figure therefore re-rolls nothing
+// (`docs/kernel/11-realization.md`).
+//
+//     musa check examples/in-c.musa --seed 42
+//
+// Two departures from the original, both deliberate and both named in prompt
+// 68's Stop list. The players do not enter when they like: musa compiles one
+// plausible reading rather than a real-time coordination between performers.
+// And every figure fills a measure exactly, so the barlines stay meaningful;
+// Riley's do not, which is what unmeasured passages are for.
+piece "Fifty-Three" {
+    composer "musa, after the form of In C";
+
+    tempo 1/4 = 120;
+    meter 4/4;
+    key c major;
+
+    fragment figure_one {
+        repeat 3 to 10 { c5 1/8; e5 1/4; g4 1/8; e5 1/8; c5 1/4; c5 1/8; }
+    }
+
+    fragment figure_two {
+        repeat 4 to 12 { e5 3/4; c5 1/4; }
+    }
+
+    fragment figure_three {
+        repeat 2 to 11 { e5 1/4; g5 1/8; c5 1/8; e5 1/2; }
+    }
+
+    fragment figure_four {
+        repeat 3 to 13 { e5 1/16; g4 1/16; e5 1/8; c5 1/4; c5 1/2; }
+    }
+
+    fragment figure_five {
+        repeat 4 to 10 { c5 1/4; c5 1/4; e5 1/4; g5 1/4; }
+    }
+
+    fragment figure_six {
+        repeat 2 to 9 { g5 1/2; c5 1/4; e5 1/4; }
+    }
+
+    fragment figure_seven {
+        repeat 3 to 11 { g4 1/4; e5 1/2; c5 1/4; }
+    }
+
+    fragment figure_eight {
+        repeat 4 to 13 { c5 1/16; e5 1/16; g5 1/16; c5 1/16; e5 1/4; g4 1/4; e5 1/4; }
+    }
+
+    fragment figure_nine {
+        repeat 2 to 12 { c5 1; }
+    }
+
+    fragment figure_ten {
+        repeat 3 to 9 { e5 1/2; c5 1/2; }
+    }
+
+    fragment figure_eleven {
+        repeat 4 to 11 { e5 1/8; g5 1/8; c5 1/4; e5 1/2; }
+    }
+
+    fragment figure_twelve {
+        repeat 2 to 10 { e5 1/8; g4 1/8; e5 1/8; c5 1/8; c5 1/8; e5 1/8; g5 1/8; c5 1/8; }
+    }
+
+    fragment figure_thirteen {
+        repeat 3 to 12 { c5 1/8; c5 1/4; e5 1/8; g5 1/8; c5 1/4; e5 1/8; }
+    }
+
+    fragment figure_fourteen {
+        repeat 4 to 14 { g5 3/4; c5 1/4; }
+    }
+
+    fragment figure_fifteen {
+        repeat 2 to 8 { fs5 1/4; a4 1/8; g5 1/8; e5 1/2; }
+    }
+
+    fragment figure_sixteen {
+        repeat 3 to 10 { e5 1/16; fs5 1/16; g5 1/8; e5 1/4; c5 1/2; }
+    }
+
+    fragment figure_seventeen {
+        repeat 4 to 12 { e5 1/4; c5 1/4; fs5 1/4; a4 1/4; }
+    }
+
+    fragment figure_eighteen {
+        repeat 2 to 11 { a4 1/2; g5 1/4; e5 1/4; }
+    }
+
+    fragment figure_nineteen {
+        repeat 3 to 13 { fs5 1/4; g5 1/2; e5 1/4; }
+    }
+
+    fragment figure_twenty {
+        repeat 4 to 10 { c5 1/16; fs5 1/16; a4 1/16; g5 1/16; e5 1/4; fs5 1/4; g5 1/4; }
+    }
+
+    fragment figure_twenty_one {
+        repeat 2 to 9 { g5 1; }
+    }
+
+    fragment figure_twenty_two {
+        repeat 3 to 11 { g5 1/2; e5 1/2; }
+    }
+
+    fragment figure_twenty_three {
+        repeat 4 to 13 { fs5 1/8; a4 1/8; g5 1/4; e5 1/2; }
+    }
+
+    fragment figure_twenty_four {
+        repeat 2 to 12 { e5 1/8; fs5 1/8; g5 1/8; e5 1/8; c5 1/8; fs5 1/8; a4 1/8; g5 1/8; }
+    }
+
+    fragment figure_twenty_five {
+        repeat 3 to 9 { e5 1/8; c5 1/4; fs5 1/8; a4 1/8; g5 1/4; e5 1/8; }
+    }
+
+    fragment figure_twenty_six {
+        repeat 4 to 11 { a4 3/4; g5 1/4; }
+    }
+
+    fragment figure_twenty_seven {
+        repeat 2 to 10 { fs5 1/4; g5 1/8; e5 1/8; c5 1/2; }
+    }
+
+    fragment figure_twenty_eight {
+        repeat 3 to 12 { c5 1/16; fs5 1/16; a4 1/8; g5 1/4; e5 1/2; }
+    }
+
+    fragment figure_twenty_nine {
+        repeat 4 to 14 { d5 1/4; g5 1/4; b5 1/4; a5 1/4; }
+    }
+
+    fragment figure_thirty {
+        repeat 2 to 8 { a5 1/2; g5 1/4; fs5 1/4; }
+    }
+
+    fragment figure_thirty_one {
+        repeat 3 to 10 { e5 1/4; b4 1/2; d5 1/4; }
+    }
+
+    fragment figure_thirty_two {
+        repeat 4 to 12 { g5 1/16; b5 1/16; a5 1/16; g5 1/16; fs5 1/4; e5 1/4; b4 1/4; }
+    }
+
+    fragment figure_thirty_three {
+        repeat 2 to 11 { g5 1; }
+    }
+
+    fragment figure_thirty_four {
+        repeat 3 to 13 { b4 1/2; d5 1/2; }
+    }
+
+    fragment figure_thirty_five {
+        repeat 4 to 10 { b5 1/8; a5 1/8; g5 1/4; fs5 1/2; }
+    }
+
+    fragment figure_thirty_six {
+        repeat 2 to 9 { fs5 1/8; e5 1/8; b4 1/8; d5 1/8; g5 1/8; b5 1/8; a5 1/8; g5 1/8; }
+    }
+
+    fragment figure_thirty_seven {
+        repeat 3 to 11 { d5 1/8; g5 1/4; b5 1/8; a5 1/8; g5 1/4; fs5 1/8; }
+    }
+
+    fragment figure_thirty_eight {
+        repeat 4 to 13 { a5 3/4; g5 1/4; }
+    }
+
+    fragment figure_thirty_nine {
+        repeat 2 to 12 { e5 1/4; b4 1/8; d5 1/8; g5 1/2; }
+    }
+
+    fragment figure_forty {
+        repeat 3 to 9 { g5 1/16; b5 1/16; a5 1/8; g5 1/4; fs5 1/2; }
+    }
+
+    fragment figure_forty_one {
+        repeat 4 to 11 { g5 1/4; fs5 1/4; e5 1/4; b4 1/4; }
+    }
+
+    fragment figure_forty_two {
+        repeat 2 to 10 { d5 1/2; bf4 1/4; g5 1/4; }
+    }
+
+    fragment figure_forty_three {
+        repeat 3 to 12 { f5 1/4; bf4 1/2; c5 1/4; }
+    }
+
+    fragment figure_forty_four {
+        repeat 4 to 14 { g4 1/16; f5 1/16; d5 1/16; bf4 1/16; g5 1/4; f5 1/4; bf4 1/4; }
+    }
+
+    fragment figure_forty_five {
+        repeat 2 to 8 { bf4 1; }
+    }
+
+    fragment figure_forty_six {
+        repeat 3 to 10 { bf4 1/2; c5 1/2; }
+    }
+
+    fragment figure_forty_seven {
+        repeat 4 to 12 { f5 1/8; d5 1/8; bf4 1/4; g5 1/2; }
+    }
+
+    fragment figure_forty_eight {
+        repeat 2 to 11 { g5 1/8; f5 1/8; bf4 1/8; c5 1/8; g4 1/8; f5 1/8; d5 1/8; bf4 1/8; }
+    }
+
+    fragment figure_forty_nine {
+        repeat 3 to 13 { c5 1/8; g4 1/4; f5 1/8; d5 1/8; bf4 1/4; g5 1/8; }
+    }
+
+    fragment figure_fifty {
+        repeat 4 to 10 { d5 3/4; bf4 1/4; }
+    }
+
+    fragment figure_fifty_one {
+        repeat 2 to 9 { f5 1/4; bf4 1/8; c5 1/8; g4 1/2; }
+    }
+
+    fragment figure_fifty_two {
+        repeat 3 to 11 { g4 1/16; f5 1/16; d5 1/8; bf4 1/4; g5 1/2; }
+    }
+
+    fragment figure_fifty_three {
+        repeat 4 to 13 { bf4 1/4; g5 1/4; f5 1/4; bf4 1/4; }
+    }
+
+    // The pulse: steady eighth-note Cs under everything. Written as material
+    // rather than as a repeat in the voice, because a repeat barline crosses
+    // the system and nothing else here repeats with it.
+    fragment pulse_figure {
+        repeat 384 { c6 1/8; c6 1/8; c6 1/8; c6 1/8; c6 1/8; c6 1/8; c6 1/8; c6 1/8; }
+    }
+
+    score {
+        part pulse {
+            voice ticks {
+                use pulse_figure;
+            }
+        }
+
+        part player {
+            voice line {
+                use figure_one;
+                use figure_two;
+                use figure_three;
+                use figure_four;
+                use figure_five;
+                use figure_six;
+                use figure_seven;
+                use figure_eight;
+                use figure_nine;
+                use figure_ten;
+                use figure_eleven;
+                use figure_twelve;
+                use figure_thirteen;
+                use figure_fourteen;
+                use figure_fifteen;
+                use figure_sixteen;
+                use figure_seventeen;
+                use figure_eighteen;
+                use figure_nineteen;
+                use figure_twenty;
+                use figure_twenty_one;
+                use figure_twenty_two;
+                use figure_twenty_three;
+                use figure_twenty_four;
+                use figure_twenty_five;
+                use figure_twenty_six;
+                use figure_twenty_seven;
+                use figure_twenty_eight;
+                use figure_twenty_nine;
+                use figure_thirty;
+                use figure_thirty_one;
+                use figure_thirty_two;
+                use figure_thirty_three;
+                use figure_thirty_four;
+                use figure_thirty_five;
+                use figure_thirty_six;
+                use figure_thirty_seven;
+                use figure_thirty_eight;
+                use figure_thirty_nine;
+                use figure_forty;
+                use figure_forty_one;
+                use figure_forty_two;
+                use figure_forty_three;
+                use figure_forty_four;
+                use figure_forty_five;
+                use figure_forty_six;
+                use figure_forty_seven;
+                use figure_forty_eight;
+                use figure_forty_nine;
+                use figure_fifty;
+                use figure_fifty_one;
+                use figure_fifty_two;
+                use figure_fifty_three;
+            }
+        }
+    }
+}

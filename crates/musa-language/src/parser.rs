@@ -92,6 +92,7 @@ const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::ArrangerKw,
     SyntaxKind::CopyrightKw,
     SyntaxKind::MotifKw,
+    SyntaxKind::FragmentKw,
     SyntaxKind::ScoreKw,
     SyntaxKind::PerformanceKw,
     SyntaxKind::StudioKw,
@@ -156,6 +157,8 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::StretchKw,
     SyntaxKind::RetrogradeKw,
     SyntaxKind::InvertKw,
+    SyntaxKind::MobileKw,
+    SyntaxKind::ImproviseKw,
 ];
 
 struct Parser<'a> {
@@ -516,6 +519,8 @@ impl<'a> Parser<'a> {
                 self.front_matter_stmt();
             } else if self.at(SyntaxKind::MotifKw) {
                 self.motif_decl();
+            } else if self.at(SyntaxKind::FragmentKw) {
+                self.fragment_decl();
             } else if self.at(SyntaxKind::ScoreKw) {
                 self.score_decl();
             } else if self.at(SyntaxKind::PerformanceKw) {
@@ -525,7 +530,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.expected_with_help(
                     "a declaration",
-                    "a piece holds `use`, `tempo`, `meter`, `key`, front matter, `motif`, `score`, `performance`, and `studio`",
+                    "a piece holds `use`, `tempo`, `meter`, `key`, front matter, `motif`, `fragment`, `score`, `performance`, and `studio`",
                 );
                 self.recover(PIECE_RECOVERY);
             }
@@ -587,6 +592,8 @@ impl<'a> Parser<'a> {
                 self.import_stmt();
             } else if self.at(SyntaxKind::MotifKw) {
                 self.motif_decl();
+            } else if self.at(SyntaxKind::FragmentKw) {
+                self.fragment_decl();
             } else if self.at(SyntaxKind::PerformanceKw) {
                 self.performance_decl();
             } else if self.at(SyntaxKind::StudioKw) {
@@ -596,7 +603,7 @@ impl<'a> Parser<'a> {
                 // piece, which is why `score` is not in this list.
                 self.expected_with_help(
                     "a declaration",
-                    "a library holds `use`, `motif`, `performance`, and `studio` — music belongs to a piece",
+                    "a library holds `use`, `motif`, `fragment`, `performance`, and `studio` — music belongs to a piece",
                 );
                 self.recover(PIECE_RECOVERY);
             }
@@ -665,6 +672,65 @@ impl<'a> Parser<'a> {
         }
         self.expect(SyntaxKind::RParen, "`)`");
         self.block();
+        self.finish();
+    }
+
+    /// `fragment name { ... }` — material a performance may reorder.
+    ///
+    /// A motif without parameters, tagged differently: a motif is material a
+    /// *composer* reuses, a fragment is material a *performance* arranges. The
+    /// namespace is one namespace, so `use` reaches both and a name collision
+    /// is the diagnostic prompt 57 already writes.
+    fn fragment_decl(&mut self) {
+        self.start(SyntaxKind::FragmentDecl);
+        self.bump(); // fragment
+        self.expect(SyntaxKind::Identifier, "a fragment name");
+        self.block();
+        self.finish();
+    }
+
+    /// `mobile { a; b; c; }` — its fragments in an order the performance
+    /// chooses.
+    ///
+    /// A list of names, not a block of music: what a mobile arranges is
+    /// *material*, and writing the notes inline would mean the same figure
+    /// could not be reached from anywhere else.
+    fn mobile_stmt(&mut self) {
+        self.start(SyntaxKind::MobileStmt);
+        self.bump(); // mobile
+        self.expect(SyntaxKind::LBrace, "`{`");
+        loop {
+            if self.at(SyntaxKind::RBrace) {
+                self.bump();
+                break;
+            }
+            if self.current().is_none() {
+                if let Some(error) = self.unclosed("`mobile` block") {
+                    self.errors.push(error);
+                }
+                break;
+            }
+            if self.at(SyntaxKind::Identifier) {
+                self.bump();
+                self.expect(SyntaxKind::Semicolon, "`;`");
+            } else {
+                self.expected_with_help("a fragment name", "a mobile lists fragments: `mobile { a; b; c; }`");
+                self.recover(&[SyntaxKind::RBrace, SyntaxKind::Identifier, SyntaxKind::Semicolon]);
+            }
+        }
+        self.finish();
+    }
+
+    /// `improvise 8/1 over "Dm7 | G7";` — a frame with unnotated contents.
+    fn improvise_stmt(&mut self) {
+        self.start(SyntaxKind::ImproviseStmt);
+        self.bump(); // improvise
+        self.duration();
+        if self.at(SyntaxKind::OverKw) {
+            self.bump();
+            self.expect(SyntaxKind::String, "the changes to play over, in quotes");
+        }
+        self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }
 
@@ -1144,6 +1210,10 @@ impl<'a> Parser<'a> {
                 self.repeat_stmt();
             } else if self.at(SyntaxKind::BarKw) {
                 self.bar_stmt();
+            } else if self.at(SyntaxKind::MobileKw) {
+                self.mobile_stmt();
+            } else if self.at(SyntaxKind::ImproviseKw) {
+                self.improvise_stmt();
             } else if self.at(SyntaxKind::MeterKw) {
                 // The same statements the header and the part write, written
                 // where the music reaches them: one kind, one node, two
@@ -1571,6 +1641,17 @@ impl<'a> Parser<'a> {
             self.bump(); // literal or duration-parameter reference
         } else {
             self.expected("a duration");
+        }
+        // `g4 1/4 to 2/1;` — written as a quarter, held as long as the
+        // performer likes up to a double whole. The first value is the
+        // notated one and the second bounds the performed one (roadmap §2).
+        if self.at(SyntaxKind::ToKw) {
+            self.bump();
+            if self.at_any(&[SyntaxKind::Rational, SyntaxKind::Integer, SyntaxKind::Identifier]) {
+                self.bump();
+            } else {
+                self.expected("the longest the note may be held");
+            }
         }
     }
 }

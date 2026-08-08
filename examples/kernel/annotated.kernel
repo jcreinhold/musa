@@ -6,11 +6,11 @@ kernel "Annotated" {
       sequence {
         overlay {
           timeline 2 {
-            occurrence "voice@0@0|note@a4@1/4;1/4;1/4@|873:880|873:880|4|" from 0 to 1/4;
-            occurrence "voice@0@0|note@c5@1/4;1/4;1/4@|901:908|901:908|4|" from 1/4 to 1/2;
-            occurrence "voice@0@0|note@e5@1/2;1/2;1/2@|929:936|929:936|4|" from 1/2 to 1;
-            occurrence "voice@0@0|note@f5@1/2;1/2;1/2@|957:964|957:964|4|" from 1 to 3/2;
-            occurrence "voice@0@0|note@e5@1/2;1/2;1/2@|985:992|985:992|4|" from 3/2 to 2;
+            occurrence "voice@0@0|note@a4@1/4;1/4;1/4@@|873:880|873:880|4|" from 0 to 1/4;
+            occurrence "voice@0@0|note@c5@1/4;1/4;1/4@@|901:908|901:908|4|" from 1/4 to 1/2;
+            occurrence "voice@0@0|note@e5@1/2;1/2;1/2@@|929:936|929:936|4|" from 1/2 to 1;
+            occurrence "voice@0@0|note@f5@1/2;1/2;1/2@@|957:964|957:964|4|" from 1 to 3/2;
+            occurrence "voice@0@0|note@e5@1/2;1/2;1/2@@|985:992|985:992|4|" from 3/2 to 2;
           };
           timeline 2 {
             occurrence "voice@0@0|phrase@antecedent|831:1010|831:1010|4|" from 0 to 2;
@@ -18,10 +18,10 @@ kernel "Annotated" {
         };
         overlay {
           timeline 2 {
-            occurrence "voice@0@0|note@b4@1/4;1/4;1/4@|1069:1076|1069:1076|4|" from 0 to 1/4;
-            occurrence "voice@0@0|note@e5@1/4;1/4;1/4@|1097:1104|1097:1104|4|" from 1/4 to 1/2;
-            occurrence "voice@0@0|note@gs5@1/2;1/2;1/2@|1125:1133|1125:1133|4|" from 1/2 to 1;
-            occurrence "voice@0@0|note@a5@1;1/1;1/1@|1154:1159|1154:1159|4|" from 1 to 2;
+            occurrence "voice@0@0|note@b4@1/4;1/4;1/4@@|1069:1076|1069:1076|4|" from 0 to 1/4;
+            occurrence "voice@0@0|note@e5@1/4;1/4;1/4@@|1097:1104|1097:1104|4|" from 1/4 to 1/2;
+            occurrence "voice@0@0|note@gs5@1/2;1/2;1/2@@|1125:1133|1125:1133|4|" from 1/2 to 1;
+            occurrence "voice@0@0|note@a5@1;1/1;1/1@@|1154:1159|1154:1159|4|" from 1 to 2;
           };
           timeline 2 {
             occurrence "voice@0@0|phrase@consequent|1027:1177|1027:1177|4|" from 0 to 2;

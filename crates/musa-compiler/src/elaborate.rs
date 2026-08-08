@@ -58,11 +58,15 @@ pub(crate) enum FactKind {
         pitch: WrittenPitch,
         duration: NotatedDuration,
         articulations: Vec<crate::Mark>,
+        /// The freedom written on this note, when it was given one.
+        free: Option<crate::score::FreeDuration>,
     },
     /// A written rest — notation intent, not a silence object (§2).
     Rest {
         duration: NotatedDuration,
         articulations: Vec<crate::Mark>,
+        /// As [`FactKind::Note`]'s: a rest can be held too.
+        free: Option<crate::score::FreeDuration>,
     },
     /// A slur over the region it spans.
     Slur,
@@ -97,6 +101,14 @@ pub(crate) enum FactKind {
     /// between repeat barlines; the timeline holds all `times` of it, which is
     /// the layer table's own example (roadmap §2).
     Repeat { times: u32 },
+    /// A mobile over the region it plays: the fragments as written, and the
+    /// order this performance chose. The realized music is the fragments'
+    /// own occurrences; this is the instruction the page prints over them
+    /// (prompt 58's rule).
+    Mobile { fragments: Vec<String>, order: Vec<u32> },
+    /// An improvised frame over the region it occupies. It sounds as silence,
+    /// because musa does not improvise.
+    Improvise { over: Option<String> },
     /// One ending, over the region one pass of it plays.
     ///
     /// `bracket` is which volta is printed — the page has one per distinct
@@ -128,6 +140,8 @@ impl FactKind {
             | Self::Section { .. }
             | Self::Harmony { .. }
             | Self::Repeat { .. }
+            | Self::Mobile { .. }
+            | Self::Improvise { .. }
             | Self::Ending { .. } => &[],
         }
     }
@@ -147,6 +161,29 @@ impl FactKind {
             | Self::Section { .. }
             | Self::Harmony { .. }
             | Self::Repeat { .. }
+            | Self::Mobile { .. }
+            | Self::Improvise { .. }
+            | Self::Ending { .. } => None,
+        }
+    }
+
+    /// The bounds of a freely-held note, for the facts that have them.
+    pub(crate) fn free_of(&self) -> Option<&crate::score::FreeDuration> {
+        match self {
+            Self::Note { free, .. } | Self::Rest { free, .. } => free.as_ref(),
+            Self::Slur
+            | Self::Phrase { .. }
+            | Self::Tuplet { .. }
+            | Self::Dynamic { .. }
+            | Self::Hairpin { .. }
+            | Self::Key { .. }
+            | Self::Meter { .. }
+            | Self::Clef { .. }
+            | Self::Section { .. }
+            | Self::Harmony { .. }
+            | Self::Repeat { .. }
+            | Self::Mobile { .. }
+            | Self::Improvise { .. }
             | Self::Ending { .. } => None,
         }
     }
@@ -196,6 +233,8 @@ impl ScoreFact {
             | FactKind::Section { .. }
             | FactKind::Harmony { .. }
             | FactKind::Repeat { .. }
+            | FactKind::Mobile { .. }
+            | FactKind::Improvise { .. }
             | FactKind::Ending { .. } => {}
         }
         stretched
@@ -231,7 +270,9 @@ impl ScoreFact {
             | FactKind::Section { .. }
             | FactKind::Harmony { .. }
             | FactKind::Repeat { .. }
-            | FactKind::Ending { .. } => None,
+            | FactKind::Ending { .. }
+            | FactKind::Mobile { .. }
+            | FactKind::Improvise { .. } => None,
         }
     }
 }
@@ -252,16 +293,31 @@ impl musa_kernel::Canonical for ScoreFact {
                 format!("|artic:{}", names.join(","))
             }
         };
+        let held = |free: Option<&crate::score::FreeDuration>| {
+            free.map_or_else(String::new, |free| format!("|to:{}", free.most.as_ratio()))
+        };
         let kind = match &self.kind {
             FactKind::Note {
                 pitch,
                 duration,
                 articulations: marks,
-            } => format!("note:{pitch}|{}{}", duration.spelling, articulations(marks)),
+                free,
+            } => format!(
+                "note:{pitch}|{}{}{}",
+                duration.spelling,
+                articulations(marks),
+                held(free.as_ref())
+            ),
             FactKind::Rest {
                 duration,
                 articulations: marks,
-            } => format!("rest|{}{}", duration.spelling, articulations(marks)),
+                free,
+            } => format!(
+                "rest|{}{}{}",
+                duration.spelling,
+                articulations(marks),
+                held(free.as_ref())
+            ),
             FactKind::Slur => "slur|".to_owned(),
             FactKind::Phrase { name } => format!("phrase:{name}|"),
             FactKind::Tuplet { num, den } => format!("tuplet:{num}/{den}|"),
@@ -287,6 +343,11 @@ impl musa_kernel::Canonical for ScoreFact {
             FactKind::Harmony { symbol } => format!("harmony:{}|", symbol.text),
             FactKind::Repeat { times } => format!("repeat:{times}|"),
             FactKind::Ending { bracket, pass } => format!("ending:{bracket}:{pass}|"),
+            FactKind::Mobile { fragments, order } => {
+                let order: Vec<String> = order.iter().map(u32::to_string).collect();
+                format!("mobile:{}:{}|", fragments.join(","), order.join(","))
+            }
+            FactKind::Improvise { over } => format!("improvise:{}|", over.as_deref().unwrap_or_default()),
         };
         // Written rather than `format!`ed so the scope costs no second
         // allocation: P4 walks every occurrence on every edit.
@@ -721,6 +782,7 @@ fn elaborate_libraries(resolver: &mut Resolver, libraries: &crate::imports::Libr
             );
         }
         resolve::register_motifs(resolver, snapshot, &library.motifs(), Some(path));
+        resolve::register_fragments(resolver, snapshot, &library.fragments(), Some(path));
     }
 }
 
@@ -1223,6 +1285,8 @@ fn elaborate_item(
         VoiceItem::Meter(stmt) => elaborate_meter(resolver, stmt, cx, place),
         VoiceItem::Key(stmt) => elaborate_key(resolver, stmt, cx, place),
         VoiceItem::Clef(stmt) => elaborate_clef(resolver, stmt, cx, scope, place),
+        VoiceItem::Mobile(stmt) => elaborate_mobile(resolver, share, stmt, cx, scope),
+        VoiceItem::Improvise(stmt) => elaborate_improvise(resolver, stmt, cx, scope),
         VoiceItem::Note(note) => {
             let Some(duration) = resolve_scaled_duration(resolver, note.syntax(), cx) else {
                 return Segment::empty();
@@ -1234,12 +1298,14 @@ fn elaborate_item(
             let span = resolve::trimmed_span(note.syntax());
             let articulations = articulations_of(resolver, &note.articulations(), span);
             let origin = origin_of(cx, span);
+            let (duration, free) = held(resolver, note.held_to().as_deref(), cx, duration, span);
             let mut fact = ScoreFact::new(
                 scope,
                 FactKind::Note {
                     pitch,
                     duration: duration.clone(),
                     articulations,
+                    free,
                 },
                 origin,
             );
@@ -1252,6 +1318,7 @@ fn elaborate_item(
             };
             let span = resolve::trimmed_span(rest.syntax());
             let origin = origin_of(cx, span);
+            let (duration, free) = held(resolver, rest.held_to().as_deref(), cx, duration, span);
             Segment::literal(single(
                 &duration,
                 ScoreFact::new(
@@ -1259,6 +1326,7 @@ fn elaborate_item(
                     FactKind::Rest {
                         duration: duration.clone(),
                         articulations: Vec::new(),
+                        free,
                     },
                     origin,
                 ),
@@ -1281,6 +1349,7 @@ fn elaborate_item(
                                 pitch,
                                 duration: duration.clone(),
                                 articulations: articulations.clone(),
+                                free: None,
                             },
                             origin,
                         );
@@ -1506,6 +1575,149 @@ fn resolve_scaled_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &Expa
     } else {
         duration.scaled(cx.scale)
     })
+}
+
+/// A written duration and the freedom written on it.
+///
+/// `g4 1/4 to 2/1;` is a quarter the performer may hold to a double whole. The
+/// returned duration is what the note *sounds* — the realization's answer, so
+/// everything after it lands where it should — and the [`crate::score::FreeDuration`]
+/// is what recovers the symbol. Roadmap §2's row with both values kept, rather
+/// than one standing in for the other.
+fn held(
+    resolver: &mut Resolver,
+    to: Option<&str>,
+    cx: &ExpandCx,
+    duration: NotatedDuration,
+    span: SourceSpan,
+) -> (NotatedDuration, Option<crate::score::FreeDuration>) {
+    let Some(to) = to else {
+        return (duration, None);
+    };
+    let Some(most) = crate::resolve::parse_ratio(to) else {
+        resolver.report(
+            Diagnostic::error(Code::NotAValue, format!("`{to}` is not a duration"))
+                .at(span, "expected the longest this note may be held")
+                .help("write a duration such as `2/1`"),
+        );
+        return (duration, None);
+    };
+    let most = crate::MusicalDuration::new(most * cx.scale);
+    if most.as_ratio() < duration.value.as_ratio() {
+        resolver.report(
+            Diagnostic::error(Code::NotAValue, "a held note counts upwards")
+                .at(span, format!("`{}` is longer than `{to}`", duration.spelling))
+                .help("write the written value first and the longest hold second"),
+        );
+        return (duration, None);
+    }
+    let least = duration.value;
+    let sounds = resolver.decide_duration(&cx.choice, least.as_ratio(), most.as_ratio());
+    (
+        NotatedDuration {
+            value: crate::MusicalDuration::new(sounds),
+            spelling: duration.spelling,
+            pieces: vec![crate::MusicalDuration::new(sounds)],
+        },
+        Some(crate::score::FreeDuration { least, most }),
+    )
+}
+
+/// `mobile { a; b; c; }` — its fragments in an order the performance chose.
+///
+/// Prompt 58's rule, applied a third time: the timeline holds the fragments in
+/// the order they are played, and one region fact carries the instruction the
+/// page prints over them.
+fn elaborate_mobile(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    mobile: &musa_language::ast::MobileStmt,
+    cx: &ExpandCx,
+    scope: Scope,
+) -> Segment {
+    let span = resolve::trimmed_span(mobile.syntax());
+    let names = mobile.fragments();
+    if names.len() < 2 {
+        resolver.report(
+            Diagnostic::error(Code::NotAValue, "a mobile arranges at least two fragments")
+                .at(span, format!("this one lists {}", names.len()))
+                .help("write the fragment out instead, or add the ones it is arranged with"),
+        );
+        return Segment::empty();
+    }
+    let count = u32::try_from(names.len()).unwrap_or(u32::MAX);
+    let order = resolver.decide_order(&cx.choice, count);
+    let mut played: Vec<Segment> = Vec::with_capacity(names.len());
+    for index in &order {
+        let Some(name) = names.get(*index as usize) else {
+            continue;
+        };
+        played.push(elaborate_fragment(resolver, share, name, cx, scope, span));
+    }
+    let fact = ScoreFact::new(
+        scope,
+        FactKind::Mobile {
+            fragments: names,
+            order,
+        },
+        origin_of(cx, span),
+    );
+    region(sequence_of(played), fact)
+}
+
+/// A run of segments played one after another, as one segment.
+///
+/// The untied path of [`elaborate_place`], reached from the places that build
+/// their own order rather than reading it off the page. A tie cannot cross a
+/// boundary here: the material either side is chosen by the performance, so a
+/// tie into it would be a tie to a note that may not follow.
+fn sequence_of(segments: Vec<Segment>) -> Segment {
+    if segments.is_empty() {
+        return Segment::empty();
+    }
+    let extent = total_extent(&segments);
+    let parts = coalesce(segments.into_iter().map(|segment| segment.term));
+    let term = match <[_; 1]>::try_from(parts) {
+        Ok([only]) => only,
+        Err(parts) => Term::seq(parts).unwrap_or_else(|_| Term::literal(empty_segment())),
+    };
+    Segment {
+        term,
+        extent,
+        tied: false,
+    }
+}
+
+/// `improvise 8/1 over "Dm7 | G7";` — a frame with unnotated contents.
+///
+/// It occupies its own length of real time so everything after it lands where
+/// it should, and it sounds as silence: musa does not improvise, and a comping
+/// pattern here would be musa inventing notes.
+fn elaborate_improvise(
+    resolver: &mut Resolver,
+    stmt: &musa_language::ast::ImproviseStmt,
+    cx: &ExpandCx,
+    scope: Scope,
+) -> Segment {
+    let span = resolve::trimmed_span(stmt.syntax());
+    let Some(length) = stmt.duration().as_deref().and_then(crate::resolve::parse_ratio) else {
+        resolver.report(
+            Diagnostic::error(Code::NotAValue, "an improvised frame needs a length")
+                .at(span, "expected a duration")
+                .help("write how long it lasts: `improvise 8/1 over \"Dm7 | G7\";`"),
+        );
+        return Segment::empty();
+    };
+    let extent = Beat::new(length * cx.scale);
+    let fact = ScoreFact::new(scope, FactKind::Improvise { over: stmt.over() }, origin_of(cx, span));
+    let Ok(region) = Span::new(Beat::ZERO, extent) else {
+        return Segment::empty();
+    };
+    Segment {
+        term: Term::literal(timeline_or_empty(extent, vec![Occurrence::new(region, fact)])),
+        extent,
+        tied: false,
+    }
 }
 
 /// The number of passes a `repeat` takes: written, or chosen.
@@ -2180,34 +2392,78 @@ fn elaborate_use(
         };
         params.insert(param.name.clone(), value);
     }
-    // The body is elaborated *without* the path that leads to this call, and
-    // with placeholders where the call site and the voice would be, so that a
-    // second call site can reach the same body. Everything a call contributes
-    // rides on the reference's mark instead (T6).
-    // The choice prefix is reset for the same reason the path is: the body is
-    // elaborated once and shared between call sites, so a decision inside it
-    // belongs to the *material* and not to any one use of it. A ranged repeat
-    // inside a motif therefore takes one count per motif — which is the
-    // reading `docs/kernel/11-realization.md` says T2 forces once sharing is
-    // load-bearing, settled here by construction rather than by a rule.
+    let reference = expand_material(
+        resolver,
+        share,
+        &Expansion {
+            name: &name,
+            material,
+            index,
+            body: &body,
+            declaration,
+            params,
+        },
+        cx,
+        scope,
+        call_span,
+    );
+    if call.overrides().is_empty() {
+        return reference;
+    }
+    // Overrides rewrite named notes of *this* call, which needs the notes.
+    Segment::literal(specialize(resolver, call, &share.evaluate(reference.term)))
+}
+
+/// What one reference to a piece of material needs to know about it.
+struct Expansion<'a> {
+    name: &'a str,
+    material: crate::resolve::Material,
+    index: usize,
+    body: &'a [VoiceItem],
+    declaration: crate::origin::DeclarationId,
+    params: indexmap::IndexMap<String, crate::resolve::BoundValue>,
+}
+
+/// Elaborate a piece of material once and refer to it from here.
+///
+/// The body is elaborated *without* the path that leads to this reference, and
+/// with placeholders where the call site and the voice would be, so that a
+/// second reference can reach the same body. Everything a reference
+/// contributes rides on its mark instead (T6).
+///
+/// The choice prefix is reset for the same reason the path is: the body is
+/// elaborated once and shared, so a decision inside it belongs to the
+/// *material* and not to any one use of it. A ranged repeat inside a motif
+/// therefore takes one count per motif — the reading
+/// `docs/kernel/11-realization.md` says T2 forces once sharing is
+/// load-bearing, settled here by construction rather than by a rule.
+fn expand_material(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    expansion: &Expansion<'_>,
+    cx: &ExpandCx,
+    scope: Scope,
+    call_span: SourceSpan,
+) -> Segment {
     let inner = ExpandCx {
-        params,
+        params: expansion.params.clone(),
         intervals: cx.intervals.clone(),
         path: Vec::new(),
-        declaration,
+        declaration: expansion.declaration,
         origin_span: Some(SHARED_ORIGIN),
-        max_motif: index,
+        max_motif: expansion.index,
         scale: cx.scale,
-        choice: crate::ChoicePath::default().then(match material {
-            crate::resolve::Material::Bar => crate::ChoiceStep::Bar(name.as_str().into()),
-            crate::resolve::Material::Motif => crate::ChoiceStep::Motif(name.as_str().into()),
+        choice: crate::ChoicePath::default().then(match expansion.material {
+            crate::resolve::Material::Bar => crate::ChoiceStep::Bar(expansion.name.into()),
+            crate::resolve::Material::Motif => crate::ChoiceStep::Motif(expansion.name.into()),
+            crate::resolve::Material::Fragment => crate::ChoiceStep::Fragment(expansion.name.into()),
         }),
     };
-    let key = motif_key(&name, &inner);
+    let key = motif_key(expansion.name, &inner);
     let (binding, extent) = match share.lookup(&key) {
         Some(found) => found,
         None => {
-            let elaborated = elaborate_items(resolver, share, &body, &inner, SHARED_SCOPE);
+            let elaborated = elaborate_items(resolver, share, expansion.body, &inner, SHARED_SCOPE);
             let extent = elaborated.extent;
             (share.bind(key, elaborated), extent)
         }
@@ -2220,16 +2476,65 @@ fn elaborate_use(
             call_site: call_span,
         }))
         .collect::<Vec<_>>();
-    let reference = Term::var_marked(binding, mark_of(0, &steps, Some(call_span), Some(scope)));
-    if call.overrides().is_empty() {
-        return Segment {
-            term: reference,
-            extent,
-            tied: false,
-        };
+    Segment {
+        term: Term::var_marked(binding, mark_of(0, &steps, Some(call_span), Some(scope))),
+        extent,
+        tied: false,
     }
-    // Overrides rewrite named notes of *this* call, which needs the notes.
-    Segment::literal(specialize(resolver, call, &share.evaluate(reference)))
+}
+
+/// One fragment of a mobile, by name.
+///
+/// A mobile arranges *fragments* and nothing else: a motif takes arguments and
+/// a bar is a measure, and neither is material a performance is invited to
+/// reorder. The refusal names what was found so the mistake is one sentence.
+fn elaborate_fragment(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    name: &str,
+    cx: &ExpandCx,
+    scope: Scope,
+    span: SourceSpan,
+) -> Segment {
+    let found = resolver
+        .motifs
+        .get_full(name)
+        .map(|(index, _, motif)| (index, motif.body.clone(), motif.declaration, motif.material));
+    let Some((index, body, declaration, material)) = found else {
+        let known: Vec<&str> = resolver.motifs.keys().map(String::as_str).collect();
+        resolver.report(
+            Diagnostic::error(Code::UnknownName, format!("cannot find `{name}`"))
+                .at(span, "not declared in this piece")
+                .help(crate::resolve::suggest_name(name, &known)),
+        );
+        return Segment::empty();
+    };
+    if material != crate::resolve::Material::Fragment {
+        resolver.report(
+            Diagnostic::error(
+                Code::Misplaced,
+                format!("`{name}` is a {}, not a fragment", material.word()),
+            )
+            .at(span, "a mobile arranges fragments")
+            .help(format!("declare it as `fragment {name} {{ … }}`")),
+        );
+        return Segment::empty();
+    }
+    expand_material(
+        resolver,
+        share,
+        &Expansion {
+            name,
+            material,
+            index,
+            body: &body,
+            declaration,
+            params: indexmap::IndexMap::new(),
+        },
+        cx,
+        scope,
+        span,
+    )
 }
 
 /// The sharing key for a motif body: the motif, and everything its payloads

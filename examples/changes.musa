@@ -1,0 +1,62 @@
+// A chart: head, solos, head out. What a jazz musician hands another jazz
+// musician, and the reason `improvise` exists — the middle of this piece is
+// notated as a frame with nothing inside it, because the notes are the
+// player's and musa does not invent notes.
+//
+//     musa check examples/changes.musa --seed 3
+//     musa render examples/changes.musa --to musicxml
+//
+// The export is lossy on purpose and says so: MusicXML has no improvised
+// region, so it carries the realized silence plus a text direction reading
+// `improvise over Dm7 | G7 | Cmaj7`. A player reading the exported part sees
+// the instruction; a program reading it sees a rest. That is stated in
+// `docs/kernel/07-backend-contract.md` rather than discovered.
+//
+// The last chord is `1 to 4/1`: held as long as the band likes. Its written
+// value is the whole note the engraver draws; what it sounds is the
+// performance's answer. Roadmap §2's row — notated duration ≠ performed
+// duration — with both values kept.
+piece "Changes" {
+    composer "musa";
+
+    tempo 1/4 = 132;
+    meter 4/4;
+    key c major;
+
+    // The head: eight bars over a ii-V-I.
+    fragment head {
+        d5 1/4; f5 1/4; a5 1/4; c6 1/4;
+        b5 1/2; g5 1/2;
+        g5 1/4; b5 1/4; d6 1/4; f6 1/4;
+        e6 1;
+        c6 1/4; a5 1/4; g5 1/4; e5 1/4;
+        d5 1/2; f5 1/2;
+        e5 1/4; g5 1/4; b5 1/4; d6 1/4;
+        c6 1;
+    }
+
+    // The bass line under each section. Written as material because the horn
+    // does not repeat with it, and a repeat barline crosses the system.
+    fragment walk_head { repeat 8 { d3 1/4; f3 1/4; a3 1/4; c4 1/4; } }
+    fragment walk_solo { repeat 16 { d3 1/4; f3 1/4; g3 1/4; b3 1/4; } }
+
+    score {
+        part horn {
+            voice lead {
+                use head;
+                improvise 16/1 over "Dm7 | G7 | Cmaj7 | Cmaj7";
+                use head;
+                c6 1 to 4/1;
+            }
+        }
+
+        part bass {
+            voice walk {
+                use walk_head;
+                use walk_solo;
+                use walk_head;
+                c3 1 to 4/1;
+            }
+        }
+    }
+}

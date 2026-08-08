@@ -349,6 +349,9 @@ enum ScoreMark {
     Section(String),
     /// A tempo mark.
     Tempo(crate::plan::TempoText),
+    /// An instruction the performance answers: an open region's, or the
+    /// reach of a freely-held note.
+    Instruction(String),
 }
 
 /// The score-level marks in playing order: at one place, the tempo is read
@@ -369,6 +372,31 @@ fn score_marks(plan: &NotationPlan) -> Vec<PositionedMark<ScoreMark>> {
             what: ScoreMark::Section(section.what.clone()),
         });
     }
+    for hold in plan.holds() {
+        marks.push(PositionedMark {
+            measure: hold.measure,
+            onset_in_measure: hold.onset_in_measure,
+            what: ScoreMark::Instruction(format!("hold to {}", hold.what.most.as_ratio())),
+        });
+    }
+    // `LilyPond` gets closest of the three — `\\markup` sets the instruction
+    // where it belongs and the music under it is the reading that was taken —
+    // but it still has no element that *means* "any order", so the region is
+    // marked at both ends rather than drawn as a box.
+    for region in plan.open() {
+        marks.push(PositionedMark {
+            measure: region.from,
+            onset_in_measure: musa_compiler::MusicalDuration::ZERO,
+            what: ScoreMark::Instruction(region.text.clone()),
+        });
+        if region.to != region.from {
+            marks.push(PositionedMark {
+                measure: region.to,
+                onset_in_measure: musa_compiler::MusicalDuration::ZERO,
+                what: ScoreMark::Instruction("end".to_owned()),
+            });
+        }
+    }
     marks.sort_by_key(|mark| (mark.measure, mark.onset_in_measure.as_ratio()));
     marks
 }
@@ -380,6 +408,10 @@ fn mark_node(mark: &ScoreMark) -> LyNode {
         ScoreMark::Section(name) => {
             let escaped = name.replace('\\', "").replace('"', "'");
             LyNode::Command(format!("\\mark \\markup {{ \\bold \"{escaped}\" }}"))
+        }
+        ScoreMark::Instruction(text) => {
+            let escaped = text.replace('\\', "").replace('"', "'");
+            LyNode::Command(format!("\\mark \\markup {{ \\italic \"{escaped}\" }}"))
         }
         ScoreMark::Tempo(tempo) => {
             let unit = spell_duration(*tempo.beat.numer(), *tempo.beat.denom()).unwrap_or_else(|| "4".to_owned());

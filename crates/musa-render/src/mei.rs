@@ -634,6 +634,25 @@ fn write_control_events(writer: &mut Writer<Vec<u8>>, staff: &str, lane: &VoiceL
     Ok(())
 }
 
+/// One `<dir>`: a text instruction at a timestamp, optionally reaching to a
+/// second one.
+fn write_dir(writer: &mut Writer<Vec<u8>>, stamp: &str, until: Option<&str>, text: &str) -> Result<(), RenderError> {
+    let mut dir = element("dir");
+    dir.push_attribute(("staff", "1"));
+    dir.push_attribute(("tstamp", stamp));
+    if let Some(until) = until {
+        dir.push_attribute(("tstamp2", until));
+    }
+    dir.push_attribute(("place", "above"));
+    writer
+        .write_event(Event::Start(dir))
+        .map_err(|error| RenderError::xml(&error))?;
+    writer
+        .write_event(Event::Text(quick_xml::events::BytesText::new(text)))
+        .map_err(|error| RenderError::xml(&error))?;
+    end(writer, "dir")
+}
+
 /// A `tstamp` as MEI counts them: beat 1 is the start of the measure, and a
 /// symbol halfway through a 4/4 bar is beat 3.
 fn timestamp(beats: num_rational::Ratio<i64>) -> String {
@@ -685,6 +704,21 @@ fn write_positioned(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan, index: us
             .write_event(Event::Text(quick_xml::events::BytesText::new(&section.what)))
             .map_err(|error| RenderError::xml(&error))?;
         end(writer, "dir")?;
+    }
+    // MEI has no free-duration bracket and no open-region element, so both
+    // are `<dir>`: the reach of a held note above its notehead, and the
+    // instruction over the region it governs, spanning with `tstamp2` where
+    // it covers more than one measure. Lossy, and stated as lossy in
+    // `docs/kernel/07-backend-contract.md`.
+    for hold in plan.holds().iter().filter(|mark| mark.measure == measure) {
+        let stamp = timestamp(hold.beat(unit));
+        write_dir(writer, &stamp, None, &format!("hold to {}", hold.what.most.as_ratio()))?;
+    }
+    for region in plan.open().iter().filter(|region| region.from == measure) {
+        let reach = region.to.saturating_sub(region.from);
+        let stamp = timestamp(num_rational::Ratio::ONE);
+        let until = format!("{reach}m+1");
+        write_dir(writer, &stamp, Some(until.as_str()), &region.text)?;
     }
     for chord in plan.harmony().iter().filter(|mark| mark.measure == measure) {
         let stamp = timestamp(chord.beat(unit));

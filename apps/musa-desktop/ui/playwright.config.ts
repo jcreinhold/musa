@@ -40,7 +40,7 @@ export default defineConfig({
     deviceScaleFactor: 2,
   },
   webServer: {
-    command: "npm run dev",
+    command: "pnpm run dev",
     url: "http://localhost:5173",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

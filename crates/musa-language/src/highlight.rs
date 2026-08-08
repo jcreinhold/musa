@@ -42,6 +42,10 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("repeat", SyntaxKind::RepeatKw),
     ("bar", SyntaxKind::BarKw),
     ("ending", SyntaxKind::EndingKw),
+    ("fragment", SyntaxKind::FragmentKw),
+    ("mobile", SyntaxKind::MobileKw),
+    ("improvise", SyntaxKind::ImproviseKw),
+    ("over", SyntaxKind::OverKw),
     ("slur", SyntaxKind::SlurKw),
     ("dynamic", SyntaxKind::DynamicKw),
     ("tuplet", SyntaxKind::TupletKw),
@@ -234,7 +238,11 @@ impl TokenClass {
             | SyntaxKind::DiminuendoKw
             | SyntaxKind::ToKw
             | SyntaxKind::BarKw
-            | SyntaxKind::EndingKw => Self::Keyword,
+            | SyntaxKind::EndingKw
+            | SyntaxKind::FragmentKw
+            | SyntaxKind::MobileKw
+            | SyntaxKind::ImproviseKw
+            | SyntaxKind::OverKw => Self::Keyword,
 
             SyntaxKind::Error => Self::Invalid,
 
@@ -297,7 +305,10 @@ impl TokenClass {
             | SyntaxKind::SendStmt
             | SyntaxKind::Block
             | SyntaxKind::BarStmt
-            | SyntaxKind::EndingStmt => return None,
+            | SyntaxKind::EndingStmt
+            | SyntaxKind::FragmentDecl
+            | SyntaxKind::MobileStmt
+            | SyntaxKind::ImproviseStmt => return None,
         };
         Some(class)
     }

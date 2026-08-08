@@ -92,7 +92,7 @@ separately and report it rather than assuming the budget covers it.
 ## Check
 
 ```sh
-cd apps/musa-desktop/ui && npm test
+cd apps/musa-desktop/ui && pnpm test
 cargo nextest run -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check

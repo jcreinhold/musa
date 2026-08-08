@@ -1378,15 +1378,24 @@ The candidate kernel should support clean elaboration of at least:
 
 6. **Accelerando/ritardando** Distinguish symbolic beat structure from physical-time realization.
 
-7. **Glissando/crescendo** Determine where continuous temporal behavior belongs.
+7. **Glissando/crescendo** Determine where continuous temporal behavior belongs. *(Proven at prompt 44: a shape is
+   a `Progress` in the payload, not a term form. `examples/annotated.musa`.)*
 
-8. **Loop-based electronic music** Surface iteration producing finite observations.
+8. **Loop-based electronic music** Surface iteration producing finite observations. *(Proven at prompt 67: a ranged
+   repeat is decided once at compile time and everything below it is an ordinary exact repeat.
+   `examples/loop-lengths.musa`.)*
 
 9. **Controlled aleatory** Multiple possible realizations producing ordinary finite kernels. *(Design settled at
-   prompt 66: `docs/kernel/11-realization.md`.)*
+   prompt 66, implemented at 67, given a surface at 68: `docs/kernel/11-realization.md`. Proven by
+   `examples/mobile.musa` — nineteen fragments, 19! orderings, one permutation in the payload — and by
+   `examples/in-c.musa`, fifty-three decision sites that survive an edit to each other.)*
 
 10. **An improvisational/live process** Verify that the finite kernel remains a useful observation/interchange target
-    even when the producer is reactive.
+    even when the producer is reactive. *(Proven at prompt 68 as far as it can be, and no further:
+    `examples/changes.musa` writes the improvised chorus as a frame of the right length with the changes on it, so
+    the interchange file holds a complete, finite, exactly-timed piece and the instruction a player needs. What is
+    **not** proven, and is refused rather than deferred, is a reactive producer: musa compiles a reading of the
+    work, it does not follow one. See prompt 68's Stop list.)*
 
 If several of these require awkward or lossy lowering, reconsider the kernel.
 

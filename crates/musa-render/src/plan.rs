@@ -29,6 +29,36 @@ pub struct NotationPlan {
     sections: Vec<PositionedMark<String>>,
     harmony: Vec<PositionedMark<ChordSymbol>>,
     repeats: Vec<RepeatMark>,
+    open: Vec<OpenMark>,
+    holds: Vec<PositionedMark<musa_compiler::FreeDuration>>,
+}
+
+/// A stretch of the page whose contents or order the performance decides: a
+/// mobile's fragments, or an improvised chorus.
+///
+/// It carries the instruction as text because that is the only thing every
+/// backend can print. What is *under* it is the reading this compilation
+/// took, which is already in the staves — prompt 58's rule, a third time.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OpenMark {
+    /// The 1-based measure it opens in.
+    pub from: u32,
+    /// The 1-based measure it closes in.
+    pub to: u32,
+    /// The instruction printed over it, as a reader reads it.
+    pub text: String,
+    /// Which kind of freedom it is, for a backend that can draw one and not
+    /// the other, and for the export warnings.
+    pub kind: OpenShape,
+}
+
+/// The two shapes of open region a page can be asked to draw.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OpenShape {
+    /// Fragments in an order the performance chose.
+    Mobile,
+    /// A frame with unnotated contents.
+    Improvise,
 }
 
 /// Repeat barlines and their volta brackets, by measure.
@@ -102,6 +132,22 @@ impl NotationPlan {
     /// Repeats, in the order they are reached.
     pub fn repeats(&self) -> &[RepeatMark] {
         &self.repeats
+    }
+
+    /// Open regions, in the order they are reached.
+    pub fn open(&self) -> &[OpenMark] {
+        &self.open
+    }
+
+    /// Every freely-held note, positioned the way a backend anchors a symbol.
+    ///
+    /// The same fact as [`NotatedItem::free`], said in the other coordinate.
+    /// An engraver draws the bracket on the notehead, so it reads the item; a
+    /// backend with no bracket prints a word into the measure, so it reads
+    /// this. Neither can be derived from the other without walking the score
+    /// the other way round.
+    pub fn holds(&self) -> &[PositionedMark<musa_compiler::FreeDuration>] {
+        &self.holds
     }
 }
 
@@ -453,6 +499,7 @@ pub struct NotatedItem {
     hairpin: Option<HairpinMark>,
     dynamic: Option<DynamicMark>,
     articulations: Vec<Mark>,
+    free: Option<musa_compiler::FreeDuration>,
 }
 
 impl NotatedItem {
@@ -519,6 +566,12 @@ impl NotatedItem {
     /// The dynamic marking printed at this item, if any.
     pub fn dynamic(&self) -> Option<DynamicMark> {
         self.dynamic
+    }
+
+    /// The bounds of a freely-held note: what is drawn, and how far the
+    /// bracket reaches. `None` on a note that sounds what it says.
+    pub fn free(&self) -> Option<&musa_compiler::FreeDuration> {
+        self.free.as_ref()
     }
 
     /// Articulations printed on this item, in written order.
@@ -619,6 +672,48 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
         .filter_map(|chord| Some(positioned(&bars, fold.at(chord.at)?, chord.symbol.clone())))
         .collect();
     let repeats = fold.marks(score, &bars);
+    let open = score
+        .annotations()
+        .open()
+        .iter()
+        .filter_map(|region| {
+            let from = positioned(&bars, fold.at(region.start)?, ()).measure;
+            // A region that ends on a barline ends in the measure *before*
+            // it: the last measure it covers is the last one with music of
+            // its own in it, which is where a reader expects the bracket to
+            // close.
+            let closes = positioned(&bars, fold.at(region.end)?, ());
+            let to = if closes.onset_in_measure == musa_compiler::MusicalDuration::ZERO {
+                closes.measure.saturating_sub(1)
+            } else {
+                closes.measure
+            };
+            Some(OpenMark {
+                from,
+                to: to.max(from),
+                text: open_text(&region.kind),
+                kind: match region.kind {
+                    musa_compiler::OpenKind::Mobile { .. } => OpenShape::Mobile,
+                    musa_compiler::OpenKind::Improvise { .. } => OpenShape::Improvise,
+                },
+            })
+        })
+        .collect();
+    let holds = staves
+        .iter()
+        .flat_map(|staff| staff.measures())
+        .flat_map(|measure| {
+            measure.lanes().iter().flat_map(move |lane| {
+                lane.items().iter().filter_map(move |item| {
+                    Some(PositionedMark {
+                        measure: measure.number(),
+                        onset_in_measure: item.onset_in_measure(),
+                        what: item.free()?.clone(),
+                    })
+                })
+            })
+        })
+        .collect();
     Ok(NotationPlan {
         front: FrontMatter {
             title: score.title().to_string(),
@@ -632,7 +727,27 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
         sections,
         harmony,
         repeats,
+        open,
+        holds,
     })
+}
+
+/// What a reader is told, in the words a printed part uses.
+fn open_text(kind: &musa_compiler::OpenKind) -> String {
+    match kind {
+        musa_compiler::OpenKind::Mobile { fragments, order } => {
+            let played: Vec<&str> = order
+                .iter()
+                .filter_map(|index| fragments.get(*index as usize))
+                .map(String::as_str)
+                .collect();
+            format!("any order — this reading: {}", played.join(", "))
+        }
+        musa_compiler::OpenKind::Improvise { over } => match over {
+            Some(changes) => format!("improvise over {changes}"),
+            None => "improvise".to_owned(),
+        },
+    }
 }
 
 /// Where the barlines fall **on the page**.
@@ -1071,6 +1186,9 @@ fn plan_lane(
                 } else {
                     Vec::new()
                 },
+                // The bracket is drawn from the first notehead of the symbol,
+                // like every other thing written once on a tied pair.
+                free: if is_first { event.free.clone() } else { None },
             });
         }
     }

@@ -54,6 +54,9 @@ const EXAMPLES: &[(&str, &str)] = &[
     ("twinkle", include_str!("../../../examples/twinkle.musa")),
     ("variation", include_str!("../../../examples/variation.musa")),
     ("loop-lengths", include_str!("../../../examples/loop-lengths.musa")),
+    ("mobile", include_str!("../../../examples/mobile.musa")),
+    ("changes", include_str!("../../../examples/changes.musa")),
+    ("in-c", include_str!("../../../examples/in-c.musa")),
 ];
 
 /// The round-trip law over the real corpus: printing a piece and reading it

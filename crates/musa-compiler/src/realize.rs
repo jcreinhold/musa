@@ -28,12 +28,6 @@ use num_rational::Ratio;
 use crate::origin::ChoicePath;
 
 /// What was decided at one site.
-///
-/// All three shapes exist now, though only `Count` has a producer: `taken` and
-/// the `.kernel` header are serialization surfaces, and a variant added later
-/// would move the format. `Order` and `Duration` arrive with prompt 68. This
-/// is the one place where anticipating them costs nothing and not
-/// anticipating them costs a format revision.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Decision {
     /// How many passes a ranged repeat takes.
@@ -123,6 +117,50 @@ impl Realization {
         self.overrides.iter()
     }
 
+    /// Choose an order for `count` fragments at the site at `path`.
+    ///
+    /// Fisher–Yates over a stream derived from the path, so the result is a
+    /// permutation — Klavierstück XI's nineteen fragments give 19! orderings,
+    /// the number that killed `choose`, and here they cost nineteen `u32`s.
+    /// A pin of the wrong length is ignored rather than trusted: the piece
+    /// says how many fragments there are.
+    pub(crate) fn order(&self, path: &ChoicePath, count: u32) -> Vec<u32> {
+        let mut order: Vec<u32> = (0..count).collect();
+        if let Some(Decision::Order(pinned)) = self.overrides.get(path)
+            && is_permutation(pinned, count)
+        {
+            return pinned.clone();
+        }
+        let mut stream = Stream::from(draw(self.seed, path));
+        // Downward Fisher–Yates: every permutation is reachable and each is
+        // as likely as the digest is uniform.
+        let mut index = order.len();
+        while index > 1 {
+            index = index.saturating_sub(1);
+            let swap = usize::try_from(stream.next() % (index as u128).saturating_add(1)).unwrap_or(0);
+            order.swap(index, swap);
+        }
+        order
+    }
+
+    /// Choose how long a free duration lasts, in whole notes.
+    ///
+    /// On a sixteenth-note grid offset from `least`, so what the performance
+    /// picks is a duration the engraver can spell. A continuum is what the
+    /// *instruction* means; a page is what musa has to draw.
+    pub(crate) fn duration(&self, path: &ChoicePath, least: Ratio<i64>, most: Ratio<i64>) -> Ratio<i64> {
+        if let Some(Decision::Duration(pinned)) = self.overrides.get(path) {
+            return (*pinned).clamp(least, most);
+        }
+        let grid = Ratio::new(1, 16);
+        let steps = ((most - least) / grid).to_integer().max(0);
+        let Ok(steps) = u32::try_from(steps) else {
+            return least;
+        };
+        let taken = self.count(path, 0, steps);
+        least + grid * Ratio::from_integer(i64::from(taken))
+    }
+
     /// Choose a repeat count in `least ..= most` for the site at `path`.
     ///
     /// A pin wins; otherwise the count is derived from the seed and the path
@@ -153,6 +191,46 @@ fn draw(seed: u64, path: &ChoicePath) -> u128 {
     let mut bytes = seed.to_be_bytes().to_vec();
     bytes.extend_from_slice(path.canonical().as_bytes());
     musa_kernel::stable_digest(&bytes)
+}
+
+/// A site's randomness, when one number is not enough.
+///
+/// A shuffle needs `n - 1` draws and they must not repeat. This is still *per
+/// path* — the stream is seeded by the site and by nothing before it, so the
+/// property that makes an edit elsewhere harmless is unaffected. SplitMix64's
+/// mixing function, which is four lines and needs no dependency.
+struct Stream(u64);
+
+impl Stream {
+    fn from(digest: u128) -> Self {
+        Self((digest as u64) ^ ((digest >> 64) as u64))
+    }
+
+    fn next(&mut self) -> u128 {
+        self.0 = self.0.wrapping_add(0x9e37_79b9_7f4a_7c15);
+        let mut mixed = self.0;
+        mixed = (mixed ^ (mixed >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        mixed = (mixed ^ (mixed >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        u128::from(mixed ^ (mixed >> 31))
+    }
+}
+
+/// Whether `pinned` is a permutation of `0 .. count`.
+fn is_permutation(pinned: &[u32], count: u32) -> bool {
+    let mut seen: Vec<bool> = vec![false; count as usize];
+    if pinned.len() != seen.len() {
+        return false;
+    }
+    for index in pinned {
+        let Some(slot) = seen.get_mut(*index as usize) else {
+            return false;
+        };
+        if *slot {
+            return false;
+        }
+        *slot = true;
+    }
+    true
 }
 
 #[cfg(test)]

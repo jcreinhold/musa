@@ -105,7 +105,7 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-cd apps/musa-desktop/ui && npm test
+cd apps/musa-desktop/ui && pnpm test
 cargo run -p musa-cli -- check examples/bulgarian.musa
 cargo run -p musa-cli -- render examples/bulgarian.musa --to musicxml | grep -c '<time>'   # 2
 cargo bench -p musa-compiler        # per-scope BarLines must not regress P1-P3

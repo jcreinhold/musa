@@ -61,6 +61,10 @@ pub(crate) enum DeclInfo {
 pub(crate) enum Material {
     Motif,
     Bar,
+    /// Material a *performance* arranges rather than a composer reuses: it
+    /// may be reordered by a `mobile` and repeated a chosen number of times.
+    /// One namespace with the other two, so `use` reaches all three.
+    Fragment,
 }
 
 impl Material {
@@ -68,6 +72,7 @@ impl Material {
         match self {
             Self::Motif => "motif",
             Self::Bar => "bar",
+            Self::Fragment => "fragment",
         }
     }
 }
@@ -234,18 +239,53 @@ impl Resolver {
         least: u32,
         most: u32,
     ) -> (crate::ChoicePath, u32) {
+        let path = self.site(place);
+        let count = self.realization.count(&path, least, most);
+        self.decided(path.clone(), crate::Decision::Count(count));
+        (path, count)
+    }
+
+    /// The order a mobile's `count` fragments are played in: a permutation of
+    /// `0..count`.
+    pub(crate) fn decide_order(&mut self, place: &crate::ChoicePath, count: u32) -> Vec<u32> {
+        let path = self.site(place);
+        let order = self.realization.order(&path, count);
+        self.decided(path, crate::Decision::Order(order.clone()));
+        order
+    }
+
+    /// How long a freely-held note actually sounds, between the written value
+    /// and the longest it may be held.
+    pub(crate) fn decide_duration(
+        &mut self,
+        place: &crate::ChoicePath,
+        least: Ratio<i64>,
+        most: Ratio<i64>,
+    ) -> Ratio<i64> {
+        let path = self.site(place);
+        let held = self.realization.duration(&path, least, most);
+        self.decided(path, crate::Decision::Duration(held));
+        held
+    }
+
+    /// The path of the next decision site inside `place`.
+    fn site(&mut self, place: &crate::ChoicePath) -> crate::ChoicePath {
         let ordinal = self.sites.entry(place.clone()).or_insert(0);
         let path = place.then(crate::ChoiceStep::Ordinal(*ordinal));
         *ordinal = ordinal.saturating_add(1);
-        let count = self.realization.count(&path, least, most);
-        // One site, one decision, however many voices reach it: the k-th site
-        // in every voice *is* the k-th site, which is the point of numbering
-        // them per voice rather than per path down from the part.
-        let decision = (path.clone(), crate::Decision::Count(count));
+        path
+    }
+
+    /// Record what was decided at a site.
+    ///
+    /// One site, one decision, however many voices reach it: the k-th site in
+    /// every voice *is* the k-th site, which is the point of numbering them
+    /// per voice rather than per path down from the part.
+    fn decided(&mut self, path: crate::ChoicePath, decision: crate::Decision) {
+        let decision = (path, decision);
         if !self.decisions.contains(&decision) {
             self.decisions.push(decision);
         }
-        (path, count)
     }
 
     pub(crate) fn declare(&mut self, info: DeclInfo) -> DeclKey {
@@ -396,6 +436,7 @@ pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot:
         merge_profiles(resolver, snapshot, &profiles, span_of(performance.syntax()), None);
     }
     register_motifs(resolver, snapshot, &piece.motifs(), None);
+    register_fragments(resolver, snapshot, &piece.fragments(), None);
 }
 
 /// `composer`, `arranger`, `subtitle`, `copyright`.
@@ -456,6 +497,39 @@ pub(crate) fn register_motifs(
             body: motif.items(),
             declaration: ordinal(resolver, key),
             material: Material::Motif,
+            span,
+        };
+        snapshot.push_motif(crate::score::MotifDeclaration {
+            name: name.clone(),
+            span,
+        });
+        resolver.motifs.insert(name, definition);
+    }
+}
+
+/// Register the fragment declarations, refusing to shadow.
+///
+/// Separate from [`register_motifs`] only because the AST nodes differ: a
+/// fragment takes no parameters, so it is not a motif whose parameter list
+/// happens to be empty — it is material with nothing to substitute into.
+pub(crate) fn register_fragments(
+    resolver: &mut Resolver,
+    snapshot: &mut ScoreSnapshot,
+    fragments: &[musa_language::ast::FragmentDecl],
+    from: Option<&str>,
+) {
+    for fragment in fragments {
+        let name = fragment.name().unwrap_or_default();
+        let span = trimmed_span(fragment.syntax());
+        if refuses_to_shadow(resolver, snapshot, &name, span, from) {
+            continue;
+        }
+        let key = resolver.declare(DeclInfo::Motif);
+        let definition = MotifDef {
+            params: Vec::new(),
+            body: fragment.items(),
+            declaration: ordinal(resolver, key),
+            material: Material::Fragment,
             span,
         };
         snapshot.push_motif(crate::score::MotifDeclaration {
@@ -1026,6 +1100,13 @@ pub(crate) fn check_measure_sanity(resolver: &mut Resolver, snapshot: &ScoreSnap
     }
     for (_, part) in snapshot.parts().iter() {
         for (voice_id, voice) in part.voices() {
+            // A voice that holds a note as long as it likes is not measured
+            // after that note: how far it reaches is the performance's
+            // answer, so a barline arithmetic complaint about it would be a
+            // complaint about the freedom rather than about a mistake.
+            if voice.events().iter().any(|event| event.free.is_some()) {
+                continue;
+            }
             let span = voice.span();
             let stops = bars.at(crate::MusicalTime::ZERO + span);
             if span.as_ratio() != Ratio::ZERO && stops.into != crate::MusicalDuration::ZERO {

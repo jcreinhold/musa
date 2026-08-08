@@ -766,6 +766,8 @@ fn item_syntax(item: &crate::ast::VoiceItem) -> &SyntaxNode {
         crate::ast::VoiceItem::Meter(ref it) => it.syntax(),
         crate::ast::VoiceItem::Key(ref it) => it.syntax(),
         crate::ast::VoiceItem::Clef(ref it) => it.syntax(),
+        crate::ast::VoiceItem::Mobile(ref it) => it.syntax(),
+        crate::ast::VoiceItem::Improvise(ref it) => it.syntax(),
     }
 }
 

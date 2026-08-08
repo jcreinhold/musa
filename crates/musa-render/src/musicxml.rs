@@ -617,7 +617,33 @@ fn write_positioned(xml: &mut Xml, plan: &NotationPlan, measure: u32, divisions:
     for chord in plan.harmony().iter().filter(|mark| mark.measure == measure) {
         write_harmony(xml, &chord.what, chord.onset_in_measure.as_ratio(), divisions)?;
     }
+    // An open region has no `MusicXML` element, so it is a word direction at
+    // each end: the instruction where it opens, and where it closes so a
+    // reader knows how far it reaches. Lossy, and said to be lossy in
+    // `docs/kernel/07-backend-contract.md`.
+    for hold in plan.holds().iter().filter(|mark| mark.measure == measure) {
+        let text = format!("hold to {}", hold.what.most.as_ratio());
+        write_words(xml, &text, hold.onset_in_measure.as_ratio(), divisions)?;
+    }
+    for region in plan.open() {
+        if region.from == measure {
+            write_words(xml, &region.text, Ratio::ZERO, divisions)?;
+        }
+        if region.to == measure && region.to != region.from {
+            write_words(xml, "end", Ratio::ZERO, divisions)?;
+        }
+    }
     Ok(())
+}
+
+/// A text direction above the staff: the one thing every backend can print.
+fn write_words(xml: &mut Xml, text: &str, onset: Ratio<i64>, divisions: i64) -> Result<(), RenderError> {
+    xml.open("direction", &[("placement", "above")])?;
+    xml.open("direction-type", &[])?;
+    xml.leaf("words", &[], text)?;
+    xml.close("direction-type")?;
+    write_offset(xml, onset, divisions)?;
+    xml.close("direction")
 }
 
 /// `MusicXML` names its note values rather than numbering them.
