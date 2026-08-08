@@ -38,10 +38,31 @@ fn check_rejects_a_broken_piece_with_diagnostics() -> std::io::Result<()> {
     std::fs::remove_file(&path)
 }
 
+/// Every shipped example is already in canonical form.
+///
+/// This used to check `glass-mountain.musa` alone, which meant a new example
+/// could arrive unformatted and stay that way — the examples are executable
+/// specifications, and a specification written in a shape the formatter would
+/// rewrite teaches the wrong shape.
 #[test]
 fn format_check_passes_on_canonical_examples() -> std::io::Result<()> {
-    let output = musa(&["format", "--check", &glass_mountain()])?;
-    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    let examples = format!("{}/../../examples", env!("CARGO_MANIFEST_DIR"));
+    let mut count = 0usize;
+    for entry in std::fs::read_dir(&examples)? {
+        let path = entry?.path();
+        if path.extension().is_none_or(|extension| extension != "musa") {
+            continue;
+        }
+        let output = musa(&["format", "--check", &path.to_string_lossy()])?;
+        assert!(
+            output.status.success(),
+            "{} is not formatted: {}",
+            path.display(),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        count = count.saturating_add(1);
+    }
+    assert!(count >= 3, "expected at least 3 examples, found {count}");
     Ok(())
 }
 
@@ -67,6 +88,22 @@ fn format_check_fails_on_an_unformatted_file() -> std::io::Result<()> {
     let path = temp_file("unformatted.musa", "piece   \"U\"{\nmeter 4/4;\n}\n")?;
     let output = musa(&["format", "--check", &path.to_string_lossy()])?;
     assert!(!output.status.success());
+    std::fs::remove_file(&path)
+}
+
+/// `--check` writes nothing, not even the file it rejects.
+///
+/// It used to format the document to find out, and an unsaved edit is
+/// autosaved — so checking a file left a `.recovery` copy beside it, and
+/// checking a working tree littered it.
+#[test]
+fn format_check_leaves_the_directory_alone() -> std::io::Result<()> {
+    let path = temp_file("untouched.musa", "piece   \"U\"{\nmeter 4/4;\n}\n")?;
+    let recovery = path.with_extension("musa.recovery");
+    let output = musa(&["format", "--check", &path.to_string_lossy()])?;
+    assert!(!output.status.success());
+    assert!(!recovery.exists(), "{} was written", recovery.display());
+    assert_eq!(std::fs::read_to_string(&path)?, "piece   \"U\"{\nmeter 4/4;\n}\n");
     std::fs::remove_file(&path)
 }
 

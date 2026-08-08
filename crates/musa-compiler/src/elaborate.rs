@@ -118,6 +118,17 @@ pub(crate) enum FactKind {
     /// A chord symbol at the place it is written; a region once a chord's
     /// duration can be written.
     Harmony { symbol: crate::harmony::ChordSymbol },
+    /// A repeat over every pass it plays. The page prints the body once
+    /// between repeat barlines; the timeline holds all `times` of it, which is
+    /// the layer table's own example (roadmap §2).
+    Repeat { times: u32 },
+    /// One ending, over the region one pass of it plays.
+    ///
+    /// `bracket` is which volta is printed — the page has one per distinct
+    /// ending — and `pass` is which time through it sounds. They differ
+    /// whenever there are fewer endings than passes, which is what a bracket
+    /// labelled `2.–4.` means.
+    Ending { bracket: u32, pass: u32 },
 }
 
 impl FactKind {
@@ -139,7 +150,9 @@ impl FactKind {
             | Self::Key { .. }
             | Self::Meter { .. }
             | Self::Section { .. }
-            | Self::Harmony { .. } => &[],
+            | Self::Harmony { .. }
+            | Self::Repeat { .. }
+            | Self::Ending { .. } => &[],
         }
     }
 
@@ -155,7 +168,9 @@ impl FactKind {
             | Self::Key { .. }
             | Self::Meter { .. }
             | Self::Section { .. }
-            | Self::Harmony { .. } => None,
+            | Self::Harmony { .. }
+            | Self::Repeat { .. }
+            | Self::Ending { .. } => None,
         }
     }
 }
@@ -201,7 +216,9 @@ impl ScoreFact {
             | FactKind::Key { .. }
             | FactKind::Meter { .. }
             | FactKind::Section { .. }
-            | FactKind::Harmony { .. } => {}
+            | FactKind::Harmony { .. }
+            | FactKind::Repeat { .. }
+            | FactKind::Ending { .. } => {}
         }
         stretched
     }
@@ -233,7 +250,9 @@ impl ScoreFact {
             | FactKind::Key { .. }
             | FactKind::Meter { .. }
             | FactKind::Section { .. }
-            | FactKind::Harmony { .. } => None,
+            | FactKind::Harmony { .. }
+            | FactKind::Repeat { .. }
+            | FactKind::Ending { .. } => None,
         }
     }
 }
@@ -286,6 +305,8 @@ impl musa_kernel::Canonical for ScoreFact {
             FactKind::Meter { numerator, denominator } => format!("meter:{numerator}/{denominator}|"),
             FactKind::Section { name } => format!("section:{name}|"),
             FactKind::Harmony { symbol } => format!("harmony:{}|", symbol.text),
+            FactKind::Repeat { times } => format!("repeat:{times}|"),
+            FactKind::Ending { bracket, pass } => format!("ending:{bracket}:{pass}|"),
         };
         // Written rather than `format!`ed so the scope costs no second
         // allocation: P4 walks every occurrence on every edit.
@@ -1246,47 +1267,18 @@ fn elaborate_item(
             inner.path.push(ExpansionStep::Transposition(interval));
             elaborate_items(resolver, share, &transpose.items(), &inner, scope)
         }
-        VoiceItem::Repeat(repeat) => {
-            let count: u32 = repeat.count().and_then(|text| text.parse().ok()).unwrap_or(0);
-            if count == 0 {
-                return Segment::empty();
-            }
-            // The body once, then a reference per iteration. What separates
-            // the iterations is one expansion step, and the *reference*
-            // carries it (T6) — which is the only reason the body can be
-            // stated once at all.
-            let body = elaborate_items(resolver, share, &repeat.items(), cx, scope);
-            if body.tied {
-                // A tie open at the body's end would join into the next
-                // iteration's first note, and merging needs both in one
-                // value. Rare, and expanding is exactly what happened before.
-                let value = share.evaluate(body.term);
-                let mut segments = Vec::with_capacity(count as usize);
-                for iteration in 0..count {
-                    let mut copy = value.clone();
-                    instantiate(
-                        &mark_of(cx.path.len(), &[ExpansionStep::RepeatIteration(iteration)], None, None),
-                        &mut copy,
-                    );
-                    segments.push(copy);
-                }
-                return Segment::literal(sequence(segments));
-            }
-            let once = body.extent;
-            let name = share.bind_anonymous(body.term);
-            let references = (0..count)
-                .map(|iteration| {
-                    Term::var_marked(
-                        &name,
-                        mark_of(cx.path.len(), &[ExpansionStep::RepeatIteration(iteration)], None, None),
-                    )
-                })
-                .collect();
-            Segment {
-                term: Term::seq(references).unwrap_or_else(|_| Term::literal(empty_segment())),
-                extent: Beat::new(once.as_ratio() * i64::from(count)),
-                tied: false,
-            }
+        VoiceItem::Repeat(repeat) => elaborate_repeat(resolver, share, repeat, cx, scope),
+        VoiceItem::Ending(ending) => {
+            // The repeat arm takes the endings that belong to it, so anything
+            // arriving here has no pass to belong to.
+            let span = resolve::trimmed_span(ending.syntax());
+            resolver.report(
+                Diagnostic::error(Code::Misplaced, "an ending belongs to a repeat")
+                    .at(span, "no `repeat` encloses this")
+                    .help("put the passage in `repeat 2 { … }` and this ending at the end of it")
+                    .note("an ending says which pass to play, and outside a repeat there is only one pass"),
+            );
+            elaborate_items(resolver, share, &ending.items(), cx, scope)
         }
         VoiceItem::Bar(bar) => elaborate_bar(resolver, share, bar, cx, scope),
         VoiceItem::Slur(slur) => {
@@ -1456,6 +1448,181 @@ fn resolve_scaled_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &Expa
     } else {
         duration.scaled(cx.scale)
     })
+}
+
+/// `repeat n { … }`, with or without endings.
+///
+/// The body is stated once and referenced once per pass; the mark on each
+/// reference is what tells the passes apart (T6). That the *page* can print the
+/// body once follows from the same structure rather than adding to it — one
+/// statement, two projections, which is roadmap §2's own example.
+fn elaborate_repeat(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    repeat: &musa_language::ast::RepeatStmt,
+    cx: &ExpandCx,
+    scope: Scope,
+) -> Segment {
+    let count: u32 = repeat.count().and_then(|text| text.parse().ok()).unwrap_or(0);
+    if count == 0 {
+        return Segment::empty();
+    }
+    let items = repeat.items();
+    let (body_items, endings) = split_endings(resolver, repeat, &items, count);
+    let body = elaborate_items(resolver, share, &body_items, cx, scope);
+    let played: Vec<Segment> = endings
+        .iter()
+        .map(|ending| elaborate_items(resolver, share, &ending.items(), cx, scope))
+        .collect();
+
+    // A tie open at a body's or an ending's end would join into the next
+    // pass's first note, and merging needs both in one value. Rare, and
+    // expanding is exactly what happened before — and an expanded repeat is
+    // engraved the way it is written, because no repeat fact reaches the page.
+    if body.tied || played.iter().any(|segment| segment.tied) {
+        return expanded_repeat(share, cx, body, &played, count);
+    }
+
+    let mark = |iteration: u32| mark_of(cx.path.len(), &[ExpansionStep::RepeatIteration(iteration)], None, None);
+    let body_name = share.bind_anonymous(body.term);
+    let ending_names: Vec<(String, Beat)> = played
+        .into_iter()
+        .map(|segment| (share.bind_anonymous(segment.term), segment.extent))
+        .collect();
+    let mut passes: Vec<Term<ScoreFact>> = Vec::with_capacity(count as usize);
+    let mut extent = Ratio::ZERO;
+    for iteration in 0..count {
+        passes.push(Term::var_marked(&body_name, mark(iteration)));
+        extent += body.extent.as_ratio();
+        // Fewer endings than passes is legal: the last one covers the rest,
+        // which is what `1.–3.` means on a volta bracket.
+        let Some((bracket, name, length)) = ending_of(&ending_names, iteration) else {
+            continue;
+        };
+        let origin = origin_of(cx, resolve::trimmed_span(repeat.syntax()));
+        let reference = Segment {
+            term: Term::var_marked(name, mark(iteration)),
+            extent: length,
+            tied: false,
+        };
+        let fact = ScoreFact::new(
+            scope,
+            FactKind::Ending {
+                bracket,
+                pass: iteration.saturating_add(1),
+            },
+            origin,
+        );
+        passes.push(region(reference, fact).term);
+        extent += length.as_ratio();
+    }
+    let whole = Segment {
+        term: Term::seq(passes).unwrap_or_else(|_| Term::literal(empty_segment())),
+        extent: Beat::new(extent),
+        tied: false,
+    };
+    let origin = origin_of(cx, resolve::trimmed_span(repeat.syntax()));
+    region(whole, ScoreFact::new(scope, FactKind::Repeat { times: count }, origin))
+}
+
+/// The ending a given pass plays — its 1-based bracket, binding, and length —
+/// by the rule that the last one covers every pass after it.
+fn ending_of(endings: &[(String, Beat)], iteration: u32) -> Option<(u32, &str, Beat)> {
+    let index = (iteration as usize).min(endings.len().checked_sub(1)?);
+    let bracket = u32::try_from(index.saturating_add(1)).unwrap_or(u32::MAX);
+    endings
+        .get(index)
+        .map(|(name, length)| (bracket, name.as_str(), *length))
+}
+
+/// The fallback for a repeat that cannot be shared: every pass written out,
+/// exactly as it was before sharing existed.
+fn expanded_repeat(share: &Share, cx: &ExpandCx, body: Segment, endings: &[Segment], count: u32) -> Segment {
+    let body = share.evaluate(body.term);
+    let played: Vec<Timeline<ScoreFact>> = endings
+        .iter()
+        .map(|segment| share.evaluate(segment.term.clone()))
+        .collect();
+    let mut segments = Vec::with_capacity(count as usize);
+    for iteration in 0..count {
+        let mark = mark_of(cx.path.len(), &[ExpansionStep::RepeatIteration(iteration)], None, None);
+        let mut copy = body.clone();
+        instantiate(&mark, &mut copy);
+        segments.push(copy);
+        let index = (iteration as usize).min(played.len().saturating_sub(1));
+        if let Some(ending) = played.get(index) {
+            let mut copy = ending.clone();
+            instantiate(&mark, &mut copy);
+            segments.push(copy);
+        }
+    }
+    Segment::literal(sequence(segments))
+}
+
+/// A repeat's body and its endings, with everything wrong about them said.
+///
+/// Endings are collected wherever they are written rather than only from the
+/// end, so a misplaced one still plays the notes in it and the composer reads
+/// one complaint about placement instead of a silent disappearance.
+fn split_endings(
+    resolver: &mut Resolver,
+    repeat: &musa_language::ast::RepeatStmt,
+    items: &[VoiceItem],
+    count: u32,
+) -> (Vec<VoiceItem>, Vec<musa_language::ast::EndingStmt>) {
+    let mut body = Vec::with_capacity(items.len());
+    let mut endings: Vec<musa_language::ast::EndingStmt> = Vec::new();
+    // The last ending written so far, until something that is not an ending
+    // follows it — which is the one thing about their placement that is wrong.
+    let mut open: Option<musa_language::ast::EndingStmt> = None;
+    for item in items {
+        let VoiceItem::Ending(stmt) = item else {
+            if let Some(before) = open.take() {
+                resolver.report(
+                    Diagnostic::error(Code::Misplaced, "an ending is the last thing in a repeat")
+                        .at(resolve::trimmed_span(before.syntax()), "music is written after this")
+                        .help("move the endings below everything the passes have in common")
+                        .note("every pass plays the body, then its ending, so the body comes first"),
+                );
+            }
+            body.push(item.clone());
+            continue;
+        };
+        let written: u32 = stmt.number().and_then(|text| text.parse().ok()).unwrap_or(0);
+        let expected = u32::try_from(endings.len().saturating_add(1)).unwrap_or(u32::MAX);
+        if written != expected {
+            resolver.report(
+                Diagnostic::error(
+                    Code::Misplaced,
+                    format!("this ending is pass {expected}, not pass {written}"),
+                )
+                .at(number_span(stmt), format!("expected `ending {expected}`"))
+                .help("number the endings from 1, in the order they are played"),
+            );
+        }
+        if expected > count {
+            let mut diagnostic =
+                Diagnostic::error(Code::Misplaced, format!("this repeat never reaches pass {expected}"))
+                    .at(number_span(stmt), "no pass plays this")
+                    .help(format!("write `repeat {expected}`, or delete this ending"));
+            if let Some((start, end)) = repeat.count_span() {
+                diagnostic = diagnostic.also(SourceSpan::new(start, end), format!("{count} passes"));
+            }
+            resolver.report(diagnostic);
+            continue;
+        }
+        open = Some(stmt.clone());
+        endings.push(stmt.clone());
+    }
+    (body, endings)
+}
+
+/// Where an ending's number is written, falling back to the whole statement.
+fn number_span(ending: &musa_language::ast::EndingStmt) -> SourceSpan {
+    ending.number_span().map_or_else(
+        || resolve::trimmed_span(ending.syntax()),
+        |(start, end)| SourceSpan::new(start, end),
+    )
 }
 
 /// A bar: its contents, checked against the meter, and then let through.

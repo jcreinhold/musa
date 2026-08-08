@@ -508,4 +508,5 @@ NotationPlan {
     ],
     sections: [],
     harmony: [],
+    repeats: [],
 }

@@ -57,9 +57,24 @@ pub(crate) fn render_mei(plan: &NotationPlan) -> Result<String, RenderError> {
     // measures, and the `-tN` suffixes must count across the whole chain.
     let mut piece_counts: std::collections::HashMap<EventId, u32> = std::collections::HashMap::new();
     let measure_count = plan.staves().first().map_or(0, |staff| staff.measures().len());
+    let barlines = Barlines::of(plan);
+    // A volta is an element that *contains* measures in MEI, not an attribute
+    // on them, so the bracket is opened and closed around the loop.
+    let mut open_until: Option<u32> = None;
     for index in 0..measure_count {
+        let number = u32::try_from(index.saturating_add(1)).unwrap_or(u32::MAX);
+        if let Some(volta) = barlines.ending_at(number) {
+            let label = volta.label();
+            let n = volta.passes.first().copied().unwrap_or(1).to_string();
+            start_with(&mut writer, "ending", &[("n", n.as_str()), ("label", label.as_str())])?;
+            open_until = Some(volta.to);
+        }
         let last = index.saturating_add(1) == measure_count;
-        write_measure(&mut writer, plan, index, last, &mut piece_counts)?;
+        write_measure(&mut writer, plan, index, last, &barlines, &mut piece_counts)?;
+        if open_until == Some(number) {
+            end(&mut writer, "ending")?;
+            open_until = None;
+        }
     }
     end(&mut writer, "section")?;
     for wrapper in ["score", "mdiv", "body", "music"] {
@@ -382,19 +397,63 @@ fn clef_shape_line(clef: Clef) -> (&'static str, &'static str) {
     }
 }
 
+/// Which measures carry a repeat barline, and which measures a volta bracket
+/// covers.
+///
+/// A repeat crosses the system, so it is a fact about the measure rather than
+/// about a staff — which is exactly how MEI holds it.
+struct Barlines<'plan> {
+    starts: std::collections::HashSet<u32>,
+    ends: std::collections::HashSet<u32>,
+    voltas: Vec<&'plan crate::plan::VoltaMark>,
+}
+
+impl<'plan> Barlines<'plan> {
+    fn of(plan: &'plan NotationPlan) -> Self {
+        let mut starts = std::collections::HashSet::new();
+        let mut ends = std::collections::HashSet::new();
+        let mut voltas = Vec::new();
+        for repeat in plan.repeats() {
+            starts.insert(repeat.from);
+            match repeat.endings.split_last() {
+                // With endings the repeat sign goes at the end of every
+                // bracket but the last, which is where the music turns back.
+                Some((_, before)) => ends.extend(before.iter().map(|volta| volta.to)),
+                None => {
+                    ends.insert(repeat.to);
+                }
+            }
+            voltas.extend(repeat.endings.iter());
+        }
+        Self { starts, ends, voltas }
+    }
+
+    fn ending_at(&self, measure: u32) -> Option<&'plan crate::plan::VoltaMark> {
+        self.voltas.iter().copied().find(|volta| volta.from == measure)
+    }
+}
+
 fn write_measure(
     writer: &mut Writer<Vec<u8>>,
     plan: &NotationPlan,
     index: usize,
     last: bool,
+    barlines: &Barlines<'_>,
     piece_counts: &mut std::collections::HashMap<EventId, u32>,
 ) -> Result<(), RenderError> {
+    let number = u32::try_from(index.saturating_add(1)).unwrap_or(u32::MAX);
     let n_text = index.saturating_add(1).to_string();
     let mut measure = element("measure");
     measure.push_attribute(("n", n_text.as_str()));
+    if barlines.starts.contains(&number) {
+        measure.push_attribute(("left", "rptstart"));
+    }
     // Thin-thick at the end. Musa's pieces are finite by construction, and a
-    // score that stops on a plain barline reads as a fragment.
-    if last {
+    // score that stops on a plain barline reads as a fragment. A repeat sign
+    // wins where both fall: the music turns back before it stops.
+    if barlines.ends.contains(&number) {
+        measure.push_attribute(("right", "rptend"));
+    } else if last {
         measure.push_attribute(("right", "end"));
     }
     writer

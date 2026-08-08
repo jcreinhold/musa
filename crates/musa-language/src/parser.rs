@@ -143,6 +143,7 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::TransposeKw,
     SyntaxKind::RepeatKw,
     SyntaxKind::BarKw,
+    SyntaxKind::EndingKw,
     SyntaxKind::SlurKw,
     SyntaxKind::PhraseKw,
     SyntaxKind::CrescendoKw,
@@ -1140,6 +1141,8 @@ impl<'a> Parser<'a> {
                 self.repeat_stmt();
             } else if self.at(SyntaxKind::BarKw) {
                 self.bar_stmt();
+            } else if self.at(SyntaxKind::EndingKw) {
+                self.ending_stmt();
             } else if self.at(SyntaxKind::SlurKw) {
                 self.slur_stmt();
             } else if self.at(SyntaxKind::DynamicKw) {
@@ -1336,6 +1339,20 @@ impl<'a> Parser<'a> {
         self.start(SyntaxKind::RepeatStmt);
         self.bump(); // repeat
         self.expect(SyntaxKind::Integer, "a repeat count");
+        self.block();
+        self.finish();
+    }
+
+    /// `ending 1 { ... }`
+    ///
+    /// Parsed wherever a note is, though it only means something inside a
+    /// `repeat`. Where it belongs is a question about the music, and the
+    /// compiler answers it with a sentence; a syntax error here would only be
+    /// able to say the grammar disagreed.
+    fn ending_stmt(&mut self) {
+        self.start(SyntaxKind::EndingStmt);
+        self.bump(); // ending
+        self.expect(SyntaxKind::Integer, "which pass this is");
         self.block();
         self.finish();
     }

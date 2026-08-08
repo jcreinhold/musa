@@ -87,6 +87,7 @@ The user gets one easy action. The core still receives three simple facts.
 | --- | --- |
 | Written pitch | MIDI note number or frequency |
 | Notated duration | Performed duration |
+| Notated position | Performed position |
 | Voice | Mixer track |
 | Part | Synthesizer instance |
 | Dynamic marking | Literal decibel value |
@@ -109,6 +110,11 @@ For example, a written A4 can be:
 
 Representing all of those as “MIDI note 69” would make the easy representation the central abstraction and discard the
 actual musical information.
+
+Position varies the same way. A repeated passage is written at one place and played at several, so measure 4 on the
+page and the fourth measure heard are different questions with different answers (§7.2). Every notated position musa
+computes — measure numbers, where a tempo mark or a barline goes — is counted on the page; every performed position is
+counted in the timeline; and the one place they meet is the fold in §12.1.
 
 ---
 
@@ -722,6 +728,35 @@ bar quoting itself, and both are refused. Recursion stays impossible without a c
 Irregular bar lengths (`bar 5/4 { … }`, and pickups) are deliberately not accepted. They are meter occurrences, and
 until the meter map is a map rather than one meter — with §12.2, §12.3, and §12.4 all able to write a change mid-piece —
 accepting them would produce a page that disagrees with the source.
+
+### A repeat is notation, and it plays every pass
+
+`repeat n { … }` is one statement with two projections. The page prints the body once between repeat barlines; the
+performance plays it `n` times. `ending k { … }` gives the passes that differ:
+
+```text
+repeat 2 {
+    bar { a4 1/2; c5 1/2; }
+    ending 1 { bar { e5 1; } }
+    ending 2 { bar { a5 1; } }
+}
+```
+
+Pass *k* plays the body, then ending *k*. Endings come last, numbered from 1, and there may not be more of them than
+there are passes. Fewer is allowed: the last ending covers the rest, which is what `1.–3.` on a volta bracket means.
+
+The timeline holds every pass — nothing about playback, WAV export, or the semantic hash changes because a repeat is
+now engraved. Alongside the notes, the repeat states on the timeline that it is one, and §12.1 reads that statement to
+fold the page. Folding is where *notated position ≠ performed position* joins the layer table in §2: measure numbers,
+positioned marks, and barlines are all counted in the notated time the fold produces, and the fold is confined to
+§12.1 so that nothing downstream has two clocks to reconcile.
+
+Repeat barlines cross the whole system, so a repeat only folds when every voice sounding under it writes the same one.
+A repeat one voice states and another does not is written out on the page — what musa did before repeats were
+notation — and the composer is told why.
+
+Nested repeats, and `D.C.`, `D.S.`, `Fine`, `Coda`, and segno, are not accepted. The jump-family is a table over the
+whole piece rather than a bracket over a passage, and it belongs with the form model.
 
 ### Parallelism through identified voices
 

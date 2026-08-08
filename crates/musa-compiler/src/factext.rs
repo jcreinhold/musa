@@ -205,6 +205,10 @@ fn kind_text(kind: &FactKind) -> String {
         }
         FactKind::Section { name } => vec!["section".to_owned(), name.clone()],
         FactKind::Harmony { symbol } => vec!["harmony".to_owned(), symbol.text.clone()],
+        FactKind::Repeat { times } => vec!["repeat".to_owned(), times.to_string()],
+        FactKind::Ending { bracket, pass } => {
+            vec!["ending".to_owned(), bracket.to_string(), pass.to_string()]
+        }
     };
     join(&fields, '@')
 }
@@ -260,6 +264,13 @@ fn read_kind(text: &str) -> Option<FactKind> {
         }),
         ("harmony", 2) => Some(FactKind::Harmony {
             symbol: ChordSymbol::parse(arg(1)?)?,
+        }),
+        ("repeat", 2) => Some(FactKind::Repeat {
+            times: arg(1)?.parse().ok()?,
+        }),
+        ("ending", 3) => Some(FactKind::Ending {
+            bracket: arg(1)?.parse().ok()?,
+            pass: arg(2)?.parse().ok()?,
         }),
         _ => None,
     }
@@ -481,6 +492,8 @@ mod tests {
             FactKind::Harmony {
                 symbol: ChordSymbol::parse("fmaj7")?,
             },
+            FactKind::Repeat { times: 4 },
+            FactKind::Ending { bracket: 2, pass: 3 },
         ];
         let scopes = [Scope::Piece, Scope::Voice { part: 2, voice: 11 }];
         Some(

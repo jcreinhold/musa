@@ -331,6 +331,15 @@ fn cmd_format(args: &[String]) -> ExitCode {
         Ok(session) => session,
         Err(code) => return code,
     };
+    // `--check` asks rather than edits: an edit would be autosaved, and a
+    // check that leaves a `.recovery` copy behind is not a check.
+    if check_only {
+        if session.is_formatted() {
+            return ExitCode::SUCCESS;
+        }
+        eprintln!("{path}: not formatted");
+        return ExitCode::FAILURE;
+    }
     let update = match session.apply(ProjectCommand::Format) {
         Ok(update) => update,
         Err(error) => {
@@ -340,10 +349,6 @@ fn cmd_format(args: &[String]) -> ExitCode {
     };
     if !update.source_changed {
         return ExitCode::SUCCESS;
-    }
-    if check_only {
-        eprintln!("{path}: not formatted");
-        return ExitCode::FAILURE;
     }
     match session.apply(ProjectCommand::Save) {
         Ok(_) => {

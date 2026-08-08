@@ -3,23 +3,23 @@
 kernel "canon" {
   composition main : Timeline[ScoreFact] =
     timeline 15/4 {
-      occurrence "voice@0@0|note@g4@1/4;1/4;1/4@|251:263|97:104|4|motif:251\\\\\\\\:263" from 0 to 1/4;
-      occurrence "voice@0@0|note@a4@1/4;1/4;1/4@|251:263|105:112|4|motif:251\\\\\\\\:263" from 1/4 to 1/2;
-      occurrence "voice@0@0|note@b4@1/4;1/4;1/4@|251:263|113:120|4|motif:251\\\\\\\\:263" from 1/2 to 3/4;
-      occurrence "voice@0@0|note@g4@1/4;1/4;1/4@|251:263|121:128|4|motif:251\\\\\\\\:263" from 3/4 to 1;
-      occurrence "voice@0@0|note@c5@1/2;1/2;1/2@|251:263|137:144|4|motif:251\\\\\\\\:263" from 1 to 3/2;
-      occurrence "voice@0@0|note@b4@1/2;1/2;1/2@|251:263|145:152|4|motif:251\\\\\\\\:263" from 3/2 to 2;
-      occurrence "voice@0@0|note@a4@1/2;1/2;1/2@|251:263|153:160|4|motif:251\\\\\\\\:263" from 2 to 5/2;
-      occurrence "voice@0@0|note@g4@1/2;1/2;1/2@|251:263|161:168|4|motif:251\\\\\\\\:263" from 5/2 to 3;
-      occurrence "voice@0@1|rest@3/4;3/4;3/4@|320:329|320:329|6|" from 0 to 3/4;
-      occurrence "voice@0@1|note@d5@1/4;1/4;1/4@|364:376|97:104|4|transpose:4:7,motif:364\\\\\\\\:376" from 3/4 to 1;
-      occurrence "voice@0@1|note@e5@1/4;1/4;1/4@|364:376|105:112|4|transpose:4:7,motif:364\\\\\\\\:376" from 1 to 5/4;
-      occurrence "voice@0@1|note@fs5@1/4;1/4;1/4@|364:376|113:120|4|transpose:4:7,motif:364\\\\\\\\:376" from 5/4 to 3/2;
-      occurrence "voice@0@1|note@d5@1/4;1/4;1/4@|364:376|121:128|4|transpose:4:7,motif:364\\\\\\\\:376" from 3/2 to 7/4;
-      occurrence "voice@0@1|note@g5@1/2;1/2;1/2@|364:376|137:144|4|transpose:4:7,motif:364\\\\\\\\:376" from 7/4 to 9/4;
-      occurrence "voice@0@1|note@fs5@1/2;1/2;1/2@|364:376|145:152|4|transpose:4:7,motif:364\\\\\\\\:376" from 9/4 to 11/4;
-      occurrence "voice@0@1|note@e5@1/2;1/2;1/2@|364:376|153:160|4|transpose:4:7,motif:364\\\\\\\\:376" from 11/4 to 13/4;
-      occurrence "voice@0@1|note@d5@1/2;1/2;1/2@|364:376|161:168|4|transpose:4:7,motif:364\\\\\\\\:376" from 13/4 to 15/4;
+      occurrence "voice@0@0|note@g4@1/4;1/4;1/4@|299:311|97:104|4|motif:299\\\\\\\\:311" from 0 to 1/4;
+      occurrence "voice@0@0|note@a4@1/4;1/4;1/4@|299:311|113:120|4|motif:299\\\\\\\\:311" from 1/4 to 1/2;
+      occurrence "voice@0@0|note@b4@1/4;1/4;1/4@|299:311|129:136|4|motif:299\\\\\\\\:311" from 1/2 to 3/4;
+      occurrence "voice@0@0|note@g4@1/4;1/4;1/4@|299:311|145:152|4|motif:299\\\\\\\\:311" from 3/4 to 1;
+      occurrence "voice@0@0|note@c5@1/2;1/2;1/2@|299:311|161:168|4|motif:299\\\\\\\\:311" from 1 to 3/2;
+      occurrence "voice@0@0|note@b4@1/2;1/2;1/2@|299:311|177:184|4|motif:299\\\\\\\\:311" from 3/2 to 2;
+      occurrence "voice@0@0|note@a4@1/2;1/2;1/2@|299:311|193:200|4|motif:299\\\\\\\\:311" from 2 to 5/2;
+      occurrence "voice@0@0|note@g4@1/2;1/2;1/2@|299:311|209:216|4|motif:299\\\\\\\\:311" from 5/2 to 3;
+      occurrence "voice@0@1|rest@3/4;3/4;3/4@|368:377|368:377|6|" from 0 to 3/4;
+      occurrence "voice@0@1|note@d5@1/4;1/4;1/4@|432:444|97:104|4|transpose:4:7,motif:432\\\\\\\\:444" from 3/4 to 1;
+      occurrence "voice@0@1|note@e5@1/4;1/4;1/4@|432:444|113:120|4|transpose:4:7,motif:432\\\\\\\\:444" from 1 to 5/4;
+      occurrence "voice@0@1|note@fs5@1/4;1/4;1/4@|432:444|129:136|4|transpose:4:7,motif:432\\\\\\\\:444" from 5/4 to 3/2;
+      occurrence "voice@0@1|note@d5@1/4;1/4;1/4@|432:444|145:152|4|transpose:4:7,motif:432\\\\\\\\:444" from 3/2 to 7/4;
+      occurrence "voice@0@1|note@g5@1/2;1/2;1/2@|432:444|161:168|4|transpose:4:7,motif:432\\\\\\\\:444" from 7/4 to 9/4;
+      occurrence "voice@0@1|note@fs5@1/2;1/2;1/2@|432:444|177:184|4|transpose:4:7,motif:432\\\\\\\\:444" from 9/4 to 11/4;
+      occurrence "voice@0@1|note@e5@1/2;1/2;1/2@|432:444|193:200|4|transpose:4:7,motif:432\\\\\\\\:444" from 11/4 to 13/4;
+      occurrence "voice@0@1|note@d5@1/2;1/2;1/2@|432:444|209:216|4|transpose:4:7,motif:432\\\\\\\\:444" from 13/4 to 15/4;
       occurrence "piece|meter@3@4|35:50|35:50|0|" from 0 to 15/4;
       occurrence "piece|key@g@major|50:67|50:67|0|" from 0 to 15/4;
     };

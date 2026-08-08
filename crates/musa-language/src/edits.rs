@@ -754,6 +754,7 @@ fn item_syntax(item: &crate::ast::VoiceItem) -> &SyntaxNode {
         crate::ast::VoiceItem::Transpose(ref it) => it.syntax(),
         crate::ast::VoiceItem::Repeat(ref it) => it.syntax(),
         crate::ast::VoiceItem::Bar(ref it) => it.syntax(),
+        crate::ast::VoiceItem::Ending(ref it) => it.syntax(),
         crate::ast::VoiceItem::Slur(ref it) => it.syntax(),
         crate::ast::VoiceItem::Dynamic(ref it) => it.syntax(),
         crate::ast::VoiceItem::Tuplet(ref it) => it.syntax(),

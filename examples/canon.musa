@@ -4,8 +4,14 @@ piece "canon" {
     key g major;
 
     motif theme() {
-        g4 1/4; a4 1/4; b4 1/4; g4 1/4;
-        c5 1/2; b4 1/2; a4 1/2; g4 1/2;
+        g4 1/4;
+        a4 1/4;
+        b4 1/4;
+        g4 1/4;
+        c5 1/2;
+        b4 1/2;
+        a4 1/2;
+        g4 1/2;
     }
 
     score {
@@ -15,7 +21,9 @@ piece "canon" {
             }
             voice comes {
                 rest 3/4;
-                transpose up P5 { use theme(); }
+                transpose up P5 {
+                    use theme();
+                }
             }
         }
     }

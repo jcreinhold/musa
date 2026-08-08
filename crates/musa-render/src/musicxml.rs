@@ -107,12 +107,15 @@ pub(crate) fn render_musicxml(plan: &NotationPlan) -> Result<String, RenderError
     }
     xml.close("part-list")?;
 
+    // Repeat barlines, unlike those symbols, belong to every part: a reader
+    // that saw `:|` on one staff and not the others would have two scores.
+    let marks = barlines(plan);
     for (index, staff) in plan.staves().iter().enumerate() {
         // Chord symbols and form markers belong to the score, not to a part,
         // and MusicXML has nowhere to put a score-wide symbol: they are
         // written in the first part, which is where a reader expects them.
         let annotations = if index == 0 { Some(plan) } else { None };
-        write_part(&mut xml, &part_id(index), staff, divisions, annotations)?;
+        write_part(&mut xml, &part_id(index), staff, divisions, annotations, &marks)?;
     }
     xml.close("score-partwise")?;
     xml.finish()
@@ -321,12 +324,75 @@ fn step_of(pitch: WrittenPitch) -> &'static str {
 
 // --- Document ----------------------------------------------------------------
 
+/// What a measure carries at its two barlines.
+///
+/// `MusicXML` writes these per part, so unlike MEI's measure-level attributes
+/// they are repeated on every staff — the same fact, said once per part
+/// because that is the shape of the file.
+#[derive(Default)]
+struct Barline {
+    /// A forward repeat sign at the left barline.
+    forward: bool,
+    /// A volta bracket opening here, by its label.
+    ending_start: Option<String>,
+    /// A volta bracket closing here: its label, and whether it turns back
+    /// (`stop`) or simply runs out (`discontinue`).
+    ending_stop: Option<(String, &'static str)>,
+    /// A backward repeat sign at the right barline.
+    backward: bool,
+}
+
+fn barlines(plan: &NotationPlan) -> HashMap<u32, Barline> {
+    let mut marks: HashMap<u32, Barline> = HashMap::new();
+    for repeat in plan.repeats() {
+        marks.entry(repeat.from).or_default().forward = true;
+        let Some((last, earlier)) = repeat.endings.split_last() else {
+            marks.entry(repeat.to).or_default().backward = true;
+            continue;
+        };
+        for volta in earlier {
+            marks.entry(volta.from).or_default().ending_start = Some(volta.label());
+            let closing = marks.entry(volta.to).or_default();
+            closing.ending_stop = Some((volta.label(), "stop"));
+            closing.backward = true;
+        }
+        marks.entry(last.from).or_default().ending_start = Some(last.label());
+        marks.entry(last.to).or_default().ending_stop = Some((last.label(), "discontinue"));
+    }
+    marks
+}
+
+/// One barline element, in the order the `MusicXML` DTD wants its children.
+fn write_barline(
+    xml: &mut Xml,
+    location: &str,
+    style: Option<&str>,
+    ending: Option<(&str, &str)>,
+    repeat: Option<&str>,
+) -> Result<(), RenderError> {
+    if style.is_none() && ending.is_none() && repeat.is_none() {
+        return Ok(());
+    }
+    xml.open("barline", &[("location", location)])?;
+    if let Some(style) = style {
+        xml.leaf("bar-style", &[], style)?;
+    }
+    if let Some((number, kind)) = ending {
+        xml.leaf("ending", &[("number", number), ("type", kind)], "")?;
+    }
+    if let Some(direction) = repeat {
+        xml.leaf("repeat", &[("direction", direction)], "")?;
+    }
+    xml.close("barline")
+}
+
 fn write_part(
     xml: &mut Xml,
     id: &str,
     staff: &StaffPlan,
     divisions: i64,
     annotations: Option<&NotationPlan>,
+    marks: &HashMap<u32, Barline>,
 ) -> Result<(), RenderError> {
     xml.open("part", &[("id", id)])?;
     // Slur numbers are per voice and nest like brackets, so the open ones are
@@ -337,6 +403,16 @@ fn write_part(
         xml.open("measure", &[("number", &number)])?;
         if index == 0 {
             write_attributes(xml, staff, divisions)?;
+        }
+        let barline = marks.get(&measure.number());
+        if let Some(barline) = barline {
+            write_barline(
+                xml,
+                "left",
+                barline.forward.then_some("heavy-light"),
+                barline.ending_start.as_deref().map(|label| (label, "start")),
+                barline.forward.then_some("forward"),
+            )?;
         }
         if let Some(plan) = annotations {
             write_positioned(xml, plan, measure.number(), divisions)?;
@@ -358,6 +434,18 @@ fn write_part(
                 xml.leaf("duration", &[], &consumed.to_string())?;
                 xml.close("backup")?;
             }
+        }
+        if let Some(barline) = barline {
+            write_barline(
+                xml,
+                "right",
+                barline.backward.then_some("light-heavy"),
+                barline
+                    .ending_stop
+                    .as_ref()
+                    .map(|(label, kind)| (label.as_str(), *kind)),
+                barline.backward.then_some("backward"),
+            )?;
         }
         xml.close("measure")?;
     }

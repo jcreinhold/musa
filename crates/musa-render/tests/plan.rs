@@ -15,6 +15,7 @@ const INVENTION: &str = include_str!("../../../examples/invention.musa");
 const COUNTERPOINT: &str = include_str!("../../../examples/counterpoint.musa");
 const TUPLET_FIXTURE: &str = include_str!("../../../examples/tuplet-fixture.musa");
 const ANNOTATED: &str = include_str!("../../../examples/annotated.musa");
+const REPEATS: &str = include_str!("../../../examples/repeats.musa");
 
 fn compile_score(text: &str) -> Option<ScoreSnapshot> {
     compile(&SourceDocument::new(text, "test.musa"), &CompileOptions::default()).into_snapshot()
@@ -33,6 +34,7 @@ fn example_plans_snapshot() {
         ("counterpoint", COUNTERPOINT),
         ("tuplet_fixture", TUPLET_FIXTURE),
         ("annotated", ANNOTATED),
+        ("repeats", REPEATS),
     ] {
         let Some(rendered) = plan(source) else { return };
         insta::assert_snapshot!(name, format!("{rendered:#?}"));

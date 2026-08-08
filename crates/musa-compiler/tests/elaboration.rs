@@ -124,11 +124,15 @@ fn the_key_and_the_meter_are_facts_of_the_timeline() {
     assert_eq!(snapshot.key().map(|key| key.tonic().to_string()), Some("bf".to_owned()));
 }
 
-/// The elaborated kernel timelines are the same under semantic equality no
-/// matter how the surface structured them: a written-out repeat equals its
-/// unrolling.
+/// A repeat sounds its unrolling, note for note.
+///
+/// It is not *equal* to its unrolling and no longer claims to be: since prompt
+/// 58 a repeat also states that it is one, so the page can print the body once
+/// where the unrolling has to print it three times. That statement is the one
+/// extra occurrence, and dropping it is what this test does — everything that
+/// sounds has to agree.
 #[test]
-fn repeat_unrolls_to_the_same_kernel() {
+fn repeat_sounds_the_same_as_its_unrolling() {
     let repeated = "piece \"x\" { score { part p { voice v { repeat 3 { c4 1/4; d4 1/4; } } } } }";
     let unrolled = "piece \"x\" { score { part p { voice v { c4 1/4; d4 1/4; c4 1/4; d4 1/4; c4 1/4; d4 1/4; } } } }";
     let a = kernel_normal_form(&SourceDocument::new(repeated, "a")).expect("elaborates");
@@ -139,6 +143,7 @@ fn repeat_unrolls_to_the_same_kernel() {
     // Payload heads (identity, kind, pitch) and spans agree.
     let heads_and_spans = |form: &str| -> Vec<String> {
         form.lines()
+            .filter(|line| !line.contains("repeat:"))
             .map(|line| {
                 let head = line.split('|').next().unwrap_or(line);
                 let span = line.rsplit("from ").next().unwrap_or(line);
@@ -147,6 +152,56 @@ fn repeat_unrolls_to_the_same_kernel() {
             .collect()
     };
     assert_eq!(heads_and_spans(&a), heads_and_spans(&b));
+}
+
+/// The repeat's own statement: one occurrence over every pass, which is what
+/// lets the page print `|:` `:|` instead of three copies.
+#[test]
+fn a_repeat_says_on_the_timeline_that_it_is_one() {
+    let source = "piece \"x\" { score { part p { voice v { repeat 3 { c4 1/4; d4 1/4; } } } } }";
+    let form = kernel_normal_form(&SourceDocument::new(source, "a")).expect("elaborates");
+    assert!(
+        form.contains("repeat:3"),
+        "expected the repeat to state its count: {form}"
+    );
+    let snapshot = snapshot_of(source).expect("compiles");
+    let repeats = snapshot.annotations().repeats();
+    let repeat = repeats.first().expect("one repeat");
+    assert_eq!(repeat.times, 3);
+    assert_eq!(repeat.body_end.as_ratio(), num_rational::Ratio::new(1, 2));
+    assert_eq!(repeat.end.as_ratio(), num_rational::Ratio::new(3, 2));
+    assert!(repeat.endings.is_empty(), "a plain repeat has no endings");
+}
+
+/// Endings: every pass plays the body, then its own ending, and the brackets
+/// the page draws are the distinct endings rather than the passes.
+#[test]
+fn endings_play_once_each_and_print_once_each() {
+    let source = "piece \"x\" { score { part p { voice v { repeat 3 { \
+                  c4 1/4; ending 1 { d4 1/4; } ending 2 { e4 1/4; } } } } } }";
+    let snapshot = snapshot_of(source).expect("compiles");
+    let voice = snapshot
+        .parts()
+        .iter()
+        .next()
+        .and_then(|(_, part)| part.voices().next().map(|(_, voice)| voice.clone()))
+        .expect("a voice");
+    let pitches: Vec<String> = voice
+        .events()
+        .iter()
+        .map(|event| match &event.kind {
+            musa_compiler::ScoreEventKind::Note { pitch } => pitch.to_string(),
+            other @ (musa_compiler::ScoreEventKind::Rest | musa_compiler::ScoreEventKind::Chord { .. }) => {
+                format!("{other:?}")
+            }
+        })
+        .collect();
+    // Pass 3 has no ending of its own, so it plays the last one again.
+    assert_eq!(pitches, ["c4", "d4", "c4", "e4", "c4", "e4"]);
+    let repeats = snapshot.annotations().repeats();
+    let repeat = repeats.first().expect("one repeat");
+    let brackets: Vec<Vec<u32>> = repeat.endings.iter().map(|ending| ending.passes.clone()).collect();
+    assert_eq!(brackets, [vec![1], vec![2, 3]]);
 }
 
 /// The three "error fixtures" the differential suite carried, asserted

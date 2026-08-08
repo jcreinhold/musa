@@ -187,6 +187,8 @@ pub enum SyntaxKind {
     ToKw,
     /// `bar`
     BarKw,
+    /// `ending`
+    EndingKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -319,6 +321,8 @@ pub enum SyntaxKind {
     Block,
     /// `bar { ... }` / `bar head { ... }` — one measure, written down.
     BarStmt,
+    /// `ending 1 { ... }` — what a repeat plays on one of its passes.
+    EndingStmt,
 }
 
 impl SyntaxKind {

@@ -71,11 +71,67 @@ pub(crate) fn project(resolver: &mut Resolver, timeline: &Timeline<ScoreFact>) -
         }
     }
     let mut voices = Voices::with_capacity(buckets.len());
+    let mut stated: Vec<Vec<crate::score::RepeatRegion>> = Vec::with_capacity(buckets.len());
     for (key, occurrences) in buckets {
-        voices.insert(key, project_voice(resolver, &occurrences));
+        let (voice, repeats) = project_voice(resolver, &occurrences);
+        stated.push(repeats);
+        voices.insert(key, voice);
     }
+    let repeats = agreed_repeats(resolver, &voices, &stated);
+    resolver.annotations.set_repeats(repeats);
     let (key, meter) = project_piece(resolver, &piece);
     Projection { voices, key, meter }
+}
+
+/// The repeats every voice agrees about.
+///
+/// A repeat barline crosses the system, so it can only be drawn where the
+/// whole system repeats: one voice writing `repeat 2 { … }` while another
+/// writes the passage out means the page would have to show one voice folded
+/// and the other flat, which is not a page. Those repeats are written out
+/// instead — which is what happened before this prompt, so nothing gets worse —
+/// and the composer is told why rather than left to notice.
+///
+/// A voice that is silent under the repeat agrees with it by not disagreeing.
+fn agreed_repeats(
+    resolver: &mut Resolver,
+    voices: &Voices,
+    stated: &[Vec<crate::score::RepeatRegion>],
+) -> Vec<crate::score::RepeatRegion> {
+    let same = |left: &crate::score::RepeatRegion, right: &crate::score::RepeatRegion| {
+        left.start == right.start && left.end == right.end && left.times == right.times && left.endings == right.endings
+    };
+    let mut agreed: Vec<crate::score::RepeatRegion> = Vec::new();
+    for repeat in stated.iter().flatten() {
+        if agreed.iter().any(|existing| same(existing, repeat)) {
+            continue;
+        }
+        let sounds = |voice: &Voice| {
+            voice.events().iter().any(|event| {
+                let end = event.onset + event.notated_duration.value;
+                event.onset < repeat.end && repeat.start < end
+            })
+        };
+        let dissenting = voices
+            .values()
+            .zip(stated)
+            .any(|(voice, theirs)| sounds(voice) && !theirs.iter().any(|other| same(other, repeat)));
+        if dissenting {
+            resolver.report(
+                crate::diagnose::Diagnostic::warning(
+                    crate::diagnose::Code::Ignored,
+                    "this repeat is written out on the page",
+                )
+                .at(repeat.origin.definition_span, "not every voice repeats here")
+                .help("write the same `repeat` in each voice that sounds under this one")
+                .note("a repeat barline crosses the system, so it can only be drawn where the whole system repeats"),
+            );
+            continue;
+        }
+        agreed.push(repeat.clone());
+    }
+    agreed.sort_by_key(|repeat| repeat.start);
+    agreed
 }
 
 /// The piece-scoped facts: the context maps, and the annotations written at a
@@ -133,14 +189,22 @@ fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
             | FactKind::Phrase { .. }
             | FactKind::Tuplet { .. }
             | FactKind::Dynamic { .. }
-            | FactKind::Hairpin { .. } => {}
+            | FactKind::Hairpin { .. }
+            | FactKind::Repeat { .. }
+            | FactKind::Ending { .. } => {}
         }
     }
     (key, meter)
 }
 
-/// One voice: its events, and the annotations that name them.
-fn project_voice(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]) -> Voice {
+/// One voice: its events, the annotations that name them, and the repeats it
+/// states — which are the piece's business and are reconciled once every voice
+/// has been read.
+fn project_voice(
+    resolver: &mut Resolver,
+    occurrences: &[&Occurrence<ScoreFact>],
+) -> (Voice, Vec<crate::score::RepeatRegion>) {
+    let mut repeats: Vec<&Occurrence<ScoreFact>> = Vec::new();
     let mut events: Vec<ScoreEvent> = Vec::with_capacity(occurrences.len());
     // Where each event sits, so a region can be resolved to the ids at its
     // ends without a second pass over the timeline.
@@ -179,6 +243,10 @@ fn project_voice(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
                 regions.push(occurrence);
                 index = index.saturating_add(1);
             }
+            FactKind::Repeat { .. } | FactKind::Ending { .. } => {
+                repeats.push(occurrence);
+                index = index.saturating_add(1);
+            }
             // Piece-scoped facts were bucketed away before this ran; they are
             // named here only because the match is total.
             FactKind::Key { .. } | FactKind::Meter { .. } | FactKind::Section { .. } | FactKind::Harmony { .. } => {
@@ -189,7 +257,77 @@ fn project_voice(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
 
     project_points(resolver, &points, &extents);
     project_regions(resolver, &mut regions, &extents);
-    Voice::new(events)
+    (Voice::new(events), repeats_of(&repeats))
+}
+
+/// The repeats one voice states, each with its endings gathered under it.
+///
+/// The elaboration nests the ending regions inside the repeat region, so
+/// containment is the whole rule; a `pass` appears once per time through, and
+/// the bracket that prints is the first of its number.
+fn repeats_of(occurrences: &[&Occurrence<ScoreFact>]) -> Vec<crate::score::RepeatRegion> {
+    let time = |beat: musa_kernel::Beat| MusicalTime::new(beat.as_ratio());
+    let mut repeats: Vec<crate::score::RepeatRegion> = occurrences
+        .iter()
+        .filter_map(|occurrence| {
+            let FactKind::Repeat { times } = occurrence.payload().kind else {
+                return None;
+            };
+            let start = time(occurrence.span().start());
+            let end = time(occurrence.span().end());
+            Some(crate::score::RepeatRegion {
+                start,
+                body_end: end,
+                end,
+                times,
+                endings: Vec::new(),
+                origin: occurrence.payload().origin.clone(),
+            })
+        })
+        .collect();
+    repeats.sort_by_key(|repeat| repeat.start);
+    for occurrence in occurrences {
+        let FactKind::Ending { bracket, pass } = occurrence.payload().kind else {
+            continue;
+        };
+        let start = time(occurrence.span().start());
+        let end = time(occurrence.span().end());
+        let Some(repeat) = repeats
+            .iter_mut()
+            .find(|repeat| repeat.start <= start && end <= repeat.end)
+        else {
+            continue;
+        };
+        let index = (bracket as usize).saturating_sub(1);
+        match repeat.endings.get_mut(index) {
+            Some(existing) => existing.passes.push(pass),
+            None => repeat.endings.push(crate::score::EndingRegion {
+                passes: vec![pass],
+                start,
+                end,
+            }),
+        }
+    }
+    for repeat in &mut repeats {
+        // The first ending starts where the body stops, which is where the
+        // closing repeat barline goes. Without endings the body is the whole
+        // span divided by the passes.
+        repeat.body_end = match repeat.endings.first() {
+            Some(ending) => ending.start,
+            None => body_end(repeat),
+        };
+        for ending in &mut repeat.endings {
+            ending.passes.sort_unstable();
+        }
+    }
+    repeats
+}
+
+/// Where a plain repeat's body ends: one pass in.
+fn body_end(repeat: &crate::score::RepeatRegion) -> MusicalTime {
+    let times = i64::from(repeat.times.max(1));
+    let whole = repeat.end.as_ratio() - repeat.start.as_ratio();
+    MusicalTime::new(repeat.start.as_ratio() + whole / num_rational::Ratio::from_integer(times))
 }
 
 /// How many occurrences at `index` spell one written statement: a chord's
@@ -363,13 +501,18 @@ fn project_regions(
                 shape: shape.clone(),
                 origin,
             }),
+            // A repeat is answered in time, not in event ids: barlines fall
+            // between measures and apply to the whole system. Collected by
+            // [`repeats_of`] instead.
             FactKind::Note { .. }
             | FactKind::Rest { .. }
             | FactKind::Dynamic { .. }
             | FactKind::Key { .. }
             | FactKind::Meter { .. }
             | FactKind::Section { .. }
-            | FactKind::Harmony { .. } => {}
+            | FactKind::Harmony { .. }
+            | FactKind::Repeat { .. }
+            | FactKind::Ending { .. } => {}
         }
     }
 }

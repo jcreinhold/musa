@@ -9,7 +9,7 @@
 use musa_compiler::{CompileOptions, EventId, ScoreSnapshot, SourceDocument, compile};
 use musa_render::{NotationOptions, NotationTarget, render_notation};
 
-const EXAMPLES: [(&str, &str); 8] = [
+const EXAMPLES: [(&str, &str); 9] = [
     ("glass_mountain", include_str!("../../../examples/glass-mountain.musa")),
     ("invention", include_str!("../../../examples/invention.musa")),
     ("counterpoint", include_str!("../../../examples/counterpoint.musa")),
@@ -21,6 +21,7 @@ const EXAMPLES: [(&str, &str); 8] = [
         include_str!("../../../examples/profile-fixture.musa"),
     ),
     ("annotated", include_str!("../../../examples/annotated.musa")),
+    ("repeats", include_str!("../../../examples/repeats.musa")),
 ];
 
 fn score_of(text: &str) -> ScoreSnapshot {

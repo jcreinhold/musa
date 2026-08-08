@@ -720,6 +720,48 @@ pub struct HarmonyMark {
     pub origin: Origin,
 }
 
+/// A repeat, as the page has to print it (roadmap §2 — one statement, two
+/// projections).
+///
+/// The timeline holds every pass; this says which stretch of it is the one
+/// worth printing, and how many times the printed stretch is played. Anchored
+/// to *time* rather than to events, because repeat barlines are barlines: they
+/// fall between measures and they apply to the whole system, so an answer given
+/// in one voice's event ids would be an answer to a different question.
+///
+/// Only repeats every voice agrees about reach here. A repeat one voice writes
+/// and another does not is not a repeat the page can draw, and the compiler
+/// says so rather than printing something the source does not mean.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepeatRegion {
+    /// Where the repeated body begins.
+    pub start: MusicalTime,
+    /// Where the body ends: the closing repeat barline, and the start of the
+    /// first ending when there is one.
+    pub body_end: MusicalTime,
+    /// Where the last pass stops sounding.
+    pub end: MusicalTime,
+    /// How many times the body is played.
+    pub times: u32,
+    /// The endings, in the order they are printed. Empty for a plain repeat.
+    pub endings: Vec<EndingRegion>,
+    /// Why this repeat exists.
+    pub origin: Origin,
+}
+
+/// One volta bracket: the passes it is labelled with, and the stretch of the
+/// timeline it prints from.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EndingRegion {
+    /// The passes this bracket covers, ascending. `[1]` prints `1.`; `[2, 3]`
+    /// prints `2.–3.`.
+    pub passes: Vec<u32>,
+    /// Where the printed pass of this ending begins.
+    pub start: MusicalTime,
+    /// Where it stops.
+    pub end: MusicalTime,
+}
+
 /// Score-level annotations (roadmap §6.3): symbols that are *about* events
 /// rather than events themselves, each carrying its own provenance.
 ///
@@ -736,6 +778,7 @@ pub struct AnnotationStore {
     hairpins: Vec<HairpinSpan>,
     sections: Vec<SectionMark>,
     harmony: Vec<HarmonyMark>,
+    repeats: Vec<RepeatRegion>,
 }
 
 impl AnnotationStore {
@@ -779,6 +822,11 @@ impl AnnotationStore {
         &self.harmony
     }
 
+    /// Repeats the whole system agrees about, in the order they are reached.
+    pub fn repeats(&self) -> &[RepeatRegion] {
+        &self.repeats
+    }
+
     pub(crate) fn push_phrase(&mut self, phrase: PhraseSpan) {
         self.phrases.push(phrase);
     }
@@ -814,6 +862,10 @@ impl AnnotationStore {
 
     pub(crate) fn push_articulation(&mut self, articulation: ArticulationMarking) {
         self.articulations.push(articulation);
+    }
+
+    pub(crate) fn set_repeats(&mut self, repeats: Vec<RepeatRegion>) {
+        self.repeats = repeats;
     }
 }
 

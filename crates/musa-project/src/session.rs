@@ -233,6 +233,19 @@ impl ProjectSession {
         }
     }
 
+    /// Whether the text is already what [`ProjectCommand::Format`] would
+    /// write.
+    ///
+    /// A question, not an edit. `musa format --check` promises to fail rather
+    /// than write, and formatting to find out breaks that promise: an unsaved
+    /// edit is autosaved, so the check leaves a `.recovery` copy beside every
+    /// file it rejects.
+    #[must_use]
+    pub fn is_formatted(&self) -> bool {
+        let document = musa_language::parse(&self.source);
+        musa_language::format(&document).text() == self.source
+    }
+
     /// What a structured edit would change, before it is made.
     ///
     /// This is the source of the counts in `04-provenance.md` §4's inline

@@ -1,0 +1,60 @@
+---
+source: crates/musa-render/tests/lilypond.rs
+expression: lilypond_of(source)
+---
+\version "2.24.0"
+\language "english"
+
+\header {
+  title = "Two Ways Home"
+}
+
+partFlute = {
+  \clef "treble"
+  \time 4/4
+  \key g \major
+  {
+    \set Score.repeatCommands = #'(start-repeat)
+    \tempo 4 = 108
+    d''4 % event:0
+    g''4 % event:1
+    fs''4 % event:2
+    g''4 % event:3
+    |
+    a''2 % event:4
+    b''2 % event:5
+    |
+    \set Score.repeatCommands = #'((volta "1."))
+    a''2 % event:6
+    d''2 % event:7
+    |
+    \set Score.repeatCommands = #'((volta #f) end-repeat (volta "2."))
+    g''1 % event:e
+    |
+    \set Score.repeatCommands = #'((volta #f))
+  }
+}
+partCello = {
+  \clef "bass"
+  \time 4/4
+  \key g \major
+  {
+    g,2 % event:f
+    b,2 % event:10
+    |
+    d2 % event:11
+    g,2 % event:12
+    |
+    c2 % event:13
+    a,2 % event:14
+    |
+    g,1 % event:19
+    |
+  }
+}
+\score {
+  <<
+    \new Staff \partFlute
+    \new Staff \partCello
+  >>
+}

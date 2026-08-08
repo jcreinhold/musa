@@ -1,0 +1,18 @@
+// An ending is the part of a repeat that differs between passes, so it needs
+// a repeat to differ inside. On its own it is just a bar with a number in
+// front of it, and the number would mean nothing.
+piece "Alone" {
+    tempo quarter = 96;
+    meter 4/4;
+
+    score {
+        part piano {
+            voice right {
+                bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }
+                ending 1 {
+                    bar { g4 1; }
+                }
+            }
+        }
+    }
+}

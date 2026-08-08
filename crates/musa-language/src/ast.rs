@@ -35,6 +35,12 @@ fn token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
     find_token(node, kind).map(|token| token.text().to_string())
 }
 
+/// A token's byte range, as the compiler's spans are counted.
+fn span_of(token: &SyntaxToken) -> (u32, u32) {
+    let range = token.text_range();
+    (u32::from(range.start()), u32::from(range.end()))
+}
+
 /// The text a string literal stands for: one pair of quotes off, escapes
 /// resolved.
 ///
@@ -546,6 +552,8 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             RepeatStmt::cast(child).map(VoiceItem::Repeat)
         } else if kind == SyntaxKind::BarStmt {
             BarStmt::cast(child).map(VoiceItem::Bar)
+        } else if kind == SyntaxKind::EndingStmt {
+            EndingStmt::cast(child).map(VoiceItem::Ending)
         } else if kind == SyntaxKind::SlurStmt {
             SlurStmt::cast(child).map(VoiceItem::Slur)
         } else if kind == SyntaxKind::DynamicStmt {
@@ -587,6 +595,8 @@ pub enum VoiceItem {
     Repeat(RepeatStmt),
     /// `bar { ... }` / `bar head { ... }`
     Bar(BarStmt),
+    /// `ending 1 { ... }`
+    Ending(EndingStmt),
     /// `slur { ... }`
     Slur(SlurStmt),
     /// `dynamic p;`
@@ -964,6 +974,14 @@ impl RepeatStmt {
         token_text(&self.0, SyntaxKind::Integer)
     }
 
+    /// Where the count is written, as start and end byte offsets.
+    ///
+    /// A diagnostic about how many passes there are has to underline the
+    /// number, not the whole block.
+    pub fn count_span(&self) -> Option<(u32, u32)> {
+        find_token(&self.0, SyntaxKind::Integer).map(|token| span_of(&token))
+    }
+
     /// The block's items.
     pub fn items(&self) -> Vec<VoiceItem> {
         voice_items(&self.0)
@@ -1006,6 +1024,31 @@ impl BarStmt {
             end = Some(u32::from(token.text_range().end()));
         }
         end
+    }
+}
+
+/// `ending 1 { ... }`
+///
+/// What a repeat plays on one of its passes and prints once, under a volta
+/// bracket. Legal only directly inside a `repeat`; the compiler is what says
+/// so.
+pub struct EndingStmt(SyntaxNode);
+wrapper!(EndingStmt, SyntaxKind::EndingStmt);
+
+impl EndingStmt {
+    /// Which pass this ending belongs to, as written.
+    pub fn number(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Integer)
+    }
+
+    /// Where that number is written, as start and end byte offsets.
+    pub fn number_span(&self) -> Option<(u32, u32)> {
+        find_token(&self.0, SyntaxKind::Integer).map(|token| span_of(&token))
+    }
+
+    /// The ending's items, in source order.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
     }
 }
 

@@ -73,7 +73,16 @@ pub(crate) fn render_lilypond(plan: &NotationPlan) -> Result<String, RenderError
         // topmost staff: `\mark` is a Score-level event and LilyPond prints it
         // above the system however many staves the system has.
         let marks = if index == 0 { score_marks(plan) } else { Vec::new() };
-        let body = staff_body(staff, &marks)?;
+        // Repeat barlines are the same kind of score-wide fact, and
+        // `Score.repeatCommands` is a score property: written once, in the
+        // topmost staff, or every staff would set it again.
+        let measures = u32::try_from(staff.measures().len()).unwrap_or(u32::MAX);
+        let repeats = if index == 0 {
+            repeat_commands(plan, measures)
+        } else {
+            Commands::default()
+        };
+        let body = staff_body(staff, &marks, &repeats)?;
         score_children.push(LyNode::Command(format!("\\new Staff \\{variable}")));
         variables.push((variable, body));
     }
@@ -107,9 +116,64 @@ fn header_fields(plan: &NotationPlan) -> Vec<(&'static str, String)> {
     fields
 }
 
+/// `\set Score.repeatCommands` settings, by the barline they stand at.
+///
+/// `LilyPond` also has `\repeat volta 2 { … } \alternative { … }`, which needs
+/// the music to be *nested* — and the plan is a flat stream of measures,
+/// because that is what a score is once the barlines are decided.
+/// `repeatCommands` is the same notation said at the measure boundaries, which
+/// is where this backend already stands.
+///
+/// One entry per barline, because `repeatCommands` is a
+/// *setting*: two of them at one boundary is the second one, not both. The
+/// bracket that closes and the bracket that opens at the same barline are one
+/// command, `(volta #f) end-repeat (volta "2.")`, or the repeat sign is lost.
+#[derive(Default)]
+struct Commands {
+    /// The setting to write before a measure.
+    before: std::collections::HashMap<u32, String>,
+    /// The setting to write after the last measure, closing a bracket that
+    /// runs to the end of the piece.
+    trailing: Option<String>,
+}
+
+fn repeat_commands(plan: &NotationPlan, measures: u32) -> Commands {
+    let mut parts: std::collections::BTreeMap<u32, Vec<String>> = std::collections::BTreeMap::new();
+    let mut at = |barline: u32, command: String| parts.entry(barline).or_default().push(command);
+    for repeat in plan.repeats() {
+        let Some((last, earlier)) = repeat.endings.split_last() else {
+            at(repeat.from, "start-repeat".to_owned());
+            at(repeat.to.saturating_add(1), "end-repeat".to_owned());
+            continue;
+        };
+        at(repeat.from, "start-repeat".to_owned());
+        for volta in earlier {
+            at(volta.from, format!("(volta \"{}.\")", volta.label()));
+            at(volta.to.saturating_add(1), "(volta #f)".to_owned());
+            at(volta.to.saturating_add(1), "end-repeat".to_owned());
+        }
+        at(last.from, format!("(volta \"{}.\")", last.label()));
+        at(last.to.saturating_add(1), "(volta #f)".to_owned());
+    }
+    let mut commands = Commands::default();
+    for (barline, body) in parts {
+        let setting = format!("\\set Score.repeatCommands = #'({})", body.join(" "));
+        if barline > measures {
+            commands.trailing = Some(setting);
+        } else {
+            commands.before.insert(barline, setting);
+        }
+    }
+    commands
+}
+
 /// One staff's music: header commands, then measures; multi-voice staves
 /// become simultaneous voice blocks.
-fn staff_body(staff: &StaffPlan, sections: &[PositionedMark<ScoreMark>]) -> Result<LyNode, RenderError> {
+fn staff_body(
+    staff: &StaffPlan,
+    sections: &[PositionedMark<ScoreMark>],
+    repeats: &Commands,
+) -> Result<LyNode, RenderError> {
     let mut head = Vec::new();
     if let Some(clef) = staff.clef() {
         let name = match clef {
@@ -145,10 +209,20 @@ fn staff_body(staff: &StaffPlan, sections: &[PositionedMark<ScoreMark>]) -> Resu
                 } else {
                     Vec::new()
                 };
+                if lane_index == 0
+                    && let Some(command) = repeats.before.get(&measure.number())
+                {
+                    nodes.push(LyNode::Command(command.clone()));
+                }
                 nodes.extend(lane_body(lane, count, unit, &here)?);
                 nodes.push(LyNode::BarCheck);
             }
         }
+    }
+    if let Some(command) = repeats.trailing.as_ref()
+        && let Some(nodes) = lanes.first_mut()
+    {
+        nodes.push(LyNode::Command(command.clone()));
     }
     let music = if lanes.len() <= 1 {
         LyNode::Sequential(lanes.into_iter().next().unwrap_or_default())

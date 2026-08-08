@@ -397,4 +397,5 @@ NotationPlan {
     ],
     sections: [],
     harmony: [],
+    repeats: [],
 }

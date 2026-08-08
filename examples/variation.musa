@@ -45,7 +45,9 @@ piece "Variation" {
 
                 // One occurrence, one note different. The motif is untouched,
                 // and so is every other bar that uses it.
-                use theme() with { note 3 = a5; }
+                use theme() with {
+                    note 3 = a5;
+                }
             }
         }
     }
