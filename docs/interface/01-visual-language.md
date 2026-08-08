@@ -215,7 +215,10 @@ The Compose workspace, as an arrangement of the elements roadmap §14.3 requires
   field boxes at rest, and the rest weight is the reason there need not be: a hairline is not a box, and a control
   nobody can see is not an affordance. With nothing selected the inspector's rows are *the piece* — every statement its
   header can carry, the unnamed ones included, which is how a composer discovers that a piece can name an arranger at
-  all (prompt 54).
+  all (prompt 54). A field is as wide as its value and no wider — the hairline has to sit under the value it belongs to
+  — and **a value too long for the column wraps**, the way the band takes another row rather than clipping. `© 2026.
+  Licensed CC BY-` is not a shorter statement of the same thing, and a field that shows it is lying about what the
+  document says.
 - **Source column**: source and diagnostics, at the *left edge*, full height, on `--surround-in` behind one `--rule`
   hairline — the same two materials and the same seam §8 gives the Source workspace. Closed by default in Compose; shown
   with `⌘'`, from the View menu, or from the palette. Its width is the **source measure** (§8), fixed: it does not grow

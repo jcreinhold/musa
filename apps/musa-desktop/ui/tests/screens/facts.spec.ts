@@ -13,7 +13,7 @@
  * compile leaves the session untouched.
  */
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
 import { stubShell } from "./shell";
@@ -156,6 +156,77 @@ test("clicking a note is still clicking a note", async ({ page }) => {
   await page.locator('.engraving [id="event-4"] use').click({ force: true });
   await expect(page.locator(".engraving input.front")).toHaveCount(0);
   await expect(page.locator(".overlay rect.selection")).toHaveCount(1);
+});
+
+/**
+ * How much of a field's own text is scrolled out of sight.
+ *
+ * Zero, always. This is the direct measurement of the defect it guards: the
+ * copyright field used to read `© 2026. Licensed CC BY-` with the rest inside
+ * the input, which no assertion about the *layout* could see, because the
+ * layout was right — the field sat in its column and the column sat in the
+ * margin. Only the field's own scroll extent knows.
+ */
+async function hidden(field: Locator): Promise<number> {
+  return field.evaluate((node: HTMLTextAreaElement) =>
+    // A pixel of slack: sub-pixel text metrics round the two apart on some
+    // values even when every glyph is on screen.
+    Math.max(node.scrollWidth - node.clientWidth, node.scrollHeight - node.clientHeight, 0),
+  );
+}
+
+test("a value longer than its column wraps rather than hiding the rest", async ({ page }) => {
+  const piece = page.getByRole("group", { name: "This piece" });
+  const copyright = piece.getByRole("textbox", { name: "copyright" });
+  const line = await copyright.evaluate((node) =>
+    Number.parseFloat(globalThis.getComputedStyle(node).lineHeight),
+  );
+
+  // Two steps larger is the size at which this became routine rather than
+  // rare, and the reason it is worth a test: the composer who most needs the
+  // preference is the one who could no longer read their own copyright.
+  for (const step of [1, 2]) {
+    await page.evaluate((count) => {
+      for (let taken = 0; taken < count; taken += 1)
+        window.__musaEmit("musa://command", "view.text.larger");
+    }, step);
+  }
+
+  expect(await hidden(copyright)).toBeLessThanOrEqual(1);
+  // Wrapped, specifically — a field that got taller is showing the words a
+  // field that stayed one line tall was hiding.
+  const box = await copyright.boundingBox();
+  expect(box?.height ?? 0).toBeGreaterThan(line * 1.5);
+
+  // And still inside the margin it was given. Wrapping is the fix; growing
+  // the column would have been a different bug.
+  const margin = await page.locator(".margin.right").boundingBox();
+  expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(
+    (margin?.x ?? 0) + (margin?.width ?? 0) + 1,
+  );
+});
+
+test("a short value keeps its own width", async ({ page }) => {
+  // The other half of the same rule. A field stretched to its column would
+  // put the hairline under two characters and a stretch of nothing, and
+  // `01-visual-language.md` §7 makes that hairline the whole affordance —
+  // it has to sit under the value it belongs to.
+  const piece = page.getByRole("group", { name: "This piece" });
+  const meter = await piece.getByRole("textbox", { name: "meter" }).boundingBox();
+  const copyright = await piece.getByRole("textbox", { name: "copyright" }).boundingBox();
+  expect(meter?.width ?? 0).toBeLessThan((copyright?.width ?? 0) / 2);
+});
+
+test("a pasted line break is folded into the value, not into the source", async ({ page }) => {
+  // The field wraps now, so a break pasted into it would look like it
+  // belonged there — and would reach the document as a break inside a
+  // statement.
+  const piece = page.getByRole("group", { name: "This piece" });
+  const field = piece.getByRole("textbox", { name: "subtitle" });
+  await field.click();
+  await field.fill("");
+  await page.keyboard.insertText("for violin\nand strings");
+  await expect(field).toHaveValue("for violin and strings");
 });
 
 test("the piece view, photographed", async ({ page }) => {

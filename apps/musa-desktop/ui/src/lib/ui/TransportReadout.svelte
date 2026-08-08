@@ -216,12 +216,20 @@
   }
 
   /*
-   * Block, not inline: an inline-block input aligns on its baseline and adds
+   * Block-level, not inline: an inline field aligns on its baseline and adds
    * a pixel of descender to the line box, which is the same shift by another
    * route.
+   *
+   * `grid` rather than `block`, because the field *is* a grid — it stacks the
+   * entry on a hidden copy of its own text, and that copy is what gives it a
+   * width. Flattening it to `block` put the two side by side and left the
+   * entry one character wide.
    */
   .editable :global(.field) {
-    display: block;
+    display: grid;
+    /* Content-width, as `inline-grid` gives everywhere else: a block-level
+       grid would fill the band and put the hairline under nothing. */
+    width: fit-content;
   }
 
   .editable:hover {

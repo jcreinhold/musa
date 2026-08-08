@@ -63,7 +63,15 @@ test("a step larger is the frame's type, and only the frame's", async ({ page })
   // the moment in between: taller chrome resizes the leaf before the layout it
   // asked for comes back, and read in that gap the ratio is last layout's staff
   // over this layout's page — a number that belongs to neither.
-  await expect.poll(() => staffShare(page)).toBeCloseTo(share, 4);
+  //
+  // And read as a ratio against itself, within a few percent rather than to
+  // the pixel. Larger type makes the band 9px taller, the leaf is fitted to
+  // the 784px that leaves instead of 793, and Verovio's staff-to-page ratio
+  // is not exactly scale-invariant across that: measured, it moves 1.3%,
+  // which is the same drift a window resize of the same size produces. The
+  // smallest zoom step is 10% (`ZOOM_STEPS`). What this has to tell apart is
+  // those two, and 5% sits between them.
+  await expect.poll(async () => (await staffShare(page)) / share).toBeCloseTo(1, 1);
 
   await run(page, "view.text.reset");
   await expect.poll(() => frameType(page)).toBeCloseTo(before, 1);
