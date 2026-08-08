@@ -40,6 +40,7 @@ type Selection =
 | `⌥`-drag a notehead | Cycle its accidental — `♭ ♮ ♯` — leaving the step alone |
 | Drag a note's right edge | Renotate it, snapped to the same ladder the number keys spell |
 | Click an empty staff step, entry armed | Write a note there, at the caret, with the active duration |
+| Drag the seam beside the source column | Widen or narrow it; double-click returns it to the measure (prompt 60) |
 
 **A pointer edit replaces one token with one value.** It never moves a statement, never reorders a voice, and never
 invents a construct. That is what makes dragging safe here and not elsewhere: every engraved event carries the span of
@@ -99,6 +100,7 @@ documentation cannot drift from bindings.
 | `⌘−` `⌘=` `⌘0` | Zoom out / in / reset — the **score**, which is a re-layout (`02-engraving.md` §5) |
 | `⌘⌥−` `⌘⌥=` `⌘⌥0` | Smaller / larger / reset the **frame's** text, in four steps (prompt 55) |
 | `⌘'` | Show or hide the source column |
+| `←` `→` `⇧←` `⇧→` `Home` `End` | With the source column's seam focused: narrow or widen it (prompt 60) |
 | `⌘⇧F` | Format the source |
 | `⌘,` | Settings — theme, text size, vim mode (prompt 59) |
 | `⌘K` | Command palette |
