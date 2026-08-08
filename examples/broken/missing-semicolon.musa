@@ -1,0 +1,13 @@
+piece "Missing Semicolon" {
+    meter 4/4;
+    tempo 1/4 = 96;
+
+    score {
+        part piano {
+            clef treble
+            voice right {
+                c5 1/4; e5 1/4; g5 1/4; e5 1/4;
+            }
+        }
+    }
+}

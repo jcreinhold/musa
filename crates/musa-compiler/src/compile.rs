@@ -1,7 +1,7 @@
 //! The compiler facade (roadmap §10.6, §15.3): one deep operation. Passes
 //! (resolution, units, resolver) are private; callers see `Compilation`.
 
-use crate::origin::SourceSpan;
+use crate::diagnose::{Diagnostic, Severity};
 use crate::score::ScoreSnapshot;
 
 /// A source document to compile.
@@ -48,44 +48,6 @@ pub struct CompileOptions {
     /// keyed by the path an importer resolves to. The compiler reads no
     /// files: whoever owns the filesystem fills this in.
     pub imports: crate::imports::ImportSources,
-}
-
-/// Diagnostic severity.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Severity {
-    /// Compilation failed for this construct; the snapshot may be absent.
-    Error,
-    /// Something was skipped or is suspicious; compilation continues.
-    Warning,
-}
-
-/// A semantic diagnostic with an optional source span.
-#[derive(Clone, Debug)]
-pub struct Diagnostic {
-    /// How bad it is.
-    pub severity: Severity,
-    /// What is wrong.
-    pub message: String,
-    /// Where, if tied to source.
-    pub span: Option<SourceSpan>,
-}
-
-impl Diagnostic {
-    pub(crate) fn error(message: impl Into<String>, span: Option<SourceSpan>) -> Self {
-        Self {
-            severity: Severity::Error,
-            message: message.into(),
-            span,
-        }
-    }
-
-    pub(crate) fn warning(message: impl Into<String>, span: Option<SourceSpan>) -> Self {
-        Self {
-            severity: Severity::Warning,
-            message: message.into(),
-            span,
-        }
-    }
 }
 
 /// The result of compiling a document: diagnostics always, a snapshot and a

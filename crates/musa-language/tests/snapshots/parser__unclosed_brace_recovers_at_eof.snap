@@ -2,6 +2,6 @@
 source: crates/musa-language/tests/parser.rs
 expression: print_errors(&doc)
 ---
-unclosed `part` block at 40..41
-unclosed `score` block at 40..41
-unclosed `piece` block at 40..41
+41..41: this `part` block is never closed
+  label: the file ends here
+  fix: add `}` -> "}"

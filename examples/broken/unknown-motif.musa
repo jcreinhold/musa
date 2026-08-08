@@ -1,0 +1,19 @@
+piece "Unknown Motif" {
+    meter 4/4;
+    tempo 1/4 = 96;
+
+    motif sigh(root: pitch = e5) {
+        root 1/8; root 1/8;
+    }
+
+    score {
+        part piano {
+            clef treble;
+            voice right {
+                use sigh(c5);
+                use sihg(e5);
+                rest 1/2;
+            }
+        }
+    }
+}

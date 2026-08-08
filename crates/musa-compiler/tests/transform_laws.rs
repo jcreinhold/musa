@@ -204,7 +204,9 @@ fn a_mirror_image_the_language_cannot_write_is_reported() {
     // language cannot write — an error, never a silently approximated pitch.
     let errors = errors_of(&piece("invert around c5 { bss4 1/4; }"));
     assert!(
-        errors.iter().any(|message| message.contains("double accidental")),
+        errors
+            .iter()
+            .any(|message| message.contains("cannot be spelled when mirrored")),
         "expected an unspellable-mirror error; got {errors:?}"
     );
 }
@@ -222,7 +224,9 @@ fn an_override_changes_one_note_of_one_occurrence() {
 fn an_override_of_a_note_the_occurrence_does_not_have_is_an_error() {
     let errors = errors_of(&piece("use a() with { note 5 = f5; }"));
     assert!(
-        errors.iter().any(|message| message.contains("`note 5`")),
+        errors
+            .iter()
+            .any(|message| message.contains("this occurrence has 2 notes")),
         "expected an out-of-range override error; got {errors:?}"
     );
 }

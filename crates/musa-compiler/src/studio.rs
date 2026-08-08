@@ -530,15 +530,18 @@ use musa_language::ast::{
     Arg, AstNode as _, BusDecl, CallExpr, PatchDecl, SendStmt, SignalChain, SignalStage, StudioDecl, StudioItem,
 };
 
-use crate::compile::Diagnostic;
+use crate::diagnose::{Code, Diagnostic};
 use crate::resolve::{span_of, trimmed_span};
 
 /// What a library's `studio` may not write.
 fn complain(node: &musa_language::SyntaxNode, what: &str, diagnostics: &mut Vec<Diagnostic>) {
-    diagnostics.push(Diagnostic::error(
-        format!("a library's `studio` declares patches and signals; `{what}` belongs to the piece"),
-        Some(span_of(node)),
-    ));
+    diagnostics.push(
+        Diagnostic::error(
+            Code::Misplaced,
+            format!("a library's `studio` declares patches and signals; `{what}` belongs to the piece"),
+        )
+        .at(trimmed_span(node), "not allowed in a library"),
+    );
 }
 
 /// Resolve a `studio` block into a [`StudioSpec`], reporting every unresolved
@@ -588,10 +591,10 @@ pub(crate) fn resolve(
                 let mut built = Patch::default();
                 let Some(chain) = signal.chain() else { continue };
                 if lower_chain(&chain, &mut built, diagnostics).is_some() && !spec.insert_signal(name.clone(), built) {
-                    diagnostics.push(Diagnostic::error(
-                        format!("duplicate signal `{name}`"),
-                        Some(span_of(signal.syntax())),
-                    ));
+                    diagnostics.push(
+                        Diagnostic::error(Code::DuplicateName, format!("duplicate signal `{name}`"))
+                            .at(trimmed_span(signal.syntax()), "declared again here"),
+                    );
                 }
             }
             StudioItem::Modulate(_) | StudioItem::Assign(_) | StudioItem::Route(_) | StudioItem::Send(_) => {}
@@ -606,9 +609,15 @@ pub(crate) fn resolve(
                 };
                 let span = Some(span_of(assign.syntax()));
                 if !parts.contains(&part) {
-                    diagnostics.push(Diagnostic::error(format!("unknown part `{part}`"), span));
+                    diagnostics.push(
+                        Diagnostic::error(Code::UnknownName, format!("unknown part `{part}`"))
+                            .maybe_at(span, "no part with this name"),
+                    );
                 } else if !spec.has_patch(&patch) {
-                    diagnostics.push(Diagnostic::error(format!("unknown patch `{patch}`"), span));
+                    diagnostics.push(
+                        Diagnostic::error(Code::UnknownName, format!("unknown patch `{patch}`"))
+                            .maybe_at(span, "no patch with this name"),
+                    );
                 } else {
                     let patch_span = assign.destination_token().map(|token| {
                         let range = token.text_range();
@@ -623,12 +632,18 @@ pub(crate) fn resolve(
                 };
                 let span = Some(span_of(route.syntax()));
                 if !spec.is_routable(&source) {
-                    diagnostics.push(Diagnostic::error(
-                        format!("`{source}` is not an assigned part or a bus"),
-                        span,
-                    ));
+                    diagnostics.push(
+                        Diagnostic::error(
+                            Code::UnknownName,
+                            format!("`{source}` is not an assigned part or a bus"),
+                        )
+                        .maybe_at(span, "nothing sends from here"),
+                    );
                 } else if destination != "master" && !spec.has_bus(&destination) {
-                    diagnostics.push(Diagnostic::error(format!("unknown destination `{destination}`"), span));
+                    diagnostics.push(
+                        Diagnostic::error(Code::UnknownName, format!("unknown destination `{destination}`"))
+                            .maybe_at(span, "not a bus or `master`"),
+                    );
                 } else {
                     spec.push_route(Route { source, destination });
                 }
@@ -638,7 +653,10 @@ pub(crate) fn resolve(
                 let Some(source) = modulate.source() else { continue };
                 let span = Some(span_of(modulate.syntax()));
                 if !spec.has_signal(&source) {
-                    diagnostics.push(Diagnostic::error(format!("unknown signal `{source}`"), span));
+                    diagnostics.push(
+                        Diagnostic::error(Code::UnknownName, format!("unknown signal `{source}`"))
+                            .maybe_at(span, "not declared in this studio"),
+                    );
                     continue;
                 }
                 if let Some(modulation) = resolve_target(&source, &modulate.target(), &spec, span, diagnostics) {
@@ -657,25 +675,34 @@ fn resolve_send(send: &SendStmt, spec: &mut StudioSpec, diagnostics: &mut Vec<Di
     };
     let span = Some(span_of(send.syntax()));
     if !spec.is_routable(&source) {
-        diagnostics.push(Diagnostic::error(
-            format!("`{source}` is not an assigned part or a bus"),
-            span,
-        ));
+        diagnostics.push(
+            Diagnostic::error(
+                Code::UnknownName,
+                format!("`{source}` is not an assigned part or a bus"),
+            )
+            .maybe_at(span, "nothing sends from here"),
+        );
         return;
     }
     if !spec.has_bus(&bus) {
-        diagnostics.push(Diagnostic::error(format!("unknown bus `{bus}`"), span));
+        diagnostics.push(
+            Diagnostic::error(Code::UnknownName, format!("unknown bus `{bus}`"))
+                .maybe_at(span, "no bus with this name"),
+        );
         return;
     }
     let level = send
         .level()
         .and_then(|literal| parse_value(&literal.number()?, literal.unit().as_deref()));
     let Some(level) = level else {
-        diagnostics.push(Diagnostic::error("a send level must be a number", span));
+        diagnostics.push(
+            Diagnostic::error(Code::NotAValue, "a send level must be a number").maybe_at(span, "expected a number"),
+        );
         return;
     };
     if level.unit != Unit::Decibels {
-        diagnostics.push(Diagnostic::error("a send level is written in `dB`", span));
+        diagnostics
+            .push(Diagnostic::error(Code::NotAValue, "a send level is written in `dB`").maybe_at(span, "missing `dB`"));
         return;
     }
     let level_span = send.level().map(|literal| trimmed_span(literal.syntax()));
@@ -701,14 +728,20 @@ fn resolve_target(
 ) -> Option<Modulation> {
     let written = path.join(".");
     let [patch_name, stage, param] = path else {
-        diagnostics.push(Diagnostic::error(
-            format!("`{written}` is not a `<patch>.<stage>.<parameter>` path"),
-            span,
-        ));
+        diagnostics.push(
+            Diagnostic::error(
+                Code::NotAValue,
+                format!("`{written}` is not a `<patch>.<stage>.<parameter>` path"),
+            )
+            .maybe_at(span, "expected `<patch>.<stage>.<parameter>`"),
+        );
         return None;
     };
     let Some(patch) = spec.patch(patch_name) else {
-        diagnostics.push(Diagnostic::error(format!("unknown patch `{patch_name}`"), span));
+        diagnostics.push(
+            Diagnostic::error(Code::UnknownName, format!("unknown patch `{patch_name}`"))
+                .maybe_at(span, "no patch with this name"),
+        );
         return None;
     };
     let matches: Vec<NodeIndex> = patch
@@ -719,17 +752,32 @@ fn resolve_target(
         .map(|(index, _)| index)
         .collect();
     let [node] = matches.as_slice() else {
-        let message = if matches.is_empty() {
-            format!("`{patch_name}` has no stage named `{stage}`")
+        let (message, label, help) = if matches.is_empty() {
+            (
+                format!("`{patch_name}` has no stage named `{stage}`"),
+                "unknown stage",
+                "name a stage in the patch's chain, or give this one a name with `<name> = …`",
+            )
         } else {
-            format!("`{patch_name}` has more than one `{stage}`; name the stage to address it")
+            (
+                format!("`{patch_name}` has more than one `{stage}`"),
+                "which one?",
+                "give the stage a name — `warm = lowpass(…)` — and address it by that",
+            )
         };
-        diagnostics.push(Diagnostic::error(message, span));
+        diagnostics.push(
+            Diagnostic::error(Code::UnknownName, message)
+                .maybe_at(span, label)
+                .help(help),
+        );
         return None;
     };
     let processor = patch.nodes().get(*node)?.processor;
     let Some(declared) = processor.param(param) else {
-        diagnostics.push(Diagnostic::error(format!("`{stage}` has no parameter `{param}`"), span));
+        diagnostics.push(
+            Diagnostic::error(Code::UnknownName, format!("`{stage}` has no parameter `{param}`"))
+                .maybe_at(span, "unknown parameter"),
+        );
         return None;
     };
     Some(Modulation {
@@ -746,17 +794,17 @@ fn declare_patch(decl: &PatchDecl, spec: &mut StudioSpec, diagnostics: &mut Vec<
         return;
     };
     if patch.output().is_none() {
-        diagnostics.push(Diagnostic::error(
-            format!("patch `{name}` never reaches `output`"),
-            Some(span_of(decl.syntax())),
-        ));
+        diagnostics.push(
+            Diagnostic::error(Code::Studio, format!("patch `{name}` never reaches `output`"))
+                .at(trimmed_span(decl.syntax()), "this chain ends nowhere"),
+        );
         return;
     }
     if !spec.insert_patch(name.clone(), patch) {
-        diagnostics.push(Diagnostic::error(
-            format!("duplicate patch `{name}`"),
-            Some(span_of(decl.syntax())),
-        ));
+        diagnostics.push(
+            Diagnostic::error(Code::DuplicateName, format!("duplicate patch `{name}`"))
+                .at(trimmed_span(decl.syntax()), "declared again here"),
+        );
     }
 }
 
@@ -772,19 +820,19 @@ fn declare_bus(decl: &BusDecl, spec: &mut StudioSpec, diagnostics: &mut Vec<Diag
         match last {
             Some(index) => bus.set_output(index),
             None => {
-                diagnostics.push(Diagnostic::error(
-                    format!("bus `{name}` is empty"),
-                    Some(span_of(decl.syntax())),
-                ));
+                diagnostics.push(
+                    Diagnostic::error(Code::Studio, format!("bus `{name}` is empty"))
+                        .at(trimmed_span(decl.syntax()), "no processors"),
+                );
                 return;
             }
         }
     }
     if !spec.insert_bus(name.clone(), bus) {
-        diagnostics.push(Diagnostic::error(
-            format!("duplicate bus `{name}`"),
-            Some(span_of(decl.syntax())),
-        ));
+        diagnostics.push(
+            Diagnostic::error(Code::DuplicateName, format!("duplicate bus `{name}`"))
+                .at(trimmed_span(decl.syntax()), "declared again here"),
+        );
     }
 }
 
@@ -838,20 +886,20 @@ fn lower_chain_into(
                 if text == "output" {
                     match previous {
                         Some(node) => patch.set_output(node),
-                        None => diagnostics.push(Diagnostic::error(
-                            "`output` needs a signal before it",
-                            Some(span_of(stage.syntax())),
-                        )),
+                        None => diagnostics.push(
+                            Diagnostic::error(Code::Studio, "`output` needs a signal before it")
+                                .at(trimmed_span(stage.syntax()), "nothing reaches it"),
+                        ),
                     }
                     continue;
                 }
                 match locals.get(&text) {
                     Some(node) => previous = Some(*node),
                     None => {
-                        diagnostics.push(Diagnostic::error(
-                            format!("unknown signal `{text}`"),
-                            Some(span_of(stage.syntax())),
-                        ));
+                        diagnostics.push(
+                            Diagnostic::error(Code::UnknownName, format!("unknown signal `{text}`"))
+                                .at(trimmed_span(stage.syntax()), "not declared in this studio"),
+                        );
                         return None;
                     }
                 }
@@ -860,10 +908,10 @@ fn lower_chain_into(
                 previous = Some(lower_call(call, previous, patch, locals, diagnostics)?);
             }
             SignalStage::Literal(_) => {
-                diagnostics.push(Diagnostic::error(
-                    "a number is not a signal",
-                    Some(span_of(stage.syntax())),
-                ));
+                diagnostics.push(
+                    Diagnostic::error(Code::NotAValue, "a number is not a signal")
+                        .at(trimmed_span(stage.syntax()), "expected a signal"),
+                );
                 return None;
             }
         }
@@ -882,7 +930,10 @@ fn lower_call(
     let span = Some(span_of(call.syntax()));
     let written = call.callee().unwrap_or_default();
     let Some(processor) = Processor::from_name(&written) else {
-        diagnostics.push(Diagnostic::error(format!("unknown processor `{written}`"), span));
+        diagnostics.push(
+            Diagnostic::error(Code::UnknownWord, format!("unknown processor `{written}`"))
+                .maybe_at(span, "musa has no processor by this name"),
+        );
         return None;
     };
     let mut params: Vec<Value> = processor
@@ -926,10 +977,10 @@ fn lower_call(
                     // A bare word that names no signal is a mode selector
                     // (`oscillator(sine)`), which today has one legal value.
                     None if text == "sine" => {}
-                    None => diagnostics.push(Diagnostic::error(
-                        format!("unknown signal `{text}`"),
-                        Some(span_of(name.syntax())),
-                    )),
+                    None => diagnostics.push(
+                        Diagnostic::error(Code::UnknownName, format!("unknown signal `{text}`"))
+                            .at(trimmed_span(name.syntax()), "not declared in this studio"),
+                    ),
                 }
             }
             Some(SignalStage::Literal(_)) | None => {
@@ -974,10 +1025,13 @@ fn bind_argument(
     let index = match arg.name() {
         Some(name) => {
             let Some(found) = processor.params().iter().position(|param| param.name == name) else {
-                diagnostics.push(Diagnostic::error(
-                    format!("`{}` has no parameter `{name}`", processor.name()),
-                    span,
-                ));
+                diagnostics.push(
+                    Diagnostic::error(
+                        Code::UnknownName,
+                        format!("`{}` has no parameter `{name}`", processor.name()),
+                    )
+                    .maybe_at(span, "unknown parameter"),
+                );
                 return;
             };
             found
@@ -986,10 +1040,13 @@ fn bind_argument(
             let index = *positional;
             *positional = positional.saturating_add(1);
             if index >= processor.params().len() {
-                diagnostics.push(Diagnostic::error(
-                    format!("`{}` takes no argument in that position", processor.name()),
-                    span,
-                ));
+                diagnostics.push(
+                    Diagnostic::error(
+                        Code::NotAValue,
+                        format!("`{}` takes no argument in that position", processor.name()),
+                    )
+                    .maybe_at(span, "too many arguments"),
+                );
                 return;
             }
             index
@@ -999,22 +1056,45 @@ fn bind_argument(
         return;
     };
     let Some(SignalStage::Literal(literal)) = arg.value() else {
-        diagnostics.push(Diagnostic::error(format!("`{}` must be a number", declared.name), span));
+        diagnostics.push(
+            Diagnostic::error(Code::NotAValue, format!("`{}` must be a number", declared.name))
+                .maybe_at(span, "expected a number"),
+        );
         return;
     };
     let Some(number) = literal.number() else { return };
     let Some(value) = parse_value(&number, literal.unit().as_deref()) else {
-        diagnostics.push(Diagnostic::error(format!("`{number}` is not a number"), span));
+        diagnostics.push(
+            Diagnostic::error(Code::NotAValue, format!("`{number}` is not a number"))
+                .maybe_at(span, "expected a number"),
+        );
         return;
     };
     if value.unit != declared.unit {
         // §7.2: units are syntax, so a missing one is a diagnostic and not a
         // guess. The message names the unit the parameter is declared in.
-        let message = match declared.unit.spelling() {
-            Some(expected) => format!("`{}` is written in `{expected}`", declared.name),
-            None => format!("`{}` is a plain ratio, written without a unit", declared.name),
+        let (message, label) = match declared.unit.spelling() {
+            Some(expected) => (
+                format!("`{}` is written in `{expected}`", declared.name),
+                format!("expected `{expected}`"),
+            ),
+            None => (format!("`{}` takes no unit", declared.name), "drop the unit".to_owned()),
         };
-        diagnostics.push(Diagnostic::error(message, span));
+        let mut diagnostic = Diagnostic::error(Code::NotAValue, message)
+            .maybe_at(span, label)
+            .note("units are part of the syntax, so musa never guesses one");
+        // Writing the unit the parameter is declared in is the one repair
+        // that changes no number, so it is a fix rather than a help line. A
+        // *wrong* unit is not: `q: 2 Hz` might be a misplaced argument, and
+        // guessing which is exactly what a fix must not do.
+        if let (Some(expected), None, Some(at)) = (declared.unit.spelling(), literal.unit(), span) {
+            let written = match arg.name() {
+                Some(name) => format!("{name}: {number} {expected}"),
+                None => format!("{number} {expected}"),
+            };
+            diagnostic = diagnostic.fix(format!("write `{number} {expected}`"), at, written);
+        }
+        diagnostics.push(diagnostic);
         return;
     }
     if let Some(slot) = params.get_mut(index) {

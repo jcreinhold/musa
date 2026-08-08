@@ -114,8 +114,10 @@ fn the_fixtures_the_oracle_used_to_agree_about_still_say_what_they_said() {
     let unknown_motif = "piece \"x\" { score { part p { voice v { use nope(); } } } }";
     let errors = errors_of(unknown_motif);
     assert!(
-        errors.iter().any(|message| message.contains("unknown motif")),
-        "expected `unknown motif`, got {errors:?}"
+        errors
+            .iter()
+            .any(|message| message.contains("cannot find motif `nope`")),
+        "expected the motif to be named, got {errors:?}"
     );
     assert!(
         snapshot_of(unknown_motif).is_none(),

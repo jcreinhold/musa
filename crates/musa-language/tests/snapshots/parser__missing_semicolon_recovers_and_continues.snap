@@ -2,4 +2,6 @@
 source: crates/musa-language/tests/parser.rs
 expression: print_errors(&doc)
 ---
-expected `;` at 25..30
+25..25: missing `;`
+  label: it goes here
+  fix: add `;` -> ";"

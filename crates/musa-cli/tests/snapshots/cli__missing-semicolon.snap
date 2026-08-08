@@ -1,0 +1,19 @@
+---
+source: crates/musa-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+syntax
+
+  × missing `;`
+   ╭─[examples/broken/missing-semicolon.musa:7:24]
+ 6 │         part piano {
+ 7 │             clef treble
+   ·                        ▲
+   ·                        ╰── it goes here
+ 8 │             voice right {
+   ╰────
+
+  fix: add `;`
+       7:24: insert `;`
+
+1 problem (1 error)

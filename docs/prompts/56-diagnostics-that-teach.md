@@ -1,7 +1,7 @@
 ---
 id: 56
 slug: diagnostics-that-teach
-status: pending
+status: done
 depends_on: [05, 19, 26]
 phase: 2
 ---
@@ -46,7 +46,7 @@ One shape, restated at three boundaries as the existing `Diagnostic` already is:
 ```rust
 pub struct Diagnostic {
     pub severity: Severity,
-    /// Stable, readable, kebab-case: `unclosed-block`, `unknown-motif`.
+    /// Stable, readable, kebab-case: `unknown-name`, `does-not-add-up`.
     pub code: Code,
     /// What is wrong. One line, no trailing period, no apology.
     pub message: String,
@@ -70,7 +70,7 @@ piece` — never the same words twice.
 
 ### Codes, not numbers
 
-`E0412` is a lookup key for people who already know the system. `unknown-motif` is a lookup key and an explanation, and
+`E0412` is a lookup key for people who already know the system. `unknown-name` is a lookup key and an explanation, and
 it survives being read aloud. Codes are kebab-case, stable once shipped, and listed in one module. `musa explain
 <code>` prints the long form: what the rule is, one example that breaks it, and the same example fixed. Only codes whose
 rule is non-obvious get an explanation; the rest are their own.
@@ -79,14 +79,18 @@ rule is non-obvious get an explanation; the rest are their own.
 
 A fix is a title and text edits, so the terminal and the app spend the same object. The CLI prints the title and the
 replacement; the app offers it as a control and applies it through the edit path it already has. **A fix is offered only
-when it is certain.** `add ';'` is certain. "Did you mean `sigh`?" is a *help line*, not a fix, unless exactly one
-candidate is within edit distance 1 — a wrong fix that applies in one click is worse than no fix.
+when it is certain.** `add ';'` is certain — the character is missing and there is one place it goes. A spelling
+suggestion never is: `sigh` and `sign` are both one edit from `sigb`, and which one the composer meant is not something
+a compiler knows. So a suggestion is always a *help line* and never a fix, and the app offers a control only where the
+core offered exactly one fix.
 
 ### Suggestions come from what the composer wrote
 
-Every "not found" diagnostic searches the names actually in scope and offers the nearest, by Damerau-Levenshtein, capped
-at distance 2 and at a third of the name's length. No dependency: it is twenty lines, private to the compiler, tested
-against the corpus. The same routine serves motifs, parts, voices, patches, buses, and studio parameters.
+Every "not found" diagnostic searches the names actually in scope and offers the nearest, by Damerau-Levenshtein, within
+a third of the written name's length and never fewer than one edit or more than three. A tie offers nothing: two
+candidates at the same distance means the suggester does not know, and saying so by staying quiet is the honest answer.
+No dependency: it is a page, private to the compiler, tested against the corpus. The same routine serves motifs, parts,
+voices, patches, buses, and studio parameters.
 
 ### Line and column belong to Rust
 
@@ -136,7 +140,7 @@ cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-cli
 cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-cli -- -D warnings
 cargo fmt --check
 cargo run -p musa-cli -- check examples/broken/missing-semicolon.musa   # renders with a fix
-cargo run -p musa-cli -- explain unknown-motif
+cargo run -p musa-cli -- explain unknown-name
 npm --prefix apps/musa-desktop/ui run check && npm --prefix apps/musa-desktop/ui run test
 ```
 

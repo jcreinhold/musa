@@ -30,6 +30,7 @@
 #[doc(hidden)]
 pub mod bench;
 mod compile;
+mod diagnose;
 mod elaborate;
 mod factext;
 mod harmony;
@@ -45,7 +46,8 @@ mod score;
 mod studio;
 mod time;
 
-pub use crate::compile::{Compilation, CompileOptions, Diagnostic, Severity, SourceDocument, compile};
+pub use crate::compile::{Compilation, CompileOptions, SourceDocument, compile};
+pub use crate::diagnose::{Code, Diagnostic, Fix, FixEdit, Label, Severity};
 #[doc(hidden)]
 pub use crate::elaborate::kernel_normal_form;
 pub use crate::harmony::{ChordQuality, ChordSymbol, Seventh};

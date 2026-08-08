@@ -24,7 +24,20 @@ function snapshotOf(source: string, revision: number, compiles = true): ProjectS
     compiles,
     // The core keeps the last valid artifacts when the source does not
     // compile; that is exactly what the interface leans on.
-    diagnostics: compiles ? [] : [{ severity: "error", message: "expected `}`", span: null }],
+    diagnostics: compiles
+      ? []
+      : [
+          {
+            severity: "error",
+            code: "syntax",
+            message: "missing `}`",
+            labels: [],
+            help: null,
+            note: null,
+            fixes: [],
+            span: null,
+          },
+        ],
   };
 }
 

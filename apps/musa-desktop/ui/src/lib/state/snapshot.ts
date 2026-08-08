@@ -22,9 +22,48 @@ export interface Span {
   end: number;
 }
 
+/**
+ * Where a diagnostic points, as a person would say it. 1-based, columns in
+ * characters. Computed in Rust — `03-interaction.md` §7 does not let the
+ * frontend count lines.
+ */
+export interface Position {
+  line: number;
+  column: number;
+}
+
+/** One place a diagnostic points at, and what is true about it. */
+export interface Label {
+  span: Span;
+  at: Position;
+  /** What is wrong *here*, in a few words. Never the message again. */
+  text: string;
+  primary: boolean;
+}
+
+/** One replacement inside a fix. An empty span inserts. */
+export interface FixEdit {
+  span: Span;
+  replacement: string;
+}
+
+/** An edit that resolves a diagnostic, offered only when it is certain. */
+export interface Fix {
+  /** What applying it does, phrased as the action: ``add `;` ``. */
+  title: string;
+  edits: FixEdit[];
+}
+
 export interface Diagnostic {
   severity: "error" | "warning";
+  /** Stable, kebab-case: the argument to `musa explain`. */
+  code: string;
   message: string;
+  labels: Label[];
+  help: string | null;
+  note: string | null;
+  fixes: Fix[];
+  /** The primary label's span, for the editor's lint decoration. */
   span: Span | null;
 }
 

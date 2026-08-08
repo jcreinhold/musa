@@ -46,7 +46,26 @@ pub fn parse(source: &str) -> ParsedDocument {
     let mut errors: Vec<SyntaxError> = lexed
         .errors()
         .iter()
-        .map(|error| SyntaxError::new(error.range(), error.kind().to_string()))
+        .map(|error| {
+            let (message, label, help) = match error.kind() {
+                crate::LexErrorKind::InvalidToken => (
+                    "musa does not read this",
+                    "not part of the language",
+                    "check for a stray character, or a word from another notation",
+                ),
+                crate::LexErrorKind::UnterminatedString => (
+                    "this text has no closing quote",
+                    "the line ends here",
+                    "a title, a name, or a line of front matter is one quoted line",
+                ),
+                crate::LexErrorKind::UnterminatedBlockComment => (
+                    "this comment is never closed",
+                    "opened here",
+                    "close it with `*/`, or use `//` for one line",
+                ),
+            };
+            SyntaxError::new(error.range(), message, label).with_help(help)
+        })
         .collect();
     let node = Parser::new(source, &lexed).run();
     errors.extend(node.1);
@@ -140,6 +159,14 @@ struct Parser<'a> {
     pos: usize,
     events: Vec<Event<'a>>,
     errors: Vec<SyntaxError>,
+    /// Whether the end of the file has already been blamed for something.
+    ///
+    /// One missing `}` closes every block above it, so a file that ends early
+    /// produces one complaint per open block — all at the same character, all
+    /// saying the same thing. The innermost is reported first, because that is
+    /// the order the parser unwinds in, and it is also the one closest to what
+    /// was actually being written.
+    blamed_the_end: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -150,6 +177,7 @@ impl<'a> Parser<'a> {
             pos: 0,
             events: Vec::new(),
             errors: Vec::new(),
+            blamed_the_end: false,
         }
     }
 
@@ -258,20 +286,152 @@ impl<'a> Parser<'a> {
     }
 
     /// Consume `kind` if present; otherwise record an error and continue.
+    ///
+    /// Punctuation the grammar spells out gets the better report: the message
+    /// names the character rather than the production, the caret sits at the
+    /// end of the token before — where the character goes, not where reading
+    /// broke — and the error carries the edit that puts it there. Anything
+    /// else falls back to naming what was wanted and what was found, which is
+    /// all that can honestly be said about a missing name.
     fn expect(&mut self, kind: SyntaxKind, what: &str) {
         if self.at(kind) {
             self.bump();
-        } else {
-            self.error_here(format!("expected {what}"));
+            return;
+        }
+        if self.cascading() || !self.may_blame_the_end() {
+            return;
+        }
+        let Some(text) = punctuation_of(kind) else {
+            let error = self.expected_error(what);
+            self.errors.push(error);
+            return;
+        };
+        let at = TextRange::empty(self.previous_end());
+        self.errors.push(
+            SyntaxError::new(at, format!("missing `{text}`"), "it goes here").with_fix(format!("add `{text}`"), text),
+        );
+    }
+
+    /// The end of the last token that is not whitespace or a comment.
+    ///
+    /// Where a missing `;` belongs: at the end of what was written, not in
+    /// front of the word that made the parser notice, and not adrift in the
+    /// blank line between them.
+    fn previous_end(&self) -> TextSize {
+        self.tokens
+            .get(..self.pos)
+            .unwrap_or_default()
+            .iter()
+            .rev()
+            .find(|token| !token.kind.is_trivia())
+            .map_or_else(|| TextSize::from(0), |token| token.range.end())
+    }
+
+    /// Record "expected X, found Y" at the current token without consuming.
+    fn expected(&mut self, what: &str) {
+        if self.cascading() {
+            return;
+        }
+        let error = self.expected_error(what);
+        self.errors.push(error);
+    }
+
+    /// The same, plus a line saying what to do.
+    fn expected_with_help(&mut self, what: &str, help: &str) {
+        if self.cascading() {
+            return;
+        }
+        let error = self.expected_error(what).with_help(help);
+        self.errors.push(error);
+    }
+
+    /// Whether the next token is one the lexer already rejected.
+    ///
+    /// A stray `*` produces one honest complaint and then three consequences —
+    /// no duration, no `;`, no statement — each pointing at the same character
+    /// and none of them the reason. The lexer's message is the one worth
+    /// reading, so the parser says nothing more until it is past the token.
+    fn cascading(&self) -> bool {
+        self.significant().is_some_and(|token| token.kind == SyntaxKind::Error)
+    }
+
+    /// The shared body of the three above.
+    ///
+    /// Naming what was actually found is most of what makes a parse error
+    /// legible: `expected ';', found '}'` locates the mistake a line earlier
+    /// than `expected ';'` does, because the reader can see which construct
+    /// ran off its end.
+    fn expected_error(&self, what: &str) -> SyntaxError {
+        match self.significant() {
+            Some(token) => SyntaxError::new(
+                token.range,
+                format!("expected {what}, found `{}`", self.source[token.range].trim()),
+                format!("expected {what}"),
+            ),
+            None => SyntaxError::new(
+                TextRange::empty(self.end_size()),
+                format!("expected {what}, found the end of the file"),
+                format!("expected {what}"),
+            ),
         }
     }
 
-    fn error_here(&mut self, message: impl Into<String>) {
-        let range = self
-            .tokens
-            .get(self.pos)
-            .map_or_else(|| TextRange::empty(self.end_size()), |token| token.range);
-        self.errors.push(SyntaxError::new(range, message));
+    /// A block that ran to the end of the file without its `}`.
+    ///
+    /// Reported at the end rather than at the `{`, because that is where the
+    /// parser found out — but the message names the block, so the reader knows
+    /// which `{` to go back to.
+    fn unclosed(&mut self, what: &str) -> Option<SyntaxError> {
+        if !self.may_blame_the_end() {
+            return None;
+        }
+        Some(
+            SyntaxError::new(
+                TextRange::empty(self.end_size()),
+                format!("this {what} is never closed"),
+                "the file ends here",
+            )
+            .with_fix("add `}`", "}"),
+        )
+    }
+
+    fn unclosed_list(&mut self) -> Option<SyntaxError> {
+        if !self.may_blame_the_end() {
+            return None;
+        }
+        Some(
+            SyntaxError::new(
+                TextRange::empty(self.end_size()),
+                "this argument list is never closed",
+                "the file ends here",
+            )
+            .with_fix("add `)`", ")"),
+        )
+    }
+
+    /// Whether the end of the file is still available to blame.
+    ///
+    /// Returns `true` once, when the parser is out of tokens, and `false`
+    /// every time after — and `true` unconditionally while tokens remain,
+    /// because then the complaint is about a place the reader can see.
+    fn may_blame_the_end(&mut self) -> bool {
+        if self.significant().is_some() {
+            return true;
+        }
+        let first = !self.blamed_the_end;
+        self.blamed_the_end = true;
+        first
+    }
+
+    /// The next token that is not whitespace or a comment.
+    ///
+    /// Errors point at what the reader would call the next token; the trivia
+    /// in front of it is not what is wrong.
+    fn significant(&self) -> Option<&Token> {
+        self.tokens
+            .get(self.pos..)?
+            .iter()
+            .find(|token| !token.kind.is_trivia())
     }
 
     fn end_size(&self) -> TextSize {
@@ -327,7 +487,9 @@ impl<'a> Parser<'a> {
                 break;
             }
             if self.current().is_none() {
-                self.error_here("unclosed `piece` block");
+                if let Some(error) = self.unclosed("`piece` block") {
+                    self.errors.push(error);
+                }
                 break;
             }
             if self.at(SyntaxKind::UseKw) {
@@ -349,8 +511,9 @@ impl<'a> Parser<'a> {
             } else if self.at(SyntaxKind::StudioKw) {
                 self.studio_decl();
             } else {
-                self.error_here(
-                    "expected a use, tempo, meter, key, subtitle, composer, arranger, copyright, motif, score, performance, or studio declaration",
+                self.expected_with_help(
+                    "a declaration",
+                    "a piece holds `use`, `tempo`, `meter`, `key`, front matter, `motif`, `score`, `performance`, and `studio`",
                 );
                 self.recover(PIECE_RECOVERY);
             }
@@ -378,7 +541,7 @@ impl<'a> Parser<'a> {
         if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::Rational]) {
             self.bump();
         } else {
-            self.error_here("expected a beat unit (`quarter` or `1/4`)");
+            self.expected("a beat unit (`quarter` or `1/4`)");
         }
         self.expect(SyntaxKind::Equals, "`=`");
         self.expect(SyntaxKind::Integer, "a tempo in bpm");
@@ -403,7 +566,9 @@ impl<'a> Parser<'a> {
                 break;
             }
             if self.current().is_none() {
-                self.error_here("unclosed `library` block");
+                if let Some(error) = self.unclosed("`library` block") {
+                    self.errors.push(error);
+                }
                 break;
             }
             if self.at(SyntaxKind::UseKw) {
@@ -417,7 +582,10 @@ impl<'a> Parser<'a> {
             } else {
                 // A library holds what can be shared. Music belongs to a
                 // piece, which is why `score` is not in this list.
-                self.error_here("expected a use, motif, performance, or studio declaration");
+                self.expected_with_help(
+                    "a declaration",
+                    "a library holds `use`, `motif`, `performance`, and `studio` — music belongs to a piece",
+                );
                 self.recover(PIECE_RECOVERY);
             }
         }
@@ -467,14 +635,14 @@ impl<'a> Parser<'a> {
             if self.at_any(&[SyntaxKind::PitchKw, SyntaxKind::Identifier]) {
                 self.bump(); // parameter type (`pitch`)
             } else {
-                self.error_here("expected a parameter type (`pitch`)");
+                self.expected("a parameter type (`pitch`)");
             }
             if self.at(SyntaxKind::Equals) {
                 self.bump();
                 if self.at_any(&[SyntaxKind::PitchLiteral, SyntaxKind::Rational, SyntaxKind::Integer]) {
                     self.bump(); // default value (pitch or duration)
                 } else {
-                    self.error_here("expected a default value");
+                    self.expected("a default value");
                 }
             }
             if self.at(SyntaxKind::Comma) {
@@ -499,7 +667,9 @@ impl<'a> Parser<'a> {
                 break;
             }
             if self.current().is_none() {
-                self.error_here("unclosed `score` block");
+                if let Some(error) = self.unclosed("`score` block") {
+                    self.errors.push(error);
+                }
                 break;
             }
             if self.at(SyntaxKind::PartKw) {
@@ -509,7 +679,7 @@ impl<'a> Parser<'a> {
             } else if self.at(SyntaxKind::HarmonyKw) {
                 self.harmony_decl();
             } else {
-                self.error_here("expected a `part`, `section`, or `harmony` declaration");
+                self.expected("a `part`, `section`, or `harmony` declaration");
                 self.recover(SCORE_RECOVERY);
             }
         }
@@ -528,7 +698,9 @@ impl<'a> Parser<'a> {
                 break;
             }
             if self.current().is_none() {
-                self.error_here("unclosed `part` block");
+                if let Some(error) = self.unclosed("`part` block") {
+                    self.errors.push(error);
+                }
                 break;
             }
             if self.at(SyntaxKind::ClefKw) {
@@ -538,7 +710,7 @@ impl<'a> Parser<'a> {
             } else if self.at(SyntaxKind::VoiceKw) {
                 self.voice_decl();
             } else {
-                self.error_here("expected `clef`, `profile`, or `voice`");
+                self.expected("`clef`, `profile`, or `voice`");
                 self.recover(PART_RECOVERY);
             }
         }
@@ -574,13 +746,15 @@ impl<'a> Parser<'a> {
                 break;
             }
             if self.current().is_none() {
-                self.error_here("unclosed `performance` block");
+                if let Some(error) = self.unclosed("`performance` block") {
+                    self.errors.push(error);
+                }
                 break;
             }
             if self.at(SyntaxKind::ProfileKw) {
                 self.profile_decl();
             } else {
-                self.error_here("expected a `profile` declaration");
+                self.expected("a `profile` declaration");
                 self.recover(PERFORMANCE_RECOVERY);
             }
         }
@@ -599,7 +773,9 @@ impl<'a> Parser<'a> {
                 break;
             }
             if self.current().is_none() {
-                self.error_here("unclosed `profile` block");
+                if let Some(error) = self.unclosed("`profile` block") {
+                    self.errors.push(error);
+                }
                 break;
             }
             if self.at(SyntaxKind::ArticulationKw) {
@@ -607,7 +783,7 @@ impl<'a> Parser<'a> {
             } else if self.at(SyntaxKind::DynamicKw) {
                 self.rule(SyntaxKind::DynamicRule, "a dynamic marking");
             } else {
-                self.error_here("expected an `articulation` or `dynamic` rule");
+                self.expected("an `articulation` or `dynamic` rule");
                 self.recover(PROFILE_RECOVERY);
             }
         }
@@ -626,13 +802,15 @@ impl<'a> Parser<'a> {
                 break;
             }
             if self.current().is_none() {
-                self.error_here("unclosed rule block");
+                if let Some(error) = self.unclosed("rule block") {
+                    self.errors.push(error);
+                }
                 break;
             }
             if self.at(SyntaxKind::Identifier) {
                 self.setting_stmt();
             } else {
-                self.error_here("expected a setting such as `gate = 0.55;`");
+                self.expected("a setting such as `gate = 0.55;`");
                 self.recover(&[SyntaxKind::Semicolon, SyntaxKind::RBrace]);
             }
         }
@@ -648,7 +826,7 @@ impl<'a> Parser<'a> {
         if self.at_any(&[SyntaxKind::Float, SyntaxKind::Integer]) {
             self.bump();
         } else {
-            self.error_here("expected a number");
+            self.expected("a number");
         }
         if self.at_any(&[SyntaxKind::UnitMs, SyntaxKind::UnitS]) {
             self.bump();
@@ -671,7 +849,9 @@ impl<'a> Parser<'a> {
                 break;
             }
             if self.current().is_none() {
-                self.error_here("unclosed `studio` block");
+                if let Some(error) = self.unclosed("`studio` block") {
+                    self.errors.push(error);
+                }
                 break;
             }
             if self.at(SyntaxKind::PatchKw) {
@@ -689,7 +869,7 @@ impl<'a> Parser<'a> {
             } else if self.at(SyntaxKind::Identifier) {
                 self.signal_binding();
             } else {
-                self.error_here("expected `patch`, `bus`, `modulate`, `assign`, `route`, `send`, or a signal binding");
+                self.expected("`patch`, `bus`, `modulate`, `assign`, `route`, `send`, or a signal binding");
                 self.recover(STUDIO_RECOVERY);
             }
         }
@@ -725,7 +905,9 @@ impl<'a> Parser<'a> {
                 break;
             }
             if self.current().is_none() {
-                self.error_here(format!("unclosed `{what}` block"));
+                if let Some(error) = self.unclosed(&format!("`{what}` block")) {
+                    self.errors.push(error);
+                }
                 break;
             }
             if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::Equals) {
@@ -733,7 +915,7 @@ impl<'a> Parser<'a> {
             } else if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::OutputKw]) {
                 self.chain_stmt();
             } else {
-                self.error_here("expected a signal binding or a signal chain");
+                self.expected("a signal binding or a signal chain");
                 self.recover(STUDIO_RECOVERY);
             }
         }
@@ -788,7 +970,7 @@ impl<'a> Parser<'a> {
                 self.finish();
             }
         } else {
-            self.error_here("expected a processor, a signal name, or `output`");
+            self.expected("a processor, a signal name, or `output`");
             self.recover(STUDIO_RECOVERY);
         }
     }
@@ -805,7 +987,9 @@ impl<'a> Parser<'a> {
                 break;
             }
             if self.current().is_none() {
-                self.error_here("unclosed argument list");
+                if let Some(error) = self.unclosed_list() {
+                    self.errors.push(error);
+                }
                 break;
             }
             self.arg();
@@ -843,7 +1027,7 @@ impl<'a> Parser<'a> {
             if self.at_any(&[SyntaxKind::Float, SyntaxKind::Integer, SyntaxKind::Rational]) {
                 self.bump();
             } else {
-                self.error_here("expected a number");
+                self.expected("a number");
             }
             if self.at_any(&[
                 SyntaxKind::UnitHz,
@@ -861,7 +1045,7 @@ impl<'a> Parser<'a> {
             self.bump();
             self.finish();
         } else {
-            self.error_here("expected a value");
+            self.expected("a value");
             self.recover(&[
                 SyntaxKind::Comma,
                 SyntaxKind::RParen,
@@ -963,8 +1147,9 @@ impl<'a> Parser<'a> {
             } else if self.at_any(&[SyntaxKind::CrescendoKw, SyntaxKind::DiminuendoKw]) {
                 self.hairpin_stmt();
             } else {
-                self.error_here(
-                    "expected a note, rest, chord, use, transpose, stretch, retrograde, invert, repeat, slur, phrase, crescendo, diminuendo, dynamic, or tuplet",
+                self.expected_with_help(
+                    "something to play",
+                    "a voice holds notes (`c5 1/4;`), `rest`, `chord`, and `use` — run `musa explain syntax` for the rest",
                 );
                 self.recover(VOICE_RECOVERY);
             }
@@ -1058,7 +1243,7 @@ impl<'a> Parser<'a> {
                 ]) {
                     self.bump();
                 } else {
-                    self.error_here("expected an argument");
+                    self.expected("an argument");
                     break;
                 }
                 if self.at(SyntaxKind::Comma) {
@@ -1092,7 +1277,7 @@ impl<'a> Parser<'a> {
             if self.at(SyntaxKind::NoteKw) {
                 self.override_stmt();
             } else {
-                self.error_here("expected an override such as `note 2 = d5;`");
+                self.expected("an override such as `note 2 = d5;`");
                 self.recover(&[SyntaxKind::Semicolon, SyntaxKind::RBrace, SyntaxKind::NoteKw]);
             }
         }
@@ -1118,7 +1303,7 @@ impl<'a> Parser<'a> {
         if self.at_any(&[SyntaxKind::UpKw, SyntaxKind::DownKw]) {
             self.bump();
         } else {
-            self.error_here("expected `up` or `down`");
+            self.expected("`up` or `down`");
         }
         self.expect(SyntaxKind::IntervalLiteral, "an interval such as `P5` or `m3`");
         self.block();
@@ -1187,7 +1372,7 @@ impl<'a> Parser<'a> {
             if self.at(SyntaxKind::AtKw) {
                 self.harmony_stmt();
             } else {
-                self.error_here("expected a chord such as `at 1:1 am;`");
+                self.expected("a chord such as `at 1:1 am;`");
                 self.recover(&[SyntaxKind::Semicolon, SyntaxKind::RBrace, SyntaxKind::AtKw]);
             }
         }
@@ -1214,7 +1399,7 @@ impl<'a> Parser<'a> {
         if self.at_any(&[SyntaxKind::Integer, SyntaxKind::Rational]) {
             self.bump();
         } else {
-            self.error_here("expected a beat such as `1` or `3/2`");
+            self.expected("a beat such as `1` or `3/2`");
         }
         self.finish();
     }
@@ -1234,7 +1419,7 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
         } else {
-            self.error_here("expected a chord such as `am` or `fmaj7`");
+            self.expected("a chord such as `am` or `fmaj7`");
         }
         self.finish();
     }
@@ -1255,7 +1440,7 @@ impl<'a> Parser<'a> {
         if self.at_any(&[SyntaxKind::Rational, SyntaxKind::Integer]) {
             self.bump();
         } else {
-            self.error_here("expected a factor such as `3/2` or `2`");
+            self.expected("a factor such as `3/2` or `2`");
         }
         self.block();
         self.finish();
@@ -1293,7 +1478,34 @@ impl<'a> Parser<'a> {
         if self.at_any(&[SyntaxKind::Rational, SyntaxKind::Integer, SyntaxKind::Identifier]) {
             self.bump(); // literal or duration-parameter reference
         } else {
-            self.error_here("expected a duration");
+            self.expected("a duration");
         }
     }
+}
+
+/// The text of a token the grammar spells out, when it has one.
+///
+/// Only these get a fix: inserting a `;` the language requires is not a guess,
+/// while inserting an identifier or a pitch would be inventing music.
+/// Keywords are deliberately absent from this table. Inserting `at` where a
+/// token ends gives `96at`, and a fix that has to guess at whitespace is not
+/// the certain edit a fix is supposed to be.
+const PUNCTUATION: &[(SyntaxKind, &str)] = &[
+    (SyntaxKind::Semicolon, ";"),
+    (SyntaxKind::LBrace, "{"),
+    (SyntaxKind::RBrace, "}"),
+    (SyntaxKind::LParen, "("),
+    (SyntaxKind::RParen, ")"),
+    (SyntaxKind::LBracket, "["),
+    (SyntaxKind::RBracket, "]"),
+    (SyntaxKind::Equals, "="),
+    (SyntaxKind::Colon, ":"),
+    (SyntaxKind::Arrow, "->"),
+];
+
+fn punctuation_of(kind: SyntaxKind) -> Option<&'static str> {
+    PUNCTUATION
+        .iter()
+        .find(|(candidate, _)| *candidate == kind)
+        .map(|(_, text)| *text)
 }

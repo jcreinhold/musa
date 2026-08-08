@@ -25,12 +25,24 @@ fn compile_with(name: &str, source: &str, files: &[(&str, &str)]) -> Compilation
     compile(&SourceDocument::new(source, name), &CompileOptions { imports })
 }
 
+/// Each error as the whole small document it is: the claim, then the rule and
+/// the advice under it. What a reader is told is the sum of the three, so a
+/// test that reads only the first line tests less than it looks like it does.
 fn errors(compilation: &Compilation) -> Vec<String> {
     compilation
         .diagnostics()
         .iter()
         .filter(|diagnostic| diagnostic.severity == musa_compiler::Severity::Error)
-        .map(|diagnostic| diagnostic.message.clone())
+        .map(|diagnostic| {
+            let mut lines = vec![diagnostic.message.clone()];
+            if let Some(note) = diagnostic.note.as_deref() {
+                lines.push(format!("note: {note}"));
+            }
+            if let Some(help) = diagnostic.help.as_deref() {
+                lines.push(format!("help: {help}"));
+            }
+            lines.join("\n")
+        })
         .collect()
 }
 
@@ -123,7 +135,7 @@ fn an_import_cycle_is_reported_with_its_files() {
     );
     let messages = errors(&compilation);
     assert!(
-        messages.iter().any(|message| message.contains("import cycle")
+        messages.iter().any(|message| message.contains("import each other")
             && message.contains("a.musa")
             && message.contains("b.musa")),
         "expected a cycle naming both files, got {messages:?}"
@@ -134,9 +146,10 @@ fn an_import_cycle_is_reported_with_its_files() {
 #[test]
 fn a_missing_import_names_the_path_it_looked_for() {
     let compilation = compile_with("pieces/01.musa", &piece("use \"../library/gone.musa\";"), &[]);
-    assert_eq!(
-        errors(&compilation).first().map(String::as_str),
-        Some("cannot find `library/gone.musa`"),
+    assert!(
+        errors(&compilation)
+            .first()
+            .is_some_and(|first| first.starts_with("cannot find `library/gone.musa`")),
         "the missing file is the first thing said; what it would have declared follows"
     );
 }
@@ -155,7 +168,9 @@ fn a_piece_cannot_be_imported() {
     );
     let messages = errors(&compilation);
     assert!(
-        messages.iter().any(|message| message.contains("is not a library")),
+        messages
+            .iter()
+            .any(|message| message.contains("is a piece, not a library")),
         "expected a library rejection, got {messages:?}"
     );
 }
@@ -170,7 +185,9 @@ fn two_declarations_of_one_name_is_an_error_not_a_shadow() {
     );
     let messages = errors(&compilation);
     assert!(
-        messages.iter().any(|message| message.contains("motif `rise`")),
+        messages
+            .iter()
+            .any(|message| message.contains("`rise` is declared twice")),
         "expected a collision naming the motif, got {messages:?}"
     );
 }
@@ -208,7 +225,9 @@ fn a_broken_library_is_reported_by_name() {
     );
     let messages = errors(&compilation);
     assert!(
-        messages.iter().any(|message| message.starts_with("`lib.musa`:")),
+        messages
+            .iter()
+            .any(|message| message.starts_with("`lib.musa` does not compile")),
         "expected the library's name in the message, got {messages:?}"
     );
 }

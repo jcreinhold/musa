@@ -1,0 +1,20 @@
+---
+source: crates/musa-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+not-a-value
+
+  × `cutoff` is written in `Hz`
+    ╭─[examples/broken/missing-unit.musa:15:41]
+ 14 │         patch warm {
+ 15 │             oscillator(sine) |> lowpass(cutoff: 1400) |> output;
+    ·                                         ──────┬─────
+    ·                                               ╰── expected `Hz`
+ 16 │         }
+    ╰────
+
+  note: units are part of the syntax, so musa never guesses one
+  fix: write `1400 Hz`
+       15:41: write `cutoff: 1400 Hz`
+
+1 problem (1 error)

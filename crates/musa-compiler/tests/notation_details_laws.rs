@@ -86,10 +86,7 @@ fn a_tie_makes_one_event_spelled_as_two_noteheads() {
 #[test]
 fn a_tie_to_a_different_pitch_is_an_error() {
     let errors = errors_of(&voice_source("c4 1/4 ~; d4 1/4; rest 1/2;"));
-    assert_eq!(
-        errors,
-        vec!["a tie must be followed by the same pitch or chord".to_string()]
-    );
+    assert_eq!(errors, vec!["a tie joins two of the same note".to_string()]);
 }
 
 #[test]
@@ -97,7 +94,7 @@ fn a_tie_with_nothing_after_it_is_an_error() {
     let errors = errors_of(&voice_source("c4 1;"));
     assert!(errors.is_empty(), "control: an untied whole note is fine");
     let errors = errors_of(&voice_source("c4 1 ~;"));
-    assert_eq!(errors, vec!["this tie has no note after it".to_string()]);
+    assert_eq!(errors, vec!["this tie has nothing to tie to".to_string()]);
 }
 
 // --- Tuplets ---------------------------------------------------------------
@@ -121,7 +118,7 @@ fn a_triplet_eighth_is_exactly_one_twelfth() {
 fn a_tuplet_across_a_barline_is_an_error() {
     let errors = errors_of(&voice_source("rest 7/8; tuplet 3/2 { c4 1/4; d4 1/4; e4 1/4; }"));
     assert!(
-        errors.contains(&"a tuplet must fit inside one measure".to_string()),
+        errors.contains(&"this tuplet is longer than a measure".to_string()),
         "got {errors:?}"
     );
 }
@@ -158,7 +155,7 @@ fn a_dynamic_reaches_into_the_block_that_follows_it() {
 #[test]
 fn a_dynamic_with_nothing_after_it_is_an_error() {
     let errors = errors_of(&voice_source("c4 1; dynamic p;"));
-    assert_eq!(errors, vec!["this dynamic marking has no note after it".to_string()]);
+    assert_eq!(errors, vec!["this dynamic marking has nothing to mark".to_string()]);
 }
 
 #[test]
@@ -172,7 +169,7 @@ fn articulations_keep_their_written_order_and_reject_unknown_names() {
         .collect();
     assert_eq!(marks, vec![ArticulationMark::Accent, ArticulationMark::Staccato]);
     let errors = errors_of(&voice_source("c4 1 sideways;"));
-    assert_eq!(errors, vec!["unknown articulation `sideways`".to_string()]);
+    assert_eq!(errors, vec!["`sideways` is not an articulation".to_string()]);
 }
 
 #[test]

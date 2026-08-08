@@ -189,6 +189,9 @@ pub enum Clef {
 }
 
 impl Clef {
+    /// Every clef musa reads, for diagnostics that have to say so.
+    pub const NAMES: &'static [&'static str] = &["treble", "bass", "alto", "tenor"];
+
     /// Parse a clef name.
     pub fn parse(text: &str) -> Option<Self> {
         match text {
@@ -481,6 +484,11 @@ pub enum DynamicMark {
 
 impl DynamicMark {
     /// Read a marking as the language spells it.
+    /// Every marking musa reads. Eleven is past the point where printing the
+    /// list helps, which is why `suggest` sends the reader to `musa explain`
+    /// instead when nothing is close.
+    pub const NAMES: &'static [&'static str] = &["ppp", "pp", "p", "mp", "mf", "f", "ff", "fff", "sf", "sfz", "fp"];
+
     pub fn parse(text: &str) -> Option<Self> {
         let mark = match text {
             "ppp" => Self::Ppp,
@@ -534,6 +542,9 @@ pub enum ArticulationMark {
 
 impl ArticulationMark {
     /// Read an articulation as the language spells it.
+    /// Every articulation musa reads, for the diagnostic that lists them.
+    pub const NAMES: &'static [&'static str] = &["staccato", "staccatissimo", "tenuto", "accent", "marcato"];
+
     pub fn parse(text: &str) -> Option<Self> {
         let mark = match text {
             "staccato" => Self::Staccato,

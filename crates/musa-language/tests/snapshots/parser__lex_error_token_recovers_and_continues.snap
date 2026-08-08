@@ -2,7 +2,6 @@
 source: crates/musa-language/tests/parser.rs
 expression: print_errors(&doc)
 ---
-unrecognized token at 82..83
-expected a duration at 81..82
-expected `;` at 81..82
-expected a note, rest, chord, use, transpose, stretch, retrograde, invert, repeat, slur, phrase, crescendo, diminuendo, dynamic, or tuplet at 81..82
+82..83: musa does not read this
+  label: not part of the language
+  help: check for a stray character, or a word from another notation

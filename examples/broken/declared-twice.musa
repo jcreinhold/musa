@@ -1,0 +1,16 @@
+piece "Declared Twice" {
+    meter 4/4;
+
+    motif rise() { c5 1/8; d5 1/8; }
+    motif rise() { e5 1/8; f5 1/8; }
+
+    score {
+        part piano {
+            clef treble;
+            voice right {
+                use rise();
+                rest 3/4;
+            }
+        }
+    }
+}

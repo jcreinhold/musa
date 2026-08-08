@@ -80,6 +80,27 @@ test("breaking the source keeps the score and says how far behind it is", async 
   await expect(page.locator(".diagnostics li")).toHaveCount(1);
 });
 
+/**
+ * A diagnostic that knows its repair offers it, and applying it is an ordinary
+ * edit — the source compiles again and the problem is gone (prompt 56).
+ */
+test("a diagnostic with one certain fix offers it, and applying it works", async ({ page }) => {
+  await page.goto("/");
+  await engraved(page);
+  await toggleSource(page);
+  await rewrite(page, 'piece "Glass Mountain" {');
+
+  const problem = page.locator(".diagnostics li").first();
+  // The place is a line and a column, never a byte offset.
+  await expect(problem.locator(".where")).toHaveText(/^\d+:\d+$/);
+  await expect(problem.locator(".label")).toHaveText("it goes here");
+
+  // The core writes the title in lower case; the control is sentence case.
+  await problem.getByRole("button", { name: "Add }" }).click();
+  await expect(page.locator(".diagnostics li")).toHaveCount(0);
+  await expect(page.getByRole("status")).toHaveCount(0);
+});
+
 test("fixing the source removes the message without announcing it", async ({ page }) => {
   await page.goto("/");
   await engraved(page);

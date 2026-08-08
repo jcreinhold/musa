@@ -74,9 +74,25 @@ This is a headline behavior and it gets a real design, not a badge:
 
 ## 5. Diagnostics
 
-- Listed in source order, each as: severity glyph, message in `--t-body`, location in `--t-value` `--ink-muted`.
-- Clicking one moves the caret in the source and, when the diagnostic has a score location, flashes the corresponding
-  system on the leaf once.
+A diagnostic is a small document, not a sentence (prompt 56): a claim, the place, what is wrong at that place, the
+advice, and — where the repair is unambiguous — the edit itself. The list shows all five, in the order they are read.
+
+- Listed in source order. Each is at most four lines: severity glyph and message in `--t-body`, the **location** in
+  `--t-value` `--ink-muted` at the right; then the **primary label** and the **help line**, indented to clear the
+  glyph, both `--ink-muted`; then the **fix**, if there is one.
+- **The location is `line:column`, 1-based, columns counted in characters.** Never a byte offset. Rust computes it
+  (`03-interaction.md` §7 does not put line numbers on the frontend's list) and it arrives on every label.
+- The label says what is wrong *at that character* and never repeats the message. `missing `;`` / *it goes here*, not
+  the same words twice.
+- **A fix is a control, and only when there is exactly one.** Labelled with the action in sentence case — *Add `;`*,
+  *Write `1400 Hz`* — in `--plate`, because the application is acting for you, under a hairline underline and in no
+  box (`01-visual-language.md` §7). Applying it is an ordinary edit: it goes through the same path a keystroke does
+  and `⌘Z` reverses it. A diagnostic carrying two candidate repairs offers neither; a menu of guesses is an editor
+  feature and is not this.
+- Backticks in the compiler's prose are the compiler's spelling, not markup to print. What they quote is set in the
+  mono face; the words themselves are unchanged, and are still the compiler's own (§1).
+- Clicking a problem moves the caret in the source and, when the diagnostic has a score location, flashes the
+  corresponding system on the leaf once.
 - The severity glyph is a shape, not just a color (`03-interaction.md` §5): a filled square for errors, hollow for
   warnings.
 - Diagnostics never appear as toasts. They are not transient.

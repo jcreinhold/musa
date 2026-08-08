@@ -1,0 +1,19 @@
+piece "Missing Unit" {
+    meter 4/4;
+
+    score {
+        part piano {
+            clef treble;
+            voice right {
+                c5 1;
+            }
+        }
+    }
+
+    studio {
+        patch warm {
+            oscillator(sine) |> lowpass(cutoff: 1400) |> output;
+        }
+        assign piano -> warm;
+    }
+}

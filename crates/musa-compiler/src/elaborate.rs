@@ -26,6 +26,7 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use crate::compile::{Compilation, SourceDocument};
+use crate::diagnose::{Code, Diagnostic};
 use crate::origin::{ExpansionStep, Origin, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::resolve::{self, ExpandCx, Resolver};
@@ -330,20 +331,29 @@ pub(crate) fn elaborate_parsed(
 ) -> Compilation {
     for error in document.errors() {
         let range = error.range();
-        resolver.error(
-            format!("syntax: {}", error.message()),
-            SourceSpan::new(u32::from(range.start()), u32::from(range.end())),
-        );
+        let span = SourceSpan::new(u32::from(range.start()), u32::from(range.end()));
+        let mut diagnostic = Diagnostic::error(Code::Syntax, error.message()).at(span, error.label());
+        if let Some(help) = error.help() {
+            diagnostic = diagnostic.help(help);
+        }
+        if let Some((title, replacement)) = error.fix() {
+            diagnostic = diagnostic.fix(title, span, replacement);
+        }
+        resolver.report(diagnostic);
     }
     if resolver
         .diagnostics
         .iter()
-        .any(|d| d.severity == crate::compile::Severity::Error)
+        .any(|d| d.severity == crate::diagnose::Severity::Error)
     {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
     let Some(piece) = PieceDecl::from_root(&document.syntax()) else {
-        resolver.error("no `piece` declaration", SourceSpan::new(0, 0));
+        resolver.report(
+            Diagnostic::error(Code::Misplaced, "this file declares no piece")
+                .at(SourceSpan::new(0, 0), "expected `piece \"…\" { … }`")
+                .help("every musa file is one piece, or a `library { … }` for others to import"),
+        );
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     };
 
@@ -363,7 +373,7 @@ pub(crate) fn elaborate_parsed(
     if resolver
         .diagnostics
         .iter()
-        .any(|d| d.severity == crate::compile::Severity::Error)
+        .any(|d| d.severity == crate::diagnose::Severity::Error)
     {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
@@ -373,7 +383,7 @@ pub(crate) fn elaborate_parsed(
     if resolver
         .diagnostics
         .iter()
-        .any(|d| d.severity == crate::compile::Severity::Error)
+        .any(|d| d.severity == crate::diagnose::Severity::Error)
     {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
@@ -422,7 +432,12 @@ fn elaborate_score(
         let part_key = resolver.declare(crate::resolve::DeclInfo::Part);
         let _ = resolve::ordinal(resolver, part_key);
         if metadata.iter().any(|(_, existing, _)| *existing == name) {
-            resolver.error(format!("duplicate part `{name}`"), resolve::span_of(part.syntax()));
+            resolver.error(
+                Code::DuplicateName,
+                format!("this score already has a part called `{name}`"),
+                resolve::span_of(part.syntax()),
+                "declared again here",
+            );
             continue;
         }
         let id = PartId(resolver.next_part);
@@ -440,8 +455,10 @@ fn elaborate_score(
             let declaration = resolve::ordinal(resolver, voice_key);
             if names.values().any(|existing| *existing == voice_name) {
                 resolver.error(
-                    format!("duplicate voice `{voice_name}` in part `{name}`"),
+                    Code::DuplicateName,
+                    format!("part `{name}` already has a voice called `{voice_name}`"),
                     resolve::span_of(voice.syntax()),
+                    "declared again here",
                 );
                 continue;
             }
@@ -602,8 +619,10 @@ fn context_facts(
     let lanes = score.harmonies();
     for extra in lanes.iter().skip(1) {
         resolver.error(
-            "one `harmony` lane per score; write every chord in the first one",
+            Code::Misplaced,
+            "this score already has a harmony lane",
             resolve::trimmed_span(extra.syntax()),
+            "write every chord in the first one",
         );
     }
     for chord in lanes.iter().flat_map(musa_language::ast::HarmonyDecl::chords) {
@@ -615,12 +634,21 @@ fn context_facts(
             continue;
         };
         if !written.is_one_word() {
-            resolver.error("a chord symbol is one word, such as `am` or `fmaj7`", span);
+            resolver.error(
+                Code::NotAValue,
+                "a chord symbol is one word",
+                span,
+                "expected something like `am` or `fmaj7`",
+            );
             continue;
         }
         let text = written.text();
         let Some(symbol) = crate::harmony::ChordSymbol::parse(&text) else {
-            resolver.error(format!("`{text}` is not a chord symbol musa can read"), span);
+            resolver.report(
+                Diagnostic::error(Code::NotAValue, format!("`{text}` is not a chord symbol musa reads"))
+                    .at(span, "unknown chord")
+                    .note("a root, an optional quality, and an optional seventh: `am`, `fmaj7`, `g7`, `bdim`"),
+            );
             continue;
         };
         occurrences.push(point_at(
@@ -679,11 +707,20 @@ fn elaborate_tempo_changes(
             continue;
         };
         if at == MusicalTime::ZERO {
-            resolver.error("the tempo at `1:1` is the piece's tempo; write it without `at`", span);
+            resolver.report(
+                Diagnostic::error(Code::Misplaced, "the tempo at `1:1` is the piece's starting tempo")
+                    .at(span, "drop the `at 1:1`")
+                    .help("write `tempo quarter = 72;` in the header"),
+            );
             continue;
         }
         if changes.iter().any(|existing| existing.at == at) {
-            resolver.error("two tempos at the same place", span);
+            resolver.error(
+                Code::Misplaced,
+                "two tempos at the same place",
+                span,
+                "the second of two",
+            );
             continue;
         }
         let (beat, bpm) = resolve::tempo_reading(resolver, tempo);
@@ -726,14 +763,24 @@ fn resolve_position(
     let beat_text = position.beat()?;
     let beat = resolve::parse_ratio(&beat_text).or_else(|| beat_text.parse::<i64>().ok().map(Ratio::from_integer))?;
     if measure < 1 || beat < Ratio::ONE {
-        resolver.error("measures and beats count from `1:1`", span);
+        resolver.error(
+            Code::OutOfRange,
+            "measures and beats count from `1:1`",
+            span,
+            "before the piece starts",
+        );
         return None;
     }
     let measure_len = meter.measure_len().as_ratio();
     let beat_len = Ratio::new(1, i64::from(meter.denominator().max(1)));
     let at = MusicalTime::new(measure_len * (measure - 1) + beat_len * (beat - Ratio::ONE));
     if at >= extent && extent > MusicalTime::default() {
-        resolver.error(format!("the piece ends before `{measure}:{beat_text}`"), span);
+        resolver.error(
+            Code::OutOfRange,
+            format!("the piece ends before `{measure}:{beat_text}`"),
+            span,
+            "past the last note",
+        );
         return None;
     }
     Some(at)
@@ -1071,7 +1118,11 @@ fn articulations_of(resolver: &mut Resolver, names: &[String], span: SourceSpan)
     for name in names {
         match ArticulationMark::parse(name) {
             Some(mark) => articulations.push(mark),
-            None => resolver.error(format!("unknown articulation `{name}`"), span),
+            None => resolver.report(
+                Diagnostic::error(Code::UnknownWord, format!("`{name}` is not an articulation"))
+                    .at(span, "unknown articulation")
+                    .help(crate::resolve::suggest(name, ArticulationMark::NAMES, "articulations")),
+            ),
         }
     }
     articulations
@@ -1153,9 +1204,10 @@ fn elaborate_item(
                     }
                     Some(None) => break,
                     None => {
-                        resolver.error(
-                            format!("invalid chord pitch `{text}`"),
-                            resolve::span_of(chord.syntax()),
+                        resolver.report(
+                            Diagnostic::error(Code::NotAValue, format!("`{text}` is not a pitch"))
+                                .at(resolve::trimmed_span(chord.syntax()), "inside this chord")
+                                .note("a pitch is a letter, an optional `s` or `f`, and an octave: `c4`, `gs5`, `bf3`"),
                         );
                     }
                 }
@@ -1176,9 +1228,10 @@ fn elaborate_item(
         VoiceItem::Transpose(transpose) => {
             let text = transpose.interval().unwrap_or_default();
             let Some(interval) = crate::origin::Interval::parse(&text, transpose.is_down()) else {
-                resolver.error(
-                    format!("unknown interval `{text}`"),
-                    resolve::span_of(transpose.syntax()),
+                resolver.report(
+                    Diagnostic::error(Code::NotAValue, format!("`{text}` is not an interval"))
+                        .at(resolve::trimmed_span(transpose.syntax()), "unknown interval")
+                        .note("a quality and a number: `P5`, `M3`, `m6`, `A4`, `d5`"),
                 );
                 return Segment::empty();
             };
@@ -1244,7 +1297,11 @@ fn elaborate_item(
             let span = resolve::trimmed_span(hairpin.syntax());
             let text = hairpin.target().unwrap_or_default();
             let Some(target) = DynamicMark::parse(&text) else {
-                resolver.error(format!("unknown dynamic marking `{text}`"), span);
+                resolver.report(
+                    Diagnostic::error(Code::UnknownWord, format!("`{text}` is not a dynamic marking"))
+                        .at(span, "unknown marking")
+                        .help(crate::resolve::suggest(&text, DynamicMark::NAMES, "markings")),
+                );
                 return Segment::empty();
             };
             let origin = origin_of(cx, span);
@@ -1264,7 +1321,12 @@ fn elaborate_item(
             let text = tuplet.ratio().unwrap_or_default();
             let span = resolve::trimmed_span(tuplet.syntax());
             let Some((num, den)) = parse_tuplet_ratio(&text) else {
-                resolver.error(format!("`{text}` is not a tuplet ratio such as `3/2`"), span);
+                resolver.error(
+                    Code::NotAValue,
+                    format!("`{text}` is not a tuplet ratio"),
+                    span,
+                    "expected something like `3/2`",
+                );
                 return Segment::empty();
             };
             let origin = origin_of(cx, span);
@@ -1278,7 +1340,12 @@ fn elaborate_item(
             let span = resolve::trimmed_span(stretch.syntax());
             let factor = resolve::parse_ratio(&text).or_else(|| text.parse::<i64>().ok().map(Ratio::from_integer));
             let Some(factor) = factor.filter(|factor| *factor > Ratio::ZERO) else {
-                resolver.error(format!("`{text}` is not a positive stretch factor such as `3/2`"), span);
+                resolver.error(
+                    Code::NotAValue,
+                    format!("`{text}` is not a stretch factor"),
+                    span,
+                    "expected a positive number, like `2` or `3/2`",
+                );
                 return Segment::empty();
             };
             let mut inner = cx.clone();
@@ -1306,7 +1373,12 @@ fn elaborate_item(
             let text = invert.axis().unwrap_or_default();
             let span = resolve::trimmed_span(invert.syntax());
             let Some(axis) = WrittenPitch::parse(&text) else {
-                resolver.error(format!("`{text}` is not a pitch to invert around"), span);
+                resolver.error(
+                    Code::NotAValue,
+                    format!("`{text}` is not a pitch"),
+                    span,
+                    "inversion needs a pitch to mirror about",
+                );
                 return Segment::empty();
             };
             let mut inner = cx.clone();
@@ -1327,9 +1399,13 @@ fn elaborate_item(
                 })
             });
             for (pitch, at) in refused.into_inner() {
-                resolver.error(
-                    format!("`{pitch}` inverted around `{text}` needs more than a double accidental"),
-                    at,
+                resolver.report(
+                    Diagnostic::error(
+                        Code::OutOfRange,
+                        format!("`{pitch}` cannot be spelled when mirrored around `{text}`"),
+                    )
+                    .at(at, "would need a triple accidental")
+                    .help("mirror around a different pitch, or write the passage out"),
                 );
             }
             Segment::literal(inverted)
@@ -1344,7 +1420,11 @@ fn elaborate_item(
                     origin_of(cx, span),
                 ))),
                 None => {
-                    resolver.error(format!("unknown dynamic marking `{text}`"), span);
+                    resolver.report(
+                        Diagnostic::error(Code::UnknownWord, format!("`{text}` is not a dynamic marking"))
+                            .at(span, "unknown marking")
+                            .help(crate::resolve::suggest(&text, DynamicMark::NAMES, "markings")),
+                    );
                     Segment::empty()
                 }
             }
@@ -1385,25 +1465,36 @@ fn elaborate_use(
         .get_full(&name)
         .map(|(index, _, motif)| (index, motif.params.clone(), motif.body.clone(), motif.declaration));
     let Some((index, motif_params, body, declaration)) = found else {
-        resolver.error(format!("unknown motif `{name}`"), resolve::span_of(call.syntax()));
+        let known: Vec<&str> = resolver.motifs.keys().map(String::as_str).collect();
+        resolver.report(
+            Diagnostic::error(Code::UnknownName, format!("cannot find motif `{name}`"))
+                .at(resolve::trimmed_span(call.syntax()), "not declared in this piece")
+                .help(crate::resolve::suggest(&name, &known, "motifs")),
+        );
         return Segment::empty();
     };
     if index >= cx.max_motif {
-        resolver.error(
-            format!("motif `{name}` can only reference motifs declared before it"),
-            resolve::span_of(call.syntax()),
+        resolver.report(
+            Diagnostic::error(Code::Misplaced, format!("motif `{name}` is declared after this one"))
+                .at(resolve::trimmed_span(call.syntax()), "used before it exists")
+                .help("move the declaration above the motif that uses it")
+                .note("a motif sees only the motifs above it, which is what makes a cycle impossible"),
         );
         return Segment::empty();
     }
     let args = call.args();
     if args.len() > motif_params.len() {
-        resolver.error(
-            format!(
-                "motif `{name}` takes {} arguments, got {}",
-                motif_params.len(),
-                args.len()
-            ),
-            resolve::span_of(call.syntax()),
+        resolver.report(
+            Diagnostic::error(
+                Code::NotAValue,
+                format!(
+                    "motif `{name}` takes {} argument{}, and this passes {}",
+                    motif_params.len(),
+                    if motif_params.len() == 1 { "" } else { "s" },
+                    args.len()
+                ),
+            )
+            .at(resolve::trimmed_span(call.syntax()), "too many arguments"),
         );
         return Segment::empty();
     }
@@ -1411,9 +1502,19 @@ fn elaborate_use(
     for (position, param) in motif_params.iter().enumerate() {
         let text = args.get(position).cloned().or_else(|| param.default.clone());
         let Some(text) = text else {
-            resolver.error(
-                format!("motif `{name}`: missing argument `{}`", param.name),
-                resolve::span_of(call.syntax()),
+            resolver.report(
+                Diagnostic::error(
+                    Code::NotAValue,
+                    format!("motif `{name}` needs a value for `{}`", param.name),
+                )
+                .at(
+                    resolve::trimmed_span(call.syntax()),
+                    format!("no `{}` here", param.name),
+                )
+                .help(format!(
+                    "pass one, or give `{}` a default in the declaration",
+                    param.name
+                )),
             );
             return Segment::empty();
         };
@@ -1536,28 +1637,37 @@ fn specialize(
             .and_then(|text| text.parse::<usize>().ok())
             .filter(|n| *n > 0)
         else {
-            resolver.error("a note override counts from `note 1`", at);
+            resolver.error(
+                Code::OutOfRange,
+                "notes are counted from `note 1`",
+                at,
+                "there is no note 0",
+            );
             continue;
         };
         let Some(pitch) = each.pitch().as_deref().and_then(WrittenPitch::parse) else {
-            resolver.error("this override does not name a pitch", at);
+            resolver.error(Code::NotAValue, "this override names no pitch", at, "expected a pitch");
             continue;
         };
         let Some(&(start, end)) = positions.get(position.saturating_sub(1)) else {
             resolver.error(
+                Code::OutOfRange,
                 format!(
-                    "this occurrence has {} note{}, so there is no `note {position}`",
+                    "this occurrence has {} note{}",
                     positions.len(),
                     if positions.len() == 1 { "" } else { "s" }
                 ),
                 at,
+                format!("so there is no note {position}"),
             );
             continue;
         };
         if end.saturating_sub(start) > 1 {
             resolver.error(
-                format!("`note {position}` is a chord; an override respells one note"),
+                Code::Misplaced,
+                format!("note {position} is a chord"),
                 at,
+                "an override respells one note, not a chord",
             );
             continue;
         }
@@ -1567,11 +1677,21 @@ fn specialize(
             .and_then(|it| it.payload().pitch_of())
             .is_none()
         {
-            resolver.error(format!("`note {position}` is a rest; an override respells a note"), at);
+            resolver.error(
+                Code::Misplaced,
+                format!("note {position} is a rest"),
+                at,
+                "a rest has no pitch to respell",
+            );
             continue;
         }
         if replacements.insert(start, (pitch, at)).is_some() {
-            resolver.error(format!("`note {position}` is overridden twice"), at);
+            resolver.error(
+                Code::DuplicateName,
+                format!("note {position} is overridden twice"),
+                at,
+                "the second of two",
+            );
         }
     }
     if replacements.is_empty() {
@@ -1683,9 +1803,13 @@ fn apply_intervals(
     let mut current = pitch;
     for interval in &cx.intervals {
         let Some(next) = current.transpose(*interval) else {
-            resolver.error(
-                format!("transposition of `{current}` needs more than a double accidental"),
-                resolve::span_of(node),
+            resolver.report(
+                Diagnostic::error(
+                    Code::OutOfRange,
+                    format!("`{current}` cannot be spelled after this transposition"),
+                )
+                .at(resolve::trimmed_span(node), "would need a triple accidental")
+                .help("transpose by a different interval, or write the passage out"),
             );
             return None;
         };
@@ -1726,7 +1850,12 @@ fn merge_ties(resolver: &mut Resolver, timeline: Timeline<ScoreFact>) -> Timelin
             let at = statement
                 .first()
                 .map_or_else(|| SourceSpan::new(0, 0), |first| first.payload().origin.definition_span);
-            resolver.error("a tie must be followed by the same pitch or chord", at);
+            resolver.error(
+                Code::Misplaced,
+                "a tie joins two of the same note",
+                at,
+                "the next note is a different pitch",
+            );
             for occurrence in previous.iter_mut() {
                 untie(occurrence);
             }
@@ -1825,8 +1954,10 @@ fn check_dangling_tie(resolver: &mut Resolver, timeline: Timeline<ScoreFact>) ->
         }
         if !reported {
             resolver.error(
-                "this tie has no note after it",
+                Code::Misplaced,
+                "this tie has nothing to tie to",
                 occurrence.payload().origin.definition_span,
+                "no note follows it",
             );
             reported = true;
         }
@@ -1869,7 +2000,12 @@ fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
         }
     }
     for span in offenders {
-        resolver.error("a tuplet must fit inside one measure", span);
+        resolver.error(
+            Code::DoesNotAddUp,
+            "this tuplet is longer than a measure",
+            span,
+            "spills past the barline",
+        );
     }
 }
 

@@ -130,9 +130,12 @@ fn the_frame_at_a_tempo_change_is_the_sum_of_what_came_before() {
 #[test]
 fn a_tempo_change_must_be_somewhere_the_piece_reaches() {
     for (header, expected) in [
-        ("tempo 1/4 = 90 at 1:1;", "the tempo at `1:1` is the piece's tempo"),
+        (
+            "tempo 1/4 = 90 at 1:1;",
+            "the tempo at `1:1` is the piece's starting tempo",
+        ),
         ("tempo 1/4 = 90 at 99:1;", "the piece ends before"),
-        ("tempo 1/4 = 90;", "the piece already has a starting tempo"),
+        ("tempo 1/4 = 90;", "this piece already says how fast it starts"),
     ] {
         let compilation = compile(
             &SourceDocument::new(piece(header, SIXTEEN_QUARTERS), "curve.musa"),

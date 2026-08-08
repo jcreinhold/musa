@@ -42,6 +42,7 @@ mod facts;
 mod imports;
 mod midi;
 mod playback;
+mod position;
 mod project;
 mod session;
 mod snapshot;
@@ -50,7 +51,7 @@ mod template;
 mod utf16;
 
 pub use crate::command::{ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
-pub use crate::diagnostic::{Diagnostic, Severity, Span};
+pub use crate::diagnostic::{Diagnostic, Fix, FixEdit, Label, Severity, Span, codes, explain};
 pub use crate::edit::{EditCommand, EditImpact, GeneratedEditMode, InsertAt, NoteSpec};
 pub use crate::error::ProjectError;
 pub use crate::export::{ExportArtifact, ExportRequest, KernelReport, check_kernel};
@@ -59,6 +60,7 @@ pub use crate::facts::{
     ScoreFacts, VoiceFacts,
 };
 pub use crate::midi::MidiEntry;
+pub use crate::position::Position;
 pub use crate::project::ProjectMeta;
 pub use crate::session::ProjectSession;
 pub use crate::snapshot::{PlaybackState, ProjectSnapshot};

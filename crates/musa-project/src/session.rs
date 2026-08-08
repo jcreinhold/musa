@@ -463,10 +463,11 @@ impl ProjectSession {
     fn first_error(&self, candidate: &str) -> Option<String> {
         let document = SourceDocument::new(candidate.to_owned(), self.name.clone());
         let compilation = musa_compiler::compile(&document, &self.options());
+        let lines = crate::position::Lines::new(candidate);
         compilation
             .diagnostics()
             .iter()
-            .map(Diagnostic::from_compiler)
+            .map(|diagnostic| Diagnostic::from_compiler(diagnostic, &lines))
             .find(|diagnostic| diagnostic.severity == crate::diagnostic::Severity::Error)
             .map(|diagnostic| diagnostic.message)
     }
@@ -525,10 +526,11 @@ impl ProjectSession {
         self.import_paths = import_paths;
         let document = SourceDocument::new(self.source.clone(), self.name.clone());
         let compilation = musa_compiler::compile(&document, &self.options());
+        let lines = crate::position::Lines::new(&self.source);
         let diagnostics: Vec<Diagnostic> = compilation
             .diagnostics()
             .iter()
-            .map(Diagnostic::from_compiler)
+            .map(|diagnostic| Diagnostic::from_compiler(diagnostic, &lines))
             .collect();
         let diagnostics_changed = diagnostics != self.diagnostics;
         self.diagnostics = diagnostics;
@@ -580,7 +582,12 @@ impl ProjectSession {
                     self.compiles = false;
                     self.diagnostics.push(Diagnostic {
                         severity: crate::diagnostic::Severity::Error,
+                        code: "engrave".to_owned(),
                         message: error.to_string(),
+                        labels: Vec::new(),
+                        help: Some("this is a bug in musa, not in the piece".to_owned()),
+                        note: None,
+                        fixes: Vec::new(),
                         span: None,
                     });
                 }

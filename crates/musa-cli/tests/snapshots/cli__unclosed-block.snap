@@ -1,0 +1,18 @@
+---
+source: crates/musa-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+syntax
+
+  × missing `}`
+   ╭─[examples/broken/unclosed-block.musa:8:48]
+ 7 │             voice right {
+ 8 │                 c5 1/4; d5 1/4; e5 1/4; f5 1/4;
+   ·                                                ▲
+   ·                                                ╰── it goes here
+   ╰────
+
+  fix: add `}`
+       8:48: insert `}`
+
+1 problem (1 error)

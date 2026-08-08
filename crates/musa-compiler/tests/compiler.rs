@@ -21,8 +21,21 @@ fn messages(compilation: &Compilation) -> Vec<String> {
     compilation
         .diagnostics()
         .iter()
-        .map(|diagnostic| format!("{:?}: {}", diagnostic.severity, diagnostic.message))
+        .map(|diagnostic| format!("{:?}[{}]: {}", diagnostic.severity, diagnostic.code, diagnostic.message))
         .collect()
+}
+
+/// Whether some diagnostic has this code and names `needle`.
+///
+/// Assertions go through the code rather than the prose wherever the test is
+/// about *what was rejected*: a message is writing and gets rewritten, and a
+/// test that breaks when a sentence improves is a test that discourages the
+/// improvement.
+fn reports(compilation: &Compilation, code: musa_compiler::Code, needle: &str) -> bool {
+    compilation
+        .diagnostics()
+        .iter()
+        .any(|diagnostic| diagnostic.code == code && diagnostic.message.contains(needle))
 }
 
 #[test]
@@ -156,9 +169,9 @@ fn unknown_motif_is_an_error() {
     let compilation = compile_source("piece \"x\" { score { part p { voice v { use missing(); } } } }");
     assert!(compilation.has_errors());
     assert!(
+        reports(&compilation, musa_compiler::Code::UnknownName, "`missing`"),
+        "{:?}",
         messages(&compilation)
-            .iter()
-            .any(|message| message.contains("unknown motif"))
     );
 }
 
@@ -173,9 +186,9 @@ fn motifs_only_see_earlier_motifs() {
     );
     assert!(compilation.has_errors());
     assert!(
+        reports(&compilation, musa_compiler::Code::Misplaced, "`b`"),
+        "{:?}",
         messages(&compilation)
-            .iter()
-            .any(|message| message.contains("declared before"))
     );
 }
 
@@ -224,9 +237,9 @@ fn missing_argument_without_default_is_an_error() {
     );
     assert!(compilation.has_errors());
     assert!(
+        reports(&compilation, musa_compiler::Code::NotAValue, "root"),
+        "{:?}",
         messages(&compilation)
-            .iter()
-            .any(|message| message.contains("missing argument"))
     );
 }
 
@@ -235,9 +248,9 @@ fn unknown_clef_is_an_error() {
     let compilation = compile_source("piece \"x\" { score { part p { clef soprano; voice v { c5 1; } } } }");
     assert!(compilation.has_errors());
     assert!(
+        reports(&compilation, musa_compiler::Code::UnknownWord, "`soprano`"),
+        "{:?}",
         messages(&compilation)
-            .iter()
-            .any(|message| message.contains("unknown clef"))
     );
     assert!(compilation.snapshot().is_none());
 }
@@ -248,9 +261,9 @@ fn duplicate_part_is_an_error() {
         compile_source("piece \"x\" { score { part p { voice v { c5 1; } } part p { voice w { d5 1; } } } }");
     assert!(compilation.has_errors());
     assert!(
+        reports(&compilation, musa_compiler::Code::DuplicateName, "`p`"),
+        "{:?}",
         messages(&compilation)
-            .iter()
-            .any(|message| message.contains("duplicate part"))
     );
 }
 
@@ -261,9 +274,9 @@ fn duplicate_motif_is_an_error() {
     );
     assert!(compilation.has_errors());
     assert!(
+        reports(&compilation, musa_compiler::Code::DuplicateName, "`m`"),
+        "{:?}",
         messages(&compilation)
-            .iter()
-            .any(|message| message.contains("duplicate motif"))
     );
 }
 

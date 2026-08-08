@@ -1,0 +1,17 @@
+---
+source: crates/musa-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unknown-word
+
+  × `soprano` is not a clef
+   ╭─[examples/broken/unknown-clef.musa:6:18]
+ 5 │         part voice_part {
+ 6 │             clef soprano;
+   ·                  ───┬───
+   ·                     ╰── not a clef musa reads
+ 7 │             voice line {
+   ╰────
+  help: musa reads `treble`, `bass`, `alto`, `tenor`
+
+1 problem (1 error)

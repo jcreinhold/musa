@@ -40,6 +40,12 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
     const balanced = (source: string): boolean =>
       (source.match(/\{/g) ?? []).length === (source.match(/\}/g) ?? []).length;
 
+    /** The 1-based line and column of the end of `source`, as Rust states it. */
+    function place(source: string): { line: number; column: number } {
+      const lines = source.split("\n");
+      return { line: lines.length, column: (lines[lines.length - 1] ?? "").length + 1 };
+    }
+
     function setSource(source: string): Record<string, unknown> {
       const compiles = balanced(source);
       const revision = (current.revision as number) + 1;
@@ -56,15 +62,36 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
         // engraver has a page to lay out again, which is what B2 measures.
         scoreRevision: compiles ? revision : current.scoreRevision,
         // A real diagnostic points at a place, and the interface's whole
-        // answer to one is to go there — so the stub points at the brace it
-        // is complaining about rather than at nothing.
+        // answer to one is to go there — so the stub points at the end of the
+        // text, where the missing brace goes, rather than at nothing. It
+        // carries the rest of the shape too (prompt 56): the label, the
+        // location the core computed, and the one certain fix, because the
+        // control that applies a fix is only reachable through a diagnostic
+        // that has one.
         diagnostics: compiles
           ? []
           : [
               {
                 severity: "error",
-                message: "expected `}`",
-                span: { start: source.lastIndexOf("{"), end: source.lastIndexOf("{") + 1 },
+                code: "syntax",
+                message: "missing `}`",
+                labels: [
+                  {
+                    span: { start: source.length, end: source.length },
+                    at: place(source),
+                    text: "it goes here",
+                    primary: true,
+                  },
+                ],
+                help: null,
+                note: null,
+                fixes: [
+                  {
+                    title: "add `}`",
+                    edits: [{ span: { start: source.length, end: source.length }, replacement: "}" }],
+                  },
+                ],
+                span: { start: source.length, end: source.length },
               },
             ],
       };

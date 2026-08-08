@@ -25,6 +25,7 @@ use std::collections::HashMap;
 
 use musa_language::ast::{AstNode as _, LibraryDecl, PieceDecl};
 
+use crate::diagnose::{Code, Diagnostic};
 use crate::origin::SourceSpan;
 use crate::resolve::Resolver;
 
@@ -141,26 +142,41 @@ impl Loader<'_> {
                 .chain(std::iter::once(path.as_str()))
                 .collect::<Vec<_>>()
                 .join(" → ");
-            resolver.error(format!("import cycle: {cycle}"), span);
+            resolver.report(
+                Diagnostic::error(Code::Import, "these files import each other")
+                    .at(span, "the loop closes here")
+                    .note(format!("the loop is {cycle}"))
+                    .help("move the shared material into a third library both can use"),
+            );
             return;
         }
         if self.loaded.contains(&path) {
             return;
         }
         let Some(text) = self.sources.get(&path) else {
-            resolver.error(format!("cannot find `{path}`"), span);
+            resolver.report(
+                Diagnostic::error(Code::Import, format!("cannot find `{path}`"))
+                    .at(span, "no file here")
+                    .help("paths are relative to the file that writes them, and end in `.musa`"),
+            );
             return;
         };
         let document = musa_language::parse(text);
         if let Some(error) = document.errors().first() {
-            resolver.error(format!("`{path}`: {}", error.message()), span);
+            resolver.report(
+                Diagnostic::error(Code::Import, format!("`{path}` does not compile"))
+                    .at(span, "imported here")
+                    .note(format!("it says: {}", error.message()))
+                    .help(format!("run `musa check {path}`")),
+            );
             return;
         }
         let root = document.syntax();
         if LibraryDecl::from_root(&root).is_none() {
-            resolver.error(
-                format!("`{path}` is not a library; an imported file writes `library {{ ... }}`"),
-                span,
+            resolver.report(
+                Diagnostic::error(Code::Import, format!("`{path}` is a piece, not a library"))
+                    .at(span, "only a library can be imported")
+                    .help("wrap the material you want to share in `library { … }`"),
             );
             return;
         }

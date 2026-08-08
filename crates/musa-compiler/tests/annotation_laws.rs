@@ -163,7 +163,7 @@ fn a_symbol_that_is_not_a_chord_is_reported_rather_than_stored() {
     assert!(
         errors
             .iter()
-            .any(|message| message.contains("`hq13` is not a chord symbol musa can read")),
+            .any(|message| message.contains("`hq13` is not a chord symbol musa reads")),
         "expected a diagnostic naming the symbol, got {errors:?}"
     );
 }
@@ -174,7 +174,7 @@ fn every_chord_goes_in_one_harmony_lane() {
     assert!(
         errors
             .iter()
-            .any(|message| message.contains("one `harmony` lane per score")),
+            .any(|message| message.contains("already has a harmony lane")),
         "expected a diagnostic about the second lane, got {errors:?}"
     );
 }

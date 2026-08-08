@@ -30,7 +30,11 @@ fn check_rejects_a_broken_piece_with_diagnostics() -> std::io::Result<()> {
     let output = musa(&["check", &path.to_string_lossy()])?;
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("expected `;`"), "stderr: {stderr}");
+    assert!(stderr.contains("missing `;`"), "stderr: {stderr}");
+    // The report carries the place, the fix, and the tally.
+    assert!(stderr.contains("1:22"), "stderr: {stderr}");
+    assert!(stderr.contains("fix: add `;`"), "stderr: {stderr}");
+    assert!(stderr.contains("1 problem (1 error)"), "stderr: {stderr}");
     std::fs::remove_file(&path)
 }
 
@@ -147,4 +151,40 @@ fn the_album_piece_renders_through_its_imports_at_the_tempos_it_writes() -> std:
         "expected about {written:.2} s of music plus a release tail, got {seconds:.2} s"
     );
     std::fs::remove_file(&wav)
+}
+
+/// Every fixture in `examples/broken` renders the way it is supposed to.
+///
+/// These snapshots are the diagnostics' goldens. A message is writing, and
+/// writing rots: the only way to notice that a help line stopped matching its
+/// message, or that a fix started pointing at the wrong character, is to look
+/// at the whole rendered report and keep looking at it.
+///
+/// The renderer is pinned to a fixed width and no colour (see
+/// `install_renderer`), so what is snapshotted here is what a reader sees.
+#[test]
+fn every_broken_fixture_renders_the_way_it_reads() -> std::io::Result<()> {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../");
+    let mut fixtures: Vec<std::path::PathBuf> = std::fs::read_dir(root.join("examples/broken"))?
+        .filter_map(Result::ok)
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().is_some_and(|extension| extension == "musa"))
+        .collect();
+    fixtures.sort();
+    assert!(fixtures.len() >= 5, "expected the broken corpus, found {fixtures:?}");
+    for fixture in fixtures {
+        let name = fixture
+            .file_stem()
+            .map(|stem| stem.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        // Run from the repository root so the header reads `examples/broken/…`
+        // on every machine.
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_musa-cli"))
+            .current_dir(&root)
+            .args(["check", &format!("examples/broken/{name}.musa")])
+            .output()?;
+        assert!(!output.status.success(), "{name} is supposed to be broken");
+        insta::assert_snapshot!(name, String::from_utf8_lossy(&output.stderr));
+    }
+    Ok(())
 }

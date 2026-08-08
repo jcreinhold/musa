@@ -16,6 +16,8 @@
    * from the core; this file turns spans into marks and never reads the text.
    */
   import SourceEditor from "./SourceEditor.svelte";
+  import Ticked from "./Ticked.svelte";
+  import { applyFix, asControl, labelOf, onlyFix, placeOf } from "../state/fix";
   import type { Reveal } from "../state/reveal";
   import type { Diagnostic, Span } from "../state/snapshot";
 
@@ -60,6 +62,17 @@
   } = $props();
 
   const errors = $derived(diagnostics.filter((diagnostic) => diagnostic.severity === "error"));
+
+  /**
+   * Apply a diagnostic's fix by rewriting the source, the same way a keystroke
+   * does. There is no separate edit path and there should not be: an applied
+   * fix is undoable with `⌘Z` because it is an ordinary edit.
+   */
+  function fix(diagnostic: Diagnostic): void {
+    const only = onlyFix(diagnostic);
+    if (!only || !editable) return;
+    onedit?.(applyFix(source, only));
+  }
 </script>
 
 <section class="source-pane" aria-label="Source">
@@ -106,16 +119,34 @@
   {#if diagnostics.length > 0}
     <ul class="diagnostics">
       {#each diagnostics as diagnostic, index (index)}
+        {@const place = placeOf(diagnostic)}
+        {@const label = labelOf(diagnostic)}
+        {@const only = onlyFix(diagnostic)}
         <li>
           <!--
             A diagnostic is a place, not a notification: clicking it puts the
             caret there and flashes the system it is about. Never a toast.
+
+            Three lines at most, in the order they are read: what is wrong,
+            what is wrong at that character, and what to do. The label is not
+            the message again — it says something the message does not — and
+            the help line only appears when there is advice worth a line.
           -->
           <button type="button" class="problem" onclick={() => ondiagnostic?.(diagnostic)}>
             <span class="glyph {diagnostic.severity}" aria-hidden="true"></span>
-            <span class="message">{diagnostic.message}</span>
-            {#if diagnostic.span}<span class="where">{diagnostic.span.start}</span>{/if}
+            <span class="message"><Ticked text={diagnostic.message} /></span>
+            {#if place}<span class="where">{place}</span>{/if}
           </button>
+          {#if label}<p class="label"><Ticked text={label} /></p>{/if}
+          {#if diagnostic.help}<p class="help"><Ticked text={diagnostic.help} /></p>{/if}
+          <!--
+            One fix, or none. A control that applies "the fix" when there are
+            two is how an editor applies the wrong one, so `onlyFix` refuses
+            to choose (prompt 56).
+          -->
+          {#if only && editable}
+            <button type="button" class="fix" onclick={() => fix(diagnostic)}><Ticked text={asControl(only.title)} /></button>
+          {/if}
         </li>
       {/each}
     </ul>
@@ -256,6 +287,55 @@
     font-family: var(--f-mono);
     color: var(--ink-muted);
     margin-left: var(--s-2);
+  }
+
+  /*
+   * The label and the help sit under the message, indented to clear the
+   * severity glyph so the three read as one block rather than three rows.
+   * Both are quieter than the claim they hang off: the message is what
+   * happened, these are the detail that follows from it.
+   */
+  .label,
+  .help {
+    margin: 0 0 0 calc(7px + var(--s-1));
+    color: var(--ink-muted);
+  }
+
+  .help::before {
+    /* Named rather than styled: the reader should be able to tell the advice
+       from the observation without knowing the colour scheme. */
+    content: "help: ";
+  }
+
+  /*
+   * The fix. `--plate` because it is the application acting for you, the same
+   * hue every derived-or-live thing wears; a hairline underline because
+   * §7 of `01-visual-language.md` allows exactly that and no box.
+   */
+  .fix {
+    margin: var(--s-1) 0 0 calc(7px + var(--s-1));
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+    border-radius: 0;
+    padding: 0;
+    font: inherit;
+    color: var(--plate);
+    cursor: pointer;
+  }
+
+  .fix:hover {
+    border-bottom-color: var(--ink-muted);
+  }
+
+  .fix:focus-visible {
+    border-bottom-color: var(--plate);
+  }
+
+  /* One problem is one block; the next one starts far enough away to read as
+     a different problem. */
+  .diagnostics li + li {
+    margin-top: var(--s-2);
   }
 
   /*

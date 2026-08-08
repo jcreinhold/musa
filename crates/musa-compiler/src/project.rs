@@ -270,7 +270,12 @@ fn project_points(
         };
         let at = MusicalTime::new(occurrence.span().start().as_ratio());
         let Some((_, _, id)) = extents.iter().find(|(onset, _, _)| *onset >= at) else {
-            resolver.error("this dynamic marking has no note after it", fact.origin.definition_span);
+            resolver.error(
+                crate::diagnose::Code::Misplaced,
+                "this dynamic marking has nothing to mark",
+                fact.origin.definition_span,
+                "no note follows it",
+            );
             continue;
         };
         resolver.annotations.push_dynamic(DynamicMarking {

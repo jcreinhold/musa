@@ -27,7 +27,7 @@ use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 use slotmap::{SlotMap, new_key_type};
 
-use crate::compile::Diagnostic;
+use crate::diagnose::{Code, Diagnostic, nearest};
 use crate::origin::{DeclarationId, ExpansionStep, Interval, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
@@ -128,8 +128,15 @@ impl Resolver {
         self.declarations.insert(info)
     }
 
-    pub(crate) fn error(&mut self, message: impl Into<String>, span: SourceSpan) {
-        self.diagnostics.push(Diagnostic::error(message, Some(span)));
+    /// The common shape: a code, the claim, the place, and what is wrong
+    /// there. Anything that also wants help, a note, a second place, or a fix
+    /// builds the diagnostic and hands it to [`Self::report`].
+    pub(crate) fn error(&mut self, code: Code, message: impl Into<String>, span: SourceSpan, label: impl Into<String>) {
+        self.report(Diagnostic::error(code, message).at(span, label));
+    }
+
+    pub(crate) fn report(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push(diagnostic);
     }
 
     pub(crate) fn event_id(&mut self) -> EventId {
@@ -172,6 +179,19 @@ pub(crate) fn ordinal(_resolver: &Resolver, key: DeclKey) -> DeclarationId {
 }
 
 /// Text of the first token of `kind` under `node`.
+/// The span of a node's first token of `kind`.
+///
+/// What a label wants: `soprano`, not the whole `clef soprano;` statement with
+/// the newline in front of it.
+pub(crate) fn token_span(node: &SyntaxNode, kind: SyntaxKind) -> Option<SourceSpan> {
+    let range = node
+        .children_with_tokens()
+        .filter_map(SyntaxElement::into_token)
+        .find(|token| token.kind() == kind)?
+        .text_range();
+    Some(SourceSpan::new(u32::from(range.start()), u32::from(range.end())))
+}
+
 pub(crate) fn token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
     node.children_with_tokens()
         .filter_map(SyntaxElement::into_token)
@@ -213,9 +233,11 @@ pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot:
     // A second tempo without a position would leave two answers to "how fast
     // does this piece start" — the one thing a header may not do.
     for extra in piece.tempos().iter().filter(|tempo| tempo.position().is_none()).skip(1) {
-        resolver.error(
-            "the piece already has a starting tempo; write `at <measure>:<beat>` to change it",
-            span_of(extra.syntax()),
+        resolver.report(
+            Diagnostic::error(Code::Misplaced, "this piece already says how fast it starts")
+                .at(trimmed_span(extra.syntax()), "a second starting tempo")
+                .help("write `at <measure>:<beat>` to change the tempo partway through")
+                .note("a piece has one starting tempo; every later one is a change, and a change needs a place"),
         );
     }
     if let Some(meter) = piece.meter() {
@@ -223,14 +245,24 @@ pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot:
         if let Some(map) = parse_meter(&meter) {
             snapshot.set_meter(map);
         } else {
-            resolver.error("invalid meter", span_of(meter.syntax()));
+            resolver.error(
+                Code::NotAValue,
+                "this meter cannot be read",
+                span_of(meter.syntax()),
+                "expected two numbers, like `4/4`",
+            );
         }
     }
     if let Some(key) = piece.key() {
         resolver.declare(DeclInfo::Key);
         match parse_key(&key) {
             Some(map) => snapshot.set_key(Some(map)),
-            None => resolver.error("invalid key declaration", span_of(key.syntax())),
+            None => resolver.error(
+                Code::NotAValue,
+                "this key cannot be read",
+                span_of(key.syntax()),
+                "expected a note and a mode, like `a minor`",
+            ),
         }
     }
     lower_front_matter(resolver, piece, snapshot);
@@ -263,7 +295,12 @@ fn lower_front_matter(resolver: &mut Resolver, piece: &PieceDecl, snapshot: &mut
                 FrontMatterRole::Arranger => "arranger",
                 FrontMatterRole::Copyright => "copyright",
             };
-            resolver.error(format!("the piece already names a {word}"), span_of(statement.syntax()));
+            resolver.error(
+                Code::Misplaced,
+                format!("this piece already names a {word}"),
+                span_of(statement.syntax()),
+                format!("a second {word}"),
+            );
             continue;
         }
         *slot = Some(text);
@@ -285,7 +322,24 @@ pub(crate) fn register_motifs(
     for motif in motifs {
         let name = motif.name().unwrap_or_default();
         if resolver.motifs.contains_key(&name) {
-            resolver.error(duplicate(&format!("motif `{name}`"), from), span_of(motif.syntax()));
+            let first = snapshot
+                .motifs()
+                .iter()
+                .find(|declared| declared.name == name)
+                .map(|declared| declared.span);
+            resolver.report(
+                Diagnostic::error(
+                    Code::DuplicateName,
+                    match from {
+                        Some(path) => format!("`{path}` also declares `{name}`"),
+                        None => format!("`{name}` is declared twice"),
+                    },
+                )
+                .at(trimmed_span(motif.syntax()), "declared again here")
+                .maybe_also(first, "first declared here")
+                .help("rename one of them, or delete this declaration")
+                .note("musa has no shadowing: a name means one thing everywhere the piece can see it"),
+            );
             continue;
         }
         let key = resolver.declare(DeclInfo::Motif);
@@ -314,7 +368,17 @@ pub(crate) fn merge_profiles(
     let names: Vec<String> = profiles.names().map(str::to_owned).collect();
     for name in names {
         if snapshot.profiles().declares(&name) {
-            resolver.error(duplicate(&format!("profile `{name}`"), from), span);
+            resolver.report(
+                Diagnostic::error(
+                    Code::DuplicateName,
+                    match from {
+                        Some(path) => format!("`{path}` also declares profile `{name}`"),
+                        None => format!("profile `{name}` is declared twice"),
+                    },
+                )
+                .at(span, "declared again here")
+                .help("rename one of them, or delete this declaration"),
+            );
             continue;
         }
         if let Some(profile) = profiles.get(&name) {
@@ -323,12 +387,23 @@ pub(crate) fn merge_profiles(
     }
 }
 
-/// "duplicate X" — and, when it came from a library, which one.
-fn duplicate(what: &str, from: Option<&str>) -> String {
-    from.map_or_else(
-        || format!("duplicate {what}"),
-        |path| format!("`{path}` declares {what}, which this piece already has"),
-    )
+/// "did you mean", or the list, or nothing.
+///
+/// One suggestion when one candidate stands out; otherwise the vocabulary
+/// itself, which for a closed set is short enough to print and is what the
+/// reader actually needs. A list of more than six is neither, and says so.
+pub(crate) fn suggest(written: &str, known: &[&str], plural: &str) -> String {
+    if let Some(near) = nearest(written, known.iter().copied()) {
+        return format!("did you mean `{near}`?");
+    }
+    if known.is_empty() {
+        return format!("this piece declares no {plural}");
+    }
+    if known.len() > 6 {
+        return format!("run `musa explain unknown-word` for the {plural} musa reads");
+    }
+    let quoted: Vec<String> = known.iter().map(|name| format!("`{name}`")).collect();
+    format!("musa reads {}", quoted.join(", "))
 }
 
 /// Read the `performance` block into a [`ProfileSet`]. Declarations only —
@@ -339,8 +414,10 @@ pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceD
         let name = declaration.name().unwrap_or_default();
         if set.declares(&name) {
             resolver.error(
-                format!("duplicate profile `{name}`"),
+                Code::DuplicateName,
+                format!("profile `{name}` is declared twice"),
                 trimmed_span(declaration.syntax()),
+                "declared again here",
             );
             continue;
         }
@@ -348,7 +425,11 @@ pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceD
         for rule in declaration.articulations() {
             let written = rule.mark().unwrap_or_default();
             let Some(mark) = ArticulationMark::parse(&written) else {
-                resolver.error(format!("unknown articulation `{written}`"), trimmed_span(rule.syntax()));
+                resolver.report(
+                    Diagnostic::error(Code::UnknownWord, format!("`{written}` is not an articulation"))
+                        .at(trimmed_span(rule.syntax()), "unknown articulation")
+                        .help(suggest(&written, ArticulationMark::NAMES, "articulations")),
+                );
                 continue;
             };
             profile.set_articulation(mark, articulation_settings(resolver, &rule));
@@ -356,9 +437,10 @@ pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceD
         for rule in declaration.dynamics() {
             let written = rule.mark().unwrap_or_default();
             let Some(mark) = DynamicMark::parse(&written) else {
-                resolver.error(
-                    format!("unknown dynamic marking `{written}`"),
-                    trimmed_span(rule.syntax()),
+                resolver.report(
+                    Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a dynamic marking"))
+                        .at(trimmed_span(rule.syntax()), "unknown marking")
+                        .help(suggest(&written, DynamicMark::NAMES, "markings")),
                 );
                 continue;
             };
@@ -387,9 +469,13 @@ fn articulation_settings(resolver: &mut Resolver, rule: &ArticulationRule) -> Ar
                     realization.attack = attack;
                 }
             }
-            other => resolver.error(
-                format!("unknown setting `{other}` (expected `gate` or `attack`)"),
-                trimmed_span(setting.syntax()),
+            other => resolver.report(
+                Diagnostic::error(
+                    Code::UnknownWord,
+                    format!("an articulation has no setting called `{other}`"),
+                )
+                .at(trimmed_span(setting.syntax()), "unknown setting")
+                .help(suggest(other, &["gate", "attack"], "settings")),
             ),
         }
     }
@@ -404,14 +490,20 @@ fn dynamic_settings(resolver: &mut Resolver, rule: &DynamicRule) -> Option<Ratio
         if name == "amplitude" {
             amplitude = ratio_setting(resolver, &setting);
         } else {
-            resolver.error(
-                format!("unknown setting `{name}` (expected `amplitude`)"),
-                trimmed_span(setting.syntax()),
+            resolver.report(
+                Diagnostic::error(Code::UnknownWord, format!("a dynamic has no setting called `{name}`"))
+                    .at(trimmed_span(setting.syntax()), "unknown setting")
+                    .help("a dynamic rule sets `amplitude`, and nothing else"),
             );
         }
     }
     if amplitude.is_none() {
-        resolver.error("a `dynamic` rule needs an `amplitude`", trimmed_span(rule.syntax()));
+        resolver.report(
+            Diagnostic::error(Code::NotAValue, "this dynamic rule says nothing")
+                .at(trimmed_span(rule.syntax()), "no amplitude")
+                .help("give it an amplitude, like `amplitude = 0.6;`")
+                .note("amplitude is abstract loudness between 0 and 1, not decibels"),
+        );
     }
     amplitude
 }
@@ -422,12 +514,23 @@ fn ratio_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio
     let name = setting.name().unwrap_or_default();
     let span = trimmed_span(setting.syntax());
     if let Some(unit) = setting.unit() {
-        resolver.error(format!("`{name}` is a ratio, not a `{unit}` value"), span);
+        resolver.report(
+            Diagnostic::error(Code::OutOfRange, format!("`{name}` does not take a unit"))
+                .at(span, format!("drop the `{unit}`"))
+                .note(format!(
+                    "`{name}` is a fraction of the written value, not a length of time"
+                )),
+        );
         return None;
     }
     let value = crate::profile::parse_decimal(&setting.value()?)?;
     if value < Ratio::ZERO || value > Ratio::ONE {
-        resolver.error(format!("`{name}` must be between 0 and 1"), span);
+        resolver.error(
+            Code::OutOfRange,
+            format!("`{name}` is outside 0 to 1"),
+            span,
+            "out of range",
+        );
         return None;
     }
     Some(value)
@@ -442,12 +545,21 @@ fn time_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio<
         Some("ms") => value / 1000,
         Some("s") => value,
         _ => {
-            resolver.error(format!("`{name}` needs a time unit (`ms` or `s`)"), span);
+            resolver.report(
+                Diagnostic::error(Code::OutOfRange, format!("`{name}` is a length of time"))
+                    .at(span, "no unit here")
+                    .help(format!("write `{name} = 30 ms` or `{name} = 0.03 s`")),
+            );
             return None;
         }
     };
     if seconds < Ratio::ZERO {
-        resolver.error(format!("`{name}` cannot be negative"), span);
+        resolver.error(
+            Code::OutOfRange,
+            format!("`{name}` cannot be negative"),
+            span,
+            "below zero",
+        );
         return None;
     }
     Some(seconds)
@@ -465,9 +577,17 @@ pub(crate) fn part_metadata(
         if node.kind() != SyntaxKind::ClefStmt {
             continue;
         }
-        match token_text(&node, SyntaxKind::Identifier).and_then(|text| Clef::parse(&text)) {
+        let written = token_text(&node, SyntaxKind::Identifier).unwrap_or_default();
+        match Clef::parse(&written) {
             Some(parsed) => clef = Some(parsed),
-            None => resolver.error("unknown clef", span_of(&node)),
+            None => resolver.report(
+                Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a clef"))
+                    .at(
+                        token_span(&node, SyntaxKind::Identifier).unwrap_or_else(|| trimmed_span(&node)),
+                        "not a clef musa reads",
+                    )
+                    .help(suggest(&written, Clef::NAMES, "clefs")),
+            ),
         }
     }
     let mut profile = None;
@@ -476,7 +596,12 @@ pub(crate) fn part_metadata(
         if profiles.declares(&name) {
             profile = Some(name);
         } else {
-            resolver.error(format!("unknown profile `{name}`"), trimmed_span(statement.syntax()));
+            let known: Vec<&str> = profiles.names().collect();
+            resolver.report(
+                Diagnostic::error(Code::UnknownName, format!("cannot find profile `{name}`"))
+                    .at(trimmed_span(statement.syntax()), "not declared in this piece")
+                    .help(suggest(&name, &known, "profiles")),
+            );
         }
     }
     (clef, profile)
@@ -492,7 +617,11 @@ pub(crate) fn tempo_reading(resolver: &mut Resolver, tempo: &TempoStmt) -> (Rati
     let bpm = token_text(syntax, SyntaxKind::Integer)
         .and_then(|text| text.parse::<u32>().ok())
         .unwrap_or_else(|| {
-            resolver.error("tempo needs a bpm value", span_of(syntax));
+            resolver.report(
+                Diagnostic::error(Code::NotAValue, "this tempo has no speed")
+                    .at(trimmed_span(syntax), "expected a number")
+                    .help("write `tempo quarter = 72;`"),
+            );
             120
         });
     (beat, bpm)
@@ -560,7 +689,11 @@ pub(crate) fn resolve_pitch(
     } else if let Some(BoundValue::Pitch(pitch)) = cx.params.get(text) {
         *pitch
     } else {
-        resolver.error(format!("unknown pitch reference `{text}`"), span_of(node));
+        resolver.report(
+            Diagnostic::error(Code::NotAValue, format!("`{text}` is not a pitch"))
+                .at(trimmed_span(node), "expected a pitch")
+                .note("a pitch is a letter, an optional `s` or `f`, and an octave: `c4`, `gs5`, `bf3`"),
+        );
         return None;
     };
     apply_intervals(resolver, pitch, cx, node)
@@ -576,9 +709,13 @@ pub(crate) fn apply_intervals(
     let mut current = pitch;
     for interval in &cx.intervals {
         let Some(next) = current.transpose(*interval) else {
-            resolver.error(
-                format!("transposition of `{current}` needs more than a double accidental"),
-                span_of(node),
+            resolver.report(
+                Diagnostic::error(
+                    Code::OutOfRange,
+                    format!("`{current}` cannot be spelled after this transposition"),
+                )
+                .at(trimmed_span(node), "would need a triple accidental")
+                .help("transpose by a different interval, or write the passage out"),
             );
             return None;
         };
@@ -597,7 +734,11 @@ pub(crate) fn resolve_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &
     {
         return Some(duration.clone());
     }
-    resolver.error("missing or unresolved duration", span_of(node));
+    resolver.report(
+        Diagnostic::error(Code::NotAValue, "this note has no duration")
+            .at(trimmed_span(node), "expected a duration")
+            .note("a duration is a fraction or a whole number of whole notes: `1/4`, `3/8`, `1`"),
+    );
     None
 }
 
@@ -617,7 +758,11 @@ pub(crate) fn bind_argument(
             } else if let Some(BoundValue::Pitch(pitch)) = cx.params.get(text) {
                 Some(BoundValue::Pitch(*pitch))
             } else {
-                resolver.error(format!("motif `{motif}`: `{text}` is not a pitch"), span_of(node));
+                resolver.report(
+                    Diagnostic::error(Code::NotAValue, format!("`{text}` is not a pitch"))
+                        .at(trimmed_span(node), format!("passed to motif `{motif}`"))
+                        .note("a pitch is a letter, an optional `s` or `f`, and an octave: `c4`, `gs5`, `bf3`"),
+                );
                 None
             }
         }
@@ -630,14 +775,18 @@ pub(crate) fn bind_argument(
             } else if let Some(BoundValue::Duration(duration)) = cx.params.get(text) {
                 Some(BoundValue::Duration(duration.clone()))
             } else {
-                resolver.error(format!("motif `{motif}`: `{text}` is not a duration"), span_of(node));
+                resolver.report(
+                    Diagnostic::error(Code::NotAValue, format!("`{text}` is not a duration"))
+                        .at(trimmed_span(node), format!("passed to motif `{motif}`")),
+                );
                 None
             }
         }
         other => {
-            resolver.error(
-                format!("motif `{motif}`: unknown parameter kind `{other}`"),
-                span_of(node),
+            resolver.report(
+                Diagnostic::error(Code::UnknownWord, format!("`{other}` is not a kind of parameter"))
+                    .at(trimmed_span(node), format!("declared by motif `{motif}`"))
+                    .help("a motif parameter is a `pitch` or a `duration`"),
             );
             None
         }
@@ -655,16 +804,27 @@ pub(crate) fn check_measure_sanity(resolver: &mut Resolver, snapshot: &ScoreSnap
             let measures = span / measure.as_ratio();
             if span != Ratio::ZERO && *measures.denom() != 1 {
                 let name = part.voice_name(voice_id).unwrap_or("?");
-                resolver.diagnostics.push(Diagnostic::warning(
-                    format!(
-                        "voice `{}` in part `{}` spans {} whole notes, which is not a whole number of {} measures",
-                        name,
-                        part.name(),
-                        voice.span(),
-                        snapshot.meter().numerator()
-                    ),
-                    None,
-                ));
+                // No span: this is a fact about a whole voice, and pointing
+                // at its first note would send the reader somewhere the
+                // mistake probably is not.
+                // How far past the last barline the voice stops, said in the
+                // units the composer writes durations in.
+                let finished = measures.ceil();
+                let short = (finished - measures) * measure.as_ratio();
+                resolver.report(
+                    Diagnostic::warning(
+                        Code::DoesNotAddUp,
+                        format!(
+                            "voice `{name}` in part `{}` stops part-way through measure {}",
+                            part.name(),
+                            finished.to_integer().max(1),
+                        ),
+                    )
+                    .help(format!(
+                        "it is {short} short — add a rest, or check the durations above"
+                    ))
+                    .note("a short last measure puts every part after it out of step"),
+                );
             }
         }
     }

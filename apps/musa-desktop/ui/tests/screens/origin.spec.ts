@@ -158,16 +158,20 @@ test("a diagnostic is a place in the source, not a notification", async ({ page 
   // Wait for the *compiler's* answer, not for a list of the right length: the
   // piece opens with warnings of its own, and a count alone cannot tell them
   // from the error the edit just caused.
+  const text = 'piece "Glass Mountain" {';
   await expect(page.locator(".diagnostics li")).toHaveCount(1);
-  await expect(page.locator(".diagnostics .message")).toHaveText("expected `}`");
+  // Backticks are the compiler's spelling; the page sets what they quote
+  // in the mono face instead of printing them.
+  await expect(page.locator(".diagnostics .message")).toHaveText("missing }");
 
-  const where = await page.locator(".diagnostics .where").innerText();
+  // The place is stated the way a person says it — `1:25`, never `24`.
+  await expect(page.locator(".diagnostics .where")).toHaveText(`1:${text.length + 1}`);
   await page.locator(".diagnostics button.problem").click();
 
   // The caret goes where the compiler is pointing, and the field keeps focus
   // so the composer can simply type the fix (`05-states.md` §5).
   await expect(source(page)).toBeFocused();
-  await expect.poll(() => caret(page)).toBe(Number(where));
+  await expect.poll(() => caret(page)).toBe(text.length);
 });
 
 for (const theme of ["light", "dark"] as const) {

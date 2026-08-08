@@ -1,0 +1,8 @@
+piece "Unclosed Block" {
+    meter 4/4;
+
+    score {
+        part piano {
+            clef treble;
+            voice right {
+                c5 1/4; d5 1/4; e5 1/4; f5 1/4;

@@ -197,15 +197,18 @@ fn a_part_naming_an_undeclared_profile_is_an_error() {
         "profile viola;",
         "c4 1;",
     );
-    assert_eq!(errors_of(&source), vec!["unknown profile `viola`".to_string()]);
+    assert_eq!(errors_of(&source), vec!["cannot find profile `viola`".to_string()]);
 }
 
 #[test]
 fn rules_reject_marks_the_language_does_not_have() {
     let source = piece("profile violin { articulation sideways { gate = 0.5; } }", "", "c4 1;");
-    assert_eq!(errors_of(&source), vec!["unknown articulation `sideways`".to_string()]);
+    assert_eq!(
+        errors_of(&source),
+        vec!["`sideways` is not an articulation".to_string()]
+    );
     let source = piece("profile violin { dynamic loud { amplitude = 0.5; } }", "", "c4 1;");
-    assert_eq!(errors_of(&source), vec!["unknown dynamic marking `loud`".to_string()]);
+    assert_eq!(errors_of(&source), vec!["`loud` is not a dynamic marking".to_string()]);
 }
 
 #[test]
@@ -213,25 +216,25 @@ fn settings_are_checked_by_name_range_and_unit() {
     let cases = [
         (
             "profile v { articulation staccato { swing = 0.5; } }",
-            "unknown setting `swing` (expected `gate` or `attack`)",
+            "an articulation has no setting called `swing`",
         ),
         (
             "profile v { articulation staccato { gate = 2; } }",
-            "`gate` must be between 0 and 1",
+            "`gate` is outside 0 to 1",
         ),
         (
             "profile v { articulation staccato { gate = 8 ms; } }",
-            "`gate` is a ratio, not a `ms` value",
+            "`gate` does not take a unit",
         ),
         (
             "profile v { articulation staccato { attack = 8; } }",
-            "`attack` needs a time unit (`ms` or `s`)",
+            "`attack` is a length of time",
         ),
         (
             "profile v { dynamic p { level = 0.5; } }",
-            "unknown setting `level` (expected `amplitude`)",
+            "a dynamic has no setting called `level`",
         ),
-        ("profile v { dynamic p { } }", "a `dynamic` rule needs an `amplitude`"),
+        ("profile v { dynamic p { } }", "this dynamic rule says nothing"),
     ];
     for (profiles, expected) in cases {
         let errors = errors_of(&piece(profiles, "", "c4 1;"));
@@ -246,7 +249,7 @@ fn a_duplicate_profile_is_an_error() {
         "",
         "c4 1;",
     );
-    assert_eq!(errors_of(&source), vec!["duplicate profile `v`".to_string()]);
+    assert_eq!(errors_of(&source), vec!["profile `v` is declared twice".to_string()]);
 }
 
 // --- Laws -------------------------------------------------------------------

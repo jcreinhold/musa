@@ -215,10 +215,7 @@ fn a_ratio_written_with_a_unit_is_rejected_too() {
     let errors = errors_of(&piece(
         "patch p { oscillator(sine) |> lowpass(cutoff: 1400 Hz, q: 2 Hz) |> output; } assign violin -> p;",
     ));
-    assert!(
-        errors.contains(&"`q` is a plain ratio, written without a unit".to_owned()),
-        "got {errors:?}"
-    );
+    assert!(errors.contains(&"`q` takes no unit".to_owned()), "got {errors:?}");
 }
 
 #[test]
@@ -281,7 +278,7 @@ fn an_ambiguous_modulation_path_is_reported_rather_than_guessed() {
          lfo = oscillator(sine); modulate lfo -> p.lowpass.cutoff;",
     ));
     assert!(
-        errors.contains(&"`p` has more than one `lowpass`; name the stage to address it".to_owned()),
+        errors.contains(&"`p` has more than one `lowpass`".to_owned()),
         "got {errors:?}"
     );
 }

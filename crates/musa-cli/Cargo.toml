@@ -13,3 +13,6 @@ workspace = true
 miette = { version = "7", features = ["fancy"] }
 musa-project = { path = "../musa-project" }
 thiserror = "2"
+
+[dev-dependencies]
+insta = "1"

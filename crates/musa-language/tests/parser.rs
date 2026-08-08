@@ -50,10 +50,26 @@ fn write_node(node: &SyntaxNode, indent: usize, lines: &mut Vec<String>) {
     }
 }
 
+/// Every part of every error, so the snapshots are the diagnostics' goldens
+/// and not just their first lines.
 fn print_errors(doc: &musa_language::ParsedDocument) -> String {
     doc.errors()
         .iter()
-        .map(|error| format!("{error}"))
+        .map(|error| {
+            let mut lines = vec![format!(
+                "{}..{}: {error}",
+                u32::from(error.range().start()),
+                u32::from(error.range().end())
+            )];
+            lines.push(format!("  label: {}", error.label()));
+            if let Some(help) = error.help() {
+                lines.push(format!("  help: {help}"));
+            }
+            if let Some((title, replacement)) = error.fix() {
+                lines.push(format!("  fix: {title} -> {replacement:?}"));
+            }
+            lines.join("\n")
+        })
         .collect::<Vec<_>>()
         .join("\n")
 }
@@ -91,7 +107,7 @@ fn missing_semicolon_recovers_and_continues() {
     assert!(
         doc.errors()
             .first()
-            .is_some_and(|error| error.message().contains("expected `;`")),
+            .is_some_and(|error| error.message().contains("missing `;`")),
         "errors: {}",
         print_errors(&doc)
     );
@@ -113,7 +129,9 @@ fn unclosed_brace_recovers_at_eof() {
     let doc = parse(source);
     assert!(!doc.errors().is_empty());
     assert!(
-        doc.errors().iter().any(|error| error.message().contains("unclosed")),
+        doc.errors()
+            .iter()
+            .any(|error| error.message().contains("is never closed")),
         "errors: {}",
         print_errors(&doc)
     );

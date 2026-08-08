@@ -2258,6 +2258,7 @@ dependencies = [
 name = "musa-cli"
 version = "0.1.0"
 dependencies = [
+ "insta",
  "miette",
  "musa-project",
  "thiserror 2.0.19",
