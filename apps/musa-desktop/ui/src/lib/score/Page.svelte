@@ -86,6 +86,7 @@
         {staffSpace}
         selection={marks.selection}
         hover={marks.hover}
+        focus={marks.focus}
         playing={marks.playing}
         caret={marks.caret}
         loop={marks.loop}

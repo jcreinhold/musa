@@ -19,6 +19,7 @@
     staffSpace,
     selection,
     hover,
+    focus = [],
     playing = [],
     caret = null,
     loop = null,
@@ -33,6 +34,8 @@
     staffSpace: number;
     selection: Rect[];
     hover: Rect[];
+    /** The noteheads the focus marks (prompt 52), as heads, not event boxes. */
+    focus?: Rect[];
     /** The notes sounding right now. */
     playing?: Rect[];
     /** Where the caret sits, if it is placed on this page. */
@@ -60,6 +63,12 @@
 
   /** The bracket label, set in the score's own unit rather than in pixels. */
   const LABEL_SIZE = $derived(staffSpace * 1.3);
+
+  /** How wide the focus hairline is, in staff spaces (prompt 52). */
+  const FOCUS_SPACES = 1;
+
+  /** How far it clears the head, in staff spaces: enough to not be a stem. */
+  const FOCUS_CLEARANCE = 0.35;
 </script>
 
 <svg
@@ -88,6 +97,25 @@
       x2={rect.x}
       y1={rect.y - staffSpace * BRACKET_SPACES}
       y2={rect.y + rect.height + staffSpace * BRACKET_SPACES}
+    />
+  {/each}
+
+  <!--
+    The focus: a hairline directly under the notehead, one staff space wide
+    (prompt 52). A shape, not a hue — the halo says *selected*, the re-inked
+    staff says *generated*, and this says *this one, and its siblings*. All
+    three can be true of one note at once, so no two of them may be the same
+    mark.
+  -->
+  {#each focus as rect, index (index)}
+    {@const middle = rect.x + rect.width / 2}
+    {@const reach = (staffSpace * FOCUS_SPACES) / 2}
+    <line
+      class="focus"
+      x1={middle - reach}
+      x2={middle + reach}
+      y1={rect.y + rect.height + staffSpace * FOCUS_CLEARANCE}
+      y2={rect.y + rect.height + staffSpace * FOCUS_CLEARANCE}
     />
   {/each}
 
@@ -224,6 +252,9 @@
     fill-opacity: 0.28;
   }
 
+  /* No transition: the hairline appears and disappears. §6 allows three
+     animations and this is not one of them. */
+  .focus,
   .playhead,
   .caret {
     stroke: var(--plate);

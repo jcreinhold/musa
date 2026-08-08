@@ -26,10 +26,13 @@
     diagnostics,
     editable = false,
     highlight = [],
+    focus = null,
+    sounding = [],
     reveal = null,
     modal = false,
     onedit,
     oncaret,
+    onpoint,
     onundo,
     onredo,
     onsave,
@@ -41,6 +44,10 @@
     editable?: boolean;
     /** Spans to mark in the source: the provenance of what is on screen. */
     highlight?: Span[];
+    /** The focus, in the text: what spells the music and what placed it. */
+    focus?: { definition: Span | null; place: Span | null } | null;
+    /** The statements that made the music on the page in view (prompt 52). */
+    sounding?: Span[];
     /** A place to put the caret, once, when it changes. */
     reveal?: Reveal | null;
     /** Vim mode in the editor — the composer's preference (prompt 55). */
@@ -48,6 +55,8 @@
     onedit?: (source: string) => void;
     /** Where the caret is now, so the score can follow it (prompt 26). */
     oncaret?: (offset: number) => void;
+    /** Where the pointer is in the text, so the page can mark what it wrote. */
+    onpoint?: (line: { from: number; to: number } | null) => void;
     /** What vim's `u`, `⌃r`, and `:w` reach: the project's own commands. */
     onundo?: () => void;
     onredo?: () => void;
@@ -102,10 +111,13 @@
       {diagnostics}
       {editable}
       {highlight}
+      {focus}
+      {sounding}
       {reveal}
       {modal}
       {onedit}
       {oncaret}
+      {onpoint}
       {onundo}
       {onredo}
       {onsave}

@@ -25,6 +25,7 @@
     choice = null,
     naming = null,
     onorigin,
+    siblings = 0,
     onconfirm,
     onspecialize,
     oncancel,
@@ -50,6 +51,12 @@
      * in — the engraving goldens.
      */
     onorigin?: (depth: number) => void;
+    /**
+     * How many notes the statement that spells this one spelled in all
+     * (prompt 52). One is the ordinary case and says nothing; more is the fact
+     * an editing choice will later have to state, so the origin says it first.
+     */
+    siblings?: number;
     /** The expansion that produced this event, when one did. */
     occurrence?: OccurrenceFacts;
     /**
@@ -257,7 +264,9 @@
           <button type="button" class="segment line" onclick={() => onreveal(at)}
             >line {event.origin.line}</button
           >
-        {:else}line {event.origin.line}{/if}
+        {:else}line {event.origin.line}{/if}{#if siblings > 1}<span class="sep">·</span><span
+            class="kin">{siblings} notes</span
+          >{/if}
       {/snippet}
       {#if event.origin.generated}
         <span class="path">
@@ -443,6 +452,12 @@
   .sep {
     color: var(--ink-faint);
     padding: 0 0.15em;
+  }
+
+  /* The sibling count is a fact about the line, not a second control: it sits
+     in the same trailing, unemphasised, and nothing about it is clickable. */
+  .kin {
+    color: var(--ink-faint);
   }
 
   /* Generated material is the one thing musa uniquely knows; --plate says so. */

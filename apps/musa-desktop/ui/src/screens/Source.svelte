@@ -25,7 +25,8 @@
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
-  import type { Diagnostic } from "../lib/state/snapshot";
+  import type { Focus } from "../lib/state/focus.svelte";
+  import type { Diagnostic, Span } from "../lib/state/snapshot";
 
   let {
     session,
@@ -35,6 +36,9 @@
     mode,
     reveal = null,
     origin = false,
+    focus,
+    sounding = [],
+    onvisible,
     oncaret,
     ondiagnostic,
     onshow,
@@ -48,6 +52,12 @@
     /** A place to put the caret, once, when it changes. */
     reveal?: Reveal | null;
     origin?: boolean;
+    /** The shared focus, marked in both panes at once (prompt 52). */
+    focus: Focus;
+    /** Where the music on the visible pages was written, as source spans. */
+    sounding?: Span[];
+    /** The score reports what it has engraved on screen. */
+    onvisible?: (ids: string[]) => void;
     /** The caret moved; the score follows it (§14.4's other direction). */
     oncaret?: (offset: number) => void;
     ondiagnostic?: (diagnostic: Diagnostic) => void;
@@ -81,6 +91,9 @@
         {diagnostics}
         {highlight}
         {reveal}
+        focus={focus.marked}
+        {sounding}
+        onpoint={(line) => focus.pointLine(line)}
         modal={preferences.vim}
         onedit={(text) => session.edit(text)}
         {oncaret}
@@ -99,6 +112,8 @@
             {mode}
             {workspace}
             {origin}
+            {focus}
+            {onvisible}
           />
         </Leaf>
       </main>

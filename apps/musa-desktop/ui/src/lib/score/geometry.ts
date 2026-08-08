@@ -54,6 +54,28 @@ export function boxesFor(container: ParentNode, id: string): Rect[] {
     .filter((rect): rect is Rect => rect !== null && rect.width > 0 && rect.height > 0);
 }
 
+/**
+ * The noteheads that draw `id`, rather than everything the engraver drew.
+ *
+ * A stem, a flag, and a ledger line are all part of an event's box and none of
+ * them is where the note *is*. A mark meant to sit under the head has to ask
+ * for the head, or a stem-down quarter gets its hairline two staff spaces
+ * below the note it belongs to. Rests and anything else Verovio draws without
+ * a head fall back to the whole element, which is the right answer for them.
+ */
+export function headsFor(container: ParentNode, id: string): Rect[] {
+  const root = pageRoot(container);
+  if (!root) return [];
+  return elementsOf(container, id)
+    .flatMap((element) => {
+      const heads = [...element.querySelectorAll<SVGGraphicsElement>("g.notehead")];
+      if (heads.length > 0) return heads;
+      return "getBBox" in element ? [element as SVGGraphicsElement] : [];
+    })
+    .map((element) => boxOf(root, element))
+    .filter((rect): rect is Rect => rect !== null && rect.width > 0 && rect.height > 0);
+}
+
 /** The smallest box containing both. */
 function union(a: Rect, b: Rect): Rect {
   const x = Math.min(a.x, b.x);
@@ -193,6 +215,12 @@ export function bracketNear(brackets: Bracket[], id: string, rect: Rect): Bracke
 export interface Marks {
   selection: Rect[];
   hover: Rect[];
+  /**
+   * The focus (prompt 52): a hairline under every notehead the focused
+   * statement spelled. Measured on the heads rather than on the event boxes,
+   * and never grown — a halo says *chosen*, a hairline says *this one*.
+   */
+  focus: Rect[];
   playing: Rect[];
   caret: Rect | null;
   loop: { from: Rect; to: Rect } | null;
@@ -207,6 +235,7 @@ export interface Marks {
 export const NOTHING: Marks = Object.freeze({
   selection: [],
   hover: [],
+  focus: [],
   playing: [],
   caret: null,
   loop: null,

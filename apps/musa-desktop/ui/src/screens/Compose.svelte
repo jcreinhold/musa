@@ -22,6 +22,7 @@
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
+  import type { Focus } from "../lib/state/focus.svelte";
   import type { Diagnostic, EditImpact, OutlineFacts, Span } from "../lib/state/snapshot";
   import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";
   import type { NoteEntry } from "../lib/state/entry.svelte";
@@ -40,6 +41,9 @@
     loop,
     follow,
     origin,
+    focus,
+    sounding,
+    onvisible,
     pinned,
     entry,
     choice,
@@ -81,6 +85,12 @@
     follow: "off" | "page" | "continuous";
     /** Origin view, held or pinned (`04-provenance.md` §2). */
     origin: boolean;
+    /** The shared focus, marked in both columns at once (prompt 52). */
+    focus: Focus;
+    /** Where the music on the visible pages was written, as source spans. */
+    sounding: Span[];
+    /** The score reports what it has engraved on screen. */
+    onvisible: (ids: string[]) => void;
     /** Whether it is pinned, which is what the toggle reports. */
     pinned: boolean;
     /** Note entry: what the next note would be, and whether letters are notes. */
@@ -339,6 +349,9 @@
           diagnostics={snapshot.diagnostics}
           {highlight}
           {reveal}
+          focus={focus.marked}
+          {sounding}
+          onpoint={(line) => focus.pointLine(line)}
           modal={preferences.vim}
           onedit={(text) => session.edit(text)}
           {oncaret}
@@ -368,6 +381,8 @@
             {loop}
             {follow}
             {origin}
+            {focus}
+            {onvisible}
             {flash}
             {bring}
             header={score.header}
@@ -384,6 +399,7 @@
           {choice}
           {naming}
           onorigin={(depth) => workspace.selectOrigin(depth)}
+          siblings={focus.spelled(chosen?.origin.definitionSpan)}
           {onconfirm}
           {onspecialize}
           {oncancel}

@@ -20,16 +20,21 @@
   import {
     Compartment,
     EditorState,
+    RangeSet,
     StateEffect,
     StateField,
     type ChangeSpec,
     type Extension,
+    type Range,
+    type Text,
   } from "@codemirror/state";
   import {
     Decoration,
     EditorView,
+    GutterMarker,
     drawSelection,
     dropCursor,
+    gutterLineClass,
     highlightActiveLine,
     highlightActiveLineGutter,
     keymap,
@@ -49,10 +54,13 @@
     diagnostics = [],
     editable = true,
     highlight = [],
+    focus = null,
+    sounding = [],
     reveal = null,
     modal = false,
     onedit,
     oncaret,
+    onpoint,
     onundo,
     onredo,
     onsave,
@@ -63,6 +71,17 @@
     editable?: boolean;
     /** Spans to mark: the provenance of what is on the page. */
     highlight?: Span[];
+    /**
+     * The focus, in the text (prompt 52): the line that placed the music, and
+     * — when it is elsewhere — the statement that spells it.
+     */
+    focus?: { definition: Span | null; place: Span | null } | null;
+    /**
+     * The statements that made the music on the page in view. Their lines take
+     * a tick in the gutter: the difference between a line that sounds and a
+     * line that is scaffolding, which is the shape of a musa file at a glance.
+     */
+    sounding?: Span[];
     /** A place to put the caret, once, when it changes. */
     reveal?: Reveal | null;
     /** Vim mode: the composer's preference, not the document's (prompt 55). */
@@ -70,6 +89,8 @@
     onedit?: (source: string) => void;
     /** Where the caret is now, so the score can follow it. */
     oncaret?: (offset: number) => void;
+    /** Where the pointer is in the text, or null when it is not in it. */
+    onpoint?: (line: { from: number; to: number } | null) => void;
     /**
      * What `u`, `⌃r`, and `:w` do — the project's undo, redo, and save.
      *
@@ -102,6 +123,77 @@
       return current.map(transaction.changes);
     },
     provide: (field) => EditorView.decorations.from(field),
+  });
+
+  /**
+   * The focus, carried in the editor's own state (prompt 52).
+   *
+   * One effect for all three marks, because they are one answer: the statement
+   * that spells the focused music, the line that placed it, and the lines that
+   * made what is on the page. Dispatching them separately would let the source
+   * show half of a focus.
+   */
+  interface Focused {
+    definition: Span | null;
+    place: Span | null;
+    sounding: readonly Span[];
+  }
+  const setFocus = StateEffect.define<Focused>();
+
+  /** The hairline under the statement that spells the focused note. */
+  const spelling = Decoration.mark({ class: "cm-musa-focus" });
+  const focusMarks = StateField.define<DecorationSet>({
+    create: () => Decoration.none,
+    update(current, transaction) {
+      for (const effect of transaction.effects) {
+        if (!effect.is(setFocus)) continue;
+        const span = effect.value.definition;
+        const fits = span && span.end > span.start && span.end <= transaction.newDoc.length;
+        return fits && span ? Decoration.set([spelling.range(span.start, span.end)]) : Decoration.none;
+      }
+      return current.map(transaction.changes);
+    },
+    provide: (field) => EditorView.decorations.from(field),
+  });
+
+  /** A gutter class, which is all a `GutterMarker` has to be to mark a line. */
+  class LineClass extends GutterMarker {
+    override elementClass: string;
+
+    constructor(elementClass: string) {
+      super();
+      this.elementClass = elementClass;
+    }
+  }
+  const PLACED = new LineClass("cm-musa-focus-line");
+  const SOUNDS = new LineClass("cm-musa-sounds");
+
+  /** The starts of the lines these spans are on, deduplicated and in order. */
+  function lineStarts(doc: Text, spans: readonly Span[]): number[] {
+    const starts = new Set<number>();
+    for (const span of spans) {
+      if (span.start < 0 || span.start > doc.length) continue;
+      starts.add(doc.lineAt(span.start).from);
+    }
+    return [...starts].sort((left, right) => left - right);
+  }
+
+  const gutterMarks = StateField.define<RangeSet<GutterMarker>>({
+    create: () => RangeSet.empty,
+    update(current, transaction) {
+      for (const effect of transaction.effects) {
+        if (!effect.is(setFocus)) continue;
+        const doc = transaction.newDoc;
+        const { place, sounding } = effect.value;
+        const ranges: Range<GutterMarker>[] = [
+          ...lineStarts(doc, sounding).map((at) => SOUNDS.range(at)),
+          ...lineStarts(doc, place ? [place] : []).map((at) => PLACED.range(at)),
+        ];
+        return RangeSet.of(ranges, true);
+      }
+      return current.map(transaction.changes);
+    },
+    provide: (field) => gutterLineClass.from(field),
   });
 
   const writable = new Compartment();
@@ -145,6 +237,31 @@
     // with the provenance wash that means something.
     ".cm-activeLine": { backgroundColor: "transparent" },
     ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--ink)" },
+    /*
+     * The focus (prompt 52). Three marks can now be true of one line at once —
+     * selected, provenance, focused — so each is a different *shape*: the
+     * selection is a wash, provenance is a wash, and the focus is a number in
+     * `--plate` and a hairline under the text. Nothing here moves; a focus
+     * appears and disappears (`01-visual-language.md` §6).
+     */
+    ".cm-musa-focus-line": { color: "var(--plate)" },
+    ".cm-musa-focus": { borderBottom: "1px solid var(--plate)" },
+    /*
+     * And the quiet permanent one: a line that made music on the page in view
+     * gets a tick beside its number. Not a hue and not a count — just the
+     * difference between a line that sounds and a line that is scaffolding.
+     * Only in the number gutter, or the fold gutter would tick it again.
+     */
+    ".cm-lineNumbers .cm-musa-sounds": { position: "relative" },
+    ".cm-lineNumbers .cm-musa-sounds::after": {
+      content: '""',
+      position: "absolute",
+      right: "0",
+      top: "calc(50% - 0.5px)",
+      width: "3px",
+      height: "1px",
+      backgroundColor: "var(--rule)",
+    },
     /*
      * The caret, in `--plate`.
      *
@@ -255,6 +372,8 @@
       musa(),
       syntaxHighlighting(musaHighlighting),
       marks,
+      focusMarks,
+      gutterMarks,
       appearance,
       writable.of(EditorState.readOnly.of(!editable)),
       EditorView.lineWrapping,
@@ -264,6 +383,21 @@
       EditorView.updateListener.of((update) => {
         if (update.docChanged && !echoing) onedit?.(update.state.doc.toString());
         if (update.selectionSet) oncaret?.(update.state.selection.main.head);
+      }),
+      // Which line the pointer is on, so the page can mark what that line
+      // wrote. `posAtCoords` and `lineAt` are the editor answering questions
+      // about its own document; nothing musical is computed here.
+      EditorView.domEventHandlers({
+        mousemove(event, view) {
+          const at = view.posAtCoords({ x: event.clientX, y: event.clientY });
+          const line = at === null ? null : view.state.doc.lineAt(at);
+          onpoint?.(line && { from: line.from, to: line.to });
+          return false;
+        },
+        mouseleave() {
+          onpoint?.(null);
+          return false;
+        },
       }),
     ];
   }
@@ -379,6 +513,19 @@
   $effect(() => {
     const spans = highlight;
     view?.dispatch({ effects: setMarks.of(spans) });
+  });
+
+  // The focus and the page's own lines, as one dispatch: they are one answer.
+  $effect(() => {
+    const at = focus;
+    const lines = sounding;
+    view?.dispatch({
+      effects: setFocus.of({
+        definition: at?.definition ?? null,
+        place: at?.place ?? null,
+        sounding: lines,
+      }),
+    });
   });
 
   // Diagnostics arrive as the compiler's own list, with the compiler's own

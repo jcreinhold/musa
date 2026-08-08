@@ -1,7 +1,7 @@
 ---
 id: 52
 slug: linked-reading
-status: pending
+status: done
 depends_on: [24, 25, 26]
 phase: 2
 ---
@@ -87,6 +87,18 @@ A feature that only exists on hover is a feature most people never find. Two qui
   its number. Not a hue and not a count: just the difference between "this line makes sound" and "this line is
   scaffolding", which is the shape of a musa file at a glance.
 
+### Pointing at text means pointing at a line
+
+The first cut resolved a source hover to the character offset under the pointer and asked the index which spans
+contained it. It is wrong in the ordinary case: a statement ends where its semicolon does, the rest of the line is
+blank, and a pointer resting anywhere in that blank reports the line's end — which no span contains, so the page marks
+nothing. Worse, it makes the answer depend on where in the line the pointer happens to be, which is not something a
+reader is thinking about.
+
+So the editor reports the *line* it is over — `posAtCoords` then `lineAt`, both of them CodeMirror answering questions
+about its own document — and the index answers by overlap rather than containment. A line is what a reader points at.
+Nothing musical is derived in the frontend either way (`03-interaction.md` §7).
+
 ## Target
 
 - `apps/musa-desktop/ui`:
@@ -105,6 +117,15 @@ A feature that only exists on hover is a feature most people never find. Two qui
     assert the notes on the page; arrow to a note and assert the focus follows the keyboard; assert focus never changes
     the selection, never scrolls either view, and never survives leaving the leaf.
   - a golden of the focused state at 1440, both themes.
+
+## Found along the way
+
+- **A mark under a note has to ask for the notehead.** An event's box is the notehead, the stem, the flag, and any
+  ledger lines, so a hairline under *that* lands two staff spaces below a stem-down quarter. `headsFor` in
+  `score/geometry.ts` is `boxesFor` restricted to `g.notehead`, falling back to the whole element for rests and
+  anything else the engraver draws without a head.
+- **The sibling count belongs to the trailing, not to the path.** `line 19 · 2 notes` reads as one fact about where
+  the note came from. Put in the row's body it would read as a second control, and it is not one.
 
 ## Check
 

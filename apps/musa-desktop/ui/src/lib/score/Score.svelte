@@ -29,6 +29,7 @@
     boxesFor,
     bracketNear,
     bracketOver,
+    headsFor,
     pad,
     runsFor,
     traceTo,
@@ -37,6 +38,7 @@
     type Marks,
     type Rect,
   } from "./geometry";
+  import type { Focus } from "../state/focus.svelte";
   import { eventIdOf } from "./ids";
   import { frontFieldOf, measureFront, type FrontMatterAt } from "./front-matter";
   import type { HeaderFieldDto } from "../session/generated/HeaderFieldDto";
@@ -47,6 +49,8 @@
     zoom,
     mode = "page",
     workspace,
+    focus,
+    onvisible,
     onpinch,
     playing = [],
     loop = null,
@@ -63,6 +67,17 @@
     mode?: ViewMode;
     /** Absent for a fixture shown purely as engraving. */
     workspace?: Workspace;
+    /**
+     * The shared focus (prompt 52). The pane reports what the pointer is over
+     * and marks what the focus resolves to; it decides neither.
+     */
+    focus?: Focus;
+    /**
+     * The events engraved on the pages currently in view, reported when they
+     * change. The source column ticks the lines that made them, which is a
+     * question about *this page* and so can only be answered here.
+     */
+    onvisible?: (ids: string[]) => void;
     /** A settled pinch, as a factor on the current zoom (§5). */
     onpinch?: (factor: number) => void;
     /** The event ids sounding right now (`03-interaction.md` §4). */
@@ -310,6 +325,7 @@
     const looped = loop;
     const flashing = flash;
     const bracketed = brackets;
+    const focused = focus?.marked.events ?? [];
     const traced = origin ? hovered : null;
     const caret = workspace?.caretAt ?? null;
     const container = host;
@@ -333,6 +349,7 @@
       measured.set(number, {
         selection: ids.flatMap(boxes).map(grow),
         hover: hovered && !ids.includes(hovered) ? boxes(hovered).map(grow) : [],
+        focus: focused.flatMap((id) => headsFor(element, id)),
         playing: sounding.flatMap(boxes).map(grow),
         caret: caret ? caretRect(first(caret.id), caret.side) : null,
         loop: from && to ? { from, to } : null,
@@ -343,6 +360,33 @@
     }
     marks = measured;
     mark("halo");
+  });
+
+  /**
+   * What is engraved on the pages in view (prompt 52).
+   *
+   * Reported on a page swap and on a scroll, never on a pointer move: the
+   * source column's gutter ticks the lines that made the music currently on
+   * screen, and that changes when the page does.
+   */
+  $effect(() => {
+    const arrived = resident;
+    const pages = visible;
+    const container = host;
+    const report = onvisible;
+    if (!container || !report) return;
+    untrack(() => {
+      void arrived;
+      const ids = new Set<string>();
+      for (const [number, element] of arriving(container)) {
+        if (!pages.has(number)) continue;
+        for (const drawn of element.querySelectorAll<SVGGraphicsElement>('g[id^="event-"]')) {
+          const id = eventIdOf(drawn);
+          if (id) ids.add(id);
+        }
+      }
+      report([...ids]);
+    });
   });
 
   /**
@@ -585,12 +629,18 @@
 
   function onpointermove(event: PointerEvent): void {
     hoverFront(event.target as Element);
+    const id = eventIdOf(event.target as Element);
+    // The focus is reported whether or not there is a note under the pointer:
+    // blank paper marks nothing, which is a different answer from "the
+    // pointer is elsewhere" (prompt 52).
+    focus?.point(id);
     if (!workspace) return;
-    workspace.hovered = eventIdOf(event.target as Element);
+    workspace.hovered = id;
   }
 
   function onpointerleave(): void {
     hovered = null;
+    focus?.leave();
     if (workspace) workspace.hovered = null;
   }
 

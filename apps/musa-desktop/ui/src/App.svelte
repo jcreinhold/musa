@@ -42,6 +42,7 @@
   import type { EditImpact } from "./lib/state/snapshot";
   import { Workspace } from "./lib/state/selection.svelte";
   import type { Selection } from "./lib/state/selection.svelte";
+  import { Focus } from "./lib/state/focus.svelte";
   import { ViewPreferences, stepForPinch } from "./lib/state/view.svelte";
 
   const parameters = new URLSearchParams(globalThis.location?.search ?? "");
@@ -62,6 +63,37 @@
   // revision, and a selection is only meaningful against the current one.
   const workspace = new Workspace(() => session.snapshot);
   const playhead = new Playhead();
+
+  /**
+   * Reading is linked (prompt 52): one focus, marked in the score and in the
+   * source at once. It lives here because both views hold it, and because the
+   * keyboard's half of it is the selection — which is also owned here.
+   */
+  const focus = new Focus(() => session.snapshot);
+
+  $effect(() => {
+    const [first] = workspace.selected;
+    focus.land(first);
+  });
+
+  /** The event ids engraved on the pages in view, reported by the score. */
+  let onPage = $state<readonly string[]>([]);
+
+  /**
+   * The statements that wrote the music currently on the page — both the line
+   * that placed each note and the line that spells it, because a `use` and the
+   * `motif` it plays are equally on screen.
+   */
+  const sounding = $derived.by(() => {
+    if (onPage.length === 0) return [];
+    const wanted = new Set(onPage);
+    const spans: Span[] = [];
+    for (const event of session.snapshot?.score?.events ?? []) {
+      if (!wanted.has(event.id)) continue;
+      spans.push(event.origin.span, event.origin.definitionSpan);
+    }
+    return spans;
+  });
 
   /** Follow is a cycle, not a checkbox: three states, one key (§4). */
   const FOLLOWS = ["page", "continuous", "off"] as const;
@@ -551,6 +583,9 @@
     {mode}
     {reveal}
     {origin}
+    {focus}
+    {sounding}
+    onvisible={(ids) => (onPage = ids)}
     oncaret={followCaret}
     ondiagnostic={showDiagnostic}
     onshow={(which) => (screen = which)}
@@ -566,6 +601,9 @@
     loop={looped}
     {follow}
     {origin}
+    {focus}
+    {sounding}
+    onvisible={(ids) => (onPage = ids)}
     {pinned}
     {entry}
     choice={choice?.impact ?? null}
