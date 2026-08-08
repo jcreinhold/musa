@@ -152,6 +152,9 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 53 | pointer-editing | 2 | The score writes the source: token-scoped pointer edits |
 | 54 | editable-facts | 2 | The piece's own facts, editable where they are printed |
 | 55 | reading-preferences | 2 | Text size and vim mode: how the composer reads and types |
+| 56 | diagnostics-that-teach | 2 | Codes, labelled spans, help, and applicable fixes, in both frontends |
+| 57 | bars | 2 | `bar { … }`: the unit musicians think in, checked and nameable |
+| 58 | repeats-and-endings | 2 | `repeat` becomes notation; first and second endings |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
@@ -185,6 +188,17 @@ the list of fields, with the empty ones on it. **55** is the pair of decisions t
 behalf rather than badly: how large its text is, and whether its editor is modal. Neither touches the score — the
 score's size is zoom, which is a re-layout and already has its own control, and keeping those two apart is the whole
 reason 55 is a prompt and not a slider.
+
+**56–58 are about the language as something a person uses.** The three earlier blocks each made musa able to *do* more;
+this one makes it answerable when a composer gets something wrong, and gives them the unit they were already thinking
+in. **56** is the shape of a diagnostic: today every one of them is a string and a byte range, which is why they all
+read like a parser talking to itself, and why the app prints `184` where a location belongs. **57** adds `bar { … }` —
+a delimiter you can copy, a name you can reuse, and, because a bar declares what it claims to be, the first construct
+musa can catch a composer disagreeing with. **58** stops `repeat` from printing its own expansion; it is the layer
+table's own example, and the page has been wrong about it since prompt 06.
+
+They run in that order because each is the last one's payoff. The bar-length error is unreadable without secondary
+labels, and the ending rules are unreadable without both.
 
 Prompts 37–50 are the kernel consolidation block. Prompt 12 made the kernel canonical but deliberately kept what the
 migration needed: the direct lowerer as a regression oracle, and a `ScoreSnapshot` shaped exactly as the pre-kernel
