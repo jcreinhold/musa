@@ -96,9 +96,22 @@ That needs a stable name per decision site. Two obvious names are wrong:
 - **Not a `DeclarationId`.** Inserting a declaration renumbers everything after it, so adding one motif at the top
   re-rolls every decision below.
 
-**A `ChoicePath` is a structural path of names**: part, voice, motif, bar, and an ordinal within the innermost *named*
-thing. Insert a bar at the top of a voice and the paths below it are unchanged, because names do not shift. Rename a
-part and its decisions move with it, which is the right answer — the composer renamed the thing the choice belongs to.
+**A `ChoicePath` is a structural path of names**: the motif or bar a site sits in, and an ordinal within the innermost
+*named* thing. Insert a bar at the top of a voice and the paths below it are unchanged, because names do not shift.
+Rename a motif and its decisions move with it, which is the right answer — the composer renamed the thing the choice
+belongs to.
+
+**A site written among a voice's own items has no name above it.** Its path is its ordinal alone, counted from zero in
+each voice, so the k-th such site in every voice is one site with one decision. This was written "part, voice, motif,
+bar" when the document was drafted, and prompt 67 found the reading wrong: prompt 57's rule is that a repeat barline
+crosses the system, so a repeat the page can *draw* is one repeat of the whole piece, written once in each voice that
+sounds under it. A per-voice path would decide it several times over and the voices would come apart — and the
+engraver, which already refuses to draw repeats whose counts disagree, would silently write the passage out. It is the
+same argument prompt 64 made for `meter`, reaching the same answer: what is written at a place in the piece belongs to
+the piece.
+
+A freedom that genuinely *is* one player's — *In C*, where each performer repeats independently and no barline could
+span them — is a different construct with a per-voice path, and belongs with the rest of open form (prompt 68).
 
 Randomness is derived **per path**, not drawn from a sequential stream:
 

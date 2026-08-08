@@ -51,15 +51,26 @@ pub trait TextPayload: Sized {
 /// should say so and stop, which is all a version needs to do here.
 pub const FORMAT_VERSION: &str = "musa-kernel-1";
 
-/// Print `term` as a kernel file named `name`.
+/// Print `term` as a kernel file named `name`, with `notes` recorded above it.
 ///
 /// The term is printed as written: `let`, `seq`, `over`, `shift` and `scale`
 /// structure survives. Normalizing first is the caller's separate decision —
 /// there is no "normalize while printing" flag, because that would complect
 /// two choices a caller can make in sequence.
-pub fn print<A: TextPayload>(name: &str, term: &Term<A>) -> String {
+///
+/// A note is one `%` line under the version, and the kernel never looks
+/// inside it. It exists because a file is the projection of *one* reading of a
+/// work and has to say which — a realization, in
+/// `docs/kernel/11-realization.md`'s sense — and because the kernel must not
+/// learn what a realization is to carry the sentence. Read back with
+/// [`notes`]. Newlines are stripped, since a note that spanned two lines would
+/// read back as two.
+pub fn print<A: TextPayload>(name: &str, term: &Term<A>, notes: &[String]) -> String {
     let mut out = String::with_capacity(256);
     let _ = writeln!(out, "% {FORMAT_VERSION}");
+    for note in notes {
+        let _ = writeln!(out, "% {}", note.replace(['\n', '\r'], " "));
+    }
     let _ = write!(out, "kernel ");
     write_string(&mut out, name);
     let _ = writeln!(out, " {{");
@@ -68,6 +79,19 @@ pub fn print<A: TextPayload>(name: &str, term: &Term<A>) -> String {
     let _ = writeln!(out, ";");
     let _ = writeln!(out, "}}");
     out
+}
+
+/// The note lines a file carries, in the order they were written.
+///
+/// Everything after the version line and before the term, without the `%` and
+/// the space. A file with nothing to declare yields nothing, which is why this
+/// is an iterator rather than a struct with optional fields: the kernel does
+/// not know what any note means, and a shape would be a claim that it does.
+pub fn notes(text: &str) -> impl Iterator<Item = &str> {
+    text.lines()
+        .skip(1)
+        .map_while(|line| line.trim_end().strip_prefix('%'))
+        .map(|note| note.trim())
 }
 
 /// Parse a kernel file, returning its name and its term.

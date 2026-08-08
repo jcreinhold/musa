@@ -21,6 +21,11 @@ use crate::elaborate::{ScoreFact, piece_term};
 pub struct KernelCheck {
     /// The piece name the file declares.
     pub name: String,
+    /// Which reading of the work this file projects, verbatim from its header
+    /// (`docs/kernel/11-realization.md`). `None` for a file written before
+    /// realizations existed, which is a file whose realization is unknown
+    /// rather than a file that has none.
+    pub realization: Option<String>,
     /// How many occurrences the term evaluates to.
     pub occurrences: usize,
     /// The evaluated timeline's extent, as an exact rational.
@@ -33,9 +38,34 @@ pub struct KernelCheck {
 /// condition as [`crate::kernel_normal_form`], and for the same reason: there
 /// is no term to print for a document that does not have one.
 #[doc(hidden)]
-pub fn kernel_text(source: &SourceDocument) -> Option<String> {
-    let (name, term) = piece_term(source)?;
-    Some(musa_kernel::print(&name, &term))
+pub fn kernel_text(source: &SourceDocument, realization: &crate::Realization) -> Option<String> {
+    let (name, term, decisions) = piece_term(source, realization)?;
+    Some(musa_kernel::print(&name, &term, &notes(realization, &decisions)))
+}
+
+/// What the file says about the reading of the work it projects.
+///
+/// Nothing at all when the piece decided nothing: every realization produces
+/// that file, so naming one would be a claim the file does not need and would
+/// make a determinate piece's export depend on a seed it never read. Otherwise
+/// the seed — because a file that leaves a decision open and does not name its
+/// realization cannot be reproduced — and every decision taken
+/// (`docs/kernel/11-realization.md`, consumer obligation 1).
+fn notes(realization: &crate::Realization, decisions: &[(crate::ChoicePath, crate::Decision)]) -> Vec<String> {
+    if decisions.is_empty() {
+        return Vec::new();
+    }
+    let mut notes = vec![format!(
+        "realization seed={} pins={}",
+        realization.seed(),
+        realization.taken().count()
+    )];
+    notes.extend(
+        decisions
+            .iter()
+            .map(|(path, decision)| format!("decision {path} {decision}")),
+    );
+    notes
 }
 
 /// A piece as kernel text, normalized: the term evaluated to a value and
@@ -55,10 +85,14 @@ pub fn kernel_text(source: &SourceDocument) -> Option<String> {
 /// that `--normalized` output is parseable: `--check` accepts it, which N5
 /// bytes never could.
 #[doc(hidden)]
-pub fn kernel_normalized_text(source: &SourceDocument) -> Option<String> {
-    let (name, term) = piece_term(source)?;
+pub fn kernel_normalized_text(source: &SourceDocument, realization: &crate::Realization) -> Option<String> {
+    let (name, term, decisions) = piece_term(source, realization)?;
     let value = musa_kernel::evaluate_marked(term, crate::elaborate::instantiate);
-    Some(musa_kernel::print(&name, &musa_kernel::Term::literal(value)))
+    Some(musa_kernel::print(
+        &name,
+        &musa_kernel::Term::literal(value),
+        &notes(realization, &decisions),
+    ))
 }
 
 /// What a kernel file *means*: its normalized form (N5) and its semantic
@@ -94,6 +128,9 @@ pub fn check_kernel_text(text: &str) -> Result<KernelCheck, String> {
     let value = musa_kernel::evaluate_marked(term, crate::elaborate::instantiate);
     Ok(KernelCheck {
         name,
+        realization: musa_kernel::notes(text)
+            .find_map(|note| note.strip_prefix("realization "))
+            .map(str::to_owned),
         occurrences: value.occurrences().len(),
         extent: value.extent().as_ratio().to_string(),
     })

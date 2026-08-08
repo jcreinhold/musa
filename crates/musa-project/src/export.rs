@@ -95,6 +95,11 @@ pub struct KernelReport {
     pub occurrences: usize,
     /// The evaluated timeline's extent, as an exact rational.
     pub extent: String,
+    /// Which reading of the work the file projects, verbatim from its header
+    /// (`docs/kernel/11-realization.md`). `None` when the file does not say —
+    /// which a reader reports rather than guesses at, because a realization it
+    /// cannot reproduce is the one thing that design exists to make visible.
+    pub realization: Option<String>,
 }
 
 /// Read kernel interchange text: parse, check well-formedness (K7), evaluate.
@@ -113,6 +118,7 @@ pub fn check_kernel(text: &str) -> Result<KernelReport, crate::error::ProjectErr
             name: check.name,
             occurrences: check.occurrences,
             extent: check.extent,
+            realization: check.realization,
         })
         .map_err(crate::error::ProjectError::Kernel)
 }

@@ -48,6 +48,12 @@ pub struct CompileOptions {
     /// keyed by the path an importer resolves to. The compiler reads no
     /// files: whoever owns the filesystem fills this in.
     pub imports: crate::imports::ImportSources,
+    /// Which performance to compile.
+    ///
+    /// A piece that leaves nothing open never consults this, so the default —
+    /// `Realization::deterministic()` — is the absence of a question rather
+    /// than a choice of answer (`docs/kernel/11-realization.md`).
+    pub realization: crate::realize::Realization,
 }
 
 /// The result of compiling a document: diagnostics always, a snapshot and a
@@ -57,6 +63,7 @@ pub struct Compilation {
     studio: crate::studio::StudioSpec,
     diagnostics: Vec<Diagnostic>,
     identity: musa_kernel::SemanticHash,
+    decisions: Vec<(crate::ChoicePath, crate::Decision)>,
 }
 
 impl Compilation {
@@ -66,6 +73,7 @@ impl Compilation {
             studio: crate::studio::StudioSpec::default(),
             diagnostics,
             identity: musa_kernel::SemanticHash::default(),
+            decisions: Vec::new(),
         }
     }
 
@@ -77,6 +85,22 @@ impl Compilation {
     pub(crate) fn with_identity(mut self, identity: musa_kernel::SemanticHash) -> Self {
         self.identity = identity;
         self
+    }
+
+    pub(crate) fn with_decisions(mut self, decisions: Vec<(crate::ChoicePath, crate::Decision)>) -> Self {
+        self.decisions = decisions;
+        self
+    }
+
+    /// Every decision this compilation took, in the order the sites were
+    /// reached (`docs/kernel/11-realization.md`).
+    ///
+    /// The realization holds only what a composer *pinned*; this is what the
+    /// piece actually asked and what it was answered, which is what a header
+    /// line records and what prompt 76 shows on the page. A determinate piece
+    /// returns nothing, under every seed.
+    pub fn decisions(&self) -> &[(crate::ChoicePath, crate::Decision)] {
+        &self.decisions
     }
 
     /// What this compilation *means*, as a digest of the piece's timeline

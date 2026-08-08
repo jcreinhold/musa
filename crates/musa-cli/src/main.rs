@@ -7,18 +7,20 @@
 
 use std::process::ExitCode;
 
-use musa_project::{ExportArtifact, ExportRequest, MidiMode, ProjectCommand, ProjectSession, TransportRequest};
+use musa_project::{
+    ExportArtifact, ExportRequest, MidiMode, ProjectCommand, ProjectSession, Realization, TransportRequest,
+};
 
 fn main() -> ExitCode {
     install_renderer();
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
         Some("format") => cmd_format(args.get(1..).unwrap_or_default()),
-        Some("check") => cmd_check(args.get(1..).unwrap_or_default()),
+        Some("check") => with_seed(args.get(1..).unwrap_or_default(), cmd_check),
         Some("explain") => cmd_explain(args.get(1..).unwrap_or_default()),
-        Some("render") => cmd_render(args.get(1..).unwrap_or_default()),
+        Some("render") => with_seed(args.get(1..).unwrap_or_default(), cmd_render),
         Some("play") => cmd_play(args.get(1..).unwrap_or_default()),
-        Some("kernel") => cmd_kernel(args.get(1..).unwrap_or_default()),
+        Some("kernel") => with_seed(args.get(1..).unwrap_or_default(), cmd_kernel),
         Some(other) if !other.starts_with('-') => {
             eprintln!("error: `{other}` is not a musa command");
             eprintln!();
@@ -72,18 +74,54 @@ fn print_usage() {
     println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
     println!("  musa kernel <file.musa> [--normalized] print the piece as kernel interchange text");
     println!("  musa kernel --check <file.kernel>      parse, check, and evaluate kernel text");
+    println!("  --seed <n>  on check, render and kernel: which performance to compile");
 }
 
-/// Open a project, or report why not.
-fn open(path: &str) -> Result<ProjectSession, ExitCode> {
-    ProjectSession::open(path).map_err(|error| {
+/// Run a subcommand that compiles, with `--seed` already read.
+fn with_seed(args: &[String], run: fn(&[String], &Realization) -> ExitCode) -> ExitCode {
+    let (realization, rest) = take_seed(args);
+    run(&rest, &realization)
+}
+
+/// Open a project under `realization`, or report why not.
+fn open(path: &str, realization: &Realization) -> Result<ProjectSession, ExitCode> {
+    let mut session = ProjectSession::open(path).map_err(|error| {
         eprintln!("error: {error}");
         ExitCode::FAILURE
-    })
+    })?;
+    // A determinate piece is unaffected, so this costs one recompile of a
+    // piece that has nothing to decide and buys not having two open paths.
+    let _realized = session.realize(realization.clone());
+    Ok(session)
+}
+
+/// Take `--seed N` out of `args`, leaving the subcommand's own arguments.
+///
+/// Which performance to compile (`docs/kernel/11-realization.md`). Absent, the
+/// realization is `deterministic()` — and a piece that leaves nothing open
+/// compiles to the same bytes under every seed, which is a test rather than a
+/// claim. It is removed here so no subcommand's parser has to know the flag
+/// takes a value and mistake the number for a file.
+fn take_seed(args: &[String]) -> (Realization, Vec<String>) {
+    let mut realization = Realization::deterministic();
+    let mut rest = Vec::with_capacity(args.len());
+    let mut index = 0;
+    while let Some(arg) = args.get(index) {
+        if arg == "--seed" {
+            if let Some(seed) = args.get(index.saturating_add(1)).and_then(|text| text.parse().ok()) {
+                realization = Realization::seeded(seed);
+            }
+            index = index.saturating_add(2);
+            continue;
+        }
+        rest.push(arg.clone());
+        index = index.saturating_add(1);
+    }
+    (realization, rest)
 }
 
 /// `musa render <file> --to <target> [-o <path>]`
-fn cmd_render(args: &[String]) -> ExitCode {
+fn cmd_render(args: &[String], realization: &Realization) -> ExitCode {
     let mut path: Option<&str> = None;
     let mut target = "plan";
     let mut mode = "score";
@@ -138,7 +176,7 @@ fn cmd_render(args: &[String]) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    let session = match open(path) {
+    let session = match open(path, realization) {
         Ok(session) => session,
         Err(code) => return code,
     };
@@ -177,7 +215,7 @@ fn cmd_render(args: &[String]) -> ExitCode {
 /// One direction only: kernel text is a projection of a piece, and a
 /// `.kernel` file is never read back into a document (AGENTS.md — the source
 /// is canonical). `--check` is a reader, not an importer.
-fn cmd_kernel(args: &[String]) -> ExitCode {
+fn cmd_kernel(args: &[String], realization: &Realization) -> ExitCode {
     let mut path: Option<&str> = None;
     let mut output: Option<&str> = None;
     let mut normalized = false;
@@ -224,6 +262,10 @@ fn cmd_kernel(args: &[String]) -> ExitCode {
                     "{path}: ok — piece {:?}, {} occurrences, extent {}",
                     report.name, report.occurrences, report.extent
                 );
+                println!(
+                    "  realization: {}",
+                    report.realization.as_deref().unwrap_or("not stated by this file")
+                );
                 ExitCode::SUCCESS
             }
             Err(error) => {
@@ -232,7 +274,7 @@ fn cmd_kernel(args: &[String]) -> ExitCode {
             }
         };
     }
-    let session = match open(path) {
+    let session = match open(path, realization) {
         Ok(session) => session,
         Err(code) => return code,
     };
@@ -302,7 +344,7 @@ fn cmd_play(args: &[String]) -> ExitCode {
         eprintln!("error: play needs a file");
         return ExitCode::FAILURE;
     };
-    let mut session = match open(path) {
+    let mut session = match open(path, &Realization::deterministic()) {
         Ok(session) => session,
         Err(code) => return code,
     };
@@ -327,7 +369,7 @@ fn cmd_format(args: &[String]) -> ExitCode {
         eprintln!("error: format needs a file");
         return ExitCode::FAILURE;
     };
-    let mut session = match open(path) {
+    let mut session = match open(path, &Realization::deterministic()) {
         Ok(session) => session,
         Err(code) => return code,
     };
@@ -514,13 +556,13 @@ fn plural(count: u32, word: &str) -> String {
 }
 
 /// `musa check <file>...` — full semantic check.
-fn cmd_check(args: &[String]) -> ExitCode {
+fn cmd_check(args: &[String], realization: &Realization) -> ExitCode {
     let mut status = ExitCode::SUCCESS;
     let mut files: u32 = 0;
     let mut tally = Tally::default();
     for path in args.iter().filter(|arg| !arg.starts_with("--")) {
         files = files.saturating_add(1);
-        if cmd_check_one(path, &mut tally) == ExitCode::FAILURE {
+        if cmd_check_one(path, realization, &mut tally) == ExitCode::FAILURE {
             status = ExitCode::FAILURE;
         }
     }
@@ -534,8 +576,8 @@ fn cmd_check(args: &[String]) -> ExitCode {
     status
 }
 
-fn cmd_check_one(path: &str, tally: &mut Tally) -> ExitCode {
-    let session = match open(path) {
+fn cmd_check_one(path: &str, realization: &Realization, tally: &mut Tally) -> ExitCode {
+    let session = match open(path, realization) {
         Ok(session) => session,
         Err(code) => return code,
     };

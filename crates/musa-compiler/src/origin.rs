@@ -117,3 +117,109 @@ impl Interval {
         })
     }
 }
+
+/// The stable name of a place where the piece leaves a decision open.
+///
+/// A realization has to make the *same* decision again after the composer
+/// edits an unrelated bar; otherwise every keystroke re-rolls the performance
+/// and the page flickers with music nobody wrote. That rules out the two
+/// obvious names (`docs/kernel/11-realization.md`): a source span, because
+/// reformatting would re-roll everything, and a [`DeclarationId`], because
+/// inserting a declaration renumbers everything after it.
+///
+/// So a path is made of **names**: the motif or the bar a site sits in, ending
+/// in an ordinal among its unnamed siblings. Insert a bar above and the paths
+/// below are unchanged, because names do not shift.
+///
+/// A site written among a voice's own items has **no name above it** — its
+/// path is just its ordinal. That is not an omission: prompt 57's rule is that
+/// a repeat barline crosses the system, so a repeat the page can draw is one
+/// repeat of the whole piece, written once in each voice that sounds under it.
+/// Giving it a per-voice path would decide it several times over and the
+/// voices would come apart. The same argument prompt 64 made for `meter`,
+/// arriving at the same answer. A freedom that really is one player's — *In
+/// C*'s — is a different construct and belongs to prompt 68.
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct ChoicePath(Vec<ChoiceStep>);
+
+/// One name along a [`ChoicePath`].
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum ChoiceStep {
+    /// A motif, by the name it was declared under.
+    Motif(Box<str>),
+    /// A named bar.
+    Bar(Box<str>),
+    /// Which site this is among the unnamed siblings in the innermost named
+    /// thing.
+    ///
+    /// The weak point, stated rather than hidden: insert a third site between
+    /// two unnamed ones and the second's ordinal shifts, so its decision
+    /// changes. A composer who cares names the bar; the interface shows which
+    /// path each decision belongs to, so the shift is visible rather than
+    /// mysterious.
+    Ordinal(u32),
+}
+
+impl ChoicePath {
+    /// Extend a path by one step, leaving the original alone.
+    ///
+    /// Paths are built downward through elaboration, where the enclosing
+    /// names are known and the site is not yet, so every construction is
+    /// "this path, plus where I am".
+    #[must_use]
+    pub fn then(&self, step: ChoiceStep) -> Self {
+        let mut steps = self.0.clone();
+        steps.push(step);
+        Self(steps)
+    }
+
+    /// The bytes this path is, for hashing and for display.
+    ///
+    /// Injective: two different paths encode to two different byte strings.
+    /// Each step is written with its kind letter, its length, and its text, so
+    /// no concatenation of names can imitate a different splitting of them —
+    /// the same requirement N3 places on payload keys, and it gets the same
+    /// test.
+    #[must_use]
+    pub fn canonical(&self) -> String {
+        let mut text = String::new();
+        for step in &self.0 {
+            let (letter, name) = match step {
+                ChoiceStep::Motif(name) => ('m', name.to_string()),
+                ChoiceStep::Bar(name) => ('b', name.to_string()),
+                ChoiceStep::Ordinal(index) => ('#', index.to_string()),
+            };
+            text.push(letter);
+            text.push_str(&name.len().to_string());
+            text.push(':');
+            text.push_str(&name);
+        }
+        text
+    }
+
+    /// The steps, outermost first — what an interface prints as a trail.
+    pub fn steps(&self) -> &[ChoiceStep] {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for ChoicePath {
+    /// `fill ▸ #2` — the trail a person reads, as opposed to the bytes a
+    /// digest reads.
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut first = true;
+        for step in &self.0 {
+            if !first {
+                formatter.write_str(" ▸ ")?;
+            }
+            first = false;
+            match step {
+                ChoiceStep::Motif(name) | ChoiceStep::Bar(name) => {
+                    formatter.write_str(name)?;
+                }
+                ChoiceStep::Ordinal(index) => write!(formatter, "#{index}")?,
+            }
+        }
+        Ok(())
+    }
+}

@@ -31,7 +31,8 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 use musa_compiler::{
-    CompileOptions, MusicalTime, Scope, ScoreSnapshot, Severity, SourceDocument, compile, kernel_normal_form,
+    CompileOptions, MusicalTime, Realization, Scope, ScoreSnapshot, Severity, SourceDocument, compile,
+    kernel_normal_form,
 };
 use num_rational::Ratio;
 use proptest::prelude::*;
@@ -56,7 +57,8 @@ fn errors_of(text: &str) -> Vec<String> {
 #[test]
 fn kernel_normal_forms_snapshot() {
     for (name, source) in [("twinkle", TWINKLE), ("canon", CANON), ("counterpoint", COUNTERPOINT)] {
-        let form = kernel_normal_form(&SourceDocument::new(source, name)).expect("elaborates");
+        let form =
+            kernel_normal_form(&SourceDocument::new(source, name), &Realization::deterministic()).expect("elaborates");
         insta::assert_snapshot!(name, form);
     }
 }
@@ -93,7 +95,9 @@ fn bars_are_erased_after_they_are_checked() {
     let piece = |body: &str| format!("piece \"b\" {{ meter 4/4; score {{ part p {{ voice v {{ {body} }} }} }} }}");
     let flat = piece("c4 1/4; d4 1/4; e4 1/4; f4 1/4; g4 1/2; a4 1/2;");
     let barred = piece("bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; } bar { g4 1/2; a4 1/2; }");
-    let form = |source: &str| kernel_normal_form(&SourceDocument::new(source, "b")).expect("elaborates");
+    let form = |source: &str| {
+        kernel_normal_form(&SourceDocument::new(source, "b"), &Realization::deterministic()).expect("elaborates")
+    };
     assert_eq!(without_spans(&form(&flat)), without_spans(&form(&barred)));
 }
 
@@ -103,7 +107,8 @@ fn bars_are_erased_after_they_are_checked() {
 fn a_named_bar_plays_the_same_music_it_declared() {
     let source = "piece \"b\" { meter 4/4; score { part p { voice v { \
                   bar head { c4 1/2; d4 1/2; } use head; } } } }";
-    let form = kernel_normal_form(&SourceDocument::new(source, "b")).expect("elaborates");
+    let form =
+        kernel_normal_form(&SourceDocument::new(source, "b"), &Realization::deterministic()).expect("elaborates");
     let pitches: Vec<&str> = form
         .lines()
         .filter_map(|line| line.split('|').nth(2))
@@ -117,7 +122,8 @@ fn a_named_bar_plays_the_same_music_it_declared() {
 #[test]
 fn the_key_and_the_meter_are_facts_of_the_timeline() {
     let source = "piece \"x\" { meter 3/4; key bf major; score { part p { voice v { c4 1/4; } } } }";
-    let form = kernel_normal_form(&SourceDocument::new(source, "k")).expect("elaborates");
+    let form =
+        kernel_normal_form(&SourceDocument::new(source, "k"), &Realization::deterministic()).expect("elaborates");
     assert!(form.contains("meter:3/4"), "meter is not an occurrence: {form}");
     assert!(form.contains("key:bf:major"), "key is not an occurrence: {form}");
 
@@ -143,8 +149,8 @@ fn the_key_and_the_meter_are_facts_of_the_timeline() {
 fn repeat_sounds_the_same_as_its_unrolling() {
     let repeated = "piece \"x\" { score { part p { voice v { repeat 3 { c4 1/4; d4 1/4; } } } } }";
     let unrolled = "piece \"x\" { score { part p { voice v { c4 1/4; d4 1/4; c4 1/4; d4 1/4; c4 1/4; d4 1/4; } } } }";
-    let a = kernel_normal_form(&SourceDocument::new(repeated, "a")).expect("elaborates");
-    let b = kernel_normal_form(&SourceDocument::new(unrolled, "b")).expect("elaborates");
+    let a = kernel_normal_form(&SourceDocument::new(repeated, "a"), &Realization::deterministic()).expect("elaborates");
+    let b = kernel_normal_form(&SourceDocument::new(unrolled, "b"), &Realization::deterministic()).expect("elaborates");
     // Same temporal facts; provenance (and thus the snapshot) differs, which
     // is exactly the semantic quotient at work (course correction §20).
     assert_ne!(a, b);
@@ -167,7 +173,8 @@ fn repeat_sounds_the_same_as_its_unrolling() {
 #[test]
 fn a_repeat_says_on_the_timeline_that_it_is_one() {
     let source = "piece \"x\" { score { part p { voice v { repeat 3 { c4 1/4; d4 1/4; } } } } }";
-    let form = kernel_normal_form(&SourceDocument::new(source, "a")).expect("elaborates");
+    let form =
+        kernel_normal_form(&SourceDocument::new(source, "a"), &Realization::deterministic()).expect("elaborates");
     assert!(
         form.contains("repeat:3"),
         "expected the repeat to state its count: {form}"

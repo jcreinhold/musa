@@ -1,7 +1,7 @@
 ---
 id: 67
 slug: realization
-status: pending
+status: done
 depends_on: [66]
 phase: 3
 ---
@@ -150,6 +150,36 @@ cargo run -p musa-cli -- check examples/loop-lengths.musa --seed 42
 ```
 
 Commit as `Add realizations`.
+
+## Repairs made while implementing
+
+**A decision site among a voice's own items belongs to the piece, not to the voice.** The Design says a `ChoicePath`
+is "part, voice, motif, bar, and an ordinal"; building the first ranged repeat showed that reading is wrong. Prompt
+57 already refuses to *draw* a repeat whose voices disagree — "a repeat barline crosses the system, so it can only be
+drawn where the whole system repeats" — so a per-voice path would decide one repeat three times, the voices would come
+apart, and the engraver would quietly write the passage out. The path of a site written at `Place::Voice` is therefore
+its ordinal alone, counted from zero in each voice, so the k-th such site in every voice is one site. Same argument as
+prompt 64's for `meter`, same answer. `ChoiceStep` loses `Part` and `Voice` — a variant with no producer is dead
+surface — and prompt 68 adds a per-voice step with the construct that needs it, since *In C* is per-player by
+definition and no barline could span its players.
+
+**A shared body's decisions belong to the material.** A motif or named bar is elaborated once and shared between call
+sites (prompt 49), so its inner `ChoicePath` prefix is reset to the material's own name rather than inherited from the
+caller — exactly as the provenance `path` already is. A ranged repeat inside a motif therefore takes one count per
+motif. This is prompt 66's T2 sharing question answered by construction rather than by a rule, and it is the reading
+T2 forces once sharing is load-bearing.
+
+**A determinate piece's `.kernel` file has no realization header at all.** The Design shows the header written
+unconditionally, which would have made every existing golden depend on a seed it never reads and broken the Check's own
+`diff` of `canon.musa` under two seeds. The header is written only when the piece actually decided something: every
+realization produces the determinate file, so naming one would be a claim the file does not need.
+
+**A backwards range is refused rather than compiled.** `repeat 6 to 2` is a mistake about the music; treating it as
+zero passes would hide it in silence.
+
+**`musa_kernel::print` takes note lines; `musa_kernel::notes` reads them.** The Design says `.kernel` needs no grammar
+change and that is true, but "written and read" still needs an API, and the kernel must not learn what a realization
+is in order to carry the sentence. A note is an opaque `%` line; the compiler decides what goes in one.
 
 ## Stop
 

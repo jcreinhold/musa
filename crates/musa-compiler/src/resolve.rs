@@ -112,6 +112,13 @@ pub(crate) struct ExpandCx {
     /// inside a `3/2` tuplet). Always `1` on the direct path, which rejects
     /// tuplets outright.
     pub(crate) scale: Ratio<i64>,
+    /// The named place these items sit in — part, voice, motif, bar.
+    ///
+    /// The prefix of every [`crate::ChoicePath`] built here. A motif body
+    /// resets it to the motif's own name, exactly as `path` is reset: the
+    /// body is elaborated once and shared between call sites, so a decision
+    /// inside it belongs to the *material* and not to any one use of it.
+    pub(crate) choice: crate::ChoicePath,
 }
 
 /// What resolution accumulates while a piece is read: the tables names are
@@ -164,6 +171,11 @@ pub(crate) struct Resolver {
     /// the check waits, and `elaborate_score` runs it once the barlines are
     /// known.
     pub(crate) pending_bars: Vec<crate::elaborate::PendingBar>,
+    /// How many decision sites have been seen inside each named place, so the
+    /// next one there knows its ordinal.
+    pub(crate) sites: std::collections::BTreeMap<crate::ChoicePath, u32>,
+    /// Every decision this compile took, in the order the sites were reached.
+    pub(crate) decisions: Vec<(crate::ChoicePath, crate::Decision)>,
     /// The key the header wrote, on its way into the timeline.
     ///
     /// Staged here rather than on the snapshot because the snapshot's answer
@@ -178,6 +190,12 @@ pub(crate) struct Resolver {
     /// the elaboration and projection stages separable to measure them apart
     /// (roadmap §17.7). One `Option` check per voice is the whole cost.
     pub(crate) timeline_sink: Option<Vec<crate::elaborate::VoiceTimeline>>,
+    /// Which performance is being compiled (`docs/kernel/11-realization.md`).
+    ///
+    /// It lives here rather than being threaded through elaboration because a
+    /// decision site can be anywhere a note can be, and every function on the
+    /// way already carries the resolver.
+    pub(crate) realization: crate::Realization,
 }
 
 impl Resolver {
@@ -195,9 +213,39 @@ impl Resolver {
             meter_changes: Vec::new(),
             key_changes: Vec::new(),
             pending_bars: Vec::new(),
+            sites: std::collections::BTreeMap::new(),
+            decisions: Vec::new(),
             key: None,
             timeline_sink: None,
+            realization: crate::Realization::deterministic(),
         }
+    }
+
+    /// The path of the next decision site inside `place`, and the decision
+    /// the realization makes there.
+    ///
+    /// The ordinal is per named place, so a site in one voice is unaffected by
+    /// sites added in another — and inside a place, a site added *below*
+    /// leaves the ones above it alone. Both are the point of
+    /// `docs/kernel/11-realization.md`'s path identity.
+    pub(crate) fn decide_count(
+        &mut self,
+        place: &crate::ChoicePath,
+        least: u32,
+        most: u32,
+    ) -> (crate::ChoicePath, u32) {
+        let ordinal = self.sites.entry(place.clone()).or_insert(0);
+        let path = place.then(crate::ChoiceStep::Ordinal(*ordinal));
+        *ordinal = ordinal.saturating_add(1);
+        let count = self.realization.count(&path, least, most);
+        // One site, one decision, however many voices reach it: the k-th site
+        // in every voice *is* the k-th site, which is the point of numbering
+        // them per voice rather than per path down from the part.
+        let decision = (path.clone(), crate::Decision::Count(count));
+        if !self.decisions.contains(&decision) {
+            self.decisions.push(decision);
+        }
+        (path, count)
     }
 
     pub(crate) fn declare(&mut self, info: DeclInfo) -> DeclKey {

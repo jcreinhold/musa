@@ -44,6 +44,7 @@ mod performance;
 mod pitch;
 mod profile;
 mod project;
+mod realize;
 mod resolve;
 mod scope;
 mod score;
@@ -63,13 +64,14 @@ pub use crate::kernel_text::{
     KernelCheck, check_kernel_text, kernel_normalized_text, kernel_text, kernel_text_meaning,
 };
 pub use crate::marks::{Mark, MarkDef, VOCABULARY, lookup_mark};
-pub use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
+pub use crate::origin::{ChoicePath, ChoiceStep, DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 pub use crate::performance::{
     IntegratedTempoMap, KeyChange, MeterChange, ParameterId, PerformanceError, PerformanceEvent, PerformanceLane,
     PerformanceOptions, PerformancePlan, PerformedNote, TempoSegment, Tuning, VoiceInstanceId, lower_performance,
 };
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
+pub use crate::realize::{Decision, Realization};
 pub use crate::scope::{ContextKind, Scope};
 pub use crate::score::{
     AnnotationStore, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, FrontMatter, HairpinSpan,

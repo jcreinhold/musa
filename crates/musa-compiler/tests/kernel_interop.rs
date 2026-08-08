@@ -19,8 +19,22 @@
 #![allow(clippy::panic)]
 
 use musa_compiler::{
-    SourceDocument, check_kernel_text, kernel_normal_form, kernel_normalized_text, kernel_text, kernel_text_meaning,
+    Realization, SourceDocument, check_kernel_text, kernel_normal_form, kernel_normalized_text, kernel_text,
+    kernel_text_meaning,
 };
+
+/// The realization every fixture is pinned to.
+///
+/// `docs/kernel/11-realization.md` concedes the cost up front: a regression
+/// fixture whose realization is unpinned is not a fixture. Determinate pieces
+/// are unaffected by the number, which is what
+/// [`a_determinate_piece_is_the_same_under_every_seed`] checks.
+const FIXTURE_SEED: u64 = 42;
+
+/// The realization the fixtures are printed under.
+fn pinned() -> Realization {
+    Realization::seeded(FIXTURE_SEED)
+}
 
 /// Every `.musa` fixture, by the stem its `.kernel` golden uses.
 const EXAMPLES: &[(&str, &str)] = &[
@@ -39,6 +53,7 @@ const EXAMPLES: &[(&str, &str)] = &[
     ("tuplet-fixture", include_str!("../../../examples/tuplet-fixture.musa")),
     ("twinkle", include_str!("../../../examples/twinkle.musa")),
     ("variation", include_str!("../../../examples/variation.musa")),
+    ("loop-lengths", include_str!("../../../examples/loop-lengths.musa")),
 ];
 
 /// The round-trip law over the real corpus: printing a piece and reading it
@@ -47,9 +62,9 @@ const EXAMPLES: &[(&str, &str)] = &[
 fn printing_and_parsing_an_example_preserves_its_meaning() {
     for &(name, source) in EXAMPLES {
         let document = SourceDocument::new(source, name);
-        let printed = kernel_text(&document).expect("the fixture elaborates");
+        let printed = kernel_text(&document, &pinned()).expect("the fixture elaborates");
         let (form, hash) = kernel_text_meaning(&printed).unwrap_or_else(|error| panic!("{name}: {error}"));
-        let expected = kernel_normal_form(&document).expect("the fixture elaborates");
+        let expected = kernel_normal_form(&document, &pinned()).expect("the fixture elaborates");
         assert_eq!(form, expected, "{name}: the round trip changed the normal form");
 
         // N6 follows from N5 by construction, so this asserts the derivation
@@ -66,9 +81,9 @@ fn printing_and_parsing_an_example_preserves_its_meaning() {
 fn normalized_kernel_text_is_still_kernel_text() {
     for &(name, source) in EXAMPLES {
         let document = SourceDocument::new(source, name);
-        let normalized = kernel_normalized_text(&document).expect("the fixture elaborates");
+        let normalized = kernel_normalized_text(&document, &pinned()).expect("the fixture elaborates");
         let (form, _) = kernel_text_meaning(&normalized).unwrap_or_else(|error| panic!("{name}: {error}"));
-        let expected = kernel_normal_form(&document).expect("the fixture elaborates");
+        let expected = kernel_normal_form(&document, &pinned()).expect("the fixture elaborates");
         assert_eq!(form, expected, "{name}: normalizing changed the meaning");
     }
 }
@@ -79,12 +94,12 @@ fn normalized_kernel_text_is_still_kernel_text() {
 #[test]
 fn printed_kernel_text_keeps_the_terms_structure() {
     let document = SourceDocument::new(include_str!("../../../examples/counterpoint.musa"), "counterpoint");
-    let printed = kernel_text(&document).expect("elaborates");
+    let printed = kernel_text(&document, &pinned()).expect("elaborates");
     assert!(
         printed.contains("overlay {"),
         "the overlay was flattened away: {printed}"
     );
-    let normalized = kernel_normalized_text(&document).expect("elaborates");
+    let normalized = kernel_normalized_text(&document, &pinned()).expect("elaborates");
     assert!(
         !normalized.contains("overlay {"),
         "the normal form is a value, not a composition: {normalized}"
@@ -98,7 +113,7 @@ fn printed_kernel_text_keeps_the_terms_structure() {
 #[test]
 fn a_hairpin_shape_survives_as_exact_rationals() {
     let source = "piece \"x\" { score { part p { voice v { crescendo to ff { c4 1/4; d4 1/4; e4 1/4; } } } } }";
-    let printed = kernel_text(&SourceDocument::new(source, "hairpin")).expect("elaborates");
+    let printed = kernel_text(&SourceDocument::new(source, "hairpin"), &pinned()).expect("elaborates");
     assert!(printed.contains("hairpin@cres@ff@"), "no hairpin printed: {printed}");
     assert!(!printed.contains('.'), "a rational was written as a decimal: {printed}");
     check_kernel_text(&printed).expect("a printed hairpin reads back");
@@ -108,10 +123,10 @@ fn a_hairpin_shape_survives_as_exact_rationals() {
 /// unbound name are each rejected rather than evaluated to something.
 #[test]
 fn malformed_kernel_text_is_rejected() {
-    let good = kernel_text(&SourceDocument::new(
-        include_str!("../../../examples/twinkle.musa"),
-        "twinkle",
-    ))
+    let good = kernel_text(
+        &SourceDocument::new(include_str!("../../../examples/twinkle.musa"), "twinkle"),
+        &pinned(),
+    )
     .expect("elaborates");
     let cases = [
         ("empty", String::new()),
@@ -145,7 +160,7 @@ fn the_kernel_corpus_is_up_to_date() {
             format!("{name}.kernel"),
             golden(
                 &format!("{name}.musa"),
-                &kernel_text(&document).expect("the fixture elaborates"),
+                &kernel_text(&document, &pinned()).expect("the fixture elaborates"),
             ),
         ));
     }
@@ -156,7 +171,7 @@ fn the_kernel_corpus_is_up_to_date() {
         "canon.normal.kernel".to_owned(),
         golden(
             "canon.musa, normalized",
-            &kernel_normalized_text(&canon).expect("elaborates"),
+            &kernel_normalized_text(&canon, &pinned()).expect("elaborates"),
         ),
     ));
 

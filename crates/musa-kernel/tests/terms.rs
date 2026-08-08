@@ -346,7 +346,7 @@ fn awkward_term() -> Term<Awkward> {
 #[test]
 fn printing_and_parsing_a_term_preserves_its_meaning() {
     let term = awkward_term();
-    let text = musa_kernel::print("awkward", &term);
+    let text = musa_kernel::print("awkward", &term, &[]);
     let (name, parsed) = musa_kernel::parse::<Awkward>(&text).expect("its own output parses");
     assert_eq!(name, "awkward");
     assert!(parsed.check().is_ok(), "its own output is well formed");
@@ -361,7 +361,7 @@ fn printing_and_parsing_a_term_preserves_its_meaning() {
 /// the format worth having.
 #[test]
 fn printed_kernel_text_shares_rather_than_repeats() {
-    let text = musa_kernel::print("awkward", &awkward_term());
+    let text = musa_kernel::print("awkward", &awkward_term(), &[]);
     assert_eq!(text.matches("let subject =").count(), 1);
     let occurrence_lines = text
         .lines()
@@ -489,7 +489,7 @@ fn a_mark_round_trips_through_kernel_text() {
         ])
         .expect("non-empty"),
     );
-    let text = musa_kernel::print("marked", &term);
+    let text = musa_kernel::print("marked", &term, &[]);
     let (name, read) = musa_kernel::parse::<Awkward>(&text).expect("parses");
     assert_eq!(name, "marked");
     assert_eq!(read, term, "the marks did not survive the round trip");

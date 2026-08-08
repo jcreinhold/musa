@@ -48,6 +48,25 @@ impl std::fmt::Display for SemanticHash {
     }
 }
 
+/// The workspace's one stable digest, over arbitrary bytes.
+///
+/// Same algorithm, same constants, same guarantee as [`SemanticHash`]: equal
+/// input, equal output, in every process and on every platform. It is exposed
+/// because a second consumer arrived — a realization derives each decision
+/// site's randomness from a seed and a path (`docs/kernel/11-realization.md`)
+/// — and a second digest function would be a second answer to "are these the
+/// same bytes".
+///
+/// It returns a plain `u128` rather than a [`SemanticHash`], because a
+/// `SemanticHash` is a claim about a *timeline*: handing one out for a byte
+/// string would let two unrelated identities be compared.
+#[must_use]
+pub fn stable_digest(bytes: &[u8]) -> u128 {
+    let mut digest = Digest::new();
+    digest.write(bytes);
+    digest.state
+}
+
 /// The FNV-1a offset basis and prime for 128 bits, as published.
 const OFFSET_BASIS: u128 = 0x6c62_272e_07bb_0142_62b8_2175_6295_c58d;
 const PRIME: u128 = 0x0000_0000_0100_0000_0000_0000_0000_013b;

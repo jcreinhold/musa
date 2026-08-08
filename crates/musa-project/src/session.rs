@@ -57,6 +57,11 @@ pub struct ProjectSession {
     imports: musa_compiler::ImportSources,
     /// The paths behind those imports, for callers that watch them.
     import_paths: Vec<PathBuf>,
+    /// Which reading of the work this session compiles
+    /// (`docs/kernel/11-realization.md`). A piece that leaves nothing open
+    /// never consults it, which is why it is a plain field with a default
+    /// rather than something an opener has to supply.
+    realization: musa_compiler::Realization,
     /// Diagnostics for the *current* source.
     diagnostics: Vec<Diagnostic>,
     /// Whether the current source compiles.
@@ -336,7 +341,7 @@ impl ProjectSession {
                 } else {
                     musa_compiler::kernel_text
                 };
-                printer(&document)
+                printer(&document, &self.realization)
                     .map(ExportArtifact::Text)
                     // The source compiled, so it elaborates; this arm exists
                     // because the printer is total in its signature, not
@@ -447,6 +452,7 @@ impl ProjectSession {
             project: None,
             imports: musa_compiler::ImportSources::default(),
             import_paths: Vec::new(),
+            realization: musa_compiler::Realization::deterministic(),
             name,
             history: vec![HistoryEntry {
                 source: source.clone(),
@@ -514,7 +520,28 @@ impl ProjectSession {
     fn options(&self) -> CompileOptions {
         CompileOptions {
             imports: self.imports.clone(),
+            realization: self.realization.clone(),
         }
+    }
+
+    /// Compile under `realization` from here on.
+    ///
+    /// Not an edit: the source is untouched and the revision does not move,
+    /// because a different performance of the same piece is not a different
+    /// piece. It does recompile, because the timeline is what changed
+    /// (`docs/kernel/11-realization.md` R1).
+    pub fn realize(&mut self, realization: musa_compiler::Realization) -> ProjectUpdate {
+        self.realization = realization;
+        let changed = self.recompile();
+        ProjectUpdate {
+            revision: self.revision,
+            ..changed
+        }
+    }
+
+    /// Which reading of the work this session is compiling.
+    pub fn realization(&self) -> &musa_compiler::Realization {
+        &self.realization
     }
 
     /// The project this piece belongs to, if it was opened from inside one.

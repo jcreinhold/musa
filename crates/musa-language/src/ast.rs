@@ -1005,6 +1005,29 @@ impl RepeatStmt {
         find_token(&self.0, SyntaxKind::Integer).map(|token| span_of(&token))
     }
 
+    /// The largest number of passes, when the count is a range
+    /// (`repeat 4 to 16`). `None` for the exact form.
+    pub fn most(&self) -> Option<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(rowan::NodeOrToken::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Integer)
+            .nth(1)
+            .map(|token| token.text().to_string())
+    }
+
+    /// Where the whole count is written — both numbers and the `to` between
+    /// them, when there is one.
+    pub fn range_span(&self) -> Option<(u32, u32)> {
+        let mut integers = self
+            .0
+            .children_with_tokens()
+            .filter_map(rowan::NodeOrToken::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Integer);
+        let first = span_of(&integers.next()?);
+        Some(integers.next().map_or(first, |last| (first.0, span_of(&last).1)))
+    }
+
     /// The block's items.
     pub fn items(&self) -> Vec<VoiceItem> {
         voice_items(&self.0)

@@ -1347,10 +1347,20 @@ impl<'a> Parser<'a> {
     }
 
     /// `repeat <n> { ... }`
+    /// `repeat 4 { … }`, or `repeat 4 to 16 { … }` — a count chosen by the
+    /// realization rather than by the composer.
+    ///
+    /// One statement with two forms rather than two statements: the block, the
+    /// recovery, and every consumer are the same, and the only difference is
+    /// whether the number is one number or two.
     fn repeat_stmt(&mut self) {
         self.start(SyntaxKind::RepeatStmt);
         self.bump(); // repeat
         self.expect(SyntaxKind::Integer, "a repeat count");
+        if self.at(SyntaxKind::ToKw) {
+            self.bump();
+            self.expect(SyntaxKind::Integer, "the largest number of passes");
+        }
         self.block();
         self.finish();
     }

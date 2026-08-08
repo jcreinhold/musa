@@ -70,5 +70,6 @@ pub use crate::studio::{
 };
 pub use crate::template::Template;
 pub use crate::utf16::Utf16Offsets;
+pub use musa_compiler::{ChoicePath, ChoiceStep, Decision, Realization};
 pub use musa_language::HeaderField;
 pub use musa_render::MidiMode;

@@ -363,6 +363,7 @@ pub(crate) fn elaborate_parsed(
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     };
 
+    resolver.realization = options.realization.clone();
     let mut snapshot = ScoreSnapshot::default();
     let libraries = crate::imports::load(resolver, name, &piece, &options.imports);
     elaborate_libraries(resolver, &libraries, &mut snapshot);
@@ -398,6 +399,7 @@ pub(crate) fn elaborate_parsed(
     Compilation::new(Some(snapshot), std::mem::take(&mut resolver.diagnostics))
         .with_studio(studio)
         .with_identity(identity)
+        .with_decisions(std::mem::take(&mut resolver.decisions))
 }
 
 /// What the piece timeline says about the piece as a whole, for the callers
@@ -1071,6 +1073,11 @@ fn elaborate_voice(
     part: u32,
     voice_id: u32,
 ) -> Segment {
+    // Sites written among a voice's own items are numbered from zero in every
+    // voice, so the k-th of them is the *same* site in all of them — which is
+    // what makes a repeat the page can draw take one count rather than one per
+    // voice. See [`crate::ChoicePath`].
+    resolver.sites.remove(&crate::ChoicePath::default());
     let cx = ExpandCx {
         params: indexmap::IndexMap::new(),
         intervals: Vec::new(),
@@ -1079,6 +1086,7 @@ fn elaborate_voice(
         origin_span: None,
         max_motif: usize::MAX,
         scale: Ratio::ONE,
+        choice: crate::ChoicePath::default(),
     };
     resolver.cursor = MusicalTime::ZERO;
     let segment = elaborate_place(
@@ -1500,12 +1508,43 @@ fn resolve_scaled_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &Expa
     })
 }
 
-/// `repeat n { … }`, with or without endings.
+/// The number of passes a `repeat` takes: written, or chosen.
+///
+/// `None` is a refusal, not a count of zero: a backwards range is a mistake
+/// about the music rather than an empty repeat, and compiling it as silence
+/// would hide it.
+fn ranged_count(
+    resolver: &mut Resolver,
+    repeat: &musa_language::ast::RepeatStmt,
+    cx: &ExpandCx,
+    least: u32,
+) -> Option<u32> {
+    let Some(most) = repeat.most() else {
+        return Some(least);
+    };
+    let span = resolve::trimmed_span(repeat.syntax());
+    let Some(most) = most.parse::<u32>().ok().filter(|most| *most >= least) else {
+        resolver.report(
+            Diagnostic::error(Code::NotAValue, "a repeat range counts upwards")
+                .at(span, format!("`{least} to {most}` never happens"))
+                .help("write the smaller number first"),
+        );
+        return None;
+    };
+    Some(resolver.decide_count(&cx.choice, least, most).1)
+}
+
+/// `repeat n { … }` and `repeat n to m { … }`, with or without endings.
 ///
 /// The body is stated once and referenced once per pass; the mark on each
 /// reference is what tells the passes apart (T6). That the *page* can print the
 /// body once follows from the same structure rather than adding to it — one
 /// statement, two projections, which is roadmap §2's own example.
+///
+/// The ranged form is the piece leaving the count to the performance. It is
+/// resolved *here*, before a term exists, so everything below this function is
+/// the ordinary exact repeat — which is the whole of
+/// `docs/kernel/11-realization.md`'s design in one place.
 fn elaborate_repeat(
     resolver: &mut Resolver,
     share: &mut Share,
@@ -1513,7 +1552,10 @@ fn elaborate_repeat(
     cx: &ExpandCx,
     scope: Scope,
 ) -> Segment {
-    let count: u32 = repeat.count().and_then(|text| text.parse().ok()).unwrap_or(0);
+    let least: u32 = repeat.count().and_then(|text| text.parse().ok()).unwrap_or(0);
+    let Some(count) = ranged_count(resolver, repeat, cx, least) else {
+        return Segment::empty();
+    };
     if count == 0 {
         return Segment::empty();
     }
@@ -1701,7 +1743,21 @@ fn elaborate_bar(
     // in the middle of a measure, and a measure is a `bar`. A named bar can be
     // answered from another voice, which makes it material like a motif.
     let inside = if bar.name().is_none() { place } else { Place::Material };
-    let body = elaborate_place(resolver, share, &bar.items(), cx, scope, inside);
+    // A named bar plays here *and* answers `use`, and both elaborations must
+    // reach the same decision — so its body carries the bar's own prefix, the
+    // one a `use` would build, rather than this voice's.
+    let named = bar.name().map(|name| ExpandCx {
+        choice: crate::ChoicePath::default().then(crate::ChoiceStep::Bar(name.as_str().into())),
+        ..cx.clone()
+    });
+    let body = elaborate_place(
+        resolver,
+        share,
+        &bar.items(),
+        named.as_ref().unwrap_or(cx),
+        scope,
+        inside,
+    );
     // A bar whose contents did not resolve has no length worth reporting, and
     // "this bar is 1/4 short" underneath "`sigb` is not a pitch" is the second
     // sentence of a two-sentence complaint about one mistake.
@@ -2128,6 +2184,12 @@ fn elaborate_use(
     // with placeholders where the call site and the voice would be, so that a
     // second call site can reach the same body. Everything a call contributes
     // rides on the reference's mark instead (T6).
+    // The choice prefix is reset for the same reason the path is: the body is
+    // elaborated once and shared between call sites, so a decision inside it
+    // belongs to the *material* and not to any one use of it. A ranged repeat
+    // inside a motif therefore takes one count per motif — which is the
+    // reading `docs/kernel/11-realization.md` says T2 forces once sharing is
+    // load-bearing, settled here by construction rather than by a rule.
     let inner = ExpandCx {
         params,
         intervals: cx.intervals.clone(),
@@ -2136,6 +2198,10 @@ fn elaborate_use(
         origin_span: Some(SHARED_ORIGIN),
         max_motif: index,
         scale: cx.scale,
+        choice: crate::ChoicePath::default().then(match material {
+            crate::resolve::Material::Bar => crate::ChoiceStep::Bar(name.as_str().into()),
+            crate::resolve::Material::Motif => crate::ChoiceStep::Motif(name.as_str().into()),
+        }),
     };
     let key = motif_key(&name, &inner);
     let (binding, extent) = match share.lookup(&key) {
@@ -2618,8 +2684,8 @@ fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
 /// one temporal object, and the normal form is the text of that object —
 /// key, meter, form markers and chord symbols included.
 #[doc(hidden)]
-pub fn kernel_normal_form(source: &SourceDocument) -> Option<String> {
-    let (_, term) = piece_term(source)?;
+pub fn kernel_normal_form(source: &SourceDocument, realization: &crate::Realization) -> Option<String> {
+    let (_, term, _) = piece_term(source, realization)?;
     Some(musa_kernel::evaluate_marked(term, instantiate).to_string())
 }
 
@@ -2630,13 +2696,21 @@ pub fn kernel_normal_form(source: &SourceDocument) -> Option<String> {
 /// called from two voices is one body and its binding has to dominate both.
 /// Bindings nothing references — a level that had to be evaluated spent its
 /// sharing — are dropped, so the printed term names only what it uses.
-pub(crate) fn piece_term(source: &SourceDocument) -> Option<(String, musa_kernel::Term<ScoreFact>)> {
+pub(crate) fn piece_term(
+    source: &SourceDocument,
+    realization: &crate::Realization,
+) -> Option<(
+    String,
+    musa_kernel::Term<ScoreFact>,
+    Vec<(crate::ChoicePath, crate::Decision)>,
+)> {
     let document = musa_language::parse(source.text());
     if !document.errors().is_empty() {
         return None;
     }
     let piece = PieceDecl::from_root(&document.syntax())?;
     let mut resolver = Resolver::new();
+    resolver.realization = realization.clone();
     let mut snapshot = ScoreSnapshot::default();
     resolve::lower_header(&mut resolver, &piece, &mut snapshot);
     let score = piece.score()?;
@@ -2678,5 +2752,5 @@ pub(crate) fn piece_term(source: &SourceDocument) -> Option<(String, musa_kernel
         .chain(std::iter::once(musa_kernel::Term::literal(context)))
         .collect();
     let term = share.close(musa_kernel::Term::over(parts).ok()?);
-    Some((piece.name().unwrap_or_default(), term))
+    Some((piece.name().unwrap_or_default(), term, resolver.decisions))
 }

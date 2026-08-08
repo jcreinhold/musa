@@ -22,7 +22,13 @@ fn compile_with(name: &str, source: &str, files: &[(&str, &str)]) -> Compilation
     for (path, text) in files {
         imports.insert(*path, *text);
     }
-    compile(&SourceDocument::new(source, name), &CompileOptions { imports })
+    compile(
+        &SourceDocument::new(source, name),
+        &CompileOptions {
+            imports,
+            ..CompileOptions::default()
+        },
+    )
 }
 
 /// Each error as the whole small document it is: the claim, then the rule and

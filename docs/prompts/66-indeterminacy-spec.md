@@ -81,7 +81,9 @@ bar. That needs a stable name per decision site.
 - **Not a source span.** Reformatting would re-roll the performance.
 - **Not a `DeclarationId`.** Inserting a declaration renumbers everything after it.
 - **A structural path of names**: `ChoicePath` = part, voice, motif, bar, and an ordinal within the innermost named
-  thing. Insert a bar at the top and the paths below it are unchanged, because names do not shift.
+  thing. Insert a bar at the top and the paths below it are unchanged, because names do not shift. (Prompt 67 narrowed
+  this to motif, bar and ordinal — see `docs/kernel/11-realization.md`; a site among a voice's own items belongs to the
+  piece, because a repeat barline crosses the system.)
 
 Each site's randomness is derived **per path** — `fnv1a_128(seed ‖ path)`, using the workspace's one stable digest
 (`musa-kernel/src/hash.rs`) — not drawn from a sequential stream. A stream would re-roll every later decision when a
