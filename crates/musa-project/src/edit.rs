@@ -14,7 +14,7 @@
 //! doing so changes every occurrence — and why the interface must say so
 //! before it happens, which is what [`EditImpact`] is for.
 
-use musa_language::{Anchor, EditIntent, Statement};
+use musa_language::{Anchor, EditIntent, HeaderField, Statement};
 
 use crate::error::ProjectError;
 use crate::facts::{EventFacts, ScoreFacts};
@@ -142,6 +142,19 @@ pub enum EditCommand {
         /// What to do if the event was generated.
         mode: GeneratedEditMode,
     },
+    /// Set, add, or remove one of the piece's own header statements — its
+    /// title, its front matter, its tempo, meter, or key (prompt 54).
+    ///
+    /// Unlike every other variant here this one carries no event and consults
+    /// no provenance: a piece's own facts are stated once, in one place, and
+    /// there is nothing for an expansion to have copied.
+    SetHeader {
+        /// Which statement.
+        field: HeaderField,
+        /// Its new value as the composer typed it. Empty removes the
+        /// statement; the title refuses.
+        value: String,
+    },
     /// Lift the statements behind these events into a new `motif`, leaving a
     /// `use` in their place.
     ExtractMotif {
@@ -266,6 +279,14 @@ pub(crate) fn impact_of(facts: &ScoreFacts, command: &EditCommand) -> Result<Edi
             impact(facts, event)
         }
         EditCommand::InsertNote { .. } => Ok(EditImpact {
+            generated: false,
+            motif: None,
+            occurrence: None,
+            occurrences: 0,
+            events: Vec::new(),
+            specializable: false,
+        }),
+        EditCommand::SetHeader { .. } => Ok(EditImpact {
             generated: false,
             motif: None,
             occurrence: None,
@@ -415,6 +436,10 @@ pub(crate) fn intent_of(facts: &ScoreFacts, command: &EditCommand) -> Result<Edi
                 statement: note.to_statement(),
             })
         }
+        EditCommand::SetHeader { field, ref value } => Ok(EditIntent::SetHeader {
+            field,
+            value: value.clone(),
+        }),
         EditCommand::ExtractMotif { ref events, ref name } => {
             if events.is_empty() {
                 return Err(ProjectError::Uneditable("nothing is selected to extract".to_owned()));
@@ -449,6 +474,10 @@ pub(crate) fn describe(command: &EditCommand) -> String {
         EditCommand::InsertNote { .. } => "inserting a note".to_owned(),
         EditCommand::ChangePitch { ref pitch, .. } => format!("changing the pitch to {pitch}"),
         EditCommand::ChangeDuration { ref duration, .. } => format!("changing the duration to {duration}"),
+        EditCommand::SetHeader { field, ref value } if value.is_empty() => {
+            format!("removing the piece's {}", field.word())
+        }
+        EditCommand::SetHeader { field, ref value } => format!("setting the {} to {value}", field.word()),
         EditCommand::ExtractMotif { ref name, .. } => format!("extracting the motif {name}"),
     }
 }

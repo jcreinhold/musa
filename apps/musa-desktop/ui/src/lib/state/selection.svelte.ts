@@ -72,11 +72,28 @@ export class Workspace {
     }
   }
 
-  /** The event the inspector describes: the first of the selection. */
+  /**
+   * The event the interface is working near: the first of the selection, or —
+   * when nothing is selected — the first of the score, so that entry, the
+   * active voice, and the position readout always have somewhere to start.
+   */
   get focused(): EventFacts | undefined {
     const [first] = this.selected;
     const events = this.snapshot?.score?.events ?? [];
     return first === undefined ? events[0] : events.find((event) => event.id === first);
+  }
+
+  /**
+   * The event the composer actually chose, which is a different question.
+   *
+   * [`focused`](#focused) answers "where is work happening" and always has an
+   * answer; this answers "what is selected" and is allowed not to. The
+   * inspector reads this one, because describing a note nobody picked is how
+   * an interface comes to have no empty state at all — and the empty state is
+   * where the piece's own facts live (prompt 54).
+   */
+  get chosen(): EventFacts | undefined {
+    return this.selected.length > 0 ? this.focused : undefined;
   }
 
   /** Active part and voice are part of the selection, not a separate mode. */

@@ -72,12 +72,12 @@ pub(crate) fn render_mei(plan: &NotationPlan) -> Result<String, RenderError> {
 
 /// `<meiHead>`: the front matter, as facts rather than as layout.
 ///
-/// Verovio draws a page head from this on its own — title centred, composer
-/// to the right, subtitle beneath — which is exactly the division roadmap §2
-/// asks for: musa says who wrote the piece, the engraver says where the name
-/// goes. A piece that names nothing but its title still gets a head, because
-/// a score with no `<meiHead>` is a score Verovio warns about and titles
-/// "Untitled".
+/// This is the catalogue record: what a library, an archive, or another
+/// notation program reads to learn whose piece this is. It is not what gets
+/// printed — [`write_page_head`] writes that — and the two are deliberately
+/// separate, because a fact about the piece and a line on a page are different
+/// things even when they carry the same words. A score with no `<meiHead>` is
+/// a score Verovio warns about and titles "Untitled".
 fn write_head(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<(), RenderError> {
     let front = plan.front();
     start(writer, "meiHead")?;
@@ -143,6 +143,31 @@ fn start(writer: &mut Writer<Vec<u8>>, name: &str) -> Result<(), RenderError> {
         .map_err(|error| RenderError::xml(&error))
 }
 
+/// `<name attr="…">`, for an element whose children are written by hand.
+fn start_with(writer: &mut Writer<Vec<u8>>, name: &str, attributes: &[(&str, &str)]) -> Result<(), RenderError> {
+    let mut node = element(name);
+    for (key, value) in attributes {
+        node.push_attribute((*key, *value));
+    }
+    writer
+        .write_event(Event::Start(node))
+        .map_err(|error| RenderError::xml(&error))
+}
+
+/// Bare text between elements, escaped by the writer.
+fn text(writer: &mut Writer<Vec<u8>>, text: &str) -> Result<(), RenderError> {
+    writer
+        .write_event(Event::Text(quick_xml::events::BytesText::new(text)))
+        .map_err(|error| RenderError::xml(&error))
+}
+
+/// `<name/>`.
+fn empty(writer: &mut Writer<Vec<u8>>, name: &str) -> Result<(), RenderError> {
+    writer
+        .write_event(Event::Empty(element(name)))
+        .map_err(|error| RenderError::xml(&error))
+}
+
 fn end(writer: &mut Writer<Vec<u8>>, name: &str) -> Result<(), RenderError> {
     writer
         .write_event(Event::End(BytesEnd::new(name.to_string())))
@@ -177,6 +202,7 @@ fn write_score_def(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<
         .write_event(Event::Start(score_def))
         .map_err(|error| RenderError::xml(&error))?;
 
+    write_page_head(writer, plan)?;
     write_page_foot(writer, plan)?;
 
     start(writer, "staffGrp")?;
@@ -186,6 +212,99 @@ fn write_score_def(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<
     end(writer, "staffGrp")?;
     end(writer, "scoreDef")
 }
+
+/// `<pgHead>` and `<pgHead2>`: the front matter as printed, with ids.
+///
+/// Verovio will draw a head of its own from `<meiHead>` — and did, until this
+/// prompt — but an automatic head is anonymous: every id in it is generated
+/// per-render, so nothing on the page can be traced back to the statement that
+/// put it there. Writing the head here means the title carries
+/// [`FRONT_TITLE`] the way a notehead carries `event-<hex>`, and clicking the
+/// piece's name is the same machinery as clicking one of its notes.
+///
+/// The layout vocabulary this uses — head or foot, centred or right — is
+/// MEI's own way of saying which *region* a line belongs to, and is the whole
+/// of what musa is allowed to say about place. No coordinate, no margin, no
+/// rastral size, nothing per-page: those are the engraver's, and Verovio
+/// decides every one of them from the two hints below.
+///
+/// `<pgHead2>` is the running head on every page after the first. Verovio's
+/// automatic one is a centred page number, and losing it silently was the
+/// cost of encoding the head, so it is written here too — the number itself
+/// is `<num label="page"/>`, which Verovio fills in per page.
+fn write_page_head(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<(), RenderError> {
+    let front = plan.front();
+    start(writer, "pgHead")?;
+
+    // The title block: the piece's name, and beneath it whatever it is for.
+    start_with(writer, "rend", &[("halign", "center"), ("valign", "top")])?;
+    text_element(
+        writer,
+        "rend",
+        &front.title,
+        &[("xml:id", FRONT_TITLE), ("fontsize", "x-large")],
+    )?;
+    if let Some(subtitle) = front.subtitle.as_deref() {
+        empty(writer, "lb")?;
+        text_element(
+            writer,
+            "rend",
+            subtitle,
+            &[("xml:id", FRONT_SUBTITLE), ("fontsize", "small")],
+        )?;
+    }
+    end(writer, "rend")?;
+
+    // The attribution block, right of the title block and level with its foot,
+    // which is where two centuries of engraved editions have put it.
+    if front.composer.is_some() || front.arranger.is_some() {
+        start_with(writer, "rend", &[("halign", "right"), ("valign", "bottom")])?;
+        if let Some(composer) = front.composer.as_deref() {
+            text_element(writer, "rend", composer, &[("xml:id", FRONT_COMPOSER)])?;
+        }
+        if let Some(arranger) = front.arranger.as_deref() {
+            // The two names are one right-hand column, so the break between
+            // them belongs inside it — a second block would be a second cell.
+            if front.composer.is_some() {
+                empty(writer, "lb")?;
+            }
+            text_element(
+                writer,
+                "rend",
+                arranger,
+                &[("xml:id", FRONT_ARRANGER), ("fontsize", "small")],
+            )?;
+        }
+        end(writer, "rend")?;
+    }
+    end(writer, "pgHead")?;
+
+    start(writer, "pgHead2")?;
+    start_with(
+        writer,
+        "rend",
+        &[("halign", "center"), ("valign", "top"), ("fontsize", "small")],
+    )?;
+    // `#` is the placeholder Verovio substitutes the page number for; a `<num>`
+    // with any other content, or none, is printed literally. The dashes around
+    // it are the running head Verovio drew automatically before this prompt
+    // encoded the one on page 1, and losing them would be a regression nobody
+    // asked for.
+    text(writer, "– ")?;
+    text_element(writer, "num", "#", &[("label", "page")])?;
+    text(writer, " –")?;
+    end(writer, "rend")?;
+    end(writer, "pgHead2")
+}
+
+/// The `xml:id` each printed line of front matter carries, so the interface
+/// can name what the pointer is over. Mirrored in the webview's
+/// `score/front-matter.ts`; the two lists are one contract.
+pub(crate) const FRONT_TITLE: &str = "front-title";
+pub(crate) const FRONT_SUBTITLE: &str = "front-subtitle";
+pub(crate) const FRONT_COMPOSER: &str = "front-composer";
+pub(crate) const FRONT_ARRANGER: &str = "front-arranger";
+pub(crate) const FRONT_COPYRIGHT: &str = "front-copyright";
 
 /// `<pgFoot>`: the copyright line at the foot of the first page.
 ///
@@ -211,7 +330,11 @@ fn write_page_foot(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<
         writer,
         "rend",
         copyright,
-        &[("halign", "center"), ("fontsize", "x-small")],
+        &[
+            ("xml:id", FRONT_COPYRIGHT),
+            ("halign", "center"),
+            ("fontsize", "x-small"),
+        ],
     )?;
     end(writer, "pgFoot")
 }

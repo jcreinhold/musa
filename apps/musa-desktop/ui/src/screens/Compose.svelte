@@ -22,6 +22,7 @@
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
   import type { Diagnostic, EditImpact, OutlineFacts, Span } from "../lib/state/snapshot";
+  import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";
   import type { NoteEntry } from "../lib/state/entry.svelte";
   import SourcePane from "../lib/ui/SourcePane.svelte";
   import Inspector from "./Inspector.svelte";
@@ -57,6 +58,7 @@
     oncancelname,
     onpitch,
     onduration,
+    onheader,
     onreveal,
     ondiagnostic,
     oncaret,
@@ -102,6 +104,8 @@
     oncancelname: () => void;
     onpitch: (event: string, pitch: string) => void;
     onduration: (event: string, duration: string) => void;
+    /** Rewrite one of the piece's own statements (prompt 54). */
+    onheader: (field: HeaderFieldDto, value: string) => void;
     onreveal: (span: Span) => void;
     ondiagnostic: (diagnostic: Diagnostic) => void;
     /** The source caret moved; the score follows it (roadmap §14.4). */
@@ -116,6 +120,9 @@
   const snapshot = $derived(session.snapshot);
   const score = $derived(snapshot?.score ?? null);
   const focused = $derived(workspace.focused);
+  // What the inspector describes is what the composer picked, not where work
+  // is happening: with nothing picked it shows the piece instead (prompt 54).
+  const chosen = $derived(workspace.chosen);
   const problems = $derived(snapshot?.diagnostics.filter((d) => d.severity === "error") ?? []);
 
   /**
@@ -279,6 +286,7 @@
           stale={session.stale}
           bar={focused?.bar ?? 1}
           beat={focused?.beat ?? { numerator: 1, denominator: 1 }}
+          onheader={session.live ? onheader : undefined}
         />
         <!--
           Two words, one of them current: page or continuous (§4). A toggle
@@ -354,13 +362,15 @@
             {origin}
             {flash}
             {bring}
+            header={score.header}
+            onheader={session.live ? onheader : undefined}
           />
         </Leaf>
       </main>
 
       <Margin side="right" label="Inspector">
         <Inspector
-          event={focused}
+          event={chosen}
           adrift={workspace.adrift}
           occurrence={workspace.selectedOccurrence}
           {choice}
@@ -371,11 +381,13 @@
           {oncancel}
           {onname}
           {oncancelname}
-          onpitch={session.live && focused ? (pitch) => onpitch(focused.id, pitch) : undefined}
-          onduration={session.live && focused
-            ? (duration) => onduration(focused.id, duration)
+          onpitch={session.live && chosen ? (pitch) => onpitch(chosen.id, pitch) : undefined}
+          onduration={session.live && chosen
+            ? (duration) => onduration(chosen.id, duration)
             : undefined}
           {onreveal}
+          header={score.header}
+          onheader={session.live ? onheader : undefined}
         />
       </Margin>
     </div>

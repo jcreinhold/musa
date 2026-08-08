@@ -8,7 +8,7 @@
   "recovery": null,
   "midiPort": null,
   "diagnostics": [],
-  "mei": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n  <meiHead>\n    <fileDesc>\n      <titleStmt>\n        <title>Étude en sol — 𝄞</title>\n      </titleStmt>\n      <pubStmt/>\n    </fileDesc>\n  </meiHead>\n  <music>\n    <body>\n      <mdiv>\n        <score>\n          <scoreDef meter.count=\"3\" meter.unit=\"4\" key.sig=\"1s\" key.mode=\"major\">\n            <staffGrp>\n              <staffDef n=\"1\" lines=\"5\" clef.shape=\"G\" clef.line=\"2\">\n                <label>piano</label>\n                <labelAbbr>pia.</labelAbbr>\n              </staffDef>\n            </staffGrp>\n          </scoreDef>\n          <section>\n            <measure n=\"1\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-0\" dur=\"4\" oct=\"4\" pname=\"g\"/>\n                  <note xml:id=\"event-1\" dur=\"4\" oct=\"4\" pname=\"b\"/>\n                  <note xml:id=\"event-2\" dur=\"4\" oct=\"5\" pname=\"d\"/>\n                </layer>\n              </staff>\n              <phrase staff=\"1\" startid=\"#event-0\" endid=\"#event-2\" label=\"première idée\"/>\n              <dir staff=\"1\" startid=\"#event-0\" place=\"above\" type=\"phrase\">première idée</dir>\n              <tempo staff=\"1\" tstamp=\"1\" place=\"above\" mm=\"88\" mm.unit=\"4\" midi.bpm=\"88\"/>\n              <dir staff=\"1\" tstamp=\"1\" place=\"above\" type=\"section\">Ouverture</dir>\n            </measure>\n            <measure n=\"2\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-3\" dur=\"4\" oct=\"5\" pname=\"d\"/>\n                  <note xml:id=\"event-4\" dur=\"4\" oct=\"5\" pname=\"c\"/>\n                  <note xml:id=\"event-5\" dur=\"4\" oct=\"4\" pname=\"b\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"3\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-6\" dur=\"4\" oct=\"5\" pname=\"g\"/>\n                  <note xml:id=\"event-7\" dur=\"4\" oct=\"5\" pname=\"c\"/>\n                  <note xml:id=\"event-8\" dur=\"4\" oct=\"4\" pname=\"b\"/>\n                </layer>\n              </staff>\n              <dir staff=\"1\" tstamp=\"1\" place=\"above\" type=\"section\">Réponse — variée</dir>\n            </measure>\n            <measure n=\"4\" right=\"end\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-9\" dur=\"4\" oct=\"5\" pname=\"f\"/>\n                  <note xml:id=\"event-a\" dur=\"4\" oct=\"5\" pname=\"d\"/>\n                  <note xml:id=\"event-b\" dur=\"4\" oct=\"4\" pname=\"g\"/>\n                </layer>\n              </staff>\n              <phrase staff=\"1\" startid=\"#event-9\" endid=\"#event-b\" label=\"cadence — ♭VII\"/>\n              <dir staff=\"1\" startid=\"#event-9\" place=\"above\" type=\"phrase\">cadence — ♭VII</dir>\n            </measure>\n          </section>\n        </score>\n      </mdiv>\n    </body>\n  </music>\n</mei>",
+  "mei": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n  <meiHead>\n    <fileDesc>\n      <titleStmt>\n        <title>Étude en sol — 𝄞</title>\n      </titleStmt>\n      <pubStmt/>\n    </fileDesc>\n  </meiHead>\n  <music>\n    <body>\n      <mdiv>\n        <score>\n          <scoreDef meter.count=\"3\" meter.unit=\"4\" key.sig=\"1s\" key.mode=\"major\">\n            <pgHead>\n              <rend halign=\"center\" valign=\"top\">\n                <rend xml:id=\"front-title\" fontsize=\"x-large\">Étude en sol — 𝄞</rend>\n              </rend>\n            </pgHead>\n            <pgHead2>\n              <rend halign=\"center\" valign=\"top\" fontsize=\"small\">– <num label=\"page\">#</num> –</rend>\n            </pgHead2>\n            <staffGrp>\n              <staffDef n=\"1\" lines=\"5\" clef.shape=\"G\" clef.line=\"2\">\n                <label>piano</label>\n                <labelAbbr>pia.</labelAbbr>\n              </staffDef>\n            </staffGrp>\n          </scoreDef>\n          <section>\n            <measure n=\"1\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-0\" dur=\"4\" oct=\"4\" pname=\"g\"/>\n                  <note xml:id=\"event-1\" dur=\"4\" oct=\"4\" pname=\"b\"/>\n                  <note xml:id=\"event-2\" dur=\"4\" oct=\"5\" pname=\"d\"/>\n                </layer>\n              </staff>\n              <phrase staff=\"1\" startid=\"#event-0\" endid=\"#event-2\" label=\"première idée\"/>\n              <dir staff=\"1\" startid=\"#event-0\" place=\"above\" type=\"phrase\">première idée</dir>\n              <tempo staff=\"1\" tstamp=\"1\" place=\"above\" mm=\"88\" mm.unit=\"4\" midi.bpm=\"88\"/>\n              <dir staff=\"1\" tstamp=\"1\" place=\"above\" type=\"section\">Ouverture</dir>\n            </measure>\n            <measure n=\"2\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-3\" dur=\"4\" oct=\"5\" pname=\"d\"/>\n                  <note xml:id=\"event-4\" dur=\"4\" oct=\"5\" pname=\"c\"/>\n                  <note xml:id=\"event-5\" dur=\"4\" oct=\"4\" pname=\"b\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"3\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-6\" dur=\"4\" oct=\"5\" pname=\"g\"/>\n                  <note xml:id=\"event-7\" dur=\"4\" oct=\"5\" pname=\"c\"/>\n                  <note xml:id=\"event-8\" dur=\"4\" oct=\"4\" pname=\"b\"/>\n                </layer>\n              </staff>\n              <dir staff=\"1\" tstamp=\"1\" place=\"above\" type=\"section\">Réponse — variée</dir>\n            </measure>\n            <measure n=\"4\" right=\"end\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-9\" dur=\"4\" oct=\"5\" pname=\"f\"/>\n                  <note xml:id=\"event-a\" dur=\"4\" oct=\"5\" pname=\"d\"/>\n                  <note xml:id=\"event-b\" dur=\"4\" oct=\"4\" pname=\"g\"/>\n                </layer>\n              </staff>\n              <phrase staff=\"1\" startid=\"#event-9\" endid=\"#event-b\" label=\"cadence — ♭VII\"/>\n              <dir staff=\"1\" startid=\"#event-9\" place=\"above\" type=\"phrase\">cadence — ♭VII</dir>\n            </measure>\n          </section>\n        </score>\n      </mdiv>\n    </body>\n  </music>\n</mei>",
   "score": {
     "title": "Étude en sol — 𝄞",
     "tempoBpm": 88,
@@ -638,6 +638,40 @@
           "start": 1394,
           "end": 1521
         }
+      }
+    ],
+    "header": [
+      {
+        "field": "title",
+        "value": "Étude en sol — 𝄞"
+      },
+      {
+        "field": "subtitle",
+        "value": null
+      },
+      {
+        "field": "composer",
+        "value": null
+      },
+      {
+        "field": "arranger",
+        "value": null
+      },
+      {
+        "field": "copyright",
+        "value": null
+      },
+      {
+        "field": "tempo",
+        "value": "1/4 = 88"
+      },
+      {
+        "field": "meter",
+        "value": "3/4"
+      },
+      {
+        "field": "key",
+        "value": "g major"
       }
     ]
   },

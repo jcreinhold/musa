@@ -571,6 +571,7 @@
       void issue({ kind: "changePitch", event, pitch, mode: "editDefinition" })}
     onduration={(event, duration) =>
       void issue({ kind: "changeDuration", event, duration, mode: "editDefinition" })}
+    onheader={(field, value) => void session.editScore({ kind: "setHeader", field, value })}
     onreveal={open}
     ondiagnostic={showDiagnostic}
     oncaret={followCaret}

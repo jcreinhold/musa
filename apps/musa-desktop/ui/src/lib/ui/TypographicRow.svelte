@@ -1,9 +1,16 @@
 <script lang="ts">
   /**
    * One inspector row: a `--t-micro` label over a value
-   * (docs/interface/01-visual-language.md §7). There are no field boxes at
-   * rest — an editable value shows a `--rule` underline on hover and a
-   * `--plate` underline on focus, and that is the entire affordance.
+   * (docs/interface/01-visual-language.md §7).
+   *
+   * There are no field boxes. An editable value carries a hairline underline
+   * in three weights — `--rule` at rest, `--ink-muted` under the pointer,
+   * `--plate` while it has focus — and that is the entire affordance. It is
+   * there at rest on purpose: an affordance that appears only on hover can be
+   * found only by someone who already suspected it was there, which is not
+   * discovery (prompt 54). A row that only reports a value gets no underline,
+   * and the difference between the two kinds of row is then readable without
+   * touching either.
    */
   import type { Snippet } from "svelte";
 
@@ -55,8 +62,12 @@
     border-bottom: 1px solid transparent;
   }
 
-  .editable:hover {
+  .editable {
     border-bottom-color: var(--rule);
+  }
+
+  .editable:hover {
+    border-bottom-color: var(--ink-muted);
   }
 
   .editable:focus-within {

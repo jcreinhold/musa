@@ -16,6 +16,8 @@
     value,
     label,
     onchange,
+    allowEmpty = false,
+    placeholder,
   }: {
     /** The current value, as the source spells it. */
     value: string;
@@ -23,6 +25,18 @@
     label: string;
     /** Called with the new text when the composer commits it. */
     onchange: (next: string) => void;
+    /**
+     * Whether emptying the field is a change rather than a cancellation.
+     *
+     * A note's pitch cannot be nothing, so clearing that field means "I
+     * changed my mind". One of the piece's own statements can: clearing the
+     * composer row takes the composer off the page. Adding and removing a
+     * line of front matter are then the same gesture, and neither needs a
+     * button (prompt 54).
+     */
+    allowEmpty?: boolean;
+    /** What stands in the field's place while it is empty. */
+    placeholder?: string;
   } = $props();
 
   let draft = $state("");
@@ -37,7 +51,7 @@
   function commit(): void {
     editing = false;
     const next = draft.trim();
-    if (next !== "" && next !== value) onchange(next);
+    if (next !== value && (allowEmpty || next !== "")) onchange(next);
     else draft = value;
   }
 
@@ -48,7 +62,9 @@
     if (event.key === "Enter") {
       event.preventDefault();
       event.stopPropagation();
-      commit();
+      // Blur only: blurring is already a commit, and committing here as well
+      // would send the same edit twice — two revisions, and two undos to take
+      // one change back.
       (event.currentTarget as HTMLInputElement).blur();
     }
     if (event.key === "Escape") {
@@ -65,9 +81,10 @@
   class="field"
   type="text"
   aria-label={label}
+  {placeholder}
   spellcheck="false"
   autocomplete="off"
-  size={Math.max(draft.length, 3)}
+  size={Math.max(draft.length, placeholder?.length ?? 0, 3)}
   bind:value={draft}
   onfocus={() => (editing = true)}
   onblur={commit}
@@ -80,6 +97,10 @@
     border: 0;
     padding: 0;
     font: inherit;
+    /* Stated separately: the `font` shorthand carries a line height, but the
+       UA stylesheet overrides it on inputs, and a field one pixel taller than
+       the text it replaces moves everything under it. */
+    line-height: inherit;
     color: inherit;
     min-width: 3ch;
     max-width: 100%;
@@ -87,5 +108,12 @@
 
   .field:focus {
     outline: none;
+  }
+
+  /* An unfilled role is an em dash where the value goes, not a blank: the row
+     is saying "this is a thing a piece can name", which a blank does not. */
+  .field::placeholder {
+    color: var(--ink-muted);
+    opacity: 1;
   }
 </style>

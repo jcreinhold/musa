@@ -15,7 +15,8 @@
 use std::path::PathBuf;
 
 use musa_project::{
-    EditCommand, GeneratedEditMode, InsertAt, NoteSpec, ProjectCommand, ProjectError, ProjectSession, ScoreFacts,
+    EditCommand, GeneratedEditMode, HeaderField, InsertAt, NoteSpec, ProjectCommand, ProjectError, ProjectSession,
+    ScoreFacts,
 };
 
 fn example(name: &str) -> String {
@@ -406,4 +407,165 @@ fn a_duration_change_is_the_same_transaction_as_a_pitch_change() {
         }))
         .expect("a legal renotation");
     assert!(source(&session).contains("        rest 1/8;"));
+}
+
+// --- The piece's own facts (prompt 54) -------------------------------------
+
+/// Setting a statement the piece already has rewrites its value and nothing
+/// else on the line.
+#[test]
+fn a_named_header_is_rewritten_in_place() {
+    let mut session = session("glass-mountain.musa");
+    session
+        .apply(ProjectCommand::EditScore(EditCommand::SetHeader {
+            field: HeaderField::Composer,
+            value: "Ada Lovelace".to_owned(),
+        }))
+        .expect("a composer's name compiles");
+
+    let text = source(&session);
+    assert!(text.contains("composer \"Ada Lovelace\";"), "{text}");
+    assert_eq!(text.matches("composer ").count(), 1, "no second statement: {text}");
+    // The neighbours are untouched — this rewrote a value, not a block.
+    assert!(text.contains("subtitle \"for violin and strings\";"), "{text}");
+}
+
+/// A statement the piece does not have is written where the order says it
+/// goes, not appended wherever there happened to be room.
+#[test]
+fn an_unnamed_header_is_inserted_in_order() {
+    let mut session = session("glass-mountain.musa");
+    session
+        .apply(ProjectCommand::EditScore(EditCommand::SetHeader {
+            field: HeaderField::Arranger,
+            value: "after a folk tune".to_owned(),
+        }))
+        .expect("an arranger compiles");
+
+    let text = source(&session);
+    let arranger = text.find("arranger").expect("the statement was written");
+    let composer = text.find("composer").expect("the fixture names a composer");
+    let copyright = text.find("copyright").expect("the fixture names a copyright");
+    assert!(composer < arranger && arranger < copyright, "{text}");
+}
+
+/// A piece that states nothing about itself yet gets its first statement on
+/// the line after the brace.
+#[test]
+fn the_first_header_lands_after_the_brace() {
+    let mut session = ProjectSession::from_text(
+        "piece \"Bare\" {\n    score { part p { voice v { c4 1/4; } } }\n}\n".to_owned(),
+        "bare.musa",
+    );
+    session
+        .apply(ProjectCommand::EditScore(EditCommand::SetHeader {
+            field: HeaderField::Composer,
+            value: "Ada".to_owned(),
+        }))
+        .expect("a composer compiles");
+
+    assert!(
+        source(&session).starts_with("piece \"Bare\" {\n    composer \"Ada\";\n"),
+        "{}",
+        source(&session)
+    );
+}
+
+/// An empty value removes the statement, line and all. Adding and taking back
+/// a line of front matter are the same gesture.
+#[test]
+fn an_empty_value_removes_the_statement() {
+    let mut session = session("glass-mountain.musa");
+    session
+        .apply(ProjectCommand::EditScore(EditCommand::SetHeader {
+            field: HeaderField::Subtitle,
+            value: String::new(),
+        }))
+        .expect("a piece without a subtitle compiles");
+
+    let text = source(&session);
+    assert!(!text.contains("subtitle"), "{text}");
+    assert!(!text.contains("\n\n\n"), "no blank line left behind: {text}");
+    assert!(text.contains("composer \"musa\";"), "{text}");
+}
+
+/// The title is the one field that cannot be emptied, and it says why.
+#[test]
+fn the_title_refuses_to_be_emptied() {
+    let mut session = session("glass-mountain.musa");
+    let before = source(&session);
+    let error = session
+        .apply(ProjectCommand::EditScore(EditCommand::SetHeader {
+            field: HeaderField::Title,
+            value: String::new(),
+        }))
+        .expect_err("a piece has to be called something");
+
+    assert!(error.to_string().contains("called something"), "{error}");
+    assert_eq!(source(&session), before);
+}
+
+/// A value that does not compile leaves the session exactly as it was — the
+/// same transaction rule every other edit follows. The frontend validates
+/// nothing, so this is the only thing standing between a typo and a broken
+/// document.
+#[test]
+fn a_header_that_does_not_compile_is_refused_whole() {
+    let mut session = session("glass-mountain.musa");
+    let before = source(&session);
+    let revision = session.snapshot().revision();
+
+    let result = session.apply(ProjectCommand::EditScore(EditCommand::SetHeader {
+        field: HeaderField::Meter,
+        value: "not a meter".to_owned(),
+    }));
+
+    assert!(result.is_err(), "{result:?}");
+    assert_eq!(source(&session), before);
+    assert_eq!(session.snapshot().revision(), revision);
+}
+
+/// A quote a composer types into a title survives the round trip: it is
+/// escaped on the way in and read back as itself.
+#[test]
+fn a_quotation_mark_in_a_title_round_trips() {
+    let mut session = session("glass-mountain.musa");
+    session
+        .apply(ProjectCommand::EditScore(EditCommand::SetHeader {
+            field: HeaderField::Title,
+            value: "The \"Glass\" Mountain".to_owned(),
+        }))
+        .expect("a quoted word in a title compiles");
+
+    assert!(
+        source(&session).contains(r#"piece "The \"Glass\" Mountain""#),
+        "{}",
+        source(&session)
+    );
+    let snapshot = session.snapshot();
+    let mei = snapshot.mei().unwrap_or_default();
+    // The XML writer escapes it once more on its own way out; either spelling
+    // means the quote survived the language.
+    assert!(
+        mei.contains("The &quot;Glass&quot; Mountain") || mei.contains("The \"Glass\" Mountain"),
+        "{mei}"
+    );
+}
+
+/// Every header edit is one revision and one undo — a composer who renames a
+/// piece takes it back with ⌘Z like anything else.
+#[test]
+fn a_header_edit_is_one_undo() {
+    let mut session = session("glass-mountain.musa");
+    let before = source(&session);
+    session
+        .apply(ProjectCommand::EditScore(EditCommand::SetHeader {
+            field: HeaderField::Tempo,
+            value: "quarter = 96".to_owned(),
+        }))
+        .expect("a tempo compiles");
+    assert!(source(&session).contains("tempo quarter = 96;"));
+
+    session.undo().expect("there is something to undo");
+    assert_eq!(source(&session), before);
 }

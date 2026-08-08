@@ -9,7 +9,14 @@
   import Position from "../lib/ui/Position.svelte";
   import TypographicRow from "../lib/ui/TypographicRow.svelte";
   import EditableValue from "../lib/ui/EditableValue.svelte";
-  import type { EditImpact, EventFacts, OccurrenceFacts, Span } from "../lib/state/snapshot";
+  import type {
+    EditImpact,
+    EventFacts,
+    HeaderFact,
+    OccurrenceFacts,
+    Span,
+  } from "../lib/state/snapshot";
+  import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";
 
   let {
     event,
@@ -26,6 +33,8 @@
     onpitch,
     onduration,
     onreveal,
+    header = [],
+    onheader,
   }: {
     event: EventFacts | undefined;
     /**
@@ -66,6 +75,14 @@
     onduration?: (duration: string) => void;
     /** Open the source at a span: the line number's whole job. */
     onreveal?: (span: Span) => void;
+    /**
+     * What the piece says about itself, as the source spells it — every field
+     * it can state, including the ones it has not. This is what the inspector
+     * shows when nothing is selected. Empty where there is no piece to read.
+     */
+    header?: HeaderFact[];
+    /** Rewrite one of those statements; absent while the session is not live. */
+    onheader?: (field: HeaderFieldDto, value: string) => void;
   } = $props();
 
   /** How many notes the edit would change — the honest count, not the size
@@ -263,6 +280,34 @@
         <span class="authored">authored</span>
       {/if}
     </TypographicRow>
+  </div>
+{:else if header.length > 0}
+  <!--
+    Nothing selected is not nothing. With no note in hand the inspector shows
+    the piece: every statement its header can carry, including the ones it
+    does not carry yet. One move answers what can be changed here, what this
+    piece has already said, and where to click to say something it has not —
+    which is why there is no help bar (prompt 54).
+
+    The values are the source's own spellings: `quarter = 72`, `a minor`,
+    `4/4`. The band may go on printing `♩ = 72` at rest, but what a composer
+    types is musa, because a field that accepted a second dialect would be a
+    second language to keep working.
+  -->
+  <div class="inspector piece" role="group" aria-label="This piece">
+    {#each header as fact (fact.field)}
+      <TypographicRow label={fact.field} editable={onheader !== undefined}>
+        {#if onheader}
+          <EditableValue
+            value={fact.value ?? ""}
+            label={fact.field}
+            placeholder={fact.field === "title" ? undefined : "—"}
+            allowEmpty={fact.field !== "title"}
+            onchange={(next) => onheader(fact.field, next)}
+          />
+        {:else}{fact.value ?? "—"}{/if}
+      </TypographicRow>
+    {/each}
   </div>
 {:else}
   <p class="empty">Nothing selected.</p>

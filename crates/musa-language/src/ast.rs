@@ -35,6 +35,51 @@ fn token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
     find_token(node, kind).map(|token| token.text().to_string())
 }
 
+/// The text a string literal stands for: one pair of quotes off, escapes
+/// resolved.
+///
+/// The lexer's string pattern admits `\\` escapes, so a title that contains a
+/// quotation mark reaches the CST as `\"` and has to come back out as `"` —
+/// otherwise reading a piece's own name and writing it back is not the
+/// identity, which is exactly what an editable title field does on every
+/// keystroke. An unknown escape keeps its character rather than its
+/// backslash: this resolves what the lexer accepts and invents nothing.
+pub(crate) fn unquote(literal: &str) -> String {
+    let body = literal
+        .strip_prefix('"')
+        .map_or(literal, |rest| rest.strip_suffix('"').unwrap_or(rest));
+    let mut out = String::with_capacity(body.len());
+    let mut characters = body.chars();
+    while let Some(character) = characters.next() {
+        if character == '\\' {
+            if let Some(escaped) = characters.next() {
+                out.push(escaped);
+            }
+        } else {
+            out.push(character);
+        }
+    }
+    out
+}
+
+/// `text` as a string literal the lexer will read back as `text`.
+///
+/// The inverse of [`unquote`], and the only correct way to write a value a
+/// composer typed into the source (prompt 54).
+#[must_use]
+pub fn quote(text: &str) -> String {
+    let mut out = String::with_capacity(text.len().saturating_add(2));
+    out.push('"');
+    for character in text.chars() {
+        if character == '"' || character == '\\' {
+            out.push('\\');
+        }
+        out.push(character);
+    }
+    out.push('"');
+    out
+}
+
 macro_rules! wrapper {
     ($name:ident, $kind:expr) => {
         impl AstNode for $name {
@@ -67,7 +112,7 @@ impl PieceDecl {
 
     /// The piece title from its string literal (without quotes).
     pub fn name(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::String).map(|text| text.trim_matches('"').to_string())
+        token_text(&self.0, SyntaxKind::String).map(|text| unquote(&text))
     }
 
     /// The `tempo` statement the piece starts in: the first one written
@@ -257,7 +302,7 @@ wrapper!(ImportStmt, SyntaxKind::ImportStmt);
 impl ImportStmt {
     /// The path as written, without its quotes.
     pub fn path(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::String).map(|text| text.trim_matches('"').to_string())
+        token_text(&self.0, SyntaxKind::String).map(|text| unquote(&text))
     }
 }
 
@@ -342,7 +387,7 @@ impl FrontMatterStmt {
 
     /// The line as written, without its quotes.
     pub fn text(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::String).map(|text| text.trim_matches('"').to_string())
+        token_text(&self.0, SyntaxKind::String).map(|text| unquote(&text))
     }
 }
 
@@ -780,7 +825,7 @@ wrapper!(PhraseStmt, SyntaxKind::PhraseStmt);
 impl PhraseStmt {
     /// The phrase's name, without its quotes.
     pub fn name(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::String).map(|text| text.trim_matches('"').to_string())
+        token_text(&self.0, SyntaxKind::String).map(|text| unquote(&text))
     }
 
     /// The music the phrase covers, in source order.
@@ -796,7 +841,7 @@ wrapper!(SectionStmt, SyntaxKind::SectionStmt);
 impl SectionStmt {
     /// The section's name, without its quotes.
     pub fn name(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::String).map(|text| text.trim_matches('"').to_string())
+        token_text(&self.0, SyntaxKind::String).map(|text| unquote(&text))
     }
 
     /// Where it is marked.

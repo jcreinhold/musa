@@ -8,8 +8,21 @@
    * at `1:1` for the whole session would be furniture. Elapsed time is the
    * only value here the frontend derives, and it derives it from frames the
    * engine reported (`03-interaction.md` §7).
+   *
+   * Tempo, key, and meter are the piece's own statements, and here they are
+   * fields (prompt 54). A composer looking at the band is looking at the
+   * piece's tempo; making them find the inspector to change it is the app
+   * knowing something it will not act on. They are the same three fields the
+   * inspector shows, in a second place, with the same commit rule.
    */
-  import type { Fraction as Rational, PlaybackState, ScoreFacts } from "../state/snapshot";
+  import type {
+    Fraction as Rational,
+    HeaderFact,
+    PlaybackState,
+    ScoreFacts,
+  } from "../state/snapshot";
+  import type { HeaderFieldDto } from "../session/generated/HeaderFieldDto";
+  import EditableValue from "./EditableValue.svelte";
   import Position from "./Position.svelte";
   import { elapsed, tempoNote } from "./glyphs";
 
@@ -19,6 +32,7 @@
     bar,
     beat,
     stale = false,
+    onheader,
   }: {
     score: ScoreFacts;
     playback: PlaybackState;
@@ -26,9 +40,17 @@
     beat: Rational;
     /** What you hear is the last valid plan, not the text (`05-states.md` §4). */
     stale?: boolean;
+    /** Rewrite one of the piece's own statements; absent when not live. */
+    onheader?: (field: HeaderFieldDto, value: string) => void;
   } = $props();
 
   const note = $derived(tempoNote(score.tempoBeat.numerator, score.tempoBeat.denominator));
+
+  /** What the source says for one of the three, for the field to start from. */
+  const said = $derived(
+    (field: HeaderFieldDto) =>
+      score.header.find((fact: HeaderFact) => fact.field === field)?.value ?? "",
+  );
 </script>
 
 <div class="readout" class:stale>
@@ -37,20 +59,51 @@
     <span class="time">{elapsed(playback.positionFrames, playback.sampleRate)}</span>
   </div>
   <dl class="facts">
+    <!--
+      At rest each of these reads the way an engraver would set it — `♩ = 72`,
+      `A minor`. Under focus it is the source's own spelling, because that is
+      what the composer types and there is no second notation to learn.
+    -->
     <div class="fact">
       <dt>Tempo</dt>
-      <dd>
-        {#if note}<span class="note" aria-hidden="true">{note}</span>{/if}
-        <span class="bpm">= {score.tempoBpm}</span>
+      <dd class:editable={onheader}>
+        {#if onheader}
+          <EditableValue
+            value={said("tempo")}
+            label="Tempo"
+            onchange={(next) => onheader("tempo", next)}
+          />
+        {:else}
+          {#if note}<span class="note" aria-hidden="true">{note}</span>{/if}
+          <span class="bpm">= {score.tempoBpm}</span>
+        {/if}
       </dd>
     </div>
     <div class="fact">
       <dt>Key</dt>
-      <dd class="key">{score.key ?? "—"}</dd>
+      <dd class="key" class:editable={onheader}>
+        {#if onheader}
+          <EditableValue
+            value={said("key")}
+            label="Key"
+            placeholder="—"
+            allowEmpty
+            onchange={(next) => onheader("key", next)}
+          />
+        {:else}{score.key ?? "—"}{/if}
+      </dd>
     </div>
     <div class="fact">
       <dt>Meter</dt>
-      <dd>{score.meterCount}/{score.meterUnit}</dd>
+      <dd class:editable={onheader}>
+        {#if onheader}
+          <EditableValue
+            value={said("meter")}
+            label="Meter"
+            onchange={(next) => onheader("meter", next)}
+          />
+        {:else}{score.meterCount}/{score.meterUnit}{/if}
+      </dd>
     </div>
   </dl>
 </div>
@@ -143,6 +196,40 @@
     font-family: var(--f-score-text);
     font-size: var(--t-name-size);
     line-height: var(--t-value-line);
+  }
+
+  /*
+   * The same three-weight hairline the inspector's rows carry, so a field
+   * reads as a field in whichever margin it is printed.
+   *
+   * The pixel it costs is reserved on every row, editable or not: a band that
+   * grew by a pixel the moment the session went live would shift every page
+   * under it, and a readout and a field should occupy the same space anyway.
+   */
+  dd {
+    border-bottom: 1px solid transparent;
+  }
+
+  .editable {
+    border-bottom-color: var(--rule);
+    color: var(--ink);
+  }
+
+  /*
+   * Block, not inline: an inline-block input aligns on its baseline and adds
+   * a pixel of descender to the line box, which is the same shift by another
+   * route.
+   */
+  .editable :global(.field) {
+    display: block;
+  }
+
+  .editable:hover {
+    border-bottom-color: var(--ink-muted);
+  }
+
+  .editable:focus-within {
+    border-bottom-color: var(--plate);
   }
 
   /* The tempo's note is the score's own glyph, set on the text baseline. */

@@ -13,8 +13,8 @@
 use std::path::PathBuf;
 
 use musa_project::{
-    ContainerKind, EditCommand, ExportRequest, GeneratedEditMode, InsertAt, NoteSpec, ProjectCommand, ProjectError,
-    Span, StudioEdit, Template, TextEdit, TransportRequest,
+    ContainerKind, EditCommand, ExportRequest, GeneratedEditMode, HeaderField, InsertAt, NoteSpec, ProjectCommand,
+    ProjectError, Span, StudioEdit, Template, TextEdit, TransportRequest,
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -181,6 +181,8 @@ pub enum EditDto {
     },
     #[serde(rename_all = "camelCase")]
     ExtractMotif { events: Vec<String>, name: String },
+    #[serde(rename_all = "camelCase")]
+    SetHeader { field: HeaderFieldDto, value: String },
 }
 
 impl From<EditDto> for EditCommand {
@@ -201,6 +203,40 @@ impl From<EditDto> for EditCommand {
                 mode: mode.into(),
             },
             EditDto::ExtractMotif { events, name } => Self::ExtractMotif { events, name },
+            EditDto::SetHeader { field, value } => Self::SetHeader {
+                field: field.into(),
+                value,
+            },
+        }
+    }
+}
+
+/// Which of the piece's own header statements a `SetHeader` edit is for.
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../ui/src/lib/session/generated/")]
+pub enum HeaderFieldDto {
+    Title,
+    Subtitle,
+    Composer,
+    Arranger,
+    Copyright,
+    Tempo,
+    Meter,
+    Key,
+}
+
+impl From<HeaderFieldDto> for HeaderField {
+    fn from(field: HeaderFieldDto) -> Self {
+        match field {
+            HeaderFieldDto::Title => Self::Title,
+            HeaderFieldDto::Subtitle => Self::Subtitle,
+            HeaderFieldDto::Composer => Self::Composer,
+            HeaderFieldDto::Arranger => Self::Arranger,
+            HeaderFieldDto::Copyright => Self::Copyright,
+            HeaderFieldDto::Tempo => Self::Tempo,
+            HeaderFieldDto::Meter => Self::Meter,
+            HeaderFieldDto::Key => Self::Key,
         }
     }
 }

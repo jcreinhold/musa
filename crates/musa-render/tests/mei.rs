@@ -152,3 +152,66 @@ fn tie_pieces_share_the_event_id() {
         "second piece terminates:\n{mei}"
     );
 }
+
+// --- The printed front matter (prompt 54) ---
+
+/// The five printed lines carry the ids the interface hit-tests, and each one
+/// wraps the words the piece actually said. This is the same contract
+/// `event-<hex>` has on a notehead: it is what lets a composer click the
+/// title on the page instead of hunting for it in the source.
+#[test]
+fn every_printed_line_of_front_matter_is_named() {
+    let mei = mei_of(
+        r#"piece "Glass Mountain" {
+             subtitle "for violin and strings";
+             composer "traditional";
+             arranger "musa";
+             copyright "© 2026.";
+             meter 4/4;
+             score { part p { voice v { c4 1/4; } } }
+           }"#,
+    );
+    for (id, words) in [
+        ("front-title", "Glass Mountain"),
+        ("front-subtitle", "for violin and strings"),
+        ("front-composer", "traditional"),
+        ("front-arranger", "musa"),
+        ("front-copyright", "© 2026."),
+    ] {
+        // The words between that element's own tags, which is what a reader
+        // sees and what the interface will put an input over.
+        let printed = mei
+            .split_once(&format!("xml:id=\"{id}\""))
+            .and_then(|(_, rest)| rest.split_once('>'))
+            .and_then(|(_, rest)| rest.split_once('<'))
+            .map(|(printed, _)| printed);
+        assert_eq!(printed, Some(words), "{id} on the page:\n{mei}");
+    }
+}
+
+/// A role the piece never named prints nothing — an empty line of front
+/// matter is a blank in the middle of an edition, and the place to say a piece
+/// has no arranger is the inspector, not the page.
+#[test]
+fn a_role_the_piece_did_not_name_is_not_printed() {
+    let mei = mei_of(r#"piece "x" { meter 4/4; score { part p { voice v { c4 1/4; } } } }"#);
+    for absent in ["front-subtitle", "front-composer", "front-arranger", "front-copyright"] {
+        assert!(!mei.contains(absent), "{absent} printed anyway:\n{mei}");
+    }
+    assert!(mei.contains("front-title"), "the title is always printed:\n{mei}");
+    // …and with nothing to attribute, the block that would have held it is
+    // gone too, rather than an empty right-hand column.
+    assert!(!mei.contains(r#"halign="right""#), "an empty attribution block:\n{mei}");
+}
+
+/// Pages after the first get the running head. `#` is the placeholder Verovio
+/// substitutes the page number for — measured, and the reason `<num>` is not
+/// written empty.
+#[test]
+fn later_pages_keep_a_running_head() {
+    let mei = mei_of(r#"piece "x" { meter 4/4; score { part p { voice v { c4 1/4; } } } }"#);
+    assert!(
+        mei.contains("<pgHead2>") && mei.contains(r#"<num label="page">#</num>"#),
+        "no running head:\n{mei}"
+    );
+}

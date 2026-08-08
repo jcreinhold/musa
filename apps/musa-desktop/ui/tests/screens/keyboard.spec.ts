@@ -40,6 +40,9 @@ test.beforeEach(async ({ page }) => {
 
 test("arrows walk the voice and the inspector follows", async ({ page }) => {
   await inScore(page);
+  // A freshly opened piece has nothing selected — the inspector is the piece
+  // itself (prompt 54) — so the first key is what puts the caret in the music.
+  await page.keyboard.press("Home");
   const first = await where(page);
 
   await page.keyboard.press("ArrowRight");

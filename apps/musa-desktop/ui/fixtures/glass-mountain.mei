@@ -19,8 +19,21 @@
       <mdiv>
         <score>
           <scoreDef meter.count="4" meter.unit="4" key.sig="0" key.mode="minor">
+            <pgHead>
+              <rend halign="center" valign="top">
+                <rend xml:id="front-title" fontsize="x-large">Glass Mountain</rend>
+                <lb/>
+                <rend xml:id="front-subtitle" fontsize="small">for violin and strings</rend>
+              </rend>
+              <rend halign="right" valign="bottom">
+                <rend xml:id="front-composer">musa</rend>
+              </rend>
+            </pgHead>
+            <pgHead2>
+              <rend halign="center" valign="top" fontsize="small">– <num label="page">#</num> –</rend>
+            </pgHead2>
             <pgFoot>
-              <rend halign="center" fontsize="x-small">© 2026. Licensed CC BY-SA 4.0.</rend>
+              <rend xml:id="front-copyright" halign="center" fontsize="x-small">© 2026. Licensed CC BY-SA 4.0.</rend>
             </pgFoot>
             <staffGrp>
               <staffDef n="1" lines="5" clef.shape="G" clef.line="2">

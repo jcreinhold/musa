@@ -150,6 +150,8 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 51 | engraved-edition | 2 | Front matter, instrument labels, measure numbers: the page as a real edition |
 | 52 | linked-reading | 2 | One shared focus: which note is which, in both directions |
 | 53 | pointer-editing | 2 | The score writes the source: token-scoped pointer edits |
+| 54 | editable-facts | 2 | The piece's own facts, editable where they are printed |
+| 55 | reading-preferences | 2 | Text size and vim mode: how the composer reads and types |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
@@ -175,6 +177,14 @@ the plural answer musa actually has (one statement is several notes; one generat
 makes the page a way to *write*, under a rule narrow enough to survive roadmap §14.5's objection — a pointer gesture
 replaces one token with one value, and nothing else. They run in that order: being able to read the correspondence is
 what stops dragging it from being a guess.
+
+**54–55 finish the same complaint from the other end.** 51–53 are about the notes; 54 is about everything else the
+screen prints — a title, a composer, a tempo, a key — none of which could be changed anywhere but in the text, and none
+of which said so. Its answer is one sentence: nothing selected is not nothing, and the list of what a piece can say is
+the list of fields, with the empty ones on it. **55** is the pair of decisions the app was making on the composer's
+behalf rather than badly: how large its text is, and whether its editor is modal. Neither touches the score — the
+score's size is zoom, which is a re-layout and already has its own control, and keeping those two apart is the whole
+reason 55 is a prompt and not a slider.
 
 Prompts 37–50 are the kernel consolidation block. Prompt 12 made the kernel canonical but deliberately kept what the
 migration needed: the direct lowerer as a regression oracle, and a `ScoreSnapshot` shaped exactly as the pre-kernel

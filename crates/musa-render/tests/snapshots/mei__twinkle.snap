@@ -19,6 +19,19 @@ expression: mei_of(source)
       <mdiv>
         <score>
           <scoreDef meter.count="4" meter.unit="4" key.sig="0" key.mode="major">
+            <pgHead>
+              <rend halign="center" valign="top">
+                <rend xml:id="front-title" fontsize="x-large">twinkle</rend>
+              </rend>
+              <rend halign="right" valign="bottom">
+                <rend xml:id="front-composer">traditional</rend>
+                <lb/>
+                <rend xml:id="front-arranger" fontsize="small">musa</rend>
+              </rend>
+            </pgHead>
+            <pgHead2>
+              <rend halign="center" valign="top" fontsize="small">– <num label="page">#</num> –</rend>
+            </pgHead2>
             <staffGrp>
               <staffDef n="1" lines="5">
                 <label>piano</label>

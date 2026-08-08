@@ -34,6 +34,7 @@ type Selection =
 | Click a part or voice in the left margin | Set active part/voice; caret to that voice's start |
 | Click empty leaf | Clear to `none` |
 | Double-click a note | Focus the inspector's first editable field |
+| Click a line of front matter on the page | Edit it in place — an input over the text, in the page's own face (prompt 54) |
 | Drag on the leaf | Range selection **only**. Dragging never moves a note. |
 
 Pointer feedback is immediate and local: selection is applied by the frontend from the clicked element's `xml:id` in the
@@ -159,7 +160,11 @@ toast that confirms them.
 
 Exhaustive list. Anything not here must come from `ProjectSnapshot`.
 
-- Which element the pointer is over, and the resulting `EventId`.
+- Which element the pointer is over, and the resulting `EventId` — or, for the five lines of printed front matter, the
+  `HeaderField` their engraved `xml:id` names (prompt 54). Both are the same act: reading identity off the page. What
+  the field *says* still comes from the snapshot, and what a new value *means* is still the core's answer.
+- Where an engraved element is drawn, in the score pane's own pixels: a halo's rectangle, a hairline under a line of
+  front matter, the box an in-place field is laid over. Only the browser knows what the page was scaled to.
 - Scroll, zoom, page window, focus, hover, whether the source column is showing.
 - Interpolated playhead position between engine events.
 - Selection membership within a range whose endpoints came from the core.

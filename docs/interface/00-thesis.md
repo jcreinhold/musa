@@ -59,7 +59,9 @@ Concretely:
 3. **Nothing ever covers the leaf.** Drawers, inspectors, and dialogs push the leaf or sit beside it; they never overlay
    it. The score never disappears behind a modal.
 4. Chrome is **typographic, not boxed**. A transport is a row of set text and notation glyphs, not a strip of beveled
-   buttons. A field is a value with a hairline underline that appears on focus, not a bordered input.
+   buttons. A field is a value with a hairline underline, not a bordered input — the underline is there at rest and
+   darkens through hover to focus, because an affordance that appears only on hover can be found only by someone who
+   already suspected it.
 
 This is a restraint contract. It is easy to keep and easy to check: if a new UI element needs a box, a border, or a
 second shadow to be legible, it is being placed wrong.

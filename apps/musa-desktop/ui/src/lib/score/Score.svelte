@@ -38,6 +38,8 @@
     type Rect,
   } from "./geometry";
   import { eventIdOf } from "./ids";
+  import { frontFieldOf, measureFront, type FrontMatterAt } from "./front-matter";
+  import type { HeaderFieldDto } from "../session/generated/HeaderFieldDto";
 
   let {
     mei,
@@ -52,6 +54,8 @@
     origin = false,
     flash = [],
     bring = null,
+    header = [],
+    onheader,
   }: {
     mei: string;
     revision: number;
@@ -78,6 +82,15 @@
      * already on screen but off to one side.
      */
     bring?: { id: string } | null;
+    /**
+     * What the piece says about itself, as the source spells it — the value a
+     * front-matter field starts from when it is opened (prompt 54). Empty for
+     * a fixture shown purely as engraving, which is also what makes the page
+     * read-only there.
+     */
+    header?: { field: HeaderFieldDto; value: string | null }[];
+    /** Rewrite one of the piece's own statements. */
+    onheader?: (field: HeaderFieldDto, value: string) => void;
   } = $props();
 
   /** Selection halo padding, in staff spaces (§8). */
@@ -436,7 +449,117 @@
     return { destroy: () => observer?.unobserve(element) };
   }
 
+  /**
+   * The line of front matter being typed over, if one is (prompt 54).
+   *
+   * It is a real input laid over the printed text, in the page's own face and
+   * at its own size, rather than a field in a panel somewhere else — the whole
+   * point is that a composer changes the title where they read it. It commits
+   * the way every other value in the interface commits: `Return` sends it,
+   * `Esc` puts it back, and blurring sends it, because a value someone typed
+   * and clicked away from was meant.
+   */
+  let renaming = $state<FrontMatterAt | null>(null);
+  let draft = $state("");
+  let field = $state<HTMLInputElement | undefined>();
+
+  $effect(() => {
+    if (renaming) field?.focus();
+  });
+
+  /** The page's front matter is only editable where there is a core to tell. */
+  const editable = $derived(onheader !== undefined && header.length > 0);
+
+  /** Where a printed line is, given anything drawn inside it. */
+  function lineAt(target: Element): FrontMatterAt | null {
+    const which = frontFieldOf(target);
+    const line = which && target.closest(`[id="front-${which}"]`);
+    if (!which || !line || !host || !editable) return null;
+    return measureFront(host, line, which);
+  }
+
+  function openFront(target: Element): boolean {
+    const at = lineAt(target);
+    if (!at) return false;
+    renaming = at;
+    draft = header.find((fact) => fact.field === at.field)?.value ?? "";
+    return true;
+  }
+
+  function commitFront(): void {
+    const open = renaming;
+    renaming = null;
+    if (!open) return;
+    const next = draft.trim();
+    const before = header.find((fact) => fact.field === open.field)?.value ?? "";
+    if (next !== before) onheader?.(open.field, next);
+  }
+
+  /**
+   * The field is at least wide enough to type into, which for a role the piece
+   * has not filled in yet is wider than the nothing it is printing. Growing it
+   * has to keep the edge the line was set against, or a centred title would
+   * drift left the moment it was clicked.
+   */
+  const frontBox = $derived.by(() => {
+    if (!renaming) return null;
+    // A little wider than the line it covers, always: the field is set in the
+    // interface's text face and the page in the engraver's, so the same words
+    // do not measure the same, and a title clipped at its first letter the
+    // moment it is clicked reads as damage.
+    const width = Math.max(renaming.width * 1.15, renaming.fontSize * 6);
+    const grew = width - renaming.width;
+    const left =
+      renaming.align === "center"
+        ? renaming.left - grew / 2
+        : renaming.align === "right"
+          ? renaming.left - grew
+          : renaming.left;
+    return { left, width };
+  });
+
+  /**
+   * The line under the pointer, if it is one of the five (prompt 54).
+   *
+   * Drawn rather than declared: `text-decoration` on SVG text is painted with
+   * the glyph's own fill in Blink, so a transparent rest state is not
+   * available and the whole page would read as underlined. A hairline of the
+   * interface's own is both the honest way to say it and the exact one the
+   * inspector's rows draw.
+   */
+  let hovered = $state<FrontMatterAt | null>(null);
+
+  function hoverFront(target: Element): void {
+    const which = frontFieldOf(target);
+    if (!which) hovered = null;
+    else if (which !== hovered?.field) hovered = lineAt(target);
+  }
+
+  function onfrontkeydown(pressed: KeyboardEvent): void {
+    pressed.stopPropagation();
+    if (pressed.key === "Enter") {
+      pressed.preventDefault();
+      (pressed.currentTarget as HTMLInputElement).blur();
+    }
+    if (pressed.key === "Escape") {
+      pressed.preventDefault();
+      renaming = null;
+    }
+  }
+
   function onpointerdown(event: PointerEvent): void {
+    // The page's own front matter first: it is the one thing on the page that
+    // is not music, and clicking it is a different question from clicking a
+    // note (`03-interaction.md` §2).
+    if (openFront(event.target as Element)) {
+      // The pane is a tab stop, so the press that opened the field would
+      // otherwise hand focus straight back to it and the blur would close the
+      // field before a key reached it. Refusing the default keeps the caret
+      // where the composer just pointed.
+      event.preventDefault();
+      return;
+    }
+    renaming = null;
     if (!workspace) return;
     mark("select");
     const id = eventIdOf(event.target as Element);
@@ -461,11 +584,13 @@
   }
 
   function onpointermove(event: PointerEvent): void {
+    hoverFront(event.target as Element);
     if (!workspace) return;
     workspace.hovered = eventIdOf(event.target as Element);
   }
 
   function onpointerleave(): void {
+    hovered = null;
     if (workspace) workspace.hovered = null;
   }
 
@@ -500,6 +625,7 @@
   class="engraving"
   class:continuous={mode === "continuous"}
   class:origin
+  class:editable
   bind:this={host}
   bind:clientWidth={width}
   bind:clientHeight={height}
@@ -527,12 +653,47 @@
       </div>
     {/each}
   </div>
+  <!--
+    Over the page, not beside it: the composer is looking at the title, so the
+    title is where they type. It sits outside `.pages` so a pinch cannot carry
+    it, and its box was measured against this scroll container.
+  -->
+  {#if hovered && !renaming}
+    <div
+      class="hairline"
+      style:left="{hovered.left}px"
+      style:top="{hovered.top + hovered.height}px"
+      style:width="{hovered.width}px"
+    ></div>
+  {/if}
+  {#if renaming && frontBox}
+    <input
+      class="front"
+      type="text"
+      aria-label={renaming.field}
+      spellcheck="false"
+      autocomplete="off"
+      bind:this={field}
+      bind:value={draft}
+      style:left="{frontBox.left}px"
+      style:top="{renaming.top}px"
+      style:width="{frontBox.width}px"
+      style:height="{renaming.height}px"
+      style:font-size="{renaming.fontSize}px"
+      style:text-align={renaming.align}
+      onpointerdown={(pressed) => pressed.stopPropagation()}
+      onkeydown={onfrontkeydown}
+      onblur={commitFront}
+    />
+  {/if}
 </div>
 
 <style>
   .engraving {
     height: 100%;
     overflow: auto;
+    /* The front-matter field is placed against this box. */
+    position: relative;
     /*
      * Reserved, always. Without it the first page makes the scrollbar appear,
      * which narrows the leaf, which changes the page size, which re-lays the
@@ -559,6 +720,55 @@
     min-width: 0;
   }
 
+
+  /*
+   * The five printed lines of front matter are controls, and on hover they
+   * say so with the same hairline the inspector's rows use.
+   *
+   * Only on hover, and this is the one place the rest-state underline of
+   * prompt 54 §1 does not apply. The chrome is an interface and can afford to
+   * advertise; the page is the artifact, and a title permanently underlined
+   * is a page that looks like a web form rather than like an edition — which
+   * is the opposite of what the page apparatus was added for. Discovery does
+   * not depend on it: the inspector prints the same five fields, and prints
+   * them whether or not the piece has filled them in.
+   */
+  .engraving.editable :global([id^="front-"]) {
+    /* The whole line, not only the strokes of its letters: the gaps inside an
+       `a` are part of the word as far as a composer aiming at it is concerned,
+       and this is the same reason a hollow notehead is hit by its box. */
+    pointer-events: bounding-box;
+    cursor: text;
+  }
+
+  .hairline {
+    position: absolute;
+    z-index: 1;
+    height: 0;
+    border-bottom: 1px solid var(--ink-muted);
+    pointer-events: none;
+  }
+
+  /*
+   * The field is the printed line, typed into: the page's own face, the page's
+   * own size, no box. The only mark it adds is the focus underline every other
+   * editable value in the interface draws.
+   */
+  .front {
+    position: absolute;
+    z-index: 1;
+    background: var(--leaf);
+    border: 0;
+    border-bottom: 1px solid var(--plate);
+    padding: 0;
+    font-family: var(--f-score-text);
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  .front:focus {
+    outline: none;
+  }
 
   /*
    * A hollow notehead's centre is not on any path, so a click there would

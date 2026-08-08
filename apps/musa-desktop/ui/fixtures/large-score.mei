@@ -13,6 +13,14 @@
       <mdiv>
         <score>
           <scoreDef meter.count="4" meter.unit="4" key.sig="1f" key.mode="minor">
+            <pgHead>
+              <rend halign="center" valign="top">
+                <rend xml:id="front-title" fontsize="x-large">Large Score</rend>
+              </rend>
+            </pgHead>
+            <pgHead2>
+              <rend halign="center" valign="top" fontsize="small">– <num label="page">#</num> –</rend>
+            </pgHead2>
             <staffGrp>
               <staffDef n="1" lines="5" clef.shape="G" clef.line="2">
                 <label>flute</label>

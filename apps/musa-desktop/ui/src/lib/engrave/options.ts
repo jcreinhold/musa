@@ -121,13 +121,19 @@ export function verovioOptions(options: LayoutOptions): Record<string, unknown> 
     spacingSystem: 10,
     spacingNonLinear: 0.55,
     spacingLinear: 0.25,
-    // The page's own front matter, drawn by Verovio from the `<meiHead>` the
-    // MEI backend now writes (prompt 51): title and subtitle centred, composer
-    // and arranger to the right, and a running head after page 1. Turning this
-    // off is what made the page read as a run of staves rather than as an
-    // edition. Nothing here says *where* any of it sits — that is the
-    // engraver's, and the moment musa answers it musa owns page layout.
-    header: "auto",
+    // The page's own front matter: title and subtitle centred, composer and
+    // arranger to the right, a running head after page 1. Turning this off is
+    // what made the page read as a run of staves rather than as an edition.
+    //
+    // Encoded rather than automatic, because Verovio's automatic head is
+    // anonymous — every id in it is generated per render, so nothing on it
+    // can be traced back to the statement that put it there. The `<pgHead>`
+    // the MEI backend writes carries `front-title`, `front-subtitle`,
+    // `front-composer`, and `front-arranger`, which is what makes clicking the
+    // piece's name the same machinery as clicking one of its notes (prompt
+    // 54). Measured against the automatic head: same words, same positions,
+    // running page number intact.
+    header: "encoded",
     // The foot is the piece's copyright and nothing else. Verovio's automatic
     // footer is its own credit line, which is not a fact about this piece; the
     // encoded footer is the `<pgFoot>` the MEI backend writes, and a piece

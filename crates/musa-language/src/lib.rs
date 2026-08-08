@@ -35,7 +35,9 @@ mod lexer;
 mod parser;
 mod syntax_kind;
 
-pub use crate::edits::{Anchor, EditError, EditIntent, Statement, TextEdit, apply_edits, compute_edits};
+pub use crate::edits::{
+    Anchor, EditError, EditIntent, HeaderField, Statement, TextEdit, apply_edits, compute_edits, read_header,
+};
 pub use crate::error::SyntaxError;
 pub use crate::formatter::{FormattedSource, format};
 pub use crate::highlight::{SPELLINGS, TokenClass};

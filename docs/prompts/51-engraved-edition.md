@@ -98,9 +98,11 @@ None of this is new language; it is the backends emitting what the plan already 
 
 ### What this is not
 
-- Not a page-layout model. Nothing here is positioned by musa; every one of these is a fact handed to an engraver that
-  already knows where such facts go. The moment musa says *where* the composer's name sits, it owns page layout
-  forever.
+- Not a page-layout model. The boundary, in the words `02-engraving.md` §4 now uses: **musa may use MEI's own
+  vocabulary for which region of the page a line of front matter belongs to — head or foot, centred or right. It may
+  not state a coordinate, a margin, a rastral size, a system or page break, or anything at all that is per-page.** This
+  prompt already spends the first half of that on `<pgFoot>`, for the reason given there; prompt 54 spends the rest on
+  `<pgHead>`, and there is nothing further to spend.
 - Not a template or style system. One edition style, the one in `02-engraving.md`.
 
 ## Target

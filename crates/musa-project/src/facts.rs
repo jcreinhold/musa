@@ -14,7 +14,9 @@ use musa_compiler::{
     ExpansionStep, IntegratedTempoMap, Interval, Mode, Origin, PerformanceOptions, PitchClass, ScoreEventKind,
     ScoreSnapshot, WrittenPitch,
 };
+use musa_language::HeaderField;
 use serde::Serialize;
+use serde::ser::SerializeStruct;
 
 /// An exact rational, as a fraction rather than a decimal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -192,6 +194,43 @@ pub struct ScoreFacts {
     /// The piece's structure, in the order it is played: what the outline
     /// pane navigates by.
     pub outline: Vec<OutlineFacts>,
+    /// Every statement the piece can make about itself, whether or not it
+    /// makes it (prompt 54).
+    pub header: Vec<HeaderFact>,
+}
+
+/// One of the piece's own facts, as the source spells it.
+///
+/// Every field is listed, including the ones the piece is silent about, and a
+/// silent one carries `value: None`. That is deliberate: the interface shows
+/// the empty rows too, and that list is where a composer discovers a piece can
+/// name an arranger at all. A row that only appeared once it had something in
+/// it could only be found by someone who already knew.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HeaderFact {
+    /// Which statement this is. On the wire it is the statement's own keyword
+    /// — `"composer"`, `"tempo"` — which is both what the language calls it
+    /// and what the edit command's field names are.
+    pub field: HeaderField,
+    /// What the source says, in the source's own spelling — `quarter = 72`,
+    /// not `♩ = 72`. This is exactly what [`EditCommand::SetHeader`] takes
+    /// back, so reading a field and writing it unchanged is the identity.
+    ///
+    /// [`EditCommand::SetHeader`]: crate::EditCommand::SetHeader
+    pub value: Option<String>,
+}
+
+/// Written by hand rather than derived, because the wire spelling of `field`
+/// is the language's keyword and `HeaderField` belongs to another crate — so
+/// the mapping cannot be an attribute on the enum, and putting it here keeps
+/// the whole wire shape of a row in one place.
+impl Serialize for HeaderFact {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut row = serializer.serialize_struct("HeaderFact", 2)?;
+        row.serialize_field("field", self.field.word())?;
+        row.serialize_field("value", &self.value)?;
+        row.end()
+    }
 }
 
 /// What kind of structural marker an outline entry is.
@@ -340,6 +379,17 @@ impl ScoreFacts {
             events,
             occurrences,
             outline,
+            // Read back off the source rather than off the compiled score:
+            // what a field shows has to be what a field writes, and the
+            // compiled score has already normalized `quarter = 72` into a
+            // beat and a number.
+            header: HeaderField::ALL
+                .iter()
+                .map(|field| HeaderFact {
+                    field: *field,
+                    value: musa_language::read_header(source, *field),
+                })
+                .collect(),
         }
     }
 }

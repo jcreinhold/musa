@@ -55,8 +55,8 @@ pub use crate::edit::{EditCommand, EditImpact, GeneratedEditMode, InsertAt, Note
 pub use crate::error::ProjectError;
 pub use crate::export::{ExportArtifact, ExportRequest, KernelReport, check_kernel};
 pub use crate::facts::{
-    EventFacts, EventKind, Fraction, OccurrenceFacts, OriginFacts, OutlineFacts, OutlineKind, PartFacts, ScoreFacts,
-    VoiceFacts,
+    EventFacts, EventKind, Fraction, HeaderFact, OccurrenceFacts, OriginFacts, OutlineFacts, OutlineKind, PartFacts,
+    ScoreFacts, VoiceFacts,
 };
 pub use crate::midi::MidiEntry;
 pub use crate::project::ProjectMeta;
@@ -68,4 +68,5 @@ pub use crate::studio::{
 };
 pub use crate::template::Template;
 pub use crate::utf16::Utf16Offsets;
+pub use musa_language::HeaderField;
 pub use musa_render::MidiMode;

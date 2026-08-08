@@ -10,7 +10,7 @@
 use text_size::{TextRange, TextSize};
 
 use crate::SyntaxKind;
-use crate::ast::{AstNode, PieceDecl, ScoreDecl, VoiceDecl};
+use crate::ast::{AstNode, PieceDecl, ScoreDecl, VoiceDecl, quote, unquote};
 use crate::language::{SyntaxElement, SyntaxNode};
 use crate::parser::parse;
 
@@ -125,6 +125,105 @@ pub enum Anchor {
     },
 }
 
+/// One of the piece's own header statements (prompt 54).
+///
+/// These are the facts a piece states about itself rather than about its
+/// music, and they are the ones the interface prints in places a composer can
+/// point at: the frame's title, the engraved page's head and foot, the
+/// transport band's tempo, key, and meter.
+///
+/// The order of the variants is the order the statements are written in, and
+/// it is load-bearing: it is what decides where a statement the piece does
+/// not have yet gets inserted.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum HeaderField {
+    /// The name in `piece "…"`. It is the only one that cannot be emptied.
+    Title,
+    /// `subtitle "…";`
+    Subtitle,
+    /// `composer "…";`
+    Composer,
+    /// `arranger "…";`
+    Arranger,
+    /// `copyright "…";`
+    Copyright,
+    /// `tempo quarter = 72;` — the value is everything after the keyword.
+    Tempo,
+    /// `meter 4/4;`
+    Meter,
+    /// `key a minor;`
+    Key,
+}
+
+impl HeaderField {
+    /// Every field, in the order they are written.
+    pub const ALL: [Self; 8] = [
+        Self::Title,
+        Self::Subtitle,
+        Self::Composer,
+        Self::Arranger,
+        Self::Copyright,
+        Self::Tempo,
+        Self::Meter,
+        Self::Key,
+    ];
+
+    /// The keyword that opens the statement, and the name a message calls it.
+    #[must_use]
+    pub fn word(self) -> &'static str {
+        match self {
+            Self::Title => "title",
+            Self::Subtitle => "subtitle",
+            Self::Composer => "composer",
+            Self::Arranger => "arranger",
+            Self::Copyright => "copyright",
+            Self::Tempo => "tempo",
+            Self::Meter => "meter",
+            Self::Key => "key",
+        }
+    }
+
+    /// Whether the value is written as a quoted string.
+    ///
+    /// The four front-matter roles carry prose a composer typed and are
+    /// quoted; `tempo`, `meter`, and `key` carry musa's own notation and are
+    /// written bare, which is also why an unparseable one has to come back as
+    /// a compiler diagnostic rather than as a field-level complaint.
+    #[must_use]
+    pub fn is_quoted(self) -> bool {
+        matches!(
+            self,
+            Self::Title | Self::Subtitle | Self::Composer | Self::Arranger | Self::Copyright
+        )
+    }
+
+    /// The node kind the statement parses to, for the fields that have one.
+    fn kind(self) -> Option<SyntaxKind> {
+        match self {
+            Self::Title => None,
+            Self::Subtitle | Self::Composer | Self::Arranger | Self::Copyright => Some(SyntaxKind::FrontMatterStmt),
+            Self::Tempo => Some(SyntaxKind::TempoStmt),
+            Self::Meter => Some(SyntaxKind::MeterStmt),
+            Self::Key => Some(SyntaxKind::KeyStmt),
+        }
+    }
+
+    /// The keyword token that opens the statement, for the fields that have
+    /// one — this is what tells two `FrontMatterStmt`s apart.
+    fn keyword(self) -> Option<SyntaxKind> {
+        match self {
+            Self::Title => None,
+            Self::Subtitle => Some(SyntaxKind::SubtitleKw),
+            Self::Composer => Some(SyntaxKind::ComposerKw),
+            Self::Arranger => Some(SyntaxKind::ArrangerKw),
+            Self::Copyright => Some(SyntaxKind::CopyrightKw),
+            Self::Tempo => Some(SyntaxKind::TempoKw),
+            Self::Meter => Some(SyntaxKind::MeterKw),
+            Self::Key => Some(SyntaxKind::KeyKw),
+        }
+    }
+}
+
 /// What an editing command wants done to the source (roadmap §11).
 ///
 /// Offsets are byte offsets of a statement's first significant token, which
@@ -163,6 +262,16 @@ pub enum EditIntent {
         position: u32,
         /// The new written pitch.
         pitch: String,
+    },
+    /// Set, add, or remove one of the piece's header statements.
+    ///
+    /// An empty `value` removes the statement — adding and removing a line of
+    /// front matter are the same gesture, so they are the same intent.
+    SetHeader {
+        /// Which statement.
+        field: HeaderField,
+        /// Its new value, unquoted and unescaped as the composer typed it.
+        value: String,
     },
     /// Lift the statements from `first` through `last` into a new `motif`
     /// declaration, leaving a `use` in their place.
@@ -214,6 +323,10 @@ pub enum EditError {
     NotSiblings,
     /// The document has no `score` block to place a motif before.
     NoScore,
+    /// The document has no `piece` declaration to carry a header statement.
+    NoPiece,
+    /// A piece must be called something.
+    CannotEmptyTitle,
 }
 
 impl core::fmt::Display for EditError {
@@ -228,6 +341,8 @@ impl core::fmt::Display for EditError {
             }
             Self::NotSiblings => write!(formatter, "an extraction must be one run of statements in one block"),
             Self::NoScore => write!(formatter, "the piece has no `score` block"),
+            Self::NoPiece => write!(formatter, "the document has no `piece`"),
+            Self::CannotEmptyTitle => write!(formatter, "a piece has to be called something"),
         }
     }
 }
@@ -263,8 +378,45 @@ pub fn compute_edits(source: &str, intent: &EditIntent) -> Result<Vec<TextEdit>,
             position,
             ref pitch,
         } => specialize(&root, at, position, pitch),
+        EditIntent::SetHeader { field, ref value } => set_header(&root, source, field, value),
         EditIntent::ExtractMotif { first, last, ref name } => extract_motif(&root, source, first, last, name),
     }
+}
+
+/// What the piece says for one header field, spelled the way it says it.
+///
+/// `None` when the piece has no such statement — which is a fact worth having
+/// rather than a blank, because the interface shows a field for a role the
+/// piece has not filled in and that empty row is where a composer discovers
+/// they can fill it.
+///
+/// The spelling is the source's, not a rendering of it: `quarter = 72`, not
+/// `♩ = 72`; `a minor`, not `A minor`. A field that read one dialect and wrote
+/// another would be a second language to keep working, and the value here is
+/// exactly what [`EditIntent::SetHeader`] takes back.
+#[must_use]
+pub fn read_header(source: &str, field: HeaderField) -> Option<String> {
+    let document = parse(source);
+    let piece = document
+        .syntax()
+        .children()
+        .find(|node| node.kind() == SyntaxKind::PieceDecl)?;
+
+    if field == HeaderField::Title {
+        let range = token_of(&piece, &[SyntaxKind::String])?;
+        return slice(source, range).map(unquote);
+    }
+    let statement = header_statement(&piece, field)?;
+    let written = slice(source, header_value_range(&statement, field)?)?.trim();
+    Some(if field.is_quoted() {
+        unquote(written)
+    } else {
+        written.to_owned()
+    })
+}
+
+fn slice(source: &str, range: TextRange) -> Option<&str> {
+    source.get(usize::from(range.start())..usize::from(range.end()))
 }
 
 /// Add or merge one `note <n> = <pitch>;` override on the `use` at `at`.
@@ -374,6 +526,133 @@ fn token_of(node: &SyntaxNode, kinds: &[SyntaxKind]) -> Option<TextRange> {
         .filter_map(SyntaxElement::into_token)
         .find(|token| kinds.contains(&token.kind()))
         .map(|token| token.text_range())
+}
+
+/// Set, add, or remove one header statement (prompt 54).
+///
+/// Three cases, and which one applies is a fact about the source rather than
+/// something the caller has to know: a statement the piece has is rewritten
+/// in place, a statement it does not have is inserted where the order says it
+/// goes, and an empty value removes it. That is what lets one field in the
+/// interface both write a composer's name and take it back off the page.
+///
+/// Only the *value* is rewritten, never the whole line: a piece whose tempo
+/// carries a trailing comment keeps its comment.
+fn set_header(root: &SyntaxNode, source: &str, field: HeaderField, value: &str) -> Result<Vec<TextEdit>, EditError> {
+    let piece = root
+        .children()
+        .find(|node| node.kind() == SyntaxKind::PieceDecl)
+        .ok_or(EditError::NoPiece)?;
+
+    if field == HeaderField::Title {
+        if value.is_empty() {
+            return Err(EditError::CannotEmptyTitle);
+        }
+        let range = token_of(&piece, &[SyntaxKind::String]).ok_or(EditError::NoPiece)?;
+        return Ok(vec![TextEdit::new(range, quote(value))]);
+    }
+
+    match header_statement(&piece, field) {
+        Some(statement) if value.is_empty() => Ok(vec![TextEdit::new(with_leading_blank(source, &statement), "")]),
+        Some(statement) => {
+            let range = header_value_range(&statement, field).ok_or(EditError::NoPiece)?;
+            Ok(vec![TextEdit::new(range, written_value(field, value))])
+        }
+        // Removing what is not there is not an error, it is what the composer
+        // asked for: the field is already empty.
+        None if value.is_empty() => Ok(Vec::new()),
+        None => Ok(vec![insert_header(&piece, source, field, value)]),
+    }
+}
+
+/// The piece's statement for `field`, if it has one.
+///
+/// Written twice, the first wins here — the resolver already refuses the
+/// document, and rewriting the first is what a composer looking at the page
+/// would expect either way.
+fn header_statement(piece: &SyntaxNode, field: HeaderField) -> Option<SyntaxNode> {
+    let (kind, keyword) = (field.kind()?, field.keyword()?);
+    piece
+        .children()
+        .filter(|node| node.kind() == kind)
+        .find(|node| token_of(node, &[keyword]).is_some())
+}
+
+/// The part of a header statement an edit replaces: everything between its
+/// keyword and its `;`, trimmed.
+///
+/// Stated as a span rather than as a token because `tempo quarter = 72` and
+/// `key a minor` are several tokens and one value, and a field that could
+/// only replace single tokens would have to know which fields those were.
+fn header_value_range(statement: &SyntaxNode, field: HeaderField) -> Option<TextRange> {
+    let keyword = token_of(statement, &[field.keyword()?])?;
+    let end = token_of(statement, &[SyntaxKind::Semicolon]).map_or_else(|| trimmed(statement).end(), TextRange::start);
+    let start = statement
+        .children_with_tokens()
+        .filter(|element| !element.kind().is_trivia())
+        .map(|element| element.text_range())
+        .find(|range| range.start() >= keyword.end())
+        .map_or(end, TextRange::start);
+    (start <= end).then(|| TextRange::new(start, end))
+}
+
+/// The text a value is written as: quoted for the prose roles, bare for
+/// musa's own notation.
+fn written_value(field: HeaderField, value: &str) -> String {
+    if field.is_quoted() {
+        quote(value)
+    } else {
+        value.to_owned()
+    }
+}
+
+/// A statement's range together with the line it sits on, so deleting it
+/// leaves no blank line behind.
+fn with_leading_blank(source: &str, statement: &SyntaxNode) -> TextRange {
+    let range = trimmed(statement);
+    let start = usize::from(range.start());
+    let line_start = source
+        .get(..start)
+        .and_then(|before| before.rfind('\n'))
+        .map_or(0, |index| index.saturating_add(1));
+    let indent_only = source
+        .get(line_start..start)
+        .is_some_and(|text| text.chars().all(char::is_whitespace));
+    let from = if indent_only && line_start > 0 {
+        line_start.saturating_sub(1)
+    } else {
+        start
+    };
+    TextRange::new(TextSize::new(u32::try_from(from).unwrap_or(0)), range.end())
+}
+
+/// Where a statement the piece does not have yet goes.
+///
+/// After the last header statement that comes before it, or — when the piece
+/// states nothing at all yet — on the line after the opening brace. Order is
+/// [`HeaderField::ALL`], which is the order the formatter leaves a piece in,
+/// so a composer who adds a subtitle after a composer still reads them back
+/// the way an edition prints them.
+fn insert_header(piece: &SyntaxNode, source: &str, field: HeaderField, value: &str) -> TextEdit {
+    let written = format!("{} {};", field.word(), written_value(field, value));
+    let earlier = HeaderField::ALL
+        .iter()
+        .take_while(|candidate| **candidate < field)
+        .filter_map(|candidate| header_statement(piece, *candidate))
+        .map(|statement| trimmed(&statement))
+        .max_by_key(|range| range.end());
+
+    if let Some(range) = earlier {
+        let indent = indent_at(source, u32::from(range.start()));
+        return TextEdit::new(TextRange::empty(range.end()), format!("\n{indent}{written}"));
+    }
+
+    // Nothing to follow: the line after `{`, at one indent. The blank line
+    // after it is what keeps the piece's own facts a block of their own, the
+    // way every example in `examples/` sets them.
+    let brace = token_of(piece, &[SyntaxKind::LBrace]).unwrap_or_else(|| TextRange::empty(trimmed(piece).start()));
+    let indent = format!("{}{INDENT}", indent_at(source, u32::from(trimmed(piece).start())));
+    TextEdit::new(TextRange::empty(brace.end()), format!("\n{indent}{written}\n"))
 }
 
 fn set_pitch(root: &SyntaxNode, at: u32, pitch: &str) -> Result<Vec<TextEdit>, EditError> {

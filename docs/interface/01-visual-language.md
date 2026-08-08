@@ -196,7 +196,12 @@ The Compose workspace, as an arrangement of the elements roadmap §14.3 requires
   Academico; voice names one step down in `--ink-muted`. The list is a miniature of the score's own left margin, which
   is why it needs no header and no box.
 - **Right margin**: the inspector, as a run of rows — label in `--t-micro`, value in `--t-value` or `--t-name`. Editable
-  values show a `--rule` underline on hover and a `--plate` underline on focus. There are no field boxes at rest.
+  values carry a hairline underline in three weights — `--rule` at rest, `--ink-muted` on hover, `--plate` on focus —
+  and values that only report carry none, which is what makes the mark a signal rather than decoration. There are no
+  field boxes at rest, and the rest weight is the reason there need not be: a hairline is not a box, and a control
+  nobody can see is not an affordance. With nothing selected the inspector's rows are *the piece* — every statement its
+  header can carry, the unnamed ones included, which is how a composer discovers that a piece can name an arranger at
+  all (prompt 54).
 - **Source column**: source and diagnostics, at the *left edge*, full height, on `--surround-in` behind one `--rule`
   hairline — the same two materials and the same seam §8 gives the Source workspace. Closed by default in Compose; shown
   with `⌘'`, from the View menu, or from the palette. Its width is the **source measure** (§8), fixed: it does not grow

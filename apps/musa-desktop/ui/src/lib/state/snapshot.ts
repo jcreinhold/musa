@@ -10,6 +10,8 @@
  * core (docs/interface/03-interaction.md §7).
  */
 
+import type { HeaderFieldDto } from "../session/generated/HeaderFieldDto";
+
 export interface Fraction {
   numerator: number;
   denominator: number;
@@ -158,6 +160,24 @@ export interface ScoreFacts {
   occurrences: OccurrenceFacts[];
   /** The piece's structure, in the order it is played. */
   outline: OutlineFacts[];
+  /**
+   * Every statement the piece can make about itself, in the order they are
+   * written, whether or not it makes them (prompt 54). A field the piece is
+   * silent about is present with a null value — the inspector shows those
+   * rows too, and that list is where a composer finds out a piece can name an
+   * arranger at all.
+   */
+  header: HeaderFact[];
+}
+
+/** One of the piece's own facts, spelled the way the source spells it. */
+export interface HeaderFact {
+  field: HeaderFieldDto;
+  /**
+   * `quarter = 72`, not `♩ = 72`. This is exactly what a `setHeader` edit
+   * takes back, so reading a field and writing it unchanged changes nothing.
+   */
+  value: string | null;
 }
 
 /**
