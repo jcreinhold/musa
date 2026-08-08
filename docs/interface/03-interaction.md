@@ -100,12 +100,18 @@ documentation cannot drift from bindings.
 | `⌘⌥−` `⌘⌥=` `⌘⌥0` | Smaller / larger / reset the **frame's** text, in four steps (prompt 55) |
 | `⌘'` | Show or hide the source column |
 | `⌘⇧F` | Format the source |
+| `⌘,` | Settings — theme, text size, vim mode (prompt 59) |
 | `⌘K` | Command palette |
 | `?` | Keyboard sheet |
 
 Text size is deliberately not `⌘=`/`⌘−`: those are the score's zoom and must stay the score's zoom. Vim mode has no
-binding at all — it is a preference a composer sets once, from the View menu or the palette, not a mode they flip
-mid-phrase.
+binding at all — it is a preference a composer sets once, from Settings or the palette, not a mode they flip mid-phrase.
+
+**Preferences are found in one place.** Theme, text size, and vim mode are the app's state and never the document's
+(`05-states.md`), so they sit together behind `⌘,` — the application menu on macOS, the foot of Edit elsewhere — rather
+than scattered down the View menu among the things that change what is on the page. The View menu answers *what am I
+looking at*; Settings answers *how does this application behave*. Each preference is still a command with an id, so the
+palette reaches all of them and the sheet is a second way in rather than the only one.
 
 All four workspaces exist as of prompt 31; before that `⌘2` and `⌘3` were bound to nothing and the switcher showed only
 the two that were real, because a tab that opens an empty room is a promise the application cannot keep.

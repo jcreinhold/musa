@@ -155,6 +155,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 56 | diagnostics-that-teach | 2 | Codes, labelled spans, help, and applicable fixes, in both frontends |
 | 57 | bars | 2 | `bar { … }`: the unit musicians think in, checked and nameable |
 | 58 | repeats-and-endings | 2 | `repeat` becomes notation; first and second endings |
+| 59 | menus-and-settings | 2 | Grouped menus, an Export submenu, and Settings behind `⌘,` |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
@@ -199,6 +200,11 @@ table's own example, and the page has been wrong about it since prompt 06.
 
 They run in that order because each is the last one's payoff. The bar-length error is unreadable without secondary
 labels, and the ending rules are unreadable without both.
+
+**59 is the frame rather than the music.** Every prompt above it adds something the application can do; this one is
+entirely about where what it can already do is *found*. Four sibling `Export …` verbs are one verb with four objects, a
+View menu of twelve flat items answers none of the questions its reader is asking, and three preferences were filed
+under View because there was nowhere else to put them. It adds one command — `settings.open` — and moves the rest.
 
 Prompts 37–50 are the kernel consolidation block. Prompt 12 made the kernel canonical but deliberately kept what the
 migration needed: the direct lowerer as a regression oracle, and a `ScoreSnapshot` shaped exactly as the pre-kernel
