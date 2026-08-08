@@ -21,7 +21,7 @@
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-use musa_project::{ExportRequest, ProjectSession};
+use musa_project::{DocumentId, ExportRequest, ProjectSession};
 
 type Result = std::result::Result<(), Box<dyn std::error::Error>>;
 
@@ -316,7 +316,13 @@ fn large_score_fixture_is_current() -> Result {
     // Compact rather than pretty: 1500 events pretty-printed is half a
     // megabyte of whitespace, and nobody reads this file — the generator is
     // what is read.
-    let mut json = serde_json::to_string(&snapshot.to_wire())?;
+    // The document id is minted per session, so the committed fixture carries
+    // `DocumentId::NONE` rather than whichever one this run happened to get.
+    let mut wire = snapshot.to_wire();
+    if let Some(document) = wire.get_mut("document") {
+        *document = serde_json::Value::from(DocumentId::NONE.0);
+    }
+    let mut json = serde_json::to_string(&wire)?;
     json.push('\n');
     write_or_compare(
         &repository().join("apps/musa-desktop/ui/fixtures/large-score.snapshot.json"),

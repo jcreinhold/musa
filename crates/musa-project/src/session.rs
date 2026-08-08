@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use musa_compiler::{CompileOptions, SourceDocument};
 use musa_engine::{AudioEngine, EngineConfig, MidiInput, TransportCommand};
 
-use crate::command::{ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
+use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 use crate::diagnostic::Diagnostic;
 use crate::error::ProjectError;
 use crate::export::{ExportArtifact, ExportRequest};
@@ -33,6 +33,9 @@ use crate::template::Template;
 /// The session is single-threaded by construction: `apply` takes `&mut
 /// self`, so there is no interleaving to reason about.
 pub struct ProjectSession {
+    /// Which document this is, so a caller holding snapshots from two
+    /// sessions can tell them apart (see [`DocumentId`]).
+    document: DocumentId,
     /// Where the project lives, if it has been given a home.
     path: Option<PathBuf>,
     /// Display name for diagnostics and window titles.
@@ -176,6 +179,7 @@ impl ProjectSession {
     /// figures are read from the audio thread's atomics.
     pub fn snapshot(&self) -> ProjectSnapshot<'_> {
         ProjectSnapshot {
+            document: self.document,
             source: &self.source,
             name: &self.name,
             revision: self.revision,
@@ -408,6 +412,7 @@ impl ProjectSession {
     fn from_source(source: String, name: String) -> Self {
         let revision = Revision(0);
         Self {
+            document: DocumentId::mint(),
             path: None,
             project: None,
             imports: musa_compiler::ImportSources::default(),

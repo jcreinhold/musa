@@ -27,11 +27,24 @@ function snapshotOf(piece: Piece): string {
  * Install the stub. Call before the page navigates.
  *
  * The piece is the workload: Glass Mountain is `06-performance.md`'s small
- * case, `large-score` its 100-bar, 4-part large case.
+ * case, `large-score` its 100-bar, 4-part large case. `opens` is the piece a
+ * File → Open answers with — a *second* document, which is the only way to
+ * exercise what happens when one piece replaces another.
  */
-export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Promise<void> {
-  const valid: unknown = JSON.parse(readFileSync(snapshotOf(piece), "utf8"));
-  await page.addInitScript((seed: Record<string, unknown>) => {
+export async function stubShell(
+  page: Page,
+  piece: Piece = "glass-mountain",
+  opens: Piece = "annotated",
+): Promise<void> {
+  const seeds = {
+    // Document ids are the shell's to mint, and the committed fixtures carry
+    // none (`musa_project::DocumentId::NONE`), so the stub mints them here —
+    // two pieces, two documents, each counting its own revisions from zero.
+    open: { ...(JSON.parse(readFileSync(snapshotOf(piece), "utf8")) as object), document: 1 },
+    other: { ...(JSON.parse(readFileSync(snapshotOf(opens), "utf8")) as object), document: 2 },
+  };
+  await page.addInitScript((both: { open: Record<string, unknown>; other: Record<string, unknown> }) => {
+    const seed = both.open;
     const handlers = new Map<number, (payload: unknown) => void>();
     const events = new Map<string, number[]>();
     let next = 1;
@@ -211,8 +224,19 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
 
     const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
       snapshot: () => current,
-      open_project: () => current,
-      new_project: () => current,
+      // Opening replaces the document, and the piece that arrives is at its
+      // own revision 0 — lower than whatever the edited piece had reached,
+      // which is exactly the case the interface has to get right.
+      open_project: () => {
+        history.length = 0;
+        current = { ...both.other };
+        return answer();
+      },
+      new_project: () => {
+        history.length = 0;
+        current = { ...both.other, name: "Untitled.musa", unsaved: true };
+        return answer();
+      },
       edit_impact: (args) => impactOf(args.edit as Record<string, unknown>),
       apply: (args) => {
         const command = args.command as {
@@ -319,6 +343,10 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
         return current;
       },
       export: () => ({ path: "/tmp/glass-mountain.mei" }),
+      // The file dialogs are the platform's, not musa's, so the stub answers
+      // them the way a composer who picked a file would: with a path.
+      "plugin:dialog|open": () => "/tmp/second.musa",
+      "plugin:dialog|save": () => "/tmp/out.mei",
     };
 
     Object.defineProperty(window, "__TAURI_INTERNALS__", {
@@ -363,7 +391,7 @@ export async function stubShell(page: Page, piece: Piece = "glass-mountain"): Pr
         }
       },
     });
-  }, valid as Record<string, unknown>);
+  }, seeds);
 }
 
 declare global {

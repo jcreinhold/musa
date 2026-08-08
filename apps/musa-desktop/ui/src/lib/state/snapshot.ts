@@ -311,6 +311,11 @@ export interface MidiEntry {
 }
 
 export interface ProjectSnapshot {
+  /**
+   * Which piece this is. Compared before `revision`, which counts within a
+   * document and starts again at zero in the next one.
+   */
+  document: number;
   name: string;
   source: string;
   revision: number;

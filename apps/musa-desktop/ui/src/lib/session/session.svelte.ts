@@ -143,6 +143,17 @@ export class Session {
     return this.#link !== null;
   }
 
+  /**
+   * Which piece is on screen, or null before one is.
+   *
+   * Watched rather than read: everything the interface remembers about a
+   * piece — the selection, the loop, the marks — names events that only
+   * exist in it, so a change here is the signal to forget all of it.
+   */
+  get document(): number | null {
+    return this.snapshot?.document ?? null;
+  }
+
   /** The source to edit: the draft if there is one, else the document's. */
   get text(): string {
     return this.draft ?? this.snapshot?.source ?? "";
@@ -161,17 +172,48 @@ export class Session {
   /**
    * Adopt a snapshot from either a command's answer or a `musa://snapshot`
    * event, whichever arrived second.
+   *
+   * Revisions are only comparable within one piece: every session starts at
+   * revision 0, so a freshly opened score is *older* than whatever was on
+   * screen by that measure. So the document is read first, and what happens
+   * when it differs depends on who asked. `opening` is the interface saying
+   * "this is the piece I asked for"; without it, a snapshot about some other
+   * document is an answer to a question the composer has moved past — an
+   * edit that was still compiling when they opened something else — and
+   * adopting it would put the piece they closed back on the screen.
    */
-  receive(snapshot: ProjectSnapshot): void {
+  receive(snapshot: ProjectSnapshot, opening = false): void {
     mark("snapshot");
     const current = this.snapshot;
-    if (current && snapshot.revision < current.revision) return;
+    if (current !== null && current.document !== snapshot.document) {
+      if (!opening) return;
+      this.#adopt();
+    }
+    if (current?.document === snapshot.document && snapshot.revision < current.revision) return;
     this.snapshot = snapshot;
     if (this.draft !== null && this.draft === snapshot.source) this.draft = null;
     if (!snapshot.compiles && !this.#announcedProblems) {
       this.#announcedProblems = true;
       this.sourceOpen = true;
     }
+  }
+
+  /**
+   * Forget everything that was about the piece being replaced.
+   *
+   * A draft is text the composer typed into the *previous* document, and a
+   * compile of it may still be in flight; both are meaningless the moment a
+   * different piece arrives, and keeping the draft would show the old piece's
+   * words over the new piece's score. The problems latch resets too, so a
+   * second piece that does not compile opens the source column for the same
+   * reason the first one did (`05-states.md` §4).
+   */
+  #adopt(): void {
+    clearTimeout(this.#settle);
+    this.draft = null;
+    this.#issued = 0;
+    this.#applied = 0;
+    this.#announcedProblems = false;
   }
 
   /** Show a failure until it is superseded (`05-states.md` §7). */
@@ -256,7 +298,7 @@ export class Session {
     try {
       const chosen = path ?? (await link.askToOpen());
       if (chosen === null) return;
-      this.receive(await link.openProject(chosen));
+      this.receive(await link.openProject(chosen), true);
       this.dismiss();
     } catch (thrown) {
       this.fail(thrown);
@@ -267,7 +309,7 @@ export class Session {
     const link = this.#link;
     if (!link) return;
     try {
-      this.receive(await link.newProject(template, null));
+      this.receive(await link.newProject(template, null), true);
       this.dismiss();
     } catch (thrown) {
       this.fail(thrown);

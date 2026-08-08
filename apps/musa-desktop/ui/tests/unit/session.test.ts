@@ -136,6 +136,67 @@ describe("supersession", () => {
   });
 });
 
+/**
+ * A revision counts within one piece, and every piece starts at zero — so
+ * "older" is a question that only has an answer inside a document. Reading
+ * the two the wrong way round is why File → Open used to do nothing at all
+ * once the piece on screen had been edited.
+ */
+describe("opening another piece", () => {
+  /** A different document, at its own first revision. */
+  function other(source: string, compiles = true): ProjectSnapshot {
+    return { ...snapshotOf(source, 0, compiles), document: VALID.document + 1 };
+  }
+
+  it("takes the new piece, whose revisions start again at zero", async () => {
+    const link = recorder();
+    const opened = other("piece \"Second\" {}");
+    link.openProject = vi.fn(async () => opened);
+    const session = new Session(link);
+    session.receive(snapshotOf("piece \"First\" {}", 12));
+
+    await session.open("/tmp/second.musa");
+    expect(session.snapshot?.source).toBe(opened.source);
+  });
+
+  it("leaves the previous piece's draft behind", async () => {
+    const link = recorder();
+    link.openProject = vi.fn(async () => other("piece \"Second\" {}"));
+    const session = new Session(link);
+    session.receive(VALID);
+    session.edit("half a thought");
+    expect(session.draft).toBe("half a thought");
+
+    await session.open("/tmp/second.musa");
+    expect(session.draft).toBeNull();
+    expect(session.text).toBe("piece \"Second\" {}");
+  });
+
+  it("ignores an answer about the piece that was closed", async () => {
+    const link = recorder();
+    link.openProject = vi.fn(async () => other("piece \"Second\" {}"));
+    const session = new Session(link);
+    session.receive(VALID);
+
+    await session.open("/tmp/second.musa");
+    // A compile of the first piece, still in flight when the second opened.
+    session.receive(snapshotOf("piece \"First\" {}", VALID.revision + 9));
+    expect(session.snapshot?.source).toBe("piece \"Second\" {}");
+  });
+
+  it("shows the source again for a second piece that does not compile", async () => {
+    const link = recorder();
+    link.openProject = vi.fn(async () => other("piece {", false));
+    const session = new Session(link);
+    session.receive(VALID);
+    session.receive(snapshotOf("piece {", VALID.revision + 1, false));
+    session.sourceOpen = false;
+
+    await session.open("/tmp/second.musa");
+    expect(session.sourceOpen).toBe(true);
+  });
+});
+
 describe("the stale revision", () => {
   it("keeps the last valid score and says how far behind it is", () => {
     const session = new Session(recorder());

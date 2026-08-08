@@ -9,7 +9,7 @@
 import { expect, test } from "@playwright/test";
 
 import { engraved } from "./engraved";
-import { pane, toggleSource, rewrite } from "./source";
+import { pane, source, toggleSource, rewrite } from "./source";
 import { stubShell } from "./shell";
 
 const LEAF = ".stage > div";
@@ -51,6 +51,44 @@ test("a piece opens engraved, with its source not yet shown", async ({ page }) =
 
   await toggleSource(page);
   await expect(page.getByRole("textbox", { name: "Source" })).toContainText("piece");
+});
+
+/**
+ * Opening a second piece.
+ *
+ * A revision counts within one document, and the piece that arrives is at its
+ * own revision 0 — lower than whatever the edited piece had reached. An
+ * interface that compares the two numbers without asking which piece they
+ * belong to concludes the new score is stale and shows the old one, which is
+ * indistinguishable from Open being broken.
+ */
+test("opening a piece replaces the one that has been edited", async ({ page }) => {
+  await page.goto("/");
+  await engraved(page);
+  await toggleSource(page);
+
+  // Several edits, so the piece on screen is well past revision 0.
+  await rewrite(page, 'piece "Glass Mountain" {}');
+  await rewrite(page, 'piece "Glass Mountain" { }');
+  await expect(page.locator("h1")).toHaveText("Glass Mountain");
+
+  await page.evaluate(() => window.__musaEmit("musa://command", "file.open"));
+
+  await expect(page.locator("h1")).toHaveText("Annotated");
+  // The text is the new piece's, not the draft that was typed into the old one.
+  await expect(source(page)).toContainText("The annotation layer");
+});
+
+test("opening a piece drops the selection the old one left behind", async ({ page }) => {
+  await page.goto("/");
+  await engraved(page);
+
+  await page.locator('.engraving .arriving [id="event-c"]').first().click();
+  await expect(page.locator(".overlay rect.selection")).toHaveCount(1);
+
+  await page.evaluate(() => window.__musaEmit("musa://command", "file.open"));
+  await expect(page.locator("h1")).toHaveText("Annotated");
+  await expect(page.locator(".overlay rect.selection")).toHaveCount(0);
 });
 
 test("breaking the source keeps the score and says how far behind it is", async ({ page }) => {

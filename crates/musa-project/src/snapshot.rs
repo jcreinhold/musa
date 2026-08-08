@@ -1,6 +1,6 @@
 //! The frontend's entire view of the session.
 
-use crate::command::Revision;
+use crate::command::{DocumentId, Revision};
 use crate::diagnostic::Diagnostic;
 use crate::facts::ScoreFacts;
 
@@ -13,6 +13,7 @@ use crate::facts::ScoreFacts;
 /// (roadmap §14.2, §15.7).
 #[derive(Clone, Copy, Debug)]
 pub struct ProjectSnapshot<'session> {
+    pub(crate) document: DocumentId,
     pub(crate) source: &'session str,
     pub(crate) name: &'session str,
     pub(crate) revision: Revision,
@@ -69,7 +70,15 @@ impl ProjectSnapshot<'_> {
         self.name
     }
 
-    /// The current revision.
+    /// Which document this is a snapshot of.
+    ///
+    /// Read it before [`Self::revision`]: revisions count within a document,
+    /// and two snapshots with different ids are not comparable at all.
+    pub fn document(&self) -> DocumentId {
+        self.document
+    }
+
+    /// The current revision, within [`Self::document`].
     pub fn revision(&self) -> Revision {
         self.revision
     }
@@ -155,6 +164,9 @@ impl ProjectSnapshot<'_> {
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SnapshotWire<'a> {
+    /// Which piece this is. A frontend compares it before `revision`, which
+    /// counts within it and not across pieces.
+    document: u64,
     name: &'a str,
     source: &'a str,
     revision: u64,
@@ -183,6 +195,7 @@ impl ProjectSnapshot<'_> {
     pub fn to_wire(&self) -> serde_json::Value {
         let offsets = crate::Utf16Offsets::new(self.source);
         let mut wire = serde_json::to_value(SnapshotWire {
+            document: self.document.0,
             name: self.name,
             source: self.source,
             revision: self.revision.0,

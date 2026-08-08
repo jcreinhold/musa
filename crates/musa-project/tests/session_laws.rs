@@ -62,6 +62,40 @@ fn undo_returns_to_the_earlier_revision_rather_than_minting_one() -> Result {
     Ok(())
 }
 
+/// Why a revision needs a document beside it.
+///
+/// Two sessions both start at revision 0 and both count up from there, so
+/// "revision 3" names two different states unless it is read together with
+/// the piece it counts within. A caller that compares revisions across
+/// documents concludes that a piece just opened is older than the one it
+/// replaced — which is exactly what the desktop app did, and why opening a
+/// piece over an edited one appeared to do nothing.
+#[test]
+fn each_session_is_a_document_of_its_own() -> Result {
+    let mut first = session();
+    let second = session();
+    assert_ne!(
+        first.snapshot().document(),
+        second.snapshot().document(),
+        "two sessions are two documents"
+    );
+    assert_eq!(
+        first.snapshot().revision(),
+        second.snapshot().revision(),
+        "and they agree about the revision, which is the whole problem"
+    );
+
+    let document = first.snapshot().document();
+    first.apply(ProjectCommand::SetSource(PIECE.replace("c4", "d4")))?;
+    first.undo()?;
+    assert_eq!(
+        first.snapshot().document(),
+        document,
+        "editing and undoing stay within one document"
+    );
+    Ok(())
+}
+
 /// An edit made after an undo abandons the redo branch.
 #[test]
 fn editing_after_undo_drops_the_redo_branch() -> Result {

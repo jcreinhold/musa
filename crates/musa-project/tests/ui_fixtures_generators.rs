@@ -10,9 +10,23 @@
 
 use std::path::{Path, PathBuf};
 
-use musa_project::{ExportRequest, ProjectSession};
+use musa_project::{DocumentId, ExportRequest, ProjectSession};
+use serde_json::Value;
 
 type Result = std::result::Result<(), Box<dyn std::error::Error>>;
+
+/// A wire snapshot with no session behind it.
+///
+/// Document ids are minted per session and per process, so writing whichever
+/// one this test happened to get would make the fixture depend on how many
+/// sessions ran before it. [`DocumentId::NONE`] is the honest value for a
+/// file on disk, and it is the value the UI's own fixtures then compare.
+fn anonymous(mut wire: Value) -> Value {
+    if let Some(document) = wire.get_mut("document") {
+        *document = Value::from(DocumentId::NONE.0);
+    }
+    wire
+}
 
 fn fixtures_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../apps/musa-desktop/ui/fixtures")
@@ -50,7 +64,7 @@ fn annotated_fixture_is_current() -> Result {
     let session = ProjectSession::from_text(source, "annotated.musa");
     assert!(session.snapshot().compiles(), "the fixture piece must compile");
 
-    let mut json = serde_json::to_string_pretty(&session.snapshot().to_wire())?;
+    let mut json = serde_json::to_string_pretty(&anonymous(session.snapshot().to_wire()))?;
     json.push('\n');
     write_or_compare(&fixtures_dir().join("annotated.snapshot.json"), &json)
 }
@@ -64,7 +78,7 @@ fn snapshot_fixture_is_current() -> Result {
     let session = ProjectSession::from_text(source, "glass-mountain.musa");
     assert!(session.snapshot().compiles(), "the fixture piece must compile");
 
-    let mut json = serde_json::to_string_pretty(&session.snapshot().to_wire())?;
+    let mut json = serde_json::to_string_pretty(&anonymous(session.snapshot().to_wire()))?;
     json.push('\n');
     write_or_compare(&fixtures_dir().join("glass-mountain.snapshot.json"), &json)
 }
@@ -83,7 +97,7 @@ fn unicode_fixture_is_current() -> Result {
     let session = ProjectSession::from_text(source, "unicode-fixture.musa");
     assert!(session.snapshot().compiles(), "the fixture piece must compile");
 
-    let mut json = serde_json::to_string_pretty(&session.snapshot().to_wire())?;
+    let mut json = serde_json::to_string_pretty(&anonymous(session.snapshot().to_wire()))?;
     json.push('\n');
     write_or_compare(&fixtures_dir().join("unicode-fixture.snapshot.json"), &json)
 }

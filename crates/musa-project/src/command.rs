@@ -46,6 +46,40 @@ impl std::fmt::Display for Revision {
     }
 }
 
+/// Which document a revision counts within.
+///
+/// A [`Revision`] is only meaningful against the piece it belongs to: every
+/// session starts at revision 0, so a caller holding two snapshots cannot tell
+/// "an older answer about this piece" from "the first answer about a different
+/// one" by revision alone. It could once, when a process opened one document
+/// and never replaced it; opening a second piece is what makes the difference
+/// visible, and a frontend that drops the newly opened piece as stale is what
+/// makes it a bug rather than a technicality.
+///
+/// Minted per session and never reused within a process, so the comparison is
+/// equality — the numbers carry no order and nothing should read them as if
+/// they did.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct DocumentId(pub u64);
+
+impl DocumentId {
+    /// No document: what a committed fixture carries, since no session minted
+    /// it. Minted ids start at one, so this collides with nothing.
+    pub const NONE: Self = Self(0);
+
+    /// Mint one, for a session that is being constructed.
+    pub(crate) fn mint() -> Self {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        Self(NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+    }
+}
+
+impl std::fmt::Display for DocumentId {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}", self.0)
+    }
+}
+
 /// A command against the session.
 ///
 /// Source-changing commands are the editor's primitives; structured score

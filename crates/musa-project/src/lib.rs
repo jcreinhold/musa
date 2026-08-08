@@ -50,7 +50,7 @@ mod studio;
 mod template;
 mod utf16;
 
-pub use crate::command::{ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
+pub use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 pub use crate::diagnostic::{Diagnostic, Fix, FixEdit, Label, Severity, Span, codes, explain};
 pub use crate::edit::{CandidateEdit, EditCommand, EditImpact, GeneratedEditMode, InsertAt, NoteSpec};
 pub use crate::error::ProjectError;

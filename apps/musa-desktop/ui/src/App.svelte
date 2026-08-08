@@ -574,6 +574,37 @@
 
   if (!session.live && chosen.snapshot) session.snapshot = chosen.snapshot;
 
+  /**
+   * A different piece is a different everything.
+   *
+   * The selection, the loop, the marks, the pending choice — all of them name
+   * events and spans that exist only in the piece that was on screen. Carried
+   * into the next one they name nothing, and a selection of notes that are not
+   * there is worse than no selection: it is the interface claiming something
+   * about a score the composer has never seen. Zoom, follow, and which
+   * workspace is open are the app's rather than the piece's, so they stay.
+   */
+  let showing: number | null = null;
+  $effect(() => {
+    const document = session.document;
+    if (document === showing) return;
+    showing = document;
+    untrack(() => {
+      workspace.clear();
+      looped = null;
+      flash = [];
+      bring = null;
+      reveal = null;
+      caretAt = null;
+      candidate = null;
+      asking = null;
+      choice = null;
+      naming = null;
+      onPage = [];
+      if (entry.on) toggleEntry();
+    });
+  });
+
   // The engine owns the clock; this is the only place its position enters
   // the interface (§4).
   $effect(() => {
