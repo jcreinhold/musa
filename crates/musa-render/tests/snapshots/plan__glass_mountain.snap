@@ -45,6 +45,13 @@ NotationPlan {
                             4,
                         ),
                     ),
+                    key: Some(
+                        KeySignature {
+                            fifths: 0,
+                            mode: Minor,
+                        },
+                    ),
+                    clefs: [],
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -193,6 +200,8 @@ NotationPlan {
                         denominator: 4,
                     },
                     time_signature: None,
+                    key: None,
+                    clefs: [],
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -349,6 +358,8 @@ NotationPlan {
                         denominator: 4,
                     },
                     time_signature: None,
+                    key: None,
+                    clefs: [],
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -497,6 +508,8 @@ NotationPlan {
                         denominator: 4,
                     },
                     time_signature: None,
+                    key: None,
+                    clefs: [],
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -674,6 +687,13 @@ NotationPlan {
                             4,
                         ),
                     ),
+                    key: Some(
+                        KeySignature {
+                            fifths: 0,
+                            mode: Minor,
+                        },
+                    ),
+                    clefs: [],
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -796,6 +816,8 @@ NotationPlan {
                         denominator: 4,
                     },
                     time_signature: None,
+                    key: None,
+                    clefs: [],
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -918,6 +940,8 @@ NotationPlan {
                         denominator: 4,
                     },
                     time_signature: None,
+                    key: None,
+                    clefs: [],
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(
@@ -1040,6 +1064,8 @@ NotationPlan {
                         denominator: 4,
                     },
                     time_signature: None,
+                    key: None,
+                    clefs: [],
                     lanes: [
                         VoiceLane {
                             voice: VoiceId(

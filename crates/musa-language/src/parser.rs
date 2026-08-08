@@ -144,6 +144,8 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::RepeatKw,
     SyntaxKind::BarKw,
     SyntaxKind::MeterKw,
+    SyntaxKind::KeyKw,
+    SyntaxKind::ClefKw,
     SyntaxKind::EndingKw,
     SyntaxKind::SlurKw,
     SyntaxKind::PhraseKw,
@@ -1143,9 +1145,14 @@ impl<'a> Parser<'a> {
             } else if self.at(SyntaxKind::BarKw) {
                 self.bar_stmt();
             } else if self.at(SyntaxKind::MeterKw) {
-                // The same statement the header writes, written where the
-                // music reaches it: one kind, one node, two places.
+                // The same statements the header and the part write, written
+                // where the music reaches them: one kind, one node, two
+                // places.
                 self.meter_stmt();
+            } else if self.at(SyntaxKind::KeyKw) {
+                self.key_stmt();
+            } else if self.at(SyntaxKind::ClefKw) {
+                self.clef_stmt();
             } else if self.at(SyntaxKind::EndingKw) {
                 self.ending_stmt();
             } else if self.at(SyntaxKind::SlurKw) {

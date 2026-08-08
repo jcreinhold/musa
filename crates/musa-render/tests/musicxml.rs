@@ -15,7 +15,7 @@ use musa_compiler::{CompileOptions, ScoreSnapshot, SourceDocument, compile};
 use musa_render::{NotationOptions, NotationTarget, render_notation};
 use proptest::prelude::*;
 
-const EXAMPLES: [(&str, &str); 9] = [
+const EXAMPLES: [(&str, &str); 11] = [
     ("glass_mountain", include_str!("../../../examples/glass-mountain.musa")),
     ("invention", include_str!("../../../examples/invention.musa")),
     ("counterpoint", include_str!("../../../examples/counterpoint.musa")),
@@ -28,6 +28,8 @@ const EXAMPLES: [(&str, &str); 9] = [
     ),
     ("annotated", include_str!("../../../examples/annotated.musa")),
     ("repeats", include_str!("../../../examples/repeats.musa")),
+    ("modulation", include_str!("../../../examples/modulation.musa")),
+    ("clef_change", include_str!("../../../examples/clef-change.musa")),
 ];
 
 fn score_of(text: &str) -> ScoreSnapshot {

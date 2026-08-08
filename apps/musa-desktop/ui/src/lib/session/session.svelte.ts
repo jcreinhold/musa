@@ -326,12 +326,16 @@ export class Session {
    * Turning it on names the keyboard that answered, because a composer who
    * plugged one in wants to know it was found — and a composer who did not
    * gets no message at all, since not having a keyboard is not a problem.
+   *
+   * `caret` is the event a played note would be written before, and is sent
+   * again whenever it moves: what a note is spelled as depends on the key in
+   * force there, and a piece modulates.
    */
-  async listenToMidi(listening: boolean): Promise<void> {
+  async listenToMidi(listening: boolean, caret: string | null = null): Promise<void> {
     const link = this.#link;
     if (!link) return;
     try {
-      const snapshot = await link.listenToMidi(listening);
+      const snapshot = await link.listenToMidi(listening, caret);
       this.receive(snapshot);
       if (listening && snapshot.midiPort) {
         this.say({ tone: "result", message: `Playing in from ${snapshot.midiPort}.` });

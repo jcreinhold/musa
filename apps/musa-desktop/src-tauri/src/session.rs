@@ -57,8 +57,12 @@ enum Job {
     Impact(EditCommand),
     /// Re-read the current snapshot without changing anything.
     Snapshot,
-    /// Start or stop reading the MIDI keyboard.
-    Midi(bool),
+    /// Start or stop reading the MIDI keyboard, and say where the caret is.
+    ///
+    /// The caret rides along because what a played note is *spelled* as
+    /// depends on the key in force where it lands, and a piece modulates. It
+    /// is an engraved event id, the identity the page already selects by.
+    Midi(bool, Option<String>),
 }
 
 /// An `apply` that is either a document command or history navigation.
@@ -127,8 +131,8 @@ impl SessionHandle {
         self.ask(Job::Impact(command))
     }
 
-    pub(crate) fn listen_to_midi(&self, listening: bool) -> Reply {
-        self.ask(Job::Midi(listening))
+    pub(crate) fn listen_to_midi(&self, listening: bool, caret: Option<String>) -> Reply {
+        self.ask(Job::Midi(listening, caret))
     }
 }
 
@@ -137,6 +141,7 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
     let mut session: Option<ProjectSession> = None;
     let mut playing = false;
     let mut listening = false;
+    let mut caret: Option<String> = None;
     loop {
         // Only a playing transport and an open MIDI keyboard need a clock. At
         // rest this blocks, so the application has no timer running and no
@@ -161,10 +166,11 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
         };
 
         if let Some((job, reply)) = received {
-            if let Job::Midi(wanted) = job {
+            if let Job::Midi(wanted, ref at) = job {
                 listening = wanted;
+                caret.clone_from(at);
             }
-            let mutating = !matches!(job, Job::Snapshot | Job::Impact(_) | Job::Midi(_));
+            let mutating = !matches!(job, Job::Snapshot | Job::Impact(_) | Job::Midi(..));
             let answer = perform(&mut session, job);
             let changed = mutating && answer.is_ok();
             // A dropped receiver means the webview went away mid-command;
@@ -176,7 +182,7 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
         }
 
         if listening && let Some(open) = session.as_mut() {
-            for entry in open.midi_entry() {
+            for entry in open.midi_entry(caret.as_deref()) {
                 emit(app, MIDI_EVENT, &entry);
             }
         }
@@ -263,7 +269,7 @@ fn perform(session: &mut Option<ProjectSession>, job: Job) -> Reply {
             serde_json::to_value(impact).map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
         }
         Job::Snapshot => session.as_ref().map(snapshot_json).ok_or_else(no_project),
-        Job::Midi(listening) => {
+        Job::Midi(listening, _) => {
             let open = session.as_mut().ok_or_else(no_project)?;
             if listening {
                 open.listen_to_midi();

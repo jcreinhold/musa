@@ -23,7 +23,8 @@ use musa_compiler::{ChordQuality, ChordSymbol, Clef, EventId, Mark, Mode, Sevent
 
 use crate::RenderError;
 use crate::plan::{
-    ARTICULATION_PLACEMENT, NotatedItem, NotatedKind, NotationPlan, Placement, PositionedMark, StaffPlan, VoiceLane,
+    ARTICULATION_PLACEMENT, ClefChange, NotatedItem, NotatedKind, NotationPlan, Placement, PositionedMark, StaffPlan,
+    VoiceLane,
 };
 
 /// The typed document node tree (§12.3). Private to the backend.
@@ -176,23 +177,12 @@ fn staff_body(
 ) -> Result<LyNode, RenderError> {
     let mut head = Vec::new();
     if let Some(clef) = staff.clef() {
-        let name = match clef {
-            Clef::Treble => "treble",
-            Clef::Bass => "bass",
-            Clef::Alto => "alto",
-            Clef::Tenor => "tenor",
-        };
-        head.push(LyNode::Command(format!("\\clef \"{name}\"")));
+        head.push(LyNode::Command(format!("\\clef \"{}\"", clef_name(clef))));
     }
     let (count, unit) = staff.time_signature();
     head.push(LyNode::Command(format!("\\time {count}/{unit}")));
     if let Some(key) = staff.key_signature() {
-        let tonic = tonic_name(key.fifths, key.mode);
-        let mode = match key.mode {
-            Mode::Major => "\\major",
-            Mode::Minor => "\\minor",
-        };
-        head.push(LyNode::Command(format!("\\key {tonic} {mode}")));
+        head.push(LyNode::Command(key_command(key)));
     }
 
     let lane_count = staff.measures().first().map_or(0, |m| m.lanes().len());
@@ -212,6 +202,14 @@ fn staff_body(
                 {
                     nodes.push(LyNode::Command(format!("\\time {count}/{unit}")));
                 }
+                // A modulation, likewise: the opening key is in the head, and
+                // `\key` in the music means "from here on".
+                if lane_index == 0
+                    && index > 0
+                    && let Some(key) = measure.key_signature()
+                {
+                    nodes.push(LyNode::Command(key_command(key)));
+                }
                 let here: Vec<&PositionedMark<ScoreMark>> = if lane_index == 0 {
                     sections
                         .iter()
@@ -225,7 +223,8 @@ fn staff_body(
                 {
                     nodes.push(LyNode::Command(command.clone()));
                 }
-                nodes.extend(lane_body(lane, count, unit, &here)?);
+                let clefs = if lane_index == 0 { measure.clefs() } else { &[] };
+                nodes.extend(lane_body(lane, count, unit, &here, clefs)?);
                 nodes.push(LyNode::BarCheck);
             }
         }
@@ -250,6 +249,7 @@ fn lane_body(
     count: u32,
     unit: u32,
     sections: &[&PositionedMark<ScoreMark>],
+    clefs: &[ClefChange],
 ) -> Result<Vec<LyNode>, RenderError> {
     if lane.items().is_empty() {
         // An uncovered measure of this voice renders as spacer skips — a
@@ -272,7 +272,15 @@ fn lane_body(
     let mut open: Option<(u32, u32, Vec<LyNode>)> = None;
     let mut pending = sections.iter();
     let mut next_mark = pending.next();
+    let mut pending_clefs = clefs.iter();
+    let mut next_clef = pending_clefs.next();
     for item in lane.items() {
+        // The small clef goes before the note it affects, which in LilyPond
+        // is literally where the command is written.
+        while let Some(change) = next_clef.filter(|change| change.onset_in_measure <= item.onset_in_measure()) {
+            nodes.push(LyNode::Command(format!("\\clef \"{}\"", clef_name(change.clef))));
+            next_clef = pending_clefs.next();
+        }
         // A form marker prints where it falls, which in LilyPond means before
         // the note that follows it; a marker past the last note of the measure
         // lands after them all, below.
@@ -306,7 +314,32 @@ fn lane_body(
         nodes.push(mark_node(&mark.what));
         next_mark = pending.next();
     }
+    while let Some(change) = next_clef {
+        nodes.push(LyNode::Command(format!("\\clef \"{}\"", clef_name(change.clef))));
+        next_clef = pending_clefs.next();
+    }
     Ok(nodes)
+}
+
+/// `\key d \minor` — one spelling, written twice: in the staff head and at
+/// every modulation.
+fn key_command(key: crate::plan::KeySignature) -> String {
+    let tonic = tonic_name(key.fifths, key.mode);
+    let mode = match key.mode {
+        Mode::Major => "\\major",
+        Mode::Minor => "\\minor",
+    };
+    format!("\\key {tonic} {mode}")
+}
+
+/// The `LilyPond` name of a clef.
+fn clef_name(clef: Clef) -> &'static str {
+    match clef {
+        Clef::Treble => "treble",
+        Clef::Bass => "bass",
+        Clef::Alto => "alto",
+        Clef::Tenor => "tenor",
+    }
 }
 
 /// A symbol the whole score reads, written into the topmost staff at the

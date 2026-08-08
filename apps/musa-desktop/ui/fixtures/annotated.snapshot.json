@@ -54,6 +54,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "key": "A minor",
+        "clef": "treble",
         "onsetFrames": 0,
         "endFrames": 30000,
         "origin": {
@@ -94,6 +96,8 @@
           "numerator": 2,
           "denominator": 1
         },
+        "key": "A minor",
+        "clef": "treble",
         "onsetFrames": 30000,
         "endFrames": 60000,
         "origin": {
@@ -134,6 +138,8 @@
           "numerator": 3,
           "denominator": 1
         },
+        "key": "A minor",
+        "clef": "treble",
         "onsetFrames": 60000,
         "endFrames": 120000,
         "origin": {
@@ -174,6 +180,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "key": "A minor",
+        "clef": "treble",
         "onsetFrames": 120000,
         "endFrames": 180000,
         "origin": {
@@ -214,6 +222,8 @@
           "numerator": 3,
           "denominator": 1
         },
+        "key": "A minor",
+        "clef": "treble",
         "onsetFrames": 180000,
         "endFrames": 240000,
         "origin": {
@@ -254,6 +264,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "key": "A minor",
+        "clef": "treble",
         "onsetFrames": 240000,
         "endFrames": 270000,
         "origin": {
@@ -294,6 +306,8 @@
           "numerator": 2,
           "denominator": 1
         },
+        "key": "A minor",
+        "clef": "treble",
         "onsetFrames": 270000,
         "endFrames": 300000,
         "origin": {
@@ -334,6 +348,8 @@
           "numerator": 3,
           "denominator": 1
         },
+        "key": "A minor",
+        "clef": "treble",
         "onsetFrames": 300000,
         "endFrames": 360000,
         "origin": {
@@ -374,6 +390,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "key": "A minor",
+        "clef": "treble",
         "onsetFrames": 360000,
         "endFrames": 480000,
         "origin": {

@@ -285,7 +285,9 @@ fn typed_views_read_the_new_statements() {
             | VoiceItem::Invert(_)
             | VoiceItem::Phrase(_)
             | VoiceItem::Hairpin(_)
-            | VoiceItem::Meter(_) => panic!("unexpected item"),
+            | VoiceItem::Meter(_)
+            | VoiceItem::Key(_)
+            | VoiceItem::Clef(_) => panic!("unexpected item"),
         }
     }
     assert_eq!(mark.as_deref(), Some("mf"));
@@ -338,7 +340,9 @@ fn the_transformations_and_their_bodies_are_typed_views() {
             | VoiceItem::Tuplet(_)
             | VoiceItem::Phrase(_)
             | VoiceItem::Hairpin(_)
-            | VoiceItem::Meter(_) => panic!("unexpected item"),
+            | VoiceItem::Meter(_)
+            | VoiceItem::Key(_)
+            | VoiceItem::Clef(_) => panic!("unexpected item"),
         }
     }
     assert_eq!(factor.as_deref(), Some("3/2"));
@@ -379,7 +383,9 @@ fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
             | VoiceItem::Invert(_)
             | VoiceItem::Phrase(_)
             | VoiceItem::Hairpin(_)
-            | VoiceItem::Meter(_) => None,
+            | VoiceItem::Meter(_)
+            | VoiceItem::Key(_)
+            | VoiceItem::Clef(_) => None,
         })
         .collect();
     assert_eq!(calls.len(), 2);
@@ -520,7 +526,9 @@ fn a_hairpin_names_its_direction_and_its_mark() {
             | VoiceItem::Retrograde(_)
             | VoiceItem::Invert(_)
             | VoiceItem::Phrase(_)
-            | VoiceItem::Meter(_) => None,
+            | VoiceItem::Meter(_)
+            | VoiceItem::Key(_)
+            | VoiceItem::Clef(_) => None,
         })
         .collect();
     assert_eq!(

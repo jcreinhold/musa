@@ -151,6 +151,12 @@ pub(crate) struct Resolver {
     /// and folded before any of them can be checked: whether a change lands
     /// on a barline is a question about the changes before it.
     pub(crate) meter_changes: Vec<(crate::MusicalTime, Meter, SourceSpan)>,
+    /// Every mid-piece `key`, likewise.
+    ///
+    /// A modulation is a barline event, so it is checked against the
+    /// barlines — which the meters decide — and therefore cannot be checked
+    /// where it is written either.
+    pub(crate) key_changes: Vec<(crate::MusicalTime, Key, SourceSpan)>,
     /// Bars whose length is still to be checked.
     ///
     /// A bar is checked against the meter in force where it sits, and where
@@ -187,6 +193,7 @@ impl Resolver {
             meter_written: false,
             cursor: crate::MusicalTime::ZERO,
             meter_changes: Vec::new(),
+            key_changes: Vec::new(),
             pending_bars: Vec::new(),
             key: None,
             timeline_sink: None,
@@ -747,7 +754,7 @@ pub(crate) fn part_metadata(
                     Diagnostic::error(Code::DuplicateName, "this part already says what clef it is in")
                         .at(span, "declared again here")
                         .also(first, "first declared here")
-                        .help("write one `clef` per part"),
+                        .help("write one `clef` per part, and `clef bass;` in a voice where it changes"),
                 ),
                 None => clef = Some((parsed, span)),
             },
@@ -813,7 +820,7 @@ pub(crate) fn parse_meter(meter: &musa_language::ast::MeterStmt) -> Option<Meter
     Some(Meter::new(numerator.parse().ok()?, denominator.parse().ok()?))
 }
 
-fn parse_key(key: &KeyStmt) -> Option<Key> {
+pub(crate) fn parse_key(key: &KeyStmt) -> Option<Key> {
     let syntax = key.syntax();
     let mut identifiers = syntax
         .children_with_tokens()

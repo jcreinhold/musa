@@ -401,15 +401,21 @@ fn write_part(
         xml.open("measure", &[("number", &number)])?;
         if index == 0 {
             write_attributes(xml, staff, divisions)?;
-        } else if let Some((count, unit)) = measure.time_signature() {
-            // A measure that changes meter carries the change and nothing
-            // else: divisions, key and clef are still what the first
-            // measure's `<attributes>` said.
+        } else if measure.time_signature().is_some() || measure.key_signature().is_some() {
+            // A measure that changes meter or key carries the change and
+            // nothing else: divisions and the opening clef are still what the
+            // first measure's `<attributes>` said. `MusicXML` fixes the child
+            // order — key before time — so the two are written together.
             xml.open("attributes", &[])?;
-            xml.open("time", &[])?;
-            xml.leaf("beats", &[], &count.to_string())?;
-            xml.leaf("beat-type", &[], &unit.to_string())?;
-            xml.close("time")?;
+            if let Some(key) = measure.key_signature() {
+                write_key(xml, key)?;
+            }
+            if let Some((count, unit)) = measure.time_signature() {
+                xml.open("time", &[])?;
+                xml.leaf("beats", &[], &count.to_string())?;
+                xml.leaf("beat-type", &[], &unit.to_string())?;
+                xml.close("time")?;
+            }
             xml.close("attributes")?;
         }
         let barline = marks.get(&measure.number());
@@ -434,6 +440,10 @@ fn write_part(
                 lane_index.saturating_add(1),
                 divisions,
                 full,
+                // `MusicXML` writes a mid-measure clef as `<attributes>`
+                // among the notes, which puts it in one voice's stream; the
+                // clef is the staff's, so it goes in the first.
+                if lane_index == 0 { measure.clefs() } else { &[] },
                 open_slurs.entry(lane_index).or_default(),
             )?;
             // Every voice starts at the barline, so all but the last rewinds.
@@ -460,21 +470,34 @@ fn write_part(
     xml.close("part")
 }
 
+fn write_key(xml: &mut Xml, key: crate::plan::KeySignature) -> Result<(), RenderError> {
+    xml.open("key", &[])?;
+    xml.leaf("fifths", &[], &key.fifths.to_string())?;
+    xml.leaf(
+        "mode",
+        &[],
+        match key.mode {
+            Mode::Major => "major",
+            Mode::Minor => "minor",
+        },
+    )?;
+    xml.close("key")
+}
+
+/// `<clef>` as `MusicXML` writes one, in the head or among the notes.
+fn write_clef(xml: &mut Xml, clef: Clef) -> Result<(), RenderError> {
+    let (sign, line) = clef_sign_line(clef);
+    xml.open("clef", &[])?;
+    xml.leaf("sign", &[], sign)?;
+    xml.leaf("line", &[], line)?;
+    xml.close("clef")
+}
+
 fn write_attributes(xml: &mut Xml, staff: &StaffPlan, divisions: i64) -> Result<(), RenderError> {
     xml.open("attributes", &[])?;
     xml.leaf("divisions", &[], &divisions.to_string())?;
     if let Some(key) = staff.key_signature() {
-        xml.open("key", &[])?;
-        xml.leaf("fifths", &[], &key.fifths.to_string())?;
-        xml.leaf(
-            "mode",
-            &[],
-            match key.mode {
-                Mode::Major => "major",
-                Mode::Minor => "minor",
-            },
-        )?;
-        xml.close("key")?;
+        write_key(xml, key)?;
     }
     let (count, unit) = staff.time_signature();
     xml.open("time", &[])?;
@@ -482,11 +505,7 @@ fn write_attributes(xml: &mut Xml, staff: &StaffPlan, divisions: i64) -> Result<
     xml.leaf("beat-type", &[], &unit.to_string())?;
     xml.close("time")?;
     if let Some(clef) = staff.clef() {
-        let (sign, line) = clef_sign_line(clef);
-        xml.open("clef", &[])?;
-        xml.leaf("sign", &[], sign)?;
-        xml.leaf("line", &[], line)?;
-        xml.close("clef")?;
+        write_clef(xml, clef)?;
     }
     xml.close("attributes")
 }
@@ -498,6 +517,7 @@ fn write_lane(
     voice: usize,
     divisions: i64,
     full_measure: i64,
+    clefs: &[crate::plan::ClefChange],
     open_slurs: &mut Vec<u32>,
 ) -> Result<i64, RenderError> {
     let items = lane.items();
@@ -512,8 +532,16 @@ fn write_lane(
         return Ok(full_measure);
     }
     let mut cursor = Ratio::ZERO;
+    let mut pending_clefs = clefs.iter();
+    let mut next_clef = pending_clefs.next();
     for (index, item) in items.iter().enumerate() {
         let onset = item.onset_in_measure().as_ratio();
+        while let Some(change) = next_clef.filter(|change| change.onset_in_measure.as_ratio() <= onset) {
+            xml.open("attributes", &[])?;
+            write_clef(xml, change.clef)?;
+            xml.close("attributes")?;
+            next_clef = pending_clefs.next();
+        }
         // The plan can leave a voice silent between events without writing a
         // rest for it; `<forward>` is how a partwise document skips time.
         if onset > cursor {
@@ -546,6 +574,12 @@ fn write_lane(
             write_phrase(xml, &phrase.name, false)?;
         }
         cursor += sounding(item);
+    }
+    while let Some(change) = next_clef {
+        xml.open("attributes", &[])?;
+        write_clef(xml, change.clef)?;
+        xml.close("attributes")?;
+        next_clef = pending_clefs.next();
     }
     Ok(ticks(cursor, divisions))
 }

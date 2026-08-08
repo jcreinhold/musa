@@ -200,18 +200,10 @@ fn write_score_def(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<
     let mut score_def = element("scoreDef");
     score_def.push_attribute(("meter.count", count_text.as_str()));
     score_def.push_attribute(("meter.unit", unit_text.as_str()));
-    if let Some(key) = first.key_signature() {
-        let sig = match key.fifths.cmp(&0) {
-            std::cmp::Ordering::Equal => "0".to_string(),
-            std::cmp::Ordering::Greater => format!("{}s", key.fifths),
-            std::cmp::Ordering::Less => format!("{}f", key.fifths.saturating_abs()),
-        };
-        let mode = match key.mode {
-            Mode::Major => "major",
-            Mode::Minor => "minor",
-        };
-        score_def.push_attribute(("key.sig", sig.as_str()));
-        score_def.push_attribute(("key.mode", mode));
+    let sig = first.key_signature().map(|key| key_sig(key.fifths));
+    if let (Some(sig), Some(key)) = (sig.as_deref(), first.key_signature()) {
+        score_def.push_attribute(("key.sig", sig));
+        score_def.push_attribute(("key.mode", key_mode(key.mode)));
     }
     writer
         .write_event(Event::Start(score_def))
@@ -388,6 +380,22 @@ fn abbreviate(name: &str) -> String {
     }
 }
 
+/// `2s`, `3f`, `0` — MEI's spelling of a fifths count.
+fn key_sig(fifths: i8) -> String {
+    match fifths.cmp(&0) {
+        std::cmp::Ordering::Equal => "0".to_string(),
+        std::cmp::Ordering::Greater => format!("{fifths}s"),
+        std::cmp::Ordering::Less => format!("{}f", fifths.saturating_abs()),
+    }
+}
+
+fn key_mode(mode: Mode) -> &'static str {
+    match mode {
+        Mode::Major => "major",
+        Mode::Minor => "minor",
+    }
+}
+
 fn clef_shape_line(clef: Clef) -> (&'static str, &'static str) {
     match clef {
         Clef::Treble => ("G", "2"),
@@ -445,18 +453,22 @@ fn write_measure(
     // A meter change is a `<scoreDef>` between measures, which is how MEI
     // says "from here on" — the opening one is written before the first
     // measure, so only the changes after it are written here.
-    if index > 0
-        && let Some((count, unit)) = plan
-            .staves()
-            .first()
-            .and_then(|staff| staff.measures().get(index))
-            .and_then(crate::plan::MeasurePlan::time_signature)
-    {
+    let opening = plan.staves().first().and_then(|staff| staff.measures().get(index));
+    let meter_change = opening.and_then(crate::plan::MeasurePlan::time_signature);
+    let key_change = opening.and_then(crate::plan::MeasurePlan::key_signature);
+    if index > 0 && (meter_change.is_some() || key_change.is_some()) {
         let mut score_def = element("scoreDef");
-        let count_text = count.to_string();
-        let unit_text = unit.to_string();
-        score_def.push_attribute(("meter.count", count_text.as_str()));
-        score_def.push_attribute(("meter.unit", unit_text.as_str()));
+        let count_text = meter_change.map(|(count, _)| count.to_string());
+        let unit_text = meter_change.map(|(_, unit)| unit.to_string());
+        if let (Some(count), Some(unit)) = (count_text.as_deref(), unit_text.as_deref()) {
+            score_def.push_attribute(("meter.count", count));
+            score_def.push_attribute(("meter.unit", unit));
+        }
+        let sig_text = key_change.map(|key| key_sig(key.fifths));
+        if let (Some(sig), Some(key)) = (sig_text.as_deref(), key_change) {
+            score_def.push_attribute(("key.sig", sig));
+            score_def.push_attribute(("key.mode", key_mode(key.mode)));
+        }
         writer
             .write_event(Event::Empty(score_def))
             .map_err(|error| RenderError::xml(&error))?;
@@ -494,6 +506,10 @@ fn write_measure(
                 staff_index.saturating_add(1),
                 lane_index.saturating_add(1),
                 lane,
+                // A clef belongs to the staff, and MEI writes it inside a
+                // layer, so it is written in the first — the same choice
+                // every backend makes for the same reason.
+                if lane_index == 0 { measure_plan.clefs() } else { &[] },
                 piece_counts,
             )?;
         }
@@ -692,6 +708,7 @@ fn write_layer(
     staff: usize,
     lane: usize,
     lane_plan: &VoiceLane,
+    clefs: &[crate::plan::ClefChange],
     piece_counts: &mut std::collections::HashMap<EventId, u32>,
 ) -> Result<(), RenderError> {
     let layer_id = format!("layer-{staff}-{lane}");
@@ -709,7 +726,19 @@ fn write_layer(
             .map_err(|error| RenderError::xml(&error))?;
     }
     let items = lane_plan.items();
+    let mut pending_clefs = clefs.iter();
+    let mut next_clef = pending_clefs.next();
     for (index, item) in items.iter().enumerate() {
+        while let Some(change) = next_clef.filter(|change| change.onset_in_measure <= item.onset_in_measure()) {
+            let (shape, line) = clef_shape_line(change.clef);
+            let mut clef = element("clef");
+            clef.push_attribute(("shape", shape));
+            clef.push_attribute(("line", line));
+            writer
+                .write_event(Event::Empty(clef))
+                .map_err(|error| RenderError::xml(&error))?;
+            next_clef = pending_clefs.next();
+        }
         let beam = item.beam();
         let opens_beam = beam.is_some()
             && index
@@ -738,6 +767,18 @@ fn write_layer(
         if item.tuplet().is_some_and(|tuplet| tuplet.stop) {
             end(writer, "tuplet")?;
         }
+    }
+    // A change past the last note of the measure still has to be written:
+    // dropping it would move the clef to somewhere it was not asked for.
+    while let Some(change) = next_clef {
+        let (shape, line) = clef_shape_line(change.clef);
+        let mut clef = element("clef");
+        clef.push_attribute(("shape", shape));
+        clef.push_attribute(("line", line));
+        writer
+            .write_event(Event::Empty(clef))
+            .map_err(|error| RenderError::xml(&error))?;
+        next_clef = pending_clefs.next();
     }
     end(writer, "layer")
 }

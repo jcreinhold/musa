@@ -54,6 +54,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "key": "G major",
+        "clef": "treble",
         "onsetFrames": 0,
         "endFrames": 32727,
         "origin": {
@@ -94,6 +96,8 @@
           "numerator": 2,
           "denominator": 1
         },
+        "key": "G major",
+        "clef": "treble",
         "onsetFrames": 32727,
         "endFrames": 65455,
         "origin": {
@@ -134,6 +138,8 @@
           "numerator": 3,
           "denominator": 1
         },
+        "key": "G major",
+        "clef": "treble",
         "onsetFrames": 65455,
         "endFrames": 98182,
         "origin": {
@@ -174,6 +180,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "key": "G major",
+        "clef": "treble",
         "onsetFrames": 98182,
         "endFrames": 130909,
         "origin": {
@@ -216,6 +224,8 @@
           "numerator": 2,
           "denominator": 1
         },
+        "key": "G major",
+        "clef": "treble",
         "onsetFrames": 130909,
         "endFrames": 163636,
         "origin": {
@@ -258,6 +268,8 @@
           "numerator": 3,
           "denominator": 1
         },
+        "key": "G major",
+        "clef": "treble",
         "onsetFrames": 163636,
         "endFrames": 196364,
         "origin": {
@@ -300,6 +312,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "key": "G major",
+        "clef": "treble",
         "onsetFrames": 196364,
         "endFrames": 229091,
         "origin": {
@@ -342,6 +356,8 @@
           "numerator": 2,
           "denominator": 1
         },
+        "key": "G major",
+        "clef": "treble",
         "onsetFrames": 229091,
         "endFrames": 261818,
         "origin": {
@@ -384,6 +400,8 @@
           "numerator": 3,
           "denominator": 1
         },
+        "key": "G major",
+        "clef": "treble",
         "onsetFrames": 261818,
         "endFrames": 294545,
         "origin": {
@@ -426,6 +444,8 @@
           "numerator": 1,
           "denominator": 1
         },
+        "key": "G major",
+        "clef": "treble",
         "onsetFrames": 294545,
         "endFrames": 327273,
         "origin": {
@@ -466,6 +486,8 @@
           "numerator": 2,
           "denominator": 1
         },
+        "key": "G major",
+        "clef": "treble",
         "onsetFrames": 327273,
         "endFrames": 360000,
         "origin": {
@@ -506,6 +528,8 @@
           "numerator": 3,
           "denominator": 1
         },
+        "key": "G major",
+        "clef": "treble",
         "onsetFrames": 360000,
         "endFrames": 392727,
         "origin": {

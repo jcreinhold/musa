@@ -208,12 +208,29 @@ impl StaffPlan {
     }
 }
 
+/// A clef change taking effect inside a measure.
+///
+/// The one context change that is not a barline event, and the reason it is
+/// a list on the measure rather than a field on the staff: a cello crossing
+/// into treble does it before the note it affects, wherever that note is. It
+/// belongs to the staff and not to a voice, because both voices of a staff
+/// read the same clef.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ClefChange {
+    /// Where in the measure it takes effect, in whole notes.
+    pub onset_in_measure: MusicalDuration,
+    /// The clef the staff reads from there.
+    pub clef: Clef,
+}
+
 /// One measure of one staff.
 #[derive(Clone, Debug)]
 pub struct MeasurePlan {
     number: u32,
     meter: Meter,
     time_signature: Option<(u32, u32)>,
+    key: Option<KeySignature>,
+    clefs: Vec<ClefChange>,
     lanes: Vec<VoiceLane>,
 }
 
@@ -237,6 +254,18 @@ impl MeasurePlan {
     /// measure prints one only when it differs from the measure before.
     pub fn time_signature(&self) -> Option<(u32, u32)> {
         self.time_signature
+    }
+
+    /// The key signature this measure *prints*, or `None` when it inherits
+    /// the one before it. Same question as [`Self::time_signature`], and the
+    /// same answer for the same reason.
+    pub fn key_signature(&self) -> Option<KeySignature> {
+        self.key
+    }
+
+    /// Clef changes taking effect in this measure, in onset order.
+    pub fn clefs(&self) -> &[ClefChange] {
+        &self.clefs
     }
 
     /// Voice lanes sounding in this measure (one per voice of the part).
@@ -539,10 +568,24 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
     let bars = page_bars(score, &fold);
     let meter = bars.meter_at(MusicalTime::ZERO);
     let key = score.key_at(Scope::Piece, MusicalTime::ZERO).map(key_signature);
+    // Every key the piece states, on the page's own clock. A modulation
+    // inside a folded repeat prints once, at the measure the page numbers it.
+    let keys: Vec<(MusicalTime, KeySignature)> = score
+        .keys()
+        .changes(Scope::Piece)
+        .filter_map(|(at, key)| Some((fold.at(at)?, key_signature(key))))
+        .collect();
     let marks = Marks::collect(score);
     let mut staves = Vec::new();
     for (_, part) in score.parts().iter() {
-        staves.push(plan_staff(score, part, meter, &bars, key, &marks, &fold)?);
+        let clefs: Vec<(MusicalTime, Clef)> = score
+            .clefs()
+            .changes(Scope::Part { part: part.id().0 })
+            .filter_map(|(at, clef)| Some((fold.at(at)?, clef)))
+            .collect();
+        staves.push(plan_staff(
+            score, part, meter, &bars, key, &keys, &clefs, &marks, &fold,
+        )?);
     }
     let tempo = score.tempo();
     let mut tempos = vec![positioned(
@@ -837,12 +880,18 @@ fn key_signature(key: Key) -> KeySignature {
     }
 }
 
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one staff is one plan; splitting the inputs would only move the list"
+)]
 fn plan_staff(
     score: &ScoreSnapshot,
     part: &Part,
     meter: Meter,
     bars: &BarLines,
     key: Option<KeySignature>,
+    keys: &[(MusicalTime, KeySignature)],
+    clefs: &[(MusicalTime, Clef)],
     marks: &Marks,
     fold: &Fold,
 ) -> Result<StaffPlan, crate::NotationError> {
@@ -866,6 +915,7 @@ fn plan_staff(
     // What the last measure printed, so a measure prints a time signature
     // exactly when it says something the one before it did not.
     let mut printed: Option<Meter> = None;
+    let mut printed_key: Option<KeySignature> = None;
     for measure in bars.measures_through(span) {
         let (start, end) = (measure.start, measure.end);
         let mut plans = Vec::with_capacity(lanes.len());
@@ -883,10 +933,29 @@ fn plan_staff(
         let lanes = plans;
         let changed = printed != Some(measure.meter);
         printed = Some(measure.meter);
+        // The key in force where this measure opens. Read as "the latest one
+        // stated at or before the barline" rather than "one stated exactly
+        // here", so a modulation the compiler refused still prints somewhere
+        // instead of vanishing: rendering has to stay total.
+        let here_key = keys.iter().rfind(|(at, _)| *at <= start).map(|(_, key)| *key);
+        let key_changed = here_key.is_some() && here_key != printed_key;
+        if here_key.is_some() {
+            printed_key = here_key;
+        }
         measures.push(MeasurePlan {
             number: measure.number,
             meter: measure.meter,
             time_signature: changed.then(|| (measure.meter.numerator(), measure.meter.denominator())),
+            key: key_changed.then_some(here_key).flatten(),
+            clefs: clefs
+                .iter()
+                .skip(1)
+                .filter(|(at, _)| *at >= start && *at < end)
+                .map(|(at, clef)| ClefChange {
+                    onset_in_measure: MusicalDuration::new(at.as_ratio() - start.as_ratio()),
+                    clef: *clef,
+                })
+                .collect(),
             lanes,
         });
     }

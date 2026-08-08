@@ -134,6 +134,17 @@ pub struct EventFacts {
     pub bar: u32,
     /// 1-based beat within the bar, exact.
     pub beat: Fraction,
+    /// The key in force **here**, written out (`A minor`), or absent when
+    /// nothing has said one.
+    ///
+    /// Per event rather than per piece because a piece modulates: the
+    /// inspector's job is to say what is true where the composer is looking,
+    /// and asking the frontend to find the latest change at or before this
+    /// note would be the frontend reasoning about musical time
+    /// (`03-interaction.md` §7).
+    pub key: Option<String>,
+    /// The clef this part is read in here, likewise.
+    pub clef: Option<String>,
     /// The frame this event starts at, in the performance's sample rate —
     /// the same clock the engine reports positions in.
     ///
@@ -354,6 +365,15 @@ impl ScoreFacts {
                         duration_spelling: event.notated_duration.spelling.clone(),
                         bar,
                         beat: Fraction::from_ratio(beat_in_bar),
+                        key: score
+                            .key_at(
+                                musa_compiler::Scope::Part { part: part.id().0 },
+                                musa_compiler::MusicalTime::new(onset),
+                            )
+                            .map(|key| format!("{} {}", pitch_class(key.tonic()), mode(key.mode()))),
+                        clef: score
+                            .clef_at(part.id(), musa_compiler::MusicalTime::new(onset))
+                            .map(|clef| clef.name().to_owned()),
                         onset_frames: tempo.frames(event.onset),
                         end_frames: tempo.frames(end),
                         origin,

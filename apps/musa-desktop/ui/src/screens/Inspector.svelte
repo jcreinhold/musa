@@ -249,6 +249,19 @@
     </TypographicRow>
 
     <!--
+      What is in force *here*, not what the header said: a piece modulates and
+      a part changes clef, and an inspector that showed the opening key beside
+      a note in a later one would be quietly wrong. Absent when the piece has
+      said nothing — an unspecified key is not C major.
+    -->
+    {#if event.key}
+      <TypographicRow label="Key">{event.key}</TypographicRow>
+    {/if}
+    {#if event.clef}
+      <TypographicRow label="Clef">{event.clef}</TypographicRow>
+    {/if}
+
+    <!--
       The Origin row of 04-provenance.md §3: always present, held or not. It
       reads outside-in, in containment order — the `use` that produced these
       notes sits inside the transform block, and the path says so.

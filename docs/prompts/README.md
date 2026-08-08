@@ -161,7 +161,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 62 | mark-vocabulary | 3 | The notation vocabulary becomes a table, not a closed enum |
 | 63 | one-context | 3 | Key, meter, clef and tempo unified as scoped facts with real spans |
 | 64 | meter-changes | 3 | Mid-piece meter, written where the music changes |
-| 65 | key-and-clef-changes | 3 | Modulation and clef change; the speller reads the key at the caret |
+| 65 | key-and-clef-changes | 3 | Modulation, and a clef that changes mid-measure |
 | 66 | indeterminacy-spec | 3 | Where indeterminacy lives; **Q2 resolved** |
 | 67 | realization | 3 | `Realization`, `ChoicePath`, `--seed`; reproducible performances |
 | 68 | open-form | 3 | Mobile form, free duration, improvisation; *In C* and Klavierstück XI |

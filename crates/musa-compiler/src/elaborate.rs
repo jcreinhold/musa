@@ -505,6 +505,7 @@ fn elaborate_score(
     // The meters first: every check below is measured against the barlines,
     // and where the barlines fall is what the meters decide.
     let bars = resolve_meters(resolver);
+    check_keys(resolver, &bars);
     for bar in std::mem::take(&mut resolver.pending_bars) {
         check_bar_length(resolver, &bar, &bars);
     }
@@ -1212,6 +1213,8 @@ fn elaborate_item(
 ) -> Segment {
     match item {
         VoiceItem::Meter(stmt) => elaborate_meter(resolver, stmt, cx, place),
+        VoiceItem::Key(stmt) => elaborate_key(resolver, stmt, cx, place),
+        VoiceItem::Clef(stmt) => elaborate_clef(resolver, stmt, cx, scope, place),
         VoiceItem::Note(note) => {
             let Some(duration) = resolve_scaled_duration(resolver, note.syntax(), cx) else {
                 return Segment::empty();
@@ -1327,7 +1330,7 @@ fn elaborate_item(
             );
             elaborate_items(resolver, share, &ending.items(), cx, scope)
         }
-        VoiceItem::Bar(bar) => elaborate_bar(resolver, share, bar, cx, scope),
+        VoiceItem::Bar(bar) => elaborate_bar(resolver, share, bar, cx, scope, place),
         VoiceItem::Slur(slur) => {
             let origin = origin_of(cx, resolve::trimmed_span(slur.syntax()));
             let body = elaborate_items(resolver, share, &slur.items(), cx, scope);
@@ -1689,10 +1692,16 @@ fn elaborate_bar(
     bar: &musa_language::ast::BarStmt,
     cx: &ExpandCx,
     scope: Scope,
+    place: Place,
 ) -> Segment {
     let at = resolver.cursor;
     let before = errors_so_far(resolver);
-    let body = elaborate_items(resolver, share, &bar.items(), cx, scope);
+    // An *unnamed* bar written among a voice's own items is played exactly
+    // once and at one place, so it is still that place: a clef change belongs
+    // in the middle of a measure, and a measure is a `bar`. A named bar can be
+    // answered from another voice, which makes it material like a motif.
+    let inside = if bar.name().is_none() { place } else { Place::Material };
+    let body = elaborate_place(resolver, share, &bar.items(), cx, scope, inside);
     // A bar whose contents did not resolve has no length worth reporting, and
     // "this bar is 1/4 short" underneath "`sigb` is not a pitch" is the second
     // sentence of a two-sentence complaint about one mistake.
@@ -1723,14 +1732,7 @@ fn elaborate_meter(
 ) -> Segment {
     let span = resolve::trimmed_span(stmt.syntax());
     if place == Place::Material {
-        resolver.report(
-            Diagnostic::error(Code::Misplaced, "a meter change belongs to the piece, not to material")
-                .at(span, "written inside a body")
-                .help("write it among the voice's own items, before the material that is in it")
-                .note(
-                    "material is written once and can be played in several places, so where its barlines fall is a property of the place, not of the notes",
-                ),
-        );
+        resolver.report(misplaced_context("meter", span));
         return Segment::empty();
     }
     let Some(meter) = resolve::parse_meter(stmt) else {
@@ -1747,6 +1749,92 @@ fn elaborate_meter(
         },
         origin_of(cx, span),
     )))
+}
+
+/// A `key` written where the music reaches it.
+///
+/// `Scope::Piece`, like the meter and for the same reason: a modulation is
+/// something the piece does. Which key a *part* reads is then the `Latest`
+/// rule's answer (`context.rs`), so a part that opened in its own key keeps
+/// it until the piece says otherwise and follows the piece from there — the
+/// viola case prompt 63 wrote the rule for.
+fn elaborate_key(resolver: &mut Resolver, stmt: &musa_language::ast::KeyStmt, cx: &ExpandCx, place: Place) -> Segment {
+    let span = resolve::trimmed_span(stmt.syntax());
+    if place == Place::Material {
+        resolver.report(misplaced_context("key", span));
+        return Segment::empty();
+    }
+    let Some(key) = resolve::parse_key(stmt) else {
+        resolver.error(
+            Code::NotAValue,
+            "this key cannot be read",
+            span,
+            "expected a note and a mode, like `a minor`",
+        );
+        return Segment::empty();
+    };
+    resolver.key_changes.push((resolver.cursor, key, span));
+    Segment::literal(point(ScoreFact::new(
+        Scope::Piece,
+        FactKind::Key {
+            tonic: key.tonic(),
+            mode: key.mode(),
+        },
+        origin_of(cx, span),
+    )))
+}
+
+/// A `clef` written where the music reaches it.
+///
+/// `Scope::Part`, because a part's clef is the part's business — the
+/// `Override` rule — and because the reader whose hands change staff is one
+/// player. And, alone among the four context kinds, **no barline check**: a
+/// clef change mid-measure is ordinary notation and every backend writes one.
+/// The engraver puts the small clef before the note it affects.
+fn elaborate_clef(
+    resolver: &mut Resolver,
+    stmt: &musa_language::ast::ClefStmt,
+    cx: &ExpandCx,
+    scope: Scope,
+    place: Place,
+) -> Segment {
+    let span = resolve::trimmed_span(stmt.syntax());
+    if place == Place::Material {
+        resolver.report(misplaced_context("clef", span));
+        return Segment::empty();
+    }
+    let written = stmt.name().unwrap_or_default();
+    let Some(clef) = crate::score::Clef::parse(&written) else {
+        resolver.report(
+            Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a clef"))
+                .at(span, "not a clef musa reads")
+                .help(resolve::suggest(&written, crate::score::Clef::NAMES, "clefs")),
+        );
+        return Segment::empty();
+    };
+    let Scope::Voice { part, .. } = scope else {
+        // Unreachable while `Place::Voice` is only ever passed with a voice's
+        // own scope; refusing rather than guessing a part keeps it that way.
+        return Segment::empty();
+    };
+    Segment::literal(point(ScoreFact::new(
+        Scope::Part { part },
+        FactKind::Clef { clef },
+        origin_of(cx, span),
+    )))
+}
+
+/// The one refusal every context statement shares: material is written once
+/// and can be played in several places, so a statement whose meaning is
+/// "from here on" has no single "here" inside it.
+fn misplaced_context(what: &str, span: SourceSpan) -> Diagnostic {
+    Diagnostic::error(
+        Code::Misplaced,
+        format!("a {what} change belongs to the piece, not to material"),
+    )
+    .at(span, "written inside a body")
+    .help("write it among the voice's own items, before the material that is in it")
+    .note("material is written once and can be played in several places, so where a context change falls is a property of the place, not of the notes")
 }
 
 fn errors_so_far(resolver: &Resolver) -> usize {
@@ -1804,36 +1892,70 @@ fn resolve_meters(resolver: &mut Resolver) -> crate::BarLines {
             // and repeating a fact is not a mistake. Naming two different
             // meters for one place is.
             if *already != meter {
-                resolver.report(
-                    Diagnostic::error(Code::Misplaced, "two meters at the same place")
-                        .at(span, "the second of two")
-                        .also(*first, "the first is here"),
-                );
+                resolver.report(two_at_once("meters", span, *first));
             }
             continue;
         }
         if !bars.change(at, meter) {
-            let here = bars.at(at);
-            resolver.report(
-                Diagnostic::error(Code::DoesNotAddUp, "a meter change must land on a barline")
-                    .at(
-                        span,
-                        format!(
-                            "this is {} into measure {}",
-                            fraction(here.into.as_ratio()),
-                            here.measure
-                        ),
-                    )
-                    .help(format!(
-                        "add {} before it, or move it past the next barline",
-                        fraction(bars.measure_at(at).end.as_ratio() - at.as_ratio())
-                    )),
-            );
+            resolver.report(off_barline("meter", &bars, at, span));
             continue;
         }
         stated.push((at, meter, span));
     }
     bars
+}
+
+/// Refuse any modulation that does not land on a barline.
+///
+/// A key signature is printed at a barline, so a modulation a third of the
+/// way through a measure is a page nobody can engrave. Same refusal as the
+/// meter's, and deliberately *not* the clef's: run after the meters, because
+/// the barlines it is measured against are what the meters decided.
+fn check_keys(resolver: &mut Resolver, bars: &crate::BarLines) {
+    let mut changes = std::mem::take(&mut resolver.key_changes);
+    changes.sort_by_key(|(at, _, span)| (*at, span.start));
+    let mut stated: Vec<(MusicalTime, crate::Key, SourceSpan)> = Vec::new();
+    for (at, key, span) in changes {
+        if let Some((_, already, first)) = stated.iter().find(|(other, _, _)| *other == at) {
+            if *already != key {
+                resolver.report(two_at_once("keys", span, *first));
+            }
+            continue;
+        }
+        if bars.is_measured() && bars.at(at).into != crate::MusicalDuration::ZERO {
+            resolver.report(off_barline("key", bars, at, span));
+            continue;
+        }
+        stated.push((at, key, span));
+    }
+}
+
+/// "You wrote it here, and here is not a barline" — the same sentence for a
+/// meter and for a key, because it is the same mistake and the composer's fix
+/// is the same either way.
+fn off_barline(what: &str, bars: &crate::BarLines, at: MusicalTime, span: SourceSpan) -> Diagnostic {
+    let here = bars.at(at);
+    Diagnostic::error(Code::DoesNotAddUp, format!("a {what} change must land on a barline"))
+        .at(
+            span,
+            format!(
+                "this is {} into measure {}",
+                fraction(here.into.as_ratio()),
+                here.measure
+            ),
+        )
+        .help(format!(
+            "add {} before it, or move it past the next barline",
+            fraction(bars.measure_at(at).end.as_ratio() - at.as_ratio())
+        ))
+}
+
+/// Two voices may both name a change — repeating a fact is not a mistake —
+/// but they may not disagree about it.
+fn two_at_once(what: &str, span: SourceSpan, first: SourceSpan) -> Diagnostic {
+    Diagnostic::error(Code::Misplaced, format!("two {what} at the same place"))
+        .at(span, "the second of two")
+        .also(first, "the first is here")
 }
 
 fn check_bar_length(resolver: &mut Resolver, bar: &PendingBar, bars: &crate::BarLines) {
@@ -2548,6 +2670,7 @@ pub(crate) fn piece_term(source: &SourceDocument) -> Option<(String, musa_kernel
         .max()
         .unwrap_or(musa_kernel::Beat::ZERO);
     let bars = resolve_meters(&mut resolver);
+    check_keys(&mut resolver, &bars);
     let context = context_facts(&mut resolver, &piece, &score, &clefs, &bars, extent);
     let parts: Vec<musa_kernel::Term<ScoreFact>> = lanes
         .into_iter()

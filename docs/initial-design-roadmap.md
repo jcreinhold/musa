@@ -742,13 +742,34 @@ Two rules keep the coordinate system well-formed, and both are refusals rather t
 - **A change may not be written inside material.** A motif body is elaborated once and can stand at several places, so
   a meter written inside one would be in force at places that have nothing to do with each other (§2: motif definition
   ≠ its expansions). This is the same reason a bar checks only its own total: inside a motif the absolute position is
-  unknowable, and a meter change is nothing but an absolute position.
+  unknowable, and a meter change is nothing but an absolute position. An *unnamed* `bar { … }` written among a voice's
+  own items is not material: it is played once, at one place, so a context change inside it is at that place. A named
+  bar can be answered from another voice, which makes it material like a motif.
 
 Irregular bar lengths follow from this — `meter 5/4; bar { … } meter 4/4;` is a 5/4 bar — and the sugar
 `bar 5/4 { … }` is not accepted, because it would be sugar for the two statements above and nothing else. Pickups are
 still not accepted, and the reason is no longer the meter: a pickup is an **uncounted** measure, so it is a question
 about measure *numbering* — `\partial`, `<measure implicit="yes">`, `@metcon="false"` — and musa has no way to say a
 measure is not counted. Writing one as a short first bar would number it 1 and every measure after it one too high.
+
+### The key and the clef change the same way, and only one of them at a barline
+
+`key` and `clef` are voice items on the same terms as `meter`, and the header and part forms mean "from the beginning".
+The two differ in every other respect, and the differences are the design:
+
+- **A key is the piece's.** A modulation written in one voice is the piece's modulation. Which key a *part* reads is
+  then a question of inheritance — the latest fact wins, whatever scope wrote it — so a part that opened in its own key
+  keeps it until the piece says otherwise and follows the piece from there.
+- **A clef is the part's.** No key or meter written elsewhere reaches it, because the reader whose hand changes staff
+  is one player.
+- **A key change must land on a barline; a clef change need not.** A key signature is printed at a barline, so a
+  modulation a third of the way through a measure is a page nobody can engrave. A clef change mid-measure is ordinary
+  notation and every backend writes one: the engraver draws a small clef before the note it affects. This is the only
+  one of the four context kinds whose change is not a barline event.
+
+A part in a *different key* from the piece is a transposing instrument, which needs written-versus-sounding pitch
+throughout (§2's largest unimplemented row) and is not this. What is implemented is one key at a time for the piece,
+moving where the music moves.
 
 ### A repeat is notation, and it plays every pass
 

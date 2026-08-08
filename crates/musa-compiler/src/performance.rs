@@ -311,11 +311,25 @@ pub struct MeterChange {
     pub meter: crate::score::Meter,
 }
 
+/// A key signature and the frame it takes effect at.
+///
+/// Carried for the same reason as [`MeterChange`]: SMF writes a key-signature
+/// meta event, and the exporter must not have to hold a second score to know
+/// when to write one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct KeyChange {
+    /// Where it starts, in frames.
+    pub frame: u64,
+    /// What it is.
+    pub key: crate::score::Key,
+}
+
 /// The scheduled performance of a score.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PerformancePlan {
     tempo: IntegratedTempoMap,
     meters: Vec<MeterChange>,
+    keys: Vec<KeyChange>,
     lanes: Vec<PerformanceLane>,
 }
 
@@ -329,6 +343,11 @@ impl PerformancePlan {
     /// it opens in.
     pub fn meters(&self) -> &[MeterChange] {
         &self.meters
+    }
+
+    /// Every key the piece states, in playing order.
+    pub fn keys(&self) -> &[KeyChange] {
+        &self.keys
     }
 
     /// One lane per part, in source order.
@@ -436,7 +455,20 @@ pub fn lower_performance(
             meter,
         })
         .collect();
-    Ok(PerformancePlan { tempo, meters, lanes })
+    let keys = score
+        .keys()
+        .changes(crate::Scope::Piece)
+        .map(|(at, key)| KeyChange {
+            frame: tempo.frames(at),
+            key,
+        })
+        .collect();
+    Ok(PerformancePlan {
+        tempo,
+        meters,
+        keys,
+        lanes,
+    })
 }
 
 /// What the part's profile makes of one event, resolved once per event.

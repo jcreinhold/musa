@@ -95,8 +95,12 @@ pub fn export(request: ExportDto, session: State<'_, SessionHandle>) -> Result<V
 /// # Errors
 /// If no piece is open.
 #[tauri::command]
-pub fn listen_to_midi(listening: bool, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
-    session.listen_to_midi(listening)
+pub fn listen_to_midi(
+    listening: bool,
+    caret: Option<String>,
+    session: State<'_, SessionHandle>,
+) -> Result<Value, ErrorDto> {
+    session.listen_to_midi(listening, caret)
 }
 
 /// The current snapshot, for a window that has just opened.

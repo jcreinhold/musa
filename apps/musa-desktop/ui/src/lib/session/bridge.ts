@@ -58,7 +58,8 @@ export const bridge = {
     call<{ path: string }>("export", { request: { target, path } }),
   snapshot: () => call<ProjectSnapshot>("snapshot", {}),
   /** Read a MIDI keyboard, or stop reading it. */
-  listenToMidi: (listening: boolean) => call<ProjectSnapshot>("listen_to_midi", { listening }),
+  listenToMidi: (listening: boolean, caret: string | null) =>
+    call<ProjectSnapshot>("listen_to_midi", { listening, caret }),
 
   /** Subscribe to a shell event. Resolves to the unsubscribe function. */
   async on<K extends keyof Events>(

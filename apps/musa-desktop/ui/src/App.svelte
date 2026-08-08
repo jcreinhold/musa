@@ -323,7 +323,7 @@
     entry.toggle();
     // The keyboard is read while notes are being entered and at no other
     // time, so a session that is not entering has no MIDI poll running.
-    void session.listenToMidi(entry.on);
+    void session.listenToMidi(entry.on, workspace.caretAt?.id ?? null);
     if (!entry.on) return;
     if (workspace.selection.kind === "none") {
       const active = workspace.active;
@@ -639,6 +639,19 @@
    * supplies the duration, and the caret moves past what was written — so a
    * played note and a typed one are the same edit and the same undo.
    */
+  // A played note is spelled in the key in force where it lands, so the core
+  // has to be told where the caret went. Only while entry is on — nothing
+  // polls a keyboard otherwise — and only when it actually moved.
+  let toldCaret: string | null = null;
+  $effect(() => {
+    const caret = entry.on ? (workspace.caretAt?.id ?? null) : null;
+    untrack(() => {
+      if (!entry.on || caret === toldCaret) return;
+      toldCaret = caret;
+      void session.listenToMidi(true, caret);
+    });
+  });
+
   session.played = ({ pitches }) => {
     if (!entry.on) return;
     const asked = played(pitches, entry, workspace);

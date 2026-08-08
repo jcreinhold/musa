@@ -65,7 +65,7 @@ pub use crate::kernel_text::{
 pub use crate::marks::{Mark, MarkDef, VOCABULARY, lookup_mark};
 pub use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 pub use crate::performance::{
-    IntegratedTempoMap, MeterChange, ParameterId, PerformanceError, PerformanceEvent, PerformanceLane,
+    IntegratedTempoMap, KeyChange, MeterChange, ParameterId, PerformanceError, PerformanceEvent, PerformanceLane,
     PerformanceOptions, PerformancePlan, PerformedNote, TempoSegment, Tuning, VoiceInstanceId, lower_performance,
 };
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};

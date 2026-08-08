@@ -374,7 +374,7 @@ impl ProjectSession {
     /// never split across two calls. Releases are read and dropped: entry
     /// writes a notated duration the composer chose, not one the key was held
     /// for (`03-interaction.md` §3).
-    pub fn midi_entry(&mut self) -> Vec<MidiEntry> {
+    pub fn midi_entry(&mut self, caret: Option<&str>) -> Vec<MidiEntry> {
         let Some(midi) = self.midi.as_mut() else {
             return Vec::new();
         };
@@ -384,13 +384,11 @@ impl ProjectSession {
                 self.entry.press(event.note, now);
             }
         }
-        // The piece's key: step entry has no position to spell against, and
-        // will not until note entry carries one. `key_at` is asked the
-        // question it can answer rather than handed a caret it does not have.
-        let key = self
-            .valid
-            .as_ref()
-            .and_then(|valid| valid.score.key_at(Scope::Piece, MusicalTime::ZERO));
+        // The key **at the caret**, which is the whole point of a positional
+        // context: entering a C♯ after a modulation to D major must spell C♯
+        // and not D♭, whatever the header says. With nothing selected there
+        // is no position and the piece's opening key is the honest answer.
+        let key = self.key_at_caret(caret);
         self.entry
             .ready(now)
             .into_iter()
@@ -398,6 +396,32 @@ impl ProjectSession {
                 pitches: notes.into_iter().map(|note| crate::midi::spell(note, key)).collect(),
             })
             .collect()
+    }
+
+    /// The key a note entered at `caret` is spelled in.
+    ///
+    /// `caret` is an engraved event id (`event-1f`), the same identity the
+    /// page and the inspector use; the note being entered goes *before* it,
+    /// so its own onset is the position to ask about. Scoped to the caret's
+    /// part, so a part in its own key spells in that one.
+    fn key_at_caret(&self, caret: Option<&str>) -> Option<musa_compiler::Key> {
+        let valid = self.valid.as_ref()?;
+        let Some(caret) = caret else {
+            return valid.score.key_at(Scope::Piece, MusicalTime::ZERO);
+        };
+        let (scope, at) = valid
+            .score
+            .parts()
+            .iter()
+            .flat_map(|(_, part)| {
+                part.voices()
+                    .flat_map(move |(_, voice)| voice.events().iter().map(move |event| (part.id(), event)))
+            })
+            .find(|(_, event)| format!("event-{:x}", event.id.0) == caret)
+            .map_or((Scope::Piece, MusicalTime::ZERO), |(part, event)| {
+                (Scope::Part { part: part.0 }, event.onset)
+            });
+        valid.score.key_at(scope, at)
     }
 
     /// Block until playback finishes, for callers with nothing else to do

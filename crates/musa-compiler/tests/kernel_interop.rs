@@ -27,9 +27,11 @@ const EXAMPLES: &[(&str, &str)] = &[
     ("annotated", include_str!("../../../examples/annotated.musa")),
     ("canon", include_str!("../../../examples/canon.musa")),
     ("changing-meter", include_str!("../../../examples/changing-meter.musa")),
+    ("clef-change", include_str!("../../../examples/clef-change.musa")),
     ("counterpoint", include_str!("../../../examples/counterpoint.musa")),
     ("glass-mountain", include_str!("../../../examples/glass-mountain.musa")),
     ("invention", include_str!("../../../examples/invention.musa")),
+    ("modulation", include_str!("../../../examples/modulation.musa")),
     (
         "profile-fixture",
         include_str!("../../../examples/profile-fixture.musa"),

@@ -92,11 +92,20 @@ fn a_change_inside_material_is_refused() {
         errors(inside),
         vec!["a meter change belongs to the piece, not to material".to_owned()]
     );
-    let in_a_bar = "piece \"p\" { meter 4/4; score { part a { voice b { \
-                    bar { meter 3/4; c4 1; } } } } }";
+    let in_a_repeat = "piece \"p\" { meter 4/4; score { part a { voice b { \
+                       repeat 2 { meter 3/4; c4 1; } } } } }";
     assert_eq!(
-        errors(in_a_bar),
+        errors(in_a_repeat),
         vec!["a meter change belongs to the piece, not to material".to_owned()]
+    );
+    // An *unnamed* bar is not material — it is played once, at one place —
+    // so a meter inside one is refused by the barline rule instead, which is
+    // the rule that actually applies to it (prompt 65 drew the line).
+    let mid_bar = "piece \"p\" { meter 4/4; score { part a { voice b { \
+                   bar { c4 1/2; meter 3/4; d4 1/2; } } } } }";
+    assert_eq!(
+        errors(mid_bar),
+        vec!["a meter change must land on a barline".to_owned()]
     );
 }
 

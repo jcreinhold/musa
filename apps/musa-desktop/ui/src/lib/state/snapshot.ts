@@ -160,6 +160,14 @@ export interface EventFacts {
   bar: number;
   beat: Fraction;
   /**
+   * The key and the clef in force **here**, written out. A piece modulates
+   * and a part changes clef, so these are per event; the core answers, and
+   * the frontend does not look for the latest change itself
+   * (`03-interaction.md` §7).
+   */
+  key: string | null;
+  clef: string | null;
+  /**
    * When this event sounds, in the frames the engine reports positions in.
    * Written time and sounding time are different layers; the frontend is
    * given the second rather than deriving it (`03-interaction.md` §7).

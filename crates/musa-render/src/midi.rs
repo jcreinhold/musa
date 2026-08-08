@@ -159,7 +159,7 @@ fn tempo_track(performance: &PerformancePlan, ticks: &Ticks) -> Track<'static> {
         let micros = (segment.seconds_per_quarter * 1_000_000.0).round().max(1.0) as u32;
         absolute.push((
             ticks.of(segment.frame),
-            1,
+            2,
             MetaMessage::Tempo(u24::new(micros.min(0x00FF_FFFF))),
         ));
     }
@@ -169,8 +169,11 @@ fn tempo_track(performance: &PerformancePlan, ticks: &Ticks) -> Track<'static> {
         };
         absolute.push((ticks.of(change.frame), 0, message));
     }
-    // A meter before a tempo at the same tick, which is the order a conductor
-    // reads them in and the order every other writer emits.
+    for change in performance.keys() {
+        absolute.push((ticks.of(change.frame), 1, key_signature(change.key)));
+    }
+    // A meter, then a key, then a tempo at the same tick — the order a
+    // conductor reads them in and the order every other writer emits.
     absolute.sort_by_key(|(tick, rank, _)| (*tick, *rank));
     let mut events = Vec::new();
     let mut previous = 0u64;
@@ -205,6 +208,15 @@ fn time_signature(meter: musa_compiler::Meter) -> Option<MetaMessage<'static>> {
     // 24 MIDI clocks to the quarter and 8 thirty-second notes to 24 clocks:
     // the conventional values, and the ones every sequencer writes.
     Some(MetaMessage::TimeSignature(numerator, power, 24, 8))
+}
+
+/// A key as SMF writes one: fifths, and whether it is minor.
+///
+/// Unlike the meter this is total — SMF's key signature is exactly musa's
+/// (fifths on the circle, major or minor), which is the one place the two
+/// formats agree completely.
+fn key_signature(key: musa_compiler::Key) -> MetaMessage<'static> {
+    MetaMessage::KeySignature(key.fifths(), key.mode() == musa_compiler::Mode::Minor)
 }
 
 /// One track per part, named, with its notes on one channel.

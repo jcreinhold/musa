@@ -351,6 +351,17 @@ impl MeterStmt {
 pub struct KeyStmt(SyntaxNode);
 wrapper!(KeyStmt, SyntaxKind::KeyStmt);
 
+/// `clef bass;`
+pub struct ClefStmt(SyntaxNode);
+wrapper!(ClefStmt, SyntaxKind::ClefStmt);
+
+impl ClefStmt {
+    /// The clef's name, as written.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+}
+
 /// Which line of front matter a [`FrontMatterStmt`] is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FrontMatterRole {
@@ -572,6 +583,10 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             HairpinStmt::cast(child).map(VoiceItem::Hairpin)
         } else if kind == SyntaxKind::MeterStmt {
             MeterStmt::cast(child).map(VoiceItem::Meter)
+        } else if kind == SyntaxKind::KeyStmt {
+            KeyStmt::cast(child).map(VoiceItem::Key)
+        } else if kind == SyntaxKind::ClefStmt {
+            ClefStmt::cast(child).map(VoiceItem::Clef)
         } else {
             None
         };
@@ -617,6 +632,10 @@ pub enum VoiceItem {
     Hairpin(HairpinStmt),
     /// `meter 3/4;` — written where the music reaches it.
     Meter(MeterStmt),
+    /// `key d minor;` — likewise.
+    Key(KeyStmt),
+    /// `clef bass;` — likewise.
+    Clef(ClefStmt),
 }
 
 /// The articulation names trailing a note or chord's duration.
