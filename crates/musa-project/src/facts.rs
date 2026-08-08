@@ -287,8 +287,9 @@ impl ScoreFacts {
         // The same tempo integration the performance lowering uses, at the
         // same options, so a frame here is the frame the engine will report.
         let tempo = IntegratedTempoMap::new(score, &PerformanceOptions::default());
-        let measure = score.meter().measure_len().as_ratio();
-        let beat = num_rational::Ratio::new(1, i64::from(score.meter().denominator()).max(1));
+        // Unfolded: the fact index reports where a moment *sounds*, which is
+        // the coordinate the snapshot's own barlines are built over.
+        let bars = score.bars();
 
         let mut parts = Vec::new();
         let mut events = Vec::new();
@@ -334,7 +335,8 @@ impl ScoreFacts {
                     }
                     generated |= origin.generated;
                     let onset = event.onset.as_ratio();
-                    let (bar, beat_in_bar) = position(onset, measure, beat);
+                    let position = bars.at(musa_compiler::MusicalTime::new(onset));
+                    let (bar, beat_in_bar) = (position.measure, position.beat);
                     let pitches = pitches_of(&event.kind);
                     // Exact rational arithmetic on musical time, which is not
                     // the integer arithmetic the lint is about.
@@ -365,7 +367,7 @@ impl ScoreFacts {
             });
         }
 
-        let outline = outline_facts(score, &events, &lines, measure, beat, &tempo);
+        let outline = outline_facts(score, &events, &lines, &bars, &tempo);
         Self {
             title: score.title().to_string(),
             tempo_bpm: score.tempo().bpm,
@@ -403,8 +405,7 @@ fn outline_facts(
     score: &ScoreSnapshot,
     events: &[EventFacts],
     lines: &LineIndex,
-    measure: num_rational::Ratio<i64>,
-    beat: num_rational::Ratio<i64>,
+    bars: &musa_compiler::BarLines,
     tempo: &IntegratedTempoMap,
 ) -> Vec<OutlineFacts> {
     let mut rows: Vec<(u64, OutlineFacts)> = Vec::new();
@@ -418,7 +419,8 @@ fn outline_facts(
         .map(|section| tempo.frames(section.at))
         .collect();
     for (index, section) in score.annotations().sections().iter().enumerate() {
-        let (bar, beat_in_bar) = position(section.at.as_ratio(), measure, beat);
+        let position = bars.at(section.at);
+        let (bar, beat_in_bar) = (position.measure, position.beat);
         let frames = tempo.frames(section.at);
         // The notehead a reader would look at: the first one that has not
         // already gone by when the marker is reached.
@@ -535,26 +537,6 @@ fn motif_name(source: &str, start: u32, end: u32) -> String {
         .map_or(called.as_str(), |(name, _)| name)
         .trim()
         .to_owned()
-}
-
-/// Bar and beat, both 1-based, from an onset in whole notes.
-///
-/// Rational arithmetic on `Ratio<i64>` has no cheap checked form, and the
-/// zero denominators that would make it misbehave are rejected on the line
-/// above; the same allowance is made in `musa-compiler`'s time module.
-#[allow(clippy::arithmetic_side_effects)]
-fn position(
-    onset: num_rational::Ratio<i64>,
-    measure: num_rational::Ratio<i64>,
-    beat: num_rational::Ratio<i64>,
-) -> (u32, num_rational::Ratio<i64>) {
-    if *measure.numer() == 0 || *beat.numer() == 0 {
-        return (1, num_rational::Ratio::from_integer(1));
-    }
-    let bars = (onset / measure).floor().to_integer();
-    let into_bar = onset - measure * num_rational::Ratio::from_integer(bars);
-    let bar = u32::try_from(bars.saturating_add(1)).unwrap_or(1);
-    (bar, into_bar / beat + num_rational::Ratio::from_integer(1))
 }
 
 fn kind_of(kind: &ScoreEventKind) -> EventKind {

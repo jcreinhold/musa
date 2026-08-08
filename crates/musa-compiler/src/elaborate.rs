@@ -798,9 +798,8 @@ fn resolve_position(
         );
         return None;
     }
-    let measure_len = meter.measure_len().as_ratio();
-    let beat_len = Ratio::new(1, i64::from(meter.denominator().max(1)));
-    let at = MusicalTime::new(measure_len * (measure - 1) + beat_len * (beat - Ratio::ONE));
+    let measure = u32::try_from(measure).unwrap_or(u32::MAX);
+    let at = crate::BarLines::uniform(meter).time_of(measure, beat)?;
     if at >= extent && extent > MusicalTime::default() {
         resolver.error(
             Code::OutOfRange,
@@ -1676,10 +1675,13 @@ fn reported_an_error(resolver: &Resolver) -> bool {
 /// silently, and a page the composer has to proofread against their own
 /// intentions. Writing the bar down turns that into this.
 fn check_bar_length(resolver: &mut Resolver, bar: &musa_language::ast::BarStmt, extent: Beat) {
-    let meter = resolver.meter;
-    let measure = meter.measure_len().as_ratio();
+    let bars = crate::BarLines::uniform(resolver.meter);
+    if !bars.is_measured() {
+        return;
+    }
+    let measure = bars.measure_at(MusicalTime::ZERO).length().as_ratio();
     let written = extent.as_ratio();
-    if measure <= Ratio::ZERO || written == measure {
+    if written == measure {
         return;
     }
     let long = written > measure;
@@ -1703,8 +1705,8 @@ fn check_bar_length(resolver: &mut Resolver, bar: &musa_language::ast::BarStmt, 
     .note(if resolver.meter_written {
         format!(
             "`meter {}/{}` makes a bar {}",
-            meter.numerator(),
-            meter.denominator(),
+            resolver.meter.numerator(),
+            resolver.meter.denominator(),
             fraction(measure)
         )
     } else {
@@ -2294,8 +2296,8 @@ fn untie(occurrence: &mut Occurrence<ScoreFact>) {
 /// the notes on either side would need their own bracket and their own
 /// ratio, which is a different piece of music from the one that was written.
 fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
-    let measure = snapshot.meter().measure_len().as_ratio();
-    if measure == Ratio::ZERO {
+    let bars = snapshot.bars();
+    if !bars.is_measured() {
         return;
     }
     let mut offenders = Vec::new();
@@ -2310,9 +2312,10 @@ fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
         let (Some(start), Some(end)) = (start, end) else {
             continue;
         };
-        let first_bar = (start.as_ratio() / measure).floor();
-        let last_bar = ((end.as_ratio() - Ratio::new(1, 1_000_000)) / measure).floor();
-        if first_bar != last_bar {
+        // `closing` is the reason the epsilon this replaced is gone: a group
+        // ending exactly on a barline closes the measure before it, which is
+        // the question being asked, said exactly rather than nearly.
+        if bars.at(start).measure != bars.closing(end) {
             offenders.push(tuplet.origin.definition_span);
         }
     }

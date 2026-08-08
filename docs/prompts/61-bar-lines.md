@@ -1,7 +1,7 @@
 ---
 id: 61
 slug: bar-lines
-status: pending
+status: done
 depends_on: [57, 58]
 phase: 3
 ---
@@ -140,13 +140,58 @@ it today.
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo insta test --workspace --unreferenced=reject
+cd apps/musa-desktop/ui && npm test
+for f in examples/*.musa; do cargo run -q -p musa-cli -- check "$f"; done
 git diff --stat -- examples/ crates/*/tests/snapshots apps/musa-desktop/ui/fixtures   # empty
-grep -rn "measure_len" crates --include="*.rs" | grep -v "score.rs\|bars.rs" | wc -l  # 0
+grep -rn "measure_len" crates/musa-compiler crates/musa-project --include="*.rs" \
+  | grep -v "score.rs\|bars.rs" | wc -l                                               # 0
 cargo bench -p musa-compiler                                                          # P1-P5, no regression
 ```
 
 The empty golden diff is the whole proof. A behaviour change here is a bug in this prompt, not an improvement.
+
+## Repairs made while implementing
+
+**`BarLines::uniform` takes no extent, because no caller had one to give.** The prompt's signature was
+`uniform(meter, extent)`, and the extent had exactly one candidate use — bounding `measures()` — which the real
+caller does not want: `plan_staff` computes its own per-staff span and asks for the measures covering *that*, not the
+piece. So `measures()` became `measures_through(span)`, the extent parameter went, and `time_of` became total past
+the end rather than returning `None` there. `resolve_position` already had its own past-the-end diagnostic with its
+own wording, and moving that decision into `BarLines` would have replaced a good error with a silent `None`.
+
+**`closing` was written off by one, and the existing suite caught it.** The deleted `last_measure_of` returned the
+`ceil` index *as* the measure number, not the index plus one — so a first draft that reused `at`'s numbering made
+every tuplet appear to cross a barline. Four tests failed, including `tuplet-fixture.musa` failing to compile at
+all. Recorded because it is the answer to "did the goldens actually cover this": they did, and it is the reason the
+prompt's decisive check is a diff rather than a review.
+
+**`check_tuplets`'s epsilon is gone.** It compared bar indices with `(end - 1/1_000_000)` to stop a group ending
+exactly on a barline from counting as crossing it. `closing` asks that question exactly, so the fudge factor
+deleted rather than moved — the clearest evidence in this prompt that the missing abstraction was the *pair*
+`at`/`closing`, not the division.
+
+**Two `measure_len` sites survive on purpose, and the Check above is narrowed to say so.**
+
+- `plan_lane` and `assign_beams` take the length of *the measure being planned*, which is now
+  `Measure::length()` and is per-measure rather than per-piece. That parameter is correct in the general case; only
+  its provenance changed.
+- `ly.rs::measure_length` and `musicxml.rs::measure_length` derive a length from the **plan**, downstream of every
+  compiler-side change, and rewriting them would have been an exporter change in a prompt that promised none. They
+  are what prompt 64 has to reach when a plan stops having one measure length; noted here rather than discovered
+  there.
+
+**The non-empty invariant is structural, not defended.** `BarLines` holds `first: Stretch` and `rest: Vec<Stretch>`
+rather than one `Vec`, so the two lookups have no fallback to get wrong. Clippy's `unwrap_or`-with-a-constructor
+warning is what prompted the change; the warning was right for a better reason than it knew.
+
+**The performance claim is measured against a baseline, not asserted.** `cargo bench -p musa-compiler` was run
+against `HEAD` in a `git worktree` and against the change, on the same machine in the same session. Every P1–P5
+median moved by under 2% and most moved down; allocation counts are identical. `BarLines::uniform` allocates
+nothing — an empty `Vec` does not — and `stretch_at` iterates a list that is empty until mid-piece meter exists.
+
+**`is_measured` replaced five scattered zero guards**, in `plan.rs` (three), `elaborate.rs`, and `resolve.rs`. The
+degenerate meter is now one unbounded measure decided in one place, which is PoSD ch. 10 applied to a case the
+codebase had already handled five times and could have handled inconsistently at any point.
 
 Commit as `Make measure numbering a function of the meters in force`.
 

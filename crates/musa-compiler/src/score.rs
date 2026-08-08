@@ -957,6 +957,15 @@ impl ScoreSnapshot {
         self.meter_map
     }
 
+    /// Where the barlines fall.
+    ///
+    /// Built over *unfolded* time: measures as they are played. Notation
+    /// numbers a folded repeat differently and builds its own (see
+    /// [`crate::BarLines`]'s module documentation).
+    pub fn bars(&self) -> crate::BarLines {
+        crate::BarLines::uniform(self.meter_map)
+    }
+
     /// The key signature, when the piece names one.
     pub fn key(&self) -> Option<KeyMap> {
         self.key_map

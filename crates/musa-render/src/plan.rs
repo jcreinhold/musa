@@ -10,8 +10,8 @@
 use std::collections::{HashMap, HashSet};
 
 use musa_compiler::{
-    ArticulationMark, ChordSymbol, Clef, DynamicMark, EventId, KeyMap, MeterMap, Mode, MusicalDuration, MusicalTime,
-    NotatedDuration, Part, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice, VoiceId, WrittenPitch,
+    ArticulationMark, BarLines, ChordSymbol, Clef, DynamicMark, EventId, KeyMap, MeterMap, Mode, MusicalDuration,
+    MusicalTime, NotatedDuration, Part, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice, VoiceId, WrittenPitch,
 };
 use num_rational::Ratio;
 
@@ -513,18 +513,22 @@ pub enum NotatedKind {
 /// Returns [`NotationError`] when a duration cannot be spelled with standard
 /// values and ties inside one measure.
 pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Result<NotationPlan, crate::NotationError> {
-    let measure_len = score.meter().measure_len().as_ratio();
+    // Notation's own barlines. `Fold` prints a repeat once and plays it
+    // twice, so a written measure is not a sounding measure; the snapshot's
+    // own `bars()` is the unfolded one, and mixing them would number the page
+    // by what it sounds like.
+    let bars = BarLines::uniform(score.meter());
     let key = score.key().map(key_signature);
     let marks = Marks::collect(score);
     let fold = Fold::of(score);
     let mut staves = Vec::new();
     for (_, part) in score.parts().iter() {
-        staves.push(plan_staff(part, score.meter(), measure_len, key, &marks, &fold)?);
+        staves.push(plan_staff(part, score.meter(), &bars, key, &marks, &fold)?);
     }
     let tempo = score.tempo();
     let mut tempos = vec![positioned(
+        &bars,
         MusicalTime::ZERO,
-        measure_len,
         TempoText {
             beat: tempo.beat,
             bpm: tempo.bpm,
@@ -532,8 +536,8 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
     )];
     tempos.extend(tempo.changes.iter().filter_map(|change| {
         Some(positioned(
+            &bars,
             fold.at(change.at)?,
-            measure_len,
             TempoText {
                 beat: change.beat,
                 bpm: change.bpm,
@@ -544,15 +548,15 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
         .annotations()
         .sections()
         .iter()
-        .filter_map(|section| Some(positioned(fold.at(section.at)?, measure_len, section.name.clone())))
+        .filter_map(|section| Some(positioned(&bars, fold.at(section.at)?, section.name.clone())))
         .collect();
     let harmony = score
         .annotations()
         .harmony()
         .iter()
-        .filter_map(|chord| Some(positioned(fold.at(chord.at)?, measure_len, chord.symbol.clone())))
+        .filter_map(|chord| Some(positioned(&bars, fold.at(chord.at)?, chord.symbol.clone())))
         .collect();
-    let repeats = fold.marks(score, measure_len);
+    let repeats = fold.marks(score, &bars);
     Ok(NotationPlan {
         front: FrontMatter {
             title: score.title().to_string(),
@@ -657,7 +661,7 @@ impl Fold {
     }
 
     /// The repeat barlines and volta brackets, in measures.
-    fn marks(&self, score: &ScoreSnapshot, measure_len: Ratio<i64>) -> Vec<RepeatMark> {
+    fn marks(&self, score: &ScoreSnapshot, bars: &BarLines) -> Vec<RepeatMark> {
         score
             .annotations()
             .repeats()
@@ -671,38 +675,20 @@ impl Fold {
                     .filter_map(|ending| {
                         Some(VoltaMark {
                             passes: ending.passes.clone(),
-                            from: measure_of(self.at(ending.start)?, measure_len),
-                            to: last_measure_of(self.end_at(ending.end)?, measure_len),
+                            from: bars.at(self.at(ending.start)?).measure,
+                            to: bars.closing(self.end_at(ending.end)?),
                         })
                     })
                     .collect();
                 Some(RepeatMark {
-                    from: measure_of(from, measure_len),
-                    to: last_measure_of(to, measure_len),
+                    from: bars.at(from).measure,
+                    to: bars.closing(to),
                     times: repeat.times,
                     endings,
                 })
             })
             .collect()
     }
-}
-
-/// The 1-based measure a moment falls in.
-fn measure_of(at: MusicalTime, measure_len: Ratio<i64>) -> u32 {
-    if measure_len == Ratio::ZERO {
-        return 1;
-    }
-    let index = (at.as_ratio() / measure_len).floor().to_integer();
-    u32::try_from(index.saturating_add(1)).unwrap_or(1)
-}
-
-/// The 1-based measure an exclusive end belongs to: the one it closes.
-fn last_measure_of(at: MusicalTime, measure_len: Ratio<i64>) -> u32 {
-    if measure_len == Ratio::ZERO {
-        return 1;
-    }
-    let index = (at.as_ratio() / measure_len).ceil().to_integer();
-    u32::try_from(index.max(1)).unwrap_or(1)
 }
 
 /// The annotation store, indexed the way planning reads it: by the event a
@@ -793,19 +779,11 @@ impl Marks {
 }
 
 /// Where a positioned symbol falls, in the coordinates the backends use.
-fn positioned<T>(at: MusicalTime, measure_len: Ratio<i64>, what: T) -> PositionedMark<T> {
-    if measure_len == Ratio::ZERO {
-        return PositionedMark {
-            measure: 1,
-            onset_in_measure: MusicalDuration::default(),
-            what,
-        };
-    }
-    let measures = (at.as_ratio() / measure_len).floor();
-    let into = at.as_ratio() - measures * measure_len;
+fn positioned<T>(bars: &BarLines, at: MusicalTime, what: T) -> PositionedMark<T> {
+    let position = bars.at(at);
     PositionedMark {
-        measure: u32::try_from(measures.to_integer().saturating_add(1)).unwrap_or(1),
-        onset_in_measure: MusicalDuration::new(into),
+        measure: position.measure,
+        onset_in_measure: position.into,
         what,
     }
 }
@@ -820,7 +798,7 @@ fn key_signature(key: KeyMap) -> KeySignature {
 fn plan_staff(
     part: &Part,
     meter: MeterMap,
-    measure_len: Ratio<i64>,
+    bars: &BarLines,
     key: Option<KeySignature>,
     marks: &Marks,
     fold: &Fold,
@@ -841,25 +819,12 @@ fn plan_staff(
         .map(|event| (event.onset - MusicalTime::ZERO) + event.notated_duration.value)
         .max()
         .unwrap_or(MusicalDuration::ZERO);
-    let measure_count = if measure_len == Ratio::ZERO {
-        1
-    } else {
-        let count = span.as_ratio() / measure_len;
-        let count = if *count.denom() == 1 {
-            *count.numer()
-        } else {
-            count.numer() / count.denom() + 1
-        };
-        u32::try_from(count.max(1)).unwrap_or(u32::MAX)
-    };
-
     let mut measures = Vec::new();
-    for index in 0..measure_count {
-        let start = MusicalTime::new(measure_len * Ratio::from_integer(i64::from(index)));
-        let end = MusicalTime::new(measure_len * Ratio::from_integer(i64::from(index.saturating_add(1))));
+    for measure in bars.measures_through(span) {
+        let (start, end) = (measure.start, measure.end);
         let mut plans = Vec::with_capacity(lanes.len());
         for (voice_id, name, events) in &lanes {
-            let lane = plan_lane(events, meter, measure_len, start, end, marks)?;
+            let lane = plan_lane(events, meter, measure.length().as_ratio(), start, end, marks)?;
             plans.push(VoiceLane {
                 voice: *voice_id,
                 name: name.clone(),
@@ -871,7 +836,7 @@ fn plan_staff(
         }
         let lanes = plans;
         measures.push(MeasurePlan {
-            number: index.saturating_add(1),
+            number: measure.number,
             lanes,
         });
     }

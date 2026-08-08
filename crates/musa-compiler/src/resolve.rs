@@ -925,30 +925,31 @@ pub(crate) fn bind_argument(
 }
 
 pub(crate) fn check_measure_sanity(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
-    let measure = snapshot.meter().measure_len();
-    if measure.is_zero() {
+    let bars = snapshot.bars();
+    if !bars.is_measured() {
         return;
     }
     for (_, part) in snapshot.parts().iter() {
         for (voice_id, voice) in part.voices() {
-            let span = voice.span().as_ratio();
-            let measures = span / measure.as_ratio();
-            if span != Ratio::ZERO && *measures.denom() != 1 {
+            let span = voice.span();
+            let stops = bars.at(crate::MusicalTime::ZERO + span);
+            if span.as_ratio() != Ratio::ZERO && stops.into != crate::MusicalDuration::ZERO {
                 let name = part.voice_name(voice_id).unwrap_or("?");
                 // No span: this is a fact about a whole voice, and pointing
                 // at its first note would send the reader somewhere the
                 // mistake probably is not.
                 // How far past the last barline the voice stops, said in the
                 // units the composer writes durations in.
-                let finished = measures.ceil();
-                let short = (finished - measures) * measure.as_ratio();
+                let measure = bars.measure_at(crate::MusicalTime::ZERO + span);
+                let finished = stops.measure;
+                let short = (measure.end - (crate::MusicalTime::ZERO + span)).as_ratio();
                 resolver.report(
                     Diagnostic::warning(
                         Code::DoesNotAddUp,
                         format!(
                             "voice `{name}` in part `{}` stops part-way through measure {}",
                             part.name(),
-                            finished.to_integer().max(1),
+                            finished.max(1),
                         ),
                     )
                     .help(format!(
