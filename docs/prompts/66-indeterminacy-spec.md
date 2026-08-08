@@ -1,7 +1,7 @@
 ---
 id: 66
 slug: indeterminacy-spec
-status: pending
+status: done
 depends_on: [48, 49]
 phase: 3
 ---
@@ -123,6 +123,21 @@ cargo fmt --check
 ```
 
 Commit as `Specify where indeterminacy lives`.
+
+## Repairs made while implementing
+
+**The repertoire is a table, not a sentence.** The Design names five works in prose; the document states them as a
+table with a third column — *what a fixed alternative set would have to be* — because that column is the refutation.
+"19! ≈ 1.2 × 10¹⁷" and "uncountable" argue against `choose` in a way "Klavierstück XI has many orderings" does not.
+Two non-aleatory cases were added for the same reason: a folk tune with an unknown verse count and a run-time-sized
+installation want the same mechanism, which is evidence that the mechanism is not a niche.
+
+**The determinism law is written down as R1.** The Design states "two compiles with the same source and the same
+realization produce the same timeline"; a document that prompt 67 implements against needs that as a numbered law it
+can be tested for, on the same footing as T1–T5 and N1–N6.
+
+**`08-open-questions.md`'s §33 corpus row moved too.** The Target names four files; item 9 of the corpus table said
+"blocked on Q2" and would have stayed wrong the moment Q2 was answered. It now points at the design.
 
 ## Stop
 

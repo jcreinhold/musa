@@ -1310,10 +1310,22 @@ The following remain intentionally unresolved:
 Treat them initially as producers of coherent finite kernel observations. Do not add them to the finite kernel until
 necessary.
 
-### Aleatory semantics
+### Aleatory semantics — **resolved (prompt 66)**
 
-Probability, nondeterminism, performer choice, and reactive improvisation are not the same phenomenon. Do not invent one
-universal `Choice` kernel construct.
+Probability, nondeterminism, performer choice, and reactive improvisation are not the same phenomenon, and there is no
+one universal `Choice` kernel construct — that warning stands, and prompt 66 acted on it rather than around it.
+
+The answer is that **a realization is a compile parameter and the freedom is a payload value**. What is written in the
+source — an open repeat, a boxed fragment, a free duration, an improvised region — survives into the timeline as
+ordinary occurrences, so the page can print the instruction; what is *decided* is a seed plus an override set, supplied
+to elaboration, so that by the time a `Term` exists every choice is made and evaluation is still total, deterministic
+and hashable. The candidate `choose` term form is refused in `docs/kernel/11-realization.md`, with the four reasons it
+fails: it cannot express its own repertoire, it makes T2 ambiguous, it destroys T3/T4/N6 together, and it destroys the
+interchange file that was the argument for it.
+
+**Item 11 below is upheld, not amended.** It forbids aleatory choice *in the finite kernel*, which is precisely what
+this resolution does. The price paid instead is stated openly: the score view is a function of the source *and* the
+realization, so fixtures pin a seed and the interface must be able to show the decisions.
 
 ### Voice identity
 
@@ -1370,7 +1382,8 @@ The candidate kernel should support clean elaboration of at least:
 
 8. **Loop-based electronic music** Surface iteration producing finite observations.
 
-9. **Controlled aleatory** Multiple possible realizations producing ordinary finite kernels.
+9. **Controlled aleatory** Multiple possible realizations producing ordinary finite kernels. *(Design settled at
+   prompt 66: `docs/kernel/11-realization.md`.)*
 
 10. **An improvisational/live process** Verify that the finite kernel remains a useful observation/interchange target
     even when the producer is reactive.

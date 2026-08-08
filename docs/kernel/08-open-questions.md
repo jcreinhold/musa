@@ -12,13 +12,30 @@ expose finite kernel observations without sharing a computation model. *Settle w
 (prompt 29-era or later) shows whether observation coherence needs kernel-level support (e.g. a `Pattern` type with a
 restrict-based contract) or stays a library convention.
 
-## Q2 — Aleatory semantics
+## Q2 — Aleatory semantics — **RESOLVED (prompt 66)**
 
 Probability, nondeterminism, performer choice, and reactive improvisation are different phenomena (§32); **no**
-universal `Choice` kernel construct exists or is planned. Working stance: each realized performance of an aleatory
-surface construct produces an ordinary finite kernel timeline; the choice mechanism lives in the surface/HIR and its
-provenance. *Settle when:* the first aleatory surface feature is designed — its provenance needs (which choice was
-taken?) will show whether the kernel needs anything beyond occurrence payloads.
+universal `Choice` kernel construct exists or is planned. The working stance was: each realized performance of an
+aleatory surface construct produces an ordinary finite kernel timeline; the choice mechanism lives in the surface/HIR
+and its provenance. The stated trigger was: *"the first aleatory surface feature is designed — its provenance needs
+(which choice was taken?) will show whether the kernel needs anything beyond occurrence payloads."*
+
+That trigger fired at prompt 66, and the working stance is **confirmed, not reversed**.
+
+**Answer: a realization is a compile parameter, the freedom is a payload value, and the kernel gains nothing.** The
+candidate — a `choose` term form — is refused for four reasons set out in `11-realization.md`: it cannot express the
+repertoire it is proposed for (*In C* is unbounded, Klavierstück XI is 19! orderings, Cage and Feldman draw from a
+continuum); it makes T2 ambiguous, because whether sharing shares the *decision* has two musically real readings and no
+canonical one; it destroys T3, T4 and N6 together, so there is no normal form and no semantic hash, which is what
+prompt 43 keyed recompilation on; and it destroys the interchange artifact that justified it, since a file containing
+`choose` needs a choice environment shipped alongside it.
+
+The provenance need the trigger asked about is answered **above** the kernel by a `ChoicePath` — a structural path of
+names, not a span and not a `DeclarationId` — with randomness derived per path rather than from a stream. The kernel
+sees a term in which every choice is already made.
+
+The conceded cost is stated in `11-realization.md` and is real: the score view is a function of the source *and the
+realization*, so fixtures pin a seed and the interface must be able to show which decisions produced the page.
 
 ## Q3 — Voice identity
 
@@ -135,7 +152,7 @@ still one (`prevailing`), and the threshold is unmet by a wider margin than befo
 | 6 | Accelerando / ritardando | **partly proven** (prompt 36): stepwise tempo changes integrate exactly; a continuous ramp still needs surface syntax |
 | 7 | Glissando / crescendo | blocked on Q4 |
 | 8 | Loop-based electronic music | blocked on surface loops (Phase 2/3; see Q1) |
-| 9 | Controlled aleatory | blocked on Q2 |
+| 9 | Controlled aleatory | unblocked at prompt 66 (Q2 resolved); the design is `11-realization.md`, implemented from prompt 67 |
 | 10 | Improvisational / live process | blocked on Q1; the finite-kernel-as-observation stance is the hypothesis under test |
 
 Rule (§33): if several of these require awkward or lossy lowering, reconsider the kernel as a whole. Do not patch

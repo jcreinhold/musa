@@ -149,6 +149,22 @@ What a consumer does **not** owe: understanding the payload. A file's payloads a
 report its extent, and compare two files' shapes. It simply cannot say what the music is — which is the correct
 division, and the reason the kernel never learned music theory.
 
+## A file is one realization of the work (prompt 66)
+
+A piece may leave decisions to the performance: an open repeat count, a free duration, an order of fragments. Where it
+does, `11-realization.md` puts the decision **above** the kernel — a seed plus an override set, supplied to elaboration
+— so that by the time a term exists every choice is made and everything above stays true. Two consequences reach a
+consumer, and only two:
+
+1. **A `.kernel` file is the projection of one realization, not of the work.** Its header says which realization
+   produced it, and reproducing the file means being given the same one. A file of a piece that fixes everything has
+   nothing extra to say, which is why every file written before prompt 66 stays valid.
+2. **A consumer never chooses.** Choosing happened once, before the term existed. A consumer that draws a random
+   number has produced a different piece, and the semantic hash will say so.
+
+What a consumer does **not** owe, again: understanding the freedom. An open repeat reaches it as an ordinary
+occurrence with a payload it may or may not know, on the same terms as every other payload.
+
 ## Falsification duty (§33)
 
 Consumers built against this contract are evidence for or against it. If several materially different musical examples
