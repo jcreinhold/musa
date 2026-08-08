@@ -1746,6 +1746,13 @@ around:
 
 Mouse interaction is appropriate for selection, range selection, and opening inspectors.
 
+Every ambiguity in that list is an ambiguity about *what the gesture meant*. A gesture scoped to a single token is not
+the thing this section rejects: musa knows which token in the source produced each engraved event, so a gesture that
+replaces one token with one value cannot move a note between voices, cannot invent a tie or a tuplet, and cannot guess
+at an accidental — there is nothing for it to guess with. The three gestures that qualify, and the construction that
+answers each ambiguity, are `docs/interface/03-interaction.md` §2. Dragging stays what this section says it is: not the
+primary interaction, and never the fast one.
+
 ## 14.6 Score commands
 
 Clicking an SVG element yields an `EventId`. The frontend sends a semantic command:
