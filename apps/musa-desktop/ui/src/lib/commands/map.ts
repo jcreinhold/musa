@@ -27,7 +27,7 @@ export const REGISTERED = registry as readonly CommandDescriptor[];
 export type Screen = "compose" | "sound" | "mix" | "source";
 
 /** Where a command belongs in the palette and the keyboard sheet. */
-export type Group = "File" | "Edit" | "Score" | "Transport" | "View" | "Help";
+export type Group = "File" | "Edit" | "Score" | "Transport" | "View" | "Settings" | "Help";
 
 /** The parts of the interface a command can reach. */
 export interface Surface {
@@ -62,6 +62,8 @@ export interface Surface {
   show(which: Screen): void;
   palette(open: boolean): void;
   keys(open: boolean): void;
+  /** Open the settings sheet (prompt 59). */
+  settings(open: boolean): void;
   /** Clear the selection, or — with nothing selected — put the source column away. */
   escape(): void;
 }
@@ -123,7 +125,7 @@ function own(
  *
  * Order is the order the palette and the sheet show: what a piece is (File),
  * what you change (Edit), where you are (Score), what you hear (Transport),
- * what you see (View).
+ * what you see (View), and how the application behaves (Settings).
  */
 export const COMMANDS: readonly Command[] = [
   command("file.new", "File", ({ session }) => void session.create()),
@@ -237,14 +239,18 @@ export const COMMANDS: readonly Command[] = [
   command("view.zoom.in", "View", (surface) => surface.zoom(1)),
   command("view.zoom.reset", "View", (surface) => surface.resetZoom()),
   command("view.source", "View", ({ session }) => (session.sourceOpen = !session.sourceOpen)),
+  command("view.palette", "View", (surface) => surface.palette(true)),
+
+  // Preferences: the app's own state, never the document's, and gathered
+  // behind `⌘,` rather than scattered down View (prompt 59).
+  command("settings.open", "Settings", (surface) => surface.settings(true)),
   // The frame's text, which is a different question from the score's size
   // (prompt 55). `⌘⌥=` rather than `⌘=` for exactly that reason.
-  command("view.text.larger", "View", ({ preferences }) => preferences.stepText(1)),
-  command("view.text.smaller", "View", ({ preferences }) => preferences.stepText(-1)),
-  command("view.text.reset", "View", ({ preferences }) => preferences.resetText()),
-  command("view.vim", "View", ({ preferences }) => preferences.toggleVim()),
-  command("view.theme", "View", ({ theme }) => theme.toggle()),
-  command("view.palette", "View", (surface) => surface.palette(true)),
+  command("settings.text.larger", "Settings", ({ preferences }) => preferences.stepText(1)),
+  command("settings.text.smaller", "Settings", ({ preferences }) => preferences.stepText(-1)),
+  command("settings.text.reset", "Settings", ({ preferences }) => preferences.resetText()),
+  command("settings.vim", "Settings", ({ preferences }) => preferences.toggleVim()),
+  command("settings.theme", "Settings", ({ theme }) => theme.toggle()),
 
   command("help.keys", "Help", (surface) => surface.keys(true)),
 ];

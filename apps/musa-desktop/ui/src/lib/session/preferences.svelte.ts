@@ -69,9 +69,23 @@ export class Preferences {
     this.#size("normal");
   }
 
+  /**
+   * Take one of the four steps directly.
+   *
+   * The keys step and the sheet chooses, which is the difference between the
+   * two ways in: a key is "a bit bigger", a row of four is "that one".
+   */
+  chooseText(size: TextSize): void {
+    this.#size(size);
+  }
+
   toggleVim(): void {
-    this.vim = !this.vim;
-    globalThis.localStorage?.setItem(VIM_KEY, this.vim ? "on" : "off");
+    this.setVim(!this.vim);
+  }
+
+  setVim(on: boolean): void {
+    this.vim = on;
+    globalThis.localStorage?.setItem(VIM_KEY, on ? "on" : "off");
   }
 
   #size(next: TextSize): void {

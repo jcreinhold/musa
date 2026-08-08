@@ -1,7 +1,7 @@
 ---
 id: 59
 slug: menus-and-settings
-status: pending
+status: done
 depends_on: [21, 23, 55]
 phase: 2
 ---
@@ -117,6 +117,21 @@ cd apps/musa-desktop/ui && npm run check && npm run test
 ```
 
 Commit as `Group the menus and give preferences a home`.
+
+## Found along the way
+
+- **A theme you could not stop overriding.** `ThemeChoice` always had three states — `chosen: null` is *follow the
+  system* — but `toggle()` only ever moved between light and dark, so the only control that existed could not reach the
+  state the app starts in. `choose(theme: Theme | null)` reaches all three, and the Theme row shows all three.
+- **B2 waited for ink rather than for its own ink.** The trial loop waited for *a* `musa:score` mark and then measured
+  the one after the keystroke. A background page left over from the previous trial satisfies the first without
+  satisfying the second, and the sample came back `NaN` — which failed roughly one full run in two, on a number nobody
+  had measured. B8 was repaired this way in prompt 50; B2 now waits the same way.
+- **`Settings…` is a named descriptor, not a lookup.** Searching `COMMANDS` for the id needed an `expect`, guarded by a
+  test. Naming the descriptor in the registry and putting *that* in the list makes a registry which stopped declaring
+  it fail the build instead.
+- **Preferences persist, and now say so once.** Text size and vim each had an "outlives the window" test; the theme had
+  none. The sheet sets all three together, so one test sets all three, reloads, and reads them back.
 
 ## Stop
 

@@ -41,8 +41,20 @@ export class ThemeChoice {
 
   /** Switch to the other theme, which also makes the choice explicit. */
   toggle(): void {
-    this.chosen = this.current === "dark" ? "light" : "dark";
-    globalThis.localStorage?.setItem(KEY, this.chosen);
+    this.choose(this.current === "dark" ? "light" : "dark");
+  }
+
+  /**
+   * Take one of the three states, `null` being *follow the system*.
+   *
+   * The third state was always here and was reachable by nothing: `toggle`
+   * only ever moves between light and dark, so a composer who overrode the
+   * theme once could not get back to following the system (prompt 59).
+   */
+  choose(theme: Theme | null): void {
+    if (theme === null) return this.follow();
+    this.chosen = theme;
+    globalThis.localStorage?.setItem(KEY, theme);
     this.apply();
   }
 

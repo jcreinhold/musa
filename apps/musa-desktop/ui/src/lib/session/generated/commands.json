@@ -3,6 +3,8 @@
     "id": "file.new",
     "title": "New piece",
     "section": "file",
+    "submenu": null,
+    "apart": false,
     "accelerator": "CmdOrCtrl+N",
     "available": true
   },
@@ -10,6 +12,8 @@
     "id": "file.open",
     "title": "Open a piece",
     "section": "file",
+    "submenu": null,
+    "apart": false,
     "accelerator": "CmdOrCtrl+O",
     "available": true
   },
@@ -17,6 +21,8 @@
     "id": "file.save",
     "title": "Save",
     "section": "file",
+    "submenu": null,
+    "apart": true,
     "accelerator": "CmdOrCtrl+S",
     "available": true
   },
@@ -24,6 +30,8 @@
     "id": "file.export.mei",
     "title": "Export MEI",
     "section": "file",
+    "submenu": "Export",
+    "apart": true,
     "accelerator": null,
     "available": true
   },
@@ -31,6 +39,8 @@
     "id": "file.export.lilypond",
     "title": "Export LilyPond",
     "section": "file",
+    "submenu": "Export",
+    "apart": false,
     "accelerator": null,
     "available": true
   },
@@ -38,6 +48,8 @@
     "id": "file.export.musicxml",
     "title": "Export MusicXML",
     "section": "file",
+    "submenu": "Export",
+    "apart": false,
     "accelerator": null,
     "available": true
   },
@@ -45,6 +57,8 @@
     "id": "file.export.wav",
     "title": "Export WAV",
     "section": "file",
+    "submenu": "Export",
+    "apart": false,
     "accelerator": null,
     "available": true
   },
@@ -52,6 +66,8 @@
     "id": "edit.undo",
     "title": "Undo",
     "section": "edit",
+    "submenu": null,
+    "apart": false,
     "accelerator": "CmdOrCtrl+Z",
     "available": true
   },
@@ -59,6 +75,8 @@
     "id": "edit.redo",
     "title": "Redo",
     "section": "edit",
+    "submenu": null,
+    "apart": false,
     "accelerator": "CmdOrCtrl+Shift+Z",
     "available": true
   },
@@ -66,6 +84,8 @@
     "id": "edit.format",
     "title": "Format the source",
     "section": "edit",
+    "submenu": null,
+    "apart": true,
     "accelerator": "CmdOrCtrl+Shift+F",
     "available": true
   },
@@ -73,6 +93,8 @@
     "id": "view.workspace.compose",
     "title": "Compose workspace",
     "section": "view",
+    "submenu": null,
+    "apart": false,
     "accelerator": "CmdOrCtrl+1",
     "available": true
   },
@@ -80,6 +102,8 @@
     "id": "view.workspace.sound",
     "title": "Sound workspace",
     "section": "view",
+    "submenu": null,
+    "apart": false,
     "accelerator": "CmdOrCtrl+2",
     "available": true
   },
@@ -87,6 +111,8 @@
     "id": "view.workspace.mix",
     "title": "Mix workspace",
     "section": "view",
+    "submenu": null,
+    "apart": false,
     "accelerator": "CmdOrCtrl+3",
     "available": true
   },
@@ -94,13 +120,26 @@
     "id": "view.workspace.source",
     "title": "Source workspace",
     "section": "view",
+    "submenu": null,
+    "apart": false,
     "accelerator": "CmdOrCtrl+4",
+    "available": true
+  },
+  {
+    "id": "view.source",
+    "title": "Show the source",
+    "section": "view",
+    "submenu": null,
+    "apart": true,
+    "accelerator": "CmdOrCtrl+'",
     "available": true
   },
   {
     "id": "view.zoom.out",
     "title": "Zoom out",
     "section": "view",
+    "submenu": null,
+    "apart": true,
     "accelerator": "CmdOrCtrl+-",
     "available": true
   },
@@ -108,6 +147,8 @@
     "id": "view.zoom.in",
     "title": "Zoom in",
     "section": "view",
+    "submenu": null,
+    "apart": false,
     "accelerator": "CmdOrCtrl+=",
     "available": true
   },
@@ -115,62 +156,80 @@
     "id": "view.zoom.reset",
     "title": "Reset zoom",
     "section": "view",
+    "submenu": null,
+    "apart": false,
     "accelerator": "CmdOrCtrl+0",
-    "available": true
-  },
-  {
-    "id": "view.source",
-    "title": "Show the source",
-    "section": "view",
-    "accelerator": "CmdOrCtrl+'",
-    "available": true
-  },
-  {
-    "id": "view.text.larger",
-    "title": "Larger text",
-    "section": "view",
-    "accelerator": "CmdOrCtrl+Alt+=",
-    "available": true
-  },
-  {
-    "id": "view.text.smaller",
-    "title": "Smaller text",
-    "section": "view",
-    "accelerator": "CmdOrCtrl+Alt+-",
-    "available": true
-  },
-  {
-    "id": "view.text.reset",
-    "title": "Reset text size",
-    "section": "view",
-    "accelerator": "CmdOrCtrl+Alt+0",
-    "available": true
-  },
-  {
-    "id": "view.vim",
-    "title": "Vim mode in the source",
-    "section": "view",
-    "accelerator": null,
-    "available": true
-  },
-  {
-    "id": "view.theme",
-    "title": "Switch theme",
-    "section": "view",
-    "accelerator": null,
     "available": true
   },
   {
     "id": "view.palette",
     "title": "Command palette",
     "section": "view",
+    "submenu": null,
+    "apart": true,
     "accelerator": "CmdOrCtrl+K",
+    "available": true
+  },
+  {
+    "id": "settings.open",
+    "title": "Settings",
+    "section": "settings",
+    "submenu": null,
+    "apart": false,
+    "accelerator": "CmdOrCtrl+,",
+    "available": true
+  },
+  {
+    "id": "settings.text.larger",
+    "title": "Larger text",
+    "section": "settings",
+    "submenu": null,
+    "apart": false,
+    "accelerator": "CmdOrCtrl+Alt+=",
+    "available": true
+  },
+  {
+    "id": "settings.text.smaller",
+    "title": "Smaller text",
+    "section": "settings",
+    "submenu": null,
+    "apart": false,
+    "accelerator": "CmdOrCtrl+Alt+-",
+    "available": true
+  },
+  {
+    "id": "settings.text.reset",
+    "title": "Reset text size",
+    "section": "settings",
+    "submenu": null,
+    "apart": false,
+    "accelerator": "CmdOrCtrl+Alt+0",
+    "available": true
+  },
+  {
+    "id": "settings.vim",
+    "title": "Vim mode in the source",
+    "section": "settings",
+    "submenu": null,
+    "apart": false,
+    "accelerator": null,
+    "available": true
+  },
+  {
+    "id": "settings.theme",
+    "title": "Switch theme",
+    "section": "settings",
+    "submenu": null,
+    "apart": false,
+    "accelerator": null,
     "available": true
   },
   {
     "id": "help.keys",
     "title": "Keyboard sheet",
     "section": "help",
+    "submenu": null,
+    "apart": false,
     "accelerator": "?",
     "available": true
   }

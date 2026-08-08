@@ -42,6 +42,21 @@ describe("the map and the registry", () => {
     }
   });
 
+  /**
+   * The palette groups by the frontend's `Group` and the menu by the
+   * registry's `Section`, so a command filed under one and shown under the
+   * other is a command in two places at once — which is how `view.vim` came
+   * to sit in a View menu it was not in (prompt 59).
+   */
+  it("groups every registered command where the registry sections it", () => {
+    for (const entry of REGISTERED) {
+      const command = COMMANDS.find((candidate) => candidate.id === entry.id);
+      if (!command) continue;
+      const section = entry.section.charAt(0).toUpperCase() + entry.section.slice(1);
+      expect(command.group, entry.id).toBe(section);
+    }
+  });
+
   it("binds no key twice within a scope", () => {
     const bound = COMMANDS.filter((command) => command.accelerator !== null);
     const seen = new Map<string, string>();

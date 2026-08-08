@@ -188,7 +188,7 @@ test("a value longer than its column wraps rather than hiding the rest", async (
   for (const step of [1, 2]) {
     await page.evaluate((count) => {
       for (let taken = 0; taken < count; taken += 1)
-        window.__musaEmit("musa://command", "view.text.larger");
+        window.__musaEmit("musa://command", "settings.text.larger");
     }, step);
   }
 

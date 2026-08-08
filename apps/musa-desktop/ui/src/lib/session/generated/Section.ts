@@ -3,4 +3,4 @@
 /**
  * Which menu a command appears under, and how the palette groups it.
  */
-export type Section = "file" | "edit" | "view" | "help";
+export type Section = "file" | "edit" | "view" | "settings" | "help";

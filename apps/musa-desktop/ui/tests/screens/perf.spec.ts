@@ -308,9 +308,20 @@ test.describe("the large score", () => {
     for (let trial = 0; trial < TRIALS; trial += 1) {
       await page.evaluate(() => performance.clearMarks());
       await rewrite(page, trial % 2 === 0 ? `piece "A" {}` : `piece "B" {}`);
-      await page.waitForFunction(
-        () => performance.getEntriesByName("musa:score", "mark").length > 0,
-      );
+      // Wait for the ink this keystroke asked for, not for ink. A background
+      // page left over from the trial before satisfies "a score mark exists"
+      // without satisfying the thing `after` reads, and then the sample is
+      // `NaN` and the whole run fails on a number nobody measured. B8 waits
+      // this way already; B2 did not, and failed roughly one full run in two.
+      await page.waitForFunction(() => {
+        const gesture = performance.getEntriesByName("musa:edit", "mark")[0];
+        return (
+          gesture !== undefined &&
+          performance
+            .getEntriesByName("musa:score", "mark")
+            .some((mark) => mark.startTime > gesture.startTime)
+        );
+      });
       // The 180 ms debounce is inside this number, as the budget states it:
       // what the composer waits is from the keystroke, not from the compile.
       // The ink read is the ink that came *after* the keystroke, for the

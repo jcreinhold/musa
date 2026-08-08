@@ -11,8 +11,27 @@ export type CommandDescriptor = {
 id: string, 
 /**
  * What the user sees, in the same words as the result it reports.
+ *
+ * Whole, including the submenu's name: `Export MEI`, not `MEI`. The
+ * palette and the keyboard sheet have no nesting to lean on and show
+ * this as it stands; the menu, which does, strips the prefix.
  */
 title: string, section: Section, 
+/**
+ * The submenu this item sits in, if it is not directly in its section's
+ * menu.
+ *
+ * Always a prefix of [`Self::title`] — `Export ▸ Export MEI` is the same
+ * word twice — which is what lets the menu show the short form without a
+ * second name to keep in step. Asserted by a test.
+ */
+submenu: string | null, 
+/**
+ * Whether a separator precedes this item: it begins a new group of
+ * related commands. Menus with seams answer questions; flat ones list
+ * functions.
+ */
+apart: boolean, 
 /**
  * The binding, in Tauri's accelerator spelling; `None` for mouse-only.
  */

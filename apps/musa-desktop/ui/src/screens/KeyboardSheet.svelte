@@ -11,7 +11,7 @@
 
   let { onclose }: { onclose: () => void } = $props();
 
-  const GROUPS: Group[] = ["Score", "Transport", "View", "File", "Edit", "Help"];
+  const GROUPS: Group[] = ["Score", "Transport", "View", "File", "Edit", "Settings", "Help"];
 
   const bound = $derived(COMMANDS.filter((command) => command.accelerator !== null));
 </script>

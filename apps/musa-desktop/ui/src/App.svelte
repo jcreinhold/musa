@@ -22,6 +22,7 @@
   import Launch from "./screens/Launch.svelte";
   import Palette from "./screens/Palette.svelte";
   import KeyboardSheet from "./screens/KeyboardSheet.svelte";
+  import Settings from "./screens/Settings.svelte";
   import Sheet from "./screens/Sheet.svelte";
   import Announcer from "./lib/ui/Announcer.svelte";
   import { ZOOM_STEPS } from "./lib/engrave/options";
@@ -151,6 +152,9 @@
 
   let paletteOpen = $state(false);
   let keysOpen = $state(false);
+  /** The settings sheet (prompt 59), which is modal for the same reason the
+      others are: it is a thing you go to, finish, and leave. */
+  let settingsOpen = $state(false);
 
   /**
    * Origin view (`04-provenance.md` §2): a held lens, not a mode with state to
@@ -293,9 +297,10 @@
 
   /** `Esc`: the choice first, then entry, then the selection, then the source column. */
   function escape(): void {
-    if (paletteOpen || keysOpen) {
+    if (paletteOpen || keysOpen || settingsOpen) {
       paletteOpen = false;
       keysOpen = false;
+      settingsOpen = false;
       return;
     }
     if (choice) return cancelChoice();
@@ -430,6 +435,7 @@
     show: (which) => (screen = which),
     palette: (open) => (paletteOpen = open),
     keys: (open) => (keysOpen = open),
+    settings: (open) => (settingsOpen = open),
     escape,
   };
 
@@ -453,7 +459,7 @@
   function onkeydown(event: KeyboardEvent): void {
     // The palette and the sheet are modal: they own every key while open,
     // and hand back only the one that closes them.
-    if (paletteOpen || keysOpen) {
+    if (paletteOpen || keysOpen || settingsOpen) {
       if (event.key === "Escape") {
         event.preventDefault();
         escape();
@@ -754,6 +760,10 @@
 
 {#if keysOpen}
   <KeyboardSheet onclose={() => (keysOpen = false)} />
+{/if}
+
+{#if settingsOpen}
+  <Settings {preferences} {theme} onclose={() => (settingsOpen = false)} />
 {/if}
 
 <Announcer selection={selectionSaid} transport={transportSaid} />
