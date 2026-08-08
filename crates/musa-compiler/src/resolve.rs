@@ -32,7 +32,7 @@ use crate::origin::{DeclarationId, ExpansionStep, Interval, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
 use crate::score::{
-    AnnotationStore, Clef, DynamicMark, EventId, KeyMap, MeterMap, Mode, NotatedDuration, ScoreSnapshot, TempoMap,
+    AnnotationStore, Clef, DynamicMark, EventId, Key, Meter, Mode, NotatedDuration, ScoreSnapshot, TempoMap,
 };
 use crate::time::MusicalDuration;
 
@@ -136,8 +136,15 @@ pub(crate) struct Resolver {
     /// through the expansion context because it is a fact about the piece
     /// rather than about the block being expanded. What a `bar` is checked
     /// against.
-    pub(crate) meter: MeterMap,
+    pub(crate) meter: Meter,
     pub(crate) meter_written: bool,
+    /// The key the header wrote, on its way into the timeline.
+    ///
+    /// Staged here rather than on the snapshot because the snapshot's answer
+    /// to "what key is this" is the *projection* of the timeline, and a field
+    /// that held the header's reading until the projection overwrote it would
+    /// be a second answer with a window in which it was the live one.
+    pub(crate) key: Option<Key>,
     /// Where each voice's kernel timeline goes on its way to the adapter.
     ///
     /// `None` on every production path — nothing keeps a timeline after the
@@ -156,8 +163,9 @@ impl Resolver {
             next_event: 0,
             next_part: 0,
             annotations: AnnotationStore::default(),
-            meter: MeterMap::default(),
+            meter: Meter::default(),
             meter_written: false,
+            key: None,
             timeline_sink: None,
         }
     }
@@ -281,7 +289,6 @@ pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot:
     if let Some(meter) = piece.meter() {
         resolver.declare(DeclInfo::Meter);
         if let Some(map) = parse_meter(&meter) {
-            snapshot.set_meter(map);
             resolver.meter = map;
             resolver.meter_written = true;
         } else {
@@ -296,7 +303,7 @@ pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot:
     if let Some(key) = piece.key() {
         resolver.declare(DeclInfo::Key);
         match parse_key(&key) {
-            Some(map) => snapshot.set_key(Some(map)),
+            Some(map) => resolver.key = Some(map),
             None => resolver.error(
                 Code::NotAValue,
                 "this key cannot be read",
@@ -698,15 +705,29 @@ pub(crate) fn part_metadata(
     resolver: &mut Resolver,
     part: &musa_language::ast::PartDecl,
     profiles: &ProfileSet,
-) -> (Option<Clef>, Option<String>) {
-    let mut clef = None;
+) -> (Option<(Clef, SourceSpan)>, Option<String>) {
+    let mut clef: Option<(Clef, SourceSpan)> = None;
     for node in part.syntax().children() {
         if node.kind() != SyntaxKind::ClefStmt {
             continue;
         }
         let written = token_text(&node, SyntaxKind::Identifier).unwrap_or_default();
+        let span = trimmed_span(&node);
         match Clef::parse(&written) {
-            Some(parsed) => clef = Some(parsed),
+            // A part reads in one clef until the grammar can say where a
+            // second one starts, so a second declaration is two answers to
+            // one question rather than a change of clef. Last-wins was
+            // silent, which meant the composer found out by looking at the
+            // page.
+            Some(parsed) => match clef {
+                Some((_, first)) => resolver.report(
+                    Diagnostic::error(Code::DuplicateName, "this part already says what clef it is in")
+                        .at(span, "declared again here")
+                        .also(first, "first declared here")
+                        .help("write one `clef` per part"),
+                ),
+                None => clef = Some((parsed, span)),
+            },
             None => resolver.report(
                 Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a clef"))
                     .at(
@@ -763,13 +784,13 @@ fn parse_tempo(resolver: &mut Resolver, tempo: &TempoStmt) -> TempoMap {
     }
 }
 
-fn parse_meter(meter: &musa_language::ast::MeterStmt) -> Option<MeterMap> {
+fn parse_meter(meter: &musa_language::ast::MeterStmt) -> Option<Meter> {
     let text = meter.value()?;
     let (numerator, denominator) = text.split_once('/')?;
-    Some(MeterMap::new(numerator.parse().ok()?, denominator.parse().ok()?))
+    Some(Meter::new(numerator.parse().ok()?, denominator.parse().ok()?))
 }
 
-fn parse_key(key: &KeyStmt) -> Option<KeyMap> {
+fn parse_key(key: &KeyStmt) -> Option<Key> {
     let syntax = key.syntax();
     let mut identifiers = syntax
         .children_with_tokens()
@@ -781,7 +802,7 @@ fn parse_key(key: &KeyStmt) -> Option<KeyMap> {
         "minor" => Mode::Minor,
         _ => return None,
     };
-    Some(KeyMap::new(tonic, mode))
+    Some(Key::new(tonic, mode))
 }
 
 pub(crate) fn parse_ratio(text: &str) -> Option<Ratio<i64>> {

@@ -15,6 +15,7 @@ kernel "Little Invention" {
       timeline 2 {
         occurrence "piece|meter@4@4|50:65|50:65|0|" from 0 to 2;
         occurrence "piece|key@c@major|65:82|65:82|0|" from 0 to 2;
+        occurrence "part@0|clef@treble|129:141|129:141|0|" from 0 to 2;
       }
     };
 }

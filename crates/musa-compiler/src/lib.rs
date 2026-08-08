@@ -31,6 +31,7 @@ mod bars;
 #[doc(hidden)]
 pub mod bench;
 mod compile;
+mod context;
 mod diagnose;
 mod elaborate;
 mod factext;
@@ -44,12 +45,14 @@ mod pitch;
 mod profile;
 mod project;
 mod resolve;
+mod scope;
 mod score;
 mod studio;
 mod time;
 
 pub use crate::bars::{BarBeat, BarLines, Measure};
 pub use crate::compile::{Compilation, CompileOptions, SourceDocument, compile};
+pub use crate::context::ContextTrack;
 pub use crate::diagnose::{Code, Diagnostic, Fix, FixEdit, Label, Severity};
 #[doc(hidden)]
 pub use crate::elaborate::kernel_normal_form;
@@ -67,11 +70,11 @@ pub use crate::performance::{
 };
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
+pub use crate::scope::{ContextKind, Scope};
 pub use crate::score::{
     AnnotationStore, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, FrontMatter, HairpinSpan,
-    HarmonyMark, KeyMap, MeterMap, Mode, MotifDeclaration, NotatedDuration, Part, PartId, PartMap, PhraseSpan,
-    ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoChange, TempoMap, TupletSpan, Voice,
-    VoiceId,
+    HarmonyMark, Key, Meter, Mode, MotifDeclaration, NotatedDuration, Part, PartId, PartMap, PhraseSpan, ScoreEvent,
+    ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoChange, TempoMap, TupletSpan, Voice, VoiceId,
 };
 pub use crate::studio::{
     Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,

@@ -9,9 +9,11 @@ use indexmap::IndexMap;
 use num_rational::Ratio;
 use serde::{Deserialize, Serialize};
 
+use crate::context::ContextTrack;
 use crate::marks::Mark;
 use crate::origin::Origin;
 use crate::pitch::{PitchClass, WrittenPitch};
+use crate::scope::{ContextKind, Scope};
 use crate::time::{MusicalDuration, MusicalTime};
 
 /// A stable event identity within one snapshot.
@@ -203,6 +205,18 @@ impl Clef {
             _ => None,
         }
     }
+
+    /// The name it is written under. The inverse of [`Self::parse`], which is
+    /// what lets a clef survive the interchange file as the word a composer
+    /// typed rather than as an ordinal.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Treble => "treble",
+            Self::Bass => "bass",
+            Self::Alto => "alto",
+            Self::Tenor => "tenor",
+        }
+    }
 }
 
 /// A part identity within the score.
@@ -214,7 +228,6 @@ pub struct PartId(pub u32);
 pub struct Part {
     id: PartId,
     name: String,
-    clef: Option<Clef>,
     voices: IndexMap<VoiceId, Voice>,
     voice_names: IndexMap<VoiceId, String>,
 }
@@ -228,11 +241,6 @@ impl Part {
     /// The part name from the source.
     pub fn name(&self) -> &str {
         &self.name
-    }
-
-    /// The written clef, if the part declared one.
-    pub fn clef(&self) -> Option<Clef> {
-        self.clef
     }
 
     /// The voice lanes, in source order.
@@ -258,14 +266,12 @@ impl Part {
     pub(crate) fn new(
         id: PartId,
         name: String,
-        clef: Option<Clef>,
         voices: IndexMap<VoiceId, Voice>,
         voice_names: IndexMap<VoiceId, String>,
     ) -> Self {
         Self {
             id,
             name,
-            clef,
             voices,
             voice_names,
         }
@@ -356,12 +362,12 @@ impl Default for TempoMap {
 
 /// The initial meter.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MeterMap {
+pub struct Meter {
     numerator: u32,
     denominator: u32,
 }
 
-impl Default for MeterMap {
+impl Default for Meter {
     fn default() -> Self {
         Self {
             numerator: 4,
@@ -370,7 +376,7 @@ impl Default for MeterMap {
     }
 }
 
-impl MeterMap {
+impl Meter {
     /// Beats per measure.
     pub fn numerator(self) -> u32 {
         self.numerator
@@ -402,12 +408,12 @@ pub enum Mode {
 
 /// The initial key signature.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct KeyMap {
+pub struct Key {
     tonic: PitchClass,
     mode: Mode,
 }
 
-impl KeyMap {
+impl Key {
     /// The tonic pitch class.
     pub fn tonic(self) -> PitchClass {
         self.tonic
@@ -867,11 +873,33 @@ pub struct ScoreSnapshot {
     front_matter: FrontMatter,
     parts: PartMap,
     tempo_map: TempoMap,
-    meter_map: MeterMap,
-    key_map: Option<KeyMap>,
+    contexts: Contexts,
     annotations: AnnotationStore,
     motifs: Vec<MotifDeclaration>,
     profiles: crate::profile::ProfileSet,
+}
+
+/// The four questions that are one question: what is in force here.
+///
+/// One track per kind, each carrying its own inheritance rule
+/// ([`crate::ContextKind`]). Grouped rather than three fields on the snapshot
+/// because they are built together, in one pass over the timeline, and a
+/// consumer that reads one usually reads the others.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct Contexts {
+    pub(crate) keys: ContextTrack<Key>,
+    pub(crate) meters: ContextTrack<Meter>,
+    pub(crate) clefs: ContextTrack<Clef>,
+}
+
+impl Default for Contexts {
+    fn default() -> Self {
+        Self {
+            keys: ContextTrack::new(ContextKind::Key),
+            meters: ContextTrack::new(ContextKind::Meter),
+            clefs: ContextTrack::new(ContextKind::Clef),
+        }
+    }
 }
 
 impl ScoreSnapshot {
@@ -909,9 +937,15 @@ impl ScoreSnapshot {
         &self.tempo_map
     }
 
-    /// The meter. A piece that names none is in 4/4.
-    pub fn meter(&self) -> MeterMap {
-        self.meter_map
+    /// The meter in force at a moment, as a reader in `scope` sees it. A
+    /// piece that names none is in 4/4.
+    pub fn meter_at(&self, scope: Scope, at: MusicalTime) -> Meter {
+        self.contexts.meters.at(scope, at).unwrap_or_default()
+    }
+
+    /// Every meter the piece states, and where each begins.
+    pub fn meters(&self) -> &ContextTrack<Meter> {
+        &self.contexts.meters
     }
 
     /// Where the barlines fall.
@@ -920,12 +954,30 @@ impl ScoreSnapshot {
     /// numbers a folded repeat differently and builds its own (see
     /// [`crate::BarLines`]'s module documentation).
     pub fn bars(&self) -> crate::BarLines {
-        crate::BarLines::uniform(self.meter_map)
+        crate::BarLines::uniform(self.meter_at(Scope::Piece, MusicalTime::ZERO))
     }
 
-    /// The key signature, when the piece names one.
-    pub fn key(&self) -> Option<KeyMap> {
-        self.key_map
+    /// The key signature in force at a moment, as a reader in `scope` sees
+    /// it, or `None` when nothing has said one — a piece that names no key
+    /// has none, and saying so is more use than inventing C major.
+    pub fn key_at(&self, scope: Scope, at: MusicalTime) -> Option<Key> {
+        self.contexts.keys.at(scope, at)
+    }
+
+    /// Every key the piece states, and where each begins.
+    pub fn keys(&self) -> &ContextTrack<Key> {
+        &self.contexts.keys
+    }
+
+    /// The clef a part is read in at a moment, or `None` when neither the
+    /// part nor anything containing it names one.
+    pub fn clef_at(&self, part: PartId, at: MusicalTime) -> Option<Clef> {
+        self.contexts.clefs.at(Scope::Part { part: part.0 }, at)
+    }
+
+    /// Every clef the piece states, and where each begins.
+    pub fn clefs(&self) -> &ContextTrack<Clef> {
+        &self.contexts.clefs
     }
 
     /// The annotations, by kind.
@@ -993,20 +1045,8 @@ impl ScoreSnapshot {
         &mut self.tempo_map
     }
 
-    pub(crate) fn set_meter(&mut self, meter: MeterMap) {
-        self.meter_map = meter;
-    }
-
-    pub(crate) fn take_meter(&mut self) -> MeterMap {
-        std::mem::take(&mut self.meter_map)
-    }
-
-    pub(crate) fn set_key(&mut self, key: Option<KeyMap>) {
-        self.key_map = key;
-    }
-
-    pub(crate) fn take_key(&mut self) -> Option<KeyMap> {
-        self.key_map.take()
+    pub(crate) fn set_contexts(&mut self, contexts: Contexts) {
+        self.contexts = contexts;
     }
 
     pub(crate) fn set_annotations(&mut self, annotations: AnnotationStore) {

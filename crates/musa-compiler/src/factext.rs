@@ -22,11 +22,12 @@
 use musa_kernel::{Canonical as _, TextPayload};
 use num_rational::Ratio;
 
-use crate::elaborate::{FactKind, Scope, ScoreFact};
+use crate::elaborate::{FactKind, ScoreFact};
 use crate::harmony::ChordSymbol;
 use crate::marks::Mark;
 use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
+use crate::scope::Scope;
 use crate::score::{DynamicMark, Mode, NotatedDuration};
 use crate::time::MusicalDuration;
 
@@ -76,6 +77,7 @@ impl TextPayload for ScoreFact {
 pub(crate) fn scope_text(scope: Scope) -> String {
     match scope {
         Scope::Piece => "piece".to_owned(),
+        Scope::Part { part } => join(&["part".to_owned(), part.to_string()], '@'),
         Scope::Voice { part, voice } => join(&["voice".to_owned(), part.to_string(), voice.to_string()], '@'),
     }
 }
@@ -84,6 +86,9 @@ pub(crate) fn read_scope(text: &str) -> Option<Scope> {
     let fields = split_escaped(text, '@');
     match fields.as_slice() {
         [tag] if tag == "piece" => Some(Scope::Piece),
+        [tag, part] if tag == "part" => Some(Scope::Part {
+            part: part.parse().ok()?,
+        }),
         [tag, part, voice] if tag == "voice" => Some(Scope::Voice {
             part: part.parse().ok()?,
             voice: voice.parse().ok()?,
@@ -201,6 +206,7 @@ fn kind_text(kind: &FactKind) -> String {
         FactKind::Meter { numerator, denominator } => {
             vec!["meter".to_owned(), numerator.to_string(), denominator.to_string()]
         }
+        FactKind::Clef { clef } => vec!["clef".to_owned(), clef.name().to_owned()],
         FactKind::Section { name } => vec!["section".to_owned(), name.clone()],
         FactKind::Harmony { symbol } => vec!["harmony".to_owned(), symbol.text.clone()],
         FactKind::Repeat { times } => vec!["repeat".to_owned(), times.to_string()],
@@ -256,6 +262,9 @@ fn read_kind(text: &str) -> Option<FactKind> {
         ("meter", 3) => Some(FactKind::Meter {
             numerator: arg(1)?.parse().ok()?,
             denominator: arg(2)?.parse().ok()?,
+        }),
+        ("clef", 2) => Some(FactKind::Clef {
+            clef: crate::Clef::parse(arg(1)?)?,
         }),
         ("section", 2) => Some(FactKind::Section {
             name: arg(1)?.to_owned(),

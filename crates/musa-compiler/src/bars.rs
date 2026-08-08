@@ -2,7 +2,7 @@
 //!
 //! Measure numbering is a function of the meters in force, not a division by
 //! one number. Before this module every measure:beat conversion in the
-//! workspace divided by `MeterMap::measure_len()` — nine functions in
+//! workspace divided by `Meter::measure_len()` — nine functions in
 //! `musa-render`'s planner threaded it as a parameter — so nothing in any
 //! signature said "this piece has a single time signature", and nothing
 //! objected when it did not.
@@ -31,7 +31,7 @@
 
 use num_rational::Ratio;
 
-use crate::score::MeterMap;
+use crate::score::Meter;
 use crate::time::{MusicalDuration, MusicalTime};
 
 /// A written position, as musicians count: both 1-based, `1:1` being the
@@ -57,7 +57,7 @@ pub struct Measure {
     /// Where it ends. Equal to `start` only when the piece is unmeasured.
     pub end: MusicalTime,
     /// The meter in force across it.
-    pub meter: MeterMap,
+    pub meter: Meter,
 }
 
 impl Measure {
@@ -72,7 +72,7 @@ impl Measure {
 struct Stretch {
     start: MusicalTime,
     first: u32,
-    meter: MeterMap,
+    meter: Meter,
 }
 
 impl Stretch {
@@ -109,7 +109,7 @@ impl BarLines {
     ///
     /// The only constructor there is a caller for. Mid-piece meter adds the
     /// other one in the commit that needs it.
-    pub fn uniform(meter: MeterMap) -> Self {
+    pub fn uniform(meter: Meter) -> Self {
         Self {
             first: Stretch {
                 start: MusicalTime::ZERO,
@@ -131,7 +131,7 @@ impl BarLines {
     }
 
     /// The meter in force at a moment.
-    pub fn meter_at(&self, at: MusicalTime) -> MeterMap {
+    pub fn meter_at(&self, at: MusicalTime) -> Meter {
         self.stretch_at(at).meter
     }
 

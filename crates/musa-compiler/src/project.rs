@@ -19,7 +19,7 @@ use musa_kernel::{Canonical as _, Occurrence, Timeline};
 use crate::elaborate::{FactKind, ScoreFact};
 use crate::resolve::Resolver;
 use crate::score::{
-    ArticulationMarking, DynamicMarking, EventId, HairpinSpan, HarmonyMark, KeyMap, MeterMap, PhraseSpan, ScoreEvent,
+    ArticulationMarking, DynamicMarking, EventId, HairpinSpan, HarmonyMark, Key, Meter, PhraseSpan, ScoreEvent,
     ScoreEventKind, SectionMark, SlurSpan, TupletSpan, Voice,
 };
 use crate::time::MusicalTime;
@@ -37,10 +37,8 @@ pub(crate) type Voices = IndexMap<(u32, u32), Voice>;
 pub(crate) struct Projection {
     /// The voices, keyed by (part, voice).
     pub(crate) voices: Voices,
-    /// The key signature, when the piece names one.
-    pub(crate) key: Option<KeyMap>,
-    /// The meter.
-    pub(crate) meter: MeterMap,
+    /// What is in force where: key, meter and clef, each with its scope.
+    pub(crate) contexts: crate::score::Contexts,
 }
 
 /// Project the piece's timeline into voices and annotations.
@@ -79,8 +77,8 @@ pub(crate) fn project(resolver: &mut Resolver, timeline: &Timeline<ScoreFact>) -
     }
     let repeats = agreed_repeats(resolver, &voices, &stated);
     resolver.annotations.set_repeats(repeats);
-    let (key, meter) = project_piece(resolver, &piece);
-    Projection { voices, key, meter }
+    let contexts = project_piece(resolver, &piece);
+    Projection { voices, contexts }
 }
 
 /// The repeats every voice agrees about.
@@ -152,7 +150,7 @@ fn agreed_repeats(
 /// This is D11's *definition* applied by one ordered pass, not a `prevailing`
 /// call per fact. The kernel says what the answer is; bulk derivation sweeps
 /// (docs/kernel/03 D11, "the performance rule").
-fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]) -> (Option<KeyMap>, MeterMap) {
+fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]) -> crate::score::Contexts {
     let mut ordered: Vec<&&Occurrence<ScoreFact>> = occurrences.iter().collect();
     ordered.sort_by_cached_key(|occurrence| {
         (
@@ -161,17 +159,21 @@ fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
             occurrence.payload().canonical_key(),
         )
     });
-    let mut key = None;
-    let mut meter = MeterMap::default();
+    let mut contexts = crate::score::Contexts::default();
     for occurrence in ordered {
         let fact = occurrence.payload();
         let at = MusicalTime::new(occurrence.span().start().as_ratio());
         match &fact.kind {
             FactKind::Key { tonic, mode } => {
-                key = Some(KeyMap::new(*tonic, *mode));
+                contexts.keys.state(fact.scope, at, Key::new(*tonic, *mode));
             }
             FactKind::Meter { numerator, denominator } => {
-                meter = MeterMap::new(*numerator, *denominator);
+                contexts
+                    .meters
+                    .state(fact.scope, at, Meter::new(*numerator, *denominator));
+            }
+            FactKind::Clef { clef } => {
+                contexts.clefs.state(fact.scope, at, *clef);
             }
             FactKind::Section { name } => resolver.annotations.push_section(SectionMark {
                 name: name.clone(),
@@ -194,7 +196,7 @@ fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
             | FactKind::Ending { .. } => {}
         }
     }
-    (key, meter)
+    contexts
 }
 
 /// One voice: its events, the annotations that name them, and the repeats it
@@ -249,7 +251,11 @@ fn project_voice(
             }
             // Piece-scoped facts were bucketed away before this ran; they are
             // named here only because the match is total.
-            FactKind::Key { .. } | FactKind::Meter { .. } | FactKind::Section { .. } | FactKind::Harmony { .. } => {
+            FactKind::Key { .. }
+            | FactKind::Meter { .. }
+            | FactKind::Clef { .. }
+            | FactKind::Section { .. }
+            | FactKind::Harmony { .. } => {
                 index = index.saturating_add(1);
             }
         }
@@ -509,6 +515,7 @@ fn project_regions(
             | FactKind::Dynamic { .. }
             | FactKind::Key { .. }
             | FactKind::Meter { .. }
+            | FactKind::Clef { .. }
             | FactKind::Section { .. }
             | FactKind::Harmony { .. }
             | FactKind::Repeat { .. }

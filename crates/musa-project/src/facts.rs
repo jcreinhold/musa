@@ -11,8 +11,8 @@
 //! (`01-visual-language.md` §3) rather than a decimal.
 
 use musa_compiler::{
-    ExpansionStep, IntegratedTempoMap, Interval, Mode, Origin, PerformanceOptions, PitchClass, ScoreEventKind,
-    ScoreSnapshot, WrittenPitch,
+    ExpansionStep, IntegratedTempoMap, Interval, Mode, MusicalTime, Origin, PerformanceOptions, PitchClass, Scope,
+    ScoreEventKind, ScoreSnapshot, WrittenPitch,
 };
 use musa_language::HeaderField;
 use serde::Serialize;
@@ -373,10 +373,10 @@ impl ScoreFacts {
             tempo_bpm: score.tempo().bpm,
             tempo_beat: Fraction::from_ratio(score.tempo().beat),
             key: score
-                .key()
+                .key_at(Scope::Piece, MusicalTime::ZERO)
                 .map(|key| format!("{} {}", pitch_class(key.tonic()), mode(key.mode()))),
-            meter_count: score.meter().numerator(),
-            meter_unit: score.meter().denominator(),
+            meter_count: score.meter_at(Scope::Piece, MusicalTime::ZERO).numerator(),
+            meter_unit: score.meter_at(Scope::Piece, MusicalTime::ZERO).denominator(),
             parts,
             events,
             occurrences,

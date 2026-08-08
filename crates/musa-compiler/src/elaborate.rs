@@ -30,8 +30,9 @@ use crate::diagnose::{Code, Diagnostic};
 use crate::origin::{ExpansionStep, Origin, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::resolve::{self, ExpandCx, Resolver};
+use crate::scope::Scope;
 use crate::score::{
-    DynamicMark, MeterMap, Mode, NotatedDuration, Part, PartId, ScoreSnapshot, TempoChange, Voice, VoiceId,
+    DynamicMark, Meter, Mode, NotatedDuration, Part, PartId, ScoreSnapshot, TempoChange, Voice, VoiceId,
 };
 use crate::time::MusicalTime;
 use musa_kernel::{Beat, Occurrence, Span, Term, Timeline, sequence, timeline};
@@ -39,33 +40,6 @@ use musa_language::SyntaxNode;
 use musa_language::ast::{AstNode as _, PieceDecl, VoiceItem};
 use num_rational::Ratio;
 use std::fmt::Write as _;
-
-/// Where a fact sits in the score's *structure*.
-///
-/// Never where it sits in time — that is the occurrence's span, and keeping
-/// the two apart is the point (docs/kernel/03). A slur moves in time without
-/// changing voice; a voice is renamed without moving anything.
-///
-/// A part scope arrives when a part-wide fact does; a variant with no
-/// producer would be a public item with no caller.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Scope {
-    /// The piece as a whole: key, meter, form markers, chord symbols.
-    Piece,
-    /// One voice of one part, by the ids the snapshot uses.
-    Voice { part: u32, voice: u32 },
-}
-
-impl Scope {
-    /// The (part, voice) pair, for bucketing during projection, or `None`
-    /// when the fact belongs to the piece rather than to a voice.
-    pub(crate) fn voice(self) -> Option<(u32, u32)> {
-        match self {
-            Self::Piece => None,
-            Self::Voice { part, voice } => Some((part, voice)),
-        }
-    }
-}
 
 /// What a fact *states*. Where it is in time is the span; where it is in the
 /// score is the scope; why it exists is the origin.
@@ -112,6 +86,8 @@ pub(crate) enum FactKind {
     Key { tonic: PitchClass, mode: Mode },
     /// The meter, over the region it governs — likewise the whole piece.
     Meter { numerator: u32, denominator: u32 },
+    /// The clef a staff is read in, over the region it governs.
+    Clef { clef: crate::Clef },
     /// A form marker at the place it names.
     Section { name: String },
     /// A chord symbol at the place it is written; a region once a chord's
@@ -148,6 +124,7 @@ impl FactKind {
             | Self::Hairpin { .. }
             | Self::Key { .. }
             | Self::Meter { .. }
+            | Self::Clef { .. }
             | Self::Section { .. }
             | Self::Harmony { .. }
             | Self::Repeat { .. }
@@ -166,6 +143,7 @@ impl FactKind {
             | Self::Hairpin { .. }
             | Self::Key { .. }
             | Self::Meter { .. }
+            | Self::Clef { .. }
             | Self::Section { .. }
             | Self::Harmony { .. }
             | Self::Repeat { .. }
@@ -214,6 +192,7 @@ impl ScoreFact {
             | FactKind::Hairpin { .. }
             | FactKind::Key { .. }
             | FactKind::Meter { .. }
+            | FactKind::Clef { .. }
             | FactKind::Section { .. }
             | FactKind::Harmony { .. }
             | FactKind::Repeat { .. }
@@ -248,6 +227,7 @@ impl ScoreFact {
             | FactKind::Hairpin { .. }
             | FactKind::Key { .. }
             | FactKind::Meter { .. }
+            | FactKind::Clef { .. }
             | FactKind::Section { .. }
             | FactKind::Harmony { .. }
             | FactKind::Repeat { .. }
@@ -302,6 +282,7 @@ impl musa_kernel::Canonical for ScoreFact {
                 format!("key:{tonic}:{mode}|")
             }
             FactKind::Meter { numerator, denominator } => format!("meter:{numerator}/{denominator}|"),
+            FactKind::Clef { clef } => format!("clef:{}|", clef.name()),
             FactKind::Section { name } => format!("section:{name}|"),
             FactKind::Harmony { symbol } => format!("harmony:{}|", symbol.text),
             FactKind::Repeat { times } => format!("repeat:{times}|"),
@@ -314,6 +295,11 @@ impl musa_kernel::Canonical for ScoreFact {
             // `*` sorts before any part number, so at one instant the context
             // a reader meets first is the context that prints first.
             Scope::Piece => key.push_str("*|*|"),
+            // A part sorts with its own number and before any of its voices,
+            // which is where a reader meets its clef.
+            Scope::Part { part } => {
+                let _ = write!(key, "{part}|*|");
+            }
             Scope::Voice { part, voice } => {
                 let _ = write!(key, "{part}|{voice}|");
             }
@@ -424,7 +410,7 @@ pub(crate) struct PieceContext {
     /// Where the piece ends, in whole notes.
     extent: MusicalTime,
     /// The meter that governs it.
-    meter: MeterMap,
+    meter: Meter,
     /// The semantic identity of the whole piece (docs/kernel/05 N6).
     identity: musa_kernel::SemanticHash,
 }
@@ -444,7 +430,10 @@ fn elaborate_score(
     snapshot: &mut ScoreSnapshot,
 ) -> PieceContext {
     let mut voice_names: indexmap::IndexMap<PartId, indexmap::IndexMap<VoiceId, String>> = indexmap::IndexMap::new();
-    let mut metadata: Vec<(PartId, String, Option<crate::score::Clef>)> = Vec::new();
+    let mut metadata: Vec<(PartId, String)> = Vec::new();
+    // Clefs are context, so they enter the timeline with the key and the
+    // meter rather than riding on the part; the part loop only collects them.
+    let mut clefs: Vec<(u32, crate::score::Clef, SourceSpan)> = Vec::new();
     let mut lanes: Vec<Segment> = Vec::new();
     // One set of bindings for the whole piece: two voices calling the same
     // motif elaborate its body once between them.
@@ -457,7 +446,7 @@ fn elaborate_score(
         let name = part.name().unwrap_or_default();
         let part_key = resolver.declare(crate::resolve::DeclInfo::Part);
         let _ = resolve::ordinal(resolver, part_key);
-        if metadata.iter().any(|(_, existing, _)| *existing == name) {
+        if metadata.iter().any(|(_, existing)| *existing == name) {
             resolver.error(
                 Code::DuplicateName,
                 format!("this score already has a part called `{name}`"),
@@ -470,6 +459,9 @@ fn elaborate_score(
         resolver.next_part = resolver.next_part.saturating_add(1);
 
         let (clef, profile) = resolve::part_metadata(resolver, &part, snapshot.profiles());
+        if let Some((clef, span)) = clef {
+            clefs.push((id.0, clef, span));
+        }
         if let Some(profile) = profile {
             snapshot.profiles_mut().assign(&name, profile);
         }
@@ -500,7 +492,7 @@ fn elaborate_score(
             names.insert(voice_id, voice_name);
         }
         voice_names.insert(id, names);
-        metadata.push((id, name, clef));
+        metadata.push((id, name));
     }
 
     // The overlay's extent without building the overlay: D3 says it is the
@@ -510,7 +502,7 @@ fn elaborate_score(
         .map(|lane| lane.extent)
         .max()
         .unwrap_or(musa_kernel::Beat::ZERO);
-    let context = context_facts(resolver, piece, score, snapshot, extent);
+    let context = context_facts(resolver, piece, score, &clefs, extent);
     if let Some(sink) = &mut resolver.timeline_sink {
         // Measurement only, and the one place a voice is wanted on its own;
         // the piece itself is evaluated once, below.
@@ -531,11 +523,14 @@ fn elaborate_score(
     // and a hash of the projection would be a hash of a view.
     let identity = whole.semantic_hash();
     let projection = crate::project::project(resolver, &whole);
-    snapshot.set_key(projection.key);
-    snapshot.set_meter(projection.meter);
-    let meter = projection.meter;
+    let meter = projection
+        .contexts
+        .meters
+        .at(Scope::Piece, MusicalTime::ZERO)
+        .unwrap_or_default();
+    snapshot.set_contexts(projection.contexts);
     let mut projected = projection.voices;
-    for (id, name, clef) in metadata {
+    for (id, name) in metadata {
         let names = voice_names.swap_remove(&id).unwrap_or_default();
         let mut voices = indexmap::IndexMap::with_capacity(names.len());
         for voice_id in names.keys() {
@@ -544,9 +539,7 @@ fn elaborate_score(
                 .unwrap_or_else(|| Voice::new(Vec::new()));
             voices.insert(*voice_id, voice);
         }
-        snapshot
-            .parts_mut()
-            .insert(id, Part::new(id, name, clef, voices, names));
+        snapshot.parts_mut().insert(id, Part::new(id, name, voices, names));
     }
     PieceContext {
         extent: MusicalTime::new(extent.as_ratio()),
@@ -572,7 +565,7 @@ fn context_facts(
     resolver: &mut Resolver,
     piece: &PieceDecl,
     score: &musa_language::ast::ScoreDecl,
-    snapshot: &mut ScoreSnapshot,
+    clefs: &[(u32, crate::score::Clef, SourceSpan)],
     extent: Beat,
 ) -> Timeline<ScoreFact> {
     let declaration = crate::origin::DeclarationId::default();
@@ -582,11 +575,11 @@ fn context_facts(
         declaration,
         expansion_path: Vec::new(),
     };
-    // `lower_header` parsed the key and the meter out of the header; take
-    // them, so that the only thing which puts either back into the snapshot
+    // `lower_header` parsed the key and the meter out of the header and left
+    // them on the resolver; the only thing that puts either into the snapshot
     // is the projection of the timeline they are about to enter.
-    let meter = snapshot.take_meter();
-    let key = snapshot.take_key();
+    let meter = resolver.meter;
+    let key = resolver.key;
 
     let region = Span::new(Beat::ZERO, extent).unwrap_or(Span::ZERO);
     let mut occurrences = vec![Occurrence::new(
@@ -621,6 +614,20 @@ fn context_facts(
                         .key()
                         .map_or_else(|| SourceSpan::new(0, 0), |node| resolve::span_of(node.syntax())),
                 ),
+            ),
+        ));
+    }
+
+    // A clef is context, not part metadata: it is in force from where it is
+    // written until something replaces it, in the scope of one part, which is
+    // the same shape the key and the meter have.
+    for (part, clef, span) in clefs {
+        occurrences.push(Occurrence::new(
+            region,
+            ScoreFact::new(
+                Scope::Part { part: *part },
+                FactKind::Clef { clef: *clef },
+                at_span(*span),
             ),
         ));
     }
@@ -781,7 +788,7 @@ fn resolve_position(
     resolver: &mut Resolver,
     position: Option<&musa_language::ast::Position>,
     span: SourceSpan,
-    meter: MeterMap,
+    meter: Meter,
     extent: MusicalTime,
 ) -> Option<MusicalTime> {
     let position = position?;
@@ -2361,8 +2368,12 @@ pub(crate) fn piece_term(source: &SourceDocument) -> Option<(String, musa_kernel
     let mut share = Share::default();
     resolve::register_bars(&mut resolver, &mut snapshot, &score);
     let mut lanes = Vec::new();
+    let mut clefs = Vec::new();
     for (part_index, part) in score.parts().iter().enumerate() {
         let part_id = u32::try_from(part_index).unwrap_or(u32::MAX);
+        if let (Some((clef, span)), _) = resolve::part_metadata(&mut resolver, part, snapshot.profiles()) {
+            clefs.push((part_id, clef, span));
+        }
         for (index, voice) in part.voices().iter().enumerate() {
             let voice_key = resolver.declare(crate::resolve::DeclInfo::Voice);
             let declaration = resolve::ordinal(&resolver, voice_key);
@@ -2383,7 +2394,7 @@ pub(crate) fn piece_term(source: &SourceDocument) -> Option<(String, musa_kernel
         .map(|lane| lane.extent)
         .max()
         .unwrap_or(musa_kernel::Beat::ZERO);
-    let context = context_facts(&mut resolver, &piece, &score, &mut snapshot, extent);
+    let context = context_facts(&mut resolver, &piece, &score, &clefs, extent);
     let parts: Vec<musa_kernel::Term<ScoreFact>> = lanes
         .into_iter()
         .map(|lane| lane.term)

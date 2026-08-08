@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use musa_compiler::{CompileOptions, SourceDocument};
+use musa_compiler::{CompileOptions, MusicalTime, Scope, SourceDocument};
 use musa_engine::{AudioEngine, EngineConfig, MidiInput, TransportCommand};
 
 use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
@@ -384,7 +384,13 @@ impl ProjectSession {
                 self.entry.press(event.note, now);
             }
         }
-        let key = self.valid.as_ref().and_then(|valid| valid.score.key());
+        // The piece's key: step entry has no position to spell against, and
+        // will not until note entry carries one. `key_at` is asked the
+        // question it can answer rather than handed a caret it does not have.
+        let key = self
+            .valid
+            .as_ref()
+            .and_then(|valid| valid.score.key_at(Scope::Piece, MusicalTime::ZERO));
         self.entry
             .ready(now)
             .into_iter()

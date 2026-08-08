@@ -25,6 +25,8 @@ kernel "Profile Fixture" {
       timeline 2 {
         occurrence "piece|meter@4@4|318:333|318:333|0|" from 0 to 2;
         occurrence "piece|key@c@major|333:350|333:350|0|" from 0 to 2;
+        occurrence "part@0|clef@treble|1221:1233|1221:1233|0|" from 0 to 2;
+        occurrence "part@1|clef@bass|1570:1580|1570:1580|0|" from 0 to 2;
       }
     };
 }

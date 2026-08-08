@@ -19,9 +19,6 @@ ScoreSnapshot {
                     0,
                 ),
                 name: "violin",
-                clef: Some(
-                    Treble,
-                ),
                 voices: {
                     VoiceId(
                         0,
@@ -263,9 +260,6 @@ ScoreSnapshot {
                     1,
                 ),
                 name: "viola",
-                clef: Some(
-                    Alto,
-                ),
                 voices: {
                     VoiceId(
                         0,
@@ -494,21 +488,78 @@ ScoreSnapshot {
         bpm: 90,
         changes: [],
     },
-    meter_map: MeterMap {
-        numerator: 4,
-        denominator: 4,
-    },
-    key_map: Some(
-        KeyMap {
-            tonic: PitchClass {
-                letter: D,
-                accidental: Accidental(
-                    0,
-                ),
-            },
-            mode: Minor,
+    contexts: Contexts {
+        keys: ContextTrack {
+            kind: Key,
+            stretches: [
+                Stretch {
+                    scope: Piece,
+                    start: MusicalTime(
+                        Ratio {
+                            numer: 0,
+                            denom: 1,
+                        },
+                    ),
+                    value: Key {
+                        tonic: PitchClass {
+                            letter: D,
+                            accidental: Accidental(
+                                0,
+                            ),
+                        },
+                        mode: Minor,
+                    },
+                },
+            ],
         },
-    ),
+        meters: ContextTrack {
+            kind: Meter,
+            stretches: [
+                Stretch {
+                    scope: Piece,
+                    start: MusicalTime(
+                        Ratio {
+                            numer: 0,
+                            denom: 1,
+                        },
+                    ),
+                    value: Meter {
+                        numerator: 4,
+                        denominator: 4,
+                    },
+                },
+            ],
+        },
+        clefs: ContextTrack {
+            kind: Clef,
+            stretches: [
+                Stretch {
+                    scope: Part {
+                        part: 0,
+                    },
+                    start: MusicalTime(
+                        Ratio {
+                            numer: 0,
+                            denom: 1,
+                        },
+                    ),
+                    value: Treble,
+                },
+                Stretch {
+                    scope: Part {
+                        part: 1,
+                    },
+                    start: MusicalTime(
+                        Ratio {
+                            numer: 0,
+                            denom: 1,
+                        },
+                    ),
+                    value: Alto,
+                },
+            ],
+        },
+    },
     annotations: AnnotationStore {
         slurs: [],
         tuplets: [],

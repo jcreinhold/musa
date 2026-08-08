@@ -33,6 +33,7 @@ kernel "Variation" {
       timeline 6 {
         occurrence "piece|meter@4@4|418:433|418:433|0|" from 0 to 6;
         occurrence "piece|key@c@major|433:450|433:450|0|" from 0 to 6;
+        occurrence "part@0|clef@treble|588:600|588:600|0|" from 0 to 6;
       }
     };
 }

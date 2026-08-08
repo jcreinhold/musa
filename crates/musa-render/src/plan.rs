@@ -10,8 +10,8 @@
 use std::collections::{HashMap, HashSet};
 
 use musa_compiler::{
-    BarLines, ChordSymbol, Clef, DynamicMark, EventId, KeyMap, Mark, MeterMap, Mode, MusicalDuration, MusicalTime,
-    NotatedDuration, Part, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice, VoiceId, WrittenPitch,
+    BarLines, ChordSymbol, Clef, DynamicMark, EventId, Key, Mark, Meter, Mode, MusicalDuration, MusicalTime,
+    NotatedDuration, Part, Scope, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice, VoiceId, WrittenPitch,
 };
 use num_rational::Ratio;
 
@@ -517,13 +517,14 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
     // twice, so a written measure is not a sounding measure; the snapshot's
     // own `bars()` is the unfolded one, and mixing them would number the page
     // by what it sounds like.
-    let bars = BarLines::uniform(score.meter());
-    let key = score.key().map(key_signature);
+    let meter = score.meter_at(Scope::Piece, MusicalTime::ZERO);
+    let bars = BarLines::uniform(meter);
+    let key = score.key_at(Scope::Piece, MusicalTime::ZERO).map(key_signature);
     let marks = Marks::collect(score);
     let fold = Fold::of(score);
     let mut staves = Vec::new();
     for (_, part) in score.parts().iter() {
-        staves.push(plan_staff(part, score.meter(), &bars, key, &marks, &fold)?);
+        staves.push(plan_staff(score, part, meter, &bars, key, &marks, &fold)?);
     }
     let tempo = score.tempo();
     let mut tempos = vec![positioned(
@@ -788,7 +789,7 @@ fn positioned<T>(bars: &BarLines, at: MusicalTime, what: T) -> PositionedMark<T>
     }
 }
 
-fn key_signature(key: KeyMap) -> KeySignature {
+fn key_signature(key: Key) -> KeySignature {
     KeySignature {
         fifths: key.fifths(),
         mode: key.mode(),
@@ -796,8 +797,9 @@ fn key_signature(key: KeyMap) -> KeySignature {
 }
 
 fn plan_staff(
+    score: &ScoreSnapshot,
     part: &Part,
-    meter: MeterMap,
+    meter: Meter,
     bars: &BarLines,
     key: Option<KeySignature>,
     marks: &Marks,
@@ -842,7 +844,7 @@ fn plan_staff(
     }
     Ok(StaffPlan {
         name: part.name().to_string(),
-        clef: part.clef(),
+        clef: score.clef_at(part.id(), MusicalTime::ZERO),
         key,
         time_signature: (meter.numerator(), meter.denominator()),
         measures,
@@ -851,7 +853,7 @@ fn plan_staff(
 
 /// The beat unit for beaming: compound meters (`6/8`, `9/8`, `12/8`) beam in
 /// groups of three eighths; simple meters beam per notated beat.
-fn beam_unit(meter: MeterMap) -> Ratio<i64> {
+fn beam_unit(meter: Meter) -> Ratio<i64> {
     if meter.denominator() == 8 && meter.numerator().is_multiple_of(3) && meter.numerator() > 3 {
         Ratio::new(3, 8)
     } else {
@@ -862,7 +864,7 @@ fn beam_unit(meter: MeterMap) -> Ratio<i64> {
 /// Notate one voice's events inside one measure.
 fn plan_lane(
     events: &[ScoreEvent],
-    meter: MeterMap,
+    meter: Meter,
     measure_len: Ratio<i64>,
     start: MusicalTime,
     end: MusicalTime,
@@ -1018,7 +1020,7 @@ fn kind_of(event: &ScoreEvent) -> NotatedKind {
 }
 
 /// Beam consecutive eighth-and-shorter items that stay inside one beat.
-fn assign_beams(items: &mut [NotatedItem], meter: MeterMap, measure_len: Ratio<i64>) {
+fn assign_beams(items: &mut [NotatedItem], meter: Meter, measure_len: Ratio<i64>) {
     let unit = beam_unit(meter);
     let eighth = Ratio::new(1, 8);
     for item in items.iter_mut() {

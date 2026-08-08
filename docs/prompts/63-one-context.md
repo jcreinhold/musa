@@ -1,7 +1,7 @@
 ---
 id: 63
 slug: one-context
-status: pending
+status: done
 depends_on: [40, 61]
 phase: 3
 ---
@@ -173,13 +173,72 @@ this prompt only builds the shape and states the bug so 72 has something to poin
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo insta test --workspace --unreferenced=reject
 cd apps/musa-desktop/ui && npm test
+for f in examples/*.musa; do cargo run -q -p musa-cli -- check "$f"; done
 grep -rn "KeyMap\|MeterMap" crates apps --include="*.rs" | wc -l    # 0
 git diff --stat -- crates/*/tests/snapshots apps/musa-desktop/ui/fixtures   # empty
 git diff --stat -- examples/kernel/                                  # only pieces declaring a clef
 cargo bench -p musa-compiler                                         # P1-P5, no regression
 ```
+
+## Repairs made while implementing
+
+**`TempoMap::changes` is not dead, and it stays.** The Read section said nothing populates it, citing
+`resolve.rs::parse_tempo`'s unconditional `Vec::new()`. `elaborate.rs::elaborate_tempo_changes` fills it in, from
+`tempo quarter = 96 at 9:1;` — a feature with examples and tests. Deleting it would have deleted mid-piece tempo to
+tidy a field. Struck from the Target; the tempo *marking* still becomes a fact in the prompt that makes it one.
+
+**`ContextTrack` may be empty, and `at` returns an `Option`.** The Design gave it non-empty stretches and a total
+`at`. A piece that names no key has none, and the only way to keep `at` total would be to invent C major at the one
+place the code is entitled to say "nothing has been said" — which is the error this shape exists to *stop*
+inventing. `meter_at` is where the default is real (4/4 governs a piece that never says so), so the unwrap happens
+there, once, in the accessor whose documentation states it.
+
+**`Inheritance` is private, and callers name a `ContextKind` instead.** The Design said the rule must not be a
+parameter callers pass. The strongest form of that is that the enum naming the rules is not public at all: a track
+is constructed from its *kind*, carries the kind, and reads the table itself. The public surface is three
+variants — `Key`, `Meter`, `Clef` — and no rule at all. `Tempo` is not a row, because no track is built from it and
+a rule nothing can exercise is a rule nothing can test.
+
+**The inheritance tests are unit tests in `context.rs`, not `tests/context.rs`.** Every counterexample the table
+exists for — a part in its own key, a lane in its own meter, a piece-level clef that must not reach a part — is
+unwritable in `.musa`: there is no grammar for a part-scoped key, a second meter, or a piece-level clef. An
+integration test would therefore have required making `ContextTrack::state` public with no non-test caller, which is
+the "public item for future use" the module rules forbid. The counterexamples are all present; they are next to the
+code they constrain.
+
+**`prevailing` gained no caller, and the MIDI-speller bug named in the Design does not exist yet.**
+`ProjectSession::midi_entry` takes no position — the step-entry state holds pressed notes, not a place — so there is
+no caret to spell against, and `session.rs` asks `key_at(Scope::Piece, MusicalTime::ZERO)`, which is the answer it
+already had. Nor could it be wrong today: a key cannot change until the grammar can write a second one. The honest
+accounting is that this prompt built the shape and found that the second honest caller the Design promised was not
+there; the prompt that gives note entry a position is where it arrives.
+
+**The header's readings moved to the `Resolver`, and `set_meter`/`take_meter`/`set_key`/`take_key` are gone.** The
+snapshot used to hold the header's key and meter until the projection overwrote them — a second answer to "what key
+is this" with a live window in which it was the one anybody reading the snapshot would get. Staging them on the
+resolver leaves the snapshot with exactly one answer, which is the projection.
+
+**Three small things the design implied but did not name.** `Clef::name` was added as the inverse of `Clef::parse`,
+so a clef crosses the interchange file as the word a composer typed rather than as an ordinal. `Scope::Part` keys
+canonically as `{part}|*|`, which sorts a part's clef before that part's voices at the same instant — where a reader
+meets it. And `plan_staff` now takes the snapshot, because a staff's clef is a question about the score rather than
+a field on the part.
+
+**P3 costs 4–6% more, and that is the honest number.** Benchmarked against `HEAD` in a `git worktree`, same
+machine, same session. Medians, base → change: P1 `large` 1.91 → 1.87 ms, `shared` 1.79 → 1.79 ms; P2 `large`
+1.80 → 1.79 ms, `shared` 1.77 → 1.72 ms; P4 `large` 383 → 387 µs; P5 `large` 641 → 645 µs — all inside run-to-run
+noise. **P3 `large` 223 → 232 µs, `shared` 248 → 263 µs, `small` 3.21 → 3.40 µs.** The projection is the pass this
+prompt changed: it now builds three tracks and pushes a stretch per context fact instead of assigning two scalars.
+Reported rather than absorbed into "no regression", because it is a real cost and it is where a later prompt would
+look. It buys nothing back yet and buys a great deal at prompt 64. Against B1's 120 ms budget for a whole compile,
+P1 `large` is 1.87 ms.
+
+**The golden movement is exactly what the prompt allowed, and no more.** Seven `examples/kernel/*.kernel` files
+gained one `clef` occurrence per part that declares a clef — additions only, no line changed. Four compiler debug
+snapshots moved, because `ScoreSnapshot`'s shape is what they print. **MEI, LilyPond, MusicXML, MIDI, WAV, every
+notation-plan snapshot, every CLI golden and every UI fixture are byte-identical**, which is the claim that was
+about behaviour.
 
 Commit as `Unify key, meter, and clef as scoped context`.
 

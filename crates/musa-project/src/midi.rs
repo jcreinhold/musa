@@ -22,7 +22,7 @@
 
 use std::time::{Duration, Instant};
 
-use musa_compiler::{KeyMap, Letter};
+use musa_compiler::{Key, Letter};
 
 /// How close two presses must be to be one chord.
 ///
@@ -120,8 +120,8 @@ const SHARP_ORDER: [Letter; 7] = [
 /// composer meant an augmented fourth or a diminished fifth, and respelling
 /// one note is a keystroke away. What it must never do is surprise — hence
 /// the table test beside it.
-pub(crate) fn spell(note: u8, key: Option<KeyMap>) -> String {
-    let fifths = key.map_or(0, KeyMap::fifths);
+pub(crate) fn spell(note: u8, key: Option<Key>) -> String {
+    let fifths = key.map_or(0, Key::fifths);
     let pitch_class = i32::from(note % 12);
     let alterations = key_alterations(fifths);
 
@@ -204,11 +204,11 @@ fn accidental(alter: i32) -> &'static str {
 #[cfg(test)]
 mod midi_laws {
     use super::{EntryBuffer, MidiEntry, spell};
-    use musa_compiler::{Accidental, KeyMap, Letter, Mode, PitchClass};
+    use musa_compiler::{Accidental, Key, Letter, Mode, PitchClass};
     use std::time::{Duration, Instant};
 
-    fn key(letter: Letter, accidental: i8, mode: Mode) -> Option<KeyMap> {
-        Some(KeyMap::new(
+    fn key(letter: Letter, accidental: i8, mode: Mode) -> Option<Key> {
+        Some(Key::new(
             PitchClass {
                 letter,
                 accidental: Accidental(accidental),
@@ -229,7 +229,7 @@ mod midi_laws {
         let b_major = key(Letter::B, 0, Mode::Major);
         let a_minor = key(Letter::A, 0, Mode::Minor);
 
-        let rows: [(u8, Option<KeyMap>, &str); 14] = [
+        let rows: [(u8, Option<Key>, &str); 14] = [
             // Middle C is middle C in every key.
             (60, c_major, "c4"),
             (60, f_major, "c4"),
@@ -272,7 +272,7 @@ mod midi_laws {
 
     /// A key whose signature has `fifths` accidentals, built by walking the
     /// circle rather than by a table the test shares with the code.
-    fn tonic_for(fifths: i8) -> Option<KeyMap> {
+    fn tonic_for(fifths: i8) -> Option<Key> {
         const MAJORS: [(Letter, i8); 13] = [
             (Letter::G, -1),
             (Letter::D, -1),

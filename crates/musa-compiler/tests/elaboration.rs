@@ -30,7 +30,9 @@
 // arithmetic lint has nothing to protect here.
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_compiler::{CompileOptions, ScoreSnapshot, Severity, SourceDocument, compile, kernel_normal_form};
+use musa_compiler::{
+    CompileOptions, MusicalTime, Scope, ScoreSnapshot, Severity, SourceDocument, compile, kernel_normal_form,
+};
 use num_rational::Ratio;
 use proptest::prelude::*;
 
@@ -120,8 +122,14 @@ fn the_key_and_the_meter_are_facts_of_the_timeline() {
     assert!(form.contains("key:bf:major"), "key is not an occurrence: {form}");
 
     let snapshot = snapshot_of(source).expect("compiles");
-    assert_eq!((snapshot.meter().numerator(), snapshot.meter().denominator()), (3, 4));
-    assert_eq!(snapshot.key().map(|key| key.tonic().to_string()), Some("bf".to_owned()));
+    let meter = snapshot.meter_at(Scope::Piece, MusicalTime::ZERO);
+    assert_eq!((meter.numerator(), meter.denominator()), (3, 4));
+    assert_eq!(
+        snapshot
+            .key_at(Scope::Piece, MusicalTime::ZERO)
+            .map(|key| key.tonic().to_string()),
+        Some("bf".to_owned())
+    );
 }
 
 /// A repeat sounds its unrolling, note for note.
