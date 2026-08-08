@@ -157,6 +157,22 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 58 | repeats-and-endings | 2 | `repeat` becomes notation; first and second endings |
 | 59 | menus-and-settings | 2 | Grouped menus, an Export submenu, and Settings behind `⌘,` |
 | 60 | a-wider-source-column | 2 | The seam becomes a separator: drag the source column wider |
+| 61 | bar-lines | 3 | Measure numbering as a function of the meters in force |
+| 62 | mark-vocabulary | 3 | The notation vocabulary becomes a table, not a closed enum |
+| 63 | one-context | 3 | Key, meter, clef and tempo unified as scoped facts with real spans |
+| 64 | meter-changes | 3 | Mid-piece meter, irregular bars, pickups |
+| 65 | key-and-clef-changes | 3 | Modulation and clef change; the speller reads the key at the caret |
+| 66 | indeterminacy-spec | 3 | Where indeterminacy lives; **Q2 resolved** |
+| 67 | realization | 3 | `Realization`, `ChoicePath`, `--seed`; reproducible performances |
+| 68 | open-form | 3 | Mobile form, free duration, improvisation; *In C* and Klavierstück XI |
+| 69 | groove | 3 | Swing, shuffle, push: a `Beat → Beat` warp in the profile layer |
+| 70 | notation-marks | 3 | Fermata, pedal, ottava, ornaments, text, sample, cue |
+| 71 | grace-notes | 3 | Point occurrences with an ordering index; the profile decides the steal |
+| 72 | tempo-facts | 3 | The tempo marking becomes a fact, separated from the `Beat → Second` map |
+| 73 | tempo-ramps | 3 | *rit.* and *accel.* via `Progress`, exact in seconds-per-beat |
+| 74 | unmeasured | 3 | `meter none`: cadenzas, chant, proportional spacing |
+| 75 | polymeter-and-polytempo | 3 | Per-scope barline grids; polytempo behind an evidence gate |
+| 76 | realization-in-the-page | 2 | The freedom printed, the decision shown, the seed in Settings |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
@@ -212,6 +228,34 @@ exactly like a splitter and was inert, and `01-visual-language.md` had a reason 
 pane that resizes *itself* rather than one a composer resizes. So the reason survives the repair and the seam becomes a
 separator — dragged, double-clicked back to the measure, and reachable by key, because a drag never carries a
 capability on its own.
+
+**61–76 are the temporal block, and they start from an accusation the earlier prompts had earned.** Musa could not
+write a clef change, a modulation, a meter change, a fermata, a grace note, a *rit.*, a swung eighth, a cadenza, or
+any music that leaves a decision to its performer — which is most of what is played anywhere. The natural reading is
+that the temporal model is too small. It is not: `Timeline<A>` is generic in its payload, and a clef change is a
+`FactKind` with a span costing zero kernel lines. What blocked all of it was above the kernel — four separate
+mechanisms for "what is in force here" (a `KeyMap` scalar, a `MeterMap` scalar, `Part::clef`, a `TempoMap`
+singleton), a measure number computed by dividing by one of them, and a closed five-variant enum standing in for the
+whole vocabulary of notation. **Every prompt in this block adds nothing to the kernel** — no operation, no term form,
+no constructor. That is the block's own falsification test, and §34's, applied sixteen times.
+
+**61–63 are three refactors that ship no feature**, and they run first because each is provable by the strongest
+check available: every existing golden stays byte-identical. 61 makes measure numbering a function of the meters in
+force rather than a scalar threaded through nine functions in `plan.rs`. 62 makes the mark vocabulary a table, after
+counting the cost of the enum it replaces — 65 references across 13 files, which is why musa has no fermata. 63
+unifies the four context mechanisms into scoped facts with real spans, with per-kind inheritance, because a single
+rule gets key wrong in a way an ordinary viola part exposes. **64–76 then run breadth-first rather than by
+subsystem**, so that mid-piece meter and modulation (64–65), open form (66–68), groove (69), the marks people
+actually write (70–71), gradual tempo (72–73), unmeasured music (74) and polymeter (75) each reach a different
+kind of musician before any one of them is finished.
+
+Read 66 as the block's second falsification. Indeterminacy looks like it needs a `choose` form in the term calculus,
+on exactly the argument that justified `Progress` at prompt 45 — and it does not: `choose` cannot express *In C*'s
+unbounded repeats or Klavierstück XI's 19! orderings, it makes T2 ambiguous, and it leaves a `.kernel` file with no
+normal form and no hash, which destroys the corpus that motivated it. So a realization becomes a **compile
+parameter**, the freedom becomes a **payload value**, and Q2 closes on its own stated trigger in favour of its own
+working stance. 75 carries the same discipline forward as a gate rather than a conclusion: polymeter has repertoire
+and consumers, polytempo has neither yet, and the prompt says to ship half of itself if the gate does not open.
 
 Prompts 37–50 are the kernel consolidation block. Prompt 12 made the kernel canonical but deliberately kept what the
 migration needed: the direct lowerer as a regression oracle, and a `ScoreSnapshot` shaped exactly as the pre-kernel
