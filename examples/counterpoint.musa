@@ -8,10 +8,8 @@ piece "Counterpoint Study" {
             clef treble;
 
             voice lead {
-                d4 1/2;
-                f4 1/2;
-                e4 1/2;
-                chord [d4, fs4, a4] 1/2;
+                bar { d4 1/2; f4 1/2; }
+                bar { e4 1/2; chord [d4, fs4, a4] 1/2; }
             }
         }
 
@@ -19,10 +17,8 @@ piece "Counterpoint Study" {
             clef alto;
 
             voice line {
-                d3 1/2;
-                a2 1/2;
-                bf2 1/2;
-                a2 1/2;
+                bar { d3 1/2; a2 1/2; }
+                bar { bf2 1/2; a2 1/2; }
             }
         }
     }

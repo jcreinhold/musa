@@ -1,0 +1,17 @@
+// The other way round, and the one musa can repair: a bar that is short has
+// exactly one edit that makes it add up, so the fix is offered rather than
+// described. Which note to *remove* from a long bar is the composer's call,
+// so that one gets a help line instead.
+piece "Under" {
+    tempo quarter = 96;
+    meter 3/4;
+
+    score {
+        part piano {
+            voice right {
+                bar { c4 1/4; d4 1/4; e4 1/4; }
+                bar { f4 1/4; g4 1/4; }
+            }
+        }
+    }
+}

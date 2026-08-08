@@ -65,7 +65,7 @@ pub struct Fix { pub title: String, pub edits: Vec<TextEdit> }
 ```
 
 `message` and `label.text` say different things and the difference is the whole discipline. The message is what is
-wrong with the piece; the label is what is wrong *at that character*. `cannot find motif 'sigh'` / `not declared in this
+wrong with the piece; the label is what is wrong *at that character*. `cannot find 'sigh'` / `not declared in this
 piece` — never the same words twice.
 
 ### Codes, not numbers

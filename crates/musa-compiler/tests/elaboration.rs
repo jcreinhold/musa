@@ -59,6 +59,59 @@ fn kernel_normal_forms_snapshot() {
     }
 }
 
+/// A normal form with the provenance spans taken out.
+///
+/// Everything about *what a piece is* except where it happens to be written.
+/// Moving a statement one line down changes both spans on it and nothing else,
+/// so a test about meaning has to say so.
+fn without_spans(form: &str) -> String {
+    form.lines()
+        .map(|line| {
+            let fields: Vec<&str> = line.split('|').collect();
+            if fields.len() < 7 {
+                return line.to_owned();
+            }
+            let mut kept = fields;
+            // `scope|voice|payload|duration|start|end|rest`
+            kept.drain(4..6);
+            kept.join("|")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Barring a passage changes where its notes are written and nothing else.
+///
+/// The braces are an assertion, checked and then erased: no occurrence, no
+/// payload, no time of its own. A bar that changed the music would be a bar
+/// that could not be added to a piece already finished, which is the whole
+/// reason to add one.
+#[test]
+fn bars_are_erased_after_they_are_checked() {
+    let piece = |body: &str| {
+        format!("piece \"b\" {{ meter 4/4; score {{ part p {{ voice v {{ {body} }} }} }} }}")
+    };
+    let flat = piece("c4 1/4; d4 1/4; e4 1/4; f4 1/4; g4 1/2; a4 1/2;");
+    let barred = piece("bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; } bar { g4 1/2; a4 1/2; }");
+    let form = |source: &str| kernel_normal_form(&SourceDocument::new(source, "b")).expect("elaborates");
+    assert_eq!(without_spans(&form(&flat)), without_spans(&form(&barred)));
+}
+
+/// A named bar sounds where it is written *and* wherever it is played, and the
+/// two are the same music.
+#[test]
+fn a_named_bar_plays_the_same_music_it_declared() {
+    let source = "piece \"b\" { meter 4/4; score { part p { voice v { \
+                  bar head { c4 1/2; d4 1/2; } use head; } } } }";
+    let form = kernel_normal_form(&SourceDocument::new(source, "b")).expect("elaborates");
+    let pitches: Vec<&str> = form
+        .lines()
+        .filter_map(|line| line.split('|').nth(2))
+        .filter(|payload| payload.starts_with("note:"))
+        .collect();
+    assert_eq!(pitches, ["note:c4", "note:d4", "note:c4", "note:d4"]);
+}
+
 /// The key and the meter are occurrences, and the snapshot's context maps are
 /// a reading of them (prompt 40).
 #[test]
@@ -116,7 +169,7 @@ fn the_fixtures_the_oracle_used_to_agree_about_still_say_what_they_said() {
     assert!(
         errors
             .iter()
-            .any(|message| message.contains("cannot find motif `nope`")),
+            .any(|message| message.contains("cannot find `nope`")),
         "expected the motif to be named, got {errors:?}"
     );
     assert!(

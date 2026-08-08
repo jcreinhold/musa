@@ -368,13 +368,15 @@ pub(crate) fn elaborate_parsed(
         elaborate_tempo_changes(resolver, &piece, &mut snapshot, &context);
     }
     snapshot.set_annotations(std::mem::take(&mut resolver.annotations));
-    resolve::check_measure_sanity(resolver, &snapshot);
-    check_tuplets(resolver, &snapshot);
-    if resolver
-        .diagnostics
-        .iter()
-        .any(|d| d.severity == crate::diagnose::Severity::Error)
-    {
+    // Advice about a piece that does not compile is advice about a piece that
+    // does not exist. A bar reported as a quarter too long already makes every
+    // later barline wrong, and "this voice stops part-way through measure 3"
+    // is that same quarter, said again from further away.
+    if !reported_an_error(resolver) {
+        resolve::check_measure_sanity(resolver, &snapshot);
+        check_tuplets(resolver, &snapshot);
+    }
+    if reported_an_error(resolver) {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
     let imported_studios: Vec<musa_language::ast::StudioDecl> =
@@ -427,6 +429,10 @@ fn elaborate_score(
     // One set of bindings for the whole piece: two voices calling the same
     // motif elaborate its body once between them.
     let mut share = Share::default();
+    // Named bars join the namespace before any voice is read, so a bar in the
+    // cello can be answered by the violin above it — or refused, if the answer
+    // comes first. Either way the name exists.
+    resolve::register_bars(resolver, snapshot, score);
     for part in score.parts() {
         let name = part.name().unwrap_or_default();
         let part_key = resolver.declare(crate::resolve::DeclInfo::Part);
@@ -1282,6 +1288,7 @@ fn elaborate_item(
                 tied: false,
             }
         }
+        VoiceItem::Bar(bar) => elaborate_bar(resolver, share, bar, cx, scope),
         VoiceItem::Slur(slur) => {
             let origin = origin_of(cx, resolve::trimmed_span(slur.syntax()));
             let body = elaborate_items(resolver, share, &slur.items(), cx, scope);
@@ -1451,6 +1458,119 @@ fn resolve_scaled_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &Expa
     })
 }
 
+/// A bar: its contents, checked against the meter, and then let through.
+///
+/// The braces are erased. A bar contributes no occurrence, no payload, and no
+/// time of its own — the course correction's ontology has no bar in it, and
+/// the notation plan already knows where the barlines fall. What the braces
+/// contribute is the check, and, with a name on the front, the fact that the
+/// same measure can be played again from anywhere below.
+///
+/// The notes here stay *authored*: they are written at this place, and a bar
+/// that turned its own contents into an expansion of itself would make a
+/// composer's own notes read as generated in Origin view.
+fn elaborate_bar(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    bar: &musa_language::ast::BarStmt,
+    cx: &ExpandCx,
+    scope: Scope,
+) -> Segment {
+    let before = errors_so_far(resolver);
+    let body = elaborate_items(resolver, share, &bar.items(), cx, scope);
+    // A bar whose contents did not resolve has no length worth reporting, and
+    // "this bar is 1/4 short" underneath "`sigb` is not a pitch" is the second
+    // sentence of a two-sentence complaint about one mistake.
+    if errors_so_far(resolver) == before {
+        check_bar_length(resolver, bar, body.extent);
+    }
+    body
+}
+
+fn errors_so_far(resolver: &Resolver) -> usize {
+    resolver
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
+        .count()
+}
+
+fn reported_an_error(resolver: &Resolver) -> bool {
+    resolver
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
+}
+
+/// The diagnostic bars exist for.
+///
+/// A voice is a flat stream of durations, so a dropped `1/4` in the fourth bar
+/// does not produce an error — it produces every later bar being wrong,
+/// silently, and a page the composer has to proofread against their own
+/// intentions. Writing the bar down turns that into this.
+fn check_bar_length(resolver: &mut Resolver, bar: &musa_language::ast::BarStmt, extent: Beat) {
+    let meter = resolver.meter;
+    let measure = meter.measure_len().as_ratio();
+    let written = extent.as_ratio();
+    if measure <= Ratio::ZERO || written == measure {
+        return;
+    }
+    let long = written > measure;
+    let difference = if long { written - measure } else { measure - written };
+    // The rule goes in the note rather than in a second label on the `meter`
+    // statement: the meter is usually pages away, and miette draws a distant
+    // span as its own framed snippet — which doubles the size of every one of
+    // these to restate a fact the note states in six words.
+    let mut diagnostic = Diagnostic::error(
+        Code::DoesNotAddUp,
+        format!(
+            "this bar is {} {}",
+            fraction(difference),
+            if long { "too long" } else { "short" }
+        ),
+    )
+    .at(
+        resolve::trimmed_span(bar.syntax()),
+        format!("these add up to {}", fraction(written)),
+    )
+    .note(if resolver.meter_written {
+        format!(
+            "`meter {}/{}` makes a bar {}",
+            meter.numerator(),
+            meter.denominator(),
+            fraction(measure)
+        )
+    } else {
+        format!("a piece that writes no `meter` is in 4/4, so a bar is {}", fraction(measure))
+    });
+    diagnostic = if long {
+        // Which note to remove is the composer's decision, and a fix that
+        // guesses is worse than a help line that does not (prompt 56).
+        diagnostic.help("shorten a duration, or move the last of these into the next bar")
+    } else {
+        let rest = format!("rest {};", fraction(difference));
+        let filled = diagnostic.help(format!("add `{rest}`, or lengthen one of the durations"));
+        match bar.content_end() {
+            Some(at) => filled.fix(
+                format!("add `{rest}`"),
+                SourceSpan::new(at, at),
+                format!(" {rest}"),
+            ),
+            None => filled,
+        }
+    };
+    resolver.report(diagnostic);
+}
+
+/// A musical amount, spelled the way the language spells it.
+fn fraction(value: Ratio<i64>) -> String {
+    if *value.denom() == 1 {
+        value.numer().to_string()
+    } else {
+        format!("{}/{}", value.numer(), value.denom())
+    }
+}
+
 /// Expand a `use` statement, mirroring the direct lowerer's binding rules.
 fn elaborate_use(
     resolver: &mut Resolver,
@@ -1460,25 +1580,55 @@ fn elaborate_use(
     scope: Scope,
 ) -> Segment {
     let name = call.motif().unwrap_or_default();
-    let found = resolver
-        .motifs
-        .get_full(&name)
-        .map(|(index, _, motif)| (index, motif.params.clone(), motif.body.clone(), motif.declaration));
-    let Some((index, motif_params, body, declaration)) = found else {
+    let found = resolver.motifs.get_full(&name).map(|(index, _, motif)| {
+        (
+            index,
+            motif.params.clone(),
+            motif.body.clone(),
+            motif.declaration,
+            motif.material,
+            motif.span,
+        )
+    });
+    let call_span = resolve::trimmed_span(call.syntax());
+    let Some((index, motif_params, body, declaration, material, declared_at)) = found else {
         let known: Vec<&str> = resolver.motifs.keys().map(String::as_str).collect();
         resolver.report(
-            Diagnostic::error(Code::UnknownName, format!("cannot find motif `{name}`"))
-                .at(resolve::trimmed_span(call.syntax()), "not declared in this piece")
-                .help(crate::resolve::suggest(&name, &known, "motifs")),
+            Diagnostic::error(Code::UnknownName, format!("cannot find `{name}`"))
+                .at(call_span, "not declared in this piece")
+                .help(crate::resolve::suggest_name(&name, &known)),
         );
         return Segment::empty();
     };
+    // A bar is declared in the middle of the music, so "declared above" is a
+    // real question rather than a guarantee of the grammar. Ending *after*
+    // this `use` starts covers both ways of getting it wrong: quoting a bar
+    // written further down, and a bar quoting itself.
+    if material == crate::resolve::Material::Bar && call_span.start < declared_at.end {
+        // Inside its own braces the second label would point at the box the
+        // first label is already in, which miette draws as two carets on one
+        // line and a reader reads as one fact stated twice.
+        let diagnostic = if call_span.start >= declared_at.start {
+            Diagnostic::error(Code::Misplaced, format!("the bar `{name}` plays itself"))
+                .at(call_span, format!("this is inside `bar {name}`"))
+                .help("write the notes out, or play a bar declared above this one")
+        } else {
+            Diagnostic::error(Code::Misplaced, format!("the bar `{name}` is written after this"))
+                .at(call_span, "used before it exists")
+                .also(declared_at, "declared here")
+                .help("move the `use` below the bar, or the bar above the `use`")
+                .note("material is read top to bottom, which is what makes a piece that quotes itself impossible")
+        };
+        resolver.report(diagnostic);
+        return Segment::empty();
+    }
     if index >= cx.max_motif {
+        let word = material.word();
         resolver.report(
-            Diagnostic::error(Code::Misplaced, format!("motif `{name}` is declared after this one"))
-                .at(resolve::trimmed_span(call.syntax()), "used before it exists")
-                .help("move the declaration above the motif that uses it")
-                .note("a motif sees only the motifs above it, which is what makes a cycle impossible"),
+            Diagnostic::error(Code::Misplaced, format!("{word} `{name}` is declared after this one"))
+                .at(call_span, "used before it exists")
+                .help(format!("move the declaration above the motif that uses it, or write the {word}'s notes out here"))
+                .note("a motif sees only the material above it, which is what makes a cycle impossible"),
         );
         return Segment::empty();
     }
@@ -1523,7 +1673,6 @@ fn elaborate_use(
         };
         params.insert(param.name.clone(), value);
     }
-    let call_span = resolve::trimmed_span(call.syntax());
     // The body is elaborated *without* the path that leads to this call, and
     // with placeholders where the call site and the voice would be, so that a
     // second call site can reach the same body. Everything a call contributes
@@ -2040,6 +2189,7 @@ pub(crate) fn piece_term(source: &SourceDocument) -> Option<(String, musa_kernel
     resolve::lower_header(&mut resolver, &piece, &mut snapshot);
     let score = piece.score()?;
     let mut share = Share::default();
+    resolve::register_bars(&mut resolver, &mut snapshot, &score);
     let mut lanes = Vec::new();
     for (part_index, part) in score.parts().iter().enumerate() {
         let part_id = u32::try_from(part_index).unwrap_or(u32::MAX);

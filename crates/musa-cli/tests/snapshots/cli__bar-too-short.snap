@@ -1,0 +1,21 @@
+---
+source: crates/musa-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+does-not-add-up
+
+  × this bar is 1/4 short
+    ╭─[examples/broken/bar-too-short.musa:13:17]
+ 12 │                 bar { c4 1/4; d4 1/4; e4 1/4; }
+ 13 │                 bar { f4 1/4; g4 1/4; }
+    ·                 ───────────┬───────────
+    ·                            ╰── these add up to 1/2
+ 14 │             }
+    ╰────
+  help: add `rest 1/4;`, or lengthen one of the durations
+
+  note: `meter 3/4` makes a bar 3/4
+  fix: add `rest 1/4;`
+       13:38: insert ` rest 1/4;`
+
+1 problem (1 error)

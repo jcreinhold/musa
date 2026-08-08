@@ -544,6 +544,8 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             TransposeStmt::cast(child).map(VoiceItem::Transpose)
         } else if kind == SyntaxKind::RepeatStmt {
             RepeatStmt::cast(child).map(VoiceItem::Repeat)
+        } else if kind == SyntaxKind::BarStmt {
+            BarStmt::cast(child).map(VoiceItem::Bar)
         } else if kind == SyntaxKind::SlurStmt {
             SlurStmt::cast(child).map(VoiceItem::Slur)
         } else if kind == SyntaxKind::DynamicStmt {
@@ -583,6 +585,8 @@ pub enum VoiceItem {
     Transpose(TransposeStmt),
     /// `repeat n { ... }`
     Repeat(RepeatStmt),
+    /// `bar { ... }` / `bar head { ... }`
+    Bar(BarStmt),
     /// `slur { ... }`
     Slur(SlurStmt),
     /// `dynamic p;`
@@ -963,6 +967,45 @@ impl RepeatStmt {
     /// The block's items.
     pub fn items(&self) -> Vec<VoiceItem> {
         voice_items(&self.0)
+    }
+}
+
+/// `bar { c5 1/4; e5 1/4; g5 1/4; e5 1/4; }`
+///
+/// A measure, written down. The braces are an assertion — the contents are
+/// checked against the prevailing meter and then erased — and a name on the
+/// front makes the same measure playable again from anywhere below it.
+pub struct BarStmt(SyntaxNode);
+wrapper!(BarStmt, SyntaxKind::BarStmt);
+
+impl BarStmt {
+    /// The name this bar binds, when it has one.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The bar's items, in source order.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
+    }
+
+    /// Where the bar's contents end: after the last thing written in it and
+    /// before the whitespace in front of the closing `}`.
+    ///
+    /// Where something added to the bar goes. Inserting at the `}` instead
+    /// would put the new statement after the line break that closes the block,
+    /// which is a different-looking edit on a one-line bar and a
+    /// wrong-looking one on a bar that broke.
+    pub fn content_end(&self) -> Option<u32> {
+        let mut end = None;
+        for element in self.0.descendants_with_tokens() {
+            let SyntaxElement::Token(token) = element else { continue };
+            if token.kind().is_trivia() || token.kind() == SyntaxKind::RBrace {
+                continue;
+            }
+            end = Some(u32::from(token.text_range().end()));
+        }
+        end
     }
 }
 

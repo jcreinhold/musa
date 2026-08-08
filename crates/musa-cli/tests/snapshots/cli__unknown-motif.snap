@@ -4,7 +4,7 @@ expression: "String::from_utf8_lossy(&output.stderr)"
 ---
 unknown-name
 
-  × cannot find motif `sihg`
+  × cannot find `sihg`
     ╭─[examples/broken/unknown-motif.musa:14:17]
  13 │                 use sigh(c5);
  14 │                 use sihg(e5);
@@ -14,11 +14,4 @@ unknown-name
     ╰────
   help: did you mean `sigh`?
 
-does-not-add-up
-
-  ⚠ voice `right` in part `piano` stops part-way through measure 1
-  help: it is 1/4 short — add a rest, or check the durations above
-
-  note: a short last measure puts every part after it out of step
-
-2 problems (1 error, 1 warning)
+1 problem (1 error)

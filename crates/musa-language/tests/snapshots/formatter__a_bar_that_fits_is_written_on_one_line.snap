@@ -1,0 +1,36 @@
+---
+source: crates/musa-language/tests/formatter.rs
+expression: formatted
+---
+piece "Bars" {
+    meter 4/4;
+    score {
+        part p {
+            voice v {
+                bar head { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }
+                bar { g4 1/2; a4 1/2; }
+                bar {
+                    c4 1/16;
+                    d4 1/16;
+                    e4 1/16;
+                    f4 1/16;
+                    g4 1/16;
+                    a4 1/16;
+                    b4 1/16;
+                    c5 1/16;
+                    d5 1/16;
+                    e5 1/16;
+                    f5 1/16;
+                    g5 1/16;
+                    a5 1/16;
+                    b5 1/16;
+                    c6 1/8;
+                }
+                bar {
+                    // the last one
+                    c4 1;
+                }
+            }
+        }
+    }
+}

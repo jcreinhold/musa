@@ -304,6 +304,8 @@ enum RawToken {
     DiminuendoKw,
     #[token("to", priority = 3)]
     ToKw,
+    #[token("bar", priority = 3)]
+    BarKw,
 }
 
 impl RawToken {
@@ -392,7 +394,8 @@ impl RawToken {
             | Self::LibraryKw
             | Self::CrescendoKw
             | Self::DiminuendoKw
-            | Self::ToKw => None,
+            | Self::ToKw
+            | Self::BarKw => None,
         }
     }
 
@@ -479,6 +482,7 @@ impl RawToken {
             Self::CrescendoKw => SyntaxKind::CrescendoKw,
             Self::DiminuendoKw => SyntaxKind::DiminuendoKw,
             Self::ToKw => SyntaxKind::ToKw,
+            Self::BarKw => SyntaxKind::BarKw,
         }
     }
 }

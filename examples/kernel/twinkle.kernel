@@ -4,21 +4,21 @@ kernel "twinkle" {
   composition main : Timeline[ScoreFact] =
     overlay {
       timeline 5 {
-        occurrence "voice@0@0|note@c4@1/4;1/4;1/4@|198:205|198:205|4|" from 0 to 1/4;
-        occurrence "voice@0@0|note@c4@1/4;1/4;1/4@|206:213|206:213|4|" from 1/4 to 1/2;
-        occurrence "voice@0@0|note@g4@1/4;1/4;1/4@|214:221|214:221|4|" from 1/2 to 3/4;
-        occurrence "voice@0@0|note@g4@1/4;1/4;1/4@|222:229|222:229|4|" from 3/4 to 1;
-        occurrence "voice@0@0|note@a4@1/4;1/4;1/4@|230:237|230:237|4|" from 1 to 5/4;
-        occurrence "voice@0@0|note@a4@1/4;1/4;1/4@|238:245|238:245|4|" from 5/4 to 3/2;
-        occurrence "voice@0@0|note@g4@1/2;1/2;1/2@|246:253|246:253|4|" from 3/2 to 2;
-        occurrence "voice@0@0|note@f4@1/4;1/4;1/4@|270:277|270:277|4|" from 2 to 9/4;
-        occurrence "voice@0@0|note@f4@1/4;1/4;1/4@|278:285|278:285|4|" from 9/4 to 5/2;
-        occurrence "voice@0@0|note@e4@1/4;1/4;1/4@|286:293|286:293|4|" from 5/2 to 11/4;
-        occurrence "voice@0@0|note@e4@1/4;1/4;1/4@|294:301|294:301|4|" from 11/4 to 3;
-        occurrence "voice@0@0|note@d4@1/4;1/4;1/4@|302:309|302:309|4|" from 3 to 13/4;
-        occurrence "voice@0@0|note@d4@1/4;1/4;1/4@|310:317|310:317|4|" from 13/4 to 7/2;
-        occurrence "voice@0@0|note@c4@1/2;1/2;1/2@|318:325|318:325|4|" from 7/2 to 4;
-        occurrence "voice@0@0|rest@1;1/1;1/1@|342:349|342:349|4|" from 4 to 5;
+        occurrence "voice@0@0|note@c4@1/4;1/4;1/4@|204:211|204:211|4|" from 0 to 1/4;
+        occurrence "voice@0@0|note@c4@1/4;1/4;1/4@|212:219|212:219|4|" from 1/4 to 1/2;
+        occurrence "voice@0@0|note@g4@1/4;1/4;1/4@|220:227|220:227|4|" from 1/2 to 3/4;
+        occurrence "voice@0@0|note@g4@1/4;1/4;1/4@|228:235|228:235|4|" from 3/4 to 1;
+        occurrence "voice@0@0|note@a4@1/4;1/4;1/4@|260:267|260:267|4|" from 1 to 5/4;
+        occurrence "voice@0@0|note@a4@1/4;1/4;1/4@|268:275|268:275|4|" from 5/4 to 3/2;
+        occurrence "voice@0@0|note@g4@1/2;1/2;1/2@|276:283|276:283|4|" from 3/2 to 2;
+        occurrence "voice@0@0|note@f4@1/4;1/4;1/4@|308:315|308:315|4|" from 2 to 9/4;
+        occurrence "voice@0@0|note@f4@1/4;1/4;1/4@|316:323|316:323|4|" from 9/4 to 5/2;
+        occurrence "voice@0@0|note@e4@1/4;1/4;1/4@|324:331|324:331|4|" from 5/2 to 11/4;
+        occurrence "voice@0@0|note@e4@1/4;1/4;1/4@|332:339|332:339|4|" from 11/4 to 3;
+        occurrence "voice@0@0|note@d4@1/4;1/4;1/4@|364:371|364:371|4|" from 3 to 13/4;
+        occurrence "voice@0@0|note@d4@1/4;1/4;1/4@|372:379|372:379|4|" from 13/4 to 7/2;
+        occurrence "voice@0@0|note@c4@1/2;1/2;1/2@|380:387|380:387|4|" from 7/2 to 4;
+        occurrence "voice@0@0|rest@1;1/1;1/1@|412:419|412:419|4|" from 4 to 5;
       };
       timeline 5 {
         occurrence "piece|meter@4@4|88:103|88:103|0|" from 0 to 5;

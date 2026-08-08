@@ -142,6 +142,7 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::UseKw,
     SyntaxKind::TransposeKw,
     SyntaxKind::RepeatKw,
+    SyntaxKind::BarKw,
     SyntaxKind::SlurKw,
     SyntaxKind::PhraseKw,
     SyntaxKind::CrescendoKw,
@@ -167,6 +168,12 @@ struct Parser<'a> {
     /// the order the parser unwinds in, and it is also the one closest to what
     /// was actually being written.
     blamed_the_end: bool,
+    /// How many `bar` bodies enclose the position being parsed.
+    ///
+    /// Bars do not nest, and the parser is where that is said: a bar claims to
+    /// be one measure, and a measure inside a measure is not a thing the
+    /// notation has a mark for.
+    bar_depth: u32,
 }
 
 impl<'a> Parser<'a> {
@@ -178,6 +185,7 @@ impl<'a> Parser<'a> {
             events: Vec::new(),
             errors: Vec::new(),
             blamed_the_end: false,
+            bar_depth: 0,
         }
     }
 
@@ -1130,6 +1138,8 @@ impl<'a> Parser<'a> {
                 self.transpose_stmt();
             } else if self.at(SyntaxKind::RepeatKw) {
                 self.repeat_stmt();
+            } else if self.at(SyntaxKind::BarKw) {
+                self.bar_stmt();
             } else if self.at(SyntaxKind::SlurKw) {
                 self.slur_stmt();
             } else if self.at(SyntaxKind::DynamicKw) {
@@ -1149,7 +1159,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.expected_with_help(
                     "something to play",
-                    "a voice holds notes (`c5 1/4;`), `rest`, `chord`, and `use` — run `musa explain syntax` for the rest",
+                    "a voice holds notes (`c5 1/4;`), `rest`, `chord`, `bar`, and `use` — run `musa explain syntax` for the rest",
                 );
                 self.recover(VOICE_RECOVERY);
             }
@@ -1227,12 +1237,32 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `use name(args);`
+    /// `use name(args);` — or `use name;`, when the material takes none.
     fn use_stmt(&mut self) {
         self.start(SyntaxKind::UseStmt);
         self.bump(); // use
-        self.expect(SyntaxKind::Identifier, "a motif name");
-        self.expect(SyntaxKind::LParen, "`(`");
+        self.expect(SyntaxKind::Identifier, "a name");
+        // The parentheses *are* the argument list. Material that takes no
+        // arguments — a bar, a motif declared without parameters — is played
+        // by naming it, and `use head();` would be punctuation standing in for
+        // nothing.
+        if self.at(SyntaxKind::LParen) {
+            self.use_args();
+        }
+        // `with { ... }` specializes this occurrence and only this one
+        // (roadmap §9). A call that ends there is a block, not a statement,
+        // so it takes no `;` — the same shape every other block has.
+        if self.at(SyntaxKind::WithKw) {
+            self.with_clause();
+        } else {
+            self.expect(SyntaxKind::Semicolon, "`;`");
+        }
+        self.finish();
+    }
+
+    /// `(a, b, c)` — the arguments of a `use`.
+    fn use_args(&mut self) {
+        self.bump(); // (
         if !self.at(SyntaxKind::RParen) {
             loop {
                 if self.at_any(&[
@@ -1254,15 +1284,6 @@ impl<'a> Parser<'a> {
             }
         }
         self.expect(SyntaxKind::RParen, "`)`");
-        // `with { ... }` specializes this occurrence and only this one
-        // (roadmap §9). A call that ends there is a block, not a statement,
-        // so it takes no `;` — the same shape every other block has.
-        if self.at(SyntaxKind::WithKw) {
-            self.with_clause();
-        } else {
-            self.expect(SyntaxKind::Semicolon, "`;`");
-        }
-        self.finish();
     }
 
     /// `with { note <n> = <pitch>; ... }` — overrides on one occurrence.
@@ -1317,6 +1338,39 @@ impl<'a> Parser<'a> {
         self.expect(SyntaxKind::Integer, "a repeat count");
         self.block();
         self.finish();
+    }
+
+    /// `bar { ... }` / `bar head { ... }`
+    fn bar_stmt(&mut self) {
+        if self.bar_depth > 0 {
+            let error = self.nested_bar();
+            self.errors.extend(error);
+        }
+        self.start(SyntaxKind::BarStmt);
+        self.bump(); // bar
+        // The name is optional and there is nothing to disambiguate: a bar's
+        // contents start with `{`, so an identifier here can only be a name.
+        if self.at(SyntaxKind::Identifier) {
+            self.bump();
+        }
+        self.bar_depth = self.bar_depth.saturating_add(1);
+        self.block();
+        self.bar_depth = self.bar_depth.saturating_sub(1);
+        self.finish();
+    }
+
+    /// A `bar` inside a `bar`.
+    fn nested_bar(&mut self) -> Option<SyntaxError> {
+        if self.cascading() {
+            return None;
+        }
+        let range = self
+            .significant()
+            .map_or_else(|| TextRange::empty(self.end_size()), |token| token.range);
+        Some(
+            SyntaxError::new(range, "bars do not nest", "this bar is inside another")
+                .with_help("close the bar above this one, or delete this `bar`"),
+        )
     }
 
     /// `slur { ... }`

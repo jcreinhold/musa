@@ -53,11 +53,40 @@ pub(crate) enum DeclInfo {
     Voice,
 }
 
-/// A collected motif definition ready for expansion.
+/// What kind of material a name was bound to.
+///
+/// Motifs and bars share one namespace because "material with a name" is one
+/// idea, and a composer who mistypes a name should get one diagnostic that
+/// knows about both. They differ only in how a diagnostic refers to them.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Material {
+    Motif,
+    Bar,
+}
+
+impl Material {
+    pub(crate) fn word(self) -> &'static str {
+        match self {
+            Self::Motif => "motif",
+            Self::Bar => "bar",
+        }
+    }
+}
+
+/// A collected motif or named bar, ready for expansion.
 pub(crate) struct MotifDef {
     pub(crate) params: Vec<musa_language::ast::Param>,
     pub(crate) body: Vec<VoiceItem>,
     pub(crate) declaration: DeclarationId,
+    pub(crate) material: Material,
+    /// Where the declaration is written.
+    ///
+    /// Motifs are all declared above the score, so nothing can use one before
+    /// it exists. A bar is declared in the middle of the music, so the same
+    /// guarantee has to be checked: a `use` that starts before this span ends
+    /// is either forward reference or the bar quoting itself, and both are the
+    /// same mistake seen from different sides.
+    pub(crate) span: SourceSpan,
 }
 
 /// A parameter bound at a `use` site.
@@ -102,6 +131,14 @@ pub(crate) struct Resolver {
     pub(crate) next_event: u64,
     pub(crate) next_part: u32,
     pub(crate) annotations: AnnotationStore,
+    /// The prevailing meter, and whether the piece actually wrote it.
+    ///
+    /// Read-only once the header is lowered, and here rather than threaded
+    /// through the expansion context because it is a fact about the piece
+    /// rather than about the block being expanded. What a `bar` is checked
+    /// against.
+    pub(crate) meter: MeterMap,
+    pub(crate) meter_written: bool,
     /// Where each voice's kernel timeline goes on its way to the adapter.
     ///
     /// `None` on every production path — nothing keeps a timeline after the
@@ -120,6 +157,8 @@ impl Resolver {
             next_event: 0,
             next_part: 0,
             annotations: AnnotationStore::default(),
+            meter: MeterMap::default(),
+            meter_written: false,
             timeline_sink: None,
         }
     }
@@ -244,6 +283,8 @@ pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot:
         resolver.declare(DeclInfo::Meter);
         if let Some(map) = parse_meter(&meter) {
             snapshot.set_meter(map);
+            resolver.meter = map;
+            resolver.meter_written = true;
         } else {
             resolver.error(
                 Code::NotAValue,
@@ -321,25 +362,8 @@ pub(crate) fn register_motifs(
 ) {
     for motif in motifs {
         let name = motif.name().unwrap_or_default();
-        if resolver.motifs.contains_key(&name) {
-            let first = snapshot
-                .motifs()
-                .iter()
-                .find(|declared| declared.name == name)
-                .map(|declared| declared.span);
-            resolver.report(
-                Diagnostic::error(
-                    Code::DuplicateName,
-                    match from {
-                        Some(path) => format!("`{path}` also declares `{name}`"),
-                        None => format!("`{name}` is declared twice"),
-                    },
-                )
-                .at(trimmed_span(motif.syntax()), "declared again here")
-                .maybe_also(first, "first declared here")
-                .help("rename one of them, or delete this declaration")
-                .note("musa has no shadowing: a name means one thing everywhere the piece can see it"),
-            );
+        let span = trimmed_span(motif.syntax());
+        if refuses_to_shadow(resolver, snapshot, &name, span, from) {
             continue;
         }
         let key = resolver.declare(DeclInfo::Motif);
@@ -347,13 +371,97 @@ pub(crate) fn register_motifs(
             params: motif.params(),
             body: motif.items(),
             declaration: ordinal(resolver, key),
+            material: Material::Motif,
+            span,
         };
         snapshot.push_motif(crate::score::MotifDeclaration {
             name: name.clone(),
-            span: trimmed_span(motif.syntax()),
+            span,
         });
         resolver.motifs.insert(name, definition);
     }
+}
+
+/// Register every named `bar` in the score, in source order.
+///
+/// A bar is declared where it sounds, which is inside a voice, so this walks
+/// the score rather than reading a list off the piece. Registration happens
+/// before any voice is elaborated for the same reason a motif's does: a name
+/// has to exist before the thing that plays it is read. Whether a `use` is
+/// *allowed* to reach a given bar is a separate question, and one the spans
+/// answer — see [`MotifDef::span`].
+pub(crate) fn register_bars(resolver: &mut Resolver, snapshot: &mut ScoreSnapshot, score: &musa_language::ast::ScoreDecl) {
+    for bar in named_bars(score) {
+        let Some(name) = bar.name() else { continue };
+        let span = trimmed_span(bar.syntax());
+        if refuses_to_shadow(resolver, snapshot, &name, span, None) {
+            continue;
+        }
+        let key = resolver.declare(DeclInfo::Motif);
+        let definition = MotifDef {
+            params: Vec::new(),
+            body: bar.items(),
+            declaration: ordinal(resolver, key),
+            material: Material::Bar,
+            span,
+        };
+        snapshot.push_motif(crate::score::MotifDeclaration {
+            name: name.clone(),
+            span,
+        });
+        resolver.motifs.insert(name, definition);
+    }
+}
+
+/// Every named bar in the score, outermost first and in source order.
+fn named_bars(score: &musa_language::ast::ScoreDecl) -> Vec<musa_language::ast::BarStmt> {
+    let mut found = Vec::new();
+    for node in score.syntax().descendants() {
+        if node.kind() == SyntaxKind::BarStmt
+            && let Some(bar) = musa_language::ast::BarStmt::cast(node)
+            && bar.name().is_some()
+        {
+            found.push(bar);
+        }
+    }
+    found
+}
+
+/// Report a name that is already taken, and say where by.
+///
+/// Two declarations of one name is always an error — an imported name that
+/// quietly lost to a local one would make a piece sound different depending on
+/// what it imported — and a bar shares the rule because it shares the
+/// namespace.
+fn refuses_to_shadow(
+    resolver: &mut Resolver,
+    snapshot: &ScoreSnapshot,
+    name: &str,
+    span: SourceSpan,
+    from: Option<&str>,
+) -> bool {
+    if !resolver.motifs.contains_key(name) {
+        return false;
+    }
+    let first = snapshot
+        .motifs()
+        .iter()
+        .find(|declared| declared.name == name)
+        .map(|declared| declared.span);
+    resolver.report(
+        Diagnostic::error(
+            Code::DuplicateName,
+            match from {
+                Some(path) => format!("`{path}` also declares `{name}`"),
+                None => format!("`{name}` is declared twice"),
+            },
+        )
+        .at(span, "declared again here")
+        .maybe_also(first, "first declared here")
+        .help("rename one of them, or delete this declaration")
+        .note("musa has no shadowing: a name means one thing everywhere the piece can see it"),
+    );
+    true
 }
 
 /// Merge a `performance` block's profiles into the snapshot, refusing to
@@ -404,6 +512,25 @@ pub(crate) fn suggest(written: &str, known: &[&str], plural: &str) -> String {
     }
     let quoted: Vec<String> = known.iter().map(|name| format!("`{name}`")).collect();
     format!("musa reads {}", quoted.join(", "))
+}
+
+/// The same, for a name the *composer* chose rather than a word musa knows.
+///
+/// The difference is whose vocabulary is at fault. `musa reads f, mf, p` is
+/// the right answer for a misspelled dynamic and the wrong one for a
+/// misspelled motif, where the list is the piece's own.
+pub(crate) fn suggest_name(written: &str, known: &[&str]) -> String {
+    if let Some(near) = nearest(written, known.iter().copied()) {
+        return format!("did you mean `{near}`?");
+    }
+    if known.is_empty() {
+        return "this piece declares no motifs and no bars".to_owned();
+    }
+    if known.len() > 6 {
+        return "check the spelling against the declaration".to_owned();
+    }
+    let quoted: Vec<String> = known.iter().map(|name| format!("`{name}`")).collect();
+    format!("this piece declares {}", quoted.join(", "))
 }
 
 /// Read the `performance` block into a [`ProfileSet`]. Declarations only —

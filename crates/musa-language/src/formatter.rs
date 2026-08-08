@@ -9,6 +9,8 @@
 //! - Blank lines from the original are preserved, capped at one.
 //! - A comment that trailed code on its line stays trailing; an own-line
 //!   comment stays attached above the construct it precedes.
+//! - A `bar` that fits the source measure is written on one line. The one
+//!   exception, and see [`MEASURE`] for why it earns itself.
 //!
 //! Laws (tested as properties): `format` is idempotent, and
 //! `parse(format(parse(source)))` equals `parse(source)` up to whitespace.
@@ -42,6 +44,26 @@ pub fn format(document: &ParsedDocument) -> FormattedSource {
     FormattedSource { text: writer.finish() }
 }
 
+/// How wide a line a bar may keep, indent included.
+///
+/// Everything else in musa is a short statement on its own line. A bar is the
+/// one statement that is naturally horizontal, because that is the direction
+/// music is read in, and a bar you can select with a double-click and drag
+/// into the next voice is the difference between the brace being worth typing
+/// and not. So a bar keeps its line, and breaks like any other block only when
+/// it is genuinely long.
+///
+/// 96, not the source column's 48-character measure
+/// (`01-visual-language.md` §8). A bar sits four levels in, so sixteen
+/// characters are spent before the word `bar`, and a measure of four quarter
+/// notes is forty more; budgeting a bar to the column would break every bar
+/// there is, which is the same as not having the rule. What 96 buys is that a
+/// bar of eight eighths — an ordinary bar — stays one line, and a bar long
+/// enough to need scrolling to read is a bar long enough to stack. The cost is
+/// that a barred piece has lines past the column, and the column scrolls them,
+/// which is what it already does for comment prose and long signal chains.
+const MEASURE: usize = 96;
+
 fn format_node(node: &SyntaxNode, writer: &mut Writer) {
     // Set once the first token of a one-word construct has been written, so
     // the rest of it joins on without a space.
@@ -50,6 +72,10 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer) {
         match element {
             SyntaxElement::Node(child) => {
                 writer.blank_line_if_pending();
+                if let Some(line) = inline_bar(&child, writer.indent) {
+                    writer.write_line(&line);
+                    continue;
+                }
                 let wrap = wraps_across_lines(&child);
                 if wrap {
                     writer.open_chain();
@@ -157,6 +183,59 @@ struct Writer {
     chains: Vec<bool>,
 }
 
+/// A bar written on one line, when it is a bar and the line fits.
+///
+/// Returns `None` for anything that is not a `bar`, for a bar carrying a
+/// comment — a comment wants a line of its own and one line has nowhere to put
+/// it — and for a bar too wide for [`MEASURE`] at this indent, which falls back
+/// to the way every other block breaks.
+fn inline_bar(node: &SyntaxNode, indent: usize) -> Option<String> {
+    if node.kind() != SyntaxKind::BarStmt {
+        return None;
+    }
+    let mut line = String::new();
+    let mut prev: Option<SyntaxKind> = None;
+    for element in node.descendants_with_tokens() {
+        let SyntaxElement::Token(token) = element else { continue };
+        let kind = token.kind();
+        if kind == SyntaxKind::Whitespace {
+            continue;
+        }
+        if kind == SyntaxKind::LineComment || kind == SyntaxKind::BlockComment {
+            return None;
+        }
+        if spaced_before(kind, prev) {
+            line.push(' ');
+        }
+        line.push_str(token.text());
+        prev = Some(kind);
+    }
+    (indent.saturating_add(line.chars().count()) <= MEASURE).then_some(line)
+}
+
+/// Whether a token takes a space in front of it on a bar's one line.
+///
+/// The same spacing `format_token` writes, stated as one rule instead of as a
+/// sequence of writes: some tokens close up to what is before them, and some
+/// tokens close up whatever comes after.
+fn spaced_before(kind: SyntaxKind, prev: Option<SyntaxKind>) -> bool {
+    let Some(prev) = prev else { return false };
+    let closes_left = matches!(
+        kind,
+        SyntaxKind::Semicolon
+            | SyntaxKind::Comma
+            | SyntaxKind::LParen
+            | SyntaxKind::RParen
+            | SyntaxKind::RBracket
+            | SyntaxKind::Dot
+    );
+    let closes_right = matches!(
+        prev,
+        SyntaxKind::LParen | SyntaxKind::LBracket | SyntaxKind::Minus | SyntaxKind::Dot
+    );
+    !closes_left && !closes_right
+}
+
 /// Whether a signal chain is long enough to be worth stacking.
 ///
 /// Two stages (`oscillator(sine) |> gain(-15 dB)`) read fine on one line;
@@ -251,6 +330,14 @@ impl Writer {
         }
         self.write(text);
         self.after_significant(kind);
+    }
+
+    /// Write a whole construct that was rendered elsewhere, as its own line.
+    fn write_line(&mut self, text: &str) {
+        self.prep_line();
+        self.write(text);
+        self.end_line();
+        self.after_significant(SyntaxKind::RBrace);
     }
 
     fn space(&mut self) {

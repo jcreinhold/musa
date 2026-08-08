@@ -185,6 +185,8 @@ pub enum SyntaxKind {
     DiminuendoKw,
     /// `to`
     ToKw,
+    /// `bar`
+    BarKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -315,6 +317,8 @@ pub enum SyntaxKind {
     SendStmt,
     /// `{ ... }` body of a motif, transpose, or repeat.
     Block,
+    /// `bar { ... }` / `bar head { ... }` — one measure, written down.
+    BarStmt,
 }
 
 impl SyntaxKind {

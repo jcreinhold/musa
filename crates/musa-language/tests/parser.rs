@@ -278,6 +278,7 @@ fn typed_views_read_the_new_statements() {
             | VoiceItem::Use(_)
             | VoiceItem::Transpose(_)
             | VoiceItem::Repeat(_)
+            | VoiceItem::Bar(_)
             | VoiceItem::Stretch(_)
             | VoiceItem::Retrograde(_)
             | VoiceItem::Invert(_)
@@ -328,6 +329,7 @@ fn the_transformations_and_their_bodies_are_typed_views() {
             | VoiceItem::Use(_)
             | VoiceItem::Transpose(_)
             | VoiceItem::Repeat(_)
+            | VoiceItem::Bar(_)
             | VoiceItem::Slur(_)
             | VoiceItem::Dynamic(_)
             | VoiceItem::Tuplet(_)
@@ -363,6 +365,7 @@ fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
             | VoiceItem::Chord(_)
             | VoiceItem::Transpose(_)
             | VoiceItem::Repeat(_)
+            | VoiceItem::Bar(_)
             | VoiceItem::Slur(_)
             | VoiceItem::Dynamic(_)
             | VoiceItem::Tuplet(_)
@@ -502,6 +505,7 @@ fn a_hairpin_names_its_direction_and_its_mark() {
             | VoiceItem::Use(_)
             | VoiceItem::Transpose(_)
             | VoiceItem::Repeat(_)
+            | VoiceItem::Bar(_)
             | VoiceItem::Slur(_)
             | VoiceItem::Dynamic(_)
             | VoiceItem::Tuplet(_)
@@ -524,4 +528,54 @@ fn a_coordinate_and_a_chord_symbol_format_as_one_word() {
     let source = "piece \"P\" {\n    score {\n        section \"A\" at 3:1;\n        harmony {\n            at 1:1 fmaj7;\n        }\n    }\n}\n";
     let formatted = musa_language::format(&parse(source));
     assert_eq!(formatted.text(), source);
+}
+
+/// `bar`, named and not, and `use` without parentheses.
+///
+/// The parentheses *are* the argument list, so material that takes no
+/// arguments is played by naming it. That is what makes a bar reusable
+/// without a second call syntax for it.
+#[test]
+fn bars_are_voice_items_and_a_name_is_played_without_parentheses() {
+    let source = "piece \"B\" { score { part p { voice v { \
+                  bar head { c4 1/2; d4 1/2; } bar { e4 1; } use head; } } } }";
+    let doc = parse(source);
+    assert_eq!(print_errors(&doc), "");
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");
+    let items = piece
+        .score()
+        .and_then(|score| score.parts().into_iter().next())
+        .and_then(|part| part.voices().into_iter().next())
+        .expect("voice")
+        .items();
+    let described: Vec<String> = items
+        .iter()
+        .map(|item| match *item {
+            VoiceItem::Bar(ref bar) => format!(
+                "bar {} of {}",
+                bar.name().unwrap_or_else(|| "-".to_owned()),
+                bar.items().len()
+            ),
+            VoiceItem::Use(ref call) => format!(
+                "use {} with {} args",
+                call.motif().unwrap_or_default(),
+                call.args().len()
+            ),
+            _ => "other".to_owned(),
+        })
+        .collect();
+    assert_eq!(described, ["bar head of 2", "bar - of 1", "use head with 0 args"]);
+}
+
+/// A bar claims to be one measure, and a measure inside a measure is not a
+/// thing the notation has a mark for.
+#[test]
+fn a_bar_inside_a_bar_is_refused() {
+    let source = "piece \"B\" { score { part p { voice v { bar { bar { c4 1; } } } } } }";
+    let doc = parse(source);
+    assert!(
+        print_errors(&doc).contains("bars do not nest"),
+        "{}",
+        print_errors(&doc)
+    );
 }
