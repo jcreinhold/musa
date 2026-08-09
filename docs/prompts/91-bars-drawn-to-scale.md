@@ -1,7 +1,7 @@
 ---
 id: 91
 slug: bars-drawn-to-scale
-status: pending
+status: in-progress
 depends_on: [90, 84]
 phase: 2
 ---
@@ -141,7 +141,7 @@ arithmetic on a URI — is being made separately. **This prompt depends on it an
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- format --check examples/album/pieces/01-first.musa
+cargo run -p musa-cli -- format --check examples/album/pieces/01-opening.musa
 ```
 
 New laws:
