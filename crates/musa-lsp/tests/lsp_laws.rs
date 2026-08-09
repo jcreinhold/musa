@@ -826,3 +826,71 @@ fn an_unclosed_block_offers_no_fold() {
     );
     server.stop();
 }
+
+/// A piece with one name nobody speaks: the lint warning is a diagnostic
+/// like any other, and its certain fix is a quick fix like any other
+/// (prompt 83 — the server carries it with no new plumbing, which is the
+/// point this test pins).
+const UNUSED_MOTIF_PIECE: &str = "piece \"Lint\" {
+    tempo 1/4 = 96;
+    meter 4/4;
+    key c major;
+
+    motif answer() {
+        g4 1/4; a4 1/4; e4 1/4; f4 1/4;
+    }
+
+    score {
+        part piano {
+            voice right {
+                bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }
+            }
+        }
+    }
+}
+";
+
+#[test]
+fn a_lint_warning_publishes_with_its_quick_fix() {
+    let mut server = Server::start();
+    let (uri, published) = server.open("unused-motif", UNUSED_MOTIF_PIECE);
+    let [diagnostic] = published.diagnostics.as_slice() else {
+        panic!("expected exactly one diagnostic: {:?}", published.diagnostics);
+    };
+    assert_eq!(
+        diagnostic.code,
+        Some(lsp_types::NumberOrString::String("unused-material".to_owned()))
+    );
+    assert_eq!(diagnostic.severity, Some(lsp_types::DiagnosticSeverity::WARNING));
+    let actions = server.client.request::<CodeActionRequest>(CodeActionParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        range: diagnostic.range,
+        context: lsp_types::CodeActionContext {
+            diagnostics: vec![diagnostic.clone()],
+            only: Some(vec![CodeActionKind::QUICKFIX]),
+            trigger_kind: None,
+        },
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    });
+    let actions: CodeActionResponse = serde_json::from_value(actions).expect("code actions");
+    let [CodeActionOrCommand::CodeAction(action)] = actions.as_slice() else {
+        panic!("expected exactly one quick fix: {actions:?}");
+    };
+    assert_eq!(action.title, "delete this motif");
+    let edit = action.edit.as_ref().expect("a workspace edit");
+    let edits = edit
+        .changes
+        .as_ref()
+        .and_then(|changes| changes.get(&uri))
+        .expect("edits for the document");
+    let [edit] = edits.as_slice() else {
+        panic!("expected one text edit: {edits:?}");
+    };
+    // The fix deletes the declaration's lines: from the `motif` keyword's
+    // line to just past the closing brace's line.
+    assert_eq!(edit.range.start, Position::new(5, 0));
+    assert_eq!(edit.range.end, Position::new(8, 0));
+    assert_eq!(edit.new_text, "");
+    server.stop();
+}

@@ -551,11 +551,18 @@ pub(crate) fn elaborate_parsed(
     {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
+    // The lint pass reads the resolver's reference index and the lowered
+    // studio, so it runs before either leaves the resolver — and after every
+    // error check above, because advice about a piece that does not compile
+    // is advice about a piece that does not exist.
+    let references = std::mem::take(&mut resolver.references);
+    let lints = crate::lint::lint(document, &piece, &references, &studio);
+    resolver.diagnostics.extend(lints);
     Compilation::new(Some(snapshot), std::mem::take(&mut resolver.diagnostics))
         .with_studio(studio)
         .with_identity(identity)
         .with_decisions(std::mem::take(&mut resolver.decisions))
-        .with_references(std::mem::take(&mut resolver.references))
+        .with_references(references)
 }
 
 /// What the piece timeline says about the piece as a whole, for the callers

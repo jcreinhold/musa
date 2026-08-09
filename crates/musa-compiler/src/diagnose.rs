@@ -54,6 +54,18 @@ pub enum Code {
     Studio,
     /// Something was skipped, and the piece is still playable without it.
     Ignored,
+    /// A `motif` or `fragment` that nothing uses (style guide §1). A named
+    /// `bar` is not checked: it plays where it stands, so its name is an
+    /// address, not a promise of reuse.
+    UnusedMaterial,
+    /// A `patch` no `assign` connects to a part (style guide §1).
+    UnassignedPatch,
+    /// A tempo, meter, or key marking that states the value already in
+    /// force (style guide §2).
+    RedundantMarking,
+    /// A bar written out identically three or more times in one voice, where
+    /// a `motif` would say it once (style guide §4).
+    CopiedBars,
 }
 
 impl Code {
@@ -71,12 +83,16 @@ impl Code {
             Self::Import => "import",
             Self::Studio => "studio",
             Self::Ignored => "ignored",
+            Self::UnusedMaterial => "unused-material",
+            Self::UnassignedPatch => "unassigned-patch",
+            Self::RedundantMarking => "redundant-marking",
+            Self::CopiedBars => "copied-bars",
         }
     }
 
     /// Every code, for `musa explain` with no argument and for the tests that
     /// keep the explanation table honest.
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 15] = [
         Self::Syntax,
         Self::UnknownName,
         Self::DuplicateName,
@@ -88,6 +104,10 @@ impl Code {
         Self::Import,
         Self::Studio,
         Self::Ignored,
+        Self::UnusedMaterial,
+        Self::UnassignedPatch,
+        Self::RedundantMarking,
+        Self::CopiedBars,
     ];
 
     /// Parse a code back from its written form.

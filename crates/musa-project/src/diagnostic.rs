@@ -281,6 +281,41 @@ pub fn explain(code: &str) -> Option<&'static str> {
             "Something was skipped and the piece still plays without it. The label \
              points at what was skipped; the message says what was lost."
         }
+        musa_compiler::Code::UnusedMaterial => {
+            "A `motif` or `fragment` is declared and never used (style \
+             guide §1: a name is a promise). A named `bar` is different — it \
+             plays where it stands, so its name is an address, not a promise \
+             of reuse.\n\n\
+             The reader spends attention on the promise that the name will be spoken \
+             again, and hunts the score for a use that does not exist. Use it, or \
+             delete it — the offered fix deletes the declaration.\n\n\
+             Broken:\n    \
+             motif answer() { g4 1/4; a4 1/4; }\n    \
+             voice right { c4 1/4; }\n\n\
+             Fixed:\n    \
+             voice right { use answer(); c4 1/4; }"
+        }
+        musa_compiler::Code::UnassignedPatch => {
+            "A `patch` is declared in the studio and no `assign` connects it to a \
+             part (style guide §1). Wiring with nothing at the end of it costs DSP \
+             to build and makes silence: assign a part to it, or delete it."
+        }
+        musa_compiler::Code::RedundantMarking => {
+            "A tempo, meter, or key marking states the value already in force \
+             (style guide §2: a marking changes something).\n\n\
+             A marking is a *change*, written where it happens; one that changes \
+             nothing reads as an event and is none — the player marks their part \
+             for a statement that was already true. If the reassurance is wanted, \
+             it belongs in a comment. The offered fix deletes the marking."
+        }
+        musa_compiler::Code::CopiedBars => {
+            "One bar is written out identically three or more times in one voice \
+             (style guide §4: say it once).\n\n\
+             Two is an accident of phrasing; three is a motif that has not been \
+             named yet. The cost is the edit: change one copy and the others are \
+             now wrong in a way nothing flags, because each still spells fine. A \
+             `motif` makes the repetition a fact the compiler can check."
+        }
     })
 }
 

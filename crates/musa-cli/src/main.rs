@@ -64,7 +64,8 @@ fn print_usage() {
     println!("musa — notation-first music language and workbench");
     println!();
     println!("Commands:");
-    println!("  musa check <file.musa>…                every problem in a piece, with its place");
+    println!("  musa check <file.musa>… [--fix]         every problem in a piece, with its place");
+    println!("      --fix                                  apply warnings' certain fixes in place");
     println!("  musa explain <code>                    the rule behind a diagnostic code");
     println!("  musa format <file.musa> [--check]      format in place (--check to fail instead)");
     println!("  musa render <file.musa> --to <target>  mei | lilypond | musicxml | midi | wav");
@@ -562,12 +563,13 @@ fn plural(count: u32, word: &str) -> String {
 
 /// `musa check <file>...` — full semantic check.
 fn cmd_check(args: &[String], realization: &Realization) -> ExitCode {
+    let fix = args.iter().any(|arg| arg == "--fix");
     let mut status = ExitCode::SUCCESS;
     let mut files: u32 = 0;
     let mut tally = Tally::default();
     for path in args.iter().filter(|arg| !arg.starts_with("--")) {
         files = files.saturating_add(1);
-        if cmd_check_one(path, realization, &mut tally) == ExitCode::FAILURE {
+        if cmd_check_one(path, realization, &mut tally, fix) == ExitCode::FAILURE {
             status = ExitCode::FAILURE;
         }
     }
@@ -581,17 +583,24 @@ fn cmd_check(args: &[String], realization: &Realization) -> ExitCode {
     status
 }
 
-fn cmd_check_one(path: &str, realization: &Realization, tally: &mut Tally) -> ExitCode {
-    let session = match open(path, realization) {
+fn cmd_check_one(path: &str, realization: &Realization, tally: &mut Tally, fix: bool) -> ExitCode {
+    let mut session = match open(path, realization) {
         Ok(session) => session,
         Err(code) => return code,
     };
-    let snapshot = session.snapshot();
-    for diagnostic in snapshot.diagnostics() {
-        tally.count(diagnostic);
-        report(path, snapshot.source(), diagnostic);
+    let (compiles, fix_edits) = {
+        let snapshot = session.snapshot();
+        for diagnostic in snapshot.diagnostics() {
+            tally.count(diagnostic);
+            report(path, snapshot.source(), diagnostic);
+        }
+        let edits = if fix { warning_fix_edits(&snapshot) } else { Vec::new() };
+        (snapshot.compiles(), edits)
+    };
+    if !fix_edits.is_empty() {
+        apply_warning_fixes(&mut session, path, fix_edits);
     }
-    if snapshot.compiles() {
+    if compiles {
         println!("{path}: ok");
         // What a piece is filed under and what it reads: the two facts a
         // directory project adds, and the two a reader would otherwise have
@@ -607,6 +616,42 @@ fn cmd_check_one(path: &str, realization: &Realization, tally: &mut Tally) -> Ex
     } else {
         ExitCode::FAILURE
     }
+}
+
+/// Every warning's certain fix, as session edits.
+///
+/// Warnings only, and each fix is offered only because it is certain (prompt
+/// 56): a file that does not compile is a conversation, not a draft, so
+/// errors are reported and never rewritten.
+fn warning_fix_edits(snapshot: &musa_project::ProjectSnapshot<'_>) -> Vec<musa_project::TextEdit> {
+    snapshot
+        .diagnostics()
+        .iter()
+        .filter(|diagnostic| diagnostic.severity == musa_project::Severity::Warning)
+        .filter_map(|diagnostic| diagnostic.fixes.first())
+        .flat_map(|fix| {
+            fix.edits
+                .iter()
+                .map(|edit| musa_project::TextEdit::new(edit.span, edit.replacement.clone()))
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+/// Apply the fixes in place, then save. The session's own edit command is
+/// what applies them, which keeps the source canonical and the autosave
+/// honest.
+fn apply_warning_fixes(session: &mut ProjectSession, path: &str, edits: Vec<musa_project::TextEdit>) {
+    let applied = edits.len();
+    if let Err(error) = session.apply(ProjectCommand::ApplyEdits(edits)) {
+        eprintln!("error: {path}: could not apply fixes: {error}");
+        return;
+    }
+    if let Err(error) = session.apply(ProjectCommand::Save) {
+        eprintln!("error: {path}: could not save fixes: {error}");
+        return;
+    }
+    println!("{path}: applied {applied} fix(es)");
 }
 
 /// `musa explain <code>` — the long form of a diagnostic code.
