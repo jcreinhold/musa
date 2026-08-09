@@ -232,6 +232,46 @@
     "keyword"
   ],
   [
+    "let",
+    "keyword"
+  ],
+  [
+    "fn",
+    "keyword"
+  ],
+  [
+    "music",
+    "keyword"
+  ],
+  [
+    "option",
+    "keyword"
+  ],
+  [
+    "list",
+    "keyword"
+  ],
+  [
+    "match",
+    "keyword"
+  ],
+  [
+    "some",
+    "keyword"
+  ],
+  [
+    "none",
+    "keyword"
+  ],
+  [
+    "true",
+    "keyword"
+  ],
+  [
+    "false",
+    "keyword"
+  ],
+  [
     "Hz",
     "unit"
   ],

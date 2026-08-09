@@ -439,7 +439,9 @@ piece "House" {
           (dynamic_statement
             (identifier))
           (use_statement
-            (identifier))))
+            (expression
+              (name_expression
+                (identifier))))))
       (part_declaration
         (identifier)
         (clef_statement
@@ -453,9 +455,13 @@ piece "House" {
           (comment)
           (comment)
           (use_statement
-            (identifier))
+            (expression
+              (name_expression
+                (identifier))))
           (use_statement
-            (identifier))))
+            (expression
+              (name_expression
+                (identifier))))))
       (part_declaration
         (identifier)
         (clef_statement
@@ -469,4 +475,6 @@ piece "House" {
           (comment)
           (comment)
           (use_statement
-            (identifier)))))))
+            (expression
+              (name_expression
+                (identifier)))))))))

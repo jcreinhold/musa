@@ -131,10 +131,21 @@ piece "Étude en sol — 𝄞" {
                 (duration
                   (integer)))))
           (use_statement
-            (identifier))
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list))))
           (use_statement
-            (identifier)
-            (pitch_literal))
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list
+                  (expression_argument
+                    (expression
+                      (literal_expression
+                        (pitch_literal))))))))
           (phrase_statement
             (string)
             (block

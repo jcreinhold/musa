@@ -865,4 +865,6 @@ piece "Shuffle" {
           (dynamic_statement
             (identifier))
           (use_statement
-            (identifier)))))))
+            (expression
+              (name_expression
+                (identifier)))))))))

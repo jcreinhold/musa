@@ -1,0 +1,30 @@
+---
+source: crates/musa-language/tests/expression_syntax_laws.rs
+expression: "kinds.into_iter().filter(|kind|\n{\n    matches!(kind, SyntaxKind::LetDecl | SyntaxKind::FnDecl |\n    SyntaxKind::FunctionType | SyntaxKind::ProductType | SyntaxKind::ListType\n    | SyntaxKind::OptionType | SyntaxKind::ProductExpr | SyntaxKind::ListExpr\n    | SyntaxKind::OptionExpr | SyntaxKind::ApplyExpr | SyntaxKind::MatchExpr |\n    SyntaxKind::MatchArm | SyntaxKind::MusicExpr | SyntaxKind::UseStmt |\n    SyntaxKind::NoteStmt)\n}).collect::<Vec<_>>()"
+---
+[
+    LetDecl,
+    LetDecl,
+    ListType,
+    ProductType,
+    OptionType,
+    ListExpr,
+    ProductExpr,
+    OptionExpr,
+    ProductExpr,
+    OptionExpr,
+    FnDecl,
+    OptionType,
+    MatchExpr,
+    MatchArm,
+    MatchArm,
+    FnDecl,
+    FunctionType,
+    ApplyExpr,
+    FnDecl,
+    MusicExpr,
+    NoteStmt,
+    UseStmt,
+    ApplyExpr,
+    NoteStmt,
+]

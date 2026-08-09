@@ -35,6 +35,13 @@ fn token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
     find_token(node, kind).map(|token| token.text().to_string())
 }
 
+fn descendant_token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
+    node.descendants_with_tokens()
+        .filter_map(SyntaxElement::into_token)
+        .find(|token| token.kind() == kind)
+        .map(|token| token.text().to_string())
+}
+
 /// A token's byte range, as the compiler's spans are counted.
 fn span_of(token: &SyntaxToken) -> (u32, u32) {
     let range = token.text_range();
@@ -161,6 +168,16 @@ impl PieceDecl {
 
     /// All fragment declarations.
     pub fn fragments(&self) -> Vec<FragmentDecl> {
+        children(&self.0)
+    }
+
+    /// Top-level elaboration value bindings.
+    pub fn lets(&self) -> Vec<LetDecl> {
+        children(&self.0)
+    }
+
+    /// Top-level elaboration functions.
+    pub fn functions(&self) -> Vec<FnDecl> {
         children(&self.0)
     }
 
@@ -404,6 +421,16 @@ impl LibraryDecl {
         children(&self.0)
     }
 
+    /// Reusable elaboration value bindings.
+    pub fn lets(&self) -> Vec<LetDecl> {
+        children(&self.0)
+    }
+
+    /// Reusable elaboration functions.
+    pub fn functions(&self) -> Vec<FnDecl> {
+        children(&self.0)
+    }
+
     /// Its `performance` block, if it has one.
     pub fn performance(&self) -> Option<PerformanceDecl> {
         child(&self.0)
@@ -465,7 +492,7 @@ impl MeterStmt {
 
     /// Whether this is `meter none;`: music with no barlines from here.
     pub fn is_unmeasured(&self) -> bool {
-        token_text(&self.0, SyntaxKind::Identifier).as_deref() == Some("none")
+        find_token(&self.0, SyntaxKind::NoneKw).is_some()
     }
 }
 
@@ -1104,14 +1131,17 @@ wrapper!(UseStmt, SyntaxKind::UseStmt);
 impl UseStmt {
     /// The referenced motif name.
     pub fn motif(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Identifier)
+        descendant_token_text(&self.0, SyntaxKind::Identifier)
     }
 
     /// The call arguments, in order (pitch literals, parameter references,
     /// or durations).
     pub fn args(&self) -> Vec<String> {
-        self.0
-            .children_with_tokens()
+        let Some(expression) = self.0.children().find(|child| child.kind() != SyntaxKind::WithClause) else {
+            return Vec::new();
+        };
+        expression
+            .descendants_with_tokens()
             .filter_map(SyntaxElement::into_token)
             .filter(|token| {
                 token.kind() == SyntaxKind::PitchLiteral
@@ -1543,6 +1573,143 @@ impl EndingStmt {
     }
 
     /// The ending's items, in source order.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
+    }
+}
+
+// --- Elaboration expressions ------------------------------------------------
+
+/// `let name: type = expression;`
+pub struct LetDecl(SyntaxNode);
+wrapper!(LetDecl, SyntaxKind::LetDecl);
+
+impl LetDecl {
+    /// The declared name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+}
+
+/// `fn name(parameters) -> type = expression;`
+pub struct FnDecl(SyntaxNode);
+wrapper!(FnDecl, SyntaxKind::FnDecl);
+
+impl FnDecl {
+    /// The function's declared name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// Its annotated parameters in source order.
+    pub fn params(&self) -> Vec<FnParam> {
+        self.0
+            .children()
+            .find_map(ParamList::cast)
+            .map_or_else(Vec::new, |list| children(&list.0))
+    }
+}
+
+/// One annotated function parameter.
+pub struct FnParam(SyntaxNode);
+wrapper!(FnParam, SyntaxKind::Param);
+
+impl FnParam {
+    /// The parameter name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+}
+
+/// A function declaration's parenthesized parameters.
+pub struct ParamList(SyntaxNode);
+wrapper!(ParamList, SyntaxKind::ParamList);
+
+/// A parenthesized type expression.
+pub struct TypeExpr(SyntaxNode);
+wrapper!(TypeExpr, SyntaxKind::TypeExpr);
+
+/// A primitive or named type.
+pub struct TypeName(SyntaxNode);
+wrapper!(TypeName, SyntaxKind::TypeName);
+
+/// A right-associative function type.
+pub struct FunctionType(SyntaxNode);
+wrapper!(FunctionType, SyntaxKind::FunctionType);
+
+/// A product type.
+pub struct ProductType(SyntaxNode);
+wrapper!(ProductType, SyntaxKind::ProductType);
+
+/// `option[type]`.
+pub struct OptionType(SyntaxNode);
+wrapper!(OptionType, SyntaxKind::OptionType);
+
+/// `list[type]`.
+pub struct ListType(SyntaxNode);
+wrapper!(ListType, SyntaxKind::ListType);
+
+/// A value reference.
+pub struct NameExpr(SyntaxNode);
+wrapper!(NameExpr, SyntaxKind::NameExpr);
+
+/// A scalar literal expression.
+pub struct LiteralExpr(SyntaxNode);
+wrapper!(LiteralExpr, SyntaxKind::LiteralExpr);
+
+/// A parenthesized expression.
+pub struct ParenExpr(SyntaxNode);
+wrapper!(ParenExpr, SyntaxKind::ParenExpr);
+
+/// A product value.
+pub struct ProductExpr(SyntaxNode);
+wrapper!(ProductExpr, SyntaxKind::ProductExpr);
+
+/// A finite list value.
+pub struct ListExpr(SyntaxNode);
+wrapper!(ListExpr, SyntaxKind::ListExpr);
+
+/// `some(value)` or `none`.
+pub struct OptionExpr(SyntaxNode);
+wrapper!(OptionExpr, SyntaxKind::OptionExpr);
+
+/// Ordinary function application.
+pub struct ApplyExpr(SyntaxNode);
+wrapper!(ApplyExpr, SyntaxKind::ApplyExpr);
+
+/// The arguments of an ordinary application.
+pub struct ExprArgList(SyntaxNode);
+wrapper!(ExprArgList, SyntaxKind::ExprArgList);
+
+/// One positional or named application argument.
+pub struct ExprArg(SyntaxNode);
+wrapper!(ExprArg, SyntaxKind::ExprArg);
+
+/// Exhaustive finite case analysis.
+pub struct MatchExpr(SyntaxNode);
+wrapper!(MatchExpr, SyntaxKind::MatchExpr);
+
+impl MatchExpr {
+    /// The alternatives in source order.
+    pub fn arms(&self) -> Vec<MatchArm> {
+        children(&self.0)
+    }
+}
+
+/// One match alternative.
+pub struct MatchArm(SyntaxNode);
+wrapper!(MatchArm, SyntaxKind::MatchArm);
+
+/// A match pattern.
+pub struct Pattern(SyntaxNode);
+wrapper!(Pattern, SyntaxKind::Pattern);
+
+/// `music { ... }`, a contextual notation-first music value.
+pub struct MusicExpr(SyntaxNode);
+wrapper!(MusicExpr, SyntaxKind::MusicExpr);
+
+impl MusicExpr {
+    /// Its notation statements in source order.
     pub fn items(&self) -> Vec<VoiceItem> {
         voice_items(&self.0)
     }

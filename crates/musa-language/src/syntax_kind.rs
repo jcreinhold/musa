@@ -214,6 +214,26 @@ pub enum SyntaxKind {
     ImproviseKw,
     /// `over`
     OverKw,
+    /// `let`
+    LetKw,
+    /// `fn`
+    FnKw,
+    /// `music`
+    MusicKw,
+    /// `option`
+    OptionKw,
+    /// `list`
+    ListKw,
+    /// `match`
+    MatchKw,
+    /// `some`
+    SomeKw,
+    /// `none`
+    NoneKw,
+    /// `true`
+    TrueKw,
+    /// `false`
+    FalseKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -389,6 +409,52 @@ pub enum SyntaxKind {
     /// `improvise 8/1 over "Dm7 | G7";` — a notated frame with unnotated
     /// contents.
     ImproviseStmt,
+    /// `let name: type = expression;`
+    LetDecl,
+    /// `fn name(parameters) -> type = expression;`
+    FnDecl,
+    /// One annotated parameter, with an optional default expression.
+    Param,
+    /// A comma-separated parameter list.
+    ParamList,
+    /// A primitive, product, option, list, or arrow type.
+    TypeExpr,
+    /// A reference to a primitive or named type.
+    TypeName,
+    /// `left -> right`, right associative.
+    FunctionType,
+    /// `(left, right, ...)` in a type position.
+    ProductType,
+    /// `option[type]`.
+    OptionType,
+    /// `list[type]`.
+    ListType,
+    /// A reference to a value by name.
+    NameExpr,
+    /// A core scalar literal.
+    LiteralExpr,
+    /// `(expression)`.
+    ParenExpr,
+    /// `(left, right, ...)` in a value position.
+    ProductExpr,
+    /// `[left, right, ...]` in a value position.
+    ListExpr,
+    /// `some(expression)` or `none`.
+    OptionExpr,
+    /// Ordinary function application.
+    ApplyExpr,
+    /// The comma-separated arguments of an ordinary application.
+    ExprArgList,
+    /// One positional or named ordinary-call argument.
+    ExprArg,
+    /// `match value { pattern -> result, ... }`.
+    MatchExpr,
+    /// One pattern and result in a match.
+    MatchArm,
+    /// A literal, binding, option, list, or product pattern.
+    Pattern,
+    /// `music { ... }`, a notation-first contextual music value.
+    MusicExpr,
 }
 
 impl SyntaxKind {

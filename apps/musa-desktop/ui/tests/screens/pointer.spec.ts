@@ -13,7 +13,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
 import { stubShell } from "./shell";
-import { text, toggleSource } from "./source";
+import { source, text, toggleSource } from "./source";
 
 /** An authored whole note in the upper strings: `a4 1;`. */
 const AUTHORED = '.engraving .arriving [id="event-c"]';
@@ -194,6 +194,7 @@ test("the source column stands the token the drag would write", async ({
   page,
 }) => {
   await toggleSource(page);
+  await expect(source(page)).toBeVisible();
   const before = await text(page);
   const space = await staffSpace(page);
 

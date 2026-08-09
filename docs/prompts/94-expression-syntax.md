@@ -1,7 +1,7 @@
 ---
 id: 94
 slug: expression-syntax
-status: pending
+status: in_progress
 depends_on: [92, 93]
 phase: 3
 ---

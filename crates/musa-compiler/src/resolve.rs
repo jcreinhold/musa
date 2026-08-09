@@ -532,6 +532,20 @@ pub(crate) fn token_span(node: &SyntaxNode, kind: SyntaxKind) -> Option<SourceSp
     Some(SourceSpan::new(u32::from(range.start()), u32::from(range.end())))
 }
 
+/// Span of the first token of `kind` anywhere below `node`.
+///
+/// Most compiler nodes keep their named token as a direct child and should
+/// use [`token_span`]. Expression syntax nests a `use` callee under
+/// `NameExpr`/`ApplyExpr`, so that one bridge asks explicitly for descent.
+pub(crate) fn descendant_token_span(node: &SyntaxNode, kind: SyntaxKind) -> Option<SourceSpan> {
+    let range = node
+        .descendants_with_tokens()
+        .filter_map(SyntaxElement::into_token)
+        .find(|token| token.kind() == kind)?
+        .text_range();
+    Some(SourceSpan::new(u32::from(range.start()), u32::from(range.end())))
+}
+
 pub(crate) fn token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
     node.children_with_tokens()
         .filter_map(SyntaxElement::into_token)

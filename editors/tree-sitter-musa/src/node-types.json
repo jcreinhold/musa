@@ -1,5 +1,44 @@
 [
   {
+    "type": "application_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        },
+        {
+          "type": "expression_argument_list",
+          "named": true
+        },
+        {
+          "type": "list_expression",
+          "named": true
+        },
+        {
+          "type": "literal_expression",
+          "named": true
+        },
+        {
+          "type": "name_expression",
+          "named": true
+        },
+        {
+          "type": "option_expression",
+          "named": true
+        },
+        {
+          "type": "product_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "argument",
     "named": true,
     "fields": {
@@ -511,6 +550,94 @@
     }
   },
   {
+    "type": "expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "application_expression",
+          "named": true
+        },
+        {
+          "type": "expression",
+          "named": true
+        },
+        {
+          "type": "list_expression",
+          "named": true
+        },
+        {
+          "type": "literal_expression",
+          "named": true
+        },
+        {
+          "type": "match_expression",
+          "named": true
+        },
+        {
+          "type": "music_expression",
+          "named": true
+        },
+        {
+          "type": "name_expression",
+          "named": true
+        },
+        {
+          "type": "option_expression",
+          "named": true
+        },
+        {
+          "type": "product_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "expression_argument",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "expression_argument_list",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "expression_argument",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "fragment_declaration",
     "named": true,
     "fields": {
@@ -550,6 +677,52 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "function_declaration",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "result": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_expression",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "parameter_list",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -794,6 +967,42 @@
     }
   },
   {
+    "type": "let_declaration",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_expression",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "library_declaration",
     "named": true,
     "fields": {},
@@ -806,7 +1015,15 @@
           "named": true
         },
         {
+          "type": "function_declaration",
+          "named": true
+        },
+        {
           "type": "import_statement",
+          "named": true
+        },
+        {
+          "type": "let_declaration",
           "named": true
         },
         {
@@ -819,6 +1036,63 @@
         },
         {
           "type": "studio_declaration",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "list_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "list_type",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "type_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "literal_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "integer",
+          "named": true
+        },
+        {
+          "type": "interval_literal",
+          "named": true
+        },
+        {
+          "type": "pitch_literal",
+          "named": true
+        },
+        {
+          "type": "rational",
           "named": true
         }
       ]
@@ -895,6 +1169,58 @@
     }
   },
   {
+    "type": "match_arm",
+    "named": true,
+    "fields": {
+      "pattern": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "pattern",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "match_expression",
+    "named": true,
+    "fields": {
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "match_arm",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "meter_statement",
     "named": true,
     "fields": {
@@ -905,6 +1231,10 @@
           {
             "type": "identifier",
             "named": true
+          },
+          {
+            "type": "none",
+            "named": false
           },
           {
             "type": "rational",
@@ -1041,6 +1371,132 @@
     }
   },
   {
+    "type": "music_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "bar_statement",
+          "named": true
+        },
+        {
+          "type": "chord_statement",
+          "named": true
+        },
+        {
+          "type": "clef_statement",
+          "named": true
+        },
+        {
+          "type": "dynamic_statement",
+          "named": true
+        },
+        {
+          "type": "ending_statement",
+          "named": true
+        },
+        {
+          "type": "grace_statement",
+          "named": true
+        },
+        {
+          "type": "hairpin_statement",
+          "named": true
+        },
+        {
+          "type": "improvise_statement",
+          "named": true
+        },
+        {
+          "type": "invert_statement",
+          "named": true
+        },
+        {
+          "type": "key_statement",
+          "named": true
+        },
+        {
+          "type": "mark_statement",
+          "named": true
+        },
+        {
+          "type": "meter_statement",
+          "named": true
+        },
+        {
+          "type": "mobile_statement",
+          "named": true
+        },
+        {
+          "type": "note_statement",
+          "named": true
+        },
+        {
+          "type": "phrase_statement",
+          "named": true
+        },
+        {
+          "type": "repeat_statement",
+          "named": true
+        },
+        {
+          "type": "rest_statement",
+          "named": true
+        },
+        {
+          "type": "retrograde_statement",
+          "named": true
+        },
+        {
+          "type": "senza_statement",
+          "named": true
+        },
+        {
+          "type": "slur_statement",
+          "named": true
+        },
+        {
+          "type": "stretch_statement",
+          "named": true
+        },
+        {
+          "type": "tempo_statement",
+          "named": true
+        },
+        {
+          "type": "transpose_statement",
+          "named": true
+        },
+        {
+          "type": "tuplet_statement",
+          "named": true
+        },
+        {
+          "type": "use_statement",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "name_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "name_reference",
     "named": true,
     "fields": {},
@@ -1090,6 +1546,36 @@
     }
   },
   {
+    "type": "option_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "option_type",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "type_expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "override_statement",
     "named": true,
     "fields": {
@@ -1113,6 +1599,57 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "parameter",
+    "named": true,
+    "fields": {
+      "default": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "parameter_list",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "parameter",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -1214,6 +1751,37 @@
     }
   },
   {
+    "type": "pattern",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "integer",
+          "named": true
+        },
+        {
+          "type": "interval_literal",
+          "named": true
+        },
+        {
+          "type": "pitch_literal",
+          "named": true
+        },
+        {
+          "type": "rational",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "performance_declaration",
     "named": true,
     "fields": {},
@@ -1282,11 +1850,19 @@
           "named": true
         },
         {
+          "type": "function_declaration",
+          "named": true
+        },
+        {
           "type": "import_statement",
           "named": true
         },
         {
           "type": "key_statement",
+          "named": true
+        },
+        {
+          "type": "let_declaration",
           "named": true
         },
         {
@@ -1359,6 +1935,36 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "product_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "product_type",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "type_expression",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -1992,19 +2598,55 @@
     }
   },
   {
+    "type": "type_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "list_type",
+          "named": true
+        },
+        {
+          "type": "option_type",
+          "named": true
+        },
+        {
+          "type": "product_type",
+          "named": true
+        },
+        {
+          "type": "type_expression",
+          "named": true
+        },
+        {
+          "type": "type_name",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "type_name",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "identifier",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "use_statement",
     "named": true,
     "fields": {
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      },
       "overrides": {
         "multiple": false,
         "required": false,
@@ -2014,29 +2656,17 @@
             "named": true
           }
         ]
+      },
+      "value": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
       }
-    },
-    "children": {
-      "multiple": true,
-      "required": false,
-      "types": [
-        {
-          "type": "identifier",
-          "named": true
-        },
-        {
-          "type": "integer",
-          "named": true
-        },
-        {
-          "type": "pitch_literal",
-          "named": true
-        },
-        {
-          "type": "rational",
-          "named": true
-        }
-      ]
     }
   },
   {
@@ -2327,8 +2957,16 @@
     "named": false
   },
   {
+    "type": "false",
+    "named": false
+  },
+  {
     "type": "float",
     "named": true
+  },
+  {
+    "type": "fn",
+    "named": false
   },
   {
     "type": "fragment",
@@ -2371,7 +3009,15 @@
     "named": false
   },
   {
+    "type": "let",
+    "named": false
+  },
+  {
     "type": "library",
+    "named": false
+  },
+  {
+    "type": "list",
     "named": false
   },
   {
@@ -2380,6 +3026,10 @@
   },
   {
     "type": "master",
+    "named": false
+  },
+  {
+    "type": "match",
     "named": false
   },
   {
@@ -2399,7 +3049,19 @@
     "named": false
   },
   {
+    "type": "music",
+    "named": false
+  },
+  {
+    "type": "none",
+    "named": false
+  },
+  {
     "type": "note",
+    "named": false
+  },
+  {
+    "type": "option",
     "named": false
   },
   {
@@ -2483,6 +3145,10 @@
     "named": false
   },
   {
+    "type": "some",
+    "named": false
+  },
+  {
     "type": "stretch",
     "named": false
   },
@@ -2508,6 +3174,10 @@
   },
   {
     "type": "transpose",
+    "named": false
+  },
+  {
+    "type": "true",
     "named": false
   },
   {

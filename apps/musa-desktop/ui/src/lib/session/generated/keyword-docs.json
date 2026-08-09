@@ -288,5 +288,55 @@
     "spelling": "to",
     "summary": "where a change arrives",
     "doc": "`to` names where a change arrives: the dynamic a `crescendo` or `diminuendo` reaches, or the tempo a gradual `tempo` change ends at. Arriving somewhere is one idea, so it is one word.\n\n```musa\ntempo 1/4 = 72 to 48 over 2/1;\n```"
+  },
+  {
+    "spelling": "let",
+    "summary": "give a typed value a name",
+    "doc": "A `let` declaration gives an elaboration value a name. The annotation keeps the musical domain visible at the declaration site.\n\n```musa\nlet answer: interval = P5;\n```"
+  },
+  {
+    "spelling": "fn",
+    "summary": "define a total named function",
+    "doc": "A function computes an elaboration value from typed parameters. Musa functions are total: they have no unrestricted recursion or effects.\n\n```musa\nfn identity(x: pitch) -> pitch = x;\n```"
+  },
+  {
+    "spelling": "music",
+    "summary": "a notation-first music value",
+    "doc": "A `music` block is an expression whose body reads like an ordinary voice: notes remain self-delimiting and reusable material is written with `use`.\n\n```musa\nlet call: music = music { c5/4 d5/4 };\n```"
+  },
+  {
+    "spelling": "option",
+    "summary": "a type that may contain one value",
+    "doc": "`option[T]` represents an honest partial musical result: either `some(value)` or `none`, with both cases handled explicitly.\n\n```musa\nlet found: option[pitch] = none;\n```"
+  },
+  {
+    "spelling": "list",
+    "summary": "a finite ordered collection type",
+    "doc": "`list[T]` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n```musa\nlet tones: list[pitch] = [c4, e4, g4];\n```"
+  },
+  {
+    "spelling": "match",
+    "summary": "handle every form of a finite value",
+    "doc": "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n```musa\nfn keep(x: option[pitch]) -> option[pitch] = match x { none -> none, some(p) -> some(p), };\n```"
+  },
+  {
+    "spelling": "some",
+    "summary": "an option containing a value",
+    "doc": "`some(value)` constructs the present case of an `option`; a `match` can bind the contained value.\n\n```musa\nlet tonic: option[pitch] = some(c4);\n```"
+  },
+  {
+    "spelling": "none",
+    "summary": "an option containing no value",
+    "doc": "`none` is the absent case of an `option`. It makes partial musical operations explicit instead of hiding failure.\n\n```musa\nlet absent: option[pitch] = none;\n```"
+  },
+  {
+    "spelling": "true",
+    "summary": "the affirmative boolean value",
+    "doc": "`true` is one of the two `bool` values and can be handled by `match`.\n\n```musa\nlet enabled: bool = true;\n```"
+  },
+  {
+    "spelling": "false",
+    "summary": "the negative boolean value",
+    "doc": "`false` is one of the two `bool` values and can be handled by `match`.\n\n```musa\nlet muted: bool = false;\n```"
   }
 ]

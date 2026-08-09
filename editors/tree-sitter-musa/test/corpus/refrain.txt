@@ -97,7 +97,9 @@ piece "Refrain" {
               (duration
                 (integer)))
             (use_statement
-              (identifier)))
+              (expression
+                (name_expression
+                  (identifier)))))
           (bar_statement
             (note_statement
               (pitch_literal)
@@ -108,7 +110,9 @@ piece "Refrain" {
               (duration
                 (integer)))
             (use_statement
-              (identifier)))))
+              (expression
+                (name_expression
+                  (identifier)))))))
       (part_declaration
         (identifier)
         (clef_statement

@@ -108,6 +108,8 @@ module.exports = grammar({
             $.front_matter_statement,
             $.motif_declaration,
             $.fragment_declaration,
+            $.let_declaration,
+            $.function_declaration,
             $.score_declaration,
             $.performance_declaration,
             $.studio_declaration,
@@ -126,6 +128,8 @@ module.exports = grammar({
             $.import_statement,
             $.motif_declaration,
             $.fragment_declaration,
+            $.let_declaration,
+            $.function_declaration,
             $.performance_declaration,
             $.studio_declaration,
           ),
@@ -173,7 +177,7 @@ module.exports = grammar({
     // barlines from here (prompt 74). Any identifier parses; the compiler
     // checks the word, because there is nothing else `meter` can be
     // followed by.
-    meter_statement: ($) => seq('meter', field('meter', choice($.rational, $.identifier)), ';'),
+    meter_statement: ($) => seq('meter', field('meter', choice($.rational, 'none', $.identifier)), ';'),
 
     // Parser::key_stmt — `key a minor;`
     key_statement: ($) =>
@@ -212,6 +216,125 @@ module.exports = grammar({
 
     // Parser::fragment_decl — a motif without parameters, tagged differently.
     fragment_declaration: ($) => seq('fragment', field('name', $.identifier), field('body', $.block)),
+
+    // Parser::let_decl / fn_decl — declarations evaluate only at the
+    // elaboration stage; the temporal kernel never sees these nodes.
+    let_declaration: ($) =>
+      seq('let', field('name', $.identifier), ':', field('type', $.type_expression), '=', field('value', $.expression), ';'),
+
+    function_declaration: ($) =>
+      seq(
+        'fn',
+        field('name', $.identifier),
+        $.parameter_list,
+        '->',
+        field('result', $.type_expression),
+        '=',
+        field('body', $.expression),
+        ';',
+      ),
+
+    parameter_list: ($) =>
+      seq('(', optional(seq($.parameter, repeat(seq(',', $.parameter)), optional(','))), ')'),
+
+    parameter: ($) =>
+      seq(
+        field('name', $.identifier),
+        ':',
+        field('type', $.type_expression),
+        optional(seq('=', field('default', $.expression))),
+      ),
+
+    // Function arrows associate right. Parentheses group a single type and
+    // a comma makes a product; option/list are the only type constructors in
+    // this prompt.
+    type_expression: ($) =>
+      choice(
+        prec.right(1, seq($._type_atom, '->', $.type_expression)),
+        $._type_atom,
+      ),
+
+    _type_atom: ($) =>
+      choice(
+        $.type_name,
+        $.option_type,
+        $.list_type,
+        seq('(', $.type_expression, ')'),
+        $.product_type,
+      ),
+
+    type_name: ($) => choice('pitch', 'music', $.identifier),
+    option_type: ($) => seq('option', '[', $.type_expression, ']'),
+    list_type: ($) => seq('list', '[', $.type_expression, ']'),
+    product_type: ($) =>
+      seq('(', $.type_expression, ',', $.type_expression, repeat(seq(',', $.type_expression)), ')'),
+
+    // One ordinary call notation for values, folds, and music-producing
+    // functions. Application is the highest precedence in this prompt.
+    expression: ($) =>
+      choice(
+        $.match_expression,
+        $.music_expression,
+        $.application_expression,
+        $._primary_expression,
+      ),
+
+    application_expression: ($) =>
+      prec.left(2, seq($._primary_expression, repeat1($.expression_argument_list))),
+
+    expression_argument_list: ($) =>
+      seq('(', optional(seq($.expression_argument, repeat(seq(',', $.expression_argument)), optional(','))), ')'),
+
+    expression_argument: ($) =>
+      seq(optional(seq(field('name', $.identifier), ':')), $.expression),
+
+    _primary_expression: ($) =>
+      choice(
+        $.name_expression,
+        $.literal_expression,
+        $.option_expression,
+        $.list_expression,
+        $.product_expression,
+        seq('(', $.expression, ')'),
+      ),
+
+    name_expression: ($) => $.identifier,
+    literal_expression: ($) => choice($.integer, $.rational, $.pitch_literal, $.interval_literal, 'true', 'false'),
+    option_expression: ($) => choice('none', seq('some', '(', $.expression, ')')),
+    list_expression: ($) => seq('[', optional(seq($.expression, repeat(seq(',', $.expression)))), ']'),
+    product_expression: ($) =>
+      seq('(', $.expression, ',', $.expression, repeat(seq(',', $.expression)), ')'),
+
+    match_expression: ($) =>
+      seq(
+        'match',
+        field('value', $.expression),
+        '{',
+        $.match_arm,
+        repeat(seq(',', $.match_arm)),
+        optional(','),
+        '}',
+      ),
+
+    match_arm: ($) => seq(field('pattern', $.pattern), '->', field('value', $.expression)),
+
+    pattern: ($) =>
+      choice(
+        $.identifier,
+        $.integer,
+        $.rational,
+        $.pitch_literal,
+        $.interval_literal,
+        'true',
+        'false',
+        'none',
+        seq('some', '(', $.identifier, ')'),
+        seq('[', ']'),
+        seq('[', $.identifier, ',', '.', '.', $.identifier, ']'),
+        seq('(', $.identifier, ',', $.identifier, repeat(seq(',', $.identifier)), ')'),
+      ),
+
+    music_expression: ($) => seq('music', '{', repeat(choice(...VOICE_ITEMS($))), '}'),
 
     // --- Score level (Parser::score_decl and below) ---------------------
 
@@ -413,24 +536,12 @@ module.exports = grammar({
         optional('~'),
       ),
 
-    // Parser::use_stmt — the parentheses *are* the argument list; `with` is a
-    // block, so it takes no `;`.
+    // Parser::use_stmt — an ordinary expression expected to have type music;
+    // `with` remains the legacy occurrence-specialization suffix.
     use_statement: ($) =>
       seq(
         'use',
-        field('name', $.identifier),
-        optional(
-          seq(
-            '(',
-            optional(
-              seq(
-                choice($.pitch_literal, $.identifier, $.rational, $.integer),
-                repeat(seq(',', choice($.pitch_literal, $.identifier, $.rational, $.integer))),
-              ),
-            ),
-            ')',
-          ),
-        ),
+        field('value', $.expression),
         choice(field('overrides', $.with_clause), ';'),
       ),
 

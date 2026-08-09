@@ -3,8 +3,9 @@
 //! Architecture (roadmap §10.2–§10.4): the parser emits a flat event stream
 //! (`StartNode` / `Token` / `FinishNode`); a second pass replays the events
 //! into a `rowan::GreenNodeBuilder`. Parser code never touches Rowan. The
-//! grammar is small enough that statements dispatch on their first token, so
-//! no forward-parent machinery is needed.
+//! grammar is small enough that statements dispatch on their first token. A
+//! postfix call inserts its parent start event at the primary's checkpoint;
+//! this is the one place expression precedence needs a forward parent.
 //!
 //! Recovery: an unexpected token records an error, then tokens are wrapped in
 //! an `ERROR` node until a recovery point (`;`, `}`, or the next declaration
@@ -96,6 +97,8 @@ const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::ScoreKw,
     SyntaxKind::PerformanceKw,
     SyntaxKind::StudioKw,
+    SyntaxKind::LetKw,
+    SyntaxKind::FnKw,
 ];
 /// The four front-matter keywords, which open statements of one shape.
 const FRONT_MATTER: &[SyntaxKind] = &[
@@ -236,6 +239,11 @@ impl<'a> Parser<'a> {
 
     fn start(&mut self, kind: SyntaxKind) {
         self.events.push(Event::StartNode(kind));
+    }
+
+    /// Wrap everything emitted since `checkpoint` in a new parent node.
+    fn start_at(&mut self, checkpoint: usize, kind: SyntaxKind) {
+        self.events.insert(checkpoint, Event::StartNode(kind));
     }
 
     fn finish(&mut self) {
@@ -539,6 +547,10 @@ impl<'a> Parser<'a> {
                 self.motif_decl();
             } else if self.at(SyntaxKind::FragmentKw) {
                 self.fragment_decl();
+            } else if self.at(SyntaxKind::LetKw) {
+                self.let_decl();
+            } else if self.at(SyntaxKind::FnKw) {
+                self.fn_decl();
             } else if self.at(SyntaxKind::ScoreKw) {
                 self.score_decl();
             } else if self.at(SyntaxKind::PerformanceKw) {
@@ -548,7 +560,7 @@ impl<'a> Parser<'a> {
             } else {
                 self.expected_with_help(
                     "a declaration",
-                    "a piece holds `use`, `tempo`, `meter`, `key`, front matter, `motif`, `fragment`, `score`, `performance`, and `studio`",
+                    "a piece holds imports, value/function declarations, score declarations, performance, and studio",
                 );
                 self.recover(PIECE_RECOVERY);
             }
@@ -635,6 +647,10 @@ impl<'a> Parser<'a> {
                 self.motif_decl();
             } else if self.at(SyntaxKind::FragmentKw) {
                 self.fragment_decl();
+            } else if self.at(SyntaxKind::LetKw) {
+                self.let_decl();
+            } else if self.at(SyntaxKind::FnKw) {
+                self.fn_decl();
             } else if self.at(SyntaxKind::PerformanceKw) {
                 self.performance_decl();
             } else if self.at(SyntaxKind::StudioKw) {
@@ -644,7 +660,7 @@ impl<'a> Parser<'a> {
                 // piece, which is why `score` is not in this list.
                 self.expected_with_help(
                     "a declaration",
-                    "a library holds `use`, `motif`, `fragment`, `performance`, and `studio` — music belongs to a piece",
+                    "a library holds imports, reusable values/functions, material, performance, and studio declarations",
                 );
                 self.recover(PIECE_RECOVERY);
             }
@@ -672,12 +688,296 @@ impl<'a> Parser<'a> {
         // with no barlines is music whose meter says there are none. It is
         // spelled with the identifier rather than a keyword because there is
         // nothing else `meter` can be followed by.
-        if self.at(SyntaxKind::Identifier) {
+        if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::NoneKw]) {
             self.bump();
         } else {
             self.expect(SyntaxKind::Rational, "a meter such as `4/4`, or `none`");
         }
         self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `let name: type = expression;`
+    fn let_decl(&mut self) {
+        self.start(SyntaxKind::LetDecl);
+        self.bump();
+        self.expect(SyntaxKind::Identifier, "a binding name");
+        self.expect(SyntaxKind::Colon, "`:`");
+        self.type_expr();
+        self.expect(SyntaxKind::Equals, "`=`");
+        self.expr();
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `fn name(parameters) -> result = expression;`
+    fn fn_decl(&mut self) {
+        self.start(SyntaxKind::FnDecl);
+        self.bump();
+        self.expect(SyntaxKind::Identifier, "a function name");
+        self.param_list();
+        self.expect(SyntaxKind::Arrow, "`->`");
+        self.type_expr();
+        self.expect(SyntaxKind::Equals, "`=`");
+        self.expr();
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    fn param_list(&mut self) {
+        self.start(SyntaxKind::ParamList);
+        self.expect(SyntaxKind::LParen, "`(`");
+        while !self.at(SyntaxKind::RParen) && self.current().is_some() {
+            self.start(SyntaxKind::Param);
+            self.expect(SyntaxKind::Identifier, "a parameter name");
+            self.expect(SyntaxKind::Colon, "`:`");
+            self.type_expr();
+            if self.at(SyntaxKind::Equals) {
+                self.bump();
+                self.expr();
+            }
+            self.finish();
+            if !self.at(SyntaxKind::Comma) {
+                break;
+            }
+            self.bump();
+        }
+        self.expect(SyntaxKind::RParen, "`)`");
+        self.finish();
+    }
+
+    /// Right-associative arrow types; product/list/option types are atoms.
+    fn type_expr(&mut self) {
+        let checkpoint = self.events.len();
+        self.type_atom();
+        if self.at(SyntaxKind::Arrow) {
+            self.start_at(checkpoint, SyntaxKind::FunctionType);
+            self.bump();
+            self.type_expr();
+            self.finish();
+        }
+    }
+
+    fn type_atom(&mut self) {
+        if self.at_any(&[SyntaxKind::OptionKw, SyntaxKind::ListKw]) {
+            let kind = if self.at(SyntaxKind::OptionKw) {
+                SyntaxKind::OptionType
+            } else {
+                SyntaxKind::ListType
+            };
+            self.start(kind);
+            self.bump();
+            self.expect(SyntaxKind::LBracket, "`[`");
+            self.type_expr();
+            self.expect(SyntaxKind::RBracket, "`]`");
+            self.finish();
+            return;
+        }
+        if self.at(SyntaxKind::LParen) {
+            let checkpoint = self.events.len();
+            self.bump();
+            self.type_expr();
+            if self.at(SyntaxKind::Comma) {
+                self.start_at(checkpoint, SyntaxKind::ProductType);
+                while self.at(SyntaxKind::Comma) {
+                    self.bump();
+                    self.type_expr();
+                }
+            } else {
+                self.start_at(checkpoint, SyntaxKind::TypeExpr);
+            }
+            self.expect(SyntaxKind::RParen, "`)`");
+            self.finish();
+            return;
+        }
+        self.start(SyntaxKind::TypeName);
+        if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::PitchKw, SyntaxKind::MusicKw]) {
+            self.bump();
+        } else {
+            self.expected("a type");
+        }
+        self.finish();
+    }
+
+    /// An ordinary expression with postfix application at the highest
+    /// precedence. Pitch operators are added by prompt 100.
+    fn expr(&mut self) {
+        let checkpoint = self.events.len();
+        self.expr_atom();
+        while self.at(SyntaxKind::LParen) {
+            self.start_at(checkpoint, SyntaxKind::ApplyExpr);
+            self.expr_arg_list();
+            self.finish();
+        }
+    }
+
+    fn expr_atom(&mut self) {
+        match self.current() {
+            Some(SyntaxKind::Identifier) => {
+                self.start(SyntaxKind::NameExpr);
+                self.bump();
+                self.finish();
+            }
+            Some(
+                SyntaxKind::Integer
+                | SyntaxKind::Rational
+                | SyntaxKind::PitchLiteral
+                | SyntaxKind::IntervalLiteral
+                | SyntaxKind::TrueKw
+                | SyntaxKind::FalseKw,
+            ) => {
+                self.start(SyntaxKind::LiteralExpr);
+                self.bump();
+                self.finish();
+            }
+            Some(SyntaxKind::NoneKw | SyntaxKind::SomeKw) => self.option_expr(),
+            Some(SyntaxKind::LBracket) => self.list_expr(),
+            Some(SyntaxKind::LParen) => self.paren_or_product_expr(),
+            Some(SyntaxKind::MatchKw) => self.match_expr(),
+            Some(SyntaxKind::MusicKw) => self.music_expr(),
+            _ => self.expected("an expression"),
+        }
+    }
+
+    fn expr_arg_list(&mut self) {
+        self.start(SyntaxKind::ExprArgList);
+        self.bump();
+        while !self.at(SyntaxKind::RParen) && self.current().is_some() {
+            self.start(SyntaxKind::ExprArg);
+            if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::Colon) {
+                self.bump();
+                self.bump();
+            }
+            self.expr();
+            self.finish();
+            if !self.at(SyntaxKind::Comma) {
+                break;
+            }
+            self.bump();
+        }
+        self.expect(SyntaxKind::RParen, "`)`");
+        self.finish();
+    }
+
+    fn paren_or_product_expr(&mut self) {
+        let checkpoint = self.events.len();
+        self.bump();
+        self.expr();
+        let product = self.at(SyntaxKind::Comma);
+        if product {
+            self.start_at(checkpoint, SyntaxKind::ProductExpr);
+            while self.at(SyntaxKind::Comma) {
+                self.bump();
+                self.expr();
+            }
+        } else {
+            self.start_at(checkpoint, SyntaxKind::ParenExpr);
+        }
+        self.expect(SyntaxKind::RParen, "`)`");
+        self.finish();
+    }
+
+    fn list_expr(&mut self) {
+        self.start(SyntaxKind::ListExpr);
+        self.bump();
+        while !self.at(SyntaxKind::RBracket) && self.current().is_some() {
+            self.expr();
+            if !self.at(SyntaxKind::Comma) {
+                break;
+            }
+            self.bump();
+        }
+        self.expect(SyntaxKind::RBracket, "`]`");
+        self.finish();
+    }
+
+    fn option_expr(&mut self) {
+        self.start(SyntaxKind::OptionExpr);
+        let some = self.at(SyntaxKind::SomeKw);
+        self.bump();
+        if some {
+            self.expect(SyntaxKind::LParen, "`(`");
+            self.expr();
+            self.expect(SyntaxKind::RParen, "`)`");
+        }
+        self.finish();
+    }
+
+    fn match_expr(&mut self) {
+        self.start(SyntaxKind::MatchExpr);
+        self.bump();
+        self.expr();
+        self.expect(SyntaxKind::LBrace, "`{`");
+        if self.at(SyntaxKind::RBrace) {
+            self.expected("a match arm");
+        }
+        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+            self.start(SyntaxKind::MatchArm);
+            self.pattern();
+            self.expect(SyntaxKind::Arrow, "`->`");
+            self.expr();
+            self.finish();
+            if !self.at(SyntaxKind::Comma) {
+                break;
+            }
+            self.bump();
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    fn pattern(&mut self) {
+        self.start(SyntaxKind::Pattern);
+        match self.current() {
+            Some(
+                SyntaxKind::Identifier
+                | SyntaxKind::Integer
+                | SyntaxKind::Rational
+                | SyntaxKind::PitchLiteral
+                | SyntaxKind::IntervalLiteral
+                | SyntaxKind::TrueKw
+                | SyntaxKind::FalseKw
+                | SyntaxKind::NoneKw,
+            ) => self.bump(),
+            Some(SyntaxKind::SomeKw) => {
+                self.bump();
+                self.expect(SyntaxKind::LParen, "`(`");
+                self.expect(SyntaxKind::Identifier, "a binding name");
+                self.expect(SyntaxKind::RParen, "`)`");
+            }
+            Some(SyntaxKind::LBracket) => {
+                self.bump();
+                if !self.at(SyntaxKind::RBracket) {
+                    self.expect(SyntaxKind::Identifier, "a head binding");
+                    self.expect(SyntaxKind::Comma, "`,`");
+                    self.expect(SyntaxKind::Dot, "`.`");
+                    self.expect(SyntaxKind::Dot, "`.`");
+                    self.expect(SyntaxKind::Identifier, "a tail binding");
+                }
+                self.expect(SyntaxKind::RBracket, "`]`");
+            }
+            Some(SyntaxKind::LParen) => {
+                self.bump();
+                self.expect(SyntaxKind::Identifier, "a binding name");
+                self.expect(SyntaxKind::Comma, "`,`");
+                self.expect(SyntaxKind::Identifier, "a binding name");
+                while self.at(SyntaxKind::Comma) {
+                    self.bump();
+                    self.expect(SyntaxKind::Identifier, "a binding name");
+                }
+                self.expect(SyntaxKind::RParen, "`)`");
+            }
+            _ => self.expected("a match pattern"),
+        }
+        self.finish();
+    }
+
+    fn music_expr(&mut self) {
+        self.start(SyntaxKind::MusicExpr);
+        self.bump();
+        self.expect(SyntaxKind::LBrace, "`{`");
+        self.voice_items();
+        self.expect(SyntaxKind::RBrace, "`}`");
         self.finish();
     }
 
@@ -1526,14 +1826,7 @@ impl<'a> Parser<'a> {
     fn use_stmt(&mut self) {
         self.start(SyntaxKind::UseStmt);
         self.bump(); // use
-        self.expect(SyntaxKind::Identifier, "a name");
-        // The parentheses *are* the argument list. Material that takes no
-        // arguments — a bar, a motif declared without parameters — is played
-        // by naming it, and `use head();` would be punctuation standing in for
-        // nothing.
-        if self.at(SyntaxKind::LParen) {
-            self.use_args();
-        }
+        self.expr();
         // `with { ... }` specializes this occurrence and only this one
         // (roadmap §9). A call that ends there is a block, not a statement,
         // so it takes no `;` — the same shape every other block has.
@@ -1543,32 +1836,6 @@ impl<'a> Parser<'a> {
             self.expect(SyntaxKind::Semicolon, "`;`");
         }
         self.finish();
-    }
-
-    /// `(a, b, c)` — the arguments of a `use`.
-    fn use_args(&mut self) {
-        self.bump(); // (
-        if !self.at(SyntaxKind::RParen) {
-            loop {
-                if self.at_any(&[
-                    SyntaxKind::PitchLiteral,
-                    SyntaxKind::Identifier,
-                    SyntaxKind::Rational,
-                    SyntaxKind::Integer,
-                ]) {
-                    self.bump();
-                } else {
-                    self.expected("an argument");
-                    break;
-                }
-                if self.at(SyntaxKind::Comma) {
-                    self.bump();
-                } else {
-                    break;
-                }
-            }
-        }
-        self.expect(SyntaxKind::RParen, "`)`");
     }
 
     /// `with { note <n> = <pitch>; ... }` — overrides on one occurrence.

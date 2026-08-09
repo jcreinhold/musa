@@ -7,6 +7,12 @@
 (fragment_declaration
   name: (identifier) @name) @definition.function
 
+(function_declaration
+  name: (identifier) @name) @definition.function
+
+(let_declaration
+  name: (identifier) @name) @definition.variable
+
 (part_declaration
   name: (identifier) @name) @definition.type
 
@@ -25,8 +31,8 @@
 (bar_statement
   name: (identifier) @name) @definition.function
 
-(use_statement
-  name: (identifier) @name) @reference.call
+(application_expression
+  (name_expression (identifier) @name)) @reference.call
 
 (mobile_statement
   fragment: (identifier) @name) @reference.call

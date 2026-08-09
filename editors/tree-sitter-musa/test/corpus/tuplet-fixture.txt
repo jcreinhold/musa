@@ -150,8 +150,15 @@ piece "Tuplet Fixture" {
           (dynamic_statement
             (identifier))
           (use_statement
-            (identifier)
-            (pitch_literal))
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list
+                  (expression_argument
+                    (expression
+                      (literal_expression
+                        (pitch_literal))))))))
           (tuplet_statement
             (rational)
             (block

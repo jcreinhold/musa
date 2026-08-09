@@ -144,12 +144,20 @@ piece "Glass Mountain" {
         (voice_declaration
           (identifier)
           (use_statement
-            (identifier))
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list))))
           (transpose_statement
             (interval_literal)
             (block
               (use_statement
-                (identifier))))))
+                (expression
+                  (application_expression
+                    (name_expression
+                      (identifier))
+                    (expression_argument_list))))))))
       (part_declaration
         (identifier)
         (voice_declaration

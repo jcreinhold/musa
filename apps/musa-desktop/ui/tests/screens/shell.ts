@@ -209,11 +209,10 @@ export async function stubShell(
     /**
      * The token the edit would replace, and what it would put there.
      *
-     * A note statement is a pitch, a duration, and a semicolon, so the two
-     * tokens can be found by position inside the statement the snapshot
-     * already points at. The core finds them by parsing; the stub finds them
-     * by shape, which is enough to prove the interface marks what it is told
-     * to and shows what it is given.
+     * A compact note statement is a pitch followed by `/` and a duration.
+     * The core finds those tokens by parsing; the stub finds them by shape,
+     * which is enough to prove the interface marks what it is told to and
+     * shows what it is given.
      */
     function writesOf(
       edit: Record<string, unknown>,
@@ -223,16 +222,16 @@ export async function stubShell(
       const value = (kind === "changePitch" ? edit.pitch : edit.duration) as string | undefined;
       if (!span || value === undefined) return [];
       const text = (current.source as string).slice(span.start, span.end);
-      const written = /^(\s*)(\S+)(\s+)(\S+?);?\s*$/.exec(text);
+      const written = /^(\s*)(\S+?)\/(\S+?)\s*$/.exec(text);
       if (!written) return [];
-      const [, lead, pitch, gap, duration] = written;
+      const [, lead, pitch, duration] = written;
       const at = span.start + (lead ?? "").length;
       return kind === "changePitch"
         ? [{ start: at, end: at + (pitch ?? "").length, text: value }]
         : [
             {
-              start: at + (pitch ?? "").length + (gap ?? "").length,
-              end: at + (pitch ?? "").length + (gap ?? "").length + (duration ?? "").length,
+              start: at + (pitch ?? "").length + 1,
+              end: at + (pitch ?? "").length + 1 + (duration ?? "").length,
               text: value,
             },
           ];

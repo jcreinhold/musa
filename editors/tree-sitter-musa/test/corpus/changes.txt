@@ -271,13 +271,17 @@ piece "Changes" {
         (voice_declaration
           (identifier)
           (use_statement
-            (identifier))
+            (expression
+              (name_expression
+                (identifier))))
           (improvise_statement
             (duration
               (rational))
             (string))
           (use_statement
-            (identifier))
+            (expression
+              (name_expression
+                (identifier))))
           (note_statement
             (pitch_literal)
             (duration
@@ -288,11 +292,17 @@ piece "Changes" {
         (voice_declaration
           (identifier)
           (use_statement
-            (identifier))
+            (expression
+              (name_expression
+                (identifier))))
           (use_statement
-            (identifier))
+            (expression
+              (name_expression
+                (identifier))))
           (use_statement
-            (identifier))
+            (expression
+              (name_expression
+                (identifier))))
           (note_statement
             (pitch_literal)
             (duration

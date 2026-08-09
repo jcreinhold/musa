@@ -1,0 +1,154 @@
+==================
+expression and type grammar
+==================
+
+piece "Expressions" {
+  let choices: list[(pitch, option[pitch])] = [(c4, some(e4)), (g4, none)];
+  fn choose(value: option[pitch], fallback: pitch = c4) -> pitch = match value {
+    none -> fallback,
+    some(found) -> found,
+  };
+  fn melody(root: pitch) -> music = music {
+    root/4
+    use answer(root);
+  };
+  score { part piano { voice one { c4/1 } } }
+}
+
+---
+
+(source_file
+  (piece_declaration
+    (string)
+    (let_declaration
+      (identifier)
+      (type_expression
+        (list_type
+          (type_expression
+            (product_type
+              (type_expression
+                (type_name))
+              (type_expression
+                (option_type
+                  (type_expression
+                    (type_name))))))))
+      (expression
+        (list_expression
+          (expression
+            (product_expression
+              (expression
+                (literal_expression
+                  (pitch_literal)))
+              (expression
+                (option_expression
+                  (expression
+                    (literal_expression
+                      (pitch_literal)))))))
+          (expression
+            (product_expression
+              (expression
+                (literal_expression
+                  (pitch_literal)))
+              (expression
+                (option_expression)))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (option_type
+              (type_expression
+                (type_name)))))
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name))
+          (expression
+            (literal_expression
+              (pitch_literal)))))
+      (type_expression
+        (type_name))
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern)
+            (expression
+              (name_expression
+                (identifier))))
+          (match_arm
+            (pattern
+              (identifier))
+            (expression
+              (name_expression
+                (identifier)))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name))))
+      (type_expression
+        (type_name))
+      (expression
+        (music_expression
+          (note_statement
+            (identifier)
+            (duration
+              (integer)))
+          (use_statement
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list
+                  (expression_argument
+                    (expression
+                      (name_expression
+                        (identifier)))))))))))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (note_statement
+            (pitch_literal)
+            (duration
+              (integer))))))))
+
+==================
+incomplete match arm recovers
+==================
+
+piece "Recovery" {
+  let value: option[nat] = match value {
+    none ->
+  };
+}
+
+---
+
+(source_file
+  (piece_declaration
+    (string)
+    (let_declaration
+      (identifier)
+      (type_expression
+        (option_type
+          (type_expression
+            (type_name
+              (identifier)))))
+      (expression
+        (match_expression
+          (expression
+            (name_expression
+              (identifier)))
+          (match_arm
+            (pattern)
+            (expression
+              (name_expression
+                (MISSING identifier)))))))))

@@ -54,6 +54,9 @@ pub enum Code {
     Studio,
     /// Something was skipped, and the piece is still playable without it.
     Ignored,
+    /// Valid language syntax belongs to a compiler stage delivered by a
+    /// later prompt, rather than being mistaken for a parse error.
+    UnsupportedLanguageStage,
     /// A `motif` or `fragment` that nothing uses (style guide §1). A named
     /// `bar` is not checked: it plays where it stands, so its name is an
     /// address, not a promise of reuse.
@@ -83,6 +86,7 @@ impl Code {
             Self::Import => "import",
             Self::Studio => "studio",
             Self::Ignored => "ignored",
+            Self::UnsupportedLanguageStage => "unsupported-language-stage",
             Self::UnusedMaterial => "unused-material",
             Self::UnassignedPatch => "unassigned-patch",
             Self::RedundantMarking => "redundant-marking",
@@ -92,7 +96,7 @@ impl Code {
 
     /// Every code, for `musa explain` with no argument and for the tests that
     /// keep the explanation table honest.
-    pub const ALL: [Self; 15] = [
+    pub const ALL: [Self; 16] = [
         Self::Syntax,
         Self::UnknownName,
         Self::DuplicateName,
@@ -104,6 +108,7 @@ impl Code {
         Self::Import,
         Self::Studio,
         Self::Ignored,
+        Self::UnsupportedLanguageStage,
         Self::UnusedMaterial,
         Self::UnassignedPatch,
         Self::RedundantMarking,

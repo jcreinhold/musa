@@ -19,6 +19,9 @@
   (mobile_statement)
   (harmony_declaration)
   (argument_list)
+  (expression_argument_list)
+  (music_expression)
+  (match_expression)
 ] @indent
 
 ["}" "]" ")"] @end

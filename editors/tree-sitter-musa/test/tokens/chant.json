@@ -23,7 +23,7 @@
     { "kind": "integer", "text": "96" },
     { "kind": ";", "text": ";" },
     { "kind": "meter", "text": "meter" },
-    { "kind": "identifier", "text": "none" },
+    { "kind": "none", "text": "none" },
     { "kind": ";", "text": ";" },
     { "kind": "key", "text": "key" },
     { "kind": "identifier", "text": "c" },

@@ -284,6 +284,14 @@ pub fn explain(code: &str) -> Option<&'static str> {
             "Something was skipped and the piece still plays without it. The label \
              points at what was skipped; the message says what was lost."
         }
+        musa_compiler::Code::UnsupportedLanguageStage => {
+            "The source uses valid Musa syntax whose semantic compiler stage is not \
+             installed yet. This is deliberately different from `syntax`: the editor, \
+             formatter, and parser already understand the construct, but compilation \
+             cannot assign it meaning without silently guessing.\n\n\
+             Finish or upgrade to the prompt named by the diagnostic's help text; do \
+             not rewrite the expression as notation merely to make the message vanish."
+        }
         musa_compiler::Code::UnusedMaterial => {
             "A `motif` or `fragment` is declared and never used (style \
              guide §1: a name is a promise). A named `bar` is different — it \

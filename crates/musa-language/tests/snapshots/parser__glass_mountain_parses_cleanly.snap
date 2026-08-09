@@ -130,10 +130,13 @@ Root@0..2172
           UseStmt@387..415
             Whitespace@387..404 "\n                "
             UseKw@404..407 "use"
-            Whitespace@407..408 " "
-            Identifier@408..412 "sigh"
-            LParen@412..413 "("
-            RParen@413..414 ")"
+            ApplyExpr@407..414
+              NameExpr@407..412
+                Whitespace@407..408 " "
+                Identifier@408..412 "sigh"
+              ExprArgList@412..414
+                LParen@412..413 "("
+                RParen@413..414 ")"
             Semicolon@414..415 ";"
           TransposeStmt@415..502
             Whitespace@415..433 "\n\n                "
@@ -148,10 +151,13 @@ Root@0..2172
               UseStmt@452..484
                 Whitespace@452..473 "\n                    "
                 UseKw@473..476 "use"
-                Whitespace@476..477 " "
-                Identifier@477..481 "sigh"
-                LParen@481..482 "("
-                RParen@482..483 ")"
+                ApplyExpr@476..483
+                  NameExpr@476..481
+                    Whitespace@476..477 " "
+                    Identifier@477..481 "sigh"
+                  ExprArgList@481..483
+                    LParen@481..482 "("
+                    RParen@482..483 ")"
                 Semicolon@483..484 ";"
               Whitespace@484..501 "\n                "
               RBrace@501..502 "}"

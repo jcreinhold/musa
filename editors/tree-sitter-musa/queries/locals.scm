@@ -5,6 +5,9 @@
 (library_declaration) @local.scope
 (motif_declaration) @local.scope
 (block) @local.scope
+(function_declaration) @local.scope
+(music_expression) @local.scope
+(match_expression) @local.scope
 
 (motif_declaration name: (identifier) @local.definition)
 (fragment_declaration name: (identifier) @local.definition)
@@ -15,8 +18,11 @@
 (patch_declaration name: (identifier) @local.definition)
 (bus_declaration name: (identifier) @local.definition)
 (signal_binding name: (identifier) @local.definition)
+(let_declaration name: (identifier) @local.definition)
+(function_declaration name: (identifier) @local.definition)
+(parameter name: (identifier) @local.definition)
 
-(use_statement name: (identifier) @local.reference)
+(name_expression (identifier) @local.reference)
 (mobile_statement fragment: (identifier) @local.reference)
 (assign_statement source: (identifier) @local.reference)
 (assign_statement destination: (identifier) @local.reference)

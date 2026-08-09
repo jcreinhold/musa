@@ -51,7 +51,7 @@ it("the fixture is the reason this file exists", () => {
 
 describe("text to page", () => {
   it("a caret in a note chooses that note", () => {
-    const at = caretAt("f5 1/4");
+    const at = caretAt("f5/4");
     const events = workspace().eventsForSpan({ start: at, end: at + 1 });
     expect(events).toHaveLength(1);
 
@@ -73,7 +73,7 @@ describe("page to text", () => {
     space.select(chosen?.id ?? "");
     const spans = space.sourceSpans(false);
     expect(spans).toHaveLength(1);
-    expect(text(spans[0] as Span)).toMatch(/^[a-g]s?[0-9] \d+\/\d+;$/);
+    expect(text(spans[0] as Span)).toMatch(/^[a-g](?:##|bb|[#bn])?-?[0-9]+\/\d+$/);
   });
 
   it("a note from a motif marks where it is declared and where it was used", () => {

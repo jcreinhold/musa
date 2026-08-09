@@ -21,4 +21,6 @@
   (grace_statement)
   (mobile_statement)
   (harmony_declaration)
+  (music_expression)
+  (match_expression)
 ] @fold

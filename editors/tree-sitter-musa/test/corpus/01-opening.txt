@@ -76,7 +76,11 @@ piece "Opening" {
           (dynamic_statement
             (identifier))
           (use_statement
-            (identifier))
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list))))
           (comment)
           (comment)
           (comment)
@@ -88,11 +92,23 @@ piece "Opening" {
             (identifier)
             (block
               (use_statement
-                (identifier))))
+                (expression
+                  (application_expression
+                    (name_expression
+                      (identifier))
+                    (expression_argument_list))))))
           (use_statement
-            (identifier))
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list))))
           (use_statement
-            (identifier)))))
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list)))))))
     (studio_declaration
       (assign_statement
         (identifier)

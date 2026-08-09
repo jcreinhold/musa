@@ -52,7 +52,7 @@ test("choosing a note on the page puts the caret in the text it came from", asyn
 
   // The note's own text is marked, and the keyboard stays on the page:
   // choosing a note is not asking to type.
-  await expect.poll(() => marked(page)).toContain("g#4 1;");
+  await expect.poll(() => marked(page)).toContain("g#4/1");
   expect(
     await page.evaluate(() => document.activeElement?.closest('[role="application"]') !== null),
     "the keyboard is still on the page",

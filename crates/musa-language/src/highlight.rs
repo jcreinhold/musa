@@ -78,6 +78,16 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("crescendo", SyntaxKind::CrescendoKw),
     ("diminuendo", SyntaxKind::DiminuendoKw),
     ("to", SyntaxKind::ToKw),
+    ("let", SyntaxKind::LetKw),
+    ("fn", SyntaxKind::FnKw),
+    ("music", SyntaxKind::MusicKw),
+    ("option", SyntaxKind::OptionKw),
+    ("list", SyntaxKind::ListKw),
+    ("match", SyntaxKind::MatchKw),
+    ("some", SyntaxKind::SomeKw),
+    ("none", SyntaxKind::NoneKw),
+    ("true", SyntaxKind::TrueKw),
+    ("false", SyntaxKind::FalseKw),
     ("Hz", SyntaxKind::UnitHz),
     ("ms", SyntaxKind::UnitMs),
     ("s", SyntaxKind::UnitS),
@@ -256,7 +266,17 @@ impl TokenClass {
             | SyntaxKind::FragmentKw
             | SyntaxKind::MobileKw
             | SyntaxKind::ImproviseKw
-            | SyntaxKind::OverKw => Self::Keyword,
+            | SyntaxKind::OverKw
+            | SyntaxKind::LetKw
+            | SyntaxKind::FnKw
+            | SyntaxKind::MusicKw
+            | SyntaxKind::OptionKw
+            | SyntaxKind::ListKw
+            | SyntaxKind::MatchKw
+            | SyntaxKind::SomeKw
+            | SyntaxKind::NoneKw
+            | SyntaxKind::TrueKw
+            | SyntaxKind::FalseKw => Self::Keyword,
 
             SyntaxKind::Error => Self::Invalid,
 
@@ -330,7 +350,30 @@ impl TokenClass {
             | SyntaxKind::EndingStmt
             | SyntaxKind::FragmentDecl
             | SyntaxKind::MobileStmt
-            | SyntaxKind::ImproviseStmt => return None,
+            | SyntaxKind::ImproviseStmt
+            | SyntaxKind::LetDecl
+            | SyntaxKind::FnDecl
+            | SyntaxKind::Param
+            | SyntaxKind::ParamList
+            | SyntaxKind::TypeExpr
+            | SyntaxKind::TypeName
+            | SyntaxKind::FunctionType
+            | SyntaxKind::ProductType
+            | SyntaxKind::OptionType
+            | SyntaxKind::ListType
+            | SyntaxKind::NameExpr
+            | SyntaxKind::LiteralExpr
+            | SyntaxKind::ParenExpr
+            | SyntaxKind::ProductExpr
+            | SyntaxKind::ListExpr
+            | SyntaxKind::OptionExpr
+            | SyntaxKind::ApplyExpr
+            | SyntaxKind::ExprArgList
+            | SyntaxKind::ExprArg
+            | SyntaxKind::MatchExpr
+            | SyntaxKind::MatchArm
+            | SyntaxKind::Pattern
+            | SyntaxKind::MusicExpr => return None,
         };
         Some(class)
     }

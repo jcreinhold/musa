@@ -636,7 +636,8 @@ fn symbols_list_the_outline() {
 fn semantic_tokens_cover_a_broken_document() {
     // A document mid-edit: an unrecognized span, an unterminated string. The
     // lexer is total, so the tokens are too.
-    let broken = "piece \"x\" {\n    meter 4/4;\n    @@ mid-edit \"unterminated\n}\n";
+    let broken =
+        "piece \"x\" {\n    fn choose(x: option[nat]) -> nat = match x { none ->\n    @@ mid-edit \"unterminated\n}\n";
     let mut server = Server::start();
     let (uri, _) = server.open("broken", broken);
     let tokens = server
@@ -655,6 +656,10 @@ fn semantic_tokens_cover_a_broken_document() {
     let first = tokens.data.first().expect("a first token");
     assert_eq!((first.delta_line, first.delta_start, first.length), (0, 0, 5));
     assert_eq!(first.token_type, 1, "keyword is legend index 1");
+    assert!(
+        tokens.data.iter().filter(|token| token.token_type == 1).count() >= 5,
+        "fn, option, match, and none stay keywords even in incomplete source"
+    );
     for token in &tokens.data {
         assert!(token.token_type < 9, "token type within the legend");
     }

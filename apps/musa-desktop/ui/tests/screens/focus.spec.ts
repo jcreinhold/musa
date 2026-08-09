@@ -183,8 +183,11 @@ test("a line that makes music on the page in view is ticked in the gutter", asyn
 test("the origin row says how many notes the line spelled, before anyone hovers", async ({
   page,
 }) => {
-  await page.locator(GENERATED).first().click({ force: true });
-  await expect(page.locator(".inspector .kin")).toHaveText("2 notes");
+  const generated = page.locator(GENERATED).first();
+  await expect(async () => {
+    await generated.click({ force: true });
+    await expect(page.locator(".inspector .kin")).toHaveText("2 notes", { timeout: 500 });
+  }).toPass({ timeout: 5000 });
 
   // An authored note's line spelled exactly one, and a count of one is not a
   // fact worth printing.

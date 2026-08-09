@@ -451,6 +451,66 @@ static PITCH_KW: KeywordDoc = doc!(
      pitch like `e5` at each `use`. It is one of the small set of types parameters can have.\n\n\
      ```musa\nmotif call(root: pitch = c5) { root/4 }\n```"
 );
+static LET: KeywordDoc = doc!(
+    "let",
+    "give a typed value a name",
+    "A `let` declaration gives an elaboration value a name. The annotation keeps the musical domain visible at the declaration site.\n\n\
+     ```musa\nlet answer: interval = P5;\n```"
+);
+static FN: KeywordDoc = doc!(
+    "fn",
+    "define a total named function",
+    "A function computes an elaboration value from typed parameters. Musa functions are total: they have no unrestricted recursion or effects.\n\n\
+     ```musa\nfn identity(x: pitch) -> pitch = x;\n```"
+);
+static MUSIC: KeywordDoc = doc!(
+    "music",
+    "a notation-first music value",
+    "A `music` block is an expression whose body reads like an ordinary voice: notes remain self-delimiting and reusable material is written with `use`.\n\n\
+     ```musa\nlet call: music = music { c5/4 d5/4 };\n```"
+);
+static OPTION: KeywordDoc = doc!(
+    "option",
+    "a type that may contain one value",
+    "`option[T]` represents an honest partial musical result: either `some(value)` or `none`, with both cases handled explicitly.\n\n\
+     ```musa\nlet found: option[pitch] = none;\n```"
+);
+static LIST: KeywordDoc = doc!(
+    "list",
+    "a finite ordered collection type",
+    "`list[T]` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n\
+     ```musa\nlet tones: list[pitch] = [c4, e4, g4];\n```"
+);
+static MATCH: KeywordDoc = doc!(
+    "match",
+    "handle every form of a finite value",
+    "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n\
+     ```musa\nfn keep(x: option[pitch]) -> option[pitch] = match x { none -> none, some(p) -> some(p), };\n```"
+);
+static SOME: KeywordDoc = doc!(
+    "some",
+    "an option containing a value",
+    "`some(value)` constructs the present case of an `option`; a `match` can bind the contained value.\n\n\
+     ```musa\nlet tonic: option[pitch] = some(c4);\n```"
+);
+static NONE: KeywordDoc = doc!(
+    "none",
+    "an option containing no value",
+    "`none` is the absent case of an `option`. It makes partial musical operations explicit instead of hiding failure.\n\n\
+     ```musa\nlet absent: option[pitch] = none;\n```"
+);
+static TRUE: KeywordDoc = doc!(
+    "true",
+    "the affirmative boolean value",
+    "`true` is one of the two `bool` values and can be handled by `match`.\n\n\
+     ```musa\nlet enabled: bool = true;\n```"
+);
+static FALSE: KeywordDoc = doc!(
+    "false",
+    "the negative boolean value",
+    "`false` is one of the two `bool` values and can be handled by `match`.\n\n\
+     ```musa\nlet muted: bool = false;\n```"
+);
 
 /// The keyword's documentation, or `None` for anything that is not a
 /// keyword.
@@ -519,6 +579,16 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::AtKw => &AT,
         SyntaxKind::OutputKw => &OUTPUT,
         SyntaxKind::PitchKw => &PITCH_KW,
+        SyntaxKind::LetKw => &LET,
+        SyntaxKind::FnKw => &FN,
+        SyntaxKind::MusicKw => &MUSIC,
+        SyntaxKind::OptionKw => &OPTION,
+        SyntaxKind::ListKw => &LIST,
+        SyntaxKind::MatchKw => &MATCH,
+        SyntaxKind::SomeKw => &SOME,
+        SyntaxKind::NoneKw => &NONE,
+        SyntaxKind::TrueKw => &TRUE,
+        SyntaxKind::FalseKw => &FALSE,
 
         // Everything else — trivia, literals, units, punctuation, and every
         // node kind — is not a keyword and has no doc here.
@@ -628,7 +698,30 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::EndingStmt
         | SyntaxKind::FragmentDecl
         | SyntaxKind::MobileStmt
-        | SyntaxKind::ImproviseStmt => return None,
+        | SyntaxKind::ImproviseStmt
+        | SyntaxKind::LetDecl
+        | SyntaxKind::FnDecl
+        | SyntaxKind::Param
+        | SyntaxKind::ParamList
+        | SyntaxKind::TypeExpr
+        | SyntaxKind::TypeName
+        | SyntaxKind::FunctionType
+        | SyntaxKind::ProductType
+        | SyntaxKind::OptionType
+        | SyntaxKind::ListType
+        | SyntaxKind::NameExpr
+        | SyntaxKind::LiteralExpr
+        | SyntaxKind::ParenExpr
+        | SyntaxKind::ProductExpr
+        | SyntaxKind::ListExpr
+        | SyntaxKind::OptionExpr
+        | SyntaxKind::ApplyExpr
+        | SyntaxKind::ExprArgList
+        | SyntaxKind::ExprArg
+        | SyntaxKind::MatchExpr
+        | SyntaxKind::MatchArm
+        | SyntaxKind::Pattern
+        | SyntaxKind::MusicExpr => return None,
     };
     Some(doc)
 }
@@ -703,6 +796,16 @@ mod tests {
             SyntaxKind::AtKw,
             SyntaxKind::OutputKw,
             SyntaxKind::PitchKw,
+            SyntaxKind::LetKw,
+            SyntaxKind::FnKw,
+            SyntaxKind::MusicKw,
+            SyntaxKind::OptionKw,
+            SyntaxKind::ListKw,
+            SyntaxKind::MatchKw,
+            SyntaxKind::SomeKw,
+            SyntaxKind::NoneKw,
+            SyntaxKind::TrueKw,
+            SyntaxKind::FalseKw,
         ];
         for kind in kinds {
             let doc = keyword_doc(kind);

@@ -9,6 +9,12 @@
 (fragment_declaration
   name: (identifier) @name) @item
 
+(function_declaration
+  name: (identifier) @name) @item
+
+(let_declaration
+  name: (identifier) @name) @item
+
 (part_declaration
   name: (identifier) @name) @item
 

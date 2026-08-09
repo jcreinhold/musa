@@ -173,6 +173,16 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::MobileKw => "mobile",
         SyntaxKind::ImproviseKw => "improvise",
         SyntaxKind::OverKw => "over",
+        SyntaxKind::LetKw => "let",
+        SyntaxKind::FnKw => "fn",
+        SyntaxKind::MusicKw => "music",
+        SyntaxKind::OptionKw => "option",
+        SyntaxKind::ListKw => "list",
+        SyntaxKind::MatchKw => "match",
+        SyntaxKind::SomeKw => "some",
+        SyntaxKind::NoneKw => "none",
+        SyntaxKind::TrueKw => "true",
+        SyntaxKind::FalseKw => "false",
         // Whitespace is not a token the grammar sees (`extras`), and the
         // kinds below never leave the lexer for a valid example: a `bpm` or
         // an error token here means the grammar is behind the language,
@@ -251,7 +261,30 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::EndingStmt
         | SyntaxKind::FragmentDecl
         | SyntaxKind::MobileStmt
-        | SyntaxKind::ImproviseStmt => panic!("`{kind:?}` is a node, not a token"),
+        | SyntaxKind::ImproviseStmt
+        | SyntaxKind::LetDecl
+        | SyntaxKind::FnDecl
+        | SyntaxKind::Param
+        | SyntaxKind::ParamList
+        | SyntaxKind::TypeExpr
+        | SyntaxKind::TypeName
+        | SyntaxKind::FunctionType
+        | SyntaxKind::ProductType
+        | SyntaxKind::OptionType
+        | SyntaxKind::ListType
+        | SyntaxKind::NameExpr
+        | SyntaxKind::LiteralExpr
+        | SyntaxKind::ParenExpr
+        | SyntaxKind::ProductExpr
+        | SyntaxKind::ListExpr
+        | SyntaxKind::OptionExpr
+        | SyntaxKind::ApplyExpr
+        | SyntaxKind::ExprArgList
+        | SyntaxKind::ExprArg
+        | SyntaxKind::MatchExpr
+        | SyntaxKind::MatchArm
+        | SyntaxKind::Pattern
+        | SyntaxKind::MusicExpr => panic!("`{kind:?}` is a node, not a token"),
     }
 }
 

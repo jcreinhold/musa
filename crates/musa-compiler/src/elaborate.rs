@@ -520,6 +520,28 @@ pub(crate) fn elaborate_parsed(
     {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
+    if let Some(node) = document.syntax().descendants().find(|node| {
+        matches!(
+            node.kind(),
+            musa_language::SyntaxKind::LetDecl
+                | musa_language::SyntaxKind::FnDecl
+                | musa_language::SyntaxKind::ProductExpr
+                | musa_language::SyntaxKind::ListExpr
+                | musa_language::SyntaxKind::OptionExpr
+                | musa_language::SyntaxKind::MatchExpr
+                | musa_language::SyntaxKind::MusicExpr
+        )
+    }) {
+        resolver.report(
+            Diagnostic::error(
+                Code::UnsupportedLanguageStage,
+                "this elaboration expression is valid but cannot be evaluated yet",
+            )
+            .at(resolve::trimmed_span(&node), "the expression stage stops here")
+            .help("prompt 95 adds checking and evaluation for the first expression fragment"),
+        );
+        return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
+    }
     let Some(piece) = PieceDecl::from_root(&document.syntax()) else {
         if let Some(library) = musa_language::ast::LibraryDecl::from_root(&document.syntax()) {
             return elaborate_material(resolver, &library, name, options);
@@ -2794,7 +2816,7 @@ fn elaborate_use(
     // the document's own text only: a use inside an imported library's body
     // names text the record does not cover.
     if !cx.foreign
-        && let Some(use_span) = resolve::token_span(call.syntax(), SyntaxKind::Identifier)
+        && let Some(use_span) = resolve::descendant_token_span(call.syntax(), SyntaxKind::Identifier)
     {
         resolver.references.record_use(material.name_kind(), &name, use_span);
     }

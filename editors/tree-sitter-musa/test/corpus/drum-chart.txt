@@ -210,7 +210,9 @@ piece "Drum Chart" {
             (identifier)
             (string))
           (use_statement
-            (identifier))
+            (expression
+              (name_expression
+                (identifier))))
           (mark_statement
             (identifier)
             (string))

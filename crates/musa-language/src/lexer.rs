@@ -336,6 +336,26 @@ enum RawToken {
     OverKw,
     #[token("senza", priority = 3)]
     SenzaKw,
+    #[token("let", priority = 3)]
+    LetKw,
+    #[token("fn", priority = 3)]
+    FnKw,
+    #[token("music", priority = 3)]
+    MusicKw,
+    #[token("option", priority = 3)]
+    OptionKw,
+    #[token("list", priority = 3)]
+    ListKw,
+    #[token("match", priority = 3)]
+    MatchKw,
+    #[token("some", priority = 3)]
+    SomeKw,
+    #[token("none", priority = 3)]
+    NoneKw,
+    #[token("true", priority = 3)]
+    TrueKw,
+    #[token("false", priority = 3)]
+    FalseKw,
 }
 
 impl RawToken {
@@ -437,7 +457,17 @@ impl RawToken {
             | Self::OverKw
             | Self::SenzaKw
             | Self::BarKw
-            | Self::EndingKw => None,
+            | Self::EndingKw
+            | Self::LetKw
+            | Self::FnKw
+            | Self::MusicKw
+            | Self::OptionKw
+            | Self::ListKw
+            | Self::MatchKw
+            | Self::SomeKw
+            | Self::NoneKw
+            | Self::TrueKw
+            | Self::FalseKw => None,
         }
     }
 
@@ -537,6 +567,16 @@ impl RawToken {
             Self::SenzaKw => SyntaxKind::SenzaKw,
             Self::BarKw => SyntaxKind::BarKw,
             Self::EndingKw => SyntaxKind::EndingKw,
+            Self::LetKw => SyntaxKind::LetKw,
+            Self::FnKw => SyntaxKind::FnKw,
+            Self::MusicKw => SyntaxKind::MusicKw,
+            Self::OptionKw => SyntaxKind::OptionKw,
+            Self::ListKw => SyntaxKind::ListKw,
+            Self::MatchKw => SyntaxKind::MatchKw,
+            Self::SomeKw => SyntaxKind::SomeKw,
+            Self::NoneKw => SyntaxKind::NoneKw,
+            Self::TrueKw => SyntaxKind::TrueKw,
+            Self::FalseKw => SyntaxKind::FalseKw,
         }
     }
 }

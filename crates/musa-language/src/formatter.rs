@@ -168,13 +168,13 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                     tight = true;
                     continue;
                 }
-                format_token(kind, token.text(), writer);
+                format_token(node.kind(), kind, token.text(), writer);
             }
         }
     }
 }
 
-fn format_token(kind: SyntaxKind, text: &str, writer: &mut Writer) {
+fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut Writer) {
     if kind == SyntaxKind::LineComment || kind == SyntaxKind::BlockComment {
         writer.comment(text);
         return;
@@ -195,13 +195,19 @@ fn format_token(kind: SyntaxKind, text: &str, writer: &mut Writer) {
             writer.space();
         }
         writer.write("}");
-        writer.end_line();
+        if !matches!(parent, SyntaxKind::MusicExpr | SyntaxKind::MatchExpr) {
+            writer.end_line();
+        }
     } else if kind == SyntaxKind::Semicolon {
         writer.write(";");
         writer.end_line();
     } else if kind == SyntaxKind::Comma {
         writer.write(",");
-        writer.space();
+        if parent == SyntaxKind::MatchExpr {
+            writer.end_line();
+        } else {
+            writer.space();
+        }
     } else if kind == SyntaxKind::Equals {
         writer.space();
         writer.write("=");
@@ -222,7 +228,7 @@ fn format_token(kind: SyntaxKind, text: &str, writer: &mut Writer) {
         writer.space();
     } else if kind == SyntaxKind::LBracket {
         // `chord [` takes a space; `use sigh(` does not.
-        if writer.needs_word_space() {
+        if writer.needs_word_space() && !matches!(writer.prev, Some(SyntaxKind::OptionKw | SyntaxKind::ListKw)) {
             writer.space();
         }
         writer.write(text);

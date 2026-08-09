@@ -69,6 +69,16 @@
   "improvise"
   "over"
   "senza"
+  "let"
+  "fn"
+  "music"
+  "option"
+  "list"
+  "match"
+  "some"
+  "none"
+  "true"
+  "false"
 ] @keyword
 
 ; `use` alone, as TokenClass::Use says: it is where material comes from —
@@ -92,7 +102,9 @@
 
 (motif_declaration name: (identifier) @function)
 (fragment_declaration name: (identifier) @function)
-(use_statement name: (identifier) @function.call)
+(function_declaration name: (identifier) @function)
+(let_declaration name: (identifier) @variable)
+(application_expression (name_expression (identifier) @function.call))
 (mobile_statement fragment: (identifier) @function.call)
 
 (part_declaration name: (identifier) @type)
@@ -105,6 +117,8 @@
 
 (setting_statement name: (identifier) @variable.parameter)
 (motif_parameter name: (identifier) @variable.parameter)
+(parameter name: (identifier) @variable.parameter)
+(expression_argument name: (identifier) @variable.parameter)
 
 ; --- Vocabulary names -----------------------------------------------------
 ; Not the composer's names but the language's: marks, dynamics, and clefs are

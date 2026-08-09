@@ -106,19 +106,31 @@ piece "Variation" {
           (identifier)
           (comment)
           (use_statement
-            (identifier))
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list))))
           (comment)
           (comment)
           (stretch_statement
             (integer)
             (block
               (use_statement
-                (identifier))))
+                (expression
+                  (application_expression
+                    (name_expression
+                      (identifier))
+                    (expression_argument_list))))))
           (comment)
           (retrograde_statement
             (block
               (use_statement
-                (identifier))))
+                (expression
+                  (application_expression
+                    (name_expression
+                      (identifier))
+                    (expression_argument_list))))))
           (comment)
           (comment)
           (comment)
@@ -126,11 +138,19 @@ piece "Variation" {
             (pitch_literal)
             (block
               (use_statement
-                (identifier))))
+                (expression
+                  (application_expression
+                    (name_expression
+                      (identifier))
+                    (expression_argument_list))))))
           (comment)
           (comment)
           (use_statement
-            (identifier)
+            (expression
+              (application_expression
+                (name_expression
+                  (identifier))
+                (expression_argument_list)))
             (with_clause
               (override_statement
                 (integer)
