@@ -1,7 +1,7 @@
 ---
 id: 90
 slug: the-formatter-draws-the-bar
-status: pending
+status: done
 depends_on: [89, 87]
 phase: 2
 ---

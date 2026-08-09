@@ -18,7 +18,7 @@ piece "Changing Meter" {
             clef treble;
 
             voice tune {
-                | d5/4 e5/4 f5/8 g5/8 a5/8
+                | d5/4  e5/4  f5/8 g5/8 a5/8
                 | a5/4 g5/4 f5/4.
 
                 meter 4/4;
@@ -26,7 +26,7 @@ piece "Changing Meter" {
                 | f5/2 e5/2
 
                 meter 7/8;
-                | d5/8 e5/8 f5/8 g5/8 a5/8 g5/8 f5/8
+                | d5/8 e5/8  f5/8 g5/8  a5/8 g5/8 f5/8
                 | e5/4 d5/4 d5/4.
             }
         }
