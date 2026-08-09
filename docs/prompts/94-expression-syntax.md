@@ -1,7 +1,7 @@
 ---
 id: 94
 slug: expression-syntax
-status: in_progress
+status: done
 depends_on: [92, 93]
 phase: 3
 ---
@@ -66,6 +66,15 @@ git -C ../zed-musa diff --check
 
 Commit Musa and each sibling repository intentionally; record the commit ids in the prompt's repair notes. Commit the
 Musa change as `Add the elaboration expression grammar`.
+
+## Repair Notes
+
+- `4454c7a74150fb4d6713432a275b2fe1b4d033e3` repaired the governing surface grammar before implementation by choosing
+  concrete product/list/option values, exhaustive `match`, and ordinary named fold calls without anonymous lambdas.
+- `b20e0f04561be9fc5e86da96a5e46f9e56482a80` implements the Musa grammar, typed CST, formatter, compiler staging
+  diagnostic, Tree-sitter artifact, LSP vocabulary, and desktop fixtures.
+- VS Code grammar artifact: `5e4fc9e24680ea7235eb6528e0a17bdb6c38b0c4` in `../vscode-musa`.
+- Zed grammar pin and byte-identical queries: `4efeb03bc934ec1d3a69df55036730e6299542db` in `../zed-musa`.
 
 ## Stop
 
