@@ -166,7 +166,7 @@ pub const COMMANDS: &[CommandDescriptor] = &[
         "Contents",
         Section::View,
         Some("CmdOrCtrl+0"),
-        false,
+        true,
     ),
     // The four workspaces of roadmap §14.4, in the order they are numbered:
     // what the music is, what it sounds like, how it is balanced, and what it

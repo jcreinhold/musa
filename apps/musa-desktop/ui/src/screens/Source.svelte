@@ -27,7 +27,7 @@
   import type { Reveal } from "../lib/state/reveal";
   import type { Focus } from "../lib/state/focus.svelte";
   import type { Candidate } from "../lib/state/gesture.svelte";
-  import type { Diagnostic, Span } from "../lib/state/snapshot";
+  import { volumeOf, type Diagnostic, type Span } from "../lib/state/snapshot";
 
   let {
     session,
@@ -75,6 +75,8 @@
   } = $props();
 
   const snapshot = $derived(session.snapshot);
+  /** Whether the switcher offers the contents page (`07-the-volume.md`). */
+  const volume = $derived(volumeOf(snapshot) !== null);
   /** What the text marks: where the expansion in view came from. */
   const highlight = $derived(workspace.sourceSpans(origin));
   const diagnostics = $derived(snapshot?.diagnostics ?? []);
@@ -91,7 +93,7 @@
     <Margin side="top">
       <div class="identity">
         <h1 class="title">{snapshot.score?.title ?? ""}</h1>
-        <Workspaces current="source" onshow={onshow} />
+        <Workspaces current="source" volume={volume} onshow={onshow} />
       </div>
       {#if session.notice}
         <p class="notice" class:failure={session.notice.tone === "failure"} role="status">

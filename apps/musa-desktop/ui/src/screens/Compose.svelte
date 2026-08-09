@@ -24,13 +24,14 @@
   import type { Reveal } from "../lib/state/reveal";
   import type { Focus } from "../lib/state/focus.svelte";
   import type { Candidate } from "../lib/state/gesture.svelte";
-  import type { Diagnostic, EditImpact, OutlineFacts, Span } from "../lib/state/snapshot";
+  import { volumeOf, type Diagnostic, type EditImpact, type OutlineFacts, type Span } from "../lib/state/snapshot";
   import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";
   import type { NoteEntry } from "../lib/state/entry.svelte";
   import SourcePane from "../lib/ui/SourcePane.svelte";
   import Inspector from "./Inspector.svelte";
   import Outline from "./Outline.svelte";
   import PartsList from "./PartsList.svelte";
+  import RunningOrder from "./RunningOrder.svelte";
 
   let {
     session,
@@ -76,6 +77,7 @@
     oncaret,
     onshow,
     onoutline,
+    onchoose,
     bring,
   }: {
     session: Session;
@@ -143,12 +145,20 @@
     onshow: (which: Screen) => void;
     /** A structural marker was chosen: go to the place it names. */
     onoutline: (row: OutlineFacts) => void;
+    /** A piece of the project was chosen: turn to it. */
+    onchoose: (file: string) => void;
     /** A note to bring into view, once, when it changes. */
     bring: { id: string } | null;
   } = $props();
 
   const snapshot = $derived(session.snapshot);
   const score = $derived(snapshot?.score ?? null);
+  /**
+   * The project's listing, when there is more than one file in it. Null for a
+   * loose piece, and the margin then shows nothing at all — a project of one
+   * must look exactly as it did before projects existed.
+   */
+  const contents = $derived(volumeOf(snapshot));
   const focused = $derived(workspace.focused);
   // What the inspector describes is what the composer picked, not where work
   // is happening: with nothing picked it shows the piece instead (prompt 54).
@@ -202,11 +212,11 @@
   });
 </script>
 
-{#if snapshot && score}
+{#if snapshot}
   <div class="workspace">
     <Margin side="top">
       <div class="identity">
-        <h1 class="title">{score.title}</h1>
+        <h1 class="title">{score?.title ?? snapshot.name}</h1>
         <!--
           Whether the file has the work. Autosave means unsaved work is not
           lost work, so the mark says which of the two it is rather than
@@ -222,7 +232,7 @@
             >{snapshot.autosaved ? "Unsaved — recovery copy kept" : "Unsaved"}</span
           >
         {/if}
-        <Workspaces current="compose" onshow={onshow} />
+        <Workspaces current="compose" volume={contents !== null} onshow={onshow} />
       </div>
 
       <!--
@@ -328,14 +338,17 @@
           title="Show where the music came from — hold O"
           onclick={onpin}>Origin</button
         >
-        <TransportReadout
-          {score}
-          playback={snapshot.playback}
-          stale={session.stale}
-          bar={focused?.bar ?? 1}
-          beat={focused?.beat ?? { numerator: 1, denominator: 1 }}
-          onheader={session.live ? onheader : undefined}
-        />
+        <!-- Where you are in a score there is not: nothing to read out. -->
+        {#if score}
+          <TransportReadout
+            {score}
+            playback={snapshot.playback}
+            stale={session.stale}
+            bar={focused?.bar ?? 1}
+            beat={focused?.beat ?? { numerator: 1, denominator: 1 }}
+            onheader={session.live ? onheader : undefined}
+          />
+        {/if}
         <!--
           Two words, one of them current: page or continuous (§4). A toggle
           named for what it shows, rather than a pair of icons a reader has to
@@ -403,14 +416,27 @@
         />
       {/if}
 
+      <!--
+        The margin reads outside in: volume, piece, structure. The running
+        order is only there when there is more than one file to choose
+        between (`07-the-volume.md`).
+      -->
       <Margin side="left" label="Parts">
-        <PartsList parts={score.parts} {workspace} {origin} />
-        <Outline outline={score.outline} active={outlineAt} onselect={onoutline} />
+        {#if contents}
+          <RunningOrder {contents} onchoose={onchoose} />
+        {/if}
+        {#if score}
+          <div class="parts" class:after={contents !== null}>
+            <PartsList parts={score.parts} {workspace} {origin} />
+            <Outline outline={score.outline} active={outlineAt} onselect={onoutline} />
+          </div>
+        {/if}
       </Margin>
 
       <main class="stage" class:continuous={mode === "continuous"} bind:this={stage}>
         <Leaf stale={session.stale}>
-          <Score
+          {#if score}
+            <Score
             mei={snapshot.mei ?? ""}
             revision={snapshot.scoreRevision ?? snapshot.revision}
             {zoom}
@@ -431,13 +457,27 @@
             {flash}
             {bring}
             header={score.header}
-            onheader={session.live ? onheader : undefined}
-          />
+              onheader={session.live ? onheader : undefined}
+            />
+          {:else}
+            <!--
+              A file that parses and yields no score is not a blank window.
+              Material has no score by definition and opens in the text
+              instead; a piece that has never compiled keeps the frame, and
+              what it has to say is in its diagnostics.
+            -->
+            <p class="empty">
+              {problems.length > 0
+                ? "No score yet — the source has problems."
+                : "No score in this file."}
+            </p>
+          {/if}
         </Leaf>
       </main>
 
       <Margin side="right" label="Inspector">
-        <Inspector
+        {#if score}
+          <Inspector
           event={chosen}
           adrift={workspace.adrift}
           occurrence={workspace.selectedOccurrence}
@@ -457,9 +497,10 @@
             ? (duration) => onduration(chosen.id, duration)
             : undefined}
           {onreveal}
-          header={score.header}
-          onheader={session.live ? onheader : undefined}
-        />
+            header={score.header}
+            onheader={session.live ? onheader : undefined}
+          />
+        {/if}
       </Margin>
     </div>
   </div>
@@ -508,6 +549,24 @@
 
   .state {
     flex: none;
+  }
+
+  /* The running order and the parts are two readings of two different
+     things, so they are separated by a rest rather than a rule — the same
+     separation the outline takes from the parts above it. */
+  .parts.after {
+    margin-top: var(--s-8);
+  }
+
+  /* A page with nothing engraved on it still has margins: the message sits
+     where the first system would. */
+  .empty {
+    margin: 0;
+    padding: var(--s-16);
+    font-family: var(--f-score-text);
+    font-size: var(--t-name-size);
+    line-height: var(--t-name-line);
+    color: var(--ink-muted);
   }
 
   .state,

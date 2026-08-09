@@ -15,9 +15,16 @@
 
   let {
     current,
+    volume = false,
     onshow,
   }: {
     current: Screen;
+    /**
+     * Whether the project holds more than one file. With one, the contents
+     * page is a page with one line on it, so it is not offered at all
+     * (`07-the-volume.md`).
+     */
+    volume?: boolean;
     onshow: (which: Screen) => void;
   } = $props();
 
@@ -27,10 +34,15 @@
     { id: "mix", name: "Mix", key: "⌘3" },
     { id: "source", name: "Source", key: "⌘4" },
   ] as const;
+
+  /** The volume comes before the piece, so its contents comes before them. */
+  const CONTENTS = { id: "contents", name: "Contents", key: "⌘0" } as const;
+
+  const places = $derived(volume ? [CONTENTS, ...OPEN] : OPEN);
 </script>
 
 <nav class="workspaces" aria-label="Workspace">
-  {#each OPEN as workspace (workspace.id)}
+  {#each places as workspace (workspace.id)}
     <button
       type="button"
       class="text"

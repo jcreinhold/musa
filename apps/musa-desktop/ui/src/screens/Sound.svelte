@@ -16,7 +16,7 @@
   import Workspaces from "../lib/ui/Workspaces.svelte";
   import type { Screen } from "../lib/commands/map";
   import type { Session } from "../lib/session/session.svelte";
-  import type { ContainerFacts } from "../lib/state/snapshot";
+  import { volumeOf, type ContainerFacts } from "../lib/state/snapshot";
   import type { StudioEditDto } from "../lib/session/generated/StudioEditDto";
 
   let {
@@ -28,6 +28,8 @@
   } = $props();
 
   const snapshot = $derived(session.snapshot);
+  /** Whether the switcher offers the contents page (`07-the-volume.md`). */
+  const volume = $derived(volumeOf(snapshot) !== null);
   const studio = $derived(snapshot?.studio ?? null);
   const parts = $derived(studio?.assignments ?? []);
 
@@ -63,7 +65,7 @@
     <Margin side="top">
       <div class="identity">
         <h1 class="title">{snapshot.score?.title ?? ""}</h1>
-        <Workspaces current="sound" {onshow} />
+        <Workspaces current="sound" volume={volume} {onshow} />
       </div>
       {#if session.notice}
         <p class="notice" class:failure={session.notice.tone === "failure"} role="status">

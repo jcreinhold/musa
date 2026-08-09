@@ -114,7 +114,7 @@
     "submenu": null,
     "apart": false,
     "accelerator": "CmdOrCtrl+0",
-    "available": false
+    "available": true
   },
   {
     "id": "view.workspace.compose",

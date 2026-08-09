@@ -16,6 +16,7 @@
   import { onMount, untrack } from "svelte";
 
   import Compose from "./screens/Compose.svelte";
+  import Contents from "./screens/Contents.svelte";
   import Sound from "./screens/Sound.svelte";
   import Mix from "./screens/Mix.svelte";
   import Source from "./screens/Source.svelte";
@@ -34,7 +35,7 @@
   import { ThemeChoice } from "./lib/session/theme.svelte";
   import { mark } from "./lib/perf";
   import { fixture } from "./lib/state/fixtures";
-  import type { Diagnostic, OutlineFacts, Span } from "./lib/state/snapshot";
+  import { volumeOf, type Diagnostic, type OutlineFacts, type Span } from "./lib/state/snapshot";
   import { Playhead, soundingAt } from "./lib/state/playhead.svelte";
   import { NoteEntry } from "./lib/state/entry.svelte";
   import { anchorFor, played, stroke } from "./lib/state/compose";
@@ -147,8 +148,41 @@
   /** The looped range as event ids, so it survives a re-engraving like any other. */
   let looped = $state<[string, string] | null>(null);
 
-  /** Which workspace is open (roadmap §14.4): all four now exist. */
+  /** Which screen the leaf is showing: the contents, or one of the four
+      workspaces (roadmap §14.4). */
   let screen = $state<Screen>("compose");
+
+  /**
+   * Whether there is more than one file to choose between (prompt 84).
+   *
+   * A project of one is a loose `.musa` file, and it is shown nothing: no
+   * contents page, no running order, no way to reach a page with one line on
+   * it (`07-the-volume.md`).
+   */
+  const volume = $derived(volumeOf(session.snapshot) !== null);
+
+  /**
+   * Where the leaf actually is.
+   *
+   * Two things override what was last asked for, and both are facts about the
+   * file rather than preferences: material has no page, so it opens in the
+   * text; and a project of one has no contents, so `⌘0` leads nowhere.
+   *
+   * The contents is asked first because it belongs to the volume rather than
+   * to the piece: it is reachable with material in hand, which is the only way
+   * back out of a library.
+   */
+  const leaf = $derived.by((): Screen => {
+    if (screen === "contents") return volume ? "contents" : "compose";
+    if (session.snapshot?.kind === "material") return "source";
+    return screen;
+  });
+
+  /** Turn to another file of the project. */
+  function turnTo(file: string): void {
+    screen = "compose";
+    void session.showPiece(file);
+  }
 
   let paletteOpen = $state(false);
   let keysOpen = $state(false);
@@ -543,7 +577,7 @@
    * the span the note came from.
    */
   $effect(() => {
-    const span = screen === "source" ? workspace.focused?.origin.span : undefined;
+    const span = leaf === "source" ? workspace.focused?.origin.span : undefined;
     if (!span) return;
     untrack(() => {
       // Not when the caret is already in that note's text: the note was
@@ -682,11 +716,17 @@
 
 {#if !session.live && parameters.get("view") === "sheet"}
   <Sheet fixture={chosen} />
-{:else if session.snapshot && screen === "sound"}
+{:else if session.snapshot?.contents && leaf === "contents"}
+  <Contents
+    contents={session.snapshot.contents}
+    onchoose={turnTo}
+    onshow={(which) => (screen = which)}
+  />
+{:else if session.snapshot && leaf === "sound"}
   <Sound {session} onshow={(which) => (screen = which)} />
-{:else if session.snapshot && screen === "mix"}
+{:else if session.snapshot && leaf === "mix"}
   <Mix {session} onshow={(which) => (screen = which)} />
-{:else if session.snapshot && screen === "source"}
+{:else if session.snapshot && leaf === "source"}
   <Source
     {session}
     {preferences}
@@ -756,10 +796,15 @@
     oncaret={followCaret}
     onshow={(which) => (screen = which)}
     onoutline={goTo}
+    onchoose={turnTo}
     {bring}
   />
 {:else}
-  <Launch onopen={() => void session.open()} onnew={() => void session.create()} />
+  <Launch
+    onopen={() => void session.open()}
+    onopenproject={() => void session.openProject()}
+    onnew={() => void session.create()}
+  />
 {/if}
 
 {#if paletteOpen}

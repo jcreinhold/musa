@@ -1,7 +1,7 @@
 ---
 id: 85
 slug: the-contents-page
-status: pending
+status: done
 depends_on: [84, 59, 76]
 phase: 2
 ---

@@ -19,7 +19,11 @@
    */
   import Leaf from "../lib/ui/Leaf.svelte";
 
-  let { onopen, onnew }: { onopen: () => void; onnew: () => void } = $props();
+  let {
+    onopen,
+    onopenproject,
+    onnew,
+  }: { onopen: () => void; onopenproject: () => void; onnew: () => void } = $props();
 
   /**
    * How many staves the page is ruled with.
@@ -34,6 +38,10 @@
   /** The ways in, in the order a returning composer wants them. */
   const START = [
     { title: "Open a piece", key: "⌘O", run: () => onopen() },
+    // A project is a folder of pieces (roadmap §16), and it is a different
+    // question to ask the file dialog — so it is a different way in rather
+    // than a dialog that guesses from what was chosen.
+    { title: "Open a project", key: "⇧⌘O", run: () => onopenproject() },
     { title: "New piece", key: "⌘N", run: () => onnew() },
   ];
 </script>

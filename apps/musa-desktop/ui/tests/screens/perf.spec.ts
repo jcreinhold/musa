@@ -1,6 +1,6 @@
 /**
  * The budgets this prompt owns, asserted as measurements
- * (`06-performance.md` §1–§2): B1, B2, B6, B7, B8, B10, B11.
+ * (`06-performance.md` §1–§2): B1, B2, B6, B7, B8, B10, B11, B12.
  *
  * The harness drives the Vite dev server with the stubbed shell, which §2
  * sanctions where a window is impractical. That means these numbers are the
@@ -479,6 +479,63 @@ test("B11: a new reading is on the leaf within 250 ms of the snapshot", async ({
     record("B11", p95(samples)),
     `a new reading was drawn at p95 ${Math.round(p95(samples))} ms after its snapshot`,
   ).toBeLessThanOrEqual(250);
+});
+
+/**
+ * Turning to another piece of the volume (prompt 85).
+ *
+ * Measured apart from B11 because that is a *re-reading of one score* and this
+ * is a different score: a new title, a new part list, a new outline, a whole
+ * page laid out from a different MEI. A piece opened for the first time pays
+ * B7's cold number by construction — a file has to be read and compiled — and
+ * is not asserted here; what this budget covers is turning *back*, where the
+ * session is already in memory and nothing should touch the disk.
+ *
+ * The gesture is the margin's running order rather than the contents page,
+ * because that list stays on screen either side of the turn, which is what
+ * lets "the previous page is visible throughout" be checked at all.
+ */
+test("B12: a piece already opened is on the leaf within 400 ms", async ({ page }) => {
+  await stubShell(page, "glass-mountain", "annotated", true);
+  await page.goto("/?perf=1");
+  await engraved(page);
+  await quiet(page);
+
+  const rows = page.getByRole("navigation", { name: "Contents" }).getByRole("button");
+  // Open the second piece once, so both are in hand and every trial below is
+  // a turn back rather than a first opening.
+  await rows.nth(1).click();
+  await engraved(page);
+  await quiet(page);
+
+  const samples: number[] = [];
+  for (let trial = 0; trial < TRIALS; trial += 1) {
+    await page.evaluate(() => performance.clearMarks());
+    // Alternately, because turning to the piece already in hand turns nothing.
+    await rows.nth(trial % 2).click();
+    // Read before waiting, which is the only moment the claim is checkable:
+    // the page turned away from is still on the leaf while the next one is
+    // being laid out, so there is no frame with nothing on it.
+    expect(await page.locator(".engraving svg").count()).toBeGreaterThan(0);
+    await page.waitForFunction(() => {
+      const arrived = performance.getEntriesByName("musa:snapshot", "mark")[0];
+      return (
+        arrived !== undefined &&
+        performance
+          .getEntriesByName("musa:score", "mark")
+          .some((mark) => mark.startTime > arrived.startTime)
+      );
+    });
+    samples.push(await after(page, "snapshot"));
+    await quiet(page);
+  }
+
+  expect(
+    record("B12", p95(samples)),
+    `the piece turned to was drawn at p95 ${Math.round(p95(samples))} ms after its snapshot`,
+  ).toBeLessThanOrEqual(400);
+  // A turn that measured nothing is not a fast turn.
+  expect(Math.min(...samples)).toBeGreaterThan(0);
 });
 
 declare global {

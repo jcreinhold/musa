@@ -24,6 +24,7 @@ score (`tests/fixtures/large-score.musa`, created at prompt 22) for the large ca
 | B9 | Origin view enter/leave | ≤ 120 ms, no layout reflow | It is an ink change; it must cost like one. |
 | B10 | Idle CPU with playback stopped | **≈ 0 %** — no polling timers, no rAF loop | An editor that heats a laptop while nothing happens will not be used. |
 | B11 | New performance → the new reading drawn (prompt 76) | ≤ 250 ms from the snapshot, previous page visible throughout | Measured apart from B2 on purpose: B2 is what an *edit* costs and its 400 ms includes the 180 ms typing debounce, which a click never pays. Folding the two together would hide a slow redraw behind a wait it does not do. |
+| B12 | Choosing a piece already opened this session → its page drawn (prompt 85) | **≤ 400 ms**, previous page visible throughout | Turning to a piece you have already opened is turning back, not reopening: the session is still in memory and nothing has to be read from disk. A piece opened for the first time is B7's cold number by construction and is not asserted here. |
 
 ## 2. How they are measured
 

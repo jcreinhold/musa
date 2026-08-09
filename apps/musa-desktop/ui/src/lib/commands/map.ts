@@ -23,8 +23,15 @@ import type { Workspace } from "../state/selection.svelte";
 /** The commands the native menu shows, generated from the Rust registry. */
 export const REGISTERED = registry as readonly CommandDescriptor[];
 
-/** The four workspaces of roadmap §14.4, in the order they are numbered. */
-export type Screen = "compose" | "sound" | "mix" | "source";
+/**
+ * The leaf's screens, in the order they are numbered: the volume's contents
+ * first, then the four workspaces of roadmap §14.4.
+ *
+ * `contents` is numbered zero because it is above the piece rather than one
+ * of its views — you read a book's contents before its first movement
+ * (`07-the-volume.md`).
+ */
+export type Screen = "contents" | "compose" | "sound" | "mix" | "source";
 
 /** Where a command belongs in the palette and the keyboard sheet. */
 export type Group = "File" | "Edit" | "Score" | "Transport" | "View" | "Settings" | "Help";
@@ -232,6 +239,7 @@ export const COMMANDS: readonly Command[] = [
   // hold a key and work the pointer at once.
   own("view.origin", "Pin Origin view (hold O)", "View", "Shift+O", (surface) => surface.origin()),
 
+  command("view.workspace.contents", "View", (surface) => surface.show("contents")),
   command("view.workspace.compose", "View", (surface) => surface.show("compose")),
   command("view.workspace.sound", "View", (surface) => surface.show("sound")),
   command("view.workspace.mix", "View", (surface) => surface.show("mix")),

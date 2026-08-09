@@ -21,7 +21,8 @@ to improve on. The desktop app is the product for most users; its quality is not
 | [`03-interaction.md`](03-interaction.md) | Selection model, pointer, keyboard map, transport and playhead, accessibility floor |
 | [`04-provenance.md`](04-provenance.md) | Origin view — the signature — and the editing choice it makes legible |
 | [`05-states.md`](05-states.md) | Empty, loading, stale-revision, diagnostics, failure; the interface's voice |
-| [`06-performance.md`](06-performance.md) | Ten named budgets, how they are measured, the structure they imply |
+| [`06-performance.md`](06-performance.md) | Eleven named budgets, how they are measured, the structure they imply |
+| [`07-the-volume.md`](07-the-volume.md) | The project as a bound volume: the contents page, the running order, and what a project of one shows |
 
 [`prototype.html`](prototype.html) is a static reference mockup of the Compose workspace: the real token system, real
 Verovio/Bravura engraving of `examples/glass-mountain.musa`, both themes, selection, Origin view, and the stale-revision

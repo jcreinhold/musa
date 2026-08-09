@@ -35,6 +35,15 @@ export async function stubShell(
   page: Page,
   piece: Piece = "glass-mountain",
   opens: Piece = "annotated",
+  /**
+   * Whether the two seeded pieces are filed together as one project.
+   *
+   * A volume is the only state that has a contents page, a running order, or
+   * a `⌘0`: with one file, the interface shows none of them
+   * (`07-the-volume.md`). The stub files the two seeds and one library under
+   * an album, which is exactly the shape `examples/album/` has.
+   */
+  volume = false,
 ): Promise<void> {
   const seeds = {
     // Document ids are the shell's to mint, and the committed fixtures carry
@@ -46,13 +55,72 @@ export async function stubShell(
     // it again" answers with, and the stub has no other way to produce one.
     // For a determinate piece nothing ever asks for it (prompt 76).
     again: { ...(JSON.parse(readFileSync(snapshotOf("open-form-again"), "utf8")) as object), document: 1 },
+    volume,
   };
-  await page.addInitScript((both: Record<"open" | "other" | "again", Record<string, unknown>>) => {
+  await page.addInitScript(
+    (both: Record<"open" | "other" | "again", Record<string, unknown>> & { volume: boolean }) => {
     const seed = both.open;
     const handlers = new Map<number, (payload: unknown) => void>();
     const events = new Map<string, number[]>();
     let next = 1;
-    let current = { ...seed };
+
+    /**
+     * The project, when the seeds are filed as one: two pieces and the
+     * library they draw on, named as `examples/album/` names them.
+     */
+    const FILES = ["pieces/01-first.musa", "pieces/02-second.musa", "library/motifs.musa"] as const;
+    const titleOf = (snapshot: Record<string, unknown>): string =>
+      ((snapshot.score as { title?: string } | null)?.title ?? (snapshot.name as string)) || "";
+
+    /** Every piece of the project that has been opened, by file name. */
+    // A volume just opened has been read from disk and nothing has been typed
+    // into it, so every piece starts saved — which is what makes `edited` on
+    // the contents page mean something when it appears.
+    const held: Record<string, Record<string, unknown>> = both.volume
+      ? {
+          [FILES[0]]: { ...seed, unsaved: false },
+          [FILES[1]]: { ...both.other, unsaved: false },
+          // Material: no score, and none coming. The interface routes on
+          // `kind`, which is the whole reason prompt 84 put it on the wire.
+          [FILES[2]]: {
+            ...both.other,
+            document: 3,
+            unsaved: false,
+            name: "motifs.musa",
+            kind: "material",
+            score: null,
+            mei: null,
+            scoreRevision: null,
+            source: "library {\n    motif rise() {\n        c4 1/4;\n    }\n}\n",
+          },
+        }
+      : {};
+    let showing: string = FILES[0];
+    let current = { ...(both.volume ? (held[FILES[0]] ?? seed) : seed) };
+
+    /**
+     * The listing, as `Project::snapshot` states it: what is in hand, what is
+     * edited, and which material the piece in hand imports. Null when there
+     * is no project, which is what a loose file has.
+     */
+    function listing(): Record<string, unknown> | null {
+      if (!both.volume) return null;
+      const at = (file: string) => (file === showing ? current : (held[file] ?? {}));
+      const entry = (file: string, used: boolean) => ({
+        title: file === FILES[2] ? "motifs.musa" : titleOf(at(file)),
+        file,
+        current: file === showing,
+        unsaved: at(file).unsaved === true,
+        used,
+      });
+      return {
+        name: "Album",
+        composer: "musa",
+        pieces: [entry(FILES[0], false), entry(FILES[1], false)],
+        // A piece draws on the library; the library does not draw on itself.
+        material: [entry(FILES[2], showing !== FILES[2])],
+      };
+    }
 
     const balanced = (source: string): boolean =>
       (source.match(/\{/g) ?? []).length === (source.match(/\}/g) ?? []).length;
@@ -71,6 +139,11 @@ export async function stubShell(
         source,
         revision,
         compiles,
+        // Text the composer typed is text that is not on disk yet. The core
+        // marks it, and the contents page prints the mark as `edited`, so a
+        // stub that skipped it would let a running order that never updates
+        // pass.
+        unsaved: true,
         // A valid edit produces a new score; an invalid one leaves the last
         // valid score, its MEI, and its revision untouched — roadmap §14.7,
         // and the whole point of `05-states.md` §4. The MEI the stub returns
@@ -222,6 +295,8 @@ export async function stubShell(
 
     /** Every answer goes out through here, so the tests can watch the revision. */
     function answer(): Record<string, unknown> {
+      current = { ...current, contents: listing() };
+      if (both.volume) held[showing] = current;
       window.__musaRevision = current.revision as number;
       return current;
     }
@@ -270,7 +345,24 @@ export async function stubShell(
     }
 
     const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
-      snapshot: () => current,
+      snapshot: () => answer(),
+      // Turning to another file of the project. The piece left behind keeps
+      // its text, its unsaved mark and its revision, so the stub holds the
+      // sessions rather than rereading a fixture — which is the promise the
+      // Rust `Project` makes and the one this exercises.
+      show_piece: (args) => {
+        const file = args.file as string;
+        held[showing] = current;
+        if (file in held) showing = file;
+        history.length = 0;
+        current = { ...(held[showing] ?? current) };
+        return answer();
+      },
+      save_all: () => {
+        for (const file of Object.keys(held)) held[file] = { ...held[file], unsaved: false };
+        current = { ...current, unsaved: false };
+        return answer();
+      },
       // Opening replaces the document, and the piece that arrives is at its
       // own revision 0 — lower than whatever the edited piece had reached,
       // which is exactly the case the interface has to get right.
@@ -470,7 +562,9 @@ export async function stubShell(
         }
       },
     });
-  }, seeds);
+    },
+    seeds,
+  );
 }
 
 declare global {
