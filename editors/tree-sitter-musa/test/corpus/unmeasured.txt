@@ -10,10 +10,10 @@ piece "U" {
         part voice {
             voice line {
                 senza {
-                    c4 1/1;
+                    c4/1
                 }
                 meter 4/4;
-                c4 1/4;
+                c4/4
             }
         }
     }
@@ -38,10 +38,10 @@ piece "U" {
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))))
+                  (integer)))))
           (meter_statement
             (rational))
           (note_statement
             (pitch_literal)
             (duration
-              (rational))))))))
+              (integer))))))))

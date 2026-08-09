@@ -52,7 +52,7 @@ fn studio_of(source: &str) -> StudioSpec {
 
 fn piece(studio: &str) -> String {
     format!(
-        "piece \"x\" {{ tempo 1/4 = 60; meter 4/4; score {{ part violin {{ voice v {{ c4 1; }} }} }} \
+        "piece \"x\" {{ tempo 1/4 = 60; meter 4/4; score {{ part violin {{ voice v {{ c4/1 }} }} }} \
          studio {{ {studio} }} }}"
     )
 }
@@ -61,7 +61,7 @@ fn piece(studio: &str) -> String {
 /// second — short enough that what is heard a second later is a tail.
 fn one_note() -> Vec<musa_compiler::PerformanceEvent> {
     let source = "piece \"x\" { tempo 1/4 = 240; meter 4/4; \
-                  score { part violin { voice v { c4 1/4; rest 1/2; } } } }"
+                  score { part violin { voice v { c4/4 rest/2 } } } }"
         .to_owned();
     let compilation = compile(&SourceDocument::new(&source, "test.musa"), &CompileOptions::default());
     let score = compilation.into_snapshot().expect("the piece compiles");

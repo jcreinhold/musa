@@ -140,403 +140,403 @@
     "end": 482
   },
   {
-    "class": "duration",
-    "start": 483,
-    "end": 486
-  },
-  {
     "class": "punctuation",
-    "start": 486,
-    "end": 487
-  },
-  {
-    "class": "pitch",
-    "start": 496,
-    "end": 498
-  },
-  {
-    "class": "duration",
-    "start": 499,
-    "end": 502
-  },
-  {
-    "class": "punctuation",
-    "start": 502,
-    "end": 503
-  },
-  {
-    "class": "pitch",
-    "start": 512,
-    "end": 514
-  },
-  {
-    "class": "duration",
-    "start": 515,
-    "end": 518
-  },
-  {
-    "class": "punctuation",
-    "start": 518,
-    "end": 519
-  },
-  {
-    "class": "pitch",
-    "start": 528,
-    "end": 530
-  },
-  {
-    "class": "duration",
-    "start": 531,
-    "end": 534
-  },
-  {
-    "class": "punctuation",
-    "start": 534,
-    "end": 535
-  },
-  {
-    "class": "punctuation",
-    "start": 540,
-    "end": 541
-  },
-  {
-    "class": "keyword",
-    "start": 547,
-    "end": 552
-  },
-  {
-    "class": "punctuation",
-    "start": 553,
-    "end": 554
-  },
-  {
-    "class": "keyword",
-    "start": 563,
-    "end": 567
-  },
-  {
-    "class": "name",
-    "start": 568,
-    "end": 573
-  },
-  {
-    "class": "punctuation",
-    "start": 574,
-    "end": 575
-  },
-  {
-    "class": "keyword",
-    "start": 588,
-    "end": 592
-  },
-  {
-    "class": "name",
-    "start": 593,
-    "end": 599
-  },
-  {
-    "class": "punctuation",
-    "start": 599,
-    "end": 600
-  },
-  {
-    "class": "keyword",
-    "start": 614,
-    "end": 619
-  },
-  {
-    "class": "name",
-    "start": 620,
-    "end": 624
-  },
-  {
-    "class": "punctuation",
-    "start": 625,
-    "end": 626
-  },
-  {
-    "class": "comment",
-    "start": 643,
-    "end": 691
-  },
-  {
-    "class": "use",
-    "start": 708,
-    "end": 711
-  },
-  {
-    "class": "name",
-    "start": 712,
-    "end": 717
-  },
-  {
-    "class": "punctuation",
-    "start": 717,
-    "end": 718
-  },
-  {
-    "class": "punctuation",
-    "start": 718,
-    "end": 719
-  },
-  {
-    "class": "punctuation",
-    "start": 719,
-    "end": 720
-  },
-  {
-    "class": "comment",
-    "start": 738,
-    "end": 796
-  },
-  {
-    "class": "comment",
-    "start": 813,
-    "end": 860
-  },
-  {
-    "class": "keyword",
-    "start": 877,
-    "end": 884
+    "start": 482,
+    "end": 483
   },
   {
     "class": "number",
-    "start": 885,
-    "end": 886
+    "start": 483,
+    "end": 484
+  },
+  {
+    "class": "pitch",
+    "start": 493,
+    "end": 495
   },
   {
     "class": "punctuation",
-    "start": 887,
-    "end": 888
+    "start": 495,
+    "end": 496
   },
   {
-    "class": "use",
-    "start": 909,
-    "end": 912
+    "class": "number",
+    "start": 496,
+    "end": 497
   },
   {
-    "class": "name",
-    "start": 913,
-    "end": 918
-  },
-  {
-    "class": "punctuation",
-    "start": 918,
-    "end": 919
+    "class": "pitch",
+    "start": 506,
+    "end": 508
   },
   {
     "class": "punctuation",
-    "start": 919,
-    "end": 920
+    "start": 508,
+    "end": 509
+  },
+  {
+    "class": "number",
+    "start": 509,
+    "end": 510
+  },
+  {
+    "class": "pitch",
+    "start": 519,
+    "end": 521
   },
   {
     "class": "punctuation",
-    "start": 920,
-    "end": 921
+    "start": 521,
+    "end": 522
+  },
+  {
+    "class": "number",
+    "start": 522,
+    "end": 523
   },
   {
     "class": "punctuation",
-    "start": 938,
-    "end": 939
-  },
-  {
-    "class": "comment",
-    "start": 957,
-    "end": 996
+    "start": 528,
+    "end": 529
   },
   {
     "class": "keyword",
-    "start": 1013,
-    "end": 1023
+    "start": 535,
+    "end": 540
   },
   {
     "class": "punctuation",
-    "start": 1024,
-    "end": 1025
-  },
-  {
-    "class": "use",
-    "start": 1046,
-    "end": 1049
-  },
-  {
-    "class": "name",
-    "start": 1050,
-    "end": 1055
-  },
-  {
-    "class": "punctuation",
-    "start": 1055,
-    "end": 1056
-  },
-  {
-    "class": "punctuation",
-    "start": 1056,
-    "end": 1057
-  },
-  {
-    "class": "punctuation",
-    "start": 1057,
-    "end": 1058
-  },
-  {
-    "class": "punctuation",
-    "start": 1075,
-    "end": 1076
-  },
-  {
-    "class": "comment",
-    "start": 1094,
-    "end": 1152
-  },
-  {
-    "class": "comment",
-    "start": 1169,
-    "end": 1228
-  },
-  {
-    "class": "comment",
-    "start": 1245,
-    "end": 1263
+    "start": 541,
+    "end": 542
   },
   {
     "class": "keyword",
-    "start": 1280,
+    "start": 551,
+    "end": 555
+  },
+  {
+    "class": "name",
+    "start": 556,
+    "end": 561
+  },
+  {
+    "class": "punctuation",
+    "start": 562,
+    "end": 563
+  },
+  {
+    "class": "keyword",
+    "start": 576,
+    "end": 580
+  },
+  {
+    "class": "name",
+    "start": 581,
+    "end": 587
+  },
+  {
+    "class": "punctuation",
+    "start": 587,
+    "end": 588
+  },
+  {
+    "class": "keyword",
+    "start": 602,
+    "end": 607
+  },
+  {
+    "class": "name",
+    "start": 608,
+    "end": 612
+  },
+  {
+    "class": "punctuation",
+    "start": 613,
+    "end": 614
+  },
+  {
+    "class": "comment",
+    "start": 631,
+    "end": 679
+  },
+  {
+    "class": "use",
+    "start": 696,
+    "end": 699
+  },
+  {
+    "class": "name",
+    "start": 700,
+    "end": 705
+  },
+  {
+    "class": "punctuation",
+    "start": 705,
+    "end": 706
+  },
+  {
+    "class": "punctuation",
+    "start": 706,
+    "end": 707
+  },
+  {
+    "class": "punctuation",
+    "start": 707,
+    "end": 708
+  },
+  {
+    "class": "comment",
+    "start": 726,
+    "end": 784
+  },
+  {
+    "class": "comment",
+    "start": 801,
+    "end": 848
+  },
+  {
+    "class": "keyword",
+    "start": 865,
+    "end": 872
+  },
+  {
+    "class": "number",
+    "start": 873,
+    "end": 874
+  },
+  {
+    "class": "punctuation",
+    "start": 875,
+    "end": 876
+  },
+  {
+    "class": "use",
+    "start": 897,
+    "end": 900
+  },
+  {
+    "class": "name",
+    "start": 901,
+    "end": 906
+  },
+  {
+    "class": "punctuation",
+    "start": 906,
+    "end": 907
+  },
+  {
+    "class": "punctuation",
+    "start": 907,
+    "end": 908
+  },
+  {
+    "class": "punctuation",
+    "start": 908,
+    "end": 909
+  },
+  {
+    "class": "punctuation",
+    "start": 926,
+    "end": 927
+  },
+  {
+    "class": "comment",
+    "start": 945,
+    "end": 984
+  },
+  {
+    "class": "keyword",
+    "start": 1001,
+    "end": 1011
+  },
+  {
+    "class": "punctuation",
+    "start": 1012,
+    "end": 1013
+  },
+  {
+    "class": "use",
+    "start": 1034,
+    "end": 1037
+  },
+  {
+    "class": "name",
+    "start": 1038,
+    "end": 1043
+  },
+  {
+    "class": "punctuation",
+    "start": 1043,
+    "end": 1044
+  },
+  {
+    "class": "punctuation",
+    "start": 1044,
+    "end": 1045
+  },
+  {
+    "class": "punctuation",
+    "start": 1045,
+    "end": 1046
+  },
+  {
+    "class": "punctuation",
+    "start": 1063,
+    "end": 1064
+  },
+  {
+    "class": "comment",
+    "start": 1082,
+    "end": 1140
+  },
+  {
+    "class": "comment",
+    "start": 1157,
+    "end": 1216
+  },
+  {
+    "class": "comment",
+    "start": 1233,
+    "end": 1251
+  },
+  {
+    "class": "keyword",
+    "start": 1268,
+    "end": 1274
+  },
+  {
+    "class": "keyword",
+    "start": 1275,
+    "end": 1281
+  },
+  {
+    "class": "pitch",
+    "start": 1282,
+    "end": 1284
+  },
+  {
+    "class": "punctuation",
+    "start": 1285,
     "end": 1286
   },
   {
-    "class": "keyword",
-    "start": 1287,
-    "end": 1293
-  },
-  {
-    "class": "pitch",
-    "start": 1294,
-    "end": 1296
-  },
-  {
-    "class": "punctuation",
-    "start": 1297,
-    "end": 1298
-  },
-  {
     "class": "use",
-    "start": 1319,
-    "end": 1322
+    "start": 1307,
+    "end": 1310
   },
   {
     "class": "name",
-    "start": 1323,
-    "end": 1328
+    "start": 1311,
+    "end": 1316
   },
   {
     "class": "punctuation",
-    "start": 1328,
-    "end": 1329
+    "start": 1316,
+    "end": 1317
   },
   {
     "class": "punctuation",
-    "start": 1329,
-    "end": 1330
+    "start": 1317,
+    "end": 1318
   },
   {
     "class": "punctuation",
-    "start": 1330,
-    "end": 1331
+    "start": 1318,
+    "end": 1319
   },
   {
     "class": "punctuation",
-    "start": 1348,
-    "end": 1349
+    "start": 1336,
+    "end": 1337
   },
   {
     "class": "comment",
-    "start": 1367,
-    "end": 1429
+    "start": 1355,
+    "end": 1417
   },
   {
     "class": "comment",
-    "start": 1446,
-    "end": 1488
+    "start": 1434,
+    "end": 1476
   },
   {
     "class": "use",
+    "start": 1493,
+    "end": 1496
+  },
+  {
+    "class": "name",
+    "start": 1497,
+    "end": 1502
+  },
+  {
+    "class": "punctuation",
+    "start": 1502,
+    "end": 1503
+  },
+  {
+    "class": "punctuation",
+    "start": 1503,
+    "end": 1504
+  },
+  {
+    "class": "keyword",
     "start": 1505,
-    "end": 1508
-  },
-  {
-    "class": "name",
-    "start": 1509,
-    "end": 1514
+    "end": 1509
   },
   {
     "class": "punctuation",
-    "start": 1514,
-    "end": 1515
-  },
-  {
-    "class": "punctuation",
-    "start": 1515,
-    "end": 1516
+    "start": 1510,
+    "end": 1511
   },
   {
     "class": "keyword",
-    "start": 1517,
-    "end": 1521
-  },
-  {
-    "class": "punctuation",
-    "start": 1522,
-    "end": 1523
-  },
-  {
-    "class": "keyword",
-    "start": 1544,
-    "end": 1548
+    "start": 1532,
+    "end": 1536
   },
   {
     "class": "number",
-    "start": 1549,
-    "end": 1550
+    "start": 1537,
+    "end": 1538
   },
   {
     "class": "punctuation",
-    "start": 1551,
-    "end": 1552
+    "start": 1539,
+    "end": 1540
   },
   {
     "class": "pitch",
-    "start": 1553,
-    "end": 1555
+    "start": 1541,
+    "end": 1543
   },
   {
     "class": "punctuation",
-    "start": 1555,
-    "end": 1556
+    "start": 1543,
+    "end": 1544
   },
   {
     "class": "punctuation",
-    "start": 1573,
-    "end": 1574
+    "start": 1561,
+    "end": 1562
   },
   {
     "class": "punctuation",
-    "start": 1587,
-    "end": 1588
+    "start": 1575,
+    "end": 1576
   },
   {
     "class": "punctuation",
-    "start": 1597,
-    "end": 1598
+    "start": 1585,
+    "end": 1586
   },
   {
     "class": "punctuation",
-    "start": 1603,
-    "end": 1604
+    "start": 1591,
+    "end": 1592
   },
   {
     "class": "punctuation",
-    "start": 1605,
-    "end": 1606
+    "start": 1593,
+    "end": 1594
   }
 ]

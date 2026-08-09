@@ -95,7 +95,7 @@ fn a_chant_is_one_measure_and_no_complaint() {
 /// (roadmap §2).
 #[test]
 fn unmeasured_music_is_performed_exactly() {
-    let notes = "c5 1/8; d5 1/8; e5 1/4; f5 1/2;";
+    let notes = "c5/8 d5/8 e5/4 f5/2";
     let free = score_of(&piece("tempo 1/4 = 60; meter none;", notes));
     let measured = score_of(&piece("tempo 1/4 = 60; meter 4/4;", notes));
     let frames = |score: &ScoreSnapshot| {
@@ -119,7 +119,7 @@ fn unmeasured_music_is_performed_exactly() {
 #[test]
 fn a_bar_inside_unmeasured_music_is_refused() {
     refuses(
-        &piece("meter 4/4;", "senza { bar { c5 1/4; } }"),
+        &piece("meter 4/4;", "senza { bar { c5/4 } }"),
         "a `bar` here has no measure to be one of",
     );
 }
@@ -132,7 +132,7 @@ fn a_groove_needs_a_meter_to_swing_against() {
     let source = "piece \"P\" {
         meter none;
         performance { profile p { groove swing { ratio = 0.66; } } }
-        score { part a { profile p; voice v { c5 1/8; d5 1/8; } } }
+        score { part a { profile p; voice v { c5/8 d5/8 } } }
     }";
     refuses(source, "this groove has no beat to lay itself over");
 }
@@ -142,8 +142,8 @@ fn a_groove_needs_a_meter_to_swing_against() {
 /// barlines would fall nowhere by accident.
 #[test]
 fn a_meter_of_no_beats_must_say_so() {
-    refuses(&piece("meter 0/4;", "c5 1/4;"), "this meter cannot be read");
-    refuses(&piece("meter 4/0;", "c5 1/4;"), "this meter cannot be read");
+    refuses(&piece("meter 0/4;", "c5/4"), "this meter cannot be read");
+    refuses(&piece("meter 4/0;", "c5/4"), "this meter cannot be read");
 }
 
 /// `senza { ... }` is the two meter changes a composer could write by hand,
@@ -170,8 +170,8 @@ fn senza_is_the_meter_changes_written_out() {
         (meters, onsets)
     };
     assert_eq!(
-        shape("c5 1/1; senza { d5 1/8; e5 1/8; } f5 1/1;"),
-        shape("c5 1/1; meter none; d5 1/8; e5 1/8; meter 4/4; f5 1/1;"),
+        shape("c5/1 senza { d5/8 e5/8 } f5/1"),
+        shape("c5/1 meter none; d5/8 e5/8 meter 4/4; f5/1"),
         "the same piece, said twice"
     );
 }

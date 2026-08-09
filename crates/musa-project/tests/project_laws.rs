@@ -20,7 +20,7 @@ fn album() -> PathBuf {
 /// A piece, its title, and nothing else — enough to be listed.
 fn piece(title: &str) -> String {
     format!(
-        "piece \"{title}\" {{\n    score {{\n        part p {{\n            voice v {{\n                c4 1/4;\n            }}\n        }}\n    }}\n}}\n"
+        "piece \"{title}\" {{\n    score {{\n        part p {{\n            voice v {{\n                c4/4\n            }}\n        }}\n    }}\n}}\n"
     )
 }
 
@@ -207,7 +207,7 @@ fn material_is_marked_in_use_by_the_piece_in_hand() -> Result {
     std::fs::write(dir.path().join("musa.toml"), "[project]\nname = \"Set\"\n")?;
     std::fs::write(
         dir.path().join("library/used.musa"),
-        "library {\n    motif rise() {\n        c4 1/4;\n    }\n}\n",
+        "library {\n    motif rise() {\n        c4/4\n    }\n}\n",
     )?;
     std::fs::write(dir.path().join("library/spare.musa"), "library {\n}\n")?;
     std::fs::write(

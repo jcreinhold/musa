@@ -5,6 +5,7 @@
     { "name": "declared-twice", "syntax_errors": false },
     { "name": "ending-outside-repeat", "syntax_errors": false },
     { "name": "ending-past-the-count", "syntax_errors": false },
+    { "name": "extra-semicolon", "syntax_errors": true },
     { "name": "meter-mid-bar", "syntax_errors": false },
     { "name": "missing-semicolon", "syntax_errors": true },
     { "name": "missing-unit", "syntax_errors": false },

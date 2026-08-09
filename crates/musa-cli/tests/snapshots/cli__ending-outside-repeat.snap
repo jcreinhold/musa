@@ -6,9 +6,9 @@ misplaced
 
   × an ending belongs to a repeat
     ╭─[examples/broken/ending-outside-repeat.musa:12:17]
- 11 │                     bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }
+ 11 │                     | c4/4 d4/4 e4/4 f4/4
  12 │ ╭─▶                 ending 1 {
- 13 │ │                       bar { g4 1; }
+ 13 │ │                       | g4/1
  14 │ ├─▶                 }
     · ╰──── no `repeat` encloses this
  15 │                 }

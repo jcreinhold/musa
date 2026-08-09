@@ -30,7 +30,7 @@ fn whole(n: i64) -> MusicalTime {
 
 /// Two bars in F major, then two in D minor.
 const MODULATION: &str = "piece \"p\" { meter 4/4; key f major; score { part a { voice b { \
-                          bar { c4 1; } bar { d4 1; } key d minor; bar { e4 1; } bar { f4 1; } \
+                          bar { c4/1 } bar { d4/1 } key d minor; bar { e4/1 } bar { f4/1 } \
                           } } } }";
 
 #[test]
@@ -56,7 +56,7 @@ fn a_modulation_moves_the_key_after_it() {
 fn a_modulation_that_misses_a_barline_is_refused() {
     // Half a measure in, which is where a key signature cannot be printed.
     let source = "piece \"p\" { meter 4/4; key f major; score { part a { voice b { \
-                  c4 1/2; key d minor; d4 1/2; } } } }";
+                  c4/2 key d minor; d4/2 } } } }";
     assert_eq!(errors(source), vec!["a key change must land on a barline".to_owned()]);
 }
 
@@ -65,18 +65,18 @@ fn a_clef_may_change_mid_measure_and_a_key_may_not() {
     // The same place in the same piece: the clef is accepted, the key is not.
     // This is the asymmetry the two kinds exist to keep apart.
     let clef = "piece \"p\" { meter 4/4; score { part a { clef bass; voice b { \
-                bar { c3 1/2; clef treble; c5 1/2; } } } } }";
+                bar { c3/2 clef treble; c5/2 } } } } }";
     assert_eq!(errors(clef), Vec::<String>::new());
     let key = "piece \"p\" { meter 4/4; key c major; score { part a { voice b { \
-               bar { c4 1/2; key a minor; d4 1/2; } } } } }";
+               bar { c4/2 key a minor; d4/2 } } } } }";
     assert_eq!(errors(key), vec!["a key change must land on a barline".to_owned()]);
 }
 
 #[test]
 fn a_clef_belongs_to_its_part_and_reaches_no_other() {
     let source = "piece \"p\" { meter 4/4; score { \
-                  part upper { clef treble; voice one { bar { c5 1; } bar { d5 1; } } } \
-                  part lower { clef bass; voice two { bar { c3 1; } clef tenor; bar { c4 1; } } } \
+                  part upper { clef treble; voice one { bar { c5/1 } bar { d5/1 } } } \
+                  part lower { clef bass; voice two { bar { c3/1 } clef tenor; bar { c4/1 } } } \
                   } }";
     let compilation = compiled(source);
     assert!(compilation.diagnostics().is_empty(), "{:?}", compilation.diagnostics());
@@ -91,13 +91,13 @@ fn a_clef_belongs_to_its_part_and_reaches_no_other() {
 fn a_context_change_inside_material_is_refused() {
     // A motif is played wherever it is used, so "from here on" has no here.
     let key = "piece \"p\" { meter 4/4; key c major; \
-               motif m() { key a minor; c4 1; } score { part a { voice b { use m(); } } } }";
+               motif m() { key a minor; c4/1 } score { part a { voice b { use m(); } } } }";
     assert_eq!(
         errors(key),
         vec!["a key change belongs to the piece, not to material".to_owned()]
     );
     let clef = "piece \"p\" { meter 4/4; \
-                motif m() { clef bass; c4 1; } score { part a { voice b { use m(); } } } }";
+                motif m() { clef bass; c4/1 } score { part a { voice b { use m(); } } } }";
     assert_eq!(
         errors(clef),
         vec!["a clef change belongs to the piece, not to material".to_owned()]
@@ -107,11 +107,11 @@ fn a_context_change_inside_material_is_refused() {
 #[test]
 fn two_voices_may_both_name_the_same_modulation_and_may_not_disagree() {
     let agreeing = "piece \"p\" { meter 4/4; key c major; score { part a { \
-                    voice one { bar { c4 1; } key a minor; bar { d4 1; } } \
-                    voice two { bar { e4 1; } key a minor; bar { f4 1; } } } } }";
+                    voice one { bar { c4/1 } key a minor; bar { d4/1 } } \
+                    voice two { bar { e4/1 } key a minor; bar { f4/1 } } } } }";
     assert_eq!(errors(agreeing), Vec::<String>::new());
     let disagreeing = "piece \"p\" { meter 4/4; key c major; score { part a { \
-                       voice one { bar { c4 1; } key a minor; bar { d4 1; } } \
-                       voice two { bar { e4 1; } key g major; bar { f4 1; } } } } }";
+                       voice one { bar { c4/1 } key a minor; bar { d4/1 } } \
+                       voice two { bar { e4/1 } key g major; bar { f4/1 } } } } }";
     assert_eq!(errors(disagreeing), vec!["two keys at the same place".to_owned()]);
 }

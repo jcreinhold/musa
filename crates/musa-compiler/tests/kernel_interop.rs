@@ -122,7 +122,7 @@ fn printed_kernel_text_keeps_the_terms_structure() {
 /// is `factext.rs`'s own test, because only that module can name a payload.
 #[test]
 fn a_hairpin_shape_survives_as_exact_rationals() {
-    let source = "piece \"x\" { score { part p { voice v { crescendo to ff { c4 1/4; d4 1/4; e4 1/4; } } } } }";
+    let source = "piece \"x\" { score { part p { voice v { crescendo to ff { c4/4 d4/4 e4/4 } } } } }";
     let printed = kernel_text(&SourceDocument::new(source, "hairpin"), &pinned()).expect("elaborates");
     assert!(printed.contains("hairpin cres ff "), "no hairpin printed: {printed}");
     assert!(!printed.contains('.'), "a rational was written as a decimal: {printed}");
@@ -139,7 +139,7 @@ fn a_hairpin_shape_survives_as_exact_rationals() {
 #[test]
 fn a_whole_rational_survives_the_round_trip() {
     let source = "piece \"p\" { tempo 1/1 = 60 to 30 over 2/1 \"rit.\"; meter 4/4;
-        score { part a { voice b { c5 1; c5 1; c5 1; } } } }";
+        score { part a { voice b { c5/1 c5/1 c5/1 } } } }";
     let document = SourceDocument::new(source, "whole.musa");
     let printed = kernel_text(&document, &pinned()).expect("elaborates");
     assert!(printed.contains("tempo 1=60 'rit.' to 30 over 2 "), "{printed}");

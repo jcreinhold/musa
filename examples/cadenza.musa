@@ -23,46 +23,46 @@ piece "Cadenza" {
                 dynamic mf;
 
                 // Four measured bars: 1 through 4.
-                d5 1/4;
-                f5 1/4;
-                a5 1/4;
-                d6 1/4;
+                d5/4
+                f5/4
+                a5/4
+                d6/4
 
-                c#6 1/2;
-                a5 1/2;
+                c#6/2
+                a5/2
 
-                bb5 1/4;
-                g5 1/4;
-                e5 1/4;
-                c#5 1/4;
+                bb5/4
+                g5/4
+                e5/4
+                c#5/4
 
-                d5 1/1;
+                d5/1
 
                 // Measure 5, and it is one measure however long it runs.
                 senza {
-                    d5 1/8;
-                    e5 1/8;
-                    f5 1/8;
-                    g5 1/8;
-                    a5 1/8;
-                    bb5 1/8;
-                    c#6 1/8;
-                    d6 1/8;
-                    e6 1/16;
-                    d6 1/16;
-                    c#6 1/16;
-                    d6 1/16;
-                    a5 1/4;
-                    d5 1/2;
+                    d5/8
+                    e5/8
+                    f5/8
+                    g5/8
+                    a5/8
+                    bb5/8
+                    c#6/8
+                    d6/8
+                    e6/16
+                    d6/16
+                    c#6/16
+                    d6/16
+                    a5/4
+                    d5/2
                 }
 
                 // Measure 6: the movement, where it left off.
-                d5 1/4;
-                a5 1/4;
-                f5 1/4;
-                d5 1/4;
+                d5/4
+                a5/4
+                f5/4
+                d5/4
 
-                d5 1/1;
+                d5/1
             }
         }
     }

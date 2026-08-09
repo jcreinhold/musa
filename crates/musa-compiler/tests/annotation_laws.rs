@@ -48,7 +48,7 @@ fn errors_of(source: &str) -> Vec<String> {
 fn piece(annotations: &str) -> String {
     format!(
         "piece \"P\" {{ tempo 1/4 = 60; meter 4/4; key c major; score {{ {annotations}
-            part piano {{ voice one {{ c4 1/4; d4 1/4; e4 1/4; f4 1/4; g4 1/4; a4 1/4; b4 1/4; c5 1/4; }} }} }} }}"
+            part piano {{ voice one {{ c4/4 d4/4 e4/4 f4/4 g4/4 a4/4 b4/4 c5/4 }} }} }} }}"
     )
 }
 
@@ -80,8 +80,8 @@ fn a_phrase_brackets_the_events_written_inside_it() {
     let snapshot = snapshot_of(&piece(""));
     let plain = music(&snapshot);
     let source = "piece \"P\" { tempo 1/4 = 60; meter 4/4; key c major; score {
-        part piano { voice one { phrase \"A\" { c4 1/4; d4 1/4; } e4 1/4; f4 1/4;
-            g4 1/4; a4 1/4; b4 1/4; c5 1/4; } } } }";
+        part piano { voice one { phrase \"A\" { c4/4 d4/4 } e4/4 f4/4
+            g4/4 a4/4 b4/4 c5/4 } } } }";
     let phrased = snapshot_of(source);
     assert_eq!(plain, music(&phrased));
 
@@ -132,10 +132,10 @@ fn a_piece_that_ends_in_a_rest_ends_where_the_rest_ends() {
     let ending_in_silence = |annotations: &str| {
         format!(
             "piece \"P\" {{ tempo 1/4 = 60; meter 4/4; score {{ {annotations}
-                part piano {{ voice one {{ c4 1/4; rest 1/4; rest 1/2; rest 1; }} }} }} }}"
+                part piano {{ voice one {{ c4/4 rest/4 rest/2 rest/1 }} }} }} }}"
         )
     };
-    // The music stops at 1/4; the rests carry the piece to the end of bar 2.
+    // The music stops at 1/4 the rests carry the piece to the end of bar 2.
     assert!(errors_of(&ending_in_silence("section \"Fade\" at 2:1;")).is_empty());
     let errors = errors_of(&ending_in_silence("section \"Gone\" at 3:1;"));
     assert!(

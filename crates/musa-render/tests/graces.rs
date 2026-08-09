@@ -25,9 +25,9 @@ fn piece(grace: &str) -> String {
         "piece \"Leaning\" {{ tempo 1/4 = 60; meter 4/4; key c major;
             performance {{ profile band {{ {grace} }} }}
             score {{ part p {{ profile band; voice v {{
-                c5 1/4; d5 1/4;
-                grace {{ b4; a4; }}
-                c5 1/2;
+                c5/4 d5/4
+                grace {{ b4 a4 }}
+                c5/2
             }} }} }} }}"
     )
 }
@@ -97,10 +97,10 @@ fn the_written_order_is_the_printed_order() {
     let printed = |graces: &str| {
         let text = format!(
             "piece \"Order\" {{ tempo 1/4 = 60; meter 4/4; key c major;
-                score {{ part p {{ voice v {{ grace {{ {graces} }} c5 1/1; }} }} }} }}"
+                score {{ part p {{ voice v {{ grace {{ {graces} }} c5/1 }} }} }} }}"
         );
         render(&text, NotationTarget::LilyPond)
     };
-    assert!(printed("d5; e5;").contains("\\grace { d''8 e''8 }"));
-    assert!(printed("e5; d5;").contains("\\grace { e''8 d''8 }"));
+    assert!(printed("d5 e5").contains("\\grace { d''8 e''8 }"));
+    assert!(printed("e5 d5").contains("\\grace { e''8 d''8 }"));
 }

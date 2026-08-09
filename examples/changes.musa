@@ -25,46 +25,46 @@ piece "Changes" {
 
     // The head: eight bars over a ii-V-I.
     fragment head {
-        d5 1/4;
-        f5 1/4;
-        a5 1/4;
-        c6 1/4;
-        b5 1/2;
-        g5 1/2;
-        g5 1/4;
-        b5 1/4;
-        d6 1/4;
-        f6 1/4;
-        e6 1;
-        c6 1/4;
-        a5 1/4;
-        g5 1/4;
-        e5 1/4;
-        d5 1/2;
-        f5 1/2;
-        e5 1/4;
-        g5 1/4;
-        b5 1/4;
-        d6 1/4;
-        c6 1;
+        d5/4
+        f5/4
+        a5/4
+        c6/4
+        b5/2
+        g5/2
+        g5/4
+        b5/4
+        d6/4
+        f6/4
+        e6/1
+        c6/4
+        a5/4
+        g5/4
+        e5/4
+        d5/2
+        f5/2
+        e5/4
+        g5/4
+        b5/4
+        d6/4
+        c6/1
     }
 
     // The bass line under each section. Written as material because the horn
     // does not repeat with it, and a repeat barline crosses the system.
     fragment walk_head {
         repeat 8 {
-            d3 1/4;
-            f3 1/4;
-            a3 1/4;
-            c4 1/4;
+            d3/4
+            f3/4
+            a3/4
+            c4/4
         }
     }
     fragment walk_solo {
         repeat 16 {
-            d3 1/4;
-            f3 1/4;
-            g3 1/4;
-            b3 1/4;
+            d3/4
+            f3/4
+            g3/4
+            b3/4
         }
     }
 
@@ -74,7 +74,7 @@ piece "Changes" {
                 use head;
                 improvise 16/1 over "Dm7 | G7 | Cmaj7 | Cmaj7";
                 use head;
-                c6 1 to 4/1;
+                c6/1 to 4/1
             }
         }
 
@@ -83,7 +83,7 @@ piece "Changes" {
                 use walk_head;
                 use walk_solo;
                 use walk_head;
-                c3 1 to 4/1;
+                c3/1 to 4/1
             }
         }
     }

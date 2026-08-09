@@ -30,10 +30,10 @@ impl Template {
                          part piano {{\n            \
                              clef treble;\n\n            \
                              voice upper {{\n                \
-                                 c4 1/4;\n                \
-                                 e4 1/4;\n                \
-                                 g4 1/4;\n                \
-                                 c5 1/4;\n            \
+                                 c4/4\n                \
+                                 e4/4\n                \
+                                 g4/4\n                \
+                                 c5/4\n            \
                              }}\n        \
                          }}\n    \
                      }}\n\

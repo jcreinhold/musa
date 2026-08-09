@@ -15,8 +15,8 @@ piece "twinkle" {
     score {
         part piano {
             voice melody {
-                c4 1/4; c4 1/4; g4 1/4; g4 1/4; a4 1/4; a4 1/4; g4 1/2;
-                rest 1;
+                c4/4 c4/4 g4/4 g4/4 a4/4 a4/4 g4/2
+                rest/1
             }
         }
     }

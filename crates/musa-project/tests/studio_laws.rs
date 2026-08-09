@@ -67,7 +67,7 @@ const CAREFUL: &str = r#"piece "Careful" {
     meter 4/4;
     score {
         part pad {
-            voice one { c4 1; }
+            voice one { c4/1 }
         }
     }
     studio {
@@ -96,7 +96,7 @@ const UNASSIGNED: &str = r#"piece "Unassigned" {
     meter 4/4;
     score {
         part pad {
-            voice one { c4 1; }
+            voice one { c4/1 }
         }
     }
     studio {

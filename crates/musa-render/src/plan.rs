@@ -1148,7 +1148,7 @@ impl Marks {
                 .push(articulation.mark);
         }
         // Sorted by the payload's own index, not by the order the annotation
-        // lane happens to hold: `grace { c5; d5; }` and `grace { d5; c5; }`
+        // lane happens to hold: `grace { c5 d5 }` and `grace { d5 c5 }`
         // differ only in that number (docs/kernel/05 N2), so it is what the
         // page has to print by.
         let mut graces: Vec<_> = annotations.graces().iter().collect();

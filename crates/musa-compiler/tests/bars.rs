@@ -25,7 +25,7 @@ fn bars_of(numerator: u32, denominator: u32) -> BarLines {
     } else {
         format!("{numerator}/{denominator}")
     };
-    let source = format!("piece \"p\" {{ meter {written}; score {{ part a {{ voice b {{ rest 1; }} }} }} }}");
+    let source = format!("piece \"p\" {{ meter {written}; score {{ part a {{ voice b {{ rest/1 }} }} }} }}");
     let compiled = musa_compiler::compile(
         &musa_compiler::SourceDocument::new(&source, "bars.musa"),
         &musa_compiler::CompileOptions::default(),

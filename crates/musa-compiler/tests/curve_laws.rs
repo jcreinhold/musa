@@ -42,14 +42,14 @@ fn piece(header: &str, voice: &str) -> String {
     )
 }
 
-const SIXTEEN_QUARTERS: &str = "c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4;
-     c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4;";
+const SIXTEEN_QUARTERS: &str = "c5/4 c5/4 c5/4 c5/4 c5/4 c5/4 c5/4 c5/4
+     c5/4 c5/4 c5/4 c5/4 c5/4 c5/4 c5/4 c5/4";
 
 /// Sixteen quarters with `statement` written between the `before`th and the
 /// one after it. A tempo change stands where it happens — the marking has no
 /// coordinate of its own, it has a place in the music.
 fn quarters_with_tempo(before: usize, statement: &str) -> String {
-    let mut notes: Vec<String> = std::iter::repeat_n("c5 1/4;".to_owned(), 16).collect();
+    let mut notes: Vec<String> = std::iter::repeat_n("c5/4".to_owned(), 16).collect();
     notes.insert(before, statement.to_owned());
     notes.join(" ")
 }
@@ -178,7 +178,7 @@ fn a_hairpin_leaves_the_prevailing_mark_and_arrives_at_its_own() {
         } }
         score { part p { profile album; voice v {
             dynamic p;
-            crescendo to f { c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; }
+            crescendo to f { c5/4 c5/4 c5/4 c5/4 c5/4 }
         } } } }";
     let amplitudes = amplitudes(&score_of(source));
     // Five notes, four steps of 0.2: p, and then evenly up to f.
@@ -197,8 +197,8 @@ fn a_hairpin_leaves_its_mark_in_force_after_it() {
         } }
         score { part p { profile album; voice v {
             dynamic f;
-            diminuendo to p { c5 1/4; c5 1/4; c5 1/4; }
-            c5 1/4;
+            diminuendo to p { c5/4 c5/4 c5/4 }
+            c5/4
         } } } }";
     assert_eq!(amplitudes(&score_of(source)), [1.0, 0.6, 0.2, 0.2]);
 }
@@ -211,7 +211,7 @@ fn a_hairpin_leaves_its_mark_in_force_after_it() {
 fn a_hairpin_without_a_profile_is_neutral() {
     let source = "piece \"P\" { tempo 1/4 = 60; meter 4/4; key c major;
         score { part p { voice v {
-            crescendo to f { c5 1/4; c5 1/4; c5 1/4; c5 1/4; }
+            crescendo to f { c5/4 c5/4 c5/4 c5/4 }
         } } } }";
     assert_eq!(amplitudes(&score_of(source)), [1.0, 1.0, 1.0, 1.0]);
 }
@@ -221,9 +221,9 @@ fn a_hairpin_without_a_profile_is_neutral() {
 #[test]
 fn a_hairpin_moves_no_note() {
     let plain = "piece \"P\" { tempo 1/4 = 60; meter 4/4; key c major;
-        score { part p { voice v { c5 1/4; c5 1/4; c5 1/4; c5 1/4; } } } }";
+        score { part p { voice v { c5/4 c5/4 c5/4 c5/4 } } } }";
     let with_hairpin = "piece \"P\" { tempo 1/4 = 60; meter 4/4; key c major;
-        score { part p { voice v { crescendo to f { c5 1/4; c5 1/4; c5 1/4; c5 1/4; } } } } }";
+        score { part p { voice v { crescendo to f { c5/4 c5/4 c5/4 c5/4 } } } } }";
     let times = |score: &ScoreSnapshot| {
         score
             .parts()

@@ -6,10 +6,10 @@ does-not-add-up
 
   × this bar is 1/4 too long
     ╭─[examples/broken/bar-too-long.musa:12:17]
- 11 │                 bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }
- 12 │                 bar { g4 1/4; a4 1/4; b4 1/4; c5 1/4; d5 1/4; }
-    ·                 ───────────────────────┬───────────────────────
-    ·                                        ╰── these add up to 5/4
+ 11 │                 | c4/4 d4/4 e4/4 f4/4
+ 12 │                 | g4/4 a4/4 b4/4 c5/4 d5/4
+    ·                 ─────────────┬────────────
+    ·                              ╰── these add up to 5/4
  13 │             }
     ╰────
   help: shorten a duration, or move the last of these into the next bar

@@ -151,6 +151,7 @@ mod tests {
     // Test helpers panic on statically-valid inputs: a failure is a bug in
     // the test itself, and panicking is the correct behavior there.
     #![allow(clippy::panic)]
+    #![allow(clippy::expect_used)]
 
     use std::str::FromStr as _;
 

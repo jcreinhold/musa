@@ -983,8 +983,8 @@ mod playback_identity_laws {
         "    score {\n",
         "        part piano {\n",
         "            voice upper {\n",
-        "                c4 1/4;\n",
-        "                e4 1/4;\n",
+        "                c4/4\n",
+        "                e4/4\n",
         "            }\n",
         "        }\n",
         "    }\n",
@@ -1031,7 +1031,7 @@ mod playback_identity_laws {
 
         assert!(
             session
-                .apply(ProjectCommand::SetSource(PIECE.replace("e4 1/4;", "g4 1/4;")))
+                .apply(ProjectCommand::SetSource(PIECE.replace("e4/4", "g4/4")))
                 .is_ok(),
             "still valid"
         );

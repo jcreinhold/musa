@@ -133,7 +133,6 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::DownKw => "down",
         SyntaxKind::UpKw => "up",
         SyntaxKind::RestKw => "rest",
-        SyntaxKind::ChordKw => "chord",
         SyntaxKind::RepeatKw => "repeat",
         SyntaxKind::SlurKw => "slur",
         SyntaxKind::DynamicKw => "dynamic",

@@ -29,7 +29,7 @@ fn save_writes_the_current_source_and_clears_the_unsaved_mark() -> Result {
     let path = dir.path().join("etude.musa");
     let mut session = ProjectSession::create(&path, Template::Piece)?;
 
-    let edited = session.snapshot().source().replace("c4 1/4;", "d4 1/4;");
+    let edited = session.snapshot().source().replace("c4/4", "d4/4");
     session.apply(ProjectCommand::SetSource(edited.clone()))?;
     assert!(session.snapshot().unsaved());
 
@@ -47,7 +47,7 @@ fn undoing_back_to_the_saved_text_clears_the_unsaved_mark() -> Result {
     let path = dir.path().join("etude.musa");
     let mut session = ProjectSession::create(&path, Template::Piece)?;
 
-    let edited = session.snapshot().source().replace("c4 1/4;", "d4 1/4;");
+    let edited = session.snapshot().source().replace("c4/4", "d4/4");
     session.apply(ProjectCommand::SetSource(edited))?;
     session.undo()?;
 
@@ -98,7 +98,7 @@ fn unsaved_work_leaves_a_recovery_copy_beside_the_file() -> Result {
     let mut session = ProjectSession::create(&path, Template::Piece)?;
     assert!(!recovery.exists(), "a saved session leaves nothing behind");
 
-    let edited = session.snapshot().source().replace("c4 1/4;", "d4 1/4;");
+    let edited = session.snapshot().source().replace("c4/4", "d4/4");
     session.apply(ProjectCommand::SetSource(edited.clone()))?;
 
     assert!(session.snapshot().autosaved());
@@ -116,7 +116,7 @@ fn work_lost_to_a_crash_comes_back_on_the_next_open() -> Result {
     let dir = tempfile::tempdir()?;
     let path = dir.path().join("etude.musa");
     let mut session = ProjectSession::create(&path, Template::Piece)?;
-    let edited = session.snapshot().source().replace("c4 1/4;", "d4 1/4;");
+    let edited = session.snapshot().source().replace("c4/4", "d4/4");
     session.apply(ProjectCommand::SetSource(edited.clone()))?;
     drop(session); // the crash: no save, no clean close
 
@@ -141,7 +141,7 @@ fn declining_recovery_keeps_the_file_and_forgets_the_copy() -> Result {
     let path = dir.path().join("etude.musa");
     let mut session = ProjectSession::create(&path, Template::Piece)?;
     let on_disk = session.snapshot().source().to_owned();
-    let edited = on_disk.replace("c4 1/4;", "d4 1/4;");
+    let edited = on_disk.replace("c4/4", "d4/4");
     session.apply(ProjectCommand::SetSource(edited))?;
     drop(session);
 
@@ -178,7 +178,7 @@ fn a_recovery_copy_that_matches_the_file_is_not_offered() -> Result {
 #[test]
 fn a_piece_with_no_file_autosaves_nothing() {
     let mut session = ProjectSession::new_piece(Template::Piece, "Untitled");
-    let edited = session.snapshot().source().replace("c4 1/4;", "d4 1/4;");
+    let edited = session.snapshot().source().replace("c4/4", "d4/4");
     assert!(session.apply(ProjectCommand::SetSource(edited)).is_ok());
     assert!(!session.snapshot().autosaved());
 }
@@ -238,7 +238,7 @@ fn a_library_edited_on_disk_reaches_the_piece_that_imports_it() -> Result {
     let dir = tempfile::tempdir()?;
     let library = dir.path().join("lib.musa");
     let piece = dir.path().join("piece.musa");
-    std::fs::write(&library, "library { motif tune() { c5 1/4; } }")?;
+    std::fs::write(&library, "library { motif tune() { c5/4 } }")?;
     std::fs::write(
         &piece,
         "piece \"P\" { use \"lib.musa\"; tempo 1/4 = 60; meter 4/4; key c major;
@@ -249,7 +249,7 @@ fn a_library_edited_on_disk_reaches_the_piece_that_imports_it() -> Result {
     assert!(session.snapshot().compiles());
 
     // Rename the motif out from under the piece; the next compile says so.
-    std::fs::write(&library, "library { motif other() { c5 1/4; } }")?;
+    std::fs::write(&library, "library { motif other() { c5/4 } }")?;
     session.apply(ProjectCommand::SetSource(
         std::fs::read_to_string(&piece)?.replace("key c major", "key c major;"),
     ))?;
@@ -316,7 +316,7 @@ const PIECE: &str = "piece \"Alone\" {
             clef treble;
 
             voice upper {
-                c4 1/4;
+                c4/4
             }
         }
     }

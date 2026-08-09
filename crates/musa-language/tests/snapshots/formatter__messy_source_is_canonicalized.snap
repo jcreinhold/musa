@@ -11,9 +11,9 @@ piece "Messy" {
         part p {
             clef treble;
             voice v {
-                c5 1/4;
-                chord [a3, c4, e4] 1/2;
-                rest 1/4;
+                c5 1/4
+                [a3 c4 e4]/2
+                rest 1/4
             }
         }
     }

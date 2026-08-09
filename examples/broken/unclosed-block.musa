@@ -5,4 +5,4 @@ piece "Unclosed Block" {
         part piano {
             clef treble;
             voice right {
-                c5 1/4; d5 1/4; e5 1/4; f5 1/4;
+                c5/4 d5/4 e5/4 f5/4

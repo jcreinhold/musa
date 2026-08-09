@@ -18,16 +18,16 @@ piece "Changing Meter" {
             clef treble;
 
             voice tune {
-                bar { d5 1/4; e5 1/4; f5 1/8; g5 1/8; a5 1/8; }
-                bar { a5 1/4; g5 1/4; f5 3/8; }
+                | d5/4 e5/4 f5/8 g5/8 a5/8
+                | a5/4 g5/4 f5/4.
 
                 meter 4/4;
-                bar { d5 1/4; d5 1/4; a4 1/4; d5 1/4; }
-                bar { f5 1/2; e5 1/2; }
+                | d5/4 d5/4 a4/4 d5/4
+                | f5/2 e5/2
 
                 meter 7/8;
-                bar { d5 1/8; e5 1/8; f5 1/8; g5 1/8; a5 1/8; g5 1/8; f5 1/8; }
-                bar { e5 1/4; d5 1/4; d5 3/8; }
+                | d5/8 e5/8 f5/8 g5/8 a5/8 g5/8 f5/8
+                | e5/4 d5/4 d5/4.
             }
         }
     }

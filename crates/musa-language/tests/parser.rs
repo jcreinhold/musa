@@ -146,7 +146,7 @@ fn unclosed_brace_recovers_at_eof() {
 
 #[test]
 fn lex_error_token_recovers_and_continues() {
-    let source = "piece \"x\" {\n    score {\n        part p {\n            voice v {\n                c5 *;\n                d5 1/4;\n            }\n        }\n    }\n}\n";
+    let source = "piece \"x\" {\n    score {\n        part p {\n            voice v {\n                c5 *;\n                d5/4\n            }\n        }\n    }\n}\n";
     let doc = parse(source);
     assert!(!doc.errors().is_empty());
     // The statement after the broken one still parses.
@@ -233,7 +233,7 @@ fn tuplet_fixture_parses_cleanly() {
 /// tree has to keep them apart without counting tokens.
 #[test]
 fn articulations_do_not_shadow_the_pitch_or_the_duration() {
-    let source = "piece \"x\" { motif m(root: pitch = c4, len: duration = 1/4) { root len accent staccato; } \
+    let source = "piece \"x\" { motif m(root: pitch = c4, len: duration = 1/4) { root len accent staccato } \
                   score { part p { voice v { use m(); } } } }";
     let doc = parse(source);
     assert_eq!(print_errors(&doc), "");
@@ -252,7 +252,7 @@ fn articulations_do_not_shadow_the_pitch_or_the_duration() {
 #[test]
 fn typed_views_read_the_new_statements() {
     let source = "piece \"x\" { score { part p { voice v { \
-                  dynamic mf; tuplet 3/2 { c4 1/8; } slur { d4 1/4 ~; d4 1/4; } } } } }";
+                  dynamic mf; tuplet 3/2 { c4/8 } slur { d4/4 ~ d4/4 } } } } }";
     let doc = parse(source);
     assert_eq!(print_errors(&doc), "");
     let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");
@@ -309,8 +309,8 @@ fn typed_views_read_the_new_statements() {
 #[test]
 fn the_transformations_and_their_bodies_are_typed_views() {
     let source = "piece \"x\" { score { part p { voice v { \
-                  stretch 3/2 { c4 1/4; } retrograde { d4 1/4; e4 1/4; } \
-                  invert around c5 { f4 1/4; } } } } }";
+                  stretch 3/2 { c4/4 } retrograde { d4/4 e4/4 } \
+                  invert around c5 { f4/4 } } } } }";
     let doc = parse(source);
     assert_eq!(print_errors(&doc), "");
     let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");
@@ -369,7 +369,7 @@ fn the_transformations_and_their_bodies_are_typed_views() {
 
 #[test]
 fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
-    let source = "piece \"x\" { motif m() { c4 1/4; } score { part p { voice v { \
+    let source = "piece \"x\" { motif m() { c4/4 } score { part p { voice v { \
                   use m(); use m() with { note 2 = d5; note 3 = eb5; } } } } }";
     let doc = parse(source);
     assert_eq!(print_errors(&doc), "");
@@ -506,8 +506,8 @@ fn the_header_holds_one_tempo_and_a_change_is_written_in_the_voice() {
 fn a_part_may_state_its_own_meter_and_tempo() {
     let doc = parse(
         "piece \"P\" { meter 4/4; score {
-            part a { meter 7/8; tempo 1/4 = 90; voice v { c5 7/8; } }
-            part b { voice w { meter 3/4; c5 3/4; } }
+            part a { meter 7/8; tempo 1/4 = 90; voice v { c5/2.. } }
+            part b { voice w { meter 3/4; c5/2. } }
         } }",
     );
     assert!(doc.errors().is_empty(), "{:?}", doc.errors());
@@ -528,11 +528,11 @@ fn a_tempo_marking_may_be_a_number_a_word_or_both() {
     let doc = parse(
         "piece \"T\" { tempo 1/4 = 92; meter 4/4; key c major;
             score { part p { voice v {
-                c5 1/4;
+                c5/4
                 tempo 1/4 = 132 \"Allegro vivace\";
-                d5 1/4;
+                d5/4
                 tempo \"Andante\";
-                e5 1/2;
+                e5/2
             } } } }",
     );
     assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
@@ -591,7 +591,7 @@ fn an_import_is_a_path_and_a_motif_use_is_a_call() {
 #[test]
 fn a_hairpin_names_its_direction_and_its_mark() {
     let doc = parse(
-        "piece \"P\" { score { part p { voice v {\n    crescendo to f { c5 1/4; d5 1/4; }\n    diminuendo to pp { e5 1/4; }\n} } } }",
+        "piece \"P\" { score { part p { voice v {\n    crescendo to f { c5/4 d5/4 }\n    diminuendo to pp { e5/4 }\n} } } }",
     );
     assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
     let piece = PieceDecl::from_root(&doc.syntax()).expect("a piece");
@@ -654,7 +654,7 @@ fn a_coordinate_and_a_chord_symbol_format_as_one_word() {
 #[test]
 fn bars_are_voice_items_and_a_name_is_played_without_parentheses() {
     let source = "piece \"B\" { score { part p { voice v { \
-                  bar head { c4 1/2; d4 1/2; } bar { e4 1; } use head; } } } }";
+                  bar head { c4/2 d4/2 } bar { e4/1 } use head; } } } }";
     let doc = parse(source);
     assert_eq!(print_errors(&doc), "");
     let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");
@@ -691,11 +691,152 @@ fn bars_are_voice_items_and_a_name_is_played_without_parentheses() {
 /// thing the notation has a mark for.
 #[test]
 fn a_bar_inside_a_bar_is_refused() {
-    let source = "piece \"B\" { score { part p { voice v { bar { bar { c4 1; } } } } } }";
+    let source = "piece \"B\" { score { part p { voice v { bar { bar { c4/1 } } } } } }";
     let doc = parse(source);
     assert!(
         print_errors(&doc).contains("bars do not nest"),
         "{}",
         print_errors(&doc)
     );
+}
+
+/// The `|` bar is anonymous by tree shape, not by a check.
+///
+/// `BarStmt::name()` reads the identifier tokens directly under the node. A
+/// `bar head { … }` writes its name there; a `|` bar writes nothing there,
+/// because every item it holds is a node of its own — so an identifier inside
+/// it (a pitch reference, a motif call, a dynamic) is one level down and out
+/// of reach. The property is over generated bars for that reason: the claim is
+/// not "the parser refuses a name after `|`", it is that there is nowhere to
+/// put one.
+#[test]
+fn a_pipe_bar_is_anonymous_by_tree_shape() {
+    use proptest::prelude::*;
+
+    let item = prop::sample::select(vec![
+        "c4/4",
+        "root/4",
+        "rest/4",
+        "[c4 e4]/4",
+        "c4/4 accent",
+        "dynamic mf;",
+        "use m();",
+    ]);
+    proptest!(|(items in prop::collection::vec(item, 1..=4))| {
+        let source = format!(
+            "piece \"B\" {{ score {{ part p {{ voice v {{ | {} }} }} }} }}",
+            items.join(" ")
+        );
+        let doc = parse(&source);
+        prop_assert_eq!(print_errors(&doc), "");
+        let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");
+        let voice = piece
+            .score()
+            .and_then(|score| score.parts().into_iter().next())
+            .and_then(|part| part.voices().into_iter().next())
+            .expect("voice");
+        let Some(VoiceItem::Bar(bar)) = voice.items().into_iter().next() else {
+            panic!("expected a bar");
+        };
+        prop_assert_eq!(bar.name(), None);
+    });
+}
+
+/// One `|` ends the bar before it and opens the next, so a line of them is a
+/// line of bars rather than a bar inside a bar.
+///
+/// The parser reads `|` in two places — the exit condition of a voice's item
+/// loop and its dispatch — and the exit is checked first. Were it the other
+/// way, the second `|` would open a bar inside the first and every multi-bar
+/// voice in the corpus would be refused.
+#[test]
+fn one_bar_after_another_does_not_nest() {
+    let source = "piece \"B\" { meter 4/4; score { part p { voice v { | c4/1 | d4/1 | e4/1 } } } }";
+    let doc = parse(source);
+    assert_eq!(print_errors(&doc), "");
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");
+    let voice = piece
+        .score()
+        .and_then(|score| score.parts().into_iter().next())
+        .and_then(|part| part.voices().into_iter().next())
+        .expect("voice");
+    let bars = voice
+        .items()
+        .into_iter()
+        .filter(|item| matches!(item, VoiceItem::Bar(_)))
+        .count();
+    assert_eq!(bars, 3);
+}
+
+/// A grace note ends itself, and the marks written on it are its own.
+///
+/// The block holds pitches, so a bare identifier in it is either a pitch
+/// reference or an articulation — and `grace { c5 staccato d5 }` is the case
+/// that says which: two notes, not three, and the mark belongs to the first.
+#[test]
+fn a_grace_note_carries_the_marks_written_on_it() {
+    let source = "piece \"G\" { score { part p { voice v { grace { c5 staccato d5 } c5/4 } } } }";
+    let doc = parse(source);
+    assert_eq!(print_errors(&doc), "");
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");
+    let voice = piece
+        .score()
+        .and_then(|score| score.parts().into_iter().next())
+        .and_then(|part| part.voices().into_iter().next())
+        .expect("voice");
+    let Some(VoiceItem::Grace(grace)) = voice.items().into_iter().next() else {
+        panic!("expected a grace group");
+    };
+    let written: Vec<(Option<String>, Vec<String>)> = grace
+        .notes()
+        .iter()
+        .map(|note| (note.pitch(), note.articulations()))
+        .collect();
+    assert_eq!(
+        written,
+        vec![
+            (Some("c5".to_owned()), vec!["staccato".to_owned()]),
+            (Some("d5".to_owned()), vec![]),
+        ],
+        "two notes, not a note and an articulation"
+    );
+}
+
+/// The `;` a reader who learned the old syntax types after a note is a
+/// diagnostic that carries its own repair.
+///
+/// The migration ramp, stated as a law: every stray `;` is reported with a
+/// deletion fix, and applying all of them yields a file that parses clean. A
+/// message that says "delete this" and a fix that leaves the file broken would
+/// be worse than no fix at all — the reader would apply it and still be stuck.
+#[test]
+fn a_stray_semicolon_carries_the_edit_that_removes_it() {
+    let source = "piece \"x\" { meter 4/4; score { part p { voice v { | c4/4; d4/4; e4/4; f4/4; } } } }";
+    let doc = parse(source);
+    let fixes: Vec<(usize, usize)> = doc
+        .errors()
+        .iter()
+        .inspect(|error| {
+            assert_eq!(error.message(), "a note does not end in `;`");
+            assert_eq!(
+                error.help(),
+                Some("a note, a rest and a chord end themselves; every other statement ends with `;` or `}`")
+            );
+            assert_eq!(error.fix(), Some(("remove `;`", "")), "the repair is a deletion");
+        })
+        .map(|error| {
+            (
+                u32::from(error.range().start()) as usize,
+                u32::from(error.range().end()) as usize,
+            )
+        })
+        .collect();
+    assert_eq!(fixes.len(), 4, "one per stray `;`");
+
+    // Applied back to front, so an earlier deletion does not move a later span.
+    let mut repaired = source.to_owned();
+    for (start, end) in fixes.into_iter().rev() {
+        repaired.replace_range(start..end, "");
+    }
+    assert_eq!(print_errors(&parse(&repaired)), "", "{repaired}");
 }

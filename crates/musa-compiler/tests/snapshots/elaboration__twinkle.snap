@@ -3,22 +3,22 @@ source: crates/musa-compiler/tests/elaboration.rs
 expression: form
 ---
 timeline 5 {
-  occurrence 0|0|note:c4|1/4|204|211|[] from 0 to 1/4;
+  occurrence 0|0|note:c4|1/4|200|204|[] from 0 to 1/4;
   occurrence *|*|key:c:major||103|120|[] from 0 to 5;
   occurrence *|*|meter:4/4||88|103|[] from 0 to 5;
   occurrence *|*|tempo:1/4=104::||66|88|[] from 0 to 5;
-  occurrence 0|0|note:c4|1/4|212|219|[] from 1/4 to 1/2;
-  occurrence 0|0|note:g4|1/4|220|227|[] from 1/2 to 3/4;
-  occurrence 0|0|note:g4|1/4|228|235|[] from 3/4 to 1;
-  occurrence 0|0|note:a4|1/4|260|267|[] from 1 to 5/4;
-  occurrence 0|0|note:a4|1/4|268|275|[] from 5/4 to 3/2;
-  occurrence 0|0|note:g4|1/2|276|283|[] from 3/2 to 2;
-  occurrence 0|0|note:f4|1/4|308|315|[] from 2 to 9/4;
-  occurrence 0|0|note:f4|1/4|316|323|[] from 9/4 to 5/2;
-  occurrence 0|0|note:e4|1/4|324|331|[] from 5/2 to 11/4;
-  occurrence 0|0|note:e4|1/4|332|339|[] from 11/4 to 3;
-  occurrence 0|0|note:d4|1/4|364|371|[] from 3 to 13/4;
-  occurrence 0|0|note:d4|1/4|372|379|[] from 13/4 to 7/2;
-  occurrence 0|0|note:c4|1/2|380|387|[] from 7/2 to 4;
-  occurrence 0|0|rest|1|412|419|[] from 4 to 5;
+  occurrence 0|0|note:c4|1/4|205|209|[] from 1/4 to 1/2;
+  occurrence 0|0|note:g4|1/4|210|214|[] from 1/2 to 3/4;
+  occurrence 0|0|note:g4|1/4|215|219|[] from 3/4 to 1;
+  occurrence 0|0|note:a4|1/4|238|242|[] from 1 to 5/4;
+  occurrence 0|0|note:a4|1/4|243|247|[] from 5/4 to 3/2;
+  occurrence 0|0|note:g4|1/2|248|252|[] from 3/2 to 2;
+  occurrence 0|0|note:f4|1/4|271|275|[] from 2 to 9/4;
+  occurrence 0|0|note:f4|1/4|276|280|[] from 9/4 to 5/2;
+  occurrence 0|0|note:e4|1/4|281|285|[] from 5/2 to 11/4;
+  occurrence 0|0|note:e4|1/4|286|290|[] from 11/4 to 3;
+  occurrence 0|0|note:d4|1/4|309|313|[] from 3 to 13/4;
+  occurrence 0|0|note:d4|1/4|314|318|[] from 13/4 to 7/2;
+  occurrence 0|0|note:c4|1/2|319|323|[] from 7/2 to 4;
+  occurrence 0|0|rest|1|342|348|[] from 4 to 5;
 }

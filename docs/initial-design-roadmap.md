@@ -621,10 +621,10 @@ piece "Glass Mountain" {
 
     motif sigh(root: pitch = e5) {
         root 1/2;
-        rest 1/4;
-        c5   1/2;
-        b4   1/4;
-        a4   1/2;
+        rest/4
+        c5/2
+        b4/4
+        a4/2
     }
 
     score {
@@ -642,17 +642,17 @@ piece "Glass Mountain" {
 
         part strings {
             voice upper {
-                c5 1;
-                c5 1;
-                a4 1;
-                g#4 1;
+                c5/1
+                c5/1
+                a4/1
+                g#4/1
             }
 
             voice bass {
-                a2 1;
-                f2 1;
-                d2 1;
-                e2 1;
+                a2/1
+                f2/1
+                d2/1
+                e2/1
             }
         }
     }
@@ -720,24 +720,30 @@ Inside a `voice` or `motif`, items occur sequentially unless an explicit paralle
 
 ### Bars are written down, and checked
 
-A run of events may be enclosed in a bar, which asserts that it fills one measure of the prevailing meter:
+A run of events may be enclosed in a bar, which asserts that it fills one measure of the prevailing meter. A `|`
+draws the barline the way notation draws it, and a bar that has earned a name says so with the keyword:
 
 ```text
-bar { c5 1/4; e5 1/4; g5 1/4; e5 1/4; }
-bar head { a4 1/2; c5 1/2; }             // sounds here, and binds `head`
-use head;                                // plays it again, anywhere later
+| c5/4 e5/4 g5/4 e5/4
+bar head { a4/2 c5/2 }             // sounds here, and binds `head`
+use head;                          // plays it again, anywhere later
 ```
 
 A bar means nothing. Its contents elaborate to exactly what they would elaborate to without it, and there is no bar in
-the kernel, in `ScoreSnapshot`, or in the notation plan — §12.1 already computes where the barlines fall. What the brace
+the kernel, in `ScoreSnapshot`, or in the notation plan — §12.1 already computes where the barlines fall. What the bar
 buys is the assertion: a voice is a flat stream of durations, so a dropped `1/4` in the fourth bar is not an error, it
 is every later barline in the part being one quarter out of place, silently. The bar is the composer stating the
 intention the compiler can then check, and it is the first construct in the language that can be wrong in a way the
 compiler can point at.
 
+The brace was never what bought that, which is why the anonymous bar no longer has one: a barline is a separator in
+every notation a player has ever read, and the assertion survives the change intact. The keyword stays for the *named*
+bar, because a name is an address and an address needs something to enclose.
+
 Only the bar's own total is checked, not where it starts; inside a motif the absolute position is unknowable, which is
 the point of a motif. Bars do not nest. Bars and loose events mix freely in one voice — adopting bars is per-bar and
-voluntary.
+voluntary. A `|` bar runs to the next `|`, to the end of its block, or to the first statement that is itself at least a
+bar long: another bar, a `repeat`, an `ending`, a `senza`, a `meter` or a `key`.
 
 A named bar joins the namespace motifs live in, as material with no parameters, and `use name;` plays it. One namespace,
 because "material with a name" is one idea and the composer who mistypes it deserves one diagnostic that knows about
@@ -798,9 +804,9 @@ performance plays it `n` times. `ending k { … }` gives the passes that differ:
 
 ```text
 repeat 2 {
-    bar { a4 1/2; c5 1/2; }
-    ending 1 { bar { e5 1; } }
-    ending 2 { bar { a5 1; } }
+    bar { a4/2 c5/2 }
+    ending 1 { bar { e5/1 } }
+    ending 2 { bar { a5/1 } }
 }
 ```
 
@@ -825,7 +831,7 @@ whole piece rather than a bracket over a passage, and it belongs with the form m
 Do not use implicit chord inference from simultaneous cursor positions. Chords are explicit:
 
 ```text
-chord [a3, c4, e4] 1/2;
+[a3 c4 e4]/2
 ```
 
 Independent lines are explicit voices.

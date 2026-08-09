@@ -10,17 +10,17 @@ misplaced
  11 │                 repeat 2 {
     ·                        ┬
     ·                        ╰── 2 passes
- 12 │                     bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }
+ 12 │                     | c4/4 d4/4 e4/4 f4/4
  13 │                     ending 1 {
- 14 │                         bar { g4 1; }
+ 14 │                         | g4/1
  15 │                     }
  16 │                     ending 2 {
- 17 │                         bar { a4 1; }
+ 17 │                         | a4/1
  18 │                     }
  19 │                     ending 3 {
     ·                            ┬
     ·                            ╰── no pass plays this
- 20 │                         bar { b4 1; }
+ 20 │                         | b4/1
     ╰────
   help: write `repeat 3`, or delete this ending
 

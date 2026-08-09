@@ -147,13 +147,13 @@ fn inserting_a_bar_above_a_site_leaves_its_decision_alone() {
     let edited = LOOP_LENGTHS
         .replace(
             "voice kick {",
-            "voice kick {\n                bar kick_intro { c2 1/4; c2 1/4; c2 1/4; c2 1/4; }",
+            "voice kick {\n                bar kick_intro { c2/4 c2/4 c2/4 c2/4 }",
         )
         .replace(
             "voice hats {",
-            "voice hats {\n                bar hats_intro { rest 1; }",
+            "voice hats {\n                bar hats_intro { rest/1 }",
         )
-        .replace("voice line {", "voice line {\n                bar bass_intro { a1 1; }");
+        .replace("voice line {", "voice line {\n                bar bass_intro { a1/1 }");
     assert_ne!(edited, LOOP_LENGTHS, "the edit did not apply");
     let after = under(&edited, "loop-lengths", &Realization::seeded(7));
     assert_eq!(after.diagnostics().len(), 0, "{:?}", after.diagnostics());
@@ -204,7 +204,7 @@ fn voices_that_write_the_same_ranged_repeat_agree_on_it() {
 /// rather than compiled as silence.
 #[test]
 fn a_backwards_range_is_refused() {
-    let source = "piece \"x\" { score { part p { voice v { repeat 6 to 2 { c4 1/4; } } } } }";
+    let source = "piece \"x\" { score { part p { voice v { repeat 6 to 2 { c4/4 } } } } }";
     let compiled = under(source, "backwards", &Realization::seeded(1));
     assert!(
         compiled

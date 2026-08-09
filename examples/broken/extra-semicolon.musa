@@ -1,0 +1,17 @@
+// The semicolon a composer types out of habit. An event is self-delimiting —
+// a pitch and a duration are the two things it starts with, and nothing else
+// in a voice starts that way — so the `;` after one is punctuation standing
+// for nothing. The diagnostic offers to delete it, which is the whole
+// migration story for music written before the barline arrived.
+piece "One Too Many" {
+    tempo quarter = 96;
+    meter 4/4;
+
+    score {
+        part piano {
+            voice right {
+                | c4/4; d4/4; e4/4; f4/4;
+            }
+        }
+    }
+}

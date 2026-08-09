@@ -59,7 +59,7 @@ fn snapshot(compilation: Compilation) -> ScoreSnapshot {
         .unwrap_or_else(|| panic!("expected a snapshot; errors: {messages:?}"))
 }
 
-const MOTIFS: &str = "library { motif rise() { c5 1/4; d5 1/4; e5 1/4; g5 1/4; } }";
+const MOTIFS: &str = "library { motif rise() { c5/4 d5/4 e5/4 g5/4 } }";
 
 fn piece(body: &str) -> String {
     format!(
@@ -99,7 +99,7 @@ fn an_imported_motif_sounds_exactly_as_it_would_written_in_place() {
     ));
     let local = snapshot(compile_with(
         "p.musa",
-        &piece("motif rise() { c5 1/4; d5 1/4; e5 1/4; g5 1/4; }"),
+        &piece("motif rise() { c5/4 d5/4 e5/4 g5/4 }"),
         &[],
     ));
     let events = |score: &ScoreSnapshot| {
@@ -169,7 +169,7 @@ fn a_piece_cannot_be_imported() {
         &piece("use \"other.musa\";"),
         &[(
             "other.musa",
-            "piece \"Other\" { tempo 1/4 = 60; meter 4/4; key c major; score { part p { voice v { c5 1; } } } }",
+            "piece \"Other\" { tempo 1/4 = 60; meter 4/4; key c major; score { part p { voice v { c5/1 } } } }",
         )],
     );
     let messages = errors(&compilation);
@@ -186,7 +186,7 @@ fn a_piece_cannot_be_imported() {
 fn two_declarations_of_one_name_is_an_error_not_a_shadow() {
     let compilation = compile_with(
         "p.musa",
-        &piece("use \"lib.musa\"; motif rise() { c5 1; }"),
+        &piece("use \"lib.musa\"; motif rise() { c5/1 }"),
         &[("lib.musa", MOTIFS)],
     );
     let messages = errors(&compilation);
@@ -207,7 +207,7 @@ fn a_library_studio_may_not_wire_a_score_it_cannot_see() {
         &piece("use \"lib.musa\";"),
         &[(
             "lib.musa",
-            "library { motif rise() { c5 1; } studio { assign p -> reed; } }",
+            "library { motif rise() { c5/1 } studio { assign p -> reed; } }",
         )],
     );
     let messages = errors(&compilation);
@@ -227,7 +227,7 @@ fn a_broken_library_is_reported_by_name() {
     let compilation = compile_with(
         "p.musa",
         &piece("use \"lib.musa\";"),
-        &[("lib.musa", "library { motif rise( { c5 1; } }")],
+        &[("lib.musa", "library { motif rise( { c5/1 } }")],
     );
     let messages = errors(&compilation);
     assert!(

@@ -64,19 +64,19 @@ pub fn apply_edits(source: &str, edits: &[TextEdit]) -> String {
 /// A statement to write into a voice, in the language's own terms.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Statement {
-    /// `g#4 1/8;`
+    /// `g#4/8`
     Note {
         /// Written pitch, as it is spelled (`g#4`, `bb3`).
         pitch: String,
         /// Notated duration (`1/8`, `3/8`, `1`).
         duration: String,
     },
-    /// `rest 1/4;`
+    /// `rest/4`
     Rest {
         /// Notated duration.
         duration: String,
     },
-    /// `chord [a3, c4, e4] 1/2;`
+    /// `[a3 c4 e4]/2`
     Chord {
         /// Written pitches, low to high as the composer entered them.
         pitches: Vec<String>,
@@ -92,13 +92,62 @@ impl Statement {
             Self::Note {
                 ref pitch,
                 ref duration,
-            } => format!("{pitch} {duration};"),
-            Self::Rest { ref duration } => format!("rest {duration};"),
+            } => format!("{pitch}{}", spell_duration(duration)),
+            Self::Rest { ref duration } => format!("rest{}", spell_duration(duration)),
             Self::Chord {
                 ref pitches,
                 ref duration,
-            } => format!("chord [{}] {duration};", pitches.join(", ")),
+            } => format!("[{}]{}", pitches.join(" "), spell_duration(duration)),
         }
+    }
+}
+
+/// A notated duration, written the way a composer writes it on a note.
+///
+/// `1/4` is `/4`, `3/8` is `/4.` and `7/16` is `/4..` — the short form says
+/// the note value and the dots, which is what the notation says. A duration
+/// the short form cannot spell is written long with a space in front of it,
+/// so a tuplet member (`1/12`) and a value only a tie can write (`5/8`) still
+/// come out as something the parser reads back.
+///
+/// The result carries whatever separates it from the pitch, so `format!
+/// ("{pitch}{}", spell_duration(d))` is a note however the duration spells.
+/// Public because the compiler's bar-length fix offers a filling rest, and
+/// two spellings of one duration must not disagree.
+pub fn spell_duration(written: &str) -> String {
+    let Some((numerator, denominator)) = fraction(written) else {
+        return format!(" {written}");
+    };
+    // `/N` with `d` dots is `(2^(d+1) - 1) / (N · 2^d)`, so the numerator says
+    // how many dots there are and the denominator says which note value they
+    // are written on.
+    for dots in 0..=MAX_DOTS {
+        let scale = 1u64 << dots;
+        let expected = (2u64 << dots).saturating_sub(1);
+        if numerator != expected {
+            continue;
+        }
+        if denominator.checked_rem(scale) != Some(0) {
+            continue;
+        }
+        let Some(value) = denominator.checked_div(scale) else {
+            continue;
+        };
+        return format!("/{value}{}", ".".repeat(usize::from(dots)));
+    }
+    format!(" {written}")
+}
+
+/// How many augmentation dots the short form will write. Three is already
+/// past what an engraver prints.
+const MAX_DOTS: u8 = 3;
+
+/// A written duration as a fraction, or `None` when it is a parameter's name
+/// or something else the short form has no opinion about.
+fn fraction(written: &str) -> Option<(u64, u64)> {
+    match written.split_once('/') {
+        Some((numerator, denominator)) => Some((numerator.trim().parse().ok()?, denominator.trim().parse().ok()?)),
+        None => Some((written.trim().parse().ok()?, 1)),
     }
 }
 
@@ -676,22 +725,26 @@ fn set_duration(root: &SyntaxNode, at: u32, duration: &str) -> Result<Vec<TextEd
         return Err(EditError::NoDuration { at });
     }
     let range = duration_range(&statement).ok_or(EditError::NoDuration { at })?;
-    Ok(vec![TextEdit::new(range, duration)])
+    Ok(vec![TextEdit::new(range, spell_duration(duration))])
 }
 
 /// Where a statement's written duration is, so that setting it replaces the
 /// whole of it and nothing else.
 ///
 /// The range covers the value and stops at `to`: rewriting `1/4` in
-/// `g4 1/4 to 2/1;` must leave the performer's bound alone. Taking the range
+/// `g4 1/4 to 2/1` must leave the performer's bound alone. Taking the range
 /// from the `Duration` node rather than from the first numeral is what makes
 /// the short form safe — the `4` in `c4/4` is a numeral like any other, and
 /// a token search would find the one in the pitch.
+///
+/// It starts at the *end of the token before it*, so the space in `c4 1/4`
+/// belongs to the edit. That is what lets one replacement write either form:
+/// `/4` closes the gap and ` 5/8` opens one.
 fn duration_range(statement: &SyntaxNode) -> Option<TextRange> {
     let node = statement
         .children()
         .find(|child| child.kind() == SyntaxKind::Duration)?;
-    let mut range: Option<TextRange> = None;
+    let mut end = None;
     for token in node.children_with_tokens().filter_map(SyntaxElement::into_token) {
         if token.kind() == SyntaxKind::ToKw {
             break;
@@ -699,12 +752,29 @@ fn duration_range(statement: &SyntaxNode) -> Option<TextRange> {
         if token.kind().is_trivia() {
             continue;
         }
-        range = Some(range.map_or_else(
-            || token.text_range(),
-            |so_far: TextRange| so_far.cover(token.text_range()),
-        ));
+        end = Some(token.text_range().end());
     }
-    range
+    let mut start = node.text_range().start();
+    let mut before = node.prev_sibling_or_token();
+    while let Some(element) = before {
+        if !element.kind().is_trivia() {
+            break;
+        }
+        start = element.text_range().start();
+        before = element.prev_sibling_or_token();
+    }
+    Some(TextRange::new(start, end?))
+}
+
+/// Whether a statement is written inside a bar, and so on a line shared with
+/// the rest of that bar.
+fn in_a_bar(statement: &SyntaxNode) -> bool {
+    statement.parent().is_some_and(|parent| {
+        // A `|` bar holds its items directly; a `bar { … }` holds a block.
+        parent.kind() == SyntaxKind::BarStmt
+            || (parent.kind() == SyntaxKind::Block
+                && parent.parent().is_some_and(|above| above.kind() == SyntaxKind::BarStmt))
+    })
 }
 
 /// The whitespace a line starts with, which a new line of it should match.
@@ -726,15 +796,25 @@ fn insert(root: &SyntaxNode, source: &str, anchor: &Anchor, statement: &Statemen
     let text = statement.text();
     match *anchor {
         Anchor::Before { at } => {
-            let range = trimmed(&statement_at(root, at)?);
-            let indent = indent_at(source, u32::from(range.start()));
+            let statement = statement_at(root, at)?;
+            let range = trimmed(&statement);
             let point = TextRange::empty(range.start());
+            if in_a_bar(&statement) {
+                return Ok(vec![TextEdit::new(point, format!("{text} "))]);
+            }
+            let indent = indent_at(source, u32::from(range.start()));
             Ok(vec![TextEdit::new(point, format!("{text}\n{indent}"))])
         }
         Anchor::After { at } => {
-            let range = trimmed(&statement_at(root, at)?);
-            let indent = indent_at(source, u32::from(range.start()));
+            let statement = statement_at(root, at)?;
+            let range = trimmed(&statement);
             let point = TextRange::empty(range.end());
+            // A bar is written on one line, so a note joins the line it
+            // belongs to rather than splitting the bar in two.
+            if in_a_bar(&statement) {
+                return Ok(vec![TextEdit::new(point, format!(" {text}"))]);
+            }
+            let indent = indent_at(source, u32::from(range.start()));
             Ok(vec![TextEdit::new(point, format!("\n{indent}{text}"))])
         }
         Anchor::EndOfVoice { ref part, ref voice } => {
@@ -742,10 +822,19 @@ fn insert(root: &SyntaxNode, source: &str, anchor: &Anchor, statement: &Statemen
                 part: part.clone(),
                 voice: voice.clone(),
             })?;
-            match block.items().last().map(|item| trimmed(item_syntax(item))) {
+            match block.items().last() {
+                // A voice whose last thing is a bar: the note joins that bar,
+                // after everything already written in it.
+                Some(crate::ast::VoiceItem::Bar(bar)) => {
+                    let end = bar
+                        .content_end()
+                        .map_or_else(|| trimmed(bar.syntax()).end(), TextSize::from);
+                    Ok(vec![TextEdit::new(TextRange::empty(end), format!(" {text}"))])
+                }
                 // A voice that already has music: the new statement joins the
                 // line after its last one, at the same indent.
-                Some(range) => {
+                Some(item) => {
+                    let range = trimmed(item_syntax(item));
                     let indent = indent_at(source, u32::from(range.start()));
                     Ok(vec![TextEdit::new(
                         TextRange::empty(range.end()),
@@ -814,6 +903,25 @@ fn find_voice(root: &SyntaxNode, part: &str, voice: &str) -> Option<VoiceDecl> {
         .find(|declared| declared.name().as_deref() == Some(voice))
 }
 
+/// What a statement belongs to, looking past the bar it is written in.
+///
+/// Two notes in different bars of one voice are siblings for the purpose of
+/// lifting them into a motif: a barline is a mark inside the voice, not a
+/// scope. Comparing parents directly would refuse the normal case the moment
+/// the music has barlines at all.
+fn enclosing_run(statement: &SyntaxNode) -> Option<SyntaxNode> {
+    let mut node = statement.parent()?;
+    loop {
+        let in_a_bar = node.kind() == SyntaxKind::BarStmt
+            || (node.kind() == SyntaxKind::Block
+                && node.parent().is_some_and(|above| above.kind() == SyntaxKind::BarStmt));
+        if !in_a_bar {
+            return Some(node);
+        }
+        node = node.parent()?;
+    }
+}
+
 fn extract_motif(
     root: &SyntaxNode,
     source: &str,
@@ -823,7 +931,7 @@ fn extract_motif(
 ) -> Result<Vec<TextEdit>, EditError> {
     let head = statement_at(root, first)?;
     let tail = statement_at(root, last)?;
-    if head.parent() != tail.parent() {
+    if enclosing_run(&head) != enclosing_run(&tail) {
         return Err(EditError::NotSiblings);
     }
     let head = trimmed(&head);

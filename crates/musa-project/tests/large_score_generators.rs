@@ -87,16 +87,12 @@ const CODA_BARS: usize = 4;
 /// pair of halves, a 3:2 tuplet plus two quarters, and four accented quarters.
 const CODA_NOTES: usize = 4 + 2 + 5 + 4;
 
-/// Dynamic markings each line writes in the coda.
-const CODA_DYNAMICS: usize = 2;
-
-/// The written duration of one note in a line of this density, in whole notes.
+/// The written duration of one note in a line of this density.
+///
+/// A density is notes per bar of 4/4, which is the note value itself: eight
+/// notes to the bar are eighths, one is a whole.
 fn written(density: usize) -> String {
-    if density == 1 {
-        "1".to_owned()
-    } else {
-        format!("1/{density}")
-    }
+    format!("/{density}")
 }
 
 /// The `index`-th pitch of a line: up the scale, an octave at a time.
@@ -139,10 +135,10 @@ fn large_score() -> String {
         let _ = writeln!(source, "            voice {} {{", line.voice);
         let duration = written(line.density);
         for bar in 0..BARS {
-            source.push_str("               ");
+            source.push_str("                |");
             for beat in 0..line.density {
                 let index = bar.saturating_mul(line.density).saturating_add(beat);
-                let _ = write!(source, " {} {duration};", pitch(line, index));
+                let _ = write!(source, " {}{duration}", pitch(line, index));
             }
             source.push('\n');
         }
@@ -162,28 +158,31 @@ fn coda(line: &Line) -> String {
     let start = BARS.saturating_mul(line.density);
     let note = |offset: usize| pitch(line, start.saturating_add(offset));
     let mut bars = String::with_capacity(512);
-    let _ = writeln!(bars, "\n                dynamic mf;");
-    let _ = writeln!(bars, "                slur {{");
+    // A dynamic belongs to the note it starts at, so it is written inside the
+    // bar it applies from — where notation prints it — rather than between
+    // two bars, where a `|` bar would take it as the end of the one above.
+    bars.push_str("\n                | dynamic mf; slur {");
     for offset in 0..4 {
-        let _ = writeln!(bars, "                    {} 1/4;", note(offset));
+        let _ = write!(bars, " {}/4", note(offset));
     }
-    let _ = writeln!(bars, "                }}");
-    // A tie across the bar line: one sound, two written halves.
-    let _ = writeln!(bars, "                {} 1/2 ~;", note(4));
-    let _ = writeln!(bars, "                {} 1/2;", note(4));
-    let _ = writeln!(bars, "                tuplet 3/2 {{");
+    bars.push_str(" }\n");
+    // A tie: one sound, two written halves.
+    let _ = writeln!(bars, "                | {}/2 ~ {}/2", note(4), note(4));
+    bars.push_str("                | tuplet 3/2 {");
     for offset in 5..8 {
-        let _ = writeln!(bars, "                    {} 1/4;", note(offset));
+        let _ = write!(bars, " {}/4", note(offset));
     }
-    let _ = writeln!(bars, "                }}");
+    bars.push_str(" }");
     for offset in 8..10 {
-        let _ = writeln!(bars, "                {} 1/4;", note(offset));
+        let _ = write!(bars, " {}/4", note(offset));
     }
-    let _ = writeln!(bars, "                dynamic f;");
+    bars.push('\n');
+    bars.push_str("                | dynamic f;");
     for (index, offset) in (10..14).enumerate() {
-        let articulation = if index % 2 == 0 { " accent" } else { " staccato" };
-        let _ = writeln!(bars, "                {} 1/4{articulation};", note(offset));
+        let articulation = if index % 2 == 0 { ">" } else { " staccato" };
+        let _ = write!(bars, " {}/4{articulation}", note(offset));
     }
+    bars.push('\n');
     bars
 }
 
@@ -242,9 +241,9 @@ fn shared_score() -> String {
     for line in &LINES {
         let duration = written(line.density);
         let _ = writeln!(source, "    motif {}_bar() {{", line.voice);
-        source.push_str("       ");
+        source.push_str("        |");
         for beat in 0..line.density {
-            let _ = write!(source, " {} {duration};", pitch(line, beat));
+            let _ = write!(source, " {}{duration}", pitch(line, beat));
         }
         source.push_str(
             "
@@ -366,19 +365,20 @@ fn the_shared_fixture_denotes_the_large_fixture_without_its_coda() {
 #[test]
 fn large_score_is_the_size_the_budgets_assume() {
     let source = large_score();
-    // Every statement ends in a semicolon: the three that set up the piece,
-    // one clef per part, the dynamics in each line's coda, and the notes.
-    let overhead = LINES
-        .len()
-        .saturating_mul(CODA_DYNAMICS.saturating_add(1))
-        .saturating_add(3);
-    let notes = source.matches(';').count().saturating_sub(overhead);
+    // Counted off the compiled score rather than off the punctuation: an
+    // event carries no terminator of its own any more, and counting the
+    // events is what the sentence above actually means.
+    let session = ProjectSession::from_text(source, "large-score.musa");
+    let snapshot = session.snapshot();
+    let notes = snapshot.score().map_or(0, |score| score.events.len());
     let per_bar = LINES.iter().map(|line| line.density).sum::<usize>();
     let plain = BARS.saturating_mul(per_bar);
-    let coda = LINES.len().saturating_mul(CODA_NOTES);
+    // One event short of the written notes per line: the tied pair is two
+    // noteheads and one sound, which is what a tie is.
+    let coda = LINES.len().saturating_mul(CODA_NOTES.saturating_sub(1));
     assert_eq!(notes, plain.saturating_add(coda));
     assert_eq!(plain, 1500);
-    assert_eq!(coda, 60);
+    assert_eq!(coda, 56);
 }
 
 /// The coda is there for the constructs, so assert them by name: a fixture
@@ -392,9 +392,9 @@ fn large_score_exercises_the_expressive_notation_path() {
         ("tuplet 3/2 {", LINES.len()),
         ("dynamic mf;", LINES.len()),
         ("dynamic f;", LINES.len()),
-        (" ~;", LINES.len()),
-        (" accent;", LINES.len().saturating_mul(2)),
-        (" staccato;", LINES.len().saturating_mul(2)),
+        (" ~ ", LINES.len()),
+        (">", LINES.len().saturating_mul(2)),
+        (" staccato", LINES.len().saturating_mul(2)),
     ] {
         assert_eq!(
             source.matches(construct).count(),

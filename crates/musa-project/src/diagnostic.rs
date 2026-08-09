@@ -195,7 +195,10 @@ pub fn explain(code: &str) -> Option<&'static str> {
              parser noticed: a `;` left off the end of one statement is flagged at the \
              end of that statement, not at the word on the next line. Where the repair \
              is one character in one place, the report carries it as a fix.\n\n\
-             musa is made of declarations, each ending in a `;` or a `}`."
+             A note, a rest and a chord end themselves; every other statement ends \
+             with a `;` or a `}`. An event is a word — `c4/4`, `rest/8`, `[c3 g3]/2` \
+             — and nothing else in a voice begins the way one does, so there is \
+             nothing for a `;` after it to separate."
         }
         musa_compiler::Code::UnknownName => {
             "A name used here is not declared anywhere the piece can see it.\n\n\
@@ -204,7 +207,7 @@ pub fn explain(code: &str) -> Option<&'static str> {
              declared *after* the one that calls it is a different problem, reported \
              as `misplaced`.\n\n\
              Broken:\n    \
-             motif sigh(root: pitch) { root 1/8; root 1/8; }\n    \
+             motif sigh(root: pitch) { root/8 root/8 }\n    \
              voice right { use sigh(c5); use sihg(e5); }\n\n\
              Fixed:\n    \
              voice right { use sigh(c5); use sigh(e5); }"
@@ -255,9 +258,9 @@ pub fn explain(code: &str) -> Option<&'static str> {
              a barline, and a piece that looks right on your screen and wrong on \
              someone else's.\n\n\
              Broken, in 4/4 — five quarters in a four-quarter measure:\n    \
-             voice right { c5 1/4; d5 1/4; e5 1/4; f5 1/4; g5 1/4; }\n\n\
+             voice right { c5/4 d5/4 e5/4 f5/4 g5/4 }\n\n\
              Fixed:\n    \
-             voice right { c5 1/4; d5 1/4; e5 1/4; f5 1/4; rest 3/4; }"
+             voice right { c5/4 d5/4 e5/4 f5/4 rest/2. }"
         }
         musa_compiler::Code::Import => {
             "A `use` cannot be followed.\n\n\
@@ -290,10 +293,10 @@ pub fn explain(code: &str) -> Option<&'static str> {
              again, and hunts the score for a use that does not exist. Use it, or \
              delete it — the offered fix deletes the declaration.\n\n\
              Broken:\n    \
-             motif answer() { g4 1/4; a4 1/4; }\n    \
-             voice right { c4 1/4; }\n\n\
+             motif answer() { g4/4 a4/4 }\n    \
+             voice right { c4/4 }\n\n\
              Fixed:\n    \
-             voice right { use answer(); c4 1/4; }"
+             voice right { use answer(); c4/4 }"
         }
         musa_compiler::Code::UnassignedPatch => {
             "A `patch` is declared in the studio and no `assign` connects it to a \

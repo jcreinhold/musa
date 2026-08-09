@@ -12,11 +12,11 @@ piece "Glass Mountain" {
     key a minor;
 
     motif sigh(root: pitch = e5) {
-        root 1/2;
-        rest 1/4;
-        c5 1/2;
-        b4 1/4;
-        a4 1/2;
+        root/2
+        rest/4
+        c5/2
+        b4/4
+        a4/2
     }
 
     score {
@@ -34,10 +34,10 @@ piece "Glass Mountain" {
 
         part strings {
             voice upper {
-                c5 1;
-                c5 1;
-                a4 1;
-                g#4 1;
+                c5/1
+                c5/1
+                a4/1
+                g#4/1
             }
 
             voice bass {
@@ -45,10 +45,10 @@ piece "Glass Mountain" {
                 // wash rather than four separate chords, and the pedal is
                 // where a page says so.
                 mark pedal {
-                    a2 1;
-                    f2 1;
-                    d2 1;
-                    e2 1;
+                    a2/1
+                    f2/1
+                    d2/1
+                    e2/1
                 }
             }
         }
@@ -120,22 +120,22 @@ piece "Glass Mountain" {
         (note_statement
           (identifier)
           (duration
-            (rational)))
+            (integer)))
         (rest_statement
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))))
+            (integer)))))
     (score_declaration
       (part_declaration
         (identifier)

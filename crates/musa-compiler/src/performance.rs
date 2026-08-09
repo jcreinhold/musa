@@ -849,8 +849,8 @@ fn hairpin_curves(score: &ScoreSnapshot) -> std::collections::HashMap<EventId, R
 ///
 /// The sort is by `index`, the ordering the payload carries (docs/kernel/05
 /// N2). Normalization sorts occurrences by span then payload key, and every
-/// grace in a group shares a span — so `grace { c5; d5; }` and
-/// `grace { d5; c5; }` are told apart by nothing else. Reading the lane's
+/// grace in a group shares a span — so `grace { c5 d5 }` and
+/// `grace { d5 c5 }` are told apart by nothing else. Reading the lane's
 /// order instead would make the sound depend on projection order, which is
 /// exactly the thing `index` exists to stop.
 fn grace_index(score: &ScoreSnapshot) -> std::collections::HashMap<EventId, Vec<&crate::score::GraceNote>> {

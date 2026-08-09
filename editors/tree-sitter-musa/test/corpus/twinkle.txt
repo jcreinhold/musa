@@ -13,11 +13,11 @@ piece "twinkle" {
     score {
         part piano {
             voice melody {
-                bar { c4 1/4; c4 1/4; g4 1/4; g4 1/4; }
-                bar { a4 1/4; a4 1/4; g4 1/2; }
-                bar { f4 1/4; f4 1/4; e4 1/4; e4 1/4; }
-                bar { d4 1/4; d4 1/4; c4 1/2; }
-                bar { rest 1; }
+                | c4/4 c4/4 g4/4 g4/4
+                | a4/4 a4/4 g4/2
+                | f4/4 f4/4 e4/4 e4/4
+                | d4/4 d4/4 c4/2
+                | rest/1
             }
         }
     }
@@ -47,71 +47,66 @@ piece "twinkle" {
         (voice_declaration
           (identifier)
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (rest_statement
-                (duration
-                  (integer))))))))))
+            (rest_statement
+              (duration
+                (integer)))))))))

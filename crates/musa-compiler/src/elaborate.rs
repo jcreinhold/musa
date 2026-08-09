@@ -96,7 +96,7 @@ pub(crate) enum FactKind {
         /// Load-bearing rather than decorative. N2 orders occurrences by
         /// `(start, end, payload key)`, and every grace note in one group
         /// shares a start and an end — so without the index in the payload,
-        /// `grace { c5; d5; }` and `grace { d5; c5; }` normalize to the same
+        /// `grace { c5 d5 }` and `grace { d5 c5 }` normalize to the same
         /// timeline and the kernel calls them equal music. They are not. The
         /// alternative, giving them nonzero written durations so they sort,
         /// would put performed time into the notation.
@@ -1453,7 +1453,7 @@ fn articulations_of(resolver: &mut Resolver, names: &[String], span: SourceSpan)
     articulations
 }
 
-/// `grace { c5; d5; }` — the group as point occurrences at one instant.
+/// `grace { c5 d5 }` — the group as point occurrences at one instant.
 ///
 /// Every occurrence gets `Span::ZERO`, so the group advances the cursor by
 /// nothing and the note written after it starts exactly where it would have
@@ -1471,7 +1471,7 @@ fn elaborate_grace(
         resolver.report(
             Diagnostic::error(Code::NotAValue, "this grace group has no notes")
                 .at(span, "nothing to play")
-                .help("write the pitches it leans on: `grace { c5; d5; }`"),
+                .help("write the pitches it leans on: `grace { c5 d5 }`"),
         );
         return Segment::empty();
     }
@@ -1543,7 +1543,7 @@ fn elaborate_mark(
         resolver.report(
             Diagnostic::error(Code::Misplaced, format!("`{mark}` is written on a note"))
                 .at(span, "not a statement of its own")
-                .help(format!("write it after a duration: `g4 1/4 {mark};`")),
+                .help(format!("write it after a duration: `g4 1/4 {mark}`")),
         );
         return Segment::empty();
     }
@@ -1920,7 +1920,7 @@ fn resolve_scaled_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &Expa
 
 /// A written duration and the freedom written on it.
 ///
-/// `g4 1/4 to 2/1;` is a quarter the performer may hold to a double whole. The
+/// `g4/4 to 2/1` is a quarter the performer may hold to a double whole. The
 /// returned duration is what the note *sounds* — the realization's answer, so
 /// everything after it lands where it should — and the [`crate::score::FreeDuration`]
 /// is what recovers the symbol. Roadmap §2's row with both values kept, rather
@@ -2741,7 +2741,7 @@ fn check_bar_length(resolver: &mut Resolver, bar: &PendingBar, bars: &crate::Bar
         // guesses is worse than a help line that does not (prompt 56).
         diagnostic.help("shorten a duration, or move the last of these into the next bar")
     } else {
-        let rest = format!("rest {};", fraction(difference));
+        let rest = format!("rest{}", musa_language::spell_duration(&fraction(difference)));
         let filled = diagnostic.help(format!("add `{rest}`, or lengthen one of the durations"));
         match bar.content_end {
             Some(at) => filled.fix(format!("add `{rest}`"), SourceSpan::new(at, at), format!(" {rest}")),

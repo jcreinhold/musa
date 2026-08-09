@@ -38,7 +38,6 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("down", SyntaxKind::DownKw),
     ("up", SyntaxKind::UpKw),
     ("rest", SyntaxKind::RestKw),
-    ("chord", SyntaxKind::ChordKw),
     ("repeat", SyntaxKind::RepeatKw),
     ("bar", SyntaxKind::BarKw),
     ("senza", SyntaxKind::SenzaKw),
@@ -218,7 +217,6 @@ impl TokenClass {
             | SyntaxKind::DownKw
             | SyntaxKind::UpKw
             | SyntaxKind::RestKw
-            | SyntaxKind::ChordKw
             | SyntaxKind::RepeatKw
             | SyntaxKind::SlurKw
             | SyntaxKind::DynamicKw

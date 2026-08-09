@@ -15,10 +15,10 @@ piece "Variation" {
     key c major;
 
     motif theme() {
-        c5 1/4;
-        e5 1/4;
-        g5 1/4;
-        e5 1/4;
+        c5/4
+        e5/4
+        g5/4
+        e5/4
     }
 
     score {
@@ -84,19 +84,19 @@ piece "Variation" {
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))))
+            (integer)))))
     (score_declaration
       (part_declaration
         (identifier)

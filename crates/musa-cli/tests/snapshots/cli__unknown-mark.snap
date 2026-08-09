@@ -7,9 +7,9 @@ unknown-word
   × `stacatto` is not a mark
    ╭─[examples/broken/unknown-mark.musa:7:17]
  6 │             voice line {
- 7 │                 c5 1/4 stacatto; d5 1/4; e5 1/4; f5 1/4;
-   ·                 ────────┬───────
-   ·                         ╰── unknown mark
+ 7 │                 c5/4 stacatto d5/4 e5/4 f5/4
+   ·                 ──────┬──────
+   ·                       ╰── unknown mark
  8 │             }
    ╰────
   help: did you mean `staccato`?

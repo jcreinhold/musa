@@ -22,9 +22,9 @@ piece "Étude en sol — 𝄞" {
     key g major;
 
     motif sigh(root: pitch = d5) {
-        root 1/4;
-        c5 1/4;
-        b4 1/4;
+        root/4
+        c5/4
+        b4/4
     }
 
     score {
@@ -36,16 +36,16 @@ piece "Étude en sol — 𝄞" {
 
             voice lead {
                 phrase "première idée" {
-                    g4 1/4;
-                    b4 1/4;
-                    d5 1/4;
+                    g4/4
+                    b4/4
+                    d5/4
                 }
                 use sigh();
                 use sigh(g5);
                 phrase "cadence — ♭VII" {
-                    f5 1/4;
-                    d5 1/4;
-                    g4 1/4;
+                    f5/4
+                    d5/4
+                    g4/4
                 }
             }
         }
@@ -89,15 +89,15 @@ piece "Étude en sol — 𝄞" {
         (note_statement
           (identifier)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))))
+            (integer)))))
     (score_declaration
       (section_statement
         (string)
@@ -121,15 +121,15 @@ piece "Étude en sol — 𝄞" {
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))))
+                  (integer)))))
           (use_statement
             (identifier))
           (use_statement
@@ -141,12 +141,12 @@ piece "Étude en sol — 𝄞" {
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational))))))))))
+                  (integer))))))))))

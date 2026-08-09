@@ -81,7 +81,7 @@ fn allocator_reuses_fully_released_voices() {
 
 /// A single A4 quarter note.
 fn a4_events() -> Vec<PerformanceEvent> {
-    events_of("piece \"a4\" { tempo quarter = 60; meter 4/4; key c major; score { part p { voice v { a4 1; } } } }")
+    events_of("piece \"a4\" { tempo quarter = 60; meter 4/4; key c major; score { part p { voice v { a4/1 } } } }")
 }
 
 #[test]

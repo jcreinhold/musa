@@ -53,7 +53,7 @@ fn mobile(fragments: &str, names: &str) -> String {
     )
 }
 
-const THREE: &str = "fragment alpha { c5 1; } fragment beta { d5 1; } fragment gamma { e5 1; }";
+const THREE: &str = "fragment alpha { c5/1 } fragment beta { d5/1 } fragment gamma { e5/1 }";
 
 /// A mobile plays all of its material, once each: what is chosen is the order
 /// and nothing else.
@@ -133,7 +133,7 @@ fn a_mobile_of_one_fragment_is_refused() {
 /// mistake.
 #[test]
 fn a_mobile_cannot_arrange_a_motif() {
-    let source = mobile("motif alpha() { c5 1; } fragment beta { d5 1; }", "alpha; beta;");
+    let source = mobile("motif alpha() { c5/1 } fragment beta { d5/1 }", "alpha; beta;");
     let compiled = under(&source, 1);
     assert!(
         compiled
@@ -150,7 +150,7 @@ fn a_mobile_cannot_arrange_a_motif() {
 #[test]
 fn a_held_note_is_drawn_at_its_written_value_and_sounds_the_decision() {
     let source = "piece \"H\" { tempo 1/4 = 60; meter 4/4; key c major;
-        score { part p { voice v { c5 1/4 to 2/1; } } } }";
+        score { part p { voice v { c5/4 to 2/1 } } } }";
     for seed in 0..32u64 {
         let snapshot = snapshot_of(source, seed);
         let events: Vec<_> = snapshot
@@ -182,7 +182,7 @@ fn a_held_note_is_drawn_at_its_written_value_and_sounds_the_decision() {
 #[test]
 fn a_backwards_hold_is_refused() {
     let source = "piece \"H\" { tempo 1/4 = 60; meter 4/4; key c major;
-        score { part p { voice v { c5 2/1 to 1/4; } } } }";
+        score { part p { voice v { c5 2/1 to 1/4 } } } }";
     let compiled = under(source, 1);
     assert!(
         compiled
@@ -199,7 +199,7 @@ fn a_backwards_hold_is_refused() {
 #[test]
 fn an_improvised_frame_takes_its_time_and_plays_no_notes() {
     let source = "piece \"I\" { tempo 1/4 = 60; meter 4/4; key c major;
-        score { part p { voice v { improvise 2/1 over \"Dm7 | G7\"; c5 1; } } } }";
+        score { part p { voice v { improvise 2/1 over \"Dm7 | G7\"; c5/1 } } } }";
     let snapshot = snapshot_of(source, 1);
     let onsets: Vec<num_rational::Ratio<i64>> = snapshot
         .parts()
@@ -238,10 +238,7 @@ fn editing_one_figure_leaves_the_other_fifty_two_decisions_alone() {
         "one per figure — the pulse repeats a fixed number of times and decides nothing"
     );
 
-    let edited = IN_C.replace(
-        "fragment figure_forty {",
-        "fragment figure_forty { g5 1/4; g5 1/4; g5 1/4; g5 1/4;",
-    );
+    let edited = IN_C.replace("fragment figure_forty {", "fragment figure_forty { g5/4 g5/4 g5/4 g5/4");
     assert_ne!(edited, IN_C, "the edit did not apply");
     let after = under(&edited, 42);
     assert!(!after.has_errors(), "{:?}", after.diagnostics());

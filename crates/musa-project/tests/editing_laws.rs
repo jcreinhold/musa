@@ -52,7 +52,7 @@ fn source(session: &ProjectSession) -> String {
 fn an_authored_note_changes_only_itself() {
     let mut session = session("glass-mountain.musa");
     let facts = score_facts(&session);
-    let id = nth_event(&facts, "upper", 3); // `g#4 1;`
+    let id = nth_event(&facts, "upper", 3); // `g#4/1`
 
     let impact = session
         .edit_impact(&EditCommand::ChangePitch {
@@ -73,14 +73,14 @@ fn an_authored_note_changes_only_itself() {
             mode: GeneratedEditMode::EditDefinition,
         }))
         .expect("a legal respelling");
-    assert_eq!(source(&session), before.replace("g#4 1;", "g4 1;"));
+    assert_eq!(source(&session), before.replace("g#4/1", "g4/1"));
 }
 
 #[test]
 fn an_impact_carries_the_text_the_edit_would_write() {
     let session = session("glass-mountain.musa");
     let facts = score_facts(&session);
-    let id = nth_event(&facts, "upper", 3); // `g#4 1;`
+    let id = nth_event(&facts, "upper", 3); // `g#4/1`
 
     let impact = session
         .edit_impact(&EditCommand::ChangePitch {
@@ -135,7 +135,7 @@ fn what_an_impact_says_it_writes_is_what_applying_it_writes() {
 fn a_generated_note_states_its_consequence_in_counts() {
     let session = session("glass-mountain.musa");
     let facts = score_facts(&session);
-    // The violin's third note: `c5 1/2;` in the motif body, reached through
+    // The violin's third note: `c5/2` in the motif body, reached through
     // the first `use sigh()`.
     let id = nth_event(&facts, "lead", 2);
 
@@ -173,8 +173,8 @@ fn editing_a_definition_changes_every_occurrence_at_once() {
         .expect("editing the definition is supported");
 
     let text = source(&session);
-    assert!(text.contains("        d5 1/2;"), "the motif body was rewritten");
-    assert!(!text.contains("        c5 1/2;"));
+    assert!(text.contains("        d5/2"), "the motif body was rewritten");
+    assert!(!text.contains("        c5/2"));
 
     // And the music followed: both occurrences now sound the new pitch.
     let after = score_facts(&session);
@@ -199,7 +199,7 @@ fn editing_a_definition_changes_every_occurrence_at_once() {
 fn specializing_a_note_changes_that_occurrence_and_no_other() {
     let mut session = session("glass-mountain.musa");
     let facts = score_facts(&session);
-    let id = nth_event(&facts, "lead", 2); // the `c5 1/2;` of the plain occurrence
+    let id = nth_event(&facts, "lead", 2); // the `c5/2` of the plain occurrence
 
     // The core says the choice is available before it is offered.
     let impact = session
@@ -225,7 +225,7 @@ fn specializing_a_note_changes_that_occurrence_and_no_other() {
         text.contains("use sigh() with { note 3 = d5; }"),
         "the occurrence carries its own override:\n{text}"
     );
-    assert!(text.contains("        c5 1/2;"), "and the motif is untouched");
+    assert!(text.contains("        c5/2"), "and the motif is untouched");
 
     // One occurrence sounds the new note; the transposed one still sounds
     // what the motif says, a fifth down.
@@ -250,7 +250,7 @@ fn a_call_that_runs_more_than_once_says_why_it_cannot_be_specialized() {
     // promises not to do, so it is refused rather than approximated.
     let mut session = ProjectSession::from_text(
         r#"piece "Etude" {
-    motif sigh() { e5 1/2; c5 1/2; }
+    motif sigh() { e5/2 c5/2 }
     score { part piano { voice right { repeat 2 { use sigh(); } } } }
 }
 "#
@@ -326,7 +326,7 @@ fn a_note_can_be_entered_at_the_end_of_a_voice_and_undone() {
     // the voice, and a span someone wrote does not capture what is typed next.
     let seen = source(&session);
     assert!(
-        seen.contains("                    e2 1;\n                }\n                a2 1;"),
+        seen.contains("                    e2/1\n                }\n                a2/1"),
         "{seen}"
     );
     assert_ne!(session.snapshot().revision(), revision);
@@ -358,7 +358,7 @@ fn insertion_after_a_generated_event_writes_after_the_use_it_came_from() {
 
     // Not inside the motif: the statement the composer can see at that place
     // in the score is the `use`, so that is what the new note follows.
-    assert!(source(&session).contains("                use sigh();\n                rest 1/4;"));
+    assert!(source(&session).contains("                use sigh();\n                rest/4"));
 }
 
 #[test]
@@ -380,7 +380,7 @@ fn extracting_a_motif_names_a_run_and_leaves_a_use() {
         .expect("four authored notes are extractable");
 
     let text = source(&session);
-    assert!(text.contains("    motif ground() {\n        a2 1;\n        f2 1;\n        d2 1;\n        e2 1;\n    }"));
+    assert!(text.contains("    motif ground() {\n        a2/1\n        f2/1\n        d2/1\n        e2/1\n    }"));
     // The run came out from under a pedal, so the `use` goes back under it:
     // the span covers the same music it covered before it was named.
     assert!(
@@ -454,7 +454,7 @@ fn an_event_from_a_stale_selection_is_refused_by_id() {
 fn a_duration_change_is_the_same_transaction_as_a_pitch_change() {
     let mut session = session("glass-mountain.musa");
     let facts = score_facts(&session);
-    let id = nth_event(&facts, "lead", 1); // the motif's `rest 1/4;`
+    let id = nth_event(&facts, "lead", 1); // the motif's `rest/4`
 
     let impact = session
         .edit_impact(&EditCommand::ChangeDuration {
@@ -472,7 +472,7 @@ fn a_duration_change_is_the_same_transaction_as_a_pitch_change() {
             mode: GeneratedEditMode::EditDefinition,
         }))
         .expect("a legal renotation");
-    assert!(source(&session).contains("        rest 1/8;"));
+    assert!(source(&session).contains("        rest/8"));
 }
 
 // --- The piece's own facts (prompt 54) -------------------------------------
@@ -520,7 +520,7 @@ fn an_unnamed_header_is_inserted_in_order() {
 #[test]
 fn the_first_header_lands_after_the_brace() {
     let mut session = ProjectSession::from_text(
-        "piece \"Bare\" {\n    score { part p { voice v { c4 1/4; } } }\n}\n".to_owned(),
+        "piece \"Bare\" {\n    score { part p { voice v { c4/4 } } }\n}\n".to_owned(),
         "bare.musa",
     );
     session

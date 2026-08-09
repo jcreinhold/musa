@@ -256,8 +256,6 @@ enum RawToken {
     UpKw,
     #[token("rest", priority = 3)]
     RestKw,
-    #[token("chord", priority = 3)]
-    ChordKw,
     #[token("repeat", priority = 3)]
     RepeatKw,
     #[token("slur", priority = 3)]
@@ -400,7 +398,6 @@ impl RawToken {
             | Self::DownKw
             | Self::UpKw
             | Self::RestKw
-            | Self::ChordKw
             | Self::RepeatKw
             | Self::SlurKw
             | Self::DynamicKw
@@ -500,7 +497,6 @@ impl RawToken {
             Self::DownKw => SyntaxKind::DownKw,
             Self::UpKw => SyntaxKind::UpKw,
             Self::RestKw => SyntaxKind::RestKw,
-            Self::ChordKw => SyntaxKind::ChordKw,
             Self::RepeatKw => SyntaxKind::RepeatKw,
             Self::SlurKw => SyntaxKind::SlurKw,
             Self::DynamicKw => SyntaxKind::DynamicKw,
@@ -568,7 +564,7 @@ mod tests {
         assert_eq!(rebuilt, source, "tokens must tile the source");
     }
 
-    const SAMPLE: &str = "piece \"Glass Mountain\" {\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    score {\n        part strings {\n            voice upper {\n                c5 1;\n                c5 1/2; // held\n                a4 1;\n                g#4 1;\n            }\n        }\n    }\n}\n";
+    const SAMPLE: &str = "piece \"Glass Mountain\" {\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    score {\n        part strings {\n            voice upper {\n                c5/1\n                c5/2 // held\n                a4/1\n                g#4/1\n            }\n        }\n    }\n}\n";
 
     #[test]
     fn structural_source_lexes_and_round_trips() {
@@ -776,7 +772,7 @@ mod tests {
 
     #[test]
     fn unterminated_block_comment_extends_to_eof() {
-        let source = "c5 1; /* abc d5";
+        let source = "c5/1 /* abc d5";
         let lexed = lex(source);
         assert_eq!(lexed.errors().len(), 1);
         assert_eq!(

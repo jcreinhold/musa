@@ -2,8 +2,8 @@
 source: crates/musa-language/tests/parser.rs
 expression: print_tree(&doc.syntax())
 ---
-Root@0..305
-  PieceDecl@0..304
+Root@0..272
+  PieceDecl@0..271
     PieceKw@0..5 "piece"
     Whitespace@5..6 " "
     String@6..24 "\"Little Invention\""
@@ -34,12 +34,12 @@ Root@0..305
       Whitespace@75..76 " "
       Identifier@76..81 "major"
       Semicolon@81..82 ";"
-    ScoreDecl@82..302
+    ScoreDecl@82..269
       Whitespace@82..88 "\n\n    "
       ScoreKw@88..93 "score"
       Whitespace@93..94 " "
       LBrace@94..95 "{"
-      PartDecl@95..296
+      PartDecl@95..263
         Whitespace@95..104 "\n        "
         PartKw@104..108 "part"
         Whitespace@108..109 " "
@@ -52,84 +52,67 @@ Root@0..305
           Whitespace@133..134 " "
           Identifier@134..140 "treble"
           Semicolon@140..141 ";"
-        VoiceDecl@141..286
+        VoiceDecl@141..253
           Whitespace@141..155 "\n\n            "
           VoiceKw@155..160 "voice"
           Whitespace@160..161 " "
           Identifier@161..166 "right"
           Whitespace@166..167 " "
           LBrace@167..168 "{"
-          BarStmt@168..224
-            Whitespace@168..185 "\n                "
-            BarKw@185..188 "bar"
-            Block@188..224
-              Whitespace@188..189 " "
-              LBrace@189..190 "{"
-              NoteStmt@190..198
-                Whitespace@190..191 " "
-                PitchLiteral@191..193 "c4"
-                Duration@193..197
-                  Whitespace@193..194 " "
-                  Rational@194..197 "1/4"
-                Semicolon@197..198 ";"
-              NoteStmt@198..206
-                Whitespace@198..199 " "
-                PitchLiteral@199..201 "d4"
-                Duration@201..205
-                  Whitespace@201..202 " "
-                  Rational@202..205 "1/4"
-                Semicolon@205..206 ";"
-              NoteStmt@206..214
-                Whitespace@206..207 " "
-                PitchLiteral@207..209 "e4"
-                Duration@209..213
-                  Whitespace@209..210 " "
-                  Rational@210..213 "1/4"
-                Semicolon@213..214 ";"
-              NoteStmt@214..222
-                Whitespace@214..215 " "
-                PitchLiteral@215..217 "f4"
-                Duration@217..221
-                  Whitespace@217..218 " "
-                  Rational@218..221 "1/4"
-                Semicolon@221..222 ";"
-              Whitespace@222..223 " "
-              RBrace@223..224 "}"
-          BarStmt@224..272
-            Whitespace@224..241 "\n                "
-            BarKw@241..244 "bar"
-            Block@244..272
-              Whitespace@244..245 " "
-              LBrace@245..246 "{"
-              NoteStmt@246..254
-                Whitespace@246..247 " "
-                PitchLiteral@247..249 "g4"
-                Duration@249..253
-                  Whitespace@249..250 " "
-                  Rational@250..253 "1/2"
-                Semicolon@253..254 ";"
-              NoteStmt@254..262
-                Whitespace@254..255 " "
-                PitchLiteral@255..257 "a4"
-                Duration@257..261
-                  Whitespace@257..258 " "
-                  Rational@258..261 "1/4"
-                Semicolon@261..262 ";"
-              NoteStmt@262..270
-                Whitespace@262..263 " "
-                PitchLiteral@263..265 "b4"
-                Duration@265..269
-                  Whitespace@265..266 " "
-                  Rational@266..269 "1/4"
-                Semicolon@269..270 ";"
-              Whitespace@270..271 " "
-              RBrace@271..272 "}"
-          Whitespace@272..285 "\n            "
-          RBrace@285..286 "}"
-        Whitespace@286..295 "\n        "
-        RBrace@295..296 "}"
-      Whitespace@296..301 "\n    "
-      RBrace@301..302 "}"
-    Whitespace@302..303 "\n"
-    RBrace@303..304 "}"
-  Whitespace@304..305 "\n"
+          Whitespace@168..185 "\n                "
+          BarStmt@185..206
+            Pipe@185..186 "|"
+            NoteStmt@186..191
+              Whitespace@186..187 " "
+              PitchLiteral@187..189 "c4"
+              Duration@189..191
+                Slash@189..190 "/"
+                Integer@190..191 "4"
+            NoteStmt@191..196
+              Whitespace@191..192 " "
+              PitchLiteral@192..194 "d4"
+              Duration@194..196
+                Slash@194..195 "/"
+                Integer@195..196 "4"
+            NoteStmt@196..201
+              Whitespace@196..197 " "
+              PitchLiteral@197..199 "e4"
+              Duration@199..201
+                Slash@199..200 "/"
+                Integer@200..201 "4"
+            NoteStmt@201..206
+              Whitespace@201..202 " "
+              PitchLiteral@202..204 "f4"
+              Duration@204..206
+                Slash@204..205 "/"
+                Integer@205..206 "4"
+          Whitespace@206..223 "\n                "
+          BarStmt@223..239
+            Pipe@223..224 "|"
+            NoteStmt@224..229
+              Whitespace@224..225 " "
+              PitchLiteral@225..227 "g4"
+              Duration@227..229
+                Slash@227..228 "/"
+                Integer@228..229 "2"
+            NoteStmt@229..234
+              Whitespace@229..230 " "
+              PitchLiteral@230..232 "a4"
+              Duration@232..234
+                Slash@232..233 "/"
+                Integer@233..234 "4"
+            NoteStmt@234..239
+              Whitespace@234..235 " "
+              PitchLiteral@235..237 "b4"
+              Duration@237..239
+                Slash@237..238 "/"
+                Integer@238..239 "4"
+          Whitespace@239..252 "\n            "
+          RBrace@252..253 "}"
+        Whitespace@253..262 "\n        "
+        RBrace@262..263 "}"
+      Whitespace@263..268 "\n    "
+      RBrace@268..269 "}"
+    Whitespace@269..270 "\n"
+    RBrace@270..271 "}"
+  Whitespace@271..272 "\n"

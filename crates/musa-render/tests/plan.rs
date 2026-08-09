@@ -43,7 +43,7 @@ fn example_plans_snapshot() {
 
 #[test]
 fn whole_note_splits_across_measures_with_ties() {
-    let source = "piece \"x\" { meter 2/4; score { part p { voice v { c4 1; } } } }";
+    let source = "piece \"x\" { meter 2/4; score { part p { voice v { c4/1 } } } }";
     let Some(planned) = plan(source) else { return };
     let Some(staff) = planned.staves().first() else { return };
     assert_eq!(staff.measures().len(), 2);
@@ -66,14 +66,14 @@ fn whole_note_splits_across_measures_with_ties() {
 
 #[test]
 fn beaming_follows_the_meter() {
-    let Some(four_four) = plan(
-        "piece \"x\" { meter 4/4; score { part p { voice v { c4 1/8; c4 1/8; c4 1/8; c4 1/8; c4 1/8; c4 1/8; c4 1/8; c4 1/8; } } } }",
-    ) else {
+    let Some(four_four) =
+        plan("piece \"x\" { meter 4/4; score { part p { voice v { c4/8 c4/8 c4/8 c4/8 c4/8 c4/8 c4/8 c4/8 } } } }")
+    else {
         return;
     };
-    let Some(six_eight) = plan(
-        "piece \"x\" { meter 6/8; score { part p { voice v { c4 1/8; c4 1/8; c4 1/8; c4 1/8; c4 1/8; c4 1/8; } } } }",
-    ) else {
+    let Some(six_eight) =
+        plan("piece \"x\" { meter 6/8; score { part p { voice v { c4/8 c4/8 c4/8 c4/8 c4/8 c4/8 } } } }")
+    else {
         return;
     };
     let groups = |planned: &NotationPlan| -> Vec<Option<u32>> {
@@ -100,7 +100,7 @@ fn beaming_follows_the_meter() {
 /// graph, a bar of it beamed as seven separate eighths.
 #[test]
 fn an_irregular_meter_beams_in_the_groups_it_is_counted_in() {
-    let eighths = "c4/8; c4/8; c4/8; c4/8; c4/8; c4/8; c4/8;";
+    let eighths = "c4/8 c4/8 c4/8 c4/8 c4/8 c4/8 c4/8";
     let Some(seven_eight) = plan(&std::format!(
         "piece \"x\" {{ meter 7/8; score {{ part p {{ voice v {{ {eighths} }} }} }} }}"
     )) else {
@@ -121,7 +121,7 @@ fn an_irregular_meter_beams_in_the_groups_it_is_counted_in() {
 
 #[test]
 fn non_binary_durations_need_tuplets() {
-    let source = "piece \"x\" { meter 4/4; score { part p { voice v { c4 1/3; } } } }";
+    let source = "piece \"x\" { meter 4/4; score { part p { voice v { c4/3 } } } }";
     let Some(score) = compile_score(source) else { return };
     let planned = plan_notation(&score, &NotationOptions::default());
     assert!(planned.is_err());
@@ -197,8 +197,8 @@ proptest! {
 #[expect(clippy::expect_used, reason = "a fixture that does not compile is a failed test")]
 fn a_meter_change_after_a_repeat_is_numbered_twice() {
     let source = "piece \"p\" { meter 4/4; score { part a { voice b { \
-                  repeat 2 { bar { c4 1; } bar { d4 1; } } \
-                  meter 3/4; bar { e4 3/4; } } } } }";
+                  repeat 2 { bar { c4/1 } bar { d4/1 } } \
+                  meter 3/4; bar { e4/2. } } } } }";
     let score = compile_score(source).expect("it compiles");
     let played = score.bars(musa_compiler::Scope::Piece);
     let at = musa_compiler::MusicalTime::new(Ratio::from_integer(4));

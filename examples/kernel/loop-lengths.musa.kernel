@@ -5,48 +5,48 @@
 kernel "Loop Lengths" {
   composition main : Timeline[ScoreFact] =
     let shared0 = timeline 1 {
-        occurrence "voice 0 0 note c2 1/4 [816:823 #4]" from 0 to 1/4;
-        occurrence "voice 0 0 note c2 1/4 [844:851 #4]" from 1/4 to 1/2;
-        occurrence "voice 0 0 note c2 1/4 [872:879 #4]" from 1/2 to 3/4;
-        occurrence "voice 0 0 note c2 1/4 [900:907 #4]" from 3/4 to 1;
+        occurrence "voice 0 0 note c2 1/4 [816:820 #4]" from 0 to 1/4;
+        occurrence "voice 0 0 note c2 1/4 [841:845 #4]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note c2 1/4 [866:870 #4]" from 1/2 to 3/4;
+        occurrence "voice 0 0 note c2 1/4 [891:895 #4]" from 3/4 to 1;
       }
     in let shared1 = timeline 1 {
-        occurrence "voice 0 0 note c2 1/4 [978:985 #4]" from 0 to 1/4;
-        occurrence "voice 0 0 note c2 1/4 [1006:1013 #4]" from 1/4 to 1/2;
-        occurrence "voice 0 0 note c2 1/8 [1034:1041 #4]" from 1/2 to 5/8;
-        occurrence "voice 0 0 note c2 1/8 [1062:1069 #4]" from 5/8 to 3/4;
-        occurrence "voice 0 0 note c2 1/4 [1090:1097 #4]" from 3/4 to 1;
+        occurrence "voice 0 0 note c2 1/4 [966:970 #4]" from 0 to 1/4;
+        occurrence "voice 0 0 note c2 1/4 [991:995 #4]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note c2 1/8 [1016:1020 #4]" from 1/2 to 5/8;
+        occurrence "voice 0 0 note c2 1/8 [1041:1045 #4]" from 5/8 to 3/4;
+        occurrence "voice 0 0 note c2 1/4 [1066:1070 #4]" from 3/4 to 1;
       }
     in let shared2 = timeline 1 {
-        occurrence "voice 0 1 rest 1/8 [1203:1212 #5]" from 0 to 1/8;
-        occurrence "voice 0 1 note f#3 1/8 [1233:1241 #5]" from 1/8 to 1/4;
-        occurrence "voice 0 1 rest 1/8 [1262:1271 #5]" from 1/4 to 3/8;
-        occurrence "voice 0 1 note f#3 1/8 [1292:1300 #5]" from 3/8 to 1/2;
-        occurrence "voice 0 1 rest 1/8 [1321:1330 #5]" from 1/2 to 5/8;
-        occurrence "voice 0 1 note f#3 1/8 [1351:1359 #5]" from 5/8 to 3/4;
-        occurrence "voice 0 1 rest 1/8 [1380:1389 #5]" from 3/4 to 7/8;
-        occurrence "voice 0 1 note f#3 1/8 [1410:1418 #5]" from 7/8 to 1;
+        occurrence "voice 0 1 rest 1/8 [1176:1182 #5]" from 0 to 1/8;
+        occurrence "voice 0 1 note f#3 1/8 [1203:1208 #5]" from 1/8 to 1/4;
+        occurrence "voice 0 1 rest 1/8 [1229:1235 #5]" from 1/4 to 3/8;
+        occurrence "voice 0 1 note f#3 1/8 [1256:1261 #5]" from 3/8 to 1/2;
+        occurrence "voice 0 1 rest 1/8 [1282:1288 #5]" from 1/2 to 5/8;
+        occurrence "voice 0 1 note f#3 1/8 [1309:1314 #5]" from 5/8 to 3/4;
+        occurrence "voice 0 1 rest 1/8 [1335:1341 #5]" from 3/4 to 7/8;
+        occurrence "voice 0 1 note f#3 1/8 [1362:1367 #5]" from 7/8 to 1;
       }
     in let shared3 = timeline 1 {
-        occurrence "voice 0 1 note f#3 1/8 [1489:1497 #5]" from 0 to 1/8;
-        occurrence "voice 0 1 note f#3 1/8 [1518:1526 #5]" from 1/8 to 1/4;
-        occurrence "voice 0 1 note f#3 1/8 [1547:1555 #5]" from 1/4 to 3/8;
-        occurrence "voice 0 1 note f#3 1/8 [1576:1584 #5]" from 3/8 to 1/2;
-        occurrence "voice 0 1 note f#3 1/8 [1605:1613 #5]" from 1/2 to 5/8;
-        occurrence "voice 0 1 note f#3 1/8 [1634:1642 #5]" from 5/8 to 3/4;
-        occurrence "voice 0 1 note f#3 1/8 [1663:1671 #5]" from 3/4 to 7/8;
-        occurrence "voice 0 1 note f#3 1/8 [1692:1700 #5]" from 7/8 to 1;
+        occurrence "voice 0 1 note f#3 1/8 [1438:1443 #5]" from 0 to 1/8;
+        occurrence "voice 0 1 note f#3 1/8 [1464:1469 #5]" from 1/8 to 1/4;
+        occurrence "voice 0 1 note f#3 1/8 [1490:1495 #5]" from 1/4 to 3/8;
+        occurrence "voice 0 1 note f#3 1/8 [1516:1521 #5]" from 3/8 to 1/2;
+        occurrence "voice 0 1 note f#3 1/8 [1542:1547 #5]" from 1/2 to 5/8;
+        occurrence "voice 0 1 note f#3 1/8 [1568:1573 #5]" from 5/8 to 3/4;
+        occurrence "voice 0 1 note f#3 1/8 [1594:1599 #5]" from 3/4 to 7/8;
+        occurrence "voice 0 1 note f#3 1/8 [1620:1625 #5]" from 7/8 to 1;
       }
     in let shared4 = timeline 1 {
-        occurrence "voice 1 0 note a1 1/2 [1836:1843 #6]" from 0 to 1/2;
-        occurrence "voice 1 0 note e2 1/4 [1864:1871 #6]" from 1/2 to 3/4;
-        occurrence "voice 1 0 note g1 1/4 [1892:1899 #6]" from 3/4 to 1;
+        occurrence "voice 1 0 note a1 1/2 [1761:1765 #6]" from 0 to 1/2;
+        occurrence "voice 1 0 note e2 1/4 [1786:1790 #6]" from 1/2 to 3/4;
+        occurrence "voice 1 0 note g1 1/4 [1811:1815 #6]" from 3/4 to 1;
       }
     in let shared5 = timeline 1 {
-        occurrence "voice 1 0 note a1 1/4 [1970:1977 #6]" from 0 to 1/4;
-        occurrence "voice 1 0 note a1 1/4 [1998:2005 #6]" from 1/4 to 1/2;
-        occurrence "voice 1 0 note c2 1/4 [2026:2033 #6]" from 1/2 to 3/4;
-        occurrence "voice 1 0 note e2 1/4 [2054:2061 #6]" from 3/4 to 1;
+        occurrence "voice 1 0 note a1 1/4 [1886:1890 #6]" from 0 to 1/4;
+        occurrence "voice 1 0 note a1 1/4 [1911:1915 #6]" from 1/4 to 1/2;
+        occurrence "voice 1 0 note c2 1/4 [1936:1940 #6]" from 1/2 to 3/4;
+        occurrence "voice 1 0 note e2 1/4 [1961:1965 #6]" from 3/4 to 1;
       }
     in overlay {
       sequence {
@@ -58,7 +58,7 @@ kernel "Loop Lengths" {
             shared0 @ "depth 0 via repeat 3"
           };
           timeline 4 {
-            occurrence "voice 0 0 repeat 4 [785:925 #4]" from 0 to 4;
+            occurrence "voice 0 0 repeat 4 [785:913 #4]" from 0 to 4;
           }
         };
         overlay {
@@ -69,7 +69,7 @@ kernel "Loop Lengths" {
             shared1 @ "depth 0 via repeat 3"
           };
           timeline 4 {
-            occurrence "voice 0 0 repeat 4 from 2 to 6 [942:1115 #4]" from 0 to 4;
+            occurrence "voice 0 0 repeat 4 from 2 to 6 [930:1088 #4]" from 0 to 4;
           }
         }
       };
@@ -82,7 +82,7 @@ kernel "Loop Lengths" {
             shared2 @ "depth 0 via repeat 3"
           };
           timeline 4 {
-            occurrence "voice 0 1 repeat 4 [1172:1436 #5]" from 0 to 4;
+            occurrence "voice 0 1 repeat 4 [1145:1385 #5]" from 0 to 4;
           }
         };
         overlay {
@@ -93,7 +93,7 @@ kernel "Loop Lengths" {
             shared3 @ "depth 0 via repeat 3"
           };
           timeline 4 {
-            occurrence "voice 0 1 repeat 4 from 2 to 6 [1453:1718 #5]" from 0 to 4;
+            occurrence "voice 0 1 repeat 4 from 2 to 6 [1402:1643 #5]" from 0 to 4;
           }
         }
       };
@@ -106,7 +106,7 @@ kernel "Loop Lengths" {
             shared4 @ "depth 0 via repeat 3"
           };
           timeline 4 {
-            occurrence "voice 1 0 repeat 4 [1805:1917 #6]" from 0 to 4;
+            occurrence "voice 1 0 repeat 4 [1730:1833 #6]" from 0 to 4;
           }
         };
         overlay {
@@ -117,7 +117,7 @@ kernel "Loop Lengths" {
             shared5 @ "depth 0 via repeat 3"
           };
           timeline 4 {
-            occurrence "voice 1 0 repeat 4 from 2 to 6 [1934:2079 #6]" from 0 to 4;
+            occurrence "voice 1 0 repeat 4 from 2 to 6 [1850:1983 #6]" from 0 to 4;
           }
         }
       };

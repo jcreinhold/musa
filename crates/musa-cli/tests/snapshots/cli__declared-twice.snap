@@ -7,12 +7,12 @@ duplicate-name
   × `rise` is declared twice
    ╭─[examples/broken/declared-twice.musa:4:5]
  3 │ 
- 4 │     motif rise() { c5 1/8; d5 1/8; }
-   ·     ────────────────┬───────────────
-   ·                     ╰── first declared here
- 5 │     motif rise() { e5 1/8; f5 1/8; }
-   ·     ────────────────┬───────────────
-   ·                     ╰── declared again here
+ 4 │     motif rise() { c5/8 d5/8 }
+   ·     ─────────────┬────────────
+   ·                  ╰── first declared here
+ 5 │     motif rise() { e5/8 f5/8 }
+   ·     ─────────────┬────────────
+   ·                  ╰── declared again here
  6 │ 
    ╰────
   help: rename one of them, or delete this declaration

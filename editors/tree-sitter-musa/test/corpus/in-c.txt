@@ -30,483 +30,483 @@ piece "Fifty-Three" {
 
     fragment figure_one {
         repeat 3 to 10 {
-            c5 1/8;
-            e5 1/4;
-            g4 1/8;
-            e5 1/8;
-            c5 1/4;
-            c5 1/8;
+            c5/8
+            e5/4
+            g4/8
+            e5/8
+            c5/4
+            c5/8
         }
     }
 
     fragment figure_two {
         repeat 4 to 12 {
-            e5 3/4;
-            c5 1/4;
+            e5/2.
+            c5/4
         }
     }
 
     fragment figure_three {
         repeat 2 to 11 {
-            e5 1/4;
-            g5 1/8;
-            c5 1/8;
-            e5 1/2;
+            e5/4
+            g5/8
+            c5/8
+            e5/2
         }
     }
 
     fragment figure_four {
         repeat 3 to 13 {
-            e5 1/16;
-            g4 1/16;
-            e5 1/8;
-            c5 1/4;
-            c5 1/2;
+            e5/16
+            g4/16
+            e5/8
+            c5/4
+            c5/2
         }
     }
 
     fragment figure_five {
         repeat 4 to 10 {
-            c5 1/4;
-            c5 1/4;
-            e5 1/4;
-            g5 1/4;
+            c5/4
+            c5/4
+            e5/4
+            g5/4
         }
     }
 
     fragment figure_six {
         repeat 2 to 9 {
-            g5 1/2;
-            c5 1/4;
-            e5 1/4;
+            g5/2
+            c5/4
+            e5/4
         }
     }
 
     fragment figure_seven {
         repeat 3 to 11 {
-            g4 1/4;
-            e5 1/2;
-            c5 1/4;
+            g4/4
+            e5/2
+            c5/4
         }
     }
 
     fragment figure_eight {
         repeat 4 to 13 {
-            c5 1/16;
-            e5 1/16;
-            g5 1/16;
-            c5 1/16;
-            e5 1/4;
-            g4 1/4;
-            e5 1/4;
+            c5/16
+            e5/16
+            g5/16
+            c5/16
+            e5/4
+            g4/4
+            e5/4
         }
     }
 
     fragment figure_nine {
         repeat 2 to 12 {
-            c5 1;
+            c5/1
         }
     }
 
     fragment figure_ten {
         repeat 3 to 9 {
-            e5 1/2;
-            c5 1/2;
+            e5/2
+            c5/2
         }
     }
 
     fragment figure_eleven {
         repeat 4 to 11 {
-            e5 1/8;
-            g5 1/8;
-            c5 1/4;
-            e5 1/2;
+            e5/8
+            g5/8
+            c5/4
+            e5/2
         }
     }
 
     fragment figure_twelve {
         repeat 2 to 10 {
-            e5 1/8;
-            g4 1/8;
-            e5 1/8;
-            c5 1/8;
-            c5 1/8;
-            e5 1/8;
-            g5 1/8;
-            c5 1/8;
+            e5/8
+            g4/8
+            e5/8
+            c5/8
+            c5/8
+            e5/8
+            g5/8
+            c5/8
         }
     }
 
     fragment figure_thirteen {
         repeat 3 to 12 {
-            c5 1/8;
-            c5 1/4;
-            e5 1/8;
-            g5 1/8;
-            c5 1/4;
-            e5 1/8;
+            c5/8
+            c5/4
+            e5/8
+            g5/8
+            c5/4
+            e5/8
         }
     }
 
     fragment figure_fourteen {
         repeat 4 to 14 {
-            g5 3/4;
-            c5 1/4;
+            g5/2.
+            c5/4
         }
     }
 
     fragment figure_fifteen {
         repeat 2 to 8 {
-            f#5 1/4;
-            a4 1/8;
-            g5 1/8;
-            e5 1/2;
+            f#5/4
+            a4/8
+            g5/8
+            e5/2
         }
     }
 
     fragment figure_sixteen {
         repeat 3 to 10 {
-            e5 1/16;
-            f#5 1/16;
-            g5 1/8;
-            e5 1/4;
-            c5 1/2;
+            e5/16
+            f#5/16
+            g5/8
+            e5/4
+            c5/2
         }
     }
 
     fragment figure_seventeen {
         repeat 4 to 12 {
-            e5 1/4;
-            c5 1/4;
-            f#5 1/4;
-            a4 1/4;
+            e5/4
+            c5/4
+            f#5/4
+            a4/4
         }
     }
 
     fragment figure_eighteen {
         repeat 2 to 11 {
-            a4 1/2;
-            g5 1/4;
-            e5 1/4;
+            a4/2
+            g5/4
+            e5/4
         }
     }
 
     fragment figure_nineteen {
         repeat 3 to 13 {
-            f#5 1/4;
-            g5 1/2;
-            e5 1/4;
+            f#5/4
+            g5/2
+            e5/4
         }
     }
 
     fragment figure_twenty {
         repeat 4 to 10 {
-            c5 1/16;
-            f#5 1/16;
-            a4 1/16;
-            g5 1/16;
-            e5 1/4;
-            f#5 1/4;
-            g5 1/4;
+            c5/16
+            f#5/16
+            a4/16
+            g5/16
+            e5/4
+            f#5/4
+            g5/4
         }
     }
 
     fragment figure_twenty_one {
         repeat 2 to 9 {
-            g5 1;
+            g5/1
         }
     }
 
     fragment figure_twenty_two {
         repeat 3 to 11 {
-            g5 1/2;
-            e5 1/2;
+            g5/2
+            e5/2
         }
     }
 
     fragment figure_twenty_three {
         repeat 4 to 13 {
-            f#5 1/8;
-            a4 1/8;
-            g5 1/4;
-            e5 1/2;
+            f#5/8
+            a4/8
+            g5/4
+            e5/2
         }
     }
 
     fragment figure_twenty_four {
         repeat 2 to 12 {
-            e5 1/8;
-            f#5 1/8;
-            g5 1/8;
-            e5 1/8;
-            c5 1/8;
-            f#5 1/8;
-            a4 1/8;
-            g5 1/8;
+            e5/8
+            f#5/8
+            g5/8
+            e5/8
+            c5/8
+            f#5/8
+            a4/8
+            g5/8
         }
     }
 
     fragment figure_twenty_five {
         repeat 3 to 9 {
-            e5 1/8;
-            c5 1/4;
-            f#5 1/8;
-            a4 1/8;
-            g5 1/4;
-            e5 1/8;
+            e5/8
+            c5/4
+            f#5/8
+            a4/8
+            g5/4
+            e5/8
         }
     }
 
     fragment figure_twenty_six {
         repeat 4 to 11 {
-            a4 3/4;
-            g5 1/4;
+            a4/2.
+            g5/4
         }
     }
 
     fragment figure_twenty_seven {
         repeat 2 to 10 {
-            f#5 1/4;
-            g5 1/8;
-            e5 1/8;
-            c5 1/2;
+            f#5/4
+            g5/8
+            e5/8
+            c5/2
         }
     }
 
     fragment figure_twenty_eight {
         repeat 3 to 12 {
-            c5 1/16;
-            f#5 1/16;
-            a4 1/8;
-            g5 1/4;
-            e5 1/2;
+            c5/16
+            f#5/16
+            a4/8
+            g5/4
+            e5/2
         }
     }
 
     fragment figure_twenty_nine {
         repeat 4 to 14 {
-            d5 1/4;
-            g5 1/4;
-            b5 1/4;
-            a5 1/4;
+            d5/4
+            g5/4
+            b5/4
+            a5/4
         }
     }
 
     fragment figure_thirty {
         repeat 2 to 8 {
-            a5 1/2;
-            g5 1/4;
-            f#5 1/4;
+            a5/2
+            g5/4
+            f#5/4
         }
     }
 
     fragment figure_thirty_one {
         repeat 3 to 10 {
-            e5 1/4;
-            b4 1/2;
-            d5 1/4;
+            e5/4
+            b4/2
+            d5/4
         }
     }
 
     fragment figure_thirty_two {
         repeat 4 to 12 {
-            g5 1/16;
-            b5 1/16;
-            a5 1/16;
-            g5 1/16;
-            f#5 1/4;
-            e5 1/4;
-            b4 1/4;
+            g5/16
+            b5/16
+            a5/16
+            g5/16
+            f#5/4
+            e5/4
+            b4/4
         }
     }
 
     fragment figure_thirty_three {
         repeat 2 to 11 {
-            g5 1;
+            g5/1
         }
     }
 
     fragment figure_thirty_four {
         repeat 3 to 13 {
-            b4 1/2;
-            d5 1/2;
+            b4/2
+            d5/2
         }
     }
 
     fragment figure_thirty_five {
         repeat 4 to 10 {
-            b5 1/8;
-            a5 1/8;
-            g5 1/4;
-            f#5 1/2;
+            b5/8
+            a5/8
+            g5/4
+            f#5/2
         }
     }
 
     fragment figure_thirty_six {
         repeat 2 to 9 {
-            f#5 1/8;
-            e5 1/8;
-            b4 1/8;
-            d5 1/8;
-            g5 1/8;
-            b5 1/8;
-            a5 1/8;
-            g5 1/8;
+            f#5/8
+            e5/8
+            b4/8
+            d5/8
+            g5/8
+            b5/8
+            a5/8
+            g5/8
         }
     }
 
     fragment figure_thirty_seven {
         repeat 3 to 11 {
-            d5 1/8;
-            g5 1/4;
-            b5 1/8;
-            a5 1/8;
-            g5 1/4;
-            f#5 1/8;
+            d5/8
+            g5/4
+            b5/8
+            a5/8
+            g5/4
+            f#5/8
         }
     }
 
     fragment figure_thirty_eight {
         repeat 4 to 13 {
-            a5 3/4;
-            g5 1/4;
+            a5/2.
+            g5/4
         }
     }
 
     fragment figure_thirty_nine {
         repeat 2 to 12 {
-            e5 1/4;
-            b4 1/8;
-            d5 1/8;
-            g5 1/2;
+            e5/4
+            b4/8
+            d5/8
+            g5/2
         }
     }
 
     fragment figure_forty {
         repeat 3 to 9 {
-            g5 1/16;
-            b5 1/16;
-            a5 1/8;
-            g5 1/4;
-            f#5 1/2;
+            g5/16
+            b5/16
+            a5/8
+            g5/4
+            f#5/2
         }
     }
 
     fragment figure_forty_one {
         repeat 4 to 11 {
-            g5 1/4;
-            f#5 1/4;
-            e5 1/4;
-            b4 1/4;
+            g5/4
+            f#5/4
+            e5/4
+            b4/4
         }
     }
 
     fragment figure_forty_two {
         repeat 2 to 10 {
-            d5 1/2;
-            bb4 1/4;
-            g5 1/4;
+            d5/2
+            bb4/4
+            g5/4
         }
     }
 
     fragment figure_forty_three {
         repeat 3 to 12 {
-            f5 1/4;
-            bb4 1/2;
-            c5 1/4;
+            f5/4
+            bb4/2
+            c5/4
         }
     }
 
     fragment figure_forty_four {
         repeat 4 to 14 {
-            g4 1/16;
-            f5 1/16;
-            d5 1/16;
-            bb4 1/16;
-            g5 1/4;
-            f5 1/4;
-            bb4 1/4;
+            g4/16
+            f5/16
+            d5/16
+            bb4/16
+            g5/4
+            f5/4
+            bb4/4
         }
     }
 
     fragment figure_forty_five {
         repeat 2 to 8 {
-            bb4 1;
+            bb4/1
         }
     }
 
     fragment figure_forty_six {
         repeat 3 to 10 {
-            bb4 1/2;
-            c5 1/2;
+            bb4/2
+            c5/2
         }
     }
 
     fragment figure_forty_seven {
         repeat 4 to 12 {
-            f5 1/8;
-            d5 1/8;
-            bb4 1/4;
-            g5 1/2;
+            f5/8
+            d5/8
+            bb4/4
+            g5/2
         }
     }
 
     fragment figure_forty_eight {
         repeat 2 to 11 {
-            g5 1/8;
-            f5 1/8;
-            bb4 1/8;
-            c5 1/8;
-            g4 1/8;
-            f5 1/8;
-            d5 1/8;
-            bb4 1/8;
+            g5/8
+            f5/8
+            bb4/8
+            c5/8
+            g4/8
+            f5/8
+            d5/8
+            bb4/8
         }
     }
 
     fragment figure_forty_nine {
         repeat 3 to 13 {
-            c5 1/8;
-            g4 1/4;
-            f5 1/8;
-            d5 1/8;
-            bb4 1/4;
-            g5 1/8;
+            c5/8
+            g4/4
+            f5/8
+            d5/8
+            bb4/4
+            g5/8
         }
     }
 
     fragment figure_fifty {
         repeat 4 to 10 {
-            d5 3/4;
-            bb4 1/4;
+            d5/2.
+            bb4/4
         }
     }
 
     fragment figure_fifty_one {
         repeat 2 to 9 {
-            f5 1/4;
-            bb4 1/8;
-            c5 1/8;
-            g4 1/2;
+            f5/4
+            bb4/8
+            c5/8
+            g4/2
         }
     }
 
     fragment figure_fifty_two {
         repeat 3 to 11 {
-            g4 1/16;
-            f5 1/16;
-            d5 1/8;
-            bb4 1/4;
-            g5 1/2;
+            g4/16
+            f5/16
+            d5/8
+            bb4/4
+            g5/2
         }
     }
 
     fragment figure_fifty_three {
         repeat 4 to 13 {
-            bb4 1/4;
-            g5 1/4;
-            f5 1/4;
-            bb4 1/4;
+            bb4/4
+            g5/4
+            f5/4
+            bb4/4
         }
     }
 
@@ -515,14 +515,14 @@ piece "Fifty-Three" {
     // the system and nothing else here repeats with it.
     fragment pulse_figure {
         repeat 384 {
-            c6 1/8;
-            c6 1/8;
-            c6 1/8;
-            c6 1/8;
-            c6 1/8;
-            c6 1/8;
-            c6 1/8;
-            c6 1/8;
+            c6/8
+            c6/8
+            c6/8
+            c6/8
+            c6/8
+            c6/8
+            c6/8
+            c6/8
         }
     }
 
@@ -638,27 +638,27 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -669,11 +669,11 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -684,19 +684,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -707,23 +707,23 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -734,19 +734,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -757,15 +757,15 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -776,15 +776,15 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -795,31 +795,31 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -841,11 +841,11 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -856,19 +856,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -879,35 +879,35 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -918,27 +918,27 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -949,11 +949,11 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -964,19 +964,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -987,23 +987,23 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1014,19 +1014,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1037,15 +1037,15 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1056,15 +1056,15 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1075,31 +1075,31 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1121,11 +1121,11 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1136,19 +1136,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1159,35 +1159,35 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1198,27 +1198,27 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1229,11 +1229,11 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1244,19 +1244,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1267,23 +1267,23 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1294,19 +1294,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1317,15 +1317,15 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1336,15 +1336,15 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1355,31 +1355,31 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1401,11 +1401,11 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1416,19 +1416,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1439,35 +1439,35 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1478,27 +1478,27 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1509,11 +1509,11 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1524,19 +1524,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1547,23 +1547,23 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1574,19 +1574,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1597,15 +1597,15 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1616,15 +1616,15 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1635,31 +1635,31 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1681,11 +1681,11 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1696,19 +1696,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1719,35 +1719,35 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1758,27 +1758,27 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1789,11 +1789,11 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1804,19 +1804,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1827,23 +1827,23 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (fragment_declaration
       (identifier)
       (block
@@ -1854,19 +1854,19 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (comment)
     (comment)
     (comment)
@@ -1879,35 +1879,35 @@ piece "Fifty-Three" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (score_declaration
       (part_declaration
         (identifier)

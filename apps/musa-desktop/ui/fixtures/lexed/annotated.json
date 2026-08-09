@@ -395,133 +395,143 @@
     "end": 875
   },
   {
-    "class": "duration",
+    "class": "punctuation",
+    "start": 875,
+    "end": 876
+  },
+  {
+    "class": "number",
     "start": 876,
-    "end": 879
-  },
-  {
-    "class": "punctuation",
-    "start": 879,
-    "end": 880
+    "end": 877
   },
   {
     "class": "pitch",
+    "start": 898,
+    "end": 900
+  },
+  {
+    "class": "punctuation",
+    "start": 900,
+    "end": 901
+  },
+  {
+    "class": "number",
     "start": 901,
-    "end": 903
-  },
-  {
-    "class": "duration",
-    "start": 904,
-    "end": 907
-  },
-  {
-    "class": "punctuation",
-    "start": 907,
-    "end": 908
+    "end": 902
   },
   {
     "class": "pitch",
-    "start": 929,
-    "end": 931
-  },
-  {
-    "class": "duration",
-    "start": 932,
-    "end": 935
+    "start": 923,
+    "end": 925
   },
   {
     "class": "punctuation",
-    "start": 935,
-    "end": 936
+    "start": 925,
+    "end": 926
+  },
+  {
+    "class": "number",
+    "start": 926,
+    "end": 927
   },
   {
     "class": "pitch",
-    "start": 957,
-    "end": 959
-  },
-  {
-    "class": "duration",
-    "start": 960,
-    "end": 963
+    "start": 948,
+    "end": 950
   },
   {
     "class": "punctuation",
-    "start": 963,
-    "end": 964
+    "start": 950,
+    "end": 951
+  },
+  {
+    "class": "number",
+    "start": 951,
+    "end": 952
   },
   {
     "class": "pitch",
-    "start": 985,
-    "end": 987
-  },
-  {
-    "class": "duration",
-    "start": 988,
-    "end": 991
+    "start": 973,
+    "end": 975
   },
   {
     "class": "punctuation",
-    "start": 991,
-    "end": 992
+    "start": 975,
+    "end": 976
+  },
+  {
+    "class": "number",
+    "start": 976,
+    "end": 977
   },
   {
     "class": "punctuation",
-    "start": 1009,
-    "end": 1010
+    "start": 994,
+    "end": 995
   },
   {
     "class": "keyword",
-    "start": 1027,
-    "end": 1033
+    "start": 1012,
+    "end": 1018
   },
   {
     "class": "text",
-    "start": 1034,
-    "end": 1046
+    "start": 1019,
+    "end": 1031
   },
   {
     "class": "punctuation",
-    "start": 1047,
-    "end": 1048
+    "start": 1032,
+    "end": 1033
   },
   {
     "class": "pitch",
-    "start": 1069,
-    "end": 1071
-  },
-  {
-    "class": "duration",
-    "start": 1072,
-    "end": 1075
+    "start": 1054,
+    "end": 1056
   },
   {
     "class": "punctuation",
-    "start": 1075,
-    "end": 1076
+    "start": 1056,
+    "end": 1057
+  },
+  {
+    "class": "number",
+    "start": 1057,
+    "end": 1058
   },
   {
     "class": "pitch",
-    "start": 1097,
-    "end": 1099
-  },
-  {
-    "class": "duration",
-    "start": 1100,
-    "end": 1103
+    "start": 1079,
+    "end": 1081
   },
   {
     "class": "punctuation",
-    "start": 1103,
-    "end": 1104
+    "start": 1081,
+    "end": 1082
+  },
+  {
+    "class": "number",
+    "start": 1082,
+    "end": 1083
   },
   {
     "class": "pitch",
-    "start": 1125,
-    "end": 1128
+    "start": 1104,
+    "end": 1107
   },
   {
-    "class": "duration",
-    "start": 1129,
+    "class": "punctuation",
+    "start": 1107,
+    "end": 1108
+  },
+  {
+    "class": "number",
+    "start": 1108,
+    "end": 1109
+  },
+  {
+    "class": "pitch",
+    "start": 1130,
     "end": 1132
   },
   {
@@ -530,43 +540,33 @@
     "end": 1133
   },
   {
-    "class": "pitch",
-    "start": 1154,
-    "end": 1156
-  },
-  {
     "class": "number",
-    "start": 1157,
-    "end": 1158
+    "start": 1133,
+    "end": 1134
   },
   {
     "class": "punctuation",
-    "start": 1158,
-    "end": 1159
+    "start": 1151,
+    "end": 1152
   },
   {
     "class": "punctuation",
-    "start": 1176,
-    "end": 1177
+    "start": 1165,
+    "end": 1166
   },
   {
     "class": "punctuation",
-    "start": 1190,
-    "end": 1191
+    "start": 1175,
+    "end": 1176
   },
   {
     "class": "punctuation",
-    "start": 1200,
-    "end": 1201
+    "start": 1181,
+    "end": 1182
   },
   {
     "class": "punctuation",
-    "start": 1206,
-    "end": 1207
-  },
-  {
-    "class": "punctuation",
-    "start": 1208,
-    "end": 1209
+    "start": 1183,
+    "end": 1184
   }
 ]

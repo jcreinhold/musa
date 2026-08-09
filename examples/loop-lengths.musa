@@ -19,40 +19,40 @@ piece "Loop Lengths" {
         part drums {
             voice kick {
                 repeat 4 {
-                    c2 1/4;
-                    c2 1/4;
-                    c2 1/4;
-                    c2 1/4;
+                    c2/4
+                    c2/4
+                    c2/4
+                    c2/4
                 }
                 repeat 2 to 6 {
-                    c2 1/4;
-                    c2 1/4;
-                    c2 1/8;
-                    c2 1/8;
-                    c2 1/4;
+                    c2/4
+                    c2/4
+                    c2/8
+                    c2/8
+                    c2/4
                 }
             }
 
             voice hats {
                 repeat 4 {
-                    rest 1/8;
-                    f#3 1/8;
-                    rest 1/8;
-                    f#3 1/8;
-                    rest 1/8;
-                    f#3 1/8;
-                    rest 1/8;
-                    f#3 1/8;
+                    rest/8
+                    f#3/8
+                    rest/8
+                    f#3/8
+                    rest/8
+                    f#3/8
+                    rest/8
+                    f#3/8
                 }
                 repeat 2 to 6 {
-                    f#3 1/8;
-                    f#3 1/8;
-                    f#3 1/8;
-                    f#3 1/8;
-                    f#3 1/8;
-                    f#3 1/8;
-                    f#3 1/8;
-                    f#3 1/8;
+                    f#3/8
+                    f#3/8
+                    f#3/8
+                    f#3/8
+                    f#3/8
+                    f#3/8
+                    f#3/8
+                    f#3/8
                 }
             }
         }
@@ -60,15 +60,15 @@ piece "Loop Lengths" {
         part bass {
             voice line {
                 repeat 4 {
-                    a1 1/2;
-                    e2 1/4;
-                    g1 1/4;
+                    a1/2
+                    e2/4
+                    g1/4
                 }
                 repeat 2 to 6 {
-                    a1 1/4;
-                    a1 1/4;
-                    c2 1/4;
-                    e2 1/4;
+                    a1/4
+                    a1/4
+                    c2/4
+                    e2/4
                 }
             }
         }

@@ -10,7 +10,7 @@ unknown-name
  14 │                 use sihg(e5);
     ·                 ──────┬──────
     ·                       ╰── not declared in this piece
- 15 │                 rest 1/2;
+ 15 │                 rest/2
     ╰────
   help: did you mean `sigh`?
 

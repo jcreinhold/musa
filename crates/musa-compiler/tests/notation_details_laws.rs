@@ -67,7 +67,7 @@ fn voice_source(body: &str) -> String {
 
 #[test]
 fn a_tie_makes_one_event_spelled_as_two_noteheads() {
-    let snapshot = score_of(&voice_source("c4 1/4 ~; c4 1/8; rest 5/8;"));
+    let snapshot = score_of(&voice_source("c4/4 ~ c4/8 rest 5/8"));
     let events = first_voice(&snapshot);
     assert_eq!(events.len(), 2, "the tied pair is one sounding event, plus the rest");
     let tied = events.first().expect("tied event");
@@ -85,15 +85,15 @@ fn a_tie_makes_one_event_spelled_as_two_noteheads() {
 
 #[test]
 fn a_tie_to_a_different_pitch_is_an_error() {
-    let errors = errors_of(&voice_source("c4 1/4 ~; d4 1/4; rest 1/2;"));
+    let errors = errors_of(&voice_source("c4/4 ~ d4/4 rest/2"));
     assert_eq!(errors, vec!["a tie joins two of the same note".to_string()]);
 }
 
 #[test]
 fn a_tie_with_nothing_after_it_is_an_error() {
-    let errors = errors_of(&voice_source("c4 1;"));
+    let errors = errors_of(&voice_source("c4/1"));
     assert!(errors.is_empty(), "control: an untied whole note is fine");
-    let errors = errors_of(&voice_source("c4 1 ~;"));
+    let errors = errors_of(&voice_source("c4/1 ~"));
     assert_eq!(errors, vec!["this tie has nothing to tie to".to_string()]);
 }
 
@@ -101,7 +101,7 @@ fn a_tie_with_nothing_after_it_is_an_error() {
 
 #[test]
 fn a_triplet_eighth_is_exactly_one_twelfth() {
-    let snapshot = score_of(&voice_source("tuplet 3/2 { c4 1/8; d4 1/8; e4 1/8; } rest 3/4;"));
+    let snapshot = score_of(&voice_source("tuplet 3/2 { c4/8 d4/8 e4/8 } rest/2."));
     let events = first_voice(&snapshot);
     for event in events.iter().take(3) {
         assert_eq!(event.notated_duration.value.as_ratio(), Ratio::new(1, 12));
@@ -116,7 +116,7 @@ fn a_triplet_eighth_is_exactly_one_twelfth() {
 
 #[test]
 fn a_tuplet_across_a_barline_is_an_error() {
-    let errors = errors_of(&voice_source("rest 7/8; tuplet 3/2 { c4 1/4; d4 1/4; e4 1/4; }"));
+    let errors = errors_of(&voice_source("rest/2.. tuplet 3/2 { c4/4 d4/4 e4/4 }"));
     assert!(
         errors.contains(&"this tuplet is longer than a measure".to_string()),
         "got {errors:?}"
@@ -127,7 +127,7 @@ fn a_tuplet_across_a_barline_is_an_error() {
 
 #[test]
 fn a_slur_names_the_events_it_joins() {
-    let snapshot = score_of(&voice_source("slur { c4 1/4; d4 1/4; e4 1/4; } f4 1/4;"));
+    let snapshot = score_of(&voice_source("slur { c4/4 d4/4 e4/4 } f4/4"));
     let slurs = snapshot.annotations().slurs();
     assert_eq!(slurs.len(), 1);
     let slur = slurs.first().expect("slur");
@@ -136,7 +136,7 @@ fn a_slur_names_the_events_it_joins() {
 
 #[test]
 fn a_dynamic_belongs_to_the_note_after_it() {
-    let snapshot = score_of(&voice_source("c4 1/4; dynamic mf; d4 1/4; rest 1/2;"));
+    let snapshot = score_of(&voice_source("c4/4 dynamic mf; d4/4 rest/2"));
     let dynamics = snapshot.annotations().dynamics();
     assert_eq!(dynamics.len(), 1);
     let dynamic = dynamics.first().expect("dynamic");
@@ -146,7 +146,7 @@ fn a_dynamic_belongs_to_the_note_after_it() {
 
 #[test]
 fn a_dynamic_reaches_into_the_block_that_follows_it() {
-    let snapshot = score_of(&voice_source("dynamic p; repeat 2 { c4 1/4; d4 1/4; }"));
+    let snapshot = score_of(&voice_source("dynamic p; repeat 2 { c4/4 d4/4 }"));
     let dynamics = snapshot.annotations().dynamics();
     assert_eq!(dynamics.len(), 1);
     assert_eq!(dynamics.first().expect("dynamic").at.0, 0);
@@ -154,13 +154,13 @@ fn a_dynamic_reaches_into_the_block_that_follows_it() {
 
 #[test]
 fn a_dynamic_with_nothing_after_it_is_an_error() {
-    let errors = errors_of(&voice_source("c4 1; dynamic p;"));
+    let errors = errors_of(&voice_source("c4/1 dynamic p;"));
     assert_eq!(errors, vec!["this dynamic marking has nothing to mark".to_string()]);
 }
 
 #[test]
 fn articulations_keep_their_written_order_and_reject_unknown_names() {
-    let snapshot = score_of(&voice_source("c4 1 accent staccato;"));
+    let snapshot = score_of(&voice_source("c4/1> staccato"));
     let marks: Vec<Mark> = snapshot
         .annotations()
         .articulations()
@@ -171,13 +171,13 @@ fn articulations_keep_their_written_order_and_reject_unknown_names() {
         marks.iter().map(|mark| mark.name()).collect::<Vec<_>>(),
         vec!["accent", "staccato"]
     );
-    let errors = errors_of(&voice_source("c4 1 sideways;"));
+    let errors = errors_of(&voice_source("c4 1 sideways"));
     assert_eq!(errors, vec!["`sideways` is not a mark".to_string()]);
 }
 
 #[test]
 fn an_expanded_motif_carries_its_marks_once_per_use() {
-    let source = "piece \"x\" { meter 4/4; motif m() { slur { c4 1/4 accent; d4 1/4; } } \
+    let source = "piece \"x\" { meter 4/4; motif m() { slur { c4/4> d4/4 } } \
                   score { part p { voice v { use m(); use m(); } } } }";
     let snapshot = score_of(source);
     assert_eq!(snapshot.annotations().slurs().len(), 2, "one slur per expansion");
@@ -222,12 +222,12 @@ proptest! {
     /// under `n/d` last exactly `d/w`.
     #[test]
     fn tuplet_elaboration_sums_to_the_notated_span((num, den) in tuplet_ratio(), w in written_denominator()) {
-        let body = format!("c4 1/{w}; ").repeat(num as usize);
+        let body = format!("c4/{w} ").repeat(num as usize);
         let expected = Ratio::new(i64::from(den), i64::from(w));
         // Padded to a whole number of measures so the only diagnostic that
         // could fire is the one this law is about.
         let source = format!(
-            "piece \"x\" {{ meter 4/4; score {{ part p {{ voice v {{ tuplet {num}/{den} {{ {body}}} rest {}/{}; }} }} }} }}",
+            "piece \"x\" {{ meter 4/4; score {{ part p {{ voice v {{ tuplet {num}/{den} {{ {body}}} rest {}/{} }} }} }} }}",
             i64::from(w) - i64::from(den),
             w,
         );
@@ -246,8 +246,8 @@ proptest! {
     /// explains itself with the first statement's origin.
     #[test]
     fn tie_merging_preserves_span_and_provenance(first in 1u32..=8, second in 1u32..=8) {
-        let tied = voice_source(&format!("c4 1/{first} ~; c4 1/{second};"));
-        let apart = voice_source(&format!("c4 1/{first}; c4 1/{second};"));
+        let tied = voice_source(&format!("c4/{first} ~ c4/{second}"));
+        let apart = voice_source(&format!("c4/{first} c4/{second}"));
         let merged = first_voice(&score_of(&tied));
         let separate = first_voice(&score_of(&apart));
         prop_assert_eq!(merged.len(), 1);

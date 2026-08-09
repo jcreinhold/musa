@@ -8,8 +8,8 @@ piece "Over" {
     score {
         part piano {
             voice right {
-                bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }
-                bar { g4 1/4; a4 1/4; b4 1/4; c5 1/4; d5 1/4; }
+                | c4/4 d4/4 e4/4 f4/4
+                | g4/4 a4/4 b4/4 c5/4 d5/4
             }
         }
     }

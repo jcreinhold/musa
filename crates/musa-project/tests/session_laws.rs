@@ -13,8 +13,8 @@ const PIECE: &str = concat!(
     "    score {\n",
     "        part piano {\n",
     "            voice upper {\n",
-    "                c4 1/4;\n",
-    "                e4 1/4;\n",
+    "                c4/4\n",
+    "                e4/4\n",
     "            }\n",
     "        }\n",
     "    }\n",
@@ -32,7 +32,7 @@ fn session() -> ProjectSession {
 fn undo_redo_restores_each_state_exactly() -> Result {
     let mut session = session();
     let original = session.snapshot().source().to_owned();
-    let edited = original.replace("e4 1/4;", "g4 1/4;");
+    let edited = original.replace("e4/4", "g4/4");
 
     session.apply(ProjectCommand::SetSource(edited.clone()))?;
     assert_eq!(session.snapshot().source(), edited);
@@ -262,8 +262,8 @@ fn midi_states_what_one_tempo_track_costs() -> Result {
         "    tempo quarter = 120;\n",
         "    meter 4/4;\n",
         "    score {\n",
-        "        part a { meter 7/8; tempo quarter = 90; voice v { c4 7/8; } }\n",
-        "        part b { voice w { g3 1/1; } }\n",
+        "        part a { meter 7/8; tempo quarter = 90; voice v { c4/2.. } }\n",
+        "        part b { voice w { g3/1 } }\n",
         "    }\n",
         "}\n",
     );

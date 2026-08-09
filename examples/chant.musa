@@ -24,30 +24,30 @@ piece "Chant" {
                 dynamic mp;
 
                 // *Salve Regina*, the opening phrase, in modern note values.
-                d4 1/4;
-                f4 1/4;
-                g4 1/4;
-                a4 1/2;
+                d4/4
+                f4/4
+                g4/4
+                a4/2
 
-                a4 1/4;
-                bb4 1/4;
-                a4 1/4;
-                g4 1/4;
-                a4 1/2;
+                a4/4
+                bb4/4
+                a4/4
+                g4/4
+                a4/2
 
-                g4 1/4;
-                f4 1/4;
-                g4 1/4;
-                a4 1/4;
-                g4 1/4;
-                f4 1/4;
-                e4 1/2;
+                g4/4
+                f4/4
+                g4/4
+                a4/4
+                g4/4
+                f4/4
+                e4/2
 
-                d4 1/4;
-                e4 1/4;
-                f4 1/4;
-                e4 1/4;
-                d4 1/1;
+                d4/4
+                e4/4
+                f4/4
+                e4/4
+                d4/1
             }
         }
     }

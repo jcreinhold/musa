@@ -65,7 +65,7 @@ fn lilypond_moves_timing_to_the_staff() {
     // context change every reader of the file has to account for.
     let plain = render(HEMIOLA, "hemiola.musa", NotationTarget::LilyPond);
     assert!(plain.contains("\\remove \"Timing_translator\""), "6/8 against 3/4");
-    let single = "piece \"P\" { meter 4/4; score { part p { voice v { c5 1/1; } } } }";
+    let single = "piece \"P\" { meter 4/4; score { part p { voice v { c5/1 } } } }";
     assert!(!render(single, "single.musa", NotationTarget::LilyPond).contains("\\layout"));
 }
 
@@ -128,7 +128,7 @@ fn each_staff_prints_its_own_tempo() {
 /// third time (roadmap §2).
 #[test]
 fn no_barline_moves_a_notehead() {
-    let notes = "c5 1/8; d5 1/8; e5 1/8; f5 1/8; g5 1/8; a5 1/8; b5 1/8; c6 1/8;";
+    let notes = "c5/8 d5/8 e5/8 f5/8 g5/8 a5/8 b5/8 c6/8";
     let piece =
         |part: &str| format!("piece \"P\" {{ meter 4/4; score {{ part p {{ {part} voice v {{ {notes} }} }} }} }}");
     let pitches = |xml: &str| {

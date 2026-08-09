@@ -2,7 +2,7 @@
   "document": 0,
   "name": "unicode-fixture.musa",
   "kind": "piece",
-  "source": "// Text above U+007F, in every place a piece can carry it — the title, a\n// section name, a phrase name, and these comments.\n//\n// It is here because the two sides of the desktop app measure the source\n// differently: Rust counts bytes, JavaScript and CodeMirror count UTF-16\n// code units, and the two agree only while the text is ASCII. The em dash on\n// the line above is three bytes and one code unit; the flat sign below is\n// three and one; the treble clef is four and two. Every span the interface\n// receives from a piece like this one is wrong by the accumulated difference\n// unless the shell restates it — see docs/interface/03-interaction.md §7.\n//\n// Nothing here is about notation. The notes are the plainest possible, so\n// that when a linking or highlighting test fails it is the measure that is\n// wrong and not the music.\npiece \"Étude en sol — 𝄞\" {\n    tempo 1/4 = 88;\n    meter 3/4;\n    key g major;\n\n    motif sigh(root: pitch = d5) {\n        root 1/4;\n        c5 1/4;\n        b4 1/4;\n    }\n\n    score {\n        section \"Ouverture\" at 1:1;\n        section \"Réponse — variée\" at 3:1;\n\n        part piano {\n            clef treble;\n\n            voice lead {\n                phrase \"première idée\" {\n                    g4 1/4;\n                    b4 1/4;\n                    d5 1/4;\n                }\n                use sigh();\n                use sigh(g5);\n                phrase \"cadence — ♭VII\" {\n                    f5 1/4;\n                    d5 1/4;\n                    g4 1/4;\n                }\n            }\n        }\n    }\n}\n",
+  "source": "// Text above U+007F, in every place a piece can carry it — the title, a\n// section name, a phrase name, and these comments.\n//\n// It is here because the two sides of the desktop app measure the source\n// differently: Rust counts bytes, JavaScript and CodeMirror count UTF-16\n// code units, and the two agree only while the text is ASCII. The em dash on\n// the line above is three bytes and one code unit; the flat sign below is\n// three and one; the treble clef is four and two. Every span the interface\n// receives from a piece like this one is wrong by the accumulated difference\n// unless the shell restates it — see docs/interface/03-interaction.md §7.\n//\n// Nothing here is about notation. The notes are the plainest possible, so\n// that when a linking or highlighting test fails it is the measure that is\n// wrong and not the music.\npiece \"Étude en sol — 𝄞\" {\n    tempo 1/4 = 88;\n    meter 3/4;\n    key g major;\n\n    motif sigh(root: pitch = d5) {\n        root/4\n        c5/4\n        b4/4\n    }\n\n    score {\n        section \"Ouverture\" at 1:1;\n        section \"Réponse — variée\" at 3:1;\n\n        part piano {\n            clef treble;\n\n            voice lead {\n                phrase \"première idée\" {\n                    g4/4\n                    b4/4\n                    d5/4\n                }\n                use sigh();\n                use sigh(g5);\n                phrase \"cadence — ♭VII\" {\n                    f5/4\n                    d5/4\n                    g4/4\n                }\n            }\n        }\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -66,12 +66,12 @@
           "occurrence": null,
           "line": 35,
           "span": {
-            "start": 1238,
-            "end": 1245
+            "start": 1229,
+            "end": 1233
           },
           "definitionSpan": {
-            "start": 1238,
-            "end": 1245
+            "start": 1229,
+            "end": 1233
           },
           "decision": null
         }
@@ -109,12 +109,12 @@
           "occurrence": null,
           "line": 36,
           "span": {
-            "start": 1266,
-            "end": 1273
+            "start": 1254,
+            "end": 1258
           },
           "definitionSpan": {
-            "start": 1266,
-            "end": 1273
+            "start": 1254,
+            "end": 1258
           },
           "decision": null
         }
@@ -152,12 +152,12 @@
           "occurrence": null,
           "line": 37,
           "span": {
-            "start": 1294,
-            "end": 1301
+            "start": 1279,
+            "end": 1283
           },
           "definitionSpan": {
-            "start": 1294,
-            "end": 1301
+            "start": 1279,
+            "end": 1283
           },
           "decision": null
         }
@@ -197,12 +197,12 @@
           "occurrence": "occurrence-0",
           "line": 39,
           "span": {
-            "start": 1336,
-            "end": 1347
+            "start": 1318,
+            "end": 1329
           },
           "definitionSpan": {
             "start": 964,
-            "end": 973
+            "end": 970
           },
           "decision": null
         }
@@ -242,12 +242,12 @@
           "occurrence": "occurrence-0",
           "line": 39,
           "span": {
-            "start": 1336,
-            "end": 1347
+            "start": 1318,
+            "end": 1329
           },
           "definitionSpan": {
-            "start": 982,
-            "end": 989
+            "start": 979,
+            "end": 983
           },
           "decision": null
         }
@@ -287,12 +287,12 @@
           "occurrence": "occurrence-0",
           "line": 39,
           "span": {
-            "start": 1336,
-            "end": 1347
+            "start": 1318,
+            "end": 1329
           },
           "definitionSpan": {
-            "start": 998,
-            "end": 1005
+            "start": 992,
+            "end": 996
           },
           "decision": null
         }
@@ -332,12 +332,12 @@
           "occurrence": "occurrence-1",
           "line": 40,
           "span": {
-            "start": 1364,
-            "end": 1377
+            "start": 1346,
+            "end": 1359
           },
           "definitionSpan": {
             "start": 964,
-            "end": 973
+            "end": 970
           },
           "decision": null
         }
@@ -377,12 +377,12 @@
           "occurrence": "occurrence-1",
           "line": 40,
           "span": {
-            "start": 1364,
-            "end": 1377
+            "start": 1346,
+            "end": 1359
           },
           "definitionSpan": {
-            "start": 982,
-            "end": 989
+            "start": 979,
+            "end": 983
           },
           "decision": null
         }
@@ -422,12 +422,12 @@
           "occurrence": "occurrence-1",
           "line": 40,
           "span": {
-            "start": 1364,
-            "end": 1377
+            "start": 1346,
+            "end": 1359
           },
           "definitionSpan": {
-            "start": 998,
-            "end": 1005
+            "start": 992,
+            "end": 996
           },
           "decision": null
         }
@@ -465,12 +465,12 @@
           "occurrence": null,
           "line": 42,
           "span": {
-            "start": 1440,
-            "end": 1447
+            "start": 1422,
+            "end": 1426
           },
           "definitionSpan": {
-            "start": 1440,
-            "end": 1447
+            "start": 1422,
+            "end": 1426
           },
           "decision": null
         }
@@ -508,12 +508,12 @@
           "occurrence": null,
           "line": 43,
           "span": {
-            "start": 1468,
-            "end": 1475
+            "start": 1447,
+            "end": 1451
           },
           "definitionSpan": {
-            "start": 1468,
-            "end": 1475
+            "start": 1447,
+            "end": 1451
           },
           "decision": null
         }
@@ -551,12 +551,12 @@
           "occurrence": null,
           "line": 44,
           "span": {
-            "start": 1496,
-            "end": 1503
+            "start": 1472,
+            "end": 1476
           },
           "definitionSpan": {
-            "start": 1496,
-            "end": 1503
+            "start": 1472,
+            "end": 1476
           },
           "decision": null
         }
@@ -572,11 +572,11 @@
         "motif": "sigh",
         "declaration": {
           "start": 925,
-          "end": 1011
+          "end": 1002
         },
         "useSite": {
-          "start": 1336,
-          "end": 1347
+          "start": 1318,
+          "end": 1329
         },
         "line": 39,
         "events": [
@@ -594,11 +594,11 @@
         "motif": "sigh",
         "declaration": {
           "start": 925,
-          "end": 1011
+          "end": 1002
         },
         "useSite": {
-          "start": 1364,
-          "end": 1377
+          "start": 1346,
+          "end": 1359
         },
         "line": 40,
         "events": [
@@ -622,8 +622,8 @@
         "endFrames": 196364,
         "line": 27,
         "span": {
-          "start": 1033,
-          "end": 1060
+          "start": 1024,
+          "end": 1051
         }
       },
       {
@@ -639,8 +639,8 @@
         "endFrames": 98182,
         "line": 34,
         "span": {
-          "start": 1193,
-          "end": 1319
+          "start": 1184,
+          "end": 1301
         }
       },
       {
@@ -656,8 +656,8 @@
         "endFrames": 392727,
         "line": 28,
         "span": {
-          "start": 1069,
-          "end": 1103
+          "start": 1060,
+          "end": 1094
         }
       },
       {
@@ -673,8 +673,8 @@
         "endFrames": 392727,
         "line": 41,
         "span": {
-          "start": 1394,
-          "end": 1521
+          "start": 1376,
+          "end": 1494
         }
       }
     ],

@@ -3,24 +3,24 @@ source: crates/musa-compiler/tests/elaboration.rs
 expression: form
 ---
 timeline 15/4 {
-  occurrence 0|0|note:g4|1/4|299|311|[MotifApplication { call_site: SourceSpan { start: 299, end: 311 } }] from 0 to 1/4;
-  occurrence 0|1|rest|3/4|368|377|[] from 0 to 3/4;
+  occurrence 0|0|note:g4|1/4|275|287|[MotifApplication { call_site: SourceSpan { start: 275, end: 287 } }] from 0 to 1/4;
+  occurrence 0|1|rest|3/4|344|351|[] from 0 to 3/4;
   occurrence *|*|key:g:major||50|67|[] from 0 to 15/4;
   occurrence *|*|meter:3/4||35|50|[] from 0 to 15/4;
   occurrence *|*|tempo:1/4=96::||15|35|[] from 0 to 15/4;
-  occurrence 0|0|note:a4|1/4|299|311|[MotifApplication { call_site: SourceSpan { start: 299, end: 311 } }] from 1/4 to 1/2;
-  occurrence 0|0|note:b4|1/4|299|311|[MotifApplication { call_site: SourceSpan { start: 299, end: 311 } }] from 1/2 to 3/4;
-  occurrence 0|0|note:g4|1/4|299|311|[MotifApplication { call_site: SourceSpan { start: 299, end: 311 } }] from 3/4 to 1;
-  occurrence 0|1|note:d5|1/4|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 3/4 to 1;
-  occurrence 0|1|note:e5|1/4|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 1 to 5/4;
-  occurrence 0|0|note:c5|1/2|299|311|[MotifApplication { call_site: SourceSpan { start: 299, end: 311 } }] from 1 to 3/2;
-  occurrence 0|1|note:f#5|1/4|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 5/4 to 3/2;
-  occurrence 0|1|note:d5|1/4|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 3/2 to 7/4;
-  occurrence 0|0|note:b4|1/2|299|311|[MotifApplication { call_site: SourceSpan { start: 299, end: 311 } }] from 3/2 to 2;
-  occurrence 0|1|note:g5|1/2|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 7/4 to 9/4;
-  occurrence 0|0|note:a4|1/2|299|311|[MotifApplication { call_site: SourceSpan { start: 299, end: 311 } }] from 2 to 5/2;
-  occurrence 0|1|note:f#5|1/2|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 9/4 to 11/4;
-  occurrence 0|0|note:g4|1/2|299|311|[MotifApplication { call_site: SourceSpan { start: 299, end: 311 } }] from 5/2 to 3;
-  occurrence 0|1|note:e5|1/2|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 11/4 to 13/4;
-  occurrence 0|1|note:d5|1/2|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 13/4 to 15/4;
+  occurrence 0|0|note:a4|1/4|275|287|[MotifApplication { call_site: SourceSpan { start: 275, end: 287 } }] from 1/4 to 1/2;
+  occurrence 0|0|note:b4|1/4|275|287|[MotifApplication { call_site: SourceSpan { start: 275, end: 287 } }] from 1/2 to 3/4;
+  occurrence 0|0|note:g4|1/4|275|287|[MotifApplication { call_site: SourceSpan { start: 275, end: 287 } }] from 3/4 to 1;
+  occurrence 0|1|note:d5|1/4|406|418|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 406, end: 418 } }] from 3/4 to 1;
+  occurrence 0|1|note:e5|1/4|406|418|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 406, end: 418 } }] from 1 to 5/4;
+  occurrence 0|0|note:c5|1/2|275|287|[MotifApplication { call_site: SourceSpan { start: 275, end: 287 } }] from 1 to 3/2;
+  occurrence 0|1|note:f#5|1/4|406|418|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 406, end: 418 } }] from 5/4 to 3/2;
+  occurrence 0|1|note:d5|1/4|406|418|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 406, end: 418 } }] from 3/2 to 7/4;
+  occurrence 0|0|note:b4|1/2|275|287|[MotifApplication { call_site: SourceSpan { start: 275, end: 287 } }] from 3/2 to 2;
+  occurrence 0|1|note:g5|1/2|406|418|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 406, end: 418 } }] from 7/4 to 9/4;
+  occurrence 0|0|note:a4|1/2|275|287|[MotifApplication { call_site: SourceSpan { start: 275, end: 287 } }] from 2 to 5/2;
+  occurrence 0|1|note:f#5|1/2|406|418|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 406, end: 418 } }] from 9/4 to 11/4;
+  occurrence 0|0|note:g4|1/2|275|287|[MotifApplication { call_site: SourceSpan { start: 275, end: 287 } }] from 5/2 to 3;
+  occurrence 0|1|note:e5|1/2|406|418|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 406, end: 418 } }] from 11/4 to 13/4;
+  occurrence 0|1|note:d5|1/2|406|418|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 406, end: 418 } }] from 13/4 to 15/4;
 }

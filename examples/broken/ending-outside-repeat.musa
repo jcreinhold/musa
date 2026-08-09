@@ -8,9 +8,9 @@ piece "Alone" {
     score {
         part piano {
             voice right {
-                bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }
+                | c4/4 d4/4 e4/4 f4/4
                 ending 1 {
-                    bar { g4 1; }
+                    | g4/1
                 }
             }
         }

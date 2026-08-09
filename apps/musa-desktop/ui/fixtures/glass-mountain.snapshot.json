@@ -2,7 +2,7 @@
   "document": 0,
   "name": "glass-mountain.musa",
   "kind": "piece",
-  "source": "piece \"Glass Mountain\" {\n    subtitle \"for violin and strings\";\n    composer \"musa\";\n    copyright \"© 2026. Licensed CC BY-SA 4.0.\";\n\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: pitch = e5) {\n        root 1/2;\n        rest 1/4;\n        c5 1/2;\n        b4 1/4;\n        a4 1/2;\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh();\n\n                transpose down P5 {\n                    use sigh();\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5 1;\n                c5 1;\n                a4 1;\n                g#4 1;\n            }\n\n            voice bass {\n                // Under the pedal for the whole descent: the harmony is a\n                // wash rather than four separate chords, and the pedal is\n                // where a page says so.\n                mark pedal {\n                    a2 1;\n                    f2 1;\n                    d2 1;\n                    e2 1;\n                }\n            }\n        }\n    }\n\n    // The sound side (roadmap 7.1). Every stage here runs real DSP: the\n    // oscillators and envelope are the voice, the filter and its modulation\n    // shape it, and the hall is a send to a reverb bus that returns to the\n    // master.\n    studio {\n        patch glass_pad {\n            carrier = oscillator(sine);\n            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);\n\n            mix(carrier, shimmer)\n                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))\n                |> lowpass(cutoff: 1400 Hz, q: 0.7)\n                |> output;\n        }\n\n        lfo = oscillator(sine, frequency: 0.08 Hz)\n            |> scale(250 Hz)\n            |> bias(1400 Hz);\n\n        modulate lfo -> glass_pad.lowpass.cutoff;\n\n        bus hall {\n            reverb(room: 0.82, damping: 0.55);\n        }\n\n        assign violin -> glass_pad;\n        assign strings -> glass_pad;\n\n        route violin -> master;\n        route strings -> master;\n\n        send violin -> hall at -18 dB;\n        send strings -> hall at -14 dB;\n        route hall -> master;\n    }\n}\n",
+  "source": "piece \"Glass Mountain\" {\n    subtitle \"for violin and strings\";\n    composer \"musa\";\n    copyright \"© 2026. Licensed CC BY-SA 4.0.\";\n\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: pitch = e5) {\n        root/2\n        rest/4\n        c5/2\n        b4/4\n        a4/2\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh();\n\n                transpose down P5 {\n                    use sigh();\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5/1\n                c5/1\n                a4/1\n                g#4/1\n            }\n\n            voice bass {\n                // Under the pedal for the whole descent: the harmony is a\n                // wash rather than four separate chords, and the pedal is\n                // where a page says so.\n                mark pedal {\n                    a2/1\n                    f2/1\n                    d2/1\n                    e2/1\n                }\n            }\n        }\n    }\n\n    // The sound side (roadmap 7.1). Every stage here runs real DSP: the\n    // oscillators and envelope are the voice, the filter and its modulation\n    // shape it, and the hall is a send to a reverb bus that returns to the\n    // master.\n    studio {\n        patch glass_pad {\n            carrier = oscillator(sine);\n            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);\n\n            mix(carrier, shimmer)\n                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))\n                |> lowpass(cutoff: 1400 Hz, q: 0.7)\n                |> output;\n        }\n\n        lfo = oscillator(sine, frequency: 0.08 Hz)\n            |> scale(250 Hz)\n            |> bias(1400 Hz);\n\n        modulate lfo -> glass_pad.lowpass.cutoff;\n\n        bus hall {\n            reverb(room: 0.82, damping: 0.55);\n        }\n\n        assign violin -> glass_pad;\n        assign strings -> glass_pad;\n\n        route violin -> master;\n        route strings -> master;\n\n        send violin -> hall at -18 dB;\n        send strings -> hall at -14 dB;\n        route hall -> master;\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -81,12 +81,12 @@
           "occurrence": "occurrence-0",
           "line": 23,
           "span": {
-            "start": 418,
-            "end": 429
+            "start": 403,
+            "end": 414
           },
           "definitionSpan": {
             "start": 234,
-            "end": 243
+            "end": 240
           },
           "decision": null
         }
@@ -122,12 +122,12 @@
           "occurrence": "occurrence-0",
           "line": 23,
           "span": {
-            "start": 418,
-            "end": 429
+            "start": 403,
+            "end": 414
           },
           "definitionSpan": {
-            "start": 252,
-            "end": 261
+            "start": 249,
+            "end": 255
           },
           "decision": null
         }
@@ -167,12 +167,12 @@
           "occurrence": "occurrence-0",
           "line": 23,
           "span": {
-            "start": 418,
-            "end": 429
+            "start": 403,
+            "end": 414
           },
           "definitionSpan": {
-            "start": 270,
-            "end": 277
+            "start": 264,
+            "end": 268
           },
           "decision": null
         }
@@ -212,12 +212,12 @@
           "occurrence": "occurrence-0",
           "line": 23,
           "span": {
-            "start": 418,
-            "end": 429
+            "start": 403,
+            "end": 414
           },
           "definitionSpan": {
-            "start": 286,
-            "end": 293
+            "start": 277,
+            "end": 281
           },
           "decision": null
         }
@@ -257,12 +257,12 @@
           "occurrence": "occurrence-0",
           "line": 23,
           "span": {
-            "start": 418,
-            "end": 429
+            "start": 403,
+            "end": 414
           },
           "definitionSpan": {
-            "start": 302,
-            "end": 309
+            "start": 290,
+            "end": 294
           },
           "decision": null
         }
@@ -303,12 +303,12 @@
           "occurrence": "occurrence-1",
           "line": 26,
           "span": {
-            "start": 487,
-            "end": 498
+            "start": 472,
+            "end": 483
           },
           "definitionSpan": {
             "start": 234,
-            "end": 243
+            "end": 240
           },
           "decision": null
         }
@@ -345,12 +345,12 @@
           "occurrence": "occurrence-1",
           "line": 26,
           "span": {
-            "start": 487,
-            "end": 498
+            "start": 472,
+            "end": 483
           },
           "definitionSpan": {
-            "start": 252,
-            "end": 261
+            "start": 249,
+            "end": 255
           },
           "decision": null
         }
@@ -391,12 +391,12 @@
           "occurrence": "occurrence-1",
           "line": 26,
           "span": {
-            "start": 487,
-            "end": 498
+            "start": 472,
+            "end": 483
           },
           "definitionSpan": {
-            "start": 270,
-            "end": 277
+            "start": 264,
+            "end": 268
           },
           "decision": null
         }
@@ -437,12 +437,12 @@
           "occurrence": "occurrence-1",
           "line": 26,
           "span": {
-            "start": 487,
-            "end": 498
+            "start": 472,
+            "end": 483
           },
           "definitionSpan": {
-            "start": 286,
-            "end": 293
+            "start": 277,
+            "end": 281
           },
           "decision": null
         }
@@ -483,12 +483,12 @@
           "occurrence": "occurrence-1",
           "line": 26,
           "span": {
-            "start": 487,
-            "end": 498
+            "start": 472,
+            "end": 483
           },
           "definitionSpan": {
-            "start": 302,
-            "end": 309
+            "start": 290,
+            "end": 294
           },
           "decision": null
         }
@@ -526,12 +526,12 @@
           "occurrence": null,
           "line": 33,
           "span": {
-            "start": 607,
-            "end": 612
+            "start": 592,
+            "end": 596
           },
           "definitionSpan": {
-            "start": 607,
-            "end": 612
+            "start": 592,
+            "end": 596
           },
           "decision": null
         }
@@ -569,12 +569,12 @@
           "occurrence": null,
           "line": 34,
           "span": {
-            "start": 629,
-            "end": 634
+            "start": 613,
+            "end": 617
           },
           "definitionSpan": {
-            "start": 629,
-            "end": 634
+            "start": 613,
+            "end": 617
           },
           "decision": null
         }
@@ -612,12 +612,12 @@
           "occurrence": null,
           "line": 35,
           "span": {
-            "start": 651,
-            "end": 656
+            "start": 634,
+            "end": 638
           },
           "definitionSpan": {
-            "start": 651,
-            "end": 656
+            "start": 634,
+            "end": 638
           },
           "decision": null
         }
@@ -655,12 +655,12 @@
           "occurrence": null,
           "line": 36,
           "span": {
-            "start": 673,
-            "end": 679
+            "start": 655,
+            "end": 660
           },
           "definitionSpan": {
-            "start": 673,
-            "end": 679
+            "start": 655,
+            "end": 660
           },
           "decision": null
         }
@@ -698,12 +698,12 @@
           "occurrence": null,
           "line": 44,
           "span": {
-            "start": 960,
-            "end": 965
+            "start": 941,
+            "end": 945
           },
           "definitionSpan": {
-            "start": 960,
-            "end": 965
+            "start": 941,
+            "end": 945
           },
           "decision": null
         }
@@ -741,12 +741,12 @@
           "occurrence": null,
           "line": 45,
           "span": {
-            "start": 986,
-            "end": 991
+            "start": 966,
+            "end": 970
           },
           "definitionSpan": {
-            "start": 986,
-            "end": 991
+            "start": 966,
+            "end": 970
           },
           "decision": null
         }
@@ -784,12 +784,12 @@
           "occurrence": null,
           "line": 46,
           "span": {
-            "start": 1012,
-            "end": 1017
+            "start": 991,
+            "end": 995
           },
           "definitionSpan": {
-            "start": 1012,
-            "end": 1017
+            "start": 991,
+            "end": 995
           },
           "decision": null
         }
@@ -827,12 +827,12 @@
           "occurrence": null,
           "line": 47,
           "span": {
-            "start": 1038,
-            "end": 1043
+            "start": 1016,
+            "end": 1020
           },
           "definitionSpan": {
-            "start": 1038,
-            "end": 1043
+            "start": 1016,
+            "end": 1020
           },
           "decision": null
         }
@@ -848,11 +848,11 @@
         "motif": "sigh",
         "declaration": {
           "start": 195,
-          "end": 315
+          "end": 300
         },
         "useSite": {
-          "start": 418,
-          "end": 429
+          "start": 403,
+          "end": 414
         },
         "line": 23,
         "events": [
@@ -873,11 +873,11 @@
         "motif": "sigh",
         "declaration": {
           "start": 195,
-          "end": 315
+          "end": 300
         },
         "useSite": {
-          "start": 487,
-          "end": 498
+          "start": 472,
+          "end": 483
         },
         "line": 26,
         "events": [
@@ -984,8 +984,8 @@
                 "maximum": 16.0,
                 "written": true,
                 "span": {
-                  "start": 1459,
-                  "end": 1460
+                  "start": 1436,
+                  "end": 1437
                 },
                 "modulatedBy": null
               }
@@ -1004,8 +1004,8 @@
                 "maximum": 12.0,
                 "written": true,
                 "span": {
-                  "start": 1470,
-                  "end": 1476
+                  "start": 1447,
+                  "end": 1453
                 },
                 "modulatedBy": null
               }
@@ -1030,8 +1030,8 @@
                 "maximum": 5.0,
                 "written": true,
                 "span": {
-                  "start": 1555,
-                  "end": 1560
+                  "start": 1532,
+                  "end": 1537
                 },
                 "modulatedBy": null
               },
@@ -1043,8 +1043,8 @@
                 "maximum": 10.0,
                 "written": true,
                 "span": {
-                  "start": 1569,
-                  "end": 1574
+                  "start": 1546,
+                  "end": 1551
                 },
                 "modulatedBy": null
               },
@@ -1056,8 +1056,8 @@
                 "maximum": 1.0,
                 "written": true,
                 "span": {
-                  "start": 1585,
-                  "end": 1589
+                  "start": 1562,
+                  "end": 1566
                 },
                 "modulatedBy": null
               },
@@ -1069,8 +1069,8 @@
                 "maximum": 10.0,
                 "written": true,
                 "span": {
-                  "start": 1600,
-                  "end": 1605
+                  "start": 1577,
+                  "end": 1582
                 },
                 "modulatedBy": null
               }
@@ -1089,8 +1089,8 @@
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1643,
-                  "end": 1650
+                  "start": 1620,
+                  "end": 1627
                 },
                 "modulatedBy": "lfo"
               },
@@ -1102,8 +1102,8 @@
                 "maximum": 20.0,
                 "written": true,
                 "span": {
-                  "start": 1655,
-                  "end": 1658
+                  "start": 1632,
+                  "end": 1635
                 },
                 "modulatedBy": null
               }
@@ -1130,8 +1130,8 @@
                 "maximum": 1.0,
                 "written": true,
                 "span": {
-                  "start": 1904,
-                  "end": 1908
+                  "start": 1881,
+                  "end": 1885
                 },
                 "modulatedBy": null
               },
@@ -1143,8 +1143,8 @@
                 "maximum": 1.0,
                 "written": true,
                 "span": {
-                  "start": 1919,
-                  "end": 1923
+                  "start": 1896,
+                  "end": 1900
                 },
                 "modulatedBy": null
               },
@@ -1181,8 +1181,8 @@
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1740,
-                  "end": 1747
+                  "start": 1717,
+                  "end": 1724
                 },
                 "modulatedBy": null
               },
@@ -1211,8 +1211,8 @@
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1770,
-                  "end": 1776
+                  "start": 1747,
+                  "end": 1753
                 },
                 "modulatedBy": null
               }
@@ -1231,8 +1231,8 @@
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1798,
-                  "end": 1805
+                  "start": 1775,
+                  "end": 1782
                 },
                 "modulatedBy": null
               }
@@ -1257,8 +1257,8 @@
         "bus": "hall",
         "decibels": -18.0,
         "span": {
-          "start": 2108,
-          "end": 2114
+          "start": 2085,
+          "end": 2091
         }
       },
       {
@@ -1266,8 +1266,8 @@
         "bus": "hall",
         "decibels": -14.0,
         "span": {
-          "start": 2148,
-          "end": 2154
+          "start": 2125,
+          "end": 2131
         }
       }
     ],

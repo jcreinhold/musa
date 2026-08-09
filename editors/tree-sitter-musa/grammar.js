@@ -18,6 +18,25 @@
 /// The mirror image of `Parser::voice_items`: one statement per first token,
 /// as the hand parser dispatches.
 /// </summary>
+const BAR_ITEMS = ($) => [
+  $.note_statement,
+  $.rest_statement,
+  $.chord_statement,
+  $.use_statement,
+  $.dynamic_statement,
+  $.clef_statement,
+  $.tempo_statement,
+  $.mark_statement,
+  $.hairpin_statement,
+  $.tuplet_statement,
+  $.slur_statement,
+  $.grace_statement,
+];
+
+/// <summary>
+/// The mirror image of `Parser::voice_items`: one statement per first token,
+/// as the hand parser dispatches.
+/// </summary>
 const VOICE_ITEMS = ($) => [
   $.note_statement,
   $.rest_statement,
@@ -52,6 +71,18 @@ module.exports = grammar({
   name: 'musa',
 
   extras: ($) => [/\s/, $.comment],
+
+  // An event ends where the next one starts, and telling those apart takes
+  // more than one token of lookahead: after `root/8 tenuto`, whether `tenuto`
+  // is this note's articulation or the next note's pitch is settled by what
+  // follows it. The hand parser looks ahead one *kind*; here the GLR parser
+  // explores both and keeps the reading that parses.
+  conflicts: ($) => [
+    [$.note_statement],
+    [$.chord_statement],
+    [$.grace_note],
+    [$.articulation_list],
+  ],
 
   // `identifier` as the word token steers error recovery toward spelling
   // mistakes, which is most of what a composer types mid-word.
@@ -338,19 +369,20 @@ module.exports = grammar({
     // Parser::block — the `{ ... }` body of a motif, transpose, or repeat.
     block: ($) => seq('{', repeat(choice(...VOICE_ITEMS($))), '}'),
 
-    // Parser::note_stmt — `<pitch-or-ref> <duration> <articulation>* ~? ;`
+    // Parser::note_stmt — `<pitch-or-ref> <duration> <articulation>* ~?`.
+    // No terminator: an event is self-delimiting.
     note_statement: ($) =>
       seq(
         field('pitch', choice($.pitch_literal, $.identifier)),
         $.duration,
         optional($.articulation_list),
         optional('~'),
-        ';',
       ),
 
     // Parser::articulations — their own node, by the hand parser's own rule:
-    // a bare identifier here is an articulation, not a reference.
-    articulation_list: ($) => repeat1($.identifier),
+    // a bare identifier here is an articulation, not a reference. `>` is an
+    // accent and `^` a marcato, which is the mark notation draws.
+    articulation_list: ($) => repeat1(choice($.identifier, '>', '^')),
 
     // Parser::duration — `1/4`, `1`, `/4`, `/4.`, or a parameter reference;
     // `to` bounds how long the written value may be held (roadmap §2).
@@ -367,20 +399,18 @@ module.exports = grammar({
         $.identifier,
       ),
 
-    rest_statement: ($) => seq('rest', $.duration, ';'),
+    rest_statement: ($) => seq('rest', $.duration),
 
-    // Parser::chord_stmt — `chord [<pitch>, ...] <duration>;`
+    // Parser::chord_stmt — `[<pitch> ...]<duration>`. The bracket says chord,
+    // so the keyword and the commas were both repeating it.
     chord_statement: ($) =>
       seq(
-        'chord',
         '[',
-        $.pitch_literal,
-        repeat(seq(',', $.pitch_literal)),
+        repeat1($.pitch_literal),
         ']',
         $.duration,
         optional($.articulation_list),
         optional('~'),
-        ';',
       ),
 
     // Parser::use_stmt — the parentheses *are* the argument list; `with` is a
@@ -421,8 +451,17 @@ module.exports = grammar({
     // Parser::ending_stmt — `ending 1 { ... }`
     ending_statement: ($) => seq('ending', field('pass', $.integer), field('body', $.block)),
 
-    // Parser::bar_stmt — the name is optional and nothing to disambiguate.
-    bar_statement: ($) => seq('bar', optional(field('name', $.identifier)), field('body', $.block)),
+    // Parser::bar_stmt and Parser::pipe_bar_stmt — one node for both, because
+    // it is one claim: a measure's worth of music. The named form keeps its
+    // block, because a name is an address; the drawn form runs to the next
+    // `|` or to the first statement that is itself at least a bar long.
+    bar_statement: ($) =>
+      choice(
+        seq('bar', optional(field('name', $.identifier)), field('body', $.block)),
+        // Right-associative: a bar takes every item it can, and the next
+        // `|` is what stops it — the hand parser's exit-before-dispatch.
+        prec.right(seq('|', repeat(choice(...BAR_ITEMS($))))),
+      ),
 
     slur_statement: ($) => seq('slur', field('body', $.block)),
 
@@ -439,8 +478,9 @@ module.exports = grammar({
     // Parser::grace_stmt — pitches and nothing else: no written duration.
     grace_statement: ($) => seq('grace', '{', repeat($.grace_note), '}'),
 
-    grace_note: ($) =>
-      seq(field('pitch', choice($.pitch_literal, $.identifier)), optional($.articulation_list), ';'),
+    // A grace note ends itself, the way every other event does; the group's
+    // `}` ends the last one.
+    grace_note: ($) => seq(field('pitch', choice($.pitch_literal, $.identifier)), optional($.articulation_list)),
 
     // Parser::phrase_stmt — `phrase "A" { ... }`
     phrase_statement: ($) => seq('phrase', field('name', $.string), field('body', $.block)),

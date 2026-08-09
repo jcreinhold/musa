@@ -37,8 +37,8 @@ function placed(page: Page) {
  * the stem and the centre of a half note's head is the hole in it.
  */
 const GENERATED = '.engraving .arriving [id="event-3"] g.notehead';
-/** The `b4 1/4;` inside the motif: the line that spells it. */
-const SPELLS = "b4 1/4;";
+/** The `b4/4` inside the motif: the line that spells it. */
+const SPELLS = "b4/4";
 
 /**
  * Point at a note.
@@ -131,12 +131,12 @@ test("the focus follows the keyboard, so it is on for someone who never hovers",
   await expect(spelling(page)).toHaveCount(0);
   await page.keyboard.press("ArrowRight");
   // The second note of the motif, and the line inside the motif that spells it.
-  await expect(spelling(page)).toHaveText("rest 1/4;");
+  await expect(spelling(page)).toHaveText("rest/4");
   await expect(hairlines(page)).toHaveCount(2);
 
   // And it moves with the arrow keys rather than staying where it landed.
   await page.keyboard.press("ArrowRight");
-  await expect(spelling(page)).toHaveText("c5 1/2;");
+  await expect(spelling(page)).toHaveText("c5/2");
 });
 
 test("the focus changes nothing else: not the selection, not the scroll", async ({

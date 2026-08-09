@@ -45,8 +45,8 @@ fn piece(body: &str) -> String {
          tempo 1/4 = 60;\n\
          meter 4/4;\n\
          key c major;\n\
-         motif a() {{ c5 1/4; e5 1/4; }}\n\
-         motif b() {{ g5 1/8; f5 3/8; }}\n\
+         motif a() {{ c5/4 e5/4 }}\n\
+         motif b() {{ g5/8 f5/4. }}\n\
          score {{ part p {{ clef treble; voice v {{ {body} }} }} }}\n\
          }}"
     )
@@ -106,7 +106,7 @@ fn same(left: &str, right: &str) {
 #[test]
 fn stretching_by_one_changes_nothing() {
     same("stretch 1 { use a(); use b(); }", "use a(); use b();");
-    same("stretch 1/1 { c5 1/4; rest 1/8; }", "c5 1/4; rest 1/8;");
+    same("stretch 1/1 { c5/4 rest/8 }", "c5/4 rest/8");
 }
 
 proptest! {
@@ -144,10 +144,7 @@ fn retrograde_is_its_own_inverse() {
     same("retrograde { retrograde { use a(); use b(); } }", "use a(); use b();");
     // Ties are relations between notes, so reversing twice has to put them
     // back on the note that opened them.
-    same(
-        "retrograde { retrograde { c5 1/4 ~; c5 1/8; e5 1/4; } }",
-        "c5 1/4 ~; c5 1/8; e5 1/4;",
-    );
+    same("retrograde { retrograde { c5/4 ~ c5/8 e5/4 } }", "c5/4 ~ c5/8 e5/4");
 }
 
 #[test]
@@ -160,8 +157,8 @@ fn retrograde_reverses_a_sequence_rather_than_distributing_over_it() {
 
 #[test]
 fn retrograde_puts_the_last_note_first() {
-    let backwards = music("retrograde { c5 1/4; e5 1/8; g5 1/2; }");
-    let forwards = music("g5 1/2; e5 1/8; c5 1/4;");
+    let backwards = music("retrograde { c5/4 e5/8 g5/2 }");
+    let forwards = music("g5/2 e5/8 c5/4");
     assert_eq!(backwards, forwards);
 }
 
@@ -186,7 +183,7 @@ fn inversion_mirrors_diatonically_and_spells_the_result() {
     // `c5 e5 g5` about `c5`: the rising third becomes a falling one, and the
     // key's own spelling is not assumed — the mirror of a major third down
     // from c is a-flat, not g-sharp.
-    let mirrored = music("invert around c5 { c5 1/4; e5 1/4; g5 1/4; }");
+    let mirrored = music("invert around c5 { c5/4 e5/4 g5/4 }");
     let pitches: Vec<ScoreEventKind> = mirrored.iter().map(|(_, _, kind)| kind.clone()).collect();
     let expected: Vec<ScoreEventKind> = ["c5", "ab4", "f4"]
         .into_iter()
@@ -202,7 +199,7 @@ fn a_mirror_image_the_language_cannot_write_is_reported() {
     // `b##4` mirrored about `c5` lands a diatonic step above the axis and
     // three semitones below it: a d that would need a triple flat, which the
     // language cannot write — an error, never a silently approximated pitch.
-    let errors = errors_of(&piece("invert around c5 { b##4 1/4; }"));
+    let errors = errors_of(&piece("invert around c5 { b##4/4 }"));
     assert!(
         errors
             .iter()
@@ -216,7 +213,7 @@ fn a_mirror_image_the_language_cannot_write_is_reported() {
 #[test]
 fn an_override_changes_one_note_of_one_occurrence() {
     let specialized = music("use a(); use a() with { note 2 = f5; }");
-    let plain = music("use a(); c5 1/4; f5 1/4;");
+    let plain = music("use a(); c5/4 f5/4");
     assert_eq!(specialized, plain);
 }
 
@@ -303,7 +300,7 @@ fn an_override_cannot_name_a_rest_or_a_chord() {
     let with_rests = |clause: &str| {
         errors_of(&format!(
             "piece \"x\" {{ tempo 1/4 = 60; meter 4/4; key c major;\n\
-             motif c() {{ rest 1/4; chord [c5, e5] 1/4; g5 1/4; }}\n\
+             motif c() {{ rest/4 [c5 e5]/4 g5/4 }}\n\
              score {{ part p {{ voice v {{ use c() with {{ {clause} }} }} }} }} }}"
         ))
     };

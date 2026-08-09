@@ -12,7 +12,7 @@ piece "P" {
             tempo 1/4 = 132;
 
             voice melody {
-                a4 1/8;
+                a4/8
             }
         }
     }
@@ -40,4 +40,4 @@ piece "P" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational))))))))
+              (integer))))))))

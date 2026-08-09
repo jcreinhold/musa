@@ -50,29 +50,29 @@ piece "Ornaments" {
                 // a note, which is exactly why it needs the `mark` statement.
                 mark rehearsal "A";
 
-                g5 1/4 trill;
-                a5 1/8;
-                b5 1/8;
-                c6 1/4 mordent;
-                b5 1/4;
+                g5/4 trill
+                a5/8
+                b5/8
+                c6/4 mordent
+                b5/4
 
                 // Under the pedal, which is a span: it covers the music in
                 // its block and the block is what says how far.
                 mark pedal {
-                    a5 1/8;
-                    b5 1/8;
-                    c6 1/8;
-                    d6 1/8;
-                    e6 1/4 turn;
-                    d6 1/4;
+                    a5/8
+                    b5/8
+                    c6/8
+                    d6/8
+                    e6/4 turn
+                    d6/4
                 }
 
                 mark text "poco rit.";
 
-                c6 1/4;
-                b5 1/4;
-                a5 1/4;
-                g5 1/4 fermata;
+                c6/4
+                b5/4
+                a5/4
+                g5/4 fermata
 
                 // A breath falls between two notes and belongs to neither,
                 // which is the whole reason it is a point rather than
@@ -84,16 +84,16 @@ piece "Ornaments" {
                 // An octave up, and the page says so rather than the notes
                 // climbing off the staff.
                 mark ottava 1 {
-                    g6 1/8;
-                    a6 1/8;
-                    b6 1/8;
-                    c7 1/8;
-                    d7 1/4 trill;
-                    b6 1/4;
+                    g6/8
+                    a6/8
+                    b6/8
+                    c7/8
+                    d7/4 trill
+                    b6/4
                 }
 
-                g5 1/2 fermata;
-                rest 1/2;
+                g5/2 fermata
+                rest/2
             }
         }
 
@@ -104,38 +104,38 @@ piece "Ornaments" {
             voice bass {
                 dynamic mf;
 
-                g3 1/4;
-                d3 1/4;
-                g3 1/4;
-                b3 1/4;
+                g3/4
+                d3/4
+                g3/4
+                b3/4
 
-                c4 1/4;
-                g3 1/4;
-                c4 1/4;
-                e4 1/4;
+                c4/4
+                g3/4
+                c4/4
+                e4/4
 
-                d4 1/4;
-                a3 1/4;
-                d4 1/4;
-                f#4 1/4;
+                d4/4
+                a3/4
+                d4/4
+                f#4/4
 
-                g3 1/4;
-                d3 1/4;
-                g3 1/4;
-                d3 1/4;
+                g3/4
+                d3/4
+                g3/4
+                d3/4
 
-                g3 1/4;
-                b3 1/4;
-                d4 1/4;
-                g4 1/4;
+                g3/4
+                b3/4
+                d4/4
+                g4/4
 
-                c4 1/4;
-                e4 1/4;
-                d4 1/4;
-                d3 1/4;
+                c4/4
+                e4/4
+                d4/4
+                d3/4
 
-                g3 1/2 fermata;
-                rest 1/2;
+                g3/2 fermata
+                rest/2
             }
         }
     }
@@ -210,27 +210,27 @@ piece "Ornaments" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
+              (integer))
             (articulation_list
               (identifier)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
+              (integer))
             (articulation_list
               (identifier)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (comment)
           (comment)
           (mark_statement
@@ -239,48 +239,48 @@ piece "Ornaments" {
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational))
+                  (integer))
                 (articulation_list
                   (identifier)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))))
+                  (integer)))))
           (mark_statement
             (identifier)
             (string))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
+              (integer))
             (articulation_list
               (identifier)))
           (comment)
@@ -300,38 +300,38 @@ piece "Ornaments" {
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational))
+                  (integer))
                 (articulation_list
                   (identifier)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))))
+                  (integer)))))
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
+              (integer))
             (articulation_list
               (identifier)))
           (rest_statement
             (duration
-              (rational)))))
+              (integer)))))
       (part_declaration
         (identifier)
         (clef_statement
@@ -345,105 +345,105 @@ piece "Ornaments" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
+              (integer))
             (articulation_list
               (identifier)))
           (rest_statement
             (duration
-              (rational))))))))
+              (integer))))))))

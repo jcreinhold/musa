@@ -24,12 +24,12 @@ piece "Shuffle" {
     // is a barline the other parts would have to share.
     fragment ride_bar {
         repeat 12 {
-            d4 1/4;
-            d4 1/8;
-            d4 1/8;
-            d4 1/4;
-            d4 1/8;
-            d4 1/8;
+            d4/4
+            d4/8
+            d4/8
+            d4/4
+            d4/8
+            d4/8
         }
     }
 
@@ -71,88 +71,88 @@ piece "Shuffle" {
                 dynamic mf;
 
                 // I — four bars
-                c5 1/8;
-                eb5 1/8;
-                f5 1/8;
-                f#5 1/8;
-                g5 1/8;
-                f5 1/8;
-                eb5 1/8;
-                c5 1/8;
-                c5 1/8;
-                eb5 1/8;
-                f5 1/8;
-                f#5 1/8;
-                g5 1/4;
-                rest 1/4;
-                c5 1/8;
-                eb5 1/8;
-                f5 1/8;
-                f#5 1/8;
-                g5 1/8;
-                f5 1/8;
-                eb5 1/8;
-                c5 1/8;
-                bb4 1/4;
-                c5 1/4;
-                eb5 1/4;
-                f5 1/4;
+                c5/8
+                eb5/8
+                f5/8
+                f#5/8
+                g5/8
+                f5/8
+                eb5/8
+                c5/8
+                c5/8
+                eb5/8
+                f5/8
+                f#5/8
+                g5/4
+                rest/4
+                c5/8
+                eb5/8
+                f5/8
+                f#5/8
+                g5/8
+                f5/8
+                eb5/8
+                c5/8
+                bb4/4
+                c5/4
+                eb5/4
+                f5/4
 
                 // IV — two bars
-                f5 1/8;
-                ab5 1/8;
-                bb5 1/8;
-                b5 1/8;
-                c6 1/8;
-                bb5 1/8;
-                ab5 1/8;
-                f5 1/8;
-                f5 1/8;
-                ab5 1/8;
-                bb5 1/8;
-                b5 1/8;
-                c6 1/4;
-                rest 1/4;
+                f5/8
+                ab5/8
+                bb5/8
+                b5/8
+                c6/8
+                bb5/8
+                ab5/8
+                f5/8
+                f5/8
+                ab5/8
+                bb5/8
+                b5/8
+                c6/4
+                rest/4
 
                 // I — two bars
-                c5 1/8;
-                eb5 1/8;
-                f5 1/8;
-                f#5 1/8;
-                g5 1/8;
-                f5 1/8;
-                eb5 1/8;
-                c5 1/8;
-                c5 1/4;
-                eb5 1/4;
-                g5 1/4;
-                bb5 1/4;
+                c5/8
+                eb5/8
+                f5/8
+                f#5/8
+                g5/8
+                f5/8
+                eb5/8
+                c5/8
+                c5/4
+                eb5/4
+                g5/4
+                bb5/4
 
                 // V — IV — I — turnaround
                 dynamic f;
-                g5 1/8;
-                b5 1/8;
-                d6 1/8;
-                f6 1/8;
-                g6 1/4;
-                rest 1/4;
-                f5 1/8;
-                a5 1/8;
-                c6 1/8;
-                eb6 1/8;
-                f6 1/4;
-                rest 1/4;
-                c5 1/8;
-                eb5 1/8;
-                f5 1/8;
-                f#5 1/8;
-                g5 1/8;
-                f5 1/8;
-                eb5 1/8;
-                c5 1/8;
-                g4 1/4;
-                bb4 1/4;
-                c5 1/2;
+                g5/8
+                b5/8
+                d6/8
+                f6/8
+                g6/4
+                rest/4
+                f5/8
+                a5/8
+                c6/8
+                eb6/8
+                f6/4
+                rest/4
+                c5/8
+                eb5/8
+                f5/8
+                f#5/8
+                g5/8
+                f5/8
+                eb5/8
+                c5/8
+                g4/4
+                bb4/4
+                c5/2
             }
         }
 
@@ -166,57 +166,57 @@ piece "Shuffle" {
             voice walk {
                 dynamic mf;
 
-                c3 1/4;
-                e3 1/4;
-                g3 1/4;
-                a3 1/4;
-                c3 1/4;
-                e3 1/4;
-                g3 1/4;
-                bb3 1/4;
-                c3 1/4;
-                e3 1/4;
-                g3 1/4;
-                a3 1/4;
-                c3 1/4;
-                bb3 1/4;
-                a3 1/4;
-                ab3 1/4;
+                c3/4
+                e3/4
+                g3/4
+                a3/4
+                c3/4
+                e3/4
+                g3/4
+                bb3/4
+                c3/4
+                e3/4
+                g3/4
+                a3/4
+                c3/4
+                bb3/4
+                a3/4
+                ab3/4
 
-                f3 1/4;
-                a3 1/4;
-                c4 1/4;
-                d4 1/4;
-                f3 1/4;
-                a3 1/4;
-                c4 1/4;
-                eb4 1/4;
+                f3/4
+                a3/4
+                c4/4
+                d4/4
+                f3/4
+                a3/4
+                c4/4
+                eb4/4
 
-                c3 1/4;
-                e3 1/4;
-                g3 1/4;
-                a3 1/4;
-                c3 1/4;
-                e3 1/4;
-                g3 1/4;
-                bb3 1/4;
+                c3/4
+                e3/4
+                g3/4
+                a3/4
+                c3/4
+                e3/4
+                g3/4
+                bb3/4
 
-                g3 1/4;
-                b3 1/4;
-                d4 1/4;
-                f4 1/4;
-                f3 1/4;
-                a3 1/4;
-                c4 1/4;
-                eb4 1/4;
-                c3 1/4;
-                e3 1/4;
-                g3 1/4;
-                a3 1/4;
-                g3 1/4;
-                f3 1/4;
-                e3 1/4;
-                c3 1/4;
+                g3/4
+                b3/4
+                d4/4
+                f4/4
+                f3/4
+                a3/4
+                c4/4
+                eb4/4
+                c3/4
+                e3/4
+                g3/4
+                a3/4
+                g3/4
+                f3/4
+                e3/4
+                c3/4
             }
         }
 
@@ -272,27 +272,27 @@ piece "Shuffle" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (performance_declaration
       (comment)
       (comment)
@@ -349,304 +349,304 @@ piece "Shuffle" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (rest_statement
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (comment)
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (rest_statement
             (duration
-              (rational)))
+              (integer)))
           (comment)
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (comment)
           (dynamic_statement
             (identifier))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (rest_statement
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (rest_statement
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))))
+              (integer)))))
       (comment)
       (comment)
       (comment)
@@ -663,195 +663,195 @@ piece "Shuffle" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))))
+              (integer)))))
       (comment)
       (comment)
       (part_declaration

@@ -111,7 +111,7 @@ fn the_same_bar_length_needs_no_second_grid() {
 /// refused in the other or the assertion means nothing.
 #[test]
 fn a_bar_is_one_measure_of_the_part_it_is_written_in() {
-    let seven = "bar { c5 1/8; d5 1/8; e5 1/8; f5 1/8; g5 1/8; a5 1/8; b5 1/8; }";
+    let seven = "bar { c5/8 d5/8 e5/8 f5/8 g5/8 a5/8 b5/8 }";
     let with = format!("piece \"P\" {{ meter 4/4; score {{ part p {{ meter 7/8; voice v {{ {seven} }} }} }} }}");
     let compilation = compile(&SourceDocument::new(&with, "bar.musa"), &CompileOptions::default());
     assert!(compilation.diagnostics().is_empty(), "{:?}", compilation.diagnostics());
@@ -126,7 +126,7 @@ fn a_bar_is_one_measure_of_the_part_it_is_written_in() {
 /// at exactly the same frames.
 #[test]
 fn a_barline_that_moves_moves_no_note() {
-    let notes = "c5 1/8; d5 1/8; e5 1/8; f5 1/8; g5 1/8; a5 1/8; b5 1/8; c6 1/8;";
+    let notes = "c5/8 d5/8 e5/8 f5/8 g5/8 a5/8 b5/8 c6/8";
     let piece = |part: &str| {
         format!("piece \"P\" {{ tempo 1/4 = 60; meter 4/4; score {{ part p {{ {part} voice v {{ {notes} }} }} }} }}")
     };
@@ -139,7 +139,7 @@ fn a_barline_that_moves_moves_no_note() {
 #[test]
 fn a_part_meter_of_no_beats_must_say_so() {
     refuses(
-        "piece \"P\" { meter 4/4; score { part p { meter 0/4; voice v { c5 1/4; } } } }",
+        "piece \"P\" { meter 4/4; score { part p { meter 0/4; voice v { c5/4 } } } }",
         "this meter cannot be read",
     );
 }

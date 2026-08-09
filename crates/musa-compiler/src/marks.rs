@@ -1,7 +1,7 @@
 //! The notation vocabulary, as a table.
 //!
 //! Musa has no fermata. The reason was never that a fermata is hard — the
-//! parser has accepted `g4 1/4 fermata;` since prompt 27 and validates
+//! parser has accepted `g4/4 fermata` since prompt 27 and validates
 //! nothing — but that the compiler's `ArticulationMark` was a closed enum of
 //! five, so a sixth mark meant editing four files: the enum, its name list,
 //! its parser and its printer in `score.rs`, plus one `match` arm in each of
@@ -31,7 +31,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// keyword rather than one keyword per shape.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Anchor {
-    /// On the note it trails: `g4 1/4 staccato;`.
+    /// On the note it trails: `g4/4 staccato`.
     Note(Slot),
     /// At the instant it is written: `mark breath;`.
     Point,
@@ -96,6 +96,11 @@ pub struct MarkDef {
     pub anchor: Anchor,
     /// What is written after the name.
     pub takes: Argument,
+    /// The mark notation writes for it, when notation writes one — `>` for an
+    /// accent, `^` for a marcato — or `None` when the word is the only
+    /// spelling. A shorthand is one token, so it can sit on a note with no
+    /// space in front of it.
+    pub shorthand: Option<&'static str>,
     /// MEI's spelling, or `None` when MEI cannot say it.
     pub mei: Option<&'static str>,
     /// `MusicXML`'s spelling, or `None` when `MusicXML` cannot say it.
@@ -114,6 +119,7 @@ pub struct MarkDef {
 pub const VOCABULARY: &[MarkDef] = &[
     MarkDef {
         name: "staccato",
+        shorthand: None,
         anchor: Anchor::Note(Slot::Articulation),
         takes: Argument::None,
         mei: Some("stacc"),
@@ -122,6 +128,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "staccatissimo",
+        shorthand: None,
         anchor: Anchor::Note(Slot::Articulation),
         takes: Argument::None,
         mei: Some("stacciss"),
@@ -130,6 +137,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "tenuto",
+        shorthand: None,
         anchor: Anchor::Note(Slot::Articulation),
         takes: Argument::None,
         mei: Some("ten"),
@@ -138,6 +146,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "accent",
+        shorthand: Some(">"),
         anchor: Anchor::Note(Slot::Articulation),
         takes: Argument::None,
         mei: Some("acc"),
@@ -146,6 +155,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "marcato",
+        shorthand: Some("^"),
         anchor: Anchor::Note(Slot::Articulation),
         takes: Argument::None,
         mei: Some("marc"),
@@ -156,6 +166,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     // (roadmap §2). Nothing here says how long.
     MarkDef {
         name: "fermata",
+        shorthand: None,
         anchor: Anchor::Note(Slot::Fermata),
         takes: Argument::None,
         mei: Some("fermata"),
@@ -164,6 +175,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "trill",
+        shorthand: None,
         anchor: Anchor::Note(Slot::Ornament),
         takes: Argument::None,
         mei: Some("trill"),
@@ -172,6 +184,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "mordent",
+        shorthand: None,
         anchor: Anchor::Note(Slot::Ornament),
         takes: Argument::None,
         mei: Some("mordent"),
@@ -180,6 +193,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "turn",
+        shorthand: None,
         anchor: Anchor::Note(Slot::Ornament),
         takes: Argument::None,
         mei: Some("turn"),
@@ -188,6 +202,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "harmonic",
+        shorthand: None,
         anchor: Anchor::Note(Slot::Technical),
         takes: Argument::None,
         mei: Some("harm"),
@@ -196,6 +211,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "upbow",
+        shorthand: None,
         anchor: Anchor::Note(Slot::Technical),
         takes: Argument::None,
         mei: Some("upbow"),
@@ -204,6 +220,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "downbow",
+        shorthand: None,
         anchor: Anchor::Note(Slot::Technical),
         takes: Argument::None,
         mei: Some("dnbow"),
@@ -215,6 +232,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     // articulations — so both columns are `None` and the export says so.
     MarkDef {
         name: "breath",
+        shorthand: None,
         anchor: Anchor::Point,
         takes: Argument::None,
         mei: Some("breath"),
@@ -223,6 +241,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "caesura",
+        shorthand: None,
         anchor: Anchor::Point,
         takes: Argument::None,
         mei: Some("caesura"),
@@ -231,6 +250,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "text",
+        shorthand: None,
         anchor: Anchor::Point,
         takes: Argument::Text,
         mei: Some("dir"),
@@ -239,6 +259,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "rehearsal",
+        shorthand: None,
         anchor: Anchor::Point,
         takes: Argument::Text,
         mei: Some("reh"),
@@ -250,6 +271,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     // studio's job and is not notation.
     MarkDef {
         name: "sample",
+        shorthand: None,
         anchor: Anchor::Point,
         takes: Argument::Text,
         mei: Some("dir"),
@@ -258,6 +280,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "cue",
+        shorthand: None,
         anchor: Anchor::Point,
         takes: Argument::Text,
         mei: Some("dir"),
@@ -266,6 +289,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "pedal",
+        shorthand: None,
         anchor: Anchor::Span,
         takes: Argument::None,
         mei: Some("pedal"),
@@ -274,6 +298,7 @@ pub const VOCABULARY: &[MarkDef] = &[
     },
     MarkDef {
         name: "ottava",
+        shorthand: None,
         anchor: Anchor::Span,
         takes: Argument::Number,
         mei: Some("octave"),

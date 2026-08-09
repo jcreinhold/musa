@@ -56,7 +56,7 @@ describe("text to page", () => {
     expect(events).toHaveLength(1);
 
     const chosen = workspace().snapshot?.score?.events.find((event) => event.id === events[0]);
-    expect(text(chosen?.origin.span as Span)).toBe("f5 1/4;");
+    expect(text(chosen?.origin.span as Span)).toBe("f5/4");
   });
 
   it("a caret in the whitespace between statements chooses nothing", () => {

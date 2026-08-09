@@ -16,15 +16,15 @@ const PIECE: &str = r#"piece "Etude" {
     tempo quarter = 72;
 
     motif sigh(root: pitch = e5) {
-        root 1/2;
-        c5 1/2;
+        root/2
+        c5/2
     }
 
     score {
         part piano {
             voice right {
-                a4 1/4;
-                b4 1/4;
+                a4/4
+                b4/4
             }
 
             voice left {
@@ -57,11 +57,11 @@ fn changing_a_pitch_touches_only_the_pitch_token() {
     let out = edited(
         PIECE,
         &EditIntent::SetPitch {
-            at: at(PIECE, "a4 1/4;"),
+            at: at(PIECE, "a4/4"),
             pitch: "g#4".to_owned(),
         },
     );
-    assert_eq!(out, PIECE.replace("a4 1/4;", "g#4 1/4;"));
+    assert_eq!(out, PIECE.replace("a4/4", "g#4/4"));
 }
 
 #[test]
@@ -69,11 +69,11 @@ fn changing_a_duration_touches_only_the_duration_token() {
     let out = edited(
         PIECE,
         &EditIntent::SetDuration {
-            at: at(PIECE, "b4 1/4;"),
+            at: at(PIECE, "b4/4"),
             duration: "3/8".to_owned(),
         },
     );
-    assert_eq!(out, PIECE.replace("b4 1/4;", "b4 3/8;"));
+    assert_eq!(out, PIECE.replace("b4/4", "b4/4."));
 }
 
 #[test]
@@ -83,12 +83,12 @@ fn a_motif_note_is_reachable_by_its_own_span() {
     let out = edited(
         PIECE,
         &EditIntent::SetPitch {
-            at: at(PIECE, "c5 1/2;"),
+            at: at(PIECE, "c5/2"),
             pitch: "d5".to_owned(),
         },
     );
     assert!(
-        out.contains("        d5 1/2;"),
+        out.contains("        d5/2"),
         "the motif body changed, indented as it was"
     );
     assert_eq!(out.matches("d5").count(), 1, "and nothing else did");
@@ -99,11 +99,11 @@ fn a_pitch_reference_is_a_pitch_like_any_other() {
     let out = edited(
         PIECE,
         &EditIntent::SetPitch {
-            at: at(PIECE, "root 1/2;"),
+            at: at(PIECE, "root/2"),
             pitch: "f5".to_owned(),
         },
     );
-    assert!(out.contains("        f5 1/2;"));
+    assert!(out.contains("        f5/2"));
 }
 
 #[test]
@@ -111,16 +111,14 @@ fn inserting_after_a_note_matches_its_indentation() {
     let out = edited(
         PIECE,
         &EditIntent::Insert {
-            anchor: Anchor::After {
-                at: at(PIECE, "a4 1/4;"),
-            },
+            anchor: Anchor::After { at: at(PIECE, "a4/4") },
             statement: Statement::Note {
                 pitch: "c5".to_owned(),
                 duration: "1/8".to_owned(),
             },
         },
     );
-    assert!(out.contains("                a4 1/4;\n                c5 1/8;\n                b4 1/4;"));
+    assert!(out.contains("                a4/4\n                c5/8\n                b4/4"));
 }
 
 #[test]
@@ -128,15 +126,13 @@ fn inserting_before_a_note_matches_its_indentation() {
     let out = edited(
         PIECE,
         &EditIntent::Insert {
-            anchor: Anchor::Before {
-                at: at(PIECE, "b4 1/4;"),
-            },
+            anchor: Anchor::Before { at: at(PIECE, "b4/4") },
             statement: Statement::Rest {
                 duration: "1/8".to_owned(),
             },
         },
     );
-    assert!(out.contains("                a4 1/4;\n                rest 1/8;\n                b4 1/4;"));
+    assert!(out.contains("                a4/4\n                rest/8\n                b4/4"));
 }
 
 #[test]
@@ -154,7 +150,7 @@ fn entry_into_a_voice_appends_after_its_last_statement() {
             },
         },
     );
-    assert!(out.contains("                b4 1/4;\n                chord [a3, c4] 1/2;\n"));
+    assert!(out.contains("                b4/4\n                [a3 c4]/2\n"));
 }
 
 #[test]
@@ -172,7 +168,7 @@ fn entry_into_an_empty_voice_opens_it_one_level_in() {
             },
         },
     );
-    assert!(out.contains("            voice left {\n                a2 1;\n            }"));
+    assert!(out.contains("            voice left {\n                a2/1\n            }"));
 }
 
 #[test]
@@ -180,16 +176,16 @@ fn extracting_a_motif_lifts_the_run_and_leaves_a_use() {
     let out = edited(
         PIECE,
         &EditIntent::ExtractMotif {
-            first: at(PIECE, "a4 1/4;"),
-            last: at(PIECE, "b4 1/4;"),
+            first: at(PIECE, "a4/4"),
+            last: at(PIECE, "b4/4"),
             name: "answer".to_owned(),
         },
     );
     // The declaration sits with the other declarations, not where the notes
     // were, and the notes are gone from the voice.
-    assert!(out.contains("    motif answer() {\n        a4 1/4;\n        b4 1/4;\n    }\n\n    score {"));
+    assert!(out.contains("    motif answer() {\n        a4/4\n        b4/4\n    }\n\n    score {"));
     assert!(out.contains("            voice right {\n                use answer();\n            }"));
-    assert!(!out.contains("a4 1/4;\n                b4"));
+    assert!(!out.contains("a4/4\n                b4"));
 }
 
 #[test]
@@ -197,13 +193,13 @@ fn extraction_of_one_statement_is_extraction_of_a_run_of_one() {
     let out = edited(
         PIECE,
         &EditIntent::ExtractMotif {
-            first: at(PIECE, "b4 1/4;"),
-            last: at(PIECE, "b4 1/4;"),
+            first: at(PIECE, "b4/4"),
+            last: at(PIECE, "b4/4"),
             name: "tail".to_owned(),
         },
     );
-    assert!(out.contains("    motif tail() {\n        b4 1/4;\n    }"));
-    assert!(out.contains("                a4 1/4;\n                use tail();"));
+    assert!(out.contains("    motif tail() {\n        b4/4\n    }"));
+    assert!(out.contains("                a4/4\n                use tail();"));
 }
 
 #[test]
@@ -220,9 +216,9 @@ fn an_offset_that_is_not_a_statement_is_refused() {
 
 #[test]
 fn a_rest_has_no_pitch_to_change_and_says_so() {
-    let source = PIECE.replace("a4 1/4;", "rest 1/4;");
+    let source = PIECE.replace("a4/4", "rest/4");
     let intent = EditIntent::SetPitch {
-        at: at(&source, "rest 1/4;"),
+        at: at(&source, "rest/4"),
         pitch: "c4".to_owned(),
     };
     assert!(matches!(
@@ -254,8 +250,8 @@ fn a_voice_that_does_not_exist_is_refused_by_name() {
 #[test]
 fn an_extraction_across_two_blocks_is_refused() {
     let intent = EditIntent::ExtractMotif {
-        first: at(PIECE, "c5 1/2;"),
-        last: at(PIECE, "b4 1/4;"),
+        first: at(PIECE, "c5/2"),
+        last: at(PIECE, "b4/4"),
         name: "wrong".to_owned(),
     };
     assert_eq!(compute_edits(PIECE, &intent), Err(EditError::NotSiblings));
@@ -265,9 +261,9 @@ fn an_extraction_across_two_blocks_is_refused() {
 /// note already respelled, and with two.
 const CALLS: &str = r#"piece "Etude" {
     motif sigh() {
-        e5 1/2;
-        c5 1/2;
-        g5 1/2;
+        e5/2
+        c5/2
+        g5/2
     }
 
     score {
@@ -349,7 +345,7 @@ fn specializing_something_that_is_not_an_occurrence_is_refused() {
         compute_edits(
             PIECE,
             &EditIntent::Specialize {
-                at: at(PIECE, "a4 1/4;"),
+                at: at(PIECE, "a4/4"),
                 position: 1,
                 pitch: "g#4".to_owned(),
             }

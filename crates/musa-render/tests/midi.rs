@@ -96,8 +96,8 @@ fn the_file_is_metrical_with_one_track_per_part_plus_tempo() {
 
 #[test]
 fn written_pitch_reaches_midi_through_twelve_tet() {
-    let source = "piece \"x\" { tempo 1/4 = 60; meter 4/4; score { part p { voice v { c4 1/4; a4 1/4; \
-                  c#4 1/4; db4 1/4; } } } }";
+    let source = "piece \"x\" { tempo 1/4 = 60; meter 4/4; score { part p { voice v { c4/4 a4/4 \
+                  c#4/4 db4/4 } } } }";
     let keys: Vec<u8> = read_back(&midi_of(source, MidiMode::Score))
         .iter()
         .map(|note| note.key)
@@ -204,7 +204,7 @@ fn a_performance_swings_and_a_score_does_not() {
     let swung = "piece \"Feel\" { tempo 1/4 = 60; meter 4/4; key c major;
         performance { profile band { groove swing { ratio = 2/3; } } }
         score { part p { profile band; voice v {
-            c5 1/8; d5 1/8; c5 1/8; d5 1/8;
+            c5/8 d5/8 c5/8 d5/8
         } } } }";
     let starts = |mode| {
         let mut starts: Vec<u32> = read_back(&midi_of(swung, mode))

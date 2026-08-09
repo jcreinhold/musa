@@ -20,14 +20,14 @@ piece "Drum Chart" {
 
     fragment groove_bar {
         repeat 8 {
-            c2 1/8;
-            f#3 1/8;
-            d2 1/8;
-            f#3 1/8;
-            c2 1/8;
-            f#3 1/8;
-            d2 1/8;
-            f#3 1/8;
+            c2/8
+            f#3/8
+            d2/8
+            f#3/8
+            c2/8
+            f#3/8
+            d2/8
+            f#3/8
         }
     }
 
@@ -66,37 +66,37 @@ piece "Drum Chart" {
                 mark text "build";
 
                 dynamic f;
-                c2 1/8 accent;
-                f#3 1/8;
-                d2 1/8;
-                f#3 1/8;
-                c2 1/8 accent;
-                f#3 1/8;
-                d2 1/8;
-                f#3 1/8;
-                c2 1/16 accent;
-                c2 1/16;
-                c2 1/16;
-                c2 1/16;
-                d2 1/16 accent;
-                d2 1/16;
-                d2 1/16;
-                d2 1/16;
-                c2 1/16 accent;
-                c2 1/16;
-                d2 1/16;
-                d2 1/16;
-                c2 1/16;
-                c2 1/16;
-                d2 1/16;
-                d2 1/16;
+                c2/8>
+                f#3/8
+                d2/8
+                f#3/8
+                c2/8>
+                f#3/8
+                d2/8
+                f#3/8
+                c2/16>
+                c2/16
+                c2/16
+                c2/16
+                d2/16>
+                d2/16
+                d2/16
+                d2/16
+                c2/16>
+                c2/16
+                d2/16
+                d2/16
+                c2/16
+                c2/16
+                d2/16
+                d2/16
 
                 mark cue "drop";
                 mark sample "crash_909";
 
-                c2 1/4 accent;
-                rest 1/4;
-                rest 1/2;
+                c2/4>
+                rest/4
+                rest/2
             }
         }
     }
@@ -136,35 +136,35 @@ piece "Drum Chart" {
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))
+                (integer)))
             (note_statement
               (pitch_literal)
               (duration
-                (rational)))))))
+                (integer)))))))
     (performance_declaration
       (profile_declaration
         (identifier)
@@ -222,109 +222,104 @@ piece "Drum Chart" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
-            (articulation_list
-              (identifier)))
+              (integer))
+            (articulation_list))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
-            (articulation_list
-              (identifier)))
+              (integer))
+            (articulation_list))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
-            (articulation_list
-              (identifier)))
+              (integer))
+            (articulation_list))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
-            (articulation_list
-              (identifier)))
+              (integer))
+            (articulation_list))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
-            (articulation_list
-              (identifier)))
+              (integer))
+            (articulation_list))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (mark_statement
             (identifier)
             (string))
@@ -334,12 +329,11 @@ piece "Drum Chart" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
-            (articulation_list
-              (identifier)))
+              (integer))
+            (articulation_list))
           (rest_statement
             (duration
-              (rational)))
+              (integer)))
           (rest_statement
             (duration
-              (rational))))))))
+              (integer))))))))

@@ -100,10 +100,10 @@ fn motif_application_expands_with_provenance() {
 #[test]
 fn transpose_spells_correctly() {
     let source = "piece \"x\" { score { part p { voice v {
-        transpose up P5 { c4 1/4; }
-        transpose up M3 { e4 1/4; }
-        transpose down m3 { d5 1/4; }
-        transpose up m2 { b4 1/4; }
+        transpose up P5 { c4/4 }
+        transpose up M3 { e4/4 }
+        transpose down m3 { d5/4 }
+        transpose up m2 { b4/4 }
     } } } }";
     let compilation = compile_source(source);
     assert!(
@@ -134,7 +134,7 @@ fn transpose_spells_correctly() {
 #[test]
 fn repeat_expands_iterations_with_provenance() {
     let source = "piece \"x\" { score { part p { voice v {
-        repeat 3 { c4 1/4; }
+        repeat 3 { c4/4 }
     } } } }";
     let compilation = compile_source(source);
     assert!(
@@ -180,7 +180,7 @@ fn motifs_only_see_earlier_motifs() {
     let compilation = compile_source(
         "piece \"x\" {
             motif a() { use b(); }
-            motif b() { c4 1/4; }
+            motif b() { c4/4 }
             score { part p { voice v { use a(); } } }
         }",
     );
@@ -195,7 +195,7 @@ fn motifs_only_see_earlier_motifs() {
 #[test]
 fn nested_motifs_and_duration_parameters_expand() {
     let source = "piece \"x\" {
-        motif cell(d: duration = 1/4) { c4 d; d4 d; }
+        motif cell(d: duration = 1/4) { c4 d d4 d }
         motif pair(d: duration = 1/8) { use cell(d); use cell(d); }
         score { part p { voice v { use pair(1/16); use pair(); } } }
     }";
@@ -257,8 +257,8 @@ fn durations_of(source: &str) -> Vec<String> {
 /// same note: same value, same spelling, same fact.
 #[test]
 fn the_short_and_long_forms_of_a_duration_are_one_duration() {
-    let short = durations_of("piece \"x\" { score { part p { voice v { c4/4; d4/8; e4/1; } } } }");
-    let long = durations_of("piece \"x\" { score { part p { voice v { c4 1/4; d4 1/8; e4 1; } } } }");
+    let short = durations_of("piece \"x\" { score { part p { voice v { c4/4 d4/8 e4/1 } } } }");
+    let long = durations_of("piece \"x\" { score { part p { voice v { c4/4 d4/8 e4/1 } } } }");
     assert_eq!(short, long);
     assert_eq!(short, vec!["1/4", "1/8", "1"]);
 }
@@ -268,7 +268,7 @@ fn the_short_and_long_forms_of_a_duration_are_one_duration() {
 #[test]
 fn an_augmentation_dot_is_half_again() {
     assert_eq!(
-        durations_of("piece \"x\" { score { part p { voice v { c4/4.; d4/4..; e4/2.; f4/3.; } } } }"),
+        durations_of("piece \"x\" { score { part p { voice v { c4/4. d4/4.. e4/2. f4/3. } } } }"),
         vec!["3/8", "7/16", "3/4", "1/2"]
     );
 }
@@ -277,14 +277,14 @@ fn an_augmentation_dot_is_half_again() {
 /// get one: `3/8.` would be 9/16, which `9/16` says.
 #[test]
 fn a_dot_on_the_long_form_is_refused() {
-    let compilation = compile_source("piece \"x\" { score { part p { voice v { c4 3/8.; } } } }");
+    let compilation = compile_source("piece \"x\" { score { part p { voice v { c4 3/8. } } } }");
     assert!(
         compilation.has_errors(),
         "expected a diagnostic, got: {}",
         messages(&compilation).join("\n")
     );
     assert_eq!(
-        durations_of("piece \"x\" { score { part p { voice v { c4 9/16; } } } }"),
+        durations_of("piece \"x\" { score { part p { voice v { c4 9/16 } } } }"),
         vec!["9/16"]
     );
 }
@@ -293,7 +293,7 @@ fn a_dot_on_the_long_form_is_refused() {
 fn missing_argument_without_default_is_an_error() {
     let compilation = compile_source(
         "piece \"x\" {
-            motif m(root: pitch) { root 1/4; }
+            motif m(root: pitch) { root 1/4 }
             score { part p { voice v { use m(); } } }
         }",
     );
@@ -307,7 +307,7 @@ fn missing_argument_without_default_is_an_error() {
 
 #[test]
 fn unknown_clef_is_an_error() {
-    let compilation = compile_source("piece \"x\" { score { part p { clef soprano; voice v { c5 1; } } } }");
+    let compilation = compile_source("piece \"x\" { score { part p { clef soprano; voice v { c5/1 } } } }");
     assert!(compilation.has_errors());
     assert!(
         reports(&compilation, musa_compiler::Code::UnknownWord, "`soprano`"),
@@ -320,7 +320,7 @@ fn unknown_clef_is_an_error() {
 #[test]
 fn duplicate_part_is_an_error() {
     let compilation =
-        compile_source("piece \"x\" { score { part p { voice v { c5 1; } } part p { voice w { d5 1; } } } }");
+        compile_source("piece \"x\" { score { part p { voice v { c5/1 } } part p { voice w { d5/1 } } } }");
     assert!(compilation.has_errors());
     assert!(
         reports(&compilation, musa_compiler::Code::DuplicateName, "`p`"),
@@ -331,9 +331,8 @@ fn duplicate_part_is_an_error() {
 
 #[test]
 fn duplicate_motif_is_an_error() {
-    let compilation = compile_source(
-        "piece \"x\" { motif m() { c5 1; } motif m() { d5 1; } score { part p { voice v { c5 1; } } } }",
-    );
+    let compilation =
+        compile_source("piece \"x\" { motif m() { c5/1 } motif m() { d5/1 } score { part p { voice v { c5/1 } } } }");
     assert!(compilation.has_errors());
     assert!(
         reports(&compilation, musa_compiler::Code::DuplicateName, "`m`"),
@@ -348,7 +347,7 @@ fn duplicate_motif_is_an_error() {
 #[test]
 fn a_front_matter_role_written_twice_is_an_error() {
     let compilation =
-        compile_source("piece \"x\" { composer \"a\"; composer \"b\"; score { part p { voice v { c5 1; } } } }");
+        compile_source("piece \"x\" { composer \"a\"; composer \"b\"; score { part p { voice v { c5/1 } } } }");
     assert!(compilation.has_errors());
     assert!(
         messages(&compilation)
@@ -365,7 +364,7 @@ fn a_front_matter_role_written_twice_is_an_error() {
 fn all_four_front_matter_roles_reach_the_snapshot() {
     let compilation = compile_source(
         "piece \"x\" { subtitle \"s\"; composer \"c\"; arranger \"a\"; copyright \"©\"; \
-         score { part p { voice v { c5 1; } } } }",
+         score { part p { voice v { c5/1 } } } }",
     );
     assert!(!compilation.has_errors(), "{:?}", messages(&compilation));
     let Some(snapshot) = compilation.into_snapshot() else {
@@ -396,10 +395,10 @@ fn provenance_points_back_to_source() {
     else {
         return;
     };
-    // The first event's origin span covers `d4 1/2;` in the source.
+    // The first event's origin span covers `d4/2` in the source.
     let span = first.origin.source_span;
     let covered = COUNTERPOINT.get(span.start as usize..span.end as usize);
-    assert_eq!(covered, Some("d4 1/2;"));
+    assert_eq!(covered, Some("d4/2"));
     assert!(first.origin.expansion_path.is_empty());
 }
 
@@ -442,7 +441,7 @@ proptest! {
         for duration_text in &durations {
             source.push_str("c4 ");
             source.push_str(duration_text);
-            source.push_str(";\n");
+            source.push('\n');
             let (numerator, denominator) = duration_text.split_once('/').unwrap_or((duration_text, "1"));
             let n: i64 = numerator.parse().unwrap_or(0);
             let d: i64 = denominator.parse().unwrap_or(1);

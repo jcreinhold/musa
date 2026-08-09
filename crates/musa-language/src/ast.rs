@@ -766,7 +766,7 @@ pub enum VoiceItem {
     Note(NoteStmt),
     /// `rest <duration>;`
     Rest(RestStmt),
-    /// `chord [...] <duration>;`
+    /// `[<pitch>…]<duration>`
     Chord(ChordStmt),
     /// `use name(...);`
     Use(UseStmt),
@@ -796,7 +796,7 @@ pub enum VoiceItem {
     Phrase(PhraseStmt),
     /// `mark breath;` / `mark pedal { ... }`
     Mark(MarkStmt),
-    /// `grace { c5; d5; }` — the notes crushed before the next one.
+    /// `grace { c5 d5 }` — the notes crushed before the next one.
     Grace(GraceStmt),
     /// `crescendo to f { ... }`
     Hairpin(HairpinStmt),
@@ -822,11 +822,29 @@ fn articulation_names(node: &SyntaxNode) -> Vec<String> {
         .flat_map(|list| {
             list.children_with_tokens()
                 .filter_map(SyntaxElement::into_token)
-                .filter(|token| token.kind() == SyntaxKind::Identifier)
-                .map(|token| token.text().to_string())
+                .filter_map(|token| articulation_name(&token))
                 .collect::<Vec<_>>()
         })
         .collect()
+}
+
+/// One articulation, by whichever of its two spellings was written.
+///
+/// A mark is the word: `a5/4>` and `a5/4 accent` are the same articulation,
+/// named here rather than downstream, so everything that reads articulations
+/// keeps reading names and never learns there was a second spelling.
+fn articulation_name(token: &SyntaxToken) -> Option<String> {
+    let kind = token.kind();
+    if kind == SyntaxKind::Identifier {
+        return Some(token.text().to_string());
+    }
+    if kind == SyntaxKind::Greater {
+        return Some("accent".to_owned());
+    }
+    if kind == SyntaxKind::Caret {
+        return Some("marcato".to_owned());
+    }
+    None
 }
 
 /// `1/2`, `3/8`, `1`, `/4`, `/4.`, or a duration parameter's name — how long
@@ -866,7 +884,7 @@ impl Duration {
     }
 
     /// The longest this may be held, when the statement gives the performer a
-    /// range (`g4 1/4 to 2/1;`), spelled the same way.
+    /// range (`g4/4 to 2/1`), spelled the same way.
     pub fn held_to(&self) -> Option<String> {
         let mut after = self
             .parts()
@@ -934,7 +952,7 @@ fn gcd(a: i64, b: i64) -> i64 {
 }
 
 /// The duration written after `to`, when the statement gives the performer a
-/// range (`g4 1/4 to 2/1;`).
+/// range (`g4/4 to 2/1`).
 fn held_to(node: &SyntaxNode) -> Option<String> {
     Duration::of(node).and_then(|duration| duration.held_to())
 }
@@ -970,7 +988,7 @@ impl NoteStmt {
     }
 
     /// The longest this note may be held, when the performer was given a
-    /// range (`g4 1/4 to 2/1;`).
+    /// range (`g4/4 to 2/1`).
     pub fn held_to(&self) -> Option<String> {
         held_to(&self.0)
     }
@@ -997,7 +1015,7 @@ impl RestStmt {
     }
 }
 
-/// `fragment a { c5 1/4; e5 1/4; }`
+/// `fragment a { c5/4 e5/4 }`
 pub struct FragmentDecl(SyntaxNode);
 wrapper!(FragmentDecl, SyntaxKind::FragmentDecl);
 
@@ -1053,7 +1071,7 @@ impl ImproviseStmt {
     }
 }
 
-/// `chord [a3, c4, e4] 1/2;`
+/// `[a3 c4 e4]/2`
 pub struct ChordStmt(SyntaxNode);
 wrapper!(ChordStmt, SyntaxKind::ChordStmt);
 
@@ -1272,14 +1290,14 @@ impl MarkStmt {
     }
 }
 
-/// `grace { c5; d5; }`
+/// `grace { c5 d5 }`
 pub struct GraceStmt(SyntaxNode);
 wrapper!(GraceStmt, SyntaxKind::GraceStmt);
 
 impl GraceStmt {
     /// The grace notes, in written order.
     ///
-    /// The order is the value: `grace { c5; d5; }` and `grace { d5; c5; }`
+    /// The order is the value: `grace { c5 d5 }` and `grace { d5 c5 }`
     /// are different music, and nothing downstream can recover the difference
     /// once this sequence is lost.
     pub fn notes(&self) -> Vec<GraceNote> {
@@ -1466,7 +1484,7 @@ impl RepeatStmt {
     }
 }
 
-/// `bar { c5 1/4; e5 1/4; g5 1/4; e5 1/4; }`
+/// `bar { c5/4 e5/4 g5/4 e5/4 }`
 ///
 /// A measure, written down. The braces are an assertion — the contents are
 /// checked against the prevailing meter and then erased — and a name on the

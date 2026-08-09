@@ -23,113 +23,113 @@ piece "Nineteen" {
     key c major;
 
     fragment group_one {
-        b5 1/8;
-        g4 1/8;
-        ab5 1/4;
-        d5 1/2;
+        b5/8
+        g4/8
+        ab5/4
+        d5/2
     }
     fragment group_two {
-        bb4 1/2;
-        c#5 1/2;
+        bb4/2
+        c#5/2
     }
     fragment group_three {
-        f#5 1;
-        c5 1;
+        f#5/1
+        c5/1
     }
     fragment group_four {
-        d5 1/16;
-        e5 1/16;
-        bb4 1/16;
-        c#5 1/16;
-        eb4 1/4;
-        a4 1/4;
-        d#5 1/4;
+        d5/16
+        e5/16
+        bb4/16
+        c#5/16
+        eb4/4
+        a4/4
+        d#5/4
     }
     fragment group_five {
-        a4 1/2;
-        d#5 1/2;
+        a4/2
+        d#5/2
     }
     fragment group_six {
-        g4 1/2;
-        ab5 1/4;
-        d5 1/4;
+        g4/2
+        ab5/4
+        d5/4
     }
     fragment group_seven {
-        c#5 1/4;
-        eb4 1/4;
-        a4 1/4;
-        d#5 1/4;
+        c#5/4
+        eb4/4
+        a4/4
+        d#5/4
     }
     fragment group_eight {
-        c5 3/4;
-        b5 1/4;
+        c5/2.
+        b5/4
     }
     fragment group_nine {
-        e5 1/4;
-        bb4 1/8;
-        c#5 1/8;
-        eb4 1/2;
+        e5/4
+        bb4/8
+        c#5/8
+        eb4/2
     }
     fragment group_ten {
-        d#5 1/4;
-        f#5 1/2;
-        c5 1/4;
+        d#5/4
+        f#5/2
+        c5/4
     }
     fragment group_eleven {
-        ab5 1/8;
-        d5 1/4;
-        e5 1/8;
-        bb4 1/8;
-        c#5 1/4;
-        eb4 1/8;
+        ab5/8
+        d5/4
+        e5/8
+        bb4/8
+        c#5/4
+        eb4/8
     }
     fragment group_twelve {
-        eb4 1/8;
-        a4 1/8;
-        d#5 1/8;
-        f#5 1/8;
-        c5 1/8;
-        b5 1/8;
-        g4 1/8;
-        ab5 1/8;
+        eb4/8
+        a4/8
+        d#5/8
+        f#5/8
+        c5/8
+        b5/8
+        g4/8
+        ab5/8
     }
     fragment group_thirteen {
-        b5 1/8;
-        g4 1/8;
-        ab5 1/4;
-        d5 1/2;
+        b5/8
+        g4/8
+        ab5/4
+        d5/2
     }
     fragment group_fourteen {
-        bb4 1/2;
-        c#5 1/2;
+        bb4/2
+        c#5/2
     }
     fragment group_fifteen {
-        f#5 1;
-        c5 1;
+        f#5/1
+        c5/1
     }
     fragment group_sixteen {
-        d5 1/16;
-        e5 1/16;
-        bb4 1/16;
-        c#5 1/16;
-        eb4 1/4;
-        a4 1/4;
-        d#5 1/4;
+        d5/16
+        e5/16
+        bb4/16
+        c#5/16
+        eb4/4
+        a4/4
+        d#5/4
     }
     fragment group_seventeen {
-        a4 1/2;
-        d#5 1/2;
+        a4/2
+        d#5/2
     }
     fragment group_eighteen {
-        g4 1/2;
-        ab5 1/4;
-        d5 1/4;
+        g4/2
+        ab5/4
+        d5/4
     }
     fragment group_nineteen {
-        c#5 1/4;
-        eb4 1/4;
-        a4 1/4;
-        d#5 1/4;
+        c#5/4
+        eb4/4
+        a4/4
+        d#5/4
     }
 
     score {
@@ -196,30 +196,19 @@ piece "Nineteen" {
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))))
-    (fragment_declaration
-      (identifier)
-      (block
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))))
+            (integer)))))
     (fragment_declaration
       (identifier)
       (block
@@ -237,213 +226,42 @@ piece "Nineteen" {
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))))
+            (integer)))))
     (fragment_declaration
       (identifier)
       (block
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))))
-    (fragment_declaration
-      (identifier)
-      (block
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))))
-    (fragment_declaration
-      (identifier)
-      (block
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))))
-    (fragment_declaration
-      (identifier)
-      (block
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))))
-    (fragment_declaration
-      (identifier)
-      (block
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))))
-    (fragment_declaration
-      (identifier)
-      (block
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))))
-    (fragment_declaration
-      (identifier)
-      (block
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))))
-    (fragment_declaration
-      (identifier)
-      (block
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))))
-    (fragment_declaration
-      (identifier)
-      (block
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))))
-    (fragment_declaration
-      (identifier)
-      (block
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))))
+            (integer)))))
     (fragment_declaration
       (identifier)
       (block
@@ -461,76 +279,258 @@ piece "Nineteen" {
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))))
+            (integer)))))
     (fragment_declaration
       (identifier)
       (block
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))))
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
     (fragment_declaration
       (identifier)
       (block
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
-        (note_statement
-          (pitch_literal)
-          (duration
-            (rational)))))
+            (integer)))))
     (fragment_declaration
       (identifier)
       (block
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))))
+            (integer)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
     (score_declaration
       (part_declaration
         (identifier)

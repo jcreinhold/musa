@@ -171,7 +171,7 @@ mod offset_laws {
 
     #[test]
     fn translation_round_trips_at_every_character_boundary() {
-        let source = "% ré — 𝄞\nnote c4 1/4;";
+        let source = "% ré — 𝄞\nnote c4/4";
         let offsets = Utf16Offsets::new(source);
         for (at, _) in source.char_indices() {
             let at = u32::try_from(at).unwrap_or(0);

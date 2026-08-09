@@ -54,7 +54,7 @@
     "fields": {},
     "children": {
       "multiple": true,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "identifier",
@@ -95,7 +95,7 @@
     "fields": {
       "body": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "block",
@@ -113,6 +113,60 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "chord_statement",
+          "named": true
+        },
+        {
+          "type": "clef_statement",
+          "named": true
+        },
+        {
+          "type": "dynamic_statement",
+          "named": true
+        },
+        {
+          "type": "grace_statement",
+          "named": true
+        },
+        {
+          "type": "hairpin_statement",
+          "named": true
+        },
+        {
+          "type": "mark_statement",
+          "named": true
+        },
+        {
+          "type": "note_statement",
+          "named": true
+        },
+        {
+          "type": "rest_statement",
+          "named": true
+        },
+        {
+          "type": "slur_statement",
+          "named": true
+        },
+        {
+          "type": "tempo_statement",
+          "named": true
+        },
+        {
+          "type": "tuplet_statement",
+          "named": true
+        },
+        {
+          "type": "use_statement",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -2201,11 +2255,19 @@
     "named": false
   },
   {
+    "type": ">",
+    "named": false
+  },
+  {
     "type": "[",
     "named": false
   },
   {
     "type": "]",
+    "named": false
+  },
+  {
+    "type": "^",
     "named": false
   },
   {
@@ -2230,10 +2292,6 @@
   },
   {
     "type": "bus",
-    "named": false
-  },
-  {
-    "type": "chord",
     "named": false
   },
   {
@@ -2478,6 +2536,10 @@
   },
   {
     "type": "{",
+    "named": false
+  },
+  {
+    "type": "|",
     "named": false
   },
   {

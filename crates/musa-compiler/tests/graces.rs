@@ -40,9 +40,9 @@ fn piece(grace: &str) -> String {
         "piece \"Leaning\" {{ tempo 1/4 = 60; meter 4/4; key c major;
             performance {{ profile band {{ {grace} }} }}
             score {{ part p {{ profile band; voice v {{
-                c5 1/4; d5 1/4;
-                grace {{ b4; }}
-                c5 1/2;
+                c5/4 d5/4
+                grace {{ b4 }}
+                c5/2
             }} }} }} }}"
     )
 }
@@ -109,8 +109,8 @@ fn a_grace_with_nothing_behind_it_takes_from_the_note_it_leans_on() {
         "piece \"First\" { tempo 1/4 = 60; meter 4/4; key c major;
             performance { profile band { grace { steal = 1/8; from = previous; } } }
             score { part p { profile band; voice v {
-                grace { b4; }
-                c5 1/1;
+                grace { b4 }
+                c5/1
             } } } }",
     );
     let attacks = attacks(&score);
@@ -128,8 +128,8 @@ fn a_grace_cannot_swallow_the_note_it_leans_on() {
         "piece \"Greedy\" { tempo 1/4 = 60; meter 4/4; key c major;
             performance { profile band { grace { steal = 1/1; from = principal; } } }
             score { part p { profile band; voice v {
-                grace { b4; c5; }
-                d5 1/4;
+                grace { b4 c5 }
+                d5/4
             } } } }",
     );
     let plan = lower_performance(&score, &PerformanceOptions::default()).expect("lowers");
@@ -156,7 +156,7 @@ fn order_survives_normalization() {
     let piece = |graces: &str| {
         format!(
             "piece \"Order\" {{ tempo 1/4 = 60; meter 4/4; key c major;
-                score {{ part p {{ voice v {{ grace {{ {graces} }} c5 1/1; }} }} }} }}"
+                score {{ part p {{ voice v {{ grace {{ {graces} }} c5/1 }} }} }} }}"
         )
     };
     let kernel = |graces: &str| {
@@ -166,7 +166,7 @@ fn order_survives_normalization() {
         )
         .expect("projects")
     };
-    assert_ne!(kernel("d5; e5;"), kernel("e5; d5;"));
+    assert_ne!(kernel("d5 e5"), kernel("e5 d5"));
 }
 
 #[test]
@@ -191,7 +191,7 @@ fn a_grace_with_no_note_to_lean_on_is_reported() {
     let result = compile(
         &SourceDocument::new(
             "piece \"Orphan\" { tempo 1/4 = 60; meter 4/4; key c major;
-                score { part p { voice v { c5 1/1; grace { b4; } } } } }",
+                score { part p { voice v { c5/1 grace { b4 } } } } }",
             "orphan.musa",
         ),
         &CompileOptions::default(),

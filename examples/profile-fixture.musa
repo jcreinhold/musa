@@ -52,13 +52,13 @@ piece "Profile Fixture" {
 
             voice lead {
                 dynamic p;
-                c5 1/4 staccato;
-                d5 1/4 staccato;
-                e5 1/2;
+                c5/4 staccato
+                d5/4 staccato
+                e5/2
                 dynamic f;
-                g5 1/4 staccato;
-                a5 1/4;
-                b5 1/2;
+                g5/4 staccato
+                a5/4
+                b5/2
             }
         }
 
@@ -68,12 +68,12 @@ piece "Profile Fixture" {
 
             voice bass {
                 dynamic mf;
-                c3 1/4 staccato;
-                e3 1/4 tenuto;
-                g3 1/2 accent;
+                c3/4 staccato
+                e3/4 tenuto
+                g3/2>
                 dynamic p;
-                c3 1/2;
-                g2 1/2;
+                c3/2
+                g2/2
             }
         }
     }

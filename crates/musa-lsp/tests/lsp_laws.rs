@@ -48,7 +48,7 @@ const HOVER_PIECE: &str = "piece \"Hover\" {
     score {
         part piano {
             voice melody {
-                c4 1/4; e4 1/4; g4 1/4; e4 1/4;
+                c4/4 e4/4 g4/4 e4/4
             }
         }
     }
@@ -806,7 +806,7 @@ fn folds_are_the_brace_blocks_and_the_comment_runs() {
 
 #[test]
 fn single_line_blocks_and_string_braces_do_not_fold() {
-    let source = "piece \"a { not a block\" {\n    motif m { c4 1/4; }\n    score {\n        part p {\n            voice v {\n                c4 1/4; e4 1/4; g4 1/4; c4 1/4;\n            }\n        }\n    }\n}\n// one comment only\n";
+    let source = "piece \"a { not a block\" {\n    motif m { c4/4 }\n    score {\n        part p {\n            voice v {\n                c4/4 e4/4 g4/4 c4/4\n            }\n        }\n    }\n}\n// one comment only\n";
     let mut server = Server::start();
     let ranges = folds(&mut server, "single-line", source);
     // The piece, score, part, and voice fold; the single-line motif does
@@ -849,13 +849,13 @@ const UNUSED_MOTIF_PIECE: &str = "piece \"Lint\" {
     key c major;
 
     motif answer() {
-        g4 1/4; a4 1/4; e4 1/4; f4 1/4;
+        g4/4 a4/4 e4/4 f4/4
     }
 
     score {
         part piano {
             voice right {
-                bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }
+                bar { c4/4 d4/4 e4/4 f4/4 }
             }
         }
     }
@@ -939,7 +939,7 @@ fn opening_a_piece_beside_its_libraries_resolves_the_imports() {
     let uri = Uri::from_str(&format!("file://{}", piece.display())).expect("uri");
     server.client.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
         text_document: TextDocumentItem {
-            uri: uri.clone(),
+            uri,
             language_id: "musa".to_owned(),
             version: 1,
             text,

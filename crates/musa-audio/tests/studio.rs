@@ -29,7 +29,7 @@ fn studio_of(source: &str) -> StudioSpec {
 
 fn piece(studio: &str) -> String {
     format!(
-        "piece \"x\" {{ tempo 1/4 = 60; meter 4/4; score {{ part violin {{ voice v {{ c4 1; }} }} }} \
+        "piece \"x\" {{ tempo 1/4 = 60; meter 4/4; score {{ part violin {{ voice v {{ c4/1 }} }} }} \
          studio {{ {studio} }} }}"
     )
 }

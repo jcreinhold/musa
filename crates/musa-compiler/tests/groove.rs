@@ -31,8 +31,8 @@ fn piece(profile: &str) -> String {
         "piece \"Feel\" {{ tempo 1/4 = 60; meter 4/4; key c major;
             performance {{ profile band {{ {profile} }} }}
             score {{ part p {{ profile band; voice v {{
-                c5 1/8; d5 1/8; e5 1/8; f5 1/8;
-                g5 1/8; a5 1/8; b5 1/8; c6 1/8;
+                c5/8 d5/8 e5/8 f5/8
+                g5/8 a5/8 b5/8 c6/8
             }} }} }} }}"
     )
 }
@@ -112,10 +112,10 @@ fn a_groove_follows_a_meter_change() {
     let source = "piece \"Turn\" { tempo 1/4 = 60; meter 4/4; key c major;
         performance { profile band { groove swing { ratio = 2/3; } } }
         score { part p { profile band; voice v {
-            c5 1/8; d5 1/8; c5 1/8; d5 1/8; c5 1/8; d5 1/8; c5 1/8; d5 1/8;
+            c5/8 d5/8 c5/8 d5/8 c5/8 d5/8 c5/8 d5/8
             meter 6/8;
-            e5 1/16; f5 1/16; e5 1/16; f5 1/16; e5 1/16; f5 1/16;
-            e5 1/16; f5 1/16; e5 1/16; f5 1/16; e5 1/16; f5 1/16;
+            e5/16 f5/16 e5/16 f5/16 e5/16 f5/16
+            e5/16 f5/16 e5/16 f5/16 e5/16 f5/16
         } } } }";
     let frames = onsets(&score_of(source));
     // In 4/4 the pair is two eighths, so the eighth-note offbeats moved. In
@@ -123,10 +123,10 @@ fn a_groove_follows_a_meter_change() {
     // the eighths did not — a different set of notes, decided by the meter.
     let straight = "piece \"Turn\" { tempo 1/4 = 60; meter 4/4; key c major;
         score { part p { voice v {
-            c5 1/8; d5 1/8; c5 1/8; d5 1/8; c5 1/8; d5 1/8; c5 1/8; d5 1/8;
+            c5/8 d5/8 c5/8 d5/8 c5/8 d5/8 c5/8 d5/8
             meter 6/8;
-            e5 1/16; f5 1/16; e5 1/16; f5 1/16; e5 1/16; f5 1/16;
-            e5 1/16; f5 1/16; e5 1/16; f5 1/16; e5 1/16; f5 1/16;
+            e5/16 f5/16 e5/16 f5/16 e5/16 f5/16
+            e5/16 f5/16 e5/16 f5/16 e5/16 f5/16
         } } } }";
     let plain = onsets(&score_of(straight));
     assert_eq!(frames.len(), plain.len());
@@ -153,8 +153,8 @@ fn two_parts_may_disagree_about_the_beat() {
             profile flat { groove straight {} }
         }
         score {
-            part horn { profile swung; voice v { c5 1/8; d5 1/8; c5 1/8; d5 1/8; } }
-            part bass { profile flat; voice v { c3 1/8; d3 1/8; c3 1/8; d3 1/8; } }
+            part horn { profile swung; voice v { c5/8 d5/8 c5/8 d5/8 } }
+            part bass { profile flat; voice v { c3/8 d3/8 c3/8 d3/8 } }
         } }";
     let score = score_of(source);
     let plan = lower_performance(&score, &PerformanceOptions::default()).expect("lowers");

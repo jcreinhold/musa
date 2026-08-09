@@ -11,8 +11,8 @@ piece "Tuplet Fixture" {
     key c major;
 
     motif turn(root: pitch = c5) {
-        root 1/8 tenuto;
-        d5 1/8;
+        root/8 tenuto
+        d5/8
     }
 
     score {
@@ -22,27 +22,27 @@ piece "Tuplet Fixture" {
             voice lead {
                 dynamic mf;
                 tuplet 3/2 {
-                    c5 1/8;
-                    d5 1/8;
-                    e5 1/8;
+                    c5/8
+                    d5/8
+                    e5/8
                 }
                 slur {
-                    f5 1/8;
-                    g5 1/8;
+                    f5/8
+                    g5/8
                 }
-                a5 1/4 accent;
-                g5 1/4 staccato ~;
-                g5 1/4;
+                a5/4>
+                g5/4 staccato ~
+                g5/4
                 dynamic p;
                 use turn(a4);
                 tuplet 3/2 {
-                    c5 1/8;
-                    d5 1/8;
-                    e5 1/8;
+                    c5/8
+                    d5/8
+                    e5/8
                 }
                 slur {
-                    b4 1/8 marcato;
-                    c5 1/8;
+                    b4/8^
+                    c5/8
                 }
             }
         }
@@ -52,13 +52,13 @@ piece "Tuplet Fixture" {
 
             voice bass {
                 dynamic p;
-                chord [c3, g3] 1/2;
-                e3 1/4;
-                g3 1/4 ~;
-                g3 1/2;
+                [c3 g3]/2
+                e3/4
+                g3/4 ~
+                g3/2
                 slur {
-                    a3 1/4 tenuto;
-                    g3 1/4;
+                    a3/4 tenuto
+                    g3/4
                 }
             }
         }
@@ -91,13 +91,13 @@ piece "Tuplet Fixture" {
         (note_statement
           (identifier)
           (duration
-            (rational))
+            (integer))
           (articulation_list
             (identifier)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))))
+            (integer)))))
     (score_declaration
       (part_declaration
         (identifier)
@@ -113,41 +113,40 @@ piece "Tuplet Fixture" {
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))))
+                  (integer)))))
           (slur_statement
             (block
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))))
+                  (integer)))))
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
+              (integer))
+            (articulation_list))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (integer))
             (articulation_list
               (identifier)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational))
-            (articulation_list
-              (identifier)))
-          (note_statement
-            (pitch_literal)
-            (duration
-              (rational)))
+              (integer)))
           (dynamic_statement
             (identifier))
           (use_statement
@@ -159,27 +158,26 @@ piece "Tuplet Fixture" {
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))))
+                  (integer)))))
           (slur_statement
             (block
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational))
-                (articulation_list
-                  (identifier)))
+                  (integer))
+                (articulation_list))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))))))
+                  (integer)))))))
       (part_declaration
         (identifier)
         (clef_statement
@@ -192,28 +190,28 @@ piece "Tuplet Fixture" {
             (pitch_literal)
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (slur_statement
             (block
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational))
+                  (integer))
                 (articulation_list
                   (identifier)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational))))))))))
+                  (integer))))))))))

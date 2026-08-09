@@ -68,14 +68,14 @@ fn format_check_passes_on_canonical_examples() -> std::io::Result<()> {
 
 #[test]
 fn format_rewrites_a_messy_file_to_canonical_form() -> std::io::Result<()> {
-    let messy = "piece   \"M\"{\nmeter 4/4;\nscore{\npart p{\nvoice v{\nc5   1;\n}\n}\n}\n}\n";
+    let messy = "piece   \"M\"{\nmeter 4/4;\nscore{\npart p{\nvoice v{\nc5   1\n}\n}\n}\n}\n";
     let path = temp_file("messy.musa", messy)?;
     let output = musa(&["format", &path.to_string_lossy()])?;
     assert!(output.status.success());
     let rewritten = std::fs::read_to_string(&path)?;
     assert_eq!(
         rewritten,
-        "piece \"M\" {\n    meter 4/4;\n    score {\n        part p {\n            voice v {\n                c5 1;\n            }\n        }\n    }\n}\n"
+        "piece \"M\" {\n    meter 4/4;\n    score {\n        part p {\n            voice v {\n                c5 1\n            }\n        }\n    }\n}\n"
     );
     // And now --check passes.
     let output = musa(&["format", "--check", &path.to_string_lossy()])?;
@@ -236,7 +236,7 @@ fn format_diff_is_quiet_and_successful_on_a_canonical_example() -> std::io::Resu
 
 #[test]
 fn format_diff_shows_the_change_and_writes_nothing() -> std::io::Result<()> {
-    let messy = "piece   \"M\"{\nmeter 4/4;\nscore{\npart p{\nvoice v{\nc5   1;\n}\n}\n}\n}\n";
+    let messy = "piece   \"M\"{\nmeter 4/4;\nscore{\npart p{\nvoice v{\nc5   1\n}\n}\n}\n}\n";
     let path = temp_file("diff.musa", messy)?;
     let output = musa(&["format", "--diff", &path.to_string_lossy()])?;
     // Like --check: a difference is a failure, so CI can gate on it.

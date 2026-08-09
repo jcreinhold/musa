@@ -22,6 +22,11 @@ piece "Ruchenitsa" {
     meter 4/4;
     key a minor;
 
+    // The tupan's bar. One measure of 4/4, said once.
+    motif backbeat() {
+        | d3/4 a3/4 d3/4 a3/4
+    }
+
     score {
         part kaval {
             clef treble;
@@ -30,63 +35,15 @@ piece "Ruchenitsa" {
             voice melody {
                 dynamic mf;
 
-                // Eight bars of 7/8. The grouping a player hears is 2+2+3,
-                // which is what the quarter at the end of each bar is.
-                a4 1/8;
-                b4 1/8;
-                c5 1/8;
-                b4 1/8;
-                a4 1/8;
-                g4 1/4;
-
-                b4 1/8;
-                c5 1/8;
-                d5 1/8;
-                c5 1/8;
-                b4 1/8;
-                a4 1/4;
-
-                c5 1/8;
-                d5 1/8;
-                e5 1/8;
-                d5 1/8;
-                c5 1/8;
-                b4 1/4;
-
-                d5 1/8;
-                c5 1/8;
-                b4 1/8;
-                a4 1/8;
-                g#4 1/8;
-                a4 1/4;
-
-                a4 1/8;
-                b4 1/8;
-                c5 1/8;
-                d5 1/8;
-                e5 1/8;
-                d5 1/4;
-
-                f5 1/8;
-                e5 1/8;
-                d5 1/8;
-                c5 1/8;
-                b4 1/8;
-                a4 1/4;
-
-                c5 1/8;
-                b4 1/8;
-                a4 1/8;
-                g#4 1/8;
-                a4 1/8;
-                b4 1/4;
-
-                b4 1/8;
-                a4 1/8;
-                g#4 1/8;
-                a4 1/8;
-                b4 1/8;
-                a4 1/4;
+                // Eight bars of 7/8, one to a line.
+                | a4/8 b4/8 c5/8 b4/8 a4/8 g4/4
+                | b4/8 c5/8 d5/8 c5/8 b4/8 a4/4
+                | c5/8 d5/8 e5/8 d5/8 c5/8 b4/4
+                | d5/8 c5/8 b4/8 a4/8 g#4/8 a4/4
+                | a4/8 b4/8 c5/8 d5/8 e5/8 d5/4
+                | f5/8 e5/8 d5/8 c5/8 b4/8 a4/4
+                | c5/8 b4/8 a4/8 g#4/8 a4/8 b4/4
+                | b4/8 a4/8 g#4/8 a4/8 b4/8 a4/4
             }
         }
 
@@ -97,41 +54,16 @@ piece "Ruchenitsa" {
                 dynamic mp;
 
                 // Seven bars of 4/4 — the same seven whole notes, counted
-                // the other way.
-                d3 1/4;
-                a3 1/4;
-                d3 1/4;
-                a3 1/4;
-
-                d3 1/4;
-                a3 1/4;
-                d3 1/4;
-                a3 1/4;
-
-                d3 1/4;
-                a3 1/4;
-                d3 1/4;
-                a3 1/4;
-
-                d3 1/4;
-                a3 1/4;
-                d3 1/4;
-                a3 1/4;
-
-                d3 1/4;
-                a3 1/4;
-                d3 1/4;
-                a3 1/4;
-
-                d3 1/4;
-                a3 1/4;
-                d3 1/4;
-                a3 1/4;
-
-                d3 1/4;
-                a3 1/4;
-                d3 1/4;
-                a3 1/4;
+                // the other way. The bar is written once and played seven
+                // times: `repeat` would print repeat barlines, which is a
+                // different piece of notation from an ostinato spelled out.
+                use backbeat();
+                use backbeat();
+                use backbeat();
+                use backbeat();
+                use backbeat();
+                use backbeat();
+                use backbeat();
             }
         }
     }

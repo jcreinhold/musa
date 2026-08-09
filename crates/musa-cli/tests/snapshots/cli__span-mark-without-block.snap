@@ -10,7 +10,7 @@ misplaced
  7 │                 mark pedal;
    ·                 ─────┬─────
    ·                      ╰── no music under it
- 8 │                 c5 1/4;
+ 8 │                 c5/4
    ╰────
   help: wrap what it covers: `mark pedal { … }`
 

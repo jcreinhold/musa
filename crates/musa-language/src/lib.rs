@@ -39,6 +39,7 @@ mod syntax_kind;
 
 pub use crate::edits::{
     Anchor, EditError, EditIntent, HeaderField, Statement, TextEdit, apply_edits, compute_edits, read_header,
+    spell_duration,
 };
 pub use crate::error::SyntaxError;
 pub use crate::formatter::{FormattedSource, format};

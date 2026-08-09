@@ -48,7 +48,7 @@ fn errors_of(text: &str) -> Vec<String> {
 /// A one-part piece whose studio block is supplied.
 fn piece(studio: &str) -> String {
     format!(
-        "piece \"x\" {{ tempo 1/4 = 60; meter 4/4; score {{ part violin {{ voice v {{ c4 1; }} }} }} \
+        "piece \"x\" {{ tempo 1/4 = 60; meter 4/4; score {{ part violin {{ voice v {{ c4/1 }} }} }} \
          studio {{ {studio} }} }}"
     )
 }
@@ -63,8 +63,7 @@ fn a_studio_block_changes_nothing_about_the_score() {
     let with = compile_text(&piece(
         "patch p { oscillator(sine) |> output; } assign violin -> p; route violin -> master;",
     ));
-    let without =
-        compile_text("piece \"x\" { tempo 1/4 = 60; meter 4/4; score { part violin { voice v { c4 1; } } } }");
+    let without = compile_text("piece \"x\" { tempo 1/4 = 60; meter 4/4; score { part violin { voice v { c4/1 } } } }");
     let (with_score, studio) = with.into_parts();
     let (without_score, empty) = without.into_parts();
     assert_eq!(

@@ -2,7 +2,7 @@
   "document": 0,
   "name": "loop-lengths.musa",
   "kind": "piece",
-  "source": "// A four-bar house pattern whose fills run \"a few times\" rather than a fixed\n// number. `repeat 2 to 6 { … }` is the piece saying how long the figure may\n// run and leaving the rest to the performance — the same sentence a DJ writes\n// as \"loop until the cue lands\" and a folk singer writes as \"as many verses as\n// there are\".\n//\n// The count is chosen once, at compile time, from the realization\n// (`musa check examples/loop-lengths.musa --seed 42`). Everything below that\n// choice is an ordinary exact repeat, which is why the kernel gains nothing\n// from this file: see docs/kernel/11-realization.md.\npiece \"Loop Lengths\" {\n    composer \"musa\";\n\n    tempo 1/4 = 124;\n    meter 4/4;\n    key a minor;\n\n    score {\n        part drums {\n            voice kick {\n                repeat 4 {\n                    c2 1/4;\n                    c2 1/4;\n                    c2 1/4;\n                    c2 1/4;\n                }\n                repeat 2 to 6 {\n                    c2 1/4;\n                    c2 1/4;\n                    c2 1/8;\n                    c2 1/8;\n                    c2 1/4;\n                }\n            }\n\n            voice hats {\n                repeat 4 {\n                    rest 1/8;\n                    f#3 1/8;\n                    rest 1/8;\n                    f#3 1/8;\n                    rest 1/8;\n                    f#3 1/8;\n                    rest 1/8;\n                    f#3 1/8;\n                }\n                repeat 2 to 6 {\n                    f#3 1/8;\n                    f#3 1/8;\n                    f#3 1/8;\n                    f#3 1/8;\n                    f#3 1/8;\n                    f#3 1/8;\n                    f#3 1/8;\n                    f#3 1/8;\n                }\n            }\n        }\n\n        part bass {\n            voice line {\n                repeat 4 {\n                    a1 1/2;\n                    e2 1/4;\n                    g1 1/4;\n                }\n                repeat 2 to 6 {\n                    a1 1/4;\n                    a1 1/4;\n                    c2 1/4;\n                    e2 1/4;\n                }\n            }\n        }\n    }\n}\n",
+  "source": "// A four-bar house pattern whose fills run \"a few times\" rather than a fixed\n// number. `repeat 2 to 6 { … }` is the piece saying how long the figure may\n// run and leaving the rest to the performance — the same sentence a DJ writes\n// as \"loop until the cue lands\" and a folk singer writes as \"as many verses as\n// there are\".\n//\n// The count is chosen once, at compile time, from the realization\n// (`musa check examples/loop-lengths.musa --seed 42`). Everything below that\n// choice is an ordinary exact repeat, which is why the kernel gains nothing\n// from this file: see docs/kernel/11-realization.md.\npiece \"Loop Lengths\" {\n    composer \"musa\";\n\n    tempo 1/4 = 124;\n    meter 4/4;\n    key a minor;\n\n    score {\n        part drums {\n            voice kick {\n                repeat 4 {\n                    c2/4\n                    c2/4\n                    c2/4\n                    c2/4\n                }\n                repeat 2 to 6 {\n                    c2/4\n                    c2/4\n                    c2/8\n                    c2/8\n                    c2/4\n                }\n            }\n\n            voice hats {\n                repeat 4 {\n                    rest/8\n                    f#3/8\n                    rest/8\n                    f#3/8\n                    rest/8\n                    f#3/8\n                    rest/8\n                    f#3/8\n                }\n                repeat 2 to 6 {\n                    f#3/8\n                    f#3/8\n                    f#3/8\n                    f#3/8\n                    f#3/8\n                    f#3/8\n                    f#3/8\n                    f#3/8\n                }\n            }\n        }\n\n        part bass {\n            voice line {\n                repeat 4 {\n                    a1/2\n                    e2/4\n                    g1/4\n                }\n                repeat 2 to 6 {\n                    a1/4\n                    a1/4\n                    c2/4\n                    e2/4\n                }\n            }\n        }\n    }\n}\n",
   "revision": 1,
   "compiles": true,
   "unsaved": true,
@@ -82,11 +82,11 @@
           "line": 22,
           "span": {
             "start": 812,
-            "end": 819
+            "end": 816
           },
           "definitionSpan": {
             "start": 812,
-            "end": 819
+            "end": 816
           },
           "decision": null
         }
@@ -126,12 +126,12 @@
           "occurrence": "occurrence-0",
           "line": 23,
           "span": {
-            "start": 840,
-            "end": 847
+            "start": 837,
+            "end": 841
           },
           "definitionSpan": {
-            "start": 840,
-            "end": 847
+            "start": 837,
+            "end": 841
           },
           "decision": null
         }
@@ -171,12 +171,12 @@
           "occurrence": "occurrence-0",
           "line": 24,
           "span": {
-            "start": 868,
-            "end": 875
+            "start": 862,
+            "end": 866
           },
           "definitionSpan": {
-            "start": 868,
-            "end": 875
+            "start": 862,
+            "end": 866
           },
           "decision": null
         }
@@ -216,12 +216,12 @@
           "occurrence": "occurrence-0",
           "line": 25,
           "span": {
-            "start": 896,
-            "end": 903
+            "start": 887,
+            "end": 891
           },
           "definitionSpan": {
-            "start": 896,
-            "end": 903
+            "start": 887,
+            "end": 891
           },
           "decision": null
         }
@@ -262,11 +262,11 @@
           "line": 22,
           "span": {
             "start": 812,
-            "end": 819
+            "end": 816
           },
           "definitionSpan": {
             "start": 812,
-            "end": 819
+            "end": 816
           },
           "decision": null
         }
@@ -306,12 +306,12 @@
           "occurrence": "occurrence-1",
           "line": 23,
           "span": {
-            "start": 840,
-            "end": 847
+            "start": 837,
+            "end": 841
           },
           "definitionSpan": {
-            "start": 840,
-            "end": 847
+            "start": 837,
+            "end": 841
           },
           "decision": null
         }
@@ -351,12 +351,12 @@
           "occurrence": "occurrence-1",
           "line": 24,
           "span": {
-            "start": 868,
-            "end": 875
+            "start": 862,
+            "end": 866
           },
           "definitionSpan": {
-            "start": 868,
-            "end": 875
+            "start": 862,
+            "end": 866
           },
           "decision": null
         }
@@ -396,12 +396,12 @@
           "occurrence": "occurrence-1",
           "line": 25,
           "span": {
-            "start": 896,
-            "end": 903
+            "start": 887,
+            "end": 891
           },
           "definitionSpan": {
-            "start": 896,
-            "end": 903
+            "start": 887,
+            "end": 891
           },
           "decision": null
         }
@@ -442,11 +442,11 @@
           "line": 22,
           "span": {
             "start": 812,
-            "end": 819
+            "end": 816
           },
           "definitionSpan": {
             "start": 812,
-            "end": 819
+            "end": 816
           },
           "decision": null
         }
@@ -486,12 +486,12 @@
           "occurrence": "occurrence-2",
           "line": 23,
           "span": {
-            "start": 840,
-            "end": 847
+            "start": 837,
+            "end": 841
           },
           "definitionSpan": {
-            "start": 840,
-            "end": 847
+            "start": 837,
+            "end": 841
           },
           "decision": null
         }
@@ -531,12 +531,12 @@
           "occurrence": "occurrence-2",
           "line": 24,
           "span": {
-            "start": 868,
-            "end": 875
+            "start": 862,
+            "end": 866
           },
           "definitionSpan": {
-            "start": 868,
-            "end": 875
+            "start": 862,
+            "end": 866
           },
           "decision": null
         }
@@ -576,12 +576,12 @@
           "occurrence": "occurrence-2",
           "line": 25,
           "span": {
-            "start": 896,
-            "end": 903
+            "start": 887,
+            "end": 891
           },
           "definitionSpan": {
-            "start": 896,
-            "end": 903
+            "start": 887,
+            "end": 891
           },
           "decision": null
         }
@@ -622,11 +622,11 @@
           "line": 22,
           "span": {
             "start": 812,
-            "end": 819
+            "end": 816
           },
           "definitionSpan": {
             "start": 812,
-            "end": 819
+            "end": 816
           },
           "decision": null
         }
@@ -666,12 +666,12 @@
           "occurrence": "occurrence-3",
           "line": 23,
           "span": {
-            "start": 840,
-            "end": 847
+            "start": 837,
+            "end": 841
           },
           "definitionSpan": {
-            "start": 840,
-            "end": 847
+            "start": 837,
+            "end": 841
           },
           "decision": null
         }
@@ -711,12 +711,12 @@
           "occurrence": "occurrence-3",
           "line": 24,
           "span": {
-            "start": 868,
-            "end": 875
+            "start": 862,
+            "end": 866
           },
           "definitionSpan": {
-            "start": 868,
-            "end": 875
+            "start": 862,
+            "end": 866
           },
           "decision": null
         }
@@ -756,12 +756,12 @@
           "occurrence": "occurrence-3",
           "line": 25,
           "span": {
-            "start": 896,
-            "end": 903
+            "start": 887,
+            "end": 891
           },
           "definitionSpan": {
-            "start": 896,
-            "end": 903
+            "start": 887,
+            "end": 891
           },
           "decision": null
         }
@@ -801,12 +801,12 @@
           "occurrence": "occurrence-0",
           "line": 28,
           "span": {
-            "start": 974,
-            "end": 981
+            "start": 962,
+            "end": 966
           },
           "definitionSpan": {
-            "start": 974,
-            "end": 981
+            "start": 962,
+            "end": 966
           },
           "decision": 0
         }
@@ -846,12 +846,12 @@
           "occurrence": "occurrence-0",
           "line": 29,
           "span": {
-            "start": 1002,
-            "end": 1009
+            "start": 987,
+            "end": 991
           },
           "definitionSpan": {
-            "start": 1002,
-            "end": 1009
+            "start": 987,
+            "end": 991
           },
           "decision": 0
         }
@@ -891,12 +891,12 @@
           "occurrence": "occurrence-0",
           "line": 30,
           "span": {
-            "start": 1030,
-            "end": 1037
+            "start": 1012,
+            "end": 1016
           },
           "definitionSpan": {
-            "start": 1030,
-            "end": 1037
+            "start": 1012,
+            "end": 1016
           },
           "decision": 0
         }
@@ -936,12 +936,12 @@
           "occurrence": "occurrence-0",
           "line": 31,
           "span": {
-            "start": 1058,
-            "end": 1065
+            "start": 1037,
+            "end": 1041
           },
           "definitionSpan": {
-            "start": 1058,
-            "end": 1065
+            "start": 1037,
+            "end": 1041
           },
           "decision": 0
         }
@@ -981,12 +981,12 @@
           "occurrence": "occurrence-0",
           "line": 32,
           "span": {
-            "start": 1086,
-            "end": 1093
+            "start": 1062,
+            "end": 1066
           },
           "definitionSpan": {
-            "start": 1086,
-            "end": 1093
+            "start": 1062,
+            "end": 1066
           },
           "decision": 0
         }
@@ -1026,12 +1026,12 @@
           "occurrence": "occurrence-1",
           "line": 28,
           "span": {
-            "start": 974,
-            "end": 981
+            "start": 962,
+            "end": 966
           },
           "definitionSpan": {
-            "start": 974,
-            "end": 981
+            "start": 962,
+            "end": 966
           },
           "decision": 0
         }
@@ -1071,12 +1071,12 @@
           "occurrence": "occurrence-1",
           "line": 29,
           "span": {
-            "start": 1002,
-            "end": 1009
+            "start": 987,
+            "end": 991
           },
           "definitionSpan": {
-            "start": 1002,
-            "end": 1009
+            "start": 987,
+            "end": 991
           },
           "decision": 0
         }
@@ -1116,12 +1116,12 @@
           "occurrence": "occurrence-1",
           "line": 30,
           "span": {
-            "start": 1030,
-            "end": 1037
+            "start": 1012,
+            "end": 1016
           },
           "definitionSpan": {
-            "start": 1030,
-            "end": 1037
+            "start": 1012,
+            "end": 1016
           },
           "decision": 0
         }
@@ -1161,12 +1161,12 @@
           "occurrence": "occurrence-1",
           "line": 31,
           "span": {
-            "start": 1058,
-            "end": 1065
+            "start": 1037,
+            "end": 1041
           },
           "definitionSpan": {
-            "start": 1058,
-            "end": 1065
+            "start": 1037,
+            "end": 1041
           },
           "decision": 0
         }
@@ -1206,12 +1206,12 @@
           "occurrence": "occurrence-1",
           "line": 32,
           "span": {
-            "start": 1086,
-            "end": 1093
+            "start": 1062,
+            "end": 1066
           },
           "definitionSpan": {
-            "start": 1086,
-            "end": 1093
+            "start": 1062,
+            "end": 1066
           },
           "decision": 0
         }
@@ -1247,12 +1247,12 @@
           "occurrence": "occurrence-0",
           "line": 38,
           "span": {
-            "start": 1199,
-            "end": 1208
+            "start": 1172,
+            "end": 1178
           },
           "definitionSpan": {
-            "start": 1199,
-            "end": 1208
+            "start": 1172,
+            "end": 1178
           },
           "decision": null
         }
@@ -1292,12 +1292,12 @@
           "occurrence": "occurrence-0",
           "line": 39,
           "span": {
-            "start": 1229,
-            "end": 1237
+            "start": 1199,
+            "end": 1204
           },
           "definitionSpan": {
-            "start": 1229,
-            "end": 1237
+            "start": 1199,
+            "end": 1204
           },
           "decision": null
         }
@@ -1333,12 +1333,12 @@
           "occurrence": "occurrence-0",
           "line": 40,
           "span": {
-            "start": 1258,
-            "end": 1267
+            "start": 1225,
+            "end": 1231
           },
           "definitionSpan": {
-            "start": 1258,
-            "end": 1267
+            "start": 1225,
+            "end": 1231
           },
           "decision": null
         }
@@ -1378,12 +1378,12 @@
           "occurrence": "occurrence-0",
           "line": 41,
           "span": {
-            "start": 1288,
-            "end": 1296
+            "start": 1252,
+            "end": 1257
           },
           "definitionSpan": {
-            "start": 1288,
-            "end": 1296
+            "start": 1252,
+            "end": 1257
           },
           "decision": null
         }
@@ -1419,12 +1419,12 @@
           "occurrence": "occurrence-0",
           "line": 42,
           "span": {
-            "start": 1317,
-            "end": 1326
+            "start": 1278,
+            "end": 1284
           },
           "definitionSpan": {
-            "start": 1317,
-            "end": 1326
+            "start": 1278,
+            "end": 1284
           },
           "decision": null
         }
@@ -1464,12 +1464,12 @@
           "occurrence": "occurrence-0",
           "line": 43,
           "span": {
-            "start": 1347,
-            "end": 1355
+            "start": 1305,
+            "end": 1310
           },
           "definitionSpan": {
-            "start": 1347,
-            "end": 1355
+            "start": 1305,
+            "end": 1310
           },
           "decision": null
         }
@@ -1505,12 +1505,12 @@
           "occurrence": "occurrence-0",
           "line": 44,
           "span": {
-            "start": 1376,
-            "end": 1385
+            "start": 1331,
+            "end": 1337
           },
           "definitionSpan": {
-            "start": 1376,
-            "end": 1385
+            "start": 1331,
+            "end": 1337
           },
           "decision": null
         }
@@ -1550,12 +1550,12 @@
           "occurrence": "occurrence-0",
           "line": 45,
           "span": {
-            "start": 1406,
-            "end": 1414
+            "start": 1358,
+            "end": 1363
           },
           "definitionSpan": {
-            "start": 1406,
-            "end": 1414
+            "start": 1358,
+            "end": 1363
           },
           "decision": null
         }
@@ -1591,12 +1591,12 @@
           "occurrence": "occurrence-1",
           "line": 38,
           "span": {
-            "start": 1199,
-            "end": 1208
+            "start": 1172,
+            "end": 1178
           },
           "definitionSpan": {
-            "start": 1199,
-            "end": 1208
+            "start": 1172,
+            "end": 1178
           },
           "decision": null
         }
@@ -1636,12 +1636,12 @@
           "occurrence": "occurrence-1",
           "line": 39,
           "span": {
-            "start": 1229,
-            "end": 1237
+            "start": 1199,
+            "end": 1204
           },
           "definitionSpan": {
-            "start": 1229,
-            "end": 1237
+            "start": 1199,
+            "end": 1204
           },
           "decision": null
         }
@@ -1677,12 +1677,12 @@
           "occurrence": "occurrence-1",
           "line": 40,
           "span": {
-            "start": 1258,
-            "end": 1267
+            "start": 1225,
+            "end": 1231
           },
           "definitionSpan": {
-            "start": 1258,
-            "end": 1267
+            "start": 1225,
+            "end": 1231
           },
           "decision": null
         }
@@ -1722,12 +1722,12 @@
           "occurrence": "occurrence-1",
           "line": 41,
           "span": {
-            "start": 1288,
-            "end": 1296
+            "start": 1252,
+            "end": 1257
           },
           "definitionSpan": {
-            "start": 1288,
-            "end": 1296
+            "start": 1252,
+            "end": 1257
           },
           "decision": null
         }
@@ -1763,12 +1763,12 @@
           "occurrence": "occurrence-1",
           "line": 42,
           "span": {
-            "start": 1317,
-            "end": 1326
+            "start": 1278,
+            "end": 1284
           },
           "definitionSpan": {
-            "start": 1317,
-            "end": 1326
+            "start": 1278,
+            "end": 1284
           },
           "decision": null
         }
@@ -1808,12 +1808,12 @@
           "occurrence": "occurrence-1",
           "line": 43,
           "span": {
-            "start": 1347,
-            "end": 1355
+            "start": 1305,
+            "end": 1310
           },
           "definitionSpan": {
-            "start": 1347,
-            "end": 1355
+            "start": 1305,
+            "end": 1310
           },
           "decision": null
         }
@@ -1849,12 +1849,12 @@
           "occurrence": "occurrence-1",
           "line": 44,
           "span": {
-            "start": 1376,
-            "end": 1385
+            "start": 1331,
+            "end": 1337
           },
           "definitionSpan": {
-            "start": 1376,
-            "end": 1385
+            "start": 1331,
+            "end": 1337
           },
           "decision": null
         }
@@ -1894,12 +1894,12 @@
           "occurrence": "occurrence-1",
           "line": 45,
           "span": {
-            "start": 1406,
-            "end": 1414
+            "start": 1358,
+            "end": 1363
           },
           "definitionSpan": {
-            "start": 1406,
-            "end": 1414
+            "start": 1358,
+            "end": 1363
           },
           "decision": null
         }
@@ -1935,12 +1935,12 @@
           "occurrence": "occurrence-2",
           "line": 38,
           "span": {
-            "start": 1199,
-            "end": 1208
+            "start": 1172,
+            "end": 1178
           },
           "definitionSpan": {
-            "start": 1199,
-            "end": 1208
+            "start": 1172,
+            "end": 1178
           },
           "decision": null
         }
@@ -1980,12 +1980,12 @@
           "occurrence": "occurrence-2",
           "line": 39,
           "span": {
-            "start": 1229,
-            "end": 1237
+            "start": 1199,
+            "end": 1204
           },
           "definitionSpan": {
-            "start": 1229,
-            "end": 1237
+            "start": 1199,
+            "end": 1204
           },
           "decision": null
         }
@@ -2021,12 +2021,12 @@
           "occurrence": "occurrence-2",
           "line": 40,
           "span": {
-            "start": 1258,
-            "end": 1267
+            "start": 1225,
+            "end": 1231
           },
           "definitionSpan": {
-            "start": 1258,
-            "end": 1267
+            "start": 1225,
+            "end": 1231
           },
           "decision": null
         }
@@ -2066,12 +2066,12 @@
           "occurrence": "occurrence-2",
           "line": 41,
           "span": {
-            "start": 1288,
-            "end": 1296
+            "start": 1252,
+            "end": 1257
           },
           "definitionSpan": {
-            "start": 1288,
-            "end": 1296
+            "start": 1252,
+            "end": 1257
           },
           "decision": null
         }
@@ -2107,12 +2107,12 @@
           "occurrence": "occurrence-2",
           "line": 42,
           "span": {
-            "start": 1317,
-            "end": 1326
+            "start": 1278,
+            "end": 1284
           },
           "definitionSpan": {
-            "start": 1317,
-            "end": 1326
+            "start": 1278,
+            "end": 1284
           },
           "decision": null
         }
@@ -2152,12 +2152,12 @@
           "occurrence": "occurrence-2",
           "line": 43,
           "span": {
-            "start": 1347,
-            "end": 1355
+            "start": 1305,
+            "end": 1310
           },
           "definitionSpan": {
-            "start": 1347,
-            "end": 1355
+            "start": 1305,
+            "end": 1310
           },
           "decision": null
         }
@@ -2193,12 +2193,12 @@
           "occurrence": "occurrence-2",
           "line": 44,
           "span": {
-            "start": 1376,
-            "end": 1385
+            "start": 1331,
+            "end": 1337
           },
           "definitionSpan": {
-            "start": 1376,
-            "end": 1385
+            "start": 1331,
+            "end": 1337
           },
           "decision": null
         }
@@ -2238,12 +2238,12 @@
           "occurrence": "occurrence-2",
           "line": 45,
           "span": {
-            "start": 1406,
-            "end": 1414
+            "start": 1358,
+            "end": 1363
           },
           "definitionSpan": {
-            "start": 1406,
-            "end": 1414
+            "start": 1358,
+            "end": 1363
           },
           "decision": null
         }
@@ -2279,12 +2279,12 @@
           "occurrence": "occurrence-3",
           "line": 38,
           "span": {
-            "start": 1199,
-            "end": 1208
+            "start": 1172,
+            "end": 1178
           },
           "definitionSpan": {
-            "start": 1199,
-            "end": 1208
+            "start": 1172,
+            "end": 1178
           },
           "decision": null
         }
@@ -2324,12 +2324,12 @@
           "occurrence": "occurrence-3",
           "line": 39,
           "span": {
-            "start": 1229,
-            "end": 1237
+            "start": 1199,
+            "end": 1204
           },
           "definitionSpan": {
-            "start": 1229,
-            "end": 1237
+            "start": 1199,
+            "end": 1204
           },
           "decision": null
         }
@@ -2365,12 +2365,12 @@
           "occurrence": "occurrence-3",
           "line": 40,
           "span": {
-            "start": 1258,
-            "end": 1267
+            "start": 1225,
+            "end": 1231
           },
           "definitionSpan": {
-            "start": 1258,
-            "end": 1267
+            "start": 1225,
+            "end": 1231
           },
           "decision": null
         }
@@ -2410,12 +2410,12 @@
           "occurrence": "occurrence-3",
           "line": 41,
           "span": {
-            "start": 1288,
-            "end": 1296
+            "start": 1252,
+            "end": 1257
           },
           "definitionSpan": {
-            "start": 1288,
-            "end": 1296
+            "start": 1252,
+            "end": 1257
           },
           "decision": null
         }
@@ -2451,12 +2451,12 @@
           "occurrence": "occurrence-3",
           "line": 42,
           "span": {
-            "start": 1317,
-            "end": 1326
+            "start": 1278,
+            "end": 1284
           },
           "definitionSpan": {
-            "start": 1317,
-            "end": 1326
+            "start": 1278,
+            "end": 1284
           },
           "decision": null
         }
@@ -2496,12 +2496,12 @@
           "occurrence": "occurrence-3",
           "line": 43,
           "span": {
-            "start": 1347,
-            "end": 1355
+            "start": 1305,
+            "end": 1310
           },
           "definitionSpan": {
-            "start": 1347,
-            "end": 1355
+            "start": 1305,
+            "end": 1310
           },
           "decision": null
         }
@@ -2537,12 +2537,12 @@
           "occurrence": "occurrence-3",
           "line": 44,
           "span": {
-            "start": 1376,
-            "end": 1385
+            "start": 1331,
+            "end": 1337
           },
           "definitionSpan": {
-            "start": 1376,
-            "end": 1385
+            "start": 1331,
+            "end": 1337
           },
           "decision": null
         }
@@ -2582,12 +2582,12 @@
           "occurrence": "occurrence-3",
           "line": 45,
           "span": {
-            "start": 1406,
-            "end": 1414
+            "start": 1358,
+            "end": 1363
           },
           "definitionSpan": {
-            "start": 1406,
-            "end": 1414
+            "start": 1358,
+            "end": 1363
           },
           "decision": null
         }
@@ -2627,12 +2627,12 @@
           "occurrence": "occurrence-0",
           "line": 48,
           "span": {
-            "start": 1485,
-            "end": 1493
+            "start": 1434,
+            "end": 1439
           },
           "definitionSpan": {
-            "start": 1485,
-            "end": 1493
+            "start": 1434,
+            "end": 1439
           },
           "decision": 0
         }
@@ -2672,12 +2672,12 @@
           "occurrence": "occurrence-0",
           "line": 49,
           "span": {
-            "start": 1514,
-            "end": 1522
+            "start": 1460,
+            "end": 1465
           },
           "definitionSpan": {
-            "start": 1514,
-            "end": 1522
+            "start": 1460,
+            "end": 1465
           },
           "decision": 0
         }
@@ -2717,12 +2717,12 @@
           "occurrence": "occurrence-0",
           "line": 50,
           "span": {
-            "start": 1543,
-            "end": 1551
+            "start": 1486,
+            "end": 1491
           },
           "definitionSpan": {
-            "start": 1543,
-            "end": 1551
+            "start": 1486,
+            "end": 1491
           },
           "decision": 0
         }
@@ -2762,12 +2762,12 @@
           "occurrence": "occurrence-0",
           "line": 51,
           "span": {
-            "start": 1572,
-            "end": 1580
+            "start": 1512,
+            "end": 1517
           },
           "definitionSpan": {
-            "start": 1572,
-            "end": 1580
+            "start": 1512,
+            "end": 1517
           },
           "decision": 0
         }
@@ -2807,12 +2807,12 @@
           "occurrence": "occurrence-0",
           "line": 52,
           "span": {
-            "start": 1601,
-            "end": 1609
+            "start": 1538,
+            "end": 1543
           },
           "definitionSpan": {
-            "start": 1601,
-            "end": 1609
+            "start": 1538,
+            "end": 1543
           },
           "decision": 0
         }
@@ -2852,12 +2852,12 @@
           "occurrence": "occurrence-0",
           "line": 53,
           "span": {
-            "start": 1630,
-            "end": 1638
+            "start": 1564,
+            "end": 1569
           },
           "definitionSpan": {
-            "start": 1630,
-            "end": 1638
+            "start": 1564,
+            "end": 1569
           },
           "decision": 0
         }
@@ -2897,12 +2897,12 @@
           "occurrence": "occurrence-0",
           "line": 54,
           "span": {
-            "start": 1659,
-            "end": 1667
+            "start": 1590,
+            "end": 1595
           },
           "definitionSpan": {
-            "start": 1659,
-            "end": 1667
+            "start": 1590,
+            "end": 1595
           },
           "decision": 0
         }
@@ -2942,12 +2942,12 @@
           "occurrence": "occurrence-0",
           "line": 55,
           "span": {
-            "start": 1688,
-            "end": 1696
+            "start": 1616,
+            "end": 1621
           },
           "definitionSpan": {
-            "start": 1688,
-            "end": 1696
+            "start": 1616,
+            "end": 1621
           },
           "decision": 0
         }
@@ -2987,12 +2987,12 @@
           "occurrence": "occurrence-1",
           "line": 48,
           "span": {
-            "start": 1485,
-            "end": 1493
+            "start": 1434,
+            "end": 1439
           },
           "definitionSpan": {
-            "start": 1485,
-            "end": 1493
+            "start": 1434,
+            "end": 1439
           },
           "decision": 0
         }
@@ -3032,12 +3032,12 @@
           "occurrence": "occurrence-1",
           "line": 49,
           "span": {
-            "start": 1514,
-            "end": 1522
+            "start": 1460,
+            "end": 1465
           },
           "definitionSpan": {
-            "start": 1514,
-            "end": 1522
+            "start": 1460,
+            "end": 1465
           },
           "decision": 0
         }
@@ -3077,12 +3077,12 @@
           "occurrence": "occurrence-1",
           "line": 50,
           "span": {
-            "start": 1543,
-            "end": 1551
+            "start": 1486,
+            "end": 1491
           },
           "definitionSpan": {
-            "start": 1543,
-            "end": 1551
+            "start": 1486,
+            "end": 1491
           },
           "decision": 0
         }
@@ -3122,12 +3122,12 @@
           "occurrence": "occurrence-1",
           "line": 51,
           "span": {
-            "start": 1572,
-            "end": 1580
+            "start": 1512,
+            "end": 1517
           },
           "definitionSpan": {
-            "start": 1572,
-            "end": 1580
+            "start": 1512,
+            "end": 1517
           },
           "decision": 0
         }
@@ -3167,12 +3167,12 @@
           "occurrence": "occurrence-1",
           "line": 52,
           "span": {
-            "start": 1601,
-            "end": 1609
+            "start": 1538,
+            "end": 1543
           },
           "definitionSpan": {
-            "start": 1601,
-            "end": 1609
+            "start": 1538,
+            "end": 1543
           },
           "decision": 0
         }
@@ -3212,12 +3212,12 @@
           "occurrence": "occurrence-1",
           "line": 53,
           "span": {
-            "start": 1630,
-            "end": 1638
+            "start": 1564,
+            "end": 1569
           },
           "definitionSpan": {
-            "start": 1630,
-            "end": 1638
+            "start": 1564,
+            "end": 1569
           },
           "decision": 0
         }
@@ -3257,12 +3257,12 @@
           "occurrence": "occurrence-1",
           "line": 54,
           "span": {
-            "start": 1659,
-            "end": 1667
+            "start": 1590,
+            "end": 1595
           },
           "definitionSpan": {
-            "start": 1659,
-            "end": 1667
+            "start": 1590,
+            "end": 1595
           },
           "decision": 0
         }
@@ -3302,12 +3302,12 @@
           "occurrence": "occurrence-1",
           "line": 55,
           "span": {
-            "start": 1688,
-            "end": 1696
+            "start": 1616,
+            "end": 1621
           },
           "definitionSpan": {
-            "start": 1688,
-            "end": 1696
+            "start": 1616,
+            "end": 1621
           },
           "decision": 0
         }
@@ -3347,12 +3347,12 @@
           "occurrence": "occurrence-0",
           "line": 63,
           "span": {
-            "start": 1832,
-            "end": 1839
+            "start": 1757,
+            "end": 1761
           },
           "definitionSpan": {
-            "start": 1832,
-            "end": 1839
+            "start": 1757,
+            "end": 1761
           },
           "decision": null
         }
@@ -3392,12 +3392,12 @@
           "occurrence": "occurrence-0",
           "line": 64,
           "span": {
-            "start": 1860,
-            "end": 1867
+            "start": 1782,
+            "end": 1786
           },
           "definitionSpan": {
-            "start": 1860,
-            "end": 1867
+            "start": 1782,
+            "end": 1786
           },
           "decision": null
         }
@@ -3437,12 +3437,12 @@
           "occurrence": "occurrence-0",
           "line": 65,
           "span": {
-            "start": 1888,
-            "end": 1895
+            "start": 1807,
+            "end": 1811
           },
           "definitionSpan": {
-            "start": 1888,
-            "end": 1895
+            "start": 1807,
+            "end": 1811
           },
           "decision": null
         }
@@ -3482,12 +3482,12 @@
           "occurrence": "occurrence-1",
           "line": 63,
           "span": {
-            "start": 1832,
-            "end": 1839
+            "start": 1757,
+            "end": 1761
           },
           "definitionSpan": {
-            "start": 1832,
-            "end": 1839
+            "start": 1757,
+            "end": 1761
           },
           "decision": null
         }
@@ -3527,12 +3527,12 @@
           "occurrence": "occurrence-1",
           "line": 64,
           "span": {
-            "start": 1860,
-            "end": 1867
+            "start": 1782,
+            "end": 1786
           },
           "definitionSpan": {
-            "start": 1860,
-            "end": 1867
+            "start": 1782,
+            "end": 1786
           },
           "decision": null
         }
@@ -3572,12 +3572,12 @@
           "occurrence": "occurrence-1",
           "line": 65,
           "span": {
-            "start": 1888,
-            "end": 1895
+            "start": 1807,
+            "end": 1811
           },
           "definitionSpan": {
-            "start": 1888,
-            "end": 1895
+            "start": 1807,
+            "end": 1811
           },
           "decision": null
         }
@@ -3617,12 +3617,12 @@
           "occurrence": "occurrence-2",
           "line": 63,
           "span": {
-            "start": 1832,
-            "end": 1839
+            "start": 1757,
+            "end": 1761
           },
           "definitionSpan": {
-            "start": 1832,
-            "end": 1839
+            "start": 1757,
+            "end": 1761
           },
           "decision": null
         }
@@ -3662,12 +3662,12 @@
           "occurrence": "occurrence-2",
           "line": 64,
           "span": {
-            "start": 1860,
-            "end": 1867
+            "start": 1782,
+            "end": 1786
           },
           "definitionSpan": {
-            "start": 1860,
-            "end": 1867
+            "start": 1782,
+            "end": 1786
           },
           "decision": null
         }
@@ -3707,12 +3707,12 @@
           "occurrence": "occurrence-2",
           "line": 65,
           "span": {
-            "start": 1888,
-            "end": 1895
+            "start": 1807,
+            "end": 1811
           },
           "definitionSpan": {
-            "start": 1888,
-            "end": 1895
+            "start": 1807,
+            "end": 1811
           },
           "decision": null
         }
@@ -3752,12 +3752,12 @@
           "occurrence": "occurrence-3",
           "line": 63,
           "span": {
-            "start": 1832,
-            "end": 1839
+            "start": 1757,
+            "end": 1761
           },
           "definitionSpan": {
-            "start": 1832,
-            "end": 1839
+            "start": 1757,
+            "end": 1761
           },
           "decision": null
         }
@@ -3797,12 +3797,12 @@
           "occurrence": "occurrence-3",
           "line": 64,
           "span": {
-            "start": 1860,
-            "end": 1867
+            "start": 1782,
+            "end": 1786
           },
           "definitionSpan": {
-            "start": 1860,
-            "end": 1867
+            "start": 1782,
+            "end": 1786
           },
           "decision": null
         }
@@ -3842,12 +3842,12 @@
           "occurrence": "occurrence-3",
           "line": 65,
           "span": {
-            "start": 1888,
-            "end": 1895
+            "start": 1807,
+            "end": 1811
           },
           "definitionSpan": {
-            "start": 1888,
-            "end": 1895
+            "start": 1807,
+            "end": 1811
           },
           "decision": null
         }
@@ -3887,12 +3887,12 @@
           "occurrence": "occurrence-0",
           "line": 68,
           "span": {
-            "start": 1966,
-            "end": 1973
+            "start": 1882,
+            "end": 1886
           },
           "definitionSpan": {
-            "start": 1966,
-            "end": 1973
+            "start": 1882,
+            "end": 1886
           },
           "decision": 0
         }
@@ -3932,12 +3932,12 @@
           "occurrence": "occurrence-0",
           "line": 69,
           "span": {
-            "start": 1994,
-            "end": 2001
+            "start": 1907,
+            "end": 1911
           },
           "definitionSpan": {
-            "start": 1994,
-            "end": 2001
+            "start": 1907,
+            "end": 1911
           },
           "decision": 0
         }
@@ -3977,12 +3977,12 @@
           "occurrence": "occurrence-0",
           "line": 70,
           "span": {
-            "start": 2022,
-            "end": 2029
+            "start": 1932,
+            "end": 1936
           },
           "definitionSpan": {
-            "start": 2022,
-            "end": 2029
+            "start": 1932,
+            "end": 1936
           },
           "decision": 0
         }
@@ -4022,12 +4022,12 @@
           "occurrence": "occurrence-0",
           "line": 71,
           "span": {
-            "start": 2050,
-            "end": 2057
+            "start": 1957,
+            "end": 1961
           },
           "definitionSpan": {
-            "start": 2050,
-            "end": 2057
+            "start": 1957,
+            "end": 1961
           },
           "decision": 0
         }
@@ -4067,12 +4067,12 @@
           "occurrence": "occurrence-1",
           "line": 68,
           "span": {
-            "start": 1966,
-            "end": 1973
+            "start": 1882,
+            "end": 1886
           },
           "definitionSpan": {
-            "start": 1966,
-            "end": 1973
+            "start": 1882,
+            "end": 1886
           },
           "decision": 0
         }
@@ -4112,12 +4112,12 @@
           "occurrence": "occurrence-1",
           "line": 69,
           "span": {
-            "start": 1994,
-            "end": 2001
+            "start": 1907,
+            "end": 1911
           },
           "definitionSpan": {
-            "start": 1994,
-            "end": 2001
+            "start": 1907,
+            "end": 1911
           },
           "decision": 0
         }
@@ -4157,12 +4157,12 @@
           "occurrence": "occurrence-1",
           "line": 70,
           "span": {
-            "start": 2022,
-            "end": 2029
+            "start": 1932,
+            "end": 1936
           },
           "definitionSpan": {
-            "start": 2022,
-            "end": 2029
+            "start": 1932,
+            "end": 1936
           },
           "decision": 0
         }
@@ -4202,12 +4202,12 @@
           "occurrence": "occurrence-1",
           "line": 71,
           "span": {
-            "start": 2050,
-            "end": 2057
+            "start": 1957,
+            "end": 1961
           },
           "definitionSpan": {
-            "start": 2050,
-            "end": 2057
+            "start": 1957,
+            "end": 1961
           },
           "decision": 0
         }
@@ -4416,8 +4416,8 @@
         "answered": "2 passes",
         "pinned": false,
         "span": {
-          "start": 938,
-          "end": 1111
+          "start": 926,
+          "end": 1084
         }
       }
     ]

@@ -4,16 +4,16 @@
 // rule somebody has to remember.
 library {
     motif rise(root: pitch = c5) {
-        root 1/4;
-        d5 1/4;
-        e5 1/4;
-        g5 1/4;
+        root/4
+        d5/4
+        e5/4
+        g5/4
     }
 
     motif fall(root: pitch = g5) {
-        root 1/4;
-        e5 1/4;
-        d5 1/4;
-        c5 1/4;
+        root/4
+        e5/4
+        d5/4
+        c5/4
     }
 }

@@ -141,9 +141,12 @@ const STUDIO_RECOVERY: &[SyntaxKind] = &[
 const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::Semicolon,
     SyntaxKind::RBrace,
+    // `|` cannot appear inside an event, so it is the strongest anchor a
+    // voice has: one malformed note poisons its own bar and no more.
+    SyntaxKind::Pipe,
+    SyntaxKind::LBracket,
     SyntaxKind::PitchLiteral,
     SyntaxKind::RestKw,
-    SyntaxKind::ChordKw,
     SyntaxKind::UseKw,
     SyntaxKind::TransposeKw,
     SyntaxKind::RepeatKw,
@@ -189,6 +192,12 @@ struct Parser<'a> {
     /// be one measure, and a measure inside a measure is not a thing the
     /// notation has a mark for.
     bar_depth: u32,
+    /// Whether the items being parsed are inside a `|` bar.
+    ///
+    /// A `|` both closes the bar it stands after and opens the one it stands
+    /// before, so the same token means "stop" one level down and "start" one
+    /// level up. This flag is which of the two the parser is looking at.
+    in_pipe_bar: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -201,6 +210,7 @@ impl<'a> Parser<'a> {
             errors: Vec::new(),
             blamed_the_end: false,
             bar_depth: 0,
+            in_pipe_bar: false,
         }
     }
 
@@ -1292,12 +1302,22 @@ impl<'a> Parser<'a> {
             if self.at(SyntaxKind::RBrace) || self.current().is_none() {
                 break;
             }
-            if self.at_any(&[SyntaxKind::PitchLiteral, SyntaxKind::Identifier]) {
+            // The exit is checked before the dispatch, which is the whole of
+            // `| a | b`: the pipe ends the bar it is in, and the voice one
+            // level up is what opens the next one.
+            if self.in_pipe_bar && !self.continues_a_bar() {
+                break;
+            }
+            if self.at(SyntaxKind::Pipe) {
+                self.pipe_bar_stmt();
+            } else if self.at_any(&[SyntaxKind::PitchLiteral, SyntaxKind::Identifier]) {
                 self.note_stmt();
             } else if self.at(SyntaxKind::RestKw) {
                 self.rest_stmt();
-            } else if self.at(SyntaxKind::ChordKw) {
+            } else if self.at(SyntaxKind::LBracket) {
                 self.chord_stmt();
+            } else if self.at(SyntaxKind::Semicolon) {
+                self.stray_semicolon();
             } else if self.at(SyntaxKind::UseKw) {
                 self.use_stmt();
             } else if self.at(SyntaxKind::TransposeKw) {
@@ -1348,15 +1368,63 @@ impl<'a> Parser<'a> {
             } else {
                 self.expected_with_help(
                     "something to play",
-                    "a voice holds notes (`c5 1/4;`), `rest`, `chord`, `bar`, and `use` — run `musa explain syntax` for the rest",
+                    "a voice holds notes (`c5/4`), chords (`[c5 e5]/4`), `rest`, `|`, and `use` — run `musa explain syntax` for the rest",
                 );
                 self.recover(VOICE_RECOVERY);
             }
         }
     }
 
+    /// Whether the statement the parser is on belongs to the bar it is in.
+    ///
+    /// A bar holds the events of one measure and the marks written among
+    /// them. Everything else a voice can write is *at least* a bar long — a
+    /// repeat, an ending, a named bar, an unmeasured stretch, an
+    /// improvisation — and notation draws those around barlines rather than
+    /// inside one, so meeting one closes the bar the way a barline would.
+    ///
+    /// `meter` and `key` close it too, for the other reason: a time signature
+    /// and a key signature are *printed* at a barline, which is why
+    /// `examples/modulation.musa` says every change lands on one and why a
+    /// meter written mid-bar is already an error.
+    ///
+    /// A whitelist rather than a blacklist: a statement kind added next year
+    /// ends the bar, which is wrong in a way the composer sees, instead of
+    /// lengthening it, which is wrong in a way only the bar-length check
+    /// notices.
+    fn continues_a_bar(&self) -> bool {
+        self.current().is_some_and(|kind| {
+            matches!(
+                kind,
+                SyntaxKind::PitchLiteral
+                    | SyntaxKind::Identifier
+                    | SyntaxKind::RestKw
+                    | SyntaxKind::LBracket
+                    | SyntaxKind::Semicolon
+                    | SyntaxKind::UseKw
+                    | SyntaxKind::DynamicKw
+                    | SyntaxKind::ClefKw
+                    | SyntaxKind::TempoKw
+                    | SyntaxKind::MarkKw
+                    | SyntaxKind::CrescendoKw
+                    | SyntaxKind::DiminuendoKw
+                    | SyntaxKind::TupletKw
+                    | SyntaxKind::SlurKw
+                    | SyntaxKind::GraceKw
+            )
+        })
+    }
+
     /// `{ ... }` body of a motif, transpose, or repeat.
     fn block(&mut self) {
+        // A brace opens a context of its own: a tuplet written inside a `|`
+        // bar reads its items as a block, not as more of the bar.
+        let enclosing = std::mem::replace(&mut self.in_pipe_bar, false);
+        self.block_inner();
+        self.in_pipe_bar = enclosing;
+    }
+
+    fn block_inner(&mut self) {
         self.start(SyntaxKind::Block);
         self.expect(SyntaxKind::LBrace, "`{`");
         self.voice_items();
@@ -1364,32 +1432,61 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `<pitch-or-ref> <duration> <articulation>* ~? ;`
+    /// `<pitch-or-ref> <duration> <articulation>* ~?`
+    ///
+    /// No terminator: an event is self-delimiting, because a pitch and a
+    /// duration are the two things it starts with and nothing else in a voice
+    /// starts that way.
     fn note_stmt(&mut self) {
         self.start(SyntaxKind::NoteStmt);
         self.bump(); // pitch literal or pitch reference
         self.duration();
         self.articulations();
         self.tie();
-        self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }
 
-    /// Zero or more articulation names after a duration (`accent staccato`).
+    /// Zero or more articulations after a duration: the words (`accent
+    /// staccato`) and the two marks notation writes (`>` accent, `^`
+    /// marcato).
     ///
     /// They live in their own node: a bare identifier in a note statement is
     /// otherwise a pitch or duration parameter reference, and telling the two
     /// apart by counting tokens is exactly the kind of positional rule that
     /// breaks the next time the statement grows a part.
+    ///
+    /// A note's own duration is read before this runs, so what is left here
+    /// is either a word describing the note or the start of the next event.
     fn articulations(&mut self) {
-        if !self.at(SyntaxKind::Identifier) {
+        if !self.at_articulation() {
             return;
         }
         self.start(SyntaxKind::ArticulationList);
-        while self.at(SyntaxKind::Identifier) {
+        while self.at_articulation() {
             self.bump();
         }
         self.finish();
+    }
+
+    /// Whether the parser is on an articulation rather than on the next
+    /// event.
+    ///
+    /// Without a `;` between events, `root 1/8 tenuto d5 1/8` has to be read
+    /// the way a player reads it: `tenuto` belongs to the note before it and
+    /// `d5` starts the note after. A word that a duration follows is a pitch
+    /// — that is what a duration is *for* — so one token of lookahead on a
+    /// kind settles it.
+    fn at_articulation(&self) -> bool {
+        if self.at_any(&[SyntaxKind::Greater, SyntaxKind::Caret]) {
+            return true;
+        }
+        if !self.at(SyntaxKind::Identifier) {
+            return false;
+        }
+        !matches!(
+            self.nth_significant(1),
+            Some(SyntaxKind::Slash | SyntaxKind::Rational | SyntaxKind::Integer)
+        )
     }
 
     /// The postfix tie mark, tying this statement to the next.
@@ -1399,30 +1496,29 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// `rest <duration>;`
+    /// `rest <duration>`
     fn rest_stmt(&mut self) {
         self.start(SyntaxKind::RestStmt);
         self.bump(); // rest
         self.duration();
-        self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }
 
-    /// `chord [<pitch>, ...] <duration>;`
+    /// `[<pitch> ...]<duration>` — `[c3 g3]/2`.
+    ///
+    /// The bracket says chord, the way it does in ABC and in GUIDO, so the
+    /// keyword and the commas were both repeating what it already said.
     fn chord_stmt(&mut self) {
         self.start(SyntaxKind::ChordStmt);
-        self.bump(); // chord
-        self.expect(SyntaxKind::LBracket, "`[`");
+        self.bump(); // [
         self.expect(SyntaxKind::PitchLiteral, "a pitch");
-        while self.at(SyntaxKind::Comma) {
+        while self.at(SyntaxKind::PitchLiteral) {
             self.bump();
-            self.expect(SyntaxKind::PitchLiteral, "a pitch");
         }
         self.expect(SyntaxKind::RBracket, "`]`");
         self.duration();
         self.articulations();
         self.tie();
-        self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }
 
@@ -1558,6 +1654,10 @@ impl<'a> Parser<'a> {
         if let Some(error) = self.nested_bar() {
             self.errors.push(error);
         }
+        // The blank line a composer leaves between two phrases belongs to the
+        // voice, not to the bar under it: a bar is written on one line, and a
+        // formatter that never descends into it would never see the trivia.
+        self.eat_trivia();
         self.start(SyntaxKind::BarStmt);
         self.bump(); // bar
         // The name is optional and there is nothing to disambiguate: a bar's
@@ -1569,6 +1669,50 @@ impl<'a> Parser<'a> {
         self.block();
         self.bar_depth = self.bar_depth.saturating_sub(1);
         self.finish();
+    }
+
+    /// `| <items…>` — a bar drawn the way notation draws one.
+    ///
+    /// The same node as `bar { … }`, because it is the same claim: one
+    /// measure's worth of music, checked against the meter. What it does not
+    /// have is a name, and it does not have one *structurally* —
+    /// [`BarStmt::name`](crate::ast::BarStmt::name) reads direct identifier
+    /// tokens, and a pipe bar's direct tokens are the pipe and trivia.
+    fn pipe_bar_stmt(&mut self) {
+        if let Some(error) = self.nested_bar() {
+            self.errors.push(error);
+        }
+        // The blank line a composer leaves between two phrases belongs to the
+        // voice, not to the bar under it: a bar is written on one line, and a
+        // formatter that never descends into it would never see the trivia.
+        self.eat_trivia();
+        self.start(SyntaxKind::BarStmt);
+        self.bump(); // |
+        self.bar_depth = self.bar_depth.saturating_add(1);
+        let enclosing = std::mem::replace(&mut self.in_pipe_bar, true);
+        self.voice_items();
+        self.in_pipe_bar = enclosing;
+        self.bar_depth = self.bar_depth.saturating_sub(1);
+        self.finish();
+    }
+
+    /// The `;` a reader who learned the old syntax will type after a note.
+    ///
+    /// Worth its own arm rather than the generic complaint: the fix is a
+    /// deletion, so every file written before today converts itself one
+    /// keystroke at a time.
+    fn stray_semicolon(&mut self) {
+        let range = self
+            .significant()
+            .map_or_else(|| TextRange::empty(self.end_size()), |token| token.range);
+        if !self.cascading() {
+            self.errors.push(
+                SyntaxError::new(range, "a note does not end in `;`", "delete this")
+                    .with_help("a note, a rest and a chord end themselves; every other statement ends with `;` or `}`")
+                    .with_fix("remove `;`", ""),
+            );
+        }
+        self.bump();
     }
 
     /// A `bar` inside a `bar`, if that is where the parser is.
@@ -1620,14 +1764,23 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `grace { c5; d5; }` — the notes crushed before the one that follows.
+    /// `grace { c5 d5 }` — the notes crushed before the one that follows.
     ///
     /// The block holds pitches and nothing else: a grace note has no written
     /// duration, which is the one shape a `NoteStmt` cannot hold, so it gets a
     /// node of its own rather than a note with an optional duration. Making
-    /// the duration optional on every note would let `c5;` be written anywhere
+    /// the duration optional on every note would let `c5` be written anywhere
     /// and mean nothing.
+    ///
+    /// A grace note delimits itself the way every other event does: a pitch
+    /// and the marks written on it are one word, and the `}` ends the last
+    /// one. What separates two grace notes is what separates two notes —
+    /// nothing but space.
     fn grace_stmt(&mut self) {
+        // The comment above a grace group belongs to the voice, not to the
+        // group: the group is written on one line, and a formatter that never
+        // descends into it would never see the trivia.
+        self.eat_trivia();
         self.start(SyntaxKind::GraceStmt);
         self.bump(); // grace
         if self.at(SyntaxKind::LBrace) {
@@ -1637,19 +1790,17 @@ impl<'a> Parser<'a> {
                     self.start(SyntaxKind::GraceNote);
                     self.bump(); // pitch literal or pitch reference
                     self.articulations();
-                    self.expect(SyntaxKind::Semicolon, "`;`");
                     self.finish();
+                } else if self.at(SyntaxKind::Semicolon) {
+                    self.stray_semicolon();
                 } else {
                     self.expected("a pitch");
                     self.recover(&[SyntaxKind::Semicolon, SyntaxKind::RBrace, SyntaxKind::PitchLiteral]);
-                    if self.at(SyntaxKind::Semicolon) {
-                        self.bump();
-                    }
                 }
             }
             self.expect(SyntaxKind::RBrace, "`}`");
         } else {
-            self.expected("a block of pitches, like `grace { c5; d5; }`");
+            self.expected("a block of pitches, like `grace { c5 d5 }`");
         }
         self.finish();
     }
@@ -1837,7 +1988,7 @@ impl<'a> Parser<'a> {
     fn duration(&mut self) {
         self.start(SyntaxKind::Duration);
         self.duration_value("a duration");
-        // `g4 1/4 to 2/1;` — written as a quarter, held as long as the
+        // `g4/4 to 2/1` — written as a quarter, held as long as the
         // performer likes up to a double whole. The first value is the
         // notated one and the second bounds the performed one (roadmap §2).
         if self.at(SyntaxKind::ToKw) {

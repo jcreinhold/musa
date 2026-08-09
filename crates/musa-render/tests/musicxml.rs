@@ -192,7 +192,7 @@ proptest! {
 #[test]
 fn a_triplet_lands_on_the_grid() {
     let source = "piece \"t\" { meter 4/4; score { part a { voice v { \
-                  tuplet 3/2 { c4 1/8; d4 1/8; e4 1/8; } rest 1/4; rest 1/2; } } } }";
+                  tuplet 3/2 { c4/8 d4/8 e4/8 } rest/4 rest/2 } } } }";
     let text = musicxml_of(source);
     assert!(text.contains("<actual-notes>3</actual-notes>"), "{text}");
     assert!(text.contains("<normal-notes>2</normal-notes>"), "{text}");
@@ -203,7 +203,7 @@ fn a_triplet_lands_on_the_grid() {
 /// printed `<tied>` — because consumers read one or the other (§12.4).
 #[test]
 fn a_tie_is_written_as_sound_and_as_notation() {
-    let text = musicxml_of("piece \"x\" { meter 2/4; score { part p { voice v { c4 1; } } } }");
+    let text = musicxml_of("piece \"x\" { meter 2/4; score { part p { voice v { c4/1 } } } }");
     assert!(text.contains("<tie type=\"start\"/>"), "{text}");
     assert!(text.contains("<tie type=\"stop\"/>"), "{text}");
     assert!(text.contains("<tied type=\"start\"/>"), "{text}");

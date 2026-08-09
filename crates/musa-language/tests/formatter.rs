@@ -44,7 +44,7 @@ fn examples_format_to_themselves() {
 
 #[test]
 fn messy_source_is_canonicalized() {
-    let source = "piece   \"Messy\"{\n\ttempo quarter=72;\n\n\nmeter 4/4;\nkey a minor;\nscore{\npart p{\nclef treble;\nvoice v{\nc5   1/4;\nchord [a3,c4,e4] 1/2;\nrest 1/4;\n}\n}\n}\n}\n";
+    let source = "piece   \"Messy\"{\n\ttempo quarter=72;\n\n\nmeter 4/4;\nkey a minor;\nscore{\npart p{\nclef treble;\nvoice v{\nc5   1/4\n[a3   c4  e4]/2\nrest 1/4\n}\n}\n}\n}\n";
     let formatted = fmt(source);
     assert_eq!(fmt(&formatted), formatted, "idempotence");
     assert_semantics_preserved(source, &formatted);
@@ -56,7 +56,7 @@ fn messy_source_is_canonicalized() {
 /// whitespace, so it cannot prefer one over the other.
 #[test]
 fn both_spellings_of_a_duration_survive_formatting() {
-    let source = "piece \"D\" {\n    score {\n        part p {\n            voice v {\n                c5/4;\n                d5/4.;\n                e5/4..;\n                f5 1/4;\n                rest/8;\n                g5/4 to 1;\n            }\n        }\n    }\n}\n";
+    let source = "piece \"D\" {\n    score {\n        part p {\n            voice v {\n                c5/4\n                d5/4.\n                e5/4..\n                f5 1/4\n                rest/8\n                g5/4 to 1\n            }\n        }\n    }\n}\n";
     let formatted = fmt(source);
     assert_eq!(formatted, source, "the shapes are already canonical");
     assert_eq!(fmt(&formatted), formatted, "idempotence");
@@ -67,17 +67,17 @@ fn both_spellings_of_a_duration_survive_formatting() {
 /// of it, and the dot never swallows the note after it.
 #[test]
 fn a_short_duration_closes_up_to_its_note() {
-    let source = "piece \"D\" { score { part p { voice v { c5 / 4 . ; d5 1/4; } } } }";
+    let source = "piece \"D\" { score { part p { voice v { c5 / 4 .   d5/4 } } } }";
     let formatted = fmt(source);
-    assert!(formatted.contains("c5/4.;"), "got:\n{formatted}");
-    assert!(formatted.contains("d5 1/4;"), "got:\n{formatted}");
+    assert!(formatted.contains("c5/4."), "got:\n{formatted}");
+    assert!(formatted.contains("d5/4"), "got:\n{formatted}");
     assert_eq!(fmt(&formatted), formatted, "idempotence");
     assert_semantics_preserved(source, &formatted);
 }
 
 #[test]
 fn comments_keep_their_attachment() {
-    let source = "piece \"C\" {\n    // header comment\n    meter 4/4; // trailing\n    score {\n        part p {\n            voice v {\n                c5 1/4; /* inline block */\n                // detached comment\n                d5 1/4;\n            }\n        }\n    }\n}\n";
+    let source = "piece \"C\" {\n    // header comment\n    meter 4/4; // trailing\n    score {\n        part p {\n            voice v {\n                c5/4 /* inline block */\n                // detached comment\n                d5/4\n            }\n        }\n    }\n}\n";
     let formatted = fmt(source);
     assert_eq!(fmt(&formatted), formatted, "idempotence");
     assert_semantics_preserved(source, &formatted);
@@ -86,7 +86,7 @@ fn comments_keep_their_attachment() {
 
 #[test]
 fn blank_lines_are_capped_at_one() {
-    let source = "piece \"B\" {\n    meter 4/4;\n\n\n\n    key c major;\n\n\n    score {\n        part p {\n            voice v {\n                c5 1;\n            }\n        }\n    }\n}\n";
+    let source = "piece \"B\" {\n    meter 4/4;\n\n\n\n    key c major;\n\n\n    score {\n        part p {\n            voice v {\n                c5/1\n            }\n        }\n    }\n}\n";
     let formatted = fmt(source);
     assert!(!formatted.contains("\n\n\n"), "no double blank lines");
     assert_eq!(fmt(&formatted), formatted, "idempotence");
@@ -103,10 +103,10 @@ fn blank_lines_are_capped_at_one() {
 /// because a comment needs a line of its own.
 #[test]
 fn a_bar_that_fits_is_written_on_one_line() {
-    let source = "piece \"Bars\" {\n    meter 4/4;\n    score {\n        part p {\n            voice v {\n                bar head {\n                    c4 1/4;\n                    d4 1/4;\n                    e4 1/4;\n                    f4 1/4;\n                }\n                bar { g4 1/2; a4 1/2; }\n                bar { c4 1/16; d4 1/16; e4 1/16; f4 1/16; g4 1/16; a4 1/16; b4 1/16; c5 1/16; d5 1/16; e5 1/16; f5 1/16; g5 1/16; a5 1/16; b5 1/16; c6 1/8; }\n                bar {\n                    // the last one\n                    c4 1;\n                }\n            }\n        }\n    }\n}\n";
+    let source = "piece \"Bars\" {\n    meter 4/4;\n    score {\n        part p {\n            voice v {\n                bar head {\n                    c4/4\n                    d4/4\n                    e4/4\n                    f4/4\n                }\n                bar { g4/2 a4/2 }\n                bar { c4/16 d4/16 e4/16 f4/16 g4/16 a4/16 b4/16 c5/16 d5/16 e5/16 f5/16 g5/16 a5/16 b5/16 c6/8 }\n                bar {\n                    // the last one\n                    c4/1\n                }\n            }\n        }\n    }\n}\n";
     let formatted = fmt(source);
     assert!(
-        formatted.contains("                bar head { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }\n"),
+        formatted.contains("                bar head { c4/4 d4/4 e4/4 f4/4 }\n"),
         "a stacked bar comes back onto its line:\n{formatted}"
     );
     assert_eq!(fmt(&formatted), formatted, "idempotence");
@@ -138,7 +138,10 @@ fn pitch() -> impl Strategy<Value = String> {
 }
 
 fn duration() -> impl Strategy<Value = String> {
-    prop::sample::select(vec!["1", "1/2", "1/4", "3/8", "1/8", "1/12", "1/16"]).prop_map(str::to_string)
+    // Both spellings, because both are legal and the formatter must leave
+    // either as it found it: `/12` cannot be written short, and `/4.` cannot
+    // be written any other way without saying 3/8.
+    prop::sample::select(vec!["/1", "/2", "/4", "/4.", "/8", "/16", "1/12", "3/8", "1/4"]).prop_map(str::to_string)
 }
 
 fn gap() -> impl Strategy<Value = String> {
@@ -151,13 +154,26 @@ fn separator() -> impl Strategy<Value = String> {
 
 /// A statement with nothing after it on its line, so a run of them can be
 /// joined with spaces without a comment eating what follows.
+///
+/// An event carries no terminator: `gap()` is what stands between the pitch
+/// and the duration, and a short duration closes up to the pitch, so the
+/// generator writes the gap only where the long form allows one.
 fn statement() -> impl Strategy<Value = String> {
     prop_oneof![
-        (pitch(), duration(), gap()).prop_map(|(p, d, g)| format!("{p}{g}{d};")),
-        duration().prop_map(|d| format!("rest {d};")),
-        (prop::collection::vec(pitch(), 2..=4), duration())
-            .prop_map(|(pitches, d)| format!("chord [{}] {d};", pitches.join(", "))),
+        (pitch(), duration(), gap()).prop_map(|(p, d, g)| format!("{p}{}{d}", spacing(&d, &g))),
+        duration().prop_map(|d| format!("rest{}{d}", spacing(&d, " "))),
+        (prop::collection::vec(pitch(), 2..=4), duration()).prop_map(|(pitches, d)| format!(
+            "[{}]{}{d}",
+            pitches.join(" "),
+            spacing(&d, " ")
+        )),
     ]
+}
+
+/// What separates a pitch from its duration: nothing at all when the duration
+/// is written short, and the generated whitespace when it is written long.
+fn spacing<'a>(duration: &str, gap: &'a str) -> &'a str {
+    if duration.starts_with('/') { "" } else { gap }
 }
 
 /// The same, plus a trailing comment and plus bars — which have their own
@@ -167,9 +183,11 @@ fn statement() -> impl Strategy<Value = String> {
 fn item() -> impl Strategy<Value = String> {
     prop_oneof![
         6 => statement(),
-        2 => (pitch(), duration()).prop_map(|(p, d)| format!("{p} {d}; // note")),
+        2 => (pitch(), duration()).prop_map(|(p, d)| format!("{p}{}{d} // note", spacing(&d, " "))),
         3 => (prop::collection::vec(statement(), 1..=6), gap())
             .prop_map(|(inside, g)| format!("bar {{{g}{}{g}}}", inside.join(" "))),
+        3 => (prop::collection::vec(statement(), 1..=6), gap())
+            .prop_map(|(inside, g)| format!("|{g}{}", inside.join(" "))),
     ]
 }
 

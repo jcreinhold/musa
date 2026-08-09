@@ -29,7 +29,7 @@ fn plan_of(text: &str) -> musa_compiler::PerformancePlan {
 /// exactly.
 #[test]
 fn frame_exact_scheduling() {
-    let text = "piece \"x\" { tempo 1/4 = 72; meter 4/4; score { part p { voice v { a4 1/4; c5 1/4; } } } }";
+    let text = "piece \"x\" { tempo 1/4 = 72; meter 4/4; score { part p { voice v { a4/4 c5/4 } } } }";
     let plan = plan_of(text);
     let empty: &[PerformanceEvent] = &[];
     let events = plan.lanes().first().map_or(empty, |lane| lane.events());
@@ -61,7 +61,7 @@ fn panic_free_fail() {
 /// Chords schedule one on/off pair per tone; rests schedule nothing.
 #[test]
 fn chords_and_rests() {
-    let text = "piece \"x\" { tempo 1/4 = 60; score { part p { voice v { chord [c4, e4, g4] 1/4; rest 1/4; } } } }";
+    let text = "piece \"x\" { tempo 1/4 = 60; score { part p { voice v { [c4 e4 g4]/4 rest/4 } } } }";
     let plan = plan_of(text);
     let empty: &[PerformanceEvent] = &[];
     let events = plan.lanes().first().map_or(empty, |lane| lane.events());
@@ -76,7 +76,7 @@ fn chords_and_rests() {
 /// A gate ending exactly where the next note starts closes first.
 #[test]
 fn same_frame_transitions_close_before_opening() {
-    let text = "piece \"x\" { tempo 1/4 = 60; score { part p { voice v { c4 1/4; c4 1/4; } } } }";
+    let text = "piece \"x\" { tempo 1/4 = 60; score { part p { voice v { c4/4 c4/4 } } } }";
     let plan = plan_of(text);
     let empty: &[PerformanceEvent] = &[];
     let events = plan.lanes().first().map_or(empty, |lane| lane.events());
@@ -123,7 +123,7 @@ fn item_strategy() -> impl Strategy<Value = String> {
         prop::sample::select(vec!["c4", "d4", "e4", "f4", "g4"]),
         prop::sample::select(vec!["1/8", "1/4", "1/2"]),
     )
-        .prop_map(|(pitch, dur)| format!("{pitch} {dur};"))
+        .prop_map(|(pitch, dur)| format!("{pitch} {dur} "))
 }
 
 fn voice_strategy() -> impl Strategy<Value = String> {

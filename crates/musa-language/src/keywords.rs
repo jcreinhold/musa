@@ -101,14 +101,14 @@ static MOTIF: KeywordDoc = doc!(
     "A motif is a musical idea said once and given a name: a phrase, a figure, a rhythm, with parameters for \
      what changes between uses. Write it out where it is wanted with `use name(args);` — an edit to the motif \
      then reaches every occurrence.\n\n\
-     ```musa\nmotif sigh(root: pitch) { root 1/8; root 1/8; }\n```"
+     ```musa\nmotif sigh(root: pitch) { root/8 root/8 }\n```"
 );
 static FRAGMENT: KeywordDoc = doc!(
     "fragment",
     "a labeled block a mobile can arrange",
     "A fragment is a named block of music that means nothing in source order: it becomes music when a `mobile` \
      arranges it among others. Fragments are how musa writes music whose order is chosen, not fixed.\n\n\
-     ```musa\nfragment a { c4 1/4; d4 1/4; }\n```"
+     ```musa\nfragment a { c4/4 d4/4 }\n```"
 );
 static SCORE: KeywordDoc = doc!(
     "score",
@@ -130,7 +130,7 @@ static VOICE: KeywordDoc = doc!(
     "one rhythmic line inside a part",
     "A voice is one line of rhythm inside a part: notes, rests, and everything written where the music reaches \
      it. Two voices in one part share the staff and count their own bars independently.\n\n\
-     ```musa\nvoice right { c4 1/4; d4 1/4; }\n```"
+     ```musa\nvoice right { c4/4 d4/4 }\n```"
 );
 static CLEF: KeywordDoc = doc!(
     "clef",
@@ -187,14 +187,7 @@ static REST: KeywordDoc = doc!(
     "silence with a duration",
     "A rest is notated silence: it fills its duration in the bar exactly like a note fills its own. A bar that \
      does not add up — rests included — is an error, because a missing rest is a missing beat.\n\n\
-     ```musa\nrest 1/4;\n```"
-);
-static CHORD: KeywordDoc = doc!(
-    "chord",
-    "several pitches as one rhythmic thing",
-    "A chord is several pitches struck as one rhythmic event: `chord [c4 e4 g4] 1/4;` fills a quarter with all \
-     of them. It is one voice's one event, not three voices.\n\n\
-     ```musa\nchord [c4 e4 g4] 1/2;\n```"
+     ```musa\nrest/4\n```"
 );
 static REPEAT: KeywordDoc = doc!(
     "repeat",
@@ -205,25 +198,25 @@ static REPEAT: KeywordDoc = doc!(
 );
 static BAR: KeywordDoc = doc!(
     "bar",
-    "one measure, written out",
-    "A bar is one measure of music between braces: what a player reads between two barlines, and the unit that \
-     must add up to the meter. Named — `bar head { … }` — it also becomes an address an edit or a reader can \
-     point at.\n\n\
-     ```musa\nbar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }\n```"
+    "one measure, named",
+    "A bar is one measure of music: what a player reads between two barlines, and the unit that must add up to \
+     the meter. Write it with `|`, the way notation draws it. The keyword is for the bar that earns a name — \
+     `bar head { … }` — which makes it an address an edit or a reader can point at.\n\n\
+     ```musa\nbar head { c4/4 d4/4 e4/4 f4/4 }\n```"
 );
 static ENDING: KeywordDoc = doc!(
     "ending",
     "what changes on a given pass of a repeat",
     "An ending block plays only on the numbered pass of the enclosing `repeat`: `ending 1 { … }` the first \
      time, `ending 2 { … }` the second. It is how a repeated strain gets a different close.\n\n\
-     ```musa\nrepeat 2 { use strain(); ending 1 { c4 1/1; } ending 2 { g4 1/1; } }\n```"
+     ```musa\nrepeat 2 { use strain(); ending 1 { c4/1 } ending 2 { g4/1 } }\n```"
 );
 static SLUR: KeywordDoc = doc!(
     "slur",
     "a phrase mark over the block",
     "A slur block is played legato under one bow or breath: the notation curve over its contents. It changes \
      how the notes connect, not which notes they are.\n\n\
-     ```musa\nslur { c4 1/8; d4 1/8; e4 1/8; }\n```"
+     ```musa\nslur { c4/8 d4/8 e4/8 }\n```"
 );
 static PHRASE: KeywordDoc = doc!(
     "phrase",
@@ -259,14 +252,14 @@ static GRACE: KeywordDoc = doc!(
     "notes crushed before the beat",
     "A grace block holds grace notes: small notes that lean on the event after them and fill no time in the \
      bar. Where they steal their time from is the `performance` block's `grace` rule.\n\n\
-     ```musa\ngrace { d5 1/16; } c5 1/4;\n```"
+     ```musa\ngrace { d5 } c5/4\n```"
 );
 static TUPLET: KeywordDoc = doc!(
     "tuplet",
     "notes in the time of fewer",
     "A tuplet block fits its contents into the time a different count would take: `tuplet 3/2 { … }` is three \
      in the time of two. The ratio is exact — tuplets are arithmetic, not feel.\n\n\
-     ```musa\ntuplet 3/2 { c4 1/8; d4 1/8; e4 1/8; }\n```"
+     ```musa\ntuplet 3/2 { c4/8 d4/8 e4/8 }\n```"
 );
 static STRETCH: KeywordDoc = doc!(
     "stretch",
@@ -308,7 +301,7 @@ static NOTE: KeywordDoc = doc!(
     "a literal note inside an override",
     "`note` introduces a literal note where an override needs one — the spelled-out exception inside a `with` \
      clause.\n\n\
-     ```musa\nuse theme() with (pickup: note c5 1/8);\n```"
+     ```musa\nuse theme() with (pickup: note c5/8);\n```"
 );
 static SECTION: KeywordDoc = doc!(
     "section",
@@ -321,9 +314,9 @@ static HARMONY: KeywordDoc = doc!(
     "harmony",
     "the chord-symbol lane",
     "A harmony block declares the piece's chord-symbol lane: symbols written at the times they govern, like \
-     `harmony { \"Dm7\" 1/1; \"G7\" 1/1; }`. The symbols are parsed, so later tooling reads structure instead \
+     `harmony { \"Dm7\" 1/1 \"G7\" 1/1 }`. The symbols are parsed, so later tooling reads structure instead \
      of letters.\n\n\
-     ```musa\nharmony { \"Cmaj7\" 2/1; }\n```"
+     ```musa\nharmony { \"Cmaj7\" 2/1 }\n```"
 );
 static CRESCENDO: KeywordDoc = doc!(
     "crescendo",
@@ -360,7 +353,7 @@ static SENZA: KeywordDoc = doc!(
     "A senza block is unmeasured music with braces around it: the barlines stop for exactly its contents and \
      the meter returns after, without the `meter none;` … `meter 4/4;` pair you could otherwise forget the \
      second half of. Cadenzas and chant are written this way.\n\n\
-     ```musa\nsenza { c4 1/1; g4 1/1; }\n```"
+     ```musa\nsenza { c4/1 g4/1 }\n```"
 );
 static MOBILE: KeywordDoc = doc!(
     "mobile",
@@ -456,7 +449,7 @@ static PITCH_KW: KeywordDoc = doc!(
     "the pitch parameter type",
     "`pitch` is the type of a pitch parameter in a motif declaration: `motif sigh(root: pitch)` takes a written \
      pitch like `e5` at each `use`. It is one of the small set of types parameters can have.\n\n\
-     ```musa\nmotif call(root: pitch = c5) { root 1/4; }\n```"
+     ```musa\nmotif call(root: pitch = c5) { root/4 }\n```"
 );
 
 /// The keyword's documentation, or `None` for anything that is not a
@@ -490,7 +483,6 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::UpKw => &UP,
         SyntaxKind::DownKw => &DOWN,
         SyntaxKind::RestKw => &REST,
-        SyntaxKind::ChordKw => &CHORD,
         SyntaxKind::RepeatKw => &REPEAT,
         SyntaxKind::BarKw => &BAR,
         SyntaxKind::EndingKw => &ENDING,
@@ -675,7 +667,6 @@ mod tests {
             SyntaxKind::UpKw,
             SyntaxKind::DownKw,
             SyntaxKind::RestKw,
-            SyntaxKind::ChordKw,
             SyntaxKind::RepeatKw,
             SyntaxKind::BarKw,
             SyntaxKind::EndingKw,

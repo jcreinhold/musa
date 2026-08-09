@@ -94,7 +94,7 @@ fn piece(profiles: &str, part_profile: &str, body: &str) -> String {
 #[test]
 fn a_piece_without_profiles_is_scheduled_neutrally() {
     let snapshot =
-        score_of("piece \"x\" { tempo 1/4 = 60; meter 4/4; score { part p { voice v { c4 1 staccato; } } } }");
+        score_of("piece \"x\" { tempo 1/4 = 60; meter 4/4; score { part p { voice v { c4/1 staccato } } } }");
     assert!(snapshot.profiles().is_empty());
     let notes = notes_of(&snapshot);
     // A whole note at quarter=60 is 4 seconds; the staccato is written but
@@ -104,7 +104,7 @@ fn a_piece_without_profiles_is_scheduled_neutrally() {
 
 #[test]
 fn a_part_without_a_profile_is_neutral_even_when_the_piece_declares_one() {
-    let source = piece("profile violin { mark staccato { gate = 0.5; } }", "", "c4 1 staccato;");
+    let source = piece("profile violin { mark staccato { gate = 0.5; } }", "", "c4/1 staccato");
     let notes = notes_of(&score_of(&source));
     assert_eq!(notes, vec![(0, 4 * 48_000, 1.0)], "declared is not the same as chosen");
 }
@@ -116,7 +116,7 @@ fn a_gate_shortens_the_sounding_value_and_leaves_the_onset_alone() {
     let source = piece(
         "profile violin { mark staccato { gate = 0.25; } }",
         "profile violin;",
-        "c4 1/2 staccato; c4 1/2;",
+        "c4/2 staccato c4/2",
     );
     let notes = notes_of(&score_of(&source));
     let half = 2 * 48_000;
@@ -138,7 +138,7 @@ fn a_gate_written_as_a_ratio_shortens_the_note() {
     let source = piece(
         "profile violin { mark staccato { gate = 1/4; } }",
         "profile violin;",
-        "c4 1 staccato;",
+        "c4/1 staccato",
     );
     let notes = notes_of(&score_of(&source));
     assert_eq!(notes, vec![(0, 48_000, 1.0)], "a quarter of four seconds");
@@ -153,7 +153,7 @@ fn a_hold_lengthens_the_note_without_moving_the_next() {
     let source = piece(
         "profile organ { mark fermata { hold = 2/1; } }",
         "profile organ;",
-        "c4 1/2 fermata; c4 1/2;",
+        "c4/2 fermata c4/2",
     );
     let notes = notes_of(&score_of(&source));
     let half = 2 * 48_000;
@@ -169,7 +169,7 @@ fn gates_multiply_when_a_note_carries_two_realized_marks() {
     let source = piece(
         "profile violin { mark staccato { gate = 0.5; } mark accent { gate = 0.5; } }",
         "profile violin;",
-        "c4 1 staccato accent;",
+        "c4/1 staccato>",
     );
     let notes = notes_of(&score_of(&source));
     assert_eq!(notes.first().map(|note| note.1), Some(48_000));
@@ -180,7 +180,7 @@ fn a_dynamic_sets_the_amplitude_from_its_note_onward() {
     let source = piece(
         "profile violin { dynamic p { amplitude = 0.25; } dynamic f { amplitude = 1; } }",
         "profile violin;",
-        "c4 1/4; dynamic p; d4 1/4; e4 1/4; dynamic f; g4 1/4;",
+        "c4/4 dynamic p; d4/4 e4/4 dynamic f; g4/4",
     );
     let amplitudes: Vec<f32> = notes_of(&score_of(&source)).iter().map(|note| note.2).collect();
     assert_eq!(amplitudes, vec![1.0, 0.25, 0.25, 1.0]);
@@ -193,7 +193,7 @@ fn an_undeclared_mark_is_neutral_rather_than_an_error() {
     let source = piece(
         "profile violin { mark staccato { gate = 0.5; } }",
         "profile violin;",
-        "c4 1 tenuto; dynamic ff; c4 1;",
+        "c4/1 tenuto dynamic ff; c4/1",
     );
     let snapshot = score_of(&source);
     let notes = notes_of(&snapshot);
@@ -228,16 +228,16 @@ fn a_part_naming_an_undeclared_profile_is_an_error() {
     let source = piece(
         "profile violin { dynamic p { amplitude = 0.5; } }",
         "profile viola;",
-        "c4 1;",
+        "c4/1",
     );
     assert_eq!(errors_of(&source), vec!["cannot find profile `viola`".to_string()]);
 }
 
 #[test]
 fn rules_reject_marks_the_language_does_not_have() {
-    let source = piece("profile violin { mark sideways { gate = 0.5; } }", "", "c4 1;");
+    let source = piece("profile violin { mark sideways { gate = 0.5; } }", "", "c4/1");
     assert_eq!(errors_of(&source), vec!["`sideways` is not a mark".to_string()]);
-    let source = piece("profile violin { dynamic loud { amplitude = 0.5; } }", "", "c4 1;");
+    let source = piece("profile violin { dynamic loud { amplitude = 0.5; } }", "", "c4/1");
     assert_eq!(errors_of(&source), vec!["`loud` is not a dynamic marking".to_string()]);
 }
 
@@ -279,7 +279,7 @@ fn settings_are_checked_by_name_range_and_unit() {
         ),
     ];
     for (profiles, expected) in cases {
-        let errors = errors_of(&piece(profiles, "", "c4 1;"));
+        let errors = errors_of(&piece(profiles, "", "c4/1"));
         assert!(errors.contains(&expected.to_string()), "for {profiles}: got {errors:?}");
     }
 }
@@ -289,7 +289,7 @@ fn a_duplicate_profile_is_an_error() {
     let source = piece(
         "profile v { dynamic p { amplitude = 0.5; } } profile v { dynamic f { amplitude = 0.9; } }",
         "",
-        "c4 1;",
+        "c4/1",
     );
     assert_eq!(errors_of(&source), vec!["profile `v` is declared twice".to_string()]);
 }
@@ -310,7 +310,7 @@ proptest! {
         let source = piece(
             &format!("profile v {{ mark staccato {{ gate = {written}; }} }}"),
             "profile v;",
-            &format!("c4 {beats}/4 staccato; rest {}/4;", 4 - beats),
+            &format!("c4 {beats}/4 staccato rest {}/4", 4 - beats),
         );
         let notes = notes_of(&score_of(&source));
         let (on, off, _) = *notes.first().ok_or_else(|| TestCaseError::fail("no note"))?;
@@ -328,8 +328,8 @@ proptest! {
         articulation in prop::sample::select(vec!["staccato", "tenuto", "accent", "marcato"]),
         dynamic in prop::sample::select(vec!["pp", "p", "mf", "f", "ff"]),
     ) {
-        let marked = piece("", "", &format!("dynamic {dynamic}; c4 1/2 {articulation}; d4 1/2;"));
-        let plain = piece("", "", "c4 1/2; d4 1/2;");
+        let marked = piece("", "", &format!("dynamic {dynamic}; c4 1/2 {articulation} d4/2"));
+        let plain = piece("", "", "c4/2 d4/2");
         prop_assert_eq!(notes_of(&score_of(&marked)), notes_of(&score_of(&plain)));
     }
 }

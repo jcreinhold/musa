@@ -134,7 +134,6 @@ pub enum SyntaxKind {
     /// `rest`
     RestKw,
     /// `chord`
-    ChordKw,
     /// `repeat`
     RepeatKw,
     /// `slur`
@@ -250,7 +249,7 @@ pub enum SyntaxKind {
     NoteStmt,
     /// `rest <duration>;`
     RestStmt,
-    /// `chord [<pitch>, ...] <duration>;`
+    /// `[<pitch> ...] <duration>;`
     ChordStmt,
     /// `use name(args);`
     UseStmt,
@@ -280,7 +279,7 @@ pub enum SyntaxKind {
     /// mark that is not written on a note. One node for every such mark,
     /// because the vocabulary decides the shape and the grammar does not.
     MarkStmt,
-    /// `grace { c5; d5; }` — the grace notes crushed before the note that
+    /// `grace { c5 d5 }` — the grace notes crushed before the note that
     /// follows. Not a mark: each has a pitch, an accidental and a place in an
     /// order that matters, which is an identity.
     GraceStmt,

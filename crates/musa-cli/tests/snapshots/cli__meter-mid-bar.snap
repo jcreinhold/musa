@@ -6,11 +6,11 @@ does-not-add-up
 
   × a meter change must land on a barline
     ╭─[examples/broken/meter-mid-bar.musa:15:17]
- 14 │                 g4 1/4;
+ 14 │                 g4/4
  15 │                 meter 3/4;
     ·                 ─────┬────
     ·                      ╰── this is 1/4 into measure 2
- 16 │                 a4 1/4; b4 1/4; c5 1/4;
+ 16 │                 a4/4
     ╰────
   help: add 3/4 before it, or move it past the next barline
 

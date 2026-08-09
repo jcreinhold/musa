@@ -53,7 +53,7 @@ fn output_is_deterministic() {
 /// spelling of the whole event.
 #[test]
 fn duration_spelling_and_ties() {
-    let text = "piece \"x\" { meter 2/4; score { part p { voice v { c4 1; d4 3/8; e4 1/16; } } } }";
+    let text = "piece \"x\" { meter 2/4; score { part p { voice v { c4/1 d4/4. e4/16 } } } }";
     let out = lilypond_of(text);
     // Whole note in 2/4 splits into two tied halves — spelled `2`, not `1`.
     assert!(out.contains("c'2~ % event:0"), "first tied half:\n{out}");
@@ -66,8 +66,7 @@ fn duration_spelling_and_ties() {
 /// Pitches render absolute-octave English names; chords angle-bracket.
 #[test]
 fn pitch_and_chord_spelling() {
-    let text =
-        "piece \"x\" { meter 4/4; score { part p { voice v { c##5 1/4; bbb3 1/4; chord [c4, eb4, g4] 1/2; } } } }";
+    let text = "piece \"x\" { meter 4/4; score { part p { voice v { c##5/4 bbb3/4 [c4 eb4 g4]/2 } } } }";
     let out = lilypond_of(text);
     assert!(out.contains("css''4"), "double sharp octave 5:\n{out}");
     // LilyPond spells a double flat `ff`, whatever musa's source said.
@@ -78,7 +77,7 @@ fn pitch_and_chord_spelling() {
 /// Part names sanitize into stable variable names.
 #[test]
 fn variable_names_are_sanitized() {
-    let text = "piece \"x\" { score { part horn_in_f { voice v { c4 1; } } } }";
+    let text = "piece \"x\" { score { part horn_in_f { voice v { c4/1 } } } }";
     let out = lilypond_of(text);
     assert!(out.contains("partHornInF = {"), "sanitized:\n{out}");
     assert!(out.contains("\\new Staff \\partHornInF"), "score ref:\n{out}");
@@ -88,7 +87,7 @@ fn variable_names_are_sanitized() {
 /// the uncovered region), and multi-voice parts emit simultaneous blocks.
 #[test]
 fn spacer_skips_and_simultaneous_voices() {
-    let text = "piece \"x\" { meter 4/4; score { part p { voice a { c4 2; } voice b { rest 1/2; e4 1/2; } } } }";
+    let text = "piece \"x\" { meter 4/4; score { part p { voice a { c4 2 } voice b { rest/2 e4/2 } } } }";
     let out = lilypond_of(text);
     assert!(out.contains("<<"), "simultaneous block:\n{out}");
     assert!(out.contains("\\\\"), "voice separator:\n{out}");

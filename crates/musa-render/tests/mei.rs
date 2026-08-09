@@ -126,7 +126,7 @@ fn collect_event_id(element: &quick_xml::events::BytesStart<'_>, ids: &mut Vec<S
 /// `EventId`, and `tie` attributes chain i → t.
 #[test]
 fn tie_pieces_share_the_event_id() {
-    let source = "piece \"x\" { meter 2/4; score { part p { voice v { c4 1; } } } }";
+    let source = "piece \"x\" { meter 2/4; score { part p { voice v { c4/1 } } } }";
     let score = score_of(source);
     let mei = render_notation(&score, NotationTarget::Mei, &NotationOptions::default())
         .expect("renders")
@@ -171,7 +171,7 @@ fn every_printed_line_of_front_matter_is_named() {
              arranger "musa";
              copyright "© 2026.";
              meter 4/4;
-             score { part p { voice v { c4 1/4; } } }
+             score { part p { voice v { c4/4 } } }
            }"#,
     );
     for (id, words) in [
@@ -197,7 +197,7 @@ fn every_printed_line_of_front_matter_is_named() {
 /// has no arranger is the inspector, not the page.
 #[test]
 fn a_role_the_piece_did_not_name_is_not_printed() {
-    let mei = mei_of(r#"piece "x" { meter 4/4; score { part p { voice v { c4 1/4; } } } }"#);
+    let mei = mei_of(r#"piece "x" { meter 4/4; score { part p { voice v { c4/4 } } } }"#);
     for absent in ["front-subtitle", "front-composer", "front-arranger", "front-copyright"] {
         assert!(!mei.contains(absent), "{absent} printed anyway:\n{mei}");
     }
@@ -212,7 +212,7 @@ fn a_role_the_piece_did_not_name_is_not_printed() {
 /// written empty.
 #[test]
 fn later_pages_keep_a_running_head() {
-    let mei = mei_of(r#"piece "x" { meter 4/4; score { part p { voice v { c4 1/4; } } } }"#);
+    let mei = mei_of(r#"piece "x" { meter 4/4; score { part p { voice v { c4/4 } } } }"#);
     assert!(
         mei.contains("<pgHead2>") && mei.contains(r#"<num label="page">#</num>"#),
         "no running head:\n{mei}"

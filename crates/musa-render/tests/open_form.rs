@@ -18,12 +18,12 @@ use musa_render::{NotationOptions, NotationTarget, plan_notation, render_notatio
 const TARGETS: [NotationTarget; 3] = [NotationTarget::Mei, NotationTarget::LilyPond, NotationTarget::MusicXml];
 
 const OPEN: &str = "piece \"Open\" { tempo 1/4 = 60; meter 4/4; key c major;
-    fragment alpha { c5 1; }
-    fragment beta { d5 1; }
+    fragment alpha { c5/1 }
+    fragment beta { d5/1 }
     score { part p { voice v {
         mobile { alpha; beta; }
         improvise 2/1 over \"Dm7 | G7\";
-        e5 1 to 4/1;
+        e5/1 to 4/1
     } } } }";
 
 fn score_of(text: &str) -> ScoreSnapshot {

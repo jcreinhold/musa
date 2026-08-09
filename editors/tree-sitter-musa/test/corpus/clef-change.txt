@@ -22,10 +22,10 @@ piece "Clef Change" {
             clef bass;
 
             voice line {
-                bar { c3 1/4; g3 1/4; c4 1/4; e4 1/4; }
-                bar { g4 1/4; a4 1/4; clef treble; c5 1/4; e5 1/4; }
-                bar { g5 1/2; e5 1/4; c5 1/4; }
-                bar { g4 1/4; e4 1/4; clef bass; c4 1/4; c3 1/4; }
+                | c3/4 g3/4 c4/4 e4/4
+                | g4/4 a4/4 clef treble; c5/4 e5/4
+                | g5/2 e5/4 c5/4
+                | g4/4 e4/4 clef bass; c4/4 c3/4
             }
         }
     }
@@ -63,74 +63,70 @@ piece "Clef Change" {
         (voice_declaration
           (identifier)
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (clef_statement
-                (identifier))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (clef_statement
+              (identifier))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (clef_statement
-                (identifier))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational))))))))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (clef_statement
+              (identifier))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))))))))

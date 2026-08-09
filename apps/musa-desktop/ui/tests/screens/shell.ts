@@ -91,7 +91,7 @@ export async function stubShell(
             score: null,
             mei: null,
             scoreRevision: null,
-            source: "library {\n    motif rise() {\n        c4 1/4;\n    }\n}\n",
+            source: "library {\n    motif rise() {\n        c4/4\n    }\n}\n",
           },
         }
       : {};

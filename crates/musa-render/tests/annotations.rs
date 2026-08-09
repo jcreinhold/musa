@@ -124,7 +124,7 @@ fn lilypond_carries_every_annotation() {
 fn a_chord_symbol_survives_every_backend_as_itself() {
     let source = "piece \"P\" { tempo 1/4 = 60; meter 4/4; key c major; score {
         harmony { at 1:1 csus4; at 2:1 cmmaj7; at 3:1 bbdim7; at 4:1 c6; }
-        part piano { voice one { c4 1; d4 1; e4 1; f4 1; } } } }";
+        part piano { voice one { c4/1 d4/1 e4/1 f4/1 } } } }";
     let score = score_of(source);
     let xml = render_notation(&score, NotationTarget::MusicXml, &NotationOptions::default())
         .expect("renders")
@@ -165,7 +165,7 @@ fn a_symbol_off_the_downbeat_keeps_its_place() {
     let source = "piece \"P\" { tempo 1/4 = 60; meter 4/4; key c major; score {
         section \"Turn\" at 1:3;
         harmony { at 1:1 c; at 1:3 g7; }
-        part piano { voice one { c4 1/2; d4 1/2; } } } }";
+        part piano { voice one { c4/2 d4/2 } } } }";
     let score = score_of(source);
     let mei = render_notation(&score, NotationTarget::Mei, &NotationOptions::default())
         .expect("renders")

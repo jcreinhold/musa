@@ -12,8 +12,8 @@ piece "Little Invention" {
             clef treble;
 
             voice right {
-                bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }
-                bar { g4 1/2; a4 1/4; b4 1/4; }
+                | c4/4 d4/4 e4/4 f4/4
+                | g4/2 a4/4 b4/4
             }
         }
     }
@@ -41,34 +41,32 @@ piece "Little Invention" {
         (voice_declaration
           (identifier)
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational))))))))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))))))))

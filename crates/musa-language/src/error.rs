@@ -36,12 +36,15 @@ impl SyntaxError {
         self
     }
 
-    /// Offer an insertion at this error's own span.
+    /// Offer an edit at this error's own span: the replacement stands in for
+    /// the text there, and an empty replacement deletes it.
     ///
-    /// Only ever a literal the grammar requires — a `;`, a `}`, an `=`. There
-    /// is no guesswork in adding the character the language demands at the one
-    /// place it can go, which is what makes this a fix and "did you mean" a
-    /// help line.
+    /// Only ever a literal the grammar requires — a `;`, a `}`, an `=` — or
+    /// the removal of one it forbids, like the `;` a reader who learned the
+    /// old syntax writes after a note. There is no guesswork in adding the
+    /// character the language demands at the one place it can go, nor in
+    /// striking one that cannot be anywhere; that is what makes this a fix and
+    /// "did you mean" a help line.
     #[must_use]
     pub(crate) fn with_fix(mut self, title: impl Into<String>, replacement: impl Into<String>) -> Self {
         self.fix = Some((title.into(), replacement.into()));

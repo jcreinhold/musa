@@ -26,7 +26,7 @@ fn errors(source: &str) -> Vec<String> {
 
 /// Two 4/4 bars, then 3/4, then two 3/4 bars.
 const TUNE: &str = "piece \"p\" { meter 4/4; score { part a { voice b { \
-                    bar { c4 1; } bar { d4 1; } meter 3/4; bar { e4 3/4; } bar { f4 3/4; } \
+                    bar { c4/1 } bar { d4/1 } meter 3/4; bar { e4/2. } bar { f4/2. } \
                     } } } }";
 
 #[test]
@@ -67,7 +67,7 @@ fn a_bar_is_measured_against_the_meter_it_sits_in() {
     // meter, and the 4/4 bar would have been a quarter too long under its
     // second. Both are right where they are, and swapping them is not.
     let wrong = "piece \"p\" { meter 4/4; score { part a { voice b { \
-                 bar { c4 1; } meter 3/4; bar { d4 1; } } } } }";
+                 bar { c4/1 } meter 3/4; bar { d4/1 } } } } }";
     assert_eq!(
         errors(wrong),
         vec!["this bar is 1/4 too long".to_owned()],
@@ -78,7 +78,7 @@ fn a_bar_is_measured_against_the_meter_it_sits_in() {
 #[test]
 fn a_change_that_misses_a_barline_is_refused() {
     let mid = "piece \"p\" { meter 4/4; score { part a { voice b { \
-               c4 1/4; meter 3/4; d4 1/4; e4 1/4; f4 1/4; } } } }";
+               c4/4 meter 3/4; d4/4 e4/4 f4/4 } } } }";
     assert_eq!(errors(mid), vec!["a meter change must land on a barline".to_owned()]);
 }
 
@@ -86,14 +86,14 @@ fn a_change_that_misses_a_barline_is_refused() {
 fn a_change_inside_material_is_refused() {
     // A motif is written once and can be played anywhere; a meter change is
     // nothing but a place. The refusal is what keeps `Share` sound.
-    let inside = "piece \"p\" { meter 4/4; motif m() { meter 3/4; c4 1; } \
+    let inside = "piece \"p\" { meter 4/4; motif m() { meter 3/4; c4/1 } \
                   score { part a { voice b { use m; } } } }";
     assert_eq!(
         errors(inside),
         vec!["a meter change belongs to the piece, not to material".to_owned()]
     );
     let in_a_repeat = "piece \"p\" { meter 4/4; score { part a { voice b { \
-                       repeat 2 { meter 3/4; c4 1; } } } } }";
+                       repeat 2 { meter 3/4; c4/1 } } } } }";
     assert_eq!(
         errors(in_a_repeat),
         vec!["a meter change belongs to the piece, not to material".to_owned()]
@@ -102,7 +102,7 @@ fn a_change_inside_material_is_refused() {
     // so a meter inside one is refused by the barline rule instead, which is
     // the rule that actually applies to it (prompt 65 drew the line).
     let mid_bar = "piece \"p\" { meter 4/4; score { part a { voice b { \
-                   bar { c4 1/2; meter 3/4; d4 1/2; } } } } }";
+                   bar { c4/2 meter 3/4; d4/2 } } } } }";
     assert_eq!(
         errors(mid_bar),
         vec!["a meter change must land on a barline".to_owned()]
@@ -112,12 +112,12 @@ fn a_change_inside_material_is_refused() {
 #[test]
 fn two_voices_may_both_name_the_same_change_and_may_not_disagree() {
     let agreed = "piece \"p\" { meter 4/4; score { part a { \
-                  voice b { bar { c4 1; } meter 3/4; bar { d4 3/4; } } \
-                  voice c { bar { e4 1; } meter 3/4; bar { f4 3/4; } } } } }";
+                  voice b { bar { c4/1 } meter 3/4; bar { d4/2. } } \
+                  voice c { bar { e4/1 } meter 3/4; bar { f4/2. } } } } }";
     assert!(errors(agreed).is_empty(), "{:?}", errors(agreed));
 
     let disagreed = "piece \"p\" { meter 4/4; score { part a { \
-                     voice b { bar { c4 1; } meter 3/4; bar { d4 3/4; } } \
-                     voice c { bar { e4 1; } meter 5/8; bar { f4 3/4; } } } } }";
+                     voice b { bar { c4/1 } meter 3/4; bar { d4/2. } } \
+                     voice c { bar { e4/1 } meter 5/8; bar { f4/2. } } } } }";
     assert_eq!(errors(disagreed), vec!["two meters at the same place".to_owned()]);
 }

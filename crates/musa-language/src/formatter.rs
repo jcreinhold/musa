@@ -72,7 +72,7 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer) {
         match element {
             SyntaxElement::Node(child) => {
                 writer.blank_line_if_pending();
-                if let Some(line) = inline_bar(&child, writer.indent) {
+                if let Some(line) = inline_run(&child, writer.indent) {
                     writer.write_line(&line);
                     continue;
                 }
@@ -83,6 +83,16 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer) {
                 format_node(&child, writer);
                 if wrap {
                     writer.close_chain();
+                }
+                // An event is self-delimiting, so there is no `;` inside it
+                // to end its line the way a context statement's does. Where a
+                // bar has not already claimed the line, the events are the
+                // lines — which is the layout every unbarred voice has now.
+                if matches!(
+                    child.kind(),
+                    SyntaxKind::NoteStmt | SyntaxKind::RestStmt | SyntaxKind::ChordStmt | SyntaxKind::BarStmt
+                ) {
+                    writer.end_line();
                 }
             }
             SyntaxElement::Token(token) => {
@@ -158,9 +168,14 @@ fn format_token(kind: SyntaxKind, text: &str, writer: &mut Writer) {
         writer.write(text);
     } else if kind == SyntaxKind::LParen || kind == SyntaxKind::RBracket || kind == SyntaxKind::RParen {
         writer.write(text);
-    } else if kind == SyntaxKind::Slash || kind == SyntaxKind::Dot {
+    } else if matches!(
+        kind,
+        SyntaxKind::Slash | SyntaxKind::Dot | SyntaxKind::Greater | SyntaxKind::Caret
+    ) {
         // A short-form duration is part of the note's word: `c4/4.` is one
         // note written one way, not a pitch beside a fraction beside a dot.
+        // An accent or a marcato is drawn on its notehead, so it is written
+        // on its note: `c4/4>`, never `c4/4 >`.
         writer.write(text);
     } else {
         if writer.needs_word_space() {
@@ -188,14 +203,19 @@ struct Writer {
     chains: Vec<bool>,
 }
 
-/// A bar written on one line, when it is a bar and the line fits.
+/// A run of events written on one line, when the line fits.
 ///
-/// Returns `None` for anything that is not a `bar`, for a bar carrying a
-/// comment — a comment wants a line of its own and one line has nowhere to put
-/// it — and for a bar too wide for [`MEASURE`] at this indent, which falls back
-/// to the way every other block breaks.
-fn inline_bar(node: &SyntaxNode, indent: usize) -> Option<String> {
-    if node.kind() != SyntaxKind::BarStmt {
+/// A bar and a grace group are the two constructs that are *horizontal*: each
+/// holds nothing but events, read left to right, and neither ends its items
+/// with anything — so stacking them puts one word on each of several lines and
+/// leaves the closing brace stranded after the last.
+///
+/// Returns `None` for anything else, for a run carrying a comment — a comment
+/// wants a line of its own and one line has nowhere to put it — and for a run
+/// too wide for [`MEASURE`] at this indent, which falls back to the way every
+/// other block breaks.
+fn inline_run(node: &SyntaxNode, indent: usize) -> Option<String> {
+    if !matches!(node.kind(), SyntaxKind::BarStmt | SyntaxKind::GraceStmt) {
         return None;
     }
     let mut line = String::new();
@@ -218,7 +238,7 @@ fn inline_bar(node: &SyntaxNode, indent: usize) -> Option<String> {
     (indent.saturating_add(line.chars().count()) <= MEASURE).then_some(line)
 }
 
-/// Whether a token takes a space in front of it on a bar's one line.
+/// Whether a token takes a space in front of it on a one-line run.
 ///
 /// The same spacing `format_token` writes, stated as one rule instead of as a
 /// sequence of writes: some tokens close up to what is before them, and some
@@ -234,6 +254,8 @@ fn spaced_before(kind: SyntaxKind, prev: Option<SyntaxKind>) -> bool {
             | SyntaxKind::RBracket
             | SyntaxKind::Slash
             | SyntaxKind::Dot
+            | SyntaxKind::Greater
+            | SyntaxKind::Caret
     );
     // A `.` is *not* here: inside a bar it is an augmentation dot, and the
     // note after `c4/4.` needs its space. The modulation path that wanted a

@@ -16,13 +16,13 @@ piece "Two Ways Home" {
 
             voice tune {
                 repeat 2 {
-                    bar { d5 1/4; g5 1/4; f#5 1/4; g5 1/4; }
-                    bar { a5 1/2; b5 1/2; }
+                    | d5/4 g5/4 f#5/4 g5/4
+                    | a5/2 b5/2
                     ending 1 {
-                        bar { a5 1/2; d5 1/2; }
+                        | a5/2 d5/2
                     }
                     ending 2 {
-                        bar { g5 1; }
+                        | g5/1
                     }
                 }
             }
@@ -33,13 +33,13 @@ piece "Two Ways Home" {
 
             voice line {
                 repeat 2 {
-                    bar { g2 1/2; b2 1/2; }
-                    bar { d3 1/2; g2 1/2; }
+                    | g2/2 b2/2
+                    | d3/2 g2/2
                     ending 1 {
-                        bar { c3 1/2; a2 1/2; }
+                        | c3/2 a2/2
                     }
                     ending 2 {
-                        bar { g2 1; }
+                        | g2/1
                     }
                 }
             }
@@ -75,55 +75,51 @@ piece "Two Ways Home" {
             (integer)
             (block
               (bar_statement
-                (block
-                  (note_statement
-                    (pitch_literal)
-                    (duration
-                      (rational)))
-                  (note_statement
-                    (pitch_literal)
-                    (duration
-                      (rational)))
-                  (note_statement
-                    (pitch_literal)
-                    (duration
-                      (rational)))
-                  (note_statement
-                    (pitch_literal)
-                    (duration
-                      (rational)))))
+                (note_statement
+                  (pitch_literal)
+                  (duration
+                    (integer)))
+                (note_statement
+                  (pitch_literal)
+                  (duration
+                    (integer)))
+                (note_statement
+                  (pitch_literal)
+                  (duration
+                    (integer)))
+                (note_statement
+                  (pitch_literal)
+                  (duration
+                    (integer))))
               (bar_statement
-                (block
-                  (note_statement
-                    (pitch_literal)
-                    (duration
-                      (rational)))
-                  (note_statement
-                    (pitch_literal)
-                    (duration
-                      (rational)))))
+                (note_statement
+                  (pitch_literal)
+                  (duration
+                    (integer)))
+                (note_statement
+                  (pitch_literal)
+                  (duration
+                    (integer))))
               (ending_statement
                 (integer)
                 (block
                   (bar_statement
-                    (block
-                      (note_statement
-                        (pitch_literal)
-                        (duration
-                          (rational)))
-                      (note_statement
-                        (pitch_literal)
-                        (duration
-                          (rational)))))))
+                    (note_statement
+                      (pitch_literal)
+                      (duration
+                        (integer)))
+                    (note_statement
+                      (pitch_literal)
+                      (duration
+                        (integer))))))
               (ending_statement
                 (integer)
                 (block
                   (bar_statement
-                    (block
-                      (note_statement
-                        (pitch_literal)
-                        (duration
-                          (integer)))))))))))
+                    (note_statement
+                      (pitch_literal)
+                      (duration
+                        (integer))))))))))
       (part_declaration
         (identifier)
         (clef_statement
@@ -134,44 +130,40 @@ piece "Two Ways Home" {
             (integer)
             (block
               (bar_statement
-                (block
-                  (note_statement
-                    (pitch_literal)
-                    (duration
-                      (rational)))
-                  (note_statement
-                    (pitch_literal)
-                    (duration
-                      (rational)))))
+                (note_statement
+                  (pitch_literal)
+                  (duration
+                    (integer)))
+                (note_statement
+                  (pitch_literal)
+                  (duration
+                    (integer))))
               (bar_statement
-                (block
-                  (note_statement
-                    (pitch_literal)
-                    (duration
-                      (rational)))
-                  (note_statement
-                    (pitch_literal)
-                    (duration
-                      (rational)))))
+                (note_statement
+                  (pitch_literal)
+                  (duration
+                    (integer)))
+                (note_statement
+                  (pitch_literal)
+                  (duration
+                    (integer))))
               (ending_statement
                 (integer)
                 (block
                   (bar_statement
-                    (block
-                      (note_statement
-                        (pitch_literal)
-                        (duration
-                          (rational)))
-                      (note_statement
-                        (pitch_literal)
-                        (duration
-                          (rational)))))))
+                    (note_statement
+                      (pitch_literal)
+                      (duration
+                        (integer)))
+                    (note_statement
+                      (pitch_literal)
+                      (duration
+                        (integer))))))
               (ending_statement
                 (integer)
                 (block
                   (bar_statement
-                    (block
-                      (note_statement
-                        (pitch_literal)
-                        (duration
-                          (integer))))))))))))))
+                    (note_statement
+                      (pitch_literal)
+                      (duration
+                        (integer)))))))))))))

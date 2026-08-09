@@ -11,10 +11,10 @@ piece "Variation" {
     key c major;
 
     motif theme() {
-        c5 1/4;
-        e5 1/4;
-        g5 1/4;
-        e5 1/4;
+        c5/4
+        e5/4
+        g5/4
+        e5/4
     }
 
     score {

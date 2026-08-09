@@ -29,7 +29,7 @@ fn piece(extra: &str, body: &str) -> String {
     score {{
         part piano {{
             voice right {{
-                bar {{ c4 1/4; d4 1/4; e4 1/4; f4 1/4; }}
+                bar {{ c4/4 d4/4 e4/4 f4/4 }}
 {body}
             }}
         }}
@@ -66,7 +66,7 @@ fn coded(source: &str, code: Code) -> Vec<Diagnostic> {
 
 #[test]
 fn an_unused_motif_is_named_a_rumour() {
-    let source = piece("motif answer() {\n    g4 1/4; a4 1/4; e4 1/4; f4 1/4;\n}", "");
+    let source = piece("motif answer() {\n    g4/4 a4/4 e4/4 f4/4\n}", "");
     let lints = coded(&source, Code::UnusedMaterial);
     let [lint] = lints.as_slice() else {
         panic!("expected one unused-material warning: {lints:?}");
@@ -85,7 +85,7 @@ fn an_unused_motif_is_named_a_rumour() {
 #[test]
 fn a_used_motif_is_silent() {
     let source = piece(
-        "motif answer() {\n    g4 1/4; a4 1/4; e4 1/4; f4 1/4;\n}",
+        "motif answer() {\n    g4/4 a4/4 e4/4 f4/4\n}",
         "                use answer();",
     );
     assert!(coded(&source, Code::UnusedMaterial).is_empty());
@@ -97,7 +97,7 @@ fn a_named_bar_is_an_address_not_a_rumour() {
     // provenance, not for `use`. Unused ones are silent by design.
     let source = piece(
         "",
-        "                bar head { g4 1/4; a4 1/4; e4 1/4; f4 1/4; }\n                bar { c4 1/4; c4 1/4; c4 1/4; c4 1/4; }",
+        "                bar head { g4/4 a4/4 e4/4 f4/4 }\n                bar { c4/4 c4/4 c4/4 c4/4 }",
     );
     assert!(
         coded(&source, Code::UnusedMaterial).is_empty(),
@@ -170,7 +170,7 @@ fn a_marking_that_says_what_is_already_true_is_redundant() {
     // And one said twice in the voice itself.
     let twice = piece(
         "",
-        "                tempo 1/4 = 120;\n                bar { g4 1/4; g4 1/4; g4 1/4; g4 1/4; }\n                tempo 1/4 = 120;",
+        "                tempo 1/4 = 120;\n                bar { g4/4 g4/4 g4/4 g4/4 }\n                tempo 1/4 = 120;",
     );
     assert_eq!(
         coded(&twice, Code::RedundantMarking).len(),
@@ -207,7 +207,7 @@ fn a_senza_resets_the_meter_record() {
     // meter said again afterwards is a change the text cannot see.
     let source = piece(
         "",
-        "                senza {\n                    c4 1/1;\n                }\n                meter 4/4;",
+        "                senza {\n                    c4/1\n                }\n                meter 4/4;",
     );
     assert!(
         coded(&source, Code::RedundantMarking).is_empty(),
@@ -218,7 +218,7 @@ fn a_senza_resets_the_meter_record() {
 
 #[test]
 fn three_identical_bars_are_a_motif_not_yet_named() {
-    let body = "                bar { g4 1/4; a4 1/4; g4 1/4; f4 1/4; }\n                bar { g4 1/4; a4 1/4; g4 1/4; f4 1/4; }\n                bar { g4 1/4; a4 1/4; g4 1/4; f4 1/4; }";
+    let body = "                bar { g4/4 a4/4 g4/4 f4/4 }\n                bar { g4/4 a4/4 g4/4 f4/4 }\n                bar { g4/4 a4/4 g4/4 f4/4 }";
     let lints = coded(&piece("", body), Code::CopiedBars);
     let [lint] = lints.as_slice() else {
         panic!("expected one copied-bars warning: {lints:?}");
@@ -231,13 +231,13 @@ fn three_identical_bars_are_a_motif_not_yet_named() {
 fn two_identical_bars_is_an_accident_and_a_repeat_is_honest() {
     let two = piece(
         "",
-        "                bar { g4 1/4; a4 1/4; g4 1/4; f4 1/4; }\n                bar { g4 1/4; a4 1/4; g4 1/4; f4 1/4; }",
+        "                bar { g4/4 a4/4 g4/4 f4/4 }\n                bar { g4/4 a4/4 g4/4 f4/4 }",
     );
     assert!(coded(&two, Code::CopiedBars).is_empty(), "{:?}", warnings_of(&two));
     // The same bar inside a `repeat` is the honest spelling of repetition.
     let repeated = piece(
         "",
-        "                repeat 3 {\n                    g4 1/4; a4 1/4; g4 1/4; f4 1/4;\n                }",
+        "                repeat 3 {\n                    g4/4 a4/4 g4/4 f4/4\n                }",
     );
     assert!(
         coded(&repeated, Code::CopiedBars).is_empty(),
@@ -249,7 +249,7 @@ fn two_identical_bars_is_an_accident_and_a_repeat_is_honest() {
 #[test]
 fn a_waiver_lives_next_to_the_sin() {
     let waived = piece(
-        "// musa:allow(unused-material) — kept for the B section\nmotif answer() {\n    g4 1/4; a4 1/4; e4 1/4; f4 1/4;\n}",
+        "// musa:allow(unused-material) — kept for the B section\nmotif answer() {\n    g4/4 a4/4 e4/4 f4/4\n}",
         "",
     );
     assert!(
@@ -259,13 +259,13 @@ fn a_waiver_lives_next_to_the_sin() {
     );
     // A waiver names its codes; another rule's name does not waive this one.
     let wrong_code = piece(
-        "// musa:allow(copied-bars)\nmotif answer() {\n    g4 1/4; a4 1/4; e4 1/4; f4 1/4;\n}",
+        "// musa:allow(copied-bars)\nmotif answer() {\n    g4/4 a4/4 e4/4 f4/4\n}",
         "",
     );
     assert_eq!(coded(&wrong_code, Code::UnusedMaterial).len(), 1);
     // And it waives the construct it stands above, not a neighbour's.
     let neighbour = piece(
-        "motif answer() {\n    g4 1/4; a4 1/4; e4 1/4; f4 1/4;\n}\n\n// musa:allow(unused-material)\nmotif reply() {\n    e4 1/4; d4 1/4; c4 1/4; g4 1/4;\n}",
+        "motif answer() {\n    g4/4 a4/4 e4/4 f4/4\n}\n\n// musa:allow(unused-material)\nmotif reply() {\n    e4/4 d4/4 c4/4 g4/4\n}",
         "",
     );
     assert_eq!(

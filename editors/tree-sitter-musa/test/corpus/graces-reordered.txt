@@ -63,40 +63,30 @@ piece "Graces" {
                 dynamic mf;
 
                 // One grace, the ordinary case.
-                grace {
-                    c#6;
-                }
-                d6 1/4;
+                grace { c#6 }
+                d6/4
 
-                a5 1/4;
+                a5/4
 
                 // Three of them, and the order is the music: this is a turn
                 // written out rather than named.
-                grace {
-                    c#6;
-                    d6;
-                    e6;
-                }
-                d6 1/2;
+                grace { c#6 d6 e6 }
+                d6/2
 
                 // A grace on the first note of a voice has nothing behind the
                 // beat to take from, so even the Romantic profile takes it
                 // from the principal. The page does not know that; the
                 // performer does, and so does the profile.
-                b5 1/4;
-                grace {
-                    a#5;
-                }
-                b5 1/4;
+                b5/4
+                grace { a#5 }
+                b5/4
 
                 // Marks on a grace are marks: the profile that shortens a
                 // staccato note shortens a staccato grace for the same reason.
-                grace {
-                    g5 staccato;
-                }
-                f#5 1/2;
+                grace { g5 staccato }
+                f#5/2
 
-                d5 1/1;
+                d5/1
             }
         }
 
@@ -107,22 +97,19 @@ piece "Graces" {
             voice bass {
                 dynamic mf;
 
-                d4 1/2;
-                a3 1/2;
+                d4/2
+                a3/2
 
                 // The same figure, read the other way: these graces sound
                 // before the beat and the principal is untouched.
-                grace {
-                    a3;
-                    g3;
-                }
-                b3 1/2;
-                f#3 1/2;
+                grace { a3 g3 }
+                b3/2
+                f#3/2
 
-                g3 1/2;
-                a3 1/2;
+                g3/2
+                a3/2
 
-                d3 1/1;
+                d3/1
             }
         }
     }
@@ -226,11 +213,11 @@ piece "Graces" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (comment)
           (comment)
           (grace_statement
@@ -243,7 +230,7 @@ piece "Graces" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (comment)
           (comment)
           (comment)
@@ -251,14 +238,14 @@ piece "Graces" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (grace_statement
             (grace_note
               (pitch_literal)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (comment)
           (comment)
           (grace_statement
@@ -269,11 +256,11 @@ piece "Graces" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))))
+              (integer)))))
       (part_declaration
         (identifier)
         (clef_statement
@@ -287,11 +274,11 @@ piece "Graces" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (comment)
           (comment)
           (grace_statement
@@ -302,23 +289,23 @@ piece "Graces" {
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))
+              (integer)))
           (note_statement
             (pitch_literal)
             (duration
-              (rational)))))))
+              (integer)))))))
   (comment)
   (comment)
   (comment)

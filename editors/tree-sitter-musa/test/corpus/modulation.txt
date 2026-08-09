@@ -21,16 +21,16 @@ piece "Modulation" {
             clef treble;
 
             voice right {
-                bar { f4 1/4; a4 1/4; c5 1/4; a4 1/4; }
-                bar { bb4 1/4; a4 1/4; g4 1/4; f4 1/4; }
+                | f4/4 a4/4 c5/4 a4/4
+                | bb4/4 a4/4 g4/4 f4/4
 
                 key d minor;
-                bar { d4 1/4; f4 1/4; a4 1/4; f4 1/4; }
-                bar { g4 1/4; f4 1/4; e4 1/4; d4 1/4; }
+                | d4/4 f4/4 a4/4 f4/4
+                | g4/4 f4/4 e4/4 d4/4
 
                 key a major;
-                bar { a4 1/4; c#5 1/4; e5 1/4; c#5 1/4; }
-                bar { a4 1/2; a4 1/2; }
+                | a4/4 c#5/4 e5/4 c#5/4
+                | a4/2 a4/2
             }
         }
     }
@@ -67,110 +67,104 @@ piece "Modulation" {
         (voice_declaration
           (identifier)
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (key_statement
             (pitch_class
               (identifier))
             (identifier))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (key_statement
             (pitch_class
               (identifier))
             (identifier))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational))))))))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))))))))

@@ -93,8 +93,8 @@ fn without_spans(form: &str) -> String {
 #[test]
 fn bars_are_erased_after_they_are_checked() {
     let piece = |body: &str| format!("piece \"b\" {{ meter 4/4; score {{ part p {{ voice v {{ {body} }} }} }} }}");
-    let flat = piece("c4 1/4; d4 1/4; e4 1/4; f4 1/4; g4 1/2; a4 1/2;");
-    let barred = piece("bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; } bar { g4 1/2; a4 1/2; }");
+    let flat = piece("c4/4 d4/4 e4/4 f4/4 g4/2 a4/2");
+    let barred = piece("bar { c4/4 d4/4 e4/4 f4/4 } bar { g4/2 a4/2 }");
     let form = |source: &str| {
         kernel_normal_form(&SourceDocument::new(source, "b"), &Realization::deterministic()).expect("elaborates")
     };
@@ -106,7 +106,7 @@ fn bars_are_erased_after_they_are_checked() {
 #[test]
 fn a_named_bar_plays_the_same_music_it_declared() {
     let source = "piece \"b\" { meter 4/4; score { part p { voice v { \
-                  bar head { c4 1/2; d4 1/2; } use head; } } } }";
+                  bar head { c4/2 d4/2 } use head; } } } }";
     let form =
         kernel_normal_form(&SourceDocument::new(source, "b"), &Realization::deterministic()).expect("elaborates");
     let pitches: Vec<&str> = form
@@ -121,7 +121,7 @@ fn a_named_bar_plays_the_same_music_it_declared() {
 /// a reading of them (prompt 40).
 #[test]
 fn the_key_and_the_meter_are_facts_of_the_timeline() {
-    let source = "piece \"x\" { meter 3/4; key bb major; score { part p { voice v { c4 1/4; } } } }";
+    let source = "piece \"x\" { meter 3/4; key bb major; score { part p { voice v { c4/4 } } } }";
     let form =
         kernel_normal_form(&SourceDocument::new(source, "k"), &Realization::deterministic()).expect("elaborates");
     assert!(form.contains("meter:3/4"), "meter is not an occurrence: {form}");
@@ -147,8 +147,8 @@ fn the_key_and_the_meter_are_facts_of_the_timeline() {
 /// sounds has to agree.
 #[test]
 fn repeat_sounds_the_same_as_its_unrolling() {
-    let repeated = "piece \"x\" { score { part p { voice v { repeat 3 { c4 1/4; d4 1/4; } } } } }";
-    let unrolled = "piece \"x\" { score { part p { voice v { c4 1/4; d4 1/4; c4 1/4; d4 1/4; c4 1/4; d4 1/4; } } } }";
+    let repeated = "piece \"x\" { score { part p { voice v { repeat 3 { c4/4 d4/4 } } } } }";
+    let unrolled = "piece \"x\" { score { part p { voice v { c4/4 d4/4 c4/4 d4/4 c4/4 d4/4 } } } }";
     let a = kernel_normal_form(&SourceDocument::new(repeated, "a"), &Realization::deterministic()).expect("elaborates");
     let b = kernel_normal_form(&SourceDocument::new(unrolled, "b"), &Realization::deterministic()).expect("elaborates");
     // Same temporal facts; provenance (and thus the snapshot) differs, which
@@ -172,7 +172,7 @@ fn repeat_sounds_the_same_as_its_unrolling() {
 /// lets the page print `|:` `:|` instead of three copies.
 #[test]
 fn a_repeat_says_on_the_timeline_that_it_is_one() {
-    let source = "piece \"x\" { score { part p { voice v { repeat 3 { c4 1/4; d4 1/4; } } } } }";
+    let source = "piece \"x\" { score { part p { voice v { repeat 3 { c4/4 d4/4 } } } } }";
     let form =
         kernel_normal_form(&SourceDocument::new(source, "a"), &Realization::deterministic()).expect("elaborates");
     assert!(
@@ -193,7 +193,7 @@ fn a_repeat_says_on_the_timeline_that_it_is_one() {
 #[test]
 fn endings_play_once_each_and_print_once_each() {
     let source = "piece \"x\" { score { part p { voice v { repeat 3 { \
-                  c4 1/4; ending 1 { d4 1/4; } ending 2 { e4 1/4; } } } } } }";
+                  c4/4 ending 1 { d4/4 } ending 2 { e4/4 } } } } } }";
     let snapshot = snapshot_of(source).expect("compiles");
     let voice = snapshot
         .parts()
@@ -245,12 +245,12 @@ fn the_fixtures_the_oracle_used_to_agree_about_still_say_what_they_said() {
 
     // A motif nobody uses is not resolved, so declaration order is not
     // checked here; `compiler.rs` checks it where a `score` reaches it.
-    let unused_forward_reference = "piece \"x\" { motif a() { use b(); } motif b() { c4 1/4; } }";
+    let unused_forward_reference = "piece \"x\" { motif a() { use b(); } motif b() { c4/4 } }";
     assert!(errors_of(unused_forward_reference).is_empty());
 
     // `c##4` two octaves and a minor second up is `d##6` — spellable, so no
     // error. Unspellable mirrors are `transform_laws`'s.
-    let stacked = "piece \"x\" { score { part p { voice v { transpose up P8 { transpose up P8 { transpose up m2 { c##4 1/4; } } } } } } }";
+    let stacked = "piece \"x\" { score { part p { voice v { transpose up P8 { transpose up P8 { transpose up m2 { c##4/4 } } } } } } }";
     assert!(errors_of(stacked).is_empty());
     let snapshot = snapshot_of(stacked).expect("compiles");
     let (count, _) = measured(&snapshot, 0);
@@ -293,13 +293,13 @@ fn duration_strategy() -> impl Strategy<Value = (&'static str, Ratio<i64>)> {
 fn item_strategy() -> impl Strategy<Value = (String, Ratio<i64>)> {
     prop::sample::select(vec![0u8, 1, 2]).prop_flat_map(|kind| match kind {
         0 => (pitch_strategy(), duration_strategy())
-            .prop_map(|(pitch, (text, value))| (format!("{pitch} {text};"), value))
+            .prop_map(|(pitch, (text, value))| (format!("{pitch} {text} "), value))
             .boxed(),
         1 => duration_strategy()
-            .prop_map(|(text, value)| (format!("rest {text};"), value))
+            .prop_map(|(text, value)| (format!("rest {text} "), value))
             .boxed(),
         _ => (pitch_strategy(), pitch_strategy(), duration_strategy())
-            .prop_map(|(a, b, (text, value))| (format!("chord [{a}, {b}] {text};"), value))
+            .prop_map(|(a, b, (text, value))| (format!("[{a} {b}] {text} "), value))
             .boxed(),
     })
 }
@@ -346,7 +346,7 @@ fn source_strategy() -> impl Strategy<Value = (String, GeneratedVoice, Generated
 fn motif_source_strategy() -> impl Strategy<Value = (String, GeneratedVoice)> {
     (pitch_strategy(), pitch_strategy(), duration_strategy()).prop_map(|(root, other, (text, value))| {
         let source = format!(
-            "piece \"gen\" {{ meter 4/4; motif m(root: pitch = c4) {{ root {text}; {other} {text}; }} score {{ part p {{ voice v {{ use m({root}); repeat 2 {{ transpose down P5 {{ use m(); }} }} }} }} }} }}"
+            "piece \"gen\" {{ meter 4/4; motif m(root: pitch = c4) {{ root {text} {other} {text} }} score {{ part p {{ voice v {{ use m({root}); repeat 2 {{ transpose down P5 {{ use m(); }} }} }} }} }} }}"
         );
         let expected = GeneratedVoice {
             body: String::new(),

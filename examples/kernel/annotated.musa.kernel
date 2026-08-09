@@ -6,25 +6,25 @@ kernel "Annotated" {
       sequence {
         overlay {
           timeline 2 {
-            occurrence "voice 0 0 note a4 1/4 [873:880 #4]" from 0 to 1/4;
-            occurrence "voice 0 0 note c5 1/4 [901:908 #4]" from 1/4 to 1/2;
-            occurrence "voice 0 0 note e5 1/2 [929:936 #4]" from 1/2 to 1;
-            occurrence "voice 0 0 note f5 1/2 [957:964 #4]" from 1 to 3/2;
-            occurrence "voice 0 0 note e5 1/2 [985:992 #4]" from 3/2 to 2;
+            occurrence "voice 0 0 note a4 1/4 [873:877 #4]" from 0 to 1/4;
+            occurrence "voice 0 0 note c5 1/4 [898:902 #4]" from 1/4 to 1/2;
+            occurrence "voice 0 0 note e5 1/2 [923:927 #4]" from 1/2 to 1;
+            occurrence "voice 0 0 note f5 1/2 [948:952 #4]" from 1 to 3/2;
+            occurrence "voice 0 0 note e5 1/2 [973:977 #4]" from 3/2 to 2;
           };
           timeline 2 {
-            occurrence "voice 0 0 phrase 'antecedent' [831:1010 #4]" from 0 to 2;
+            occurrence "voice 0 0 phrase 'antecedent' [831:995 #4]" from 0 to 2;
           }
         };
         overlay {
           timeline 2 {
-            occurrence "voice 0 0 note b4 1/4 [1069:1076 #4]" from 0 to 1/4;
-            occurrence "voice 0 0 note e5 1/4 [1097:1104 #4]" from 1/4 to 1/2;
-            occurrence "voice 0 0 note g#5 1/2 [1125:1133 #4]" from 1/2 to 1;
-            occurrence "voice 0 0 note a5 1 [1154:1159 #4]" from 1 to 2;
+            occurrence "voice 0 0 note b4 1/4 [1054:1058 #4]" from 0 to 1/4;
+            occurrence "voice 0 0 note e5 1/4 [1079:1083 #4]" from 1/4 to 1/2;
+            occurrence "voice 0 0 note g#5 1/2 [1104:1109 #4]" from 1/2 to 1;
+            occurrence "voice 0 0 note a5 1 [1130:1134 #4]" from 1 to 2;
           };
           timeline 2 {
-            occurrence "voice 0 0 phrase 'consequent' [1027:1177 #4]" from 0 to 2;
+            occurrence "voice 0 0 phrase 'consequent' [1012:1152 #4]" from 0 to 2;
           }
         }
       };

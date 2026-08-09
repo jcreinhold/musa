@@ -51,7 +51,7 @@ pub struct ScoreEvent {
     /// What the event is.
     pub kind: ScoreEventKind,
     /// The freedom written on this note, when the performer was given one
-    /// (`g4 1/4 to 2/1;`).
+    /// (`g4/4 to 2/1`).
     ///
     /// `notated_duration` holds what the note *sounds* — the realization's
     /// answer — exactly as it does inside a tuplet, and this is what recovers
@@ -100,7 +100,7 @@ pub struct NotatedDuration {
     /// ties. Non-empty, and they sum to `value` exactly.
     ///
     /// A single written value is the common case. An explicit tie
-    /// (`c4 1/4 ~;` then `c4 1/8;`) makes one event with two pieces: the
+    /// (`c4/4 ~` then `c4/8`) makes one event with two pieces: the
     /// composer asked for two noteheads, and a renderer that re-derived the
     /// spelling from `value` would print the dotted quarter they did not
     /// write.

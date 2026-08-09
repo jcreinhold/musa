@@ -30,36 +30,36 @@ piece "Tempo Changes" {
 
                 // Two bars at the opening tempo: a quarter note lasts a
                 // second exactly, so this bar is four seconds long.
-                c5 1/4;
-                d5 1/4;
-                e5 1/4;
-                f5 1/4;
+                c5/4
+                d5/4
+                e5/4
+                f5/4
 
-                g5 1/2;
-                e5 1/2;
+                g5/2
+                e5/2
 
                 // Twice as fast from here, and the word the composer wants
                 // printed above the number.
                 tempo 1/4 = 120 "Doppio movimento";
-                g5 1/4;
-                a5 1/4;
-                b5 1/4;
-                c6 1/4;
+                g5/4
+                a5/4
+                b5/4
+                c6/4
 
-                b5 1/4;
-                a5 1/4;
-                g5 1/4;
-                f5 1/4;
+                b5/4
+                a5/4
+                g5/4
+                f5/4
 
                 // A word with no number. It prints; the clock does not move,
                 // and the last two bars are still at 120. What "less" means
                 // is the performer's, and — where musa answers it at all —
                 // the profile's.
                 tempo "Meno mosso";
-                e5 1/2;
-                d5 1/2;
+                e5/2
+                d5/2
 
-                c5 1/1;
+                c5/1
             }
         }
     }

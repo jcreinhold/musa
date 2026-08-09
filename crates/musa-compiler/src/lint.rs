@@ -262,25 +262,24 @@ fn statement_node(document: &ParsedDocument, offset: u32, kinds: &[SyntaxKind]) 
 }
 
 /// Whether a `// musa:allow(code, …)` comment stands directly above `node` —
-/// the same attachment the formatter keeps (guide §5), which the CST makes
-/// literal: a construct's leading trivia is part of its span, so the waiver
-/// is among the node's own first tokens. Any comment there can carry it; the
-/// first significant token ends the search.
+/// the same attachment the formatter keeps (guide §5).
+///
+/// "Directly above" is a fact about the text, and the tree spells it two ways.
+/// Most constructs swallow their leading trivia, so the waiver is among the
+/// node's own first tokens. A bar and a grace group do not: they are written
+/// on one line, and a comment eaten into the line would have nowhere to go, so
+/// the parser leaves it outside as a preceding sibling. Both readings are the
+/// same comment in the same place, and the composer who typed it should not
+/// have to know which construct they were above.
 fn suppressed(node: &SyntaxNode, code: Code) -> bool {
-    for element in node.children_with_tokens() {
-        let SyntaxElement::Token(token) = element else { break };
-        if token.kind() == SyntaxKind::Whitespace {
-            continue;
-        }
-        if matches!(token.kind(), SyntaxKind::LineComment | SyntaxKind::BlockComment) {
-            if allows(token.text(), code) {
-                return true;
-            }
-            continue;
-        }
-        break;
-    }
-    false
+    let inside = node
+        .children_with_tokens()
+        .map_while(SyntaxElement::into_token)
+        .take_while(|token| token.kind().is_trivia());
+    let above = std::iter::successors(node.prev_sibling_or_token(), SyntaxElement::prev_sibling_or_token)
+        .map_while(SyntaxElement::into_token)
+        .take_while(|token| token.kind().is_trivia());
+    inside.chain(above).any(|token| allows(token.text(), code))
 }
 
 /// Whether one comment waives one code: `musa:allow(code, …)` with the codes

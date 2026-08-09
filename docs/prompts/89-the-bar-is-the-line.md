@@ -1,7 +1,7 @@
 ---
 id: 89
 slug: the-bar-is-the-line
-status: in-progress
+status: done
 depends_on: [88, 57, 62]
 phase: 2
 ---

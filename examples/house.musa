@@ -18,65 +18,65 @@ piece "House" {
     // the three disagree about how long a pattern is, and a barline cannot.
     fragment four_on_the_floor {
         repeat 16 {
-            c2 1/4;
-            c2 1/4;
-            c2 1/4;
-            c2 1/4;
+            c2/4
+            c2/4
+            c2/4
+            c2/4
         }
     }
 
     fragment bass_a {
         repeat 4 {
-            rest 1/8;
-            a2 1/8;
-            rest 1/8;
-            a2 1/8;
-            rest 1/8;
-            a2 1/8;
-            rest 1/8;
-            c3 1/8;
-            rest 1/8;
-            a2 1/8;
-            rest 1/8;
-            a2 1/8;
-            rest 1/8;
-            g2 1/8;
-            rest 1/8;
-            e2 1/8;
+            rest/8
+            a2/8
+            rest/8
+            a2/8
+            rest/8
+            a2/8
+            rest/8
+            c3/8
+            rest/8
+            a2/8
+            rest/8
+            a2/8
+            rest/8
+            g2/8
+            rest/8
+            e2/8
         }
     }
 
     fragment bass_b {
         repeat 4 {
-            rest 1/8;
-            f2 1/8;
-            rest 1/8;
-            f2 1/8;
-            rest 1/8;
-            f2 1/8;
-            rest 1/8;
-            a2 1/8;
-            rest 1/8;
-            g2 1/8;
-            rest 1/8;
-            g2 1/8;
-            rest 1/8;
-            d3 1/8;
-            rest 1/8;
-            c3 1/8;
+            rest/8
+            f2/8
+            rest/8
+            f2/8
+            rest/8
+            f2/8
+            rest/8
+            a2/8
+            rest/8
+            g2/8
+            rest/8
+            g2/8
+            rest/8
+            d3/8
+            rest/8
+            c3/8
         }
     }
 
     fragment stab_bar {
         repeat 16 {
-            rest 1/8;
-            chord [a4, c5, e5] 1/8;
-            rest 1/8;
-            chord [a4, c5, e5] 1/8;
-            rest 1/8;
-            chord [g4, c5, e5] 1/8;
-            rest 1/8;
-            chord [g4, b4, e5] 1/8;
+            rest/8
+            [a4 c5 e5]/8
+            rest/8
+            [a4 c5 e5]/8
+            rest/8
+            [g4 c5 e5]/8
+            rest/8
+            [g4 b4 e5]/8
         }
     }
 

@@ -18,10 +18,10 @@ piece "Refrain" {
             // front, can be played again from anywhere below it. `use` takes
             // no parentheses here because there is nothing to pass.
             voice tune {
-                bar refrain { d5 1/4; b4 1/4; g4 1/4; }
-                bar { a4 1/4; b4 1/4; c5 1/4; }
+                bar refrain { d5/4 b4/4 g4/4 }
+                | a4/4 b4/4 c5/4
                 use refrain;
-                bar { e5 1/2; d5 1/4; }
+                | e5/2 d5/4
                 use refrain;
             }
         }
@@ -30,11 +30,11 @@ piece "Refrain" {
             clef bass;
 
             voice line {
-                bar { g2 1/2; b2 1/4; }
-                bar { d3 3/4; }
-                bar { g2 1/2; b2 1/4; }
-                bar { c3 1/2; a2 1/4; }
-                bar { g2 3/4; }
+                | g2/2 b2/4
+                | d3/2.
+                | g2/2 b2/4
+                | c3/2 a2/4
+                | g2/2.
             }
         }
     }
@@ -74,43 +74,41 @@ piece "Refrain" {
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))
+                  (integer)))
               (note_statement
                 (pitch_literal)
                 (duration
-                  (rational)))))
+                  (integer)))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
-          (use_statement
-            (identifier))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (use_statement
+              (identifier)))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
-          (use_statement
-            (identifier))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (use_statement
+              (identifier)))))
       (part_declaration
         (identifier)
         (clef_statement
@@ -118,44 +116,39 @@ piece "Refrain" {
         (voice_declaration
           (identifier)
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational)))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer))))
           (bar_statement
-            (block
-              (note_statement
-                (pitch_literal)
-                (duration
-                  (rational))))))))))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (integer)))))))))

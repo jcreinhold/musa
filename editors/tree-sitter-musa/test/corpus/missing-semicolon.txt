@@ -10,7 +10,7 @@ piece "Missing Semicolon" {
         part piano {
             clef treble
             voice right {
-                c5 1/4; e5 1/4; g5 1/4; e5 1/4;
+                c5/4 e5/4 g5/4 e5/4
             }
         }
     }
@@ -29,18 +29,16 @@ piece "Missing Semicolon" {
     (score_declaration
       (part_declaration
         (identifier)
-        (clef_statement
-          (identifier)
-          (ERROR
-            (identifier)
-            (identifier)
-            (pitch_literal)
-            (rational)))
         (ERROR
+          (identifier)
+          (identifier)
+          (identifier)
           (pitch_literal)
-          (rational)
+          (integer)
           (pitch_literal)
-          (rational)
+          (integer)
           (pitch_literal)
-          (rational)))))
+          (integer)
+          (pitch_literal)
+          (integer)))))
   (ERROR))

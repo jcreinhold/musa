@@ -53,7 +53,7 @@ fn a_name_outside_the_table_is_not_a_mark() {
 
 #[test]
 fn an_unknown_mark_is_refused_with_a_suggestion() {
-    let reported = diagnostics_of("c4 1 stacatto;");
+    let reported = diagnostics_of("c4 1 stacatto");
     assert!(
         reported
             .iter()
@@ -72,7 +72,60 @@ fn an_unknown_mark_is_refused_with_a_suggestion() {
 #[test]
 fn every_mark_in_the_table_is_accepted_where_marks_are_written() {
     for def in VOCABULARY.iter().filter(|def| matches!(def.anchor, Anchor::Note(_))) {
-        let reported = diagnostics_of(&format!("c4 1 {};", def.name));
+        let reported = diagnostics_of(&format!("c4 1 {}", def.name));
         assert!(reported.is_empty(), "`{}` was refused: {reported:?}", def.name);
     }
+}
+
+/// A shorthand is one token, and it names the row it is written in.
+///
+/// The mark a composer writes on a note (`a5/4>`) and the word for it
+/// (`a5/4 accent`) are two spellings of one thing, and they are declared in
+/// two crates: the table below says an accent is written `>`, and the parser
+/// one layer down is what turns `>` into the name. Nothing makes those agree
+/// except this law, which is why it checks the round trip rather than the
+/// table alone.
+///
+/// One token is not a detail either. A mark sits on the note with no space in
+/// front of it, so a two-token shorthand would either need one or would change
+/// what the note beside it means.
+#[test]
+fn every_shorthand_is_one_token_and_names_its_own_row() {
+    let mut checked = 0usize;
+    for def in VOCABULARY {
+        let Some(shorthand) = def.shorthand else {
+            continue;
+        };
+        let lexed = musa_language::lex(shorthand);
+        assert_eq!(
+            lexed.tokens().len(),
+            1,
+            "`{shorthand}` ({}) is {} tokens",
+            def.name,
+            lexed.tokens().len()
+        );
+        let marks = articulations_of(&format!("a5/4{shorthand}"));
+        assert_eq!(
+            marks,
+            vec![def.name.to_owned()],
+            "`{shorthand}` should be `{}`",
+            def.name
+        );
+        assert_eq!(marks, articulations_of(&format!("a5/4 {}", def.name)), "two spellings");
+        checked = checked.saturating_add(1);
+    }
+    assert!(checked >= 2, "the table declares shorthands; found {checked}");
+}
+
+/// The articulation names a voice's one note carries, in written order.
+fn articulations_of(voice: &str) -> Vec<String> {
+    let source = format!("piece \"p\" {{ meter 4/4; score {{ part a {{ voice b {{ {voice} }} }} }} }}");
+    compile(&SourceDocument::new(&source, "marks.musa"), &CompileOptions::default())
+        .into_snapshot()
+        .expect("compiles")
+        .annotations()
+        .articulations()
+        .iter()
+        .map(|articulation| articulation.mark.name().to_owned())
+        .collect()
 }

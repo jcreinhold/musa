@@ -2,8 +2,8 @@
 source: crates/musa-language/tests/parser.rs
 expression: print_tree(&doc.syntax())
 ---
-Root@0..2195
-  PieceDecl@0..2194
+Root@0..2172
+  PieceDecl@0..2171
     PieceKw@0..5 "piece"
     Whitespace@5..6 " "
     String@6..22 "\"Glass Mountain\""
@@ -52,7 +52,7 @@ Root@0..2195
       Whitespace@183..184 " "
       Identifier@184..189 "minor"
       Semicolon@189..190 ";"
-    MotifDecl@190..316
+    MotifDecl@190..301
       Whitespace@190..196 "\n\n    "
       MotifKw@196..201 "motif"
       Whitespace@201..202 " "
@@ -67,563 +67,550 @@ Root@0..2195
       Whitespace@220..221 " "
       PitchLiteral@221..223 "e5"
       RParen@223..224 ")"
-      Block@224..316
+      Block@224..301
         Whitespace@224..225 " "
         LBrace@225..226 "{"
-        NoteStmt@226..244
+        NoteStmt@226..241
           Whitespace@226..235 "\n        "
           Identifier@235..239 "root"
-          Duration@239..243
-            Whitespace@239..240 " "
-            Rational@240..243 "1/2"
-          Semicolon@243..244 ";"
-        RestStmt@244..262
-          Whitespace@244..253 "\n        "
-          RestKw@253..257 "rest"
-          Duration@257..261
-            Whitespace@257..258 " "
-            Rational@258..261 "1/4"
-          Semicolon@261..262 ";"
-        NoteStmt@262..278
-          Whitespace@262..271 "\n        "
-          PitchLiteral@271..273 "c5"
-          Duration@273..277
-            Whitespace@273..274 " "
-            Rational@274..277 "1/2"
-          Semicolon@277..278 ";"
-        NoteStmt@278..294
-          Whitespace@278..287 "\n        "
-          PitchLiteral@287..289 "b4"
-          Duration@289..293
-            Whitespace@289..290 " "
-            Rational@290..293 "1/4"
-          Semicolon@293..294 ";"
-        NoteStmt@294..310
-          Whitespace@294..303 "\n        "
-          PitchLiteral@303..305 "a4"
-          Duration@305..309
-            Whitespace@305..306 " "
-            Rational@306..309 "1/2"
-          Semicolon@309..310 ";"
-        Whitespace@310..315 "\n    "
-        RBrace@315..316 "}"
-    ScoreDecl@316..1092
-      Whitespace@316..322 "\n\n    "
-      ScoreKw@322..327 "score"
-      Whitespace@327..328 " "
-      LBrace@328..329 "{"
-      PartDecl@329..541
-        Whitespace@329..338 "\n        "
-        PartKw@338..342 "part"
-        Whitespace@342..343 " "
-        Identifier@343..349 "violin"
-        Whitespace@349..350 " "
-        LBrace@350..351 "{"
-        ClefStmt@351..376
-          Whitespace@351..364 "\n            "
-          ClefKw@364..368 "clef"
-          Whitespace@368..369 " "
-          Identifier@369..375 "treble"
-          Semicolon@375..376 ";"
-        VoiceDecl@376..531
-          Whitespace@376..390 "\n\n            "
-          VoiceKw@390..395 "voice"
-          Whitespace@395..396 " "
-          Identifier@396..400 "lead"
-          Whitespace@400..401 " "
-          LBrace@401..402 "{"
-          UseStmt@402..430
-            Whitespace@402..419 "\n                "
-            UseKw@419..422 "use"
-            Whitespace@422..423 " "
-            Identifier@423..427 "sigh"
-            LParen@427..428 "("
-            RParen@428..429 ")"
-            Semicolon@429..430 ";"
-          TransposeStmt@430..517
-            Whitespace@430..448 "\n\n                "
-            TransposeKw@448..457 "transpose"
-            Whitespace@457..458 " "
-            DownKw@458..462 "down"
-            Whitespace@462..463 " "
-            IntervalLiteral@463..465 "P5"
-            Block@465..517
-              Whitespace@465..466 " "
-              LBrace@466..467 "{"
-              UseStmt@467..499
-                Whitespace@467..488 "\n                    "
-                UseKw@488..491 "use"
-                Whitespace@491..492 " "
-                Identifier@492..496 "sigh"
-                LParen@496..497 "("
-                RParen@497..498 ")"
-                Semicolon@498..499 ";"
-              Whitespace@499..516 "\n                "
-              RBrace@516..517 "}"
-          Whitespace@517..530 "\n            "
-          RBrace@530..531 "}"
-        Whitespace@531..540 "\n        "
-        RBrace@540..541 "}"
-      PartDecl@541..1086
-        Whitespace@541..551 "\n\n        "
-        PartKw@551..555 "part"
-        Whitespace@555..556 " "
-        Identifier@556..563 "strings"
-        Whitespace@563..564 " "
-        LBrace@564..565 "{"
-        VoiceDecl@565..694
-          Whitespace@565..578 "\n            "
-          VoiceKw@578..583 "voice"
-          Whitespace@583..584 " "
-          Identifier@584..589 "upper"
-          Whitespace@589..590 " "
-          LBrace@590..591 "{"
-          NoteStmt@591..613
-            Whitespace@591..608 "\n                "
-            PitchLiteral@608..610 "c5"
-            Duration@610..612
-              Whitespace@610..611 " "
-              Integer@611..612 "1"
-            Semicolon@612..613 ";"
-          NoteStmt@613..635
-            Whitespace@613..630 "\n                "
-            PitchLiteral@630..632 "c5"
-            Duration@632..634
-              Whitespace@632..633 " "
-              Integer@633..634 "1"
-            Semicolon@634..635 ";"
-          NoteStmt@635..657
-            Whitespace@635..652 "\n                "
-            PitchLiteral@652..654 "a4"
-            Duration@654..656
-              Whitespace@654..655 " "
-              Integer@655..656 "1"
-            Semicolon@656..657 ";"
-          NoteStmt@657..680
-            Whitespace@657..674 "\n                "
-            PitchLiteral@674..677 "g#4"
-            Duration@677..679
-              Whitespace@677..678 " "
-              Integer@678..679 "1"
-            Semicolon@679..680 ";"
-          Whitespace@680..693 "\n            "
-          RBrace@693..694 "}"
-        VoiceDecl@694..1076
-          Whitespace@694..708 "\n\n            "
-          VoiceKw@708..713 "voice"
-          Whitespace@713..714 " "
-          Identifier@714..718 "bass"
-          Whitespace@718..719 " "
-          LBrace@719..720 "{"
-          MarkStmt@720..1062
-            Whitespace@720..737 "\n                "
-            LineComment@737..795 "// Under the pedal for the whole descent: the harmony is a"
-            Whitespace@795..812 "\n                "
-            LineComment@812..870 "// wash rather than four separate chords, and the pedal is"
-            Whitespace@870..887 "\n                "
-            LineComment@887..911 "// where a page says so."
-            Whitespace@911..928 "\n                "
-            MarkKw@928..932 "mark"
-            Whitespace@932..933 " "
-            Identifier@933..938 "pedal"
-            Block@938..1062
-              Whitespace@938..939 " "
-              LBrace@939..940 "{"
-              NoteStmt@940..966
-                Whitespace@940..961 "\n                    "
-                PitchLiteral@961..963 "a2"
-                Duration@963..965
-                  Whitespace@963..964 " "
-                  Integer@964..965 "1"
-                Semicolon@965..966 ";"
-              NoteStmt@966..992
-                Whitespace@966..987 "\n                    "
-                PitchLiteral@987..989 "f2"
-                Duration@989..991
-                  Whitespace@989..990 " "
-                  Integer@990..991 "1"
-                Semicolon@991..992 ";"
-              NoteStmt@992..1018
-                Whitespace@992..1013 "\n                    "
-                PitchLiteral@1013..1015 "d2"
-                Duration@1015..1017
-                  Whitespace@1015..1016 " "
-                  Integer@1016..1017 "1"
-                Semicolon@1017..1018 ";"
-              NoteStmt@1018..1044
-                Whitespace@1018..1039 "\n                    "
-                PitchLiteral@1039..1041 "e2"
-                Duration@1041..1043
-                  Whitespace@1041..1042 " "
-                  Integer@1042..1043 "1"
-                Semicolon@1043..1044 ";"
-              Whitespace@1044..1061 "\n                "
-              RBrace@1061..1062 "}"
-          Whitespace@1062..1075 "\n            "
-          RBrace@1075..1076 "}"
-        Whitespace@1076..1085 "\n        "
-        RBrace@1085..1086 "}"
-      Whitespace@1086..1091 "\n    "
-      RBrace@1091..1092 "}"
-    StudioDecl@1092..2192
-      Whitespace@1092..1098 "\n\n    "
-      LineComment@1098..1166 "// The sound side (roadmap 7.1). Every stage here runs real DSP: the"
-      Whitespace@1166..1171 "\n    "
-      LineComment@1171..1243 "// oscillators and envelope are the voice, the filter and its modulation"
-      Whitespace@1243..1248 "\n    "
-      LineComment@1248..1319 "// shape it, and the hall is a send to a reverb bus that returns to the"
-      Whitespace@1319..1324 "\n    "
-      LineComment@1324..1334 "// master."
-      Whitespace@1334..1339 "\n    "
-      StudioKw@1339..1345 "studio"
-      Whitespace@1345..1346 " "
-      LBrace@1346..1347 "{"
-      PatchDecl@1347..1697
-        Whitespace@1347..1356 "\n        "
-        PatchKw@1356..1361 "patch"
-        Whitespace@1361..1362 " "
-        Identifier@1362..1371 "glass_pad"
-        Whitespace@1371..1372 " "
-        LBrace@1372..1373 "{"
-        SignalBinding@1373..1413
-          Whitespace@1373..1386 "\n            "
-          Identifier@1386..1393 "carrier"
-          Whitespace@1393..1394 " "
-          Equals@1394..1395 "="
-          SignalChain@1395..1412
-            CallExpr@1395..1412
-              Whitespace@1395..1396 " "
-              Identifier@1396..1406 "oscillator"
-              ArgList@1406..1412
-                LParen@1406..1407 "("
-                Arg@1407..1411
-                  NameRef@1407..1411
-                    Identifier@1407..1411 "sine"
-                RParen@1411..1412 ")"
-          Semicolon@1412..1413 ";"
-        SignalBinding@1413..1479
-          Whitespace@1413..1426 "\n            "
-          Identifier@1426..1433 "shimmer"
-          Whitespace@1433..1434 " "
-          Equals@1434..1435 "="
-          SignalChain@1435..1478
-            CallExpr@1435..1462
-              Whitespace@1435..1436 " "
-              Identifier@1436..1446 "oscillator"
-              ArgList@1446..1462
-                LParen@1446..1447 "("
-                Arg@1447..1451
-                  NameRef@1447..1451
-                    Identifier@1447..1451 "sine"
-                Comma@1451..1452 ","
-                Arg@1452..1461
-                  Whitespace@1452..1453 " "
-                  Identifier@1453..1458 "ratio"
-                  Colon@1458..1459 ":"
-                  ValueLiteral@1459..1461
-                    Whitespace@1459..1460 " "
-                    Integer@1460..1461 "2"
-                RParen@1461..1462 ")"
-            Whitespace@1462..1463 " "
-            PipeForward@1463..1465 "|>"
-            CallExpr@1465..1478
-              Whitespace@1465..1466 " "
-              Identifier@1466..1470 "gain"
-              ArgList@1470..1478
-                LParen@1470..1471 "("
-                Arg@1471..1477
-                  ValueLiteral@1471..1477
-                    Minus@1471..1472 "-"
-                    Integer@1472..1474 "15"
-                    Whitespace@1474..1475 " "
-                    UnitDb@1475..1477 "dB"
-                RParen@1477..1478 ")"
-          Semicolon@1478..1479 ";"
-        ChainStmt@1479..1687
-          SignalChain@1479..1686
-            CallExpr@1479..1514
-              Whitespace@1479..1493 "\n\n            "
-              Identifier@1493..1496 "mix"
-              ArgList@1496..1514
-                LParen@1496..1497 "("
-                Arg@1497..1504
-                  NameRef@1497..1504
-                    Identifier@1497..1504 "carrier"
-                Comma@1504..1505 ","
-                Arg@1505..1513
-                  NameRef@1505..1513
-                    Whitespace@1505..1506 " "
-                    Identifier@1506..1513 "shimmer"
-                RParen@1513..1514 ")"
-            Whitespace@1514..1531 "\n                "
-            PipeForward@1531..1533 "|>"
-            CallExpr@1533..1608
-              Whitespace@1533..1534 " "
-              Identifier@1534..1542 "envelope"
-              ArgList@1542..1608
-                LParen@1542..1543 "("
-                Arg@1543..1607
-                  CallExpr@1543..1607
-                    Identifier@1543..1547 "adsr"
-                    ArgList@1547..1607
-                      LParen@1547..1548 "("
-                      Arg@1548..1561
-                        Identifier@1548..1554 "attack"
-                        Colon@1554..1555 ":"
-                        ValueLiteral@1555..1561
-                          Whitespace@1555..1556 " "
-                          Integer@1556..1558 "30"
-                          Whitespace@1558..1559 " "
-                          UnitMs@1559..1561 "ms"
-                      Comma@1561..1562 ","
-                      Arg@1562..1575
-                        Whitespace@1562..1563 " "
-                        Identifier@1563..1568 "decay"
-                        Colon@1568..1569 ":"
-                        ValueLiteral@1569..1575
-                          Whitespace@1569..1570 " "
-                          Float@1570..1573 "1.8"
-                          Whitespace@1573..1574 " "
-                          UnitS@1574..1575 "s"
-                      Comma@1575..1576 ","
-                      Arg@1576..1590
-                        Whitespace@1576..1577 " "
-                        Identifier@1577..1584 "sustain"
-                        Colon@1584..1585 ":"
-                        ValueLiteral@1585..1590
-                          Whitespace@1585..1586 " "
-                          Float@1586..1590 "0.65"
-                      Comma@1590..1591 ","
-                      Arg@1591..1606
-                        Whitespace@1591..1592 " "
-                        Identifier@1592..1599 "release"
-                        Colon@1599..1600 ":"
-                        ValueLiteral@1600..1606
-                          Whitespace@1600..1601 " "
-                          Float@1601..1604 "3.5"
-                          Whitespace@1604..1605 " "
-                          UnitS@1605..1606 "s"
-                      RParen@1606..1607 ")"
-                RParen@1607..1608 ")"
-            Whitespace@1608..1625 "\n                "
-            PipeForward@1625..1627 "|>"
-            CallExpr@1627..1660
-              Whitespace@1627..1628 " "
-              Identifier@1628..1635 "lowpass"
-              ArgList@1635..1660
-                LParen@1635..1636 "("
-                Arg@1636..1651
-                  Identifier@1636..1642 "cutoff"
-                  Colon@1642..1643 ":"
-                  ValueLiteral@1643..1651
-                    Whitespace@1643..1644 " "
-                    Integer@1644..1648 "1400"
-                    Whitespace@1648..1649 " "
-                    UnitHz@1649..1651 "Hz"
-                Comma@1651..1652 ","
-                Arg@1652..1659
-                  Whitespace@1652..1653 " "
-                  Identifier@1653..1654 "q"
-                  Colon@1654..1655 ":"
-                  ValueLiteral@1655..1659
-                    Whitespace@1655..1656 " "
-                    Float@1656..1659 "0.7"
-                RParen@1659..1660 ")"
-            Whitespace@1660..1677 "\n                "
-            PipeForward@1677..1679 "|>"
-            NameRef@1679..1686
-              Whitespace@1679..1680 " "
-              OutputKw@1680..1686 "output"
-          Semicolon@1686..1687 ";"
-        Whitespace@1687..1696 "\n        "
-        RBrace@1696..1697 "}"
-      SignalBinding@1697..1808
-        Whitespace@1697..1707 "\n\n        "
-        Identifier@1707..1710 "lfo"
-        Whitespace@1710..1711 " "
-        Equals@1711..1712 "="
-        SignalChain@1712..1807
-          CallExpr@1712..1749
-            Whitespace@1712..1713 " "
-            Identifier@1713..1723 "oscillator"
-            ArgList@1723..1749
-              LParen@1723..1724 "("
-              Arg@1724..1728
-                NameRef@1724..1728
-                  Identifier@1724..1728 "sine"
-              Comma@1728..1729 ","
-              Arg@1729..1748
-                Whitespace@1729..1730 " "
-                Identifier@1730..1739 "frequency"
-                Colon@1739..1740 ":"
-                ValueLiteral@1740..1748
-                  Whitespace@1740..1741 " "
-                  Float@1741..1745 "0.08"
-                  Whitespace@1745..1746 " "
-                  UnitHz@1746..1748 "Hz"
-              RParen@1748..1749 ")"
-          Whitespace@1749..1762 "\n            "
-          PipeForward@1762..1764 "|>"
-          CallExpr@1764..1778
-            Whitespace@1764..1765 " "
-            Identifier@1765..1770 "scale"
-            ArgList@1770..1778
-              LParen@1770..1771 "("
-              Arg@1771..1777
-                ValueLiteral@1771..1777
-                  Integer@1771..1774 "250"
-                  Whitespace@1774..1775 " "
-                  UnitHz@1775..1777 "Hz"
-              RParen@1777..1778 ")"
-          Whitespace@1778..1791 "\n            "
-          PipeForward@1791..1793 "|>"
-          CallExpr@1793..1807
-            Whitespace@1793..1794 " "
-            Identifier@1794..1798 "bias"
-            ArgList@1798..1807
-              LParen@1798..1799 "("
-              Arg@1799..1806
-                ValueLiteral@1799..1806
-                  Integer@1799..1803 "1400"
-                  Whitespace@1803..1804 " "
-                  UnitHz@1804..1806 "Hz"
-              RParen@1806..1807 ")"
-        Semicolon@1807..1808 ";"
-      ModulateStmt@1808..1859
-        Whitespace@1808..1818 "\n\n        "
-        ModulateKw@1818..1826 "modulate"
-        Whitespace@1826..1827 " "
-        Identifier@1827..1830 "lfo"
-        Whitespace@1830..1831 " "
-        Arrow@1831..1833 "->"
-        ParamPath@1833..1858
-          Whitespace@1833..1834 " "
-          Identifier@1834..1843 "glass_pad"
-          Dot@1843..1844 "."
-          Identifier@1844..1851 "lowpass"
-          Dot@1851..1852 "."
-          Identifier@1852..1858 "cutoff"
-        Semicolon@1858..1859 ";"
-      BusDecl@1859..1936
-        Whitespace@1859..1869 "\n\n        "
-        BusKw@1869..1872 "bus"
-        Whitespace@1872..1873 " "
-        Identifier@1873..1877 "hall"
-        Whitespace@1877..1878 " "
-        LBrace@1878..1879 "{"
-        ChainStmt@1879..1926
-          SignalChain@1879..1925
-            CallExpr@1879..1925
-              Whitespace@1879..1892 "\n            "
-              Identifier@1892..1898 "reverb"
-              ArgList@1898..1925
-                LParen@1898..1899 "("
-                Arg@1899..1909
-                  Identifier@1899..1903 "room"
-                  Colon@1903..1904 ":"
-                  ValueLiteral@1904..1909
-                    Whitespace@1904..1905 " "
-                    Float@1905..1909 "0.82"
-                Comma@1909..1910 ","
-                Arg@1910..1924
-                  Whitespace@1910..1911 " "
-                  Identifier@1911..1918 "damping"
-                  Colon@1918..1919 ":"
-                  ValueLiteral@1919..1924
-                    Whitespace@1919..1920 " "
-                    Float@1920..1924 "0.55"
-                RParen@1924..1925 ")"
-          Semicolon@1925..1926 ";"
-        Whitespace@1926..1935 "\n        "
-        RBrace@1935..1936 "}"
-      AssignStmt@1936..1973
-        Whitespace@1936..1946 "\n\n        "
-        AssignKw@1946..1952 "assign"
-        Whitespace@1952..1953 " "
-        Identifier@1953..1959 "violin"
-        Whitespace@1959..1960 " "
-        Arrow@1960..1962 "->"
-        Whitespace@1962..1963 " "
-        Identifier@1963..1972 "glass_pad"
-        Semicolon@1972..1973 ";"
-      AssignStmt@1973..2010
-        Whitespace@1973..1982 "\n        "
-        AssignKw@1982..1988 "assign"
-        Whitespace@1988..1989 " "
-        Identifier@1989..1996 "strings"
-        Whitespace@1996..1997 " "
-        Arrow@1997..1999 "->"
-        Whitespace@1999..2000 " "
-        Identifier@2000..2009 "glass_pad"
-        Semicolon@2009..2010 ";"
-      RouteStmt@2010..2043
-        Whitespace@2010..2020 "\n\n        "
-        RouteKw@2020..2025 "route"
-        Whitespace@2025..2026 " "
-        Identifier@2026..2032 "violin"
-        Whitespace@2032..2033 " "
-        Arrow@2033..2035 "->"
-        Whitespace@2035..2036 " "
-        MasterKw@2036..2042 "master"
-        Semicolon@2042..2043 ";"
-      RouteStmt@2043..2076
-        Whitespace@2043..2052 "\n        "
-        RouteKw@2052..2057 "route"
-        Whitespace@2057..2058 " "
-        Identifier@2058..2065 "strings"
-        Whitespace@2065..2066 " "
-        Arrow@2066..2068 "->"
-        Whitespace@2068..2069 " "
-        MasterKw@2069..2075 "master"
-        Semicolon@2075..2076 ";"
-      SendStmt@2076..2116
-        Whitespace@2076..2086 "\n\n        "
-        SendKw@2086..2090 "send"
-        Whitespace@2090..2091 " "
-        Identifier@2091..2097 "violin"
-        Whitespace@2097..2098 " "
-        Arrow@2098..2100 "->"
-        Whitespace@2100..2101 " "
-        Identifier@2101..2105 "hall"
-        Whitespace@2105..2106 " "
-        AtKw@2106..2108 "at"
-        ValueLiteral@2108..2115
-          Whitespace@2108..2109 " "
-          Minus@2109..2110 "-"
-          Integer@2110..2112 "18"
-          Whitespace@2112..2113 " "
-          UnitDb@2113..2115 "dB"
-        Semicolon@2115..2116 ";"
-      SendStmt@2116..2156
-        Whitespace@2116..2125 "\n        "
-        SendKw@2125..2129 "send"
-        Whitespace@2129..2130 " "
-        Identifier@2130..2137 "strings"
-        Whitespace@2137..2138 " "
-        Arrow@2138..2140 "->"
-        Whitespace@2140..2141 " "
-        Identifier@2141..2145 "hall"
-        Whitespace@2145..2146 " "
-        AtKw@2146..2148 "at"
-        ValueLiteral@2148..2155
-          Whitespace@2148..2149 " "
-          Minus@2149..2150 "-"
-          Integer@2150..2152 "14"
-          Whitespace@2152..2153 " "
-          UnitDb@2153..2155 "dB"
-        Semicolon@2155..2156 ";"
-      RouteStmt@2156..2186
-        Whitespace@2156..2165 "\n        "
-        RouteKw@2165..2170 "route"
-        Whitespace@2170..2171 " "
-        Identifier@2171..2175 "hall"
-        Whitespace@2175..2176 " "
-        Arrow@2176..2178 "->"
-        Whitespace@2178..2179 " "
-        MasterKw@2179..2185 "master"
-        Semicolon@2185..2186 ";"
-      Whitespace@2186..2191 "\n    "
-      RBrace@2191..2192 "}"
-    Whitespace@2192..2193 "\n"
-    RBrace@2193..2194 "}"
-  Whitespace@2194..2195 "\n"
+          Duration@239..241
+            Slash@239..240 "/"
+            Integer@240..241 "2"
+        RestStmt@241..256
+          Whitespace@241..250 "\n        "
+          RestKw@250..254 "rest"
+          Duration@254..256
+            Slash@254..255 "/"
+            Integer@255..256 "4"
+        NoteStmt@256..269
+          Whitespace@256..265 "\n        "
+          PitchLiteral@265..267 "c5"
+          Duration@267..269
+            Slash@267..268 "/"
+            Integer@268..269 "2"
+        NoteStmt@269..282
+          Whitespace@269..278 "\n        "
+          PitchLiteral@278..280 "b4"
+          Duration@280..282
+            Slash@280..281 "/"
+            Integer@281..282 "4"
+        NoteStmt@282..295
+          Whitespace@282..291 "\n        "
+          PitchLiteral@291..293 "a4"
+          Duration@293..295
+            Slash@293..294 "/"
+            Integer@294..295 "2"
+        Whitespace@295..300 "\n    "
+        RBrace@300..301 "}"
+    ScoreDecl@301..1069
+      Whitespace@301..307 "\n\n    "
+      ScoreKw@307..312 "score"
+      Whitespace@312..313 " "
+      LBrace@313..314 "{"
+      PartDecl@314..526
+        Whitespace@314..323 "\n        "
+        PartKw@323..327 "part"
+        Whitespace@327..328 " "
+        Identifier@328..334 "violin"
+        Whitespace@334..335 " "
+        LBrace@335..336 "{"
+        ClefStmt@336..361
+          Whitespace@336..349 "\n            "
+          ClefKw@349..353 "clef"
+          Whitespace@353..354 " "
+          Identifier@354..360 "treble"
+          Semicolon@360..361 ";"
+        VoiceDecl@361..516
+          Whitespace@361..375 "\n\n            "
+          VoiceKw@375..380 "voice"
+          Whitespace@380..381 " "
+          Identifier@381..385 "lead"
+          Whitespace@385..386 " "
+          LBrace@386..387 "{"
+          UseStmt@387..415
+            Whitespace@387..404 "\n                "
+            UseKw@404..407 "use"
+            Whitespace@407..408 " "
+            Identifier@408..412 "sigh"
+            LParen@412..413 "("
+            RParen@413..414 ")"
+            Semicolon@414..415 ";"
+          TransposeStmt@415..502
+            Whitespace@415..433 "\n\n                "
+            TransposeKw@433..442 "transpose"
+            Whitespace@442..443 " "
+            DownKw@443..447 "down"
+            Whitespace@447..448 " "
+            IntervalLiteral@448..450 "P5"
+            Block@450..502
+              Whitespace@450..451 " "
+              LBrace@451..452 "{"
+              UseStmt@452..484
+                Whitespace@452..473 "\n                    "
+                UseKw@473..476 "use"
+                Whitespace@476..477 " "
+                Identifier@477..481 "sigh"
+                LParen@481..482 "("
+                RParen@482..483 ")"
+                Semicolon@483..484 ";"
+              Whitespace@484..501 "\n                "
+              RBrace@501..502 "}"
+          Whitespace@502..515 "\n            "
+          RBrace@515..516 "}"
+        Whitespace@516..525 "\n        "
+        RBrace@525..526 "}"
+      PartDecl@526..1063
+        Whitespace@526..536 "\n\n        "
+        PartKw@536..540 "part"
+        Whitespace@540..541 " "
+        Identifier@541..548 "strings"
+        Whitespace@548..549 " "
+        LBrace@549..550 "{"
+        VoiceDecl@550..675
+          Whitespace@550..563 "\n            "
+          VoiceKw@563..568 "voice"
+          Whitespace@568..569 " "
+          Identifier@569..574 "upper"
+          Whitespace@574..575 " "
+          LBrace@575..576 "{"
+          NoteStmt@576..597
+            Whitespace@576..593 "\n                "
+            PitchLiteral@593..595 "c5"
+            Duration@595..597
+              Slash@595..596 "/"
+              Integer@596..597 "1"
+          NoteStmt@597..618
+            Whitespace@597..614 "\n                "
+            PitchLiteral@614..616 "c5"
+            Duration@616..618
+              Slash@616..617 "/"
+              Integer@617..618 "1"
+          NoteStmt@618..639
+            Whitespace@618..635 "\n                "
+            PitchLiteral@635..637 "a4"
+            Duration@637..639
+              Slash@637..638 "/"
+              Integer@638..639 "1"
+          NoteStmt@639..661
+            Whitespace@639..656 "\n                "
+            PitchLiteral@656..659 "g#4"
+            Duration@659..661
+              Slash@659..660 "/"
+              Integer@660..661 "1"
+          Whitespace@661..674 "\n            "
+          RBrace@674..675 "}"
+        VoiceDecl@675..1053
+          Whitespace@675..689 "\n\n            "
+          VoiceKw@689..694 "voice"
+          Whitespace@694..695 " "
+          Identifier@695..699 "bass"
+          Whitespace@699..700 " "
+          LBrace@700..701 "{"
+          MarkStmt@701..1039
+            Whitespace@701..718 "\n                "
+            LineComment@718..776 "// Under the pedal for the whole descent: the harmony is a"
+            Whitespace@776..793 "\n                "
+            LineComment@793..851 "// wash rather than four separate chords, and the pedal is"
+            Whitespace@851..868 "\n                "
+            LineComment@868..892 "// where a page says so."
+            Whitespace@892..909 "\n                "
+            MarkKw@909..913 "mark"
+            Whitespace@913..914 " "
+            Identifier@914..919 "pedal"
+            Block@919..1039
+              Whitespace@919..920 " "
+              LBrace@920..921 "{"
+              NoteStmt@921..946
+                Whitespace@921..942 "\n                    "
+                PitchLiteral@942..944 "a2"
+                Duration@944..946
+                  Slash@944..945 "/"
+                  Integer@945..946 "1"
+              NoteStmt@946..971
+                Whitespace@946..967 "\n                    "
+                PitchLiteral@967..969 "f2"
+                Duration@969..971
+                  Slash@969..970 "/"
+                  Integer@970..971 "1"
+              NoteStmt@971..996
+                Whitespace@971..992 "\n                    "
+                PitchLiteral@992..994 "d2"
+                Duration@994..996
+                  Slash@994..995 "/"
+                  Integer@995..996 "1"
+              NoteStmt@996..1021
+                Whitespace@996..1017 "\n                    "
+                PitchLiteral@1017..1019 "e2"
+                Duration@1019..1021
+                  Slash@1019..1020 "/"
+                  Integer@1020..1021 "1"
+              Whitespace@1021..1038 "\n                "
+              RBrace@1038..1039 "}"
+          Whitespace@1039..1052 "\n            "
+          RBrace@1052..1053 "}"
+        Whitespace@1053..1062 "\n        "
+        RBrace@1062..1063 "}"
+      Whitespace@1063..1068 "\n    "
+      RBrace@1068..1069 "}"
+    StudioDecl@1069..2169
+      Whitespace@1069..1075 "\n\n    "
+      LineComment@1075..1143 "// The sound side (roadmap 7.1). Every stage here runs real DSP: the"
+      Whitespace@1143..1148 "\n    "
+      LineComment@1148..1220 "// oscillators and envelope are the voice, the filter and its modulation"
+      Whitespace@1220..1225 "\n    "
+      LineComment@1225..1296 "// shape it, and the hall is a send to a reverb bus that returns to the"
+      Whitespace@1296..1301 "\n    "
+      LineComment@1301..1311 "// master."
+      Whitespace@1311..1316 "\n    "
+      StudioKw@1316..1322 "studio"
+      Whitespace@1322..1323 " "
+      LBrace@1323..1324 "{"
+      PatchDecl@1324..1674
+        Whitespace@1324..1333 "\n        "
+        PatchKw@1333..1338 "patch"
+        Whitespace@1338..1339 " "
+        Identifier@1339..1348 "glass_pad"
+        Whitespace@1348..1349 " "
+        LBrace@1349..1350 "{"
+        SignalBinding@1350..1390
+          Whitespace@1350..1363 "\n            "
+          Identifier@1363..1370 "carrier"
+          Whitespace@1370..1371 " "
+          Equals@1371..1372 "="
+          SignalChain@1372..1389
+            CallExpr@1372..1389
+              Whitespace@1372..1373 " "
+              Identifier@1373..1383 "oscillator"
+              ArgList@1383..1389
+                LParen@1383..1384 "("
+                Arg@1384..1388
+                  NameRef@1384..1388
+                    Identifier@1384..1388 "sine"
+                RParen@1388..1389 ")"
+          Semicolon@1389..1390 ";"
+        SignalBinding@1390..1456
+          Whitespace@1390..1403 "\n            "
+          Identifier@1403..1410 "shimmer"
+          Whitespace@1410..1411 " "
+          Equals@1411..1412 "="
+          SignalChain@1412..1455
+            CallExpr@1412..1439
+              Whitespace@1412..1413 " "
+              Identifier@1413..1423 "oscillator"
+              ArgList@1423..1439
+                LParen@1423..1424 "("
+                Arg@1424..1428
+                  NameRef@1424..1428
+                    Identifier@1424..1428 "sine"
+                Comma@1428..1429 ","
+                Arg@1429..1438
+                  Whitespace@1429..1430 " "
+                  Identifier@1430..1435 "ratio"
+                  Colon@1435..1436 ":"
+                  ValueLiteral@1436..1438
+                    Whitespace@1436..1437 " "
+                    Integer@1437..1438 "2"
+                RParen@1438..1439 ")"
+            Whitespace@1439..1440 " "
+            PipeForward@1440..1442 "|>"
+            CallExpr@1442..1455
+              Whitespace@1442..1443 " "
+              Identifier@1443..1447 "gain"
+              ArgList@1447..1455
+                LParen@1447..1448 "("
+                Arg@1448..1454
+                  ValueLiteral@1448..1454
+                    Minus@1448..1449 "-"
+                    Integer@1449..1451 "15"
+                    Whitespace@1451..1452 " "
+                    UnitDb@1452..1454 "dB"
+                RParen@1454..1455 ")"
+          Semicolon@1455..1456 ";"
+        ChainStmt@1456..1664
+          SignalChain@1456..1663
+            CallExpr@1456..1491
+              Whitespace@1456..1470 "\n\n            "
+              Identifier@1470..1473 "mix"
+              ArgList@1473..1491
+                LParen@1473..1474 "("
+                Arg@1474..1481
+                  NameRef@1474..1481
+                    Identifier@1474..1481 "carrier"
+                Comma@1481..1482 ","
+                Arg@1482..1490
+                  NameRef@1482..1490
+                    Whitespace@1482..1483 " "
+                    Identifier@1483..1490 "shimmer"
+                RParen@1490..1491 ")"
+            Whitespace@1491..1508 "\n                "
+            PipeForward@1508..1510 "|>"
+            CallExpr@1510..1585
+              Whitespace@1510..1511 " "
+              Identifier@1511..1519 "envelope"
+              ArgList@1519..1585
+                LParen@1519..1520 "("
+                Arg@1520..1584
+                  CallExpr@1520..1584
+                    Identifier@1520..1524 "adsr"
+                    ArgList@1524..1584
+                      LParen@1524..1525 "("
+                      Arg@1525..1538
+                        Identifier@1525..1531 "attack"
+                        Colon@1531..1532 ":"
+                        ValueLiteral@1532..1538
+                          Whitespace@1532..1533 " "
+                          Integer@1533..1535 "30"
+                          Whitespace@1535..1536 " "
+                          UnitMs@1536..1538 "ms"
+                      Comma@1538..1539 ","
+                      Arg@1539..1552
+                        Whitespace@1539..1540 " "
+                        Identifier@1540..1545 "decay"
+                        Colon@1545..1546 ":"
+                        ValueLiteral@1546..1552
+                          Whitespace@1546..1547 " "
+                          Float@1547..1550 "1.8"
+                          Whitespace@1550..1551 " "
+                          UnitS@1551..1552 "s"
+                      Comma@1552..1553 ","
+                      Arg@1553..1567
+                        Whitespace@1553..1554 " "
+                        Identifier@1554..1561 "sustain"
+                        Colon@1561..1562 ":"
+                        ValueLiteral@1562..1567
+                          Whitespace@1562..1563 " "
+                          Float@1563..1567 "0.65"
+                      Comma@1567..1568 ","
+                      Arg@1568..1583
+                        Whitespace@1568..1569 " "
+                        Identifier@1569..1576 "release"
+                        Colon@1576..1577 ":"
+                        ValueLiteral@1577..1583
+                          Whitespace@1577..1578 " "
+                          Float@1578..1581 "3.5"
+                          Whitespace@1581..1582 " "
+                          UnitS@1582..1583 "s"
+                      RParen@1583..1584 ")"
+                RParen@1584..1585 ")"
+            Whitespace@1585..1602 "\n                "
+            PipeForward@1602..1604 "|>"
+            CallExpr@1604..1637
+              Whitespace@1604..1605 " "
+              Identifier@1605..1612 "lowpass"
+              ArgList@1612..1637
+                LParen@1612..1613 "("
+                Arg@1613..1628
+                  Identifier@1613..1619 "cutoff"
+                  Colon@1619..1620 ":"
+                  ValueLiteral@1620..1628
+                    Whitespace@1620..1621 " "
+                    Integer@1621..1625 "1400"
+                    Whitespace@1625..1626 " "
+                    UnitHz@1626..1628 "Hz"
+                Comma@1628..1629 ","
+                Arg@1629..1636
+                  Whitespace@1629..1630 " "
+                  Identifier@1630..1631 "q"
+                  Colon@1631..1632 ":"
+                  ValueLiteral@1632..1636
+                    Whitespace@1632..1633 " "
+                    Float@1633..1636 "0.7"
+                RParen@1636..1637 ")"
+            Whitespace@1637..1654 "\n                "
+            PipeForward@1654..1656 "|>"
+            NameRef@1656..1663
+              Whitespace@1656..1657 " "
+              OutputKw@1657..1663 "output"
+          Semicolon@1663..1664 ";"
+        Whitespace@1664..1673 "\n        "
+        RBrace@1673..1674 "}"
+      SignalBinding@1674..1785
+        Whitespace@1674..1684 "\n\n        "
+        Identifier@1684..1687 "lfo"
+        Whitespace@1687..1688 " "
+        Equals@1688..1689 "="
+        SignalChain@1689..1784
+          CallExpr@1689..1726
+            Whitespace@1689..1690 " "
+            Identifier@1690..1700 "oscillator"
+            ArgList@1700..1726
+              LParen@1700..1701 "("
+              Arg@1701..1705
+                NameRef@1701..1705
+                  Identifier@1701..1705 "sine"
+              Comma@1705..1706 ","
+              Arg@1706..1725
+                Whitespace@1706..1707 " "
+                Identifier@1707..1716 "frequency"
+                Colon@1716..1717 ":"
+                ValueLiteral@1717..1725
+                  Whitespace@1717..1718 " "
+                  Float@1718..1722 "0.08"
+                  Whitespace@1722..1723 " "
+                  UnitHz@1723..1725 "Hz"
+              RParen@1725..1726 ")"
+          Whitespace@1726..1739 "\n            "
+          PipeForward@1739..1741 "|>"
+          CallExpr@1741..1755
+            Whitespace@1741..1742 " "
+            Identifier@1742..1747 "scale"
+            ArgList@1747..1755
+              LParen@1747..1748 "("
+              Arg@1748..1754
+                ValueLiteral@1748..1754
+                  Integer@1748..1751 "250"
+                  Whitespace@1751..1752 " "
+                  UnitHz@1752..1754 "Hz"
+              RParen@1754..1755 ")"
+          Whitespace@1755..1768 "\n            "
+          PipeForward@1768..1770 "|>"
+          CallExpr@1770..1784
+            Whitespace@1770..1771 " "
+            Identifier@1771..1775 "bias"
+            ArgList@1775..1784
+              LParen@1775..1776 "("
+              Arg@1776..1783
+                ValueLiteral@1776..1783
+                  Integer@1776..1780 "1400"
+                  Whitespace@1780..1781 " "
+                  UnitHz@1781..1783 "Hz"
+              RParen@1783..1784 ")"
+        Semicolon@1784..1785 ";"
+      ModulateStmt@1785..1836
+        Whitespace@1785..1795 "\n\n        "
+        ModulateKw@1795..1803 "modulate"
+        Whitespace@1803..1804 " "
+        Identifier@1804..1807 "lfo"
+        Whitespace@1807..1808 " "
+        Arrow@1808..1810 "->"
+        ParamPath@1810..1835
+          Whitespace@1810..1811 " "
+          Identifier@1811..1820 "glass_pad"
+          Dot@1820..1821 "."
+          Identifier@1821..1828 "lowpass"
+          Dot@1828..1829 "."
+          Identifier@1829..1835 "cutoff"
+        Semicolon@1835..1836 ";"
+      BusDecl@1836..1913
+        Whitespace@1836..1846 "\n\n        "
+        BusKw@1846..1849 "bus"
+        Whitespace@1849..1850 " "
+        Identifier@1850..1854 "hall"
+        Whitespace@1854..1855 " "
+        LBrace@1855..1856 "{"
+        ChainStmt@1856..1903
+          SignalChain@1856..1902
+            CallExpr@1856..1902
+              Whitespace@1856..1869 "\n            "
+              Identifier@1869..1875 "reverb"
+              ArgList@1875..1902
+                LParen@1875..1876 "("
+                Arg@1876..1886
+                  Identifier@1876..1880 "room"
+                  Colon@1880..1881 ":"
+                  ValueLiteral@1881..1886
+                    Whitespace@1881..1882 " "
+                    Float@1882..1886 "0.82"
+                Comma@1886..1887 ","
+                Arg@1887..1901
+                  Whitespace@1887..1888 " "
+                  Identifier@1888..1895 "damping"
+                  Colon@1895..1896 ":"
+                  ValueLiteral@1896..1901
+                    Whitespace@1896..1897 " "
+                    Float@1897..1901 "0.55"
+                RParen@1901..1902 ")"
+          Semicolon@1902..1903 ";"
+        Whitespace@1903..1912 "\n        "
+        RBrace@1912..1913 "}"
+      AssignStmt@1913..1950
+        Whitespace@1913..1923 "\n\n        "
+        AssignKw@1923..1929 "assign"
+        Whitespace@1929..1930 " "
+        Identifier@1930..1936 "violin"
+        Whitespace@1936..1937 " "
+        Arrow@1937..1939 "->"
+        Whitespace@1939..1940 " "
+        Identifier@1940..1949 "glass_pad"
+        Semicolon@1949..1950 ";"
+      AssignStmt@1950..1987
+        Whitespace@1950..1959 "\n        "
+        AssignKw@1959..1965 "assign"
+        Whitespace@1965..1966 " "
+        Identifier@1966..1973 "strings"
+        Whitespace@1973..1974 " "
+        Arrow@1974..1976 "->"
+        Whitespace@1976..1977 " "
+        Identifier@1977..1986 "glass_pad"
+        Semicolon@1986..1987 ";"
+      RouteStmt@1987..2020
+        Whitespace@1987..1997 "\n\n        "
+        RouteKw@1997..2002 "route"
+        Whitespace@2002..2003 " "
+        Identifier@2003..2009 "violin"
+        Whitespace@2009..2010 " "
+        Arrow@2010..2012 "->"
+        Whitespace@2012..2013 " "
+        MasterKw@2013..2019 "master"
+        Semicolon@2019..2020 ";"
+      RouteStmt@2020..2053
+        Whitespace@2020..2029 "\n        "
+        RouteKw@2029..2034 "route"
+        Whitespace@2034..2035 " "
+        Identifier@2035..2042 "strings"
+        Whitespace@2042..2043 " "
+        Arrow@2043..2045 "->"
+        Whitespace@2045..2046 " "
+        MasterKw@2046..2052 "master"
+        Semicolon@2052..2053 ";"
+      SendStmt@2053..2093
+        Whitespace@2053..2063 "\n\n        "
+        SendKw@2063..2067 "send"
+        Whitespace@2067..2068 " "
+        Identifier@2068..2074 "violin"
+        Whitespace@2074..2075 " "
+        Arrow@2075..2077 "->"
+        Whitespace@2077..2078 " "
+        Identifier@2078..2082 "hall"
+        Whitespace@2082..2083 " "
+        AtKw@2083..2085 "at"
+        ValueLiteral@2085..2092
+          Whitespace@2085..2086 " "
+          Minus@2086..2087 "-"
+          Integer@2087..2089 "18"
+          Whitespace@2089..2090 " "
+          UnitDb@2090..2092 "dB"
+        Semicolon@2092..2093 ";"
+      SendStmt@2093..2133
+        Whitespace@2093..2102 "\n        "
+        SendKw@2102..2106 "send"
+        Whitespace@2106..2107 " "
+        Identifier@2107..2114 "strings"
+        Whitespace@2114..2115 " "
+        Arrow@2115..2117 "->"
+        Whitespace@2117..2118 " "
+        Identifier@2118..2122 "hall"
+        Whitespace@2122..2123 " "
+        AtKw@2123..2125 "at"
+        ValueLiteral@2125..2132
+          Whitespace@2125..2126 " "
+          Minus@2126..2127 "-"
+          Integer@2127..2129 "14"
+          Whitespace@2129..2130 " "
+          UnitDb@2130..2132 "dB"
+        Semicolon@2132..2133 ";"
+      RouteStmt@2133..2163
+        Whitespace@2133..2142 "\n        "
+        RouteKw@2142..2147 "route"
+        Whitespace@2147..2148 " "
+        Identifier@2148..2152 "hall"
+        Whitespace@2152..2153 " "
+        Arrow@2153..2155 "->"
+        Whitespace@2155..2156 " "
+        MasterKw@2156..2162 "master"
+        Semicolon@2162..2163 ";"
+      Whitespace@2163..2168 "\n    "
+      RBrace@2168..2169 "}"
+    Whitespace@2169..2170 "\n"
+    RBrace@2170..2171 "}"
+  Whitespace@2171..2172 "\n"

@@ -8,14 +8,14 @@ piece "canon" {
     key g major;
 
     motif theme() {
-        g4 1/4;
-        a4 1/4;
-        b4 1/4;
-        g4 1/4;
-        c5 1/2;
-        b4 1/2;
-        a4 1/2;
-        g4 1/2;
+        g4/4
+        a4/4
+        b4/4
+        g4/4
+        c5/2
+        b4/2
+        a4/2
+        g4/2
     }
 
     score {
@@ -24,7 +24,7 @@ piece "canon" {
                 use theme();
             }
             voice comes {
-                rest 3/4;
+                rest/2.
                 transpose up P5 {
                     use theme();
                 }
@@ -53,35 +53,35 @@ piece "canon" {
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))
+            (integer)))
         (note_statement
           (pitch_literal)
           (duration
-            (rational)))))
+            (integer)))))
     (score_declaration
       (part_declaration
         (identifier)
@@ -93,7 +93,7 @@ piece "canon" {
           (identifier)
           (rest_statement
             (duration
-              (rational)))
+              (integer)))
           (transpose_statement
             (interval_literal)
             (block

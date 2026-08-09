@@ -1,0 +1,65 @@
+---
+source: crates/musa-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+syntax
+
+  × a note does not end in `;`
+    ╭─[examples/broken/extra-semicolon.musa:13:23]
+ 12 │             voice right {
+ 13 │                 | c4/4; d4/4; e4/4; f4/4;
+    ·                       ┬
+    ·                       ╰── delete this
+ 14 │             }
+    ╰────
+  help: a note, a rest and a chord end themselves; every other statement ends with `;` or `}`
+
+  fix: remove `;`
+       13:23: delete
+
+syntax
+
+  × a note does not end in `;`
+    ╭─[examples/broken/extra-semicolon.musa:13:29]
+ 12 │             voice right {
+ 13 │                 | c4/4; d4/4; e4/4; f4/4;
+    ·                             ┬
+    ·                             ╰── delete this
+ 14 │             }
+    ╰────
+  help: a note, a rest and a chord end themselves; every other statement ends with `;` or `}`
+
+  fix: remove `;`
+       13:29: delete
+
+syntax
+
+  × a note does not end in `;`
+    ╭─[examples/broken/extra-semicolon.musa:13:35]
+ 12 │             voice right {
+ 13 │                 | c4/4; d4/4; e4/4; f4/4;
+    ·                                   ┬
+    ·                                   ╰── delete this
+ 14 │             }
+    ╰────
+  help: a note, a rest and a chord end themselves; every other statement ends with `;` or `}`
+
+  fix: remove `;`
+       13:35: delete
+
+syntax
+
+  × a note does not end in `;`
+    ╭─[examples/broken/extra-semicolon.musa:13:41]
+ 12 │             voice right {
+ 13 │                 | c4/4; d4/4; e4/4; f4/4;
+    ·                                         ┬
+    ·                                         ╰── delete this
+ 14 │             }
+    ╰────
+  help: a note, a rest and a chord end themselves; every other statement ends with `;` or `}`
+
+  fix: remove `;`
+       13:41: delete
+
+4 problems (4 errors)

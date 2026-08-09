@@ -8,9 +8,9 @@ piece "C" {
     score {
         part p {
             voice v {
-                c5 1/4; /* inline block */
+                c5/4 /* inline block */
                 // detached comment
-                d5 1/4;
+                d5/4
             }
         }
     }

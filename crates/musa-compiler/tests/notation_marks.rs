@@ -66,12 +66,12 @@ fn the_anchor_decides_where_a_mark_is_written() {
             (Anchor::Point, Argument::None) => format!("mark {};", def.name),
             (Anchor::Point, Argument::Text) => format!("mark {} \"x\";", def.name),
             (Anchor::Point, Argument::Number) => format!("mark {} 1;", def.name),
-            (Anchor::Span, Argument::None) => format!("mark {} {{ c5 1/4; }}", def.name),
-            (Anchor::Span, Argument::Text) => format!("mark {} \"x\" {{ c5 1/4; }}", def.name),
-            (Anchor::Span, Argument::Number) => format!("mark {} 1 {{ c5 1/4; }}", def.name),
+            (Anchor::Span, Argument::None) => format!("mark {} {{ c5/4 }}", def.name),
+            (Anchor::Span, Argument::Text) => format!("mark {} \"x\" {{ c5/4 }}", def.name),
+            (Anchor::Span, Argument::Number) => format!("mark {} 1 {{ c5/4 }}", def.name),
         };
-        compiles(&format!("{statement} c5 1/4; d5 1/4; e5 1/4;"));
-        let said = errors(&format!("c5 1/4 {}; d5 1/4; e5 1/4; f5 1/4;", def.name));
+        compiles(&format!("{statement} c5/4 d5/4 e5/4"));
+        let said = errors(&format!("c5 1/4 {} d5/4 e5/4 f5/4", def.name));
         assert!(
             said.iter().any(|message| message.contains("is not written on a note")),
             "`{}` was accepted on a note: {said:?}",
@@ -101,9 +101,9 @@ fn the_table_is_a_vocabulary() {
 /// in the words of the mark rather than in the words of the parser.
 #[test]
 fn a_shape_that_does_not_fit_the_mark_is_refused() {
-    let said = errors("mark pedal; c5 1/4; d5 1/4; e5 1/4; f5 1/4;");
+    let said = errors("mark pedal; c5/4 d5/4 e5/4 f5/4");
     assert!(said.iter().any(|message| message.contains("covers music")), "{said:?}");
-    let said = errors("mark breath { c5 1/4; } d5 1/4; e5 1/4; f5 1/4;");
+    let said = errors("mark breath { c5/4 } d5/4 e5/4 f5/4");
     assert!(
         said.iter().any(|message| message.contains("stands at one place")),
         "{said:?}"
@@ -114,12 +114,12 @@ fn a_shape_that_does_not_fit_the_mark_is_refused() {
 /// not a direction, and a breath with words is a mark someone confused.
 #[test]
 fn an_argument_that_does_not_fit_the_mark_is_refused() {
-    let said = errors("mark text; c5 1/4; d5 1/4; e5 1/4; f5 1/4;");
+    let said = errors("mark text; c5/4 d5/4 e5/4 f5/4");
     assert!(
         said.iter().any(|message| message.contains("is written with")),
         "{said:?}"
     );
-    let said = errors("mark breath \"now\"; c5 1/4; d5 1/4; e5 1/4; f5 1/4;");
+    let said = errors("mark breath \"now\"; c5/4 d5/4 e5/4 f5/4");
     assert!(
         said.iter().any(|message| message.contains("is written on its own")),
         "{said:?}"
@@ -130,7 +130,7 @@ fn an_argument_that_does_not_fit_the_mark_is_refused() {
 /// the writer was reaching into.
 #[test]
 fn an_unknown_mark_is_named() {
-    let said = errors("mark pedale { c5 1/4; } d5 1/4; e5 1/4; f5 1/4;");
+    let said = errors("mark pedale { c5/4 } d5/4 e5/4 f5/4");
     assert!(
         said.iter().any(|message| message.contains("`pedale` is not a mark")),
         "{said:?}"
@@ -141,7 +141,7 @@ fn an_unknown_mark_is_named() {
 /// tokens as far as the compiler is concerned.
 #[test]
 fn an_ottava_may_go_down() {
-    compiles("mark ottava -1 { c5 1/4; d5 1/4; } e5 1/4; f5 1/4;");
+    compiles("mark ottava -1 { c5/4 d5/4 } e5/4 f5/4");
 }
 
 /// The measured claim of prompt 62, re-checked: a mark reaches the exporters

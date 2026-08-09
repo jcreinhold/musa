@@ -99,7 +99,7 @@ fn lilypond_carries_both_tempos_and_the_hairpin() {
 #[test]
 fn a_diminuendo_is_the_other_wedge_everywhere() {
     let source = "piece \"P\" { tempo 1/4 = 60; meter 4/4; key c major; score {
-        part p { voice v { diminuendo to p { c5 1/4; d5 1/4; e5 1/4; f5 1/4; } } } } }";
+        part p { voice v { diminuendo to p { c5/4 d5/4 e5/4 f5/4 } } } } }";
     let score = compile(&SourceDocument::new(source, "d.musa"), &CompileOptions::default())
         .into_snapshot()
         .expect("compiles");

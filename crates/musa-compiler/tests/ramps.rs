@@ -44,8 +44,8 @@ fn piece(header: &str, voice: &str) -> String {
 }
 
 /// Sixteen whole notes, so any position up to 16 has a note at it.
-const SIXTEEN_WHOLES: &str = "c5 1; c5 1; c5 1; c5 1; c5 1; c5 1; c5 1; c5 1;
-     c5 1; c5 1; c5 1; c5 1; c5 1; c5 1; c5 1; c5 1;";
+const SIXTEEN_WHOLES: &str = "c5/1 c5/1 c5/1 c5/1 c5/1 c5/1 c5/1 c5/1
+     c5/1 c5/1 c5/1 c5/1 c5/1 c5/1 c5/1 c5/1";
 
 fn frames_at(score: &ScoreSnapshot, whole_notes: i64) -> u64 {
     lower_performance(
@@ -108,7 +108,7 @@ fn a_ramp_that_goes_nowhere_is_the_tempo_it_started_at() {
 fn the_next_marking_ends_a_ramp_early() {
     let source = piece(
         "tempo 1/4 = 60 to 30 over 8/1;",
-        "c5 1; c5 1; tempo 1/4 = 60; c5 1; c5 1; c5 1; c5 1;",
+        "c5/1 c5/1 tempo 1/4 = 60; c5/1 c5/1 c5/1 c5/1",
     );
     let score = score_of(&source);
     // Two whole notes into an 8-whole ramp from 4 s to 8 s per whole: the
@@ -126,9 +126,9 @@ fn the_next_marking_ends_a_ramp_early() {
 fn a_worded_ramp_moves_no_clock() {
     let worded = score_of(&piece(
         "tempo 1/4 = 60;",
-        "c5 1; tempo \"rit.\" over 2/1; c5 1; c5 1; c5 1;",
+        "c5/1 tempo \"rit.\" over 2/1; c5/1 c5/1 c5/1",
     ));
-    let plain = score_of(&piece("tempo 1/4 = 60;", "c5 1; c5 1; c5 1; c5 1;"));
+    let plain = score_of(&piece("tempo 1/4 = 60;", "c5/1 c5/1 c5/1 c5/1"));
     for whole_notes in 0..4 {
         assert_eq!(frames_at(&worded, whole_notes), frames_at(&plain, whole_notes));
     }
@@ -174,9 +174,9 @@ fn a_ramp_is_the_sum_of_its_parts_at_every_point() {
 #[test]
 fn a_ramp_needs_both_a_destination_and_a_reach() {
     for (voice, expected) in [
-        ("tempo 1/4 = 60 to 30; c5 1;", "this gradual tempo change has no reach"),
+        ("tempo 1/4 = 60 to 30; c5/1", "this gradual tempo change has no reach"),
         (
-            "tempo 1/4 = 60 over 4/1; c5 1;",
+            "tempo 1/4 = 60 over 4/1; c5/1",
             "this gradual tempo change goes nowhere",
         ),
     ] {
