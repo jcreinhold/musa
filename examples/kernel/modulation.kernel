@@ -31,7 +31,7 @@ kernel "Modulation" {
       };
       timeline 6 {
         occurrence "piece|meter@4@4|474:489|474:489|0|" from 0 to 6;
-        occurrence "piece|tempo@1/4@96@|453:474|453:474|0|" from 0 to 6;
+        occurrence "piece|tempo@1/4@96@@@@|453:474|453:474|0|" from 0 to 6;
         occurrence "piece|key@f@major|489:506|489:506|0|" from 0 to 6;
         occurrence "part@0|clef@treble|553:565|553:565|0|" from 0 to 6;
       }

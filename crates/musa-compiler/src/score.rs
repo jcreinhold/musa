@@ -367,6 +367,37 @@ pub struct TempoMarking {
     pub metronome: Option<Metronome>,
     /// The word printed with it, when the marking states one.
     pub text: Option<String>,
+    /// How the marking gets somewhere else, when it is gradual.
+    pub ramp: Option<Ramp>,
+}
+
+/// A gradual tempo change: a *rit.*, an *accel.*, an eight-bar riser.
+///
+/// The reach is in the payload rather than in the occurrence's span, because
+/// every context change is a point on the timeline and the track projected
+/// from those points is what turns them into stretches (`context.rs`). A
+/// ramp is a context change like any other; what is new is that it says
+/// where it is going and how long it takes to get there.
+///
+/// The interpolation is linear in **seconds per beat**, not in beats per
+/// minute — which is both the musically right answer and the exactly
+/// representable one. Interpolating bpm makes each beat's duration a
+/// reciprocal, so the integral leaves the rationals; interpolating duration
+/// keeps every intermediate value exact, and orchestral practice hears an
+/// even *rit.* as even in duration rather than even in bpm.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Ramp {
+    /// Beats per minute at the end of the change, in the marking's own beat
+    /// unit — or `None` for a worded ramp (`tempo "rit." over 2/1;`), which
+    /// prints and leaves the speed to the performer.
+    pub to: Option<u32>,
+    /// How far the change reaches, in whole notes.
+    pub over: crate::time::MusicalDuration,
+    /// How the change is spread across that reach, in normalized local time
+    /// (docs/kernel/03 `Progress`). The shape is normative; how finely to
+    /// sample it is each consumer's choice.
+    #[serde(with = "progress_serde")]
+    pub shape: musa_kernel::Progress,
 }
 
 /// The initial meter.

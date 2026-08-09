@@ -142,7 +142,7 @@ kernel "Nineteen" {
       };
       timeline 21 {
         occurrence "piece|meter@4@4|880:895|880:895|0|" from 0 to 21;
-        occurrence "piece|tempo@1/4@92@|859:880|859:880|0|" from 0 to 21;
+        occurrence "piece|tempo@1/4@92@@@@|859:880|859:880|0|" from 0 to 21;
         occurrence "piece|key@c@major|895:912|895:912|0|" from 0 to 21;
       }
     };

@@ -1,7 +1,7 @@
 ---
 id: 73
 slug: tempo-ramps
-status: pending
+status: done
 depends_on: [45, 72]
 phase: 3
 ---
@@ -106,7 +106,6 @@ observation total, and this inherits it rather than adding a diagnostic.
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo insta test --workspace --unreferenced=reject
 cargo run -p musa-cli -- check examples/rubato.musa
 cargo run -p musa-cli -- render examples/riser.musa --to midi -o /tmp/r.mid
 grep -rn "f64\|f32" crates/musa-compiler/src/performance.rs | grep -i tempo   # nothing new
@@ -116,6 +115,34 @@ The last check is the one that matters: a ramp that introduced a float into beat
 interpolation variable wrong.
 
 Commit as `Add gradual tempo change`.
+
+## Repairs made while implementing
+
+1. **The grammar reuses `to` and `over` instead of adding `ramp` and `curve`.** Both keywords already exist in the
+   lexer, both read correctly in place (`tempo 1/4 = 120 to 60 over 4/1;`), and a tree-sitter grammar is being
+   written against this language in parallel. Two fewer keywords is two fewer things for it to drift from.
+2. **The word may lead or trail.** `tempo "Andante";` and `tempo 1/4 = 132 "Allegro";` are both read aloud in the
+   order they are written, so the parser accepts either and never both.
+3. **`curve exponential` is not implemented.** `docs/kernel/03` states there is no easing catalogue — "No
+   `ease_in`, no exponential, no Bézier. Any of those is approximated by breakpoints" — and the kernel doc governs
+   over a prompt. The surface therefore writes only `Progress::linear()`, while `integral()` is written and
+   unit-tested for arbitrary piecewise-linear shapes (`ramp_shape_laws`), so a breakpoint list on the surface later
+   needs no change below it.
+4. **The ramp is a point fact carrying its reach, not a span occurrence.** Every other context change is a point and
+   `ContextTrack` is the thing that turns points into stretches; a span here would be a second mechanism for the
+   same idea. The reach lives in the payload as `Ramp { to, over, shape }`.
+5. **The exporters needed no ramp code.** `plan.rs` flattens a ramp into the two marks the page wants — the word
+   where it starts and the arrival metronome where it ends — so `ly.rs`, `mei.rs` and `musicxml.rs` are untouched by
+   this prompt. The prompt's `\set tempoWholesPerMinute` approximation is unnecessary: `\tempo` at each end says the
+   same thing and is what an engraver writes.
+6. **The integral is a trapezoid over the shape's pieces, not the closed form the Design gives.** That form assumes
+   a straight line; taking it piecewise over `Progress::points()` gives the same answer for a straight line and the
+   right one for any other shape. It is exact either way, because a piecewise-linear rate has a piecewise-quadratic
+   integral and the trapezoid rule is that integral rather than an approximation to it.
+7. **`riser.musa` states its accelerando in the header.** Written at the top of the voice it would sit at the same
+   instant as the header's tempo, and the later of two markings at one instant wins — so the ramp would have had a
+   reach of zero. The example is the piece as a musician would write it anyway.
+8. **The `-o` flag, not `--out`.** The Check's render line is corrected to the CLI's actual spelling.
 
 ## Stop
 

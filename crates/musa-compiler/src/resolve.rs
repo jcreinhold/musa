@@ -1356,11 +1356,13 @@ pub(crate) fn tempo_fact(resolver: &mut Resolver, tempo: &TempoStmt) -> crate::e
     let syntax = tempo.syntax();
     let text = tempo.text();
     let metronome = tempo.has_metronome().then(|| {
-        let beat = token_text(syntax, SyntaxKind::Rational)
+        let beat = tempo
+            .beat()
             .and_then(|text| parse_ratio(&text))
             // `quarter` (or another beat name) resolves to 1/4 for now.
             .unwrap_or_else(|| Ratio::new(1, 4));
-        let bpm = token_text(syntax, SyntaxKind::Integer)
+        let bpm = tempo
+            .bpm()
             .and_then(|text| text.parse::<u32>().ok())
             .unwrap_or_else(|| {
                 resolver.report(
@@ -1375,7 +1377,51 @@ pub(crate) fn tempo_fact(resolver: &mut Resolver, tempo: &TempoStmt) -> crate::e
     // No check that the marking says *something*: the grammar refuses
     // `tempo;` outright, and a file with a syntax error never reaches
     // elaboration. A diagnostic here would be one nothing could produce.
-    crate::elaborate::FactKind::Tempo { metronome, text }
+    crate::elaborate::FactKind::Tempo {
+        metronome,
+        ramp: tempo_ramp(resolver, tempo, text.is_some()),
+        text,
+    }
+}
+
+/// The gradual half of a tempo marking, when it has one.
+///
+/// Two halves that only mean something together: `to` says where the change
+/// arrives, `over` says how far it reaches. One without the other is refused
+/// rather than guessed at, because both guesses would be wrong — a reach with
+/// no destination is not a change, and a destination with no reach is a jump
+/// already written more simply without the word `to`.
+fn tempo_ramp(resolver: &mut Resolver, tempo: &TempoStmt, printed: bool) -> Option<crate::score::Ramp> {
+    let syntax = tempo.syntax();
+    let arrives = tempo.ramp_to().and_then(|text| text.parse::<u32>().ok());
+    let Some(over) = tempo.over().and_then(|text| parse_ratio(&text)) else {
+        if arrives.is_some() {
+            resolver.report(
+                Diagnostic::error(Code::Misplaced, "this gradual tempo change has no reach")
+                    .at(trimmed_span(syntax), "`to` without `over`")
+                    .help("say how far it takes, like `tempo quarter = 120 to 60 over 4/1;`")
+                    .note("a change with no reach is a change at a point, written without `to`"),
+            );
+        }
+        return None;
+    };
+    if arrives.is_none() && !printed {
+        resolver.report(
+            Diagnostic::error(Code::Misplaced, "this gradual tempo change goes nowhere")
+                .at(trimmed_span(syntax), "`over` with neither a destination nor a word")
+                .help("write where it arrives (`to 60`) or what to print (`\"rit.\"`)"),
+        );
+        return None;
+    }
+    Some(crate::score::Ramp {
+        to: arrives,
+        over: crate::time::MusicalDuration::new(over),
+        // The grammar writes no shape, so every ramp is a straight line — in
+        // seconds per beat, which is where the evenness a listener hears
+        // lives. The value is in the timeline rather than invented during
+        // lowering, so a second implementation integrates the same curve.
+        shape: musa_kernel::Progress::linear(),
+    })
 }
 
 pub(crate) fn parse_meter(meter: &musa_language::ast::MeterStmt) -> Option<Meter> {

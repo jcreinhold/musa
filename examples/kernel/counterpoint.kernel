@@ -19,7 +19,7 @@ kernel "Counterpoint Study" {
       };
       timeline 2 {
         occurrence "piece|meter@4@4|52:67|52:67|0|" from 0 to 2;
-        occurrence "piece|tempo@1/4@90@|28:52|28:52|0|" from 0 to 2;
+        occurrence "piece|tempo@1/4@90@@@@|28:52|28:52|0|" from 0 to 2;
         occurrence "piece|key@d@minor|67:84|67:84|0|" from 0 to 2;
         occurrence "part@0|clef@treble|132:144|132:144|0|" from 0 to 2;
         occurrence "part@1|clef@alto|334:344|334:344|0|" from 0 to 2;

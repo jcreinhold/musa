@@ -566,7 +566,11 @@ impl<'a> Parser<'a> {
     fn tempo_stmt(&mut self) {
         self.start(SyntaxKind::TempoStmt);
         self.bump(); // tempo
-        if self.at(SyntaxKind::String) {
+        // The word may lead (`tempo "Andante";`) or trail
+        // (`tempo 1/4 = 132 "Allegro";`) — wherever it can be read aloud in
+        // the order it is written. One or the other, never both.
+        let leads = self.at(SyntaxKind::String);
+        if leads {
             self.bump();
         } else {
             if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::Rational]) {
@@ -576,10 +580,21 @@ impl<'a> Parser<'a> {
             }
             self.expect(SyntaxKind::Equals, "`=`");
             self.expect(SyntaxKind::Integer, "a tempo in bpm");
-            // The word after the number, for a marking that says both.
-            if self.at(SyntaxKind::String) {
+            // `to 60` — where a gradual change arrives, in the same beat
+            // unit. `to` rather than a keyword of its own, for the reason
+            // `crescendo to f` reads: arriving somewhere is one idea.
+            if self.at(SyntaxKind::ToKw) {
                 self.bump();
+                self.expect(SyntaxKind::Integer, "the tempo the change arrives at");
             }
+        }
+        // `over 4/1` — how far a gradual change reaches.
+        if self.at(SyntaxKind::OverKw) {
+            self.bump();
+            self.expect(SyntaxKind::Rational, "how far the change reaches, like `4/1`");
+        }
+        if !leads && self.at(SyntaxKind::String) {
+            self.bump();
         }
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();

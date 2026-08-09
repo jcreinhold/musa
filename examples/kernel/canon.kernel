@@ -32,7 +32,7 @@ kernel "canon" {
       };
       timeline 15/4 {
         occurrence "piece|meter@3@4|35:50|35:50|0|" from 0 to 15/4;
-        occurrence "piece|tempo@1/4@96@|15:35|15:35|0|" from 0 to 15/4;
+        occurrence "piece|tempo@1/4@96@@@@|15:35|15:35|0|" from 0 to 15/4;
         occurrence "piece|key@g@major|50:67|50:67|0|" from 0 to 15/4;
       }
     };

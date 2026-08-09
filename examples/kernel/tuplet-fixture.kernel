@@ -37,7 +37,7 @@ kernel "Tuplet Fixture" {
       };
       timeline 2 {
         occurrence "piece|meter@4@4|262:277|262:277|0|" from 0 to 2;
-        occurrence "piece|tempo@1/4@96@|242:262|242:262|0|" from 0 to 2;
+        occurrence "piece|tempo@1/4@96@@@@|242:262|242:262|0|" from 0 to 2;
         occurrence "piece|key@c@major|277:294|277:294|0|" from 0 to 2;
         occurrence "part@0|clef@treble|424:436|424:436|0|" from 0 to 2;
         occurrence "part@1|clef@bass|1160:1170|1160:1170|0|" from 0 to 2;

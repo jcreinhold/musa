@@ -143,6 +143,8 @@ pub(crate) enum FactKind {
         metronome: Option<crate::score::Metronome>,
         /// The word printed with it, when the marking states one.
         text: Option<String>,
+        /// How it gets somewhere else, when the change is gradual.
+        ramp: Option<crate::score::Ramp>,
     },
     /// A form marker at the place it names.
     Section { name: String },
@@ -421,9 +423,17 @@ impl musa_kernel::Canonical for ScoreFact {
             }
             FactKind::Meter { numerator, denominator } => format!("meter:{numerator}/{denominator}|"),
             FactKind::Clef { clef } => format!("clef:{}|", clef.name()),
-            FactKind::Tempo { metronome, text } => {
+            FactKind::Tempo { metronome, text, ramp } => {
                 let mark = metronome.map_or_else(String::new, |mark| format!("{}={}", mark.beat, mark.bpm));
-                format!("tempo:{mark}:{}|", text.as_deref().unwrap_or_default())
+                let ramp = ramp.as_ref().map_or_else(String::new, |ramp| {
+                    format!(
+                        "{}>{}>{}",
+                        ramp.to.map_or_else(String::new, |bpm| bpm.to_string()),
+                        ramp.over.as_ratio(),
+                        ramp.shape.canonical_key()
+                    )
+                });
+                format!("tempo:{mark}:{}:{ramp}|", text.as_deref().unwrap_or_default())
             }
             FactKind::Section { name } => format!("section:{name}|"),
             FactKind::Harmony { symbol } => format!("harmony:{}|", symbol.text),

@@ -22,7 +22,7 @@ kernel "twinkle" {
       };
       timeline 5 {
         occurrence "piece|meter@4@4|88:103|88:103|0|" from 0 to 5;
-        occurrence "piece|tempo@1/4@104@|66:88|66:88|0|" from 0 to 5;
+        occurrence "piece|tempo@1/4@104@@@@|66:88|66:88|0|" from 0 to 5;
         occurrence "piece|key@c@major|103:120|103:120|0|" from 0 to 5;
       }
     };

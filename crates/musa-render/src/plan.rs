@@ -743,16 +743,34 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
     let tempos: Vec<_> = score
         .tempos()
         .changes(Scope::Piece)
-        .filter_map(|(at, marking)| {
-            Some(positioned(
-                &bars,
-                fold.at(at)?,
+        .flat_map(|(at, marking)| {
+            let mut printed = vec![(
+                at,
                 TempoText {
                     metronome: marking.metronome,
                     text: marking.text.clone(),
                 },
-            ))
+            )];
+            // A gradual change prints as its word where it starts and as the
+            // speed it reached where it ends. No format has a continuous
+            // tempo — none of the four can draw a *rit.* as a function — and
+            // a mark at each end is what an engraver writes for the same
+            // reason. The shape stays in the score for the performance to
+            // integrate; the page says what a reader needs.
+            if let (Some(ramp), Some(mark)) = (marking.ramp.as_ref(), marking.metronome)
+                && let Some(bpm) = ramp.to
+            {
+                printed.push((
+                    at + ramp.over,
+                    TempoText {
+                        metronome: Some(Metronome { beat: mark.beat, bpm }),
+                        text: None,
+                    },
+                ));
+            }
+            printed
         })
+        .filter_map(|(at, text)| Some(positioned(&bars, fold.at(at)?, text)))
         .collect();
     let sections = score
         .annotations()

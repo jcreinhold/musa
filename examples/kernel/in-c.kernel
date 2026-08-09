@@ -1614,7 +1614,7 @@ kernel "Fifty-Three" {
       };
       timeline 404 {
         occurrence "piece|meter@4@4|1243:1258|1243:1258|0|" from 0 to 404;
-        occurrence "piece|tempo@1/4@120@|1221:1243|1221:1243|0|" from 0 to 404;
+        occurrence "piece|tempo@1/4@120@@@@|1221:1243|1221:1243|0|" from 0 to 404;
         occurrence "piece|key@c@major|1258:1275|1258:1275|0|" from 0 to 404;
       }
     };

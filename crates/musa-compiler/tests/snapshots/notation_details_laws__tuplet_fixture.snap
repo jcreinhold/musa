@@ -1172,6 +1172,7 @@ ScoreSnapshot {
                             },
                         ),
                         text: None,
+                        ramp: None,
                     },
                 },
             ],

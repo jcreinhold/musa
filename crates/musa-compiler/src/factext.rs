@@ -259,14 +259,22 @@ fn kind_text(kind: &FactKind) -> String {
             vec!["meter".to_owned(), numerator.to_string(), denominator.to_string()]
         }
         FactKind::Clef { clef } => vec!["clef".to_owned(), clef.name().to_owned()],
-        // Four fields, two of which may be empty: a marking is a metronome
-        // mark, a word, or both, and the round trip has to keep "no word"
-        // apart from "the empty word".
-        FactKind::Tempo { metronome, text } => vec![
+        // Seven fields, most of which may be empty: a marking is a metronome
+        // mark, a word, or both, it may be gradual, and a gradual one may
+        // print without saying where it arrives. The round trip has to keep
+        // "no word" apart from "the empty word" throughout.
+        FactKind::Tempo { metronome, text, ramp } => vec![
             "tempo".to_owned(),
             metronome.map_or_else(String::new, |mark| mark.beat.to_string()),
             metronome.map_or_else(String::new, |mark| mark.bpm.to_string()),
             text.clone().unwrap_or_default(),
+            ramp.as_ref()
+                .and_then(|ramp| ramp.to)
+                .map_or_else(String::new, |bpm| bpm.to_string()),
+            ramp.as_ref()
+                .map_or_else(String::new, |ramp| ramp.over.as_ratio().to_string()),
+            ramp.as_ref()
+                .map_or_else(String::new, |ramp| ramp.shape.canonical_key()),
         ],
         FactKind::Section { name } => vec!["section".to_owned(), name.clone()],
         FactKind::Harmony { symbol } => vec!["harmony".to_owned(), symbol.text.clone()],
@@ -366,10 +374,13 @@ fn read_kind(text: &str) -> Option<FactKind> {
             numerator: arg(1)?.parse().ok()?,
             denominator: arg(2)?.parse().ok()?,
         }),
-        ("tempo", 4) => {
+        ("tempo", 7) => {
             let beat = arg(1)?;
             let bpm = arg(2)?;
             let text = arg(3)?;
+            let arrives = arg(4)?;
+            let over = arg(5)?;
+            let shape = arg(6)?;
             Some(FactKind::Tempo {
                 metronome: if beat.is_empty() {
                     None
@@ -380,6 +391,19 @@ fn read_kind(text: &str) -> Option<FactKind> {
                     })
                 },
                 text: (!text.is_empty()).then(|| text.to_owned()),
+                ramp: if over.is_empty() {
+                    None
+                } else {
+                    Some(crate::score::Ramp {
+                        to: if arrives.is_empty() {
+                            None
+                        } else {
+                            Some(arrives.parse().ok()?)
+                        },
+                        over: crate::time::MusicalDuration::new(crate::resolve::parse_ratio(over)?),
+                        shape: read_progress(shape)?,
+                    })
+                },
             })
         }
         ("clef", 2) => Some(FactKind::Clef {

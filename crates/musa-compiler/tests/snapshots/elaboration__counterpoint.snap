@@ -7,7 +7,7 @@ timeline 2 {
   occurrence 1|0|note:d3|1/2|393|400|[] from 0 to 1/2;
   occurrence *|*|key:d:minor||67|84|[] from 0 to 2;
   occurrence *|*|meter:4/4||52|67|[] from 0 to 2;
-  occurrence *|*|tempo:1/4=90:||28|52|[] from 0 to 2;
+  occurrence *|*|tempo:1/4=90::||28|52|[] from 0 to 2;
   occurrence 0|*|clef:treble||132|144|[] from 0 to 2;
   occurrence 1|*|clef:alto||334|344|[] from 0 to 2;
   occurrence 0|0|note:f4|1/2|201|208|[] from 1/2 to 1;

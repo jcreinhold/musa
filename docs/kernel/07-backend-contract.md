@@ -130,6 +130,26 @@ rhythm. A consumer that samples per onset, per frame, or per control-rate tick i
 the endpoints and may differ between them. That is the same latitude a consumer already has over tempo realization
 (§22), and it is stated here so nobody encodes musa's sampling choice as though it were the specification.
 
+### A gradual tempo change is the second reader of that rule (prompt 73)
+
+A `Tempo` payload may carry a `Ramp`: where the speed arrives, how far it reaches, and a `Progress` saying how the
+change is spread across that reach. Two consumers read the same payload for genuinely different purposes, which is
+what the rule above exists for.
+
+- **The engraver samples it not at all.** No notation format has a continuous tempo, so the page prints the word
+  where the ramp begins and the speed where it arrives, and the middle is the reader's. MEI, MusicXML and LilyPond
+  each get a marking at both ends.
+- **The performance layer integrates it exactly.** The rate is linear in *seconds per beat* along the shape, so the
+  elapsed time over each of the shape's pieces is `(u₁ − u₀) · (s₀ + s₁) / 2` — the trapezoid rule, which for a
+  piecewise-linear rate is not an approximation but the integral. Every value stays rational.
+- **MIDI samples it, and picks its own density.** SMF has one set-tempo event or a run of them; musa's exporter
+  writes **32 per whole note** of a ramp's reach. That number is the exporter's, stated here and not in the score, and
+  a conforming consumer may choose another. It will agree at the endpoints and may differ between them.
+
+Interpolating **beats per minute** instead would put the rate's reciprocal under the integral and leave the
+rationals, which §4 forbids — so the exactness requirement decides a question that looks like a matter of taste. It
+happens to agree with practice: an orchestra told to slow down evenly slows evenly in duration.
+
 ## What a conforming consumer of a kernel file owes (prompt 48)
 
 `examples/kernel/*.kernel` is the corpus a second implementation is validated against. Reading one, a consumer owes

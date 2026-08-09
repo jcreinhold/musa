@@ -333,6 +333,46 @@ impl TempoStmt {
             .filter_map(SyntaxElement::into_token)
             .any(|token| token.kind() == SyntaxKind::Equals)
     }
+
+    /// The beat unit and the speed, as written: `1/4` and `92`.
+    ///
+    /// The first `Rational` and the first `Integer`, which is what they are —
+    /// a ramp's `over` is a later `Rational` and its `to` a later `Integer`,
+    /// so both halves are read by position rather than by kind alone.
+    pub fn beat(&self) -> Option<String> {
+        // Guarded on the `=`: without one, the first `Rational` in the
+        // statement is a ramp's `over`, not a beat unit.
+        self.has_metronome()
+            .then(|| self.token_after(None, &[SyntaxKind::Rational, SyntaxKind::Identifier]))
+            .flatten()
+    }
+
+    /// The speed in beats per minute, as written.
+    pub fn bpm(&self) -> Option<String> {
+        self.token_after(Some(SyntaxKind::Equals), &[SyntaxKind::Integer])
+    }
+
+    /// The speed a gradual change arrives at (`to 60`), as written.
+    pub fn ramp_to(&self) -> Option<String> {
+        self.token_after(Some(SyntaxKind::ToKw), &[SyntaxKind::Integer])
+    }
+
+    /// How far a gradual change reaches (`over 4/1`), as written.
+    pub fn over(&self) -> Option<String> {
+        self.token_after(Some(SyntaxKind::OverKw), &[SyntaxKind::Rational])
+    }
+
+    /// The first token of one of `wanted` after `keyword`, or after the start
+    /// of the statement when `keyword` is `None`.
+    fn token_after(&self, keyword: Option<SyntaxKind>, wanted: &[SyntaxKind]) -> Option<String> {
+        let mut tokens = self.0.children_with_tokens().filter_map(SyntaxElement::into_token);
+        if let Some(keyword) = keyword {
+            tokens.find(|token| token.kind() == keyword)?;
+        }
+        tokens
+            .find(|token| wanted.contains(&token.kind()))
+            .map(|token| token.text().to_owned())
+    }
 }
 
 /// `library { motif ...; studio { ... } }` — a file of shared declarations.

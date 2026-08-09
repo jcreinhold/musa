@@ -69,26 +69,93 @@ impl Default for PerformanceOptions {
 
 /// A piecewise-monotone tempo map (course correction §22).
 ///
-/// One segment per written tempo. Each segment carries the exact frame at
-/// which it begins, accumulated as a rational: the rounding to whole frames
-/// happens once, at the position being asked about, so a tempo change never
-/// accumulates the drift that rounding each segment's start would.
+/// One segment per written tempo, each carrying the exact number of seconds
+/// elapsed before it begins, accumulated as a rational: the rounding to whole
+/// frames happens once, at the position being asked about, so a tempo change
+/// never accumulates the drift that rounding each segment's start would.
 #[derive(Clone, Debug, PartialEq)]
 pub struct IntegratedTempoMap {
     points: Vec<TempoPoint>,
     sample_rate: u32,
 }
 
-/// One tempo segment: from `position` (whole notes), at `frames_per_whole`
-/// frames per whole note, starting `frame_offset` frames into the piece.
-/// Both rates are exact — the map's whole job is to stay exact until the
-/// answer is a frame number.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// One tempo segment: from `position` (whole notes), at `seconds_per_whole`
+/// seconds per whole note, `seconds_offset` seconds into the piece — and,
+/// when the marking was gradual, on its way to another rate.
+#[derive(Clone, Debug, PartialEq)]
 struct TempoPoint {
     position: MusicalTime,
-    frames_per_whole: Ratio<i64>,
     seconds_per_whole: Ratio<i64>,
-    frame_offset: Ratio<i64>,
+    ramp: Option<RampRate>,
+    seconds_offset: Ratio<i64>,
+}
+
+/// A gradual change as the map integrates it: where the rate arrives, how far
+/// it takes to get there, and how the change is spread across that reach.
+///
+/// In **seconds per whole note**, never in beats per minute. Interpolating
+/// bpm makes each beat's duration a reciprocal, which leaves the rationals
+/// and so leaves §4; interpolating duration keeps every intermediate value
+/// exact. It is also what a listener hears as even, which is the rare case of
+/// the musically right answer and the representable one being the same.
+#[derive(Clone, Debug, PartialEq)]
+struct RampRate {
+    to: Ratio<i64>,
+    over: Ratio<i64>,
+    shape: musa_kernel::Progress,
+}
+
+impl TempoPoint {
+    /// Seconds elapsed from this segment's start to `whole_notes` into it.
+    ///
+    /// Total for any distance: past the end of a ramp the rate is simply the
+    /// one it arrived at, which is what "the tempo after a *rit.* is the
+    /// tempo the *rit.* reached" means arithmetically. A ramp cut short by
+    /// the next marking is never asked past the cut, so intersection clamps
+    /// it with no rule of its own (prompt 37).
+    fn elapsed(&self, whole_notes: Ratio<i64>) -> Ratio<i64> {
+        let Some(ramp) = self.ramp.as_ref() else {
+            return whole_notes * self.seconds_per_whole;
+        };
+        let inside = whole_notes.min(ramp.over);
+        let after = (whole_notes - ramp.over).max(Ratio::ZERO);
+        // A ramp of no reach is the jump it degenerates to.
+        let local = if ramp.over == Ratio::ZERO {
+            Ratio::ONE
+        } else {
+            inside / ramp.over
+        };
+        ramp.over * self.integral(ramp, local) + after * ramp.to
+    }
+
+    /// The rate at normalized local time `u` inside a ramp.
+    fn rate_at(&self, ramp: &RampRate, u: Ratio<i64>) -> Ratio<i64> {
+        self.seconds_per_whole + (ramp.to - self.seconds_per_whole) * ramp.shape.at(u)
+    }
+
+    /// `∫₀^u rate(t) dt`, exactly.
+    ///
+    /// The rate is linear in `t` on each of the shape's pieces — `Progress`
+    /// is piecewise-linear and the rate is an affine function of it — so the
+    /// trapezoid rule is not an approximation here, it is the integral.
+    fn integral(&self, ramp: &RampRate, u: Ratio<i64>) -> Ratio<i64> {
+        let mut total = Ratio::ZERO;
+        for pair in ramp.shape.points().windows(2) {
+            let [(u0, v0), (u1, v1)] = pair else { continue };
+            if u <= *u0 {
+                break;
+            }
+            let end = u.min(*u1);
+            // `u1 > u0` by construction, so the division is defined.
+            let reached = *v0 + (*v1 - *v0) * ((end - *u0) / (*u1 - *u0));
+            let (from, to) = (
+                self.seconds_per_whole + (ramp.to - self.seconds_per_whole) * *v0,
+                self.seconds_per_whole + (ramp.to - self.seconds_per_whole) * reached,
+            );
+            total += (end - *u0) * (from + to) / Ratio::from_integer(2);
+        }
+        total
+    }
 }
 
 /// Seconds per whole note at `bpm` beats of `beat` whole notes each.
@@ -117,35 +184,42 @@ impl IntegratedTempoMap {
     /// here rather than in the snapshot, because it is a fact about playing
     /// an unmarked page, not a fact about the page.
     pub fn new(snapshot: &ScoreSnapshot, options: &PerformanceOptions) -> Self {
-        let rate = Ratio::from_integer(i64::from(options.sample_rate.max(1)));
-        let segment = |position: MusicalTime, mark: crate::score::Metronome, frame_offset: Ratio<i64>| {
-            let seconds = seconds_per_whole(mark.beat, mark.bpm);
-            TempoPoint {
-                position,
-                frames_per_whole: seconds * rate,
-                seconds_per_whole: seconds,
-                frame_offset,
-            }
-        };
-        let mut marks: Vec<(MusicalTime, crate::score::Metronome)> = snapshot
+        let mut marks: Vec<(MusicalTime, &crate::score::TempoMarking)> = snapshot
             .tempos()
             .changes(crate::Scope::Piece)
-            .filter_map(|(at, marking)| Some((at, marking.metronome?)))
+            .filter(|(_, marking)| marking.metronome.is_some())
             .collect();
+        let opening = crate::score::TempoMarking::default();
         // A piece whose first marking is a word alone still has to start
         // somewhere, and so does a piece with no marking at all.
         if marks.first().is_none_or(|(at, _)| *at != MusicalTime::ZERO) {
-            marks.insert(0, (MusicalTime::ZERO, crate::score::Metronome::default()));
+            marks.insert(0, (MusicalTime::ZERO, &opening));
         }
         let mut points: Vec<TempoPoint> = Vec::new();
-        for (at, mark) in marks {
+        for (at, marking) in marks {
+            let mark = marking.metronome.unwrap_or_default();
+            let opening_rate = seconds_per_whole(mark.beat, mark.bpm);
             // Where the previous segment has carried the music to by the time
             // this one starts. Changes arrive in playing order, so `last` is
             // always the segment being left.
-            let offset = points.last().map_or(Ratio::ZERO, |previous| {
-                previous.frame_offset + (at.as_ratio() - previous.position.as_ratio()) * previous.frames_per_whole
+            let seconds_offset = points.last().map_or(Ratio::ZERO, |previous| {
+                previous.seconds_offset + previous.elapsed(at.as_ratio() - previous.position.as_ratio())
             });
-            points.push(segment(at, mark, offset));
+            points.push(TempoPoint {
+                position: at,
+                seconds_per_whole: opening_rate,
+                // A ramp with nowhere to arrive is a printed word: it says
+                // *rit.* and leaves the speed to the performer, so the map
+                // never hears about it.
+                ramp: marking.ramp.as_ref().and_then(|ramp| {
+                    Some(RampRate {
+                        to: seconds_per_whole(mark.beat, ramp.to?),
+                        over: ramp.over.as_ratio(),
+                        shape: ramp.shape.clone(),
+                    })
+                }),
+                seconds_offset,
+            });
         }
         Self {
             points,
@@ -168,15 +242,59 @@ impl IntegratedTempoMap {
 
     /// The tempo segments, in playing order: what an exporter needs to write
     /// a tempo change into a file that counts in beats rather than frames.
-    pub fn segments(&self) -> Vec<TempoSegment> {
-        self.points
-            .iter()
-            .map(|point| TempoSegment {
-                position: point.position,
-                frame: ratio_to_f64(point.frame_offset).round().max(0.0) as u64,
-                seconds_per_quarter: ratio_to_f64(point.seconds_per_whole) / 4.0,
-            })
-            .collect()
+    ///
+    /// A gradual change has no exact form in any of those files, so it is
+    /// **sampled** here, into `steps_per_whole` constant segments per whole
+    /// note of its reach. The density is the caller's argument rather than a
+    /// constant of the map, because the shape is normative and the sampling
+    /// is the consumer's policy (docs/kernel/07) — the same rule a hairpin's
+    /// `Progress` is read under, and the reason both are one type.
+    pub fn segments(&self, steps_per_whole: u32) -> Vec<TempoSegment> {
+        let mut segments = Vec::with_capacity(self.points.len());
+        for (index, point) in self.points.iter().enumerate() {
+            let next = self.points.get(index.saturating_add(1)).map(|point| point.position);
+            let Some(ramp) = point.ramp.as_ref() else {
+                segments.push(self.segment_at(point.position, point.seconds_per_whole));
+                continue;
+            };
+            // Cut at the next marking: past it, this segment says nothing.
+            let reach = next.map_or(ramp.over, |next| {
+                (next.as_ratio() - point.position.as_ratio()).min(ramp.over)
+            });
+            let steps = (reach * Ratio::from_integer(i64::from(steps_per_whole.max(1))))
+                .ceil()
+                .to_integer()
+                .max(1);
+            for step in 0..steps {
+                let along = reach * Ratio::new(step, steps);
+                let local = if ramp.over == Ratio::ZERO {
+                    Ratio::ONE
+                } else {
+                    along / ramp.over
+                };
+                segments.push(self.segment_at(
+                    MusicalTime::new(point.position.as_ratio() + along),
+                    point.rate_at(ramp, local),
+                ));
+            }
+            // The rate the ramp arrived at, stated once where it arrives —
+            // unless the next marking got there first and states its own.
+            let ends = point.position.as_ratio() + ramp.over;
+            if next.is_none_or(|next| ends < next.as_ratio()) {
+                segments.push(self.segment_at(MusicalTime::new(ends), ramp.to));
+            }
+        }
+        segments
+    }
+
+    /// One exported segment: a position, the frame it falls on, and the rate
+    /// in force there.
+    fn segment_at(&self, position: MusicalTime, seconds_per_whole: Ratio<i64>) -> TempoSegment {
+        TempoSegment {
+            position,
+            frame: self.frames(position),
+            seconds_per_quarter: ratio_to_f64(seconds_per_whole) / 4.0,
+        }
     }
 
     /// The absolute frame of a symbolic position (monotone; §22).
@@ -190,8 +308,9 @@ impl IntegratedTempoMap {
         else {
             return 0;
         };
-        let frames = point.frame_offset + (position.as_ratio() - point.position.as_ratio()) * point.frames_per_whole;
+        let seconds = point.seconds_offset + point.elapsed(position.as_ratio() - point.position.as_ratio());
         // One rounding, at the end: the segment offsets above are exact.
+        let frames = seconds * Ratio::from_integer(i64::from(self.sample_rate.max(1)));
         ratio_to_f64(frames).round().max(0.0) as u64
     }
 }
@@ -925,4 +1044,74 @@ fn sort_events(events: &mut [PerformanceEvent]) {
         }
     }
     events.sort_by_key(key);
+}
+
+#[cfg(test)]
+// The shapes here are written out literally, so a `None` is a typo in the test
+// rather than a condition the test could meaningfully handle.
+#[expect(
+    clippy::expect_used,
+    reason = "statically valid inputs; a failure is a bug in the test"
+)]
+mod ramp_shape_laws {
+    use num_rational::Ratio;
+
+    use super::{RampRate, TempoPoint};
+    use crate::time::MusicalTime;
+
+    fn r(numerator: i64, denominator: i64) -> Ratio<i64> {
+        Ratio::new(numerator, denominator)
+    }
+
+    /// A ramp whose shape is not a straight line, which is the case the
+    /// grammar cannot yet write and the integration is nonetheless written
+    /// for.
+    ///
+    /// Four whole notes from four seconds each to eight, but with the change
+    /// held back: a quarter of the way there at the halfway point, the rest
+    /// crowded into the second half. That is a *rit.* that seems to give way
+    /// suddenly, and a musician would hear the difference immediately.
+    ///
+    /// The arithmetic, by hand: the rate runs 4 → 5 over the first half and
+    /// 5 → 8 over the second, so the integral in local time is
+    /// `½·(4+5)/2 + ½·(5+8)/2 = 9/4 + 13/4 = 11/2`, and the ramp lasts
+    /// `4 · 11/2 = 22` seconds — against 24 for the straight line. Exact, and
+    /// different, which is the whole claim: the shape is normative, and a
+    /// consumer that ignored it would be two seconds out.
+    #[test]
+    fn a_shaped_ramp_integrates_along_its_shape() {
+        let shape = musa_kernel::Progress::piecewise([(r(0, 1), r(0, 1)), (r(1, 2), r(1, 4)), (r(1, 1), r(1, 1))])
+            .expect("a curve");
+        let point = TempoPoint {
+            position: MusicalTime::ZERO,
+            seconds_per_whole: Ratio::from_integer(4),
+            ramp: Some(RampRate {
+                to: Ratio::from_integer(8),
+                over: Ratio::from_integer(4),
+                shape,
+            }),
+            seconds_offset: Ratio::ZERO,
+        };
+        assert_eq!(point.elapsed(Ratio::from_integer(2)), Ratio::from_integer(9));
+        assert_eq!(point.elapsed(Ratio::from_integer(4)), Ratio::from_integer(22));
+        // Past the reach it is simply the rate it arrived at.
+        assert_eq!(point.elapsed(Ratio::from_integer(5)), Ratio::from_integer(30));
+    }
+
+    /// The straight line through the same endpoints, for the comparison the
+    /// test above rests on.
+    #[test]
+    fn the_straight_line_is_the_average_of_the_endpoints() {
+        let point = TempoPoint {
+            position: MusicalTime::ZERO,
+            seconds_per_whole: Ratio::from_integer(4),
+            ramp: Some(RampRate {
+                to: Ratio::from_integer(8),
+                over: Ratio::from_integer(4),
+                shape: musa_kernel::Progress::linear(),
+            }),
+            seconds_offset: Ratio::ZERO,
+        };
+        assert_eq!(point.elapsed(Ratio::from_integer(4)), Ratio::from_integer(24));
+    }
 }

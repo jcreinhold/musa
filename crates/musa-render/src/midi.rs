@@ -86,6 +86,17 @@ pub fn render_midi(performance: &PerformancePlan, options: &MidiOptions) -> Resu
     Ok(bytes)
 }
 
+/// How finely a gradual tempo change is sampled into constant segments, per
+/// whole note of its reach.
+///
+/// SMF has no continuous tempo — a *rit.* is a run of set-tempo events or it
+/// is nothing — so a density has to be chosen, and per docs/kernel/07 it is
+/// chosen **here**, by the consumer, rather than by the map that holds the
+/// normative shape. Thirty-two per whole note is a set-tempo every
+/// thirty-second note: below the threshold at which a listener hears steps,
+/// and small enough that an eight-bar riser costs a few hundred bytes.
+const TEMPO_STEPS_PER_WHOLE: u32 = 32;
+
 /// Frames → ticks, one segment per tempo.
 ///
 /// The plan is scheduled in frames; the file is metrical, so ticks are beats
@@ -108,7 +119,7 @@ impl Ticks {
     fn new(performance: &PerformancePlan, ticks_per_quarter: u16) -> Self {
         let rate = f64::from(performance.tempo().sample_rate());
         let mut segments: Vec<TickSegment> = Vec::new();
-        for segment in performance.tempo().segments() {
+        for segment in performance.tempo().segments(TEMPO_STEPS_PER_WHOLE) {
             let frames_per_quarter = segment.seconds_per_quarter * rate;
             let per_frame = if frames_per_quarter > 0.0 {
                 f64::from(ticks_per_quarter) / frames_per_quarter
@@ -155,7 +166,7 @@ impl Ticks {
 /// here and nowhere else.
 fn tempo_track(performance: &PerformancePlan, ticks: &Ticks) -> Track<'static> {
     let mut absolute: Vec<(u64, u8, MetaMessage<'static>)> = Vec::new();
-    for segment in performance.tempo().segments() {
+    for segment in performance.tempo().segments(TEMPO_STEPS_PER_WHOLE) {
         let micros = (segment.seconds_per_quarter * 1_000_000.0).round().max(1.0) as u32;
         absolute.push((
             ticks.of(segment.frame),

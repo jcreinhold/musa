@@ -1,0 +1,89 @@
+// An eight-bar accelerando into a drop (docs/prompts/73).
+//
+// The same construct as `rubato.musa`, pointed the other way and used the way
+// dance music uses it: a long build whose energy comes from the tempo itself,
+// then a hard cut back to the number the track sits at.
+//
+// Eight bars of 4/4 is eight whole notes, so `over 8/1` is the whole build.
+// The MIDI export writes this as a run of set-tempo events — thirty-two per
+// whole note, chosen by the exporter and not by the score (docs/kernel/07) —
+// because SMF has no continuous tempo. The page gets a marking at each end,
+// for the same reason: no notation format can draw a ramp as a function, so
+// every one of them prints where it starts and where it arrives.
+piece "Riser" {
+    // The build starts where the piece does, so the ramp is the starting
+    // tempo: eight bars from 128 to 160.
+    tempo 1/4 = 128 to 160 over 8/1 "accel.";
+    meter 4/4;
+    key a minor;
+
+    score {
+        part synth {
+            clef treble;
+
+            voice lead {
+                dynamic mp;
+
+                // The notes get shorter as the bars do.
+                a4 1/2;
+                c5 1/2;
+
+                e5 1/2;
+                a5 1/2;
+
+                a4 1/4;
+                c5 1/4;
+                e5 1/4;
+                a5 1/4;
+
+                a4 1/4;
+                c5 1/4;
+                e5 1/4;
+                a5 1/4;
+
+                a4 1/8;
+                c5 1/8;
+                e5 1/8;
+                a5 1/8;
+                a4 1/8;
+                c5 1/8;
+                e5 1/8;
+                a5 1/8;
+
+                a4 1/8;
+                c5 1/8;
+                e5 1/8;
+                a5 1/8;
+                a4 1/8;
+                c5 1/8;
+                e5 1/8;
+                a5 1/8;
+
+                a4 1/8;
+                c5 1/8;
+                e5 1/8;
+                a5 1/8;
+                a4 1/8;
+                c5 1/8;
+                e5 1/8;
+                a5 1/8;
+
+                a4 1/8;
+                c5 1/8;
+                e5 1/8;
+                a5 1/8;
+                a4 1/8;
+                c5 1/8;
+                e5 1/8;
+                a5 1/8;
+
+                // The drop: back to the track's tempo, all at once.
+                tempo 1/4 = 128;
+                a3 1/1;
+
+                a3 1/2;
+                e4 1/2;
+            }
+        }
+    }
+}

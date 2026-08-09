@@ -189,13 +189,14 @@ fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
             FactKind::Clef { clef } => {
                 contexts.clefs.state(fact.scope, at, *clef);
             }
-            FactKind::Tempo { metronome, text } => {
+            FactKind::Tempo { metronome, text, ramp } => {
                 contexts.tempos.state(
                     fact.scope,
                     at,
                     crate::score::TempoMarking {
                         metronome: *metronome,
                         text: text.clone(),
+                        ramp: ramp.clone(),
                     },
                 );
             }

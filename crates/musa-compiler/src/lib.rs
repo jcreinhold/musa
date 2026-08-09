@@ -79,8 +79,8 @@ pub use crate::scope::{ContextKind, Scope};
 pub use crate::score::{
     AnnotationStore, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, FreeDuration, FrontMatter,
     HairpinSpan, HarmonyMark, Key, MarkSpan, Meter, Metronome, Mode, MotifDeclaration, NotatedDuration, OpenKind,
-    OpenRegion, Part, PartId, PartMap, PhraseSpan, PointMark, ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark,
-    SlurSpan, TempoMarking, TupletSpan, Voice, VoiceId,
+    OpenRegion, Part, PartId, PartMap, PhraseSpan, PointMark, Ramp, ScoreEvent, ScoreEventKind, ScoreSnapshot,
+    SectionMark, SlurSpan, TempoMarking, TupletSpan, Voice, VoiceId,
 };
 pub use crate::studio::{
     Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,

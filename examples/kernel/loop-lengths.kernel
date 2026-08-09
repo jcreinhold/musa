@@ -123,7 +123,7 @@ kernel "Loop Lengths" {
       };
       timeline 8 {
         occurrence "piece|meter@4@4|677:692|677:692|0|" from 0 to 8;
-        occurrence "piece|tempo@1/4@124@|655:677|655:677|0|" from 0 to 8;
+        occurrence "piece|tempo@1/4@124@@@@|655:677|655:677|0|" from 0 to 8;
         occurrence "piece|key@a@minor|692:709|692:709|0|" from 0 to 8;
       }
     };
