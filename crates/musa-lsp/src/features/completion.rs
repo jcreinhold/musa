@@ -3,14 +3,17 @@
 //! Two sources, and each is the honest one for its kind. Keywords and unit
 //! suffixes come from `SPELLINGS` — the list the lexer itself is checked
 //! against, so the server can neither offer a word the lexer does not know
-//! nor miss one it does. Names come from the last valid compile's facts:
-//! motifs, parts, voices, and the studio's containers — offered with the kind
-//! of thing they are, so the menu reads as music rather than as text.
+//! nor miss one it does. A keyword carries its own documentation (prompt 84):
+//! the summary is the menu's detail line and the whole doc is the item's
+//! markdown, so the menu itself teaches. Names come from the last valid
+//! compile's facts: motifs, parts, voices, and the studio's containers —
+//! offered with the kind of thing they are, so the menu reads as music
+//! rather than as text.
 
 use std::collections::BTreeMap;
 
 use lsp_types::{CompletionItem, CompletionItemKind, CompletionResponse};
-use musa_language::{SPELLINGS, TokenClass};
+use musa_language::{SPELLINGS, SyntaxKind, TokenClass};
 
 use crate::workspace::Document;
 
@@ -27,12 +30,9 @@ pub(crate) fn completions(document: &Document) -> CompletionResponse {
             Some(TokenClass::Unit) => (CompletionItemKind::UNIT, "unit"),
             _ => continue,
         };
-        items.entry((*spelling).to_owned()).or_insert_with(|| CompletionItem {
-            label: (*spelling).to_owned(),
-            kind: Some(item_kind),
-            detail: Some(class.to_owned()),
-            ..CompletionItem::default()
-        });
+        items
+            .entry((*spelling).to_owned())
+            .or_insert_with(|| keyword_item(spelling, *kind, item_kind, class));
     }
     if let Some(score) = document.snapshot().score() {
         for part in &score.parts {
@@ -59,6 +59,35 @@ pub(crate) fn completions(document: &Document) -> CompletionResponse {
         }
     }
     CompletionResponse::Array(items.into_values().collect())
+}
+
+/// One vocabulary item — a keyword with its own documentation when it has
+/// one (prompt 84), a unit with only its class.
+fn keyword_item(
+    spelling: &str,
+    kind: SyntaxKind,
+    item_kind: CompletionItemKind,
+    class: &'static str,
+) -> CompletionItem {
+    let base = CompletionItem {
+        label: spelling.to_owned(),
+        kind: Some(item_kind),
+        ..CompletionItem::default()
+    };
+    let Some(doc) = musa_language::keyword_doc(kind) else {
+        return CompletionItem {
+            detail: Some(class.to_owned()),
+            ..base
+        };
+    };
+    CompletionItem {
+        detail: Some(doc.summary.to_owned()),
+        documentation: Some(lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+            kind: lsp_types::MarkupKind::Markdown,
+            value: format!("**{}** — *{}*\n\n{}", doc.spelling, doc.summary, doc.doc),
+        })),
+        ..base
+    }
 }
 
 /// Offer a name, keeping the first kind a label was offered with — a motif

@@ -681,6 +681,17 @@ fn completion_offers_the_vocabulary_and_the_names() {
     for expected in ["sigh", "violin", "strings"] {
         assert!(labels.contains(&expected), "name `{expected}` missing");
     }
+    // A keyword teaches from the menu: its own documentation rides the item
+    // (prompt 84), while a unit has only its class.
+    let tempo = items.iter().find(|item| item.label == "tempo").expect("tempo item");
+    assert_eq!(tempo.detail.as_deref(), Some("how fast, written where it changes"));
+    let Some(lsp_types::Documentation::MarkupContent(content)) = &tempo.documentation else {
+        panic!("tempo should carry markdown documentation");
+    };
+    assert!(content.value.contains("```musa"), "{}", content.value);
+    let hz = items.iter().find(|item| item.label == "Hz").expect("Hz item");
+    assert_eq!(hz.detail.as_deref(), Some("unit"));
+    assert!(hz.documentation.is_none());
     server.stop();
 }
 
