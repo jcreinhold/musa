@@ -26,7 +26,7 @@ the existing governing documents until prompt 137's audit graduates it.
 - `docs/course-correction.md` §§2–5, 13–14, 19–20, 24, 29, 34–35 and every file in `docs/kernel/`, especially
   `06-surface-elaboration.md` and `10-term-calculus.md`. The kernel still has no join, lambda, scale, chord, or musical
   payload knowledge.
-- Roadmap §§2–10, 15, 17–19; `docs/interface/02-interaction-model.md` and `04-origin-view.md`.
+- Roadmap §§2–10, 15, 17–19; `docs/interface/03-interaction.md` and `04-provenance.md`.
 - Open Music Theory (OMT) `005`, `013`–`021`, `023`–`028`, `033`–`036`, `049`–`051`, `061`–`076`, and
   `099`–`110`
   under `~/Code/papers/music-theory/open-music-theory/`. Cite the exact chapter file for every imported music-theory
