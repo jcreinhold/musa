@@ -2299,6 +2299,7 @@ dependencies = [
 name = "musa-audio"
 version = "0.1.0"
 dependencies = [
+ "divan",
  "hound",
  "insta",
  "musa-compiler",

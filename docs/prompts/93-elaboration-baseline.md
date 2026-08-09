@@ -1,7 +1,7 @@
 ---
 id: 93
 slug: elaboration-baseline
-status: pending
+status: done
 depends_on: [38, 49, 92]
 phase: 3
 ---

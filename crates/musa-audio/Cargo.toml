@@ -15,5 +15,10 @@ musa-compiler = { workspace = true }
 thiserror = "2"
 
 [dev-dependencies]
+divan = "0.1.21"
 insta = "1"
 proptest = "1"
+
+[[bench]]
+harness = false
+name = "audio_bridge"

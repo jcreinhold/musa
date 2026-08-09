@@ -1,0 +1,8 @@
+# musa audio-bridge backend compatibility manifest v1
+# Test oracle only; these are complete export bytes, not normalized summaries.
+mei=bytes:2986:digest:27f438d797ac74ea:warnings:[]
+lilypond=bytes:456:digest:9c2771468f3cea3d:warnings:[]
+musicxml=bytes:4881:digest:a5eb61ba0b3bb20c:warnings:[]
+midi-score=bytes:143:digest:939bcf5da1336419:warnings:[]
+midi-performance=bytes:145:digest:8726381a84360fa5:warnings:[]
+wav=bytes:2035268:digest:5177d9092097c3c0:warnings:[]

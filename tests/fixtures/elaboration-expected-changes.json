@@ -1,0 +1,30 @@
+{
+  "schema": "musa-elaboration-expected-changes-v1",
+  "entries": [
+    {
+      "defect": "processor-hover-gap",
+      "observation": "built-in studio processors are plain identifiers and receive no processor hover",
+      "repair_prompt": 119
+    },
+    {
+      "defect": "eager-studio-f64-conversion",
+      "observation": "StudioSpec stores resolved parameter magnitudes as f64 instead of exact written values",
+      "repair_prompt": 120
+    },
+    {
+      "defect": "graph-topology-modulation-address",
+      "observation": "modulate resolves through a processor-name-or-label graph address rather than a stable declared control path",
+      "repair_prompt": 122
+    },
+    {
+      "defect": "shared-note-stream-warning",
+      "observation": "two assigned patches both consume the merged note stream and therefore sound both parts",
+      "repair_prompt": 123
+    },
+    {
+      "defect": "ignored-parameter-event",
+      "observation": "PerformanceEvent::Parameter is sorted and delivered but ignored by the render plan",
+      "repair_prompt": 124
+    }
+  ]
+}

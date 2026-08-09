@@ -1,0 +1,18 @@
+library {
+    motif imported_a_a() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_b() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_c() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_d() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_e() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_f() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_g() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_h() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_i() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_j() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_k() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_l() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_m() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_n() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_o() { c4/4 d4/4 e4/4 f4/4 }
+    motif imported_a_p() { c4/4 d4/4 e4/4 f4/4 }
+}
