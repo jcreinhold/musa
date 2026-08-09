@@ -81,14 +81,15 @@ fn musicxml_carries_both_tempos_and_the_hairpin() {
     );
 }
 
-/// `LilyPond` writes both as a user would by hand: `\tempo 4 = 108`, and a
+/// `LilyPond` writes both as a user would by hand — including the word the
+/// second marking carries, which `\tempo` takes ahead of the number — and a
 /// wedge that opens on a note and closes on a dynamic.
 #[test]
 fn lilypond_carries_both_tempos_and_the_hairpin() {
     let ly = render(NotationTarget::LilyPond);
     assert_contains(
         &ly,
-        &["\\tempo 4 = 72", "\\tempo 4 = 108", "\\<", "\\f"],
+        &["\\tempo 4 = 72", "\\tempo \"poco più mosso\" 4 = 108", "\\<", "\\f"],
         "the LilyPond export",
     );
 }

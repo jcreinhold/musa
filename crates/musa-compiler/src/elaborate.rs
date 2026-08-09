@@ -31,9 +31,7 @@ use crate::origin::{ExpansionStep, Origin, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::resolve::{self, ExpandCx, Resolver};
 use crate::scope::Scope;
-use crate::score::{
-    DynamicMark, Meter, Mode, NotatedDuration, Part, PartId, ScoreSnapshot, TempoChange, Voice, VoiceId,
-};
+use crate::score::{DynamicMark, Meter, Mode, NotatedDuration, Part, PartId, ScoreSnapshot, Voice, VoiceId};
 use crate::time::MusicalTime;
 use musa_kernel::{Beat, Occurrence, Span, Term, Timeline, sequence, timeline};
 use musa_language::ast::{AstNode as _, PieceDecl, VoiceItem};
@@ -128,6 +126,24 @@ pub(crate) enum FactKind {
     Meter { numerator: u32, denominator: u32 },
     /// The clef a staff is read in, over the region it governs.
     Clef { clef: crate::Clef },
+    /// The tempo *marking*, over the region it governs.
+    ///
+    /// The marking, not the map. `♩ = 92` is notation written at a place —
+    /// the engraver prints it, the exporters carry it — and the `Beat →
+    /// Second` function performance integrates is *derived* from the markings
+    /// (course correction §22). Keeping the two apart is why this is a fact:
+    /// a fact has a place in the piece, and a function does not.
+    ///
+    /// Both halves are optional and neither implies the other. `tempo
+    /// "Andante";` prints a word and changes no clock — which is what most
+    /// tempo markings in most scores do — and a metronome mark with no word
+    /// is the common modern case.
+    Tempo {
+        /// The metronome mark, when the marking states one.
+        metronome: Option<crate::score::Metronome>,
+        /// The word printed with it, when the marking states one.
+        text: Option<String>,
+    },
     /// A form marker at the place it names.
     Section { name: String },
     /// A chord symbol at the place it is written; a region once a chord's
@@ -175,6 +191,7 @@ impl FactKind {
             | Self::Key { .. }
             | Self::Meter { .. }
             | Self::Clef { .. }
+            | Self::Tempo { .. }
             | Self::Section { .. }
             | Self::Harmony { .. }
             | Self::Repeat { .. }
@@ -198,6 +215,7 @@ impl FactKind {
             | Self::Key { .. }
             | Self::Meter { .. }
             | Self::Clef { .. }
+            | Self::Tempo { .. }
             | Self::Section { .. }
             | Self::Harmony { .. }
             | Self::Repeat { .. }
@@ -221,6 +239,7 @@ impl FactKind {
             | Self::Key { .. }
             | Self::Meter { .. }
             | Self::Clef { .. }
+            | Self::Tempo { .. }
             | Self::Section { .. }
             | Self::Harmony { .. }
             | Self::Repeat { .. }
@@ -274,6 +293,7 @@ impl ScoreFact {
             | FactKind::Key { .. }
             | FactKind::Meter { .. }
             | FactKind::Clef { .. }
+            | FactKind::Tempo { .. }
             | FactKind::Section { .. }
             | FactKind::Harmony { .. }
             | FactKind::Repeat { .. }
@@ -313,6 +333,7 @@ impl ScoreFact {
             | FactKind::Key { .. }
             | FactKind::Meter { .. }
             | FactKind::Clef { .. }
+            | FactKind::Tempo { .. }
             | FactKind::Section { .. }
             | FactKind::Harmony { .. }
             | FactKind::Repeat { .. }
@@ -400,6 +421,10 @@ impl musa_kernel::Canonical for ScoreFact {
             }
             FactKind::Meter { numerator, denominator } => format!("meter:{numerator}/{denominator}|"),
             FactKind::Clef { clef } => format!("clef:{}|", clef.name()),
+            FactKind::Tempo { metronome, text } => {
+                let mark = metronome.map_or_else(String::new, |mark| format!("{}={}", mark.beat, mark.bpm));
+                format!("tempo:{mark}:{}|", text.as_deref().unwrap_or_default())
+            }
             FactKind::Section { name } => format!("section:{name}|"),
             FactKind::Harmony { symbol } => format!("harmony:{}|", symbol.text),
             FactKind::Repeat { times } => format!("repeat:{times}|"),
@@ -490,12 +515,9 @@ pub(crate) fn elaborate_parsed(
     let libraries = crate::imports::load(resolver, name, &piece, &options.imports);
     elaborate_libraries(resolver, &libraries, &mut snapshot);
     resolve::lower_header(resolver, &piece, &mut snapshot);
-    let mut identity = musa_kernel::SemanticHash::default();
-    if let Some(score) = piece.score() {
-        let context = elaborate_score(resolver, &piece, &score, &mut snapshot);
-        identity = context.identity;
-        elaborate_tempo_changes(resolver, &piece, &mut snapshot, &context);
-    }
+    let identity = piece.score().map_or_else(musa_kernel::SemanticHash::default, |score| {
+        elaborate_score(resolver, &piece, &score, &mut snapshot)
+    });
     snapshot.set_annotations(std::mem::take(&mut resolver.annotations));
     // Advice about a piece that does not compile is advice about a piece that
     // does not exist. A bar reported as a quarter too long already makes every
@@ -531,15 +553,6 @@ pub(crate) fn elaborate_parsed(
 /// Both fields are read *off the timeline* — the extent is the kernel's own,
 /// and the barlines are folded from the meter occurrences — which is why no
 /// function in this module recomputes either from the snapshot.
-pub(crate) struct PieceContext {
-    /// Where the piece ends, in whole notes.
-    extent: MusicalTime,
-    /// Where its barlines fall.
-    bars: crate::BarLines,
-    /// The semantic identity of the whole piece (docs/kernel/05 N6).
-    identity: musa_kernel::SemanticHash,
-}
-
 /// Walk parts and voices exactly as the direct lowerer does, elaborating
 /// each voice into kernel facts — and then overlay every one of them, plus
 /// the piece's key, meter, form markers and chord symbols, into a single
@@ -553,7 +566,7 @@ fn elaborate_score(
     piece: &PieceDecl,
     score: &musa_language::ast::ScoreDecl,
     snapshot: &mut ScoreSnapshot,
-) -> PieceContext {
+) -> musa_kernel::SemanticHash {
     let mut voice_names: indexmap::IndexMap<PartId, indexmap::IndexMap<VoiceId, String>> = indexmap::IndexMap::new();
     let mut metadata: Vec<(PartId, String)> = Vec::new();
     // Clefs are context, so they enter the timeline with the key and the
@@ -682,11 +695,7 @@ fn elaborate_score(
         }
         snapshot.parts_mut().insert(id, Part::new(id, name, voices, names));
     }
-    PieceContext {
-        extent: MusicalTime::new(extent.as_ratio()),
-        bars,
-        identity,
-    }
+    identity
 }
 
 /// The facts that are about the piece rather than about a voice: its key,
@@ -742,6 +751,20 @@ fn context_facts(
             ),
         ),
     )];
+    // Unlike the meter, an unwritten tempo is *not* a tempo: a page with no
+    // marking on it is a page with no marking on it, and the 120 a performance
+    // falls back to is the performance layer's default, not something the
+    // piece said. So the fact exists only where a marking does.
+    if let Some(header) = piece.tempo() {
+        occurrences.push(Occurrence::new(
+            region,
+            ScoreFact::new(
+                Scope::Piece,
+                resolve::tempo_fact(resolver, &header),
+                at_span(resolve::span_of(header.syntax())),
+            ),
+        ));
+    }
     if let Some(key) = key {
         occurrences.push(Occurrence::new(
             region,
@@ -860,60 +883,6 @@ fn elaborate_libraries(resolver: &mut Resolver, libraries: &crate::imports::Libr
         resolve::register_motifs(resolver, snapshot, &library.motifs(), Some(path));
         resolve::register_fragments(resolver, snapshot, &library.fragments(), Some(path));
     }
-}
-
-/// Resolve the piece's tempo changes against the meter (roadmap §6.3).
-///
-/// A tempo change is written where a form marker is written — `at 9:1` — and
-/// for the same reason: a tempo belongs to a place in the piece, not to a
-/// note. Positions are resolved after the parts exist so that a tempo nobody
-/// ever reaches is an error rather than a silent segment.
-fn elaborate_tempo_changes(
-    resolver: &mut Resolver,
-    piece: &musa_language::ast::PieceDecl,
-    snapshot: &mut ScoreSnapshot,
-    context: &PieceContext,
-) {
-    let declaration = crate::origin::DeclarationId::default();
-    let mut changes: Vec<TempoChange> = Vec::new();
-    for tempo in piece.tempos().iter().filter(|tempo| tempo.position().is_some()) {
-        let span = resolve::trimmed_span(tempo.syntax());
-        let Some(at) = resolve_position(resolver, tempo.position().as_ref(), span, &context.bars, context.extent)
-        else {
-            continue;
-        };
-        if at == MusicalTime::ZERO {
-            resolver.report(
-                Diagnostic::error(Code::Misplaced, "the tempo at `1:1` is the piece's starting tempo")
-                    .at(span, "drop the `at 1:1`")
-                    .help("write `tempo quarter = 72;` in the header"),
-            );
-            continue;
-        }
-        if changes.iter().any(|existing| existing.at == at) {
-            resolver.error(
-                Code::Misplaced,
-                "two tempos at the same place",
-                span,
-                "the second of two",
-            );
-            continue;
-        }
-        let (beat, bpm) = resolve::tempo_reading(resolver, tempo);
-        changes.push(TempoChange {
-            at,
-            beat,
-            bpm,
-            origin: Origin {
-                source_span: span,
-                definition_span: span,
-                declaration,
-                expansion_path: Vec::new(),
-            },
-        });
-    }
-    changes.sort_by_key(|change| change.at);
-    snapshot.tempo_mut().changes = changes;
 }
 
 /// Turn a `measure:beat` coordinate into time, or report why it is not one.
@@ -1537,6 +1506,7 @@ fn elaborate_item(
     place: Place,
 ) -> Segment {
     match item {
+        VoiceItem::Tempo(stmt) => elaborate_tempo(resolver, stmt, cx, place),
         VoiceItem::Meter(stmt) => elaborate_meter(resolver, stmt, cx, place),
         VoiceItem::Key(stmt) => elaborate_key(resolver, stmt, cx, place),
         VoiceItem::Clef(stmt) => elaborate_clef(resolver, stmt, cx, scope, place),
@@ -2276,6 +2246,33 @@ fn elaborate_meter(
             numerator: meter.numerator(),
             denominator: meter.denominator(),
         },
+        origin_of(cx, span),
+    )))
+}
+
+/// A `tempo` written where the music reaches it.
+///
+/// `Scope::Piece`, like the meter, and a point rather than a region: a tempo
+/// marking is in force until the next one, which is what a `ContextTrack`
+/// already means by a stretch that starts here.
+///
+/// It is refused inside material for the reason every context statement is
+/// (`context.rs`): a motif body sits at several absolute times, and a tempo
+/// change written into one would change the piece wherever the motif landed.
+fn elaborate_tempo(
+    resolver: &mut Resolver,
+    stmt: &musa_language::ast::TempoStmt,
+    cx: &ExpandCx,
+    place: Place,
+) -> Segment {
+    let span = resolve::trimmed_span(stmt.syntax());
+    if place == Place::Material {
+        resolver.report(misplaced_context("tempo", span));
+        return Segment::empty();
+    }
+    Segment::literal(point(ScoreFact::new(
+        Scope::Piece,
+        resolve::tempo_fact(resolver, stmt),
         origin_of(cx, span),
     )))
 }

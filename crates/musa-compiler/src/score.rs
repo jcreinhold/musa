@@ -329,54 +329,44 @@ impl PartMap {
     }
 }
 
-/// A tempo written at a place in the piece (roadmap §6.3).
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TempoChange {
-    /// Where the new tempo takes effect.
-    pub at: MusicalTime,
-    /// The beat unit as a fraction of a whole note (`1/4` for a quarter).
-    pub beat: Ratio<i64>,
-    /// Beats per minute from `at` onward.
-    pub bpm: u32,
-    /// The statement that wrote it.
-    pub origin: Origin,
-}
-
-/// The piece's tempo: what it starts in, and every change after that
-/// (roadmap §6.3's tempo map, piecewise since prompt 36).
+/// A metronome mark: a note value and a number of them per minute.
 ///
-/// The map is symbolic. It says what is written, in beats and beats per
-/// minute; turning that into frames is the performance layer's job
-/// ([`crate::IntegratedTempoMap`]), and no note in the score moves because a
-/// tempo changed.
-///
-/// Prompt 40 moved key, meter, sections and chord symbols into the timeline
-/// as occurrences and left tempo here, which looks like an omission and is
-/// not. Course correction **§22**: a tempo is a map from symbolic time to
-/// physical time, applied at realization. `stretch` changes the music; a
-/// tempo change changes the performance of it. Making tempo a fact of the
-/// timeline would offer a place where those two could be confused, and the
-/// first person to confuse them would write a `stretch` that means
-/// *ritardando* and a tempo change that re-bars the score.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TempoMap {
+/// Not a tempo *map* — this is the pair a reader sees printed over the staff.
+/// What it means in seconds is the performance layer's integration of every
+/// such mark in the piece (course correction §22).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Metronome {
     /// The beat unit as a fraction of a whole note (`1/4` for a quarter).
     pub beat: Ratio<i64>,
     /// Beats per minute.
     pub bpm: u32,
-    /// Later tempos, in playing order, each starting where it says.
-    #[serde(default)]
-    pub changes: Vec<TempoChange>,
 }
 
-impl Default for TempoMap {
+impl Default for Metronome {
+    /// A quarter at 120: what an unmarked piece performs at, and the one
+    /// value no caller should have to pass.
     fn default() -> Self {
         Self {
-            beat: Ratio::new(1, 4),
+            beat: Ratio::new_raw(1, 4),
             bpm: 120,
-            changes: Vec::new(),
         }
     }
+}
+
+/// A tempo marking written at a place in the piece.
+///
+/// Both halves are optional, and that is the whole design. `Allegro` with no
+/// number is what most scores actually say; a metronome mark with no word is
+/// what most modern ones say; and a marking with neither is not a marking.
+/// A `TempoMarking` with no [`Metronome`] prints and changes no clock, which
+/// is the fact that keeps the notation and the `Beat → Second` function from
+/// collapsing back into one struct.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TempoMarking {
+    /// The metronome mark, when the marking states one.
+    pub metronome: Option<Metronome>,
+    /// The word printed with it, when the marking states one.
+    pub text: Option<String>,
 }
 
 /// The initial meter.
@@ -1036,7 +1026,6 @@ pub struct ScoreSnapshot {
     title: String,
     front_matter: FrontMatter,
     parts: PartMap,
-    tempo_map: TempoMap,
     contexts: Contexts,
     annotations: AnnotationStore,
     motifs: Vec<MotifDeclaration>,
@@ -1054,6 +1043,7 @@ pub(crate) struct Contexts {
     pub(crate) keys: ContextTrack<Key>,
     pub(crate) meters: ContextTrack<Meter>,
     pub(crate) clefs: ContextTrack<Clef>,
+    pub(crate) tempos: ContextTrack<TempoMarking>,
 }
 
 impl Default for Contexts {
@@ -1062,6 +1052,7 @@ impl Default for Contexts {
             keys: ContextTrack::new(ContextKind::Key),
             meters: ContextTrack::new(ContextKind::Meter),
             clefs: ContextTrack::new(ContextKind::Clef),
+            tempos: ContextTrack::new(ContextKind::Tempo),
         }
     }
 }
@@ -1096,15 +1087,23 @@ impl ScoreSnapshot {
         &self.parts
     }
 
-    /// The piece's tempo: what it starts in, and every change after that.
-    pub fn tempo(&self) -> &TempoMap {
-        &self.tempo_map
+    /// The tempo marking in force at a moment, as a reader in `scope` sees
+    /// it. A piece that writes none has an unmarked page — which is not the
+    /// same as a piece at 120, and the difference is why this returns an
+    /// option and [`crate::IntegratedTempoMap`] supplies the default.
+    pub fn tempo_at(&self, scope: Scope, at: MusicalTime) -> Option<&TempoMarking> {
+        self.contexts.tempos.at(scope, at)
+    }
+
+    /// Every tempo marking the piece states, and where each begins.
+    pub fn tempos(&self) -> &ContextTrack<TempoMarking> {
+        &self.contexts.tempos
     }
 
     /// The meter in force at a moment, as a reader in `scope` sees it. A
     /// piece that names none is in 4/4.
     pub fn meter_at(&self, scope: Scope, at: MusicalTime) -> Meter {
-        self.contexts.meters.at(scope, at).unwrap_or_default()
+        self.contexts.meters.at(scope, at).copied().unwrap_or_default()
     }
 
     /// Every meter the piece states, and where each begins.
@@ -1119,14 +1118,14 @@ impl ScoreSnapshot {
     /// [`crate::BarLines`]'s module documentation).
     pub fn bars(&self) -> crate::BarLines {
         let mut changes = self.contexts.meters.changes(Scope::Piece);
-        let opening = changes.next().map_or_else(Meter::default, |(_, meter)| meter);
+        let opening = changes.next().map_or_else(Meter::default, |(_, meter)| *meter);
         let mut bars = crate::BarLines::uniform(opening);
         for (at, meter) in changes {
             // A change that does not land on a barline is an error the
             // compiler already reported, and dropping it keeps a piece that
             // does not compile printable — which is what the desktop shows
             // while the composer is still typing.
-            let _ = bars.change(at, meter);
+            let _ = bars.change(at, *meter);
         }
         bars
     }
@@ -1135,7 +1134,7 @@ impl ScoreSnapshot {
     /// it, or `None` when nothing has said one — a piece that names no key
     /// has none, and saying so is more use than inventing C major.
     pub fn key_at(&self, scope: Scope, at: MusicalTime) -> Option<Key> {
-        self.contexts.keys.at(scope, at)
+        self.contexts.keys.at(scope, at).copied()
     }
 
     /// Every key the piece states, and where each begins.
@@ -1146,7 +1145,7 @@ impl ScoreSnapshot {
     /// The clef a part is read in at a moment, or `None` when neither the
     /// part nor anything containing it names one.
     pub fn clef_at(&self, part: PartId, at: MusicalTime) -> Option<Clef> {
-        self.contexts.clefs.at(Scope::Part { part: part.0 }, at)
+        self.contexts.clefs.at(Scope::Part { part: part.0 }, at).copied()
     }
 
     /// Every clef the piece states, and where each begins.
@@ -1213,10 +1212,6 @@ impl ScoreSnapshot {
 
     pub(crate) fn parts_mut(&mut self) -> &mut PartMap {
         &mut self.parts
-    }
-
-    pub(crate) fn tempo_mut(&mut self) -> &mut TempoMap {
-        &mut self.tempo_map
     }
 
     pub(crate) fn set_contexts(&mut self, contexts: Contexts) {

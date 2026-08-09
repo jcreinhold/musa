@@ -1,7 +1,7 @@
 ---
 id: 72
 slug: tempo-facts
-status: pending
+status: done
 depends_on: [63, 64]
 phase: 3
 ---
@@ -104,7 +104,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cargo run -p musa-cli -- render examples/tempo-changes.musa --to midi -o /tmp/t.mid
-cargo run -p musa-cli -- render examples/tempo-changes.musa --to lilypond | grep -c '\\tempo'   # 3
+cargo run -p musa-cli -- render examples/tempo-changes.musa --to lilypond -o /tmp/t.ly
+grep -c '\\tempo' /tmp/t.ly                                                        # 3
 grep -rn "TempoMap" crates --include="*.rs" | grep -v IntegratedTempoMap | wc -l    # 0
 ```
 
@@ -119,3 +120,45 @@ Commit as `Make the tempo marking a fact`.
 - No swing or rubato — prompts 69 and 73.
 - No metric modulation notation (`♩ = ♩.`) unless a fixture needs it; it is a marking form, not a new concept, and
   can be added as a row later.
+
+## Repairs made while implementing
+
+1. **The prompt's premise about `TempoMap.changes` was stale.** It said the field "exists and nothing ever populates
+   it". It was populated — by `tempo 1/4 = 108 at 3:1;`, a header form with a bar:beat coordinate, used by
+   `examples/album/pieces/01-opening.musa` and by three tests in `crates/musa-compiler/tests/curve_laws.rs`. So this
+   prompt is not "make an empty capability real"; it is "collapse two mechanisms into one". The `at` form is
+   **deleted** rather than kept beside the new one: a marking written where it happens and a marking written at a
+   coordinate are two ways to say the same thing, and keeping both would leave exactly the duplication prompt 63
+   exists to remove. `01-opening.musa` and the three tests were migrated.
+
+2. **`ContextTrack`'s bound relaxed from `Copy` to `Clone`.** A tempo marking carries a `String`, and every other
+   context value is a small `Copy` scalar. `at` and `changes` now hand out references, and `meter_at`/`key_at`/
+   `clef_at` `.copied()` at the boundary so their callers are unchanged.
+
+3. **`TempoText` is `{ metronome: Option<Metronome>, text: Option<String> }`, not `{ unit, bpm, text }`.** The
+   prompt's `FactKind::Tempo { unit, bpm, text }` cannot say "a word and no number" without a sentinel bpm, which is
+   the collapse in miniature. The two halves are optional *together* — that is what the three forms are.
+
+4. **`tempo` takes a beat unit or a quoted word, and both after `=`.** `LilyPond` writes the word first
+   (`\tempo "poco più mosso" 4 = 108`), `MusicXML` writes `<words>` and `<metronome>` inside one `<direction>`, and
+   MEI writes the word as the `<tempo>` element's content beside `@mm`/`@mm.unit`. Each format's own way of saying
+   the same one marking.
+
+5. **No "this tempo says nothing" diagnostic.** The grammar refuses `tempo;` outright and a file with a syntax error
+   never reaches elaboration, so a resolver check for a marking with neither half could not fire. It was written,
+   found unreachable, and removed.
+
+6. **`PieceContext` collapsed to its one live field.** Deleting `elaborate_tempo_changes` left `extent` and `bars`
+   unread; `elaborate_score` now returns the `SemanticHash` directly.
+
+7. **`ScoreFacts::tempo_bpm`/`tempo_beat` are the *transport's* opening tempo**, defaulting to quarter = 120 exactly
+   as performance does, rather than the page's. A piece may now state no metronome mark at all, and the transport
+   readout still has a speed to show. Where the markings fall is the notation plan's business.
+
+8. **The Check's `grep -c` needed a file.** `musa-cli render` writes to a path, not to stdout, so the line was
+   repaired to render to `/tmp/t.ly` and grep that. It reports 3, as the prompt says.
+
+9. **`curve_laws.rs`'s out-of-range test is gone, and two laws replaced it.** With no coordinate to write, "the piece
+   ends before" and "the tempo at `1:1` is the piece's starting tempo" are unreachable states rather than refused
+   ones. What is left to refuse is a second *header* tempo, which is one test; and the law worth adding in their
+   place is `a_tempo_word_with_no_number_moves_nothing`, which is the marking/map split measured in frames.

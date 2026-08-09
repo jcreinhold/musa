@@ -103,12 +103,23 @@ fn seconds_per_whole(beat: Ratio<i64>, bpm: u32) -> Ratio<i64> {
 }
 
 impl IntegratedTempoMap {
-    /// Build the map from a snapshot's tempo declarations.
+    /// Integrate the piece's tempo *markings* into a `Beat → Second` map.
+    ///
+    /// This is where the two things called tempo meet and stay apart (course
+    /// correction §22). The markings are notation: they have places, they are
+    /// printed, and some of them are only words. The map is a function, it is
+    /// not in the snapshot, and it is built here — from the markings that
+    /// carry a metronome and from no others.
+    ///
+    /// `tempo "Andante";` therefore contributes a printed word and no
+    /// segment, which is the behaviour that proves the split. A piece with no
+    /// metronome mark anywhere performs at a quarter = 120: the default lives
+    /// here rather than in the snapshot, because it is a fact about playing
+    /// an unmarked page, not a fact about the page.
     pub fn new(snapshot: &ScoreSnapshot, options: &PerformanceOptions) -> Self {
-        let tempo = snapshot.tempo();
         let rate = Ratio::from_integer(i64::from(options.sample_rate.max(1)));
-        let segment = |position: MusicalTime, beat: Ratio<i64>, bpm: u32, frame_offset: Ratio<i64>| {
-            let seconds = seconds_per_whole(beat, bpm);
+        let segment = |position: MusicalTime, mark: crate::score::Metronome, frame_offset: Ratio<i64>| {
+            let seconds = seconds_per_whole(mark.beat, mark.bpm);
             TempoPoint {
                 position,
                 frames_per_whole: seconds * rate,
@@ -116,16 +127,25 @@ impl IntegratedTempoMap {
                 frame_offset,
             }
         };
-        let mut points = vec![segment(MusicalTime::ZERO, tempo.beat, tempo.bpm, Ratio::ZERO)];
-        for change in &tempo.changes {
+        let mut marks: Vec<(MusicalTime, crate::score::Metronome)> = snapshot
+            .tempos()
+            .changes(crate::Scope::Piece)
+            .filter_map(|(at, marking)| Some((at, marking.metronome?)))
+            .collect();
+        // A piece whose first marking is a word alone still has to start
+        // somewhere, and so does a piece with no marking at all.
+        if marks.first().is_none_or(|(at, _)| *at != MusicalTime::ZERO) {
+            marks.insert(0, (MusicalTime::ZERO, crate::score::Metronome::default()));
+        }
+        let mut points: Vec<TempoPoint> = Vec::new();
+        for (at, mark) in marks {
             // Where the previous segment has carried the music to by the time
-            // this one starts. Changes are in playing order (the elaborator
-            // sorts them), so `last` is always the segment being left.
+            // this one starts. Changes arrive in playing order, so `last` is
+            // always the segment being left.
             let offset = points.last().map_or(Ratio::ZERO, |previous| {
-                previous.frame_offset
-                    + (change.at.as_ratio() - previous.position.as_ratio()) * previous.frames_per_whole
+                previous.frame_offset + (at.as_ratio() - previous.position.as_ratio()) * previous.frames_per_whole
             });
-            points.push(segment(change.at, change.beat, change.bpm, offset));
+            points.push(segment(at, mark, offset));
         }
         Self {
             points,
@@ -524,7 +544,7 @@ pub fn lower_performance(
         .changes(crate::Scope::Piece)
         .map(|(at, meter)| MeterChange {
             frame: tempo.frames(at),
-            meter,
+            meter: *meter,
         })
         .collect();
     let keys = score
@@ -532,7 +552,7 @@ pub fn lower_performance(
         .changes(crate::Scope::Piece)
         .map(|(at, key)| KeyChange {
             frame: tempo.frames(at),
-            key,
+            key: *key,
         })
         .collect();
     Ok(PerformancePlan {
@@ -562,7 +582,7 @@ struct Clock<'a> {
 impl Clock<'_> {
     /// The frame a written instant is played at.
     fn frames(&self, at: MusicalTime) -> u64 {
-        let meter = self.meters.at(crate::Scope::Piece, at).unwrap_or_default();
+        let meter = self.meters.at(crate::Scope::Piece, at).copied().unwrap_or_default();
         self.tempo.frames(self.groove.warp(meter, at))
     }
 

@@ -1079,14 +1079,6 @@ ScoreSnapshot {
             },
         },
     },
-    tempo_map: TempoMap {
-        beat: Ratio {
-            numer: 1,
-            denom: 4,
-        },
-        bpm: 96,
-        changes: [],
-    },
     contexts: Contexts {
         keys: ContextTrack {
             kind: Key,
@@ -1155,6 +1147,32 @@ ScoreSnapshot {
                         },
                     ),
                     value: Bass,
+                },
+            ],
+        },
+        tempos: ContextTrack {
+            kind: Tempo,
+            stretches: [
+                Stretch {
+                    scope: Piece,
+                    start: MusicalTime(
+                        Ratio {
+                            numer: 0,
+                            denom: 1,
+                        },
+                    ),
+                    value: TempoMarking {
+                        metronome: Some(
+                            Metronome {
+                                beat: Ratio {
+                                    numer: 1,
+                                    denom: 4,
+                                },
+                                bpm: 96,
+                            },
+                        ),
+                        text: None,
+                    },
                 },
             ],
         },

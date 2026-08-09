@@ -259,6 +259,15 @@ fn kind_text(kind: &FactKind) -> String {
             vec!["meter".to_owned(), numerator.to_string(), denominator.to_string()]
         }
         FactKind::Clef { clef } => vec!["clef".to_owned(), clef.name().to_owned()],
+        // Four fields, two of which may be empty: a marking is a metronome
+        // mark, a word, or both, and the round trip has to keep "no word"
+        // apart from "the empty word".
+        FactKind::Tempo { metronome, text } => vec![
+            "tempo".to_owned(),
+            metronome.map_or_else(String::new, |mark| mark.beat.to_string()),
+            metronome.map_or_else(String::new, |mark| mark.bpm.to_string()),
+            text.clone().unwrap_or_default(),
+        ],
         FactKind::Section { name } => vec!["section".to_owned(), name.clone()],
         FactKind::Harmony { symbol } => vec!["harmony".to_owned(), symbol.text.clone()],
         FactKind::Repeat { times } => vec!["repeat".to_owned(), times.to_string()],
@@ -357,6 +366,22 @@ fn read_kind(text: &str) -> Option<FactKind> {
             numerator: arg(1)?.parse().ok()?,
             denominator: arg(2)?.parse().ok()?,
         }),
+        ("tempo", 4) => {
+            let beat = arg(1)?;
+            let bpm = arg(2)?;
+            let text = arg(3)?;
+            Some(FactKind::Tempo {
+                metronome: if beat.is_empty() {
+                    None
+                } else {
+                    Some(crate::score::Metronome {
+                        beat: crate::resolve::parse_ratio(beat)?,
+                        bpm: bpm.parse().ok()?,
+                    })
+                },
+                text: (!text.is_empty()).then(|| text.to_owned()),
+            })
+        }
         ("clef", 2) => Some(FactKind::Clef {
             clef: crate::Clef::parse(arg(1)?)?,
         }),

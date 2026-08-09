@@ -96,10 +96,7 @@ pub(crate) enum Inheritance {
 /// | `Clef` | `Override` | a part's clef is the part's business |
 /// | `Meter` | `Override` | this *is* polymeter: a 7/8 lane does not rejoin 4/4 |
 /// | `Key` | `Latest` | a part follows the piece's modulations |
-///
-/// Tempo is missing on purpose: the tempo marking is still a scalar and
-/// becomes a fact in the prompt that needs it, and a row no track is built
-/// from would be a rule nothing could test.
+/// | `Tempo` | `Override` | likewise polytempo: a lane at its own speed keeps it |
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ContextKind {
     /// The key signature.
@@ -108,6 +105,8 @@ pub enum ContextKind {
     Meter,
     /// The clef a staff is read in.
     Clef,
+    /// The tempo marking printed over the staff.
+    Tempo,
 }
 
 impl ContextKind {
@@ -115,7 +114,7 @@ impl ContextKind {
     pub(crate) fn inheritance(self) -> Inheritance {
         match self {
             Self::Key => Inheritance::Latest,
-            Self::Meter | Self::Clef => Inheritance::Override,
+            Self::Meter | Self::Clef | Self::Tempo => Inheritance::Override,
         }
     }
 }

@@ -50,7 +50,7 @@ pub struct ContextTrack<V> {
     stretches: Vec<Stretch<V>>,
 }
 
-impl<V: Copy> ContextTrack<V> {
+impl<V: Clone> ContextTrack<V> {
     /// An empty track of one kind. The kind carries the inheritance rule, so
     /// no caller ever names the rule.
     pub(crate) fn new(kind: ContextKind) -> Self {
@@ -71,7 +71,7 @@ impl<V: Copy> ContextTrack<V> {
     /// What a reader in `scope` sees at `at`, or `None` when nothing has been
     /// said yet — a piece that names no key has none, and saying so is more
     /// use than inventing C major.
-    pub fn at(&self, scope: Scope, at: MusicalTime) -> Option<V> {
+    pub fn at(&self, scope: Scope, at: MusicalTime) -> Option<&V> {
         match self.kind.inheritance() {
             Inheritance::Override => {
                 let winner = scope
@@ -88,7 +88,7 @@ impl<V: Copy> ContextTrack<V> {
     ///
     /// This is what an exporter writes barline by barline. It is empty
     /// exactly when [`Self::at`] is `None` everywhere.
-    pub fn changes(&self, scope: Scope) -> impl Iterator<Item = (MusicalTime, V)> + '_ {
+    pub fn changes(&self, scope: Scope) -> impl Iterator<Item = (MusicalTime, &V)> + '_ {
         let winner = match self.kind.inheritance() {
             Inheritance::Override => scope
                 .chain()
@@ -96,7 +96,7 @@ impl<V: Copy> ContextTrack<V> {
             Inheritance::Latest => None,
         };
         self.visible(scope, winner)
-            .map(|stretch| (stretch.start, stretch.value))
+            .map(|stretch| (stretch.start, &stretch.value))
     }
 
     /// Whether nothing ever changes anywhere — the case every exporter has a
@@ -118,7 +118,7 @@ impl<V: Copy> ContextTrack<V> {
 
     /// The last stretch to begin at or before `at` among those `wanted`
     /// admits, with the innermost scope winning a tie.
-    fn latest(&self, at: MusicalTime, wanted: impl Fn(&Stretch<V>) -> bool) -> Option<V> {
+    fn latest(&self, at: MusicalTime, wanted: impl Fn(&Stretch<V>) -> bool) -> Option<&V> {
         self.stretches
             .iter()
             .filter(|stretch| stretch.start <= at && wanted(stretch))
@@ -127,7 +127,7 @@ impl<V: Copy> ContextTrack<V> {
                     .cmp(&right.start)
                     .then_with(|| innermost(left.scope, right.scope))
             })
-            .map(|stretch| stretch.value)
+            .map(|stretch| &stretch.value)
     }
 }
 
@@ -154,10 +154,10 @@ mod tests {
         keys.state(Scope::Piece, at(0), "c");
         keys.state(VIOLA, at(0), "f");
         keys.state(Scope::Piece, at(60), "a");
-        assert_eq!(keys.at(VIOLA, at(0)), Some("f"));
-        assert_eq!(keys.at(VIOLA, at(59)), Some("f"));
-        assert_eq!(keys.at(VIOLA, at(60)), Some("a"));
-        assert_eq!(keys.at(Scope::Piece, at(0)), Some("c"));
+        assert_eq!(keys.at(VIOLA, at(0)).copied(), Some("f"));
+        assert_eq!(keys.at(VIOLA, at(59)).copied(), Some("f"));
+        assert_eq!(keys.at(VIOLA, at(60)).copied(), Some("a"));
+        assert_eq!(keys.at(Scope::Piece, at(0)).copied(), Some("c"));
     }
 
     #[test]
@@ -168,9 +168,9 @@ mod tests {
         clefs.state(Scope::Piece, at(0), "treble");
         clefs.state(VIOLA, at(0), "alto");
         clefs.state(Scope::Piece, at(60), "bass");
-        assert_eq!(clefs.at(VIOLA, at(0)), Some("alto"));
-        assert_eq!(clefs.at(VIOLA, at(60)), Some("alto"));
-        assert_eq!(clefs.at(Scope::Piece, at(60)), Some("bass"));
+        assert_eq!(clefs.at(VIOLA, at(0)).copied(), Some("alto"));
+        assert_eq!(clefs.at(VIOLA, at(60)).copied(), Some("alto"));
+        assert_eq!(clefs.at(Scope::Piece, at(60)).copied(), Some("bass"));
     }
 
     #[test]
@@ -182,18 +182,18 @@ mod tests {
         meters.state(Scope::Piece, at(0), (4, 4));
         meters.state(lane, at(0), (7, 8));
         meters.state(Scope::Piece, at(8), (3, 4));
-        assert_eq!(meters.at(lane, at(8)), Some((7, 8)));
-        assert_eq!(meters.at(Scope::Piece, at(8)), Some((3, 4)));
+        assert_eq!(meters.at(lane, at(8)).copied(), Some((7, 8)));
+        assert_eq!(meters.at(Scope::Piece, at(8)).copied(), Some((3, 4)));
     }
 
     #[test]
     fn a_scope_that_says_nothing_reads_the_scope_that_does() {
         let mut clefs = ContextTrack::new(ContextKind::Clef);
         clefs.state(Scope::Piece, at(0), "treble");
-        assert_eq!(clefs.at(VIOLA, at(0)), Some("treble"));
+        assert_eq!(clefs.at(VIOLA, at(0)).copied(), Some("treble"));
         let mut keys = ContextTrack::new(ContextKind::Key);
         keys.state(Scope::Piece, at(0), "c");
-        assert_eq!(keys.at(VIOLA, at(0)), Some("c"));
+        assert_eq!(keys.at(VIOLA, at(0)).copied(), Some("c"));
     }
 
     #[test]
@@ -201,7 +201,7 @@ mod tests {
         let mut keys = ContextTrack::new(ContextKind::Key);
         keys.state(Scope::Piece, at(4), "c");
         assert_eq!(keys.at(Scope::Piece, at(0)), None);
-        assert_eq!(keys.at(Scope::Piece, at(4)), Some("c"));
+        assert_eq!(keys.at(Scope::Piece, at(4)).copied(), Some("c"));
         assert_eq!(
             ContextTrack::<&str>::new(ContextKind::Key).at(Scope::Piece, at(0)),
             None
@@ -214,11 +214,20 @@ mod tests {
         assert!(meters.is_constant(), "an empty track never changes");
         meters.state(Scope::Piece, at(0), (4, 4));
         assert!(meters.is_constant());
-        assert_eq!(meters.changes(Scope::Piece).collect::<Vec<_>>(), vec![(at(0), (4, 4))]);
+        assert_eq!(
+            meters
+                .changes(Scope::Piece)
+                .map(|(at, value)| (at, *value))
+                .collect::<Vec<_>>(),
+            vec![(at(0), (4, 4))]
+        );
         meters.state(Scope::Piece, at(8), (3, 4));
         assert!(!meters.is_constant());
         assert_eq!(
-            meters.changes(Scope::Piece).collect::<Vec<_>>(),
+            meters
+                .changes(Scope::Piece)
+                .map(|(at, value)| (at, *value))
+                .collect::<Vec<_>>(),
             vec![(at(0), (4, 4)), (at(8), (3, 4))]
         );
     }

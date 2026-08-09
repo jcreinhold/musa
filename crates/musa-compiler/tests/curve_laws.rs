@@ -45,6 +45,15 @@ fn piece(header: &str, voice: &str) -> String {
 const SIXTEEN_QUARTERS: &str = "c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4;
      c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4; c5 1/4;";
 
+/// Sixteen quarters with `statement` written between the `before`th and the
+/// one after it. A tempo change stands where it happens — the marking has no
+/// coordinate of its own, it has a place in the music.
+fn quarters_with_tempo(before: usize, statement: &str) -> String {
+    let mut notes: Vec<String> = std::iter::repeat_n("c5 1/4;".to_owned(), 16).collect();
+    notes.insert(before, statement.to_owned());
+    notes.join(" ")
+}
+
 /// The onset frames of every note-on, in order.
 fn onsets(score: &ScoreSnapshot) -> Vec<u64> {
     let plan = lower_performance(
@@ -89,7 +98,7 @@ fn amplitudes(score: &ScoreSnapshot) -> Vec<f32> {
 /// which is the whole claim of an *integrated* tempo map.
 #[test]
 fn a_tempo_change_moves_every_note_after_it_and_none_before() {
-    let score = score_of(&piece("tempo 1/4 = 120 at 3:1;", SIXTEEN_QUARTERS));
+    let score = score_of(&piece("", &quarters_with_tempo(8, "tempo 1/4 = 120;")));
     // Bars 1–2 at 60 bpm: one second each quarter. Bars 3–4 at 120: half.
     let expected: Vec<u64> = (0..8)
         .map(|index| u64::from(RATE) * index)
@@ -114,7 +123,7 @@ fn a_piece_without_a_change_is_the_tempo_it_declares() {
 #[test]
 fn the_frame_at_a_tempo_change_is_the_sum_of_what_came_before() {
     // 7 bpm makes a quarter 60/7 seconds — never a whole number of frames.
-    let source = piece("tempo 1/4 = 7 at 2:1;", SIXTEEN_QUARTERS);
+    let source = piece("", &quarters_with_tempo(4, "tempo 1/4 = 7;"));
     let score = score_of(&source);
     let frames = onsets(&score);
     let at_change = frames.get(4).copied().expect("a note at the change");
@@ -125,32 +134,36 @@ fn the_frame_at_a_tempo_change_is_the_sum_of_what_came_before() {
     assert_eq!(next, expected);
 }
 
-/// A tempo written where the piece already has one — its start — is refused
-/// rather than silently preferred, and so is one past the end.
+/// A header says how fast the piece starts exactly once. Every later marking
+/// is a place in the music, written where it happens like a meter or a key
+/// change — so there is no second way to place one, and no coordinate that
+/// could be out of range.
 #[test]
-fn a_tempo_change_must_be_somewhere_the_piece_reaches() {
-    for (header, expected) in [
-        (
-            "tempo 1/4 = 90 at 1:1;",
-            "the tempo at `1:1` is the piece's starting tempo",
-        ),
-        ("tempo 1/4 = 90 at 99:1;", "the piece ends before"),
-        ("tempo 1/4 = 90;", "this piece already says how fast it starts"),
-    ] {
-        let compilation = compile(
-            &SourceDocument::new(piece(header, SIXTEEN_QUARTERS), "curve.musa"),
-            &CompileOptions::default(),
-        );
-        let messages: Vec<String> = compilation
-            .diagnostics()
+fn the_header_says_how_fast_the_piece_starts_exactly_once() {
+    let compilation = compile(
+        &SourceDocument::new(piece("tempo 1/4 = 90;", SIXTEEN_QUARTERS), "curve.musa"),
+        &CompileOptions::default(),
+    );
+    let messages: Vec<String> = compilation
+        .diagnostics()
+        .iter()
+        .map(|diagnostic| diagnostic.message.clone())
+        .collect();
+    assert!(
+        messages
             .iter()
-            .map(|diagnostic| diagnostic.message.clone())
-            .collect();
-        assert!(
-            messages.iter().any(|message| message.contains(expected)),
-            "`{header}` should be refused with `{expected}`, got {messages:?}"
-        );
-    }
+            .any(|message| message.contains("this piece already says how fast it starts")),
+        "a second starting tempo should be refused, got {messages:?}"
+    );
+}
+
+/// The marking and the map, kept apart and shown apart: *Meno mosso* with no
+/// number is printed notation and moves no clock, so every note lands exactly
+/// where it landed without it.
+#[test]
+fn a_tempo_word_with_no_number_moves_nothing() {
+    let with_word = score_of(&piece("", &quarters_with_tempo(8, "tempo \"Meno mosso\";")));
+    assert_eq!(onsets(&with_word), onsets(&score_of(&piece("", SIXTEEN_QUARTERS))));
 }
 
 /// A hairpin is a line between two loudnesses. It leaves whatever was in

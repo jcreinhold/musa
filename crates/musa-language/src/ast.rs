@@ -121,14 +121,13 @@ impl PieceDecl {
         token_text(&self.0, SyntaxKind::String).map(|text| unquote(&text))
     }
 
-    /// The `tempo` statement the piece starts in: the first one written
-    /// without a position.
+    /// The `tempo` statement in the header: the tempo the piece starts in.
     pub fn tempo(&self) -> Option<TempoStmt> {
-        self.tempos().into_iter().find(|tempo| tempo.position().is_none())
+        child(&self.0)
     }
 
-    /// Every `tempo` statement, in source order — the initial one and the
-    /// changes.
+    /// Every `tempo` statement in the header, in source order. More than one
+    /// is an error the resolver reports; the parser does not editorialise.
     pub fn tempos(&self) -> Vec<TempoStmt> {
         children(&self.0)
     }
@@ -314,10 +313,25 @@ pub struct TempoStmt(SyntaxNode);
 wrapper!(TempoStmt, SyntaxKind::TempoStmt);
 
 impl TempoStmt {
-    /// Where the change takes effect, when it is a change rather than the
-    /// tempo the piece starts in.
-    pub fn position(&self) -> Option<Position> {
-        child(&self.0)
+    /// The word printed with the marking (`"Allegro vivace"`), if the
+    /// statement carries one.
+    ///
+    /// A marking may be a word, a metronome mark, or both, and the three
+    /// combinations are three things a composer writes. The reader asks for
+    /// each half separately because neither implies the other.
+    pub fn text(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::String).map(|text| unquote(&text))
+    }
+
+    /// Whether the statement states a metronome mark at all.
+    ///
+    /// `tempo "Andante";` does not, and the difference is the point: a word
+    /// is printed and changes no clock.
+    pub fn has_metronome(&self) -> bool {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .any(|token| token.kind() == SyntaxKind::Equals)
     }
 }
 
@@ -645,6 +659,8 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             GraceStmt::cast(child).map(VoiceItem::Grace)
         } else if kind == SyntaxKind::HairpinStmt {
             HairpinStmt::cast(child).map(VoiceItem::Hairpin)
+        } else if kind == SyntaxKind::TempoStmt {
+            TempoStmt::cast(child).map(VoiceItem::Tempo)
         } else if kind == SyntaxKind::MeterStmt {
             MeterStmt::cast(child).map(VoiceItem::Meter)
         } else if kind == SyntaxKind::KeyStmt {
@@ -702,7 +718,9 @@ pub enum VoiceItem {
     Grace(GraceStmt),
     /// `crescendo to f { ... }`
     Hairpin(HairpinStmt),
-    /// `meter 3/4;` — written where the music reaches it.
+    /// `tempo 1/4 = 92;` — written where the music reaches it.
+    Tempo(TempoStmt),
+    /// `meter 3/4;` — likewise.
     Meter(MeterStmt),
     /// `key d minor;` — likewise.
     Key(KeyStmt),

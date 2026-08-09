@@ -1317,11 +1317,16 @@ NotationPlan {
                 },
             ),
             what: TempoText {
-                beat: Ratio {
-                    numer: 1,
-                    denom: 4,
-                },
-                bpm: 72,
+                metronome: Some(
+                    Metronome {
+                        beat: Ratio {
+                            numer: 1,
+                            denom: 4,
+                        },
+                        bpm: 72,
+                    },
+                ),
+                text: None,
             },
         },
     ],

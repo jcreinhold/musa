@@ -6,7 +6,6 @@ piece "Opening" {
     use "../library/patches.musa";
 
     tempo 1/4 = 72;
-    tempo 1/4 = 108 at 3:1;
     meter 4/4;
     key c major;
 
@@ -18,6 +17,11 @@ piece "Opening" {
             voice lead {
                 dynamic p;
                 use rise();
+
+                // The tempo is written where it changes, like the meter and
+                // the key: a place in the piece, not a coordinate quoted from
+                // somewhere else.
+                tempo 1/4 = 108 "poco più mosso";
 
                 crescendo to f {
                     use fall();

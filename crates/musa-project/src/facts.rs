@@ -186,9 +186,13 @@ pub struct PartFacts {
 pub struct ScoreFacts {
     /// The piece's title.
     pub title: String,
-    /// Beats per minute, at the beat unit below.
+    /// Beats per minute at the start, at the beat unit below.
+    ///
+    /// This is the transport's tempo, not the page's: a piece that states no
+    /// metronome mark still plays at a speed, and this is the speed it plays
+    /// at. Where the *markings* fall is the notation plan's business.
     pub tempo_bpm: u32,
-    /// The tempo's beat unit as a fraction of a whole note (`1/4`).
+    /// The starting tempo's beat unit as a fraction of a whole note (`1/4`).
     pub tempo_beat: Fraction,
     /// The key, written out: `A minor`. Absent when the piece declares none.
     pub key: Option<String>,
@@ -388,10 +392,16 @@ impl ScoreFacts {
         }
 
         let outline = outline_facts(score, &events, &lines, &bars, &tempo);
+        // The same fallback performance uses: a piece with no metronome mark
+        // is played at the default speed rather than not played.
+        let opening = score
+            .tempo_at(Scope::Piece, MusicalTime::ZERO)
+            .and_then(|marking| marking.metronome)
+            .unwrap_or_default();
         Self {
             title: score.title().to_string(),
-            tempo_bpm: score.tempo().bpm,
-            tempo_beat: Fraction::from_ratio(score.tempo().beat),
+            tempo_bpm: opening.bpm,
+            tempo_beat: Fraction::from_ratio(opening.beat),
             key: score
                 .key_at(Scope::Piece, MusicalTime::ZERO)
                 .map(|key| format!("{} {}", pitch_class(key.tonic()), mode(key.mode()))),

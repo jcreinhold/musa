@@ -8,6 +8,11 @@
 // bug in the test itself, and panicking is the correct behavior there.
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
+// These suites pick one variant out of `VoiceItem` and ignore the rest. The
+// lint exists so that a new variant is considered everywhere it matters, and
+// a test that asks "which of these are tempo markings" is not one of those
+// places: listing twenty-odd variants would be noise that says nothing.
+#![allow(clippy::wildcard_enum_match_arm)]
 
 use musa_language::ast::{PieceDecl, VoiceItem};
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode, parse};
@@ -287,6 +292,7 @@ fn typed_views_read_the_new_statements() {
             | VoiceItem::Mark(_)
             | VoiceItem::Grace(_)
             | VoiceItem::Hairpin(_)
+            | VoiceItem::Tempo(_)
             | VoiceItem::Meter(_)
             | VoiceItem::Key(_)
             | VoiceItem::Clef(_)
@@ -346,6 +352,7 @@ fn the_transformations_and_their_bodies_are_typed_views() {
             | VoiceItem::Mark(_)
             | VoiceItem::Grace(_)
             | VoiceItem::Hairpin(_)
+            | VoiceItem::Tempo(_)
             | VoiceItem::Meter(_)
             | VoiceItem::Key(_)
             | VoiceItem::Clef(_)
@@ -393,6 +400,7 @@ fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
             | VoiceItem::Mark(_)
             | VoiceItem::Grace(_)
             | VoiceItem::Hairpin(_)
+            | VoiceItem::Tempo(_)
             | VoiceItem::Meter(_)
             | VoiceItem::Key(_)
             | VoiceItem::Clef(_)
@@ -458,22 +466,67 @@ fn a_library_is_a_different_root_than_a_piece() {
     assert_eq!(names, [Some("rise".to_owned()), Some("fall".to_owned())]);
 }
 
-/// The typed view separates the tempo a piece starts in from the tempos it
-/// changes to: `tempo()` is the one without a position, and it stays that way
-/// however many changes follow it.
+/// The header holds the tempo a piece starts in and nothing else; a tempo it
+/// changes to is written in the voice that reaches it, like the meter and the
+/// key. One statement, two places (prompt 72).
 #[test]
-fn a_positioned_tempo_is_a_change_and_not_the_starting_tempo() {
+fn the_header_holds_one_tempo_and_a_change_is_written_in_the_voice() {
     let doc = parse(OPENING);
     let piece = PieceDecl::from_root(&doc.syntax()).expect("a piece");
-    assert_eq!(piece.tempos().len(), 2);
+    assert_eq!(piece.tempos().len(), 1);
     let start = piece.tempo().expect("a starting tempo");
-    assert!(start.position().is_none(), "the starting tempo has no position");
-    let positions: Vec<Option<(Option<String>, Option<String>)>> = piece
-        .tempos()
-        .iter()
-        .map(|tempo| tempo.position().map(|at| (at.measure(), at.beat())))
+    assert!(start.has_metronome());
+    assert_eq!(start.text(), None);
+    let changes: Vec<Option<String>> = piece
+        .score()
+        .expect("a score")
+        .parts()
+        .into_iter()
+        .flat_map(|part| part.voices())
+        .flat_map(|voice| voice.items())
+        .filter_map(|item| match item {
+            VoiceItem::Tempo(tempo) => Some(tempo.text()),
+            _ => None,
+        })
         .collect();
-    assert_eq!(positions, [None, Some((Some("3".to_owned()), Some("1".to_owned())))]);
+    assert_eq!(changes, [Some("poco più mosso".to_owned())]);
+}
+
+/// The three forms of a tempo marking, and the one that shapes the grammar:
+/// a word with no number prints and changes no clock (prompt 72).
+#[test]
+fn a_tempo_marking_may_be_a_number_a_word_or_both() {
+    let doc = parse(
+        "piece \"T\" { tempo 1/4 = 92; meter 4/4; key c major;
+            score { part p { voice v {
+                c5 1/4;
+                tempo 1/4 = 132 \"Allegro vivace\";
+                d5 1/4;
+                tempo \"Andante\";
+                e5 1/2;
+            } } } }",
+    );
+    assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("a piece");
+    let markings: Vec<(bool, Option<String>)> = piece
+        .score()
+        .expect("a score")
+        .parts()
+        .into_iter()
+        .flat_map(|part| part.voices())
+        .flat_map(|voice| voice.items())
+        .filter_map(|item| match item {
+            VoiceItem::Tempo(tempo) => Some((tempo.has_metronome(), tempo.text())),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        markings,
+        [
+            (true, Some("Allegro vivace".to_owned())),
+            (false, Some("Andante".to_owned()))
+        ]
+    );
 }
 
 /// A `use` at the top of a piece is a path, not a motif call: the same word
@@ -540,6 +593,7 @@ fn a_hairpin_names_its_direction_and_its_mark() {
             | VoiceItem::Phrase(_)
             | VoiceItem::Mark(_)
             | VoiceItem::Grace(_)
+            | VoiceItem::Tempo(_)
             | VoiceItem::Meter(_)
             | VoiceItem::Key(_)
             | VoiceItem::Clef(_)

@@ -755,21 +755,38 @@ fn write_positioned(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan, index: us
     let unit = plan.staves().first().map_or(4, |staff| staff.time_signature().1);
     for tempo in plan.tempos().iter().filter(|mark| mark.measure == measure) {
         let stamp = timestamp(tempo.beat(unit));
-        let bpm = tempo.what.bpm.to_string();
-        let note_value = tempo.what.beat.denom().to_string();
         let mut element = element("tempo");
         element.push_attribute(("staff", "1"));
         element.push_attribute(("tstamp", stamp.as_str()));
         element.push_attribute(("place", "above"));
-        element.push_attribute(("mm", bpm.as_str()));
-        element.push_attribute(("mm.unit", note_value.as_str()));
-        element.push_attribute(("midi.bpm", bpm.as_str()));
-        // No text: `mm`/`mm.unit` say the same thing in the form an engraver
-        // can set as a note glyph and a number, which is how a tempo mark is
-        // printed. Text would be a second, worse spelling of it.
-        writer
-            .write_event(Event::Empty(element))
-            .map_err(|error| RenderError::xml(&error))?;
+        // `mm`/`mm.unit` say a metronome mark in the form an engraver can set
+        // as a note glyph and a number, which is how one is printed; spelling
+        // it as text too would be a second, worse copy of the same fact. A
+        // tempo *word*, on the other hand, has nowhere else to go, so it is
+        // the element's content — and a marking carrying both writes both.
+        let bpm = tempo.what.metronome.map(|mark| mark.bpm.to_string());
+        let note_value = tempo.what.metronome.map(|mark| mark.beat.denom().to_string());
+        if let (Some(bpm), Some(note_value)) = (bpm.as_ref(), note_value.as_ref()) {
+            element.push_attribute(("mm", bpm.as_str()));
+            element.push_attribute(("mm.unit", note_value.as_str()));
+            element.push_attribute(("midi.bpm", bpm.as_str()));
+        }
+        match tempo.what.text.as_ref() {
+            Some(text) => {
+                writer
+                    .write_event(Event::Start(element))
+                    .map_err(|error| RenderError::xml(&error))?;
+                writer
+                    .write_event(Event::Text(quick_xml::events::BytesText::new(text)))
+                    .map_err(|error| RenderError::xml(&error))?;
+                writer
+                    .write_event(Event::End(BytesEnd::new("tempo")))
+                    .map_err(|error| RenderError::xml(&error))?;
+            }
+            None => writer
+                .write_event(Event::Empty(element))
+                .map_err(|error| RenderError::xml(&error))?,
+        }
     }
     for section in plan.sections().iter().filter(|mark| mark.measure == measure) {
         let stamp = timestamp(section.beat(unit));

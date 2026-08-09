@@ -31,9 +31,7 @@ use crate::diagnose::{Code, Diagnostic, nearest};
 use crate::origin::{DeclarationId, ExpansionStep, Interval, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
-use crate::score::{
-    AnnotationStore, Clef, DynamicMark, EventId, Key, Meter, Mode, NotatedDuration, ScoreSnapshot, TempoMap,
-};
+use crate::score::{AnnotationStore, Clef, DynamicMark, EventId, Key, Meter, Mode, NotatedDuration, ScoreSnapshot};
 use crate::time::MusicalDuration;
 
 new_key_type! {
@@ -536,18 +534,18 @@ pub(crate) fn lower_studio(
 /// is prompt 06).
 pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot: &mut ScoreSnapshot) {
     snapshot.set_title(piece.name().unwrap_or_default());
-    if let Some(tempo) = piece.tempo() {
+    if piece.tempo().is_some() {
         resolver.declare(DeclInfo::Tempo);
-        *snapshot.tempo_mut() = parse_tempo(resolver, &tempo);
     }
-    // A second tempo without a position would leave two answers to "how fast
-    // does this piece start" — the one thing a header may not do.
-    for extra in piece.tempos().iter().filter(|tempo| tempo.position().is_none()).skip(1) {
+    // A second tempo in the header would leave two answers to "how fast does
+    // this piece start" — the one thing a header may not do. The reading
+    // itself happens in `elaborate.rs`, where the marking enters the timeline.
+    for extra in piece.tempos().iter().skip(1) {
         resolver.report(
             Diagnostic::error(Code::Misplaced, "this piece already says how fast it starts")
                 .at(trimmed_span(extra.syntax()), "a second starting tempo")
-                .help("write `at <measure>:<beat>` to change the tempo partway through")
-                .note("a piece has one starting tempo; every later one is a change, and a change needs a place"),
+                .help("write the change in the voice that reaches it, like a meter or a key change")
+                .note("a piece has one starting tempo; every later one is a place in the music"),
         );
     }
     if let Some(meter) = piece.meter() {
@@ -1349,33 +1347,35 @@ pub(crate) fn part_metadata(
     (clef, profile)
 }
 
-/// The beat unit and bpm a `tempo` statement writes.
-pub(crate) fn tempo_reading(resolver: &mut Resolver, tempo: &TempoStmt) -> (Ratio<i64>, u32) {
+/// What one `tempo` statement says, as the timeline carries it.
+///
+/// The three forms are read here and nowhere else, because "does this marking
+/// change the clock" is one question and every consumer asks it the same way:
+/// by looking for a [`crate::score::Metronome`].
+pub(crate) fn tempo_fact(resolver: &mut Resolver, tempo: &TempoStmt) -> crate::elaborate::FactKind {
     let syntax = tempo.syntax();
-    let beat = token_text(syntax, SyntaxKind::Rational)
-        .and_then(|text| parse_ratio(&text))
-        // `quarter` (or another beat name) resolves to 1/4 for now.
-        .unwrap_or_else(|| Ratio::new(1, 4));
-    let bpm = token_text(syntax, SyntaxKind::Integer)
-        .and_then(|text| text.parse::<u32>().ok())
-        .unwrap_or_else(|| {
-            resolver.report(
-                Diagnostic::error(Code::NotAValue, "this tempo has no speed")
-                    .at(trimmed_span(syntax), "expected a number")
-                    .help("write `tempo quarter = 72;`"),
-            );
-            120
-        });
-    (beat, bpm)
-}
-
-fn parse_tempo(resolver: &mut Resolver, tempo: &TempoStmt) -> TempoMap {
-    let (beat, bpm) = tempo_reading(resolver, tempo);
-    TempoMap {
-        beat,
-        bpm,
-        changes: Vec::new(),
-    }
+    let text = tempo.text();
+    let metronome = tempo.has_metronome().then(|| {
+        let beat = token_text(syntax, SyntaxKind::Rational)
+            .and_then(|text| parse_ratio(&text))
+            // `quarter` (or another beat name) resolves to 1/4 for now.
+            .unwrap_or_else(|| Ratio::new(1, 4));
+        let bpm = token_text(syntax, SyntaxKind::Integer)
+            .and_then(|text| text.parse::<u32>().ok())
+            .unwrap_or_else(|| {
+                resolver.report(
+                    Diagnostic::error(Code::NotAValue, "this tempo has no speed")
+                        .at(trimmed_span(syntax), "expected a number")
+                        .help("write `tempo quarter = 72;`"),
+                );
+                120
+            });
+        crate::score::Metronome { beat, bpm }
+    });
+    // No check that the marking says *something*: the grammar refuses
+    // `tempo;` outright, and a file with a syntax error never reaches
+    // elaboration. A diagnostic here would be one nothing could produce.
+    crate::elaborate::FactKind::Tempo { metronome, text }
 }
 
 pub(crate) fn parse_meter(meter: &musa_language::ast::MeterStmt) -> Option<Meter> {

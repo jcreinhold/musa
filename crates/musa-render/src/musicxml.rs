@@ -607,17 +607,33 @@ fn write_lane(
 fn write_positioned(xml: &mut Xml, plan: &NotationPlan, measure: u32, divisions: i64) -> Result<(), RenderError> {
     for tempo in plan.tempos().iter().filter(|mark| mark.measure == measure) {
         xml.open("direction", &[("placement", "above")])?;
-        xml.open("direction-type", &[])?;
-        xml.open("metronome", &[])?;
-        xml.leaf("beat-unit", &[], beat_unit_name(*tempo.what.beat.denom()))?;
-        xml.leaf("per-minute", &[], &tempo.what.bpm.to_string())?;
-        xml.close("metronome")?;
-        xml.close("direction-type")?;
+        // A tempo word is `<words>`, a metronome mark is `<metronome>`, and a
+        // marking carrying both writes both direction-types inside the one
+        // direction — which is what tells a reader they belong together
+        // rather than being two instructions at the same instant.
+        if let Some(text) = tempo.what.text.as_ref() {
+            xml.open("direction-type", &[])?;
+            xml.leaf("words", &[], text)?;
+            xml.close("direction-type")?;
+        }
+        if let Some(mark) = tempo.what.metronome {
+            xml.open("direction-type", &[])?;
+            xml.open("metronome", &[])?;
+            xml.leaf("beat-unit", &[], beat_unit_name(*mark.beat.denom()))?;
+            xml.leaf("per-minute", &[], &mark.bpm.to_string())?;
+            xml.close("metronome")?;
+            xml.close("direction-type")?;
+        }
         write_offset(xml, tempo.onset_in_measure.as_ratio(), divisions)?;
         // `<sound>` is the same fact for a player rather than a reader: the
-        // tempo in quarter notes per minute, which is what playback uses.
-        let quarters = Ratio::from_integer(i64::from(tempo.what.bpm)) * tempo.what.beat * Ratio::from_integer(4);
-        xml.empty("sound", &[("tempo", &format_number(quarters))])?;
+        // tempo in quarter notes per minute, which is what playback uses. A
+        // marking with no metronome moves no clock, so it gets none — a word
+        // is not a speed, and guessing one here would be the collapse §2
+        // forbids.
+        if let Some(mark) = tempo.what.metronome {
+            let quarters = Ratio::from_integer(i64::from(mark.bpm)) * mark.beat * Ratio::from_integer(4);
+            xml.empty("sound", &[("tempo", &format_number(quarters))])?;
+        }
         xml.close("direction")?;
     }
     for section in plan.sections().iter().filter(|mark| mark.measure == measure) {

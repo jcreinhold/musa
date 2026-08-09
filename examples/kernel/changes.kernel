@@ -99,6 +99,7 @@ kernel "Changes" {
       };
       timeline 265/8 {
         occurrence "piece|meter@4@4|1070:1085|1070:1085|0|" from 0 to 265/8;
+        occurrence "piece|tempo@1/4@132@|1048:1070|1048:1070|0|" from 0 to 265/8;
         occurrence "piece|key@c@major|1085:1102|1085:1102|0|" from 0 to 265/8;
       }
     };

@@ -146,6 +146,7 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::TransposeKw,
     SyntaxKind::RepeatKw,
     SyntaxKind::BarKw,
+    SyntaxKind::TempoKw,
     SyntaxKind::MeterKw,
     SyntaxKind::KeyKw,
     SyntaxKind::ClefKw,
@@ -556,21 +557,29 @@ impl<'a> Parser<'a> {
     }
 
     /// `tempo <beat> = <bpm>;` — beat is a name (`quarter`) or fraction.
+    /// `tempo 1/4 = 92;`, `tempo 1/4 = 132 "Allegro vivace";`, `tempo "Andante";`
+    ///
+    /// The third form is the one that shapes the grammar. A metronome mark and
+    /// a tempo word are two different things a composer writes — often one
+    /// without the other — so the number is optional, the word is optional,
+    /// and a statement with neither is the error.
     fn tempo_stmt(&mut self) {
         self.start(SyntaxKind::TempoStmt);
         self.bump(); // tempo
-        if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::Rational]) {
+        if self.at(SyntaxKind::String) {
             self.bump();
         } else {
-            self.expected("a beat unit (`quarter` or `1/4`)");
-        }
-        self.expect(SyntaxKind::Equals, "`=`");
-        self.expect(SyntaxKind::Integer, "a tempo in bpm");
-        // `tempo 1/4 = 96 at 9:1;` — a tempo change, written the way a form
-        // marker is. Without the `at`, it is the tempo the piece starts in.
-        if self.at(SyntaxKind::AtKw) {
-            self.bump();
-            self.position();
+            if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::Rational]) {
+                self.bump();
+            } else {
+                self.expected("a beat unit (`quarter` or `1/4`) or a tempo word in quotes");
+            }
+            self.expect(SyntaxKind::Equals, "`=`");
+            self.expect(SyntaxKind::Integer, "a tempo in bpm");
+            // The word after the number, for a marking that says both.
+            if self.at(SyntaxKind::String) {
+                self.bump();
+            }
         }
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
@@ -1259,10 +1268,12 @@ impl<'a> Parser<'a> {
                 self.mobile_stmt();
             } else if self.at(SyntaxKind::ImproviseKw) {
                 self.improvise_stmt();
-            } else if self.at(SyntaxKind::MeterKw) {
+            } else if self.at(SyntaxKind::TempoKw) {
                 // The same statements the header and the part write, written
                 // where the music reaches them: one kind, one node, two
                 // places.
+                self.tempo_stmt();
+            } else if self.at(SyntaxKind::MeterKw) {
                 self.meter_stmt();
             } else if self.at(SyntaxKind::KeyKw) {
                 self.key_stmt();

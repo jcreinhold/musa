@@ -860,6 +860,28 @@ The first changes the symbolic timeline.
 
 The second changes its physical-time interpretation.
 
+## Where the implementation stands (prompt 72)
+
+There are two things called tempo, and this section is about the second one.
+
+| | What it is | Who reads it |
+| --- | --- | --- |
+| The **marking** | `♩ = 92`, *Allegro*, written at a place in the score | the engraver, the exporters |
+| The **map** | the monotone `Beat → Second` above | the performance plan, the engine |
+
+The marking is a scoped context fact on the timeline, like a key, a meter or a clef: it has a place, it is printed,
+and it is part of the piece's semantic identity. The map is not in the snapshot at all — `IntegratedTempoMap` builds
+it in `musa-compiler/src/performance.rs` from the markings that carry a metronome, and from no others.
+
+`tempo "Andante";` is what proves they are separate: it prints, it enters the timeline, and it contributes no
+segment. A piece that states no metronome mark anywhere is performed at a quarter = 120, and that default lives in
+the performance layer rather than in the score, because it is a fact about playing an unmarked page rather than a
+fact about the page.
+
+Until prompt 72 the implementation had one struct, `TempoMap`, that the notation planner and the performance lowerer
+both read — the notated/performed collapse roadmap §2 forbids, and the reason a tempo-only edit did not move the
+semantic hash and so did not reinstall the playback plan.
+
 ---
 
 # 23. Audio remains a separate semantic layer

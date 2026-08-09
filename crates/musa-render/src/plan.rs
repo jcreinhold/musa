@@ -10,8 +10,9 @@
 use std::collections::{HashMap, HashSet};
 
 use musa_compiler::{
-    BarLines, ChordSymbol, Clef, DynamicMark, EventId, Key, Mark, MarkArgument, Meter, Mode, MusicalDuration,
-    MusicalTime, NotatedDuration, Part, Scope, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice, VoiceId, WrittenPitch,
+    BarLines, ChordSymbol, Clef, DynamicMark, EventId, Key, Mark, MarkArgument, Meter, Metronome, Mode,
+    MusicalDuration, MusicalTime, NotatedDuration, Part, Scope, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice,
+    VoiceId, WrittenPitch,
 };
 use num_rational::Ratio;
 
@@ -198,13 +199,19 @@ impl<T> PositionedMark<T> {
     }
 }
 
-/// A tempo mark as a reader sees it: a note value and a number.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// A tempo mark as a reader sees it: a metronome mark, a word, or both.
+///
+/// Both halves are optional because both halves are optional on the page.
+/// `Andante` with no number is a tempo marking and prints as one; a bare
+/// `1/4 = 92` is one too. Only the metronome half moves a clock, which is
+/// why performance reads [`Self::metronome`] and the exporters read whatever
+/// they are given.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TempoText {
-    /// The beat unit as a fraction of a whole note (`1/4` for a quarter).
-    pub beat: Ratio<i64>,
-    /// Beats per minute.
-    pub bpm: u32,
+    /// The metronome mark, when the marking gives one.
+    pub metronome: Option<Metronome>,
+    /// The word printed over the staff, when the marking gives one.
+    pub text: Option<String>,
 }
 
 /// A key signature element: fifths plus mode. Affects the signature only,
@@ -715,7 +722,7 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
     let keys: Vec<(MusicalTime, KeySignature)> = score
         .keys()
         .changes(Scope::Piece)
-        .filter_map(|(at, key)| Some((fold.at(at)?, key_signature(key))))
+        .filter_map(|(at, key)| Some((fold.at(at)?, key_signature(*key))))
         .collect();
     let marks = Marks::collect(score);
     let mut staves = Vec::new();
@@ -723,31 +730,30 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
         let clefs: Vec<(MusicalTime, Clef)> = score
             .clefs()
             .changes(Scope::Part { part: part.id().0 })
-            .filter_map(|(at, clef)| Some((fold.at(at)?, clef)))
+            .filter_map(|(at, clef)| Some((fold.at(at)?, *clef)))
             .collect();
         staves.push(plan_staff(
             score, part, meter, &bars, key, &keys, &clefs, &marks, &fold,
         )?);
     }
-    let tempo = score.tempo();
-    let mut tempos = vec![positioned(
-        &bars,
-        MusicalTime::ZERO,
-        TempoText {
-            beat: tempo.beat,
-            bpm: tempo.bpm,
-        },
-    )];
-    tempos.extend(tempo.changes.iter().filter_map(|change| {
-        Some(positioned(
-            &bars,
-            fold.at(change.at)?,
-            TempoText {
-                beat: change.beat,
-                bpm: change.bpm,
-            },
-        ))
-    }));
+    // Every tempo marking the piece states, on the page's own clock — the
+    // header's included. There is no separate "starting tempo": the header
+    // states a fact at zero like any other, so nothing here has to
+    // reconstruct one.
+    let tempos: Vec<_> = score
+        .tempos()
+        .changes(Scope::Piece)
+        .filter_map(|(at, marking)| {
+            Some(positioned(
+                &bars,
+                fold.at(at)?,
+                TempoText {
+                    metronome: marking.metronome,
+                    text: marking.text.clone(),
+                },
+            ))
+        })
+        .collect();
     let sections = score
         .annotations()
         .sections()
@@ -852,11 +858,11 @@ fn open_text(kind: &musa_compiler::OpenKind) -> String {
 /// conditions the compiler refuses; rendering has to stay total.
 fn page_bars(score: &ScoreSnapshot, fold: &Fold) -> BarLines {
     let mut changes = score.meters().changes(Scope::Piece);
-    let opening = changes.next().map_or_else(Meter::default, |(_, meter)| meter);
+    let opening = changes.next().map_or_else(Meter::default, |(_, meter)| *meter);
     let mut bars = BarLines::uniform(opening);
     for (at, meter) in changes {
         if let Some(printed) = fold.at(at) {
-            let _ = bars.change(printed, meter);
+            let _ = bars.change(printed, *meter);
         }
     }
     bars

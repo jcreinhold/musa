@@ -189,6 +189,16 @@ fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
             FactKind::Clef { clef } => {
                 contexts.clefs.state(fact.scope, at, *clef);
             }
+            FactKind::Tempo { metronome, text } => {
+                contexts.tempos.state(
+                    fact.scope,
+                    at,
+                    crate::score::TempoMarking {
+                        metronome: *metronome,
+                        text: text.clone(),
+                    },
+                );
+            }
             FactKind::Section { name } => resolver.annotations.push_section(SectionMark {
                 name: name.clone(),
                 at,
@@ -340,6 +350,7 @@ fn project_voice(
             FactKind::Key { .. }
             | FactKind::Meter { .. }
             | FactKind::Clef { .. }
+            | FactKind::Tempo { .. }
             | FactKind::Section { .. }
             | FactKind::Harmony { .. } => {
                 index = index.saturating_add(1);
@@ -626,6 +637,7 @@ fn project_regions(
             | FactKind::Key { .. }
             | FactKind::Meter { .. }
             | FactKind::Clef { .. }
+            | FactKind::Tempo { .. }
             | FactKind::Section { .. }
             | FactKind::Harmony { .. }
             | FactKind::Repeat { .. }

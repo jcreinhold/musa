@@ -389,7 +389,7 @@ fn score_marks(plan: &NotationPlan) -> Vec<PositionedMark<ScoreMark>> {
         marks.push(PositionedMark {
             measure: tempo.measure,
             onset_in_measure: tempo.onset_in_measure,
-            what: ScoreMark::Tempo(tempo.what),
+            what: ScoreMark::Tempo(tempo.what.clone()),
         });
     }
     for section in plan.sections() {
@@ -440,10 +440,33 @@ fn mark_node(mark: &ScoreMark) -> LyNode {
             let escaped = text.replace('\\', "").replace('"', "'");
             LyNode::Command(format!("\\mark \\markup {{ \\italic \"{escaped}\" }}"))
         }
-        ScoreMark::Tempo(tempo) => {
-            let unit = spell_duration(*tempo.beat.numer(), *tempo.beat.denom()).unwrap_or_else(|| "4".to_owned());
-            LyNode::Command(format!("\\tempo {unit} = {}", tempo.bpm))
-        }
+        ScoreMark::Tempo(tempo) => LyNode::Command(tempo_command(tempo)),
+    }
+}
+
+/// `\tempo` in each of the three forms a marking can take: a word, a
+/// metronome mark, or a word qualified by one.
+///
+/// `LilyPond` spells all three with the same command, and so does the page —
+/// which is the whole reason a marking is one fact with two optional halves
+/// rather than two facts.
+fn tempo_command(tempo: &crate::plan::TempoText) -> String {
+    let metronome = tempo.metronome.map(|mark| {
+        let unit = spell_duration(*mark.beat.numer(), *mark.beat.denom()).unwrap_or_else(|| "4".to_owned());
+        format!("{unit} = {}", mark.bpm)
+    });
+    let word = tempo
+        .text
+        .as_ref()
+        .map(|text| format!("\"{}\"", text.replace('\\', "").replace('"', "'")));
+    match (word, metronome) {
+        (Some(word), Some(mark)) => format!("\\tempo {word} {mark}"),
+        (Some(word), None) => format!("\\tempo {word}"),
+        (None, Some(mark)) => format!("\\tempo {mark}"),
+        // A marking with neither half is refused at resolution, so this is
+        // unreachable through the grammar; `\tempo ""` keeps the file valid
+        // rather than emitting a bare command that would not parse.
+        (None, None) => "\\tempo \"\"".to_owned(),
     }
 }
 

@@ -953,4 +953,34 @@ mod playback_identity_laws {
             "the notes are the same and the sound is not"
         );
     }
+
+    /// The bug prompt 72 fixes. The tempo map was a scalar beside the timeline,
+    /// so changing only the tempo left the semantic hash where it was,
+    /// `install_current_plan` decided the engine was already up to date, and
+    /// playback stayed at the old speed until some *other* edit dislodged it.
+    ///
+    /// The marking is a fact in the timeline now, so the hash moves and the
+    /// plan is reinstalled. Asserted on the key rather than on the engine,
+    /// for the reason the test above gives.
+    #[test]
+    fn changing_only_the_tempo_reinstalls_the_plan() {
+        let mut session = ProjectSession::from_text(PIECE, "test.musa");
+        let before = session.plan_identity();
+        assert!(before.is_some(), "the fixture compiles");
+
+        assert!(
+            session
+                .apply(ProjectCommand::SetSource(
+                    PIECE.replace("tempo quarter = 120;", "tempo quarter = 60;")
+                ))
+                .is_ok(),
+            "still valid"
+        );
+        assert!(session.snapshot().compiles());
+        assert_ne!(
+            session.plan_identity(),
+            before,
+            "the notes are the same and the speed is not"
+        );
+    }
 }

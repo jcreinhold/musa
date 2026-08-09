@@ -765,6 +765,7 @@ fn item_syntax(item: &crate::ast::VoiceItem) -> &SyntaxNode {
         crate::ast::VoiceItem::Mark(ref it) => it.syntax(),
         crate::ast::VoiceItem::Grace(ref it) => it.syntax(),
         crate::ast::VoiceItem::Hairpin(ref it) => it.syntax(),
+        crate::ast::VoiceItem::Tempo(ref it) => it.syntax(),
         crate::ast::VoiceItem::Meter(ref it) => it.syntax(),
         crate::ast::VoiceItem::Key(ref it) => it.syntax(),
         crate::ast::VoiceItem::Clef(ref it) => it.syntax(),
