@@ -1892,9 +1892,9 @@ render    audio
        \      │      /
         \     ▼     /
           project
-          │      │
-          ▼      ▼
-         cli   desktop
+          │   │   │
+          ▼   ▼   ▼
+         cli desktop lsp
 ```
 
 No dependency points upward.
@@ -1905,7 +1905,9 @@ In particular:
 - compiler does not depend on audio;
 - audio does not depend on the GUI;
 - render does not know about source-editor widgets;
-- the frontend does not know about CPAL or FunDSP.
+- the frontend does not know about CPAL or FunDSP;
+- the language server is the one shell with a second edge, to `musa-language` (§15.11): highlighting and completion
+  must answer on half-typed source, which the session's facts — the last *valid* compile's — cannot describe.
 
 ## 15.2 `musa-language`
 
@@ -2189,6 +2191,42 @@ divan       benchmarks of the semantic pipeline (§17.7)
 allocation counts** alongside time. That second property is why it is here rather than `criterion`: the semantic
 pipeline's risk under the prompt 39–43 migration is allocation and hashing, not arithmetic, and a harness that measures
 only wall time cannot see the thing most likely to regress.
+
+
+## 15.11 `musa-lsp`
+
+A language server over stdio: the shell that makes the language usable in any LSP-speaking editor. Deliberately thin,
+exactly as `musa-cli` is — it owns the protocol and the coordinate translation (byte spans ↔ UTF-16 ranges, via
+`musa-project`'s `Utf16Offsets`), and no musical knowledge. Diagnostics, hover, definition, symbols, and quick fixes
+are restatements of the session's facts (prompts 39, 56); the server computes nothing the interface rules of
+`docs/interface/03-interaction.md` §7 forbid a frontend to compute.
+
+Dependencies:
+
+```text
+musa-project
+musa-language
+lsp-server
+lsp-types
+serde_json
+```
+
+(`serde_json` is how the protocol's values are spoken — capabilities, params, and results are `Value`s at the
+`lsp-server` boundary.)
+
+The second edge to `musa-language` is the exception the diagram in §15.1 states. Semantic tokens and completion must
+answer on *half-typed* source, which the session cannot describe — its facts belong to the last valid compile. The
+desktop solved the same problem with a generated vocabulary and a second tokenizer in TypeScript; the server has the
+real lexer in-process and uses it. Formatting likewise calls `musa-language`'s formatter directly, so that a format
+request never lands in the session's undo history.
+
+The protocol crates are `lsp-server` and `lsp-types`: synchronous, so one main loop owns the sessions, matching the
+session's single-threaded construction — no async runtime, and no `Send` requirement on a session type that holds a
+CPAL stream. `Connection::memory()` drives the whole server in-process in tests.
+
+The server never opens the audio device, never writes to disk, and never edits the source itself; every edit it
+proposes travels as a workspace edit for the client to apply.
+
 
 ---
 

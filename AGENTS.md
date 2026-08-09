@@ -34,14 +34,17 @@ them drift silently.
 | `crates/musa-engine` | CPAL stream, transport, real-time queues, MIDI input |
 | `crates/musa-project` | ProjectSession facade: documents, revisions, commands, exports |
 | `crates/musa-cli` | thin CLI over musa-project |
+| `crates/musa-lsp` | thin language server (LSP) over musa-project + musa-language |
 | `apps/musa-desktop` | thin Tauri shell + Svelte UI over musa-project |
 | `examples/` | `.musa` fixtures — executable specifications, not demos |
 | `docs/kernel/` | the temporal-kernel specification (candidate until prompt 12) |
 | `docs/interface/` | the desktop interface specification (governing) |
 | `docs/prompts/` | numbered implementation prompts + README |
 
-Dependency direction is one-way: language → compiler → {render, audio} → engine → project → {cli, desktop}, with
-`musa-kernel` a leaf that `musa-compiler` (and later consumers) depend on. No dependency points upward.
+Dependency direction is one-way: language → compiler → {render, audio} → engine → project → {cli, lsp, desktop},
+with `musa-kernel` a leaf that `musa-compiler` (and later consumers) depend on, and `musa-lsp` the one shell that also
+depends on `musa-language` (highlighting and completion answer on half-typed source, which the session's facts
+cannot describe — roadmap §15.11). No dependency points upward.
 
 ## Commands
 

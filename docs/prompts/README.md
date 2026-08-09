@@ -173,6 +173,12 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 74 | unmeasured | 3 | `meter none`: cadenzas, chant, proportional spacing |
 | 75 | polymeter-and-polytempo | 3 | Per-scope barline grids; polytempo behind an evidence gate |
 | 76 | realization-in-the-page | 2 | The freedom printed, the decision shown, the seed in Settings |
+| 77 | language-server | 3 | `musa-lsp` over stdio: diagnostics, formatting, hover, definition, symbols, fixes, tokens, completion |
+| 78 | references-and-rename | 3 | The resolver records use-sites; references and rename rewrite recorded spans only |
+| 79 | folding | 3 | Folding ranges from the CST, valid source or not |
+| 80 | tree-sitter-grammar | 3 | tree-sitter-musa, corpus pinned token-for-token to the real lexer |
+| 81 | vscode-extension | 3 | vscode-musa: generated TextMate grammar plus the language client |
+| 82 | zed-extension | 3 | zed-musa: WASM extension, grammar queries, server wiring |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly

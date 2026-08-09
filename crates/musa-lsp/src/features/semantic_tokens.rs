@@ -1,0 +1,118 @@
+//! Semantic tokens: the lexer's own classification, delta-encoded.
+//!
+//! Highlighting must answer on half-typed source, which the session's facts
+//! cannot describe — so this handler reads the token stream, which is total
+//! (an unrecognized span is still a token), never the facts. The classes are
+//! `musa-language`'s [`TokenClass`]: adding a token kind without classifying
+//! it does not compile there, so this legend cannot learn a word the lexer
+//! does not know.
+
+use lsp_types::{SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensResult};
+use musa_language::{SyntaxKind, TokenClass, lex};
+use musa_project::Span;
+
+use crate::workspace::Document;
+
+/// The token types the server can emit, in legend order. Indices into this
+/// list are what the token data carries.
+///
+/// Standard types where one fits; one custom type — `unit` — because the
+/// language's units are part of its syntax (roadmap §7: "units are part of
+/// the syntax") and no standard type says so. A client that does not know
+/// `unit` falls back to its own highlighting for it.
+pub(crate) fn legend() -> Vec<SemanticTokenType> {
+    vec![
+        SemanticTokenType::COMMENT,
+        SemanticTokenType::KEYWORD,
+        SemanticTokenType::MACRO,
+        SemanticTokenType::ENUM_MEMBER,
+        SemanticTokenType::NUMBER,
+        SemanticTokenType::STRING,
+        SemanticTokenType::VARIABLE,
+        SemanticTokenType::OPERATOR,
+        SemanticTokenType::new("unit"),
+    ]
+}
+
+/// The legend index of a token class, or `None` for a class the protocol is
+/// better off without: whitespace is no one's token, and an invalid span is
+/// the client's own squiggle's business, not a color's.
+fn type_index(class: TokenClass) -> Option<u32> {
+    let index = match class {
+        TokenClass::Comment => 0,
+        TokenClass::Keyword => 1,
+        TokenClass::Use => 2,
+        TokenClass::Pitch => 3,
+        TokenClass::Duration | TokenClass::Number => 4,
+        TokenClass::Text => 5,
+        TokenClass::Name => 6,
+        TokenClass::Punctuation => 7,
+        TokenClass::Unit => 8,
+        TokenClass::Invalid => return None,
+    };
+    Some(index)
+}
+
+/// Every classified token of the document, delta-encoded as the protocol
+/// prescribes. Valid source or not — the lexer is total, so this is total.
+pub(crate) fn full(document: &Document) -> SemanticTokensResult {
+    let snapshot = document.snapshot();
+    let source = snapshot.source();
+    let lines = document.lines();
+    let mut data = Vec::new();
+    let mut previous_line = 0_u32;
+    let mut previous_start = 0_u32;
+    for token in lex(source).tokens() {
+        if token.kind == SyntaxKind::Whitespace {
+            continue;
+        }
+        let Some(token_type) = TokenClass::of(token.kind).and_then(type_index) else {
+            continue;
+        };
+        let span = Span {
+            start: u32::from(token.range.start()),
+            end: u32::from(token.range.end()),
+        };
+        // One LSP token occupies one line, so the block comment — the
+        // language's only multi-line token — is told line by line.
+        for (line, start, length) in lines.lines_of(span) {
+            push(
+                &mut data,
+                line,
+                start,
+                length,
+                token_type,
+                &mut previous_line,
+                &mut previous_start,
+            );
+        }
+    }
+    SemanticTokensResult::Tokens(SemanticTokens { result_id: None, data })
+}
+
+/// One token, as a delta from the one before it.
+fn push(
+    data: &mut Vec<SemanticToken>,
+    line: u32,
+    start: u32,
+    length: u32,
+    token_type: u32,
+    previous_line: &mut u32,
+    previous_start: &mut u32,
+) {
+    let delta_line = line.saturating_sub(*previous_line);
+    let delta_start = if delta_line == 0 {
+        start.saturating_sub(*previous_start)
+    } else {
+        start
+    };
+    data.push(SemanticToken {
+        delta_line,
+        delta_start,
+        length,
+        token_type,
+        token_modifiers_bitset: 0,
+    });
+    *previous_line = line;
+    *previous_start = start;
+}
