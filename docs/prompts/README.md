@@ -180,6 +180,8 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 81 | vscode-extension | 3 | vscode-musa: generated TextMate grammar plus the language client |
 | 82 | zed-extension | 3 | zed-musa: WASM extension, grammar queries, server wiring |
 | 83 | lint-pass | 3 | Style-guide warnings as ordinary diagnostics; suppression lives in the source |
+| 84 | the-project-is-the-unit | 3 | `Project` above `ProjectSession`: a running order, a piece each, material that opens |
+| 85 | the-contents-page | 2 | The volume's front matter on the leaf, and the running order in the margin |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
@@ -289,6 +291,20 @@ is now a projection of one timeline. 44 gives it an interface, 45 gives it the o
 48 makes the artifact real. Each of the three is a payoff the earlier prompts were only setting up. That 44 and 45 need
 **zero** new constructors is the standing evidence for course correction §34: the operation set was right; the *surface*
 was not.
+
+**84–85 make the project the unit of work.** Roadmap §16 has described directory projects since the beginning and
+prompt 36 built the half of it a compiler needs — relative imports, and a `musa.toml` read for two keys — but nothing
+above the compiler ever learned that a project has more than one piece in it. The consequence is that `examples/album/`,
+the fixture §16 exists to justify, cannot be worked with: opening `pieces/01-opening.musa` says nothing about the piece
+beside it, and opening `library/motifs.musa` is rejected by `elaborate.rs` under a help line that calls a library
+legitimate. **84** adds `Project` above `ProjectSession` — not a facade over it, since it forwards nothing, but the
+three facts no session can hold: which pieces there are, which one is in hand, and the running order the manifest sets.
+A piece you turn away from keeps its text and its undo history and gives back only the audio device. **85** prints it,
+and the argument there is that a file tree is the wrong object — §16 fixes a project's shape, so disclosure triangles
+would model a freedom the format lacks while burying the running order. A bound volume already has the two devices
+needed, a contents page and an editorial note at the foot for the shared material, and both say things a file browser
+cannot. Neither prompt changes anything about a loose `.musa` file: it is a project of one, and with one entry no
+contents appears anywhere.
 
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
 ("Verovio score preview", "play, stop, seek, loop") but which this sequence deliberately runs after the CLI-provable
