@@ -198,8 +198,13 @@ fn write_score_def(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<
     let count_text = count.to_string();
     let unit_text = unit.to_string();
     let mut score_def = element("scoreDef");
-    score_def.push_attribute(("meter.count", count_text.as_str()));
-    score_def.push_attribute(("meter.unit", unit_text.as_str()));
+    // A piece that opens unmeasured states no meter. MEI reads a missing
+    // `meter.count` as "none stated", which is the truth here, where
+    // `meter.count="0"` would be a meter of no beats.
+    if count > 0 && unit > 0 {
+        score_def.push_attribute(("meter.count", count_text.as_str()));
+        score_def.push_attribute(("meter.unit", unit_text.as_str()));
+    }
     let sig = first.key_signature().map(|key| key_sig(key.fifths));
     if let (Some(sig), Some(key)) = (sig.as_deref(), first.key_signature()) {
         score_def.push_attribute(("key.sig", sig));
@@ -473,6 +478,7 @@ fn write_measure(
             .write_event(Event::Empty(score_def))
             .map_err(|error| RenderError::xml(&error))?;
     }
+    let unmeasured = opening.is_some_and(|measure| !measure.meter().is_measured());
     let n_text = index.saturating_add(1).to_string();
     let mut measure = element("measure");
     measure.push_attribute(("n", n_text.as_str()));
@@ -486,6 +492,14 @@ fn write_measure(
         measure.push_attribute(("right", "rptend"));
     } else if last {
         measure.push_attribute(("right", "end"));
+    } else if unmeasured {
+        // `metcon="false"` says this measure is not controlled by the meter,
+        // and the invisible right barline is the line that is not drawn.
+        // Together they are what MEI has for a cadenza.
+        measure.push_attribute(("right", "invis"));
+    }
+    if unmeasured {
+        measure.push_attribute(("metcon", "false"));
     }
     writer
         .write_event(Event::Start(measure))

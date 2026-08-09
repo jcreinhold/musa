@@ -180,7 +180,15 @@ fn staff_body(
         head.push(LyNode::Command(format!("\\clef \"{}\"", clef_name(clef))));
     }
     let (count, unit) = staff.time_signature();
-    head.push(LyNode::Command(format!("\\time {count}/{unit}")));
+    // A piece that opens unmeasured opens in `\\cadenzaOn` instead of a time
+    // signature — LilyPond's own way of saying "no barlines from here", and
+    // the only one it has.
+    let mut cadenza = count == 0 || unit == 0;
+    if cadenza {
+        head.push(LyNode::Command("\\cadenzaOn".to_owned()));
+    } else {
+        head.push(LyNode::Command(format!("\\time {count}/{unit}")));
+    }
     if let Some(key) = staff.key_signature() {
         head.push(LyNode::Command(key_command(key)));
     }
@@ -188,7 +196,15 @@ fn staff_body(
     let lane_count = staff.measures().first().map_or(0, |m| m.lanes().len());
     let mut lanes: Vec<Vec<LyNode>> = (0..lane_count).map(|_| Vec::new()).collect();
     for (index, measure) in staff.measures().iter().enumerate() {
-        let (count, unit) = (measure.meter().numerator(), measure.meter().denominator());
+        let length = measure.length().as_ratio();
+        // `\\cadenzaOn` and `\\cadenzaOff` are Timing commands, shared across a
+        // staff's lanes exactly as `\\time` is, so they are written once, in
+        // the first — and only where the state changes.
+        let unmeasured = !measure.meter().is_measured();
+        let toggle = (unmeasured != cadenza).then(|| {
+            cadenza = unmeasured;
+            if unmeasured { "\\cadenzaOn" } else { "\\cadenzaOff" }
+        });
         for (lane_index, lane) in measure.lanes().iter().enumerate() {
             let nodes = lanes.get_mut(lane_index);
             if let Some(nodes) = nodes {
@@ -196,6 +212,9 @@ fn staff_body(
                 // `\time` inside the music is a *change*, and LilyPond's
                 // Timing is shared across a staff's lanes, so it is written
                 // once, in the first.
+                if let (0, Some(command)) = (lane_index, toggle) {
+                    nodes.push(LyNode::Command(command.to_owned()));
+                }
                 if lane_index == 0
                     && index > 0
                     && let Some((count, unit)) = measure.time_signature()
@@ -224,8 +243,12 @@ fn staff_body(
                     nodes.push(LyNode::Command(command.clone()));
                 }
                 let clefs = if lane_index == 0 { measure.clefs() } else { &[] };
-                nodes.extend(lane_body(lane, count, unit, &here, clefs)?);
-                nodes.push(LyNode::BarCheck);
+                nodes.extend(lane_body(lane, length, &here, clefs)?);
+                // A bar check asserts a barline falls here, and inside a
+                // cadenza none does.
+                if !unmeasured {
+                    nodes.push(LyNode::BarCheck);
+                }
             }
         }
     }
@@ -246,8 +269,7 @@ fn staff_body(
 /// One lane's music for one measure.
 fn lane_body(
     lane: &VoiceLane,
-    count: u32,
-    unit: u32,
+    length: num_rational::Ratio<i64>,
     sections: &[&PositionedMark<ScoreMark>],
     clefs: &[ClefChange],
 ) -> Result<Vec<LyNode>, RenderError> {
@@ -258,7 +280,7 @@ fn lane_body(
         for mark in sections {
             nodes.push(mark_node(&mark.what));
         }
-        for piece in spell_pieces(i64::from(count), i64::from(unit)) {
+        for piece in spell_pieces(*length.numer(), *length.denom()) {
             nodes.push(LyNode::Note {
                 body: format!("s{piece}"),
                 event: EventId(u64::MAX),

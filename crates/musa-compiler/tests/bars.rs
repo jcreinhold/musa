@@ -18,8 +18,14 @@ fn meter() -> impl Strategy<Value = (u32, u32)> {
 }
 
 fn bars_of(numerator: u32, denominator: u32) -> BarLines {
-    let source =
-        format!("piece \"p\" {{ meter {numerator}/{denominator}; score {{ part a {{ voice b {{ rest 1; }} }} }} }}");
+    // A meter with no beats is spelled `none`: the degenerate case has a real
+    // name now, and `0/4` is refused rather than quietly meaning it.
+    let written = if numerator == 0 {
+        "none".to_owned()
+    } else {
+        format!("{numerator}/{denominator}")
+    };
+    let source = format!("piece \"p\" {{ meter {written}; score {{ part a {{ voice b {{ rest 1; }} }} }} }}");
     let compiled = musa_compiler::compile(
         &musa_compiler::SourceDocument::new(&source, "bars.musa"),
         &musa_compiler::CompileOptions::default(),
@@ -34,7 +40,7 @@ proptest! {
         let bars = bars_of(numerator, denominator);
         let at = bars.time_of(measure, Ratio::ONE).expect("1:1 and after are in the coordinate system");
         let back = bars.at(at);
-        if bars.is_measured() {
+        if bars.meter_at(MusicalTime::ZERO).is_measured() {
             prop_assert_eq!(back.measure, measure);
             prop_assert_eq!(back.beat, Ratio::ONE);
             prop_assert_eq!(back.into, MusicalDuration::ZERO);
@@ -53,7 +59,7 @@ proptest! {
         beat in 1i64..8,
     ) {
         let bars = bars_of(numerator, denominator);
-        prop_assume!(bars.is_measured());
+        prop_assume!(bars.meter_at(MusicalTime::ZERO).is_measured());
         let beat = Ratio::from_integer(beat);
         // Only positions that land inside their own measure are positions.
         prop_assume!(beat <= Ratio::from_integer(i64::from(numerator)));
@@ -67,7 +73,7 @@ proptest! {
     #[test]
     fn measure_at_contains_the_moment((numerator, denominator) in meter(), eighths in 0i64..256) {
         let bars = bars_of(numerator, denominator);
-        prop_assume!(bars.is_measured());
+        prop_assume!(bars.meter_at(MusicalTime::ZERO).is_measured());
         let at = MusicalTime::new(Ratio::new(eighths, 8));
         let measure = bars.measure_at(at);
         prop_assert!(measure.start <= at);
@@ -80,7 +86,7 @@ proptest! {
     #[test]
     fn closing_and_at_agree_off_the_barline((numerator, denominator) in meter(), eighths in 1i64..256) {
         let bars = bars_of(numerator, denominator);
-        prop_assume!(bars.is_measured());
+        prop_assume!(bars.meter_at(MusicalTime::ZERO).is_measured());
         let at = MusicalTime::new(Ratio::new(eighths, 8));
         let position = bars.at(at);
         if position.into == MusicalDuration::ZERO {
@@ -126,8 +132,14 @@ fn four_four_numbers_measures_the_way_the_old_helpers_did() {
 #[test]
 fn a_meter_with_no_length_is_one_unbounded_measure() {
     let bars = bars_of(0, 4);
-    assert!(!bars.is_measured());
+    assert!(!bars.meter_at(MusicalTime::ZERO).is_measured());
     assert_eq!(bars.at(MusicalTime::new(Ratio::from_integer(9))).measure, 1);
+    // How far in is still a real quantity — it is what an engraver spaces an
+    // unmeasured passage by, and the only coordinate it has.
+    assert_eq!(
+        bars.at(MusicalTime::new(Ratio::from_integer(9))).into,
+        MusicalDuration::new(Ratio::from_integer(9))
+    );
     assert_eq!(bars.closing(MusicalTime::new(Ratio::from_integer(9))), 1);
     assert_eq!(
         bars.measures_through(MusicalDuration::new(Ratio::from_integer(9)))

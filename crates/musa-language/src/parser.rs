@@ -146,6 +146,7 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::TransposeKw,
     SyntaxKind::RepeatKw,
     SyntaxKind::BarKw,
+    SyntaxKind::SenzaKw,
     SyntaxKind::TempoKw,
     SyntaxKind::MeterKw,
     SyntaxKind::KeyKw,
@@ -651,12 +652,28 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `meter <n>/<d>;`
+    /// `meter <n>/<d>;` or `meter none;`
     fn meter_stmt(&mut self) {
         self.start(SyntaxKind::MeterStmt);
         self.bump(); // meter
-        self.expect(SyntaxKind::Rational, "a meter such as `4/4`");
+        // `none` is a value of the meter, not a mechanism beside it: music
+        // with no barlines is music whose meter says there are none. It is
+        // spelled with the identifier rather than a keyword because there is
+        // nothing else `meter` can be followed by.
+        if self.at(SyntaxKind::Identifier) {
+            self.bump();
+        } else {
+            self.expect(SyntaxKind::Rational, "a meter such as `4/4`, or `none`");
+        }
         self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `senza { ... }` — an unmeasured stretch, and the meter back after it.
+    fn senza_stmt(&mut self) {
+        self.start(SyntaxKind::SenzaStmt);
+        self.bump(); // senza
+        self.block();
         self.finish();
     }
 
@@ -1277,6 +1294,8 @@ impl<'a> Parser<'a> {
                 self.repeat_stmt();
             } else if self.at(SyntaxKind::BarKw) {
                 self.bar_stmt();
+            } else if self.at(SyntaxKind::SenzaKw) {
+                self.senza_stmt();
             } else if self.at(SyntaxKind::GraceKw) {
                 self.grace_stmt();
             } else if self.at(SyntaxKind::MobileKw) {

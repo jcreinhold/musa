@@ -52,14 +52,16 @@ pub struct Measure {
     pub number: u32,
     /// Where it begins.
     pub start: MusicalTime,
-    /// Where it ends. Equal to `start` only when the piece is unmeasured.
+    /// Where it ends. For an unmeasured stretch, where the next meter
+    /// begins — or, at the last measure of a piece, where the music stops.
     pub end: MusicalTime,
     /// The meter in force across it.
     pub meter: Meter,
 }
 
 impl Measure {
-    /// How long it is. Zero only when the piece is unmeasured.
+    /// How long it is. For an unmeasured stretch, how long the passage
+    /// turned out to be rather than how long the meter said it would be.
     pub fn length(self) -> MusicalDuration {
         self.end - self.start
     }
@@ -74,6 +76,10 @@ struct Stretch {
 }
 
 impl Stretch {
+    fn is_measured(self) -> bool {
+        self.meter.is_measured()
+    }
+
     fn measure_len(self) -> Ratio<i64> {
         self.meter.measure_len().as_ratio()
     }
@@ -149,6 +155,18 @@ impl BarLines {
             return true;
         }
         let here = self.measure_at(at);
+        if !last.is_measured() {
+            // Inside an unmeasured stretch every moment is a barline, because
+            // there are none to be off. The passage counted as one measure,
+            // so the measured music resumes with the next number — which is
+            // how a conductor's score numbers the bar after a cadenza.
+            self.rest.push(Stretch {
+                start: at,
+                first: here.number.saturating_add(1),
+                meter,
+            });
+            return true;
+        }
         if here.start != at {
             return false;
         }
@@ -158,16 +176,6 @@ impl BarLines {
             meter,
         });
         true
-    }
-
-    /// Whether barlines fall anywhere at all.
-    ///
-    /// False for a meter with no length, which is the condition three callers
-    /// check before asking a question that would have no answer.
-    pub fn is_measured(&self) -> bool {
-        std::iter::once(&self.first)
-            .chain(&self.rest)
-            .any(|stretch| stretch.measure_len() > Ratio::ZERO)
     }
 
     /// The meter in force at a moment.
@@ -180,10 +188,14 @@ impl BarLines {
         let stretch = self.stretch_at(at);
         let len = stretch.measure_len();
         if len <= Ratio::ZERO {
+            // An unmeasured stretch is one measure with no beats in it, so
+            // the only honest answer to "which beat" is the first. How far
+            // *in* is still a real quantity, and it is the one an engraver
+            // spaces a cadenza by.
             return BarBeat {
                 measure: stretch.first,
                 beat: Ratio::ONE,
-                into: MusicalDuration::ZERO,
+                into: MusicalDuration::new((at - stretch.start).as_ratio().max(Ratio::ZERO)),
             };
         }
         let elapsed = (at - stretch.start).as_ratio();
@@ -218,12 +230,7 @@ impl BarLines {
         let stretch = self.stretch_at(at);
         let len = stretch.measure_len();
         if len <= Ratio::ZERO {
-            return Measure {
-                number: stretch.first,
-                start: stretch.start,
-                end: stretch.start,
-                meter: stretch.meter,
-            };
+            return self.unmeasured(stretch, at);
         }
         let index = ((at - stretch.start).as_ratio() / len).floor();
         let start = MusicalTime::new(stretch.start.as_ratio() + index * len);
@@ -258,12 +265,20 @@ impl BarLines {
         let end = MusicalTime::ZERO + span;
         let last = self.closing(end);
         let first = self.first.first;
-        (first..=last.max(first)).map(|number| self.measure(number))
+        (first..=last.max(first)).map(move |number| self.measure(number, end))
     }
 
-    /// The measure with a given number.
-    fn measure(&self, number: u32) -> Measure {
+    /// The measure with a given number, in a piece that stops at `end`.
+    ///
+    /// `end` matters only to an unmeasured stretch that nothing closes: it
+    /// runs until the next meter, and where there is no next meter it runs
+    /// until the music stops. A measured stretch already knows its own
+    /// lengths and ignores it.
+    fn measure(&self, number: u32, end: MusicalTime) -> Measure {
         let stretch = self.stretch_for(number);
+        if !stretch.is_measured() {
+            return self.unmeasured(stretch, end);
+        }
         let index = Ratio::from_integer(i64::from(number.saturating_sub(stretch.first)));
         let len = stretch.measure_len();
         let start = MusicalTime::new(stretch.start.as_ratio() + index * len);
@@ -271,6 +286,26 @@ impl BarLines {
             number,
             start,
             end: MusicalTime::new(start.as_ratio() + len),
+            meter: stretch.meter,
+        }
+    }
+
+    /// The one measure an unmeasured stretch is, reaching as far as it does.
+    ///
+    /// Plan A of the two in prompt 74: the stretch is one measure with no
+    /// end until the next meter, so everything that walks measures keeps
+    /// working and the measure number does not advance across a cadenza —
+    /// which is correct, because a cadenza inside measure 42 is measure 42.
+    fn unmeasured(&self, stretch: Stretch, bound: MusicalTime) -> Measure {
+        let next = self
+            .rest
+            .iter()
+            .find(|later| later.start > stretch.start)
+            .map(|later| later.start);
+        Measure {
+            number: stretch.first,
+            start: stretch.start,
+            end: next.unwrap_or_else(|| bound.max(stretch.start)),
             meter: stretch.meter,
         }
     }

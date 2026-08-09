@@ -165,3 +165,25 @@ Engraving quality without a regression net decays within three prompts. The net:
 - **Both themes** are rasterized; the dark golden proves `currentColor` plumbing rather than a filter.
 - **Stability test**: apply an edit to a fixture, re-render, and assert the anchor event's viewport y-offset moved by
   less than 2 px and that no frame between the two renders was empty.
+
+## 10. Unmeasured music (prompt 74)
+
+A cadenza, a chant line, an unmeasured prelude: real durations, no barlines. Where a passage is unmeasured, **space
+is what tells the reader how long a note is**, because no barline and no beat position is doing it. That is a
+spacing rule, and spacing is Verovio's — so the rule this document fixes is what musa is allowed to say about it.
+
+**musa names the passage; the engraver spaces it.** The MEI backend writes `<measure metcon="false" right="invis">`
+for an unmeasured stretch, which is MEI's own vocabulary for "this measure is not controlled by the meter" and "do
+not draw the line that closes it". Nothing else is stated: no per-measure spacing coefficient, no coordinate, no
+width. That is the same line §4 draws for the page head — musa names a fact every edition agrees on, and Verovio
+places it.
+
+This is not a smaller answer than "musa positions unmeasured notes proportionally". It is the same answer arriving
+through the layer that owns it: durations in an unmeasured stretch are exact and unchanged (§2 of the roadmap — the
+barlines stop, the clock does not), and the global `spacingLinear` / `spacingNonLinear` pair in §4 is already what
+turns duration into width. A passage with no barlines to justify against gets that spacing without a bar's worth of
+justification stretched over it, which is proportional notation as a page rather than as an instruction.
+
+The one thing the interface owes such a passage is that it **must not look like a mistake**: an unmeasured stretch
+is drawn with the same weight and the same colour as measured music. It is not greyed, not bracketed, and not
+annotated with a badge. A composer who wrote `senza { ... }` wrote music, not a hole.

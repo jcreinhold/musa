@@ -292,6 +292,10 @@ pub(crate) struct Resolver {
     /// and folded before any of them can be checked: whether a change lands
     /// on a barline is a question about the changes before it.
     pub(crate) meter_changes: Vec<(crate::MusicalTime, Meter, SourceSpan)>,
+    /// Every profile that declares a groove that is not straight, with the
+    /// rule that declares it — kept so the check that a groove has a meter to
+    /// swing against can point at the groove rather than at the music.
+    pub(crate) groove_rules: Vec<(String, SourceSpan)>,
     /// Every mid-piece `key`, likewise.
     ///
     /// A modulation is a barline event, so it is checked against the
@@ -347,6 +351,7 @@ impl Resolver {
             meter_written: false,
             cursor: crate::MusicalTime::ZERO,
             meter_changes: Vec::new(),
+            groove_rules: Vec::new(),
             key_changes: Vec::new(),
             pending_bars: Vec::new(),
             sites: std::collections::BTreeMap::new(),
@@ -899,7 +904,10 @@ pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceD
                 profile.set_dynamic(mark, amplitude);
             }
         }
-        if let Some(groove) = groove_of(resolver, &declaration) {
+        if let Some((groove, span)) = groove_of(resolver, &declaration) {
+            if !groove.is_straight() {
+                resolver.groove_rules.push((profile.name().to_owned(), span));
+            }
             profile.set_groove(groove);
         }
         if let Some(grace) = grace_of(resolver, &declaration) {
@@ -985,7 +993,7 @@ fn steal_from(resolver: &mut Resolver, setting: &SettingStmt) -> Option<crate::S
 /// More than one is refused rather than merged: a part has one beat, and two
 /// grooves composed in written order would mean something no musician asked
 /// for.
-fn groove_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<crate::Groove> {
+fn groove_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<(crate::Groove, SourceSpan)> {
     let rules = declaration.grooves();
     let (first, rest) = rules.split_first()?;
     for extra in rest {
@@ -1063,7 +1071,7 @@ fn groove_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<crate
             .help(example_of(def.name)),
         );
     }
-    groove
+    groove.map(|groove| (groove, trimmed_span(first.syntax())))
 }
 
 /// What a groove looks like written correctly, for the diagnostics above.
@@ -1425,9 +1433,19 @@ fn tempo_ramp(resolver: &mut Resolver, tempo: &TempoStmt, printed: bool) -> Opti
 }
 
 pub(crate) fn parse_meter(meter: &musa_language::ast::MeterStmt) -> Option<Meter> {
+    if meter.is_unmeasured() {
+        return Some(Meter::NONE);
+    }
     let text = meter.value()?;
     let (numerator, denominator) = text.split_once('/')?;
-    Some(Meter::new(numerator.parse().ok()?, denominator.parse().ok()?))
+    let (numerator, denominator): (u32, u32) = (numerator.parse().ok()?, denominator.parse().ok()?);
+    // `4/0` is not a meter and `0/4` is spelled `none`: a fraction here has to
+    // name real measures, or the barlines would fall nowhere by accident
+    // rather than on purpose.
+    if numerator == 0 || denominator == 0 {
+        return None;
+    }
+    Some(Meter::new(numerator, denominator))
 }
 
 pub(crate) fn parse_key(key: &KeyStmt) -> Option<Key> {
@@ -1581,11 +1599,44 @@ pub(crate) fn bind_argument(
     }
 }
 
-pub(crate) fn check_measure_sanity(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
-    let bars = snapshot.bars();
-    if !bars.is_measured() {
+/// A groove needs a meter to swing against.
+///
+/// A groove displaces the beat inside a cell named by the meter's denominator
+/// (`groove.rs`), and unmeasured music has no denominator to name one — so a
+/// swung cadenza is not a thing with a wrong answer, it is a question with
+/// none. Refused rather than straightened silently, which would be the
+/// composer's feel dropped without a word.
+pub(crate) fn check_groove_has_a_meter(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
+    let rules = std::mem::take(&mut resolver.groove_rules);
+    if rules.is_empty() {
         return;
     }
+    let bars = snapshot.bars();
+    for (_, part) in snapshot.parts().iter() {
+        let Some(profile) = snapshot.profiles().for_part(part.name()) else {
+            continue;
+        };
+        let Some((_, span)) = rules.iter().find(|(name, _)| name == profile.name()) else {
+            continue;
+        };
+        let unmeasured = part
+            .voices()
+            .flat_map(|(_, voice)| voice.events())
+            .any(|event| !bars.meter_at(event.onset).is_measured());
+        if !unmeasured {
+            continue;
+        }
+        resolver.report(
+            Diagnostic::error(Code::Misplaced, "this groove has no beat to lay itself over")
+                .at(*span, "the part playing this reaches unmeasured music")
+                .help("end the unmeasured stretch before this part plays, or give the part a straight profile")
+                .note("a groove displaces the beat inside a cell the meter names, and `meter none` names none"),
+        );
+    }
+}
+
+pub(crate) fn check_measure_sanity(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
+    let bars = snapshot.bars();
     for (_, part) in snapshot.parts().iter() {
         for (voice_id, voice) in part.voices() {
             // A voice that holds a note as long as it likes is not measured
@@ -1596,7 +1647,13 @@ pub(crate) fn check_measure_sanity(resolver: &mut Resolver, snapshot: &ScoreSnap
                 continue;
             }
             let span = voice.span();
-            let stops = bars.at(crate::MusicalTime::ZERO + span);
+            let end = crate::MusicalTime::ZERO + span;
+            // Unmeasured music stops where it stops. "Part-way through a
+            // measure" is a complaint about barlines, and there are none.
+            if !bars.meter_at(end).is_measured() {
+                continue;
+            }
+            let stops = bars.at(end);
             if span.as_ratio() != Ratio::ZERO && stops.into != crate::MusicalDuration::ZERO {
                 let name = part.voice_name(voice_id).unwrap_or("?");
                 // No span: this is a fact about a whole voice, and pointing

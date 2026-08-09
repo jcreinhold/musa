@@ -320,6 +320,8 @@ enum RawToken {
     ImproviseKw,
     #[token("over", priority = 3)]
     OverKw,
+    #[token("senza", priority = 3)]
+    SenzaKw,
 }
 
 impl RawToken {
@@ -415,6 +417,7 @@ impl RawToken {
             | Self::MobileKw
             | Self::ImproviseKw
             | Self::OverKw
+            | Self::SenzaKw
             | Self::BarKw
             | Self::EndingKw => None,
         }
@@ -509,6 +512,7 @@ impl RawToken {
             Self::MobileKw => SyntaxKind::MobileKw,
             Self::ImproviseKw => SyntaxKind::ImproviseKw,
             Self::OverKw => SyntaxKind::OverKw,
+            Self::SenzaKw => SyntaxKind::SenzaKw,
             Self::BarKw => SyntaxKind::BarKw,
             Self::EndingKw => SyntaxKind::EndingKw,
         }

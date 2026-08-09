@@ -191,6 +191,8 @@ pub enum SyntaxKind {
     ToKw,
     /// `bar`
     BarKw,
+    /// `senza`
+    SenzaKw,
     /// `ending`
     EndingKw,
     /// `fragment`
@@ -348,6 +350,8 @@ pub enum SyntaxKind {
     Block,
     /// `bar { ... }` / `bar head { ... }` — one measure, written down.
     BarStmt,
+    /// `senza { ... }` — a stretch with no barlines, and the meter back after.
+    SenzaStmt,
     /// `ending 1 { ... }` — what a repeat plays on one of its passes.
     EndingStmt,
     /// `fragment a { ... }` — material a performance may reorder or repeat.

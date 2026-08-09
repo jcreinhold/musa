@@ -41,6 +41,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("chord", SyntaxKind::ChordKw),
     ("repeat", SyntaxKind::RepeatKw),
     ("bar", SyntaxKind::BarKw),
+    ("senza", SyntaxKind::SenzaKw),
     ("ending", SyntaxKind::EndingKw),
     ("fragment", SyntaxKind::FragmentKw),
     ("mobile", SyntaxKind::MobileKw),
@@ -242,6 +243,7 @@ impl TokenClass {
             | SyntaxKind::DiminuendoKw
             | SyntaxKind::ToKw
             | SyntaxKind::BarKw
+            | SyntaxKind::SenzaKw
             | SyntaxKind::EndingKw
             | SyntaxKind::FragmentKw
             | SyntaxKind::MobileKw
@@ -314,6 +316,7 @@ impl TokenClass {
             | SyntaxKind::SendStmt
             | SyntaxKind::Block
             | SyntaxKind::BarStmt
+            | SyntaxKind::SenzaStmt
             | SyntaxKind::EndingStmt
             | SyntaxKind::FragmentDecl
             | SyntaxKind::MobileStmt

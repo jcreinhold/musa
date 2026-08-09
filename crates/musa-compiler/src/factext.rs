@@ -265,14 +265,14 @@ fn kind_text(kind: &FactKind) -> String {
         // "no word" apart from "the empty word" throughout.
         FactKind::Tempo { metronome, text, ramp } => vec![
             "tempo".to_owned(),
-            metronome.map_or_else(String::new, |mark| mark.beat.to_string()),
+            metronome.map_or_else(String::new, |mark| ratio_text(mark.beat)),
             metronome.map_or_else(String::new, |mark| mark.bpm.to_string()),
             text.clone().unwrap_or_default(),
             ramp.as_ref()
                 .and_then(|ramp| ramp.to)
                 .map_or_else(String::new, |bpm| bpm.to_string()),
             ramp.as_ref()
-                .map_or_else(String::new, |ramp| ramp.over.as_ratio().to_string()),
+                .map_or_else(String::new, |ramp| ratio_text(ramp.over.as_ratio())),
             ramp.as_ref()
                 .map_or_else(String::new, |ramp| ramp.shape.canonical_key()),
         ],
@@ -386,7 +386,7 @@ fn read_kind(text: &str) -> Option<FactKind> {
                     None
                 } else {
                     Some(crate::score::Metronome {
-                        beat: crate::resolve::parse_ratio(beat)?,
+                        beat: read_ratio(beat)?,
                         bpm: bpm.parse().ok()?,
                     })
                 },
@@ -400,7 +400,7 @@ fn read_kind(text: &str) -> Option<FactKind> {
                         } else {
                             Some(arrives.parse().ok()?)
                         },
-                        over: crate::time::MusicalDuration::new(crate::resolve::parse_ratio(over)?),
+                        over: crate::time::MusicalDuration::new(read_ratio(over)?),
                         shape: read_progress(shape)?,
                     })
                 },

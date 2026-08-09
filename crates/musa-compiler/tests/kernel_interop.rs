@@ -57,6 +57,10 @@ const EXAMPLES: &[(&str, &str)] = &[
     ("mobile", include_str!("../../../examples/mobile.musa")),
     ("changes", include_str!("../../../examples/changes.musa")),
     ("in-c", include_str!("../../../examples/in-c.musa")),
+    ("rubato", include_str!("../../../examples/rubato.musa")),
+    ("riser", include_str!("../../../examples/riser.musa")),
+    ("cadenza", include_str!("../../../examples/cadenza.musa")),
+    ("chant", include_str!("../../../examples/chant.musa")),
 ];
 
 /// The round-trip law over the real corpus: printing a piece and reading it
@@ -120,6 +124,23 @@ fn a_hairpin_shape_survives_as_exact_rationals() {
     assert!(printed.contains("hairpin@cres@ff@"), "no hairpin printed: {printed}");
     assert!(!printed.contains('.'), "a rational was written as a decimal: {printed}");
     check_kernel_text(&printed).expect("a printed hairpin reads back");
+}
+
+/// A whole rational round-trips as a rational.
+///
+/// `Ratio`'s `Display` drops a denominator of one, so a beat unit of `1/1` or
+/// a ramp reaching over `2/1` printed as `1` and `2` — and read back as
+/// nothing at all. Caught by adding `rubato.musa` to the corpus, which is
+/// what a corpus is for; pinned here so the next payload field that spells a
+/// rational by hand does not lose it again.
+#[test]
+fn a_whole_rational_survives_the_round_trip() {
+    let source = "piece \"p\" { tempo 1/1 = 60 to 30 over 2/1 \"rit.\"; meter 4/4;
+        score { part a { voice b { c5 1; c5 1; c5 1; } } } }";
+    let document = SourceDocument::new(source, "whole.musa");
+    let printed = kernel_text(&document, &pinned()).expect("elaborates");
+    assert!(printed.contains("tempo@1/1@60@rit.@30@2/1@"), "{printed}");
+    check_kernel_text(&printed).expect("a printed ramp reads back");
 }
 
 /// Kernel text is read, not trusted: a truncated file, a bad rational, and an

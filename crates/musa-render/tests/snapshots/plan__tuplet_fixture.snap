@@ -33,6 +33,12 @@ NotationPlan {
                         numerator: 4,
                         denominator: 4,
                     },
+                    length: MusicalDuration(
+                        Ratio {
+                            numer: 1,
+                            denom: 1,
+                        },
+                    ),
                     time_signature: Some(
                         (
                             4,
@@ -460,6 +466,12 @@ NotationPlan {
                         numerator: 4,
                         denominator: 4,
                     },
+                    length: MusicalDuration(
+                        Ratio {
+                            numer: 1,
+                            denom: 1,
+                        },
+                    ),
                     time_signature: None,
                     key: None,
                     clefs: [],
@@ -951,6 +963,12 @@ NotationPlan {
                         numerator: 4,
                         denominator: 4,
                     },
+                    length: MusicalDuration(
+                        Ratio {
+                            numer: 1,
+                            denom: 1,
+                        },
+                    ),
                     time_signature: Some(
                         (
                             4,
@@ -1141,6 +1159,12 @@ NotationPlan {
                         numerator: 4,
                         denominator: 4,
                     },
+                    length: MusicalDuration(
+                        Ratio {
+                            numer: 1,
+                            denom: 1,
+                        },
+                    ),
                     time_signature: None,
                     key: None,
                     clefs: [],

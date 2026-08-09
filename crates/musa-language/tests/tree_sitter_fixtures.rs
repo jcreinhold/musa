@@ -163,6 +163,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::DiminuendoKw => "diminuendo",
         SyntaxKind::ToKw => "to",
         SyntaxKind::BarKw => "bar",
+        SyntaxKind::SenzaKw => "senza",
         SyntaxKind::EndingKw => "ending",
         SyntaxKind::FragmentKw => "fragment",
         SyntaxKind::MobileKw => "mobile",
@@ -240,6 +241,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::SendStmt
         | SyntaxKind::Block
         | SyntaxKind::BarStmt
+        | SyntaxKind::SenzaStmt
         | SyntaxKind::EndingStmt
         | SyntaxKind::FragmentDecl
         | SyntaxKind::MobileStmt

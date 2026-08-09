@@ -456,8 +456,31 @@ wrapper!(MeterStmt, SyntaxKind::MeterStmt);
 
 impl MeterStmt {
     /// The meter fraction text, e.g. `4/4`.
+    ///
+    /// `None` for `meter none;`, which states a meter without stating a
+    /// fraction — see [`MeterStmt::is_unmeasured`].
     pub fn value(&self) -> Option<String> {
         token_text(&self.0, SyntaxKind::Rational)
+    }
+
+    /// Whether this is `meter none;`: music with no barlines from here.
+    pub fn is_unmeasured(&self) -> bool {
+        token_text(&self.0, SyntaxKind::Identifier).as_deref() == Some("none")
+    }
+}
+
+/// `senza { ... }`
+///
+/// An unmeasured stretch with a scope. It is the same two meter changes a
+/// composer could write by hand — `meter none;` and the meter back — with the
+/// second one impossible to forget, which is the whole of what it adds.
+pub struct SenzaStmt(SyntaxNode);
+wrapper!(SenzaStmt, SyntaxKind::SenzaStmt);
+
+impl SenzaStmt {
+    /// The unmeasured items, in source order.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
     }
 }
 
@@ -677,6 +700,8 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             RepeatStmt::cast(child).map(VoiceItem::Repeat)
         } else if kind == SyntaxKind::BarStmt {
             BarStmt::cast(child).map(VoiceItem::Bar)
+        } else if kind == SyntaxKind::SenzaStmt {
+            SenzaStmt::cast(child).map(VoiceItem::Senza)
         } else if kind == SyntaxKind::EndingStmt {
             EndingStmt::cast(child).map(VoiceItem::Ending)
         } else if kind == SyntaxKind::SlurStmt {
@@ -736,6 +761,8 @@ pub enum VoiceItem {
     Repeat(RepeatStmt),
     /// `bar { ... }` / `bar head { ... }`
     Bar(BarStmt),
+    /// `senza { ... }` — unmeasured, and measured again after.
+    Senza(SenzaStmt),
     /// `ending 1 { ... }`
     Ending(EndingStmt),
     /// `slur { ... }`

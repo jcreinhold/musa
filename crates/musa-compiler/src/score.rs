@@ -417,7 +417,19 @@ impl Default for Meter {
 }
 
 impl Meter {
-    /// Beats per measure.
+    /// No meter: music with real durations and no barlines — a cadenza, a
+    /// chant, an unmeasured prelude.
+    ///
+    /// It is a *value* of the meter rather than a mechanism beside it, which
+    /// is what keeps "where do the barlines fall" one question with one
+    /// answer. A meter with no beats has no measure length, and every
+    /// consumer that asks about barlines already asks the meter.
+    pub const NONE: Self = Self {
+        numerator: 0,
+        denominator: 4,
+    };
+
+    /// Beats per measure. Zero when the music is unmeasured.
     pub fn numerator(self) -> u32 {
         self.numerator
     }
@@ -427,8 +439,19 @@ impl Meter {
         self.denominator
     }
 
-    /// The length of one measure in whole notes.
+    /// Whether barlines fall under this meter at all.
+    ///
+    /// The one question `meter none` adds, asked wherever a barline, a time
+    /// signature or a bar-length check would otherwise be assumed.
+    pub fn is_measured(self) -> bool {
+        self.numerator > 0 && self.denominator > 0
+    }
+
+    /// The length of one measure in whole notes. Zero when unmeasured.
     pub fn measure_len(&self) -> MusicalDuration {
+        if !self.is_measured() {
+            return MusicalDuration::ZERO;
+        }
         MusicalDuration::new(Ratio::new(i64::from(self.numerator), i64::from(self.denominator)))
     }
 

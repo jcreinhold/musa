@@ -278,6 +278,7 @@ fn typed_views_read_the_new_statements() {
                 }
             }
             VoiceItem::Note(_)
+            | VoiceItem::Senza(_)
             | VoiceItem::Rest(_)
             | VoiceItem::Chord(_)
             | VoiceItem::Use(_)
@@ -338,6 +339,7 @@ fn the_transformations_and_their_bodies_are_typed_views() {
                 assert_eq!(invert.items().len(), 1);
             }
             VoiceItem::Note(_)
+            | VoiceItem::Senza(_)
             | VoiceItem::Rest(_)
             | VoiceItem::Chord(_)
             | VoiceItem::Use(_)
@@ -384,6 +386,7 @@ fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
         .filter_map(|item| match item {
             VoiceItem::Use(call) => Some(call),
             VoiceItem::Note(_)
+            | VoiceItem::Senza(_)
             | VoiceItem::Rest(_)
             | VoiceItem::Chord(_)
             | VoiceItem::Transpose(_)
@@ -577,6 +580,7 @@ fn a_hairpin_names_its_direction_and_its_mark() {
         .filter_map(|item| match item {
             VoiceItem::Hairpin(hairpin) => Some((hairpin.grows(), hairpin.target(), hairpin.items().len())),
             VoiceItem::Note(_)
+            | VoiceItem::Senza(_)
             | VoiceItem::Rest(_)
             | VoiceItem::Chord(_)
             | VoiceItem::Use(_)

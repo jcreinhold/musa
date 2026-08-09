@@ -281,6 +281,7 @@ pub struct ClefChange {
 pub struct MeasurePlan {
     number: u32,
     meter: Meter,
+    length: MusicalDuration,
     time_signature: Option<(u32, u32)>,
     key: Option<KeySignature>,
     clefs: Vec<ClefChange>,
@@ -296,6 +297,16 @@ impl MeasurePlan {
     /// The meter in force across this measure.
     pub fn meter(&self) -> Meter {
         self.meter
+    }
+
+    /// How long it is, in whole notes.
+    ///
+    /// The meter's answer wherever there is a meter, and the passage's own
+    /// length where there is not: an unmeasured stretch is one measure that
+    /// runs until the next meter or until the music stops, so its length is
+    /// something only the barlines know.
+    pub fn length(&self) -> MusicalDuration {
+        self.length
     }
 
     /// The time signature this measure *prints*, or `None` when it inherits
@@ -1214,8 +1225,16 @@ fn plan_staff(
             });
         }
         let lanes = plans;
-        let changed = printed != Some(measure.meter);
-        printed = Some(measure.meter);
+        // Unmeasured music prints no time signature — there is none to print
+        // — and the measured music after it prints one only if it says
+        // something new. So the last *printed* meter is what a resumption is
+        // compared against, which is why `printed` skips the unmeasured
+        // stretch rather than recording it.
+        let measured = measure.meter.is_measured();
+        let changed = measured && printed != Some(measure.meter);
+        if measured {
+            printed = Some(measure.meter);
+        }
         // The key in force where this measure opens. Read as "the latest one
         // stated at or before the barline" rather than "one stated exactly
         // here", so a modulation the compiler refused still prints somewhere
@@ -1228,6 +1247,7 @@ fn plan_staff(
         measures.push(MeasurePlan {
             number: measure.number,
             meter: measure.meter,
+            length: measure.length(),
             time_signature: changed.then(|| (measure.meter.numerator(), measure.meter.denominator())),
             key: key_changed.then_some(here_key).flatten(),
             clefs: clefs

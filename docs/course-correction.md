@@ -1396,9 +1396,15 @@ The candidate kernel should support clean elaboration of at least:
 
 4. **Tuplets and polyrhythm** Exact rational temporal relationships.
 
-5. **Changing meter and key** Contextual temporal information without semantic special cases.
+5. **Changing meter and key** Contextual temporal information without semantic special cases. *(Proven at prompts
+   63–64, and pushed to its edge at prompt 74: `meter none` is a **value** of the meter context, not a mechanism
+   beside it, so music with no barlines needed no kernel form, no second time coordinate, and no new special case.
+   `examples/changing-meter.musa`, `examples/modulation.musa`, `examples/cadenza.musa`, `examples/chant.musa`.)*
 
-6. **Accelerando/ritardando** Distinguish symbolic beat structure from physical-time realization.
+6. **Accelerando/ritardando** Distinguish symbolic beat structure from physical-time realization. *(Proven at
+   prompt 73: a gradual change is a `Progress` in the tempo marking's payload, integrated exactly at realization
+   and printed at both ends on the page. The symbolic timeline does not move — no notehead changes place —
+   which is the distinction stated as a test. `examples/rubato.musa`, `examples/riser.musa`.)*
 
 7. **Glissando/crescendo** Determine where continuous temporal behavior belongs. *(Proven at prompt 44: a shape is
    a `Progress` in the payload, not a term form. `examples/annotated.musa`.)*

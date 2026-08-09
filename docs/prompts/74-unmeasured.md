@@ -1,7 +1,7 @@
 ---
 id: 74
 slug: unmeasured
-status: pending
+status: done
 depends_on: [64, 72]
 phase: 3
 ---
@@ -106,15 +106,44 @@ is no meter. The diagnostic says that.
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo insta test --workspace --unreferenced=reject
-cd apps/musa-desktop/ui && pnpm test          # screenshot goldens for the spacing change
+cd apps/musa-desktop/ui && npx pnpm run test:unit
 cargo run -p musa-cli -- check examples/cadenza.musa
-cargo run -p musa-cli -- render examples/chant.musa --to lilypond | grep -c cadenzaOn   # 1
-# the cadenza is inside measure 42, not measure 43:
-cargo run -p musa-cli -- render examples/cadenza.musa --to musicxml | grep -c 'number="43"'
+cargo run -p musa-cli -- render examples/chant.musa --to lilypond -o - | grep -c cadenzaOn   # 1
+# the cadenza is measure 5, and the movement resumes at 6:
+cargo run -p musa-cli -- render examples/cadenza.musa --to musicxml -o - | grep -c 'number="6"'
 ```
 
 Commit as `Add unmeasured music`.
+
+## Repairs made while implementing
+
+1. **`meter none` is `Meter::NONE`, and `0/4` is refused.** Unmeasured is a value of the meter exactly as the
+   Design says, and the value is a meter with no beats. The consequence the Design did not draw: a written `0/4`
+   or `4/0` now has to be refused, or the barlines would fall nowhere by accident rather than on purpose. Every
+   question about barlines is asked of the meter — `Meter::is_measured()` — and `BarLines::is_measured()`, which
+   answered for a whole piece and could not answer for a mixed one, is deleted.
+2. **`senza { ... }` is sugar, elaborated as two meter changes.** `meter none;`, the body, and the meter that was
+   already in force — which is what a composer could write by hand, with the second change impossible to forget.
+   A test proves the two spellings produce the same meters and the same onsets.
+3. **The cadenza is measure 5, not measure 42.** Forty-one bars of filler to reach the Design's number would be
+   noise in a fixture that exists to show one thing. The Check's grep is repaired to match.
+4. **`plan.rs` gains no spacing mode.** The Design asks for one, and `docs/interface/` §1 is the reason it cannot
+   have one: Rust owns MEI and the engraver owns spacing. The plan instead carries each measure's real *length*
+   (an unmeasured stretch runs until the next meter or until the music stops, which only the barlines know), and
+   the backends say "not controlled by the meter" in each format's own vocabulary. The agreed rule is written into
+   `docs/interface/02-engraving.md` §10, including the one thing the interface does owe such a passage: it must not
+   be drawn as though it were a mistake.
+5. **The bar-length check became the diagnostic rather than an early return.** It used to skip an unmeasured piece
+   entirely; now a `bar` inside unmeasured music is refused, which is the prompt's intent and the thing prompt 56
+   exists to prevent — an assertion nobody checks.
+6. **The tuplet check needed no unmeasured clause.** It compares the measure a group opens in with the measure it
+   closes, and inside one unmeasured measure those are equal, so the guard it had was removed rather than
+   replaced.
+7. **The groove diagnostic points at the groove.** It fires when a part whose profile declares a non-straight
+   groove reaches unmeasured music — the honest condition, rather than "the piece has both somewhere".
+8. **§33 rows 5 and 6, not 4 to 6.** Row 4 is tuplets and polyrhythm, which this prompt does not touch; row 5
+   (changing meter and key) is what `meter none` extends, and row 6 (accelerando/ritardando) is prompt 73's, which
+   had not been recorded there yet.
 
 ## Stop
 

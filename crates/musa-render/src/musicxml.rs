@@ -172,7 +172,7 @@ fn divisions_for(plan: &NotationPlan) -> Result<i64, RenderError> {
     for staff in plan.staves() {
         divisions = widen(divisions, measure_length(staff))?;
         for measure in staff.measures() {
-            divisions = widen(divisions, meter_length(measure.meter()))?;
+            divisions = widen(divisions, measure.length().as_ratio())?;
             for lane in measure.lanes() {
                 for item in lane.items() {
                     divisions = widen(divisions, item.onset_in_measure().as_ratio())?;
@@ -191,15 +191,6 @@ fn measure_length(staff: &StaffPlan) -> Ratio<i64> {
         Ratio::ZERO
     } else {
         Ratio::new(i64::from(count), i64::from(unit))
-    }
-}
-
-/// The same, for one measure's own meter.
-fn meter_length(meter: musa_compiler::Meter) -> Ratio<i64> {
-    if meter.denominator() == 0 {
-        Ratio::ZERO
-    } else {
-        Ratio::new(i64::from(meter.numerator()), i64::from(meter.denominator()))
     }
 }
 
@@ -432,7 +423,7 @@ fn write_part(
             write_positioned(xml, plan, measure.number(), divisions)?;
         }
         let lanes = measure.lanes();
-        let full = ticks(meter_length(measure.meter()), divisions);
+        let full = ticks(measure.length().as_ratio(), divisions);
         for (lane_index, lane) in lanes.iter().enumerate() {
             let consumed = write_lane(
                 xml,
@@ -464,6 +455,10 @@ fn write_part(
                     .map(|(label, kind)| (label.as_str(), *kind)),
                 barline.backward.then_some("backward"),
             )?;
+        } else if !measure.meter().is_measured() {
+            // Unmeasured music: the measure is real and numbered, and the
+            // line that would close it is not drawn.
+            write_barline(xml, "right", Some("none"), None, None)?;
         }
         xml.close("measure")?;
     }
@@ -499,11 +494,15 @@ fn write_attributes(xml: &mut Xml, staff: &StaffPlan, divisions: i64) -> Result<
     if let Some(key) = staff.key_signature() {
         write_key(xml, key)?;
     }
+    // A piece that opens unmeasured prints no time signature, because there
+    // is none: `<time>` with no beats in it is a document no reader accepts.
     let (count, unit) = staff.time_signature();
-    xml.open("time", &[])?;
-    xml.leaf("beats", &[], &count.to_string())?;
-    xml.leaf("beat-type", &[], &unit.to_string())?;
-    xml.close("time")?;
+    if count > 0 && unit > 0 {
+        xml.open("time", &[])?;
+        xml.leaf("beats", &[], &count.to_string())?;
+        xml.leaf("beat-type", &[], &unit.to_string())?;
+        xml.close("time")?;
+    }
     if let Some(clef) = staff.clef() {
         write_clef(xml, clef)?;
     }

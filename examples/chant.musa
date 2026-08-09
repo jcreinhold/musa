@@ -1,0 +1,54 @@
+// A chant line, unmeasured from the first note (docs/prompts/74).
+//
+// `meter none;` is not the absence of a meter statement — a piece that writes
+// no `meter` is in 4/4. It is a meter whose answer to "where do the barlines
+// fall" is "nowhere", which is a real answer and the one plainchant needs.
+//
+// Unmeasured is not the same as unmetered *time*. Every duration here is
+// exact and the performance schedules it exactly; what stops is the barline,
+// not the clock. That is the layer table again (roadmap §2): a barline is
+// notation, and notation is not the sounding.
+//
+// This is modern notation of a chant, not chant notation: no neumes, no
+// mensural signs, and no attempt to be a facsimile.
+piece "Chant" {
+    tempo 1/4 = 96;
+    meter none;
+    key c major;
+
+    score {
+        part cantor {
+            clef treble;
+
+            voice line {
+                dynamic mp;
+
+                // *Salve Regina*, the opening phrase, in modern note values.
+                d4 1/4;
+                f4 1/4;
+                g4 1/4;
+                a4 1/2;
+
+                a4 1/4;
+                bf4 1/4;
+                a4 1/4;
+                g4 1/4;
+                a4 1/2;
+
+                g4 1/4;
+                f4 1/4;
+                g4 1/4;
+                a4 1/4;
+                g4 1/4;
+                f4 1/4;
+                e4 1/2;
+
+                d4 1/4;
+                e4 1/4;
+                f4 1/4;
+                e4 1/4;
+                d4 1/1;
+            }
+        }
+    }
+}

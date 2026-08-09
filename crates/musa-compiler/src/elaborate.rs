@@ -535,6 +535,7 @@ pub(crate) fn elaborate_parsed(
     // is that same quarter, said again from further away.
     if !reported_an_error(resolver) {
         resolve::check_measure_sanity(resolver, &snapshot);
+        resolve::check_groove_has_a_meter(resolver, &snapshot);
         check_tuplets(resolver, &snapshot);
     }
     if reported_an_error(resolver) {
@@ -1279,6 +1280,15 @@ fn elaborate_place(
     // Left as it was found: the caller's loop sets the cursor for each of its
     // own items, and a body that moved it would move the item after itself.
     resolver.cursor = opened_at;
+    one_after_another(resolver, share, segments)
+}
+
+/// Segments played in order, as one segment.
+///
+/// Separated from the walk above because `senza` needs it without having a
+/// list of items to walk: what it plays is a meter change, a body, and the
+/// meter back.
+fn one_after_another(resolver: &mut Resolver, share: &Share, segments: Vec<Segment>) -> Segment {
     if segments.is_empty() {
         return Segment::empty();
     }
@@ -1518,6 +1528,7 @@ fn elaborate_item(
     match item {
         VoiceItem::Tempo(stmt) => elaborate_tempo(resolver, stmt, cx, place),
         VoiceItem::Meter(stmt) => elaborate_meter(resolver, stmt, cx, place),
+        VoiceItem::Senza(stmt) => elaborate_senza(resolver, share, stmt, cx, scope, place),
         VoiceItem::Key(stmt) => elaborate_key(resolver, stmt, cx, place),
         VoiceItem::Clef(stmt) => elaborate_clef(resolver, stmt, cx, scope, place),
         VoiceItem::Mobile(stmt) => elaborate_mobile(resolver, share, stmt, cx, scope),
@@ -2245,10 +2256,68 @@ fn elaborate_meter(
         return Segment::empty();
     }
     let Some(meter) = resolve::parse_meter(stmt) else {
-        resolver.error(Code::NotAValue, "this meter cannot be read", span, "expected `4/4`");
+        resolver.error(
+            Code::NotAValue,
+            "this meter cannot be read",
+            span,
+            "expected `4/4`, or `none`",
+        );
         return Segment::empty();
     };
     resolver.meter_written = true;
+    meter_change(resolver, meter, cx, span)
+}
+
+/// `senza { ... }` — an unmeasured stretch with a scope.
+///
+/// It is `meter none;`, the body, and the meter back, which is what makes it
+/// sugar and not a mechanism: the barlines stop for exactly as long as the
+/// braces say, and the meter that resumes is the one that was in force, so
+/// there is no second meter to keep in step with the first.
+fn elaborate_senza(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    stmt: &musa_language::ast::SenzaStmt,
+    cx: &ExpandCx,
+    scope: Scope,
+    place: Place,
+) -> Segment {
+    let span = resolve::trimmed_span(stmt.syntax());
+    if place == Place::Material {
+        resolver.report(misplaced_context("senza", span));
+        return Segment::empty();
+    }
+    let resume = prevailing_meter(resolver);
+    resolver.meter_written = true;
+    let opened = meter_change(resolver, crate::Meter::NONE, cx, span);
+    // The cursor moves for the body and for the meter that closes it, exactly
+    // as the item walk moves it: the restoring change belongs where the
+    // unmeasured music stopped, not where it started.
+    let opened_at = resolver.cursor;
+    let body = elaborate_place(resolver, share, &stmt.items(), cx, scope, place);
+    resolver.cursor = MusicalTime::new(opened_at.as_ratio() + body.extent.as_ratio());
+    let closed = meter_change(resolver, resume, cx, span);
+    resolver.cursor = opened_at;
+    one_after_another(resolver, share, vec![opened, body, closed])
+}
+
+/// The meter in force where the cursor stands.
+///
+/// Read from the changes already written rather than from a field, because a
+/// meter is a fact with a place: the answer at bar 9 is not the answer at bar
+/// 1, and only the changes know that.
+fn prevailing_meter(resolver: &Resolver) -> Meter {
+    resolver
+        .meter_changes
+        .iter()
+        .filter(|(at, _, _)| *at <= resolver.cursor)
+        .max_by_key(|(at, _, _)| *at)
+        .map_or(resolver.meter, |(_, meter, _)| *meter)
+}
+
+/// The occurrence a meter change contributes, and the record `resolve_meters`
+/// folds into barlines afterwards.
+fn meter_change(resolver: &mut Resolver, meter: Meter, cx: &ExpandCx, span: SourceSpan) -> Segment {
     resolver.meter_changes.push((resolver.cursor, meter, span));
     Segment::literal(point(ScoreFact::new(
         Scope::Piece,
@@ -2458,7 +2527,7 @@ fn check_keys(resolver: &mut Resolver, bars: &crate::BarLines) {
             }
             continue;
         }
-        if bars.is_measured() && bars.at(at).into != crate::MusicalDuration::ZERO {
+        if bars.meter_at(at).is_measured() && bars.at(at).into != crate::MusicalDuration::ZERO {
             resolver.report(off_barline("key", bars, at, span));
             continue;
         }
@@ -2495,10 +2564,20 @@ fn two_at_once(what: &str, span: SourceSpan, first: SourceSpan) -> Diagnostic {
 }
 
 fn check_bar_length(resolver: &mut Resolver, bar: &PendingBar, bars: &crate::BarLines) {
-    if !bars.is_measured() {
+    let here = bars.measure_at(bar.at);
+    // A `bar` asserts "this is one measure", and inside an unmeasured stretch
+    // there is no measure for it to be one of. Refused rather than ignored:
+    // the assertion cannot be checked, and an assertion nobody checks is the
+    // thing prompt 56 exists to prevent.
+    if !here.meter.is_measured() {
+        resolver.report(
+            Diagnostic::error(Code::DoesNotAddUp, "a `bar` here has no measure to be one of")
+                .at(bar.span, "this is inside unmeasured music")
+                .help("delete the `bar`, or close the unmeasured stretch before it")
+                .note("`senza { ... }` and `meter none;` say the barlines stop; a `bar` says where one falls"),
+        );
         return;
     }
-    let here = bars.measure_at(bar.at);
     let measure = here.length().as_ratio();
     let written = bar.extent.as_ratio();
     if written == measure {
@@ -3241,9 +3320,6 @@ fn untie(occurrence: &mut Occurrence<ScoreFact>) {
 /// ratio, which is a different piece of music from the one that was written.
 fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
     let bars = snapshot.bars();
-    if !bars.is_measured() {
-        return;
-    }
     let mut offenders = Vec::new();
     for tuplet in snapshot.annotations().tuplets() {
         let mut start = None;

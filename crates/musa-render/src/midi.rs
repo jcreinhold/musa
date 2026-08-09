@@ -210,6 +210,12 @@ fn tempo_track(performance: &PerformancePlan, ticks: &Ticks) -> Track<'static> {
 /// exactly the way MIDI is always wrong about notation; the page says the
 /// truth.
 fn time_signature(meter: musa_compiler::Meter) -> Option<MetaMessage<'static>> {
+    // Unmeasured music has nothing to say here, and SMF has no way to say
+    // "the barlines stop" — so the events simply stop, which is the honest
+    // silence rather than a signature of no beats.
+    if !meter.is_measured() {
+        return None;
+    }
     let denominator = meter.denominator();
     if !denominator.is_power_of_two() {
         return None;
