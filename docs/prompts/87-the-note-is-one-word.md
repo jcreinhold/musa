@@ -1,7 +1,7 @@
 ---
 id: 87
 slug: the-note-is-one-word
-status: pending
+status: in-progress
 depends_on: [86, 57, 62]
 phase: 2
 ---
@@ -48,12 +48,20 @@ in `musa-language`, and `beam_unit` calls it:
 
 ```rust
 /// How a bar of `numerator/denominator` divides into the groups a player
-/// hears — the fact a beam draws and a beat group is spaced by.
-pub fn beat_groups(numerator: u32, denominator: u32) -> Vec<Ratio<i64>>
+/// hears — the fact a beam draws and a beat group is spaced by. Each group is
+/// its length counted in `1/denominator` units, so the groups sum to the
+/// numerator and `7/8` answers `[2, 2, 3]`.
+pub fn beat_groups(numerator: u32, denominator: u32) -> Vec<u32>
 ```
 
 `7/8 → 2+2+3`, `5/8 → 3+2`, `9/8 → 3+3+3`, `6/8 → 3+3`, `12/8 → 3+3+3+3`, `5/4 → 3+2`, `7/4 → 2+2+3`. Otherwise
-`3/denominator` when the denominator is 8 and the numerator is a multiple of 3 greater than 3, else `1/denominator`.
+groups of three when the denominator is 8 and the numerator is a multiple of 3 greater than 3, else groups of one.
+
+The groups are counted in denominator units rather than returned as `Ratio<i64>` because both callers already hold the
+denominator and neither is helped by the fraction: `beam_unit` divides an onset by the group anyway, and prompt 91
+accumulates exact `(u64, u64)` pairs precisely so that `musa-language` — the bottom of the graph — does not grow
+`num-rational` for one table. Every group in every case above is a whole number of denominator units, so nothing is
+lost.
 
 ### Five tokens
 
@@ -95,8 +103,10 @@ composer typed, and `score.rs`'s doc comment saying otherwise is amended in this
 
 ## Target
 
-- `crates/musa-language/src/meter.rs` (new): `beat_groups`, exported from `lib.rs`. `musa-render`'s `beam_unit` calls
-  it and loses its own answer.
+- `crates/musa-language/src/meter.rs` (new): `beat_groups`, exported from `lib.rs` and re-exported by
+  `musa-compiler` beside `musa_kernel::SemanticHash`, so `musa-render` reaches it without a new edge in the graph.
+  `musa-render`'s `beam_unit` loses its own answer and becomes `beat_group_bounds`, which returns the group a given
+  onset falls in — a uniform unit cannot describe 2+2+3.
 - `crates/musa-language/src/lexer.rs`, `syntax_kind.rs`, `highlight.rs` (`SPELLINGS` and `TokenClass::of`),
   `keywords.rs`, and `tests/tree_sitter_fixtures.rs`'s `tree_sitter_name`: five tokens, five exhaustive matches.
 - `crates/musa-language/src/parser.rs`: `Parser::duration` wraps a `Duration` node and accepts the short form.
