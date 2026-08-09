@@ -11,11 +11,21 @@ The normative schematic grammar is:
 
 ```ebnf
 type         := primitive | "option" "[" type "]" | "list" "[" type "]"
-              | "(" type ("," type)* ")" | type "->" type
+              | "(" type ")" | "(" type "," type ("," type)* ")" | type "->" type
 binding      := "let" IDENT ":" type "=" expr ";"
 function     := "fn" IDENT "(" params? ")" "->" type "=" expr ";"
 param        := IDENT ":" type ("=" expr)?
 call         := expr "(" args? ")"
+expr         := literal | IDENT | "(" expr ")" | product | list | option
+              | call | match | music-expr
+product      := "(" expr "," expr ("," expr)* ")"
+list         := "[" (expr ("," expr)*)? "]"
+option       := "none" | "some" "(" expr ")"
+match        := "match" expr "{" match-arm ("," match-arm)* ","? "}"
+match-arm    := pattern "->" expr
+pattern      := "_" | literal | IDENT | "none" | "some" "(" IDENT ")"
+              | "[" "]" | "[" IDENT "," ".." IDENT "]"
+              | "(" IDENT "," IDENT ("," IDENT)* ")"
 music-expr   := "music" "{" music-statement* "}"
 music-use    := "use" expr ";"
 scale-local  := "in" "scale" expr "{" music-statement* "}"
@@ -43,9 +53,24 @@ Function arrows associate right; call binds tighter than pitch operators; pitch 
 first: parentheses, `step`, `up`/`down`. `root up M2 down m2` is rejected as ambiguous; write parentheses. Every `fn`
 has an expression body. A multi-statement musical body is explicitly `music { ... }`.
 
+`match` is the sole added case-analysis spelling. Arms are comma-separated and a final comma is accepted; braces and
+arrows keep the alternatives legible when an arm's expression spans lines. The initial patterns cover booleans,
+naturals and other literal domains, options, empty/cons lists, and products. A bare identifier binds the whole value;
+`_` discards it. Prompt 96 defines exhaustiveness and rejects duplicate or unreachable arms. It also owns the
+constructor meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general range operator.
+
+Structural folds do not add syntax. `nat_fold(zero, step, count)`, `list_fold(zero, step, values)`, and
+`option_fold(zero, some_case, value)` are ordinary calls to compiler-owned total primitives. Their step arguments are
+named functions because this candidate deliberately has no anonymous-lambda surface. This gives musicians one call
+notation to learn and leaves `repeat n { body }` as the notation-facing fold over `music`.
+
 The primitive value types added here are `bool`, `nat`, `ratio`, `duration`, `pitch`, `interval`, `spelled_pc`, `pc12`,
 `scale`, `key`, `degree`, `chord_class`, `triad`, `voicing`, `row12`, `analysis[A]`, and `music`. Products, options,
 lists, and arrows are the constructors described in `02-core-calculus.md`. Declaration kinds are not types.
+
+The core literals introduced here are `true`, `false`, nonnegative decimal naturals, exact rational literals,
+products, finite lists, and `some`/`none`. Existing pitch and interval literals are also expression atoms. Strings and
+floating-point values remain syntax of their owning declaration domains rather than core values.
 
 A pitch-name literal is checked in its expected domain: `chord(cs, minor)` supplies `spelled_pc`, while an argument to
 `row12` supplies `pc12`. Outside such an expected constructor position, write a type annotation. Converting an existing

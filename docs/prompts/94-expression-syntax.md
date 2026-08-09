@@ -15,6 +15,10 @@ named `fn`, application, products, lists, options, case/fold forms, and `music` 
 while half typed, and update tree-sitter, keyword documentation, semantic-token classification, and editor grammars in
 the same prompt so there is never a period in which two tools recognize different Musa languages.
 
+Here, “case/fold forms” means `01-surface.md`'s exhaustive `match` syntax plus ordinary calls to the three named fold
+primitives. Do not invent a `fold` statement or special call grammar. Product/list/option values and patterns use the
+exact spellings now recorded in that governing file.
+
 ## Read
 
 - `docs/language/01-surface.md` and `02-core-calculus.md`; implement their chosen spellings exactly.
