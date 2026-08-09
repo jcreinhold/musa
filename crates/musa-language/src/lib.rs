@@ -42,7 +42,7 @@ pub use crate::edits::{
     spell_duration,
 };
 pub use crate::error::SyntaxError;
-pub use crate::formatter::{FormattedSource, format};
+pub use crate::formatter::{BarSpacing, FormattedSource, format};
 pub use crate::highlight::{SPELLINGS, TokenClass};
 pub use crate::keywords::{KeywordDoc, keyword_doc};
 pub use crate::language::{MusaLanguage, SyntaxElement, SyntaxNode, SyntaxToken};

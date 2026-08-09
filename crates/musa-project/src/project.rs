@@ -17,6 +17,7 @@
 
 use std::path::{Path, PathBuf};
 
+use musa_language::BarSpacing;
 use serde::Deserialize;
 
 use crate::contents::{ContentsFacts, Entry, EntryFacts, Layout};
@@ -38,6 +39,10 @@ pub struct ProjectMeta {
     /// order the pieces are meant to be read (§16 — "an album manifest may
     /// specify ordering"). Files it does not name still appear, after these.
     pub pieces: Vec<String>,
+    /// How this project wants its bars laid out. Not an `Option`: a project
+    /// that says nothing has answered `Compact`, which is what every file
+    /// written before the setting existed already is.
+    pub bar_spacing: BarSpacing,
 }
 
 /// The `musa.toml` above `path`, if there is one.
@@ -64,13 +69,37 @@ pub(crate) fn read(directory: &Path) -> Option<ProjectMeta> {
         name: file.project.name,
         composer: file.project.composer,
         pieces: file.project.pieces,
+        bar_spacing: bar_spacing(file.format.bars.as_deref()),
     })
+}
+
+/// The layout a manifest asks for, or `Compact` if it asks for nothing this
+/// version knows.
+///
+/// **A typo in `[format]` costs you the setting. Only a manifest that is not
+/// TOML costs you the project.** The `.ok()?` above is a stated policy for
+/// TOML that is not TOML, and extending it to a typed value here would mean a
+/// misspelling in the newest and least important key destroys the oldest and
+/// most important ones — the project's name, its composer and its running
+/// order — and then `musa format` rewrites every file back. A string always
+/// parses, so `[project]` survives and the interpretation happens here.
+fn bar_spacing(written: Option<&str>) -> BarSpacing {
+    match written {
+        None | Some("compact") => BarSpacing::Compact,
+        Some("proportional") => BarSpacing::Proportional,
+        Some(other) => {
+            tracing::warn!("musa.toml: unknown `[format] bars` value `{other}`; using `compact`");
+            BarSpacing::Compact
+        }
+    }
 }
 
 #[derive(Deserialize)]
 struct ProjectFile {
     #[serde(default)]
     project: ProjectSection,
+    #[serde(default)]
+    format: FormatSection,
 }
 
 #[derive(Default, Deserialize)]
@@ -79,6 +108,17 @@ struct ProjectSection {
     composer: Option<String>,
     #[serde(default)]
     pieces: Vec<String>,
+}
+
+/// The one thing a project may say about layout.
+///
+/// Typed as a string rather than as `BarSpacing` for the reason
+/// [`bar_spacing`] gives. Nothing else joins it: the line width and the indent
+/// are decided in `formatter.rs` at length, and exporting a solved problem
+/// upward is the failure this section is shaped to avoid.
+#[derive(Default, Deserialize)]
+struct FormatSection {
+    bars: Option<String>,
 }
 
 /// A project: the volume, and the pieces of it that are open.

@@ -14,15 +14,12 @@ use crate::workspace::Document;
 /// it already is — the same distinction `musa format` and `musa format
 /// --check` draw.
 pub(crate) fn format(document: &Document) -> Option<Vec<TextEdit>> {
-    let snapshot = document.snapshot();
-    let source = snapshot.source();
-    let formatted = musa_language::format(&musa_language::parse(source));
-    let text = formatted.text();
-    if text == source {
+    let text = document.formatted_source();
+    if text == document.snapshot().source() {
         return None;
     }
     Some(vec![TextEdit {
         range: document.lines().whole_document(),
-        new_text: text.to_owned(),
+        new_text: text,
     }])
 }

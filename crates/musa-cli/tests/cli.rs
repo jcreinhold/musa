@@ -161,10 +161,10 @@ fn wav_export_is_deterministic_for_all_examples() -> std::io::Result<()> {
 /// audio through the libraries it imports, and its tempo change is in the
 /// audio rather than only in the notation.
 ///
-/// The check is the length. Sixteen quarter notes at 72 bpm would last
-/// 13⅓ seconds; the same sixteen with the second half at 108 last 11⅑. A
-/// render that ignored the change would be over two seconds longer, which no
-/// tail or rounding accounts for.
+/// The check is the length. Twenty-four quarter notes at 72 bpm would last
+/// 20 seconds; the same twenty-four with everything after the change at 108
+/// last 15⅑. A render that ignored the change would be nearly five seconds
+/// longer, which no tail or rounding accounts for.
 #[test]
 fn the_album_piece_renders_through_its_imports_at_the_tempos_it_writes() -> std::io::Result<()> {
     let source = format!(
@@ -182,7 +182,7 @@ fn the_album_piece_renders_through_its_imports_at_the_tempos_it_writes() -> std:
     assert_eq!(bytes.get(0..4), Some(b"RIFF".as_slice()));
     // 32-bit float, two channels, 48 kHz: eight bytes a frame.
     let seconds = (bytes.len().saturating_sub(44) / 8) as f64 / 48_000.0;
-    let written = 8.0 * 60.0 / 72.0 + 8.0 * 60.0 / 108.0;
+    let written = 8.0 * 60.0 / 72.0 + 16.0 * 60.0 / 108.0;
     assert!(
         seconds > written && seconds < written + 4.0,
         "expected about {written:.2} s of music plus a release tail, got {seconds:.2} s"

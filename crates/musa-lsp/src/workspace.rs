@@ -48,6 +48,18 @@ impl Document {
         &self.lines
     }
 
+    /// The canonical layout of this document's text.
+    ///
+    /// Asked of the session rather than of the formatter, because the layout
+    /// a project asks for in its `musa.toml` is the session's to know — a
+    /// second caller of `musa_language::format` here is a second answer, and
+    /// an editor that disagrees with `musa format` is the whole failure the
+    /// setting has to avoid. It is a question, not a command: nothing about
+    /// the session changes, so no undo entry appears.
+    pub(crate) fn formatted_source(&self) -> String {
+        self.session.formatted_source()
+    }
+
     /// The client's version counter at the last change.
     pub(crate) fn version(&self) -> i32 {
         self.version

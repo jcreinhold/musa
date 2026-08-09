@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use musa_compiler::{CompileOptions, MusicalTime, Scope, SourceDocument};
 use musa_engine::{AudioEngine, EngineConfig, MidiInput, TransportCommand};
+use musa_language::BarSpacing;
 
 use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 use crate::diagnostic::Diagnostic;
@@ -189,8 +190,20 @@ impl ProjectSession {
 
     /// A session over text with no file behind it, for callers that hold the
     /// document themselves (tests, and the desktop app's scratch buffer).
+    /// A piece named by its absolute path finds the project it is filed
+    /// under, the same walk [`Self::open`] makes. That is what lets the
+    /// language server — which names its buffers by path so that `use`
+    /// resolves — answer a format request with the layout the manifest asks
+    /// for, instead of silently disagreeing with `musa format`. A name that
+    /// is not an absolute path is a scratch buffer and belongs to no project,
+    /// which is also why this does not depend on the working directory.
     pub fn from_text(source: impl Into<String>, name: impl Into<String>) -> Self {
-        let mut session = Self::from_source(source.into(), name.into());
+        let name = name.into();
+        let filed_under = Path::new(&name);
+        let mut session = Self::from_source(source.into(), name.clone());
+        if filed_under.is_absolute() {
+            session.project = crate::project::find(filed_under);
+        }
         session.recompile();
         session
     }
@@ -237,8 +250,7 @@ impl ProjectSession {
                 Ok(self.set_source(text))
             }
             ProjectCommand::Format => {
-                let document = musa_language::parse(&self.source);
-                let text = musa_language::format(&document).text().to_owned();
+                let text = self.formatted_source();
                 Ok(self.set_source(text))
             }
             ProjectCommand::Save => {
@@ -299,7 +311,21 @@ impl ProjectSession {
     #[must_use]
     pub fn formatted_source(&self) -> String {
         let document = musa_language::parse(&self.source);
-        musa_language::format(&document).text().to_owned()
+        musa_language::format(&document, self.bar_spacing()).text().to_owned()
+    }
+
+    /// How this piece's project wants its bars laid out.
+    ///
+    /// Private, and asked here rather than at each call site, so that
+    /// [`ProjectCommand::Format`] and [`Self::formatted_source`] cannot answer
+    /// differently — a preview that disagrees with the edit it previews is the
+    /// one bug this setting could introduce. A piece with no project above it
+    /// gets [`BarSpacing::Compact`], which is what a file with no manifest
+    /// already is.
+    fn bar_spacing(&self) -> BarSpacing {
+        self.project
+            .as_ref()
+            .map_or(BarSpacing::Compact, |meta| meta.bar_spacing)
     }
 
     /// Whether the text is already what [`ProjectCommand::Format`] would

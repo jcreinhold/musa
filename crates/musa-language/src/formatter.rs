@@ -47,14 +47,49 @@ impl std::fmt::Display for FormattedSource {
     }
 }
 
+/// How a bar's events are spaced across its line.
+///
+/// The default is computed rather than asked for. Every file written so far is
+/// compact, so defaulting to [`BarSpacing::Proportional`] would rewrite a
+/// corpus on upgrade; and compact is the layout that is never actively wrong,
+/// because it never claims an alignment. So there is no unset state and no
+/// `Option<BarSpacing>` anywhere: a caller that has not been told chooses
+/// `Compact`, and that is an answer rather than a gap.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum BarSpacing {
+    /// One space between events, and two between beat groups.
+    #[default]
+    Compact,
+    /// Every event at a column proportional to when it sounds, so beat *n*
+    /// falls in the same column on every line of a voice and the page can be
+    /// read down as well as across.
+    Proportional,
+}
+
 /// Format a parsed document. Lossless: every comment and token survives;
 /// only whitespace trivia is normalized.
-pub fn format(document: &ParsedDocument) -> FormattedSource {
+///
+/// `bars` is a required parameter and not an overload on purpose. Leaving a
+/// one-argument `format` in the API would leave a trap that silently means
+/// "compact", so the next call site added — a preview, a build step, a doc
+/// test — would quietly ignore the project's setting. Making it mandatory is
+/// the type system enforcing what the crate graph cannot: this crate cannot
+/// read a manifest, so every caller answers which layout this is.
+pub fn format(document: &ParsedDocument, bars: BarSpacing) -> FormattedSource {
     let root = document.syntax();
-    let meters = meters_in_force(&root);
+    let layout = Layout {
+        meters: meters_in_force(&root),
+        bars,
+    };
     let mut writer = Writer::new();
-    format_node(&root, &mut writer, &meters);
+    format_node(&root, &mut writer, &layout);
     FormattedSource { text: writer.finish() }
+}
+
+/// What the layout of a bar depends on beyond the tree in front of it.
+struct Layout {
+    meters: Meters,
+    bars: BarSpacing,
 }
 
 /// How wide a line a bar may keep, indent included.
@@ -77,7 +112,7 @@ pub fn format(document: &ParsedDocument) -> FormattedSource {
 /// which is what it already does for comment prose and long signal chains.
 const MEASURE: usize = 96;
 
-fn format_node(node: &SyntaxNode, writer: &mut Writer, meters: &Meters) {
+fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
     // Set once the first token of a one-word construct has been written, so
     // the rest of it joins on without a space.
     let mut tight = false;
@@ -88,7 +123,7 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, meters: &Meters) {
                 if writer.starts_a_beat_group(&child) {
                     writer.widen_next_gap();
                 }
-                if let Some(lines) = inline_run(&child, writer.indent, meters) {
+                if let Some(lines) = inline_run(&child, writer.indent, layout) {
                     for line in lines {
                         writer.write_line(&line);
                     }
@@ -98,7 +133,7 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, meters: &Meters) {
                 if wrap {
                     writer.open_chain();
                 }
-                format_node(&child, writer, meters);
+                format_node(&child, writer, layout);
                 if wrap {
                     writer.close_chain();
                 }
@@ -258,7 +293,7 @@ struct Run {
 /// other block breaks. A `|` bar has no brace to break at, so an over-wide one
 /// wraps at its beat groups instead; with no groups to wrap at, the line runs
 /// long, because a long line is better than a wrong one.
-fn inline_run(node: &SyntaxNode, indent: usize, meters: &Meters) -> Option<Vec<String>> {
+fn inline_run(node: &SyntaxNode, indent: usize, layout: &Layout) -> Option<Vec<String>> {
     if !matches!(node.kind(), SyntaxKind::BarStmt | SyntaxKind::GraceStmt) {
         return None;
     }
@@ -268,8 +303,16 @@ fn inline_run(node: &SyntaxNode, indent: usize, meters: &Meters) -> Option<Vec<S
     {
         return None;
     }
-    let mut writer = Writer::one_line(beat_group_starts(node, meters));
-    format_node(node, &mut writer, meters);
+    // The three rungs, in order: to scale if the project asked and the bar
+    // fits; else compact if that fits; else wrapped.
+    if layout.bars == BarSpacing::Proportional
+        && let Some(drawn) = drawn_to_scale(node, layout)
+        && indent.saturating_add(drawn.chars().count()) <= MEASURE
+    {
+        return Some(vec![drawn]);
+    }
+    let mut writer = Writer::one_line(beat_group_starts(node, &layout.meters));
+    format_node(node, &mut writer, layout);
     let line = writer.finish();
     if indent.saturating_add(line.chars().count()) <= MEASURE {
         return Some(vec![line]);
@@ -278,6 +321,80 @@ fn inline_run(node: &SyntaxNode, indent: usize, meters: &Meters) -> Option<Vec<S
     // stacked block would give them. A `|` bar has neither, so it wraps.
     let braced = node.children().any(|child| child.kind() == SyntaxKind::Block);
     (!braced).then(|| wrap_at_beat_groups(&line, indent))
+}
+
+/// Columns to the whole note.
+///
+/// Sixteen to the quarter. 64 divides by 2, 4, 8, 16 and 32 exactly and by 3
+/// closely enough that a triplet lands back on the grid where it ends.
+const COLUMNS: u64 = 64;
+
+/// The column an event at `elapsed` whole notes into the bar wants.
+///
+/// Linear, and that is a proof rather than a taste. If the width given to an
+/// event were some function `W` of its own duration and columns accumulated,
+/// then "equal elapsed time, equal column" applied to `1/4 + 1/4` against `1/2`
+/// forces `W(1/2) = 2·W(1/4)` — and applied at every dyadic split, forces `W`
+/// linear. Any concave curve, which is what an engraver actually uses, provably
+/// puts beat 3 in a different column on a line of quarters than on a line of
+/// halves, and that is the one thing this layout exists to prevent. Real
+/// engraving escapes the argument by solving one spacing problem across a whole
+/// system; here that would make an edit in bar 5 relay out bars 1 to 8, and
+/// diff locality is what a text formatter must not spend.
+///
+/// Integers throughout, deliberately: `log2` is not bit-identical across libm
+/// implementations, and a formatter whose output depended on the platform's
+/// would make `musa format --check` fail in CI on a machine other than the one
+/// that wrote the file.
+fn grid(elapsed: Beat) -> Option<usize> {
+    let columns = elapsed
+        .numerator
+        .checked_mul(COLUMNS)?
+        .checked_div(elapsed.denominator)?;
+    usize::try_from(columns).ok()
+}
+
+/// A `|` bar with every event at the column its onset asks for, or `None` when
+/// it cannot be drawn that way.
+///
+/// Two conditions. The bar must be measurable, which is the same question the
+/// beat groups ask and the same answer. And it must be a `|` bar: a named bar's
+/// head is its address and is as long as its name, so its events start
+/// somewhere no other bar's do, and a column that means one thing per line is
+/// no column at all.
+///
+/// The recurrence is `col(k) = max(grid(t_k), col(k-1) + len(k-1) + 1)` — the
+/// onset's column, or one space past the previous event when the music is
+/// denser than the grid. Because the second term is always taken into account,
+/// a drawn bar is never *narrower* than the compact one, which is what makes
+/// the setting safe: turning it on can never push a bar over the line that was
+/// not already over it.
+fn drawn_to_scale(bar: &SyntaxNode, layout: &Layout) -> Option<String> {
+    if bar.children().any(|child| child.kind() == SyntaxKind::Block) {
+        return None;
+    }
+    let measured = measured_bar(bar, &layout.meters)?;
+    let mut body = String::new();
+    let mut elapsed = Beat::ZERO;
+    let mut next = 0_usize;
+    for (item, length) in measured.items {
+        let column = grid(elapsed)?.max(next);
+        while body.chars().count() < column {
+            body.push(' ');
+        }
+        let text = one_line(&item, layout);
+        next = column.saturating_add(text.chars().count()).saturating_add(1);
+        body.push_str(&text);
+        elapsed = elapsed.plus(length)?;
+    }
+    Some(format!("| {body}"))
+}
+
+/// One construct, rendered on a single line by the rules everything else uses.
+fn one_line(node: &SyntaxNode, layout: &Layout) -> String {
+    let mut writer = Writer::one_line(HashSet::new());
+    format_node(node, &mut writer, layout);
+    writer.finish()
 }
 
 /// How far a continuation line is pushed past its bar's own indent.
@@ -402,22 +519,11 @@ fn meter_of(statement: &SyntaxNode) -> Option<(u32, u32)> {
 /// beam.
 fn beat_group_starts(bar: &SyntaxNode, meters: &Meters) -> HashSet<TextRange> {
     let none = HashSet::new();
-    if bar.kind() != SyntaxKind::BarStmt {
-        return none;
-    }
-    let Some(&(numerator, denominator)) = meters.get(&bar.text_range()) else {
+    let Some(measured) = measured_bar(bar, meters) else {
         return none;
     };
-    let Some(items) = measurable_items(bar) else {
-        return none;
-    };
-    let measure = Beat::new(u64::from(numerator), u64::from(denominator));
-    let Some(total) = items.iter().try_fold(Beat::ZERO, |sum, item| sum.plus(item.1)) else {
-        return none;
-    };
-    if total != measure {
-        return none;
-    }
+    let (numerator, denominator) = measured.meter;
+    let items = measured.items;
     let mut boundaries = Vec::new();
     let mut counted = 0_u32;
     for group in beat_groups(numerator, denominator) {
@@ -432,7 +538,8 @@ fn beat_group_starts(bar: &SyntaxNode, meters: &Meters) -> HashSet<TextRange> {
     let mut next = 0_usize;
     let mut widest = 0_usize;
     let mut in_group = 0_usize;
-    for &(range, length) in &items {
+    for &(ref item, length) in &items {
+        let range = item.text_range();
         while boundaries.get(next).is_some_and(|boundary| *boundary < elapsed) {
             next = next.saturating_add(1);
         }
@@ -455,9 +562,34 @@ fn beat_group_starts(bar: &SyntaxNode, meters: &Meters) -> HashSet<TextRange> {
     }
 }
 
+/// A bar the formatter can read: its meter, and its items with their lengths.
+struct MeasuredBar {
+    meter: (u32, u32),
+    items: Vec<(SyntaxNode, Beat)>,
+}
+
+/// The one reader of "can this bar be laid out to the beat".
+///
+/// Both layouts ask it — the beat groups of every file, and the grid of a
+/// project that has asked for one — so a bar that groups is exactly a bar that
+/// can be drawn to scale, and neither can drift into measuring something the
+/// other does not.
+fn measured_bar(bar: &SyntaxNode, meters: &Meters) -> Option<MeasuredBar> {
+    if bar.kind() != SyntaxKind::BarStmt {
+        return None;
+    }
+    let &(numerator, denominator) = meters.get(&bar.text_range())?;
+    let items = measurable_items(bar)?;
+    let total = items.iter().try_fold(Beat::ZERO, |sum, item| sum.plus(item.1))?;
+    (total == Beat::new(u64::from(numerator), u64::from(denominator))).then_some(MeasuredBar {
+        meter: (numerator, denominator),
+        items,
+    })
+}
+
 /// The bar's items with their written lengths, or `None` if it holds anything
 /// the formatter cannot measure.
-fn measurable_items(bar: &SyntaxNode) -> Option<Vec<(TextRange, Beat)>> {
+fn measurable_items(bar: &SyntaxNode) -> Option<Vec<(SyntaxNode, Beat)>> {
     // `bar name { … }` holds a block and `| …` holds its items directly —
     // the same two shapes `ast::voice_items` reads, and the same answer for
     // both, because a name does not change how a bar is counted.
@@ -482,7 +614,7 @@ fn measurable_items(bar: &SyntaxNode) -> Option<Vec<(TextRange, Beat)>> {
             } else {
                 return None;
             };
-            Some((item.text_range(), length))
+            Some((item, length))
         })
         .collect()
 }

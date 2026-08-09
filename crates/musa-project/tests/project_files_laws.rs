@@ -322,3 +322,116 @@ const PIECE: &str = "piece \"Alone\" {
     }
 }
 ";
+
+// --- The one thing a project may say about layout (prompt 91) -------------
+
+/// A bar in a project that asks for `proportional` is drawn to scale, and the
+/// same bar in a project that says nothing is not.
+///
+/// End to end on purpose. The setting is only worth having if it survives the
+/// whole path — manifest, session, formatter — and every intermediate hop
+/// already has its own test, so the one worth adding is the one that would
+/// catch a hop that was never wired.
+#[test]
+fn a_project_can_ask_for_its_bars_drawn_to_scale() -> Result {
+    let laid_out = |manifest: Option<&str>| -> std::result::Result<String, Box<dyn std::error::Error>> {
+        let dir = tempfile::tempdir()?;
+        if let Some(manifest) = manifest {
+            std::fs::write(dir.path().join("musa.toml"), manifest)?;
+        }
+        let path = dir.path().join("bars.musa");
+        std::fs::write(&path, BARS)?;
+        Ok(ProjectSession::open(&path)?.formatted_source())
+    };
+
+    let to_scale = laid_out(Some(
+        "[project]\nname = \"Album\"\n\n[format]\nbars = \"proportional\"\n",
+    ))?;
+    assert!(
+        to_scale.contains("| c4/2                            d4/4            e4/4\n"),
+        "the manifest asked for bars drawn to scale:\n{to_scale}"
+    );
+
+    // The same piece, with nothing said and with nothing above it at all.
+    let compact = "| c4/2 d4/4 e4/4\n";
+    assert!(laid_out(Some("[project]\nname = \"Album\"\n"))?.contains(compact));
+    assert!(laid_out(None)?.contains(compact));
+    Ok(())
+}
+
+/// A value this version does not know costs the project the setting and
+/// nothing else.
+///
+/// The whole error design in one assertion: a typo in the newest and least
+/// important key must not destroy the oldest and most important ones. If the
+/// `[format]` section were typed as `BarSpacing`, `bars = "nonsense"` would
+/// fail the manifest's parse and the project would lose its name, its composer
+/// and its running order — and then `musa format` would rewrite every file to
+/// the default it fell back to.
+#[test]
+fn an_unknown_layout_costs_the_setting_and_not_the_project() -> Result {
+    let dir = tempfile::tempdir()?;
+    std::fs::write(
+        dir.path().join("musa.toml"),
+        "[project]\nname = \"Album\"\ncomposer = \"Ada\"\n\n[format]\nbars = \"nonsense\"\n",
+    )?;
+    let path = dir.path().join("bars.musa");
+    std::fs::write(&path, BARS)?;
+
+    let session = ProjectSession::open(&path)?;
+    let project = session.project().ok_or("expected a project")?;
+    assert_eq!(project.bar_spacing, musa_project::BarSpacing::Compact);
+    assert_eq!(project.name.as_deref(), Some("Album"));
+    assert_eq!(project.composer.as_deref(), Some("Ada"));
+    assert!(session.formatted_source().contains("| c4/2 d4/4 e4/4\n"));
+    Ok(())
+}
+
+/// A buffer named by its path is filed under the project above it.
+///
+/// This is how the editor and the command line come to agree. The language
+/// server holds its documents as text and names them by path so that `use`
+/// resolves; naming them that way is also what lets them find the manifest, so
+/// a format request in the editor is laid out the way `musa format` lays the
+/// same file out. A name that is not a path is a scratch buffer, and belongs
+/// to no project no matter what directory the process happens to be in.
+#[test]
+fn a_buffer_named_by_its_path_is_filed_under_its_project() -> Result {
+    let dir = tempfile::tempdir()?;
+    std::fs::write(
+        dir.path().join("musa.toml"),
+        "[project]\nname = \"Album\"\n\n[format]\nbars = \"proportional\"\n",
+    )?;
+    let path = dir.path().join("bars.musa");
+
+    let held = ProjectSession::from_text(BARS, path.to_string_lossy().into_owned());
+    assert_eq!(
+        held.project().map(|project| project.bar_spacing),
+        Some(musa_project::BarSpacing::Proportional)
+    );
+    assert!(
+        held.formatted_source()
+            .contains("| c4/2                            d4/4            e4/4\n")
+    );
+
+    let scratch = ProjectSession::from_text(BARS, "bars.musa");
+    assert!(scratch.project().is_none(), "a name is not a path");
+    Ok(())
+}
+
+/// A piece with one bar in it, for the three laws above.
+const BARS: &str = "piece \"Bars\" {
+    meter 4/4;
+    key c major;
+
+    score {
+        part violin {
+            clef treble;
+
+            voice upper {
+                | c4/2 d4/4 e4/4
+            }
+        }
+    }
+}
+";

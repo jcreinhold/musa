@@ -6,12 +6,15 @@
 //! the example corpus.
 
 // A fixture that does not hold what a test looks for is the test failing, so
-// panicking on one is the assertion rather than an oversight. Counting events
-// in a line the formatter just wrote cannot overflow.
+// panicking on one is the assertion rather than an oversight — including
+// reaching for the nth event of a bar this file wrote n events into. Counting
+// events and columns in a line the formatter just wrote cannot overflow.
 #![allow(clippy::panic)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::indexing_slicing)]
 #![allow(clippy::arithmetic_side_effects)]
 
-use musa_language::{ParsedDocument, SyntaxElement, SyntaxKind, beat_groups, format, parse};
+use musa_language::{BarSpacing, ParsedDocument, SyntaxElement, SyntaxKind, beat_groups, format, parse};
 use proptest::prelude::*;
 
 const GLASS_MOUNTAIN: &str = include_str!("../../../examples/glass-mountain.musa");
@@ -20,7 +23,13 @@ const TUPLET_FIXTURE: &str = include_str!("../../../examples/tuplet-fixture.musa
 const BULGARIAN: &str = include_str!("../../../examples/bulgarian.musa");
 
 fn fmt(source: &str) -> String {
-    format(&parse(source)).text().to_string()
+    format(&parse(source), BarSpacing::Compact).text().to_string()
+}
+
+/// The same, laid out with every event at a column proportional to when it
+/// sounds.
+fn fmt_to_scale(source: &str) -> String {
+    format(&parse(source), BarSpacing::Proportional).text().to_string()
 }
 
 /// The significant (non-whitespace) token sequence of a document: the
@@ -285,6 +294,161 @@ fn an_over_wide_bar_wraps_at_its_beat_groups() {
     assert_semantics_preserved(&source, &formatted);
 }
 
+// --- Bars drawn to scale (prompt 91) --------------------------------------
+
+/// The column an event beginning at bar-relative time `t` may not begin
+/// before: 64 columns to the whole note, so 16 to the quarter.
+fn grid(numerator: u64, denominator: u64) -> usize {
+    usize::try_from(numerator * 64 / denominator).expect("a bar is 64 columns wide")
+}
+
+/// Where each event of a bar drawn to scale begins, in columns from the `|`.
+///
+/// The events of the bars this reads are plain notes, so a run of non-space
+/// characters is exactly one event and the scan needs no grammar.
+fn columns_of(line: &str) -> Vec<usize> {
+    let body = line
+        .trim_start()
+        .strip_prefix("| ")
+        .unwrap_or_else(|| panic!("not a bar line: {line}"));
+    let mut columns = Vec::new();
+    let mut previous = ' ';
+    for (column, character) in body.chars().enumerate() {
+        if previous == ' ' && character != ' ' {
+            columns.push(column);
+        }
+        previous = character;
+    }
+    columns
+}
+
+/// An event that sounds at bar-relative time *t* begins at column `grid(t)` or
+/// later, and never earlier.
+///
+/// Never earlier is the whole claim: a column that is early is a column that
+/// lies about when the note sounds, and a reader who has started trusting the
+/// columns has no way to tell. Later is unavoidable — an event is at least as
+/// wide as its own text, so a bar of sixteenths runs ahead of its own time and
+/// the grid only ever catches up.
+#[test]
+fn an_event_begins_no_earlier_than_the_time_it_sounds() {
+    for rhythm in [
+        vec![("/4", (1_u64, 4_u64)); 4],
+        vec![("/2", (1, 2)), ("/4", (1, 4)), ("/8", (1, 8)), ("/8", (1, 8))],
+        vec![("/8", (1, 8)); 8],
+        vec![("/1", (1, 1))],
+        vec![("/4.", (3, 8)), ("/8", (1, 8)), ("/2", (1, 2))],
+    ] {
+        // Short forms only: the scan below reads a run of non-space characters
+        // as one event, and `c4 3/8` is two. The long form's own columns are
+        // covered by `drawing_to_scale_only_widens`, whose generator writes it.
+        let events: Vec<String> = rhythm.iter().map(|&(written, _)| format!("c4{written}")).collect();
+        let bar = format!("| {}", events.join(" "));
+        let line = drawn_bar("4/4", &bar);
+        let drawn = columns_of(&line);
+        assert_eq!(drawn.len(), rhythm.len(), "{line}");
+
+        let mut sounded = (0_u64, 1_u64);
+        for (index, &(_, (numerator, denominator))) in rhythm.iter().enumerate() {
+            let expected = grid(sounded.0, sounded.1);
+            assert!(
+                drawn[index] >= expected,
+                "event {index} sounds at {}/{} so it may not begin before column {expected}:\n{line}",
+                sounded.0,
+                sounded.1
+            );
+            sounded = (sounded.0 * denominator + numerator * sounded.1, sounded.1 * denominator);
+        }
+    }
+}
+
+/// The one line a bar drawn to scale is written on.
+fn drawn_bar(meter: &str, bar: &str) -> String {
+    let source = format!("piece \"G\" {{ meter {meter}; score {{ part p {{ voice v {{ {bar} }} }} }} }}");
+    let formatted = fmt_to_scale(&source);
+    assert_eq!(fmt_to_scale(&formatted), formatted, "idempotence:\n{formatted}");
+    formatted
+        .lines()
+        .find(|line| line.trim_start().starts_with("| "))
+        .unwrap_or_else(|| panic!("a bar line:\n{formatted}"))
+        .to_owned()
+}
+
+/// The bars a bar-per-line layout has to break are the same bars either way,
+/// and a bar drawn to scale is never narrower than the same bar written
+/// compactly.
+///
+/// This is what makes the setting safe to turn on. Because a column is at
+/// least one past the end of the event before it, drawing to scale can only
+/// push an event right — so a bar that fit compactly and now does not is a
+/// bar that falls back to compact, and the two layouts break in the same
+/// places. Turning the setting on cannot re-flow a piece, only widen it.
+#[test]
+fn drawing_to_scale_never_narrows_a_line_and_never_moves_a_break() {
+    for source in [BULGARIAN, INVENTION, TUPLET_FIXTURE] {
+        let compact = fmt(source);
+        let to_scale = fmt_to_scale(source);
+        let compact_lines: Vec<&str> = compact.lines().collect();
+        let scaled_lines: Vec<&str> = to_scale.lines().collect();
+        assert_eq!(
+            compact_lines.len(),
+            scaled_lines.len(),
+            "the same lines break either way"
+        );
+        for (narrow, wide) in compact_lines.iter().zip(&scaled_lines) {
+            assert!(
+                wide.chars().count() >= narrow.chars().count(),
+                "drawing to scale narrowed a line:\n{narrow}\n{wide}"
+            );
+        }
+    }
+}
+
+/// A bar the formatter cannot measure is byte-identical either way.
+///
+/// The fallback is not "draw it approximately"; there is no approximation of a
+/// time nobody knows. The same whitelist that withholds the grouping withholds
+/// the grid, so the two settings differ only where the setting has something
+/// true to say.
+#[test]
+fn an_unmeasurable_bar_is_the_same_either_way() {
+    for bar in [
+        "| c4/8 d4/8 use m() e4/8 f4/8 g4/8 a4/8",
+        "| c4/8 d4/8 tuplet 3/2 { e4/8 f4/8 g4/8 } a4/8 b4/8 c5/8",
+        "| c4/8 d4/8 improvise 3/4 e4/8 f4/8",
+        "| c4/8 d4/8 e4/8 f4/8 g4/8 a4/8 b4/8 c5/8 d5/8",
+        "| c4/8 d4/8 e4/8 f4/8 g4/8 a4/8",
+    ] {
+        let source = format!("piece \"G\" {{ meter 4/4; score {{ part p {{ voice v {{ {bar} }} }} }} }}");
+        assert_eq!(fmt(&source), fmt_to_scale(&source), "{bar}");
+    }
+}
+
+/// What the setting actually buys: the same beat in the same column, down the
+/// page, across bars whose rhythms have nothing in common.
+#[test]
+fn the_same_beat_lands_in_the_same_column() {
+    let source = "piece \"G\" { meter 4/4; score { part p { voice v { \
+                  | c4/4 d4/4 e4/4 f4/4 \
+                  | g4/2 a4/8 b4/8 c5/4 \
+                  | d5/8 e5/8 f5/8 g5/8 a5/2 } } } }";
+    let to_scale = fmt_to_scale(source);
+    let bars: Vec<Vec<usize>> = to_scale
+        .lines()
+        .filter(|line| line.trim_start().starts_with("| "))
+        .map(columns_of)
+        .collect();
+    // The event that sounds on the third beat, which each bar reaches after a
+    // different number of notes.
+    let halfway = [2_usize, 1, 4];
+    let columns: Vec<usize> = bars.iter().zip(halfway).map(|(bar, index)| bar[index]).collect();
+    assert_eq!(
+        columns,
+        vec![32, 32, 32],
+        "half a whole note is column 32 in every bar:\n{to_scale}"
+    );
+}
+
 #[test]
 fn apply_edits_replaces_ranges_in_order() {
     use musa_language::{TextEdit, apply_edits};
@@ -378,23 +542,49 @@ fn piece_source() -> impl Strategy<Value = String> {
         })
 }
 
+/// Either layout, so that every law below is stated about both for the price
+/// of one parameter — the idempotence hazard is per-layout, and a law that ran
+/// on one of them would leave the other untested.
+fn bar_spacing() -> impl Strategy<Value = BarSpacing> {
+    prop::sample::select(vec![BarSpacing::Compact, BarSpacing::Proportional])
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
     #[test]
-    fn format_is_idempotent(source in piece_source()) {
-        let once = fmt(&source);
-        let twice = fmt(&once);
+    fn format_is_idempotent(source in piece_source(), bars in bar_spacing()) {
+        let once = format(&parse(&source), bars).text().to_owned();
+        let twice = format(&parse(&once), bars).text().to_owned();
         prop_assert_eq!(once, twice);
     }
 
+    /// The two layouts write the same program, and it is the program they were
+    /// given.
+    ///
+    /// This is the manifest invariant said at the level of the formatter: a
+    /// project may choose how its bars are drawn and cannot, by choosing,
+    /// change what they mean. Stated over three token sequences rather than
+    /// two because a layout that quietly agreed with the other one and
+    /// disagreed with the source would satisfy the weaker claim.
     #[test]
-    fn format_preserves_semantics(source in piece_source()) {
-        let formatted = fmt(&source);
-        prop_assert_eq!(
-            significant_tokens(&parse(&source)),
-            significant_tokens(&parse(&formatted))
-        );
+    fn the_two_spacings_write_the_same_program(source in piece_source()) {
+        let written = significant_tokens(&parse(&source));
+        prop_assert_eq!(&written, &significant_tokens(&parse(&fmt(&source))));
+        prop_assert_eq!(&written, &significant_tokens(&parse(&fmt_to_scale(&source))));
+    }
+
+    /// A line drawn to scale is never narrower, and no break moves.
+    #[test]
+    fn drawing_to_scale_only_widens(source in piece_source()) {
+        let compact = fmt(&source);
+        let to_scale = fmt_to_scale(&source);
+        let narrow: Vec<&str> = compact.lines().collect();
+        let wide: Vec<&str> = to_scale.lines().collect();
+        prop_assert_eq!(narrow.len(), wide.len());
+        for (narrow, wide) in narrow.iter().zip(&wide) {
+            prop_assert!(wide.chars().count() >= narrow.chars().count(), "{} / {}", narrow, wide);
+        }
     }
 
     #[test]
@@ -405,9 +595,11 @@ proptest! {
 
 #[test]
 fn examples_satisfy_the_laws() {
-    for source in [GLASS_MOUNTAIN, INVENTION] {
-        let formatted = fmt(source);
-        assert_eq!(fmt(&formatted), formatted, "idempotence");
-        assert_semantics_preserved(source, &formatted);
+    for source in [GLASS_MOUNTAIN, INVENTION, BULGARIAN] {
+        for formatted in [fmt(source), fmt_to_scale(source)] {
+            assert_eq!(fmt(&formatted), fmt(&fmt(&formatted)), "idempotence");
+            assert_semantics_preserved(source, &formatted);
+        }
+        assert_eq!(fmt_to_scale(&fmt_to_scale(source)), fmt_to_scale(source), "idempotence");
     }
 }

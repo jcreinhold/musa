@@ -642,7 +642,7 @@ fn a_hairpin_names_its_direction_and_its_mark() {
 #[test]
 fn a_coordinate_and_a_chord_symbol_format_as_one_word() {
     let source = "piece \"P\" {\n    score {\n        section \"A\" at 3:1;\n        harmony {\n            at 1:1 fmaj7;\n        }\n    }\n}\n";
-    let formatted = musa_language::format(&parse(source));
+    let formatted = musa_language::format(&parse(source), musa_language::BarSpacing::Compact);
     assert_eq!(formatted.text(), source);
 }
 

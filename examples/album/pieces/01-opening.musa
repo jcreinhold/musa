@@ -29,6 +29,14 @@ piece "Opening" {
 
                 use rise();
                 use fall();
+
+                // Two written bars to close, beside the motifs the rest of
+                // the piece is made of. They are here to be looked at: this
+                // project's manifest asks for bars drawn to scale, so the
+                // third beat of each one sits in the same column even though
+                // the two rhythms have nothing in common.
+                | c5/2                            d5/4            e5/4
+                | f5/4            g5/8    a5/8    b5/2
             }
         }
     }

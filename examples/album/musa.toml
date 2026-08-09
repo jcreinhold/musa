@@ -7,3 +7,9 @@ composer = "musa"
 # The running order. It sets an order, not a membership: a piece the folder
 # has and this list does not name still appears, after the ones it does.
 pieces = ["pieces/01-opening.musa", "pieces/02-waltz.musa"]
+
+# Draw each bar to scale: every event at a column proportional to when it
+# sounds, so the same beat lands in the same column down the page. The other
+# answer is `compact`, which is what a project that says nothing here gets.
+[format]
+bars = "proportional"
