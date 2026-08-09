@@ -68,6 +68,7 @@ fn print_usage() {
     println!("      --fix                                  apply warnings' certain fixes in place");
     println!("  musa explain <code>                    the rule behind a diagnostic code");
     println!("  musa format <file.musa> [--check]      format in place (--check to fail instead)");
+    println!("      --diff                               print the diff instead of writing");
     println!("  musa render <file.musa> --to <target>  mei | lilypond | musicxml | midi | wav");
     println!("      --to plan | performance              the debug dumps, to stdout");
     println!("      --mode score | performance           for --to midi (default: score)");
@@ -368,9 +369,10 @@ fn cmd_play(args: &[String]) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-/// `musa format <file> [--check]`
+/// `musa format <file> [--check | --diff]`
 fn cmd_format(args: &[String]) -> ExitCode {
     let check_only = args.iter().any(|arg| arg == "--check");
+    let diff_only = args.iter().any(|arg| arg == "--diff");
     let Some(path) = args.iter().find(|arg| !arg.starts_with("--")) else {
         eprintln!("error: format needs a file");
         return ExitCode::FAILURE;
@@ -379,13 +381,29 @@ fn cmd_format(args: &[String]) -> ExitCode {
         Ok(session) => session,
         Err(code) => return code,
     };
-    // `--check` asks rather than edits: an edit would be autosaved, and a
-    // check that leaves a `.recovery` copy behind is not a check.
-    if check_only {
-        if session.is_formatted() {
+    // `--check` and `--diff` ask rather than edit: an edit would be
+    // autosaved, and a check that leaves a `.recovery` copy behind is not a
+    // check. The diff is the check with its evidence attached — a formatter
+    // you cannot preview is a formatter you cannot trust.
+    if check_only || diff_only {
+        let formatted = session.formatted_source();
+        let snapshot = session.snapshot();
+        let source = snapshot.source();
+        if formatted == source {
             return ExitCode::SUCCESS;
         }
-        eprintln!("{path}: not formatted");
+        if diff_only {
+            let diff = unified_diff(path, source, &formatted);
+            if diff.is_empty() {
+                // Lines compare equal; the difference is the final newline,
+                // which a line diff has nowhere to put.
+                println!("{path}: differs only in the final newline");
+            } else {
+                print!("{diff}");
+            }
+        } else {
+            eprintln!("{path}: not formatted");
+        }
         return ExitCode::FAILURE;
     }
     let update = match session.apply(ProjectCommand::Format) {
@@ -677,5 +695,138 @@ fn cmd_explain(args: &[String]) -> ExitCode {
             eprintln!("       run `musa explain` for the list");
             ExitCode::FAILURE
         }
+    }
+}
+
+/// One line of a diff: kept, removed, or added.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DiffLine {
+    /// In both texts (context).
+    Kept,
+    /// In the old text only.
+    Removed,
+    /// In the new text only.
+    Added,
+}
+
+/// A unified diff of `before` into `after`, line by line, with three lines of
+/// context.
+///
+/// The alignment is a longest-common-subsequence over lines: the formatter
+/// only moves whitespace, so a minimal line alignment keeps a spacing change
+/// a one-line hunk instead of a rewritten file. No crate in the dependency
+/// lists (roadmap §15) does this, and the table is small — musa sources are
+/// hundreds of lines, not millions.
+fn unified_diff(path: &str, before: &str, after: &str) -> String {
+    const CONTEXT: usize = 3;
+    let old: Vec<&str> = before.lines().collect();
+    let new: Vec<&str> = after.lines().collect();
+    let width = new.len().saturating_add(1);
+    let mut lengths = vec![0_u32; old.len().saturating_add(1).saturating_mul(width)];
+    for i in (0..old.len()).rev() {
+        for j in (0..new.len()).rev() {
+            let value = if old.get(i) == new.get(j) {
+                cell(&lengths, width, i.saturating_add(1), j.saturating_add(1)).saturating_add(1)
+            } else {
+                cell(&lengths, width, i.saturating_add(1), j).max(cell(&lengths, width, i, j.saturating_add(1)))
+            };
+            set_cell(&mut lengths, width, i, j, value);
+        }
+    }
+
+    // Walk the table into lines, remembering each line's number in the text
+    // it came from (1-based, as diff prints them; 0 means "not from there").
+    let mut lines: Vec<(DiffLine, &str, usize, usize)> = Vec::new();
+    let (mut i, mut j) = (0_usize, 0_usize);
+    while let (Some(&old_line), Some(&new_line)) = (old.get(i), new.get(j)) {
+        if old_line == new_line {
+            lines.push((DiffLine::Kept, old_line, i.saturating_add(1), j.saturating_add(1)));
+            i = i.saturating_add(1);
+            j = j.saturating_add(1);
+        } else if cell(&lengths, width, i.saturating_add(1), j) >= cell(&lengths, width, i, j.saturating_add(1)) {
+            lines.push((DiffLine::Removed, old_line, i.saturating_add(1), 0));
+            i = i.saturating_add(1);
+        } else {
+            lines.push((DiffLine::Added, new_line, 0, j.saturating_add(1)));
+            j = j.saturating_add(1);
+        }
+    }
+    while let Some(&old_line) = old.get(i) {
+        lines.push((DiffLine::Removed, old_line, i.saturating_add(1), 0));
+        i = i.saturating_add(1);
+    }
+    while let Some(&new_line) = new.get(j) {
+        lines.push((DiffLine::Added, new_line, 0, j.saturating_add(1)));
+        j = j.saturating_add(1);
+    }
+
+    let mut hunks = String::new();
+    let mut cursor = 0_usize;
+    while let Some(first_change) = lines
+        .iter()
+        .enumerate()
+        .skip(cursor)
+        .find(|(_, (kind, ..))| *kind != DiffLine::Kept)
+        .map(|(index, _)| index)
+    {
+        let start = first_change.saturating_sub(CONTEXT);
+        // Take in later changes while the context between them would touch.
+        let mut last_change = first_change;
+        let mut scan = first_change.saturating_add(1);
+        while let Some((kind, ..)) = lines.get(scan) {
+            if *kind == DiffLine::Kept && scan.saturating_sub(last_change) > CONTEXT.saturating_mul(2) {
+                break;
+            }
+            if *kind != DiffLine::Kept {
+                last_change = scan;
+            }
+            scan = scan.saturating_add(1);
+        }
+        let stop = last_change.saturating_add(CONTEXT).saturating_add(1).min(lines.len());
+        let Some(hunk) = lines.get(start..stop) else { break };
+        let old_count = hunk.iter().filter(|(kind, ..)| *kind != DiffLine::Added).count();
+        let new_count = hunk.iter().filter(|(kind, ..)| *kind != DiffLine::Removed).count();
+        let old_start = hunk
+            .iter()
+            .find_map(|(kind, _, old_no, _)| (*kind != DiffLine::Added).then_some(*old_no))
+            .unwrap_or(0);
+        let new_start = hunk
+            .iter()
+            .find_map(|(kind, _, _, new_no)| (*kind != DiffLine::Removed).then_some(*new_no))
+            .unwrap_or(0);
+        let _header = std::fmt::Write::write_fmt(
+            &mut hunks,
+            format_args!("@@ -{old_start},{old_count} +{new_start},{new_count} @@\n"),
+        );
+        for (kind, text, ..) in hunk {
+            let marker = match kind {
+                DiffLine::Kept => ' ',
+                DiffLine::Removed => '-',
+                DiffLine::Added => '+',
+            };
+            let _line = std::fmt::Write::write_fmt(&mut hunks, format_args!("{marker}{text}\n"));
+        }
+        cursor = stop;
+    }
+    // No hunks, no headers: an empty answer is how the caller tells "the
+    // lines agree" (the final newline may still differ, and says so itself).
+    if hunks.is_empty() {
+        return hunks;
+    }
+    format!("--- {path}\n+++ {path}\n{hunks}")
+}
+
+/// One cell of the alignment table, 0 at the borders and beyond.
+fn cell(lengths: &[u32], width: usize, i: usize, j: usize) -> u32 {
+    lengths
+        .get(i.saturating_mul(width).saturating_add(j))
+        .copied()
+        .unwrap_or(0)
+}
+
+/// Write one cell of the alignment table.
+fn set_cell(lengths: &mut [u32], width: usize, i: usize, j: usize, value: u32) {
+    if let Some(cell) = lengths.get_mut(i.saturating_mul(width).saturating_add(j)) {
+        *cell = value;
     }
 }

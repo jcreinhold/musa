@@ -284,6 +284,17 @@ impl ProjectSession {
         }
     }
 
+    /// What [`ProjectCommand::Format`] would write, without writing it.
+    ///
+    /// A question, like [`Self::is_formatted`]: `musa format --diff` promises
+    /// to show rather than edit, and an edit would be autosaved, so the
+    /// preview leaves no `.recovery` copy behind.
+    #[must_use]
+    pub fn formatted_source(&self) -> String {
+        let document = musa_language::parse(&self.source);
+        musa_language::format(&document).text().to_owned()
+    }
+
     /// Whether the text is already what [`ProjectCommand::Format`] would
     /// write.
     ///
@@ -293,8 +304,7 @@ impl ProjectSession {
     /// file it rejects.
     #[must_use]
     pub fn is_formatted(&self) -> bool {
-        let document = musa_language::parse(&self.source);
-        musa_language::format(&document).text() == self.source
+        self.formatted_source() == self.source
     }
 
     /// What a structured edit would change, before it is made.

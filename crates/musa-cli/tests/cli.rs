@@ -225,3 +225,29 @@ fn every_broken_fixture_renders_the_way_it_reads() -> std::io::Result<()> {
     }
     Ok(())
 }
+
+#[test]
+fn format_diff_is_quiet_and_successful_on_a_canonical_example() -> std::io::Result<()> {
+    let output = musa(&["format", "--diff", &glass_mountain()])?;
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    assert!(output.stdout.is_empty(), "stdout: {:?}", output.stdout);
+    Ok(())
+}
+
+#[test]
+fn format_diff_shows_the_change_and_writes_nothing() -> std::io::Result<()> {
+    let messy = "piece   \"M\"{\nmeter 4/4;\nscore{\npart p{\nvoice v{\nc5   1;\n}\n}\n}\n}\n";
+    let path = temp_file("diff.musa", messy)?;
+    let output = musa(&["format", "--diff", &path.to_string_lossy()])?;
+    // Like --check: a difference is a failure, so CI can gate on it.
+    assert!(!output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("--- "), "stdout: {stdout}");
+    assert!(stdout.contains("+++ "), "stdout: {stdout}");
+    assert!(stdout.contains("@@"), "stdout: {stdout}");
+    assert!(stdout.contains("-piece   \"M\"{"), "stdout: {stdout}");
+    assert!(stdout.contains("+piece \"M\" {"), "stdout: {stdout}");
+    // The promise that makes it a preview: the file is untouched.
+    assert_eq!(std::fs::read_to_string(&path)?, messy);
+    std::fs::remove_file(&path)
+}
