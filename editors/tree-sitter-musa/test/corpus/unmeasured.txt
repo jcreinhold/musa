@@ -1,0 +1,46 @@
+================================================================================
+senza and meter none: unmeasured music
+================================================================================
+
+piece "U" {
+    meter 4/4;
+    meter none;
+
+    score {
+        part voice {
+            voice line {
+                senza {
+                    c4 1/1;
+                }
+                meter 4/4;
+                c4 1/4;
+            }
+        }
+    }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (piece_declaration
+    (string)
+    (meter_statement
+      (rational))
+    (meter_statement)
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (senza_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (meter_statement
+            (rational))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))))))))

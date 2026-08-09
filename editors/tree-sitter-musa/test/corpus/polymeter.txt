@@ -1,0 +1,43 @@
+================================================================================
+polymeter and polytempo: a part carries its own meter and tempo
+================================================================================
+
+piece "P" {
+    meter 4/4;
+
+    score {
+        part kaval {
+            clef treble;
+            meter 7/8;
+            tempo 1/4 = 132;
+
+            voice melody {
+                a4 1/8;
+            }
+        }
+    }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (piece_declaration
+    (string)
+    (meter_statement
+      (rational))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (meter_statement
+          (rational))
+        (tempo_statement
+          (rational)
+          (integer))
+        (voice_declaration
+          (identifier)
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))))))))

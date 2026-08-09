@@ -359,8 +359,17 @@
           "type": "FIELD",
           "name": "meter",
           "content": {
-            "type": "SYMBOL",
-            "name": "rational"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "rational"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "identifier"
+              }
+            ]
           }
         },
         {
@@ -640,6 +649,14 @@
               },
               {
                 "type": "SYMBOL",
+                "name": "meter_statement"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "tempo_statement"
+              },
+              {
+                "type": "SYMBOL",
                 "name": "profile_statement"
               },
               {
@@ -816,6 +833,10 @@
               {
                 "type": "SYMBOL",
                 "name": "hairpin_statement"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "senza_statement"
               }
             ]
           }
@@ -1771,6 +1792,10 @@
               {
                 "type": "SYMBOL",
                 "name": "hairpin_statement"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "senza_statement"
               }
             ]
           }
@@ -2545,6 +2570,23 @@
         {
           "type": "STRING",
           "value": ";"
+        }
+      ]
+    },
+    "senza_statement": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "senza"
+        },
+        {
+          "type": "FIELD",
+          "name": "body",
+          "content": {
+            "type": "SYMBOL",
+            "name": "block"
+          }
         }
       ]
     },

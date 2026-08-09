@@ -45,6 +45,7 @@ const VOICE_ITEMS = ($) => [
   $.phrase_statement,
   $.mark_statement,
   $.hairpin_statement,
+  $.senza_statement,
 ];
 
 module.exports = grammar({
@@ -137,8 +138,11 @@ module.exports = grammar({
     // `over 4/1` — how far a gradual change reaches.
     tempo_span: ($) => seq('over', field('span', $.rational)),
 
-    // Parser::meter_stmt.
-    meter_statement: ($) => seq('meter', field('meter', $.rational), ';'),
+    // Parser::meter_stmt — `meter 4/4;`, or `meter none;` for music with no
+    // barlines from here (prompt 74). Any identifier parses; the compiler
+    // checks the word, because there is nothing else `meter` can be
+    // followed by.
+    meter_statement: ($) => seq('meter', field('meter', choice($.rational, $.identifier)), ';'),
 
     // Parser::key_stmt — `key a minor;`
     key_statement: ($) => seq('key', field('pitch_class', $.identifier), field('mode', $.identifier), ';'),
@@ -183,12 +187,22 @@ module.exports = grammar({
         '}',
       ),
 
+    // Parser::part_decl — a part carries its own clef, and may carry its
+    // own meter and tempo: polymeter and polytempo (prompt 75).
     part_declaration: ($) =>
       seq(
         'part',
         field('name', $.identifier),
         '{',
-        repeat(choice($.clef_statement, $.profile_statement, $.voice_declaration)),
+        repeat(
+          choice(
+            $.clef_statement,
+            $.meter_statement,
+            $.tempo_statement,
+            $.profile_statement,
+            $.voice_declaration,
+          ),
+        ),
         '}',
       ),
 
@@ -425,6 +439,12 @@ module.exports = grammar({
 
     // Parser::dynamic_stmt — `dynamic <mark>;`
     dynamic_statement: ($) => seq('dynamic', field('mark', $.identifier), ';'),
+
+    // Parser::senza_stmt — `senza { ... }`: the barlines stop for exactly as
+    // long as the block, then the meter returns (prompt 74). It is the two
+    // meter changes a composer could write by hand, with the second one
+    // impossible to forget.
+    senza_statement: ($) => seq('senza', field('body', $.block)),
 
     // Parser::stretch_stmt — `stretch <n>/<d> { ... }`
     stretch_statement: ($) => seq('stretch', field('factor', choice($.rational, $.integer)), field('body', $.block)),
