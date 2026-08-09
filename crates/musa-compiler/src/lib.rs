@@ -65,7 +65,7 @@ pub use crate::imports::{ImportSources, resolve_import};
 pub use crate::kernel_text::{
     KernelCheck, check_kernel_text, kernel_normalized_text, kernel_text, kernel_text_meaning,
 };
-pub use crate::marks::{Mark, MarkDef, VOCABULARY, lookup_mark};
+pub use crate::marks::{Anchor, Argument, Mark, MarkArgument, MarkDef, Slot, VOCABULARY, lookup_mark};
 pub use crate::origin::{ChoicePath, ChoiceStep, DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 pub use crate::performance::{
     IntegratedTempoMap, KeyChange, MeterChange, ParameterId, PerformanceError, PerformanceEvent, PerformanceLane,
@@ -77,9 +77,9 @@ pub use crate::realize::{Decision, Realization};
 pub use crate::scope::{ContextKind, Scope};
 pub use crate::score::{
     AnnotationStore, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, FreeDuration, FrontMatter,
-    HairpinSpan, HarmonyMark, Key, Meter, Mode, MotifDeclaration, NotatedDuration, OpenKind, OpenRegion, Part, PartId,
-    PartMap, PhraseSpan, ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan, TempoChange, TempoMap,
-    TupletSpan, Voice, VoiceId,
+    HairpinSpan, HarmonyMark, Key, MarkSpan, Meter, Mode, MotifDeclaration, NotatedDuration, OpenKind, OpenRegion,
+    Part, PartId, PartMap, PhraseSpan, PointMark, ScoreEvent, ScoreEventKind, ScoreSnapshot, SectionMark, SlurSpan,
+    TempoChange, TempoMap, TupletSpan, Voice, VoiceId,
 };
 pub use crate::studio::{
     Assignment, Modulation, NodeIndex, ParamSpec, Patch, Processor, Route, Send, StudioNode, StudioSpec, Unit, Value,

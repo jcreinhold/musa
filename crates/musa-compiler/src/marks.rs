@@ -23,60 +23,296 @@ use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-/// One entry in the notation vocabulary: what a mark is called here, and what
-/// each backend calls it.
+/// Where a mark attaches in *time*.
+///
+/// This is the question the grammar asks: a note-anchored mark trails a note's
+/// duration, a point is written where the cursor stands, and a span wraps the
+/// music it covers in a block. The table answering it is why `mark` is one
+/// keyword rather than one keyword per shape.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Anchor {
+    /// On the note it trails: `g4 1/4 staccato;`.
+    Note(Slot),
+    /// At the instant it is written: `mark breath;`.
+    Point,
+    /// Over the music inside its block: `mark pedal { … }`.
+    Span,
+}
+
+/// Where a note-anchored mark prints in the *notation*.
+///
+/// Four values, and they are not musa's invention: they are the children
+/// `MusicXML` puts under `<notations>`, and the same division MEI makes
+/// between `@artic` and the ornament control events. Each backend reads this
+/// once, in a four-arm `match` that does not grow when a row is added — which
+/// is the property the table exists for. Putting the slot in the row instead
+/// would only move the four arms into fifteen.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Slot {
+    /// How the note is attacked and released: staccato, tenuto, accent.
+    Articulation,
+    /// A figure played instead of the note: trill, mordent, turn.
+    Ornament,
+    /// How the player's hands do it: bowing, a harmonic.
+    Technical,
+    /// A held note. Its own slot in every format, because it is the one mark
+    /// that changes the note's duration rather than its sound.
+    Fermata,
+}
+
+/// What a mark is written with, when it is written with anything.
+///
+/// One argument at most. A second would need names to tell them apart
+/// (`mark sample "kick" gain 0.8`), and `gain` is the studio's word for a
+/// thing the studio decides — the page prints the sample's name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Argument {
+    /// Nothing follows the name.
+    None,
+    /// A quoted string: `mark text "sul ponticello";`.
+    Text,
+    /// A whole number, which may be negative: `mark ottava -1 { … }`.
+    Number,
+}
+
+/// One entry in the notation vocabulary: what a mark is called here, where it
+/// attaches, what it is written with, and what each backend calls it.
 ///
 /// A mark's spelling in three formats is one fact about the mark. Splitting it
 /// three ways is what produced three `match`es that could disagree.
+///
+/// A backend column is `None` when the format has no way to say this mark.
+/// That is a fact about the format, so it becomes an export warning rather
+/// than a silent omission (`docs/kernel/07-backend-contract.md`). What a column
+/// *means* follows the anchor: for [`Anchor::Note`] it is the slot's spelling
+/// (MEI `@artic` or ornament element, the `MusicXML` child, the `LilyPond`
+/// script), and for a point or a span it is the control element MEI writes,
+/// the `<direction-type>` child `MusicXML` writes, and the `LilyPond` command.
 #[derive(Clone, Copy, Debug)]
 pub struct MarkDef {
     /// The name the composer writes.
     pub name: &'static str,
-    /// MEI's `@artic` value.
-    pub mei: &'static str,
-    /// The `<articulations>` child element `MusicXML` uses.
-    pub musicxml: &'static str,
-    /// `LilyPond`'s script suffix. The `^`/`_` side character is the engraver's
-    /// decision and is not part of the mark.
-    pub lilypond: &'static str,
+    /// Where it attaches in time, and — on a note — in the notation.
+    pub anchor: Anchor,
+    /// What is written after the name.
+    pub takes: Argument,
+    /// MEI's spelling, or `None` when MEI cannot say it.
+    pub mei: Option<&'static str>,
+    /// `MusicXML`'s spelling, or `None` when `MusicXML` cannot say it.
+    pub musicxml: Option<&'static str>,
+    /// `LilyPond`'s spelling, or `None` when `LilyPond` cannot say it. For an
+    /// articulation this is the script suffix; the `^`/`_` side character is
+    /// the engraver's decision and is not part of the mark.
+    pub lilypond: Option<&'static str>,
 }
 
 /// Every mark musa reads.
 ///
-/// Exactly the five that existed as enum variants. Rows are added by the
-/// prompt that has a piece needing them, never in advance.
+/// Rows are added by the prompt that has a piece needing them, never in
+/// advance. The five articulations are prompt 62's; everything below them
+/// arrived with prompt 70 and has a piece in `examples/` that writes it.
 pub const VOCABULARY: &[MarkDef] = &[
     MarkDef {
         name: "staccato",
-        mei: "stacc",
-        musicxml: "staccato",
-        lilypond: ".",
+        anchor: Anchor::Note(Slot::Articulation),
+        takes: Argument::None,
+        mei: Some("stacc"),
+        musicxml: Some("staccato"),
+        lilypond: Some("."),
     },
     MarkDef {
         name: "staccatissimo",
-        mei: "stacciss",
-        musicxml: "staccatissimo",
-        lilypond: "!",
+        anchor: Anchor::Note(Slot::Articulation),
+        takes: Argument::None,
+        mei: Some("stacciss"),
+        musicxml: Some("staccatissimo"),
+        lilypond: Some("!"),
     },
     MarkDef {
         name: "tenuto",
-        mei: "ten",
-        musicxml: "tenuto",
-        lilypond: "-",
+        anchor: Anchor::Note(Slot::Articulation),
+        takes: Argument::None,
+        mei: Some("ten"),
+        musicxml: Some("tenuto"),
+        lilypond: Some("-"),
     },
     MarkDef {
         name: "accent",
-        mei: "acc",
-        musicxml: "accent",
-        lilypond: ">",
+        anchor: Anchor::Note(Slot::Articulation),
+        takes: Argument::None,
+        mei: Some("acc"),
+        musicxml: Some("accent"),
+        lilypond: Some(">"),
     },
     MarkDef {
         name: "marcato",
-        mei: "marc",
-        musicxml: "strong-accent",
-        lilypond: "^",
+        anchor: Anchor::Note(Slot::Articulation),
+        takes: Argument::None,
+        mei: Some("marc"),
+        musicxml: Some("strong-accent"),
+        lilypond: Some("^"),
+    },
+    // A fermata holds; how long is the profile's answer, not the page's
+    // (roadmap §2). Nothing here says how long.
+    MarkDef {
+        name: "fermata",
+        anchor: Anchor::Note(Slot::Fermata),
+        takes: Argument::None,
+        mei: Some("fermata"),
+        musicxml: Some("fermata"),
+        lilypond: Some("\\fermata"),
+    },
+    MarkDef {
+        name: "trill",
+        anchor: Anchor::Note(Slot::Ornament),
+        takes: Argument::None,
+        mei: Some("trill"),
+        musicxml: Some("trill-mark"),
+        lilypond: Some("\\trill"),
+    },
+    MarkDef {
+        name: "mordent",
+        anchor: Anchor::Note(Slot::Ornament),
+        takes: Argument::None,
+        mei: Some("mordent"),
+        musicxml: Some("mordent"),
+        lilypond: Some("\\mordent"),
+    },
+    MarkDef {
+        name: "turn",
+        anchor: Anchor::Note(Slot::Ornament),
+        takes: Argument::None,
+        mei: Some("turn"),
+        musicxml: Some("turn"),
+        lilypond: Some("\\turn"),
+    },
+    MarkDef {
+        name: "harmonic",
+        anchor: Anchor::Note(Slot::Technical),
+        takes: Argument::None,
+        mei: Some("harm"),
+        musicxml: Some("harmonic"),
+        lilypond: Some("\\flageolet"),
+    },
+    MarkDef {
+        name: "upbow",
+        anchor: Anchor::Note(Slot::Technical),
+        takes: Argument::None,
+        mei: Some("upbow"),
+        musicxml: Some("up-bow"),
+        lilypond: Some("\\upbow"),
+    },
+    MarkDef {
+        name: "downbow",
+        anchor: Anchor::Note(Slot::Technical),
+        takes: Argument::None,
+        mei: Some("dnbow"),
+        musicxml: Some("down-bow"),
+        lilypond: Some("\\downbow"),
+    },
+    // A breath falls *between* notes, so it is a point rather than something
+    // on a note. `MusicXML` disagrees — it files both of these under a note's
+    // articulations — so both columns are `None` and the export says so.
+    MarkDef {
+        name: "breath",
+        anchor: Anchor::Point,
+        takes: Argument::None,
+        mei: Some("breath"),
+        musicxml: None,
+        lilypond: Some("\\breathe"),
+    },
+    MarkDef {
+        name: "caesura",
+        anchor: Anchor::Point,
+        takes: Argument::None,
+        mei: Some("caesura"),
+        musicxml: None,
+        lilypond: Some("\\breathe"),
+    },
+    MarkDef {
+        name: "text",
+        anchor: Anchor::Point,
+        takes: Argument::Text,
+        mei: Some("dir"),
+        musicxml: Some("words"),
+        lilypond: Some("\\markup"),
+    },
+    MarkDef {
+        name: "rehearsal",
+        anchor: Anchor::Point,
+        takes: Argument::Text,
+        mei: Some("reh"),
+        musicxml: Some("rehearsal"),
+        lilypond: Some("\\mark"),
+    },
+    // A drum chart prints its sample's name above the staff exactly like a
+    // text direction, and every format writes it as one. Triggering it is the
+    // studio's job and is not notation.
+    MarkDef {
+        name: "sample",
+        anchor: Anchor::Point,
+        takes: Argument::Text,
+        mei: Some("dir"),
+        musicxml: Some("words"),
+        lilypond: Some("\\markup"),
+    },
+    MarkDef {
+        name: "cue",
+        anchor: Anchor::Point,
+        takes: Argument::Text,
+        mei: Some("dir"),
+        musicxml: Some("words"),
+        lilypond: Some("\\markup"),
+    },
+    MarkDef {
+        name: "pedal",
+        anchor: Anchor::Span,
+        takes: Argument::None,
+        mei: Some("pedal"),
+        musicxml: Some("pedal"),
+        lilypond: Some("\\sustain"),
+    },
+    MarkDef {
+        name: "ottava",
+        anchor: Anchor::Span,
+        takes: Argument::Number,
+        mei: Some("octave"),
+        musicxml: Some("octave-shift"),
+        lilypond: Some("\\ottava"),
     },
 ];
+
+/// The value written after a mark's name.
+///
+/// Ordered and hashed, because it is part of a fact's canonical payload key
+/// (`docs/kernel/05` N3): two `mark text` occurrences over the same span are
+/// the same fact only when they say the same thing.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum MarkArgument {
+    /// A quoted string, as written.
+    Text(String),
+    /// A whole number, which may be negative.
+    Number(i32),
+}
+
+impl MarkArgument {
+    /// Which [`Argument`] this value satisfies.
+    pub(crate) fn kind(&self) -> Argument {
+        match self {
+            Self::Text(_) => Argument::Text,
+            Self::Number(_) => Argument::Number,
+        }
+    }
+}
+
+impl std::fmt::Display for MarkArgument {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Text(text) => f.write_str(text),
+            Self::Number(number) => write!(f, "{number}"),
+        }
+    }
+}
 
 /// Look a mark up by the name the composer wrote.
 pub fn lookup_mark(name: &str) -> Option<&'static MarkDef> {
@@ -87,6 +323,28 @@ pub fn lookup_mark(name: &str) -> Option<&'static MarkDef> {
 /// that guesses among them.
 pub(crate) fn names() -> Vec<&'static str> {
     VOCABULARY.iter().map(|def| def.name).collect()
+}
+
+/// The names a note may trail, for the suggestion that guesses among them.
+///
+/// Separate from [`names`] because the two sites accept different halves of
+/// the table: offering `pedal` to someone who wrote `g4 1/4 pedale;` would
+/// send them to a mark they cannot write there.
+pub(crate) fn note_names() -> Vec<&'static str> {
+    VOCABULARY
+        .iter()
+        .filter(|def| matches!(def.anchor, Anchor::Note(_)))
+        .map(|def| def.name)
+        .collect()
+}
+
+/// The names the `mark` statement accepts.
+pub(crate) fn statement_names() -> Vec<&'static str> {
+    VOCABULARY
+        .iter()
+        .filter(|def| matches!(def.anchor, Anchor::Point | Anchor::Span))
+        .map(|def| def.name)
+        .collect()
 }
 
 /// A mark as written (roadmap §2: not a gate multiplier).
@@ -112,6 +370,24 @@ impl Mark {
     /// The vocabulary row: what each backend calls it.
     pub fn def(self) -> &'static MarkDef {
         self.0
+    }
+
+    /// Where this mark attaches.
+    pub fn anchor(self) -> Anchor {
+        self.0.anchor
+    }
+
+    /// The slot this mark prints in, when it is written on a note.
+    pub fn slot(self) -> Option<Slot> {
+        match self.0.anchor {
+            Anchor::Note(slot) => Some(slot),
+            Anchor::Point | Anchor::Span => None,
+        }
+    }
+
+    /// What is written after the name.
+    pub fn takes(self) -> Argument {
+        self.0.takes
     }
 }
 

@@ -921,6 +921,8 @@ ScoreSnapshot {
         harmony: [],
         repeats: [],
         open: [],
+        points: [],
+        marks: [],
     },
     motifs: [],
     profiles: ProfileSet {
@@ -937,6 +939,10 @@ ScoreSnapshot {
                             numer: 1,
                             denom: 125,
                         },
+                        hold: Ratio {
+                            numer: 1,
+                            denom: 1,
+                        },
                     },
                     Mark("tenuto"): ArticulationRealization {
                         gate: Ratio {
@@ -947,6 +953,10 @@ ScoreSnapshot {
                             numer: 3,
                             denom: 100,
                         },
+                        hold: Ratio {
+                            numer: 1,
+                            denom: 1,
+                        },
                     },
                     Mark("accent"): ArticulationRealization {
                         gate: Ratio {
@@ -955,6 +965,10 @@ ScoreSnapshot {
                         },
                         attack: Ratio {
                             numer: 0,
+                            denom: 1,
+                        },
+                        hold: Ratio {
+                            numer: 1,
                             denom: 1,
                         },
                     },
@@ -988,6 +1002,10 @@ ScoreSnapshot {
                         attack: Ratio {
                             numer: 1,
                             denom: 250,
+                        },
+                        hold: Ratio {
+                            numer: 1,
+                            denom: 1,
                         },
                     },
                 },

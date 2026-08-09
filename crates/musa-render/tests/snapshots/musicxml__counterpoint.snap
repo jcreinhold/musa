@@ -84,6 +84,9 @@ expression: musicxml_of(source)
         <duration>2</duration>
         <voice>1</voice>
         <type>half</type>
+        <notations>
+          <fermata placement="above"/>
+        </notations>
       </note>
       <note>
         <chord/>
@@ -163,6 +166,9 @@ expression: musicxml_of(source)
         <duration>2</duration>
         <voice>1</voice>
         <type>half</type>
+        <notations>
+          <fermata placement="above"/>
+        </notations>
       </note>
     </measure>
   </part>

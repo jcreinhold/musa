@@ -110,6 +110,7 @@ NotationPlan {
                                         Mf,
                                     ),
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -167,6 +168,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -224,6 +226,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -274,6 +277,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -324,6 +328,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -372,6 +377,7 @@ NotationPlan {
                                     articulations: [
                                         Mark("accent"),
                                     ],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -420,6 +426,7 @@ NotationPlan {
                                     articulations: [
                                         Mark("staccato"),
                                     ],
+                                    spans: [],
                                     free: None,
                                 },
                             ],
@@ -435,6 +442,8 @@ NotationPlan {
                             ],
                             phrases: [],
                             hairpins: [],
+                            points: [],
+                            marks: [],
                         },
                     ],
                 },
@@ -498,6 +507,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -552,6 +562,7 @@ NotationPlan {
                                     articulations: [
                                         Mark("tenuto"),
                                     ],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -602,6 +613,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -659,6 +671,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -716,6 +729,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -773,6 +787,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -825,6 +840,7 @@ NotationPlan {
                                     articulations: [
                                         Mark("marcato"),
                                     ],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -875,6 +891,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                             ],
@@ -890,6 +907,8 @@ NotationPlan {
                             ],
                             phrases: [],
                             hairpins: [],
+                            points: [],
+                            marks: [],
                         },
                     ],
                 },
@@ -992,6 +1011,7 @@ NotationPlan {
                                         P,
                                     ),
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -1038,6 +1058,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -1084,12 +1105,15 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                             ],
                             slurs: [],
                             phrases: [],
                             hairpins: [],
+                            points: [],
+                            marks: [],
                         },
                     ],
                 },
@@ -1153,6 +1177,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -1201,6 +1226,7 @@ NotationPlan {
                                     articulations: [
                                         Mark("tenuto"),
                                     ],
+                                    spans: [],
                                     free: None,
                                 },
                                 NotatedItem {
@@ -1247,6 +1273,7 @@ NotationPlan {
                                     hairpin: None,
                                     dynamic: None,
                                     articulations: [],
+                                    spans: [],
                                     free: None,
                                 },
                             ],
@@ -1262,6 +1289,8 @@ NotationPlan {
                             ],
                             phrases: [],
                             hairpins: [],
+                            points: [],
+                            marks: [],
                         },
                     ],
                 },

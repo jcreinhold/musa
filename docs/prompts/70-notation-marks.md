@@ -1,7 +1,7 @@
 ---
 id: 70
 slug: notation-marks
-status: pending
+status: done
 depends_on: [62]
 phase: 3
 ---
@@ -112,11 +112,69 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cargo run -p musa-cli -- check examples/ornaments.musa
-cargo run -p musa-cli -- render examples/ornaments.musa --to mei | grep -c "trill\|mordent"
+cargo run -p musa-cli -- render examples/ornaments.musa --to mei && grep -c "trill\|mordent" examples/ornaments.mei
 cargo run -p musa-cli -- check examples/broken/span-mark-without-block.musa
 ```
 
 Commit as `Add the notation marks`.
+
+## Repairs made while implementing
+
+1. **Prompt 62 never shipped `Placement`, `ParamTy` or params.** The Read section above says they exist with no
+   producer; in fact `marks.rs` was a table of five rows with three backend columns and nothing else. So the
+   anchoring machinery is this prompt's, not a matter of filling in two empty variants.
+
+2. **`Placement` became `Anchor`, and the concept is sharper for it.** `crates/musa-render/src/plan.rs` already
+   exports a public `Placement { Above, Below }` — which side of the staff a mark prints on. That is a genuinely
+   different question from where a mark attaches in time, and one name for both would have been the kind of
+   complecting this repo is built to avoid. `Anchor { Note(Slot), Point, Span }` says the second thing only.
+
+3. **Note-anchored rows carry a `Slot`, and that is what keeps the claim true.** One string column per backend
+   cannot express that a trill goes inside `<ornaments>`, a harmonic inside `<technical>`, and a fermata directly
+   under `<notations>` — the same word lands in three different parents. `Slot { Articulation, Ornament, Technical,
+   Fermata }` is not musa's invention: it is MusicXML's own `<notations>` taxonomy and the division MEI makes too.
+   Each backend therefore gets one four-arm match that does not grow when a row is added, which is exactly the
+   measured claim.
+
+4. **Four rows from the Design table are not here, and one is spelled differently.** `tremolo` and `una-corda` were
+   dropped: no piece in the corpus needs either, and `una-corda` is not a legal identifier (`[a-zA-Z_]+`, no
+   hyphens) — the same reason `up-bow`/`down-bow` are `upbow`/`downbow`. The optional second argument of
+   `mark sample "kick_909" gain 0.8` was dropped to one argument: the gain is the studio's, and the Stop list
+   already says `mark sample` prints a name.
+
+5. **Attached-mark arguments were dropped too.** The table proposed `Word(normal, long, short)` on `fermata` and an
+   optional interval on `trill`. Both are realization, which the Stop list forbids and the profile is the stated
+   mechanism for. `Argument` is therefore `None | Text | Number`, and only statement rows use it.
+
+6. **`breath` and `caesura` carry `musicxml: None` deliberately.** MusicXML files both under a note's
+   `<articulations>`, which musa cannot reach from a point that belongs to no note. Rather than emit them somewhere
+   dishonest, the column is empty and `render.rs::losses()` reports it once per export — which also gives that path
+   its first real producer.
+
+7. **`hold` lengthens the note, not the bar.** `profile harpsichord { mark fermata { hold = 2/1; } }` multiplies the
+   sounded duration, folded into `Interpreted::gate`. A fermata that stops the clock is a *tempo* fact and needs
+   prompt 72; the doc on `ArticulationRealization::hold` says so rather than implying the stronger reading.
+
+8. **The shape diagnostics are `misplaced`, not `unknown-word`.** `mark pedal;` names a word musa knows perfectly
+   well — what is wrong is where and how it is written, which is what `Code::Misplaced` already means. Only a name
+   that is not in the table is an unknown word. The helps spell the row's own shape, so the advice compiles: a span
+   gets `{ … }`, a `Text` row gets its quotes.
+
+9. **The prompt's own measured claim needed a better instrument.** The first version of
+   `no_mark_is_named_outside_the_table` searched for the bare mark names and flagged five files that would not
+   change if a row were added: `text` and `rehearsal` are also a MusicXML attribute, a MusicXML element and a
+   highlight token class, and `factext.rs` names two marks inside `#[cfg(test)]`. The test now looks for
+   `Mark::parse("…")` and `lookup_mark("…")` in production code, which is the claim itself — nothing selects a mark
+   by name.
+
+10. **Two `editing_laws` fixtures moved, and the new expectations are worth more than the old.** The pedal this
+    prompt adds to `glass-mountain.musa` wraps the bass voice, so entering a note at the end of that voice and
+    extracting its run both had to be re-stated. They now assert something the old text could not: a note typed at
+    the end of the voice lands *after* the pedal rather than under it, and extracting the run leaves the `use`
+    inside the block, so the span covers the same music it covered before it was named.
+
+11. **The Check line for MEI assumed a pipe.** `musa render` writes a file and prints where it wrote it, so
+    `render … | grep -c` counts nothing. Corrected below to read the file.
 
 ## Stop
 

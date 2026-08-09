@@ -1,0 +1,15 @@
+piece "Span Mark Without Block" {
+    meter 4/4;
+
+    score {
+        part piano {
+            voice line {
+                mark pedal;
+                c5 1/4;
+                d5 1/4;
+                e5 1/4;
+                f5 1/4;
+            }
+        }
+    }
+}

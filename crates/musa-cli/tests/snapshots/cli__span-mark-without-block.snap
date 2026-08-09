@@ -1,0 +1,17 @@
+---
+source: crates/musa-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+misplaced
+
+  × `pedal` covers music
+   ╭─[examples/broken/span-mark-without-block.musa:7:17]
+ 6 │             voice line {
+ 7 │                 mark pedal;
+   ·                 ─────┬─────
+   ·                      ╰── no music under it
+ 8 │                 c5 1/4;
+   ╰────
+  help: wrap what it covers: `mark pedal { … }`
+
+1 problem (1 error)

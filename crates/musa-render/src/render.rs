@@ -78,6 +78,37 @@ fn losses(plan: &crate::plan::NotationPlan, target: NotationTarget) -> Vec<Strin
              under a text direction saying to improvise"
         ));
     }
+    // A mark whose column is empty is a mark this format has no way to say.
+    // One line per mark rather than one per occurrence: the fact is about the
+    // format, and a page of pedal marks would otherwise report itself once per
+    // measure (`docs/kernel/07-backend-contract.md`).
+    let spelled = |mark: musa_compiler::Mark| match target {
+        NotationTarget::Mei => mark.def().mei,
+        NotationTarget::LilyPond => mark.def().lilypond,
+        NotationTarget::MusicXml => mark.def().musicxml,
+    };
+    let mut silent: Vec<&'static str> = Vec::new();
+    for staff in plan.staves() {
+        for measure in staff.measures() {
+            for lane in measure.lanes() {
+                let written = lane
+                    .items()
+                    .iter()
+                    .flat_map(|item| item.articulations().iter().copied())
+                    .chain(lane.points().iter().map(|point| point.mark))
+                    .chain(lane.marks().iter().map(|span| span.mark));
+                for mark in written {
+                    if spelled(mark).is_none() && !silent.contains(&mark.name()) {
+                        silent.push(mark.name());
+                    }
+                }
+            }
+        }
+    }
+    silent.sort_unstable();
+    for name in silent {
+        losses.push(format!("{format} has no `{name}`: the mark is not exported"));
+    }
     if !plan.holds().is_empty() {
         losses.push(format!(
             "{format} has no free-duration bracket: each held note is exported at its written value, \

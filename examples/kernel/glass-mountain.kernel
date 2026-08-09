@@ -27,11 +27,16 @@ kernel "Glass Mountain" {
         occurrence "voice@1@0|note@a4@1;1/1;1/1@@|652:657|652:657|6|" from 2 to 3;
         occurrence "voice@1@0|note@gs4@1;1/1;1/1@@|674:680|674:680|6|" from 3 to 4;
       };
-      timeline 4 {
-        occurrence "voice@1@1|note@a2@1;1/1;1/1@@|737:742|737:742|7|" from 0 to 1;
-        occurrence "voice@1@1|note@f2@1;1/1;1/1@@|759:764|759:764|7|" from 1 to 2;
-        occurrence "voice@1@1|note@d2@1;1/1;1/1@@|781:786|781:786|7|" from 2 to 3;
-        occurrence "voice@1@1|note@e2@1;1/1;1/1@@|803:808|803:808|7|" from 3 to 4;
+      overlay {
+        timeline 4 {
+          occurrence "voice@1@1|note@a2@1;1/1;1/1@@|961:966|961:966|7|" from 0 to 1;
+          occurrence "voice@1@1|note@f2@1;1/1;1/1@@|987:992|987:992|7|" from 1 to 2;
+          occurrence "voice@1@1|note@d2@1;1/1;1/1@@|1013:1018|1013:1018|7|" from 2 to 3;
+          occurrence "voice@1@1|note@e2@1;1/1;1/1@@|1039:1044|1039:1044|7|" from 3 to 4;
+        };
+        timeline 4 {
+          occurrence "voice@1@1|mark@pedal@|928:1062|928:1062|7|" from 0 to 4;
+        }
       };
       timeline 4 {
         occurrence "piece|meter@4@4|158:173|158:173|0|" from 0 to 4;

@@ -201,6 +201,7 @@ fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
             }),
             FactKind::Note { .. }
             | FactKind::Rest { .. }
+            | FactKind::Mark { .. }
             | FactKind::Slur
             | FactKind::Phrase { .. }
             | FactKind::Tuplet { .. }
@@ -259,6 +260,25 @@ fn project_voice(
             }
             FactKind::Slur | FactKind::Phrase { .. } | FactKind::Tuplet { .. } | FactKind::Hairpin { .. } => {
                 regions.push(occurrence);
+                index = index.saturating_add(1);
+            }
+            // A span mark names the events it covers, like a slur; a point
+            // mark names a time, because there may be no note where it stands.
+            FactKind::Mark { mark, argument } => {
+                match mark.anchor() {
+                    crate::marks::Anchor::Span => regions.push(occurrence),
+                    crate::marks::Anchor::Point | crate::marks::Anchor::Note(_) => {
+                        let (part, voice) = fact.scope.voice().unwrap_or_default();
+                        resolver.annotations.push_point(crate::score::PointMark {
+                            mark: *mark,
+                            argument: argument.clone(),
+                            part: crate::score::PartId(part),
+                            voice: crate::score::VoiceId(voice),
+                            at: MusicalTime::new(occurrence.span().start().as_ratio()),
+                            origin: fact.origin.clone(),
+                        });
+                    }
+                }
                 index = index.saturating_add(1);
             }
             FactKind::Repeat { .. } | FactKind::Ending { .. } => {
@@ -526,6 +546,13 @@ fn project_regions(
         };
         let origin = fact.origin.clone();
         match &fact.kind {
+            FactKind::Mark { mark, argument } => resolver.annotations.push_mark(crate::score::MarkSpan {
+                mark: *mark,
+                argument: argument.clone(),
+                from,
+                to,
+                origin,
+            }),
             FactKind::Slur => resolver.annotations.push_slur(SlurSpan { from, to, origin }),
             FactKind::Phrase { name } => resolver.annotations.push_phrase(PhraseSpan {
                 name: name.clone(),

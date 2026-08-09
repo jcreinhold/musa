@@ -51,6 +51,7 @@ partStrings = {
       |
     } \\
     {
+      \sustainOn
       a,1 % event:e
       |
       f,1 % event:f
@@ -58,6 +59,7 @@ partStrings = {
       d,1 % event:10
       |
       e,1 % event:11
+      \sustainOff
       |
     }
   >>

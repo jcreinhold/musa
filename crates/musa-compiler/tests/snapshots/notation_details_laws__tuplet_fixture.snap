@@ -1455,6 +1455,8 @@ ScoreSnapshot {
         harmony: [],
         repeats: [],
         open: [],
+        points: [],
+        marks: [],
     },
     motifs: [
         MotifDeclaration {

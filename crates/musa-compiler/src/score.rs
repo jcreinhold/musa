@@ -600,6 +600,46 @@ pub struct ArticulationMarking {
     pub origin: Origin,
 }
 
+/// A notation mark standing at one place: a breath, a text direction, a
+/// rehearsal letter, a sample name.
+///
+/// Anchored by time rather than by event, unlike the annotations below it,
+/// because a point mark is written *between* notes as often as on one — a
+/// breath is exactly the mark that belongs to no note — and there is no event
+/// whose identity it would survive.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PointMark {
+    /// The mark, as written.
+    pub mark: Mark,
+    /// What was written after its name, when the mark takes an argument.
+    pub argument: Option<crate::marks::MarkArgument>,
+    /// The part it was written in.
+    pub part: PartId,
+    /// The voice it was written in — a sample name belongs over the drum
+    /// staff, not over whichever staff the engraver reaches first.
+    pub voice: VoiceId,
+    /// Where it stands.
+    pub at: MusicalTime,
+    /// Why this mark exists.
+    pub origin: Origin,
+}
+
+/// A notation mark over a run of events in one voice, inclusive of both ends:
+/// a pedal, an ottava.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MarkSpan {
+    /// The mark, as written.
+    pub mark: Mark,
+    /// What was written after its name, when the mark takes an argument.
+    pub argument: Option<crate::marks::MarkArgument>,
+    /// The first event under it.
+    pub from: EventId,
+    /// The last event under it.
+    pub to: EventId,
+    /// Why this mark exists.
+    pub origin: Origin,
+}
+
 /// A named span over a run of events in one voice, inclusive of both ends.
 ///
 /// Anchored to events, like a slur: a phrase is written *on* music, and it
@@ -802,6 +842,8 @@ pub struct AnnotationStore {
     harmony: Vec<HarmonyMark>,
     repeats: Vec<RepeatRegion>,
     open: Vec<OpenRegion>,
+    points: Vec<PointMark>,
+    marks: Vec<MarkSpan>,
 }
 
 impl AnnotationStore {
@@ -853,6 +895,27 @@ impl AnnotationStore {
     /// Repeats the whole system agrees about, in the order they are reached.
     pub fn repeats(&self) -> &[RepeatRegion] {
         &self.repeats
+    }
+
+    /// Marks standing at one place, in the order they are reached.
+    pub fn points(&self) -> &[PointMark] {
+        &self.points
+    }
+
+    /// Marks covering a run of events, in source order.
+    pub fn marks(&self) -> &[MarkSpan] {
+        &self.marks
+    }
+
+    /// Record a point mark, keeping the lane sorted by position: like a form
+    /// marker, it is read where it is reached rather than where it was typed.
+    pub(crate) fn push_point(&mut self, point: PointMark) {
+        let at = self.points.partition_point(|existing| existing.at <= point.at);
+        self.points.insert(at, point);
+    }
+
+    pub(crate) fn push_mark(&mut self, mark: MarkSpan) {
+        self.marks.push(mark);
     }
 
     pub(crate) fn push_phrase(&mut self, phrase: PhraseSpan) {

@@ -14,7 +14,7 @@
 //! signatures affect only `<scoreDef>`; pitch spelling passes through
 //! verbatim (§6.3).
 
-use musa_compiler::{Clef, EventId, Mode, WrittenPitch};
+use musa_compiler::{Clef, EventId, Mode, Slot, WrittenPitch};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
@@ -523,7 +523,12 @@ fn write_measure(
         };
         let staff_n = staff_index.saturating_add(1).to_string();
         for lane in measure_plan.lanes() {
-            write_control_events(writer, &staff_n, lane)?;
+            write_control_events(
+                writer,
+                &staff_n,
+                lane,
+                measure_plan.time_signature().map_or(4, |(_, unit)| unit),
+            )?;
         }
     }
     write_positioned(writer, plan, index)?;
@@ -542,7 +547,45 @@ fn place(placement: Placement) -> &'static str {
 ///
 /// A slur is written in the measure it starts in; its `endid` may point into
 /// a later measure, which is what those attributes are for.
-fn write_control_events(writer: &mut Writer<Vec<u8>>, staff: &str, lane: &VoiceLane) -> Result<(), RenderError> {
+fn write_control_events(
+    writer: &mut Writer<Vec<u8>>,
+    staff: &str,
+    lane: &VoiceLane,
+    unit: u32,
+) -> Result<(), RenderError> {
+    // A mark standing at one place is anchored by `tstamp`, not by `startid`:
+    // a breath falls between two notes and there is no note it belongs to.
+    for point in lane.points() {
+        let Some(name) = point.mark.def().mei else {
+            continue;
+        };
+        // Rational arithmetic on `Ratio<i64>` is exact mathematical
+        // arithmetic, not raw integer ops. MEI counts beats from one, so the
+        // onset is scaled into beats and the origin added.
+        #[allow(clippy::arithmetic_side_effects)]
+        let beat = point.onset_in_measure.as_ratio() * num_rational::Ratio::from_integer(i64::from(unit.max(1)))
+            + num_rational::Ratio::ONE;
+        let stamp = timestamp(beat);
+        let mut element = element(name);
+        element.push_attribute(("staff", staff));
+        element.push_attribute(("tstamp", stamp.as_str()));
+        match &point.argument {
+            Some(argument) => {
+                element.push_attribute(("place", "above"));
+                let words = argument.to_string();
+                writer
+                    .write_event(Event::Start(element))
+                    .map_err(|error| RenderError::xml(&error))?;
+                writer
+                    .write_event(Event::Text(quick_xml::events::BytesText::new(&words)))
+                    .map_err(|error| RenderError::xml(&error))?;
+                end(writer, name)?;
+            }
+            None => writer
+                .write_event(Event::Empty(element))
+                .map_err(|error| RenderError::xml(&error))?,
+        }
+    }
     for phrase in lane.phrases() {
         let start_ref = format!("#event-{:x}", phrase.from.0);
         let end_ref = format!("#event-{:x}", phrase.to.0);
@@ -580,7 +623,45 @@ fn write_control_events(writer: &mut Writer<Vec<u8>>, staff: &str, lane: &VoiceL
             .write_event(Event::Empty(element))
             .map_err(|error| RenderError::xml(&error))?;
     }
+    // A pedal or an ottava is a control event with both ends, exactly like a
+    // slur: `<pedal>` and `<octave>` are what MEI calls them, and the row says
+    // which.
+    for span in lane.marks() {
+        let Some(name) = span.mark.def().mei else {
+            continue;
+        };
+        let start_ref = format!("#event-{:x}", span.from.0);
+        let end_ref = format!("#event-{:x}", span.to.0);
+        let mut element = element(name);
+        element.push_attribute(("staff", staff));
+        element.push_attribute(("startid", start_ref.as_str()));
+        element.push_attribute(("endid", end_ref.as_str()));
+        // `<octave>` says how far and in which direction; `@dis` is the
+        // interval in steps and `@dis.place` the side.
+        if let Some(musa_compiler::MarkArgument::Number(shift)) = span.argument {
+            element.push_attribute(("dis", if shift.abs() >= 2 { "15" } else { "8" }));
+            element.push_attribute(("dis.place", if shift < 0 { "below" } else { "above" }));
+        }
+        writer
+            .write_event(Event::Empty(element))
+            .map_err(|error| RenderError::xml(&error))?;
+    }
     for item in lane.items() {
+        // An ornament and a fermata stand beside the note rather than inside
+        // it: MEI writes them as control events anchored by `startid`, which
+        // is also how it keeps a trill that runs over a tie in one piece.
+        for mark in item.articulations() {
+            let (Some(name), Some(Slot::Ornament | Slot::Fermata)) = (mark.def().mei, mark.slot()) else {
+                continue;
+            };
+            let start_ref = format!("#event-{:x}", item.event().0);
+            let mut element = element(name);
+            element.push_attribute(("staff", staff));
+            element.push_attribute(("startid", start_ref.as_str()));
+            writer
+                .write_event(Event::Empty(element))
+                .map_err(|error| RenderError::xml(&error))?;
+        }
         // A phrase is a bracket over notes and a word above them. The bracket
         // is `<phrase>`, which every MEI consumer understands; the word is a
         // `<dir>`, which every MEI consumer *prints* — a renderer that draws
@@ -817,11 +898,29 @@ fn write_layer(
     end(writer, "layer")
 }
 
+/// Whether any of an item's marks belongs inside its `<note>`.
+fn has_artics(item: &NotatedItem) -> bool {
+    item.articulations().iter().any(|mark| {
+        matches!(
+            (mark.def().mei, mark.slot()),
+            (Some(_), Some(Slot::Articulation | Slot::Technical))
+        )
+    })
+}
+
 /// `<artic>` children for an item, when it carries any.
+///
+/// Only the slots MEI writes *inside* the note: `@artic` holds articulations
+/// and technical indications. An ornament and a fermata are control events,
+/// which stand beside the note rather than in it, so they are written by
+/// [`write_control_events`] instead.
 fn write_artics(writer: &mut Writer<Vec<u8>>, item: &NotatedItem) -> Result<(), RenderError> {
     for mark in item.articulations() {
+        let (Some(spelling), Some(Slot::Articulation | Slot::Technical)) = (mark.def().mei, mark.slot()) else {
+            continue;
+        };
         let mut artic = element("artic");
-        artic.push_attribute(("artic", mark.def().mei));
+        artic.push_attribute(("artic", spelling));
         artic.push_attribute(("place", place(ARTICULATION_PLACEMENT)));
         writer
             .write_event(Event::Empty(artic))
@@ -922,16 +1021,16 @@ fn write_item(
             if let Some(tie) = tie_attr(item) {
                 note.push_attribute(("tie", tie));
             }
-            if item.articulations().is_empty() {
-                writer
-                    .write_event(Event::Empty(note))
-                    .map_err(|error| RenderError::xml(&error))?;
-            } else {
+            if has_artics(item) {
                 writer
                     .write_event(Event::Start(note))
                     .map_err(|error| RenderError::xml(&error))?;
                 write_artics(writer, item)?;
                 end(writer, "note")?;
+            } else {
+                writer
+                    .write_event(Event::Empty(note))
+                    .map_err(|error| RenderError::xml(&error))?;
             }
         }
         NotatedKind::Chord { pitches } => {

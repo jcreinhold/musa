@@ -322,7 +322,13 @@ fn a_note_can_be_entered_at_the_end_of_a_voice_and_undone() {
         }))
         .expect("a legal insertion");
 
-    assert!(source(&session).contains("                e2 1;\n                a2 1;"));
+    // After the pedal block, not under it: the end of the voice is the end of
+    // the voice, and a span someone wrote does not capture what is typed next.
+    let seen = source(&session);
+    assert!(
+        seen.contains("                    e2 1;\n                }\n                a2 1;"),
+        "{seen}"
+    );
     assert_ne!(session.snapshot().revision(), revision);
     let after = score_facts(&session);
     assert_eq!(
@@ -375,7 +381,12 @@ fn extracting_a_motif_names_a_run_and_leaves_a_use() {
 
     let text = source(&session);
     assert!(text.contains("    motif ground() {\n        a2 1;\n        f2 1;\n        d2 1;\n        e2 1;\n    }"));
-    assert!(text.contains("            voice bass {\n                use ground();\n            }"));
+    // The run came out from under a pedal, so the `use` goes back under it:
+    // the span covers the same music it covered before it was named.
+    assert!(
+        text.contains("                mark pedal {\n                    use ground();\n                }"),
+        "{text}"
+    );
 
     // And the music is the same music, now with provenance.
     let after = score_facts(&session);

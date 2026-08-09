@@ -260,6 +260,10 @@ pub enum SyntaxKind {
     OverrideStmt,
     /// `phrase "A" { ... }` — a named span over a voice's music.
     PhraseStmt,
+    /// `mark breath;`, `mark text "dolce";`, `mark pedal { ... }` — a notation
+    /// mark that is not written on a note. One node for every such mark,
+    /// because the vocabulary decides the shape and the grammar does not.
+    MarkStmt,
     /// `section "Exposition" at 1:1;` — a form marker in the score.
     SectionStmt,
     /// `harmony { ... }` — the chord-symbol lane.

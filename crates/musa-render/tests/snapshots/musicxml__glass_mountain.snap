@@ -201,6 +201,11 @@ expression: musicxml_of(source)
       <backup>
         <duration>4</duration>
       </backup>
+      <direction placement="above">
+        <direction-type>
+          <pedal type="start" line="yes"/>
+        </direction-type>
+      </direction>
       <note>
         <pitch>
           <step>A</step>
@@ -280,6 +285,11 @@ expression: musicxml_of(source)
         <voice>2</voice>
         <type>whole</type>
       </note>
+      <direction placement="above">
+        <direction-type>
+          <pedal type="stop" line="yes"/>
+        </direction-type>
+      </direction>
     </measure>
   </part>
 </score-partwise>

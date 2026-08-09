@@ -274,6 +274,7 @@ impl TokenClass {
             | SyntaxKind::WithClause
             | SyntaxKind::OverrideStmt
             | SyntaxKind::PhraseStmt
+            | SyntaxKind::MarkStmt
             | SyntaxKind::SectionStmt
             | SyntaxKind::HarmonyDecl
             | SyntaxKind::HarmonyStmt

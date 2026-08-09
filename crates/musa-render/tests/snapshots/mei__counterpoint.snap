@@ -69,6 +69,8 @@ expression: mei_of(source)
                   <note xml:id="event-7" dur="2" oct="2" pname="a"/>
                 </layer>
               </staff>
+              <fermata staff="1" startid="#event-3"/>
+              <fermata staff="2" startid="#event-7"/>
             </measure>
           </section>
         </score>

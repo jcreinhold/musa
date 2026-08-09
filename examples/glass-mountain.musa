@@ -37,10 +37,15 @@ piece "Glass Mountain" {
             }
 
             voice bass {
-                a2 1;
-                f2 1;
-                d2 1;
-                e2 1;
+                // Under the pedal for the whole descent: the harmony is a
+                // wash rather than four separate chords, and the pedal is
+                // where a page says so.
+                mark pedal {
+                    a2 1;
+                    f2 1;
+                    d2 1;
+                    e2 1;
+                }
             }
         }
     }

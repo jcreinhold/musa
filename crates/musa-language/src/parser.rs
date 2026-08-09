@@ -160,6 +160,7 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::InvertKw,
     SyntaxKind::MobileKw,
     SyntaxKind::ImproviseKw,
+    SyntaxKind::MarkKw,
 ];
 
 struct Parser<'a> {
@@ -1251,6 +1252,8 @@ impl<'a> Parser<'a> {
                 self.invert_stmt();
             } else if self.at(SyntaxKind::PhraseKw) {
                 self.phrase_stmt();
+            } else if self.at(SyntaxKind::MarkKw) {
+                self.mark_stmt();
             } else if self.at_any(&[SyntaxKind::CrescendoKw, SyntaxKind::DiminuendoKw]) {
                 self.hairpin_stmt();
             } else {
@@ -1498,6 +1501,33 @@ impl<'a> Parser<'a> {
         self.start(SyntaxKind::SlurStmt);
         self.bump(); // slur
         self.block();
+        self.finish();
+    }
+
+    /// `mark <name> [<argument>] ;` or `mark <name> [<argument>] { ... }` —
+    /// a notation mark that is not written on a note.
+    ///
+    /// The parser does not know which marks exist, which take an argument, or
+    /// which want a block: it accepts the shape and the compiler checks it
+    /// against the vocabulary. That is the point of the table — a new mark is
+    /// a row, and this function never changes.
+    fn mark_stmt(&mut self) {
+        self.start(SyntaxKind::MarkStmt);
+        self.bump(); // mark
+        self.expect(SyntaxKind::Identifier, "a mark such as `breath` or `pedal`");
+        if self.at_any(&[SyntaxKind::String, SyntaxKind::Integer, SyntaxKind::Minus]) {
+            if self.at(SyntaxKind::Minus) {
+                self.bump();
+                self.expect(SyntaxKind::Integer, "a whole number");
+            } else {
+                self.bump();
+            }
+        }
+        if self.at(SyntaxKind::LBrace) {
+            self.block();
+        } else {
+            self.expect(SyntaxKind::Semicolon, "`;` or a block");
+        }
         self.finish();
     }
 

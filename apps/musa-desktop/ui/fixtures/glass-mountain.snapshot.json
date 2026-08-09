@@ -1,7 +1,7 @@
 {
   "document": 0,
   "name": "glass-mountain.musa",
-  "source": "piece \"Glass Mountain\" {\n    subtitle \"for violin and strings\";\n    composer \"musa\";\n    copyright \"© 2026. Licensed CC BY-SA 4.0.\";\n\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: pitch = e5) {\n        root 1/2;\n        rest 1/4;\n        c5 1/2;\n        b4 1/4;\n        a4 1/2;\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh();\n\n                transpose down P5 {\n                    use sigh();\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5 1;\n                c5 1;\n                a4 1;\n                gs4 1;\n            }\n\n            voice bass {\n                a2 1;\n                f2 1;\n                d2 1;\n                e2 1;\n            }\n        }\n    }\n\n    // The sound side (roadmap 7.1). Every stage here runs real DSP: the\n    // oscillators and envelope are the voice, the filter and its modulation\n    // shape it, and the hall is a send to a reverb bus that returns to the\n    // master.\n    studio {\n        patch glass_pad {\n            carrier = oscillator(sine);\n            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);\n\n            mix(carrier, shimmer)\n                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))\n                |> lowpass(cutoff: 1400 Hz, q: 0.7)\n                |> output;\n        }\n\n        lfo = oscillator(sine, frequency: 0.08 Hz)\n            |> scale(250 Hz)\n            |> bias(1400 Hz);\n\n        modulate lfo -> glass_pad.lowpass.cutoff;\n\n        bus hall {\n            reverb(room: 0.82, damping: 0.55);\n        }\n\n        assign violin -> glass_pad;\n        assign strings -> glass_pad;\n\n        route violin -> master;\n        route strings -> master;\n\n        send violin -> hall at -18 dB;\n        send strings -> hall at -14 dB;\n        route hall -> master;\n    }\n}\n",
+  "source": "piece \"Glass Mountain\" {\n    subtitle \"for violin and strings\";\n    composer \"musa\";\n    copyright \"© 2026. Licensed CC BY-SA 4.0.\";\n\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    motif sigh(root: pitch = e5) {\n        root 1/2;\n        rest 1/4;\n        c5 1/2;\n        b4 1/4;\n        a4 1/2;\n    }\n\n    score {\n        part violin {\n            clef treble;\n\n            voice lead {\n                use sigh();\n\n                transpose down P5 {\n                    use sigh();\n                }\n            }\n        }\n\n        part strings {\n            voice upper {\n                c5 1;\n                c5 1;\n                a4 1;\n                gs4 1;\n            }\n\n            voice bass {\n                // Under the pedal for the whole descent: the harmony is a\n                // wash rather than four separate chords, and the pedal is\n                // where a page says so.\n                mark pedal {\n                    a2 1;\n                    f2 1;\n                    d2 1;\n                    e2 1;\n                }\n            }\n        }\n    }\n\n    // The sound side (roadmap 7.1). Every stage here runs real DSP: the\n    // oscillators and envelope are the voice, the filter and its modulation\n    // shape it, and the hall is a send to a reverb bus that returns to the\n    // master.\n    studio {\n        patch glass_pad {\n            carrier = oscillator(sine);\n            shimmer = oscillator(sine, ratio: 2) |> gain(-15 dB);\n\n            mix(carrier, shimmer)\n                |> envelope(adsr(attack: 30 ms, decay: 1.8 s, sustain: 0.65, release: 3.5 s))\n                |> lowpass(cutoff: 1400 Hz, q: 0.7)\n                |> output;\n        }\n\n        lfo = oscillator(sine, frequency: 0.08 Hz)\n            |> scale(250 Hz)\n            |> bias(1400 Hz);\n\n        modulate lfo -> glass_pad.lowpass.cutoff;\n\n        bus hall {\n            reverb(room: 0.82, damping: 0.55);\n        }\n\n        assign violin -> glass_pad;\n        assign strings -> glass_pad;\n\n        route violin -> master;\n        route strings -> master;\n\n        send violin -> hall at -18 dB;\n        send strings -> hall at -14 dB;\n        route hall -> master;\n    }\n}\n",
   "revision": 0,
   "compiles": true,
   "unsaved": true,
@@ -9,7 +9,7 @@
   "recovery": null,
   "midiPort": null,
   "diagnostics": [],
-  "mei": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n  <meiHead>\n    <fileDesc>\n      <titleStmt>\n        <title>Glass Mountain</title>\n        <title type=\"subtitle\">for violin and strings</title>\n        <composer>musa</composer>\n      </titleStmt>\n      <pubStmt>\n        <availability>\n          <useRestrict>© 2026. Licensed CC BY-SA 4.0.</useRestrict>\n        </availability>\n      </pubStmt>\n    </fileDesc>\n  </meiHead>\n  <music>\n    <body>\n      <mdiv>\n        <score>\n          <scoreDef meter.count=\"4\" meter.unit=\"4\" key.sig=\"0\" key.mode=\"minor\">\n            <pgHead>\n              <rend halign=\"center\" valign=\"top\">\n                <rend xml:id=\"front-title\" fontsize=\"x-large\">Glass Mountain</rend>\n                <lb/>\n                <rend xml:id=\"front-subtitle\" fontsize=\"small\">for violin and strings</rend>\n              </rend>\n              <rend halign=\"right\" valign=\"bottom\">\n                <rend xml:id=\"front-composer\">musa</rend>\n              </rend>\n            </pgHead>\n            <pgHead2>\n              <rend halign=\"center\" valign=\"top\" fontsize=\"small\">– <num label=\"page\">#</num> –</rend>\n            </pgHead2>\n            <pgFoot>\n              <rend xml:id=\"front-copyright\" halign=\"center\" fontsize=\"x-small\">© 2026. Licensed CC BY-SA 4.0.</rend>\n            </pgFoot>\n            <staffGrp>\n              <staffDef n=\"1\" lines=\"5\" clef.shape=\"G\" clef.line=\"2\">\n                <label>violin</label>\n                <labelAbbr>vio.</labelAbbr>\n              </staffDef>\n              <staffDef n=\"2\" lines=\"5\">\n                <label>strings</label>\n                <labelAbbr>str.</labelAbbr>\n              </staffDef>\n            </staffGrp>\n          </scoreDef>\n          <section>\n            <measure n=\"1\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-0\" dur=\"2\" oct=\"5\" pname=\"e\"/>\n                  <rest xml:id=\"event-1\" dur=\"4\"/>\n                  <note xml:id=\"event-2\" dur=\"4\" oct=\"5\" pname=\"c\" tie=\"i\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-a\" dur=\"1\" oct=\"5\" pname=\"c\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-e\" dur=\"1\" oct=\"2\" pname=\"a\"/>\n                </layer>\n              </staff>\n              <tempo staff=\"1\" tstamp=\"1\" place=\"above\" mm=\"72\" mm.unit=\"4\" midi.bpm=\"72\"/>\n            </measure>\n            <measure n=\"2\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-2-t2\" dur=\"4\" oct=\"5\" pname=\"c\" tie=\"t\"/>\n                  <note xml:id=\"event-3\" dur=\"4\" oct=\"4\" pname=\"b\"/>\n                  <note xml:id=\"event-4\" dur=\"2\" oct=\"4\" pname=\"a\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-b\" dur=\"1\" oct=\"5\" pname=\"c\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-f\" dur=\"1\" oct=\"2\" pname=\"f\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"3\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-5\" dur=\"2\" oct=\"4\" pname=\"a\"/>\n                  <rest xml:id=\"event-6\" dur=\"4\"/>\n                  <note xml:id=\"event-7\" dur=\"4\" oct=\"4\" pname=\"f\" tie=\"i\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-c\" dur=\"1\" oct=\"4\" pname=\"a\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-10\" dur=\"1\" oct=\"2\" pname=\"d\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"4\" right=\"end\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-7-t2\" dur=\"4\" oct=\"4\" pname=\"f\" tie=\"t\"/>\n                  <note xml:id=\"event-8\" dur=\"4\" oct=\"4\" pname=\"e\"/>\n                  <note xml:id=\"event-9\" dur=\"2\" oct=\"4\" pname=\"d\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-d\" dur=\"1\" oct=\"4\" pname=\"g\" accid=\"s\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-11\" dur=\"1\" oct=\"2\" pname=\"e\"/>\n                </layer>\n              </staff>\n            </measure>\n          </section>\n        </score>\n      </mdiv>\n    </body>\n  </music>\n</mei>",
+  "mei": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n  <meiHead>\n    <fileDesc>\n      <titleStmt>\n        <title>Glass Mountain</title>\n        <title type=\"subtitle\">for violin and strings</title>\n        <composer>musa</composer>\n      </titleStmt>\n      <pubStmt>\n        <availability>\n          <useRestrict>© 2026. Licensed CC BY-SA 4.0.</useRestrict>\n        </availability>\n      </pubStmt>\n    </fileDesc>\n  </meiHead>\n  <music>\n    <body>\n      <mdiv>\n        <score>\n          <scoreDef meter.count=\"4\" meter.unit=\"4\" key.sig=\"0\" key.mode=\"minor\">\n            <pgHead>\n              <rend halign=\"center\" valign=\"top\">\n                <rend xml:id=\"front-title\" fontsize=\"x-large\">Glass Mountain</rend>\n                <lb/>\n                <rend xml:id=\"front-subtitle\" fontsize=\"small\">for violin and strings</rend>\n              </rend>\n              <rend halign=\"right\" valign=\"bottom\">\n                <rend xml:id=\"front-composer\">musa</rend>\n              </rend>\n            </pgHead>\n            <pgHead2>\n              <rend halign=\"center\" valign=\"top\" fontsize=\"small\">– <num label=\"page\">#</num> –</rend>\n            </pgHead2>\n            <pgFoot>\n              <rend xml:id=\"front-copyright\" halign=\"center\" fontsize=\"x-small\">© 2026. Licensed CC BY-SA 4.0.</rend>\n            </pgFoot>\n            <staffGrp>\n              <staffDef n=\"1\" lines=\"5\" clef.shape=\"G\" clef.line=\"2\">\n                <label>violin</label>\n                <labelAbbr>vio.</labelAbbr>\n              </staffDef>\n              <staffDef n=\"2\" lines=\"5\">\n                <label>strings</label>\n                <labelAbbr>str.</labelAbbr>\n              </staffDef>\n            </staffGrp>\n          </scoreDef>\n          <section>\n            <measure n=\"1\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-0\" dur=\"2\" oct=\"5\" pname=\"e\"/>\n                  <rest xml:id=\"event-1\" dur=\"4\"/>\n                  <note xml:id=\"event-2\" dur=\"4\" oct=\"5\" pname=\"c\" tie=\"i\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-a\" dur=\"1\" oct=\"5\" pname=\"c\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-e\" dur=\"1\" oct=\"2\" pname=\"a\"/>\n                </layer>\n              </staff>\n              <pedal staff=\"2\" startid=\"#event-e\" endid=\"#event-11\"/>\n              <tempo staff=\"1\" tstamp=\"1\" place=\"above\" mm=\"72\" mm.unit=\"4\" midi.bpm=\"72\"/>\n            </measure>\n            <measure n=\"2\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-2-t2\" dur=\"4\" oct=\"5\" pname=\"c\" tie=\"t\"/>\n                  <note xml:id=\"event-3\" dur=\"4\" oct=\"4\" pname=\"b\"/>\n                  <note xml:id=\"event-4\" dur=\"2\" oct=\"4\" pname=\"a\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-b\" dur=\"1\" oct=\"5\" pname=\"c\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-f\" dur=\"1\" oct=\"2\" pname=\"f\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"3\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-5\" dur=\"2\" oct=\"4\" pname=\"a\"/>\n                  <rest xml:id=\"event-6\" dur=\"4\"/>\n                  <note xml:id=\"event-7\" dur=\"4\" oct=\"4\" pname=\"f\" tie=\"i\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-c\" dur=\"1\" oct=\"4\" pname=\"a\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-10\" dur=\"1\" oct=\"2\" pname=\"d\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"4\" right=\"end\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-7-t2\" dur=\"4\" oct=\"4\" pname=\"f\" tie=\"t\"/>\n                  <note xml:id=\"event-8\" dur=\"4\" oct=\"4\" pname=\"e\"/>\n                  <note xml:id=\"event-9\" dur=\"2\" oct=\"4\" pname=\"d\"/>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-d\" dur=\"1\" oct=\"4\" pname=\"g\" accid=\"s\"/>\n                </layer>\n                <layer xml:id=\"layer-2-2\" n=\"2\">\n                  <note xml:id=\"event-11\" dur=\"1\" oct=\"2\" pname=\"e\"/>\n                </layer>\n              </staff>\n            </measure>\n          </section>\n        </score>\n      </mdiv>\n    </body>\n  </music>\n</mei>",
   "score": {
     "title": "Glass Mountain",
     "tempoBpm": 72,
@@ -681,14 +681,14 @@
           "path": [],
           "noteIndex": null,
           "occurrence": null,
-          "line": 40,
+          "line": 44,
           "span": {
-            "start": 736,
-            "end": 741
+            "start": 960,
+            "end": 965
           },
           "definitionSpan": {
-            "start": 736,
-            "end": 741
+            "start": 960,
+            "end": 965
           }
         }
       },
@@ -723,14 +723,14 @@
           "path": [],
           "noteIndex": null,
           "occurrence": null,
-          "line": 41,
+          "line": 45,
           "span": {
-            "start": 758,
-            "end": 763
+            "start": 986,
+            "end": 991
           },
           "definitionSpan": {
-            "start": 758,
-            "end": 763
+            "start": 986,
+            "end": 991
           }
         }
       },
@@ -765,14 +765,14 @@
           "path": [],
           "noteIndex": null,
           "occurrence": null,
-          "line": 42,
+          "line": 46,
           "span": {
-            "start": 780,
-            "end": 785
+            "start": 1012,
+            "end": 1017
           },
           "definitionSpan": {
-            "start": 780,
-            "end": 785
+            "start": 1012,
+            "end": 1017
           }
         }
       },
@@ -807,14 +807,14 @@
           "path": [],
           "noteIndex": null,
           "occurrence": null,
-          "line": 43,
+          "line": 47,
           "span": {
-            "start": 802,
-            "end": 807
+            "start": 1038,
+            "end": 1043
           },
           "definitionSpan": {
-            "start": 802,
-            "end": 807
+            "start": 1038,
+            "end": 1043
           }
         }
       }
@@ -963,8 +963,8 @@
                 "maximum": 16.0,
                 "written": true,
                 "span": {
-                  "start": 1205,
-                  "end": 1206
+                  "start": 1459,
+                  "end": 1460
                 },
                 "modulatedBy": null
               }
@@ -983,8 +983,8 @@
                 "maximum": 12.0,
                 "written": true,
                 "span": {
-                  "start": 1216,
-                  "end": 1222
+                  "start": 1470,
+                  "end": 1476
                 },
                 "modulatedBy": null
               }
@@ -1009,8 +1009,8 @@
                 "maximum": 5.0,
                 "written": true,
                 "span": {
-                  "start": 1301,
-                  "end": 1306
+                  "start": 1555,
+                  "end": 1560
                 },
                 "modulatedBy": null
               },
@@ -1022,8 +1022,8 @@
                 "maximum": 10.0,
                 "written": true,
                 "span": {
-                  "start": 1315,
-                  "end": 1320
+                  "start": 1569,
+                  "end": 1574
                 },
                 "modulatedBy": null
               },
@@ -1035,8 +1035,8 @@
                 "maximum": 1.0,
                 "written": true,
                 "span": {
-                  "start": 1331,
-                  "end": 1335
+                  "start": 1585,
+                  "end": 1589
                 },
                 "modulatedBy": null
               },
@@ -1048,8 +1048,8 @@
                 "maximum": 10.0,
                 "written": true,
                 "span": {
-                  "start": 1346,
-                  "end": 1351
+                  "start": 1600,
+                  "end": 1605
                 },
                 "modulatedBy": null
               }
@@ -1068,8 +1068,8 @@
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1389,
-                  "end": 1396
+                  "start": 1643,
+                  "end": 1650
                 },
                 "modulatedBy": "lfo"
               },
@@ -1081,8 +1081,8 @@
                 "maximum": 20.0,
                 "written": true,
                 "span": {
-                  "start": 1401,
-                  "end": 1404
+                  "start": 1655,
+                  "end": 1658
                 },
                 "modulatedBy": null
               }
@@ -1109,8 +1109,8 @@
                 "maximum": 1.0,
                 "written": true,
                 "span": {
-                  "start": 1650,
-                  "end": 1654
+                  "start": 1904,
+                  "end": 1908
                 },
                 "modulatedBy": null
               },
@@ -1122,8 +1122,8 @@
                 "maximum": 1.0,
                 "written": true,
                 "span": {
-                  "start": 1665,
-                  "end": 1669
+                  "start": 1919,
+                  "end": 1923
                 },
                 "modulatedBy": null
               },
@@ -1160,8 +1160,8 @@
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1486,
-                  "end": 1493
+                  "start": 1740,
+                  "end": 1747
                 },
                 "modulatedBy": null
               },
@@ -1190,8 +1190,8 @@
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1516,
-                  "end": 1522
+                  "start": 1770,
+                  "end": 1776
                 },
                 "modulatedBy": null
               }
@@ -1210,8 +1210,8 @@
                 "maximum": 20000.0,
                 "written": true,
                 "span": {
-                  "start": 1544,
-                  "end": 1551
+                  "start": 1798,
+                  "end": 1805
                 },
                 "modulatedBy": null
               }
@@ -1236,8 +1236,8 @@
         "bus": "hall",
         "decibels": -18.0,
         "span": {
-          "start": 1854,
-          "end": 1860
+          "start": 2108,
+          "end": 2114
         }
       },
       {
@@ -1245,8 +1245,8 @@
         "bus": "hall",
         "decibels": -14.0,
         "span": {
-          "start": 1894,
-          "end": 1900
+          "start": 2148,
+          "end": 2154
         }
       }
     ],

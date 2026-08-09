@@ -889,10 +889,15 @@ fn mark_settings(resolver: &mut Resolver, rule: &MarkRule) -> ArticulationRealiz
                     realization.attack = attack;
                 }
             }
+            "hold" => {
+                if let Some(hold) = ratio_setting(resolver, &setting) {
+                    realization.hold = hold;
+                }
+            }
             other => resolver.report(
                 Diagnostic::error(Code::UnknownWord, format!("a mark has no setting called `{other}`"))
                     .at(trimmed_span(setting.syntax()), "unknown setting")
-                    .help(suggest(other, &["gate", "attack"], "settings")),
+                    .help(suggest(other, &["gate", "attack", "hold"], "settings")),
             ),
         }
     }

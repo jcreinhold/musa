@@ -1,0 +1,138 @@
+// The marks a Baroque page is covered in (docs/prompts/70).
+//
+// Every mark here is written and none is realized. A trill on this page says
+// "trill"; what notes it plays is a question Baroque and Romantic practice
+// genuinely disagree about, and settling it in the notation would be musa
+// choosing a century for the reader. The profile settles it — or nothing does,
+// and the mark is printed and not played, which is what an unrealized
+// ornament has always meant.
+//
+// The one mark that does something is the fermata: `hold` in a profile
+// lengthens the note. It does not stop the clock — musa has no way to say
+// that until tempo becomes a fact — so the harpsichord rings on under the
+// bar rather than the bar waiting for it.
+piece "Ornaments" {
+    tempo 1/4 = 72;
+    meter 4/4;
+    key g major;
+
+    performance {
+        // A harpsichord cannot hold a note, so `hold` is what a player does
+        // instead: the fermata is arpeggiated and let ring.
+        profile harpsichord {
+            mark fermata {
+                hold = 2/1;
+            }
+
+            mark staccato {
+                gate = 1/2;
+            }
+
+            dynamic mf {
+                amplitude = 0.6;
+            }
+        }
+    }
+
+    score {
+        part right {
+            clef treble;
+            profile harpsichord;
+
+            voice tune {
+                dynamic mf;
+
+                // A rehearsal letter is a point: it stands at a place, not on
+                // a note, which is exactly why it needs the `mark` statement.
+                mark rehearsal "A";
+
+                g5 1/4 trill;
+                a5 1/8;
+                b5 1/8;
+                c6 1/4 mordent;
+                b5 1/4;
+
+                // Under the pedal, which is a span: it covers the music in
+                // its block and the block is what says how far.
+                mark pedal {
+                    a5 1/8;
+                    b5 1/8;
+                    c6 1/8;
+                    d6 1/8;
+                    e6 1/4 turn;
+                    d6 1/4;
+                }
+
+                mark text "poco rit.";
+
+                c6 1/4;
+                b5 1/4;
+                a5 1/4;
+                g5 1/4 fermata;
+
+                // A breath falls between two notes and belongs to neither,
+                // which is the whole reason it is a point rather than
+                // something written on a note.
+                mark breath;
+
+                mark rehearsal "B";
+
+                // An octave up, and the page says so rather than the notes
+                // climbing off the staff.
+                mark ottava 1 {
+                    g6 1/8;
+                    a6 1/8;
+                    b6 1/8;
+                    c7 1/8;
+                    d7 1/4 trill;
+                    b6 1/4;
+                }
+
+                g5 1/2 fermata;
+                rest 1/2;
+            }
+        }
+
+        part left {
+            clef bass;
+            profile harpsichord;
+
+            voice bass {
+                dynamic mf;
+
+                g3 1/4;
+                d3 1/4;
+                g3 1/4;
+                b3 1/4;
+
+                c4 1/4;
+                g3 1/4;
+                c4 1/4;
+                e4 1/4;
+
+                d4 1/4;
+                a3 1/4;
+                d4 1/4;
+                fs4 1/4;
+
+                g3 1/4;
+                d3 1/4;
+                g3 1/4;
+                d3 1/4;
+
+                g3 1/4;
+                b3 1/4;
+                d4 1/4;
+                g4 1/4;
+
+                c4 1/4;
+                e4 1/4;
+                d4 1/4;
+                d3 1/4;
+
+                g3 1/2 fermata;
+                rest 1/2;
+            }
+        }
+    }
+}

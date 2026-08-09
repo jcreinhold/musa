@@ -214,6 +214,18 @@ fn kind_text(kind: &FactKind) -> String {
             articulations_text(articulations),
             free_text(free.as_ref()),
         ],
+        // Three fields rather than two so the absent argument and the empty
+        // string stay distinguishable: `mark text ""` is a legal, if odd,
+        // direction, and it is not the same fact as `mark breath`.
+        FactKind::Mark { mark, argument } => vec![
+            "mark".to_owned(),
+            mark.name().to_owned(),
+            match argument {
+                Some(crate::marks::MarkArgument::Text(text)) => format!("t{text}"),
+                Some(crate::marks::MarkArgument::Number(number)) => format!("n{number}"),
+                None => String::new(),
+            },
+        ],
         FactKind::Slur => vec!["slur".to_owned()],
         FactKind::Phrase { name } => vec!["phrase".to_owned(), name.clone()],
         FactKind::Tuplet { num, den } => vec!["tuplet".to_owned(), num.to_string(), den.to_string()],
@@ -286,6 +298,17 @@ fn read_kind(text: &str) -> Option<FactKind> {
         }),
         ("improvise", 2) => Some(FactKind::Improvise {
             over: Some(arg(1)?.to_owned()).filter(|over| !over.is_empty()),
+        }),
+        ("mark", 3) => Some(FactKind::Mark {
+            mark: Mark::parse(arg(1)?)?,
+            argument: match arg(2)? {
+                "" => None,
+                written => Some(match written.split_at_checked(1)? {
+                    ("t", text) => crate::marks::MarkArgument::Text(text.to_owned()),
+                    ("n", number) => crate::marks::MarkArgument::Number(number.parse().ok()?),
+                    _ => return None,
+                }),
+            },
         }),
         ("slur", 1) => Some(FactKind::Slur),
         ("phrase", 2) => Some(FactKind::Phrase {

@@ -68,6 +68,17 @@ pub(crate) enum FactKind {
         /// As [`FactKind::Note`]'s: a rest can be held too.
         free: Option<crate::score::FreeDuration>,
     },
+    /// A notation mark that is not written on a note: a point at the instant
+    /// it is written, or a span over the music its block covers. Which of the
+    /// two this occurrence is, is its span — a point's is empty.
+    ///
+    /// Note-anchored marks are *not* here: a staccato dot has no extent and no
+    /// identity of its own, so it stays a field of the note (see this enum's
+    /// own doc). A pedal has both.
+    Mark {
+        mark: crate::Mark,
+        argument: Option<crate::marks::MarkArgument>,
+    },
     /// A slur over the region it spans.
     Slur,
     /// A named phrase over the region it spans.
@@ -129,7 +140,8 @@ impl FactKind {
     pub(crate) fn articulations_of(&self) -> &[crate::Mark] {
         match self {
             Self::Note { articulations, .. } | Self::Rest { articulations, .. } => articulations,
-            Self::Slur
+            Self::Mark { .. }
+            | Self::Slur
             | Self::Phrase { .. }
             | Self::Tuplet { .. }
             | Self::Dynamic { .. }
@@ -150,7 +162,8 @@ impl FactKind {
     pub(crate) fn duration_of(&self) -> Option<&NotatedDuration> {
         match self {
             Self::Note { duration, .. } | Self::Rest { duration, .. } => Some(duration),
-            Self::Slur
+            Self::Mark { .. }
+            | Self::Slur
             | Self::Phrase { .. }
             | Self::Tuplet { .. }
             | Self::Dynamic { .. }
@@ -171,7 +184,8 @@ impl FactKind {
     pub(crate) fn free_of(&self) -> Option<&crate::score::FreeDuration> {
         match self {
             Self::Note { free, .. } | Self::Rest { free, .. } => free.as_ref(),
-            Self::Slur
+            Self::Mark { .. }
+            | Self::Slur
             | Self::Phrase { .. }
             | Self::Tuplet { .. }
             | Self::Dynamic { .. }
@@ -222,7 +236,8 @@ impl ScoreFact {
             FactKind::Note { duration, .. } | FactKind::Rest { duration, .. } => {
                 *duration = duration.stretched(factor);
             }
-            FactKind::Slur
+            FactKind::Mark { .. }
+            | FactKind::Slur
             | FactKind::Phrase { .. }
             | FactKind::Tuplet { .. }
             | FactKind::Dynamic { .. }
@@ -259,6 +274,7 @@ impl ScoreFact {
         match &self.kind {
             FactKind::Note { pitch, .. } => Some(*pitch),
             FactKind::Rest { .. }
+            | FactKind::Mark { .. }
             | FactKind::Slur
             | FactKind::Phrase { .. }
             | FactKind::Tuplet { .. }
@@ -318,6 +334,13 @@ impl musa_kernel::Canonical for ScoreFact {
                 articulations(marks),
                 held(free.as_ref())
             ),
+            // The argument is in the key: two `mark text` occurrences over one
+            // span say different things, and N3 must be able to tell them
+            // apart or the semantic hash would call them equal.
+            FactKind::Mark { mark, argument } => match argument {
+                Some(argument) => format!("mark:{mark}:{argument}|"),
+                None => format!("mark:{mark}|"),
+            },
             FactKind::Slur => "slur|".to_owned(),
             FactKind::Phrase { name } => format!("phrase:{name}|"),
             FactKind::Tuplet { num, den } => format!("tuplet:{num}/{den}|"),
@@ -1260,15 +1283,137 @@ fn articulations_of(resolver: &mut Resolver, names: &[String], span: SourceSpan)
     let mut articulations = Vec::new();
     for name in names {
         match crate::Mark::parse(name) {
-            Some(mark) => articulations.push(mark),
+            // The anchor decides where a mark may be written, so a name that
+            // exists in the wrong half of the table gets the sentence that
+            // actually helps rather than "is not a mark", which would be a
+            // lie about a word the vocabulary contains.
+            Some(mark) if mark.slot().is_some() => articulations.push(mark),
+            Some(mark) => {
+                // The help spells the row's own shape: a pedal needs a block
+                // and a rehearsal letter needs its letter, so "write it as a
+                // statement" alone would be advice that does not compile.
+                let argument = match mark.takes() {
+                    crate::marks::Argument::None => String::new(),
+                    crate::marks::Argument::Text => " \"…\"".to_owned(),
+                    crate::marks::Argument::Number => " 1".to_owned(),
+                };
+                let tail = match mark.anchor() {
+                    crate::marks::Anchor::Span => " { … }",
+                    crate::marks::Anchor::Point | crate::marks::Anchor::Note(_) => ";",
+                };
+                resolver.report(
+                    Diagnostic::error(Code::Misplaced, format!("`{name}` is not written on a note"))
+                        .at(span, "this mark stands on its own")
+                        .help(format!("write it as a statement: `mark {mark}{argument}{tail}`")),
+                );
+            }
             None => resolver.report(
                 Diagnostic::error(Code::UnknownWord, format!("`{name}` is not a mark"))
                     .at(span, "unknown mark")
-                    .help(crate::resolve::suggest(name, &crate::marks::names(), "marks")),
+                    .help(crate::resolve::suggest(name, &crate::marks::note_names(), "marks")),
             ),
         }
     }
     articulations
+}
+
+/// `mark <name> [<argument>] ;` or `… { … }`.
+///
+/// Everything the grammar deliberately did not check happens here, against the
+/// vocabulary row: that the name exists, that it may be written as a statement
+/// at all, that its argument is the kind the row asks for, and that a span was
+/// given a block and a point was not. A row is still the whole cost of a new
+/// mark, because none of these checks name one.
+fn elaborate_mark(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    statement: &musa_language::ast::MarkStmt,
+    cx: &ExpandCx,
+    scope: Scope,
+) -> Segment {
+    use crate::marks::{Anchor, Argument, MarkArgument};
+
+    let span = resolve::trimmed_span(statement.syntax());
+    let written = statement.name().unwrap_or_default();
+    let Some(mark) = crate::Mark::parse(&written) else {
+        resolver.report(
+            Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a mark"))
+                .at(span, "unknown mark")
+                .help(crate::resolve::suggest(
+                    &written,
+                    &crate::marks::statement_names(),
+                    "marks",
+                )),
+        );
+        return Segment::empty();
+    };
+    if mark.slot().is_some() {
+        resolver.report(
+            Diagnostic::error(Code::Misplaced, format!("`{mark}` is written on a note"))
+                .at(span, "not a statement of its own")
+                .help(format!("write it after a duration: `g4 1/4 {mark};`")),
+        );
+        return Segment::empty();
+    }
+
+    let written_argument = match (statement.text(), statement.number()) {
+        (Some(text), _) => Some(MarkArgument::Text(text)),
+        (None, Some(number)) => number.parse().ok().map(MarkArgument::Number),
+        (None, None) => None,
+    };
+    let argument = match (mark.takes(), written_argument) {
+        (Argument::None, None) => None,
+        (wanted, Some(given)) if wanted == given.kind() => Some(given),
+        (Argument::None, Some(_)) => {
+            resolver.report(
+                Diagnostic::error(Code::Misplaced, format!("`{mark}` is written on its own"))
+                    .at(span, "nothing follows the name"),
+            );
+            return Segment::empty();
+        }
+        (wanted, given) => {
+            let (wanted, example) = match wanted {
+                Argument::Text => ("a name in quotes", format!("mark {mark} \"…\";")),
+                Argument::Number => ("a whole number", format!("mark {mark} 1;")),
+                Argument::None => ("nothing", format!("mark {mark};")),
+            };
+            let saw = if given.is_some() { "the wrong kind" } else { "nothing" };
+            resolver.report(
+                Diagnostic::error(Code::Misplaced, format!("`{mark}` is written with {wanted}"))
+                    .at(span, saw)
+                    .help(format!("for example `{example}`")),
+            );
+            return Segment::empty();
+        }
+    };
+
+    let fact = ScoreFact::new(scope, FactKind::Mark { mark, argument }, origin_of(cx, span));
+    match (mark.anchor(), statement.has_block()) {
+        (Anchor::Span, true) => {
+            let body = elaborate_items(resolver, share, &statement.items(), cx, scope);
+            region(body, fact)
+        }
+        (Anchor::Point, false) => Segment::literal(point(fact)),
+        (Anchor::Span, false) => {
+            resolver.report(
+                Diagnostic::error(Code::Misplaced, format!("`{mark}` covers music"))
+                    .at(span, "no music under it")
+                    .help(format!("wrap what it covers: `mark {mark} {{ … }}`")),
+            );
+            Segment::empty()
+        }
+        (Anchor::Point, true) => {
+            resolver.report(
+                Diagnostic::error(Code::Misplaced, format!("`{mark}` stands at one place"))
+                    .at(span, "it covers nothing")
+                    .help(format!("write it on its own: `mark {mark};`")),
+            );
+            Segment::empty()
+        }
+        // A note-anchored mark returned above; this arm is here because the
+        // match is total.
+        (Anchor::Note(_), _) => Segment::empty(),
+    }
 }
 
 /// Elaborate one item; malformed items elaborate to the empty segment
@@ -1419,6 +1564,7 @@ fn elaborate_item(
             let body = elaborate_items(resolver, share, &phrase.items(), cx, scope);
             region(body, ScoreFact::new(scope, FactKind::Phrase { name }, origin))
         }
+        VoiceItem::Mark(statement) => elaborate_mark(resolver, share, statement, cx, scope),
         VoiceItem::Hairpin(hairpin) => {
             let span = resolve::trimmed_span(hairpin.syntax());
             let text = hairpin.target().unwrap_or_default();

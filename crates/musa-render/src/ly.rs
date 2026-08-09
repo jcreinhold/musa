@@ -274,6 +274,8 @@ fn lane_body(
     let mut next_mark = pending.next();
     let mut pending_clefs = clefs.iter();
     let mut next_clef = pending_clefs.next();
+    let mut pending_points = lane.points().iter();
+    let mut next_point = pending_points.next();
     for item in lane.items() {
         // The small clef goes before the note it affects, which in LilyPond
         // is literally where the command is written.
@@ -287,6 +289,20 @@ fn lane_body(
         while let Some(mark) = next_mark.filter(|mark| mark.onset_in_measure <= item.onset_in_measure()) {
             nodes.push(mark_node(&mark.what));
             next_mark = pending.next();
+        }
+        // A breath is written between the notes it separates, so a point mark
+        // is emitted before the note that follows it — the same rule as a
+        // clef change, for the same reason.
+        while let Some(point) = next_point.filter(|point| point.onset_in_measure <= item.onset_in_measure()) {
+            if let Some(script) = point_script(point) {
+                nodes.push(LyNode::Command(script));
+            }
+            next_point = pending_points.next();
+        }
+        for span in item.spans().iter().filter(|span| span.start) {
+            if let Some(script) = span_script(span, true) {
+                nodes.push(LyNode::Command(script));
+            }
         }
         if let Some(tuplet) = item.tuplet()
             && tuplet.start
@@ -304,6 +320,11 @@ fn lane_body(
         {
             nodes.push(LyNode::Tuplet { num, den, body });
         }
+        for span in item.spans().iter().filter(|span| span.stop) {
+            if let Some(script) = span_script(span, false) {
+                nodes.push(LyNode::Command(script));
+            }
+        }
     }
     // A bracket the measure did not close (the compiler forbids it, but the
     // printer must still produce a document): close it here.
@@ -317,6 +338,12 @@ fn lane_body(
     while let Some(change) = next_clef {
         nodes.push(LyNode::Command(format!("\\clef \"{}\"", clef_name(change.clef))));
         next_clef = pending_clefs.next();
+    }
+    while let Some(point) = next_point {
+        if let Some(script) = point_script(point) {
+            nodes.push(LyNode::Command(script));
+        }
+        next_point = pending_points.next();
     }
     Ok(nodes)
 }
@@ -613,14 +640,68 @@ fn item_node(item: &NotatedItem) -> Result<LyNode, RenderError> {
     })
 }
 
-/// `LilyPond`'s articulation script for one mark: the direction the plan
-/// chose, then the vocabulary row's suffix.
+/// `LilyPond`'s command for one end of a span mark.
+///
+/// Every span here is a standalone event in `LilyPond` — `\sustainOn`,
+/// `\ottava #1` — so both ends are written into the lane beside the note
+/// rather than suffixed onto it. That also keeps the two spans that need
+/// opposite orders (a pedal opens *on* its note, an ottava *before* it) from
+/// needing two mechanisms.
+fn span_script(span: &crate::plan::SpanMark, start: bool) -> Option<String> {
+    let spelling = span.mark.def().lilypond?;
+    if spelling == "\\ottava" {
+        let shift = match span.argument {
+            Some(musa_compiler::MarkArgument::Number(shift)) if start => shift,
+            _ => 0,
+        };
+        return Some(format!("{spelling} #{shift}"));
+    }
+    Some(format!("{spelling}{}", if start { "On" } else { "Off" }))
+}
+
+/// A mark standing at one place, as `LilyPond` writes it.
+///
+/// A mark with no argument is a command of its own (`\breathe`). One with an
+/// argument has to hang off something, so it hangs off a zero-length spacer —
+/// the idiom `LilyPond` itself uses for a direction that belongs to a moment
+/// rather than to a note.
+fn point_script(point: &crate::plan::PointMark) -> Option<String> {
+    let spelling = point.mark.def().lilypond?;
+    Some(match &point.argument {
+        Some(argument) => {
+            let escaped = argument.to_string().replace('\\', "").replace('"', "'");
+            if spelling == "\\mark" {
+                format!("{spelling} \\markup {{ \\box \"{escaped}\" }}")
+            } else {
+                format!("s1*0^\\markup {{ \\italic \"{escaped}\" }}")
+            }
+        }
+        None => spelling.to_owned(),
+    })
+}
+
+/// `LilyPond`'s script for one note-anchored mark.
+///
+/// An articulation is a suffix and takes the side character the plan chose; a
+/// named script (`\trill`, `\upbow`, `\fermata`) carries its own backslash and
+/// lets `LilyPond` place it. A row `LilyPond` cannot say prints nothing here
+/// and is reported once per export instead.
 fn articulation_script(mark: Mark) -> String {
-    let side = match ARTICULATION_PLACEMENT {
-        Placement::Above => '^',
-        Placement::Below => '_',
+    let Some(spelling) = mark.def().lilypond else {
+        return String::new();
     };
-    format!("{side}{}", mark.def().lilypond)
+    match mark.slot() {
+        Some(musa_compiler::Slot::Articulation) => {
+            let side = match ARTICULATION_PLACEMENT {
+                Placement::Above => '^',
+                Placement::Below => '_',
+            };
+            format!("{side}{spelling}")
+        }
+        Some(musa_compiler::Slot::Ornament | musa_compiler::Slot::Technical | musa_compiler::Slot::Fermata) | None => {
+            spelling.to_owned()
+        }
+    }
 }
 
 /// Absolute-octave English note name (`cs'`, `eff,`).

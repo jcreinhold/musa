@@ -37,7 +37,7 @@
 
 use std::collections::HashMap;
 
-use musa_compiler::{ChordQuality, ChordSymbol, Clef, DynamicMark, Mode, Seventh, WrittenPitch};
+use musa_compiler::{ChordQuality, ChordSymbol, Clef, DynamicMark, Mode, Seventh, Slot, WrittenPitch};
 use num_rational::Ratio;
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
@@ -531,6 +531,14 @@ fn write_lane(
         xml.close("note")?;
         return Ok(full_measure);
     }
+    // Point marks are written at the head of the measure with an `<offset>`,
+    // like chord symbols and form markers: `MusicXML`'s offset says where a
+    // direction sounds independently of where it sits in the document, and a
+    // measure whose voices backup and forward has no single place meaning
+    // "here".
+    for point in lane.points() {
+        write_point(xml, point, divisions)?;
+    }
     let mut cursor = Ratio::ZERO;
     let mut pending_clefs = clefs.iter();
     let mut next_clef = pending_clefs.next();
@@ -563,12 +571,18 @@ fn write_lane(
         if let Some(hairpin) = item.hairpin().filter(|hairpin| hairpin.start) {
             write_wedge(xml, if hairpin.grows { "crescendo" } else { "diminuendo" })?;
         }
+        for span in item.spans().iter().filter(|span| span.start) {
+            write_span(xml, span, true)?;
+        }
         write_item(xml, item, &beams(items, index), voice, divisions, open_slurs)?;
         if let Some(hairpin) = item.hairpin().filter(|hairpin| hairpin.stop) {
             write_wedge(xml, "stop")?;
             // The wedge stops; the mark it stopped at is what the reader
             // plays, so it is printed too.
             write_dynamic(xml, hairpin.target)?;
+        }
+        for span in item.spans().iter().filter(|span| span.stop) {
+            write_span(xml, span, false)?;
         }
         if let Some(phrase) = item.phrase().filter(|phrase| phrase.stop) {
             write_phrase(xml, &phrase.name, false)?;
@@ -770,6 +784,58 @@ fn write_phrase(xml: &mut Xml, name: &str, start: bool) -> Result<(), RenderErro
     xml.close("direction")
 }
 
+/// One end of a span mark, as a `<direction>` at the note it happens on.
+///
+/// `MusicXML` gives `<pedal>` and `<octave-shift>` the same two-ended shape a
+/// wedge has, so the row's spelling and a `start`/`stop` are the whole
+/// emission. A row `MusicXML` cannot say writes nothing and is reported once
+/// per export instead.
+fn write_span(xml: &mut Xml, span: &crate::plan::SpanMark, start: bool) -> Result<(), RenderError> {
+    let Some(name) = span.mark.def().musicxml else {
+        return Ok(());
+    };
+    let kind = if start { "start" } else { "stop" };
+    // An octave shift says how far in `@size`, where 8 is one octave; the
+    // sign is already in `<direction>`'s own up/down type words.
+    let size = match span.argument {
+        Some(musa_compiler::MarkArgument::Number(shift)) if shift.abs() >= 2 => "15",
+        _ => "8",
+    };
+    let kind = if name == "octave-shift" && start {
+        match span.argument {
+            Some(musa_compiler::MarkArgument::Number(shift)) if shift < 0 => "up",
+            _ => "down",
+        }
+    } else {
+        kind
+    };
+    xml.open("direction", &[("placement", "above")])?;
+    xml.open("direction-type", &[])?;
+    if name == "octave-shift" {
+        xml.empty(name, &[("type", kind), ("size", size)])?;
+    } else {
+        xml.empty(name, &[("type", kind), ("line", "yes")])?;
+    }
+    xml.close("direction-type")?;
+    xml.close("direction")
+}
+
+/// A mark standing at one place, as a `<direction>` with an `<offset>`.
+fn write_point(xml: &mut Xml, point: &crate::plan::PointMark, divisions: i64) -> Result<(), RenderError> {
+    let Some(name) = point.mark.def().musicxml else {
+        return Ok(());
+    };
+    xml.open("direction", &[("placement", "above")])?;
+    xml.open("direction-type", &[])?;
+    match &point.argument {
+        Some(argument) => xml.leaf(name, &[], &argument.to_string())?,
+        None => xml.empty(name, &[])?,
+    }
+    xml.close("direction-type")?;
+    write_offset(xml, point.onset_in_measure.as_ratio(), divisions)?;
+    xml.close("direction")
+}
+
 /// One end of a hairpin: `<wedge>` opens with the shape and closes with
 /// `stop`, which is how `MusicXML` spans one.
 fn write_wedge(xml: &mut Xml, kind: &str) -> Result<(), RenderError> {
@@ -953,12 +1019,33 @@ fn write_notations(xml: &mut Xml, note: &NoteSpelling<'_>, open_slurs: &mut Vec<
                 xml.empty("tuplet", &[("type", "stop")])?;
             }
         }
-        if !item.articulations().is_empty() {
-            xml.open("articulations", &[])?;
-            for mark in item.articulations() {
-                xml.empty(mark.def().musicxml, &[("placement", place(ARTICULATION_PLACEMENT))])?;
+        // `<notations>` sorts its children into slots, and the slot is the
+        // row's rather than this function's: a trill in `<articulations>` is
+        // not valid `MusicXML`, and a fermata belongs to neither wrapper.
+        for (slot, wrapper) in [
+            (Slot::Articulation, Some("articulations")),
+            (Slot::Ornament, Some("ornaments")),
+            (Slot::Technical, Some("technical")),
+            (Slot::Fermata, None),
+        ] {
+            let named: Vec<&str> = item
+                .articulations()
+                .iter()
+                .filter(|mark| mark.slot() == Some(slot))
+                .filter_map(|mark| mark.def().musicxml)
+                .collect();
+            if named.is_empty() {
+                continue;
             }
-            xml.close("articulations")?;
+            if let Some(wrapper) = wrapper {
+                xml.open(wrapper, &[])?;
+            }
+            for name in named {
+                xml.empty(name, &[("placement", place(ARTICULATION_PLACEMENT))])?;
+            }
+            if let Some(wrapper) = wrapper {
+                xml.close(wrapper)?;
+            }
         }
     }
     xml.close("notations")

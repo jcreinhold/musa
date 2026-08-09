@@ -10,8 +10,8 @@
 use std::collections::{HashMap, HashSet};
 
 use musa_compiler::{
-    BarLines, ChordSymbol, Clef, DynamicMark, EventId, Key, Mark, Meter, Mode, MusicalDuration, MusicalTime,
-    NotatedDuration, Part, Scope, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice, VoiceId, WrittenPitch,
+    BarLines, ChordSymbol, Clef, DynamicMark, EventId, Key, Mark, MarkArgument, Meter, Mode, MusicalDuration,
+    MusicalTime, NotatedDuration, Part, Scope, ScoreEvent, ScoreEventKind, ScoreSnapshot, Voice, VoiceId, WrittenPitch,
 };
 use num_rational::Ratio;
 
@@ -329,6 +329,51 @@ pub struct VoiceLane {
     slurs: Vec<SlurRange>,
     phrases: Vec<PhraseRange>,
     hairpins: Vec<HairpinRange>,
+    points: Vec<PointMark>,
+    marks: Vec<MarkRange>,
+}
+
+/// A notation mark standing at one place in this lane's measure.
+///
+/// Positioned by time rather than by event, unlike every other span and mark
+/// here, because that is what a point mark is: a breath falls between two
+/// notes and belongs to neither.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PointMark {
+    /// The mark, as written.
+    pub mark: Mark,
+    /// What was written after its name.
+    pub argument: Option<MarkArgument>,
+    /// The onset within the measure, in whole notes.
+    pub onset_in_measure: MusicalDuration,
+}
+
+/// A notation mark covering a run of events, beginning in this lane's
+/// measure: a pedal, an ottava.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MarkRange {
+    /// The mark, as written.
+    pub mark: Mark,
+    /// What was written after its name.
+    pub argument: Option<MarkArgument>,
+    /// The first event under it.
+    pub from: EventId,
+    /// The last event under it.
+    pub to: EventId,
+}
+
+/// A notation mark over a run of items, for the backends that write one
+/// inline. Same shape and same reason as [`PhraseMark`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SpanMark {
+    /// The mark, as written.
+    pub mark: Mark,
+    /// What was written after its name.
+    pub argument: Option<MarkArgument>,
+    /// The span opens at this item.
+    pub start: bool,
+    /// The span closes at this item.
+    pub stop: bool,
 }
 
 /// A hairpin that begins in this lane's measure, by the events it covers.
@@ -402,6 +447,16 @@ impl VoiceLane {
     /// Hairpins beginning in this measure, in onset order.
     pub fn hairpins(&self) -> &[HairpinRange] {
         &self.hairpins
+    }
+
+    /// Notation marks standing at one place in this measure, in onset order.
+    pub fn points(&self) -> &[PointMark] {
+        &self.points
+    }
+
+    /// Notation marks beginning in this measure, in onset order.
+    pub fn marks(&self) -> &[MarkRange] {
+        &self.marks
     }
 }
 
@@ -499,6 +554,7 @@ pub struct NotatedItem {
     hairpin: Option<HairpinMark>,
     dynamic: Option<DynamicMark>,
     articulations: Vec<Mark>,
+    spans: Vec<SpanMark>,
     free: Option<musa_compiler::FreeDuration>,
 }
 
@@ -577,6 +633,12 @@ impl NotatedItem {
     /// Articulations printed on this item, in written order.
     pub fn articulations(&self) -> &[Mark] {
         &self.articulations
+    }
+
+    /// The notation marks spanning this item, with the ends they open or
+    /// close here.
+    pub fn spans(&self) -> &[SpanMark] {
+        &self.spans
     }
 }
 
@@ -904,6 +966,8 @@ struct Marks {
     phrase_ends: HashMap<EventId, EventId>,
     hairpins: HashMap<EventId, HairpinMark>,
     hairpin_ends: HashMap<EventId, EventId>,
+    spans: HashMap<EventId, Vec<SpanMark>>,
+    span_ends: HashMap<EventId, Vec<MarkRange>>,
 }
 
 impl Marks {
@@ -937,6 +1001,25 @@ impl Marks {
                         stop: event.id == phrase.to,
                     },
                 );
+            }
+        }
+        // A note may be under a pedal and an ottava at once, so these are
+        // lists where a phrase or a hairpin is one value: nothing stops a
+        // player holding the pedal through an octave shift.
+        for span in annotations.marks() {
+            marks.span_ends.entry(span.from).or_default().push(MarkRange {
+                mark: span.mark,
+                argument: span.argument.clone(),
+                from: span.from,
+                to: span.to,
+            });
+            for event in score.events_in(span.from, span.to) {
+                marks.spans.entry(event.id).or_default().push(SpanMark {
+                    mark: span.mark,
+                    argument: span.argument.clone(),
+                    start: event.id == span.from,
+                    stop: event.id == span.to,
+                });
             }
         }
         for hairpin in annotations.hairpins() {
@@ -1026,6 +1109,16 @@ fn plan_staff(
         .map(|event| (event.onset - MusicalTime::ZERO) + event.notated_duration.value)
         .max()
         .unwrap_or(MusicalDuration::ZERO);
+    // Point marks are placed by time, so they go through the fold like clef
+    // changes do: a mark inside a repeated passage stands in the measure the
+    // page prints, not the one the timeline plays it in (prompt 58).
+    let points: Vec<(VoiceId, MusicalTime, &musa_compiler::PointMark)> = score
+        .annotations()
+        .points()
+        .iter()
+        .filter(|point| point.part == part.id())
+        .filter_map(|point| Some((point.voice, fold.at(point.at)?, point)))
+        .collect();
     let mut measures = Vec::new();
     // What the last measure printed, so a measure prints a time signature
     // exactly when it says something the one before it did not.
@@ -1036,6 +1129,15 @@ fn plan_staff(
         let mut plans = Vec::with_capacity(lanes.len());
         for (voice_id, name, events) in &lanes {
             let lane = plan_lane(events, measure.meter, measure.length().as_ratio(), start, end, marks)?;
+            let here: Vec<PointMark> = points
+                .iter()
+                .filter(|(voice, at, _)| voice == voice_id && start <= *at && *at < end)
+                .map(|(_, at, point)| PointMark {
+                    mark: point.mark,
+                    argument: point.argument.clone(),
+                    onset_in_measure: MusicalDuration::new(at.as_ratio() - start.as_ratio()),
+                })
+                .collect();
             plans.push(VoiceLane {
                 voice: *voice_id,
                 name: name.clone(),
@@ -1043,6 +1145,8 @@ fn plan_staff(
                 slurs: lane.slurs,
                 phrases: lane.phrases,
                 hairpins: lane.hairpins,
+                points: here,
+                marks: lane.marks,
             });
         }
         let lanes = plans;
@@ -1186,6 +1290,21 @@ fn plan_lane(
                 } else {
                     Vec::new()
                 },
+                spans: marks
+                    .spans
+                    .get(&event.id)
+                    .map(|spans| {
+                        spans
+                            .iter()
+                            .map(|span| SpanMark {
+                                start: span.start && is_first,
+                                stop: span.stop && is_last,
+                                mark: span.mark,
+                                argument: span.argument.clone(),
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
                 // The bracket is drawn from the first notehead of the symbol,
                 // like every other thing written once on a tied pair.
                 free: if is_first { event.free } else { None },
@@ -1228,11 +1347,24 @@ fn plan_lane(
             })
         })
         .collect();
+    let spans = items
+        .iter()
+        .flat_map(|item| {
+            marks
+                .span_ends
+                .get(&item.event)
+                .into_iter()
+                .flatten()
+                .filter(|range| item.spans.iter().any(|span| span.start && span.mark == range.mark))
+                .cloned()
+        })
+        .collect();
     Ok(Lane {
         items,
         slurs,
         phrases,
         hairpins,
+        marks: spans,
     })
 }
 
@@ -1242,6 +1374,7 @@ struct Lane {
     slurs: Vec<SlurRange>,
     phrases: Vec<PhraseRange>,
     hairpins: Vec<HairpinRange>,
+    marks: Vec<MarkRange>,
 }
 
 fn kind_of(event: &ScoreEvent) -> NotatedKind {

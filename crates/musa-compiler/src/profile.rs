@@ -45,14 +45,24 @@ pub struct ArticulationRealization {
     pub gate: Ratio<i64>,
     /// Requested attack time in seconds.
     pub attack: Ratio<i64>,
+    /// How much longer than written the note is held. `1` is the written
+    /// value; `2` is a fermata a profile reads as twice as long.
+    ///
+    /// It lengthens the *note*, not the bar: the music that follows still
+    /// starts where the page says it does. A fermata that stops the clock is a
+    /// tempo fact, and musa has no way to state one until prompt 72 — so this
+    /// is the honest half of a fermata rather than a whole one, and the
+    /// difference is written down here rather than discovered in the sound.
+    pub hold: Ratio<i64>,
 }
 
 impl ArticulationRealization {
-    /// Full gate, instant attack: what an unprofiled note gets, and what
-    /// prompts 15–17 produced before profiles existed.
+    /// Full gate, instant attack, written length: what an unprofiled note
+    /// gets, and what prompts 15–17 produced before profiles existed.
     pub const NEUTRAL: Self = Self {
         gate: Ratio::new_raw(1, 1),
         attack: Ratio::new_raw(0, 1),
+        hold: Ratio::new_raw(1, 1),
     };
 }
 

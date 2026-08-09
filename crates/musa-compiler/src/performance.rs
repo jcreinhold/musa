@@ -447,7 +447,7 @@ pub fn lower_performance(
                     }
                 };
                 let interpreted = Interpreted {
-                    gate: realization.gate,
+                    gate: realization.gate * realization.hold,
                     attack: ratio_to_f32(realization.attack),
                     amplitude: ratio_to_f32(amplitude),
                 };
@@ -516,7 +516,9 @@ impl Clock<'_> {
 
 /// What the part's profile makes of one event, resolved once per event.
 struct Interpreted {
-    /// Fraction of the written value that actually sounds.
+    /// Fraction of the written value that actually sounds, with the profile's
+    /// hold already folded in: both are multipliers on the written value and
+    /// nothing downstream could tell them apart.
     gate: Ratio<i64>,
     /// Requested attack in seconds.
     attack: f32,

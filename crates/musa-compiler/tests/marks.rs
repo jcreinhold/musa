@@ -10,7 +10,7 @@
 // the test itself, and panicking is the correct behavior there.
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{CompileOptions, Mark, SourceDocument, VOCABULARY, compile, lookup_mark};
+use musa_compiler::{Anchor, CompileOptions, Mark, SourceDocument, VOCABULARY, compile, lookup_mark};
 
 fn diagnostics_of(voice: &str) -> Vec<String> {
     let source = format!("piece \"p\" {{ meter 4/4; score {{ part a {{ voice b {{ {voice} }} }} }} }}");
@@ -43,7 +43,10 @@ fn no_two_rows_answer_to_one_name() {
 
 #[test]
 fn a_name_outside_the_table_is_not_a_mark() {
-    assert!(lookup_mark("fermata").is_none());
+    // A real word of notation that musa has no row for. `fermata` used to be
+    // the example here and became a row in prompt 70, which is the table
+    // working rather than the test aging.
+    assert!(lookup_mark("sforzando").is_none());
     assert!(lookup_mark("").is_none());
     assert!(Mark::parse("Staccato").is_none(), "names are not case-folded");
 }
@@ -59,9 +62,16 @@ fn an_unknown_mark_is_refused_with_a_suggestion() {
     );
 }
 
+/// Every row that a note may carry is accepted on a note.
+///
+/// Prompt 70 added rows that a note may *not* carry — a pedal covers music and
+/// a rehearsal letter stands between notes — so the anchor decides, and the
+/// full statement of that is
+/// `notation_marks::the_anchor_decides_where_a_mark_is_written`. What is left
+/// here is the half of the table this file was written about.
 #[test]
 fn every_mark_in_the_table_is_accepted_where_marks_are_written() {
-    for def in VOCABULARY {
+    for def in VOCABULARY.iter().filter(|def| matches!(def.anchor, Anchor::Note(_))) {
         let reported = diagnostics_of(&format!("c4 1 {};", def.name));
         assert!(reported.is_empty(), "`{}` was refused: {reported:?}", def.name);
     }

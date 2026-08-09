@@ -19,7 +19,7 @@ partViolin = {
     f'2 % event:1
     |
     e'2 % event:2
-    <d' fs' a'>2 % event:3
+    <d' fs' a'>2\fermata % event:3
     |
   }
 }
@@ -32,7 +32,7 @@ partViola = {
     a,2 % event:5
     |
     bf,2 % event:6
-    a,2 % event:7
+    a,2\fermata % event:7
     |
   }
 }

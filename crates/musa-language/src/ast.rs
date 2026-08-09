@@ -605,6 +605,8 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             InvertStmt::cast(child).map(VoiceItem::Invert)
         } else if kind == SyntaxKind::PhraseStmt {
             PhraseStmt::cast(child).map(VoiceItem::Phrase)
+        } else if kind == SyntaxKind::MarkStmt {
+            MarkStmt::cast(child).map(VoiceItem::Mark)
         } else if kind == SyntaxKind::HairpinStmt {
             HairpinStmt::cast(child).map(VoiceItem::Hairpin)
         } else if kind == SyntaxKind::MeterStmt {
@@ -658,6 +660,8 @@ pub enum VoiceItem {
     Invert(InvertStmt),
     /// `phrase "A" { ... }`
     Phrase(PhraseStmt),
+    /// `mark breath;` / `mark pedal { ... }`
+    Mark(MarkStmt),
     /// `crescendo to f { ... }`
     Hairpin(HairpinStmt),
     /// `meter 3/4;` — written where the music reaches it.
@@ -976,6 +980,49 @@ impl PhraseStmt {
     }
 
     /// The music the phrase covers, in source order.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
+    }
+}
+
+/// `mark breath;` / `mark text "dolce";` / `mark pedal { ... }`
+///
+/// One node for every mark that is not written on a note. Which of the three
+/// written forms is legal for a given name is the vocabulary's answer, not the
+/// grammar's, so all three parse here and the compiler reports the mismatch.
+pub struct MarkStmt(SyntaxNode);
+wrapper!(MarkStmt, SyntaxKind::MarkStmt);
+
+impl MarkStmt {
+    /// The mark's name, as written.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The quoted argument, without its quotes.
+    pub fn text(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::String).map(|text| unquote(&text))
+    }
+
+    /// The numeric argument with its sign, as written.
+    ///
+    /// A string, like [`SettingStmt::value`] and for the same reason: the
+    /// minus is a token of its own, and a reader wants one value.
+    pub fn number(&self) -> Option<String> {
+        let magnitude = token_text(&self.0, SyntaxKind::Integer)?;
+        Some(match token_text(&self.0, SyntaxKind::Minus) {
+            Some(_) => format!("-{magnitude}"),
+            None => magnitude,
+        })
+    }
+
+    /// Whether a block was written, which is how a span is told from a point
+    /// before the vocabulary is consulted.
+    pub fn has_block(&self) -> bool {
+        self.0.children().any(|child| child.kind() == SyntaxKind::Block)
+    }
+
+    /// The music inside the block, in source order.
     pub fn items(&self) -> Vec<VoiceItem> {
         voice_items(&self.0)
     }
