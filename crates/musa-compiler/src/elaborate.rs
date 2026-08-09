@@ -580,9 +580,10 @@ fn elaborate_score(
 ) -> musa_kernel::SemanticHash {
     let mut voice_names: indexmap::IndexMap<PartId, indexmap::IndexMap<VoiceId, String>> = indexmap::IndexMap::new();
     let mut metadata: Vec<(PartId, String)> = Vec::new();
-    // Clefs are context, so they enter the timeline with the key and the
-    // meter rather than riding on the part; the part loop only collects them.
-    let mut clefs: Vec<(u32, crate::score::Clef, SourceSpan)> = Vec::new();
+    // A part's clef, meter and tempo are context, so they enter the timeline
+    // with the piece's rather than riding on the part; the part loop only
+    // collects them.
+    let mut declared: Vec<(u32, resolve::PartContext)> = Vec::new();
     let mut lanes: Vec<Segment> = Vec::new();
     // One set of bindings for the whole piece: two voices calling the same
     // motif elaborate its body once between them.
@@ -614,13 +615,17 @@ fn elaborate_score(
         let id = PartId(resolver.next_part);
         resolver.next_part = resolver.next_part.saturating_add(1);
 
-        let (clef, profile) = resolve::part_metadata(resolver, &part, snapshot.profiles());
-        if let Some((clef, span)) = clef {
-            clefs.push((id.0, clef, span));
-        }
-        if let Some(profile) = profile {
+        let mut context = resolve::part_context(resolver, &part, snapshot.profiles());
+        if let Some(profile) = context.profile.take() {
             snapshot.profiles_mut().assign(&name, profile);
         }
+        // A part's own meter is what the barlines in *this* part are counted
+        // against, and the checks below run before the projection exists, so
+        // the resolver carries it rather than reading it back off the score.
+        if let Some((meter, _)) = context.meter {
+            resolver.part_meters.insert(id.0, meter);
+        }
+        declared.push((id.0, context));
 
         let mut names = indexmap::IndexMap::new();
         for (index, voice) in part.voices().iter().enumerate() {
@@ -670,9 +675,10 @@ fn elaborate_score(
     let bars = resolve_meters(resolver);
     check_keys(resolver, &bars);
     for bar in std::mem::take(&mut resolver.pending_bars) {
-        check_bar_length(resolver, &bar, &bars);
+        let here = part_bars(resolver, bar.scope);
+        check_bar_length(resolver, &bar, here.as_ref().unwrap_or(&bars));
     }
-    let context = context_facts(resolver, piece, score, &clefs, &bars, extent);
+    let context = context_facts(resolver, piece, score, &declared, &bars, extent);
     if let Some(sink) = &mut resolver.timeline_sink {
         // Measurement only, and the one place a voice is wanted on its own;
         // the piece itself is evaluated once, below.
@@ -726,7 +732,7 @@ fn context_facts(
     resolver: &mut Resolver,
     piece: &PieceDecl,
     score: &musa_language::ast::ScoreDecl,
-    clefs: &[(u32, crate::score::Clef, SourceSpan)],
+    declared: &[(u32, resolve::PartContext)],
     bars: &crate::BarLines,
     extent: Beat,
 ) -> Timeline<ScoreFact> {
@@ -796,16 +802,37 @@ fn context_facts(
 
     // A clef is context, not part metadata: it is in force from where it is
     // written until something replaces it, in the scope of one part, which is
-    // the same shape the key and the meter have.
-    for (part, clef, span) in clefs {
-        occurrences.push(Occurrence::new(
-            region,
-            ScoreFact::new(
-                Scope::Part { part: *part },
-                FactKind::Clef { clef: *clef },
-                at_span(*span),
-            ),
-        ));
+    // the same shape the key and the meter have. A part's own meter and tempo
+    // are the same shape again, and that is all polymeter and polytempo are:
+    // the fact a scope in, with `Override` inheritance (`scope.rs`) already
+    // saying that a 7/8 part does not rejoin the piece's 4/4.
+    for (part, context) in declared {
+        let scope = Scope::Part { part: *part };
+        if let Some((clef, span)) = context.clef {
+            occurrences.push(Occurrence::new(
+                region,
+                ScoreFact::new(scope, FactKind::Clef { clef }, at_span(span)),
+            ));
+        }
+        if let Some((meter, span)) = context.meter {
+            occurrences.push(Occurrence::new(
+                region,
+                ScoreFact::new(
+                    scope,
+                    FactKind::Meter {
+                        numerator: meter.numerator(),
+                        denominator: meter.denominator(),
+                    },
+                    at_span(span),
+                ),
+            ));
+        }
+        if let Some((tempo, span)) = &context.tempo {
+            occurrences.push(Occurrence::new(
+                region,
+                ScoreFact::new(scope, tempo.clone(), at_span(*span)),
+            ));
+        }
     }
 
     let extent_time = MusicalTime::new(extent.as_ratio());
@@ -2231,6 +2258,7 @@ fn elaborate_bar(
             extent: body.extent,
             span: resolve::trimmed_span(bar.syntax()),
             content_end: bar.content_end(),
+            scope,
         });
     }
     body
@@ -2477,6 +2505,27 @@ pub(crate) struct PendingBar {
     span: SourceSpan,
     /// Where a filling rest would go, if there is a place for one.
     content_end: Option<u32>,
+    /// Where the bar was written, so a polymetric piece checks it against
+    /// its own part's barlines rather than the piece's.
+    scope: Scope,
+}
+
+/// The barlines a scope counts against, when they are not the piece's.
+///
+/// `None` is not "no barlines" — it is "the piece's", which every scope in a
+/// piece that is not polymetric answers.
+fn part_bars(resolver: &Resolver, scope: Scope) -> Option<crate::BarLines> {
+    if resolver.part_meters.is_empty() {
+        return None;
+    }
+    let part = match scope {
+        Scope::Piece => return None,
+        Scope::Part { part } | Scope::Voice { part, .. } => part,
+    };
+    // Uniform, and that is the whole of it: `Meter` inherits by `Override`
+    // (`scope.rs`), so a part that states its own meter does not hear the
+    // piece's changes at all, and the grammar gives a part exactly one.
+    resolver.part_meters.get(&part).copied().map(crate::BarLines::uniform)
 }
 
 /// Fold the meters the piece states into barlines, refusing any change that
@@ -3319,9 +3368,23 @@ fn untie(occurrence: &mut Occurrence<ScoreFact>) {
 /// the notes on either side would need their own bracket and their own
 /// ratio, which is a different piece of music from the one that was written.
 fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
-    let bars = snapshot.bars();
+    // Which part each event belongs to, so a tuplet in a 7/8 part is measured
+    // against the 7/8 barlines. Built once: a tuplet names its first event,
+    // and there is no other way from an event back to its staff.
+    let mut owner: std::collections::BTreeMap<crate::EventId, u32> = std::collections::BTreeMap::new();
+    for (id, part) in snapshot.parts().iter() {
+        for (_, voice) in part.voices() {
+            for event in voice.events() {
+                owner.insert(event.id, id.0);
+            }
+        }
+    }
     let mut offenders = Vec::new();
     for tuplet in snapshot.annotations().tuplets() {
+        let bars = owner.get(&tuplet.from).map_or_else(
+            || snapshot.bars(Scope::Piece),
+            |part| snapshot.bars(Scope::Part { part: *part }),
+        );
         let mut start = None;
         let mut end = None;
         for event in snapshot.events_in(tuplet.from, tuplet.to) {
@@ -3390,12 +3453,10 @@ pub(crate) fn piece_term(
     let mut share = Share::default();
     resolve::register_bars(&mut resolver, &mut snapshot, &score);
     let mut lanes = Vec::new();
-    let mut clefs = Vec::new();
+    let mut declared = Vec::new();
     for (part_index, part) in score.parts().iter().enumerate() {
         let part_id = u32::try_from(part_index).unwrap_or(u32::MAX);
-        if let (Some((clef, span)), _) = resolve::part_metadata(&mut resolver, part, snapshot.profiles()) {
-            clefs.push((part_id, clef, span));
-        }
+        declared.push((part_id, resolve::part_context(&mut resolver, part, snapshot.profiles())));
         for (index, voice) in part.voices().iter().enumerate() {
             let voice_key = resolver.declare(crate::resolve::DeclInfo::Voice);
             let declaration = resolve::ordinal(&resolver, voice_key);
@@ -3418,7 +3479,7 @@ pub(crate) fn piece_term(
         .unwrap_or(musa_kernel::Beat::ZERO);
     let bars = resolve_meters(&mut resolver);
     check_keys(&mut resolver, &bars);
-    let context = context_facts(&mut resolver, &piece, &score, &clefs, &bars, extent);
+    let context = context_facts(&mut resolver, &piece, &score, &declared, &bars, extent);
     let parts: Vec<musa_kernel::Term<ScoreFact>> = lanes
         .into_iter()
         .map(|lane| lane.term)

@@ -1165,13 +1165,20 @@ impl ScoreSnapshot {
         &self.contexts.meters
     }
 
-    /// Where the barlines fall.
+    /// Where the barlines fall, as a reader in `scope` counts them.
+    ///
+    /// The argument is polymeter, and it is *only* an argument: `Meter`
+    /// inherits by `Override` (`scope.rs`), so a part with its own meter
+    /// reads its own stretches and every other scope reads the piece's. The
+    /// algorithm below did not change when polymeter arrived, which is the
+    /// property prompt 61 built `at`/`time_of` on an arbitrary meter sequence
+    /// to get.
     ///
     /// Built over *unfolded* time: measures as they are played. Notation
     /// numbers a folded repeat differently and builds its own (see
     /// [`crate::BarLines`]'s module documentation).
-    pub fn bars(&self) -> crate::BarLines {
-        let mut changes = self.contexts.meters.changes(Scope::Piece);
+    pub fn bars(&self, scope: Scope) -> crate::BarLines {
+        let mut changes = self.contexts.meters.changes(scope);
         let opening = changes.next().map_or_else(Meter::default, |(_, meter)| *meter);
         let mut bars = crate::BarLines::uniform(opening);
         for (at, meter) in changes {

@@ -271,7 +271,7 @@ fn a_form_marker_lands_at_a_time_the_performance_agrees_with() {
     let [_, development] = snapshot.annotations().sections() else {
         panic!("expected two sections");
     };
-    let tempo = IntegratedTempoMap::new(&snapshot, &PerformanceOptions::default());
+    let tempo = IntegratedTempoMap::new(&snapshot, musa_compiler::Scope::Piece, &PerformanceOptions::default());
     // 1/4 = 96 and two 4/4 measures before it: five seconds in.
     let seconds = tempo.frames(development.at) / u64::from(tempo.sample_rate());
     assert_eq!(seconds, 5);

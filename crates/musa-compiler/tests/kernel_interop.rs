@@ -61,6 +61,9 @@ const EXAMPLES: &[(&str, &str)] = &[
     ("riser", include_str!("../../../examples/riser.musa")),
     ("cadenza", include_str!("../../../examples/cadenza.musa")),
     ("chant", include_str!("../../../examples/chant.musa")),
+    ("bulgarian", include_str!("../../../examples/bulgarian.musa")),
+    ("hemiola", include_str!("../../../examples/hemiola.musa")),
+    ("canon-x", include_str!("../../../examples/canon-x.musa")),
 ];
 
 /// The round-trip law over the real corpus: printing a piece and reading it

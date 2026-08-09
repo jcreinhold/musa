@@ -250,6 +250,41 @@ fn every_export_target_produces_an_artifact() -> Result {
     Ok(())
 }
 
+/// SMF has one tempo track and one time-signature track. A file exported
+/// from a piece whose parts disagree about either is *sonically* exact — every
+/// note is written at the frame it actually sounds — and says the wrong thing
+/// about itself, so the export says so rather than letting it be found by
+/// whoever opens the file (`docs/kernel/07-backend-contract.md`).
+#[test]
+fn midi_states_what_one_tempo_track_costs() -> Result {
+    const POLY: &str = concat!(
+        "piece \"Poly\" {\n",
+        "    tempo quarter = 120;\n",
+        "    meter 4/4;\n",
+        "    score {\n",
+        "        part a { meter 7/8; tempo quarter = 90; voice v { c4 7/8; } }\n",
+        "        part b { voice w { g3 1/1; } }\n",
+        "    }\n",
+        "}\n",
+    );
+    let poly = ProjectSession::from_text(POLY, "poly.musa");
+    assert!(poly.snapshot().compiles(), "{:?}", poly.snapshot().diagnostics());
+    let artifact = poly.export(ExportRequest::Midi(musa_project::MidiMode::Performance))?;
+    assert!(!artifact.as_bytes().is_empty());
+    let warnings = artifact.warnings().join("\n");
+    assert!(warnings.contains("one tempo track"), "{warnings}");
+    assert!(warnings.contains("one time-signature track"), "{warnings}");
+    // And a piece with one of each says nothing: a warning on every export
+    // would be noise, which is the failure mode a loss report has.
+    assert!(
+        session()
+            .export(ExportRequest::Midi(musa_project::MidiMode::Score))?
+            .warnings()
+            .is_empty()
+    );
+    Ok(())
+}
+
 /// `MusicXML` leaves as a `score-partwise` document under the extension the
 /// other programs open, and carries none of MEI's event provenance with it
 /// (roadmap §12.4).

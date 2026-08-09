@@ -728,6 +728,7 @@ NotationPlan {
                     ],
                 },
             ],
+            tempos: [],
         },
         StaffPlan {
             name: "strings",
@@ -1353,6 +1354,7 @@ NotationPlan {
                     ],
                 },
             ],
+            tempos: [],
         },
     ],
     tempos: [

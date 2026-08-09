@@ -940,6 +940,7 @@ NotationPlan {
                     ],
                 },
             ],
+            tempos: [],
         },
         StaffPlan {
             name: "cello",
@@ -1340,6 +1341,7 @@ NotationPlan {
                     ],
                 },
             ],
+            tempos: [],
         },
     ],
     tempos: [

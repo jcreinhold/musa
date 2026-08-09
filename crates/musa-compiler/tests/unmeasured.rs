@@ -64,7 +64,7 @@ fn piece(header: &str, voice: &str) -> String {
 #[test]
 fn a_cadenza_inside_a_measure_is_that_measure() {
     let score = score_of(CADENZA);
-    let bars = score.bars();
+    let bars = score.bars(musa_compiler::Scope::Piece);
     let whole = |n: i64| MusicalTime::new(Ratio::from_integer(n));
     // Bars 1–4 are 4/4, so the fifth whole note is where measure 5 opens.
     assert_eq!(bars.at(whole(4)).measure, 5);
@@ -84,7 +84,7 @@ fn a_chant_is_one_measure_and_no_complaint() {
     let compilation = compile(&SourceDocument::new(CHANT, "chant.musa"), &CompileOptions::default());
     assert!(compilation.diagnostics().is_empty(), "{:?}", compilation.diagnostics());
     let score = compilation.into_snapshot().expect("compiles");
-    let bars = score.bars();
+    let bars = score.bars(musa_compiler::Scope::Piece);
     assert!(!bars.meter_at(MusicalTime::ZERO).is_measured());
     assert_eq!(bars.at(MusicalTime::new(Ratio::from_integer(3))).measure, 1);
 }

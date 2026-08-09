@@ -232,6 +232,7 @@ pub struct StaffPlan {
     key: Option<KeySignature>,
     time_signature: (u32, u32),
     measures: Vec<MeasurePlan>,
+    tempos: Vec<PositionedMark<TempoText>>,
 }
 
 impl StaffPlan {
@@ -258,6 +259,16 @@ impl StaffPlan {
     /// Measures in order, starting at number 1.
     pub fn measures(&self) -> &[MeasurePlan] {
         &self.measures
+    }
+
+    /// The tempo markings this staff states *for itself* — polytempo.
+    ///
+    /// Empty unless the part declares its own tempo, in which case
+    /// [`NotationPlan::tempos`] is the conductor's reading and these are what
+    /// this staff actually plays. A backend that cannot attach a tempo to a
+    /// staff drops them and says so.
+    pub fn tempos(&self) -> &[PositionedMark<TempoText>] {
+        &self.tempos
     }
 }
 
@@ -725,8 +736,10 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
     // own `bars()` is the unfolded one, and mixing them would number the page
     // by what it sounds like.
     let fold = Fold::of(score);
-    let bars = page_bars(score, &fold);
-    let meter = bars.meter_at(MusicalTime::ZERO);
+    // The piece's grid: what the piece-wide marks below are positioned
+    // against. Each staff draws its own, which under polymeter is a different
+    // grid with different measure numbers in it.
+    let bars = page_bars(score, &fold, Scope::Piece);
     let key = score.key_at(Scope::Piece, MusicalTime::ZERO).map(key_signature);
     // Every key the piece states, on the page's own clock. A modulation
     // inside a folded repeat prints once, at the measure the page numbers it.
@@ -736,53 +749,59 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
         .filter_map(|(at, key)| Some((fold.at(at)?, key_signature(*key))))
         .collect();
     let marks = Marks::collect(score);
+    // Whether any part states a tempo of its own. Compared as the markings
+    // themselves rather than as printed marks: two lists positioned against
+    // two different barline grids differ in their measure numbers whether or
+    // not they say the same thing.
+    let shared: Vec<_> = score.tempos().changes(Scope::Piece).collect();
+    let polytempo = score.parts().iter().any(|(id, _)| {
+        score
+            .tempos()
+            .changes(Scope::Part { part: id.0 })
+            .ne(shared.iter().copied())
+    });
     let mut staves = Vec::new();
     for (_, part) in score.parts().iter() {
+        let scope = Scope::Part { part: part.id().0 };
         let clefs: Vec<(MusicalTime, Clef)> = score
             .clefs()
-            .changes(Scope::Part { part: part.id().0 })
+            .changes(scope)
             .filter_map(|(at, clef)| Some((fold.at(at)?, *clef)))
             .collect();
+        let staff_bars = page_bars(score, &fold, scope);
+        // Exactly one of the two tempo lists carries the marking: the piece's
+        // when every part plays at the same speed, each staff's when they do
+        // not. A backend prints both and needs no rule of its own, and a
+        // piece that is not polytempo plans exactly the document it planned
+        // before.
+        let tempos = if polytempo {
+            tempo_texts(score, &fold, scope, &staff_bars)
+        } else {
+            Vec::new()
+        };
         staves.push(plan_staff(
-            score, part, meter, &bars, key, &keys, &clefs, &marks, &fold,
+            score,
+            part,
+            &staff_bars,
+            key,
+            &keys,
+            &clefs,
+            &marks,
+            &fold,
+            tempos,
         )?);
     }
     // Every tempo marking the piece states, on the page's own clock — the
     // header's included. There is no separate "starting tempo": the header
     // states a fact at zero like any other, so nothing here has to
-    // reconstruct one.
-    let tempos: Vec<_> = score
-        .tempos()
-        .changes(Scope::Piece)
-        .flat_map(|(at, marking)| {
-            let mut printed = vec![(
-                at,
-                TempoText {
-                    metronome: marking.metronome,
-                    text: marking.text.clone(),
-                },
-            )];
-            // A gradual change prints as its word where it starts and as the
-            // speed it reached where it ends. No format has a continuous
-            // tempo — none of the four can draw a *rit.* as a function — and
-            // a mark at each end is what an engraver writes for the same
-            // reason. The shape stays in the score for the performance to
-            // integrate; the page says what a reader needs.
-            if let (Some(ramp), Some(mark)) = (marking.ramp.as_ref(), marking.metronome)
-                && let Some(bpm) = ramp.to
-            {
-                printed.push((
-                    at + ramp.over,
-                    TempoText {
-                        metronome: Some(Metronome { beat: mark.beat, bpm }),
-                        text: None,
-                    },
-                ));
-            }
-            printed
-        })
-        .filter_map(|(at, text)| Some(positioned(&bars, fold.at(at)?, text)))
-        .collect();
+    // reconstruct one. Under polytempo there is no such marking to print: the
+    // piece's tempo is a reading no staff plays, and printing it over a staff
+    // that plays something else would be a page that lies.
+    let tempos = if polytempo {
+        Vec::new()
+    } else {
+        tempo_texts(score, &fold, Scope::Piece, &bars)
+    };
     let sections = score
         .annotations()
         .sections()
@@ -874,6 +893,46 @@ fn open_text(kind: &musa_compiler::OpenKind) -> String {
     }
 }
 
+/// The tempo markings a scope states, positioned on the page's own clock.
+///
+/// One function for the piece's markings and a part's, because printing them
+/// is the same job either way — which is what makes polytempo a scope
+/// argument here too rather than a second code path.
+fn tempo_texts(score: &ScoreSnapshot, fold: &Fold, scope: Scope, bars: &BarLines) -> Vec<PositionedMark<TempoText>> {
+    score
+        .tempos()
+        .changes(scope)
+        .flat_map(|(at, marking)| {
+            let mut printed = vec![(
+                at,
+                TempoText {
+                    metronome: marking.metronome,
+                    text: marking.text.clone(),
+                },
+            )];
+            // A gradual change prints as its word where it starts and as the
+            // speed it reached where it ends. No format has a continuous
+            // tempo — none of the four can draw a *rit.* as a function — and
+            // a mark at each end is what an engraver writes for the same
+            // reason. The shape stays in the score for the performance to
+            // integrate; the page says what a reader needs.
+            if let (Some(ramp), Some(mark)) = (marking.ramp.as_ref(), marking.metronome)
+                && let Some(bpm) = ramp.to
+            {
+                printed.push((
+                    at + ramp.over,
+                    TempoText {
+                        metronome: Some(Metronome { beat: mark.beat, bpm }),
+                        text: None,
+                    },
+                ));
+            }
+            printed
+        })
+        .filter_map(|(at, text)| Some(positioned(bars, fold.at(at)?, text)))
+        .collect()
+}
+
 /// Where the barlines fall **on the page**.
 ///
 /// The snapshot's own [`ScoreSnapshot::bars`] is built over performed time; a
@@ -885,8 +944,8 @@ fn open_text(kind: &musa_compiler::OpenKind) -> String {
 /// A change the page does not print — one inside a stretch a repeat swallows
 /// — is dropped, as is one that does not land on a page barline. Both are
 /// conditions the compiler refuses; rendering has to stay total.
-fn page_bars(score: &ScoreSnapshot, fold: &Fold) -> BarLines {
-    let mut changes = score.meters().changes(Scope::Piece);
+fn page_bars(score: &ScoreSnapshot, fold: &Fold, scope: Scope) -> BarLines {
+    let mut changes = score.meters().changes(scope);
     let opening = changes.next().map_or_else(Meter::default, |(_, meter)| *meter);
     let mut bars = BarLines::uniform(opening);
     for (at, meter) in changes {
@@ -1160,14 +1219,15 @@ fn key_signature(key: Key) -> KeySignature {
 fn plan_staff(
     score: &ScoreSnapshot,
     part: &Part,
-    meter: Meter,
     bars: &BarLines,
     key: Option<KeySignature>,
     keys: &[(MusicalTime, KeySignature)],
     clefs: &[(MusicalTime, Clef)],
     marks: &Marks,
     fold: &Fold,
+    tempos: Vec<PositionedMark<TempoText>>,
 ) -> Result<StaffPlan, crate::NotationError> {
+    let meter = bars.meter_at(MusicalTime::ZERO);
     let lanes: Vec<(VoiceId, String, Vec<ScoreEvent>)> = part
         .voices()
         .map(|(voice_id, voice)| {
@@ -1268,6 +1328,7 @@ fn plan_staff(
         key,
         time_signature: (meter.numerator(), meter.denominator()),
         measures,
+        tempos,
     })
 }
 

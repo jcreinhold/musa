@@ -34,7 +34,7 @@ fn a_second_meter_moves_the_barlines_after_it() {
     let compilation = compiled(TUNE);
     assert!(compilation.diagnostics().is_empty(), "{:?}", compilation.diagnostics());
     let score = compilation.snapshot().expect("it compiles");
-    let bars = score.bars();
+    let bars = score.bars(musa_compiler::Scope::Piece);
     let whole = |n: i64| MusicalTime::new(Ratio::from_integer(n));
 
     // Measures 1 and 2 are whole notes; 3 and 4 are three quarters.

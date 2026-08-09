@@ -329,7 +329,10 @@ impl ProjectSession {
             ExportRequest::LilyPond => Ok(render_notation(score, musa_render::NotationTarget::LilyPond)?),
             ExportRequest::MusicXml => Ok(render_notation(score, musa_render::NotationTarget::MusicXml)?),
             ExportRequest::Wav => Ok(ExportArtifact::bytes(playback::to_wav(score, &valid.studio)?)),
-            ExportRequest::Midi(mode) => Ok(ExportArtifact::bytes(playback::to_midi(score, mode)?)),
+            ExportRequest::Midi(mode) => {
+                let (bytes, warnings) = playback::to_midi(score, mode)?;
+                Ok(ExportArtifact::bytes(bytes).warn(warnings))
+            }
             ExportRequest::PerformanceDump => Ok(ExportArtifact::text(playback::performance_dump(score)?)),
             ExportRequest::Kernel { normalized } => {
                 let document = musa_compiler::SourceDocument::new(&valid.source, &self.name);

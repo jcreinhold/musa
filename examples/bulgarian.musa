@@ -1,0 +1,138 @@
+// A 7/8 melody over a 4/4 drum (docs/prompts/75).
+//
+// Polymeter, in the shape that costs something: the bars are different
+// *lengths*, so the barlines genuinely diverge and only meet again after
+// seven whole notes — eight bars of 7/8 against seven of 4/4. A Balkan
+// ensemble plays this without remarking on it, which is the point: it is
+// ordinary music, and a program that cannot write it cannot write the
+// repertoire.
+//
+// A part's meter is written in the part, like its clef, and it is in force
+// for the whole part. `Meter` inherits by `Override`, so the kaval does not
+// rejoin the piece's 4/4 at any point — a 7/8 lane that quietly resumed
+// counting in 4 would be a different piece.
+//
+// What the exports make of it is worth reading. `MusicXML` has a `<measure>`
+// list per part, so it says this exactly. `LilyPond` says it once Timing is
+// moved from Score to Staff, which the export does. MEI numbers measures for
+// the *score*, so it can state each staff's meter but not give each its own
+// barlines — and the exporter says so rather than letting it be discovered.
+piece "Ruchenitsa" {
+    tempo 1/4 = 132;
+    meter 4/4;
+    key a minor;
+
+    score {
+        part kaval {
+            clef treble;
+            meter 7/8;
+
+            voice melody {
+                dynamic mf;
+
+                // Eight bars of 7/8. The grouping a player hears is 2+2+3,
+                // which is what the quarter at the end of each bar is.
+                a4 1/8;
+                b4 1/8;
+                c5 1/8;
+                b4 1/8;
+                a4 1/8;
+                g4 1/4;
+
+                b4 1/8;
+                c5 1/8;
+                d5 1/8;
+                c5 1/8;
+                b4 1/8;
+                a4 1/4;
+
+                c5 1/8;
+                d5 1/8;
+                e5 1/8;
+                d5 1/8;
+                c5 1/8;
+                b4 1/4;
+
+                d5 1/8;
+                c5 1/8;
+                b4 1/8;
+                a4 1/8;
+                gs4 1/8;
+                a4 1/4;
+
+                a4 1/8;
+                b4 1/8;
+                c5 1/8;
+                d5 1/8;
+                e5 1/8;
+                d5 1/4;
+
+                f5 1/8;
+                e5 1/8;
+                d5 1/8;
+                c5 1/8;
+                b4 1/8;
+                a4 1/4;
+
+                c5 1/8;
+                b4 1/8;
+                a4 1/8;
+                gs4 1/8;
+                a4 1/8;
+                b4 1/4;
+
+                b4 1/8;
+                a4 1/8;
+                gs4 1/8;
+                a4 1/8;
+                b4 1/8;
+                a4 1/4;
+            }
+        }
+
+        part tupan {
+            clef bass;
+
+            voice drum {
+                dynamic mp;
+
+                // Seven bars of 4/4 — the same seven whole notes, counted
+                // the other way.
+                d3 1/4;
+                a3 1/4;
+                d3 1/4;
+                a3 1/4;
+
+                d3 1/4;
+                a3 1/4;
+                d3 1/4;
+                a3 1/4;
+
+                d3 1/4;
+                a3 1/4;
+                d3 1/4;
+                a3 1/4;
+
+                d3 1/4;
+                a3 1/4;
+                d3 1/4;
+                a3 1/4;
+
+                d3 1/4;
+                a3 1/4;
+                d3 1/4;
+                a3 1/4;
+
+                d3 1/4;
+                a3 1/4;
+                d3 1/4;
+                a3 1/4;
+
+                d3 1/4;
+                a3 1/4;
+                d3 1/4;
+                a3 1/4;
+            }
+        }
+    }
+}

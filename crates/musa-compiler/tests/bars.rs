@@ -30,7 +30,10 @@ fn bars_of(numerator: u32, denominator: u32) -> BarLines {
         &musa_compiler::SourceDocument::new(&source, "bars.musa"),
         &musa_compiler::CompileOptions::default(),
     );
-    compiled.snapshot().expect("a piece with a meter compiles").bars()
+    compiled
+        .snapshot()
+        .expect("a piece with a meter compiles")
+        .bars(musa_compiler::Scope::Piece)
 }
 
 proptest! {

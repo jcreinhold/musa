@@ -436,6 +436,7 @@ NotationPlan {
                     ],
                 },
             ],
+            tempos: [],
         },
     ],
     tempos: [

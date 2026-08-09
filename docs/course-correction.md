@@ -1425,6 +1425,15 @@ The candidate kernel should support clean elaboration of at least:
     **not** proven, and is refused rather than deferred, is a reactive producer: musa compiles a reading of the
     work, it does not follow one. See prompt 68's Stop list.)*
 
+11. **Polymeter and polytempo** Parts counted and paced independently of the score around them. *(Proven at
+    prompt 75, and the item is worth reading for how little it cost: `Meter` and `Tempo` already inherited by
+    `Override` and `BarLines` was already built on an arbitrary sequence of meters, so both are a **scope argument**
+    — `bars(scope)`, `IntegratedTempoMap::new(score, scope, …)` — and neither is a kernel form, a term, or a second
+    algorithm. `examples/bulgarian.musa` (7/8 against 4/4, barlines that diverge), `examples/hemiola.musa` (6/8
+    against 3/4, one grid beamed two ways), `examples/canon-x.musa` (Nancarrow's shape: one part accelerating while
+    the other decelerates). The lossy lowering this item exists to expose is real and is exactly one: SMF has one
+    tempo track, so a polytempo export is sonically exact and notationally wrong, and says so.)*
+
 If several of these require awkward or lossy lowering, reconsider the kernel.
 
 Do not patch each example independently.

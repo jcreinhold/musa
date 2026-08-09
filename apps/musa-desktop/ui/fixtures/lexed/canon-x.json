@@ -1,0 +1,942 @@
+[
+  {
+    "class": "comment",
+    "start": 0,
+    "end": 63
+  },
+  {
+    "class": "comment",
+    "start": 64,
+    "end": 66
+  },
+  {
+    "class": "comment",
+    "start": 67,
+    "end": 142
+  },
+  {
+    "class": "comment",
+    "start": 143,
+    "end": 217
+  },
+  {
+    "class": "comment",
+    "start": 218,
+    "end": 292
+  },
+  {
+    "class": "comment",
+    "start": 293,
+    "end": 370
+  },
+  {
+    "class": "comment",
+    "start": 371,
+    "end": 446
+  },
+  {
+    "class": "comment",
+    "start": 447,
+    "end": 456
+  },
+  {
+    "class": "comment",
+    "start": 457,
+    "end": 459
+  },
+  {
+    "class": "comment",
+    "start": 460,
+    "end": 538
+  },
+  {
+    "class": "comment",
+    "start": 539,
+    "end": 616
+  },
+  {
+    "class": "comment",
+    "start": 617,
+    "end": 695
+  },
+  {
+    "class": "comment",
+    "start": 696,
+    "end": 767
+  },
+  {
+    "class": "comment",
+    "start": 768,
+    "end": 778
+  },
+  {
+    "class": "comment",
+    "start": 779,
+    "end": 781
+  },
+  {
+    "class": "comment",
+    "start": 782,
+    "end": 860
+  },
+  {
+    "class": "comment",
+    "start": 861,
+    "end": 934
+  },
+  {
+    "class": "comment",
+    "start": 935,
+    "end": 1009
+  },
+  {
+    "class": "comment",
+    "start": 1010,
+    "end": 1081
+  },
+  {
+    "class": "comment",
+    "start": 1082,
+    "end": 1159
+  },
+  {
+    "class": "comment",
+    "start": 1160,
+    "end": 1194
+  },
+  {
+    "class": "keyword",
+    "start": 1195,
+    "end": 1200
+  },
+  {
+    "class": "text",
+    "start": 1201,
+    "end": 1210
+  },
+  {
+    "class": "punctuation",
+    "start": 1211,
+    "end": 1212
+  },
+  {
+    "class": "comment",
+    "start": 1217,
+    "end": 1288
+  },
+  {
+    "class": "comment",
+    "start": 1293,
+    "end": 1344
+  },
+  {
+    "class": "keyword",
+    "start": 1349,
+    "end": 1354
+  },
+  {
+    "class": "duration",
+    "start": 1355,
+    "end": 1358
+  },
+  {
+    "class": "punctuation",
+    "start": 1359,
+    "end": 1360
+  },
+  {
+    "class": "number",
+    "start": 1361,
+    "end": 1364
+  },
+  {
+    "class": "punctuation",
+    "start": 1364,
+    "end": 1365
+  },
+  {
+    "class": "keyword",
+    "start": 1370,
+    "end": 1375
+  },
+  {
+    "class": "duration",
+    "start": 1376,
+    "end": 1379
+  },
+  {
+    "class": "punctuation",
+    "start": 1379,
+    "end": 1380
+  },
+  {
+    "class": "keyword",
+    "start": 1385,
+    "end": 1388
+  },
+  {
+    "class": "name",
+    "start": 1389,
+    "end": 1390
+  },
+  {
+    "class": "name",
+    "start": 1391,
+    "end": 1396
+  },
+  {
+    "class": "punctuation",
+    "start": 1396,
+    "end": 1397
+  },
+  {
+    "class": "keyword",
+    "start": 1403,
+    "end": 1408
+  },
+  {
+    "class": "punctuation",
+    "start": 1409,
+    "end": 1410
+  },
+  {
+    "class": "keyword",
+    "start": 1419,
+    "end": 1423
+  },
+  {
+    "class": "name",
+    "start": 1424,
+    "end": 1430
+  },
+  {
+    "class": "punctuation",
+    "start": 1431,
+    "end": 1432
+  },
+  {
+    "class": "keyword",
+    "start": 1445,
+    "end": 1449
+  },
+  {
+    "class": "name",
+    "start": 1450,
+    "end": 1456
+  },
+  {
+    "class": "punctuation",
+    "start": 1456,
+    "end": 1457
+  },
+  {
+    "class": "comment",
+    "start": 1470,
+    "end": 1536
+  },
+  {
+    "class": "comment",
+    "start": 1549,
+    "end": 1563
+  },
+  {
+    "class": "keyword",
+    "start": 1576,
+    "end": 1581
+  },
+  {
+    "class": "duration",
+    "start": 1582,
+    "end": 1585
+  },
+  {
+    "class": "punctuation",
+    "start": 1586,
+    "end": 1587
+  },
+  {
+    "class": "number",
+    "start": 1588,
+    "end": 1590
+  },
+  {
+    "class": "keyword",
+    "start": 1591,
+    "end": 1593
+  },
+  {
+    "class": "number",
+    "start": 1594,
+    "end": 1597
+  },
+  {
+    "class": "keyword",
+    "start": 1598,
+    "end": 1602
+  },
+  {
+    "class": "duration",
+    "start": 1603,
+    "end": 1606
+  },
+  {
+    "class": "text",
+    "start": 1607,
+    "end": 1615
+  },
+  {
+    "class": "punctuation",
+    "start": 1615,
+    "end": 1616
+  },
+  {
+    "class": "keyword",
+    "start": 1630,
+    "end": 1635
+  },
+  {
+    "class": "name",
+    "start": 1636,
+    "end": 1641
+  },
+  {
+    "class": "punctuation",
+    "start": 1642,
+    "end": 1643
+  },
+  {
+    "class": "keyword",
+    "start": 1660,
+    "end": 1667
+  },
+  {
+    "class": "name",
+    "start": 1668,
+    "end": 1669
+  },
+  {
+    "class": "punctuation",
+    "start": 1669,
+    "end": 1670
+  },
+  {
+    "class": "pitch",
+    "start": 1688,
+    "end": 1690
+  },
+  {
+    "class": "duration",
+    "start": 1691,
+    "end": 1694
+  },
+  {
+    "class": "punctuation",
+    "start": 1694,
+    "end": 1695
+  },
+  {
+    "class": "pitch",
+    "start": 1712,
+    "end": 1714
+  },
+  {
+    "class": "duration",
+    "start": 1715,
+    "end": 1718
+  },
+  {
+    "class": "punctuation",
+    "start": 1718,
+    "end": 1719
+  },
+  {
+    "class": "pitch",
+    "start": 1736,
+    "end": 1738
+  },
+  {
+    "class": "duration",
+    "start": 1739,
+    "end": 1742
+  },
+  {
+    "class": "punctuation",
+    "start": 1742,
+    "end": 1743
+  },
+  {
+    "class": "pitch",
+    "start": 1760,
+    "end": 1762
+  },
+  {
+    "class": "duration",
+    "start": 1763,
+    "end": 1766
+  },
+  {
+    "class": "punctuation",
+    "start": 1766,
+    "end": 1767
+  },
+  {
+    "class": "pitch",
+    "start": 1785,
+    "end": 1787
+  },
+  {
+    "class": "duration",
+    "start": 1788,
+    "end": 1791
+  },
+  {
+    "class": "punctuation",
+    "start": 1791,
+    "end": 1792
+  },
+  {
+    "class": "pitch",
+    "start": 1809,
+    "end": 1811
+  },
+  {
+    "class": "duration",
+    "start": 1812,
+    "end": 1815
+  },
+  {
+    "class": "punctuation",
+    "start": 1815,
+    "end": 1816
+  },
+  {
+    "class": "pitch",
+    "start": 1833,
+    "end": 1835
+  },
+  {
+    "class": "duration",
+    "start": 1836,
+    "end": 1839
+  },
+  {
+    "class": "punctuation",
+    "start": 1839,
+    "end": 1840
+  },
+  {
+    "class": "pitch",
+    "start": 1857,
+    "end": 1859
+  },
+  {
+    "class": "duration",
+    "start": 1860,
+    "end": 1863
+  },
+  {
+    "class": "punctuation",
+    "start": 1863,
+    "end": 1864
+  },
+  {
+    "class": "pitch",
+    "start": 1882,
+    "end": 1884
+  },
+  {
+    "class": "duration",
+    "start": 1885,
+    "end": 1888
+  },
+  {
+    "class": "punctuation",
+    "start": 1888,
+    "end": 1889
+  },
+  {
+    "class": "pitch",
+    "start": 1906,
+    "end": 1908
+  },
+  {
+    "class": "duration",
+    "start": 1909,
+    "end": 1912
+  },
+  {
+    "class": "punctuation",
+    "start": 1912,
+    "end": 1913
+  },
+  {
+    "class": "pitch",
+    "start": 1930,
+    "end": 1932
+  },
+  {
+    "class": "duration",
+    "start": 1933,
+    "end": 1936
+  },
+  {
+    "class": "punctuation",
+    "start": 1936,
+    "end": 1937
+  },
+  {
+    "class": "pitch",
+    "start": 1954,
+    "end": 1956
+  },
+  {
+    "class": "duration",
+    "start": 1957,
+    "end": 1960
+  },
+  {
+    "class": "punctuation",
+    "start": 1960,
+    "end": 1961
+  },
+  {
+    "class": "pitch",
+    "start": 1979,
+    "end": 1981
+  },
+  {
+    "class": "duration",
+    "start": 1982,
+    "end": 1985
+  },
+  {
+    "class": "punctuation",
+    "start": 1985,
+    "end": 1986
+  },
+  {
+    "class": "pitch",
+    "start": 2003,
+    "end": 2005
+  },
+  {
+    "class": "duration",
+    "start": 2006,
+    "end": 2009
+  },
+  {
+    "class": "punctuation",
+    "start": 2009,
+    "end": 2010
+  },
+  {
+    "class": "pitch",
+    "start": 2027,
+    "end": 2029
+  },
+  {
+    "class": "duration",
+    "start": 2030,
+    "end": 2033
+  },
+  {
+    "class": "punctuation",
+    "start": 2033,
+    "end": 2034
+  },
+  {
+    "class": "pitch",
+    "start": 2051,
+    "end": 2053
+  },
+  {
+    "class": "duration",
+    "start": 2054,
+    "end": 2057
+  },
+  {
+    "class": "punctuation",
+    "start": 2057,
+    "end": 2058
+  },
+  {
+    "class": "punctuation",
+    "start": 2071,
+    "end": 2072
+  },
+  {
+    "class": "punctuation",
+    "start": 2081,
+    "end": 2082
+  },
+  {
+    "class": "keyword",
+    "start": 2092,
+    "end": 2096
+  },
+  {
+    "class": "name",
+    "start": 2097,
+    "end": 2104
+  },
+  {
+    "class": "punctuation",
+    "start": 2105,
+    "end": 2106
+  },
+  {
+    "class": "keyword",
+    "start": 2119,
+    "end": 2123
+  },
+  {
+    "class": "name",
+    "start": 2124,
+    "end": 2128
+  },
+  {
+    "class": "punctuation",
+    "start": 2128,
+    "end": 2129
+  },
+  {
+    "class": "keyword",
+    "start": 2142,
+    "end": 2147
+  },
+  {
+    "class": "duration",
+    "start": 2148,
+    "end": 2151
+  },
+  {
+    "class": "punctuation",
+    "start": 2152,
+    "end": 2153
+  },
+  {
+    "class": "number",
+    "start": 2154,
+    "end": 2157
+  },
+  {
+    "class": "keyword",
+    "start": 2158,
+    "end": 2160
+  },
+  {
+    "class": "number",
+    "start": 2161,
+    "end": 2163
+  },
+  {
+    "class": "keyword",
+    "start": 2164,
+    "end": 2168
+  },
+  {
+    "class": "duration",
+    "start": 2169,
+    "end": 2172
+  },
+  {
+    "class": "text",
+    "start": 2173,
+    "end": 2179
+  },
+  {
+    "class": "punctuation",
+    "start": 2179,
+    "end": 2180
+  },
+  {
+    "class": "keyword",
+    "start": 2194,
+    "end": 2199
+  },
+  {
+    "class": "name",
+    "start": 2200,
+    "end": 2205
+  },
+  {
+    "class": "punctuation",
+    "start": 2206,
+    "end": 2207
+  },
+  {
+    "class": "keyword",
+    "start": 2224,
+    "end": 2231
+  },
+  {
+    "class": "name",
+    "start": 2232,
+    "end": 2233
+  },
+  {
+    "class": "punctuation",
+    "start": 2233,
+    "end": 2234
+  },
+  {
+    "class": "pitch",
+    "start": 2252,
+    "end": 2254
+  },
+  {
+    "class": "duration",
+    "start": 2255,
+    "end": 2258
+  },
+  {
+    "class": "punctuation",
+    "start": 2258,
+    "end": 2259
+  },
+  {
+    "class": "pitch",
+    "start": 2276,
+    "end": 2278
+  },
+  {
+    "class": "duration",
+    "start": 2279,
+    "end": 2282
+  },
+  {
+    "class": "punctuation",
+    "start": 2282,
+    "end": 2283
+  },
+  {
+    "class": "pitch",
+    "start": 2300,
+    "end": 2302
+  },
+  {
+    "class": "duration",
+    "start": 2303,
+    "end": 2306
+  },
+  {
+    "class": "punctuation",
+    "start": 2306,
+    "end": 2307
+  },
+  {
+    "class": "pitch",
+    "start": 2324,
+    "end": 2326
+  },
+  {
+    "class": "duration",
+    "start": 2327,
+    "end": 2330
+  },
+  {
+    "class": "punctuation",
+    "start": 2330,
+    "end": 2331
+  },
+  {
+    "class": "pitch",
+    "start": 2349,
+    "end": 2351
+  },
+  {
+    "class": "duration",
+    "start": 2352,
+    "end": 2355
+  },
+  {
+    "class": "punctuation",
+    "start": 2355,
+    "end": 2356
+  },
+  {
+    "class": "pitch",
+    "start": 2373,
+    "end": 2375
+  },
+  {
+    "class": "duration",
+    "start": 2376,
+    "end": 2379
+  },
+  {
+    "class": "punctuation",
+    "start": 2379,
+    "end": 2380
+  },
+  {
+    "class": "pitch",
+    "start": 2397,
+    "end": 2399
+  },
+  {
+    "class": "duration",
+    "start": 2400,
+    "end": 2403
+  },
+  {
+    "class": "punctuation",
+    "start": 2403,
+    "end": 2404
+  },
+  {
+    "class": "pitch",
+    "start": 2421,
+    "end": 2423
+  },
+  {
+    "class": "duration",
+    "start": 2424,
+    "end": 2427
+  },
+  {
+    "class": "punctuation",
+    "start": 2427,
+    "end": 2428
+  },
+  {
+    "class": "pitch",
+    "start": 2446,
+    "end": 2448
+  },
+  {
+    "class": "duration",
+    "start": 2449,
+    "end": 2452
+  },
+  {
+    "class": "punctuation",
+    "start": 2452,
+    "end": 2453
+  },
+  {
+    "class": "pitch",
+    "start": 2470,
+    "end": 2472
+  },
+  {
+    "class": "duration",
+    "start": 2473,
+    "end": 2476
+  },
+  {
+    "class": "punctuation",
+    "start": 2476,
+    "end": 2477
+  },
+  {
+    "class": "pitch",
+    "start": 2494,
+    "end": 2496
+  },
+  {
+    "class": "duration",
+    "start": 2497,
+    "end": 2500
+  },
+  {
+    "class": "punctuation",
+    "start": 2500,
+    "end": 2501
+  },
+  {
+    "class": "pitch",
+    "start": 2518,
+    "end": 2520
+  },
+  {
+    "class": "duration",
+    "start": 2521,
+    "end": 2524
+  },
+  {
+    "class": "punctuation",
+    "start": 2524,
+    "end": 2525
+  },
+  {
+    "class": "pitch",
+    "start": 2543,
+    "end": 2545
+  },
+  {
+    "class": "duration",
+    "start": 2546,
+    "end": 2549
+  },
+  {
+    "class": "punctuation",
+    "start": 2549,
+    "end": 2550
+  },
+  {
+    "class": "pitch",
+    "start": 2567,
+    "end": 2569
+  },
+  {
+    "class": "duration",
+    "start": 2570,
+    "end": 2573
+  },
+  {
+    "class": "punctuation",
+    "start": 2573,
+    "end": 2574
+  },
+  {
+    "class": "pitch",
+    "start": 2591,
+    "end": 2593
+  },
+  {
+    "class": "duration",
+    "start": 2594,
+    "end": 2597
+  },
+  {
+    "class": "punctuation",
+    "start": 2597,
+    "end": 2598
+  },
+  {
+    "class": "pitch",
+    "start": 2615,
+    "end": 2617
+  },
+  {
+    "class": "duration",
+    "start": 2618,
+    "end": 2621
+  },
+  {
+    "class": "punctuation",
+    "start": 2621,
+    "end": 2622
+  },
+  {
+    "class": "punctuation",
+    "start": 2635,
+    "end": 2636
+  },
+  {
+    "class": "punctuation",
+    "start": 2645,
+    "end": 2646
+  },
+  {
+    "class": "punctuation",
+    "start": 2651,
+    "end": 2652
+  },
+  {
+    "class": "punctuation",
+    "start": 2653,
+    "end": 2654
+  }
+]

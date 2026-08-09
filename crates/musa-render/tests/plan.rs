@@ -136,7 +136,7 @@ proptest! {
         let planned = plan_notation(&score, &NotationOptions::default());
         assert!(planned.is_ok(), "planning failed: {planned:?}");
         let Some(planned) = planned.ok() else { return Ok(()) };
-        let measure_len = score.bars().measure_at(musa_compiler::MusicalTime::ZERO).length().as_ratio();
+        let measure_len = score.bars(musa_compiler::Scope::Piece).measure_at(musa_compiler::MusicalTime::ZERO).length().as_ratio();
 
         let mut sums: std::collections::HashMap<u64, Ratio<i64>> = std::collections::HashMap::new();
         for staff in planned.staves() {
@@ -176,7 +176,7 @@ fn a_meter_change_after_a_repeat_is_numbered_twice() {
                   repeat 2 { bar { c4 1; } bar { d4 1; } } \
                   meter 3/4; bar { e4 3/4; } } } } }";
     let score = compile_score(source).expect("it compiles");
-    let played = score.bars();
+    let played = score.bars(musa_compiler::Scope::Piece);
     let at = musa_compiler::MusicalTime::new(Ratio::from_integer(4));
 
     // Performed: two passes of two measures, so the change opens measure 5.

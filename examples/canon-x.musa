@@ -1,0 +1,90 @@
+// Two parts at their own speeds, converging (docs/prompts/75).
+//
+// Nancarrow's *Study No. 21*, "Canon X", is the piece this exists for: one
+// voice begins slow and accelerates throughout, the other begins fast and
+// decelerates, and they cross in the middle. It is the shape the study is
+// named after, and there is no way to write it with one clock — a piece with
+// a single tempo can put a *rit.* over everything, and that is a different
+// piece.
+//
+// This is polytempo and a gradual tempo change composing, which is the reason
+// the two prompts are adjacent: a part's tempo is a fact in the part's scope
+// (prompt 75), and a gradual change is a fact carrying its reach (prompt 73).
+// Neither knows about the other, and this file needed nothing new from
+// either.
+//
+// The exports state it as far as each format can. `MusicXML` and MEI attach a
+// tempo to a part and a staff respectively, so each part carries its own
+// marking. SMF has one tempo track: every note is written at the frame it
+// actually sounds, so the file plays correctly, and the tempo the file
+// *states* is the piece's. Sonically exact and notationally wrong, said in a
+// warning rather than discovered.
+piece "Canon X" {
+    // The piece's own tempo: what the conductor's part would say, and what
+    // the exports state where they can state only one.
+    tempo 1/4 = 120;
+    meter 4/4;
+    key c major;
+
+    score {
+        part rising {
+            clef treble;
+            // Four bars of 4/4 is four whole notes, so the accelerando is the
+            // whole part.
+            tempo 1/4 = 60 to 180 over 4/1 "accel.";
+
+            voice upper {
+                dynamic p;
+
+                c5 1/4;
+                d5 1/4;
+                e5 1/4;
+                f5 1/4;
+
+                g5 1/4;
+                a5 1/4;
+                b5 1/4;
+                c6 1/4;
+
+                b5 1/4;
+                a5 1/4;
+                g5 1/4;
+                f5 1/4;
+
+                e5 1/4;
+                d5 1/4;
+                c5 1/4;
+                c5 1/4;
+            }
+        }
+
+        part falling {
+            clef bass;
+            tempo 1/4 = 180 to 60 over 4/1 "rit.";
+
+            voice lower {
+                dynamic f;
+
+                c4 1/4;
+                b3 1/4;
+                a3 1/4;
+                g3 1/4;
+
+                f3 1/4;
+                e3 1/4;
+                d3 1/4;
+                c3 1/4;
+
+                d3 1/4;
+                e3 1/4;
+                f3 1/4;
+                g3 1/4;
+
+                a3 1/4;
+                b3 1/4;
+                c4 1/4;
+                c4 1/4;
+            }
+        }
+    }
+}

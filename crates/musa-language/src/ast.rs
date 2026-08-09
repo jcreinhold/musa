@@ -647,6 +647,21 @@ impl PartDecl {
     pub fn profile(&self) -> Option<ProfileStmt> {
         child(&self.0)
     }
+
+    /// The part's own meter, if it declares one — polymeter.
+    ///
+    /// Only a `meter` written directly in the part block: a `meter` inside a
+    /// voice is the *piece's* meter from there (prompt 63), and `child`
+    /// reads children rather than descendants precisely so the two do not
+    /// blur into each other.
+    pub fn meter(&self) -> Option<MeterStmt> {
+        child(&self.0)
+    }
+
+    /// The part's own tempo, if it declares one — polytempo.
+    pub fn tempo(&self) -> Option<TempoStmt> {
+        child(&self.0)
+    }
 }
 
 /// `profile violin;` inside a part.

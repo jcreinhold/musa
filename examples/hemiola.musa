@@ -1,0 +1,82 @@
+// 6/8 against 3/4 (docs/prompts/75).
+//
+// The other shape polymeter takes, and the cheaper one: the bars are the same
+// *length*, so the barlines never diverge and the whole difference is where
+// the beams fall — two dotted quarters against three quarters. *America* is
+// this, and so is most of what a Latin American ensemble does with a
+// sesquiáltera.
+//
+// It is worth having both fixtures because the two shapes cost different
+// things. This one needs no per-staff barline grid at all: one grid, two
+// beamings. `bulgarian.musa` is the one that needs the grid, and the reason
+// `bars` takes a scope.
+piece "Hemiola" {
+    tempo 1/4 = 108;
+    meter 3/4;
+    key c major;
+
+    score {
+        part treble {
+            clef treble;
+            meter 6/8;
+
+            voice upper {
+                dynamic mf;
+
+                // Four bars of 6/8: two groups of three eighths each.
+                g4 1/8;
+                a4 1/8;
+                b4 1/8;
+                c5 1/8;
+                b4 1/8;
+                a4 1/8;
+
+                b4 1/8;
+                c5 1/8;
+                d5 1/8;
+                e5 1/8;
+                d5 1/8;
+                c5 1/8;
+
+                d5 1/8;
+                c5 1/8;
+                b4 1/8;
+                a4 1/8;
+                b4 1/8;
+                c5 1/8;
+
+                b4 1/8;
+                a4 1/8;
+                g4 1/8;
+                a4 1/8;
+                g4 1/8;
+                f4 1/8;
+            }
+        }
+
+        part bass {
+            clef bass;
+
+            voice lower {
+                dynamic mp;
+
+                // Four bars of 3/4 across exactly the same three quarters.
+                c3 1/4;
+                e3 1/4;
+                g3 1/4;
+
+                g3 1/4;
+                b3 1/4;
+                d4 1/4;
+
+                f3 1/4;
+                a3 1/4;
+                c4 1/4;
+
+                c3 1/4;
+                g3 1/4;
+                c3 1/4;
+            }
+        }
+    }
+}

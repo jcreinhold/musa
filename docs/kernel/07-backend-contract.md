@@ -150,6 +150,28 @@ Interpolating **beats per minute** instead would put the rate's reciprocal under
 rationals, which §4 forbids — so the exactness requirement decides a question that looks like a matter of taste. It
 happens to agree with practice: an orchestra told to slow down evenly slows evenly in duration.
 
+### A scope is the third reader, and the one MIDI cannot follow (prompt 75)
+
+Every context fact carries a `Scope`, and `Meter` and `Tempo` inherit by `Override`: a part that states its own is
+read at its own and every other scope reads the piece's. Polymeter and polytempo are therefore not an extension of
+this format — a file written before either existed is already a legal file with every part in the piece's scope, and
+a file with them differs only in which scope some occurrences carry.
+
+What differs is what each consumer can do with it.
+
+- **A consumer of the kernel file loses nothing.** The scope is in the occurrence, so "the meter for part 1" is a
+  question the file answers.
+- **MusicXML has a measure list per part and MEI does not.** MusicXML therefore carries divergent barlines exactly;
+  MEI states each staff's meter on its `<staffDef>` but numbers `<measure>` for the score, so a piece whose barlines
+  genuinely diverge is exported with a warning saying which measure numbering the document carries. LilyPond needs
+  Timing moved from `Score` to `Staff`, which the export writes.
+- **SMF has one tempo track and one time-signature track, and no scope at all.** A polytempo performance is exported
+  by resolving every lane against its own map and writing every note at the frame it actually sounds. The file is
+  therefore **sonically exact and notationally wrong**: it plays correctly, and the tempo it states is the piece's
+  reference rather than any part's. Both losses are reported by the exporter. This is the one place in this document
+  where a format is asked to say something it cannot, and the honest degradation is to be right about the sound and
+  explicit about the notation.
+
 ## What a conforming consumer of a kernel file owes (prompt 48)
 
 `examples/kernel/*.kernel` is the corpus a second implementation is validated against. Reading one, a consumer owes

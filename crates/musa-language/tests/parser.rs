@@ -495,6 +495,32 @@ fn the_header_holds_one_tempo_and_a_change_is_written_in_the_voice() {
     assert_eq!(changes, [Some("poco più mosso".to_owned())]);
 }
 
+/// A part may state its own meter and its own tempo, and a `meter` written
+/// inside a voice is still the *piece's* (prompt 63).
+///
+/// The distinction is the grammar's, which is why it is tested here: `meter`
+/// is one keyword in two places, and the place is what says whose meter it
+/// is. `child` rather than `descendants` is what keeps them apart, so a voice
+/// change appearing as the part's would be a silent polymeter nobody wrote.
+#[test]
+fn a_part_may_state_its_own_meter_and_tempo() {
+    let doc = parse(
+        "piece \"P\" { meter 4/4; score {
+            part a { meter 7/8; tempo 1/4 = 90; voice v { c5 7/8; } }
+            part b { voice w { meter 3/4; c5 3/4; } }
+        } }",
+    );
+    assert!(doc.errors().is_empty(), "{:?}", doc.errors());
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("a piece");
+    let parts = piece.score().expect("a score").parts();
+    let first = parts.first().expect("a first part");
+    assert_eq!(first.meter().and_then(|meter| meter.value()), Some("7/8".to_owned()));
+    assert!(first.tempo().is_some_and(|tempo| tempo.has_metronome()));
+    let second = parts.get(1).expect("a second part");
+    assert!(second.meter().is_none(), "a voice's meter is the piece's");
+    assert!(second.tempo().is_none());
+}
+
 /// The three forms of a tempo marking, and the one that shapes the grammar:
 /// a word with no number prints and changes no clock (prompt 72).
 #[test]

@@ -52,6 +52,9 @@ struct LyDocument {
     variables: Vec<(String, LyNode)>,
     /// The `\score` block body.
     score: LyNode,
+    /// `\layout { … }` lines, when the score needs a context change to be
+    /// readable at all. Empty for every piece that does not.
+    layout: Vec<&'static str>,
 }
 
 /// Render the plan to deterministic `LilyPond` text.
@@ -68,12 +71,42 @@ pub(crate) fn render_lilypond(plan: &NotationPlan) -> Result<String, RenderError
         variables.push(("chords".to_owned(), chord_names(plan.harmony(), &measures)));
         score_children.push(LyNode::Command("\\new ChordNames \\chords".to_owned()));
     }
+    // Polymeter and polytempo are context moves in LilyPond: Timing and the
+    // metronome mark live at Score by default, so a `\time` or a `\tempo`
+    // written in one staff is written for all of them. Moving them to Staff
+    // is what the notation manual's polymetric section does, and it is the
+    // documented approximation — LilyPond has no way to say two speeds at
+    // once that a player could follow, and neither has an engraver.
+    let polymetric = plan
+        .staves()
+        .iter()
+        .any(|staff| staff.time_signature() != plan.staves().first().map_or((4, 4), StaffPlan::time_signature));
+    let polytempo = plan.staves().iter().any(|staff| !staff.tempos().is_empty());
+    let mut layout = Vec::new();
+    if polymetric {
+        layout.extend([
+            "\\context { \\Score \\remove \"Timing_translator\" \\remove \"Default_bar_line_engraver\" }",
+            "\\context { \\Staff \\consists \"Timing_translator\" \\consists \"Default_bar_line_engraver\" }",
+        ]);
+    }
+    if polytempo {
+        layout.extend([
+            "\\context { \\Score \\remove \"Metronome_mark_engraver\" }",
+            "\\context { \\Staff \\consists \"Metronome_mark_engraver\" }",
+        ]);
+    }
     for (index, staff) in plan.staves().iter().enumerate() {
         let variable = sanitize(staff.name());
         // Form markers are score-wide, so they are written once, in the
         // topmost staff: `\mark` is a Score-level event and LilyPond prints it
         // above the system however many staves the system has.
-        let marks = if index == 0 { score_marks(plan) } else { Vec::new() };
+        let mut marks = if index == 0 { score_marks(plan) } else { Vec::new() };
+        // A staff at its own speed prints its own tempo, wherever it sits.
+        marks.extend(staff.tempos().iter().map(|tempo| PositionedMark {
+            measure: tempo.measure,
+            onset_in_measure: tempo.onset_in_measure,
+            what: ScoreMark::Tempo(tempo.what.clone()),
+        }));
         // Repeat barlines are the same kind of score-wide fact, and
         // `Score.repeatCommands` is a score property: written once, in the
         // topmost staff, or every staff would set it again.
@@ -92,6 +125,7 @@ pub(crate) fn render_lilypond(plan: &NotationPlan) -> Result<String, RenderError
         header: header_fields(plan),
         variables,
         score: LyNode::Simultaneous(score_children),
+        layout,
     };
     Ok(print_document(&document))
 }
@@ -912,6 +946,15 @@ fn print_document(document: &LyDocument) -> String {
             print_node(&mut out, single, 2);
             out.push('\n');
         }
+    }
+    if !document.layout.is_empty() {
+        out.push_str("  \\layout {\n");
+        for line in &document.layout {
+            out.push_str("    ");
+            out.push_str(line);
+            out.push('\n');
+        }
+        out.push_str("  }\n");
     }
     out.push_str("}\n");
     out

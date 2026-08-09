@@ -292,6 +292,13 @@ pub(crate) struct Resolver {
     /// and folded before any of them can be checked: whether a change lands
     /// on a barline is a question about the changes before it.
     pub(crate) meter_changes: Vec<(crate::MusicalTime, Meter, SourceSpan)>,
+    /// The parts that declared a meter of their own — polymeter.
+    ///
+    /// Every check about barlines has to ask *whose* barlines, and the
+    /// projection that would answer it does not exist until elaboration is
+    /// over. Empty for every piece that is not polymetric, which is why the
+    /// checks fall back to the piece's barlines rather than branching.
+    pub(crate) part_meters: std::collections::BTreeMap<u32, Meter>,
     /// Every profile that declares a groove that is not straight, with the
     /// rule that declares it — kept so the check that a groove has a meter to
     /// swing against can point at the groove rather than at the music.
@@ -351,6 +358,7 @@ impl Resolver {
             meter_written: false,
             cursor: crate::MusicalTime::ZERO,
             meter_changes: Vec::new(),
+            part_meters: std::collections::BTreeMap::new(),
             groove_rules: Vec::new(),
             key_changes: Vec::new(),
             pending_bars: Vec::new(),
@@ -1299,13 +1307,28 @@ fn time_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio<
     Some(seconds)
 }
 
-/// The part-level facts both semantic paths read the same way: the written
-/// clef and the profile that realizes the part.
-pub(crate) fn part_metadata(
+/// What a part says about itself before any of it is played.
+///
+/// One struct rather than a tuple because there are now four answers and
+/// three of them are optional: a caller reading `context.meter` cannot
+/// mistake it for `context.clef`, which a four-tuple invites.
+pub(crate) struct PartContext {
+    /// The clef the part is read in.
+    pub(crate) clef: Option<(Clef, SourceSpan)>,
+    /// The part's own meter — polymeter, when it differs from the piece's.
+    pub(crate) meter: Option<(Meter, SourceSpan)>,
+    /// The part's own tempo — polytempo.
+    pub(crate) tempo: Option<(crate::elaborate::FactKind, SourceSpan)>,
+    /// The performance profile that realizes the part.
+    pub(crate) profile: Option<String>,
+}
+
+/// The part-level facts both semantic paths read the same way.
+pub(crate) fn part_context(
     resolver: &mut Resolver,
     part: &musa_language::ast::PartDecl,
     profiles: &ProfileSet,
-) -> (Option<(Clef, SourceSpan)>, Option<String>) {
+) -> PartContext {
     let mut clef: Option<(Clef, SourceSpan)> = None;
     for node in part.syntax().children() {
         if node.kind() != SyntaxKind::ClefStmt {
@@ -1352,7 +1375,28 @@ pub(crate) fn part_metadata(
             );
         }
     }
-    (clef, profile)
+    PartContext {
+        clef,
+        meter: part.meter().and_then(|stmt| {
+            let span = trimmed_span(stmt.syntax());
+            match parse_meter(&stmt) {
+                Some(meter) => Some((meter, span)),
+                None => {
+                    resolver.error(
+                        Code::NotAValue,
+                        "this meter cannot be read",
+                        span,
+                        "expected `4/4`, or `none`",
+                    );
+                    None
+                }
+            }
+        }),
+        tempo: part
+            .tempo()
+            .map(|stmt| (tempo_fact(resolver, &stmt), trimmed_span(stmt.syntax()))),
+        profile,
+    }
 }
 
 /// What one `tempo` statement says, as the timeline carries it.
@@ -1611,8 +1655,8 @@ pub(crate) fn check_groove_has_a_meter(resolver: &mut Resolver, snapshot: &Score
     if rules.is_empty() {
         return;
     }
-    let bars = snapshot.bars();
-    for (_, part) in snapshot.parts().iter() {
+    for (id, part) in snapshot.parts().iter() {
+        let bars = snapshot.bars(crate::Scope::Part { part: id.0 });
         let Some(profile) = snapshot.profiles().for_part(part.name()) else {
             continue;
         };
@@ -1636,8 +1680,11 @@ pub(crate) fn check_groove_has_a_meter(resolver: &mut Resolver, snapshot: &Score
 }
 
 pub(crate) fn check_measure_sanity(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
-    let bars = snapshot.bars();
-    for (_, part) in snapshot.parts().iter() {
+    for (id, part) in snapshot.parts().iter() {
+        // Whose barlines: a part in 7/8 stops short of *its* barline, and
+        // measuring it against the piece's 4/4 would complain about music
+        // that is right (polymeter, prompt 75).
+        let bars = snapshot.bars(crate::Scope::Part { part: id.0 });
         for (voice_id, voice) in part.voices() {
             // A voice that holds a note as long as it likes is not measured
             // after that note: how far it reaches is the performance's

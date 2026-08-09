@@ -171,7 +171,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 72 | tempo-facts | 3 | The tempo marking becomes a fact, separated from the `Beat → Second` map |
 | 73 | tempo-ramps | 3 | *rit.* and *accel.* via `Progress`, exact in seconds-per-beat |
 | 74 | unmeasured | 3 | `meter none`: cadenzas, chant, proportional spacing |
-| 75 | polymeter-and-polytempo | 3 | Per-scope barline grids; polytempo behind an evidence gate |
+| 75 | polymeter-and-polytempo | 3 | Per-scope barline grids and tempo maps; the gate passed on Nancarrow |
 | 76 | realization-in-the-page | 2 | The freedom printed, the decision shown, the seed in Settings |
 | 77 | language-server | 3 | `musa-lsp` over stdio: diagnostics, formatting, hover, definition, symbols, fixes, tokens, completion |
 | 78 | references-and-rename | 3 | The resolver records use-sites; references and rename rewrite recorded spans only |
@@ -179,6 +179,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 80 | tree-sitter-grammar | 3 | tree-sitter-musa, corpus pinned token-for-token to the real lexer |
 | 81 | vscode-extension | 3 | vscode-musa: generated TextMate grammar plus the language client |
 | 82 | zed-extension | 3 | zed-musa: WASM extension, grammar queries, server wiring |
+| 83 | lint-pass | 3 | Style-guide warnings as ordinary diagnostics; suppression lives in the source |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
@@ -262,7 +263,10 @@ unbounded repeats or Klavierstück XI's 19! orderings, it makes T2 ambiguous, an
 normal form and no hash, which destroys the corpus that motivated it. So a realization becomes a **compile
 parameter**, the freedom becomes a **payload value**, and Q2 closes on its own stated trigger in favour of its own
 working stance. 75 carries the same discipline forward as a gate rather than a conclusion: polymeter has repertoire
-and consumers, polytempo has neither yet, and the prompt says to ship half of itself if the gate does not open.
+and consumers, polytempo had neither when the prompt was written, and the prompt says to ship half of itself if the
+gate does not open. It opened — Nancarrow's *Canon X* is the piece, and `MusicXML` and MEI attach a tempo to a part
+and a staff *in the format*, which is what made polytempo something musa can hand to another program — and the
+prompt records the reasoning where the decline would have gone.
 
 Prompts 37–50 are the kernel consolidation block. Prompt 12 made the kernel canonical but deliberately kept what the
 migration needed: the direct lowerer as a regression oracle, and a `ScoreSnapshot` shaped exactly as the pre-kernel

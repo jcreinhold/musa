@@ -56,7 +56,15 @@ pub(crate) fn render_mei(plan: &NotationPlan) -> Result<String, RenderError> {
     // Tie-piece counters are document-scoped: an event's pieces can span
     // measures, and the `-tN` suffixes must count across the whole chain.
     let mut piece_counts: std::collections::HashMap<EventId, u32> = std::collections::HashMap::new();
-    let measure_count = plan.staves().first().map_or(0, |staff| staff.measures().len());
+    // The longest staff, not the first: under polymeter a 7/8 staff has more
+    // measures than the 4/4 above it, and taking the first would drop the
+    // tail of the piece rather than mis-space it.
+    let measure_count = plan
+        .staves()
+        .iter()
+        .map(|staff| staff.measures().len())
+        .max()
+        .unwrap_or(0);
     let barlines = Barlines::of(plan);
     // A volta is an element that *contains* measures in MEI, not an attribute
     // on them, so the bracket is opened and closed around the loop.
@@ -219,7 +227,11 @@ fn write_score_def(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<
 
     start(writer, "staffGrp")?;
     for (index, staff) in plan.staves().iter().enumerate() {
-        write_staff_def(writer, index.saturating_add(1), staff)?;
+        // A staff in its own meter states it here; one that agrees with the
+        // score says nothing, so a piece that is not polymetric writes the
+        // document it wrote before.
+        let own = (staff.time_signature() != (count, unit)).then(|| staff.time_signature());
+        write_staff_def(writer, index.saturating_add(1), staff, own)?;
     }
     end(writer, "staffGrp")?;
     end(writer, "scoreDef")
@@ -351,11 +363,24 @@ fn write_page_foot(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<
     end(writer, "pgFoot")
 }
 
-fn write_staff_def(writer: &mut Writer<Vec<u8>>, n: usize, staff: &StaffPlan) -> Result<(), RenderError> {
+fn write_staff_def(
+    writer: &mut Writer<Vec<u8>>,
+    n: usize,
+    staff: &StaffPlan,
+    meter: Option<(u32, u32)>,
+) -> Result<(), RenderError> {
     let n_text = n.to_string();
     let mut staff_def = element("staffDef");
     staff_def.push_attribute(("n", n_text.as_str()));
     staff_def.push_attribute(("lines", "5"));
+    // Polymeter is a meter on the `<staffDef>` — MEI's own way of saying a
+    // staff is counted differently from the score around it.
+    let (count, unit) = meter.unwrap_or((0, 0));
+    let (count_text, unit_text) = (count.to_string(), unit.to_string());
+    if count > 0 && unit > 0 {
+        staff_def.push_attribute(("meter.count", count_text.as_str()));
+        staff_def.push_attribute(("meter.unit", unit_text.as_str()));
+    }
     if let Some(clef) = staff.clef() {
         let (shape, line) = clef_shape_line(clef);
         staff_def.push_attribute(("clef.shape", shape));
@@ -767,10 +792,21 @@ fn timestamp(beats: num_rational::Ratio<i64>) -> String {
 fn write_positioned(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan, index: usize) -> Result<(), RenderError> {
     let measure = u32::try_from(index.saturating_add(1)).unwrap_or(1);
     let unit = plan.staves().first().map_or(4, |staff| staff.time_signature().1);
-    for tempo in plan.tempos().iter().filter(|mark| mark.measure == measure) {
+    // The piece's markings on staff 1, and — under polytempo — each staff's
+    // own over that staff. `staff` is MEI's answer to "who is this for", so
+    // the two need no separate mechanism.
+    let staffed = plan.staves().iter().enumerate().flat_map(|(index, staff)| {
+        let n = u32::try_from(index.saturating_add(1)).unwrap_or(1);
+        staff.tempos().iter().map(move |mark| (n, mark))
+    });
+    for (staff, tempo) in plan.tempos().iter().map(|mark| (1, mark)).chain(staffed) {
+        if tempo.measure != measure {
+            continue;
+        }
+        let staff_text = staff.to_string();
         let stamp = timestamp(tempo.beat(unit));
         let mut element = element("tempo");
-        element.push_attribute(("staff", "1"));
+        element.push_attribute(("staff", staff_text.as_str()));
         element.push_attribute(("tstamp", stamp.as_str()));
         element.push_attribute(("place", "above"));
         // `mm`/`mm.unit` say a metronome mark in the form an engraver can set

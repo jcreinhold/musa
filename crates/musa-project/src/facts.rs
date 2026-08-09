@@ -301,10 +301,12 @@ impl ScoreFacts {
         let lines = LineIndex::new(source);
         // The same tempo integration the performance lowering uses, at the
         // same options, so a frame here is the frame the engine will report.
-        let tempo = IntegratedTempoMap::new(score, &PerformanceOptions::default());
+        let tempo = IntegratedTempoMap::new(score, Scope::Piece, &PerformanceOptions::default());
         // Unfolded: the fact index reports where a moment *sounds*, which is
-        // the coordinate the snapshot's own barlines are built over.
-        let bars = score.bars();
+        // the coordinate the snapshot's own barlines are built over. The
+        // piece's, for the piece-wide markers below; an event's bar number is
+        // its own part's, which under polymeter is a different number.
+        let bars = score.bars(Scope::Piece);
 
         let mut parts = Vec::new();
         let mut events = Vec::new();
@@ -314,7 +316,8 @@ impl ScoreFacts {
         // read the same on the page.
         let mut occurrences: Vec<OccurrenceFacts> = Vec::new();
         let mut paths: Vec<Vec<ExpansionStep>> = Vec::new();
-        for (_, part) in score.parts().iter() {
+        for (id, part) in score.parts().iter() {
+            let bars = score.bars(Scope::Part { part: id.0 });
             let mut voices = Vec::new();
             for (voice_id, voice) in part.voices() {
                 let name = part

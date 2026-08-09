@@ -310,6 +310,7 @@ NotationPlan {
                     ],
                 },
             ],
+            tempos: [],
         },
         StaffPlan {
             name: "viola",
@@ -594,6 +595,7 @@ NotationPlan {
                     ],
                 },
             ],
+            tempos: [],
         },
     ],
     tempos: [

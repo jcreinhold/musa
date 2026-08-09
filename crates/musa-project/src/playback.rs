@@ -71,19 +71,56 @@ pub(crate) fn to_wav(score: &ScoreSnapshot, studio: &StudioSpec) -> Result<Vec<u
     wav_bytes(&audio)
 }
 
-/// The same score as a Standard MIDI File.
+/// The same score as a Standard MIDI File, with what SMF could not say
+/// about it.
 ///
 /// # Errors
 /// [`ProjectError::Performance`] if lowering fails, or
 /// [`ProjectError::Notation`] if a written pitch is outside MIDI's range.
-pub(crate) fn to_midi(score: &ScoreSnapshot, mode: musa_render::MidiMode) -> Result<Vec<u8>, ProjectError> {
+pub(crate) fn to_midi(
+    score: &ScoreSnapshot,
+    mode: musa_render::MidiMode,
+) -> Result<(Vec<u8>, Vec<String>), ProjectError> {
     let performance = musa_compiler::lower_performance(score, &PerformanceOptions::default())
         .map_err(|error| ProjectError::Performance(error.to_string()))?;
     let options = musa_render::MidiOptions {
         mode,
         ..musa_render::MidiOptions::default()
     };
-    musa_render::render_midi(&performance, &options).map_err(|error| ProjectError::Notation(error.to_string()))
+    // SMF has one tempo track and one time-signature track for the whole
+    // file. Every note is written at the frame it is actually played at, so
+    // the file *sounds* exactly right; what it says about itself is the
+    // reference part's. Sonically exact, notationally wrong, and said here
+    // rather than discovered (`docs/kernel/07-backend-contract.md`).
+    let mut warnings = Vec::new();
+    if performance.is_polytempo() {
+        warnings.push(
+            "SMF has one tempo track: the parts play at their own speeds and every note is written at \
+             the moment it sounds, but the tempo the file states is the piece's and not theirs"
+                .to_owned(),
+        );
+    }
+    if polymetric(score) {
+        warnings.push(
+            "SMF has one time-signature track: the parts are barred differently and the file states \
+             the piece's meter, which is the barlines of one of them"
+                .to_owned(),
+        );
+    }
+    let bytes =
+        musa_render::render_midi(&performance, &options).map_err(|error| ProjectError::Notation(error.to_string()))?;
+    Ok((bytes, warnings))
+}
+
+/// Whether any part is barred differently from the piece.
+fn polymetric(score: &ScoreSnapshot) -> bool {
+    let piece = score.meter_at(musa_compiler::Scope::Piece, musa_compiler::MusicalTime::ZERO);
+    score.parts().iter().any(|(id, _)| {
+        score.meter_at(
+            musa_compiler::Scope::Part { part: id.0 },
+            musa_compiler::MusicalTime::ZERO,
+        ) != piece
+    })
 }
 
 /// All lanes' events merged into one frame-sorted slice.

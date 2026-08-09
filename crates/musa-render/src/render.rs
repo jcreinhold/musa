@@ -109,6 +109,34 @@ fn losses(plan: &crate::plan::NotationPlan, target: NotationTarget) -> Vec<Strin
     for name in silent {
         losses.push(format!("{format} has no `{name}`: the mark is not exported"));
     }
+    // Whether the staves are counted differently from each other, and whether
+    // the bars they draw actually diverge. The second is the one that costs
+    // something: 6/8 against 3/4 is the same barline grid beamed two ways,
+    // and only different *lengths* make a measure mean two things.
+    let first = plan.staves().first();
+    let polymetric = plan
+        .staves()
+        .iter()
+        .any(|staff| Some(staff.time_signature()) != first.map(crate::plan::StaffPlan::time_signature));
+    let ragged = plan
+        .staves()
+        .iter()
+        .any(|staff| Some(staff.measures().len()) != first.map(|staff| staff.measures().len()));
+    if polymetric && ragged && target == NotationTarget::Mei {
+        losses.push(
+            "MEI numbers measures for the score, not for each staff: these staves are in different meters and \
+             their barlines diverge, so a measure of this document holds whatever each staff had \
+             reached by then rather than one measure of each"
+                .to_owned(),
+        );
+    }
+    if plan.staves().iter().any(|staff| !staff.tempos().is_empty()) {
+        losses.push(format!(
+            "{format} has no second conductor: a part at its own tempo is exported with its marking \
+             attached to its own staff, and whether a reader's software follows it is that \
+             software's answer"
+        ));
+    }
     if !plan.holds().is_empty() {
         losses.push(format!(
             "{format} has no free-duration bracket: each held note is exported at its written value, \

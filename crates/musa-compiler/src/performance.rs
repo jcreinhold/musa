@@ -183,10 +183,13 @@ impl IntegratedTempoMap {
     /// metronome mark anywhere performs at a quarter = 120: the default lives
     /// here rather than in the snapshot, because it is a fact about playing
     /// an unmarked page, not a fact about the page.
-    pub fn new(snapshot: &ScoreSnapshot, options: &PerformanceOptions) -> Self {
+    /// `scope` is polytempo, and it is only an argument: `Tempo` inherits by
+    /// `Override` (`scope.rs`), so a part that states its own marking reads
+    /// its own and every other scope reads the piece's.
+    pub fn new(snapshot: &ScoreSnapshot, scope: crate::Scope, options: &PerformanceOptions) -> Self {
         let mut marks: Vec<(MusicalTime, &crate::score::TempoMarking)> = snapshot
             .tempos()
-            .changes(crate::Scope::Piece)
+            .changes(scope)
             .filter(|(_, marking)| marking.metronome.is_some())
             .collect();
         let opening = crate::score::TempoMarking::default();
@@ -476,12 +479,29 @@ pub struct PerformancePlan {
     meters: Vec<MeterChange>,
     keys: Vec<KeyChange>,
     lanes: Vec<PerformanceLane>,
+    polytempo: bool,
 }
 
 impl PerformancePlan {
-    /// The tempo map used for scheduling.
+    /// The piece's tempo map: what the conductor reads.
+    ///
+    /// Under polytempo the lanes were scheduled against their own parts'
+    /// maps and this is the reference the piece-wide lists are stated
+    /// against, which is why [`Self::is_polytempo`] exists — a caller that
+    /// prints this as *the* tempo of the file has to know when that is a
+    /// reading rather than the piece.
     pub fn tempo(&self) -> &IntegratedTempoMap {
         &self.tempo
+    }
+
+    /// Whether the lanes were scheduled against different tempo maps.
+    ///
+    /// Only the exporters ask. SMF has one tempo track, so a polytempo
+    /// performance is written out sonically exact and notationally wrong,
+    /// and the loss is stated rather than discovered
+    /// (`docs/kernel/07-backend-contract.md`).
+    pub fn is_polytempo(&self) -> bool {
+        self.polytempo
     }
 
     /// Every meter the piece states, in playing order, beginning with the one
@@ -519,7 +539,7 @@ pub fn lower_performance(
     score: &ScoreSnapshot,
     options: &PerformanceOptions,
 ) -> Result<PerformancePlan, PerformanceError> {
-    let tempo = IntegratedTempoMap::new(score, options);
+    let reference = IntegratedTempoMap::new(score, crate::Scope::Piece, options);
     let marks = Interpretation::collect(score);
     // The hairpin index covers the whole piece: an event belongs to exactly
     // one voice, so one map keyed by event id serves every voice.
@@ -527,14 +547,23 @@ pub fn lower_performance(
     let graces = grace_index(score);
     let mut lanes = Vec::new();
     let mut next_instance = 0u32;
-    for (_, part) in score.parts().iter() {
+    let mut polytempo = false;
+    for (id, part) in score.parts().iter() {
         let profile = score.profiles().for_part(part.name());
+        let scope = crate::Scope::Part { part: id.0 };
+        // The part's own tempo if it states one, the piece's otherwise. Two
+        // parts at different speeds are two maps and nothing else: the frames
+        // this produces are absolute, so the engine merges lanes at different
+        // tempos exactly as it merges lanes at the same one.
+        let speed = IntegratedTempoMap::new(score, scope, options);
+        polytempo |= speed != reference;
         // The groove is the part's, because feel is an ensemble's sections
         // disagreeing on purpose: a swung horn over a straight bass is a
         // arrangement, not a mistake.
         let clock = Clock {
-            tempo: &tempo,
+            tempo: &speed,
             meters: score.meters(),
+            scope,
             groove: profile.map_or(Groove::STRAIGHT, PerformanceProfile::groove),
         };
         // What the part's reading makes of a grace note. Notation is silent on
@@ -658,11 +687,14 @@ pub fn lower_performance(
             events,
         });
     }
+    // Piece-scoped, and against the piece's tempo: these two lists are the
+    // conductor's, not any lane's, and a polymetric piece's other grids are
+    // read off the snapshot by whoever needs them.
     let meters = score
         .meters()
         .changes(crate::Scope::Piece)
         .map(|(at, meter)| MeterChange {
-            frame: tempo.frames(at),
+            frame: reference.frames(at),
             meter: *meter,
         })
         .collect();
@@ -670,15 +702,16 @@ pub fn lower_performance(
         .keys()
         .changes(crate::Scope::Piece)
         .map(|(at, key)| KeyChange {
-            frame: tempo.frames(at),
+            frame: reference.frames(at),
             key: *key,
         })
         .collect();
     Ok(PerformancePlan {
-        tempo,
+        tempo: reference,
         meters,
         keys,
         lanes,
+        polytempo,
     })
 }
 
@@ -695,13 +728,16 @@ pub fn lower_performance(
 struct Clock<'a> {
     tempo: &'a IntegratedTempoMap,
     meters: &'a crate::ContextTrack<Meter>,
+    /// The part this clock is for: its meter names the groove's cell and its
+    /// tempo is what `tempo` was integrated at.
+    scope: crate::Scope,
     groove: Groove,
 }
 
 impl Clock<'_> {
     /// The frame a written instant is played at.
     fn frames(&self, at: MusicalTime) -> u64 {
-        let meter = self.meters.at(crate::Scope::Piece, at).copied().unwrap_or_default();
+        let meter = self.meters.at(self.scope, at).copied().unwrap_or_default();
         self.tempo.frames(self.groove.warp(meter, at))
     }
 

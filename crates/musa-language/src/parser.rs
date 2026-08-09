@@ -114,6 +114,8 @@ const PART_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::Semicolon,
     SyntaxKind::RBrace,
     SyntaxKind::ClefKw,
+    SyntaxKind::MeterKw,
+    SyntaxKind::TempoKw,
     SyntaxKind::ProfileKw,
     SyntaxKind::VoiceKw,
 ];
@@ -809,7 +811,13 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `part name { clef ...; voice ... }`
+    /// `part name { clef ...; meter ...; tempo ...; voice ... }`
+    ///
+    /// A `meter` or a `tempo` here is the part's own, in force for the whole
+    /// part: polymeter and polytempo. The part is the granularity because it
+    /// is the one every consumer can express — a staff has one set of
+    /// barlines in MEI, in `MusicXML` and on paper, so a per-voice barline
+    /// grid would be a document nothing could draw.
     fn part_decl(&mut self) {
         self.start(SyntaxKind::PartDecl);
         self.bump(); // part
@@ -828,12 +836,16 @@ impl<'a> Parser<'a> {
             }
             if self.at(SyntaxKind::ClefKw) {
                 self.clef_stmt();
+            } else if self.at(SyntaxKind::MeterKw) {
+                self.meter_stmt();
+            } else if self.at(SyntaxKind::TempoKw) {
+                self.tempo_stmt();
             } else if self.at(SyntaxKind::ProfileKw) {
                 self.profile_stmt();
             } else if self.at(SyntaxKind::VoiceKw) {
                 self.voice_decl();
             } else {
-                self.expected("`clef`, `profile`, or `voice`");
+                self.expected("`clef`, `meter`, `tempo`, `profile`, or `voice`");
                 self.recover(PART_RECOVERY);
             }
         }
