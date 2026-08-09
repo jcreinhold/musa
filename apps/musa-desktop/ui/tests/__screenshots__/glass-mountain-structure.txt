@@ -4,6 +4,7 @@ tags
   desc 1
   g 108
   path 95
+  rect 5
   style 1
   svg 1
   text 6

@@ -53,13 +53,22 @@ pub struct OpenMark {
     pub kind: OpenShape,
 }
 
-/// The two shapes of open region a page can be asked to draw.
+/// The shapes of open region a page can be asked to draw.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OpenShape {
     /// Fragments in an order the performance chose.
     Mobile,
     /// A frame with unnotated contents.
     Improvise,
+    /// A repeat whose count the performance chose: `4–16×` over the repeat
+    /// sign.
+    ///
+    /// It is an open region rather than a field on [`RepeatMark`] because
+    /// what a backend does with it is what it does with the other two — print
+    /// the instruction as text, because no notation format has a ranged
+    /// repeat. One shape, one emitter, and the export warning says the same
+    /// thing about all three.
+    Passes,
 }
 
 /// Repeat barlines and their volta brackets, by measure.
@@ -77,6 +86,11 @@ pub struct RepeatMark {
     pub to: u32,
     /// How many times the body is played.
     pub times: u32,
+    /// The passes the source asked for, when it left the count open.
+    ///
+    /// The reason a page can print `4–16×` and play six: [`Self::times`] is
+    /// this performance's reading, and this is the composer's instruction.
+    pub range: Option<(u32, u32)>,
     /// The volta brackets, in print order. Empty for a plain repeat.
     pub endings: Vec<VoltaMark>,
 }
@@ -171,6 +185,13 @@ pub struct FrontMatter {
     pub arranger: Option<String>,
     /// The notice at the foot of the first page.
     pub copyright: Option<String>,
+    /// Which performance this file is, when the piece left anything to one.
+    ///
+    /// A catalogue fact rather than a printed line: a file that leaves a
+    /// decision open and does not say which reading it holds cannot be
+    /// reproduced, and the formats with somewhere to put a note say so
+    /// (`docs/kernel/11-realization.md`, consumer obligation 1).
+    pub performance: Option<u64>,
 }
 
 /// A symbol printed at a place in the piece rather than on a note: a form
@@ -842,6 +863,20 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
             })
         })
         .collect();
+    // A ranged repeat's instruction, printed at the opening barline. The
+    // repeat sign already says where the passes are; what no format can say
+    // is how many the composer left open, so that is what the text carries.
+    let mut open: Vec<OpenMark> = open;
+    open.extend(repeats.iter().filter_map(|repeat| {
+        let (least, most) = repeat.range?;
+        Some(OpenMark {
+            from: repeat.from,
+            to: repeat.from,
+            text: format!("{least}\u{2013}{most}\u{d7}"),
+            kind: OpenShape::Passes,
+        })
+    }));
+    open.sort_by_key(|mark| (mark.from, mark.to));
     let holds = staves
         .iter()
         .flat_map(|staff| staff.measures())
@@ -864,6 +899,7 @@ pub fn plan_notation(score: &ScoreSnapshot, _options: &NotationOptions) -> Resul
             composer: score.front_matter().composer.clone(),
             arranger: score.front_matter().arranger.clone(),
             copyright: score.front_matter().copyright.clone(),
+            performance: score.performance(),
         },
         staves,
         tempos,
@@ -1067,6 +1103,7 @@ impl Fold {
                     from: bars.at(from).measure,
                     to: bars.closing(to),
                     times: repeat.times,
+                    range: repeat.range,
                     endings,
                 })
             })

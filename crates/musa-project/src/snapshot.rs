@@ -57,6 +57,10 @@ pub(crate) struct ValidArtifacts {
     pub(crate) facts: ScoreFacts,
     /// Everything the Sound and Mix workspaces display about that studio.
     pub(crate) studio_facts: crate::studio::StudioFacts,
+    /// Every decision this compile took, for the pin command and for the
+    /// Origin view's fourth step (prompt 76). Empty for a determinate piece,
+    /// which is nearly every piece.
+    pub(crate) decisions: Vec<musa_compiler::DecisionRecord>,
     /// Every name the resolver resolved, for an editor's references and
     /// rename (prompt 78).
     pub(crate) names: Vec<crate::facts::NameFact>,

@@ -66,6 +66,33 @@ impl std::fmt::Display for Decision {
     }
 }
 
+impl Decision {
+    /// Read back what [`Display`](std::fmt::Display) wrote.
+    ///
+    /// A realization has to survive the session that made it (prompt 76), and
+    /// the thing it is written into is a line of text. Parsing the printed
+    /// form rather than inventing a second encoding is what keeps the file a
+    /// composer can read the same file a composer can edit.
+    #[must_use]
+    pub fn parse(text: &str) -> Option<Self> {
+        let (head, value) = text.split_once('=')?;
+        match head {
+            "count" => value.parse().ok().map(Self::Count),
+            "order" => value
+                .split(',')
+                .map(|index| index.parse().ok())
+                .collect::<Option<Vec<u32>>>()
+                .map(Self::Order),
+            "duration" => {
+                let (numerator, denominator) = value.split_once('/')?;
+                let denominator: i64 = denominator.parse().ok().filter(|value| *value != 0)?;
+                Some(Self::Duration(Ratio::new(numerator.parse().ok()?, denominator)))
+            }
+            _ => None,
+        }
+    }
+}
+
 /// Which performance to compile: a seed, and the sites the composer pinned.
 ///
 /// Not "a default performance" and not a random number generator. A piece that
@@ -102,10 +129,32 @@ impl Realization {
     ///
     /// What makes a realization editable rather than a lottery ticket: a
     /// composer who likes the fourth pass but not the sixth pins the sixth.
-    #[must_use]
-    pub fn pinned(mut self, path: ChoicePath, decision: Decision) -> Self {
+    pub fn pin(&mut self, path: ChoicePath, decision: Decision) {
         self.overrides.insert(path, decision);
-        self
+    }
+
+    /// Give a site back to the seed. Absence is success: a site that was not
+    /// pinned is already the seed's.
+    pub fn unpin(&mut self, path: &ChoicePath) {
+        self.overrides.remove(path);
+    }
+
+    /// Whether this site's answer was fixed by hand rather than drawn.
+    ///
+    /// The difference the Origin view prints: "kept" against the performance
+    /// a decision came from (prompt 76).
+    #[must_use]
+    pub fn is_pinned(&self, path: &ChoicePath) -> bool {
+        self.overrides.contains_key(path)
+    }
+
+    /// Draw a different performance, keeping every pin.
+    ///
+    /// That is what "New performance" means: the composer converging on a
+    /// reading has fixed the decisions they like, and re-rolling those would
+    /// undo the work the button exists to protect.
+    pub fn reseed(&mut self, seed: u64) {
+        self.seed = seed;
     }
 
     /// The seed, for a header line or a status readout.
@@ -195,6 +244,70 @@ impl Realization {
     }
 }
 
+/// One question the piece asked, and the answer this performance gave.
+///
+/// The page prints the *freedom* — a boxed fragment, an *ad lib.*, a bracketed
+/// duration, `4–16×` over a repeat sign — because the instruction is a fact
+/// like any other fact and reaches the timeline as one. This is the other
+/// half: what was decided, where it was asked, and whether the answer was
+/// drawn or kept. It is the fourth step of the Origin chain (prompt 76), and
+/// it is the reason a composer who opens an open-form piece twice can tell
+/// *why* the two pages differ.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DecisionRecord {
+    pub(crate) path: ChoicePath,
+    pub(crate) decision: Decision,
+    pub(crate) sites: Vec<crate::origin::SourceSpan>,
+    pub(crate) answered: String,
+    pub(crate) pinned: bool,
+}
+
+impl DecisionRecord {
+    /// Which site this is — the name a pin is written against.
+    #[must_use]
+    pub fn path(&self) -> &ChoicePath {
+        &self.path
+    }
+
+    /// What was decided, as a pin would record it.
+    #[must_use]
+    pub fn decision(&self) -> &Decision {
+        &self.decision
+    }
+
+    /// Every construct that asked: the `repeat`, the `mobile`, the note with
+    /// two durations. Where the interface reveals the source, and what an
+    /// event's own span is compared against to find the decision it was
+    /// produced under.
+    ///
+    /// Plural because prompt 67's rule is that a repeat the page can draw is
+    /// one repeat of the whole piece, *written once in each voice that sounds
+    /// under it*. One question, one answer, and as many places as the piece
+    /// spells it in.
+    #[must_use]
+    pub fn sites(&self) -> &[crate::origin::SourceSpan] {
+        &self.sites
+    }
+
+    /// The answer as a person reads it — "6 passes", "held 3/8", the played
+    /// order by fragment name.
+    ///
+    /// Spelled here rather than in a frontend because only elaboration knows
+    /// the names: `Decision::Order([2, 0, 1])` is not something to show anyone
+    /// (`docs/interface/03-interaction.md` §7).
+    #[must_use]
+    pub fn answered(&self) -> &str {
+        &self.answered
+    }
+
+    /// Whether the composer kept this one, as against the performance drawing
+    /// it.
+    #[must_use]
+    pub fn pinned(&self) -> bool {
+        self.pinned
+    }
+}
+
 /// The randomness for one site: `fnv1a_128(seed ‖ path)`.
 ///
 /// The workspace's one stable digest (`musa_kernel::stable_digest`), so the
@@ -277,12 +390,38 @@ mod tests {
     #[test]
     fn a_pin_wins_over_the_seed() {
         let site = path(&[ChoiceStep::Motif("fill".into()), ChoiceStep::Ordinal(0)]);
-        let realization = Realization::seeded(1).pinned(site.clone(), Decision::Count(9));
+        let mut realization = Realization::seeded(1);
+        realization.pin(site.clone(), Decision::Count(9));
         assert_eq!(realization.count(&site, 4, 16), 9);
+        assert!(realization.is_pinned(&site));
         // And a pin outside the range is brought into it rather than trusted:
         // the range is what the piece says, and a pin is a preference.
-        let clamped = Realization::seeded(1).pinned(site.clone(), Decision::Count(99));
-        assert_eq!(clamped.count(&site, 4, 16), 16);
+        realization.pin(site.clone(), Decision::Count(99));
+        assert_eq!(realization.count(&site, 4, 16), 16);
+        // Unpinning gives the site back to the seed, which is the answer it
+        // had before anybody kept anything.
+        realization.unpin(&site);
+        assert!(!realization.is_pinned(&site));
+        assert_eq!(
+            realization.count(&site, 4, 16),
+            Realization::seeded(1).count(&site, 4, 16)
+        );
+    }
+
+    /// Every decision a pin can hold survives being written down and read
+    /// back: a realization that could not be persisted would not survive the
+    /// session that made it, and prompt 76 requires that it does.
+    #[test]
+    fn a_decision_reads_back_as_it_was_written() {
+        for decision in [
+            Decision::Count(6),
+            Decision::Order(vec![2, 0, 1]),
+            Decision::Duration(num_rational::Ratio::new(3, 8)),
+        ] {
+            assert_eq!(Decision::parse(&decision.to_string()), Some(decision));
+        }
+        assert_eq!(Decision::parse("passes 6"), None);
+        assert_eq!(Decision::parse("duration=1/0"), None);
     }
 
     #[test]
@@ -308,5 +447,32 @@ mod tests {
         let motif = path(&[ChoiceStep::Motif("x".into())]);
         let bar = path(&[ChoiceStep::Bar("x".into())]);
         assert_ne!(motif.canonical(), bar.canonical());
+    }
+
+    /// The other half of injectivity: the encoding is not merely distinct per
+    /// path, it is readable back into one. A pin is stored as this string.
+    #[test]
+    fn a_path_reads_back_as_it_was_written() {
+        let site = path(&[
+            ChoiceStep::Fragment("figure_seven".into()),
+            ChoiceStep::Bar("fïll".into()),
+            ChoiceStep::Ordinal(3),
+        ]);
+        assert_eq!(ChoicePath::parse(&site.canonical()), Some(site));
+        assert_eq!(ChoicePath::parse(""), Some(ChoicePath::default()));
+        assert_eq!(ChoicePath::parse("m9:fill"), None, "the length runs off the end");
+        assert_eq!(ChoicePath::parse("z1:x"), None, "no such kind of step");
+    }
+
+    /// The wording rule of `docs/interface/`: what a composer reads is a
+    /// sentence, and it never contains the word `Ordinal`.
+    #[test]
+    fn a_path_is_shown_as_a_sentence() {
+        assert_eq!(
+            path(&[ChoiceStep::Fragment("fill".into()), ChoiceStep::Ordinal(0)]).describe(),
+            "fill, first choice"
+        );
+        assert_eq!(path(&[ChoiceStep::Ordinal(2)]).describe(), "the third choice");
+        assert_eq!(path(&[ChoiceStep::Ordinal(11)]).describe(), "the #12 choice");
     }
 }

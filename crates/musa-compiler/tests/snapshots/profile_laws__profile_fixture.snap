@@ -1063,4 +1063,5 @@ ScoreSnapshot {
             "cello": "strings",
         },
     },
+    performance: None,
 }

@@ -9,6 +9,7 @@ NotationPlan {
         composer: None,
         arranger: None,
         copyright: None,
+        performance: None,
     },
     staves: [
         StaffPlan {

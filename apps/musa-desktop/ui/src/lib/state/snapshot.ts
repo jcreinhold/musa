@@ -82,6 +82,12 @@ export interface OriginFacts {
   definitionSpan: Span;
   /** The occurrence that produced this event, when it was generated. */
   occurrence: string | null;
+  /**
+   * The decision this event was played under, as an index into
+   * {@link ScoreFacts.decisions}. Null in a determinate piece, and null for
+   * an event that no open construct covers (prompt 76).
+   */
+  decision: number | null;
 }
 
 /**
@@ -228,6 +234,35 @@ export interface ScoreFacts {
    * arranger at all.
    */
   header: HeaderFact[];
+  /**
+   * Which performance this reading is, or null when the piece asked nothing
+   * (prompt 76). A determinate piece has no performance number, and every
+   * part of the interface that speaks about realization is silent when this
+   * is null.
+   */
+  performance: number | null;
+  /** Every question the piece left open, in the order it asked them. */
+  decisions: DecisionFact[];
+}
+
+/**
+ * One question an open work asked, and the answer this reading gave it.
+ *
+ * The strings are written by the core, not assembled here: what a decision
+ * is called and how its answer reads are musical facts
+ * (`docs/interface/03-interaction.md` §7).
+ */
+export interface DecisionFact {
+  /** The decision's identity, stable across edits elsewhere. Not shown. */
+  path: string;
+  /** What was left open: `the fill, first choice`. */
+  asked: string;
+  /** What this reading decided: `4 passes`. */
+  answered: string;
+  /** Whether the composer kept this one, so a new performance leaves it. */
+  pinned: boolean;
+  /** The construct that asked, for revealing it in the source column. */
+  span: Span;
 }
 
 /** One of the piece's own facts, spelled the way the source spells it. */

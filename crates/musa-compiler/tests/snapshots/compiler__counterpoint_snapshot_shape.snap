@@ -648,4 +648,5 @@ ScoreSnapshot {
         profiles: {},
         parts: {},
     },
+    performance: None,
 }

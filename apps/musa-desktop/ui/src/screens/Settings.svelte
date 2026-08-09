@@ -20,10 +20,21 @@
   let {
     preferences,
     theme,
+    performance = null,
+    onperformance,
     onclose,
   }: {
     preferences: Preferences;
     theme: ThemeChoice;
+    /**
+     * Which reading of an open work is in force, or null when the piece
+     * asked nothing (prompt 76). A determinate piece has no performance, and
+     * this row is not there to be found — the setting appears when the piece
+     * makes it mean something.
+     */
+    performance?: number | null;
+    /** Read the piece again under another performance. */
+    onperformance?: (performance: number) => void;
     onclose: () => void;
   } = $props();
 
@@ -98,6 +109,49 @@
           These are the application's, not the piece's — they follow you between scores and never
           appear in the file.
         </p>
+
+        <!--
+          The one setting here that belongs to the piece in front of you, and
+          the reason it is here and not with the header (prompt 54): a
+          performance is not something the piece says about itself. It is how
+          this project read it. It appears only for a piece that left
+          something open; a determinate score shows nothing, because it has
+          nothing to show.
+
+          "New performance" counts forward rather than drawing at random, so
+          the reading a composer liked has a number they can type back. Every
+          performance is as unrelated to the one before it as any two numbers
+          are — the choice at a site is hashed from the seed and the site
+          together, never from a stream — so 43 is a genuinely new reading of
+          the piece and not a nudge to 42.
+        -->
+        {#if performance !== null}
+          <div class="row performance">
+            <span class="label" id="settings-performance">Performance</span>
+            <div class="choices" role="group" aria-labelledby="settings-performance">
+              <input
+                class="number"
+                type="number"
+                min="0"
+                step="1"
+                aria-label="Performance"
+                value={performance}
+                onchange={(event) => {
+                  const asked = Number(event.currentTarget.value);
+                  if (Number.isFinite(asked) && asked >= 0) onperformance?.(Math.floor(asked));
+                }}
+              />
+              <button type="button" onclick={() => onperformance?.(performance + 1)}
+                >New performance</button
+              >
+            </div>
+          </div>
+          <p class="note">
+            This piece leaves something open, and this is the reading in force. It is the project's,
+            not the file's — everyone who opens the piece gets the piece, and this is how you heard
+            it.
+          </p>
+        {/if}
 
         <button type="button" class="close" onclick={onclose}>Close</button>
       </div>
@@ -181,6 +235,33 @@
 
   .choices button[aria-pressed="true"] {
     color: var(--ink);
+    border-bottom-color: var(--plate);
+  }
+
+  /* The piece's row stands apart from the application's by space, not by a
+     heading: there is one of it, and a heading over one row is furniture. */
+  .row.performance {
+    margin-top: var(--s-4);
+  }
+
+  /* A field, not a set of choices. Every number is a performance, so there is
+     no list to mark one of — but the one you liked is a number you can type
+     back. */
+  .number {
+    width: 6ch;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+    padding: 0;
+    font-family: var(--f-ui);
+    font-size: var(--t-small-size);
+    line-height: var(--t-small-line);
+    color: var(--ink);
+    text-align: right;
+  }
+
+  .number:focus-visible {
+    outline: none;
     border-bottom-color: var(--plate);
   }
 

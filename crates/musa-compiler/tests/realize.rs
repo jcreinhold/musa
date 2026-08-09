@@ -14,6 +14,7 @@
 // A failure of these is a bug in the fixture, not in a caller's input.
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
+#![allow(clippy::panic)]
 
 use musa_compiler::{
     ChoicePath, ChoiceStep, CompileOptions, Decision, Realization, SourceDocument, compile, kernel_normal_form,
@@ -117,13 +118,17 @@ fn a_determinate_piece_is_the_same_under_every_seed() {
 fn a_pinned_site_ignores_the_seed() {
     let site = ChoicePath::default().then(ChoiceStep::Ordinal(0));
     for seed in 0..16u64 {
-        let realization = Realization::seeded(seed).pinned(site.clone(), Decision::Count(5));
+        let mut realization = Realization::seeded(seed);
+        realization.pin(site.clone(), Decision::Count(5));
         let compiled = under(LOOP_LENGTHS, "loop-lengths", &realization);
-        assert_eq!(
-            compiled.decisions(),
-            [(site.clone(), Decision::Count(5))],
-            "seed {seed} beat the pin"
-        );
+        let [decided] = compiled.decisions() else {
+            panic!("seed {seed}: expected one decision, got {}", compiled.decisions().len());
+        };
+        assert_eq!(decided.path(), &site, "seed {seed} beat the pin");
+        assert_eq!(decided.decision(), &Decision::Count(5), "seed {seed} beat the pin");
+        // And the record says the answer was kept rather than drawn, which is
+        // the difference the Origin view prints (prompt 76).
+        assert!(decided.pinned(), "seed {seed}: a pinned site read as drawn");
     }
 }
 
@@ -152,9 +157,19 @@ fn inserting_a_bar_above_a_site_leaves_its_decision_alone() {
     assert_ne!(edited, LOOP_LENGTHS, "the edit did not apply");
     let after = under(&edited, "loop-lengths", &Realization::seeded(7));
     assert_eq!(after.diagnostics().len(), 0, "{:?}", after.diagnostics());
+    // Paths and answers, not the whole record: the *spans* moved, which is
+    // precisely what a source-span identity would have re-rolled on and what
+    // path identity exists to be independent of.
+    let answers = |compiled: &musa_compiler::Compilation| -> Vec<(String, String)> {
+        compiled
+            .decisions()
+            .iter()
+            .map(|record| (record.path().canonical(), record.decision().to_string()))
+            .collect()
+    };
     assert_eq!(
-        before.decisions(),
-        after.decisions(),
+        answers(&before),
+        answers(&after),
         "an edit above the site changed its decision"
     );
     // The music did change — otherwise the test proves nothing about edits.

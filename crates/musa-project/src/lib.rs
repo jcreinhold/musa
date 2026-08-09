@@ -44,6 +44,7 @@ mod midi;
 mod playback;
 mod position;
 mod project;
+mod realization;
 mod session;
 mod snapshot;
 mod studio;
@@ -56,8 +57,8 @@ pub use crate::edit::{CandidateEdit, EditCommand, EditImpact, GeneratedEditMode,
 pub use crate::error::ProjectError;
 pub use crate::export::{ExportArtifact, ExportRequest, KernelReport, check_kernel};
 pub use crate::facts::{
-    EventFacts, EventKind, Fraction, HeaderFact, NameFact, NameKind, OccurrenceFacts, OriginFacts, OutlineFacts,
-    OutlineKind, PartFacts, ScoreFacts, VoiceFacts,
+    DecisionFact, EventFacts, EventKind, Fraction, HeaderFact, NameFact, NameKind, OccurrenceFacts, OriginFacts,
+    OutlineFacts, OutlineKind, PartFacts, ScoreFacts, VoiceFacts,
 };
 pub use crate::midi::MidiEntry;
 pub use crate::position::Position;
@@ -70,6 +71,6 @@ pub use crate::studio::{
 };
 pub use crate::template::Template;
 pub use crate::utf16::Utf16Offsets;
-pub use musa_compiler::{ChoicePath, ChoiceStep, Decision, Realization};
+pub use musa_compiler::{ChoicePath, ChoiceStep, Decision, DecisionRecord, Realization};
 pub use musa_language::HeaderField;
 pub use musa_render::MidiMode;

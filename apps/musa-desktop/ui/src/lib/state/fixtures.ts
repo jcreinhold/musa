@@ -13,8 +13,12 @@ import glassMountainMei from "../../../fixtures/glass-mountain.mei?raw";
 import largeScoreMei from "../../../fixtures/large-score.mei?raw";
 import twinkleMei from "../../../fixtures/twinkle.mei?raw";
 import annotatedMei from "../../../fixtures/annotated.mei?raw";
+import openFormMei from "../../../fixtures/open-form.mei?raw";
+import openFormAgainMei from "../../../fixtures/open-form-again.mei?raw";
 import glassMountainSnapshot from "../../../fixtures/glass-mountain.snapshot.json";
 import annotatedSnapshot from "../../../fixtures/annotated.snapshot.json";
+import openFormSnapshot from "../../../fixtures/open-form.snapshot.json";
+import openFormAgainSnapshot from "../../../fixtures/open-form-again.snapshot.json";
 import type { ProjectSnapshot } from "./snapshot";
 
 export interface Fixture {
@@ -42,6 +46,21 @@ export const FIXTURES: readonly Fixture[] = [
     title: "Annotated",
     mei: annotatedMei,
     snapshot: annotatedSnapshot as unknown as ProjectSnapshot,
+  },
+  // The open work, twice. The same source read under two performances: the
+  // interface's only proof that a realization is a reading and not a
+  // property of the file (prompt 76).
+  {
+    key: "open-form",
+    title: "Loop Lengths",
+    mei: openFormMei,
+    snapshot: openFormSnapshot as unknown as ProjectSnapshot,
+  },
+  {
+    key: "open-form-again",
+    title: "Loop Lengths, again",
+    mei: openFormAgainMei,
+    snapshot: openFormAgainSnapshot as unknown as ProjectSnapshot,
   },
   { key: "counterpoint", title: "Counterpoint Study", mei: counterpointMei },
   { key: "twinkle", title: "Twinkle", mei: twinkleMei },

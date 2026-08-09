@@ -78,6 +78,16 @@ fn losses(plan: &crate::plan::NotationPlan, target: NotationTarget) -> Vec<Strin
              under a text direction saying to improvise"
         ));
     }
+    if plan
+        .open()
+        .iter()
+        .any(|region| region.kind == crate::plan::OpenShape::Passes)
+    {
+        losses.push(format!(
+            "{format} has no ranged repeat: the body is exported with the number of passes this reading \
+             took, under a text direction saying how many the piece allows"
+        ));
+    }
     // A mark whose column is empty is a mark this format has no way to say.
     // One line per mark rather than one per occurrence: the fact is about the
     // format, and a page of pedal marks would otherwise report itself once per

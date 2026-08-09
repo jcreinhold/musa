@@ -110,6 +110,26 @@ pub enum ProjectCommand {
     RestoreRecovery,
     /// Keep what is on disk and delete the recovery copy.
     DiscardRecovery,
+    /// Draw a different reading of an open work, keeping every decision the
+    /// composer kept.
+    ///
+    /// The source is untouched: a performance is not an edit of the piece. It
+    /// *is* a state of the session, so it lands in the history and can be
+    /// undone — a composer who draws a performance they liked less must be
+    /// able to get the last one back, and that is what undo is
+    /// (`docs/kernel/11-realization.md`; prompt 76).
+    NewPerformance {
+        /// The performance to draw. A number, because that is what a composer
+        /// writes down and sends to somebody else.
+        performance: u64,
+    },
+    /// Keep one decision, so a new performance leaves it alone.
+    ///
+    /// The path is the one carried by [`crate::DecisionFact::path`], and it is
+    /// opaque: the interface never spells one and never shows one.
+    Pin(String),
+    /// Give a decision back to the performance.
+    Unpin(String),
     /// Drive the transport. Playback is unaffected by whether the *current*
     /// source compiles: it runs the last valid plan (roadmap §14.7).
     Transport(TransportRequest),

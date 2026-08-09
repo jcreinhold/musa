@@ -10,4 +10,4 @@ import type { TextEditDto } from "./TextEditDto";
  * exposes them as history navigation, not as edits; from the webview's side
  * they are the same kind of request and belong on the same call.
  */
-export type CommandDto = { "kind": "setSource", source: string, } | { "kind": "applyEdits", edits: Array<TextEditDto>, } | { "kind": "editScore", edit: EditDto, } | { "kind": "editStudio", edit: StudioEditDto, } | { "kind": "format" } | { "kind": "save" } | { "kind": "restoreRecovery" } | { "kind": "discardRecovery" } | { "kind": "undo" } | { "kind": "redo" };
+export type CommandDto = { "kind": "setSource", source: string, } | { "kind": "applyEdits", edits: Array<TextEditDto>, } | { "kind": "editScore", edit: EditDto, } | { "kind": "editStudio", edit: StudioEditDto, } | { "kind": "format" } | { "kind": "save" } | { "kind": "restoreRecovery" } | { "kind": "discardRecovery" } | { "kind": "undo" } | { "kind": "redo" } | { "kind": "newPerformance", performance: bigint, } | { "kind": "keep", decision: string, } | { "kind": "release", decision: string, };

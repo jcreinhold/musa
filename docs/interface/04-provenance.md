@@ -70,6 +70,29 @@ The path reads outside-in, in containment order: the `use sigh()` that produced 
 reveals its declaration in the source column. The line number opens the source at that line. This row is how the answer
 to "where did this come from" is available without holding a key.
 
+### The Decision step (prompt 76)
+
+An open work is one whose page cannot be read off its source: `repeat 2 to 6` says what the piece allows, and how many
+times it actually ran is a fact about *this reading*. So the Origin row gains a step below it, present only when the
+selected note was played under a decision:
+
+```
+Decision    the fill, first choice ▸ 4 passes          keep this one
+```
+
+Three rules, and they are the whole design.
+
+- **The words are the core's.** *the fill, first choice* and *4 passes* are musical sentences, computed where the
+  decision was made (`03-interaction.md` §7). The interface never assembles either, and never shows the internal path
+  it uses to name the site.
+- **It is a step in the provenance, not a control panel.** Everything else in the row reads the same way the Origin
+  path does: the left half opens the source at the construct that asked, the trailing offer is one word.
+- **The offer is `keep this one`, and once taken it reads `kept`.** Same control, same place: an offer becomes a state.
+  A kept decision is the one thing a new performance leaves alone.
+
+**A determinate piece shows nothing.** No row, no control, no explanation of a freedom it does not have — the same rule
+that governs the performance setting in `05-states.md` §9.
+
 ## 4. Editing generated music
 
 Roadmap §9 requires that editing a generated note surfaces a real choice rather than silently mutating a cache. Origin

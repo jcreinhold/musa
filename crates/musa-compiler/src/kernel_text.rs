@@ -51,7 +51,7 @@ pub fn kernel_text(source: &SourceDocument, realization: &crate::Realization) ->
 /// the seed — because a file that leaves a decision open and does not name its
 /// realization cannot be reproduced — and every decision taken
 /// (`docs/kernel/11-realization.md`, consumer obligation 1).
-fn notes(realization: &crate::Realization, decisions: &[(crate::ChoicePath, crate::Decision)]) -> Vec<String> {
+fn notes(realization: &crate::Realization, decisions: &[crate::DecisionRecord]) -> Vec<String> {
     if decisions.is_empty() {
         return Vec::new();
     }
@@ -63,7 +63,7 @@ fn notes(realization: &crate::Realization, decisions: &[(crate::ChoicePath, crat
     notes.extend(
         decisions
             .iter()
-            .map(|(path, decision)| format!("decision {path} {decision}")),
+            .map(|record| format!("decision {} {}", record.path(), record.decision())),
     );
     notes
 }

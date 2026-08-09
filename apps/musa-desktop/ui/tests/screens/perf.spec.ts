@@ -1,6 +1,6 @@
 /**
  * The budgets this prompt owns, asserted as measurements
- * (`06-performance.md` §1–§2): B1, B2, B6, B7, B8, B10.
+ * (`06-performance.md` §1–§2): B1, B2, B6, B7, B8, B10, B11.
  *
  * The harness drives the Vite dev server with the stubbed shell, which §2
  * sanctions where a window is impractical. That means these numbers are the
@@ -432,6 +432,53 @@ test("B10: nothing is scheduled while the transport is stopped", async ({ page }
   expect(after.frames - before.frames, "animation frames requested while idle").toBe(0);
   expect(after.intervals - before.intervals, "intervals started while idle").toBe(0);
   expect(after.timeouts - before.timeouts, "timeouts started while idle").toBe(0);
+});
+
+/**
+ * Reading an open work again, measured on its own (prompt 76).
+ *
+ * Deliberately not folded into B2. B2 is what an *edit* costs, and its
+ * 400 ms includes the 180 ms the interface spends waiting for typing to
+ * settle. A new performance is a click: nothing is being typed, so there is
+ * nothing to wait for, and rolling it into B2 would hide a redraw that had
+ * become slow behind a debounce it never pays. What is measured is the
+ * redraw — from the snapshot arriving to the ink — because that is the part
+ * this control adds, and the part a regression would land in.
+ */
+test("B11: a new reading is on the leaf within 250 ms of the snapshot", async ({
+  page,
+}) => {
+  await stubShell(page, "open-form");
+  await page.goto("/?perf=1");
+  await engraved(page);
+  await quiet(page);
+
+  const sheet = page.getByRole("dialog", { name: "Settings" });
+  await page.evaluate(() => window.__musaEmit("musa://command", "settings.open"));
+  await expect(sheet).toBeVisible();
+  const again = sheet.getByRole("button", { name: "New performance" });
+
+  const samples: number[] = [];
+  for (let trial = 0; trial < TRIALS; trial += 1) {
+    await page.evaluate(() => performance.clearMarks());
+    await again.click();
+    await page.waitForFunction(() => {
+      const arrived = performance.getEntriesByName("musa:snapshot", "mark")[0];
+      return (
+        arrived !== undefined &&
+        performance
+          .getEntriesByName("musa:score", "mark")
+          .some((mark) => mark.startTime > arrived.startTime)
+      );
+    });
+    samples.push(await after(page, "snapshot"));
+    await quiet(page);
+  }
+
+  expect(
+    record("B11", p95(samples)),
+    `a new reading was drawn at p95 ${Math.round(p95(samples))} ms after its snapshot`,
+  ).toBeLessThanOrEqual(250);
 });
 
 declare global {

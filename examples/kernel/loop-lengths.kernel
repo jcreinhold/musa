@@ -69,7 +69,7 @@ kernel "Loop Lengths" {
             shared1 @ "0|-|-|repeat:3"
           };
           timeline 4 {
-            occurrence "voice@0@0|repeat@4|942:1115|942:1115|4|" from 0 to 4;
+            occurrence "voice@0@0|repeat@4@2@6|942:1115|942:1115|4|" from 0 to 4;
           }
         }
       };
@@ -93,7 +93,7 @@ kernel "Loop Lengths" {
             shared3 @ "0|-|-|repeat:3"
           };
           timeline 4 {
-            occurrence "voice@0@1|repeat@4|1453:1718|1453:1718|5|" from 0 to 4;
+            occurrence "voice@0@1|repeat@4@2@6|1453:1718|1453:1718|5|" from 0 to 4;
           }
         }
       };
@@ -117,7 +117,7 @@ kernel "Loop Lengths" {
             shared5 @ "0|-|-|repeat:3"
           };
           timeline 4 {
-            occurrence "voice@1@0|repeat@4|1934:2079|1934:2079|6|" from 0 to 4;
+            occurrence "voice@1@0|repeat@4@2@6|1934:2079|1934:2079|6|" from 0 to 4;
           }
         }
       };

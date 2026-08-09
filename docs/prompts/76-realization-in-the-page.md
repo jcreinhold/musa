@@ -1,7 +1,7 @@
 ---
 id: 76
 slug: realization-in-the-page
-status: pending
+status: done
 depends_on: [59, 68]
 phase: 2
 ---
@@ -103,6 +103,76 @@ Plus, by hand and recorded in the prompt: open `examples/in-c.musa`, draw a new 
 again, and confirm the pinned decision held. That is the feature; a test that does not do it has not checked it.
 
 Commit as `Show the realization in the page`.
+
+## Repairs made while implementing
+
+1. **"New performance" counts forward; it does not draw at random.** The Design asked for "a button that draws a
+   fresh one", which is wrong in two ways: an unreproducible number cannot be tested, and a composer who liked
+   performance 42 has no way back to it. Counting forward costs nothing, because the choice at a site is
+   `fnv1a_128(seed ‖ path)` and never a stream — 43 is as unrelated to 42 as any other number is. The field is
+   editable for the same reason: the reading you liked is a number you can type back.
+
+2. **A realization change mints a revision.** Prompt 66's `realize()` documented the opposite. Making a pin undoable
+   is what forced it: the alternative was a second undo stack for decisions, so `HistoryEntry` gained the
+   realization instead and reading again, keeping, and releasing are moves in the one history. Recorded in
+   `05-states.md` §9, which distinguishes this from a preference — a performance changes the music on the page, so
+   it must be reversible where the music is.
+
+3. **The ranged repeat had to reach the fact, not just the reading.** `FactKind::Repeat` gained
+   `range: Option<(u32, u32)>` and `RepeatMark` carries it, because prompt 58's rule is that the page prints the
+   *instruction*: a bar that engraved `4×` where the composer wrote `2 to 6` would have replaced the piece with one
+   performance of it. It is an `OpenShape::Passes` so all three backends print it through the one text-direction
+   emitter they already had, and `losses()` gained one honest line. Only ranged repeats change the interchange
+   encoding, so exactly two goldens moved: `examples/kernel/{loop-lengths,in-c}.kernel`.
+
+4. **A decision has *sites*, plural.** `repeat 2 to 6` written once in each of three voices is one question — that
+   is prompt 67's rule — so `DecisionRecord` carries every span that asked, and an event finds its decision by the
+   innermost site containing it. The first implementation deduplicated on the whole decision and produced three
+   identical rows.
+
+5. **The selection is let go of when the performance changes.** An event id is a position in the score, so a piece
+   read again renumbers and `event-10` survives while naming a different note. The interface caught this before the
+   test did: after a new performance the inspector went on describing "the note", which was by then a rest four bars
+   earlier. `Workspace.reconcile` now drops the selection across a re-read rather than carrying it, because there is
+   no honest neighbour to move to between two readings.
+
+6. **The budget is B11, not "measured separately under B2".** Naming it made the reason explicit: B2's 400 ms
+   includes the 180 ms typing debounce, and a click never pays it, so folding the two together would hide a slow
+   redraw behind a wait it does not do. Measured at **p95 21 ms** from the snapshot to the ink.
+
+7. **`loop-lengths.musa` is the interface's open-form fixture, at performances 4 and 8** (two passes and six), rather
+   than `in-c.musa`. One question in three voices is the case that catches a decision coming apart per voice; In C's
+   53 sites would have made a 4000-line fixture prove less.
+
+8. **Eight screenshot goldens were regenerated here.** They had drifted from prompts 69–75 — the fermatas of prompt
+   70 among them — and were red on `HEAD` before this prompt started.
+
+### The by-hand check, recorded
+
+`examples/in-c.musa`, opened from a copy, at performance 42:
+
+```
+figure_one, first choice = 8 passes
+figure_two, first choice = 7 passes
+figure_three, first choice = 11 passes
+```
+
+Keeping the third, then drawing performance 43:
+
+```
+figure_one, first choice = 9 passes
+figure_two, first choice = 8 passes
+figure_three, first choice = 11 passes [kept]
+```
+
+The pin held; the other fifty-two were drawn again. The reading beside the piece reads:
+
+```toml
+performance = 43
+
+[kept]
+"f12:figure_three#1:0" = "count=11"
+```
 
 ## Stop
 

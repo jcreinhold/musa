@@ -71,7 +71,8 @@
           "definitionSpan": {
             "start": 1238,
             "end": 1245
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -113,7 +114,8 @@
           "definitionSpan": {
             "start": 1266,
             "end": 1273
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -155,7 +157,8 @@
           "definitionSpan": {
             "start": 1294,
             "end": 1301
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -199,7 +202,8 @@
           "definitionSpan": {
             "start": 964,
             "end": 973
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -243,7 +247,8 @@
           "definitionSpan": {
             "start": 982,
             "end": 989
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -287,7 +292,8 @@
           "definitionSpan": {
             "start": 998,
             "end": 1005
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -331,7 +337,8 @@
           "definitionSpan": {
             "start": 964,
             "end": 973
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -375,7 +382,8 @@
           "definitionSpan": {
             "start": 982,
             "end": 989
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -419,7 +427,8 @@
           "definitionSpan": {
             "start": 998,
             "end": 1005
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -461,7 +470,8 @@
           "definitionSpan": {
             "start": 1440,
             "end": 1447
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -503,7 +513,8 @@
           "definitionSpan": {
             "start": 1468,
             "end": 1475
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -545,7 +556,8 @@
           "definitionSpan": {
             "start": 1496,
             "end": 1503
-          }
+          },
+          "decision": null
         }
       }
     ],
@@ -698,7 +710,9 @@
         "field": "key",
         "value": "g major"
       }
-    ]
+    ],
+    "performance": null,
+    "decisions": []
   },
   "studio": {
     "declared": false,

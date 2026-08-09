@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 
 /** The pieces the stub can open, both written by `musa-project`'s tests. */
-export type Piece = "glass-mountain" | "large-score" | "annotated";
+export type Piece = "glass-mountain" | "large-score" | "annotated" | "open-form" | "open-form-again";
 
 function snapshotOf(piece: Piece): string {
   return fileURLToPath(new URL(`../../fixtures/${piece}.snapshot.json`, import.meta.url));
@@ -42,8 +42,12 @@ export async function stubShell(
     // two pieces, two documents, each counting its own revisions from zero.
     open: { ...(JSON.parse(readFileSync(snapshotOf(piece), "utf8")) as object), document: 1 },
     other: { ...(JSON.parse(readFileSync(snapshotOf(opens), "utf8")) as object), document: 2 },
+    // The second reading of the open work, always loaded: it is what "read
+    // it again" answers with, and the stub has no other way to produce one.
+    // For a determinate piece nothing ever asks for it (prompt 76).
+    again: { ...(JSON.parse(readFileSync(snapshotOf("open-form-again"), "utf8")) as object), document: 1 },
   };
-  await page.addInitScript((both: { open: Record<string, unknown>; other: Record<string, unknown> }) => {
+  await page.addInitScript((both: Record<"open" | "other" | "again", Record<string, unknown>>) => {
     const seed = both.open;
     const handlers = new Map<number, (payload: unknown) => void>();
     const events = new Map<string, number[]>();
@@ -222,6 +226,49 @@ export async function stubShell(
       return current;
     }
 
+    /** The part of a score this stub has anything to say about (prompt 76). */
+    interface Decision {
+      path: string;
+      pinned: boolean;
+      [key: string]: unknown;
+    }
+    interface Score {
+      performance: number | null;
+      decisions: Decision[];
+      [key: string]: unknown;
+    }
+
+    /** Which of the two committed readings of the open work is on screen. */
+    let reading = 0;
+
+    /**
+     * Restate the reading in force: which performance it is, and which of its
+     * decisions the composer kept. It mints a revision, because a different
+     * reading is a different score to lay out — and because keeping a
+     * decision has to be undoable like everything else.
+     */
+    function reperform(
+      performance: number,
+      keeps: (decision: Decision) => boolean,
+    ): Record<string, unknown> {
+      const score = current.score as Score | null;
+      const revision = (current.revision as number) + 1;
+      current = {
+        ...current,
+        revision,
+        scoreRevision: revision,
+        score: score && {
+          ...score,
+          performance,
+          decisions: (score.decisions ?? []).map((decision) => ({
+            ...decision,
+            pinned: keeps(decision),
+          })),
+        },
+      };
+      return answer();
+    }
+
     const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
       snapshot: () => current,
       // Opening replaces the document, and the piece that arrives is at its
@@ -243,6 +290,8 @@ export async function stubShell(
           kind: string;
           source?: string;
           edit?: Record<string, unknown>;
+          performance?: number;
+          decision?: string;
         };
         if (command.kind === "setSource") {
           history.push(current);
@@ -310,6 +359,36 @@ export async function stubShell(
           const previous = history.pop();
           if (previous) current = previous;
           return answer();
+        }
+        // Reading an open work again (prompt 76). The stub cannot compile, so
+        // it does the one honest thing open to it: it swaps between the two
+        // committed readings of the same source, which is what those two
+        // fixtures are for.
+        //
+        // Unless a decision is kept. This piece asks exactly one question, so
+        // "a decision is kept" and "the reading is settled" are the same
+        // sentence here: the music stands and only the number moves. That is
+        // the rule the whole control exists to make visible, and a stub that
+        // ignored it would let a screen that ignores it pass.
+        if (command.kind === "newPerformance") {
+          history.push(current);
+          const performance = Number(command.performance ?? 0);
+          const decisions = (current.score as Score | null)?.decisions ?? [];
+          if (!decisions.some((decision) => decision.pinned)) {
+            reading = 1 - reading;
+            const next = reading === 0 ? both.open : both.again;
+            current = { ...next, document: current.document, name: current.name };
+          }
+          return reperform(performance, (decision) => decision.pinned);
+        }
+        if (command.kind === "keep" || command.kind === "release") {
+          history.push(current);
+          const keep = command.kind === "keep";
+          const which = command.decision as string;
+          return reperform(
+            ((current.score as Score | null)?.performance ?? 0),
+            (decision) => (decision.path === which ? keep : decision.pinned),
+          );
         }
         return answer();
       },

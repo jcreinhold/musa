@@ -97,6 +97,18 @@ pub(crate) fn render_musicxml(plan: &NotationPlan) -> Result<String, RenderError
     // bytes on every machine and every build (§17.5's determinism rule).
     xml.leaf("software", &[], "musa")?;
     xml.close("encoding")?;
+    // Which reading this is, in the one place `MusicXML` keeps notes about a
+    // file rather than about the music. Absent for a determinate piece, which
+    // has no reading to name.
+    if let Some(performance) = front.performance {
+        xml.open("miscellaneous", &[])?;
+        xml.leaf(
+            "miscellaneous-field",
+            &[("name", "realization")],
+            &format!("One realization of an open work \u{2014} performance {performance}."),
+        )?;
+        xml.close("miscellaneous")?;
+    }
     xml.close("identification")?;
 
     xml.open("part-list", &[])?;

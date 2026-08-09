@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="5.0">
+  <meiHead>
+    <fileDesc>
+      <titleStmt>
+        <title>Loop Lengths</title>
+        <composer>musa</composer>
+      </titleStmt>
+      <pubStmt/>
+      <notesStmt>
+        <annot type="realization">One realization of an open work — performance 4.</annot>
+      </notesStmt>
+    </fileDesc>
+  </meiHead>
+  <music>
+    <body>
+      <mdiv>
+        <score>
+          <scoreDef meter.count="4" meter.unit="4" key.sig="0" key.mode="minor">
+            <pgHead>
+              <rend halign="center" valign="top">
+                <rend xml:id="front-title" fontsize="x-large">Loop Lengths</rend>
+              </rend>
+              <rend halign="right" valign="bottom">
+                <rend xml:id="front-composer">musa</rend>
+              </rend>
+            </pgHead>
+            <pgHead2>
+              <rend halign="center" valign="top" fontsize="small">– <num label="page">#</num> –</rend>
+            </pgHead2>
+            <staffGrp>
+              <staffDef n="1" lines="5">
+                <label>drums</label>
+                <labelAbbr>dru.</labelAbbr>
+              </staffDef>
+              <staffDef n="2" lines="5">
+                <label>bass</label>
+                <labelAbbr>bas.</labelAbbr>
+              </staffDef>
+            </staffGrp>
+          </scoreDef>
+          <section>
+            <measure n="1" left="rptstart" right="rptend">
+              <staff n="1">
+                <layer xml:id="layer-1-1" n="1">
+                  <note xml:id="event-0" dur="4" oct="2" pname="c"/>
+                  <note xml:id="event-1" dur="4" oct="2" pname="c"/>
+                  <note xml:id="event-2" dur="4" oct="2" pname="c"/>
+                  <note xml:id="event-3" dur="4" oct="2" pname="c"/>
+                </layer>
+                <layer xml:id="layer-1-2" n="2">
+                  <rest xml:id="event-1a" dur="8"/>
+                  <beam>
+                    <note xml:id="event-1b" dur="8" oct="3" pname="f" accid="s"/>
+                  </beam>
+                  <rest xml:id="event-1c" dur="8"/>
+                  <beam>
+                    <note xml:id="event-1d" dur="8" oct="3" pname="f" accid="s"/>
+                  </beam>
+                  <rest xml:id="event-1e" dur="8"/>
+                  <beam>
+                    <note xml:id="event-1f" dur="8" oct="3" pname="f" accid="s"/>
+                  </beam>
+                  <rest xml:id="event-20" dur="8"/>
+                  <beam>
+                    <note xml:id="event-21" dur="8" oct="3" pname="f" accid="s"/>
+                  </beam>
+                </layer>
+              </staff>
+              <staff n="2">
+                <layer xml:id="layer-2-1" n="1">
+                  <note xml:id="event-4a" dur="2" oct="1" pname="a"/>
+                  <note xml:id="event-4b" dur="4" oct="2" pname="e"/>
+                  <note xml:id="event-4c" dur="4" oct="1" pname="g"/>
+                </layer>
+              </staff>
+              <tempo staff="1" tstamp="1" place="above" mm="124" mm.unit="4" midi.bpm="124"/>
+            </measure>
+            <measure n="2" left="rptstart" right="rptend">
+              <staff n="1">
+                <layer xml:id="layer-1-1" n="1">
+                  <note xml:id="event-10" dur="4" oct="2" pname="c"/>
+                  <note xml:id="event-11" dur="4" oct="2" pname="c"/>
+                  <beam>
+                    <note xml:id="event-12" dur="8" oct="2" pname="c"/>
+                    <note xml:id="event-13" dur="8" oct="2" pname="c"/>
+                  </beam>
+                  <note xml:id="event-14" dur="4" oct="2" pname="c"/>
+                </layer>
+                <layer xml:id="layer-1-2" n="2">
+                  <beam>
+                    <note xml:id="event-3a" dur="8" oct="3" pname="f" accid="s"/>
+                    <note xml:id="event-3b" dur="8" oct="3" pname="f" accid="s"/>
+                  </beam>
+                  <beam>
+                    <note xml:id="event-3c" dur="8" oct="3" pname="f" accid="s"/>
+                    <note xml:id="event-3d" dur="8" oct="3" pname="f" accid="s"/>
+                  </beam>
+                  <beam>
+                    <note xml:id="event-3e" dur="8" oct="3" pname="f" accid="s"/>
+                    <note xml:id="event-3f" dur="8" oct="3" pname="f" accid="s"/>
+                  </beam>
+                  <beam>
+                    <note xml:id="event-40" dur="8" oct="3" pname="f" accid="s"/>
+                    <note xml:id="event-41" dur="8" oct="3" pname="f" accid="s"/>
+                  </beam>
+                </layer>
+              </staff>
+              <staff n="2">
+                <layer xml:id="layer-2-1" n="1">
+                  <note xml:id="event-56" dur="4" oct="1" pname="a"/>
+                  <note xml:id="event-57" dur="4" oct="1" pname="a"/>
+                  <note xml:id="event-58" dur="4" oct="2" pname="c"/>
+                  <note xml:id="event-59" dur="4" oct="2" pname="e"/>
+                </layer>
+              </staff>
+              <dir staff="1" tstamp="1" tstamp2="0m+1" place="above">2–6×</dir>
+            </measure>
+          </section>
+        </score>
+      </mdiv>
+    </body>
+  </music>
+</mei>

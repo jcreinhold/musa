@@ -70,6 +70,7 @@
     onpitch,
     onduration,
     onheader,
+    onkeep,
     onreveal,
     ondiagnostic,
     oncaret,
@@ -133,6 +134,8 @@
     onduration: (event: string, duration: string) => void;
     /** Rewrite one of the piece's own statements (prompt 54). */
     onheader: (field: HeaderFieldDto, value: string) => void;
+    /** Keep a decision as it came out, or let it go back to being drawn. */
+    onkeep: (path: string, keep: boolean) => void;
     onreveal: (span: Span) => void;
     ondiagnostic: (diagnostic: Diagnostic) => void;
     /** The source caret moved; the score follows it (roadmap §14.4). */
@@ -150,6 +153,14 @@
   // What the inspector describes is what the composer picked, not where work
   // is happening: with nothing picked it shows the piece instead (prompt 54).
   const chosen = $derived(workspace.chosen);
+  // Which decision the picked note was played under. The core resolved that;
+  // this is the lookup it hands over, and it is null in every determinate
+  // piece.
+  const decision = $derived(
+    chosen?.origin.decision !== null && chosen?.origin.decision !== undefined
+      ? (score?.decisions?.[chosen.origin.decision] ?? null)
+      : null,
+  );
   const problems = $derived(snapshot?.diagnostics.filter((d) => d.severity === "error") ?? []);
 
   /**
@@ -433,6 +444,8 @@
           {choice}
           {naming}
           onorigin={(depth) => workspace.selectOrigin(depth)}
+          {decision}
+          onkeep={session.live ? onkeep : undefined}
           siblings={focus.spelled(chosen?.origin.definitionSpan)}
           {onconfirm}
           {onspecialize}

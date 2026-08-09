@@ -136,6 +136,20 @@ fn write_head(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<(), R
             .map_err(|error| RenderError::xml(&error))?;
     }
 
+    // Which reading this is. A determinate piece has none and writes none:
+    // every realization of it produces this file, so naming a seed would be a
+    // claim the document does not need.
+    if let Some(performance) = front.performance {
+        start(writer, "notesStmt")?;
+        text_element(
+            writer,
+            "annot",
+            &format!("One realization of an open work \u{2014} performance {performance}."),
+            &[("type", "realization")],
+        )?;
+        end(writer, "notesStmt")?;
+    }
+
     end(writer, "fileDesc")?;
     end(writer, "meiHead")
 }

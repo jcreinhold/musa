@@ -113,3 +113,29 @@ fn mei_fixtures_are_current() -> Result {
     }
     Ok(())
 }
+
+/// The open work, at two performances (prompt 76).
+///
+/// Two, because one proves nothing: the interface has to show that a
+/// performance is a *reading* — that the same source, drawn again, says
+/// something else — and a single fixture would let a screen that hard-codes
+/// one answer pass. The two are committed side by side so the UI's tests can
+/// hold them against each other.
+#[test]
+fn open_form_fixtures_are_current() -> Result {
+    let source = std::fs::read_to_string(example("loop-lengths.musa"))?;
+    for (name, performance) in [("open-form", 4_u64), ("open-form-again", 8)] {
+        let mut session = ProjectSession::from_text(source.clone(), "loop-lengths.musa");
+        session.realize(musa_compiler::Realization::seeded(performance));
+        assert!(session.snapshot().compiles(), "the fixture piece must compile");
+
+        let mut json = serde_json::to_string_pretty(&anonymous(session.snapshot().to_wire()))?;
+        json.push('\n');
+        write_or_compare(&fixtures_dir().join(format!("{name}.snapshot.json")), &json)?;
+
+        let artifact = session.export(ExportRequest::Mei)?;
+        let mei = artifact.as_text().unwrap_or_default();
+        write_or_compare(&fixtures_dir().join(format!("{name}.mei")), mei)?;
+    }
+    Ok(())
+}

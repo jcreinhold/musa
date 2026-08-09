@@ -71,7 +71,8 @@
           "definitionSpan": {
             "start": 873,
             "end": 880
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -113,7 +114,8 @@
           "definitionSpan": {
             "start": 901,
             "end": 908
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -155,7 +157,8 @@
           "definitionSpan": {
             "start": 929,
             "end": 936
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -197,7 +200,8 @@
           "definitionSpan": {
             "start": 957,
             "end": 964
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -239,7 +243,8 @@
           "definitionSpan": {
             "start": 985,
             "end": 992
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -281,7 +286,8 @@
           "definitionSpan": {
             "start": 1069,
             "end": 1076
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -323,7 +329,8 @@
           "definitionSpan": {
             "start": 1097,
             "end": 1104
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -365,7 +372,8 @@
           "definitionSpan": {
             "start": 1125,
             "end": 1133
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -407,7 +415,8 @@
           "definitionSpan": {
             "start": 1154,
             "end": 1159
-          }
+          },
+          "decision": null
         }
       }
     ],
@@ -515,7 +524,9 @@
         "field": "key",
         "value": "a minor"
       }
-    ]
+    ],
+    "performance": null,
+    "decisions": []
   },
   "studio": {
     "declared": false,

@@ -15,6 +15,7 @@ NotationPlan {
         copyright: Some(
             "© 2026. Licensed CC BY-SA 4.0.",
         ),
+        performance: None,
     },
     staves: [
         StaffPlan {

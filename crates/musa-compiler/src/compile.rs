@@ -63,7 +63,7 @@ pub struct Compilation {
     studio: crate::studio::StudioSpec,
     diagnostics: Vec<Diagnostic>,
     identity: musa_kernel::SemanticHash,
-    decisions: Vec<(crate::ChoicePath, crate::Decision)>,
+    decisions: Vec<crate::DecisionRecord>,
     references: crate::resolve::ReferenceIndex,
 }
 
@@ -89,7 +89,7 @@ impl Compilation {
         self
     }
 
-    pub(crate) fn with_decisions(mut self, decisions: Vec<(crate::ChoicePath, crate::Decision)>) -> Self {
+    pub(crate) fn with_decisions(mut self, decisions: Vec<crate::DecisionRecord>) -> Self {
         self.decisions = decisions;
         self
     }
@@ -117,7 +117,7 @@ impl Compilation {
     /// piece actually asked and what it was answered, which is what a header
     /// line records and what prompt 76 shows on the page. A determinate piece
     /// returns nothing, under every seed.
-    pub fn decisions(&self) -> &[(crate::ChoicePath, crate::Decision)] {
+    pub fn decisions(&self) -> &[crate::DecisionRecord] {
         &self.decisions
     }
 

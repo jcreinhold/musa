@@ -23,6 +23,7 @@ score (`tests/fixtures/large-score.musa`, created at prompt 22) for the large ca
 | B8 | Zoom step → re-laid-out page | ≤ 250 ms, previous page visible throughout | Zoom is a full Verovio layout at a new page size, so it cannot be a frame; it can be quick enough that the composer reads it as the same page, larger. |
 | B9 | Origin view enter/leave | ≤ 120 ms, no layout reflow | It is an ink change; it must cost like one. |
 | B10 | Idle CPU with playback stopped | **≈ 0 %** — no polling timers, no rAF loop | An editor that heats a laptop while nothing happens will not be used. |
+| B11 | New performance → the new reading drawn (prompt 76) | ≤ 250 ms from the snapshot, previous page visible throughout | Measured apart from B2 on purpose: B2 is what an *edit* costs and its 400 ms includes the 180 ms typing debounce, which a click never pays. Folding the two together would hide a slow redraw behind a wait it does not do. |
 
 ## 2. How they are measured
 

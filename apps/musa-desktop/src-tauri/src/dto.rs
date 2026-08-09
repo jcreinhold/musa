@@ -92,6 +92,25 @@ pub enum CommandDto {
     DiscardRecovery,
     Undo,
     Redo,
+    /// Read the open work again (prompt 76).
+    ///
+    /// The number is the webview's because a performance is a *label*, not a
+    /// musical fact: the composer picks it, types it, and comes back to it.
+    /// Everything the number means is the compiler's.
+    #[serde(rename_all = "camelCase")]
+    NewPerformance {
+        performance: u64,
+    },
+    /// Keep one decision, so the next performance leaves it alone.
+    #[serde(rename_all = "camelCase")]
+    Keep {
+        decision: String,
+    },
+    /// Let it go back to being drawn.
+    #[serde(rename_all = "camelCase")]
+    Release {
+        decision: String,
+    },
 }
 
 /// What to do when the edited event came out of an expansion (roadmap §9).
@@ -322,6 +341,9 @@ impl CommandDto {
             Self::DiscardRecovery => Request::Command(ProjectCommand::DiscardRecovery),
             Self::Undo => Request::Undo,
             Self::Redo => Request::Redo,
+            Self::NewPerformance { performance } => Request::Command(ProjectCommand::NewPerformance { performance }),
+            Self::Keep { decision } => Request::Command(ProjectCommand::Pin(decision)),
+            Self::Release { decision } => Request::Command(ProjectCommand::Unpin(decision)),
         }
     }
 }

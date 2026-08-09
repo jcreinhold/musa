@@ -10,6 +10,7 @@
   import TypographicRow from "../lib/ui/TypographicRow.svelte";
   import EditableValue from "../lib/ui/EditableValue.svelte";
   import type {
+    DecisionFact,
     EditImpact,
     EventFacts,
     HeaderFact,
@@ -25,6 +26,8 @@
     choice = null,
     naming = null,
     onorigin,
+    decision = null,
+    onkeep,
     siblings = 0,
     onconfirm,
     onspecialize,
@@ -51,6 +54,18 @@
      * in — the engraving goldens.
      */
     onorigin?: (depth: number) => void;
+    /**
+     * The decision this event was played under, when one was made (prompt
+     * 76). Null in a determinate piece and for a note no open construct
+     * covers, and the row is then not there: a piece that asked nothing has
+     * nothing to answer for.
+     */
+    decision?: DecisionFact | null;
+    /**
+     * Keep this decision as it came out, or let it go back to being drawn.
+     * Absent while the session is not live.
+     */
+    onkeep?: (path: string, keep: boolean) => void;
     /**
      * How many notes the statement that spells this one spelled in all
      * (prompt 52). One is the ordinary case and says nothing; more is the fact
@@ -302,6 +317,41 @@
         <span class="authored">authored</span>
       {/if}
     </TypographicRow>
+
+    <!--
+      The last step of the origin, and the only one that is not about where
+      the note is written: it is about why there are this many of them
+      (prompt 76). The source says what the piece allows; this row says what
+      this reading decided, and offers the one control that makes a decision
+      stop moving.
+
+      Both strings are the core's. "the fill, first choice" and "4 passes"
+      are musical sentences, and a frontend that assembled them would be
+      spelling a musical fact (`03-interaction.md` §7).
+    -->
+    {#if decision}
+      <TypographicRow label="Decision">
+        {#snippet trailing()}
+          {#if onkeep}
+            <button
+              type="button"
+              class="segment keep"
+              aria-pressed={decision.pinned}
+              onclick={() => onkeep(decision.path, !decision.pinned)}
+              >{decision.pinned ? "kept" : "keep this one"}</button
+            >
+          {:else if decision.pinned}<span class="kept">kept</span>{/if}
+        {/snippet}
+        <span class="path">
+          {#if onreveal}<button
+              type="button"
+              class="segment"
+              onclick={() => onreveal(decision.span)}>{decision.asked}</button
+            >{:else}<span class="segment">{decision.asked}</span>{/if}<span class="sep">▸</span
+          ><span class="segment answered">{decision.answered}</span>
+        </span>
+      </TypographicRow>
+    {/if}
   </div>
 {:else if header.length > 0}
   <!--
@@ -503,6 +553,24 @@
   /* The line number is chrome, not provenance: it stays the row's quiet trailing. */
   button.segment.line {
     color: inherit;
+  }
+
+  /* What this reading decided is a fact about the performance, not about the
+     source, so it is not --plate: nothing generated it. */
+  .path .segment.answered {
+    color: var(--ink);
+  }
+
+  /* "keep this one" is an offer; "kept" is a state. One control says both,
+     and the underline is what tells them apart. */
+  .kept,
+  button.segment.keep {
+    color: var(--ink-muted);
+  }
+
+  button.segment.keep[aria-pressed="true"] {
+    color: var(--ink);
+    text-decoration: underline;
   }
 
   .path {

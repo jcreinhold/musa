@@ -2,13 +2,13 @@ events 8
 tags
   defs 1
   desc 1
-  g 71
-  path 48
+  g 74
+  path 49
   style 1
   svg 1
   text 4
   tspan 8
-  use 20
+  use 22
 classes
   accid 2
   barLine 2
@@ -16,6 +16,7 @@ classes
   chord 1
   clef 2
   definition-scale 1
+  fermata 2
   keyAccid 2
   keySig 2
   label 2

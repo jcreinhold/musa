@@ -86,7 +86,8 @@
           "definitionSpan": {
             "start": 234,
             "end": 243
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -126,7 +127,8 @@
           "definitionSpan": {
             "start": 252,
             "end": 261
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -170,7 +172,8 @@
           "definitionSpan": {
             "start": 270,
             "end": 277
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -214,7 +217,8 @@
           "definitionSpan": {
             "start": 286,
             "end": 293
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -258,7 +262,8 @@
           "definitionSpan": {
             "start": 302,
             "end": 309
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -303,7 +308,8 @@
           "definitionSpan": {
             "start": 234,
             "end": 243
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -344,7 +350,8 @@
           "definitionSpan": {
             "start": 252,
             "end": 261
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -389,7 +396,8 @@
           "definitionSpan": {
             "start": 270,
             "end": 277
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -434,7 +442,8 @@
           "definitionSpan": {
             "start": 286,
             "end": 293
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -479,7 +488,8 @@
           "definitionSpan": {
             "start": 302,
             "end": 309
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -521,7 +531,8 @@
           "definitionSpan": {
             "start": 607,
             "end": 612
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -563,7 +574,8 @@
           "definitionSpan": {
             "start": 629,
             "end": 634
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -605,7 +617,8 @@
           "definitionSpan": {
             "start": 651,
             "end": 656
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -647,7 +660,8 @@
           "definitionSpan": {
             "start": 673,
             "end": 679
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -689,7 +703,8 @@
           "definitionSpan": {
             "start": 960,
             "end": 965
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -731,7 +746,8 @@
           "definitionSpan": {
             "start": 986,
             "end": 991
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -773,7 +789,8 @@
           "definitionSpan": {
             "start": 1012,
             "end": 1017
-          }
+          },
+          "decision": null
         }
       },
       {
@@ -815,7 +832,8 @@
           "definitionSpan": {
             "start": 1038,
             "end": 1043
-          }
+          },
+          "decision": null
         }
       }
     ],
@@ -904,7 +922,9 @@
         "field": "key",
         "value": "a minor"
       }
-    ]
+    ],
+    "performance": null,
+    "decisions": []
   },
   "studio": {
     "declared": true,

@@ -9,6 +9,7 @@ NotationPlan {
         composer: None,
         arranger: None,
         copyright: None,
+        performance: None,
     },
     staves: [
         StaffPlan {
@@ -1116,6 +1117,7 @@ NotationPlan {
             from: 1,
             to: 2,
             times: 2,
+            range: None,
             endings: [
                 VoltaMark {
                     passes: [

@@ -1,0 +1,7610 @@
+{
+  "document": 0,
+  "name": "loop-lengths.musa",
+  "source": "// A four-bar house pattern whose fills run \"a few times\" rather than a fixed\n// number. `repeat 2 to 6 { … }` is the piece saying how long the figure may\n// run and leaving the rest to the performance — the same sentence a DJ writes\n// as \"loop until the cue lands\" and a folk singer writes as \"as many verses as\n// there are\".\n//\n// The count is chosen once, at compile time, from the realization\n// (`musa check examples/loop-lengths.musa --seed 42`). Everything below that\n// choice is an ordinary exact repeat, which is why the kernel gains nothing\n// from this file: see docs/kernel/11-realization.md.\npiece \"Loop Lengths\" {\n    composer \"musa\";\n\n    tempo 1/4 = 124;\n    meter 4/4;\n    key a minor;\n\n    score {\n        part drums {\n            voice kick {\n                repeat 4 {\n                    c2 1/4;\n                    c2 1/4;\n                    c2 1/4;\n                    c2 1/4;\n                }\n                repeat 2 to 6 {\n                    c2 1/4;\n                    c2 1/4;\n                    c2 1/8;\n                    c2 1/8;\n                    c2 1/4;\n                }\n            }\n\n            voice hats {\n                repeat 4 {\n                    rest 1/8;\n                    fs3 1/8;\n                    rest 1/8;\n                    fs3 1/8;\n                    rest 1/8;\n                    fs3 1/8;\n                    rest 1/8;\n                    fs3 1/8;\n                }\n                repeat 2 to 6 {\n                    fs3 1/8;\n                    fs3 1/8;\n                    fs3 1/8;\n                    fs3 1/8;\n                    fs3 1/8;\n                    fs3 1/8;\n                    fs3 1/8;\n                    fs3 1/8;\n                }\n            }\n        }\n\n        part bass {\n            voice line {\n                repeat 4 {\n                    a1 1/2;\n                    e2 1/4;\n                    g1 1/4;\n                }\n                repeat 2 to 6 {\n                    a1 1/4;\n                    a1 1/4;\n                    c2 1/4;\n                    e2 1/4;\n                }\n            }\n        }\n    }\n}\n",
+  "revision": 1,
+  "compiles": true,
+  "unsaved": true,
+  "autosaved": false,
+  "recovery": null,
+  "midiPort": null,
+  "diagnostics": [],
+  "mei": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n  <meiHead>\n    <fileDesc>\n      <titleStmt>\n        <title>Loop Lengths</title>\n        <composer>musa</composer>\n      </titleStmt>\n      <pubStmt/>\n      <notesStmt>\n        <annot type=\"realization\">One realization of an open work — performance 8.</annot>\n      </notesStmt>\n    </fileDesc>\n  </meiHead>\n  <music>\n    <body>\n      <mdiv>\n        <score>\n          <scoreDef meter.count=\"4\" meter.unit=\"4\" key.sig=\"0\" key.mode=\"minor\">\n            <pgHead>\n              <rend halign=\"center\" valign=\"top\">\n                <rend xml:id=\"front-title\" fontsize=\"x-large\">Loop Lengths</rend>\n              </rend>\n              <rend halign=\"right\" valign=\"bottom\">\n                <rend xml:id=\"front-composer\">musa</rend>\n              </rend>\n            </pgHead>\n            <pgHead2>\n              <rend halign=\"center\" valign=\"top\" fontsize=\"small\">– <num label=\"page\">#</num> –</rend>\n            </pgHead2>\n            <staffGrp>\n              <staffDef n=\"1\" lines=\"5\">\n                <label>drums</label>\n                <labelAbbr>dru.</labelAbbr>\n              </staffDef>\n              <staffDef n=\"2\" lines=\"5\">\n                <label>bass</label>\n                <labelAbbr>bas.</labelAbbr>\n              </staffDef>\n            </staffGrp>\n          </scoreDef>\n          <section>\n            <measure n=\"1\" left=\"rptstart\" right=\"rptend\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-0\" dur=\"4\" oct=\"2\" pname=\"c\"/>\n                  <note xml:id=\"event-1\" dur=\"4\" oct=\"2\" pname=\"c\"/>\n                  <note xml:id=\"event-2\" dur=\"4\" oct=\"2\" pname=\"c\"/>\n                  <note xml:id=\"event-3\" dur=\"4\" oct=\"2\" pname=\"c\"/>\n                </layer>\n                <layer xml:id=\"layer-1-2\" n=\"2\">\n                  <rest xml:id=\"event-2e\" dur=\"8\"/>\n                  <beam>\n                    <note xml:id=\"event-2f\" dur=\"8\" oct=\"3\" pname=\"f\" accid=\"s\"/>\n                  </beam>\n                  <rest xml:id=\"event-30\" dur=\"8\"/>\n                  <beam>\n                    <note xml:id=\"event-31\" dur=\"8\" oct=\"3\" pname=\"f\" accid=\"s\"/>\n                  </beam>\n                  <rest xml:id=\"event-32\" dur=\"8\"/>\n                  <beam>\n                    <note xml:id=\"event-33\" dur=\"8\" oct=\"3\" pname=\"f\" accid=\"s\"/>\n                  </beam>\n                  <rest xml:id=\"event-34\" dur=\"8\"/>\n                  <beam>\n                    <note xml:id=\"event-35\" dur=\"8\" oct=\"3\" pname=\"f\" accid=\"s\"/>\n                  </beam>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-7e\" dur=\"2\" oct=\"1\" pname=\"a\"/>\n                  <note xml:id=\"event-7f\" dur=\"4\" oct=\"2\" pname=\"e\"/>\n                  <note xml:id=\"event-80\" dur=\"4\" oct=\"1\" pname=\"g\"/>\n                </layer>\n              </staff>\n              <tempo staff=\"1\" tstamp=\"1\" place=\"above\" mm=\"124\" mm.unit=\"4\" midi.bpm=\"124\"/>\n            </measure>\n            <measure n=\"2\" left=\"rptstart\" right=\"rptend\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-10\" dur=\"4\" oct=\"2\" pname=\"c\"/>\n                  <note xml:id=\"event-11\" dur=\"4\" oct=\"2\" pname=\"c\"/>\n                  <beam>\n                    <note xml:id=\"event-12\" dur=\"8\" oct=\"2\" pname=\"c\"/>\n                    <note xml:id=\"event-13\" dur=\"8\" oct=\"2\" pname=\"c\"/>\n                  </beam>\n                  <note xml:id=\"event-14\" dur=\"4\" oct=\"2\" pname=\"c\"/>\n                </layer>\n                <layer xml:id=\"layer-1-2\" n=\"2\">\n                  <beam>\n                    <note xml:id=\"event-4e\" dur=\"8\" oct=\"3\" pname=\"f\" accid=\"s\"/>\n                    <note xml:id=\"event-4f\" dur=\"8\" oct=\"3\" pname=\"f\" accid=\"s\"/>\n                  </beam>\n                  <beam>\n                    <note xml:id=\"event-50\" dur=\"8\" oct=\"3\" pname=\"f\" accid=\"s\"/>\n                    <note xml:id=\"event-51\" dur=\"8\" oct=\"3\" pname=\"f\" accid=\"s\"/>\n                  </beam>\n                  <beam>\n                    <note xml:id=\"event-52\" dur=\"8\" oct=\"3\" pname=\"f\" accid=\"s\"/>\n                    <note xml:id=\"event-53\" dur=\"8\" oct=\"3\" pname=\"f\" accid=\"s\"/>\n                  </beam>\n                  <beam>\n                    <note xml:id=\"event-54\" dur=\"8\" oct=\"3\" pname=\"f\" accid=\"s\"/>\n                    <note xml:id=\"event-55\" dur=\"8\" oct=\"3\" pname=\"f\" accid=\"s\"/>\n                  </beam>\n                </layer>\n              </staff>\n              <staff n=\"2\">\n                <layer xml:id=\"layer-2-1\" n=\"1\">\n                  <note xml:id=\"event-8a\" dur=\"4\" oct=\"1\" pname=\"a\"/>\n                  <note xml:id=\"event-8b\" dur=\"4\" oct=\"1\" pname=\"a\"/>\n                  <note xml:id=\"event-8c\" dur=\"4\" oct=\"2\" pname=\"c\"/>\n                  <note xml:id=\"event-8d\" dur=\"4\" oct=\"2\" pname=\"e\"/>\n                </layer>\n              </staff>\n              <dir staff=\"1\" tstamp=\"1\" tstamp2=\"0m+1\" place=\"above\">2–6×</dir>\n            </measure>\n          </section>\n        </score>\n      </mdiv>\n    </body>\n  </music>\n</mei>",
+  "score": {
+    "title": "Loop Lengths",
+    "tempoBpm": 124,
+    "tempoBeat": {
+      "numerator": 1,
+      "denominator": 4
+    },
+    "key": "A minor",
+    "meterCount": 4,
+    "meterUnit": 4,
+    "parts": [
+      {
+        "name": "drums",
+        "voices": [
+          {
+            "name": "kick",
+            "generated": true
+          },
+          {
+            "name": "hats",
+            "generated": true
+          }
+        ]
+      },
+      {
+        "name": "bass",
+        "voices": [
+          {
+            "name": "line",
+            "generated": true
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-0",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 0,
+        "endFrames": 23226,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 1,
+          "occurrence": "occurrence-0",
+          "line": 22,
+          "span": {
+            "start": 812,
+            "end": 819
+          },
+          "definitionSpan": {
+            "start": 812,
+            "end": 819
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-1",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 23226,
+        "endFrames": 46452,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 2,
+          "occurrence": "occurrence-0",
+          "line": 23,
+          "span": {
+            "start": 840,
+            "end": 847
+          },
+          "definitionSpan": {
+            "start": 840,
+            "end": 847
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-2",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 46452,
+        "endFrames": 69677,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 3,
+          "occurrence": "occurrence-0",
+          "line": 24,
+          "span": {
+            "start": 868,
+            "end": 875
+          },
+          "definitionSpan": {
+            "start": 868,
+            "end": 875
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-3",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 69677,
+        "endFrames": 92903,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 4,
+          "occurrence": "occurrence-0",
+          "line": 25,
+          "span": {
+            "start": 896,
+            "end": 903
+          },
+          "definitionSpan": {
+            "start": 896,
+            "end": 903
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-4",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 2,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 92903,
+        "endFrames": 116129,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 1,
+          "occurrence": "occurrence-1",
+          "line": 22,
+          "span": {
+            "start": 812,
+            "end": 819
+          },
+          "definitionSpan": {
+            "start": 812,
+            "end": 819
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-5",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 2,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 116129,
+        "endFrames": 139355,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 2,
+          "occurrence": "occurrence-1",
+          "line": 23,
+          "span": {
+            "start": 840,
+            "end": 847
+          },
+          "definitionSpan": {
+            "start": 840,
+            "end": 847
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-6",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 2,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 139355,
+        "endFrames": 162581,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 3,
+          "occurrence": "occurrence-1",
+          "line": 24,
+          "span": {
+            "start": 868,
+            "end": 875
+          },
+          "definitionSpan": {
+            "start": 868,
+            "end": 875
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-7",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 2,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 162581,
+        "endFrames": 185806,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 4,
+          "occurrence": "occurrence-1",
+          "line": 25,
+          "span": {
+            "start": 896,
+            "end": 903
+          },
+          "definitionSpan": {
+            "start": 896,
+            "end": 903
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-8",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 3,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 185806,
+        "endFrames": 209032,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 1,
+          "occurrence": "occurrence-2",
+          "line": 22,
+          "span": {
+            "start": 812,
+            "end": 819
+          },
+          "definitionSpan": {
+            "start": 812,
+            "end": 819
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-9",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 3,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 209032,
+        "endFrames": 232258,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 2,
+          "occurrence": "occurrence-2",
+          "line": 23,
+          "span": {
+            "start": 840,
+            "end": 847
+          },
+          "definitionSpan": {
+            "start": 840,
+            "end": 847
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-a",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 3,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 232258,
+        "endFrames": 255484,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 3,
+          "occurrence": "occurrence-2",
+          "line": 24,
+          "span": {
+            "start": 868,
+            "end": 875
+          },
+          "definitionSpan": {
+            "start": 868,
+            "end": 875
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-b",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 3,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 255484,
+        "endFrames": 278710,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 4,
+          "occurrence": "occurrence-2",
+          "line": 25,
+          "span": {
+            "start": 896,
+            "end": 903
+          },
+          "definitionSpan": {
+            "start": 896,
+            "end": 903
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-c",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 4,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 278710,
+        "endFrames": 301935,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 1,
+          "occurrence": "occurrence-3",
+          "line": 22,
+          "span": {
+            "start": 812,
+            "end": 819
+          },
+          "definitionSpan": {
+            "start": 812,
+            "end": 819
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-d",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 4,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 301935,
+        "endFrames": 325161,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 2,
+          "occurrence": "occurrence-3",
+          "line": 23,
+          "span": {
+            "start": 840,
+            "end": 847
+          },
+          "definitionSpan": {
+            "start": 840,
+            "end": 847
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-e",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 4,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 325161,
+        "endFrames": 348387,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 3,
+          "occurrence": "occurrence-3",
+          "line": 24,
+          "span": {
+            "start": 868,
+            "end": 875
+          },
+          "definitionSpan": {
+            "start": 868,
+            "end": 875
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-f",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 4,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 348387,
+        "endFrames": 371613,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 4,
+          "occurrence": "occurrence-3",
+          "line": 25,
+          "span": {
+            "start": 896,
+            "end": 903
+          },
+          "definitionSpan": {
+            "start": 896,
+            "end": 903
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-10",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 5,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 371613,
+        "endFrames": 394839,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 5,
+          "occurrence": "occurrence-0",
+          "line": 28,
+          "span": {
+            "start": 974,
+            "end": 981
+          },
+          "definitionSpan": {
+            "start": 974,
+            "end": 981
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-11",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 5,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 394839,
+        "endFrames": 418065,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 6,
+          "occurrence": "occurrence-0",
+          "line": 29,
+          "span": {
+            "start": 1002,
+            "end": 1009
+          },
+          "definitionSpan": {
+            "start": 1002,
+            "end": 1009
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-12",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 5,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 418065,
+        "endFrames": 429677,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 7,
+          "occurrence": "occurrence-0",
+          "line": 30,
+          "span": {
+            "start": 1030,
+            "end": 1037
+          },
+          "definitionSpan": {
+            "start": 1030,
+            "end": 1037
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-13",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 5,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 429677,
+        "endFrames": 441290,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 8,
+          "occurrence": "occurrence-0",
+          "line": 31,
+          "span": {
+            "start": 1058,
+            "end": 1065
+          },
+          "definitionSpan": {
+            "start": 1058,
+            "end": 1065
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-14",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 5,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 441290,
+        "endFrames": 464516,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 9,
+          "occurrence": "occurrence-0",
+          "line": 32,
+          "span": {
+            "start": 1086,
+            "end": 1093
+          },
+          "definitionSpan": {
+            "start": 1086,
+            "end": 1093
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-15",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 6,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 464516,
+        "endFrames": 487742,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 5,
+          "occurrence": "occurrence-1",
+          "line": 28,
+          "span": {
+            "start": 974,
+            "end": 981
+          },
+          "definitionSpan": {
+            "start": 974,
+            "end": 981
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-16",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 6,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 487742,
+        "endFrames": 510968,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 6,
+          "occurrence": "occurrence-1",
+          "line": 29,
+          "span": {
+            "start": 1002,
+            "end": 1009
+          },
+          "definitionSpan": {
+            "start": 1002,
+            "end": 1009
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-17",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 6,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 510968,
+        "endFrames": 522581,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 7,
+          "occurrence": "occurrence-1",
+          "line": 30,
+          "span": {
+            "start": 1030,
+            "end": 1037
+          },
+          "definitionSpan": {
+            "start": 1030,
+            "end": 1037
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-18",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 6,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 522581,
+        "endFrames": 534194,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 8,
+          "occurrence": "occurrence-1",
+          "line": 31,
+          "span": {
+            "start": 1058,
+            "end": 1065
+          },
+          "definitionSpan": {
+            "start": 1058,
+            "end": 1065
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-19",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 6,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 534194,
+        "endFrames": 557419,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 9,
+          "occurrence": "occurrence-1",
+          "line": 32,
+          "span": {
+            "start": 1086,
+            "end": 1093
+          },
+          "definitionSpan": {
+            "start": 1086,
+            "end": 1093
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-1a",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 7,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 557419,
+        "endFrames": 580645,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 5,
+          "occurrence": "occurrence-2",
+          "line": 28,
+          "span": {
+            "start": 974,
+            "end": 981
+          },
+          "definitionSpan": {
+            "start": 974,
+            "end": 981
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-1b",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 7,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 580645,
+        "endFrames": 603871,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 6,
+          "occurrence": "occurrence-2",
+          "line": 29,
+          "span": {
+            "start": 1002,
+            "end": 1009
+          },
+          "definitionSpan": {
+            "start": 1002,
+            "end": 1009
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-1c",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 7,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 603871,
+        "endFrames": 615484,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 7,
+          "occurrence": "occurrence-2",
+          "line": 30,
+          "span": {
+            "start": 1030,
+            "end": 1037
+          },
+          "definitionSpan": {
+            "start": 1030,
+            "end": 1037
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-1d",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 7,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 615484,
+        "endFrames": 627097,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 8,
+          "occurrence": "occurrence-2",
+          "line": 31,
+          "span": {
+            "start": 1058,
+            "end": 1065
+          },
+          "definitionSpan": {
+            "start": 1058,
+            "end": 1065
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-1e",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 7,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 627097,
+        "endFrames": 650323,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 9,
+          "occurrence": "occurrence-2",
+          "line": 32,
+          "span": {
+            "start": 1086,
+            "end": 1093
+          },
+          "definitionSpan": {
+            "start": 1086,
+            "end": 1093
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-1f",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 8,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 650323,
+        "endFrames": 673548,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 5,
+          "occurrence": "occurrence-3",
+          "line": 28,
+          "span": {
+            "start": 974,
+            "end": 981
+          },
+          "definitionSpan": {
+            "start": 974,
+            "end": 981
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-20",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 8,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 673548,
+        "endFrames": 696774,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 6,
+          "occurrence": "occurrence-3",
+          "line": 29,
+          "span": {
+            "start": 1002,
+            "end": 1009
+          },
+          "definitionSpan": {
+            "start": 1002,
+            "end": 1009
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-21",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 8,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 696774,
+        "endFrames": 708387,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 7,
+          "occurrence": "occurrence-3",
+          "line": 30,
+          "span": {
+            "start": 1030,
+            "end": 1037
+          },
+          "definitionSpan": {
+            "start": 1030,
+            "end": 1037
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-22",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 8,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 708387,
+        "endFrames": 720000,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 8,
+          "occurrence": "occurrence-3",
+          "line": 31,
+          "span": {
+            "start": 1058,
+            "end": 1065
+          },
+          "definitionSpan": {
+            "start": 1058,
+            "end": 1065
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-23",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 8,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 720000,
+        "endFrames": 743226,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 9,
+          "occurrence": "occurrence-3",
+          "line": 32,
+          "span": {
+            "start": 1086,
+            "end": 1093
+          },
+          "definitionSpan": {
+            "start": 1086,
+            "end": 1093
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-24",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 9,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 743226,
+        "endFrames": 766452,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 1,
+          "occurrence": "occurrence-4",
+          "line": 28,
+          "span": {
+            "start": 974,
+            "end": 981
+          },
+          "definitionSpan": {
+            "start": 974,
+            "end": 981
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-25",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 9,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 766452,
+        "endFrames": 789677,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 2,
+          "occurrence": "occurrence-4",
+          "line": 29,
+          "span": {
+            "start": 1002,
+            "end": 1009
+          },
+          "definitionSpan": {
+            "start": 1002,
+            "end": 1009
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-26",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 9,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 789677,
+        "endFrames": 801290,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 3,
+          "occurrence": "occurrence-4",
+          "line": 30,
+          "span": {
+            "start": 1030,
+            "end": 1037
+          },
+          "definitionSpan": {
+            "start": 1030,
+            "end": 1037
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-27",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 9,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 801290,
+        "endFrames": 812903,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 4,
+          "occurrence": "occurrence-4",
+          "line": 31,
+          "span": {
+            "start": 1058,
+            "end": 1065
+          },
+          "definitionSpan": {
+            "start": 1058,
+            "end": 1065
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-28",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 9,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 812903,
+        "endFrames": 836129,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 5,
+          "occurrence": "occurrence-4",
+          "line": 32,
+          "span": {
+            "start": 1086,
+            "end": 1093
+          },
+          "definitionSpan": {
+            "start": 1086,
+            "end": 1093
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-29",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 10,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 836129,
+        "endFrames": 859355,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 1,
+          "occurrence": "occurrence-5",
+          "line": 28,
+          "span": {
+            "start": 974,
+            "end": 981
+          },
+          "definitionSpan": {
+            "start": 974,
+            "end": 981
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-2a",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 10,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 859355,
+        "endFrames": 882581,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 2,
+          "occurrence": "occurrence-5",
+          "line": 29,
+          "span": {
+            "start": 1002,
+            "end": 1009
+          },
+          "definitionSpan": {
+            "start": 1002,
+            "end": 1009
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-2b",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 10,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 882581,
+        "endFrames": 894194,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 3,
+          "occurrence": "occurrence-5",
+          "line": 30,
+          "span": {
+            "start": 1030,
+            "end": 1037
+          },
+          "definitionSpan": {
+            "start": 1030,
+            "end": 1037
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-2c",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 10,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 894194,
+        "endFrames": 905806,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 4,
+          "occurrence": "occurrence-5",
+          "line": 31,
+          "span": {
+            "start": 1058,
+            "end": 1065
+          },
+          "definitionSpan": {
+            "start": 1058,
+            "end": 1065
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-2d",
+        "part": "drums",
+        "voice": "kick",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 10,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 905806,
+        "endFrames": 929032,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 5,
+          "occurrence": "occurrence-5",
+          "line": 32,
+          "span": {
+            "start": 1086,
+            "end": 1093
+          },
+          "definitionSpan": {
+            "start": 1086,
+            "end": 1093
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-2e",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 0,
+        "endFrames": 11613,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 10,
+          "occurrence": "occurrence-0",
+          "line": 38,
+          "span": {
+            "start": 1199,
+            "end": 1208
+          },
+          "definitionSpan": {
+            "start": 1199,
+            "end": 1208
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-2f",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 1,
+        "beat": {
+          "numerator": 3,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 11613,
+        "endFrames": 23226,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 11,
+          "occurrence": "occurrence-0",
+          "line": 39,
+          "span": {
+            "start": 1229,
+            "end": 1237
+          },
+          "definitionSpan": {
+            "start": 1229,
+            "end": 1237
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-30",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 1,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 23226,
+        "endFrames": 34839,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 12,
+          "occurrence": "occurrence-0",
+          "line": 40,
+          "span": {
+            "start": 1258,
+            "end": 1267
+          },
+          "definitionSpan": {
+            "start": 1258,
+            "end": 1267
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-31",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 1,
+        "beat": {
+          "numerator": 5,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 34839,
+        "endFrames": 46452,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 13,
+          "occurrence": "occurrence-0",
+          "line": 41,
+          "span": {
+            "start": 1288,
+            "end": 1296
+          },
+          "definitionSpan": {
+            "start": 1288,
+            "end": 1296
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-32",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 1,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 46452,
+        "endFrames": 58065,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 14,
+          "occurrence": "occurrence-0",
+          "line": 42,
+          "span": {
+            "start": 1317,
+            "end": 1326
+          },
+          "definitionSpan": {
+            "start": 1317,
+            "end": 1326
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-33",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 1,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 58065,
+        "endFrames": 69677,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 15,
+          "occurrence": "occurrence-0",
+          "line": 43,
+          "span": {
+            "start": 1347,
+            "end": 1355
+          },
+          "definitionSpan": {
+            "start": 1347,
+            "end": 1355
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-34",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 1,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 69677,
+        "endFrames": 81290,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 16,
+          "occurrence": "occurrence-0",
+          "line": 44,
+          "span": {
+            "start": 1376,
+            "end": 1385
+          },
+          "definitionSpan": {
+            "start": 1376,
+            "end": 1385
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-35",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 1,
+        "beat": {
+          "numerator": 9,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 81290,
+        "endFrames": 92903,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 17,
+          "occurrence": "occurrence-0",
+          "line": 45,
+          "span": {
+            "start": 1406,
+            "end": 1414
+          },
+          "definitionSpan": {
+            "start": 1406,
+            "end": 1414
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-36",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 2,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 92903,
+        "endFrames": 104516,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 10,
+          "occurrence": "occurrence-1",
+          "line": 38,
+          "span": {
+            "start": 1199,
+            "end": 1208
+          },
+          "definitionSpan": {
+            "start": 1199,
+            "end": 1208
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-37",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 2,
+        "beat": {
+          "numerator": 3,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 104516,
+        "endFrames": 116129,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 11,
+          "occurrence": "occurrence-1",
+          "line": 39,
+          "span": {
+            "start": 1229,
+            "end": 1237
+          },
+          "definitionSpan": {
+            "start": 1229,
+            "end": 1237
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-38",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 2,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 116129,
+        "endFrames": 127742,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 12,
+          "occurrence": "occurrence-1",
+          "line": 40,
+          "span": {
+            "start": 1258,
+            "end": 1267
+          },
+          "definitionSpan": {
+            "start": 1258,
+            "end": 1267
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-39",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 2,
+        "beat": {
+          "numerator": 5,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 127742,
+        "endFrames": 139355,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 13,
+          "occurrence": "occurrence-1",
+          "line": 41,
+          "span": {
+            "start": 1288,
+            "end": 1296
+          },
+          "definitionSpan": {
+            "start": 1288,
+            "end": 1296
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-3a",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 2,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 139355,
+        "endFrames": 150968,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 14,
+          "occurrence": "occurrence-1",
+          "line": 42,
+          "span": {
+            "start": 1317,
+            "end": 1326
+          },
+          "definitionSpan": {
+            "start": 1317,
+            "end": 1326
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-3b",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 2,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 150968,
+        "endFrames": 162581,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 15,
+          "occurrence": "occurrence-1",
+          "line": 43,
+          "span": {
+            "start": 1347,
+            "end": 1355
+          },
+          "definitionSpan": {
+            "start": 1347,
+            "end": 1355
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-3c",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 2,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 162581,
+        "endFrames": 174194,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 16,
+          "occurrence": "occurrence-1",
+          "line": 44,
+          "span": {
+            "start": 1376,
+            "end": 1385
+          },
+          "definitionSpan": {
+            "start": 1376,
+            "end": 1385
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-3d",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 2,
+        "beat": {
+          "numerator": 9,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 174194,
+        "endFrames": 185806,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 17,
+          "occurrence": "occurrence-1",
+          "line": 45,
+          "span": {
+            "start": 1406,
+            "end": 1414
+          },
+          "definitionSpan": {
+            "start": 1406,
+            "end": 1414
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-3e",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 3,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 185806,
+        "endFrames": 197419,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 10,
+          "occurrence": "occurrence-2",
+          "line": 38,
+          "span": {
+            "start": 1199,
+            "end": 1208
+          },
+          "definitionSpan": {
+            "start": 1199,
+            "end": 1208
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-3f",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 3,
+        "beat": {
+          "numerator": 3,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 197419,
+        "endFrames": 209032,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 11,
+          "occurrence": "occurrence-2",
+          "line": 39,
+          "span": {
+            "start": 1229,
+            "end": 1237
+          },
+          "definitionSpan": {
+            "start": 1229,
+            "end": 1237
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-40",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 3,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 209032,
+        "endFrames": 220645,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 12,
+          "occurrence": "occurrence-2",
+          "line": 40,
+          "span": {
+            "start": 1258,
+            "end": 1267
+          },
+          "definitionSpan": {
+            "start": 1258,
+            "end": 1267
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-41",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 3,
+        "beat": {
+          "numerator": 5,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 220645,
+        "endFrames": 232258,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 13,
+          "occurrence": "occurrence-2",
+          "line": 41,
+          "span": {
+            "start": 1288,
+            "end": 1296
+          },
+          "definitionSpan": {
+            "start": 1288,
+            "end": 1296
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-42",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 3,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 232258,
+        "endFrames": 243871,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 14,
+          "occurrence": "occurrence-2",
+          "line": 42,
+          "span": {
+            "start": 1317,
+            "end": 1326
+          },
+          "definitionSpan": {
+            "start": 1317,
+            "end": 1326
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-43",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 3,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 243871,
+        "endFrames": 255484,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 15,
+          "occurrence": "occurrence-2",
+          "line": 43,
+          "span": {
+            "start": 1347,
+            "end": 1355
+          },
+          "definitionSpan": {
+            "start": 1347,
+            "end": 1355
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-44",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 3,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 255484,
+        "endFrames": 267097,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 16,
+          "occurrence": "occurrence-2",
+          "line": 44,
+          "span": {
+            "start": 1376,
+            "end": 1385
+          },
+          "definitionSpan": {
+            "start": 1376,
+            "end": 1385
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-45",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 3,
+        "beat": {
+          "numerator": 9,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 267097,
+        "endFrames": 278710,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 17,
+          "occurrence": "occurrence-2",
+          "line": 45,
+          "span": {
+            "start": 1406,
+            "end": 1414
+          },
+          "definitionSpan": {
+            "start": 1406,
+            "end": 1414
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-46",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 4,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 278710,
+        "endFrames": 290323,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 10,
+          "occurrence": "occurrence-3",
+          "line": 38,
+          "span": {
+            "start": 1199,
+            "end": 1208
+          },
+          "definitionSpan": {
+            "start": 1199,
+            "end": 1208
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-47",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 4,
+        "beat": {
+          "numerator": 3,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 290323,
+        "endFrames": 301935,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 11,
+          "occurrence": "occurrence-3",
+          "line": 39,
+          "span": {
+            "start": 1229,
+            "end": 1237
+          },
+          "definitionSpan": {
+            "start": 1229,
+            "end": 1237
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-48",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 4,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 301935,
+        "endFrames": 313548,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 12,
+          "occurrence": "occurrence-3",
+          "line": 40,
+          "span": {
+            "start": 1258,
+            "end": 1267
+          },
+          "definitionSpan": {
+            "start": 1258,
+            "end": 1267
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-49",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 4,
+        "beat": {
+          "numerator": 5,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 313548,
+        "endFrames": 325161,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 13,
+          "occurrence": "occurrence-3",
+          "line": 41,
+          "span": {
+            "start": 1288,
+            "end": 1296
+          },
+          "definitionSpan": {
+            "start": 1288,
+            "end": 1296
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-4a",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 4,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 325161,
+        "endFrames": 336774,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 14,
+          "occurrence": "occurrence-3",
+          "line": 42,
+          "span": {
+            "start": 1317,
+            "end": 1326
+          },
+          "definitionSpan": {
+            "start": 1317,
+            "end": 1326
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-4b",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 4,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 336774,
+        "endFrames": 348387,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 15,
+          "occurrence": "occurrence-3",
+          "line": 43,
+          "span": {
+            "start": 1347,
+            "end": 1355
+          },
+          "definitionSpan": {
+            "start": 1347,
+            "end": 1355
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-4c",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 4,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 348387,
+        "endFrames": 360000,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 16,
+          "occurrence": "occurrence-3",
+          "line": 44,
+          "span": {
+            "start": 1376,
+            "end": 1385
+          },
+          "definitionSpan": {
+            "start": 1376,
+            "end": 1385
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-4d",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 4,
+        "beat": {
+          "numerator": 9,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 360000,
+        "endFrames": 371613,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 17,
+          "occurrence": "occurrence-3",
+          "line": 45,
+          "span": {
+            "start": 1406,
+            "end": 1414
+          },
+          "definitionSpan": {
+            "start": 1406,
+            "end": 1414
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-4e",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 5,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 371613,
+        "endFrames": 383226,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 18,
+          "occurrence": "occurrence-0",
+          "line": 48,
+          "span": {
+            "start": 1485,
+            "end": 1493
+          },
+          "definitionSpan": {
+            "start": 1485,
+            "end": 1493
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-4f",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 5,
+        "beat": {
+          "numerator": 3,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 383226,
+        "endFrames": 394839,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 19,
+          "occurrence": "occurrence-0",
+          "line": 49,
+          "span": {
+            "start": 1514,
+            "end": 1522
+          },
+          "definitionSpan": {
+            "start": 1514,
+            "end": 1522
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-50",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 5,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 394839,
+        "endFrames": 406452,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 20,
+          "occurrence": "occurrence-0",
+          "line": 50,
+          "span": {
+            "start": 1543,
+            "end": 1551
+          },
+          "definitionSpan": {
+            "start": 1543,
+            "end": 1551
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-51",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 5,
+        "beat": {
+          "numerator": 5,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 406452,
+        "endFrames": 418065,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 21,
+          "occurrence": "occurrence-0",
+          "line": 51,
+          "span": {
+            "start": 1572,
+            "end": 1580
+          },
+          "definitionSpan": {
+            "start": 1572,
+            "end": 1580
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-52",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 5,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 418065,
+        "endFrames": 429677,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 22,
+          "occurrence": "occurrence-0",
+          "line": 52,
+          "span": {
+            "start": 1601,
+            "end": 1609
+          },
+          "definitionSpan": {
+            "start": 1601,
+            "end": 1609
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-53",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 5,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 429677,
+        "endFrames": 441290,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 23,
+          "occurrence": "occurrence-0",
+          "line": 53,
+          "span": {
+            "start": 1630,
+            "end": 1638
+          },
+          "definitionSpan": {
+            "start": 1630,
+            "end": 1638
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-54",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 5,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 441290,
+        "endFrames": 452903,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 24,
+          "occurrence": "occurrence-0",
+          "line": 54,
+          "span": {
+            "start": 1659,
+            "end": 1667
+          },
+          "definitionSpan": {
+            "start": 1659,
+            "end": 1667
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-55",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 5,
+        "beat": {
+          "numerator": 9,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 452903,
+        "endFrames": 464516,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 25,
+          "occurrence": "occurrence-0",
+          "line": 55,
+          "span": {
+            "start": 1688,
+            "end": 1696
+          },
+          "definitionSpan": {
+            "start": 1688,
+            "end": 1696
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-56",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 6,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 464516,
+        "endFrames": 476129,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 18,
+          "occurrence": "occurrence-1",
+          "line": 48,
+          "span": {
+            "start": 1485,
+            "end": 1493
+          },
+          "definitionSpan": {
+            "start": 1485,
+            "end": 1493
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-57",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 6,
+        "beat": {
+          "numerator": 3,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 476129,
+        "endFrames": 487742,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 19,
+          "occurrence": "occurrence-1",
+          "line": 49,
+          "span": {
+            "start": 1514,
+            "end": 1522
+          },
+          "definitionSpan": {
+            "start": 1514,
+            "end": 1522
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-58",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 6,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 487742,
+        "endFrames": 499355,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 20,
+          "occurrence": "occurrence-1",
+          "line": 50,
+          "span": {
+            "start": 1543,
+            "end": 1551
+          },
+          "definitionSpan": {
+            "start": 1543,
+            "end": 1551
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-59",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 6,
+        "beat": {
+          "numerator": 5,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 499355,
+        "endFrames": 510968,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 21,
+          "occurrence": "occurrence-1",
+          "line": 51,
+          "span": {
+            "start": 1572,
+            "end": 1580
+          },
+          "definitionSpan": {
+            "start": 1572,
+            "end": 1580
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-5a",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 6,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 510968,
+        "endFrames": 522581,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 22,
+          "occurrence": "occurrence-1",
+          "line": 52,
+          "span": {
+            "start": 1601,
+            "end": 1609
+          },
+          "definitionSpan": {
+            "start": 1601,
+            "end": 1609
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-5b",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 6,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 522581,
+        "endFrames": 534194,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 23,
+          "occurrence": "occurrence-1",
+          "line": 53,
+          "span": {
+            "start": 1630,
+            "end": 1638
+          },
+          "definitionSpan": {
+            "start": 1630,
+            "end": 1638
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-5c",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 6,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 534194,
+        "endFrames": 545806,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 24,
+          "occurrence": "occurrence-1",
+          "line": 54,
+          "span": {
+            "start": 1659,
+            "end": 1667
+          },
+          "definitionSpan": {
+            "start": 1659,
+            "end": 1667
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-5d",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 6,
+        "beat": {
+          "numerator": 9,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 545806,
+        "endFrames": 557419,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 25,
+          "occurrence": "occurrence-1",
+          "line": 55,
+          "span": {
+            "start": 1688,
+            "end": 1696
+          },
+          "definitionSpan": {
+            "start": 1688,
+            "end": 1696
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-5e",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 7,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 557419,
+        "endFrames": 569032,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 18,
+          "occurrence": "occurrence-2",
+          "line": 48,
+          "span": {
+            "start": 1485,
+            "end": 1493
+          },
+          "definitionSpan": {
+            "start": 1485,
+            "end": 1493
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-5f",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 7,
+        "beat": {
+          "numerator": 3,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 569032,
+        "endFrames": 580645,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 19,
+          "occurrence": "occurrence-2",
+          "line": 49,
+          "span": {
+            "start": 1514,
+            "end": 1522
+          },
+          "definitionSpan": {
+            "start": 1514,
+            "end": 1522
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-60",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 7,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 580645,
+        "endFrames": 592258,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 20,
+          "occurrence": "occurrence-2",
+          "line": 50,
+          "span": {
+            "start": 1543,
+            "end": 1551
+          },
+          "definitionSpan": {
+            "start": 1543,
+            "end": 1551
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-61",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 7,
+        "beat": {
+          "numerator": 5,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 592258,
+        "endFrames": 603871,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 21,
+          "occurrence": "occurrence-2",
+          "line": 51,
+          "span": {
+            "start": 1572,
+            "end": 1580
+          },
+          "definitionSpan": {
+            "start": 1572,
+            "end": 1580
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-62",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 7,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 603871,
+        "endFrames": 615484,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 22,
+          "occurrence": "occurrence-2",
+          "line": 52,
+          "span": {
+            "start": 1601,
+            "end": 1609
+          },
+          "definitionSpan": {
+            "start": 1601,
+            "end": 1609
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-63",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 7,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 615484,
+        "endFrames": 627097,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 23,
+          "occurrence": "occurrence-2",
+          "line": 53,
+          "span": {
+            "start": 1630,
+            "end": 1638
+          },
+          "definitionSpan": {
+            "start": 1630,
+            "end": 1638
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-64",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 7,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 627097,
+        "endFrames": 638710,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 24,
+          "occurrence": "occurrence-2",
+          "line": 54,
+          "span": {
+            "start": 1659,
+            "end": 1667
+          },
+          "definitionSpan": {
+            "start": 1659,
+            "end": 1667
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-65",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 7,
+        "beat": {
+          "numerator": 9,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 638710,
+        "endFrames": 650323,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 25,
+          "occurrence": "occurrence-2",
+          "line": 55,
+          "span": {
+            "start": 1688,
+            "end": 1696
+          },
+          "definitionSpan": {
+            "start": 1688,
+            "end": 1696
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-66",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 8,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 650323,
+        "endFrames": 661935,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 18,
+          "occurrence": "occurrence-3",
+          "line": 48,
+          "span": {
+            "start": 1485,
+            "end": 1493
+          },
+          "definitionSpan": {
+            "start": 1485,
+            "end": 1493
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-67",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 8,
+        "beat": {
+          "numerator": 3,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 661935,
+        "endFrames": 673548,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 19,
+          "occurrence": "occurrence-3",
+          "line": 49,
+          "span": {
+            "start": 1514,
+            "end": 1522
+          },
+          "definitionSpan": {
+            "start": 1514,
+            "end": 1522
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-68",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 8,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 673548,
+        "endFrames": 685161,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 20,
+          "occurrence": "occurrence-3",
+          "line": 50,
+          "span": {
+            "start": 1543,
+            "end": 1551
+          },
+          "definitionSpan": {
+            "start": 1543,
+            "end": 1551
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-69",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 8,
+        "beat": {
+          "numerator": 5,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 685161,
+        "endFrames": 696774,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 21,
+          "occurrence": "occurrence-3",
+          "line": 51,
+          "span": {
+            "start": 1572,
+            "end": 1580
+          },
+          "definitionSpan": {
+            "start": 1572,
+            "end": 1580
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-6a",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 8,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 696774,
+        "endFrames": 708387,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 22,
+          "occurrence": "occurrence-3",
+          "line": 52,
+          "span": {
+            "start": 1601,
+            "end": 1609
+          },
+          "definitionSpan": {
+            "start": 1601,
+            "end": 1609
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-6b",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 8,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 708387,
+        "endFrames": 720000,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 23,
+          "occurrence": "occurrence-3",
+          "line": 53,
+          "span": {
+            "start": 1630,
+            "end": 1638
+          },
+          "definitionSpan": {
+            "start": 1630,
+            "end": 1638
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-6c",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 8,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 720000,
+        "endFrames": 731613,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 24,
+          "occurrence": "occurrence-3",
+          "line": 54,
+          "span": {
+            "start": 1659,
+            "end": 1667
+          },
+          "definitionSpan": {
+            "start": 1659,
+            "end": 1667
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-6d",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 8,
+        "beat": {
+          "numerator": 9,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 731613,
+        "endFrames": 743226,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 25,
+          "occurrence": "occurrence-3",
+          "line": 55,
+          "span": {
+            "start": 1688,
+            "end": 1696
+          },
+          "definitionSpan": {
+            "start": 1688,
+            "end": 1696
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-6e",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 9,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 743226,
+        "endFrames": 754839,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 6,
+          "occurrence": "occurrence-4",
+          "line": 48,
+          "span": {
+            "start": 1485,
+            "end": 1493
+          },
+          "definitionSpan": {
+            "start": 1485,
+            "end": 1493
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-6f",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 9,
+        "beat": {
+          "numerator": 3,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 754839,
+        "endFrames": 766452,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 7,
+          "occurrence": "occurrence-4",
+          "line": 49,
+          "span": {
+            "start": 1514,
+            "end": 1522
+          },
+          "definitionSpan": {
+            "start": 1514,
+            "end": 1522
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-70",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 9,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 766452,
+        "endFrames": 778065,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 8,
+          "occurrence": "occurrence-4",
+          "line": 50,
+          "span": {
+            "start": 1543,
+            "end": 1551
+          },
+          "definitionSpan": {
+            "start": 1543,
+            "end": 1551
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-71",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 9,
+        "beat": {
+          "numerator": 5,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 778065,
+        "endFrames": 789677,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 9,
+          "occurrence": "occurrence-4",
+          "line": 51,
+          "span": {
+            "start": 1572,
+            "end": 1580
+          },
+          "definitionSpan": {
+            "start": 1572,
+            "end": 1580
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-72",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 9,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 789677,
+        "endFrames": 801290,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 10,
+          "occurrence": "occurrence-4",
+          "line": 52,
+          "span": {
+            "start": 1601,
+            "end": 1609
+          },
+          "definitionSpan": {
+            "start": 1601,
+            "end": 1609
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-73",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 9,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 801290,
+        "endFrames": 812903,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 11,
+          "occurrence": "occurrence-4",
+          "line": 53,
+          "span": {
+            "start": 1630,
+            "end": 1638
+          },
+          "definitionSpan": {
+            "start": 1630,
+            "end": 1638
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-74",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 9,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 812903,
+        "endFrames": 824516,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 12,
+          "occurrence": "occurrence-4",
+          "line": 54,
+          "span": {
+            "start": 1659,
+            "end": 1667
+          },
+          "definitionSpan": {
+            "start": 1659,
+            "end": 1667
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-75",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 9,
+        "beat": {
+          "numerator": 9,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 824516,
+        "endFrames": 836129,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 13,
+          "occurrence": "occurrence-4",
+          "line": 55,
+          "span": {
+            "start": 1688,
+            "end": 1696
+          },
+          "definitionSpan": {
+            "start": 1688,
+            "end": 1696
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-76",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 10,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 836129,
+        "endFrames": 847742,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 6,
+          "occurrence": "occurrence-5",
+          "line": 48,
+          "span": {
+            "start": 1485,
+            "end": 1493
+          },
+          "definitionSpan": {
+            "start": 1485,
+            "end": 1493
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-77",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 10,
+        "beat": {
+          "numerator": 3,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 847742,
+        "endFrames": 859355,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 7,
+          "occurrence": "occurrence-5",
+          "line": 49,
+          "span": {
+            "start": 1514,
+            "end": 1522
+          },
+          "definitionSpan": {
+            "start": 1514,
+            "end": 1522
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-78",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 10,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 859355,
+        "endFrames": 870968,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 8,
+          "occurrence": "occurrence-5",
+          "line": 50,
+          "span": {
+            "start": 1543,
+            "end": 1551
+          },
+          "definitionSpan": {
+            "start": 1543,
+            "end": 1551
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-79",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 10,
+        "beat": {
+          "numerator": 5,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 870968,
+        "endFrames": 882581,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 9,
+          "occurrence": "occurrence-5",
+          "line": 51,
+          "span": {
+            "start": 1572,
+            "end": 1580
+          },
+          "definitionSpan": {
+            "start": 1572,
+            "end": 1580
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-7a",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 10,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 882581,
+        "endFrames": 894194,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 10,
+          "occurrence": "occurrence-5",
+          "line": 52,
+          "span": {
+            "start": 1601,
+            "end": 1609
+          },
+          "definitionSpan": {
+            "start": 1601,
+            "end": 1609
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-7b",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 10,
+        "beat": {
+          "numerator": 7,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 894194,
+        "endFrames": 905806,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 11,
+          "occurrence": "occurrence-5",
+          "line": 53,
+          "span": {
+            "start": 1630,
+            "end": 1638
+          },
+          "definitionSpan": {
+            "start": 1630,
+            "end": 1638
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-7c",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 10,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 905806,
+        "endFrames": 917419,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 12,
+          "occurrence": "occurrence-5",
+          "line": 54,
+          "span": {
+            "start": 1659,
+            "end": 1667
+          },
+          "definitionSpan": {
+            "start": 1659,
+            "end": 1667
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-7d",
+        "part": "drums",
+        "voice": "hats",
+        "kind": "note",
+        "pitch": "F♯3",
+        "pitches": [
+          "F♯3"
+        ],
+        "pitchSpellings": [
+          "fs3"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 8
+        },
+        "durationSpelling": "1/8",
+        "bar": 10,
+        "beat": {
+          "numerator": 9,
+          "denominator": 2
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 917419,
+        "endFrames": 929032,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 13,
+          "occurrence": "occurrence-5",
+          "line": 55,
+          "span": {
+            "start": 1688,
+            "end": 1696
+          },
+          "definitionSpan": {
+            "start": 1688,
+            "end": 1696
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-7e",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 0,
+        "endFrames": 46452,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 26,
+          "occurrence": "occurrence-0",
+          "line": 63,
+          "span": {
+            "start": 1832,
+            "end": 1839
+          },
+          "definitionSpan": {
+            "start": 1832,
+            "end": 1839
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-7f",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "E2",
+        "pitches": [
+          "E2"
+        ],
+        "pitchSpellings": [
+          "e2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 46452,
+        "endFrames": 69677,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 27,
+          "occurrence": "occurrence-0",
+          "line": 64,
+          "span": {
+            "start": 1860,
+            "end": 1867
+          },
+          "definitionSpan": {
+            "start": 1860,
+            "end": 1867
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-80",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "G1",
+        "pitches": [
+          "G1"
+        ],
+        "pitchSpellings": [
+          "g1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 69677,
+        "endFrames": 92903,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 28,
+          "occurrence": "occurrence-0",
+          "line": 65,
+          "span": {
+            "start": 1888,
+            "end": 1895
+          },
+          "definitionSpan": {
+            "start": 1888,
+            "end": 1895
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-81",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 2,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 92903,
+        "endFrames": 139355,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 26,
+          "occurrence": "occurrence-1",
+          "line": 63,
+          "span": {
+            "start": 1832,
+            "end": 1839
+          },
+          "definitionSpan": {
+            "start": 1832,
+            "end": 1839
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-82",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "E2",
+        "pitches": [
+          "E2"
+        ],
+        "pitchSpellings": [
+          "e2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 2,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 139355,
+        "endFrames": 162581,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 27,
+          "occurrence": "occurrence-1",
+          "line": 64,
+          "span": {
+            "start": 1860,
+            "end": 1867
+          },
+          "definitionSpan": {
+            "start": 1860,
+            "end": 1867
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-83",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "G1",
+        "pitches": [
+          "G1"
+        ],
+        "pitchSpellings": [
+          "g1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 2,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 162581,
+        "endFrames": 185806,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 28,
+          "occurrence": "occurrence-1",
+          "line": 65,
+          "span": {
+            "start": 1888,
+            "end": 1895
+          },
+          "definitionSpan": {
+            "start": 1888,
+            "end": 1895
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-84",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 3,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 185806,
+        "endFrames": 232258,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 26,
+          "occurrence": "occurrence-2",
+          "line": 63,
+          "span": {
+            "start": 1832,
+            "end": 1839
+          },
+          "definitionSpan": {
+            "start": 1832,
+            "end": 1839
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-85",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "E2",
+        "pitches": [
+          "E2"
+        ],
+        "pitchSpellings": [
+          "e2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 3,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 232258,
+        "endFrames": 255484,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 27,
+          "occurrence": "occurrence-2",
+          "line": 64,
+          "span": {
+            "start": 1860,
+            "end": 1867
+          },
+          "definitionSpan": {
+            "start": 1860,
+            "end": 1867
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-86",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "G1",
+        "pitches": [
+          "G1"
+        ],
+        "pitchSpellings": [
+          "g1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 3,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 255484,
+        "endFrames": 278710,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 28,
+          "occurrence": "occurrence-2",
+          "line": 65,
+          "span": {
+            "start": 1888,
+            "end": 1895
+          },
+          "definitionSpan": {
+            "start": 1888,
+            "end": 1895
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-87",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 4,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 278710,
+        "endFrames": 325161,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 26,
+          "occurrence": "occurrence-3",
+          "line": 63,
+          "span": {
+            "start": 1832,
+            "end": 1839
+          },
+          "definitionSpan": {
+            "start": 1832,
+            "end": 1839
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-88",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "E2",
+        "pitches": [
+          "E2"
+        ],
+        "pitchSpellings": [
+          "e2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 4,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 325161,
+        "endFrames": 348387,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 27,
+          "occurrence": "occurrence-3",
+          "line": 64,
+          "span": {
+            "start": 1860,
+            "end": 1867
+          },
+          "definitionSpan": {
+            "start": 1860,
+            "end": 1867
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-89",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "G1",
+        "pitches": [
+          "G1"
+        ],
+        "pitchSpellings": [
+          "g1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 4,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 348387,
+        "endFrames": 371613,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 28,
+          "occurrence": "occurrence-3",
+          "line": 65,
+          "span": {
+            "start": 1888,
+            "end": 1895
+          },
+          "definitionSpan": {
+            "start": 1888,
+            "end": 1895
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-8a",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 5,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 371613,
+        "endFrames": 394839,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 29,
+          "occurrence": "occurrence-0",
+          "line": 68,
+          "span": {
+            "start": 1966,
+            "end": 1973
+          },
+          "definitionSpan": {
+            "start": 1966,
+            "end": 1973
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-8b",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 5,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 394839,
+        "endFrames": 418065,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 30,
+          "occurrence": "occurrence-0",
+          "line": 69,
+          "span": {
+            "start": 1994,
+            "end": 2001
+          },
+          "definitionSpan": {
+            "start": 1994,
+            "end": 2001
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-8c",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 5,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 418065,
+        "endFrames": 441290,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 31,
+          "occurrence": "occurrence-0",
+          "line": 70,
+          "span": {
+            "start": 2022,
+            "end": 2029
+          },
+          "definitionSpan": {
+            "start": 2022,
+            "end": 2029
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-8d",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "E2",
+        "pitches": [
+          "E2"
+        ],
+        "pitchSpellings": [
+          "e2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 5,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 441290,
+        "endFrames": 464516,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 1"
+          ],
+          "noteIndex": 32,
+          "occurrence": "occurrence-0",
+          "line": 71,
+          "span": {
+            "start": 2050,
+            "end": 2057
+          },
+          "definitionSpan": {
+            "start": 2050,
+            "end": 2057
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-8e",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 6,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 464516,
+        "endFrames": 487742,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 29,
+          "occurrence": "occurrence-1",
+          "line": 68,
+          "span": {
+            "start": 1966,
+            "end": 1973
+          },
+          "definitionSpan": {
+            "start": 1966,
+            "end": 1973
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-8f",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 6,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 487742,
+        "endFrames": 510968,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 30,
+          "occurrence": "occurrence-1",
+          "line": 69,
+          "span": {
+            "start": 1994,
+            "end": 2001
+          },
+          "definitionSpan": {
+            "start": 1994,
+            "end": 2001
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-90",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 6,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 510968,
+        "endFrames": 534194,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 31,
+          "occurrence": "occurrence-1",
+          "line": 70,
+          "span": {
+            "start": 2022,
+            "end": 2029
+          },
+          "definitionSpan": {
+            "start": 2022,
+            "end": 2029
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-91",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "E2",
+        "pitches": [
+          "E2"
+        ],
+        "pitchSpellings": [
+          "e2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 6,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 534194,
+        "endFrames": 557419,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 2"
+          ],
+          "noteIndex": 32,
+          "occurrence": "occurrence-1",
+          "line": 71,
+          "span": {
+            "start": 2050,
+            "end": 2057
+          },
+          "definitionSpan": {
+            "start": 2050,
+            "end": 2057
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-92",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 7,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 557419,
+        "endFrames": 580645,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 29,
+          "occurrence": "occurrence-2",
+          "line": 68,
+          "span": {
+            "start": 1966,
+            "end": 1973
+          },
+          "definitionSpan": {
+            "start": 1966,
+            "end": 1973
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-93",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 7,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 580645,
+        "endFrames": 603871,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 30,
+          "occurrence": "occurrence-2",
+          "line": 69,
+          "span": {
+            "start": 1994,
+            "end": 2001
+          },
+          "definitionSpan": {
+            "start": 1994,
+            "end": 2001
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-94",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 7,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 603871,
+        "endFrames": 627097,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 31,
+          "occurrence": "occurrence-2",
+          "line": 70,
+          "span": {
+            "start": 2022,
+            "end": 2029
+          },
+          "definitionSpan": {
+            "start": 2022,
+            "end": 2029
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-95",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "E2",
+        "pitches": [
+          "E2"
+        ],
+        "pitchSpellings": [
+          "e2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 7,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 627097,
+        "endFrames": 650323,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 3"
+          ],
+          "noteIndex": 32,
+          "occurrence": "occurrence-2",
+          "line": 71,
+          "span": {
+            "start": 2050,
+            "end": 2057
+          },
+          "definitionSpan": {
+            "start": 2050,
+            "end": 2057
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-96",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 8,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 650323,
+        "endFrames": 673548,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 29,
+          "occurrence": "occurrence-3",
+          "line": 68,
+          "span": {
+            "start": 1966,
+            "end": 1973
+          },
+          "definitionSpan": {
+            "start": 1966,
+            "end": 1973
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-97",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 8,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 673548,
+        "endFrames": 696774,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 30,
+          "occurrence": "occurrence-3",
+          "line": 69,
+          "span": {
+            "start": 1994,
+            "end": 2001
+          },
+          "definitionSpan": {
+            "start": 1994,
+            "end": 2001
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-98",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 8,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 696774,
+        "endFrames": 720000,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 31,
+          "occurrence": "occurrence-3",
+          "line": 70,
+          "span": {
+            "start": 2022,
+            "end": 2029
+          },
+          "definitionSpan": {
+            "start": 2022,
+            "end": 2029
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-99",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "E2",
+        "pitches": [
+          "E2"
+        ],
+        "pitchSpellings": [
+          "e2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 8,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 720000,
+        "endFrames": 743226,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 4"
+          ],
+          "noteIndex": 32,
+          "occurrence": "occurrence-3",
+          "line": 71,
+          "span": {
+            "start": 2050,
+            "end": 2057
+          },
+          "definitionSpan": {
+            "start": 2050,
+            "end": 2057
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-9a",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 9,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 743226,
+        "endFrames": 766452,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 14,
+          "occurrence": "occurrence-4",
+          "line": 68,
+          "span": {
+            "start": 1966,
+            "end": 1973
+          },
+          "definitionSpan": {
+            "start": 1966,
+            "end": 1973
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-9b",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 9,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 766452,
+        "endFrames": 789677,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 15,
+          "occurrence": "occurrence-4",
+          "line": 69,
+          "span": {
+            "start": 1994,
+            "end": 2001
+          },
+          "definitionSpan": {
+            "start": 1994,
+            "end": 2001
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-9c",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 9,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 789677,
+        "endFrames": 812903,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 16,
+          "occurrence": "occurrence-4",
+          "line": 70,
+          "span": {
+            "start": 2022,
+            "end": 2029
+          },
+          "definitionSpan": {
+            "start": 2022,
+            "end": 2029
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-9d",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "E2",
+        "pitches": [
+          "E2"
+        ],
+        "pitchSpellings": [
+          "e2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 9,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 812903,
+        "endFrames": 836129,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 5"
+          ],
+          "noteIndex": 17,
+          "occurrence": "occurrence-4",
+          "line": 71,
+          "span": {
+            "start": 2050,
+            "end": 2057
+          },
+          "definitionSpan": {
+            "start": 2050,
+            "end": 2057
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-9e",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 10,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 836129,
+        "endFrames": 859355,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 14,
+          "occurrence": "occurrence-5",
+          "line": 68,
+          "span": {
+            "start": 1966,
+            "end": 1973
+          },
+          "definitionSpan": {
+            "start": 1966,
+            "end": 1973
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-9f",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "A1",
+        "pitches": [
+          "A1"
+        ],
+        "pitchSpellings": [
+          "a1"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 10,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 859355,
+        "endFrames": 882581,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 15,
+          "occurrence": "occurrence-5",
+          "line": 69,
+          "span": {
+            "start": 1994,
+            "end": 2001
+          },
+          "definitionSpan": {
+            "start": 1994,
+            "end": 2001
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-a0",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "C2",
+        "pitches": [
+          "C2"
+        ],
+        "pitchSpellings": [
+          "c2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 10,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 882581,
+        "endFrames": 905806,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 16,
+          "occurrence": "occurrence-5",
+          "line": 70,
+          "span": {
+            "start": 2022,
+            "end": 2029
+          },
+          "definitionSpan": {
+            "start": 2022,
+            "end": 2029
+          },
+          "decision": 0
+        }
+      },
+      {
+        "id": "event-a1",
+        "part": "bass",
+        "voice": "line",
+        "kind": "note",
+        "pitch": "E2",
+        "pitches": [
+          "E2"
+        ],
+        "pitchSpellings": [
+          "e2"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 10,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": "A minor",
+        "clef": null,
+        "onsetFrames": 905806,
+        "endFrames": 929032,
+        "origin": {
+          "generated": true,
+          "path": [
+            "repeat 6"
+          ],
+          "noteIndex": 17,
+          "occurrence": "occurrence-5",
+          "line": 71,
+          "span": {
+            "start": 2050,
+            "end": 2057
+          },
+          "definitionSpan": {
+            "start": 2050,
+            "end": 2057
+          },
+          "decision": 0
+        }
+      }
+    ],
+    "occurrences": [
+      {
+        "id": "occurrence-0",
+        "path": [
+          "repeat 1"
+        ],
+        "label": "repeat 1",
+        "motif": null,
+        "declaration": null,
+        "useSite": {
+          "start": 0,
+          "end": 0
+        },
+        "line": 1,
+        "events": [
+          "event-0",
+          "event-1",
+          "event-2",
+          "event-3",
+          "event-10",
+          "event-11",
+          "event-12",
+          "event-13",
+          "event-14",
+          "event-2e",
+          "event-2f",
+          "event-30",
+          "event-31",
+          "event-32",
+          "event-33",
+          "event-34",
+          "event-35",
+          "event-4e",
+          "event-4f",
+          "event-50",
+          "event-51",
+          "event-52",
+          "event-53",
+          "event-54",
+          "event-55",
+          "event-7e",
+          "event-7f",
+          "event-80",
+          "event-8a",
+          "event-8b",
+          "event-8c",
+          "event-8d"
+        ]
+      },
+      {
+        "id": "occurrence-1",
+        "path": [
+          "repeat 2"
+        ],
+        "label": "repeat 2",
+        "motif": null,
+        "declaration": null,
+        "useSite": {
+          "start": 0,
+          "end": 0
+        },
+        "line": 1,
+        "events": [
+          "event-4",
+          "event-5",
+          "event-6",
+          "event-7",
+          "event-15",
+          "event-16",
+          "event-17",
+          "event-18",
+          "event-19",
+          "event-36",
+          "event-37",
+          "event-38",
+          "event-39",
+          "event-3a",
+          "event-3b",
+          "event-3c",
+          "event-3d",
+          "event-56",
+          "event-57",
+          "event-58",
+          "event-59",
+          "event-5a",
+          "event-5b",
+          "event-5c",
+          "event-5d",
+          "event-81",
+          "event-82",
+          "event-83",
+          "event-8e",
+          "event-8f",
+          "event-90",
+          "event-91"
+        ]
+      },
+      {
+        "id": "occurrence-2",
+        "path": [
+          "repeat 3"
+        ],
+        "label": "repeat 3",
+        "motif": null,
+        "declaration": null,
+        "useSite": {
+          "start": 0,
+          "end": 0
+        },
+        "line": 1,
+        "events": [
+          "event-8",
+          "event-9",
+          "event-a",
+          "event-b",
+          "event-1a",
+          "event-1b",
+          "event-1c",
+          "event-1d",
+          "event-1e",
+          "event-3e",
+          "event-3f",
+          "event-40",
+          "event-41",
+          "event-42",
+          "event-43",
+          "event-44",
+          "event-45",
+          "event-5e",
+          "event-5f",
+          "event-60",
+          "event-61",
+          "event-62",
+          "event-63",
+          "event-64",
+          "event-65",
+          "event-84",
+          "event-85",
+          "event-86",
+          "event-92",
+          "event-93",
+          "event-94",
+          "event-95"
+        ]
+      },
+      {
+        "id": "occurrence-3",
+        "path": [
+          "repeat 4"
+        ],
+        "label": "repeat 4",
+        "motif": null,
+        "declaration": null,
+        "useSite": {
+          "start": 0,
+          "end": 0
+        },
+        "line": 1,
+        "events": [
+          "event-c",
+          "event-d",
+          "event-e",
+          "event-f",
+          "event-1f",
+          "event-20",
+          "event-21",
+          "event-22",
+          "event-23",
+          "event-46",
+          "event-47",
+          "event-48",
+          "event-49",
+          "event-4a",
+          "event-4b",
+          "event-4c",
+          "event-4d",
+          "event-66",
+          "event-67",
+          "event-68",
+          "event-69",
+          "event-6a",
+          "event-6b",
+          "event-6c",
+          "event-6d",
+          "event-87",
+          "event-88",
+          "event-89",
+          "event-96",
+          "event-97",
+          "event-98",
+          "event-99"
+        ]
+      },
+      {
+        "id": "occurrence-4",
+        "path": [
+          "repeat 5"
+        ],
+        "label": "repeat 5",
+        "motif": null,
+        "declaration": null,
+        "useSite": {
+          "start": 0,
+          "end": 0
+        },
+        "line": 1,
+        "events": [
+          "event-24",
+          "event-25",
+          "event-26",
+          "event-27",
+          "event-28",
+          "event-6e",
+          "event-6f",
+          "event-70",
+          "event-71",
+          "event-72",
+          "event-73",
+          "event-74",
+          "event-75",
+          "event-9a",
+          "event-9b",
+          "event-9c",
+          "event-9d"
+        ]
+      },
+      {
+        "id": "occurrence-5",
+        "path": [
+          "repeat 6"
+        ],
+        "label": "repeat 6",
+        "motif": null,
+        "declaration": null,
+        "useSite": {
+          "start": 0,
+          "end": 0
+        },
+        "line": 1,
+        "events": [
+          "event-29",
+          "event-2a",
+          "event-2b",
+          "event-2c",
+          "event-2d",
+          "event-76",
+          "event-77",
+          "event-78",
+          "event-79",
+          "event-7a",
+          "event-7b",
+          "event-7c",
+          "event-7d",
+          "event-9e",
+          "event-9f",
+          "event-a0",
+          "event-a1"
+        ]
+      }
+    ],
+    "outline": [],
+    "header": [
+      {
+        "field": "title",
+        "value": "Loop Lengths"
+      },
+      {
+        "field": "subtitle",
+        "value": null
+      },
+      {
+        "field": "composer",
+        "value": "musa"
+      },
+      {
+        "field": "arranger",
+        "value": null
+      },
+      {
+        "field": "copyright",
+        "value": null
+      },
+      {
+        "field": "tempo",
+        "value": "1/4 = 124"
+      },
+      {
+        "field": "meter",
+        "value": "4/4"
+      },
+      {
+        "field": "key",
+        "value": "a minor"
+      }
+    ],
+    "performance": 8,
+    "decisions": [
+      {
+        "path": "#1:0",
+        "asked": "the first choice",
+        "answered": "6 passes",
+        "pinned": false,
+        "span": {
+          "start": 938,
+          "end": 1111
+        }
+      }
+    ]
+  },
+  "studio": {
+    "declared": false,
+    "patches": [],
+    "buses": [],
+    "signals": [],
+    "assignments": [
+      {
+        "part": "drums",
+        "patch": null
+      },
+      {
+        "part": "bass",
+        "patch": null
+      }
+    ],
+    "sends": [],
+    "routes": []
+  },
+  "scoreRevision": 1,
+  "playback": {
+    "playing": false,
+    "positionFrames": 0,
+    "totalFrames": 0,
+    "sampleRate": 48000,
+    "loopRegion": null
+  }
+}

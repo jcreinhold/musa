@@ -200,10 +200,77 @@ impl ChoicePath {
         text
     }
 
+    /// Read back what [`Self::canonical`] wrote, or `None` if the text is not
+    /// a path.
+    ///
+    /// A pin is stored as its path, so a realization that survives a session
+    /// (prompt 76) is a set of these strings. Parsing the injective encoding
+    /// rather than adding a second one is what makes "the file says what the
+    /// digest hashed" true by construction.
+    #[must_use]
+    pub fn parse(text: &str) -> Option<Self> {
+        let mut steps = Vec::new();
+        let mut rest = text;
+        while !rest.is_empty() {
+            let (letter, tail) = rest.split_at_checked(1)?;
+            let (length, tail) = tail.split_once(':')?;
+            let length: usize = length.parse().ok()?;
+            let (name, tail) = tail.split_at_checked(length)?;
+            steps.push(match letter {
+                "m" => ChoiceStep::Motif(name.into()),
+                "f" => ChoiceStep::Fragment(name.into()),
+                "b" => ChoiceStep::Bar(name.into()),
+                "#" => ChoiceStep::Ordinal(name.parse().ok()?),
+                _ => return None,
+            });
+            rest = tail;
+        }
+        Some(Self(steps))
+    }
+
     /// The steps, outermost first — what an interface prints as a trail.
     pub fn steps(&self) -> &[ChoiceStep] {
         &self.0
     }
+
+    /// The path as a sentence: `the fill, first choice`.
+    ///
+    /// `docs/interface/` §states and voice is the rule here — the interface
+    /// says what happened, not what the machine did, and a composer should be
+    /// able to use open form without learning the word "realization". So no
+    /// `#2`, no `Ordinal`, and no brackets. A path with no name above it is
+    /// just its ordinal, which is the honest reading: the piece asked its
+    /// third question and this is the answer.
+    #[must_use]
+    pub fn describe(&self) -> String {
+        let mut named: Vec<&str> = Vec::new();
+        let mut ordinal = None;
+        for step in &self.0 {
+            match step {
+                ChoiceStep::Motif(name) | ChoiceStep::Fragment(name) | ChoiceStep::Bar(name) => named.push(name),
+                ChoiceStep::Ordinal(index) => ordinal = Some(*index),
+            }
+        }
+        let place = named.join(", in ");
+        let which = ordinal.map(nth);
+        match (place.is_empty(), which) {
+            (true, Some(which)) => format!("the {which} choice"),
+            (true, None) => "this choice".to_owned(),
+            (false, Some(which)) => format!("{place}, {which} choice"),
+            (false, None) => place,
+        }
+    }
+}
+
+/// `first`, `second`, … and plain numbering past the point where the words
+/// stop helping a reader place a site at a glance.
+fn nth(index: u32) -> String {
+    const WORDS: [&str; 9] = [
+        "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth",
+    ];
+    WORDS
+        .get(index as usize)
+        .map_or_else(|| format!("#{}", index.saturating_add(1)), |word| (*word).to_owned())
 }
 
 impl std::fmt::Display for ChoicePath {

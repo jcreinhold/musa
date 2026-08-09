@@ -32,11 +32,12 @@ export const SETTLE_MS = 180;
  * A frame count on its way to the shell.
  *
  * `ts-rs` spells Rust's `u64` as `bigint`, but the bridge is JSON and
- * `JSON.stringify` refuses a `BigInt`. A frame count is exact as a number
- * well past the length of any performance, so the number is what crosses and
- * the cast is the honest way to say so in one place.
+ * `JSON.stringify` refuses a `BigInt`. A frame count — or a performance
+ * number — is exact as a number well past any value one of them takes, so
+ * the number is what crosses and the cast is the honest way to say so in one
+ * place.
  */
-function frames(count: number): bigint {
+function whole(count: number): bigint {
   return Math.max(Math.round(count), 0) as unknown as bigint;
 }
 
@@ -358,6 +359,29 @@ export class Session {
   }
 
   /**
+   * Read the open work again (prompt 76).
+   *
+   * The piece does not change — a performance is a parameter the compiler
+   * takes, not a line in the file — so this rewrites nothing and the draft
+   * survives it. What it says back is the number, because a composer who
+   * liked this reading needs to be able to come back to it.
+   */
+  async newPerformance(performance: number): Promise<void> {
+    await this.run(
+      { kind: "newPerformance", performance: whole(performance) },
+      () => `Performance ${performance}.`,
+    );
+  }
+
+  /** Keep one decision as it came out, or let it go back to being drawn. */
+  async keepDecision(decision: string, keep: boolean): Promise<void> {
+    await this.run(
+      { kind: keep ? "keep" : "release", decision },
+      keep ? () => "Kept." : () => "Released.",
+    );
+  }
+
+  /**
    * What a score edit would change, or null if the core cannot say.
    *
    * Asked before the edit, because `04-provenance.md` §4's choice has to
@@ -434,7 +458,7 @@ export class Session {
 
   /** `⇧Space`: play from a point in the performance, in frames. */
   async playFrom(frame: number): Promise<void> {
-    await this.move({ kind: "seek", frame: frames(frame) });
+    await this.move({ kind: "seek", frame: whole(frame) });
     await this.play();
   }
 
@@ -443,7 +467,7 @@ export class Session {
     await this.move(
       region === null
         ? { kind: "clearLoop" }
-        : { kind: "setLoop", start: frames(region[0]), end: frames(region[1]) },
+        : { kind: "setLoop", start: whole(region[0]), end: whole(region[1]) },
     );
   }
 

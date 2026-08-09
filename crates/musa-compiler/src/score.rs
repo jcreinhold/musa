@@ -831,6 +831,13 @@ pub struct RepeatRegion {
     pub end: MusicalTime,
     /// How many times the body is played.
     pub times: u32,
+    /// The passes the source asked for, when it left the count open.
+    ///
+    /// `repeat 4 to 16` is `Some((4, 16))`, and [`Self::times`] is the reading
+    /// this performance took. Both, because they answer different questions:
+    /// the page prints `4–16×` because that is the instruction, and the
+    /// timeline holds the passes because that is what sounds.
+    pub range: Option<(u32, u32)>,
     /// The endings, in the order they are printed. Empty for a plain repeat.
     pub endings: Vec<EndingRegion>,
     /// Why this repeat exists.
@@ -1084,6 +1091,7 @@ pub struct ScoreSnapshot {
     annotations: AnnotationStore,
     motifs: Vec<MotifDeclaration>,
     profiles: crate::profile::ProfileSet,
+    performance: Option<u64>,
 }
 
 /// The four questions that are one question: what is in force here.
@@ -1115,6 +1123,22 @@ impl ScoreSnapshot {
     /// The piece's title, as written in its `piece` declaration.
     pub fn title(&self) -> &str {
         &self.title
+    }
+
+    /// Which performance this is, when the piece left anything to one.
+    ///
+    /// `None` is the determinate case and it is the common one: a piece that
+    /// asks no questions was not realized, it was simply compiled, and every
+    /// consumer that would otherwise show a seed shows nothing (prompt 76).
+    /// `Some(seed)` says this page is *one reading* — which is exactly the
+    /// guarantee `docs/kernel/11-realization.md` weakened, said out loud where
+    /// a reader of the score can see it.
+    pub fn performance(&self) -> Option<u64> {
+        self.performance
+    }
+
+    pub(crate) fn set_performance(&mut self, seed: u64) {
+        self.performance = Some(seed);
     }
 
     /// What a printed edition puts around the music: who wrote it, who

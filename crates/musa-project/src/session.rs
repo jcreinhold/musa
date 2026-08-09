@@ -117,8 +117,14 @@ struct InstalledPlan {
 }
 
 /// One state of the document.
+///
+/// The realization is part of the state, not a setting beside it. A composer
+/// who draws a performance and dislikes it reaches for undo, and undo has to
+/// have somewhere to go back to — so a pin lands in the history exactly as an
+/// edit does, and there is one undo stack rather than two (prompt 76).
 struct HistoryEntry {
     source: String,
+    realization: musa_compiler::Realization,
     revision: Revision,
 }
 
@@ -138,6 +144,14 @@ impl ProjectSession {
         session.project = crate::project::find(path);
         session.recovery = crate::autosave::take(path, &source);
         session.on_disk = Some(source);
+        // Before the first compile, because a realization is an *input* to
+        // one: opening a piece and seeing a different page than the one it
+        // was left showing is exactly the unreliability prompt 76 exists to
+        // remove.
+        session.realization = crate::realization::read(path);
+        if let Some(first) = session.history.first_mut() {
+            first.realization = session.realization.clone();
+        }
         session.recompile();
         Ok(session)
     }
@@ -234,6 +248,34 @@ impl ProjectSession {
                     crate::autosave::clear(path);
                 }
                 Ok(ProjectUpdate::unchanged(self.revision, self.validity()))
+            }
+            ProjectCommand::NewPerformance { performance } => {
+                let mut next = self.realization.clone();
+                next.reseed(performance);
+                Ok(self.set_realization(next))
+            }
+            ProjectCommand::Pin(path) => {
+                let path = musa_compiler::ChoicePath::parse(&path).ok_or(ProjectError::NothingTo("keep"))?;
+                // What is pinned is what this compile decided *there*: pinning
+                // is "keep this one", and the only thing that could be kept is
+                // the answer the composer is looking at.
+                let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
+                let decision = valid
+                    .decisions
+                    .iter()
+                    .find(|record| *record.path() == path)
+                    .ok_or(ProjectError::NothingTo("keep"))?
+                    .decision()
+                    .clone();
+                let mut next = self.realization.clone();
+                next.pin(path, decision);
+                Ok(self.set_realization(next))
+            }
+            ProjectCommand::Unpin(path) => {
+                let path = musa_compiler::ChoicePath::parse(&path).ok_or(ProjectError::NothingTo("release"))?;
+                let mut next = self.realization.clone();
+                next.unpin(&path);
+                Ok(self.set_realization(next))
             }
             ProjectCommand::Transport(request) => {
                 self.transport(request)?;
@@ -456,6 +498,7 @@ impl ProjectSession {
             name,
             history: vec![HistoryEntry {
                 source: source.clone(),
+                realization: musa_compiler::Realization::deterministic(),
                 revision,
             }],
             source,
@@ -526,16 +569,45 @@ impl ProjectSession {
 
     /// Compile under `realization` from here on.
     ///
-    /// Not an edit: the source is untouched and the revision does not move,
-    /// because a different performance of the same piece is not a different
-    /// piece. It does recompile, because the timeline is what changed
-    /// (`docs/kernel/11-realization.md` R1).
+    /// Not an edit — the source is untouched and nothing about the piece
+    /// changed. It *is* a state of the session: the page a composer is
+    /// looking at is a function of the source **and** the realization
+    /// (`docs/kernel/11-realization.md`), so a new realization takes a
+    /// revision and lands in the history, and undo goes back to the reading
+    /// that was on screen before.
     pub fn realize(&mut self, realization: musa_compiler::Realization) -> ProjectUpdate {
+        self.set_realization(realization)
+    }
+
+    /// Move to `realization`, recording the move so it can be undone.
+    fn set_realization(&mut self, realization: musa_compiler::Realization) -> ProjectUpdate {
+        if realization == self.realization {
+            return ProjectUpdate::unchanged(self.revision, self.validity());
+        }
+        // A new performance after an undo abandons the redo branch, as every
+        // other state change does.
+        self.history.truncate(self.cursor.saturating_add(1));
+        self.revision = Revision(self.next_revision);
+        self.next_revision = self.next_revision.saturating_add(1);
         self.realization = realization;
+        self.history.push(HistoryEntry {
+            source: self.source.clone(),
+            realization: self.realization.clone(),
+            revision: self.revision,
+        });
+        self.cursor = self.history.len().saturating_sub(1);
+        self.save_realization();
         let changed = self.recompile();
         ProjectUpdate {
             revision: self.revision,
             ..changed
+        }
+    }
+
+    /// Keep the current reading beside the piece, so it survives the session.
+    fn save_realization(&self) {
+        if let Some(path) = self.path.as_ref() {
+            crate::realization::write(path, &self.realization);
         }
     }
 
@@ -579,6 +651,7 @@ impl ProjectSession {
         self.source = text;
         self.history.push(HistoryEntry {
             source: self.source.clone(),
+            realization: self.realization.clone(),
             revision: self.revision,
         });
         self.cursor = self.history.len().saturating_sub(1);
@@ -598,7 +671,9 @@ impl ProjectSession {
         };
         self.cursor = index;
         self.source = entry.source.clone();
+        self.realization = entry.realization.clone();
         self.revision = entry.revision;
+        self.save_realization();
         self.autosave();
         let changed = self.recompile();
         ProjectUpdate {
@@ -641,6 +716,11 @@ impl ProjectSession {
         } else {
             compilation.references().to_vec()
         };
+        let decisions: Vec<musa_compiler::DecisionRecord> = if compilation.has_errors() {
+            Vec::new()
+        } else {
+            compilation.decisions().to_vec()
+        };
         let (score, studio) = if compilation.has_errors() {
             (None, musa_compiler::StudioSpec::default())
         } else {
@@ -660,11 +740,12 @@ impl ProjectSession {
                 Ok(rendered) => {
                     let mei = rendered.as_text().unwrap_or_default().to_owned();
                     score_changed = self.valid.as_ref().is_none_or(|valid| valid.mei != mei);
-                    let facts = crate::facts::ScoreFacts::derive(&score, &self.source);
+                    let facts = crate::facts::ScoreFacts::derive(&score, &self.source, &decisions);
                     let parts: Vec<String> = facts.parts.iter().map(|part| part.name.clone()).collect();
                     let studio_facts = crate::studio::StudioFacts::derive(&studio, &parts);
                     let names = names.iter().map(crate::facts::NameFact::from_compiler).collect();
                     self.valid = Some(ValidArtifacts {
+                        decisions,
                         mei,
                         mei_warnings: rendered.warnings().to_vec(),
                         score,

@@ -750,6 +750,7 @@
     onduration={(event, duration) =>
       void issue({ kind: "changeDuration", event, duration, mode: "editDefinition" })}
     onheader={(field, value) => void session.editScore({ kind: "setHeader", field, value })}
+    onkeep={(decision, keep) => void session.keepDecision(decision, keep)}
     onreveal={open}
     ondiagnostic={showDiagnostic}
     oncaret={followCaret}
@@ -776,7 +777,13 @@
 {/if}
 
 {#if settingsOpen}
-  <Settings {preferences} {theme} onclose={() => (settingsOpen = false)} />
+  <Settings
+    {preferences}
+    {theme}
+    performance={session.snapshot?.score?.performance ?? null}
+    onperformance={(performance) => void session.newPerformance(performance)}
+    onclose={() => (settingsOpen = false)}
+  />
 {/if}
 
 <Announcer selection={selectionSaid} transport={transportSaid} />

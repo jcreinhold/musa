@@ -82,7 +82,7 @@ fn the_seed_decides_the_order_and_decides_it_once() {
             under(&source, seed)
                 .decisions()
                 .iter()
-                .find_map(|(_, decision)| match decision {
+                .find_map(|record| match record.decision() {
                     Decision::Order(order) => Some(order.clone()),
                     Decision::Count(_) | Decision::Duration(_) => None,
                 })
@@ -245,9 +245,18 @@ fn editing_one_figure_leaves_the_other_fifty_two_decisions_alone() {
     assert_ne!(edited, IN_C, "the edit did not apply");
     let after = under(&edited, 42);
     assert!(!after.has_errors(), "{:?}", after.diagnostics());
+    // Paths and answers: the spans below the edit all moved, and being
+    // unmoved by that is the property under test.
+    let answers = |compiled: &musa_compiler::Compilation| -> Vec<(String, String)> {
+        compiled
+            .decisions()
+            .iter()
+            .map(|record| (record.path().canonical(), record.decision().to_string()))
+            .collect()
+    };
     assert_eq!(
-        before.decisions(),
-        after.decisions(),
+        answers(&before),
+        answers(&after),
         "editing one figure re-rolled another"
     );
     assert_ne!(before.identity(), after.identity(), "the edit changed no music");

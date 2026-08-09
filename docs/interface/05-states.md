@@ -15,6 +15,10 @@ program that feel unfinished, and they are disproportionately what a new user me
   diagnostics are shown in the compiler's own words — the interface adds location and a way to get there, and does not
   paraphrase.
 - **Empty is an invitation.** Never "No data."
+- **A reading of an open work is a performance, not a seed** (prompt 76). *Performance 42*, never *Seed: 42*; *the
+  fill, first choice*, never a path or an identifier; *4 passes*, never *count=4*. A decision the composer has settled
+  reads *kept*. The number is the one implementation word that survives, because it is genuinely the information: it is
+  what a composer types to come back to a reading they liked.
 - Sentence case everywhere. No exclamation marks. No emoji.
 
 ## 2. First run and empty states
@@ -126,3 +130,22 @@ live in `localStorage`, they are restored on start, and they never appear in the
 history — a composer who changes the text size and then presses `⌘Z` undoes the last thing they wrote, which is the only
 answer that makes sense. Two consequences follow: a preference is never a reason to mark the document unsaved, and
 opening the same piece on another machine gives that machine's reading and this machine's music.
+
+## 9. The performance is state of the project
+
+A realization is neither of the two things above it. It is not the application's — it belongs to this piece and means
+nothing for the next one — and it is not the file's: two composers holding the same `.musa` must be able to disagree
+about a performance, which is what open form is for. So it is the **project's**, and it lives beside the piece as a
+sibling file the composer can find, read, and delete (`docs/kernel/11-realization.md`).
+
+Four consequences.
+
+- **It appears only where it means something.** A determinate piece has no performance row in Settings, no Decision step
+  in the inspector, and no sentence anywhere explaining a freedom it does not have.
+- **It is in the one undo history.** Reading again, keeping a decision, and releasing one are moves like any other:
+  `⌘Z` puts the reading back. Unlike a preference, a performance changes the music on the page, so it must be
+  reversible where the music is.
+- **It does not mark the document unsaved.** Nothing about the file changed.
+- **A new performance is a new score.** The selection is let go of rather than carried across it: event identity is a
+  position in the score, so a piece read again renumbers, and a selection kept would silently describe another note
+  (`02-engraving.md` §6).

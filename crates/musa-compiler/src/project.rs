@@ -388,7 +388,7 @@ fn repeats_of(occurrences: &[&Occurrence<ScoreFact>]) -> Vec<crate::score::Repea
     let mut repeats: Vec<crate::score::RepeatRegion> = occurrences
         .iter()
         .filter_map(|occurrence| {
-            let FactKind::Repeat { times } = occurrence.payload().kind else {
+            let FactKind::Repeat { times, range } = occurrence.payload().kind else {
                 return None;
             };
             let start = time(occurrence.span().start());
@@ -398,6 +398,7 @@ fn repeats_of(occurrences: &[&Occurrence<ScoreFact>]) -> Vec<crate::score::Repea
                 body_end: end,
                 end,
                 times,
+                range,
                 endings: Vec::new(),
                 origin: occurrence.payload().origin.clone(),
             })

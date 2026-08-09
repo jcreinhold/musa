@@ -278,7 +278,18 @@ fn kind_text(kind: &FactKind) -> String {
         ],
         FactKind::Section { name } => vec!["section".to_owned(), name.clone()],
         FactKind::Harmony { symbol } => vec!["harmony".to_owned(), symbol.text.clone()],
-        FactKind::Repeat { times } => vec!["repeat".to_owned(), times.to_string()],
+        // Two fields for an exact repeat and four for an open one, so a piece
+        // that leaves nothing open encodes exactly as it did before the range
+        // existed.
+        FactKind::Repeat { times, range } => match range {
+            Some((least, most)) => vec![
+                "repeat".to_owned(),
+                times.to_string(),
+                least.to_string(),
+                most.to_string(),
+            ],
+            None => vec!["repeat".to_owned(), times.to_string()],
+        },
         FactKind::Ending { bracket, pass } => {
             vec!["ending".to_owned(), bracket.to_string(), pass.to_string()]
         }
@@ -417,6 +428,11 @@ fn read_kind(text: &str) -> Option<FactKind> {
         }),
         ("repeat", 2) => Some(FactKind::Repeat {
             times: arg(1)?.parse().ok()?,
+            range: None,
+        }),
+        ("repeat", 4) => Some(FactKind::Repeat {
+            times: arg(1)?.parse().ok()?,
+            range: Some((arg(2)?.parse().ok()?, arg(3)?.parse().ok()?)),
         }),
         ("ending", 3) => Some(FactKind::Ending {
             bracket: arg(1)?.parse().ok()?,
@@ -654,7 +670,11 @@ mod tests {
             FactKind::Harmony {
                 symbol: ChordSymbol::parse("fmaj7")?,
             },
-            FactKind::Repeat { times: 4 },
+            FactKind::Repeat { times: 4, range: None },
+            FactKind::Repeat {
+                times: 6,
+                range: Some((4, 16)),
+            },
             FactKind::Ending { bracket: 2, pass: 3 },
         ];
         let scopes = [Scope::Piece, Scope::Voice { part: 2, voice: 11 }];

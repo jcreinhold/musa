@@ -154,7 +154,13 @@ pub(crate) enum FactKind {
     /// A repeat over every pass it plays. The page prints the body once
     /// between repeat barlines; the timeline holds all `times` of it, which is
     /// the layer table's own example (roadmap §2).
-    Repeat { times: u32 },
+    Repeat {
+        times: u32,
+        /// The passes the *source* asked for, when it left the count open:
+        /// `repeat 4 to 16` is `Some((4, 16))` and `times` is the reading this
+        /// performance took. The page prints the range and plays the count.
+        range: Option<(u32, u32)>,
+    },
     /// A mobile over the region it plays: the fragments as written, and the
     /// order this performance chose. The realized music is the fragments'
     /// own occurrences; this is the instruction the page prints over them
@@ -437,7 +443,10 @@ impl musa_kernel::Canonical for ScoreFact {
             }
             FactKind::Section { name } => format!("section:{name}|"),
             FactKind::Harmony { symbol } => format!("harmony:{}|", symbol.text),
-            FactKind::Repeat { times } => format!("repeat:{times}|"),
+            FactKind::Repeat { times, range } => match range {
+                Some((least, most)) => format!("repeat:{times}:{least}:{most}|"),
+                None => format!("repeat:{times}|"),
+            },
             FactKind::Ending { bracket, pass } => format!("ending:{bracket}:{pass}|"),
             FactKind::Mobile { fragments, order } => {
                 let order: Vec<String> = order.iter().map(u32::to_string).collect();
@@ -558,6 +567,14 @@ pub(crate) fn elaborate_parsed(
     let references = std::mem::take(&mut resolver.references);
     let lints = crate::lint::lint(document, &piece, &references, &studio);
     resolver.diagnostics.extend(lints);
+    // A piece that asked nothing was not realized, it was compiled, and the
+    // score says so by having no performance at all. Everything downstream —
+    // the seed field, the Origin step, the export note — appears and vanishes
+    // on this one value (prompt 76).
+    let mut snapshot = snapshot;
+    if !resolver.decisions.is_empty() {
+        snapshot.set_performance(resolver.realization.seed());
+    }
     Compilation::new(Some(snapshot), std::mem::take(&mut resolver.diagnostics))
         .with_studio(studio)
         .with_identity(identity)
@@ -1894,7 +1911,7 @@ fn held(
         return (duration, None);
     }
     let least = duration.value;
-    let sounds = resolver.decide_duration(&cx.choice, least.as_ratio(), most.as_ratio());
+    let sounds = resolver.decide_duration(&cx.choice, least.as_ratio(), most.as_ratio(), span);
     (
         NotatedDuration {
             value: crate::MusicalDuration::new(sounds),
@@ -1927,8 +1944,7 @@ fn elaborate_mobile(
         );
         return Segment::empty();
     }
-    let count = u32::try_from(names.len()).unwrap_or(u32::MAX);
-    let order = resolver.decide_order(&cx.choice, count);
+    let order = resolver.decide_order(&cx.choice, &names, span);
     let name_tokens = mobile.fragment_tokens();
     let mut played: Vec<Segment> = Vec::with_capacity(names.len());
     for index in &order {
@@ -2006,7 +2022,14 @@ fn elaborate_improvise(
     }
 }
 
-/// The number of passes a `repeat` takes: written, or chosen.
+/// The number of passes a `repeat` takes — written, or chosen — and the range
+/// it was chosen from.
+///
+/// The range is returned because the page has to print it. `repeat 4 to 16`
+/// means *play this between four and sixteen times*, and a page that printed
+/// only the count this performance drew would have replaced the composer's
+/// instruction with one reading of it. Prompt 58's rule again: the timeline
+/// holds every pass, the page prints the instruction once.
 ///
 /// `None` is a refusal, not a count of zero: a backwards range is a mistake
 /// about the music rather than an empty repeat, and compiling it as silence
@@ -2016,9 +2039,9 @@ fn ranged_count(
     repeat: &musa_language::ast::RepeatStmt,
     cx: &ExpandCx,
     least: u32,
-) -> Option<u32> {
+) -> Option<(u32, Option<(u32, u32)>)> {
     let Some(most) = repeat.most() else {
-        return Some(least);
+        return Some((least, None));
     };
     let span = resolve::trimmed_span(repeat.syntax());
     let Some(most) = most.parse::<u32>().ok().filter(|most| *most >= least) else {
@@ -2029,7 +2052,8 @@ fn ranged_count(
         );
         return None;
     };
-    Some(resolver.decide_count(&cx.choice, least, most).1)
+    let count = resolver.decide_count(&cx.choice, least, most, span).1;
+    Some((count, Some((least, most))))
 }
 
 /// `repeat n { … }` and `repeat n to m { … }`, with or without endings.
@@ -2051,7 +2075,7 @@ fn elaborate_repeat(
     scope: Scope,
 ) -> Segment {
     let least: u32 = repeat.count().and_then(|text| text.parse().ok()).unwrap_or(0);
-    let Some(count) = ranged_count(resolver, repeat, cx, least) else {
+    let Some((count, range)) = ranged_count(resolver, repeat, cx, least) else {
         return Segment::empty();
     };
     if count == 0 {
@@ -2112,7 +2136,10 @@ fn elaborate_repeat(
         tied: false,
     };
     let origin = origin_of(cx, resolve::trimmed_span(repeat.syntax()));
-    region(whole, ScoreFact::new(scope, FactKind::Repeat { times: count }, origin))
+    region(
+        whole,
+        ScoreFact::new(scope, FactKind::Repeat { times: count, range }, origin),
+    )
 }
 
 /// The ending a given pass plays — its 1-based bracket, binding, and length —
@@ -3442,11 +3469,7 @@ pub fn kernel_normal_form(source: &SourceDocument, realization: &crate::Realizat
 pub(crate) fn piece_term(
     source: &SourceDocument,
     realization: &crate::Realization,
-) -> Option<(
-    String,
-    musa_kernel::Term<ScoreFact>,
-    Vec<(crate::ChoicePath, crate::Decision)>,
-)> {
+) -> Option<(String, musa_kernel::Term<ScoreFact>, Vec<crate::DecisionRecord>)> {
     let document = musa_language::parse(source.text());
     if !document.errors().is_empty() {
         return None;

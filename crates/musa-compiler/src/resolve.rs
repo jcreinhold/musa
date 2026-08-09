@@ -320,7 +320,7 @@ pub(crate) struct Resolver {
     /// next one there knows its ordinal.
     pub(crate) sites: std::collections::BTreeMap<crate::ChoicePath, u32>,
     /// Every decision this compile took, in the order the sites were reached.
-    pub(crate) decisions: Vec<(crate::ChoicePath, crate::Decision)>,
+    pub(crate) decisions: Vec<crate::DecisionRecord>,
     /// The key the header wrote, on its way into the timeline.
     ///
     /// Staged here rather than on the snapshot because the snapshot's answer
@@ -383,19 +383,38 @@ impl Resolver {
         place: &crate::ChoicePath,
         least: u32,
         most: u32,
+        site: SourceSpan,
     ) -> (crate::ChoicePath, u32) {
         let path = self.site(place);
         let count = self.realization.count(&path, least, most);
-        self.decided(path.clone(), crate::Decision::Count(count));
+        let passes = if count == 1 { "pass" } else { "passes" };
+        self.decided(
+            path.clone(),
+            crate::Decision::Count(count),
+            site,
+            format!("{count} {passes}"),
+        );
         (path, count)
     }
 
-    /// The order a mobile's `count` fragments are played in: a permutation of
-    /// `0..count`.
-    pub(crate) fn decide_order(&mut self, place: &crate::ChoicePath, count: u32) -> Vec<u32> {
+    /// The order a mobile's fragments are played in: a permutation of
+    /// `0..fragments.len()`.
+    pub(crate) fn decide_order(
+        &mut self,
+        place: &crate::ChoicePath,
+        fragments: &[String],
+        site: SourceSpan,
+    ) -> Vec<u32> {
         let path = self.site(place);
+        let count = u32::try_from(fragments.len()).unwrap_or(u32::MAX);
         let order = self.realization.order(&path, count);
-        self.decided(path, crate::Decision::Order(order.clone()));
+        // By name, because `[2, 0, 1]` is not something to show anyone and
+        // the names are only known here (`docs/interface/03-interaction.md` §7).
+        let played: Vec<&str> = order
+            .iter()
+            .filter_map(|index| fragments.get(*index as usize).map(String::as_str))
+            .collect();
+        self.decided(path, crate::Decision::Order(order.clone()), site, played.join(", "));
         order
     }
 
@@ -406,10 +425,12 @@ impl Resolver {
         place: &crate::ChoicePath,
         least: Ratio<i64>,
         most: Ratio<i64>,
+        site: SourceSpan,
     ) -> Ratio<i64> {
         let path = self.site(place);
         let held = self.realization.duration(&path, least, most);
-        self.decided(path, crate::Decision::Duration(held));
+        let answered = format!("held {}/{}", held.numer(), held.denom());
+        self.decided(path, crate::Decision::Duration(held), site, answered);
         held
     }
 
@@ -426,11 +447,21 @@ impl Resolver {
     /// One site, one decision, however many voices reach it: the k-th site in
     /// every voice *is* the k-th site, which is the point of numbering them
     /// per voice rather than per path down from the part.
-    fn decided(&mut self, path: crate::ChoicePath, decision: crate::Decision) {
-        let decision = (path, decision);
-        if !self.decisions.contains(&decision) {
-            self.decisions.push(decision);
+    fn decided(&mut self, path: crate::ChoicePath, decision: crate::Decision, site: SourceSpan, answered: String) {
+        if let Some(already) = self.decisions.iter_mut().find(|record| record.path == path) {
+            if !already.sites.contains(&site) {
+                already.sites.push(site);
+            }
+            return;
         }
+        let pinned = self.realization.is_pinned(&path);
+        self.decisions.push(crate::DecisionRecord {
+            path,
+            decision,
+            sites: vec![site],
+            answered,
+            pinned,
+        });
     }
 
     pub(crate) fn declare(&mut self, info: DeclInfo) -> DeclKey {

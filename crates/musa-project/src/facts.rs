@@ -72,6 +72,16 @@ pub struct OriginFacts {
     /// body when generated, the same as `span` when authored. This is what
     /// an edit-definition edit rewrites (`04-provenance.md` §4).
     pub definition_span: crate::diagnostic::Span,
+    /// The decision this event was played under, as an index into
+    /// [`ScoreFacts::decisions`] — the fourth step of the Origin chain
+    /// (prompt 76).
+    ///
+    /// Absent for the overwhelming majority of notes, because the
+    /// overwhelming majority of pieces decide nothing. Resolved here rather
+    /// than in a frontend because finding it means asking which decision site
+    /// *contains* this note, which is the core reasoning about the source
+    /// (`03-interaction.md` §7).
+    pub decision: Option<usize>,
 }
 
 /// One expansion, and everything it produced
@@ -212,6 +222,40 @@ pub struct ScoreFacts {
     /// Every statement the piece can make about itself, whether or not it
     /// makes it (prompt 54).
     pub header: Vec<HeaderFact>,
+    /// Which performance this reading is, when the piece left anything to
+    /// one.
+    ///
+    /// `None` is the determinate case, and it is what makes the interface's
+    /// seed field appear and vanish rather than sit there in every piece
+    /// that cannot use it (prompt 76).
+    pub performance: Option<u64>,
+    /// Every question the piece asked and the answer this performance gave,
+    /// in the order the sites were reached. Empty for a determinate piece.
+    pub decisions: Vec<DecisionFact>,
+}
+
+/// One decision, as the Origin view and the Settings panel read it.
+///
+/// The wording rules of `docs/interface/` are already applied: this carries
+/// sentences a musician reads, not the machine's names for things. `path` is
+/// the exception and is never shown — it is the key a pin is written against.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DecisionFact {
+    /// The site's stable name, canonical. Opaque to the interface: it is what
+    /// [`crate::ProjectCommand::Pin`] takes back, and nothing else.
+    pub path: String,
+    /// Where the question was asked, as a person reads it: `fill, first
+    /// choice`.
+    pub asked: String,
+    /// The answer, likewise: `6 passes`, `held 3/8`, the fragments by name.
+    pub answered: String,
+    /// Whether the composer kept this one. An unpinned decision reads as the
+    /// performance it came from; a pinned one reads "kept".
+    pub pinned: bool,
+    /// Where in the source the question is written — the first place, for a
+    /// freedom the piece spells once per voice.
+    pub span: crate::diagnostic::Span,
 }
 
 /// One of the piece's own facts, as the source spells it.
@@ -297,8 +341,26 @@ impl ScoreFacts {
     ///
     /// `source` is needed only to turn byte offsets into line numbers — the
     /// interface shows a composer a line, not an offset.
-    pub(crate) fn derive(score: &ScoreSnapshot, source: &str) -> Self {
+    pub(crate) fn derive(score: &ScoreSnapshot, source: &str, taken: &[musa_compiler::DecisionRecord]) -> Self {
         let lines = LineIndex::new(source);
+        let decisions: Vec<DecisionFact> = taken
+            .iter()
+            .map(|record| DecisionFact {
+                path: record.path().canonical(),
+                asked: record.path().describe(),
+                answered: record.answered().to_owned(),
+                pinned: record.pinned(),
+                span: record
+                    .sites()
+                    .first()
+                    .map_or(crate::diagnostic::Span { start: 0, end: 0 }, |site| {
+                        crate::diagnostic::Span {
+                            start: site.start,
+                            end: site.end,
+                        }
+                    }),
+            })
+            .collect();
         // The same tempo integration the performance lowering uses, at the
         // same options, so a frame here is the frame the engine will report.
         let tempo = IntegratedTempoMap::new(score, Scope::Piece, &PerformanceOptions::default());
@@ -327,6 +389,7 @@ impl ScoreFacts {
                 for event in voice.events() {
                     let id = format!("event-{:x}", event.id.0);
                     let mut origin = origin_facts(&event.origin, &lines, source);
+                    origin.decision = decided_under(taken, event.origin.source_span);
                     if origin.generated {
                         let at = match paths.iter().position(|known| *known == event.origin.expansion_path) {
                             Some(at) => at,
@@ -414,6 +477,8 @@ impl ScoreFacts {
             events,
             occurrences,
             outline,
+            performance: score.performance(),
+            decisions,
             // Read back off the source rather than off the compiled score:
             // what a field shows has to be what a field writes, and the
             // compiled score has already normalized `quarter = 72` into a
@@ -637,6 +702,7 @@ fn mode(mode: Mode) -> &'static str {
 
 fn origin_facts(origin: &Origin, lines: &LineIndex, source: &str) -> OriginFacts {
     OriginFacts {
+        decision: None,
         generated: !origin.expansion_path.is_empty(),
         path: origin.expansion_path.iter().map(|it| step(it, source)).collect(),
         note_index: None,
@@ -651,6 +717,31 @@ fn origin_facts(origin: &Origin, lines: &LineIndex, source: &str) -> OriginFacts
             end: origin.definition_span.end,
         },
     }
+}
+
+/// Which decision an event was played under: the innermost site whose source
+/// spans it.
+///
+/// Containment rather than time, because a decision is *provenance* and the
+/// Origin chain is a chain of source. A note inside a `repeat 4 to 16` was
+/// written inside it; a note a mobile reordered was written inside the
+/// `mobile` block; a freely-held note is its own site. Innermost wins, for the
+/// reason the expansion path reads outside-in: the nearest question is the one
+/// that produced this note.
+fn decided_under(taken: &[musa_compiler::DecisionRecord], span: musa_compiler::SourceSpan) -> Option<usize> {
+    taken
+        .iter()
+        .enumerate()
+        .filter_map(|(index, record)| {
+            let site = record
+                .sites()
+                .iter()
+                .filter(|site| site.start <= span.start && span.end <= site.end)
+                .min_by_key(|site| site.end.saturating_sub(site.start))?;
+            Some((site.end.saturating_sub(site.start), index))
+        })
+        .min()
+        .map(|(_, index)| index)
 }
 
 /// One expansion step, named the way the source names it.
