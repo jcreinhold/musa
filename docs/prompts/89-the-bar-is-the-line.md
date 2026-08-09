@@ -55,7 +55,23 @@ behaviour change and it belongs in the commit message.
 
 Note, rest and chord lose their `;`. Context statements keep theirs and keep their own line: `dynamic mf;`,
 `meter 7/8;`, `clef treble;`. That split is not arbitrary — it is where notation puts them, layered below the staff
-rather than in the run of noteheads.
+rather than in the run of noteheads. Stated once, in the words the language should use everywhere it explains itself:
+
+> **A note, a rest and a chord end themselves; every other statement ends with `;` or `}`.**
+
+That sentence is the help line on the stray-`;` parse error and the rule paragraph under `musa explain syntax`. Both
+readers meet it at the moment they need it, and neither gets a different version of it.
+
+**A grace note ends itself too.** `grace { c5 staccato d5 }`, not `grace { c5 staccato; d5; }`. A grace note is a
+pitch and the marks written on it — the same word an event is, minus the duration it does not have — so the same
+reason applies, and applying it only to the three *statements* would leave the one place a pitch is written without a
+duration as the one place a `;` is still required. The group's `}` ends the last grace note, which is what the rule's
+second clause already says. Two consequences, both wanted: the formatter writes a grace group on one line for the
+same reason it writes a bar on one line — a run of events is horizontal — and `grace_stmt` eats leading trivia before
+opening its node, so the comment above a group stays above it rather than inside the line.
+
+The `grace` *rule* in a `performance` profile — `grace { steal = 1/8; from = principal; }` — is untouched. Those are
+settings, not events, and `steal = 1/8` is exactly the kind of statement whose `;` the rule keeps.
 
 An event is self-delimiting, with one exception that has to be handled rather than hoped about. `articulations()` is
 greedy over `Identifier`, and a pitch *reference* is also a bare `Identifier` — `examples/tuplet-fixture.musa` writes
@@ -143,16 +159,21 @@ bulgarian's explanatory comment is deleted in the same commit, because the group
 
 - `crates/musa-language/src/lexer.rs`: `ChordKw` deleted.
 - `crates/musa-language/src/parser.rs`: `pipe_bar_stmt`, `voice_items`' exit and dispatch, `chord_literal`, the
-  articulation lookahead, the marks inside `ArticulationList`, `VOICE_RECOVERY`, the stray-`;` arm.
+  articulation lookahead, the marks inside `ArticulationList`, `VOICE_RECOVERY`, the stray-`;` arm and the rule in its
+  help line, `grace_stmt`'s items and its leading trivia.
 - `crates/musa-language/src/{ast,highlight,keywords}.rs`: `ChordKw` removed from the exhaustive matches; the marks
   mapped in `articulation_names`.
 - `crates/musa-language/src/edits.rs`: the six rows above.
-- `crates/musa-language/src/formatter.rs`: `>` and `^` close up to the note the way `/` and `.` do, and an event ends
-  its own line — nothing inside it does that now the `;` is gone. Neither is bar layout; that is still prompt 90.
+- `crates/musa-language/src/formatter.rs`: `>` and `^` close up to the note the way `/` and `.` do; an event ends its
+  own line — nothing inside it does that now the `;` is gone; and `inline_bar` becomes `inline_run`, covering the
+  grace group for the same reason it covers the bar. None of that is bar *layout*; that is still prompt 90.
 - `crates/musa-compiler/src/marks.rs`: `MarkDef::shorthand`.
+- `crates/musa-project/src/diagnostic.rs`: `explain("syntax")` states the rule, in the same words the parse error uses.
 - `editors/tree-sitter-musa/grammar.js` + regenerated `src/parser.c`, and `queries/highlights.scm`.
-- Every `examples/**/*.musa`, converted. `examples/broken/missing-semicolon.musa` becomes `extra-semicolon.musa`;
-  `broken/bar-too-short.musa` is rewritten with `|`.
+- Every `examples/**/*.musa`, converted. `examples/broken/extra-semicolon.musa` is added — the `;` a reader who
+  learned the old syntax types after a note. `broken/missing-semicolon.musa` stays: `clef treble` without its `;` is
+  still a genuinely missing terminator, and it is the fixture `crates/musa-lsp/tests/lsp_laws.rs` reads, which this
+  prompt may not touch. `broken/bar-too-short.musa` is rewritten with `|`.
 - Every golden, snapshot and fixture that follows.
 
 ## Check
@@ -167,7 +188,8 @@ for f in examples/*.musa examples/album/pieces/*.musa; do cargo run -p musa-cli 
 
 New laws: a `|`-bar's `BarStmt::name()` is `None` **by tree shape**, over generated sources; `| a | b` does not trip
 `nested_bar`; every `MarkDef::shorthand` lexes as exactly one token; `a5/4>` and `a5/4 accent` elaborate to the same
-fact; a stray `;` after a note produces the removal fix and applying it yields a source that parses clean.
+fact; a stray `;` after a note produces the removal fix and applying it yields a source that parses clean;
+`grace { c5 staccato d5 }` parses as two grace notes, the first carrying the mark.
 
 Rendered output must not change except where the source's own spelling appears — this is a surface change, and
 `bulgarian.musa` newly passing a bar-length check it was never subject to is the one intended difference.
@@ -179,4 +201,5 @@ Rendered output must not change except where the source's own spelling appears �
 - **No `bar 5/4 { … }` sugar and no pickup syntax.** Both are rejected in the roadmap and stay rejected.
 - **No removal of the named `bar`.** It is an address, and the style guide says why.
 - **No one-bar-per-line formatting.** That is prompt 90; this prompt makes it possible and does not do it.
-- **No `;` removed from `use`, `grace`, `mobile`, or any context statement.**
+- **No `;` removed from `use`, `mobile`, a `performance` profile's `grace` rule, or any context statement.** A grace
+  *note* loses its `;` because it is an event; a `steal = 1/8` setting keeps its because it is not.
