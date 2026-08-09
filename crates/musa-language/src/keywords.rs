@@ -713,14 +713,16 @@ mod tests {
             SyntaxKind::PitchKw,
         ];
         for kind in kinds {
-            let doc = keyword_doc(kind).unwrap_or_else(|| panic!("{kind:?} has no doc"));
+            let doc = keyword_doc(kind);
+            assert!(doc.is_some(), "{kind:?} has no doc");
+            let Some(doc) = doc else { continue };
             assert!(!doc.summary.is_empty(), "{kind:?}: empty summary");
             assert!(doc.doc.contains("```musa"), "{kind:?}: doc has no example");
-            let tokens = lex(doc.spelling);
-            let [token] = tokens.tokens() else {
-                panic!("{:?}: `{}` did not lex as one token", kind, doc.spelling);
-            };
-            assert_eq!(token.kind, kind, "{kind:?}: spelling drifted from the lexer");
+            // One assertion for both halves of the law: the spelling lexes as
+            // exactly one token, and that token is the kind it was filed
+            // under.
+            let lexed: Vec<SyntaxKind> = lex(doc.spelling).tokens().iter().map(|token| token.kind).collect();
+            assert_eq!(lexed, [kind], "{kind:?}: `{}` drifted from the lexer", doc.spelling);
         }
     }
 }
