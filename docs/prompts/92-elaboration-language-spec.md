@@ -1,7 +1,7 @@
 ---
 id: 92
 slug: elaboration-language-spec
-status: pending
+status: done
 depends_on: [49, 63, 86, 91]
 phase: 3
 ---

@@ -1,0 +1,136 @@
+# Musical domains
+
+Musa uses separate types where musical practice preserves separate choices. The cited Open Music Theory files live in
+`~/Code/papers/music-theory/open-music-theory/`; citations name exact files so the definitions remain auditable. Where
+OMT supplies practice rather than a mathematical object, the definition is explicitly Musa's and its elementary laws
+are proved here.
+
+## 1. Written pitch and interval
+
+Define `WrittenPitch = ℤ × ℤ`. A pitch `(d,c)` records absolute diatonic height and absolute chromatic height. Define
+`Interval = ℤ × ℤ`; intervals form an abelian group componentwise and act on pitches by
+`(d,c) + (i,j) = (d+i,c+j)`. Named intervals parse to pairs: for example `M2=(1,2)`, `m2=(1,1)`, and `P8=(7,12)`.
+This represents OMT's joint generic and specific interval naming (`016-intervals.md`) and retains the spellings that
+accidentals distinguish (`005-half-steps-whole-steps-and-accidentals.md`).
+
+**Lemma (faithful action).** `p + 0 = p` and `(p+i)+j = p+(i+j)` by componentwise integer identities. If `p+i=p+j`,
+integer cancellation gives `i=j`. Thus transposition is total, associative, and spelling-preserving.
+
+Define spelled pitch class as the octave quotient
+
+```text
+SpelledPC = WrittenPitch / ((d,c) ~ (d+7k,c+12k), k∈ℤ).
+```
+
+It forgets register but not enharmonic spelling: `C♯` and `D♭` have different diatonic coordinates and are unequal.
+Define `pc12 = ℤ/12ℤ` and the forgetful map `χ([(d,c)]) = c mod 12`. This is well-defined because changing the
+representative adds `12k`; it is not injective because enharmonic spellings can share `c mod 12`. OMT
+`099-pitch-and-pitch-class.md` motivates octave equivalence for pitch-class work, while OMT
+`100-intervals-in-integer-notation.md` and `101-pitch-class-sets-normal-order-and-transformations.md` use mod-12
+intervals and transformations. Musa never uses `pc12` where notation must retain spelling.
+
+## 2. Scale, key, degree, and register
+
+A `Scale` is a named root plus a nonempty cyclic ordered vector of distinct `SpelledPC` offsets within its period. Its
+order supplies step traversal. Major's step pattern is W–W–H–W–W–W–H (`013-major-scales-scale-degrees-and-key-signatures.md`);
+minor has distinct natural, harmonic, and melodic collections (`014-minor-scales-scale-degrees-and-key-signatures.md`);
+diatonic modes rotate the ordered diatonic collection (`105-diatonic-modes.md`). Other collections are explicit scale
+values rather than mislabeled modes (`106-collections.md`).
+
+A `Key` is a tonal/notational context: spelled tonic, mode family, key signature, and its named collection policies.
+It has no register and is not a single scale. A minor key may select different scale collections in different
+constructions. `in scale` changes only generative coordinates; `key` emits a contextual score fact. This prevents a
+local Dorian phrase from falsely declaring modulation, an interpretive continuum discussed in
+`050-tonicization.md` and `051-extended-tonicization-and-modulation-to-closely-related-keys.md`.
+
+A `Degree` is a signed ordinal relative to a scale. `locate(s,p) : option[(degree, register)]` is partial because a
+chromatic pitch may not belong to `s`. `realize(s,degree,register) : pitch` is total. Register is an integer lift through
+the scale period; it is mandatory whenever a pitch rather than a pitch class is requested.
+
+**Lemma (round trip).** Because scale members are distinct within a period, Euclidean division of a member's ordered
+index into quotient/register and remainder/degree is unique. Therefore `locate(s,realize(s,n,r))=some(n,r)` under the
+canonical degree representative. A request to realize a key degree without choosing a scale policy and register is
+underdetermined and rejected.
+
+## 3. Harmony
+
+A `ChordClass` is `(root : SpelledPC, members : finite nonempty set Interval, labels : metadata)`, normalized so unison
+is a member. It describes rooted harmonic membership without register, spacing, doubling, omission, or bass choice. A
+`Triad` is the checked subtype whose core has three spelled members arranged as two thirds; quality follows the member
+intervals described in `017-triads.md`. Seventh-chord membership follows `018-seventh-chords.md`.
+
+A `Voicing` is a nonempty ordered collection of exact `WrittenPitch` values plus an explicit association to a chord
+class. Its bass is its lowest sounding pitch; inversion is classified from which chord member occupies that bass, as
+in `019-inversion.md`. Spacing, doubling, and omission are voicing choices (`075-chord-symbols.md`,
+`076-jazz-voicings.md`). Consequently a chord symbol or Roman numeral cannot directly sound.
+
+A `ChordSymbol` is a notation annotation encoding a conventional root/quality/extensions/bass description. A
+`RomanNumeral` and figured bass are context-dependent analysis results, following `020-roman-numerals.md` and
+`021-figured-bass-and-roman-numerals-with-figures.md`. Chromatic chord vocabularies in OMT 061–071 and
+Neo-Riemannian operations in `072-neo-riemannian-triadic-progressions.md` are library constructors/analyses over these
+types, not compiler ontology.
+
+**Lemma (voicing forgetfulness).** Projecting every pitch of a valid voicing to its interval class above the declared
+root yields members of the chord class. The converse is not unique: octave-displacing a member, doubling one, or
+choosing another bass produces a different voicing with the same chord class. Hence `voice : ChordClass ×
+VoicingPolicy → Voicing` needs a policy and cannot be a coercion.
+
+## 4. Pitch-class sets and rows
+
+A `PCSet` is a finite subset of `pc12`; transposition and inversion are the mod-12 actions described in
+`101-pitch-class-sets-normal-order-and-transformations.md`. A `Row12` is a bijection `Fin 12 → pc12`. Its constructor
+checks exactly 12 entries and no duplicate. `P`, `I`, `R`, and `RI` are finite derived permutations as in
+`108-basics-of-twelve-tone-theory.md`.
+
+Row-form labels carry an explicit `RowConvention` because published naming conventions vary
+(`109-naming-conventions-for-rows.md`). A generic row may have 48 distinct forms; invariant transformations of a
+symmetric row can identify forms, so cardinality is computed rather than asserted (`110-row-properties.md`).
+
+There are 24 affine pitch-class operations: the 12 transpositions `Tₙ(x)=x+n` and the 12 inversions
+`Iₙ(x)=-x+n`. They are distinct functions on `pc12`, closed under composition, and every composition again has
+coefficient `+1` or `-1`, so this group has exactly 24 elements. Row-form vocabulary additionally chooses whether to
+reverse index order, giving 48 labelled `P/I/R/RI` operations before stabilizers are considered. Calling the latter
+“the 48-element pitch-class T/I group” is false; a symmetric row may also identify several labelled results.
+
+**Lemma (finite closure).** Composition of a row with any `P/I/R/RI` index transformation remains a bijection because
+each transformation is a permutation of `Fin 12` followed, where applicable, by a bijection on `pc12`. Thus every row
+operation is total and finite.
+
+## 5. Construction, assertion, and analysis
+
+- A constructor returns a value only after enforcing its representation invariant (`row12`, `scale`, `voice`).
+- An assertion is a decidable proposition over constructed finite values or music and either returns its input with
+  evidence or emits a diagnostic. Counterpoint rules are style-indexed assertions, not universal laws: OMT
+  `023-introduction-to-species-counterpoint.md`, `024-first-species-counterpoint.md`,
+  `025-second-species-counterpoint.md`, `026-third-species-counterpoint.md`,
+  `027-fourth-species-counterpoint.md`, and `028-fifth-species-counterpoint.md` describe a particular pedagogical
+  practice.
+- An analysis returns `AnalysisResult[A] = { method, assumptions, observations, alternatives, evidence }`. It may be
+  ambiguous. Tonalization/modulation (`050`, `051`), Roman numerals, and orchestration readings do not become facts
+  merely because an algorithm selected one.
+
+This split prevents a theory algorithm from silently changing construction and prevents one analytic convention from
+becoming type checking.
+
+## 6. Source map and falsifiers
+
+| Concept | Musa definition | Source or local theorem | Falsifying example | Prompt |
+| --- | --- | --- | --- | --- |
+| written pitch/interval | `ℤ²` and its faithful action | OMT `005-half-steps-whole-steps-and-accidentals.md`, `016-intervals.md`; faithful-action lemma above | `C♯4 + d2` must not spell `E♭4` | 100 |
+| spelled pitch class | octave quotient by `(7,12)` | Musa definition; well-defined quotient above | `C♯ = D♭` is false here | 100 |
+| `pc12` | chromatic quotient `ℤ/12ℤ` | OMT `099-pitch-and-pitch-class.md`, `100-intervals-in-integer-notation.md` | `B♯ ≠ C` is false here | 105 |
+| scale | ordered distinct cyclic spelled collection | OMT `013`, `014`, `105`, `106` exact filenames above | treating melodic minor as one immutable ascending/descending fact | 101 |
+| key | tonic/signature/mode-family context | OMT `013`, `014`, `050`, `051` | `key c minor` cannot determine one registered pitch for degree 6 | 101 |
+| degree/register | ordinal plus explicit periodic lift | Musa definition and round-trip lemma | `degree(scale c major, 1)` cannot have type `pitch` without register | 101 |
+| chord class | rooted spelled membership, no register | OMT `017-triads.md`, `018-seventh-chords.md`, `075-chord-symbols.md` | a Cmaj7 symbol does not choose C3 or C4 bass | 102 |
+| triad | checked three-member tertian subtype | OMT `017-triads.md` | `{C,D,G}` is not a triad merely because it has three notes | 102 |
+| inversion/voicing | exact pitches plus bass/spacing/doubling choices | OMT `019-inversion.md`, `076-jazz-voicings.md`; forgetfulness lemma | drop-2 and close position cannot compare equal as voicings | 102 |
+| row12 | bijection `Fin 12 → pc12` | OMT `108-basics-of-twelve-tone-theory.md`; finite-closure lemma | a repeated pc rejects construction | 105 |
+| row convention | explicit naming policy | OMT `109-naming-conventions-for-rows.md` | bare `P7` in a convention-free API is ambiguous | 105 |
+| symmetric row | row with nontrivial stabilizer | OMT `110-row-properties.md` | requiring exactly 48 distinct forms rejects valid rows | 105 |
+| harmonic transform | library operation over typed harmony | OMT `061`–`073`, especially `072-neo-riemannian-triadic-progressions.md` | calling every common-tone move a kernel primitive | 106–108 |
+| assertion | decidable, evidence-producing check | Musa definition; style evidence OMT `023`–`028` | species rules applied as universal well-formedness | 109, 112 |
+| analysis result | named method, assumptions, alternatives, evidence | OMT `020`, `021`, `050`, `051` | one Roman-numeral reading mutates the chord facts | 110–111 |
+
+Abbreviated OMT numbers in the table refer to the exact filenames already written in the corresponding definition row;
+implementing prompts must cite the filename in user-facing reference documentation.

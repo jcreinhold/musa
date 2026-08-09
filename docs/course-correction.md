@@ -914,6 +914,14 @@ output
 
 This keeps score semantics and signal-processing semantics independently coherent.
 
+> **Candidate refinement (prompt 92; not governing until prompt 137):** `docs/language/08-performance-and-sound.md`
+> makes the realization/instrument boundary typed and explicit:
+> `Timeline[ScoreFact] → GestureTimeline[InstrumentSignature] → ScheduledGestureLane → Signal → stereo mix`.
+> Profiles interpret notation into exact musical gestures and semantic `ControlKey`s; instrument implementations map
+> those controls privately to native graphs or sample maps. Part identity survives to its prepared instrument. This
+> repairs the current shared-note-stream and ignored-parameter debts without moving audio, seconds, samples, or buses
+> into the kernel.
+
 ---
 
 # 24. Proposed kernel serialization grammar
@@ -1285,9 +1293,12 @@ Only after differential parity should the new elaboration path replace direct se
 
 ---
 
-# 31. Surface-language design remains open
+# 31. Surface-language design was left open; a candidate now exists
 
-Do **not** mistake this memo for a final surface syntax specification.
+Do **not** mistake this memo for a final surface syntax specification. Prompt 92 now supplies the precise candidate at
+`docs/language/`, including settled punctuation, a total higher-order value calculus, contextual and context-neutral
+`music`, declaration templates, static modules, and typed kernel quotation. It is the implementation contract for
+prompts 93–136 but remains lower precedence than this memo until prompt 137 audits and graduates it.
 
 The user-facing language should remain free to be substantially richer and more musician-oriented than the kernel.
 
@@ -1320,6 +1331,10 @@ Specialized musician-friendly syntax is desirable when it improves composition.
 The anti-pattern is not “domain-specific syntax.”
 
 The anti-pattern is **domain-specific semantic accretion without a stable lower algebra**.
+
+The candidate respects that rule: every score construction closes to the existing `Term[ScoreFact]`, and its sound and
+asset declarations remain downstream consumers. The fact that the candidate settles a surface choice is not authority
+to add a kernel constructor.
 
 ---
 

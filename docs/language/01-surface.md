@@ -1,0 +1,330 @@
+# Surface language candidate
+
+This file settles the punctuation and spellings introduced by the candidate. Existing syntax remains unless a rule
+below explicitly desugars it. Braces delimit blocks. Added bindings, calls-as-statements, and declarations end in `;`;
+commas separate arguments; `=` introduces an expression body or binding. Existing note, rest, and chord events remain
+self-delimiting and do not take `;`. No added production is newline-sensitive.
+
+## 1. Added grammar
+
+The normative schematic grammar is:
+
+```ebnf
+type         := primitive | "option" "[" type "]" | "list" "[" type "]"
+              | "(" type ("," type)* ")" | type "->" type
+binding      := "let" IDENT ":" type "=" expr ";"
+function     := "fn" IDENT "(" params? ")" "->" type "=" expr ";"
+param        := IDENT ":" type ("=" expr)?
+call         := expr "(" args? ")"
+music-expr   := "music" "{" music-statement* "}"
+music-use    := "use" expr ";"
+scale-local  := "in" "scale" expr "{" music-statement* "}"
+assertion    := "assert" IDENT "(" args? ")" "{" music-statement* "}"
+analysis     := "analysis" IDENT "=" expr ";"
+kernel-quote := "kernel" "Timeline" "[" "ScoreFact" "]" "{" kernel-item* "}"
+antiquote    := "${" expr "}"
+template     := "template" decl-kind IDENT "(" params? ")" decl-body
+instance     := "make" IDENT "(" args? ")" "as" IDENT ";"
+sound-bind   := "sound" expr "using" expr ";"
+instrument   := "instrument" IDENT ("from" STRING)? "conforms" path
+                (";" | "{" instrument-item* "}")
+instrument-item := control-decl | implementation
+control-decl := "control" path ":" control-domain ("in" range)? "=" quantity ";"
+profile      := "profile" IDENT "for" path "{" profile-rule* "}"
+profile-rule := notation-selector "->" control-assignment ";"
+clip         := "clip" IDENT "from" STRING "fit" duration "by" ("rate" | "loop" | "crop") ";"
+fixed-media  := "fixed_media" IDENT "from" STRING ";"
+cue          := "cue" IDENT "at" position ("repeat" NAT)? ";"
+room         := "room" IDENT "{" room-setting* "}"
+fallback     := "unsupported" "technique" IDENT "->" "notation_only" "warning" ";"
+```
+
+Function arrows associate right; call binds tighter than pitch operators; pitch operators bind as follows, tightest
+first: parentheses, `step`, `up`/`down`. `root up M2 down m2` is rejected as ambiguous; write parentheses. Every `fn`
+has an expression body. A multi-statement musical body is explicitly `music { ... }`.
+
+The primitive value types added here are `bool`, `nat`, `ratio`, `duration`, `pitch`, `interval`, `spelled_pc`, `pc12`,
+`scale`, `key`, `degree`, `chord_class`, `triad`, `voicing`, `row12`, `analysis[A]`, and `music`. Products, options,
+lists, and arrows are the constructors described in `02-core-calculus.md`. Declaration kinds are not types.
+
+A pitch-name literal is checked in its expected domain: `chord(cs, minor)` supplies `spelled_pc`, while an argument to
+`row12` supplies `pc12`. Outside such an expected constructor position, write a type annotation. Converting an existing
+`spelled_pc` value to `pc12` requires `forget_spelling`; there is no implicit value coercion in the opposite direction.
+
+`control-domain`, `quantity`, and `range` use the exact unit grammar shared with studio values. `path` is a qualified
+identifier such as `std.sound.basic_sine` or `bow.pressure`. `notation-selector` is one documented dynamic,
+articulation, span/grouping mark, pedal, or technique pattern; it is not an arbitrary graph path. The sound forms are
+staged and desugared by `08-performance-and-sound.md`, not values in the core calculus.
+
+## 2. Functions and music
+
+```musa
+let fifth: interval = P5;
+
+fn third(root: pitch) -> pitch = root up M3;
+
+fn transpose_answer(subject: music, by: interval) -> music =
+    transpose(by, subject);
+
+motif turn(root: pitch = c5) {
+    root/8
+    (root up M2)/8
+    ((root up M2) down m2)/8
+    root/8
+}
+```
+
+`motif turn(...) { body }` desugars to a named `fn turn(...) -> music = music { body };` with a `Motif` role retained
+for lints, extraction, editing, and Origin. `fragment name { body }` desugars to `let name: music = music { body };`
+with a `Fragment` role. `use e;` checks `e : music`, instantiates it at the current cursor, and sequences it. Existing
+`use name(args);` is the same rule, not a second invocation mechanism.
+
+`music` values are contextual rather than captured timelines:
+
+```musa
+fn phrase() -> music = music {
+    c5/8
+    (c5 step 1)/8
+    (c5 step 2)/4
+};
+
+let subject: music = phrase();
+in scale c major { use subject; }
+in scale c dorian { use subject; }
+```
+
+The two uses differ under `≈facts`; saving `subject` does not freeze the scale. `in scale` is lexical and emits no key
+fact. An absent scale makes `step` a type-context diagnostic, not an implicit C-major choice.
+
+## 3. Higher-order construction with controlled traversal
+
+```musa
+fn canon(subject: music, answer: music -> music, gap: duration) -> music = music {
+    overlay {
+        use subject;
+        use shift(gap, answer(subject));
+    }
+};
+
+fn harmonize(subject: music, answer_pitch: pitch -> pitch) -> music = music {
+    overlay {
+        use subject;
+        use map_note_pitches(answer_pitch, subject);
+    }
+};
+
+use canon(theme(), transpose(P5), 1/2);
+```
+
+`map_note_pitches` is the sole initial user-facing traversal of `music`. It changes pitches in note and sounded-chord
+events; it preserves time, annotations, marks, scope, and Origin; it does not traverse key signatures or chord-symbol
+analysis. No iterator exposes a `ScoreFact` or kernel occurrence.
+
+## 4. Assertions and analyses
+
+```musa
+assert fits_scale(scale c major) {
+    c5/4 e5/4 g5/2
+}
+
+assert fits_scale(scale c major) {
+    c5/4 fs5/4 g5/2
+}
+```
+
+The first succeeds and returns the body as music. The second is a compile error at `fs5`, with the predicate's witness
+and the enclosing assertion in the diagnostic. `assert p(args) { body }` desugars to
+`checked(p(args), music { body })`; `p` must be a constructor invariant or decidable assertion returning a structured
+witness, not an interpretive analysis.
+
+Interpretation is named and non-blocking:
+
+```musa
+analysis harmony = roman_numerals(chorale(), in: key c major);
+```
+
+This produces `analysis[roman_numeral]`; it neither changes nor validates the score unless an explicit assertion reads
+a decidable property of the result.
+
+## 5. Chords, rows, and explicit register
+
+```musa
+let harmony: chord_class = chord(c, major7);
+let close: voicing = voice(harmony, bass: c4, layout: close_position);
+let open: voicing = voice(harmony, bass: c3, layout: drop_2);
+use play(close, 1/2);
+use play(open, 1/2);
+
+let row: row12 = row12(c, cs, e, d, fs, f, as, g, gs, b, a, ds);
+let symmetric: row12 = row12(c, fs, d, gs, e, as, f, b, g, cs, a, ds);
+let matrix: list[list[pc12]] = row_matrix(symmetric, convention: zero_based);
+```
+
+`chord` does not sound. `voice` selects register, bass, spacing, doubling, and omissions and returns exact pitches.
+`play` alone creates sounded music. `row12` statically requires each `pc12` exactly once; symmetry may make fewer than
+48 distinct `P`/`I`/`R`/`RI` forms, which is a result, not an error. Row-form naming always states a convention.
+
+## 6. Declaration templates
+
+```musa
+template piece study(k: key, s: scale, subject: music) "Study" {
+    key k;
+    score {
+        part piano {
+            voice right { in scale s { use subject; } }
+        }
+    }
+}
+
+make study(g major, scale g mixolydian, theme()) as study_in_g;
+
+template voice answer(subject: music, transform: music -> music) {
+    use transform(subject);
+}
+
+part flute {
+    voice leader { use theme(); }
+    make answer(theme(), transpose(P8)) as follower;
+}
+```
+
+`template` and `make` are structural syntax, not expressions. The `as` name is mandatory and participates in stable
+generative identity. `piece`, `voice`, or `module` with parameters but without `template` is rejected.
+
+## 7. Kernel documents and quotation
+
+A standalone `.musa.kernel` file contains exactly one closed term in the grammar of `docs/kernel/10-term-calculus.md`:
+
+```text
+% musa-kernel-1
+kernel "example" {
+  composition main : Timeline[ScoreFact] =
+    timeline 1/2 {
+      occurrence "voice 0 0 note c4 1/2 [0:4]" from 0 to 1/2;
+    };
+}
+```
+
+It has no imports, functions, surface pitch operations, or free variables. Its payload text must decode as
+`ScoreFact`.
+
+A local quote is host syntax containing kernel syntax and typed antiquotation:
+
+```musa
+fn delayed_double(subject: music) -> music =
+    kernel Timeline[ScoreFact] {
+        let s = ${subject} in
+        overlay { s; shift by 1/2 s; }
+    };
+```
+
+`${subject}` is one `music` antiquotation. It is instantiated in the quote's host environment and inserted as a typed
+kernel-term hole. Kernel identifiers never capture host identifiers; alpha-renaming prevents capture among inserted
+terms. The completed quote must close and type-check before it becomes `music`. No raw payload escape exists.
+
+## 8. Sound corpus
+
+The following is the settled musician-facing shape; `08-performance-and-sound.md` defines it.
+
+```musa
+performance {
+    profile lyrical for note_instrument {
+        dynamic p  -> expression 0.28;
+        dynamic f  -> expression 0.82;
+        articulation accent -> emphasis 0.75;
+        articulation staccato -> separation 0.65;
+        slur -> phrase legato;
+    }
+    profile dry for note_instrument {
+        dynamic p -> expression 0.35;
+        dynamic f -> expression 0.90;
+    }
+}
+
+instrument solo_strings from "pkg:orchestra/solo-violin.sfz" conforms note_instrument {
+    control bow.noise: normalized = 0.12;
+    control bow.bridge_distance: mm in [0 mm, 50 mm] = 20 mm;
+}
+
+instrument mallets from "assets/marimba.sfz" conforms note_instrument;
+
+score {
+    part violin {
+        sound solo_strings using lyrical;
+        voice melody {
+            dynamic p;
+            crescendo to f { c5/4 d5/4 e5/2 }
+        }
+    }
+    part marimba {
+        sound mallets using dry;
+        voice pulse { c4/4 c4/4 g3/2 }
+    }
+}
+```
+
+Within a part, `sound instrument using profile;` is the ordinary one-action form. It desugars to the independent
+profile selection, part-to-instrument assignment, and part-output-to-master route below. The expert surface may spell
+those facts separately and add sends:
+
+```musa
+part violin {
+    profile lyrical;
+    voice melody {
+        dynamic p;
+        crescendo to f { c5/4 d5/4 e5/2 }
+    }
+}
+
+part marimba {
+    profile dry;
+    voice pulse { c4/4 c4/4 g3/2 }
+}
+
+studio {
+    assign violin -> solo_strings;
+    assign marimba -> mallets;
+    send violin -> concert_hall at -12 dB;
+    send marimba -> concert_hall at -16 dB;
+    room concert_hall { decay: 1.8 s; }
+    route violin -> master;
+    route marimba -> master;
+    route concert_hall -> master;
+}
+```
+
+A hairpin becomes an exact `expression` curve because the chosen profile says so; it never names a filter address.
+Swapping `solo_strings` for any instrument conforming to `note_instrument` preserves well-typed gestures, not identical
+sound.
+
+```musa
+clip pulse from "assets/pulse.wav" fit 4/1 by rate;
+cue pulse at 9:1;
+
+fixed_media harbor from "assets/harbor.wav";
+cue harbor at 17:1;
+```
+
+The clip is beat-fitted and follows tempo. The fixed-media cue is only a kernel point at the score position; its
+recorded duration remains seconds and is never manufactured into a musical extent.
+
+## 9. Corpus correctness relation
+
+| Corpus case | Desugaring | Required equality |
+| --- | --- | --- |
+| root-dependent turn | motif-role function plus interval action | `≈music` |
+| major/dorian rebinding | Reader-style `in_scale` | `≈music` per environment; uses differ under `≈facts` |
+| canon | `overlay(subject, shift(gap, answer(subject)))` | `≈music` |
+| harmonizer | controlled pitch traversal | `≈music` |
+| key-parameterized piece / parameterized voice | declaration-template expansion | full facts retain distinct instance Origin; `≈facts` after erasure |
+| one chord class, two voicings | `play(voice(...))` | intentionally unequal under `≈facts` |
+| generic/symmetric row | finite row constructor and transforms | value equality; distinct-form count is observed |
+| assertion | `checked(predicate, body)` | successful body `≈music`; failure has no value |
+| standalone kernel | closed term parsing | `≡kernel` |
+| quote with antiquotation | typed substitution then closure | `≡kernel` after instantiation |
+| swappable instruments/profiles | signature checking and profile realization | equal gesture type; sound equality not promised |
+| expression hairpin | profile-generated `ControlKey::expression` curve | exact gesture equality |
+| shared room | explicit mix-graph sends | signal equality modulo documented deterministic summation order |
+| sampled instrument | sample-map implementation of signature | behavioral conformance, not waveform equality |
+| beat-fitted loop | tempo-scheduled clip gesture | scheduled-lane equality |
+| fixed-duration cue | onset conversion plus immutable seconds duration | scheduled-media equality |

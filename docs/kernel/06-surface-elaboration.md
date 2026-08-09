@@ -289,3 +289,29 @@ it.
 - Push production history into kernel semantics (e.g. making equality motif-aware) (§20).
 - Add kernel constructs because one surface feature is awkward — awkwardness is elaboration's problem (§34).
 - Change the surface grammar to make elaboration easier (§35.9).
+
+## Prompt-92 language candidate
+
+The rules above remain the governing account of the implemented grammar. `docs/language/` is the candidate contract for
+prompts 93–136 and becomes governing only after prompt 137. Its private elaboration subsystem adds a total value calculus
+and contextual, context-neutral `music`; neither is a kernel type. The candidate staging is:
+
+```text
+typed total expression → contextual Music → closed Term[ScoreFact] → Timeline[ScoreFact]
+```
+
+`instantiate(m, environment, placement)` is the sole semantic observation of `Music`. It lowers chosen `sequence` and
+`overlay` composition to the existing kernel forms, retains sharing in a private acyclic binding environment, and then
+closes the result. It does not define or assume `Timeline[Timeline[A]] → Timeline[A]`.
+
+A local `kernel Timeline[ScoreFact] { ... }` quote uses typed antiquotation `${e}`. Each hole must have type `music`, is
+instantiated in the host context, and is substituted capture-avoidantly into the existing term grammar. The completed
+term must be closed and every payload must decode as `ScoreFact`. Standalone `.musa.kernel` documents remain exactly the
+closed calculus of `10-term-calculus.md`.
+
+Parameterized pieces and voices use a static declaration template stage before context tracks are built. Templates do
+not make pieces, voices, modules, syntax, or kernel terms first-class value types. The candidate also leaves performance
+gestures, instrument signatures, raw or decoded assets, physical seconds, signals, and mix routing outside kernel
+elaboration. A musical clip may elaborate to an interval `ScoreFact` and a fixed-media cue to a point `ScoreFact`; each
+contains only an opaque `AssetRef` and score-level settings. The kernel never receives sample data or a fixed media
+duration and remains musically/media opaque to both payloads.

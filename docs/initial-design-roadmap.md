@@ -53,6 +53,12 @@ It is not:
 - a complete orchestral sample workstation;
 - a universal formalization of music theory.
 
+> **Candidate refinement (prompt 92; not governing until prompt 137):** `docs/language/` specifies the next source and
+> sound direction without changing this layer separation. Its score path is lossless source → total typed elaboration →
+> contextual, context-neutral `music` → closed `Term[ScoreFact]` → `Timeline[ScoreFact]`. Its sound path is score facts
+> → exact performance gestures → typed instrument behavior → signals → mix. The old “compositional model” boxes in this
+> roadmap name ownership layers, not a requirement that every intermediate be a timeline or one mutable object.
+
 Those should remain external tools or later extensions.
 
 ---
@@ -492,6 +498,11 @@ transpose minor_third { use sigh; }
 
 still exists as a transformation rather than as five unrelated replacement notes.
 
+The prompt-92 candidate makes this a private compiler subsystem rather than a public representation: total value
+evaluation retains contextual `music`, then instantiation produces a closed kernel term. `Type`, `Value`, closures,
+modules, and `Music` stay private to `musa-compiler`; the candidate adds no public `musa-elaboration` crate. This
+paragraph is candidate guidance until prompt 137.
+
 ## 6.3 Expanded score representation
 
 Compilation expands finite motif applications and transformations into a normalized score:
@@ -579,6 +590,12 @@ performance profile.
 Likewise, `p` is a symbolic dynamic relationship. It is not globally equivalent to a particular MIDI velocity or decibel
 value.
 
+> **Candidate refinement:** the editable/interchange representation before physical scheduling is an exact
+> `GestureTimeline[InstrumentSignature]`, not the frame/`f32` event enum sketched above. A named profile interprets marks
+> into semantic controls such as expression, emphasis, separation, brightness, sustain, and phrase grouping. Tempo,
+> tuning, frame rounding, and instrument-private DSP conversion occur during one later preparation operation. See
+> `docs/language/08-performance-and-sound.md`. Until implemented, the enum above describes the current boundary.
+
 ## 6.5 Studio representation
 
 The studio layer contains:
@@ -603,6 +620,12 @@ PatchOutput ──────────► BusId
 ```
 
 The studio does not inspect notes, measures, or slurs directly. It receives performance events.
+
+> **Candidate refinement:** the narrow bridge is typed instrument behavior, not `DynamicLane → ParameterId`. A stable
+> semantic `ControlKey` resolves privately to graph/sample-engine targets, every lane retains `PartId`, and a profile
+> never addresses a patch node. Instrument declarations expose signatures and hide native graphs or sample maps;
+> part signals alone enter the mix. The studio describes the instrument and room of the work, not recording edits or a
+> mastering suite. This replaces the bridge sketch only if prompt 137 graduates the candidate.
 
 ---
 
@@ -1210,6 +1233,11 @@ pub fn compile(
 > projection of them. Where this roadmap and the course correction disagree on semantic architecture, the course
 > correction wins; everything else in this document stands.
 
+> **Language candidate (prompt 92):** prompts 93–118 refine the private elaboration/HIR stages to a total value calculus,
+> contextual `music`, structural declaration templates, and typed kernel quotation. They still terminate in one closed
+> `Term[ScoreFact]` before kernel evaluation. Prompts 119–136 refine the downstream path to exact gestures and typed
+> instrument preparation. No intermediate type named by that candidate is thereby a public crate API.
+
 Intermediate pass types should remain private unless another crate has a real semantic need for them.
 
 ## 10.7 Incrementality
@@ -1459,6 +1487,12 @@ effects and routing graph
       ▼
 master output
 ```
+
+The candidate refines the two middle arrows as
+`Timeline[ScoreFact] → GestureTimeline[Signature] → ScheduledGestureLane → Signal`; score marks remain symbolic,
+profiles choose their reading, and instruments implement typed controls privately. Physical frames and DSP floats
+appear at one late preparation boundary. This is a candidate contract, not permission to put signals or seconds in the
+kernel.
 
 Use CPAL for cross-platform audio-device and stream access. It exposes device enumeration, supported configurations, and
 audio streams without dictating the synthesis architecture. citeturn797105search0
@@ -2280,6 +2314,11 @@ Relative imports are sufficient:
 ```text
 use "../library/patches.musa";
 ```
+
+> **Candidate extension (prompts 126–127):** retain relative imports for local work, and add exact-pinned Git packages
+> through `musa.toml`, `musa.lock`, an explicit `musa fetch`, and `pkg:` paths. Ordinary builds remain offline. Full
+> commit pins are graph collection, not version-range solving; registries, ranges, tags, branches, and implicit fetching
+> remain rejected. Until prompt 137, the relative-import-only rule above remains governing.
 
 Imports should be:
 

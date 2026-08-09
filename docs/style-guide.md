@@ -77,3 +77,26 @@ waiver, and a waived construct that would not have fired is left for the reader 
 
 There is no project-level switch and no configuration file, on purpose: the source is canonical (roadmap §3), and
 a standard that can be switched off silently is a rumour of a standard.
+
+## 6. Candidate vocabulary says which layer it means
+
+**Candidate rule for prompts 93–136; it becomes governing only with prompt 137.** The additions in `docs/language/`
+keep the musician-facing word when it names a musical intention and the technical word when the author has deliberately
+entered an implementation block.
+
+Write `expression`, `emphasis`, `separation`, `brightness`, `sustain`, and `phrase` in profiles. Do not spell those as
+gain, velocity, gate, cutoff, release time, or envelope: the latter are possible instrument realizations, not meanings
+of score marks. A profile never names a graph path. Within `implementation graph`, `oscillator`, `envelope`, `lowpass`,
+`resonance`, typed ports, and physical units are honest and documented terms; hiding them behind vague musical words
+would make the advanced surface less comprehensible, not more.
+
+Likewise, `scale`, `key`, `chord_class`, `voicing`, `spelled_pc`, and `pc12` are separate names because they preserve
+separate choices. Prefer the readable block form `in scale ... { ... }` to an unexplained context operator. Use
+`template`/`make ... as ...` only for identity-bearing declarations; use `fn` for values and `motif` only for a
+music-producing function that a musician would recognize as reusable material.
+
+A sound binding should read aloud: `sound solo_strings using lyrical;` inside the violin part, then
+`send violin -> concert_hall at -12 dB;` when a shared room is wanted. Hover and the handbook must define `sound`,
+`assign`, `send`, `room`, `bus`, `route`, every built-in processor, unit, control, and unsupported-feature policy where
+the user encounters it. Abbreviation that saves characters but hides the concept is rejected: the filter parameter is
+`resonance`, not `q`.
