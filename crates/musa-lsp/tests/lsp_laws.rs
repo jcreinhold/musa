@@ -20,16 +20,17 @@ use std::thread::JoinHandle;
 use lsp_server::{Connection, Message, RequestId};
 use lsp_types::notification::{DidChangeTextDocument, DidOpenTextDocument, Exit, Initialized, PublishDiagnostics};
 use lsp_types::request::{
-    CodeActionRequest, Completion, DocumentSymbolRequest, Formatting, GotoDefinition, HoverRequest, Initialize,
-    PrepareRenameRequest, References, Rename, SemanticTokensFullRequest, Shutdown,
+    CodeActionRequest, Completion, DocumentSymbolRequest, FoldingRangeRequest, Formatting, GotoDefinition,
+    HoverRequest, Initialize, PrepareRenameRequest, References, Rename, SemanticTokensFullRequest, Shutdown,
 };
 use lsp_types::{
     CodeActionKind, CodeActionOrCommand, CodeActionParams, CodeActionResponse, CompletionParams, CompletionResponse,
-    DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentSymbolParams, DocumentSymbolResponse,
-    GotoDefinitionResponse, Hover, HoverContents, HoverParams, InitializedParams, Location, PartialResultParams,
-    Position, PrepareRenameResponse, PublishDiagnosticsParams, ReferenceContext, ReferenceParams, RenameParams,
-    SemanticTokensParams, SemanticTokensResult, SymbolKind, TextDocumentContentChangeEvent, TextDocumentIdentifier,
-    TextDocumentItem, TextDocumentPositionParams, Uri, VersionedTextDocumentIdentifier, WorkDoneProgressParams,
+    DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentSymbolParams, DocumentSymbolResponse, FoldingRange,
+    FoldingRangeKind, FoldingRangeParams, GotoDefinitionResponse, Hover, HoverContents, HoverParams, InitializedParams,
+    Location, PartialResultParams, Position, PrepareRenameResponse, PublishDiagnosticsParams, ReferenceContext,
+    ReferenceParams, RenameParams, SemanticTokensParams, SemanticTokensResult, SymbolKind,
+    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem, TextDocumentPositionParams, Uri,
+    VersionedTextDocumentIdentifier, WorkDoneProgressParams,
 };
 
 const GLASS_MOUNTAIN: &str = include_str!("../../../examples/glass-mountain.musa");
@@ -706,5 +707,122 @@ fn formatting_is_one_whole_document_edit_and_idempotent() {
     server.change(&uri, edit.new_text.clone());
     let again = format(&mut server.client, &uri);
     assert!(again.is_null(), "formatting a canonical source should be null: {again}");
+    server.stop();
+}
+
+/// Ask the server for `name`'s folds, opened from `source`.
+fn folds(server: &mut Server, name: &str, source: &str) -> Vec<FoldingRange> {
+    let (uri, _) = server.open(name, source);
+    let answer = server.client.request::<FoldingRangeRequest>(FoldingRangeParams {
+        text_document: TextDocumentIdentifier { uri },
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    });
+    serde_json::from_value::<Vec<FoldingRange>>(answer).expect("folding ranges")
+}
+
+#[test]
+fn every_example_and_every_broken_fixture_folds() {
+    // The fixtures are the executable specification; the test reads the
+    // directory so a fixture added later joins the law without an edit here.
+    let examples = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples");
+    let mut sources: Vec<(String, String)> = Vec::new();
+    for directory in [examples.clone(), examples.join("broken")] {
+        let mut entries: Vec<_> = std::fs::read_dir(&directory)
+            .expect("examples directory")
+            .map(|entry| entry.expect("directory entry").path())
+            .filter(|path| path.extension().is_some_and(|extension| extension == "musa"))
+            .collect();
+        entries.sort();
+        for path in entries {
+            let name = path.file_stem().expect("file name").to_string_lossy().into_owned();
+            sources.push((name, std::fs::read_to_string(&path).expect("fixture text")));
+        }
+    }
+    assert!(sources.len() > 20, "the suite of fixtures itself: {}", sources.len());
+    let mut server = Server::start();
+    for (name, source) in &sources {
+        let ranges = folds(&mut server, name, source);
+        let mut previous = 0;
+        for (at, range) in ranges.iter().enumerate() {
+            assert!(range.start_line < range.end_line, "{name}: fold {at} spans lines");
+            assert!(range.start_line >= previous || at == 0, "{name}: folds sorted");
+            previous = range.start_line;
+        }
+        // Every fixture closes at least one block except the one whose point
+        // is that nothing closes.
+        if !name.starts_with("unclosed") {
+            assert!(!ranges.is_empty(), "{name}: a piece is at least its own block");
+        }
+    }
+    server.stop();
+}
+
+#[test]
+fn folds_are_the_brace_blocks_and_the_comment_runs() {
+    let mut server = Server::start();
+    let ranges = folds(&mut server, "glass-mountain", GLASS_MOUNTAIN);
+    let starts: Vec<(u32, Option<FoldingRangeKind>)> = ranges
+        .iter()
+        .map(|range| (range.start_line, range.kind.clone()))
+        .collect();
+    // The Check's promise: a fold per part, per motif, and the studio block.
+    for needle in ["motif sigh", "part violin", "part strings", "studio {"] {
+        let line = at(GLASS_MOUNTAIN, needle).line;
+        assert!(
+            starts.contains(&(line, Some(FoldingRangeKind::Region))),
+            "no region fold at `{needle}` (line {line}): {starts:?}"
+        );
+    }
+    // The two three-line comment runs fold as comments.
+    for needle in ["// Under the pedal", "// The sound side"] {
+        let line = at(GLASS_MOUNTAIN, needle).line;
+        assert!(
+            starts.contains(&(line, Some(FoldingRangeKind::Comment))),
+            "no comment fold at `{needle}` (line {line}): {starts:?}"
+        );
+    }
+    // Every brace pair in the fixture spans lines: thirteen region folds and
+    // two comment runs, no more.
+    let regions = ranges
+        .iter()
+        .filter(|range| range.kind == Some(FoldingRangeKind::Region))
+        .count();
+    assert_eq!(regions, 13, "{starts:?}");
+    server.stop();
+}
+
+#[test]
+fn single_line_blocks_and_string_braces_do_not_fold() {
+    let source = "piece \"a { not a block\" {\n    motif m { c4 1/4; }\n    score {\n        part p {\n            voice v {\n                c4 1/4; e4 1/4; g4 1/4; c4 1/4;\n            }\n        }\n    }\n}\n// one comment only\n";
+    let mut server = Server::start();
+    let ranges = folds(&mut server, "single-line", source);
+    // The piece, score, part, and voice fold; the single-line motif does
+    // not, the `{` inside the title is not a block, and one comment line is
+    // not a run.
+    let regions: Vec<u32> = ranges
+        .iter()
+        .filter(|range| range.kind == Some(FoldingRangeKind::Region))
+        .map(|range| range.start_line)
+        .collect();
+    assert_eq!(regions, vec![0, 2, 3, 4], "{ranges:?}");
+    assert!(
+        !ranges.iter().any(|range| range.kind == Some(FoldingRangeKind::Comment)),
+        "a single comment line is not a run: {ranges:?}"
+    );
+    server.stop();
+}
+
+#[test]
+fn an_unclosed_block_offers_no_fold() {
+    let unclosed = include_str!("../../../examples/broken/unclosed-block.musa");
+    let mut server = Server::start();
+    let ranges = folds(&mut server, "unclosed-block", unclosed);
+    // Every block in the fixture is left open, and there is no closing line
+    // to fold to — so there is nothing to offer.
+    assert!(
+        !ranges.iter().any(|range| range.kind == Some(FoldingRangeKind::Region)),
+        "unclosed blocks fold nothing: {ranges:?}"
+    );
     server.stop();
 }

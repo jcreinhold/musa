@@ -42,8 +42,8 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Exit, Notification as _, PublishDiagnostics,
 };
 use lsp_types::request::{
-    CodeActionRequest, Completion, DocumentSymbolRequest, Formatting, GotoDefinition, HoverRequest,
-    PrepareRenameRequest, References, Rename, Request as _, SemanticTokensFullRequest,
+    CodeActionRequest, Completion, DocumentSymbolRequest, FoldingRangeRequest, Formatting, GotoDefinition,
+    HoverRequest, PrepareRenameRequest, References, Rename, Request as _, SemanticTokensFullRequest,
 };
 use lsp_types::{
     CodeActionProviderCapability, CompletionOptions, HoverProviderCapability, OneOf, PositionEncodingKind,
@@ -149,6 +149,7 @@ fn server_capabilities() -> ServerCapabilities {
         document_symbol_provider: Some(OneOf::Left(true)),
         code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
         document_formatting_provider: Some(OneOf::Left(true)),
+        folding_range_provider: Some(lsp_types::FoldingRangeProviderCapability::Simple(true)),
         references_provider: Some(OneOf::Left(true)),
         rename_provider: Some(OneOf::Right(RenameOptions {
             prepare_provider: Some(true),
@@ -264,6 +265,11 @@ fn dispatch(workspace: &Workspace, request: Request) -> Response {
             workspace
                 .document(&params.text_document.uri)
                 .and_then(features::formatting::format)
+        }),
+        FoldingRangeRequest::METHOD => answer::<FoldingRangeRequest>(request, |params| {
+            workspace
+                .document(&params.text_document.uri)
+                .and_then(features::folding::folding_ranges)
         }),
         SemanticTokensFullRequest::METHOD => answer::<SemanticTokensFullRequest>(request, |params| {
             workspace
