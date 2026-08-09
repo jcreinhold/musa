@@ -30,10 +30,7 @@ impl Document {
     /// Open `source` under `uri`.
     fn new(uri: &Uri, source: String, version: i32) -> Self {
         let lines = LineIndex::new(&source);
-        // The URI is the only name the server knows; the session uses it in
-        // diagnostics' display, where a path a person opened is the right
-        // thing to show.
-        let session = ProjectSession::from_text(source, uri.as_str().to_owned());
+        let session = ProjectSession::from_text(source, document_name(uri));
         Self {
             session,
             lines,
@@ -55,6 +52,42 @@ impl Document {
     pub(crate) fn version(&self) -> i32 {
         self.version
     }
+}
+
+/// The name the compiler sees for the document behind `uri`: the file's own
+/// path, because imports resolve against it as a filesystem path. Naming the
+/// document `file:///…` instead would resolve every `use` into a directory
+/// that does not exist, and every directory project would report imports the
+/// command line finds. A URI that is not a file on this machine keeps its
+/// string: an unsaved buffer has no directory, and `use` inside it finding
+/// nothing is true.
+fn document_name(uri: &Uri) -> String {
+    file_path(uri).unwrap_or_else(|| uri.as_str().to_owned())
+}
+
+/// The filesystem path of a `file:` URI naming a file on this machine,
+/// percent-decoded. Another scheme, or an authority that is not this
+/// machine, is not a file here.
+fn file_path(uri: &Uri) -> Option<String> {
+    if uri.scheme()?.as_str() != "file" {
+        return None;
+    }
+    if let Some(authority) = uri.authority() {
+        let host = authority.as_str();
+        if !host.is_empty() && host != "localhost" {
+            return None;
+        }
+    }
+    let decoded = fluent_uri::enc::EStr::new(uri.path().as_str())
+        .decode()
+        .into_string_lossy()
+        .into_owned();
+    // Windows writes the drive as a leading segment: `/C:/…`.
+    let path = match decoded.strip_prefix('/') {
+        Some(rest) if matches!(rest.as_bytes(), [drive, b':', ..] if drive.is_ascii_alphabetic()) => rest.to_owned(),
+        _ => decoded,
+    };
+    Some(path)
 }
 
 /// The documents the client has open, keyed by URI string.
@@ -110,5 +143,42 @@ impl Workspace {
     /// The document behind `uri`, when it is open.
     pub(crate) fn document(&self, uri: &Uri) -> Option<&Document> {
         self.documents.get(uri.as_str())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    // Test helpers panic on statically-valid inputs: a failure is a bug in
+    // the test itself, and panicking is the correct behavior there.
+    #![allow(clippy::panic)]
+
+    use std::str::FromStr as _;
+
+    use super::*;
+
+    #[test]
+    fn a_file_uri_names_the_file() {
+        let uri = Uri::from_str("file:///Users/musa/pieces/opening.musa").expect("uri");
+        assert_eq!(document_name(&uri), "/Users/musa/pieces/opening.musa");
+    }
+
+    #[test]
+    fn a_file_uri_decodes_its_path() {
+        let uri = Uri::from_str("file:///Users/musa/my%20piece.musa").expect("uri");
+        assert_eq!(document_name(&uri), "/Users/musa/my piece.musa");
+    }
+
+    #[test]
+    fn a_windows_file_uri_drops_the_slash_before_the_drive() {
+        let uri = Uri::from_str("file:///C:/Users/musa/piece.musa").expect("uri");
+        assert_eq!(document_name(&uri), "C:/Users/musa/piece.musa");
+    }
+
+    #[test]
+    fn a_uri_that_is_not_a_file_here_keeps_its_string() {
+        let untitled = Uri::from_str("untitled:Untitled-1").expect("uri");
+        assert_eq!(document_name(&untitled), "untitled:Untitled-1");
+        let remote = Uri::from_str("file://server/share/piece.musa").expect("uri");
+        assert_eq!(document_name(&remote), "file://server/share/piece.musa");
     }
 }

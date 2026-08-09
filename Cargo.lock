@@ -2372,6 +2372,7 @@ dependencies = [
 name = "musa-lsp"
 version = "0.1.0"
 dependencies = [
+ "fluent-uri",
  "lsp-server",
  "lsp-types",
  "musa-language",

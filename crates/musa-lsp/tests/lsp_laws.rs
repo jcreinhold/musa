@@ -14,6 +14,7 @@
 // it, and the type is the specification's, not ours to change.
 #![allow(clippy::mutable_key_type)]
 
+use std::path::PathBuf;
 use std::str::FromStr as _;
 use std::thread::JoinHandle;
 
@@ -911,5 +912,33 @@ fn hover_on_a_keyword_reports_its_documentation() {
     assert!(content.value.contains("**tempo**"), "{}", content.value);
     assert!(content.value.contains("where it changes"), "{}", content.value);
     assert!(content.value.contains("```musa"), "{}", content.value);
+    server.stop();
+}
+
+#[test]
+fn opening_a_piece_beside_its_libraries_resolves_the_imports() {
+    // A directory project from the corpus, opened the way an editor opens
+    // it: the URI names the file, and `use "../library/…"` must resolve
+    // against the file's directory. The bug this pins named the document
+    // `file:///…` and resolved the imports into a directory that does not
+    // exist, so the editor reported what the command line never did.
+    let piece = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/album/pieces/01-opening.musa");
+    let text = std::fs::read_to_string(&piece).expect("the corpus piece");
+    let mut server = Server::start();
+    let uri = Uri::from_str(&format!("file://{}", piece.display())).expect("uri");
+    server.client.notify::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+        text_document: TextDocumentItem {
+            uri: uri.clone(),
+            language_id: "musa".to_owned(),
+            version: 1,
+            text,
+        },
+    });
+    let published = server.client.notification::<PublishDiagnostics>();
+    assert!(
+        published.diagnostics.is_empty(),
+        "the album piece imports fine from the command line; unexpected: {:?}",
+        published.diagnostics
+    );
     server.stop();
 }
