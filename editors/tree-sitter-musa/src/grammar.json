@@ -204,32 +204,57 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "FIELD",
-              "name": "word",
-              "content": {
-                "type": "SYMBOL",
-                "name": "string"
-              }
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "FIELD",
+                  "name": "word",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "string"
+                  }
+                },
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "tempo_span"
+                    },
+                    {
+                      "type": "BLANK"
+                    }
+                  ]
+                }
+              ]
             },
             {
               "type": "SEQ",
               "members": [
                 {
-                  "type": "FIELD",
-                  "name": "beat",
-                  "content": {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "identifier"
-                      },
-                      {
-                        "type": "SYMBOL",
-                        "name": "rational"
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "FIELD",
+                      "name": "beat",
+                      "content": {
+                        "type": "CHOICE",
+                        "members": [
+                          {
+                            "type": "SYMBOL",
+                            "name": "identifier"
+                          },
+                          {
+                            "type": "SYMBOL",
+                            "name": "rational"
+                          }
+                        ]
                       }
-                    ]
-                  }
+                    },
+                    {
+                      "type": "BLANK"
+                    }
+                  ]
                 },
                 {
                   "type": "STRING",
@@ -242,6 +267,43 @@
                     "type": "SYMBOL",
                     "name": "integer"
                   }
+                },
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "STRING",
+                          "value": "to"
+                        },
+                        {
+                          "type": "FIELD",
+                          "name": "arrives",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "integer"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "BLANK"
+                    }
+                  ]
+                },
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "tempo_span"
+                    },
+                    {
+                      "type": "BLANK"
+                    }
+                  ]
                 },
                 {
                   "type": "CHOICE",
@@ -266,6 +328,23 @@
         {
           "type": "STRING",
           "value": ";"
+        }
+      ]
+    },
+    "tempo_span": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "over"
+        },
+        {
+          "type": "FIELD",
+          "name": "span",
+          "content": {
+            "type": "SYMBOL",
+            "name": "rational"
+          }
         }
       ]
     },

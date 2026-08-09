@@ -108,21 +108,34 @@ module.exports = grammar({
     front_matter_statement: ($) =>
       seq(choice('subtitle', 'composer', 'arranger', 'copyright'), field('value', $.string), ';'),
 
-    // Parser::tempo_stmt — a metronome mark, a tempo word, or both.
+    // Parser::tempo_stmt — a metronome mark, a tempo word, or both; a
+    // gradual change adds where it arrives and how far it takes to get
+    // there (prompt 73).
     tempo_statement: ($) =>
       seq(
         'tempo',
         choice(
-          field('word', $.string),
+          // The word may lead (`tempo "Andante";`) — and a gradual change
+          // may still reach from it.
+          seq(field('word', $.string), optional($.tempo_span)),
           seq(
-            field('beat', choice($.identifier, $.rational)),
+            optional(field('beat', choice($.identifier, $.rational))),
             '=',
             field('bpm', $.integer),
+            // `to 60` — where a gradual change arrives, in the same beat
+            // unit. `to` rather than a keyword of its own, for the reason
+            // `crescendo to f` reads: arriving somewhere is one idea.
+            optional(seq('to', field('arrives', $.integer))),
+            optional($.tempo_span),
+            // The word may trail, for a marking that says both.
             optional(field('word', $.string)),
           ),
         ),
         ';',
       ),
+
+    // `over 4/1` — how far a gradual change reaches.
+    tempo_span: ($) => seq('over', field('span', $.rational)),
 
     // Parser::meter_stmt.
     meter_statement: ($) => seq('meter', field('meter', $.rational), ';'),

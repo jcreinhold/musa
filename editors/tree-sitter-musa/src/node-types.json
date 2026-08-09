@@ -1749,9 +1749,35 @@
     }
   },
   {
+    "type": "tempo_span",
+    "named": true,
+    "fields": {
+      "span": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "rational",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "tempo_statement",
     "named": true,
     "fields": {
+      "arrives": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "integer",
+            "named": true
+          }
+        ]
+      },
       "beat": {
         "multiple": false,
         "required": false,
@@ -1786,6 +1812,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "tempo_span",
+          "named": true
+        }
+      ]
     }
   },
   {
