@@ -10,6 +10,9 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 #![allow(clippy::missing_panics_doc)]
+// The protocol's own WorkspaceEdit keys a HashMap by Uri; the tests only read
+// it, and the type is the specification's, not ours to change.
+#![allow(clippy::mutable_key_type)]
 
 use std::str::FromStr as _;
 use std::thread::JoinHandle;
@@ -18,15 +21,15 @@ use lsp_server::{Connection, Message, RequestId};
 use lsp_types::notification::{DidChangeTextDocument, DidOpenTextDocument, Exit, Initialized, PublishDiagnostics};
 use lsp_types::request::{
     CodeActionRequest, Completion, DocumentSymbolRequest, Formatting, GotoDefinition, HoverRequest, Initialize,
-    SemanticTokensFullRequest, Shutdown,
+    PrepareRenameRequest, References, Rename, SemanticTokensFullRequest, Shutdown,
 };
 use lsp_types::{
     CodeActionKind, CodeActionOrCommand, CodeActionParams, CodeActionResponse, CompletionParams, CompletionResponse,
     DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentSymbolParams, DocumentSymbolResponse,
-    GotoDefinitionResponse, Hover, HoverContents, HoverParams, InitializedParams, PartialResultParams, Position,
-    PublishDiagnosticsParams, SemanticTokensParams, SemanticTokensResult, SymbolKind, TextDocumentContentChangeEvent,
-    TextDocumentIdentifier, TextDocumentItem, TextDocumentPositionParams, Uri, VersionedTextDocumentIdentifier,
-    WorkDoneProgressParams,
+    GotoDefinitionResponse, Hover, HoverContents, HoverParams, InitializedParams, Location, PartialResultParams,
+    Position, PrepareRenameResponse, PublishDiagnosticsParams, ReferenceContext, ReferenceParams, RenameParams,
+    SemanticTokensParams, SemanticTokensResult, SymbolKind, TextDocumentContentChangeEvent, TextDocumentIdentifier,
+    TextDocumentItem, TextDocumentPositionParams, Uri, VersionedTextDocumentIdentifier, WorkDoneProgressParams,
 };
 
 const GLASS_MOUNTAIN: &str = include_str!("../../../examples/glass-mountain.musa");
@@ -133,6 +136,14 @@ impl Client {
     /// Send a request and read messages until its answer arrives, buffering
     /// the notifications that overtake it.
     fn request<R: lsp_types::request::Request>(&mut self, params: R::Params) -> serde_json::Value {
+        let response = self.response::<R>(params);
+        assert!(response.error.is_none(), "`{}` failed: {:?}", R::METHOD, response.error);
+        response.result.unwrap_or(serde_json::Value::Null)
+    }
+
+    /// Send a request and return the raw response — the tests that assert a
+    /// *refusal* (rename's two refusals) need the error, not a panic.
+    fn response<R: lsp_types::request::Request>(&mut self, params: R::Params) -> lsp_server::Response {
         let id = RequestId::from(self.next_id);
         self.next_id = self.next_id.checked_add(1).expect("request id");
         self.connection
@@ -145,10 +156,7 @@ impl Client {
             .expect("send request");
         loop {
             match self.connection.receiver.recv().expect("receive") {
-                Message::Response(response) if response.id == id => {
-                    assert!(response.error.is_none(), "`{}` failed: {:?}", R::METHOD, response.error);
-                    return response.result.unwrap_or(serde_json::Value::Null);
-                }
+                Message::Response(response) if response.id == id => return response,
                 Message::Notification(notification) => self.notifications.push(notification),
                 Message::Response(_) | Message::Request(_) => {}
             }
@@ -219,6 +227,227 @@ fn position_params(uri: &Uri, position: Position) -> TextDocumentPositionParams 
         text_document: TextDocumentIdentifier { uri: uri.clone() },
         position,
     }
+}
+
+/// The LSP position of the LAST occurrence of `needle` in `source`.
+fn at_last(source: &str, needle: &str) -> Position {
+    let offset = source.rfind(needle).expect("needle in source");
+    let before = source.get(..offset).expect("offset");
+    let line = before.matches('\n').count();
+    let column = before.rsplit('\n').next().expect("last line").len();
+    Position::new(
+        u32::try_from(line).expect("line"),
+        u32::try_from(column).expect("column"),
+    )
+}
+
+/// `position`, `columns` further right on its line (ASCII fixtures only).
+fn shifted(position: Position, columns: u32) -> Position {
+    Position::new(position.line, position.character.saturating_add(columns))
+}
+
+/// Apply one text edit to `source`. The fixtures are ASCII on every edited
+/// line, so a UTF-16 column is a byte column.
+fn apply_edit(source: &str, edit: &lsp_types::TextEdit) -> String {
+    let mut lines: Vec<String> = source.lines().map(str::to_owned).collect();
+    if source.ends_with('\n') {
+        lines.push(String::new());
+    }
+    let (row, start, end) = (
+        usize::try_from(edit.range.start.line).expect("line"),
+        usize::try_from(edit.range.start.character).expect("character"),
+        usize::try_from(edit.range.end.character).expect("character"),
+    );
+    let line = lines.get_mut(row).expect("edited line exists");
+    line.replace_range(start..end, &edit.new_text);
+    lines.join("\n")
+}
+
+/// References params boilerplate.
+fn reference_params(uri: &Uri, position: Position, include_declaration: bool) -> ReferenceParams {
+    ReferenceParams {
+        text_document_position: position_params(uri, position),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+        context: ReferenceContext { include_declaration },
+    }
+}
+
+/// Rename params boilerplate.
+fn rename_params(uri: &Uri, position: Position, new_name: &str) -> RenameParams {
+    RenameParams {
+        text_document_position: position_params(uri, position),
+        new_name: new_name.to_owned(),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    }
+}
+
+#[test]
+fn references_find_the_declaration_and_every_use() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
+    // The cursor asks from a use, and the declaration answers with itself.
+    for cursor in [
+        at(GLASS_MOUNTAIN, "sigh();"),
+        shifted(at(GLASS_MOUNTAIN, "motif sigh"), 6),
+    ] {
+        let answer = server
+            .client
+            .request::<References>(reference_params(&uri, cursor, true));
+        let locations: Vec<Location> = serde_json::from_value(answer).expect("locations");
+        let mut lines: Vec<u32> = locations.iter().map(|location| location.range.start.line).collect();
+        lines.sort_unstable();
+        let mut expected: Vec<u32> = [
+            at(GLASS_MOUNTAIN, "motif sigh").line,
+            at(GLASS_MOUNTAIN, "sigh();").line,
+            at_last(GLASS_MOUNTAIN, "sigh();").line,
+        ]
+        .into_iter()
+        .collect();
+        expected.sort_unstable();
+        assert_eq!(lines, expected, "references from {cursor:?}");
+        // The spans are the *name tokens'* spans: four characters of `sigh`,
+        // never the whole statement.
+        for location in &locations {
+            assert_eq!(location.range.end.character - location.range.start.character, 4);
+        }
+    }
+    server.stop();
+}
+
+#[test]
+fn references_can_exclude_the_declaration() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
+    let answer = server
+        .client
+        .request::<References>(reference_params(&uri, at(GLASS_MOUNTAIN, "sigh();"), false));
+    let locations: Vec<Location> = serde_json::from_value(answer).expect("locations");
+    assert_eq!(locations.len(), 2, "the two uses only: {locations:?}");
+    server.stop();
+}
+
+#[test]
+fn references_on_a_patch_find_the_declaration_and_the_assigns() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
+    let answer = server.client.request::<References>(reference_params(
+        &uri,
+        shifted(at(GLASS_MOUNTAIN, "patch glass_pad"), 6),
+        true,
+    ));
+    let locations: Vec<Location> = serde_json::from_value(answer).expect("locations");
+    let mut lines: Vec<u32> = locations.iter().map(|location| location.range.start.line).collect();
+    lines.sort_unstable();
+    // Both parts are assigned to the pad: one declaration, two uses. The
+    // `modulate lfo -> glass_pad.lowpass.cutoff` property path is not one.
+    let mut expected: Vec<u32> = [
+        at(GLASS_MOUNTAIN, "patch glass_pad").line,
+        at(GLASS_MOUNTAIN, "assign violin -> glass_pad").line,
+        at(GLASS_MOUNTAIN, "assign strings -> glass_pad").line,
+    ]
+    .into_iter()
+    .collect();
+    expected.sort_unstable();
+    assert_eq!(lines, expected, "{locations:?}");
+    server.stop();
+}
+
+#[test]
+fn prepare_rename_names_the_name_and_refuses_plain_text() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
+    let answer = server
+        .client
+        .request::<PrepareRenameRequest>(position_params(&uri, at(GLASS_MOUNTAIN, "sigh();")));
+    let answer: Option<PrepareRenameResponse> = serde_json::from_value(answer).expect("prepare rename");
+    let Some(PrepareRenameResponse::RangeWithPlaceholder { range, placeholder }) = answer else {
+        panic!("expected a range with the name: {answer:?}");
+    };
+    assert_eq!(placeholder, "sigh");
+    assert_eq!(range.start, at(GLASS_MOUNTAIN, "sigh();"));
+    assert_eq!(range.end, shifted(at(GLASS_MOUNTAIN, "sigh();"), 4));
+    // On a keyword there is nothing to prepare: null, the lawful answer.
+    let answer = server
+        .client
+        .request::<PrepareRenameRequest>(position_params(&uri, at(GLASS_MOUNTAIN, "tempo")));
+    assert!(answer.is_null(), "expected null on `tempo`: {answer}");
+    server.stop();
+}
+
+#[test]
+fn rename_rewrites_exactly_the_recorded_spans() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
+    let answer = server
+        .client
+        .request::<Rename>(rename_params(&uri, at(GLASS_MOUNTAIN, "sigh();"), "lament"));
+    let edit: lsp_types::WorkspaceEdit = serde_json::from_value(answer).expect("a workspace edit");
+    let changes = edit.changes.as_ref().expect("changes");
+    let edits = changes.get(&uri).expect("edits for the document");
+    assert_eq!(changes.len(), 1, "one document, one entry: {changes:?}");
+    assert_eq!(edits.len(), 3, "declaration plus two uses: {edits:?}");
+    let mut text = GLASS_MOUNTAIN.to_owned();
+    // Apply from the bottom up so earlier edits' offsets stay true.
+    let mut ordered: Vec<lsp_types::TextEdit> = edits.clone();
+    ordered.sort_by_key(|edit| std::cmp::Reverse(edit.range.start));
+    for edit in &ordered {
+        assert_eq!(edit.new_text, "lament");
+        text = apply_edit(&text, edit);
+    }
+    assert_eq!(text, GLASS_MOUNTAIN.replace("sigh", "lament"));
+    server.stop();
+}
+
+#[test]
+fn rename_refuses_a_collision_in_the_namespace() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
+    // `violin` and `strings` are both parts: renaming one to the other is
+    // the resolver's duplicates error, pre-empted.
+    let response = server.client.response::<Rename>(rename_params(
+        &uri,
+        shifted(at(GLASS_MOUNTAIN, "part violin"), 5),
+        "strings",
+    ));
+    let error = response.error.expect("the rename must be refused");
+    assert!(error.message.contains("already names"), "{}", error.message);
+    server.stop();
+}
+
+#[test]
+fn rename_refuses_an_illegal_name_and_a_nameless_position() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
+    let response = server
+        .client
+        .response::<Rename>(rename_params(&uri, at(GLASS_MOUNTAIN, "sigh();"), "4x"));
+    let error = response.error.expect("`4x` is not a name");
+    assert!(error.message.contains("not a valid name"), "{}", error.message);
+    // `4x` must not have edited anything: the document still compiles.
+    let response = server
+        .client
+        .response::<Rename>(rename_params(&uri, at(GLASS_MOUNTAIN, "tempo"), "beat"));
+    let error = response.error.expect("there is no name under `tempo`");
+    assert!(error.message.contains("no named thing"), "{}", error.message);
+    server.stop();
+}
+
+#[test]
+fn a_broken_document_still_answers_references() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
+    // Break the tail — an unterminated string after the piece's end — so
+    // the compile fails while every `sigh` position keeps its byte offset.
+    let broken = format!("{GLASS_MOUNTAIN}\nsubtitle \"oops");
+    let published = server.change(&uri, broken);
+    assert!(!published.diagnostics.is_empty(), "the edit should not compile");
+    let answer = server
+        .client
+        .request::<References>(reference_params(&uri, at(GLASS_MOUNTAIN, "sigh();"), true));
+    let locations: Vec<Location> = serde_json::from_value(answer).expect("locations");
+    assert_eq!(locations.len(), 3, "stale-but-honest references: {locations:?}");
+    server.stop();
 }
 
 #[test]

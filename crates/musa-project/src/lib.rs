@@ -56,8 +56,8 @@ pub use crate::edit::{CandidateEdit, EditCommand, EditImpact, GeneratedEditMode,
 pub use crate::error::ProjectError;
 pub use crate::export::{ExportArtifact, ExportRequest, KernelReport, check_kernel};
 pub use crate::facts::{
-    EventFacts, EventKind, Fraction, HeaderFact, OccurrenceFacts, OriginFacts, OutlineFacts, OutlineKind, PartFacts,
-    ScoreFacts, VoiceFacts,
+    EventFacts, EventKind, Fraction, HeaderFact, NameFact, NameKind, OccurrenceFacts, OriginFacts, OutlineFacts,
+    OutlineKind, PartFacts, ScoreFacts, VoiceFacts,
 };
 pub use crate::midi::MidiEntry;
 pub use crate::position::Position;

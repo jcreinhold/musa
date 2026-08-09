@@ -694,6 +694,73 @@ fn interval_name(interval: Interval) -> String {
     format!("{direction} {quality}")
 }
 
+/// What kind of thing a recorded name names (prompt 78).
+///
+/// A deliberate restatement of the compiler's `NameKind`, for the same
+/// reason [`Severity`](crate::Severity) is one: the compiler's types stop
+/// at this crate's boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum NameKind {
+    /// A `motif` declaration.
+    Motif,
+    /// A named `bar`.
+    Bar,
+    /// A `fragment` a mobile arranges.
+    Fragment,
+    /// A `part` in the score.
+    Part,
+    /// A `voice` in a part. Voices are declared, never used by name — their
+    /// entries are declaration-only.
+    Voice,
+    /// A `patch` in the studio.
+    Patch,
+}
+
+/// One named thing and everywhere it is spoken, for an editor's references
+/// and rename (prompt 78).
+///
+/// Spans are the *name tokens'* spans: a rename rewrites exactly these
+/// ranges, never a textual match. A name declared in an imported library has
+/// `declaration: None` — its uses here are recorded, and cross-file rename
+/// is impossible to ask for rather than silently wrong.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NameFact {
+    /// The name as written.
+    pub name: String,
+    /// What it names.
+    pub kind: NameKind,
+    /// Where the declaration's name token is, when it is in this document.
+    pub declaration: Option<crate::diagnostic::Span>,
+    /// Every resolved use's name token, in the order the resolver met them.
+    pub uses: Vec<crate::diagnostic::Span>,
+}
+
+impl NameFact {
+    /// Restate one compiler reference in this crate's own vocabulary.
+    pub(crate) fn from_compiler(reference: &musa_compiler::NameReference) -> Self {
+        let kind = match reference.kind {
+            musa_compiler::NameKind::Motif => NameKind::Motif,
+            musa_compiler::NameKind::Bar => NameKind::Bar,
+            musa_compiler::NameKind::Fragment => NameKind::Fragment,
+            musa_compiler::NameKind::Part => NameKind::Part,
+            musa_compiler::NameKind::Voice => NameKind::Voice,
+            musa_compiler::NameKind::Patch => NameKind::Patch,
+        };
+        let span = |span: musa_compiler::SourceSpan| crate::diagnostic::Span {
+            start: span.start,
+            end: span.end,
+        };
+        Self {
+            name: reference.name.clone(),
+            kind,
+            declaration: reference.declaration.map(span),
+            uses: reference.uses.iter().map(|use_span| span(*use_span)).collect(),
+        }
+    }
+}
+
 /// Byte offset → 1-based line, built once per compile.
 struct LineIndex {
     starts: Vec<u32>,

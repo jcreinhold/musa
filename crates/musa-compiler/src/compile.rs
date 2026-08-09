@@ -64,6 +64,7 @@ pub struct Compilation {
     diagnostics: Vec<Diagnostic>,
     identity: musa_kernel::SemanticHash,
     decisions: Vec<(crate::ChoicePath, crate::Decision)>,
+    references: crate::resolve::ReferenceIndex,
 }
 
 impl Compilation {
@@ -74,6 +75,7 @@ impl Compilation {
             diagnostics,
             identity: musa_kernel::SemanticHash::default(),
             decisions: Vec::new(),
+            references: crate::resolve::ReferenceIndex::new(),
         }
     }
 
@@ -90,6 +92,22 @@ impl Compilation {
     pub(crate) fn with_decisions(mut self, decisions: Vec<(crate::ChoicePath, crate::Decision)>) -> Self {
         self.decisions = decisions;
         self
+    }
+
+    pub(crate) fn with_references(mut self, references: crate::resolve::ReferenceIndex) -> Self {
+        self.references = references;
+        self
+    }
+
+    /// Every name the resolver resolved, and everywhere it is spoken
+    /// (prompt 78).
+    ///
+    /// This is the resolver's own knowledge kept, not a re-scan of the text:
+    /// a name that did not resolve has no entry, and a name declared in an
+    /// imported library has no declaration span here — its uses are honest
+    /// and its home is `None`.
+    pub fn references(&self) -> &[crate::resolve::NameReference] {
+        self.references.entries()
     }
 
     /// Every decision this compilation took, in the order the sites were

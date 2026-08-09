@@ -17,6 +17,7 @@ pub(crate) mod definition;
 pub(crate) mod diagnostics;
 pub(crate) mod formatting;
 pub(crate) mod hover;
+pub(crate) mod names;
 pub(crate) mod semantic_tokens;
 pub(crate) mod symbols;
 

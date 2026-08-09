@@ -558,6 +558,7 @@ pub(crate) fn resolve(
     decl: Option<&StudioDecl>,
     imported: &[StudioDecl],
     parts: &[String],
+    references: &mut crate::resolve::ReferenceIndex,
     diagnostics: &mut Vec<Diagnostic>,
 ) -> StudioSpec {
     let mut spec = StudioSpec {
@@ -577,12 +578,15 @@ pub(crate) fn resolve(
             }
         }
     }
+    // The compiled document's own items begin here; everything before is a
+    // library's, whose spans name text the reference record does not cover.
+    let main_start = items.len();
     items.extend(decl.map(StudioDecl::items).unwrap_or_default());
 
     // Two passes: patches, buses, and signals first, so the bindings that
     // follow can be checked against them regardless of writing order. A
     // studio reads top-down, but it does not have to be written that way.
-    for item in &items {
+    for (index, item) in items.iter().enumerate() {
         match item {
             StudioItem::Patch(patch) => declare_patch(patch, &mut spec, diagnostics),
             StudioItem::Bus(bus) => declare_bus(bus, &mut spec, diagnostics),
@@ -598,6 +602,19 @@ pub(crate) fn resolve(
                 }
             }
             StudioItem::Modulate(_) | StudioItem::Assign(_) | StudioItem::Route(_) | StudioItem::Send(_) => {}
+        }
+        // A patch that resolved is a declaration the record keeps — but only
+        // the document's own; a library's patch is spelled in its own file.
+        if index >= main_start
+            && let StudioItem::Patch(patch) = item
+        {
+            let name = patch.name().unwrap_or_default();
+            if !name.is_empty()
+                && spec.has_patch(&name)
+                && let Some(span) = crate::resolve::token_span(patch.syntax(), musa_language::SyntaxKind::Identifier)
+            {
+                references.declare(crate::resolve::NameKind::Patch, &name, span);
+            }
         }
     }
 
@@ -619,10 +636,19 @@ pub(crate) fn resolve(
                             .maybe_at(span, "no patch with this name"),
                     );
                 } else {
-                    let patch_span = assign.destination_token().map(|token| {
-                        let range = token.text_range();
-                        SourceSpan::new(u32::from(range.start()), u32::from(range.end()))
-                    });
+                    let patch_span = assign
+                        .destination_token()
+                        .map(|token| crate::resolve::source_span_of(&token));
+                    // Both names resolved: the assign is a use of each.
+                    if let Some(span) = assign
+                        .source_token()
+                        .map(|token| crate::resolve::source_span_of(&token))
+                    {
+                        references.record_use(crate::resolve::NameKind::Part, &part, span);
+                    }
+                    if let Some(span) = patch_span {
+                        references.record_use(crate::resolve::NameKind::Patch, &patch, span);
+                    }
                     spec.assign(part, Assignment { patch, patch_span });
                 }
             }
@@ -645,10 +671,15 @@ pub(crate) fn resolve(
                             .maybe_at(span, "not a bus or `master`"),
                     );
                 } else {
+                    if parts.contains(&source)
+                        && let Some(span) = route.source_token().map(|token| crate::resolve::source_span_of(&token))
+                    {
+                        references.record_use(crate::resolve::NameKind::Part, &source, span);
+                    }
                     spec.push_route(Route { source, destination });
                 }
             }
-            StudioItem::Send(send) => resolve_send(send, &mut spec, diagnostics),
+            StudioItem::Send(send) => resolve_send(send, &mut spec, parts, references, diagnostics),
             StudioItem::Modulate(modulate) => {
                 let Some(source) = modulate.source() else { continue };
                 let span = Some(span_of(modulate.syntax()));
@@ -669,7 +700,13 @@ pub(crate) fn resolve(
     spec
 }
 
-fn resolve_send(send: &SendStmt, spec: &mut StudioSpec, diagnostics: &mut Vec<Diagnostic>) {
+fn resolve_send(
+    send: &SendStmt,
+    spec: &mut StudioSpec,
+    parts: &[String],
+    references: &mut crate::resolve::ReferenceIndex,
+    diagnostics: &mut Vec<Diagnostic>,
+) {
     let (Some(source), Some(bus)) = (send.source(), send.destination()) else {
         return;
     };
@@ -690,6 +727,12 @@ fn resolve_send(send: &SendStmt, spec: &mut StudioSpec, diagnostics: &mut Vec<Di
                 .maybe_at(span, "no bus with this name"),
         );
         return;
+    }
+    // The source is routable and names a part: a use of it, recorded.
+    if parts.contains(&source)
+        && let Some(span) = send.source_token().map(|token| crate::resolve::source_span_of(&token))
+    {
+        references.record_use(crate::resolve::NameKind::Part, &source, span);
     }
     let level = send
         .level()

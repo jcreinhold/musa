@@ -36,8 +36,8 @@ use crate::score::{
 };
 use crate::time::MusicalTime;
 use musa_kernel::{Beat, Occurrence, Span, Term, Timeline, sequence, timeline};
-use musa_language::SyntaxNode;
 use musa_language::ast::{AstNode as _, PieceDecl, VoiceItem};
+use musa_language::{SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
 use std::fmt::Write as _;
 
@@ -484,6 +484,7 @@ pub(crate) fn elaborate_parsed(
         .with_studio(studio)
         .with_identity(identity)
         .with_decisions(std::mem::take(&mut resolver.decisions))
+        .with_references(std::mem::take(&mut resolver.references))
 }
 
 /// What the piece timeline says about the piece as a whole, for the callers
@@ -541,6 +542,13 @@ fn elaborate_score(
             );
             continue;
         }
+        if !name.is_empty()
+            && let Some(name_span) = resolve::token_span(part.syntax(), SyntaxKind::Identifier)
+        {
+            resolver
+                .references
+                .declare(crate::resolve::NameKind::Part, &name, name_span);
+        }
         let id = PartId(resolver.next_part);
         resolver.next_part = resolver.next_part.saturating_add(1);
 
@@ -565,6 +573,13 @@ fn elaborate_score(
                     "declared again here",
                 );
                 continue;
+            }
+            if !voice_name.is_empty()
+                && let Some(name_span) = resolve::token_span(voice.syntax(), SyntaxKind::Identifier)
+            {
+                resolver
+                    .references
+                    .declare(crate::resolve::NameKind::Voice, &voice_name, name_span);
             }
             let voice_id = VoiceId(u32::try_from(index).unwrap_or(u32::MAX));
             lanes.push(elaborate_voice(
@@ -1172,6 +1187,7 @@ fn elaborate_voice(
         max_motif: usize::MAX,
         scale: Ratio::ONE,
         choice: crate::ChoicePath::default(),
+        foreign: false,
     };
     resolver.cursor = MusicalTime::ZERO;
     let segment = elaborate_place(
@@ -1793,12 +1809,16 @@ fn elaborate_mobile(
     }
     let count = u32::try_from(names.len()).unwrap_or(u32::MAX);
     let order = resolver.decide_order(&cx.choice, count);
+    let name_tokens = mobile.fragment_tokens();
     let mut played: Vec<Segment> = Vec::with_capacity(names.len());
     for index in &order {
         let Some(name) = names.get(*index as usize) else {
             continue;
         };
-        played.push(elaborate_fragment(resolver, share, name, cx, scope, span));
+        // The list and its tokens are read off the same tokens, so they
+        // cannot disagree about which span this name is.
+        let use_span = name_tokens.get(*index as usize).map_or(span, resolve::source_span_of);
+        played.push(elaborate_fragment(resolver, share, name, cx, scope, span, use_span));
     }
     let fact = ScoreFact::new(
         scope,
@@ -2451,10 +2471,11 @@ fn elaborate_use(
             motif.declaration,
             motif.material,
             motif.span,
+            motif.foreign,
         )
     });
     let call_span = resolve::trimmed_span(call.syntax());
-    let Some((index, motif_params, body, declaration, material, declared_at)) = found else {
+    let Some((index, motif_params, body, declaration, material, declared_at, foreign)) = found else {
         let known: Vec<&str> = resolver.motifs.keys().map(String::as_str).collect();
         resolver.report(
             Diagnostic::error(Code::UnknownName, format!("cannot find `{name}`"))
@@ -2463,6 +2484,14 @@ fn elaborate_use(
         );
         return Segment::empty();
     };
+    // The name resolved, so this `use` is a reference to it — recorded in
+    // the document's own text only: a use inside an imported library's body
+    // names text the record does not cover.
+    if !cx.foreign
+        && let Some(use_span) = resolve::token_span(call.syntax(), SyntaxKind::Identifier)
+    {
+        resolver.references.record_use(material.name_kind(), &name, use_span);
+    }
     // A bar is declared in the middle of the music, so "declared above" is a
     // real question rather than a guarantee of the grammar. Ending *after*
     // this `use` starts covers both ways of getting it wrong: quoting a bar
@@ -2548,6 +2577,7 @@ fn elaborate_use(
             body: &body,
             declaration,
             params,
+            foreign,
         },
         cx,
         scope,
@@ -2568,6 +2598,8 @@ struct Expansion<'a> {
     body: &'a [VoiceItem],
     declaration: crate::origin::DeclarationId,
     params: indexmap::IndexMap<String, crate::resolve::BoundValue>,
+    /// Whether the body's text belongs to an imported library (prompt 78).
+    foreign: bool,
 }
 
 /// Elaborate a piece of material once and refer to it from here.
@@ -2599,6 +2631,7 @@ fn expand_material(
         origin_span: Some(SHARED_ORIGIN),
         max_motif: expansion.index,
         scale: cx.scale,
+        foreign: expansion.foreign,
         choice: crate::ChoicePath::default().then(match expansion.material {
             crate::resolve::Material::Bar => crate::ChoiceStep::Bar(expansion.name.into()),
             crate::resolve::Material::Motif => crate::ChoiceStep::Motif(expansion.name.into()),
@@ -2641,12 +2674,18 @@ fn elaborate_fragment(
     cx: &ExpandCx,
     scope: Scope,
     span: SourceSpan,
+    use_span: SourceSpan,
 ) -> Segment {
-    let found = resolver
-        .motifs
-        .get_full(name)
-        .map(|(index, _, motif)| (index, motif.body.clone(), motif.declaration, motif.material));
-    let Some((index, body, declaration, material)) = found else {
+    let found = resolver.motifs.get_full(name).map(|(index, _, motif)| {
+        (
+            index,
+            motif.body.clone(),
+            motif.declaration,
+            motif.material,
+            motif.foreign,
+        )
+    });
+    let Some((index, body, declaration, material, foreign)) = found else {
         let known: Vec<&str> = resolver.motifs.keys().map(String::as_str).collect();
         resolver.report(
             Diagnostic::error(Code::UnknownName, format!("cannot find `{name}`"))
@@ -2666,6 +2705,10 @@ fn elaborate_fragment(
         );
         return Segment::empty();
     }
+    // A name in a mobile's list is a use of the fragment it resolves to.
+    if !cx.foreign {
+        resolver.references.record_use(material.name_kind(), name, use_span);
+    }
     expand_material(
         resolver,
         share,
@@ -2676,6 +2719,7 @@ fn elaborate_fragment(
             body: &body,
             declaration,
             params: indexmap::IndexMap::new(),
+            foreign,
         },
         cx,
         scope,

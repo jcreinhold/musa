@@ -784,11 +784,19 @@ wrapper!(MobileStmt, SyntaxKind::MobileStmt);
 impl MobileStmt {
     /// The fragment names it arranges, in written order.
     pub fn fragments(&self) -> Vec<String> {
+        self.fragment_tokens()
+            .iter()
+            .map(|token| token.text().to_string())
+            .collect()
+    }
+
+    /// The fragment names' own tokens, in written order — the spans an
+    /// editor rewrites without touching the brackets around them.
+    pub fn fragment_tokens(&self) -> Vec<SyntaxToken> {
         self.0
             .children_with_tokens()
             .filter_map(SyntaxElement::into_token)
             .filter(|token| token.kind() == SyntaxKind::Identifier)
-            .map(|token| token.text().to_string())
             .collect()
     }
 }
@@ -1539,6 +1547,12 @@ macro_rules! binding_wrapper {
                 binding_names(&self.0).get(1).cloned()
             }
 
+            /// The left-hand name's own token, for an editor that means to
+            /// rewrite the name and nothing else around it.
+            pub fn source_token(&self) -> Option<SyntaxToken> {
+                binding_tokens(&self.0).into_iter().next()
+            }
+
             /// The right-hand name's own token, for an editor that means to
             /// rewrite the name and nothing else around it.
             pub fn destination_token(&self) -> Option<SyntaxToken> {
@@ -1576,6 +1590,12 @@ impl SendStmt {
     /// The sending source's name.
     pub fn source(&self) -> Option<String> {
         binding_names(&self.0).first().cloned()
+    }
+
+    /// The sending source's own token, for an editor that means to rewrite
+    /// the name and nothing else around it.
+    pub fn source_token(&self) -> Option<SyntaxToken> {
+        binding_tokens(&self.0).into_iter().next()
     }
 
     /// The receiving bus's name.

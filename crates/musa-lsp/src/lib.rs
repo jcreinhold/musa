@@ -42,13 +42,14 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Exit, Notification as _, PublishDiagnostics,
 };
 use lsp_types::request::{
-    CodeActionRequest, Completion, DocumentSymbolRequest, Formatting, GotoDefinition, HoverRequest, Request as _,
-    SemanticTokensFullRequest,
+    CodeActionRequest, Completion, DocumentSymbolRequest, Formatting, GotoDefinition, HoverRequest,
+    PrepareRenameRequest, References, Rename, Request as _, SemanticTokensFullRequest,
 };
 use lsp_types::{
     CodeActionProviderCapability, CompletionOptions, HoverProviderCapability, OneOf, PositionEncodingKind,
-    PublishDiagnosticsParams, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+    PublishDiagnosticsParams, RenameOptions, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
     SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
+    WorkDoneProgressOptions,
 };
 use workspace::Workspace;
 
@@ -148,6 +149,11 @@ fn server_capabilities() -> ServerCapabilities {
         document_symbol_provider: Some(OneOf::Left(true)),
         code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
         document_formatting_provider: Some(OneOf::Left(true)),
+        references_provider: Some(OneOf::Left(true)),
+        rename_provider: Some(OneOf::Right(RenameOptions {
+            prepare_provider: Some(true),
+            work_done_progress_options: WorkDoneProgressOptions::default(),
+        })),
         completion_provider: Some(CompletionOptions {
             resolve_provider: Some(false),
             trigger_characters: None,
@@ -229,6 +235,26 @@ fn dispatch(workspace: &Workspace, request: Request) -> Response {
                 .document(&params.text_document.uri)
                 .and_then(|document| features::symbols::symbols(document, &params.text_document.uri))
         }),
+        References::METHOD => answer::<References>(request, |params| {
+            workspace
+                .document(&params.text_document_position.text_document.uri)
+                .and_then(|document| {
+                    features::names::references(document, &params.text_document_position.text_document.uri, &params)
+                })
+        }),
+        PrepareRenameRequest::METHOD => answer::<PrepareRenameRequest>(request, |params| {
+            workspace
+                .document(&params.text_document.uri)
+                .and_then(|document| features::names::prepare_rename(document, params.position))
+        }),
+        Rename::METHOD => answer_fallible::<Rename>(request, |params| {
+            workspace
+                .document(&params.text_document_position.text_document.uri)
+                .map_or_else(
+                    || Err("the document is not open".to_owned()),
+                    |document| features::names::rename(document, &params),
+                )
+        }),
         CodeActionRequest::METHOD => answer::<CodeActionRequest>(request, |params| {
             workspace
                 .document(&params.text_document.uri)
@@ -263,6 +289,22 @@ where
     let id = request.id.clone();
     match request.extract::<R::Params>(R::METHOD) {
         Ok((id, params)) => Response::new_ok(id, compute(params)),
+        Err(_) => Response::new_err(id, INVALID_PARAMS, format!("malformed `{}` parameters", R::METHOD)),
+    }
+}
+
+/// [`answer`], for the one method — rename — whose refusal is part of its
+/// semantics: "that name is taken" is an error, not an empty edit.
+fn answer_fallible<R>(request: Request, compute: impl FnOnce(R::Params) -> Result<R::Result, String>) -> Response
+where
+    R: lsp_types::request::Request,
+{
+    let id = request.id.clone();
+    match request.extract::<R::Params>(R::METHOD) {
+        Ok((id, params)) => match compute(params) {
+            Ok(result) => Response::new_ok(id, result),
+            Err(message) => Response::new_err(id, INVALID_PARAMS, message),
+        },
         Err(_) => Response::new_err(id, INVALID_PARAMS, format!("malformed `{}` parameters", R::METHOD)),
     }
 }

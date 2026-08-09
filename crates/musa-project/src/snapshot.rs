@@ -57,13 +57,16 @@ pub(crate) struct ValidArtifacts {
     pub(crate) facts: ScoreFacts,
     /// Everything the Sound and Mix workspaces display about that studio.
     pub(crate) studio_facts: crate::studio::StudioFacts,
+    /// Every name the resolver resolved, for an editor's references and
+    /// rename (prompt 78).
+    pub(crate) names: Vec<crate::facts::NameFact>,
     pub(crate) revision: Revision,
     /// What this score *means* (docs/kernel/05 N6), so a consumer can ask
     /// whether an edit changed the music rather than only the text.
     pub(crate) identity: musa_compiler::SemanticHash,
 }
 
-impl ProjectSnapshot<'_> {
+impl<'session> ProjectSnapshot<'session> {
     /// The current source text — the canonical document (roadmap §11).
     pub fn source(&self) -> &str {
         self.source
@@ -120,6 +123,15 @@ impl ProjectSnapshot<'_> {
     /// the same revision as [`Self::mei`].
     pub fn studio(&self) -> Option<&crate::studio::StudioFacts> {
         self.valid.as_ref().map(|valid| &valid.studio_facts)
+    }
+
+    /// Every name the resolver resolved, with its declaration and use spans
+    /// — what an editor's references and rename are built from (prompt 78).
+    /// From the same revision as [`Self::mei`]: while the source is
+    /// mid-edit, these describe the last text that compiled, which
+    /// [`Self::score_revision`] says.
+    pub fn names(&self) -> &'session [crate::facts::NameFact] {
+        self.valid.as_ref().map_or(&[], |valid| valid.names.as_slice())
     }
 
     /// The revision the engraved score and playback plan came from.

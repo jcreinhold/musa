@@ -75,6 +75,122 @@ impl Material {
             Self::Fragment => "fragment",
         }
     }
+
+    /// The kind the reference record files this material under.
+    pub(crate) fn name_kind(self) -> NameKind {
+        match self {
+            Self::Motif => NameKind::Motif,
+            Self::Bar => NameKind::Bar,
+            Self::Fragment => NameKind::Fragment,
+        }
+    }
+}
+
+/// What kind of thing a recorded name names (prompt 78).
+///
+/// Motifs, bars, and fragments share one namespace (see [`Material`]); parts,
+/// voices, and patches are a namespace each. The kind is what a rename checks
+/// a collision against.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum NameKind {
+    /// A `motif` declaration.
+    Motif,
+    /// A named `bar`.
+    Bar,
+    /// A `fragment` a mobile arranges.
+    Fragment,
+    /// A `part` in the score.
+    Part,
+    /// A `voice` in a part. Voices are declared, never used by name — their
+    /// entries are declaration-only by construction.
+    Voice,
+    /// A `patch` in the studio.
+    Patch,
+}
+
+/// One named thing and everywhere it is spoken in the compiled document
+/// (prompt 78).
+///
+/// Spans are the *name tokens'* spans, not the statements': a rename rewrites
+/// exactly these ranges and nothing around them. A name declared in an
+/// imported library has no declaration here — its uses in the document are
+/// recorded honestly and its declaration is `None`, which is what makes
+/// cross-file rename impossible to ask for rather than silently wrong.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NameReference {
+    /// The name as written.
+    pub name: String,
+    /// What it names.
+    pub kind: NameKind,
+    /// Where the declaration's name token is, when it is in this document.
+    pub declaration: Option<SourceSpan>,
+    /// Every resolved use's name token, in the order the resolver met them.
+    /// A name that does not resolve records nothing: no uses, no entry.
+    pub uses: Vec<SourceSpan>,
+}
+
+/// The reference record the resolver accumulates (prompt 78).
+///
+/// The resolver already knows every use's declaration at the moment it
+/// resolves the name; this is that knowledge kept, not a second pass
+/// re-derived afterwards. Entries are few — a piece names dozens of things —
+/// so a `Vec` scanned linearly beats an index that has to be kept true.
+pub(crate) struct ReferenceIndex {
+    entries: Vec<NameReference>,
+}
+
+impl Default for ReferenceIndex {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ReferenceIndex {
+    pub(crate) fn new() -> Self {
+        Self { entries: Vec::new() }
+    }
+
+    /// Record a declaration in the compiled document.
+    ///
+    /// Always a new entry: declarations reach here only past the duplicate
+    /// checks, so a repeated `(kind, name)` is two voices in two parts, not
+    /// a collision.
+    pub(crate) fn declare(&mut self, kind: NameKind, name: &str, span: SourceSpan) {
+        self.entries.push(NameReference {
+            name: name.to_owned(),
+            kind,
+            declaration: Some(span),
+            uses: Vec::new(),
+        });
+    }
+
+    /// Record one resolved use.
+    ///
+    /// The entry is found by kind and name — unique in every namespace that
+    /// has uses (voices are declaration-only). A use whose declaration lives
+    /// in an imported library has no entry yet: it is created with a `None`
+    /// declaration, which is the record's way of saying "used here, spelled
+    /// elsewhere".
+    pub(crate) fn record_use(&mut self, kind: NameKind, name: &str, span: SourceSpan) {
+        match self
+            .entries
+            .iter_mut()
+            .find(|entry| entry.kind == kind && entry.name == name)
+        {
+            Some(entry) => entry.uses.push(span),
+            None => self.entries.push(NameReference {
+                name: name.to_owned(),
+                kind,
+                declaration: None,
+                uses: vec![span],
+            }),
+        }
+    }
+
+    /// Everything recorded, in the order it was first met.
+    pub(crate) fn entries(&self) -> &[NameReference] {
+        &self.entries
+    }
 }
 
 /// A collected motif or named bar, ready for expansion.
@@ -91,6 +207,13 @@ pub(crate) struct MotifDef {
     /// is either forward reference or the bar quoting itself, and both are the
     /// same mistake seen from different sides.
     pub(crate) span: SourceSpan,
+    /// Whether the declaration lives in an imported library.
+    ///
+    /// The reference record only records spans in the compiled document's own
+    /// text; a use inside a foreign body is elaborated through an
+    /// [`ExpandCx`] this flag marks, so nothing foreign-text ever reaches the
+    /// record.
+    pub(crate) foreign: bool,
 }
 
 /// A parameter bound at a `use` site.
@@ -124,6 +247,14 @@ pub(crate) struct ExpandCx {
     /// body is elaborated once and shared between call sites, so a decision
     /// inside it belongs to the *material* and not to any one use of it.
     pub(crate) choice: crate::ChoicePath,
+    /// Whether the text being read belongs to an imported library rather
+    /// than the compiled document.
+    ///
+    /// The reference record (prompt 78) records spans in the document's own
+    /// text only, so a `use` read under a foreign context is resolved but
+    /// never recorded. Set by `expand_material` when the body being expanded
+    /// came from an import; the piece's own root context is never foreign.
+    pub(crate) foreign: bool,
 }
 
 /// What resolution accumulates while a piece is read: the tables names are
@@ -195,6 +326,8 @@ pub(crate) struct Resolver {
     /// the elaboration and projection stages separable to measure them apart
     /// (roadmap §17.7). One `Option` check per voice is the whole cost.
     pub(crate) timeline_sink: Option<Vec<crate::elaborate::VoiceTimeline>>,
+    /// Every name reference resolved, kept for editors (prompt 78).
+    pub(crate) references: ReferenceIndex,
     /// Which performance is being compiled (`docs/kernel/11-realization.md`).
     ///
     /// It lives here rather than being threaded through elaboration because a
@@ -219,6 +352,7 @@ impl Resolver {
             key_changes: Vec::new(),
             pending_bars: Vec::new(),
             sites: std::collections::BTreeMap::new(),
+            references: ReferenceIndex::new(),
             decisions: Vec::new(),
             key: None,
             timeline_sink: None,
@@ -363,6 +497,12 @@ pub(crate) fn token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> 
         .map(|token| token.text().to_string())
 }
 
+/// The span of a token, in the record's measure.
+pub(crate) fn source_span_of(token: &musa_language::SyntaxToken) -> SourceSpan {
+    let range = token.text_range();
+    SourceSpan::new(u32::from(range.start()), u32::from(range.end()))
+}
+
 /// Resolve the piece's `studio` block, if it has one.
 ///
 /// Shared by both semantic paths: the studio says nothing about notes, so
@@ -383,7 +523,13 @@ pub(crate) fn lower_studio(
         .iter()
         .map(|(_, part)| part.name().to_string())
         .collect();
-    crate::studio::resolve(studio.as_ref(), imported, &parts, &mut resolver.diagnostics)
+    crate::studio::resolve(
+        studio.as_ref(),
+        imported,
+        &parts,
+        &mut resolver.references,
+        &mut resolver.diagnostics,
+    )
 }
 
 /// Tempo, meter, key — plus registration of motif declarations (expansion
@@ -491,6 +637,12 @@ pub(crate) fn register_motifs(
         if refuses_to_shadow(resolver, snapshot, &name, span, from) {
             continue;
         }
+        if from.is_none()
+            && !name.is_empty()
+            && let Some(name_span) = token_span(motif.syntax(), SyntaxKind::Identifier)
+        {
+            resolver.references.declare(NameKind::Motif, &name, name_span);
+        }
         let key = resolver.declare(DeclInfo::Motif);
         let definition = MotifDef {
             params: motif.params(),
@@ -498,6 +650,7 @@ pub(crate) fn register_motifs(
             declaration: ordinal(resolver, key),
             material: Material::Motif,
             span,
+            foreign: from.is_some(),
         };
         snapshot.push_motif(crate::score::MotifDeclaration {
             name: name.clone(),
@@ -524,6 +677,12 @@ pub(crate) fn register_fragments(
         if refuses_to_shadow(resolver, snapshot, &name, span, from) {
             continue;
         }
+        if from.is_none()
+            && !name.is_empty()
+            && let Some(name_span) = token_span(fragment.syntax(), SyntaxKind::Identifier)
+        {
+            resolver.references.declare(NameKind::Fragment, &name, name_span);
+        }
         let key = resolver.declare(DeclInfo::Motif);
         let definition = MotifDef {
             params: Vec::new(),
@@ -531,6 +690,7 @@ pub(crate) fn register_fragments(
             declaration: ordinal(resolver, key),
             material: Material::Fragment,
             span,
+            foreign: from.is_some(),
         };
         snapshot.push_motif(crate::score::MotifDeclaration {
             name: name.clone(),
@@ -559,6 +719,9 @@ pub(crate) fn register_bars(
         if refuses_to_shadow(resolver, snapshot, &name, span, None) {
             continue;
         }
+        if let Some(name_span) = token_span(bar.syntax(), SyntaxKind::Identifier) {
+            resolver.references.declare(NameKind::Bar, &name, name_span);
+        }
         let key = resolver.declare(DeclInfo::Motif);
         let definition = MotifDef {
             params: Vec::new(),
@@ -566,6 +729,7 @@ pub(crate) fn register_bars(
             declaration: ordinal(resolver, key),
             material: Material::Bar,
             span,
+            foreign: false,
         };
         snapshot.push_motif(crate::score::MotifDeclaration {
             name: name.clone(),

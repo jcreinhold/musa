@@ -631,6 +631,13 @@ impl ProjectSession {
         let identity = compilation.identity();
         // A snapshot alongside error diagnostics is a partial recovery, not a
         // score: taking it would show the user something they did not write.
+        // The reference record travels with the successful compile, like
+        // every other fact — borrowed here because `into_parts` consumes.
+        let names: Vec<musa_compiler::NameReference> = if compilation.has_errors() {
+            Vec::new()
+        } else {
+            compilation.references().to_vec()
+        };
         let (score, studio) = if compilation.has_errors() {
             (None, musa_compiler::StudioSpec::default())
         } else {
@@ -653,6 +660,7 @@ impl ProjectSession {
                     let facts = crate::facts::ScoreFacts::derive(&score, &self.source);
                     let parts: Vec<String> = facts.parts.iter().map(|part| part.name.clone()).collect();
                     let studio_facts = crate::studio::StudioFacts::derive(&studio, &parts);
+                    let names = names.iter().map(crate::facts::NameFact::from_compiler).collect();
                     self.valid = Some(ValidArtifacts {
                         mei,
                         mei_warnings: rendered.warnings().to_vec(),
@@ -661,6 +669,7 @@ impl ProjectSession {
                         studio,
                         facts,
                         studio_facts,
+                        names,
                         revision,
                         identity,
                     });

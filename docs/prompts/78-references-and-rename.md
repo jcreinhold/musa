@@ -1,7 +1,7 @@
 ---
 id: 78
 slug: references-and-rename
-status: pending
+status: done
 depends_on: [77]
 phase: 3
 ---
