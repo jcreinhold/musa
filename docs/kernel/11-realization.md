@@ -48,7 +48,7 @@ the four reasons are recorded here because this is a design that will be propose
    unchosen branch would change the work without changing the hash, and the session would not recompile. One term form
    would silently break a feature four prompts away.
 
-4. **It destroys the artifact that justified it.** A `.kernel` file containing `choose` cannot be normalized or hashed
+4. **It destroys the artifact that justified it.** A `.musa.kernel` file containing `choose` cannot be normalized or hashed
    without a choice environment, so the environment must ship alongside the file — which makes the file a *realization*
    corpus after all, at the cost of every theorem above. The argument for `choose` is self-defeating: it buys nothing
    the refused design does not already give, and it pays for it in four places.
@@ -62,7 +62,7 @@ aleatory choice *in the finite kernel*, which is exactly what this document does
 **A realization is a compile parameter. The freedom is a payload value. The kernel does not change.**
 
 ```text
-source ──elaborate(realization)──▶ Term<ScoreFact> ──evaluate──▶ Timeline ──▶ page, performance, .kernel
+source ──elaborate(realization)──▶ Term<ScoreFact> ──evaluate──▶ Timeline ──▶ page, performance, .musa.kernel
   │                                                                  ▲
   └── states the freedom as ordinary facts ──────────────────────────┘
       (a fragment, an open repeat, a free duration, an improvised region:
@@ -146,7 +146,7 @@ theorems.
 
 Adding to `07-backend-contract.md`'s list, and changing none of it:
 
-1. **A `.kernel` file is the projection of one realization.** It is not the work; it is one reading of the work. Its
+1. **A `.musa.kernel` file is the projection of one realization.** It is not the work; it is one reading of the work. Its
    header says which realization produced it, and a consumer that reproduces the file must be given the same one.
 2. **A consumer never chooses.** Choosing happens once, above the kernel, before a term exists. A consumer that draws
    a random number has produced a different piece and the semantic hash will say so.

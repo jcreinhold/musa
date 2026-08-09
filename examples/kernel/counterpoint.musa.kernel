@@ -1,0 +1,28 @@
+% musa-kernel-1
+% generated from examples/counterpoint.musa by musa-compiler
+kernel "Counterpoint Study" {
+  composition main : Timeline[ScoreFact] =
+    overlay {
+      timeline 2 {
+        occurrence "voice 0 0 note d4 1/2 [193:200 #4]" from 0 to 1/2;
+        occurrence "voice 0 0 note f4 1/2 [201:208 #4]" from 1/2 to 1;
+        occurrence "voice 0 0 note e4 1/2 [233:240 #4]" from 1 to 3/2;
+        occurrence "voice 0 0 note d4 1/2 fermata [241:273 #4]" from 3/2 to 2;
+        occurrence "voice 0 0 note fs4 1/2 fermata [241:273 #4]" from 3/2 to 2;
+        occurrence "voice 0 0 note a4 1/2 fermata [241:273 #4]" from 3/2 to 2;
+      };
+      timeline 2 {
+        occurrence "voice 1 0 note d3 1/2 [393:400 #5]" from 0 to 1/2;
+        occurrence "voice 1 0 note a2 1/2 [401:408 #5]" from 1/2 to 1;
+        occurrence "voice 1 0 note bf2 1/2 [433:441 #5]" from 1 to 3/2;
+        occurrence "voice 1 0 note a2 1/2 fermata [442:457 #5]" from 3/2 to 2;
+      };
+      timeline 2 {
+        occurrence "piece meter 4/4 [52:67]" from 0 to 2;
+        occurrence "piece tempo 1/4=90 [28:52]" from 0 to 2;
+        occurrence "piece key d minor [67:84]" from 0 to 2;
+        occurrence "part 0 clef treble [132:144]" from 0 to 2;
+        occurrence "part 1 clef alto [334:344]" from 0 to 2;
+      }
+    };
+}

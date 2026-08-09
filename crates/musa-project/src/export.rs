@@ -47,7 +47,12 @@ impl ExportRequest {
             Self::Wav => "wav",
             Self::Midi(_) => "mid",
             Self::PerformanceDump | Self::NotationPlanDump => "txt",
-            Self::Kernel { .. } => "kernel",
+            // `sonata.musa.kernel`, the way `autosave` writes
+            // `sonata.musa.recovery` and `realization` writes
+            // `sonata.musa.performance`: a suffix musa adds beside a piece
+            // says whose file it is. `.kernel` alone says nothing, and every
+            // operating system and compiler already owns the word.
+            Self::Kernel { .. } => "musa.kernel",
         }
     }
 }
@@ -142,7 +147,7 @@ pub struct KernelReport {
 ///
 /// The other direction from [`ExportRequest::Kernel`], and deliberately not a
 /// session method — checking a file is not an operation on a project, and a
-/// `.kernel` file never becomes a document (AGENTS.md: the source is
+/// `.musa.kernel` file never becomes a document (AGENTS.md: the source is
 /// canonical).
 ///
 /// # Errors

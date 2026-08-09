@@ -1,0 +1,44 @@
+% musa-kernel-1
+% generated from examples/annotated.musa by musa-compiler
+kernel "Annotated" {
+  composition main : Timeline[ScoreFact] =
+    overlay {
+      sequence {
+        overlay {
+          timeline 2 {
+            occurrence "voice 0 0 note a4 1/4 [873:880 #4]" from 0 to 1/4;
+            occurrence "voice 0 0 note c5 1/4 [901:908 #4]" from 1/4 to 1/2;
+            occurrence "voice 0 0 note e5 1/2 [929:936 #4]" from 1/2 to 1;
+            occurrence "voice 0 0 note f5 1/2 [957:964 #4]" from 1 to 3/2;
+            occurrence "voice 0 0 note e5 1/2 [985:992 #4]" from 3/2 to 2;
+          };
+          timeline 2 {
+            occurrence "voice 0 0 phrase 'antecedent' [831:1010 #4]" from 0 to 2;
+          }
+        };
+        overlay {
+          timeline 2 {
+            occurrence "voice 0 0 note b4 1/4 [1069:1076 #4]" from 0 to 1/4;
+            occurrence "voice 0 0 note e5 1/4 [1097:1104 #4]" from 1/4 to 1/2;
+            occurrence "voice 0 0 note gs5 1/2 [1125:1133 #4]" from 1/2 to 1;
+            occurrence "voice 0 0 note a5 1 [1154:1159 #4]" from 1 to 2;
+          };
+          timeline 2 {
+            occurrence "voice 0 0 phrase 'consequent' [1027:1177 #4]" from 0 to 2;
+          }
+        }
+      };
+      timeline 4 {
+        occurrence "piece meter 4/4 [497:512]" from 0 to 4;
+        occurrence "piece tempo 1/4=96 [477:497]" from 0 to 4;
+        occurrence "piece key a minor [512:529]" from 0 to 4;
+        occurrence "part 0 clef treble [776:788]" from 0 to 4;
+        occurrence "piece section 'Exposition' [551:579]" from 0 to 0;
+        occurrence "piece section 'Development' [588:617]" from 2 to 2;
+        occurrence "piece harmony 'am' [649:659]" from 0 to 0;
+        occurrence "piece harmony 'fmaj7' [672:685]" from 1 to 1;
+        occurrence "piece harmony 'e7' [698:708]" from 2 to 2;
+        occurrence "piece harmony 'am' [721:731]" from 3 to 3;
+      }
+    };
+}

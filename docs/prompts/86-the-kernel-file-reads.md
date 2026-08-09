@@ -1,7 +1,7 @@
 ---
 id: 86
 slug: the-kernel-file-reads
-status: pending
+status: done
 depends_on: [48, 63, 67, 68]
 phase: 3
 ---
@@ -51,7 +51,7 @@ Four faults, and the design is four rules that each kill one.
 1. **Five separators at five nesting levels** (`|` `@` `;` `:` `,`), none mnemonic.
 2. **Positional empty fields you must count.** `tempo@1/4@96@@@@` is seven fields, four of them empty.
 3. **Nesting re-escapes.** `join` escapes its separator at every level, so an inner value crossing four levels is
-   escaped four times: `examples/kernel/variation.kernel` carries `motif:299\\\\\\\\:311` — eight backslashes for one
+   escaped four times: `examples/kernel/variation.kernel` carried `motif:299\\\\\\\\:311` — eight backslashes for one
    colon.
 4. **Redundancy printed in full.** The definition span repeats the source span for every directly authored event; the
    declaration is `0` for every context fact; a duration writes `1/4;1/4;1/4` where one `1/4` says it.
@@ -71,13 +71,16 @@ string escape has nothing to double except a literal backslash in composer text 
 four, and the ordinary case becomes none.
 
 ```
-label   := scope kind origin?
+label   := scope kind origin
 scope   := "piece" | "part" N | "voice" N N
 origin  := "[" span ("def" span)? ("#" N)? ("via" step+)? "]"
 span    := N ":" N
 step    := "motif" span | "repeat" N | "transpose" N N | "stretch" ratio
          | "retrograde" | "invert" quoted | "special" span
 ```
+
+`[` and `]` delimit themselves, so `[191:198 #4]` is four words without the spaces that would otherwise separate
+them — and a bare word therefore contains no bracket either.
 
 `voice 2 11` and not `voice 2.11`, because `a_facts_text_form_writes_no_decimals` asserts a payload contains no `.`
 at all — a strictness worth keeping, and a scope index is not worth weakening it for.
@@ -110,10 +113,13 @@ A duration is `ratio` alone in the common case, and grows only when it must:
 
 ```
 duration := ratio ("spelled" quoted)? ("tied" ratio+)?
+ratio    := N "/" N | N
 ```
 
 `1/4` for every note whose written value is what it sounds; `1/3 spelled '1/4 ~ 1/12' tied 1/4 1/12` for one that is
-not. A run of ratios ends at the first token that is not one, which is unambiguous because everything that can follow
+not. A whole note is `1`, not `1/1`, which is not cosmetic: the language spells a whole note `1`, and `spelled` elides
+exactly when the spelling equals the written ratio, so a `p/q`-only writer would have printed `1/1 spelled '1'` on
+every long note in the corpus. A run of ratios ends at the first token that is not one, which is unambiguous because everything that can follow
 — an articulation name, `free`, `[` — is not ratio-shaped.
 
 `Progress` keeps its canonical key (`u/d:v/e,…`) unchanged: it is one bare token, it contains no whitespace, and
@@ -132,8 +138,9 @@ Reading reconstructs the value exactly because every elision is a biconditional,
 | `spelled …` | the spelling is the value written `p/q` |
 | `tied …` | the pieces are exactly `[value]` |
 
-The whole origin group is omitted when all four of its parts are — but a fact whose source span is `0:0` still prints
-`[0:0]`, because a span is not optional.
+The origin group itself is never omitted: a span is not optional, so a fact whose source span is `0:0` prints
+`[0:0]`. It is also what ends the kind — an articulation run, a mobile's order and a mark's absent argument all stop
+at the `[`, which is why no vocabulary word is spelled with a bracket.
 
 ### Before and after
 
@@ -175,11 +182,13 @@ CLI verb, and `docs/kernel/`. None of those changes, and a blanket substitution 
 
 ## Target
 
-- `crates/musa-compiler/src/factext.rs`: `to_text`/`from_text` rewritten around a `Tokens` reader and a `Words`
-  writer. `join`/`escape`/`split_escaped` go; `quote` and the tokenizer replace them. `scope_text`, `span_text`,
-  `step_text`, `read_scope`, `read_span`, `read_step` keep their names and `pub(crate)` visibility, because
-  `elaborate.rs::instantiate` and `mark_of` are their other callers.
-- `crates/musa-compiler/src/elaborate.rs`: `mark_of`/`instantiate` follow the same tokenization, and `mark_of`'s
+- `crates/musa-compiler/src/factext.rs`: `to_text`/`from_text` rewritten around one `Words` type that is a writer
+  when built up and a reader when split. `join`/`escape`/`split_escaped` go, and with them the six `pub(crate)`
+  fragments `elaborate.rs` used to assemble a mark out of — `scope_text`, `span_text`, `step_text`, `read_scope`,
+  `read_span`, `read_step`. In their place, two items that say what the caller actually wants:
+  `reference_mark(&ReferenceMark) -> String` and `read_reference_mark(&str) -> Option<ReferenceMark>`. Six pieces of
+  a format become one named thing, which is the point of putting the format in one module.
+- `crates/musa-compiler/src/elaborate.rs`: `mark_of` and `instantiate` become calls to those two, and `mark_of`'s
   doc comment loses the apology.
 - `crates/musa-project/src/export.rs`: `ExportRequest::extension()` returns `musa.kernel` — the one authoritative
   spelling; the CLI's `write_artifact` derives every path from it.
@@ -204,7 +213,9 @@ cargo run -p musa-cli -- kernel examples/invention.musa
 
 The laws that must stay green, unchanged in meaning: `a_facts_text_form_round_trips` — keep its corpus and keep its
 inversion axis written with every character the format separates on, adapted to the new set;
-`a_facts_text_form_writes_no_decimals`; `facts_differing_only_in_provenance_have_different_text`;
+`a_facts_text_form_writes_no_decimals` — restated over *bare* words rather than the whole line, which is what it was
+always about: a tempo marking is allowed to be the word `rit.`, and quoting free text is exactly what lets a law about
+numbers stay a law about numbers; `facts_differing_only_in_provenance_have_different_text`;
 `printing_and_parsing_an_example_preserves_its_meaning`; `the_kernel_corpus_is_up_to_date` over `*.musa.kernel`.
 
 Two new laws:

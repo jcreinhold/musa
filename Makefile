@@ -141,7 +141,7 @@ verify: ## Everything CI would check, in the order that fails fastest
 
 .PHONY: snapshots
 snapshots: node_modules ## Re-record the golden snapshots after a deliberate change
-	INSTA_UPDATE=always $(CARGO) test --workspace
+	INSTA_UPDATE=always UPDATE_KERNEL_GOLDENS=1 $(CARGO) test --workspace
 	UPDATE_UI_FIXTURES=1 $(CARGO) test -p musa-project
 	UPDATE_UI_FIXTURES=1 $(CARGO) test -p musa-desktop
 	$(PNPM) run screens:update

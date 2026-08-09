@@ -5,4 +5,8 @@
 # they recover and are deleted on save; none of them belongs in history.
 *.recovery
 
+# Performance sidecars (musa-project/src/realization.rs). Same rule: they sit
+# beside the piece, they record one reading of it, and the piece is the work.
+*.performance
+
 .vscode/settings.json

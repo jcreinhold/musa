@@ -1,0 +1,46 @@
+% musa-kernel-1
+% generated from examples/tuplet-fixture.musa by musa-compiler
+kernel "Tuplet Fixture" {
+  composition main : Timeline[ScoreFact] =
+    overlay {
+      timeline 2 {
+        occurrence "voice 0 0 dynamic mf [479:490 #5]" from 0 to 0;
+        occurrence "voice 0 0 note c5 1/12 spelled '1/8' [540:547 #5]" from 0 to 1/12;
+        occurrence "voice 0 0 note d5 1/12 spelled '1/8' [568:575 #5]" from 1/12 to 1/6;
+        occurrence "voice 0 0 note e5 1/12 spelled '1/8' [596:603 #5]" from 1/6 to 1/4;
+        occurrence "voice 0 0 tuplet 3/2 [507:621 #5]" from 0 to 1/4;
+        occurrence "voice 0 0 note f5 1/8 [665:672 #5]" from 1/4 to 3/8;
+        occurrence "voice 0 0 note g5 1/8 [693:700 #5]" from 3/8 to 1/2;
+        occurrence "voice 0 0 slur [638:718 #5]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note a5 1/4 accent [735:749 #5]" from 1/2 to 3/4;
+        occurrence "voice 0 0 note g5 1/2 spelled '1/4 ~ 1/4' tied 1/4 1/4 staccato [766:784 #5]" from 3/4 to 5/4;
+        occurrence "voice 0 0 dynamic p [825:835 #5]" from 5/4 to 5/4;
+        occurrence "voice 0 0 note a4 1/8 tenuto [852:865 def 339:355 #4 via motif 852:865]" from 5/4 to 11/8;
+        occurrence "voice 0 0 note d5 1/8 [852:865 def 364:371 #4 via motif 852:865]" from 11/8 to 3/2;
+        occurrence "voice 0 0 note c5 1/12 spelled '1/8' [915:922 #5]" from 3/2 to 19/12;
+        occurrence "voice 0 0 note d5 1/12 spelled '1/8' [943:950 #5]" from 19/12 to 5/3;
+        occurrence "voice 0 0 note e5 1/12 spelled '1/8' [971:978 #5]" from 5/3 to 7/4;
+        occurrence "voice 0 0 tuplet 3/2 [882:996 #5]" from 3/2 to 7/4;
+        occurrence "voice 0 0 note b4 1/8 marcato [1040:1055 #5]" from 7/4 to 15/8;
+        occurrence "voice 0 0 note c5 1/8 [1076:1083 #5]" from 15/8 to 2;
+        occurrence "voice 0 0 slur [1013:1101 #5]" from 7/4 to 2;
+      };
+      timeline 2 {
+        occurrence "voice 1 0 dynamic p [1213:1223 #6]" from 0 to 0;
+        occurrence "voice 1 0 note c3 1/2 [1240:1259 #6]" from 0 to 1/2;
+        occurrence "voice 1 0 note g3 1/2 [1240:1259 #6]" from 0 to 1/2;
+        occurrence "voice 1 0 note e3 1/4 [1276:1283 #6]" from 1/2 to 3/4;
+        occurrence "voice 1 0 note g3 3/4 spelled '1/4 ~ 1/2' tied 1/4 1/2 [1300:1309 #6]" from 3/4 to 3/2;
+        occurrence "voice 1 0 note a3 1/4 tenuto [1377:1391 #6]" from 3/2 to 7/4;
+        occurrence "voice 1 0 note g3 1/4 [1412:1419 #6]" from 7/4 to 2;
+        occurrence "voice 1 0 slur [1350:1437 #6]" from 3/2 to 2;
+      };
+      timeline 2 {
+        occurrence "piece meter 4/4 [262:277]" from 0 to 2;
+        occurrence "piece tempo 1/4=96 [242:262]" from 0 to 2;
+        occurrence "piece key c major [277:294]" from 0 to 2;
+        occurrence "part 0 clef treble [424:436]" from 0 to 2;
+        occurrence "part 1 clef bass [1160:1170]" from 0 to 2;
+      }
+    };
+}

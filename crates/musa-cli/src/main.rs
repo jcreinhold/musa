@@ -75,7 +75,7 @@ fn print_usage() {
     println!("      -o <path>                            where to write it (`-` for stdout)");
     println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
     println!("  musa kernel <file.musa> [--normalized] print the piece as kernel interchange text");
-    println!("  musa kernel --check <file.kernel>      parse, check, and evaluate kernel text");
+    println!("  musa kernel --check <file.musa.kernel> parse, check, and evaluate kernel text");
     println!("  --seed <n>  on check, render and kernel: which performance to compile");
 }
 
@@ -217,10 +217,10 @@ fn cmd_render(args: &[String], realization: &Realization) -> ExitCode {
 }
 
 /// `musa kernel <file.musa> [--normalized] [-o <path>]` /
-/// `musa kernel --check <file.kernel>`
+/// `musa kernel --check <file.musa.kernel>`
 ///
 /// One direction only: kernel text is a projection of a piece, and a
-/// `.kernel` file is never read back into a document (AGENTS.md — the source
+/// `.musa.kernel` file is never read back into a document (AGENTS.md — the source
 /// is canonical). `--check` is a reader, not an importer.
 fn cmd_kernel(args: &[String], realization: &Realization) -> ExitCode {
     let mut path: Option<&str> = None;

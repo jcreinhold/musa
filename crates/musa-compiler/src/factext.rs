@@ -1,8 +1,8 @@
-//! `ScoreFact`'s interchange text form (docs/kernel/01, prompt 48).
+//! `ScoreFact`'s interchange text form (docs/kernel/01, prompts 48 and 86).
 //!
 //! The kernel carries payloads as opaque quoted strings (§12); this module is
 //! the other half — the one place that says what a musical fact looks like in
-//! a `.kernel` file, and the only place that reads one back.
+//! a `.musa.kernel` file, and the only place that reads one back.
 //!
 //! **This is not `Canonical::canonical_key`, and it cannot be.** The key is
 //! the *equality* serialization (N3): it deliberately omits the definition
@@ -14,52 +14,69 @@
 //! reformatted source. Two functions, and the reason is the layering, not
 //! convenience.
 //!
-//! The format is `|`-delimited with `@`-delimited subfields; free text
-//! (names, chord symbols, spellings) escapes `\`, `|` and `@`. Everything is
-//! exact: rationals as `p/q`, never a float, because a consumer that reads a
-//! hairpin's shape and rounds it produces different sound from the same file.
+//! # The form
+//!
+//! A label is a **flat, whitespace-separated stream of words**, and flat is
+//! load-bearing. The form this replaced nested five separators five deep and
+//! escaped each level again at the next, so one colon inside a motif call
+//! reached the file as eight backslashes. Nothing here nests, so nothing is
+//! escaped twice.
+//!
+//! A word is either **bare** — no whitespace, no `'`, no `\`, no bracket —
+//! used for pitches, ratios, integers and vocabulary names; or **quoted** —
+//! `'…'`, escaping `\` and `'` — used for *every* free-text field, always,
+//! even where quoting would not be needed. Always, because that is what keeps
+//! `mark text '8'` and `mark ottava 8` apart without case analysis, and
+//! because a payload that never contains `"` gives the kernel's own string
+//! escape nothing to double.
+//!
+//! ```text
+//! label := scope kind origin
+//! scope := "piece" | "part" N | "voice" N N
+//! origin := "[" span ("def" span)? ("#" N)? ("via" step+)? "]"
+//! span := N ":" N
+//! ```
+//!
+//! Provenance elides only what reading can reconstruct exactly, and every
+//! elision is a biconditional rather than a guess: `def` is written iff the
+//! definition span differs from the source span, `#n` iff the declaration is
+//! not zero, `via` iff the expansion path is non-empty. The span itself is
+//! never elided, so `[0:0]` is written as it stands.
+//!
+//! Everything is exact: rationals as `p/q` — or `p`, when the denominator is
+//! one — and never a float, because a consumer that reads a hairpin's shape
+//! and rounds it produces different sound from the same file.
 
 use musa_kernel::{Canonical as _, TextPayload};
 use num_rational::Ratio;
 
 use crate::elaborate::{FactKind, ScoreFact};
 use crate::harmony::ChordSymbol;
-use crate::marks::Mark;
+use crate::marks::{Mark, MarkArgument};
 use crate::origin::{DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::scope::Scope;
-use crate::score::{DynamicMark, Mode, NotatedDuration};
+use crate::score::{DynamicMark, FreeDuration, Metronome, Mode, NotatedDuration, Ramp};
 use crate::time::MusicalDuration;
 
 impl TextPayload for ScoreFact {
     fn to_text(&self) -> String {
-        join(
-            &[
-                scope_text(self.scope),
-                kind_text(&self.kind),
-                span_text(self.origin.source_span),
-                span_text(self.origin.definition_span),
-                self.origin.declaration.0.to_string(),
-                path_text(&self.origin.expansion_path),
-            ],
-            '|',
-        )
+        let mut words = Words::default();
+        write_scope(&mut words, self.scope);
+        write_kind(&mut words, &self.kind);
+        write_origin(&mut words, &self.origin);
+        words.finish()
     }
 
     fn from_text(text: &str) -> Option<Self> {
-        let fields = split_escaped(text, '|');
-        let [scope, kind, source, definition, declaration, path] = fields.as_slice() else {
-            return None;
-        };
-        Some(Self {
-            scope: read_scope(scope)?,
-            kind: read_kind(kind)?,
-            origin: Origin {
-                source_span: read_span(source)?,
-                definition_span: read_span(definition)?,
-                declaration: DeclarationId(declaration.parse().ok()?),
-                expansion_path: read_path(path)?,
-            },
+        let mut words = Words::split(text)?;
+        let scope = take_scope(&mut words)?;
+        let kind = take_kind(&mut words)?;
+        let origin = take_origin(&mut words)?;
+        words.end().then_some(Self {
+            scope,
+            kind,
+            origin,
             tied: false,
         })
     }
@@ -74,380 +91,840 @@ impl TextPayload for ScoreFact {
 // one occurrence, and that is resolved before a timeline exists. A file that
 // carried it would be describing a state no timeline is ever in.
 
-pub(crate) fn scope_text(scope: Scope) -> String {
-    match scope {
-        Scope::Piece => "piece".to_owned(),
-        Scope::Part { part } => join(&["part".to_owned(), part.to_string()], '@'),
-        Scope::Voice { part, voice } => join(&["voice".to_owned(), part.to_string(), voice.to_string()], '@'),
+/// What a reference's mark rewrites when its body is instantiated (E-Mark).
+///
+/// The same word stream as a label, so there is one tokenizer and one escape
+/// rule in this crate rather than two that must agree:
+/// `depth N ("origin" span)? ("scope" scope)? ("via" step+)?`.
+pub(crate) struct ReferenceMark {
+    /// Where in the expansion path the steps belong.
+    pub(crate) depth: usize,
+    /// The steps to insert there.
+    pub(crate) steps: Vec<ExpansionStep>,
+    /// The span to give payloads that were elaborated for sharing, if any.
+    pub(crate) origin: Option<SourceSpan>,
+    /// The scope to give them, if any.
+    pub(crate) scope: Option<Scope>,
+}
+
+/// Write a reference mark. See [`ReferenceMark`] for the shape.
+pub(crate) fn reference_mark(mark: &ReferenceMark) -> String {
+    let mut words = Words::default();
+    words.word("depth");
+    words.word(mark.depth.to_string());
+    if let Some(span) = mark.origin {
+        words.word("origin");
+        words.word(span_word(span));
+    }
+    if let Some(scope) = mark.scope {
+        words.word("scope");
+        write_scope(&mut words, scope);
+    }
+    if !mark.steps.is_empty() {
+        words.word("via");
+        for step in &mark.steps {
+            write_step(&mut words, step);
+        }
+    }
+    words.finish()
+}
+
+/// Read what [`reference_mark`] wrote, or `None` if it was not written by it.
+pub(crate) fn read_reference_mark(text: &str) -> Option<ReferenceMark> {
+    let mut words = Words::split(text)?;
+    if !words.keyword("depth") {
+        return None;
+    }
+    let depth = words.integer()?;
+    let origin = if words.keyword("origin") {
+        Some(words.span()?)
+    } else {
+        None
+    };
+    let scope = if words.keyword("scope") {
+        Some(take_scope(&mut words)?)
+    } else {
+        None
+    };
+    let steps = if words.keyword("via") {
+        take_steps(&mut words)?
+    } else {
+        Vec::new()
+    };
+    words.end().then_some(ReferenceMark {
+        depth,
+        steps,
+        origin,
+        scope,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Words: the writer, the reader, and the one escape rule
+// ---------------------------------------------------------------------------
+
+/// A word and whether it was written quoted.
+///
+/// The flag is not decoration: `mark text '8'` and `mark ottava 8` are
+/// different facts whose only difference is this bit.
+#[derive(Clone, Debug)]
+struct Word {
+    text: String,
+    quoted: bool,
+}
+
+/// A payload as a sequence of words — a writer when built up, a reader when
+/// split, and the same escape rule read in both directions.
+#[derive(Default)]
+struct Words {
+    words: Vec<Word>,
+    at: usize,
+}
+
+/// `[` and `]` delimit themselves, so `[191:198 #4]` reads as four words
+/// without the spaces that would otherwise be needed to separate them.
+const PUNCTUATION: [char; 2] = ['[', ']'];
+
+impl Words {
+    /// Append a bare word: no whitespace, no `'`, no `\`, no bracket.
+    fn word(&mut self, word: impl Into<String>) {
+        self.words.push(Word {
+            text: word.into(),
+            quoted: false,
+        });
+    }
+
+    /// Append a free-text word, quoted whether or not it needs to be.
+    fn text(&mut self, text: &str) {
+        self.words.push(Word {
+            text: text.to_owned(),
+            quoted: true,
+        });
+    }
+
+    /// The words as one line, with a space between each pair except where a
+    /// bracket sits — `[191:198]`, not `[ 191:198 ]`.
+    fn finish(&self) -> String {
+        let mut out = String::new();
+        // Also true at the start, where there is nothing to separate from.
+        let mut after_open = true;
+        for word in &self.words {
+            let bracket = |text| !word.quoted && word.text == text;
+            if !after_open && !bracket("]") {
+                out.push(' ');
+            }
+            after_open = bracket("[");
+            if word.quoted {
+                out.push('\'');
+                for character in word.text.chars() {
+                    if character == '\\' || character == '\'' {
+                        out.push('\\');
+                    }
+                    out.push(character);
+                }
+                out.push('\'');
+            } else {
+                out.push_str(&word.text);
+            }
+        }
+        out
+    }
+
+    /// Split a payload back into words, or `None` if a quote is unterminated.
+    fn split(text: &str) -> Option<Self> {
+        let mut words = Vec::new();
+        let mut characters = text.chars().peekable();
+        while let Some(&character) = characters.peek() {
+            if character.is_whitespace() {
+                characters.next();
+            } else if character == '\'' {
+                characters.next();
+                let mut quoted = String::new();
+                loop {
+                    match characters.next()? {
+                        '\'' => break,
+                        '\\' => quoted.push(characters.next()?),
+                        character => quoted.push(character),
+                    }
+                }
+                words.push(Word {
+                    text: quoted,
+                    quoted: true,
+                });
+            } else if PUNCTUATION.contains(&character) {
+                characters.next();
+                words.push(Word {
+                    text: character.to_string(),
+                    quoted: false,
+                });
+            } else {
+                let mut bare = String::new();
+                while let Some(&character) = characters.peek() {
+                    if character.is_whitespace() || character == '\'' || PUNCTUATION.contains(&character) {
+                        break;
+                    }
+                    bare.push(character);
+                    characters.next();
+                }
+                words.push(Word {
+                    text: bare,
+                    quoted: false,
+                });
+            }
+        }
+        Some(Self { words, at: 0 })
+    }
+
+    /// The next word if it is bare, without consuming it.
+    fn peek(&self) -> Option<&str> {
+        self.words
+            .get(self.at)
+            .filter(|word| !word.quoted)
+            .map(|word| word.text.as_str())
+    }
+
+    /// Whether the next word is quoted — free text rather than vocabulary.
+    fn peek_text(&self) -> bool {
+        self.words.get(self.at).is_some_and(|word| word.quoted)
+    }
+
+    /// Step past the word just peeked at.
+    fn skip(&mut self) {
+        self.at = self.at.saturating_add(1);
+    }
+
+    /// Consume the next word if it is bare and equal to `word`.
+    fn keyword(&mut self, word: &str) -> bool {
+        let matched = self.peek() == Some(word);
+        if matched {
+            self.skip();
+        }
+        matched
+    }
+
+    /// Consume the next word, which must be bare.
+    fn bare(&mut self) -> Option<String> {
+        let word = self.peek()?.to_owned();
+        self.skip();
+        Some(word)
+    }
+
+    /// Consume the next word, which must be quoted.
+    fn quoted(&mut self) -> Option<String> {
+        let word = self.words.get(self.at).filter(|word| word.quoted)?.text.clone();
+        self.skip();
+        Some(word)
+    }
+
+    fn integer<T: std::str::FromStr>(&mut self) -> Option<T> {
+        self.bare()?.parse().ok()
+    }
+
+    fn ratio(&mut self) -> Option<Ratio<i64>> {
+        read_ratio(&self.bare()?)
+    }
+
+    fn span(&mut self) -> Option<SourceSpan> {
+        read_span(&self.bare()?)
+    }
+
+    /// A pair written `p/q` and kept unreduced — a meter and a tuplet ratio
+    /// both mean the two numbers as written, not the fraction they make.
+    fn pair(&mut self) -> Option<(u32, u32)> {
+        let (left, right) = self
+            .bare()?
+            .split_once('/')
+            .map(|(l, r)| (l.to_owned(), r.to_owned()))?;
+        Some((left.parse().ok()?, right.parse().ok()?))
+    }
+
+    fn end(&self) -> bool {
+        self.at == self.words.len()
     }
 }
 
-pub(crate) fn read_scope(text: &str) -> Option<Scope> {
-    let fields = split_escaped(text, '@');
-    match fields.as_slice() {
-        [tag] if tag == "piece" => Some(Scope::Piece),
-        [tag, part] if tag == "part" => Some(Scope::Part {
-            part: part.parse().ok()?,
-        }),
-        [tag, part, voice] if tag == "voice" => Some(Scope::Voice {
-            part: part.parse().ok()?,
-            voice: voice.parse().ok()?,
+fn span_word(span: SourceSpan) -> String {
+    format!("{}:{}", span.start, span.end)
+}
+
+fn read_span(text: &str) -> Option<SourceSpan> {
+    let (start, end) = text.split_once(':')?;
+    Some(SourceSpan::new(start.parse().ok()?, end.parse().ok()?))
+}
+
+/// A rational as `p/q`, or as `p` when the denominator is one — which is how
+/// the language writes a whole note, and so what a duration's spelling has to
+/// be compared against for the `spelled` elision to fire.
+fn ratio_text(value: Ratio<i64>) -> String {
+    if *value.denom() == 1 {
+        value.numer().to_string()
+    } else {
+        format!("{}/{}", value.numer(), value.denom())
+    }
+}
+
+fn read_ratio(text: &str) -> Option<Ratio<i64>> {
+    match text.split_once('/') {
+        Some((numer, denom)) => {
+            let numer: i64 = numer.parse().ok()?;
+            let denom: i64 = denom.parse().ok()?;
+            (denom != 0).then(|| Ratio::new(numer, denom))
+        }
+        None => Some(Ratio::from_integer(text.parse().ok()?)),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Scope, origin, expansion steps
+// ---------------------------------------------------------------------------
+
+fn write_scope(words: &mut Words, scope: Scope) {
+    match scope {
+        Scope::Piece => words.word("piece"),
+        Scope::Part { part } => {
+            words.word("part");
+            words.word(part.to_string());
+        }
+        // Two words rather than `part.voice`: a payload contains no decimal
+        // point anywhere, which is what keeps every rational in it exact, and
+        // a scope index is not worth weakening that to.
+        Scope::Voice { part, voice } => {
+            words.word("voice");
+            words.word(part.to_string());
+            words.word(voice.to_string());
+        }
+    }
+}
+
+fn take_scope(words: &mut Words) -> Option<Scope> {
+    match words.bare()?.as_str() {
+        "piece" => Some(Scope::Piece),
+        "part" => Some(Scope::Part { part: words.integer()? }),
+        "voice" => Some(Scope::Voice {
+            part: words.integer()?,
+            voice: words.integer()?,
         }),
         _ => None,
     }
 }
 
-pub(crate) fn span_text(span: SourceSpan) -> String {
-    join(&[span.start.to_string(), span.end.to_string()], ':')
-}
-
-pub(crate) fn read_span(text: &str) -> Option<SourceSpan> {
-    let fields = split_escaped(text, ':');
-    let [start, end] = fields.as_slice() else {
-        return None;
-    };
-    Some(SourceSpan::new(start.parse().ok()?, end.parse().ok()?))
-}
-
-fn ratio_text(value: Ratio<i64>) -> String {
-    format!("{}/{}", value.numer(), value.denom())
-}
-
-fn read_ratio(text: &str) -> Option<Ratio<i64>> {
-    let (numer, denom) = text.split_once('/')?;
-    let numer: i64 = numer.parse().ok()?;
-    let denom: i64 = denom.parse().ok()?;
-    (denom != 0).then(|| Ratio::new(numer, denom))
-}
-
-fn duration_text(duration: &NotatedDuration) -> String {
-    let pieces: Vec<String> = duration
-        .pieces
-        .iter()
-        .map(|piece| ratio_text(piece.as_ratio()))
-        .collect();
-    join(
-        &[
-            duration.spelling.clone(),
-            ratio_text(duration.value.as_ratio()),
-            join(&pieces, ','),
-        ],
-        ';',
-    )
-}
-
-fn read_duration(text: &str) -> Option<NotatedDuration> {
-    let fields = split_escaped(text, ';');
-    let [spelling, value, pieces] = fields.as_slice() else {
-        return None;
-    };
-    let pieces: Option<Vec<MusicalDuration>> = split_escaped(pieces, ',')
-        .iter()
-        .map(|piece| read_ratio(piece).map(MusicalDuration::new))
-        .collect();
-    Some(NotatedDuration {
-        value: MusicalDuration::new(read_ratio(value)?),
-        spelling: spelling.clone(),
-        pieces: pieces?,
-    })
-}
-
-/// A free duration, as `least;most` — or empty, which is the common case of a
-/// note whose written value is the value it sounds.
-fn free_text(free: Option<&crate::score::FreeDuration>) -> String {
-    free.map_or_else(String::new, |free| {
-        join(
-            &[ratio_text(free.least.as_ratio()), ratio_text(free.most.as_ratio())],
-            ';',
-        )
-    })
-}
-
-/// Reads what `free_text` wrote for a note that does have a freedom. Absence
-/// is the empty field, and the two callers spell that case out: a malformed
-/// field is a broken fact rather than a missing one, so the two must not
-/// collapse into the same `None`.
-fn read_free(text: &str) -> Option<crate::score::FreeDuration> {
-    let fields = split_escaped(text, ';');
-    let [least, most] = fields.as_slice() else {
-        return None;
-    };
-    Some(crate::score::FreeDuration {
-        least: MusicalDuration::new(read_ratio(least)?),
-        most: MusicalDuration::new(read_ratio(most)?),
-    })
-}
-
-fn articulations_text(marks: &[Mark]) -> String {
-    let names: Vec<String> = marks.iter().map(|mark| mark.name().to_owned()).collect();
-    join(&names, ',')
-}
-
-fn read_articulations(text: &str) -> Option<Vec<Mark>> {
-    if text.is_empty() {
-        return Some(Vec::new());
+fn write_origin(words: &mut Words, origin: &Origin) {
+    words.word("[");
+    words.word(span_word(origin.source_span));
+    if origin.definition_span != origin.source_span {
+        words.word("def");
+        words.word(span_word(origin.definition_span));
     }
-    split_escaped(text, ',').iter().map(|name| Mark::parse(name)).collect()
+    if origin.declaration.0 != 0 {
+        words.word(format!("#{}", origin.declaration.0));
+    }
+    if !origin.expansion_path.is_empty() {
+        words.word("via");
+        for step in &origin.expansion_path {
+            write_step(words, step);
+        }
+    }
+    words.word("]");
 }
 
-fn kind_text(kind: &FactKind) -> String {
-    let fields: Vec<String> = match kind {
+fn take_origin(words: &mut Words) -> Option<Origin> {
+    if !words.keyword("[") {
+        return None;
+    }
+    let source_span = words.span()?;
+    let definition_span = if words.keyword("def") {
+        words.span()?
+    } else {
+        source_span
+    };
+    let declaration = match words.peek().filter(|word| word.starts_with('#')) {
+        Some(_) => DeclarationId(words.bare()?[1..].parse().ok()?),
+        None => DeclarationId(0),
+    };
+    let expansion_path = if words.keyword("via") {
+        take_steps(words)?
+    } else {
+        Vec::new()
+    };
+    words.keyword("]").then_some(Origin {
+        source_span,
+        definition_span,
+        declaration,
+        expansion_path,
+    })
+}
+
+/// The words an expansion step can begin with, and so the words that continue
+/// a `via` run. A run ends at the first word that is not one of these — `]`
+/// in a label, and the end of the stream in a reference mark.
+const STEP_TAGS: [&str; 7] = [
+    "motif",
+    "repeat",
+    "transpose",
+    "stretch",
+    "retrograde",
+    "invert",
+    "special",
+];
+
+fn write_step(words: &mut Words, step: &ExpansionStep) {
+    match step {
+        ExpansionStep::MotifApplication { call_site } => {
+            words.word("motif");
+            words.word(span_word(*call_site));
+        }
+        ExpansionStep::RepeatIteration(index) => {
+            words.word("repeat");
+            words.word(index.to_string());
+        }
+        ExpansionStep::Transposition(interval) => {
+            words.word("transpose");
+            words.word(interval.diatonic_steps.to_string());
+            words.word(interval.semitones.to_string());
+        }
+        ExpansionStep::Stretch(factor) => {
+            words.word("stretch");
+            words.word(ratio_text(*factor));
+        }
+        ExpansionStep::Retrograde => words.word("retrograde"),
+        ExpansionStep::Inversion { axis } => {
+            words.word("invert");
+            words.text(axis);
+        }
+        ExpansionStep::Specialization { override_site } => {
+            words.word("special");
+            words.word(span_word(*override_site));
+        }
+    }
+}
+
+fn take_steps(words: &mut Words) -> Option<Vec<ExpansionStep>> {
+    let mut steps = Vec::new();
+    while words.peek().is_some_and(|word| STEP_TAGS.contains(&word)) {
+        steps.push(take_step(words)?);
+    }
+    Some(steps)
+}
+
+fn take_step(words: &mut Words) -> Option<ExpansionStep> {
+    match words.bare()?.as_str() {
+        "motif" => Some(ExpansionStep::MotifApplication {
+            call_site: words.span()?,
+        }),
+        "repeat" => Some(ExpansionStep::RepeatIteration(words.integer()?)),
+        "transpose" => Some(ExpansionStep::Transposition(Interval {
+            diatonic_steps: words.integer()?,
+            semitones: words.integer()?,
+        })),
+        "stretch" => Some(ExpansionStep::Stretch(words.ratio()?)),
+        "retrograde" => Some(ExpansionStep::Retrograde),
+        "invert" => Some(ExpansionStep::Inversion { axis: words.quoted()? }),
+        "special" => Some(ExpansionStep::Specialization {
+            override_site: words.span()?,
+        }),
+        _ => None,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Durations and articulations
+// ---------------------------------------------------------------------------
+
+/// `1/4`, and longer only where it must be:
+/// `1/3 spelled '1/4 ~ 1/12' tied 1/4 1/12`.
+fn write_duration(words: &mut Words, duration: &NotatedDuration) {
+    let value = ratio_text(duration.value.as_ratio());
+    words.word(value.clone());
+    if duration.spelling != value {
+        words.word("spelled");
+        words.text(&duration.spelling);
+    }
+    if duration.pieces.as_slice() != [duration.value] {
+        words.word("tied");
+        for piece in &duration.pieces {
+            words.word(ratio_text(piece.as_ratio()));
+        }
+    }
+}
+
+fn take_duration(words: &mut Words) -> Option<NotatedDuration> {
+    let value = MusicalDuration::new(words.ratio()?);
+    let spelling = if words.keyword("spelled") {
+        words.quoted()?
+    } else {
+        ratio_text(value.as_ratio())
+    };
+    let pieces = if words.keyword("tied") {
+        let mut pieces = Vec::new();
+        while words.peek().and_then(read_ratio).is_some() {
+            pieces.push(MusicalDuration::new(words.ratio()?));
+        }
+        pieces
+    } else {
+        vec![value]
+    };
+    Some(NotatedDuration {
+        value,
+        spelling,
+        pieces,
+    })
+}
+
+/// Articulation names, bare, in order. The run ends at `free` or at the `[`
+/// that opens the origin, neither of which is a mark name.
+fn write_articulations(words: &mut Words, marks: &[Mark]) {
+    for mark in marks {
+        words.word(mark.name());
+    }
+}
+
+fn take_articulations(words: &mut Words) -> Option<Vec<Mark>> {
+    let mut marks = Vec::new();
+    while let Some(word) = words.peek() {
+        if word == "free" || word == "[" {
+            break;
+        }
+        marks.push(Mark::parse(word)?);
+        words.skip();
+    }
+    Some(marks)
+}
+
+/// A note's freedom to be held, as `free least most` — absent for a note whose
+/// written value is the value it sounds, which is nearly all of them.
+fn write_free(words: &mut Words, free: Option<&FreeDuration>) {
+    if let Some(free) = free {
+        words.word("free");
+        words.word(ratio_text(free.least.as_ratio()));
+        words.word(ratio_text(free.most.as_ratio()));
+    }
+}
+
+/// Reads what [`write_free`] wrote, after the caller has taken the `free` that
+/// says there is one — so absence is the caller's `if`, and a malformed
+/// freedom is a broken fact rather than a missing one.
+fn take_free(words: &mut Words) -> Option<FreeDuration> {
+    Some(FreeDuration {
+        least: MusicalDuration::new(words.ratio()?),
+        most: MusicalDuration::new(words.ratio()?),
+    })
+}
+
+// ---------------------------------------------------------------------------
+// The kinds
+// ---------------------------------------------------------------------------
+
+fn write_kind(words: &mut Words, kind: &FactKind) {
+    match kind {
         FactKind::Note {
             pitch,
             duration,
             articulations,
             free,
-        } => vec![
-            "note".to_owned(),
-            pitch.to_string(),
-            duration_text(duration),
-            articulations_text(articulations),
-            free_text(free.as_ref()),
-        ],
+        } => {
+            words.word("note");
+            words.word(pitch.to_string());
+            write_duration(words, duration);
+            write_articulations(words, articulations);
+            write_free(words, free.as_ref());
+        }
         FactKind::Rest {
             duration,
             articulations,
             free,
-        } => vec![
-            "rest".to_owned(),
-            duration_text(duration),
-            articulations_text(articulations),
-            free_text(free.as_ref()),
-        ],
-        // Three fields rather than two so the absent argument and the empty
-        // string stay distinguishable: `mark text ""` is a legal, if odd,
-        // direction, and it is not the same fact as `mark breath`.
-        FactKind::Mark { mark, argument } => vec![
-            "mark".to_owned(),
-            mark.name().to_owned(),
+        } => {
+            words.word("rest");
+            write_duration(words, duration);
+            write_articulations(words, articulations);
+            write_free(words, free.as_ref());
+        }
+        // The argument's absence is its absence: `mark breath` has no third
+        // word. `mark text ''` is a legal, if odd, direction and is a
+        // different fact, which is why free text is always quoted and a
+        // number never is.
+        FactKind::Mark { mark, argument } => {
+            words.word("mark");
+            words.word(mark.name());
             match argument {
-                Some(crate::marks::MarkArgument::Text(text)) => format!("t{text}"),
-                Some(crate::marks::MarkArgument::Number(number)) => format!("n{number}"),
-                None => String::new(),
-            },
-        ],
+                Some(MarkArgument::Text(text)) => words.text(text),
+                Some(MarkArgument::Number(number)) => words.word(number.to_string()),
+                None => {}
+            }
+        }
         FactKind::Grace {
             pitch,
             articulations,
             index,
-        } => vec![
-            "grace".to_owned(),
-            pitch.to_string(),
-            index.to_string(),
-            articulations_text(articulations),
-        ],
-        FactKind::Slur => vec!["slur".to_owned()],
-        FactKind::Phrase { name } => vec!["phrase".to_owned(), name.clone()],
-        FactKind::Tuplet { num, den } => vec!["tuplet".to_owned(), num.to_string(), den.to_string()],
-        FactKind::Dynamic { mark } => vec!["dynamic".to_owned(), mark.name().to_owned()],
-        FactKind::Hairpin { grows, target, shape } => vec![
-            "hairpin".to_owned(),
-            if *grows { "cres" } else { "dim" }.to_owned(),
-            target.name().to_owned(),
-            shape.canonical_key(),
-        ],
-        FactKind::Key { tonic, mode } => vec![
-            "key".to_owned(),
-            tonic.to_string(),
-            match mode {
+        } => {
+            words.word("grace");
+            words.word(pitch.to_string());
+            words.word(index.to_string());
+            write_articulations(words, articulations);
+        }
+        FactKind::Slur => words.word("slur"),
+        FactKind::Phrase { name } => {
+            words.word("phrase");
+            words.text(name);
+        }
+        FactKind::Tuplet { num, den } => {
+            words.word("tuplet");
+            words.word(format!("{num}/{den}"));
+        }
+        FactKind::Dynamic { mark } => {
+            words.word("dynamic");
+            words.word(mark.name());
+        }
+        FactKind::Hairpin { grows, target, shape } => {
+            words.word("hairpin");
+            words.word(if *grows { "cres" } else { "dim" });
+            words.word(target.name());
+            words.word(shape.canonical_key());
+        }
+        FactKind::Key { tonic, mode } => {
+            words.word("key");
+            words.word(tonic.to_string());
+            words.word(match mode {
                 Mode::Major => "major",
                 Mode::Minor => "minor",
-            }
-            .to_owned(),
-        ],
+            });
+        }
         FactKind::Meter { numerator, denominator } => {
-            vec!["meter".to_owned(), numerator.to_string(), denominator.to_string()]
+            words.word("meter");
+            words.word(format!("{numerator}/{denominator}"));
         }
-        FactKind::Clef { clef } => vec!["clef".to_owned(), clef.name().to_owned()],
-        // Seven fields, most of which may be empty: a marking is a metronome
-        // mark, a word, or both, it may be gradual, and a gradual one may
-        // print without saying where it arrives. The round trip has to keep
-        // "no word" apart from "the empty word" throughout.
-        FactKind::Tempo { metronome, text, ramp } => vec![
-            "tempo".to_owned(),
-            metronome.map_or_else(String::new, |mark| ratio_text(mark.beat)),
-            metronome.map_or_else(String::new, |mark| mark.bpm.to_string()),
-            text.clone().unwrap_or_default(),
-            ramp.as_ref()
-                .and_then(|ramp| ramp.to)
-                .map_or_else(String::new, |bpm| bpm.to_string()),
-            ramp.as_ref()
-                .map_or_else(String::new, |ramp| ratio_text(ramp.over.as_ratio())),
-            ramp.as_ref()
-                .map_or_else(String::new, |ramp| ramp.shape.canonical_key()),
-        ],
-        FactKind::Section { name } => vec!["section".to_owned(), name.clone()],
-        FactKind::Harmony { symbol } => vec!["harmony".to_owned(), symbol.text.clone()],
-        // Two fields for an exact repeat and four for an open one, so a piece
-        // that leaves nothing open encodes exactly as it did before the range
-        // existed.
-        FactKind::Repeat { times, range } => match range {
-            Some((least, most)) => vec![
-                "repeat".to_owned(),
-                times.to_string(),
-                least.to_string(),
-                most.to_string(),
-            ],
-            None => vec!["repeat".to_owned(), times.to_string()],
-        },
+        FactKind::Clef { clef } => {
+            words.word("clef");
+            words.word(clef.name());
+        }
+        // A marking is a metronome mark, a word, or both, it may be gradual,
+        // and a gradual one may print without saying where it arrives. Each
+        // part is named, so a marking that has none of them is one word.
+        FactKind::Tempo { metronome, text, ramp } => {
+            words.word("tempo");
+            if let Some(mark) = metronome {
+                words.word(format!("{}={}", ratio_text(mark.beat), mark.bpm));
+            }
+            if let Some(text) = text {
+                words.text(text);
+            }
+            if let Some(ramp) = ramp {
+                if let Some(bpm) = ramp.to {
+                    words.word("to");
+                    words.word(bpm.to_string());
+                }
+                words.word("over");
+                words.word(ratio_text(ramp.over.as_ratio()));
+                words.word(ramp.shape.canonical_key());
+            }
+        }
+        FactKind::Section { name } => {
+            words.word("section");
+            words.text(name);
+        }
+        FactKind::Harmony { symbol } => {
+            words.word("harmony");
+            words.text(&symbol.text);
+        }
+        FactKind::Repeat { times, range } => {
+            words.word("repeat");
+            words.word(times.to_string());
+            if let Some((least, most)) = range {
+                words.word("from");
+                words.word(least.to_string());
+                words.word("to");
+                words.word(most.to_string());
+            }
+        }
         FactKind::Ending { bracket, pass } => {
-            vec!["ending".to_owned(), bracket.to_string(), pass.to_string()]
+            words.word("ending");
+            words.word(bracket.to_string());
+            words.word("pass");
+            words.word(pass.to_string());
         }
-        FactKind::Mobile { fragments, order } => vec![
-            "mobile".to_owned(),
-            join(fragments, ','),
-            join(&order.iter().map(u32::to_string).collect::<Vec<_>>(), ','),
-        ],
+        FactKind::Mobile { fragments, order } => {
+            words.word("mobile");
+            for fragment in fragments {
+                words.text(fragment);
+            }
+            words.word("order");
+            for index in order {
+                words.word(index.to_string());
+            }
+        }
         FactKind::Improvise { over } => {
-            vec!["improvise".to_owned(), over.clone().unwrap_or_default()]
+            words.word("improvise");
+            if let Some(over) = over {
+                words.word("over");
+                words.text(over);
+            }
         }
-    };
-    join(&fields, '@')
+    }
 }
 
-fn read_kind(text: &str) -> Option<FactKind> {
-    let fields = split_escaped(text, '@');
-    let tag = fields.first()?.as_str();
-    let arg = |index: usize| fields.get(index).map(String::as_str);
-    match (tag, fields.len()) {
-        ("note", 5) => Some(FactKind::Note {
-            pitch: WrittenPitch::parse(arg(1)?)?,
-            duration: read_duration(arg(2)?)?,
-            articulations: read_articulations(arg(3)?)?,
-            free: match arg(4)? {
-                "" => None,
-                free => Some(read_free(free)?),
+fn take_kind(words: &mut Words) -> Option<FactKind> {
+    match words.bare()?.as_str() {
+        "note" => Some(FactKind::Note {
+            pitch: WrittenPitch::parse(&words.bare()?)?,
+            duration: take_duration(words)?,
+            articulations: take_articulations(words)?,
+            free: if words.keyword("free") {
+                Some(take_free(words)?)
+            } else {
+                None
             },
         }),
-        ("rest", 4) => Some(FactKind::Rest {
-            duration: read_duration(arg(1)?)?,
-            articulations: read_articulations(arg(2)?)?,
-            free: match arg(3)? {
-                "" => None,
-                free => Some(read_free(free)?),
+        "rest" => Some(FactKind::Rest {
+            duration: take_duration(words)?,
+            articulations: take_articulations(words)?,
+            free: if words.keyword("free") {
+                Some(take_free(words)?)
+            } else {
+                None
             },
         }),
-        ("mobile", 3) => Some(FactKind::Mobile {
-            fragments: split_escaped(arg(1)?, ','),
-            order: split_escaped(arg(2)?, ',')
-                .iter()
-                .map(|index| index.parse().ok())
-                .collect::<Option<Vec<u32>>>()?,
+        // A quoted argument is text, a bare one is a number, and the `[` that
+        // opens the origin is neither: that is the whole of what "free text is
+        // always quoted" buys, and it is why `mark text '8'` and
+        // `mark ottava 8` need no case analysis to tell apart.
+        "mark" => {
+            let mark = Mark::parse(&words.bare()?)?;
+            let argument = if words.peek_text() {
+                Some(MarkArgument::Text(words.quoted()?))
+            } else if words.peek().is_some_and(|word| word != "[") {
+                Some(MarkArgument::Number(words.integer()?))
+            } else {
+                None
+            };
+            Some(FactKind::Mark { mark, argument })
+        }
+        "grace" => Some(FactKind::Grace {
+            pitch: WrittenPitch::parse(&words.bare()?)?,
+            index: words.integer()?,
+            articulations: take_articulations(words)?,
         }),
-        ("improvise", 2) => Some(FactKind::Improvise {
-            over: Some(arg(1)?.to_owned()).filter(|over| !over.is_empty()),
+        "slur" => Some(FactKind::Slur),
+        "phrase" => Some(FactKind::Phrase { name: words.quoted()? }),
+        "tuplet" => {
+            let (num, den) = words.pair()?;
+            Some(FactKind::Tuplet { num, den })
+        }
+        "dynamic" => Some(FactKind::Dynamic {
+            mark: DynamicMark::parse(&words.bare()?)?,
         }),
-        ("mark", 3) => Some(FactKind::Mark {
-            mark: Mark::parse(arg(1)?)?,
-            argument: match arg(2)? {
-                "" => None,
-                written => Some(match written.split_at_checked(1)? {
-                    ("t", text) => crate::marks::MarkArgument::Text(text.to_owned()),
-                    ("n", number) => crate::marks::MarkArgument::Number(number.parse().ok()?),
-                    _ => return None,
-                }),
-            },
-        }),
-        ("grace", 4) => Some(FactKind::Grace {
-            pitch: WrittenPitch::parse(arg(1)?)?,
-            index: arg(2)?.parse().ok()?,
-            articulations: read_articulations(arg(3)?)?,
-        }),
-        ("slur", 1) => Some(FactKind::Slur),
-        ("phrase", 2) => Some(FactKind::Phrase {
-            name: arg(1)?.to_owned(),
-        }),
-        ("tuplet", 3) => Some(FactKind::Tuplet {
-            num: arg(1)?.parse().ok()?,
-            den: arg(2)?.parse().ok()?,
-        }),
-        ("dynamic", 2) => Some(FactKind::Dynamic {
-            mark: DynamicMark::parse(arg(1)?)?,
-        }),
-        ("hairpin", 4) => Some(FactKind::Hairpin {
-            grows: match arg(1)? {
+        "hairpin" => Some(FactKind::Hairpin {
+            grows: match words.bare()?.as_str() {
                 "cres" => true,
                 "dim" => false,
                 _ => return None,
             },
-            target: DynamicMark::parse(arg(2)?)?,
-            shape: read_progress(arg(3)?)?,
+            target: DynamicMark::parse(&words.bare()?)?,
+            shape: read_progress(&words.bare()?)?,
         }),
-        ("key", 3) => Some(FactKind::Key {
-            tonic: PitchClass::parse(arg(1)?)?,
-            mode: match arg(2)? {
+        "key" => Some(FactKind::Key {
+            tonic: PitchClass::parse(&words.bare()?)?,
+            mode: match words.bare()?.as_str() {
                 "major" => Mode::Major,
                 "minor" => Mode::Minor,
                 _ => return None,
             },
         }),
-        ("meter", 3) => Some(FactKind::Meter {
-            numerator: arg(1)?.parse().ok()?,
-            denominator: arg(2)?.parse().ok()?,
-        }),
-        ("tempo", 7) => {
-            let beat = arg(1)?;
-            let bpm = arg(2)?;
-            let text = arg(3)?;
-            let arrives = arg(4)?;
-            let over = arg(5)?;
-            let shape = arg(6)?;
-            Some(FactKind::Tempo {
-                metronome: if beat.is_empty() {
-                    None
-                } else {
-                    Some(crate::score::Metronome {
-                        beat: read_ratio(beat)?,
-                        bpm: bpm.parse().ok()?,
-                    })
-                },
-                text: (!text.is_empty()).then(|| text.to_owned()),
-                ramp: if over.is_empty() {
-                    None
-                } else {
-                    Some(crate::score::Ramp {
-                        to: if arrives.is_empty() {
-                            None
-                        } else {
-                            Some(arrives.parse().ok()?)
-                        },
-                        over: crate::time::MusicalDuration::new(read_ratio(over)?),
-                        shape: read_progress(shape)?,
-                    })
-                },
-            })
+        "meter" => {
+            let (numerator, denominator) = words.pair()?;
+            Some(FactKind::Meter { numerator, denominator })
         }
-        ("clef", 2) => Some(FactKind::Clef {
-            clef: crate::Clef::parse(arg(1)?)?,
+        "clef" => Some(FactKind::Clef {
+            clef: crate::Clef::parse(&words.bare()?)?,
         }),
-        ("section", 2) => Some(FactKind::Section {
-            name: arg(1)?.to_owned(),
+        "tempo" => take_tempo(words),
+        "section" => Some(FactKind::Section { name: words.quoted()? }),
+        "harmony" => Some(FactKind::Harmony {
+            symbol: ChordSymbol::parse(&words.quoted()?)?,
         }),
-        ("harmony", 2) => Some(FactKind::Harmony {
-            symbol: ChordSymbol::parse(arg(1)?)?,
+        "repeat" => Some(FactKind::Repeat {
+            times: words.integer()?,
+            range: if words.keyword("from") {
+                let least = words.integer()?;
+                if !words.keyword("to") {
+                    return None;
+                }
+                Some((least, words.integer()?))
+            } else {
+                None
+            },
         }),
-        ("repeat", 2) => Some(FactKind::Repeat {
-            times: arg(1)?.parse().ok()?,
-            range: None,
+        "ending" => Some(FactKind::Ending {
+            bracket: words.integer()?,
+            pass: {
+                if !words.keyword("pass") {
+                    return None;
+                }
+                words.integer()?
+            },
         }),
-        ("repeat", 4) => Some(FactKind::Repeat {
-            times: arg(1)?.parse().ok()?,
-            range: Some((arg(2)?.parse().ok()?, arg(3)?.parse().ok()?)),
-        }),
-        ("ending", 3) => Some(FactKind::Ending {
-            bracket: arg(1)?.parse().ok()?,
-            pass: arg(2)?.parse().ok()?,
+        "mobile" => {
+            let mut fragments = Vec::new();
+            while words.peek_text() {
+                fragments.push(words.quoted()?);
+            }
+            if !words.keyword("order") {
+                return None;
+            }
+            let mut order = Vec::new();
+            while words.peek().is_some_and(|word| word != "[") {
+                order.push(words.integer()?);
+            }
+            Some(FactKind::Mobile { fragments, order })
+        }
+        "improvise" => Some(FactKind::Improvise {
+            over: if words.keyword("over") {
+                Some(words.quoted()?)
+            } else {
+                None
+            },
         }),
         _ => None,
     }
+}
+
+fn take_tempo(words: &mut Words) -> Option<FactKind> {
+    let metronome = match words.peek().filter(|word| word.contains('=')) {
+        Some(_) => {
+            let word = words.bare()?;
+            let (beat, bpm) = word.split_once('=')?;
+            Some(Metronome {
+                beat: read_ratio(beat)?,
+                bpm: bpm.parse().ok()?,
+            })
+        }
+        None => None,
+    };
+    let text = if words.peek_text() { Some(words.quoted()?) } else { None };
+    let to = if words.keyword("to") {
+        Some(words.integer()?)
+    } else {
+        None
+    };
+    let ramp = if words.keyword("over") {
+        Some(Ramp {
+            to,
+            over: MusicalDuration::new(words.ratio()?),
+            shape: read_progress(&words.bare()?)?,
+        })
+    } else if to.is_some() {
+        // `to` without `over` is a ramp that arrives nowhere in no time. The
+        // writer cannot produce it, so reading it is reading a broken file.
+        return None;
+    } else {
+        None
+    };
+    Some(FactKind::Tempo { metronome, text, ramp })
 }
 
 /// A `Progress` from its canonical key (`u/d:v/e,…`).
 ///
 /// The canonical key *is* the text form here, because `Progress` has no
 /// provenance to omit: N3's injectivity and the round-trip property coincide,
-/// which is exactly the case the prompt asked to be checked before writing a
-/// second function.
+/// and it is one bare word with no whitespace in it.
 fn read_progress(text: &str) -> Option<musa_kernel::Progress> {
     let points: Option<Vec<(Ratio<i64>, Ratio<i64>)>> = text
         .split(',')
@@ -459,112 +936,10 @@ fn read_progress(text: &str) -> Option<musa_kernel::Progress> {
     musa_kernel::Progress::piecewise(points?)
 }
 
-fn path_text(steps: &[ExpansionStep]) -> String {
-    let steps: Vec<String> = steps.iter().map(step_text).collect();
-    join(&steps, ',')
-}
-
-pub(crate) fn step_text(step: &ExpansionStep) -> String {
-    let fields: Vec<String> = match step {
-        ExpansionStep::MotifApplication { call_site } => vec!["motif".to_owned(), span_text(*call_site)],
-        ExpansionStep::RepeatIteration(index) => vec!["repeat".to_owned(), index.to_string()],
-        ExpansionStep::Transposition(interval) => vec![
-            "transpose".to_owned(),
-            interval.diatonic_steps.to_string(),
-            interval.semitones.to_string(),
-        ],
-        ExpansionStep::Stretch(factor) => vec!["stretch".to_owned(), ratio_text(*factor)],
-        ExpansionStep::Retrograde => vec!["retrograde".to_owned()],
-        ExpansionStep::Inversion { axis } => vec!["invert".to_owned(), axis.clone()],
-        ExpansionStep::Specialization { override_site } => vec!["special".to_owned(), span_text(*override_site)],
-    };
-    join(&fields, ':')
-}
-
-fn read_path(text: &str) -> Option<Vec<ExpansionStep>> {
-    if text.is_empty() {
-        return Some(Vec::new());
-    }
-    split_escaped(text, ',').iter().map(|step| read_step(step)).collect()
-}
-
-pub(crate) fn read_step(text: &str) -> Option<ExpansionStep> {
-    let fields = split_escaped(text, ':');
-    let tag = fields.first()?.as_str();
-    let arg = |index: usize| fields.get(index).map(String::as_str);
-    match (tag, fields.len()) {
-        ("motif", 2) => Some(ExpansionStep::MotifApplication {
-            call_site: read_span(arg(1)?)?,
-        }),
-        ("repeat", 2) => Some(ExpansionStep::RepeatIteration(arg(1)?.parse().ok()?)),
-        ("transpose", 3) => Some(ExpansionStep::Transposition(Interval {
-            diatonic_steps: arg(1)?.parse().ok()?,
-            semitones: arg(2)?.parse().ok()?,
-        })),
-        ("stretch", 2) => Some(ExpansionStep::Stretch(read_ratio(arg(1)?)?)),
-        ("retrograde", 1) => Some(ExpansionStep::Retrograde),
-        ("invert", 2) => Some(ExpansionStep::Inversion {
-            axis: arg(1)?.to_owned(),
-        }),
-        ("special", 2) => Some(ExpansionStep::Specialization {
-            override_site: read_span(arg(1)?)?,
-        }),
-        _ => None,
-    }
-}
-
-/// Join fields with `separator`, escaping it (and the escape character) in
-/// each.
-///
-/// The format nests — a path is inside a field, a step is inside a path — and
-/// this is what makes the nesting compose: an inner join's output is one
-/// field to the outer join, which escapes it again. Every level unescapes
-/// exactly the level it splits, so the layers stay independent and no
-/// producer needs to know how deeply it is nested.
-pub(crate) fn join(fields: &[String], separator: char) -> String {
-    fields
-        .iter()
-        .map(|field| escape(field, separator))
-        .collect::<Vec<_>>()
-        .join(&separator.to_string())
-}
-
-fn escape(text: &str, separator: char) -> String {
-    let mut out = String::with_capacity(text.len());
-    for character in text.chars() {
-        if character == '\\' || character == separator {
-            out.push('\\');
-        }
-        out.push(character);
-    }
-    out
-}
-
-/// The inverse of [`join`]: split on `separator`, honouring `\` escapes, and
-/// unescape each field.
-pub(crate) fn split_escaped(text: &str, separator: char) -> Vec<String> {
-    let mut fields = vec![String::new()];
-    let mut escaped = false;
-    for character in text.chars() {
-        let Some(current) = fields.last_mut() else {
-            break;
-        };
-        if escaped {
-            current.push(character);
-            escaped = false;
-        } else if character == '\\' {
-            escaped = true;
-        } else if character == separator {
-            fields.push(String::new());
-        } else {
-            current.push(character);
-        }
-    }
-    fields
-}
-
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used)]
+
     use super::*;
     use crate::score::Mode;
     use crate::time::MusicalDuration;
@@ -586,9 +961,9 @@ mod tests {
                 ExpansionStep::Stretch(Ratio::new(3, 2)),
                 ExpansionStep::Retrograde,
                 // The axis is free text, and it is written with every
-                // character this format separates on.
+                // character this format gives a meaning to.
                 ExpansionStep::Inversion {
-                    axis: "c4|d4@e4,f4:g4\\h4".to_owned(),
+                    axis: "c4 d4 'e4' [f4] \\g4".to_owned(),
                 },
                 ExpansionStep::Specialization {
                     override_site: SourceSpan::new(0, 1),
@@ -635,21 +1010,52 @@ mod tests {
             FactKind::Rest {
                 duration: duration(),
                 articulations: Vec::new(),
-                free: Some(crate::score::FreeDuration {
+                free: Some(FreeDuration {
                     least: MusicalDuration::new(Ratio::new(1, 4)),
                     most: MusicalDuration::new(Ratio::new(2, 1)),
                 }),
             },
+            // A whole note: its spelling is `1`, which is what `ratio_text`
+            // writes, so `spelled` elides — the case a `p/q`-only writer would
+            // have printed in full on every long note in the corpus.
+            FactKind::Note {
+                pitch: WrittenPitch::parse("c4")?,
+                duration: NotatedDuration {
+                    value: MusicalDuration::new(Ratio::new(1, 1)),
+                    spelling: "1".to_owned(),
+                    pieces: vec![MusicalDuration::new(Ratio::new(1, 1))],
+                },
+                articulations: Vec::new(),
+                free: None,
+            },
+            FactKind::Mark {
+                mark: Mark::parse("text")?,
+                argument: Some(MarkArgument::Text("8".to_owned())),
+            },
+            FactKind::Mark {
+                mark: Mark::parse("ottava")?,
+                argument: Some(MarkArgument::Number(8)),
+            },
+            FactKind::Mark {
+                mark: Mark::parse("breath")?,
+                argument: None,
+            },
+            FactKind::Grace {
+                pitch: WrittenPitch::parse("d5")?,
+                articulations: vec![Mark::parse("accent")?],
+                index: 1,
+            },
             FactKind::Mobile {
-                fragments: vec!["a|name@with,commas".to_owned(), "b".to_owned()],
+                fragments: vec!["a name with 'quotes' and \\slashes".to_owned(), "b".to_owned()],
                 order: vec![1, 0],
             },
             FactKind::Improvise {
                 over: Some("Dm7 | G7".to_owned()),
             },
+            FactKind::Improvise { over: None },
             FactKind::Slur,
             FactKind::Phrase {
-                name: "a name with|pipes@ats, commas: and \\slashes".to_owned(),
+                name: "a name with 'quotes', brackets [and] \\slashes".to_owned(),
             },
             FactKind::Tuplet { num: 3, den: 2 },
             FactKind::Dynamic { mark: DynamicMark::Sfz },
@@ -665,6 +1071,26 @@ mod tests {
             FactKind::Meter {
                 numerator: 7,
                 denominator: 8,
+            },
+            FactKind::Tempo {
+                metronome: Some(Metronome {
+                    beat: Ratio::new(1, 1),
+                    bpm: 60,
+                }),
+                text: Some("rit.".to_owned()),
+                ramp: Some(Ramp {
+                    to: Some(30),
+                    over: MusicalDuration::new(Ratio::new(2, 1)),
+                    shape: awkward_shape(),
+                }),
+            },
+            FactKind::Tempo {
+                metronome: None,
+                text: Some("a tempo".to_owned()),
+                ramp: None,
+            },
+            FactKind::Clef {
+                clef: crate::Clef::parse("treble")?,
             },
             FactKind::Section { name: String::new() },
             FactKind::Harmony {
@@ -708,13 +1134,56 @@ mod tests {
         }
     }
 
-    /// No decimal point anywhere: every rational in a payload — durations,
-    /// stretch factors, hairpin shapes — is written as `p/q`.
+    /// No decimal point in any bare word: every rational in a payload —
+    /// durations, stretch factors, hairpin shapes, scope indices — is written
+    /// as `p/q` or as a whole number, and never as `0.333`.
+    ///
+    /// Bare words rather than the whole line, because a tempo marking is
+    /// allowed to be the word `rit.` — free text is quoted, so the two cannot
+    /// be confused, and quoting is what lets this stay a law about numbers.
     #[test]
     fn a_facts_text_form_writes_no_decimals() {
         for fact in corpus().into_iter().flatten() {
             let text = fact.to_text();
-            assert!(!text.contains('.'), "a rational was written as a decimal: {text}");
+            let words = Words::split(&text).expect("what we wrote splits");
+            for word in &words.words {
+                assert!(
+                    word.quoted || !word.text.contains('.'),
+                    "a rational was written as a decimal: {text}"
+                );
+            }
+        }
+    }
+
+    /// No double quote anywhere, which is a property of the writer rather
+    /// than of the corpus: the kernel wraps a payload in `"…"` and escapes
+    /// `"` and `\` inside it, so a payload that quoted with `"` would have
+    /// every free-text field escaped twice — which is how the form this
+    /// replaced reached eight backslashes for one colon.
+    #[test]
+    fn a_facts_text_form_writes_no_double_quotes() {
+        for fact in corpus().into_iter().flatten() {
+            let text = fact.to_text();
+            assert!(!text.contains('"'), "a payload would be escaped twice: {text}");
+        }
+    }
+
+    /// The composition the unit round trip does not cover: a fact written
+    /// into a one-occurrence timeline, printed as kernel text, parsed back.
+    #[test]
+    fn a_label_survives_the_kernels_own_quoting() {
+        use musa_kernel::{Beat, Occurrence, Span, Term, timeline};
+        for fact in corpus().into_iter().flatten() {
+            let extent = Beat::new(Ratio::new(1, 4));
+            let span = Span::new(Beat::from_integer(0), extent).expect("0 to 1/4 is a span");
+            let body = timeline(extent, vec![Occurrence::new(span, fact.clone())]).expect("one occurrence");
+            let printed = musa_kernel::print("round-trip", &Term::literal(body), &[]);
+            let (_, parsed) = musa_kernel::parse::<ScoreFact>(&printed).expect("what we printed parses");
+            let read = parsed
+                .into_literal()
+                .ok()
+                .and_then(|body| body.occurrences().first().map(|one| one.payload().clone()));
+            assert_eq!(read.as_ref(), Some(&fact), "did not survive printing: {printed}");
         }
     }
 
@@ -734,5 +1203,32 @@ mod tests {
         assert_ne!(a.to_text(), b.to_text(), "the definition span was dropped");
         a.origin.declaration = DeclarationId(9);
         assert_ne!(a.to_text(), b.to_text(), "the declaration was dropped");
+    }
+
+    /// A reference mark is the same word stream, and reads back the same way.
+    #[test]
+    fn a_reference_mark_round_trips() {
+        let cases = [
+            ReferenceMark {
+                depth: 0,
+                steps: origin().expansion_path,
+                origin: Some(SourceSpan::new(708, 720)),
+                scope: Some(Scope::Voice { part: 0, voice: 0 }),
+            },
+            ReferenceMark {
+                depth: 3,
+                steps: Vec::new(),
+                origin: None,
+                scope: None,
+            },
+        ];
+        for mark in cases {
+            let text = reference_mark(&mark);
+            let read = read_reference_mark(&text).expect("a mark we wrote reads back");
+            assert_eq!(read.depth, mark.depth, "{text}");
+            assert_eq!(read.steps, mark.steps, "{text}");
+            assert_eq!(read.origin, mark.origin, "{text}");
+            assert_eq!(read.scope, mark.scope, "{text}");
+        }
     }
 }

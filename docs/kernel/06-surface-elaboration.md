@@ -123,7 +123,7 @@ Three things this had to get right, none of them obvious from the option alone:
   instead, and is spliced back at depth zero.
 - **Placeholders for what the call supplies.** A motif body's occurrences take their `source_span` from the *call* and
   their `scope` from the *voice*, and neither can be baked into a shared body. The body carries `u32::MAX` in both, and
-  the mark says what to put there. This is visible in `examples/kernel/*.kernel` as `4294967295` inside a shared
+  the mark says what to put there. This is visible in `examples/kernel/*.musa.kernel` as `4294967295` inside a shared
   binding's payloads, and it is not corrupt data: it is the hole the reference fills.
 
 Provenance is byte-identical to what direct expansion produced: the same steps, in the same order, on the same
@@ -135,7 +135,7 @@ four: a tie crossing an item boundary (merging joins two occurrences into one, w
 `retrograde` and `invert` and `stretch` (payload maps and mirroring, applied during elaboration), and a `use` with
 `with { … }` overrides (which respell notes of *this* call). Each of these evaluates its reference, which instantiates
 the body exactly as direct expansion would have built it — so the sharing is spent, not lost, and the binding it made is
-pruned when the piece's term is closed. This is why `examples/kernel/variation.kernel` has one `let` for five `use`s:
+pruned when the piece's term is closed. This is why `examples/kernel/variation.musa.kernel` has one `let` for five `use`s:
 four of its five are inside a transformation.
 
 The rejected option was to share only where the expansion path would be identical, which for `repeat` is never, and
@@ -146,44 +146,76 @@ a promise the project already made.
 elaboration; `scale` has a term and the payload maps do not, and inventing one would breach the calculus's absent list.
 Voices become `over` and voice items `seq` — structural, and what makes a printed file legible.
 
-## `ScoreFact`'s interchange text form (prompt 48)
+## `ScoreFact`'s interchange text form (prompts 48, 86)
 
 A kernel file carries payloads as opaque quoted strings (`01-grammar.md`); this is what `ScoreFact` puts inside one. It
 is specified here, with the payload, rather than in the grammar, because the kernel neither writes it nor reads it.
 
-```text
-<scope> | <kind> | <source-span> | <definition-span> | <declaration> | <expansion-path>
+A label is a **flat, whitespace-separated stream of words**. Flat is load-bearing: the first form nested five
+separators five deep and escaped each level again at the next, so one colon inside a motif call reached the file as
+eight backslashes. Nothing here nests, so nothing is escaped twice.
 
-scope       = "piece" | "voice" "@" <part> "@" <voice>
-kind        = "note" "@" <pitch> "@" <duration> "@" <articulations>
-            | "rest" "@" <duration> "@" <articulations>
-            | "slur" | "phrase" "@" <name> | "tuplet" "@" <n> "@" <d>
-            | "dynamic" "@" <mark>
-            | "hairpin" "@" ("cres" | "dim") "@" <mark> "@" <progress>
-            | "key" "@" <tonic> "@" ("major" | "minor")
-            | "meter" "@" <n> "@" <d>
-            | "section" "@" <name> | "harmony" "@" <symbol>
-duration    = <spelling> ";" <value> ";" <piece> { "," <piece> }
+A word is either **bare** — no whitespace, no `'`, no `\`, no bracket — or **quoted**, `'…'` escaping `\` and `'`.
+Every free-text field is quoted *always*, even where quoting would not be needed: that is what keeps `mark text '8'`
+and `mark ottava 8` apart without case analysis, and it means a payload never contains `"`, so the kernel's own string
+escape has nothing to double.
+
+```text
+label       = <scope> <kind> <origin>
+
+scope       = "piece" | "part" <n> | "voice" <part> <voice>
+origin      = "[" <span> [ "def" <span> ] [ "#" <n> ] [ "via" <step> { <step> } ] "]"
 span        = <start> ":" <end>
-path        = <step> { "," <step> }         (* empty for a directly authored fact *)
-step        = "motif" ":" <span> | "repeat" ":" <n> | "transpose" ":" <steps> ":" <semitones>
-            | "stretch" ":" <p> "/" <q> | "retrograde" | "invert" ":" <axis>
-            | "special" ":" <span>
+step        = "motif" <span> | "repeat" <n> | "transpose" <steps> <semitones>
+            | "stretch" <ratio> | "retrograde" | "invert" <quoted> | "special" <span>
+
+kind        = "note" <pitch> <duration> { <articulation> } [ <free> ]
+            | "rest" <duration> { <articulation> } [ <free> ]
+            | "mark" <name> [ <quoted> | <n> ]
+            | "grace" <pitch> <index> { <articulation> }
+            | "slur" | "phrase" <quoted> | "tuplet" <n> "/" <d>
+            | "dynamic" <mark>
+            | "hairpin" ("cres" | "dim") <mark> <progress>
+            | "key" <tonic> ("major" | "minor")
+            | "meter" <n> "/" <d> | "clef" <name>
+            | "tempo" [ <ratio> "=" <bpm> ] [ <quoted> ] [ [ "to" <bpm> ] "over" <ratio> <progress> ]
+            | "section" <quoted> | "harmony" <quoted>
+            | "repeat" <times> [ "from" <least> "to" <most> ]
+            | "ending" <bracket> "pass" <pass>
+            | "mobile" { <quoted> } "order" { <n> }
+            | "improvise" [ "over" <quoted> ]
+
+duration    = <ratio> [ "spelled" <quoted> ] [ "tied" <ratio> { <ratio> } ]
+free        = "free" <ratio> <ratio>
+ratio       = <p> "/" <q> | <p>                      (* `1`, not `1/1` *)
 progress    = <u> ":" <v> { "," <u> ":" <v> }        (* N3's canonical form *)
 ```
 
-Four rules make it read back:
+```text
+occurrence "voice 0 0 note c4 1/4 [191:198 #4]"                              from 0 to 1/4;
+occurrence "piece tempo 1/4=96 [26:50]"                                      from 0 to 2;
+occurrence "voice 0 0 note g4 1/4 [299:311 def 97:104 #4 via motif 299:311]" from 0 to 1/4;
+```
 
-- **Delimiters nest by escaping.** Each level escapes `\` and its own separator in every field it joins, and unescapes
-  exactly the level it splits. A phrase name containing `|`, `@`, `,` and `:` survives all of them, and no producer
-  needs to know how deeply it is nested.
-- **Every rational is `p/q`.** Durations carry both the written spelling *and* the exact value *and* the tied pieces,
-  because a tuplet keeps the symbol while changing what it sounds for (§2) and no one of the three derives the others.
+Five rules make it read back:
+
+- **Names, not positions.** Absence is absence rather than a counted run of empty fields, so a tempo marking that is
+  only a metronome mark is `tempo 1/4=96` and not seven fields of which four are empty.
+- **Elision is a biconditional, never a guess.** `def` is written iff the definition span differs from the source
+  span; `#n` iff the declaration is not zero; `via` iff the expansion path is non-empty; `spelled` iff the spelling
+  differs from how a ratio is written; `tied` iff the pieces are not exactly the one value. The span itself is never
+  elided, so `[0:0]` is written as it stands.
+- **Every rational is `p/q`, or `p` when the denominator is one.** Durations still carry the written spelling *and*
+  the exact value *and* the tied pieces where those differ, because a tuplet keeps the symbol while changing what it
+  sounds for (§2) and no one of the three derives the others.
 - **A hairpin's shape is its `Progress` in canonical form** — the one place where N3's key and the interchange text
   coincide, because a `Progress` has no provenance to quotient away.
 - **`tied` is absent.** It is elaboration-only and false on every fact that leaves elaboration: a tie says two noteheads
   spell one occurrence, which is resolved before a timeline exists. A file carrying it would describe a state no
   timeline is ever in.
+
+A reference's mark is the same word stream — `depth <n> [ "origin" <span> ] [ "scope" <scope> ] [ "via" <step>… ]` —
+so a file has one tokenization and one escape rule throughout.
 
 Everything the value holds is present, including the definition span and the declaration id that `canonical_key` (N3)
 deliberately drops. That is why these are two functions and not one: N3 is the *equality* serialization and may

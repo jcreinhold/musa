@@ -11,7 +11,7 @@ other, and where they disagree the calculus is right — a notation cannot promi
 define.
 
 Implemented at prompt 48 in `musa-kernel/src/text.rs` (printer and parser) with `musa-compiler`'s `ScoreFact` payload
-form; `musa kernel` is the CLI, and `examples/kernel/*.kernel` is the committed corpus. That corpus and its second
+form; `musa kernel` is the CLI, and `examples/kernel/*.musa.kernel` is the committed corpus. That corpus and its second
 producer/consumer are what `08-open-questions.md` Q6 was waiting for.
 
 ## Lexical conventions
@@ -118,7 +118,7 @@ Four notes a reader needs:
 - **`shift by d t` is sugar** for `sequence { timeline d { }; t }` (`10-term-calculus.md`). It may be written; it is
   never printed, because the printer prints the term it is given and `Term::shift` records the sugar rather than the
   expansion only when a producer wrote it.
-- **A reference may carry a mark**, `subject @ "0|251:263|voice@0@0|motif:251\\:263"`. The mark is an opaque string; the
+- **A reference may carry a mark**, `subject @ "depth 0 origin 251:263 scope voice 0 0 via motif 251:263"`. The mark is an opaque string; the
   kernel hands it to the consumer that owns the payload, which chooses a payload map from it (`10-term-calculus.md` T6).
   It is how a file both shares a body and says how each use of it differs — for musa, which repetition or which call
   site an occurrence came from, and what to substitute for the placeholders a shared body carries where its call site
@@ -149,7 +149,7 @@ self-description, and the payload's own text form is specified where the payload
 kernel "example" {
   composition main : Timeline[ScoreFact] =
     let subject = timeline 1 {
-      occurrence "voice@0@0|note@c4@1/4;1/4;1/4@|10:16|10:16|0|" from 0 to 1/4;
+      occurrence "voice 0 0 note c4 1/4 [10:16]" from 0 to 1/4;
     } in overlay {
       subject;
       shift by 1/2 subject;

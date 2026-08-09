@@ -36,7 +36,7 @@ fn pinned() -> Realization {
     Realization::seeded(FIXTURE_SEED)
 }
 
-/// Every `.musa` fixture, by the stem its `.kernel` golden uses.
+/// Every `.musa` fixture, by the stem its `.musa.kernel` golden uses.
 const EXAMPLES: &[(&str, &str)] = &[
     ("annotated", include_str!("../../../examples/annotated.musa")),
     ("canon", include_str!("../../../examples/canon.musa")),
@@ -124,7 +124,7 @@ fn printed_kernel_text_keeps_the_terms_structure() {
 fn a_hairpin_shape_survives_as_exact_rationals() {
     let source = "piece \"x\" { score { part p { voice v { crescendo to ff { c4 1/4; d4 1/4; e4 1/4; } } } } }";
     let printed = kernel_text(&SourceDocument::new(source, "hairpin"), &pinned()).expect("elaborates");
-    assert!(printed.contains("hairpin@cres@ff@"), "no hairpin printed: {printed}");
+    assert!(printed.contains("hairpin cres ff "), "no hairpin printed: {printed}");
     assert!(!printed.contains('.'), "a rational was written as a decimal: {printed}");
     check_kernel_text(&printed).expect("a printed hairpin reads back");
 }
@@ -142,7 +142,7 @@ fn a_whole_rational_survives_the_round_trip() {
         score { part a { voice b { c5 1; c5 1; c5 1; } } } }";
     let document = SourceDocument::new(source, "whole.musa");
     let printed = kernel_text(&document, &pinned()).expect("elaborates");
-    assert!(printed.contains("tempo@1/1@60@rit.@30@2/1@"), "{printed}");
+    assert!(printed.contains("tempo 1=60 'rit.' to 30 over 2 "), "{printed}");
     check_kernel_text(&printed).expect("a printed ramp reads back");
 }
 
@@ -159,7 +159,7 @@ fn malformed_kernel_text_is_rejected() {
         ("empty", String::new()),
         ("no header", good.replacen("% musa-kernel-1\n", "", 1)),
         ("truncated", good[..good.len() / 2].to_owned()),
-        ("bad payload", good.replacen("note@", "nyote@", 1)),
+        ("bad payload", good.replacen("note ", "nyote ", 1)),
     ];
     for (what, text) in cases {
         assert!(
@@ -172,7 +172,8 @@ fn malformed_kernel_text_is_rejected() {
 /// The committed corpus in `examples/kernel/` — the artifacts a second
 /// implementation would be validated against, and the answer to Q6.
 ///
-/// Plain `.kernel` files rather than insta snapshots, deliberately: a `.snap`
+/// Plain `.musa.kernel` files rather than insta snapshots, deliberately: a
+/// `.snap`
 /// wraps its payload in a YAML preamble, and a corpus whose whole purpose is
 /// to be read by another implementation must be readable *as kernel text*.
 /// Regenerate with `UPDATE_KERNEL_GOLDENS=1 cargo test -p musa-compiler`.
@@ -184,7 +185,7 @@ fn the_kernel_corpus_is_up_to_date() {
     for &(name, source) in EXAMPLES {
         let document = SourceDocument::new(source, name);
         cases.push((
-            format!("{name}.kernel"),
+            format!("{name}.musa.kernel"),
             golden(
                 &format!("{name}.musa"),
                 &kernel_text(&document, &pinned()).expect("the fixture elaborates"),
@@ -195,7 +196,7 @@ fn the_kernel_corpus_is_up_to_date() {
     // pinning every fixture's would pin the same derivation nine times.
     let canon = SourceDocument::new(include_str!("../../../examples/canon.musa"), "canon");
     cases.push((
-        "canon.normal.kernel".to_owned(),
+        "canon.normal.musa.kernel".to_owned(),
         golden(
             "canon.musa, normalized",
             &kernel_normalized_text(&canon, &pinned()).expect("elaborates"),

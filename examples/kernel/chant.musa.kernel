@@ -1,0 +1,37 @@
+% musa-kernel-1
+% generated from examples/chant.musa by musa-compiler
+kernel "Chant" {
+  composition main : Timeline[ScoreFact] =
+    overlay {
+      timeline 27/4 {
+        occurrence "voice 0 0 dynamic mp [883:894 #4]" from 0 to 0;
+        occurrence "voice 0 0 note d4 1/4 [990:997 #4]" from 0 to 1/4;
+        occurrence "voice 0 0 note f4 1/4 [1014:1021 #4]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note g4 1/4 [1038:1045 #4]" from 1/2 to 3/4;
+        occurrence "voice 0 0 note a4 1/2 [1062:1069 #4]" from 3/4 to 5/4;
+        occurrence "voice 0 0 note a4 1/4 [1087:1094 #4]" from 5/4 to 3/2;
+        occurrence "voice 0 0 note bf4 1/4 [1111:1119 #4]" from 3/2 to 7/4;
+        occurrence "voice 0 0 note a4 1/4 [1136:1143 #4]" from 7/4 to 2;
+        occurrence "voice 0 0 note g4 1/4 [1160:1167 #4]" from 2 to 9/4;
+        occurrence "voice 0 0 note a4 1/2 [1184:1191 #4]" from 9/4 to 11/4;
+        occurrence "voice 0 0 note g4 1/4 [1209:1216 #4]" from 11/4 to 3;
+        occurrence "voice 0 0 note f4 1/4 [1233:1240 #4]" from 3 to 13/4;
+        occurrence "voice 0 0 note g4 1/4 [1257:1264 #4]" from 13/4 to 7/2;
+        occurrence "voice 0 0 note a4 1/4 [1281:1288 #4]" from 7/2 to 15/4;
+        occurrence "voice 0 0 note g4 1/4 [1305:1312 #4]" from 15/4 to 4;
+        occurrence "voice 0 0 note f4 1/4 [1329:1336 #4]" from 4 to 17/4;
+        occurrence "voice 0 0 note e4 1/2 [1353:1360 #4]" from 17/4 to 19/4;
+        occurrence "voice 0 0 note d4 1/4 [1378:1385 #4]" from 19/4 to 5;
+        occurrence "voice 0 0 note e4 1/4 [1402:1409 #4]" from 5 to 21/4;
+        occurrence "voice 0 0 note f4 1/4 [1426:1433 #4]" from 21/4 to 11/2;
+        occurrence "voice 0 0 note e4 1/4 [1450:1457 #4]" from 11/2 to 23/4;
+        occurrence "voice 0 0 note d4 1 spelled '1/1' [1474:1481 #4]" from 23/4 to 27/4;
+      };
+      timeline 27/4 {
+        occurrence "piece meter 0/4 [747:763]" from 0 to 27/4;
+        occurrence "piece tempo 1/4=96 [727:747]" from 0 to 27/4;
+        occurrence "piece key c major [763:780]" from 0 to 27/4;
+        occurrence "part 0 clef treble [828:840]" from 0 to 27/4;
+      }
+    };
+}

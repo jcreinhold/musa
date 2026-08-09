@@ -12,7 +12,7 @@
 //! `sonata.musa.performance`.
 //!
 //! The file is small on purpose — a seed and the decisions the composer kept
-//! — and it is written in the same spellings the `.kernel` header uses, so
+//! — and it is written in the same spellings the `.musa.kernel` header uses, so
 //! the thing a composer reads in one place is the thing they read in the
 //! other. A file that cannot be read is **no realization** rather than an
 //! error: a corrupt sidecar should cost a performance, not a session.

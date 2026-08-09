@@ -174,7 +174,7 @@ What differs is what each consumer can do with it.
 
 ## What a conforming consumer of a kernel file owes (prompt 48)
 
-`examples/kernel/*.kernel` is the corpus a second implementation is validated against. Reading one, a consumer owes
+`examples/kernel/*.musa.kernel` is the corpus a second implementation is validated against. Reading one, a consumer owes
 three things and nothing more:
 
 1. **Refuse a version you do not know.** The first line is `% musa-kernel-1`. A file without it is not a kernel file.
@@ -198,7 +198,7 @@ does, `11-realization.md` puts the decision **above** the kernel — a seed plus
 — so that by the time a term exists every choice is made and everything above stays true. Two consequences reach a
 consumer, and only two:
 
-1. **A `.kernel` file is the projection of one realization, not of the work.** Its header says which realization
+1. **A `.musa.kernel` file is the projection of one realization, not of the work.** Its header says which realization
    produced it, and reproducing the file means being given the same one. A file of a piece that fixes everything has
    nothing extra to say, which is why every file written before prompt 66 stays valid.
 2. **A consumer never chooses.** Choosing happened once, before the term existed. A consumer that draws a random
@@ -224,7 +224,7 @@ and more than a bare export would.
 
 MIDI carries the realization and nothing else, and warns about nothing: a performance is exactly what MIDI is for.
 
-The `.kernel` file remains the lossless one. A consumer that needs the freedom itself reads the occurrence payload,
+The `.musa.kernel` file remains the lossless one. A consumer that needs the freedom itself reads the occurrence payload,
 where the fragments, their chosen order, and the bounds of a held note all survive.
 
 ## A grace note is written, not read (prompt 71)

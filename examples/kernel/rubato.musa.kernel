@@ -1,0 +1,38 @@
+% musa-kernel-1
+% generated from examples/rubato.musa by musa-compiler
+kernel "Rubato" {
+  composition main : Timeline[ScoreFact] =
+    overlay {
+      timeline 7 {
+        occurrence "voice 0 0 dynamic mp [1247:1258 #4]" from 0 to 0;
+        occurrence "voice 0 0 note d5 1/4 [1387:1394 #4]" from 0 to 1/4;
+        occurrence "voice 0 0 note g5 1/4 [1411:1418 #4]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note a5 1/4 [1435:1442 #4]" from 1/2 to 3/4;
+        occurrence "voice 0 0 note b5 1/4 [1459:1466 #4]" from 3/4 to 1;
+        occurrence "voice 0 0 note c6 1/2 [1484:1491 #4]" from 1 to 3/2;
+        occurrence "voice 0 0 note b5 1/2 [1508:1515 #4]" from 3/2 to 2;
+        occurrence "piece tempo 1/4=72 'rit.' to 48 over 2 0/1:0/1,1/1:1/1 [1610:1647 #4]" from 2 to 2;
+        occurrence "voice 0 0 note a5 1/4 [1664:1671 #4]" from 2 to 9/4;
+        occurrence "voice 0 0 note g5 1/4 [1688:1695 #4]" from 9/4 to 5/2;
+        occurrence "voice 0 0 note fs5 1/4 [1712:1720 #4]" from 5/2 to 11/4;
+        occurrence "voice 0 0 note e5 1/4 [1737:1744 #4]" from 11/4 to 3;
+        occurrence "voice 0 0 note d5 1/2 [1762:1769 #4]" from 3 to 7/2;
+        occurrence "voice 0 0 note b4 1/2 [1786:1793 #4]" from 7/2 to 4;
+        occurrence "piece tempo 1/4=72 'a tempo' [1958:1983 #4]" from 4 to 4;
+        occurrence "voice 0 0 note g5 1/4 [2000:2007 #4]" from 4 to 17/4;
+        occurrence "voice 0 0 note a5 1/4 [2024:2031 #4]" from 17/4 to 9/2;
+        occurrence "voice 0 0 note b5 1/4 [2048:2055 #4]" from 9/2 to 19/4;
+        occurrence "voice 0 0 note c6 1/4 [2072:2079 #4]" from 19/4 to 5;
+        occurrence "piece tempo 'poco rit.' over 1 0/1:0/1,1/1:1/1 [2207:2234 #4]" from 5 to 5;
+        occurrence "voice 0 0 note d6 1/2 [2251:2258 #4]" from 5 to 11/2;
+        occurrence "voice 0 0 note b5 1/2 [2275:2282 #4]" from 11/2 to 6;
+        occurrence "voice 0 0 note g5 1 spelled '1/1' [2300:2307 #4]" from 6 to 7;
+      };
+      timeline 7 {
+        occurrence "piece meter 4/4 [1112:1127]" from 0 to 7;
+        occurrence "piece tempo 1/4=72 [1092:1112]" from 0 to 7;
+        occurrence "piece key g major [1127:1144]" from 0 to 7;
+        occurrence "part 0 clef treble [1192:1204]" from 0 to 7;
+      }
+    };
+}

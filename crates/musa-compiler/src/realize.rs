@@ -45,7 +45,7 @@ pub enum Decision {
 }
 
 impl std::fmt::Display for Decision {
-    /// How a decision is written in a `.kernel` header and shown to a person.
+    /// How a decision is written in a `.musa.kernel` header and shown to a person.
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Count(count) => write!(formatter, "count={count}"),

@@ -305,7 +305,7 @@ mean a second code path for small documents.
 
 ### The corpus, qualitatively
 
-`examples/kernel/canon.kernel` is the visible payoff, and it is what the prompt asked to see: two `let` bindings and two
+`examples/kernel/canon.musa.kernel` is the visible payoff, and it is what the prompt asked to see: two `let` bindings and two
 marked references, where before it was every occurrence of both voices written out. The subject appears once. Five of
 the nine files are **byte-identical** to prompt 48's — `counterpoint`, `invention`, `profile-fixture`, `twinkle`,
 `tuplet-fixture` — because a run of adjacent literals is coalesced back into one `timeline` block. That was not free

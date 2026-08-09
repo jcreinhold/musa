@@ -1,0 +1,1621 @@
+% musa-kernel-1
+% generated from examples/in-c.musa by musa-compiler
+% realization seed=42 pins=0
+% decision figure_one ▸ #0 count=8
+% decision figure_two ▸ #0 count=7
+% decision figure_three ▸ #0 count=11
+% decision figure_four ▸ #0 count=9
+% decision figure_five ▸ #0 count=8
+% decision figure_six ▸ #0 count=3
+% decision figure_seven ▸ #0 count=8
+% decision figure_eight ▸ #0 count=12
+% decision figure_nine ▸ #0 count=8
+% decision figure_ten ▸ #0 count=8
+% decision figure_eleven ▸ #0 count=7
+% decision figure_twelve ▸ #0 count=8
+% decision figure_thirteen ▸ #0 count=10
+% decision figure_fourteen ▸ #0 count=14
+% decision figure_fifteen ▸ #0 count=5
+% decision figure_sixteen ▸ #0 count=8
+% decision figure_seventeen ▸ #0 count=12
+% decision figure_eighteen ▸ #0 count=7
+% decision figure_nineteen ▸ #0 count=8
+% decision figure_twenty ▸ #0 count=4
+% decision figure_twenty_one ▸ #0 count=6
+% decision figure_twenty_two ▸ #0 count=8
+% decision figure_twenty_three ▸ #0 count=10
+% decision figure_twenty_four ▸ #0 count=8
+% decision figure_twenty_five ▸ #0 count=8
+% decision figure_twenty_six ▸ #0 count=8
+% decision figure_twenty_seven ▸ #0 count=3
+% decision figure_twenty_eight ▸ #0 count=8
+% decision figure_twenty_nine ▸ #0 count=6
+% decision figure_thirty ▸ #0 count=8
+% decision figure_thirty_one ▸ #0 count=4
+% decision figure_thirty_two ▸ #0 count=5
+% decision figure_thirty_three ▸ #0 count=11
+% decision figure_thirty_four ▸ #0 count=6
+% decision figure_thirty_five ▸ #0 count=5
+% decision figure_thirty_six ▸ #0 count=7
+% decision figure_thirty_seven ▸ #0 count=9
+% decision figure_thirty_eight ▸ #0 count=8
+% decision figure_thirty_nine ▸ #0 count=7
+% decision figure_forty ▸ #0 count=7
+% decision figure_forty_one ▸ #0 count=8
+% decision figure_forty_two ▸ #0 count=4
+% decision figure_forty_three ▸ #0 count=7
+% decision figure_forty_four ▸ #0 count=13
+% decision figure_forty_five ▸ #0 count=2
+% decision figure_forty_six ▸ #0 count=7
+% decision figure_forty_seven ▸ #0 count=10
+% decision figure_forty_eight ▸ #0 count=3
+% decision figure_forty_nine ▸ #0 count=13
+% decision figure_fifty ▸ #0 count=8
+% decision figure_fifty_one ▸ #0 count=8
+% decision figure_fifty_two ▸ #0 count=4
+% decision figure_fifty_three ▸ #0 count=10
+kernel "Fifty-Three" {
+  composition main : Timeline[ScoreFact] =
+    let shared0 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note c6 1/8 [4294967295:4294967295 def 9823:9830 #57]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note c6 1/8 [4294967295:4294967295 def 9843:9850 #57]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note c6 1/8 [4294967295:4294967295 def 9863:9870 #57]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note c6 1/8 [4294967295:4294967295 def 9883:9890 #57]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note c6 1/8 [4294967295:4294967295 def 9903:9910 #57]" from 1/2 to 5/8;
+        occurrence "voice 4294967295 4294967295 note c6 1/8 [4294967295:4294967295 def 9923:9930 #57]" from 5/8 to 3/4;
+        occurrence "voice 4294967295 4294967295 note c6 1/8 [4294967295:4294967295 def 9943:9950 #57]" from 3/4 to 7/8;
+        occurrence "voice 4294967295 4294967295 note c6 1/8 [4294967295:4294967295 def 9963:9970 #57]" from 7/8 to 1;
+      }
+    in let shared1 = overlay {
+        sequence {
+          shared0 @ "depth 0 via repeat 0";
+          shared0 @ "depth 0 via repeat 1";
+          shared0 @ "depth 0 via repeat 2";
+          shared0 @ "depth 0 via repeat 3";
+          shared0 @ "depth 0 via repeat 4";
+          shared0 @ "depth 0 via repeat 5";
+          shared0 @ "depth 0 via repeat 6";
+          shared0 @ "depth 0 via repeat 7";
+          shared0 @ "depth 0 via repeat 8";
+          shared0 @ "depth 0 via repeat 9";
+          shared0 @ "depth 0 via repeat 10";
+          shared0 @ "depth 0 via repeat 11";
+          shared0 @ "depth 0 via repeat 12";
+          shared0 @ "depth 0 via repeat 13";
+          shared0 @ "depth 0 via repeat 14";
+          shared0 @ "depth 0 via repeat 15";
+          shared0 @ "depth 0 via repeat 16";
+          shared0 @ "depth 0 via repeat 17";
+          shared0 @ "depth 0 via repeat 18";
+          shared0 @ "depth 0 via repeat 19";
+          shared0 @ "depth 0 via repeat 20";
+          shared0 @ "depth 0 via repeat 21";
+          shared0 @ "depth 0 via repeat 22";
+          shared0 @ "depth 0 via repeat 23";
+          shared0 @ "depth 0 via repeat 24";
+          shared0 @ "depth 0 via repeat 25";
+          shared0 @ "depth 0 via repeat 26";
+          shared0 @ "depth 0 via repeat 27";
+          shared0 @ "depth 0 via repeat 28";
+          shared0 @ "depth 0 via repeat 29";
+          shared0 @ "depth 0 via repeat 30";
+          shared0 @ "depth 0 via repeat 31";
+          shared0 @ "depth 0 via repeat 32";
+          shared0 @ "depth 0 via repeat 33";
+          shared0 @ "depth 0 via repeat 34";
+          shared0 @ "depth 0 via repeat 35";
+          shared0 @ "depth 0 via repeat 36";
+          shared0 @ "depth 0 via repeat 37";
+          shared0 @ "depth 0 via repeat 38";
+          shared0 @ "depth 0 via repeat 39";
+          shared0 @ "depth 0 via repeat 40";
+          shared0 @ "depth 0 via repeat 41";
+          shared0 @ "depth 0 via repeat 42";
+          shared0 @ "depth 0 via repeat 43";
+          shared0 @ "depth 0 via repeat 44";
+          shared0 @ "depth 0 via repeat 45";
+          shared0 @ "depth 0 via repeat 46";
+          shared0 @ "depth 0 via repeat 47";
+          shared0 @ "depth 0 via repeat 48";
+          shared0 @ "depth 0 via repeat 49";
+          shared0 @ "depth 0 via repeat 50";
+          shared0 @ "depth 0 via repeat 51";
+          shared0 @ "depth 0 via repeat 52";
+          shared0 @ "depth 0 via repeat 53";
+          shared0 @ "depth 0 via repeat 54";
+          shared0 @ "depth 0 via repeat 55";
+          shared0 @ "depth 0 via repeat 56";
+          shared0 @ "depth 0 via repeat 57";
+          shared0 @ "depth 0 via repeat 58";
+          shared0 @ "depth 0 via repeat 59";
+          shared0 @ "depth 0 via repeat 60";
+          shared0 @ "depth 0 via repeat 61";
+          shared0 @ "depth 0 via repeat 62";
+          shared0 @ "depth 0 via repeat 63";
+          shared0 @ "depth 0 via repeat 64";
+          shared0 @ "depth 0 via repeat 65";
+          shared0 @ "depth 0 via repeat 66";
+          shared0 @ "depth 0 via repeat 67";
+          shared0 @ "depth 0 via repeat 68";
+          shared0 @ "depth 0 via repeat 69";
+          shared0 @ "depth 0 via repeat 70";
+          shared0 @ "depth 0 via repeat 71";
+          shared0 @ "depth 0 via repeat 72";
+          shared0 @ "depth 0 via repeat 73";
+          shared0 @ "depth 0 via repeat 74";
+          shared0 @ "depth 0 via repeat 75";
+          shared0 @ "depth 0 via repeat 76";
+          shared0 @ "depth 0 via repeat 77";
+          shared0 @ "depth 0 via repeat 78";
+          shared0 @ "depth 0 via repeat 79";
+          shared0 @ "depth 0 via repeat 80";
+          shared0 @ "depth 0 via repeat 81";
+          shared0 @ "depth 0 via repeat 82";
+          shared0 @ "depth 0 via repeat 83";
+          shared0 @ "depth 0 via repeat 84";
+          shared0 @ "depth 0 via repeat 85";
+          shared0 @ "depth 0 via repeat 86";
+          shared0 @ "depth 0 via repeat 87";
+          shared0 @ "depth 0 via repeat 88";
+          shared0 @ "depth 0 via repeat 89";
+          shared0 @ "depth 0 via repeat 90";
+          shared0 @ "depth 0 via repeat 91";
+          shared0 @ "depth 0 via repeat 92";
+          shared0 @ "depth 0 via repeat 93";
+          shared0 @ "depth 0 via repeat 94";
+          shared0 @ "depth 0 via repeat 95";
+          shared0 @ "depth 0 via repeat 96";
+          shared0 @ "depth 0 via repeat 97";
+          shared0 @ "depth 0 via repeat 98";
+          shared0 @ "depth 0 via repeat 99";
+          shared0 @ "depth 0 via repeat 100";
+          shared0 @ "depth 0 via repeat 101";
+          shared0 @ "depth 0 via repeat 102";
+          shared0 @ "depth 0 via repeat 103";
+          shared0 @ "depth 0 via repeat 104";
+          shared0 @ "depth 0 via repeat 105";
+          shared0 @ "depth 0 via repeat 106";
+          shared0 @ "depth 0 via repeat 107";
+          shared0 @ "depth 0 via repeat 108";
+          shared0 @ "depth 0 via repeat 109";
+          shared0 @ "depth 0 via repeat 110";
+          shared0 @ "depth 0 via repeat 111";
+          shared0 @ "depth 0 via repeat 112";
+          shared0 @ "depth 0 via repeat 113";
+          shared0 @ "depth 0 via repeat 114";
+          shared0 @ "depth 0 via repeat 115";
+          shared0 @ "depth 0 via repeat 116";
+          shared0 @ "depth 0 via repeat 117";
+          shared0 @ "depth 0 via repeat 118";
+          shared0 @ "depth 0 via repeat 119";
+          shared0 @ "depth 0 via repeat 120";
+          shared0 @ "depth 0 via repeat 121";
+          shared0 @ "depth 0 via repeat 122";
+          shared0 @ "depth 0 via repeat 123";
+          shared0 @ "depth 0 via repeat 124";
+          shared0 @ "depth 0 via repeat 125";
+          shared0 @ "depth 0 via repeat 126";
+          shared0 @ "depth 0 via repeat 127";
+          shared0 @ "depth 0 via repeat 128";
+          shared0 @ "depth 0 via repeat 129";
+          shared0 @ "depth 0 via repeat 130";
+          shared0 @ "depth 0 via repeat 131";
+          shared0 @ "depth 0 via repeat 132";
+          shared0 @ "depth 0 via repeat 133";
+          shared0 @ "depth 0 via repeat 134";
+          shared0 @ "depth 0 via repeat 135";
+          shared0 @ "depth 0 via repeat 136";
+          shared0 @ "depth 0 via repeat 137";
+          shared0 @ "depth 0 via repeat 138";
+          shared0 @ "depth 0 via repeat 139";
+          shared0 @ "depth 0 via repeat 140";
+          shared0 @ "depth 0 via repeat 141";
+          shared0 @ "depth 0 via repeat 142";
+          shared0 @ "depth 0 via repeat 143";
+          shared0 @ "depth 0 via repeat 144";
+          shared0 @ "depth 0 via repeat 145";
+          shared0 @ "depth 0 via repeat 146";
+          shared0 @ "depth 0 via repeat 147";
+          shared0 @ "depth 0 via repeat 148";
+          shared0 @ "depth 0 via repeat 149";
+          shared0 @ "depth 0 via repeat 150";
+          shared0 @ "depth 0 via repeat 151";
+          shared0 @ "depth 0 via repeat 152";
+          shared0 @ "depth 0 via repeat 153";
+          shared0 @ "depth 0 via repeat 154";
+          shared0 @ "depth 0 via repeat 155";
+          shared0 @ "depth 0 via repeat 156";
+          shared0 @ "depth 0 via repeat 157";
+          shared0 @ "depth 0 via repeat 158";
+          shared0 @ "depth 0 via repeat 159";
+          shared0 @ "depth 0 via repeat 160";
+          shared0 @ "depth 0 via repeat 161";
+          shared0 @ "depth 0 via repeat 162";
+          shared0 @ "depth 0 via repeat 163";
+          shared0 @ "depth 0 via repeat 164";
+          shared0 @ "depth 0 via repeat 165";
+          shared0 @ "depth 0 via repeat 166";
+          shared0 @ "depth 0 via repeat 167";
+          shared0 @ "depth 0 via repeat 168";
+          shared0 @ "depth 0 via repeat 169";
+          shared0 @ "depth 0 via repeat 170";
+          shared0 @ "depth 0 via repeat 171";
+          shared0 @ "depth 0 via repeat 172";
+          shared0 @ "depth 0 via repeat 173";
+          shared0 @ "depth 0 via repeat 174";
+          shared0 @ "depth 0 via repeat 175";
+          shared0 @ "depth 0 via repeat 176";
+          shared0 @ "depth 0 via repeat 177";
+          shared0 @ "depth 0 via repeat 178";
+          shared0 @ "depth 0 via repeat 179";
+          shared0 @ "depth 0 via repeat 180";
+          shared0 @ "depth 0 via repeat 181";
+          shared0 @ "depth 0 via repeat 182";
+          shared0 @ "depth 0 via repeat 183";
+          shared0 @ "depth 0 via repeat 184";
+          shared0 @ "depth 0 via repeat 185";
+          shared0 @ "depth 0 via repeat 186";
+          shared0 @ "depth 0 via repeat 187";
+          shared0 @ "depth 0 via repeat 188";
+          shared0 @ "depth 0 via repeat 189";
+          shared0 @ "depth 0 via repeat 190";
+          shared0 @ "depth 0 via repeat 191";
+          shared0 @ "depth 0 via repeat 192";
+          shared0 @ "depth 0 via repeat 193";
+          shared0 @ "depth 0 via repeat 194";
+          shared0 @ "depth 0 via repeat 195";
+          shared0 @ "depth 0 via repeat 196";
+          shared0 @ "depth 0 via repeat 197";
+          shared0 @ "depth 0 via repeat 198";
+          shared0 @ "depth 0 via repeat 199";
+          shared0 @ "depth 0 via repeat 200";
+          shared0 @ "depth 0 via repeat 201";
+          shared0 @ "depth 0 via repeat 202";
+          shared0 @ "depth 0 via repeat 203";
+          shared0 @ "depth 0 via repeat 204";
+          shared0 @ "depth 0 via repeat 205";
+          shared0 @ "depth 0 via repeat 206";
+          shared0 @ "depth 0 via repeat 207";
+          shared0 @ "depth 0 via repeat 208";
+          shared0 @ "depth 0 via repeat 209";
+          shared0 @ "depth 0 via repeat 210";
+          shared0 @ "depth 0 via repeat 211";
+          shared0 @ "depth 0 via repeat 212";
+          shared0 @ "depth 0 via repeat 213";
+          shared0 @ "depth 0 via repeat 214";
+          shared0 @ "depth 0 via repeat 215";
+          shared0 @ "depth 0 via repeat 216";
+          shared0 @ "depth 0 via repeat 217";
+          shared0 @ "depth 0 via repeat 218";
+          shared0 @ "depth 0 via repeat 219";
+          shared0 @ "depth 0 via repeat 220";
+          shared0 @ "depth 0 via repeat 221";
+          shared0 @ "depth 0 via repeat 222";
+          shared0 @ "depth 0 via repeat 223";
+          shared0 @ "depth 0 via repeat 224";
+          shared0 @ "depth 0 via repeat 225";
+          shared0 @ "depth 0 via repeat 226";
+          shared0 @ "depth 0 via repeat 227";
+          shared0 @ "depth 0 via repeat 228";
+          shared0 @ "depth 0 via repeat 229";
+          shared0 @ "depth 0 via repeat 230";
+          shared0 @ "depth 0 via repeat 231";
+          shared0 @ "depth 0 via repeat 232";
+          shared0 @ "depth 0 via repeat 233";
+          shared0 @ "depth 0 via repeat 234";
+          shared0 @ "depth 0 via repeat 235";
+          shared0 @ "depth 0 via repeat 236";
+          shared0 @ "depth 0 via repeat 237";
+          shared0 @ "depth 0 via repeat 238";
+          shared0 @ "depth 0 via repeat 239";
+          shared0 @ "depth 0 via repeat 240";
+          shared0 @ "depth 0 via repeat 241";
+          shared0 @ "depth 0 via repeat 242";
+          shared0 @ "depth 0 via repeat 243";
+          shared0 @ "depth 0 via repeat 244";
+          shared0 @ "depth 0 via repeat 245";
+          shared0 @ "depth 0 via repeat 246";
+          shared0 @ "depth 0 via repeat 247";
+          shared0 @ "depth 0 via repeat 248";
+          shared0 @ "depth 0 via repeat 249";
+          shared0 @ "depth 0 via repeat 250";
+          shared0 @ "depth 0 via repeat 251";
+          shared0 @ "depth 0 via repeat 252";
+          shared0 @ "depth 0 via repeat 253";
+          shared0 @ "depth 0 via repeat 254";
+          shared0 @ "depth 0 via repeat 255";
+          shared0 @ "depth 0 via repeat 256";
+          shared0 @ "depth 0 via repeat 257";
+          shared0 @ "depth 0 via repeat 258";
+          shared0 @ "depth 0 via repeat 259";
+          shared0 @ "depth 0 via repeat 260";
+          shared0 @ "depth 0 via repeat 261";
+          shared0 @ "depth 0 via repeat 262";
+          shared0 @ "depth 0 via repeat 263";
+          shared0 @ "depth 0 via repeat 264";
+          shared0 @ "depth 0 via repeat 265";
+          shared0 @ "depth 0 via repeat 266";
+          shared0 @ "depth 0 via repeat 267";
+          shared0 @ "depth 0 via repeat 268";
+          shared0 @ "depth 0 via repeat 269";
+          shared0 @ "depth 0 via repeat 270";
+          shared0 @ "depth 0 via repeat 271";
+          shared0 @ "depth 0 via repeat 272";
+          shared0 @ "depth 0 via repeat 273";
+          shared0 @ "depth 0 via repeat 274";
+          shared0 @ "depth 0 via repeat 275";
+          shared0 @ "depth 0 via repeat 276";
+          shared0 @ "depth 0 via repeat 277";
+          shared0 @ "depth 0 via repeat 278";
+          shared0 @ "depth 0 via repeat 279";
+          shared0 @ "depth 0 via repeat 280";
+          shared0 @ "depth 0 via repeat 281";
+          shared0 @ "depth 0 via repeat 282";
+          shared0 @ "depth 0 via repeat 283";
+          shared0 @ "depth 0 via repeat 284";
+          shared0 @ "depth 0 via repeat 285";
+          shared0 @ "depth 0 via repeat 286";
+          shared0 @ "depth 0 via repeat 287";
+          shared0 @ "depth 0 via repeat 288";
+          shared0 @ "depth 0 via repeat 289";
+          shared0 @ "depth 0 via repeat 290";
+          shared0 @ "depth 0 via repeat 291";
+          shared0 @ "depth 0 via repeat 292";
+          shared0 @ "depth 0 via repeat 293";
+          shared0 @ "depth 0 via repeat 294";
+          shared0 @ "depth 0 via repeat 295";
+          shared0 @ "depth 0 via repeat 296";
+          shared0 @ "depth 0 via repeat 297";
+          shared0 @ "depth 0 via repeat 298";
+          shared0 @ "depth 0 via repeat 299";
+          shared0 @ "depth 0 via repeat 300";
+          shared0 @ "depth 0 via repeat 301";
+          shared0 @ "depth 0 via repeat 302";
+          shared0 @ "depth 0 via repeat 303";
+          shared0 @ "depth 0 via repeat 304";
+          shared0 @ "depth 0 via repeat 305";
+          shared0 @ "depth 0 via repeat 306";
+          shared0 @ "depth 0 via repeat 307";
+          shared0 @ "depth 0 via repeat 308";
+          shared0 @ "depth 0 via repeat 309";
+          shared0 @ "depth 0 via repeat 310";
+          shared0 @ "depth 0 via repeat 311";
+          shared0 @ "depth 0 via repeat 312";
+          shared0 @ "depth 0 via repeat 313";
+          shared0 @ "depth 0 via repeat 314";
+          shared0 @ "depth 0 via repeat 315";
+          shared0 @ "depth 0 via repeat 316";
+          shared0 @ "depth 0 via repeat 317";
+          shared0 @ "depth 0 via repeat 318";
+          shared0 @ "depth 0 via repeat 319";
+          shared0 @ "depth 0 via repeat 320";
+          shared0 @ "depth 0 via repeat 321";
+          shared0 @ "depth 0 via repeat 322";
+          shared0 @ "depth 0 via repeat 323";
+          shared0 @ "depth 0 via repeat 324";
+          shared0 @ "depth 0 via repeat 325";
+          shared0 @ "depth 0 via repeat 326";
+          shared0 @ "depth 0 via repeat 327";
+          shared0 @ "depth 0 via repeat 328";
+          shared0 @ "depth 0 via repeat 329";
+          shared0 @ "depth 0 via repeat 330";
+          shared0 @ "depth 0 via repeat 331";
+          shared0 @ "depth 0 via repeat 332";
+          shared0 @ "depth 0 via repeat 333";
+          shared0 @ "depth 0 via repeat 334";
+          shared0 @ "depth 0 via repeat 335";
+          shared0 @ "depth 0 via repeat 336";
+          shared0 @ "depth 0 via repeat 337";
+          shared0 @ "depth 0 via repeat 338";
+          shared0 @ "depth 0 via repeat 339";
+          shared0 @ "depth 0 via repeat 340";
+          shared0 @ "depth 0 via repeat 341";
+          shared0 @ "depth 0 via repeat 342";
+          shared0 @ "depth 0 via repeat 343";
+          shared0 @ "depth 0 via repeat 344";
+          shared0 @ "depth 0 via repeat 345";
+          shared0 @ "depth 0 via repeat 346";
+          shared0 @ "depth 0 via repeat 347";
+          shared0 @ "depth 0 via repeat 348";
+          shared0 @ "depth 0 via repeat 349";
+          shared0 @ "depth 0 via repeat 350";
+          shared0 @ "depth 0 via repeat 351";
+          shared0 @ "depth 0 via repeat 352";
+          shared0 @ "depth 0 via repeat 353";
+          shared0 @ "depth 0 via repeat 354";
+          shared0 @ "depth 0 via repeat 355";
+          shared0 @ "depth 0 via repeat 356";
+          shared0 @ "depth 0 via repeat 357";
+          shared0 @ "depth 0 via repeat 358";
+          shared0 @ "depth 0 via repeat 359";
+          shared0 @ "depth 0 via repeat 360";
+          shared0 @ "depth 0 via repeat 361";
+          shared0 @ "depth 0 via repeat 362";
+          shared0 @ "depth 0 via repeat 363";
+          shared0 @ "depth 0 via repeat 364";
+          shared0 @ "depth 0 via repeat 365";
+          shared0 @ "depth 0 via repeat 366";
+          shared0 @ "depth 0 via repeat 367";
+          shared0 @ "depth 0 via repeat 368";
+          shared0 @ "depth 0 via repeat 369";
+          shared0 @ "depth 0 via repeat 370";
+          shared0 @ "depth 0 via repeat 371";
+          shared0 @ "depth 0 via repeat 372";
+          shared0 @ "depth 0 via repeat 373";
+          shared0 @ "depth 0 via repeat 374";
+          shared0 @ "depth 0 via repeat 375";
+          shared0 @ "depth 0 via repeat 376";
+          shared0 @ "depth 0 via repeat 377";
+          shared0 @ "depth 0 via repeat 378";
+          shared0 @ "depth 0 via repeat 379";
+          shared0 @ "depth 0 via repeat 380";
+          shared0 @ "depth 0 via repeat 381";
+          shared0 @ "depth 0 via repeat 382";
+          shared0 @ "depth 0 via repeat 383"
+        };
+        timeline 384 {
+          occurrence "voice 4294967295 4294967295 repeat 384 [4294967295:4294967295 def 9798:9980 #57]" from 0 to 384;
+        }
+      }
+    in let shared2 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 1340:1347 #4]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 1360:1367 #4]" from 1/8 to 3/8;
+        occurrence "voice 4294967295 4294967295 note g4 1/8 [4294967295:4294967295 def 1380:1387 #4]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 1400:1407 #4]" from 1/2 to 5/8;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 1420:1427 #4]" from 5/8 to 7/8;
+        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 1440:1447 #4]" from 7/8 to 1;
+      }
+    in let shared3 = overlay {
+        sequence {
+          shared2 @ "depth 0 via repeat 0";
+          shared2 @ "depth 0 via repeat 1";
+          shared2 @ "depth 0 via repeat 2";
+          shared2 @ "depth 0 via repeat 3";
+          shared2 @ "depth 0 via repeat 4";
+          shared2 @ "depth 0 via repeat 5";
+          shared2 @ "depth 0 via repeat 6";
+          shared2 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 3 to 10 [4294967295:4294967295 def 1311:1457 #4]" from 0 to 8;
+        }
+      }
+    in let shared4 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note e5 3/4 [4294967295:4294967295 def 1528:1535 #5]" from 0 to 3/4;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 1548:1555 #5]" from 3/4 to 1;
+      }
+    in let shared5 = overlay {
+        sequence {
+          shared4 @ "depth 0 via repeat 0";
+          shared4 @ "depth 0 via repeat 1";
+          shared4 @ "depth 0 via repeat 2";
+          shared4 @ "depth 0 via repeat 3";
+          shared4 @ "depth 0 via repeat 4";
+          shared4 @ "depth 0 via repeat 5";
+          shared4 @ "depth 0 via repeat 6"
+        };
+        timeline 7 {
+          occurrence "voice 4294967295 4294967295 repeat 7 from 4 to 12 [4294967295:4294967295 def 1499:1565 #5]" from 0 to 7;
+        }
+      }
+    in let shared6 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 1638:1645 #6]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 1658:1665 #6]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 1678:1685 #6]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note e5 1/2 [4294967295:4294967295 def 1698:1705 #6]" from 1/2 to 1;
+      }
+    in let shared7 = overlay {
+        sequence {
+          shared6 @ "depth 0 via repeat 0";
+          shared6 @ "depth 0 via repeat 1";
+          shared6 @ "depth 0 via repeat 2";
+          shared6 @ "depth 0 via repeat 3";
+          shared6 @ "depth 0 via repeat 4";
+          shared6 @ "depth 0 via repeat 5";
+          shared6 @ "depth 0 via repeat 6";
+          shared6 @ "depth 0 via repeat 7";
+          shared6 @ "depth 0 via repeat 8";
+          shared6 @ "depth 0 via repeat 9";
+          shared6 @ "depth 0 via repeat 10"
+        };
+        timeline 11 {
+          occurrence "voice 4294967295 4294967295 repeat 11 from 2 to 11 [4294967295:4294967295 def 1609:1715 #6]" from 0 to 11;
+        }
+      }
+    in let shared8 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note e5 1/16 [4294967295:4294967295 def 1787:1795 #7]" from 0 to 1/16;
+        occurrence "voice 4294967295 4294967295 note g4 1/16 [4294967295:4294967295 def 1808:1816 #7]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 1829:1836 #7]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 1849:1856 #7]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note c5 1/2 [4294967295:4294967295 def 1869:1876 #7]" from 1/2 to 1;
+      }
+    in let shared9 = overlay {
+        sequence {
+          shared8 @ "depth 0 via repeat 0";
+          shared8 @ "depth 0 via repeat 1";
+          shared8 @ "depth 0 via repeat 2";
+          shared8 @ "depth 0 via repeat 3";
+          shared8 @ "depth 0 via repeat 4";
+          shared8 @ "depth 0 via repeat 5";
+          shared8 @ "depth 0 via repeat 6";
+          shared8 @ "depth 0 via repeat 7";
+          shared8 @ "depth 0 via repeat 8"
+        };
+        timeline 9 {
+          occurrence "voice 4294967295 4294967295 repeat 9 from 3 to 13 [4294967295:4294967295 def 1758:1886 #7]" from 0 to 9;
+        }
+      }
+    in let shared10 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 1958:1965 #8]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 1978:1985 #8]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 1998:2005 #8]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 2018:2025 #8]" from 3/4 to 1;
+      }
+    in let shared11 = overlay {
+        sequence {
+          shared10 @ "depth 0 via repeat 0";
+          shared10 @ "depth 0 via repeat 1";
+          shared10 @ "depth 0 via repeat 2";
+          shared10 @ "depth 0 via repeat 3";
+          shared10 @ "depth 0 via repeat 4";
+          shared10 @ "depth 0 via repeat 5";
+          shared10 @ "depth 0 via repeat 6";
+          shared10 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 4 to 10 [4294967295:4294967295 def 1929:2035 #8]" from 0 to 8;
+        }
+      }
+    in let shared12 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note g5 1/2 [4294967295:4294967295 def 2105:2112 #9]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 2125:2132 #9]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 2145:2152 #9]" from 3/4 to 1;
+      }
+    in let shared13 = overlay {
+        sequence {
+          shared12 @ "depth 0 via repeat 0";
+          shared12 @ "depth 0 via repeat 1";
+          shared12 @ "depth 0 via repeat 2"
+        };
+        timeline 3 {
+          occurrence "voice 4294967295 4294967295 repeat 3 from 2 to 9 [4294967295:4294967295 def 2077:2162 #9]" from 0 to 3;
+        }
+      }
+    in let shared14 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note g4 1/4 [4294967295:4294967295 def 2235:2242 #10]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note e5 1/2 [4294967295:4294967295 def 2255:2262 #10]" from 1/4 to 3/4;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 2275:2282 #10]" from 3/4 to 1;
+      }
+    in let shared15 = overlay {
+        sequence {
+          shared14 @ "depth 0 via repeat 0";
+          shared14 @ "depth 0 via repeat 1";
+          shared14 @ "depth 0 via repeat 2";
+          shared14 @ "depth 0 via repeat 3";
+          shared14 @ "depth 0 via repeat 4";
+          shared14 @ "depth 0 via repeat 5";
+          shared14 @ "depth 0 via repeat 6";
+          shared14 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 3 to 11 [4294967295:4294967295 def 2206:2292 #10]" from 0 to 8;
+        }
+      }
+    in let shared16 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note c5 1/16 [4294967295:4294967295 def 2365:2373 #11]" from 0 to 1/16;
+        occurrence "voice 4294967295 4294967295 note e5 1/16 [4294967295:4294967295 def 2386:2394 #11]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note g5 1/16 [4294967295:4294967295 def 2407:2415 #11]" from 1/8 to 3/16;
+        occurrence "voice 4294967295 4294967295 note c5 1/16 [4294967295:4294967295 def 2428:2436 #11]" from 3/16 to 1/4;
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 2449:2456 #11]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note g4 1/4 [4294967295:4294967295 def 2469:2476 #11]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 2489:2496 #11]" from 3/4 to 1;
+      }
+    in let shared17 = overlay {
+        sequence {
+          shared16 @ "depth 0 via repeat 0";
+          shared16 @ "depth 0 via repeat 1";
+          shared16 @ "depth 0 via repeat 2";
+          shared16 @ "depth 0 via repeat 3";
+          shared16 @ "depth 0 via repeat 4";
+          shared16 @ "depth 0 via repeat 5";
+          shared16 @ "depth 0 via repeat 6";
+          shared16 @ "depth 0 via repeat 7";
+          shared16 @ "depth 0 via repeat 8";
+          shared16 @ "depth 0 via repeat 9";
+          shared16 @ "depth 0 via repeat 10";
+          shared16 @ "depth 0 via repeat 11"
+        };
+        timeline 12 {
+          occurrence "voice 4294967295 4294967295 repeat 12 from 4 to 13 [4294967295:4294967295 def 2336:2506 #11]" from 0 to 12;
+        }
+      }
+    in let shared18 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note c5 1 [4294967295:4294967295 def 2578:2583 #12]" from 0 to 1;
+      }
+    in let shared19 = overlay {
+        sequence {
+          shared18 @ "depth 0 via repeat 0";
+          shared18 @ "depth 0 via repeat 1";
+          shared18 @ "depth 0 via repeat 2";
+          shared18 @ "depth 0 via repeat 3";
+          shared18 @ "depth 0 via repeat 4";
+          shared18 @ "depth 0 via repeat 5";
+          shared18 @ "depth 0 via repeat 6";
+          shared18 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 2 to 12 [4294967295:4294967295 def 2549:2593 #12]" from 0 to 8;
+        }
+      }
+    in let shared20 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note e5 1/2 [4294967295:4294967295 def 2663:2670 #13]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note c5 1/2 [4294967295:4294967295 def 2683:2690 #13]" from 1/2 to 1;
+      }
+    in let shared21 = overlay {
+        sequence {
+          shared20 @ "depth 0 via repeat 0";
+          shared20 @ "depth 0 via repeat 1";
+          shared20 @ "depth 0 via repeat 2";
+          shared20 @ "depth 0 via repeat 3";
+          shared20 @ "depth 0 via repeat 4";
+          shared20 @ "depth 0 via repeat 5";
+          shared20 @ "depth 0 via repeat 6";
+          shared20 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 3 to 9 [4294967295:4294967295 def 2635:2700 #13]" from 0 to 8;
+        }
+      }
+    in let shared22 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 2774:2781 #14]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 2794:2801 #14]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 2814:2821 #14]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note e5 1/2 [4294967295:4294967295 def 2834:2841 #14]" from 1/2 to 1;
+      }
+    in let shared23 = overlay {
+        sequence {
+          shared22 @ "depth 0 via repeat 0";
+          shared22 @ "depth 0 via repeat 1";
+          shared22 @ "depth 0 via repeat 2";
+          shared22 @ "depth 0 via repeat 3";
+          shared22 @ "depth 0 via repeat 4";
+          shared22 @ "depth 0 via repeat 5";
+          shared22 @ "depth 0 via repeat 6"
+        };
+        timeline 7 {
+          occurrence "voice 4294967295 4294967295 repeat 7 from 4 to 11 [4294967295:4294967295 def 2745:2851 #14]" from 0 to 7;
+        }
+      }
+    in let shared24 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 2925:2932 #15]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note g4 1/8 [4294967295:4294967295 def 2945:2952 #15]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 2965:2972 #15]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 2985:2992 #15]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 3005:3012 #15]" from 1/2 to 5/8;
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 3025:3032 #15]" from 5/8 to 3/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 3045:3052 #15]" from 3/4 to 7/8;
+        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 3065:3072 #15]" from 7/8 to 1;
+      }
+    in let shared25 = overlay {
+        sequence {
+          shared24 @ "depth 0 via repeat 0";
+          shared24 @ "depth 0 via repeat 1";
+          shared24 @ "depth 0 via repeat 2";
+          shared24 @ "depth 0 via repeat 3";
+          shared24 @ "depth 0 via repeat 4";
+          shared24 @ "depth 0 via repeat 5";
+          shared24 @ "depth 0 via repeat 6";
+          shared24 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 2 to 10 [4294967295:4294967295 def 2896:3082 #15]" from 0 to 8;
+        }
+      }
+    in let shared26 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 3158:3165 #16]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 3178:3185 #16]" from 1/8 to 3/8;
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 3198:3205 #16]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 3218:3225 #16]" from 1/2 to 5/8;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 3238:3245 #16]" from 5/8 to 7/8;
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 3258:3265 #16]" from 7/8 to 1;
+      }
+    in let shared27 = overlay {
+        sequence {
+          shared26 @ "depth 0 via repeat 0";
+          shared26 @ "depth 0 via repeat 1";
+          shared26 @ "depth 0 via repeat 2";
+          shared26 @ "depth 0 via repeat 3";
+          shared26 @ "depth 0 via repeat 4";
+          shared26 @ "depth 0 via repeat 5";
+          shared26 @ "depth 0 via repeat 6";
+          shared26 @ "depth 0 via repeat 7";
+          shared26 @ "depth 0 via repeat 8";
+          shared26 @ "depth 0 via repeat 9"
+        };
+        timeline 10 {
+          occurrence "voice 4294967295 4294967295 repeat 10 from 3 to 12 [4294967295:4294967295 def 3129:3275 #16]" from 0 to 10;
+        }
+      }
+    in let shared28 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note g5 3/4 [4294967295:4294967295 def 3351:3358 #17]" from 0 to 3/4;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 3371:3378 #17]" from 3/4 to 1;
+      }
+    in let shared29 = overlay {
+        sequence {
+          shared28 @ "depth 0 via repeat 0";
+          shared28 @ "depth 0 via repeat 1";
+          shared28 @ "depth 0 via repeat 2";
+          shared28 @ "depth 0 via repeat 3";
+          shared28 @ "depth 0 via repeat 4";
+          shared28 @ "depth 0 via repeat 5";
+          shared28 @ "depth 0 via repeat 6";
+          shared28 @ "depth 0 via repeat 7";
+          shared28 @ "depth 0 via repeat 8";
+          shared28 @ "depth 0 via repeat 9";
+          shared28 @ "depth 0 via repeat 10";
+          shared28 @ "depth 0 via repeat 11";
+          shared28 @ "depth 0 via repeat 12";
+          shared28 @ "depth 0 via repeat 13"
+        };
+        timeline 14 {
+          occurrence "voice 4294967295 4294967295 repeat 14 from 4 to 14 [4294967295:4294967295 def 3322:3388 #17]" from 0 to 14;
+        }
+      }
+    in let shared30 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 3462:3470 #18]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note a4 1/8 [4294967295:4294967295 def 3483:3490 #18]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 3503:3510 #18]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note e5 1/2 [4294967295:4294967295 def 3523:3530 #18]" from 1/2 to 1;
+      }
+    in let shared31 = overlay {
+        sequence {
+          shared30 @ "depth 0 via repeat 0";
+          shared30 @ "depth 0 via repeat 1";
+          shared30 @ "depth 0 via repeat 2";
+          shared30 @ "depth 0 via repeat 3";
+          shared30 @ "depth 0 via repeat 4"
+        };
+        timeline 5 {
+          occurrence "voice 4294967295 4294967295 repeat 5 from 2 to 8 [4294967295:4294967295 def 3434:3540 #18]" from 0 to 5;
+        }
+      }
+    in let shared32 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note e5 1/16 [4294967295:4294967295 def 3615:3623 #19]" from 0 to 1/16;
+        occurrence "voice 4294967295 4294967295 note fs5 1/16 [4294967295:4294967295 def 3636:3645 #19]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 3658:3665 #19]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 3678:3685 #19]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note c5 1/2 [4294967295:4294967295 def 3698:3705 #19]" from 1/2 to 1;
+      }
+    in let shared33 = overlay {
+        sequence {
+          shared32 @ "depth 0 via repeat 0";
+          shared32 @ "depth 0 via repeat 1";
+          shared32 @ "depth 0 via repeat 2";
+          shared32 @ "depth 0 via repeat 3";
+          shared32 @ "depth 0 via repeat 4";
+          shared32 @ "depth 0 via repeat 5";
+          shared32 @ "depth 0 via repeat 6";
+          shared32 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 3 to 10 [4294967295:4294967295 def 3586:3715 #19]" from 0 to 8;
+        }
+      }
+    in let shared34 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 3792:3799 #20]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 3812:3819 #20]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 3832:3840 #20]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note a4 1/4 [4294967295:4294967295 def 3853:3860 #20]" from 3/4 to 1;
+      }
+    in let shared35 = overlay {
+        sequence {
+          shared34 @ "depth 0 via repeat 0";
+          shared34 @ "depth 0 via repeat 1";
+          shared34 @ "depth 0 via repeat 2";
+          shared34 @ "depth 0 via repeat 3";
+          shared34 @ "depth 0 via repeat 4";
+          shared34 @ "depth 0 via repeat 5";
+          shared34 @ "depth 0 via repeat 6";
+          shared34 @ "depth 0 via repeat 7";
+          shared34 @ "depth 0 via repeat 8";
+          shared34 @ "depth 0 via repeat 9";
+          shared34 @ "depth 0 via repeat 10";
+          shared34 @ "depth 0 via repeat 11"
+        };
+        timeline 12 {
+          occurrence "voice 4294967295 4294967295 repeat 12 from 4 to 12 [4294967295:4294967295 def 3763:3870 #20]" from 0 to 12;
+        }
+      }
+    in let shared36 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note a4 1/2 [4294967295:4294967295 def 3946:3953 #21]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 3966:3973 #21]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 3986:3993 #21]" from 3/4 to 1;
+      }
+    in let shared37 = overlay {
+        sequence {
+          shared36 @ "depth 0 via repeat 0";
+          shared36 @ "depth 0 via repeat 1";
+          shared36 @ "depth 0 via repeat 2";
+          shared36 @ "depth 0 via repeat 3";
+          shared36 @ "depth 0 via repeat 4";
+          shared36 @ "depth 0 via repeat 5";
+          shared36 @ "depth 0 via repeat 6"
+        };
+        timeline 7 {
+          occurrence "voice 4294967295 4294967295 repeat 7 from 2 to 11 [4294967295:4294967295 def 3917:4003 #21]" from 0 to 7;
+        }
+      }
+    in let shared38 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 4079:4087 #22]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/2 [4294967295:4294967295 def 4100:4107 #22]" from 1/4 to 3/4;
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 4120:4127 #22]" from 3/4 to 1;
+      }
+    in let shared39 = overlay {
+        sequence {
+          shared38 @ "depth 0 via repeat 0";
+          shared38 @ "depth 0 via repeat 1";
+          shared38 @ "depth 0 via repeat 2";
+          shared38 @ "depth 0 via repeat 3";
+          shared38 @ "depth 0 via repeat 4";
+          shared38 @ "depth 0 via repeat 5";
+          shared38 @ "depth 0 via repeat 6";
+          shared38 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 3 to 13 [4294967295:4294967295 def 4050:4137 #22]" from 0 to 8;
+        }
+      }
+    in let shared40 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note c5 1/16 [4294967295:4294967295 def 4211:4219 #23]" from 0 to 1/16;
+        occurrence "voice 4294967295 4294967295 note fs5 1/16 [4294967295:4294967295 def 4232:4241 #23]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note a4 1/16 [4294967295:4294967295 def 4254:4262 #23]" from 1/8 to 3/16;
+        occurrence "voice 4294967295 4294967295 note g5 1/16 [4294967295:4294967295 def 4275:4283 #23]" from 3/16 to 1/4;
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 4296:4303 #23]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 4316:4324 #23]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 4337:4344 #23]" from 3/4 to 1;
+      }
+    in let shared41 = overlay {
+        sequence {
+          shared40 @ "depth 0 via repeat 0";
+          shared40 @ "depth 0 via repeat 1";
+          shared40 @ "depth 0 via repeat 2";
+          shared40 @ "depth 0 via repeat 3"
+        };
+        timeline 4 {
+          occurrence "voice 4294967295 4294967295 repeat 4 from 4 to 10 [4294967295:4294967295 def 4182:4354 #23]" from 0 to 4;
+        }
+      }
+    in let shared42 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note g5 1 [4294967295:4294967295 def 4431:4436 #24]" from 0 to 1;
+      }
+    in let shared43 = overlay {
+        sequence {
+          shared42 @ "depth 0 via repeat 0";
+          shared42 @ "depth 0 via repeat 1";
+          shared42 @ "depth 0 via repeat 2";
+          shared42 @ "depth 0 via repeat 3";
+          shared42 @ "depth 0 via repeat 4";
+          shared42 @ "depth 0 via repeat 5"
+        };
+        timeline 6 {
+          occurrence "voice 4294967295 4294967295 repeat 6 from 2 to 9 [4294967295:4294967295 def 4403:4446 #24]" from 0 to 6;
+        }
+      }
+    in let shared44 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note g5 1/2 [4294967295:4294967295 def 4524:4531 #25]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note e5 1/2 [4294967295:4294967295 def 4544:4551 #25]" from 1/2 to 1;
+      }
+    in let shared45 = overlay {
+        sequence {
+          shared44 @ "depth 0 via repeat 0";
+          shared44 @ "depth 0 via repeat 1";
+          shared44 @ "depth 0 via repeat 2";
+          shared44 @ "depth 0 via repeat 3";
+          shared44 @ "depth 0 via repeat 4";
+          shared44 @ "depth 0 via repeat 5";
+          shared44 @ "depth 0 via repeat 6";
+          shared44 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 3 to 11 [4294967295:4294967295 def 4495:4561 #25]" from 0 to 8;
+        }
+      }
+    in let shared46 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note fs5 1/8 [4294967295:4294967295 def 4641:4649 #26]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note a4 1/8 [4294967295:4294967295 def 4662:4669 #26]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 4682:4689 #26]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note e5 1/2 [4294967295:4294967295 def 4702:4709 #26]" from 1/2 to 1;
+      }
+    in let shared47 = overlay {
+        sequence {
+          shared46 @ "depth 0 via repeat 0";
+          shared46 @ "depth 0 via repeat 1";
+          shared46 @ "depth 0 via repeat 2";
+          shared46 @ "depth 0 via repeat 3";
+          shared46 @ "depth 0 via repeat 4";
+          shared46 @ "depth 0 via repeat 5";
+          shared46 @ "depth 0 via repeat 6";
+          shared46 @ "depth 0 via repeat 7";
+          shared46 @ "depth 0 via repeat 8";
+          shared46 @ "depth 0 via repeat 9"
+        };
+        timeline 10 {
+          occurrence "voice 4294967295 4294967295 repeat 10 from 4 to 13 [4294967295:4294967295 def 4612:4719 #26]" from 0 to 10;
+        }
+      }
+    in let shared48 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 4798:4805 #27]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note fs5 1/8 [4294967295:4294967295 def 4818:4826 #27]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 4839:4846 #27]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 4859:4866 #27]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 4879:4886 #27]" from 1/2 to 5/8;
+        occurrence "voice 4294967295 4294967295 note fs5 1/8 [4294967295:4294967295 def 4899:4907 #27]" from 5/8 to 3/4;
+        occurrence "voice 4294967295 4294967295 note a4 1/8 [4294967295:4294967295 def 4920:4927 #27]" from 3/4 to 7/8;
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 4940:4947 #27]" from 7/8 to 1;
+      }
+    in let shared49 = overlay {
+        sequence {
+          shared48 @ "depth 0 via repeat 0";
+          shared48 @ "depth 0 via repeat 1";
+          shared48 @ "depth 0 via repeat 2";
+          shared48 @ "depth 0 via repeat 3";
+          shared48 @ "depth 0 via repeat 4";
+          shared48 @ "depth 0 via repeat 5";
+          shared48 @ "depth 0 via repeat 6";
+          shared48 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 2 to 12 [4294967295:4294967295 def 4769:4957 #27]" from 0 to 8;
+        }
+      }
+    in let shared50 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 5035:5042 #28]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 5055:5062 #28]" from 1/8 to 3/8;
+        occurrence "voice 4294967295 4294967295 note fs5 1/8 [4294967295:4294967295 def 5075:5083 #28]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note a4 1/8 [4294967295:4294967295 def 5096:5103 #28]" from 1/2 to 5/8;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 5116:5123 #28]" from 5/8 to 7/8;
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 5136:5143 #28]" from 7/8 to 1;
+      }
+    in let shared51 = overlay {
+        sequence {
+          shared50 @ "depth 0 via repeat 0";
+          shared50 @ "depth 0 via repeat 1";
+          shared50 @ "depth 0 via repeat 2";
+          shared50 @ "depth 0 via repeat 3";
+          shared50 @ "depth 0 via repeat 4";
+          shared50 @ "depth 0 via repeat 5";
+          shared50 @ "depth 0 via repeat 6";
+          shared50 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 3 to 9 [4294967295:4294967295 def 5007:5153 #28]" from 0 to 8;
+        }
+      }
+    in let shared52 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note a4 3/4 [4294967295:4294967295 def 5231:5238 #29]" from 0 to 3/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 5251:5258 #29]" from 3/4 to 1;
+      }
+    in let shared53 = overlay {
+        sequence {
+          shared52 @ "depth 0 via repeat 0";
+          shared52 @ "depth 0 via repeat 1";
+          shared52 @ "depth 0 via repeat 2";
+          shared52 @ "depth 0 via repeat 3";
+          shared52 @ "depth 0 via repeat 4";
+          shared52 @ "depth 0 via repeat 5";
+          shared52 @ "depth 0 via repeat 6";
+          shared52 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 4 to 11 [4294967295:4294967295 def 5202:5268 #29]" from 0 to 8;
+        }
+      }
+    in let shared54 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 5348:5356 #30]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 5369:5376 #30]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 5389:5396 #30]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note c5 1/2 [4294967295:4294967295 def 5409:5416 #30]" from 1/2 to 1;
+      }
+    in let shared55 = overlay {
+        sequence {
+          shared54 @ "depth 0 via repeat 0";
+          shared54 @ "depth 0 via repeat 1";
+          shared54 @ "depth 0 via repeat 2"
+        };
+        timeline 3 {
+          occurrence "voice 4294967295 4294967295 repeat 3 from 2 to 10 [4294967295:4294967295 def 5319:5426 #30]" from 0 to 3;
+        }
+      }
+    in let shared56 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note c5 1/16 [4294967295:4294967295 def 5506:5514 #31]" from 0 to 1/16;
+        occurrence "voice 4294967295 4294967295 note fs5 1/16 [4294967295:4294967295 def 5527:5536 #31]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note a4 1/8 [4294967295:4294967295 def 5549:5556 #31]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 5569:5576 #31]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note e5 1/2 [4294967295:4294967295 def 5589:5596 #31]" from 1/2 to 1;
+      }
+    in let shared57 = overlay {
+        sequence {
+          shared56 @ "depth 0 via repeat 0";
+          shared56 @ "depth 0 via repeat 1";
+          shared56 @ "depth 0 via repeat 2";
+          shared56 @ "depth 0 via repeat 3";
+          shared56 @ "depth 0 via repeat 4";
+          shared56 @ "depth 0 via repeat 5";
+          shared56 @ "depth 0 via repeat 6";
+          shared56 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 3 to 12 [4294967295:4294967295 def 5477:5606 #31]" from 0 to 8;
+        }
+      }
+    in let shared58 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note d5 1/4 [4294967295:4294967295 def 5685:5692 #32]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 5705:5712 #32]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note b5 1/4 [4294967295:4294967295 def 5725:5732 #32]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note a5 1/4 [4294967295:4294967295 def 5745:5752 #32]" from 3/4 to 1;
+      }
+    in let shared59 = overlay {
+        sequence {
+          shared58 @ "depth 0 via repeat 0";
+          shared58 @ "depth 0 via repeat 1";
+          shared58 @ "depth 0 via repeat 2";
+          shared58 @ "depth 0 via repeat 3";
+          shared58 @ "depth 0 via repeat 4";
+          shared58 @ "depth 0 via repeat 5"
+        };
+        timeline 6 {
+          occurrence "voice 4294967295 4294967295 repeat 6 from 4 to 14 [4294967295:4294967295 def 5656:5762 #32]" from 0 to 6;
+        }
+      }
+    in let shared60 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note a5 1/2 [4294967295:4294967295 def 5835:5842 #33]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 5855:5862 #33]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 5875:5883 #33]" from 3/4 to 1;
+      }
+    in let shared61 = overlay {
+        sequence {
+          shared60 @ "depth 0 via repeat 0";
+          shared60 @ "depth 0 via repeat 1";
+          shared60 @ "depth 0 via repeat 2";
+          shared60 @ "depth 0 via repeat 3";
+          shared60 @ "depth 0 via repeat 4";
+          shared60 @ "depth 0 via repeat 5";
+          shared60 @ "depth 0 via repeat 6";
+          shared60 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 2 to 8 [4294967295:4294967295 def 5807:5893 #33]" from 0 to 8;
+        }
+      }
+    in let shared62 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 5971:5978 #34]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note b4 1/2 [4294967295:4294967295 def 5991:5998 #34]" from 1/4 to 3/4;
+        occurrence "voice 4294967295 4294967295 note d5 1/4 [4294967295:4294967295 def 6011:6018 #34]" from 3/4 to 1;
+      }
+    in let shared63 = overlay {
+        sequence {
+          shared62 @ "depth 0 via repeat 0";
+          shared62 @ "depth 0 via repeat 1";
+          shared62 @ "depth 0 via repeat 2";
+          shared62 @ "depth 0 via repeat 3"
+        };
+        timeline 4 {
+          occurrence "voice 4294967295 4294967295 repeat 4 from 3 to 10 [4294967295:4294967295 def 5942:6028 #34]" from 0 to 4;
+        }
+      }
+    in let shared64 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note g5 1/16 [4294967295:4294967295 def 6106:6114 #35]" from 0 to 1/16;
+        occurrence "voice 4294967295 4294967295 note b5 1/16 [4294967295:4294967295 def 6127:6135 #35]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note a5 1/16 [4294967295:4294967295 def 6148:6156 #35]" from 1/8 to 3/16;
+        occurrence "voice 4294967295 4294967295 note g5 1/16 [4294967295:4294967295 def 6169:6177 #35]" from 3/16 to 1/4;
+        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 6190:6198 #35]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 6211:6218 #35]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note b4 1/4 [4294967295:4294967295 def 6231:6238 #35]" from 3/4 to 1;
+      }
+    in let shared65 = overlay {
+        sequence {
+          shared64 @ "depth 0 via repeat 0";
+          shared64 @ "depth 0 via repeat 1";
+          shared64 @ "depth 0 via repeat 2";
+          shared64 @ "depth 0 via repeat 3";
+          shared64 @ "depth 0 via repeat 4"
+        };
+        timeline 5 {
+          occurrence "voice 4294967295 4294967295 repeat 5 from 4 to 12 [4294967295:4294967295 def 6077:6248 #35]" from 0 to 5;
+        }
+      }
+    in let shared66 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note g5 1 [4294967295:4294967295 def 6328:6333 #36]" from 0 to 1;
+      }
+    in let shared67 = overlay {
+        sequence {
+          shared66 @ "depth 0 via repeat 0";
+          shared66 @ "depth 0 via repeat 1";
+          shared66 @ "depth 0 via repeat 2";
+          shared66 @ "depth 0 via repeat 3";
+          shared66 @ "depth 0 via repeat 4";
+          shared66 @ "depth 0 via repeat 5";
+          shared66 @ "depth 0 via repeat 6";
+          shared66 @ "depth 0 via repeat 7";
+          shared66 @ "depth 0 via repeat 8";
+          shared66 @ "depth 0 via repeat 9";
+          shared66 @ "depth 0 via repeat 10"
+        };
+        timeline 11 {
+          occurrence "voice 4294967295 4294967295 repeat 11 from 2 to 11 [4294967295:4294967295 def 6299:6343 #36]" from 0 to 11;
+        }
+      }
+    in let shared68 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note b4 1/2 [4294967295:4294967295 def 6422:6429 #37]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note d5 1/2 [4294967295:4294967295 def 6442:6449 #37]" from 1/2 to 1;
+      }
+    in let shared69 = overlay {
+        sequence {
+          shared68 @ "depth 0 via repeat 0";
+          shared68 @ "depth 0 via repeat 1";
+          shared68 @ "depth 0 via repeat 2";
+          shared68 @ "depth 0 via repeat 3";
+          shared68 @ "depth 0 via repeat 4";
+          shared68 @ "depth 0 via repeat 5"
+        };
+        timeline 6 {
+          occurrence "voice 4294967295 4294967295 repeat 6 from 3 to 13 [4294967295:4294967295 def 6393:6459 #37]" from 0 to 6;
+        }
+      }
+    in let shared70 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note b5 1/8 [4294967295:4294967295 def 6538:6545 #38]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note a5 1/8 [4294967295:4294967295 def 6558:6565 #38]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 6578:6585 #38]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note fs5 1/2 [4294967295:4294967295 def 6598:6606 #38]" from 1/2 to 1;
+      }
+    in let shared71 = overlay {
+        sequence {
+          shared70 @ "depth 0 via repeat 0";
+          shared70 @ "depth 0 via repeat 1";
+          shared70 @ "depth 0 via repeat 2";
+          shared70 @ "depth 0 via repeat 3";
+          shared70 @ "depth 0 via repeat 4"
+        };
+        timeline 5 {
+          occurrence "voice 4294967295 4294967295 repeat 5 from 4 to 10 [4294967295:4294967295 def 6509:6616 #38]" from 0 to 5;
+        }
+      }
+    in let shared72 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note fs5 1/8 [4294967295:4294967295 def 6693:6701 #39]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 6714:6721 #39]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note b4 1/8 [4294967295:4294967295 def 6734:6741 #39]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note d5 1/8 [4294967295:4294967295 def 6754:6761 #39]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 6774:6781 #39]" from 1/2 to 5/8;
+        occurrence "voice 4294967295 4294967295 note b5 1/8 [4294967295:4294967295 def 6794:6801 #39]" from 5/8 to 3/4;
+        occurrence "voice 4294967295 4294967295 note a5 1/8 [4294967295:4294967295 def 6814:6821 #39]" from 3/4 to 7/8;
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 6834:6841 #39]" from 7/8 to 1;
+      }
+    in let shared73 = overlay {
+        sequence {
+          shared72 @ "depth 0 via repeat 0";
+          shared72 @ "depth 0 via repeat 1";
+          shared72 @ "depth 0 via repeat 2";
+          shared72 @ "depth 0 via repeat 3";
+          shared72 @ "depth 0 via repeat 4";
+          shared72 @ "depth 0 via repeat 5";
+          shared72 @ "depth 0 via repeat 6"
+        };
+        timeline 7 {
+          occurrence "voice 4294967295 4294967295 repeat 7 from 2 to 9 [4294967295:4294967295 def 6665:6851 #39]" from 0 to 7;
+        }
+      }
+    in let shared74 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note d5 1/8 [4294967295:4294967295 def 6931:6938 #40]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 6951:6958 #40]" from 1/8 to 3/8;
+        occurrence "voice 4294967295 4294967295 note b5 1/8 [4294967295:4294967295 def 6971:6978 #40]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note a5 1/8 [4294967295:4294967295 def 6991:6998 #40]" from 1/2 to 5/8;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 7011:7018 #40]" from 5/8 to 7/8;
+        occurrence "voice 4294967295 4294967295 note fs5 1/8 [4294967295:4294967295 def 7031:7039 #40]" from 7/8 to 1;
+      }
+    in let shared75 = overlay {
+        sequence {
+          shared74 @ "depth 0 via repeat 0";
+          shared74 @ "depth 0 via repeat 1";
+          shared74 @ "depth 0 via repeat 2";
+          shared74 @ "depth 0 via repeat 3";
+          shared74 @ "depth 0 via repeat 4";
+          shared74 @ "depth 0 via repeat 5";
+          shared74 @ "depth 0 via repeat 6";
+          shared74 @ "depth 0 via repeat 7";
+          shared74 @ "depth 0 via repeat 8"
+        };
+        timeline 9 {
+          occurrence "voice 4294967295 4294967295 repeat 9 from 3 to 11 [4294967295:4294967295 def 6902:7049 #40]" from 0 to 9;
+        }
+      }
+    in let shared76 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note a5 3/4 [4294967295:4294967295 def 7129:7136 #41]" from 0 to 3/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 7149:7156 #41]" from 3/4 to 1;
+      }
+    in let shared77 = overlay {
+        sequence {
+          shared76 @ "depth 0 via repeat 0";
+          shared76 @ "depth 0 via repeat 1";
+          shared76 @ "depth 0 via repeat 2";
+          shared76 @ "depth 0 via repeat 3";
+          shared76 @ "depth 0 via repeat 4";
+          shared76 @ "depth 0 via repeat 5";
+          shared76 @ "depth 0 via repeat 6";
+          shared76 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 4 to 13 [4294967295:4294967295 def 7100:7166 #41]" from 0 to 8;
+        }
+      }
+    in let shared78 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 7245:7252 #42]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note b4 1/8 [4294967295:4294967295 def 7265:7272 #42]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note d5 1/8 [4294967295:4294967295 def 7285:7292 #42]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note g5 1/2 [4294967295:4294967295 def 7305:7312 #42]" from 1/2 to 1;
+      }
+    in let shared79 = overlay {
+        sequence {
+          shared78 @ "depth 0 via repeat 0";
+          shared78 @ "depth 0 via repeat 1";
+          shared78 @ "depth 0 via repeat 2";
+          shared78 @ "depth 0 via repeat 3";
+          shared78 @ "depth 0 via repeat 4";
+          shared78 @ "depth 0 via repeat 5";
+          shared78 @ "depth 0 via repeat 6"
+        };
+        timeline 7 {
+          occurrence "voice 4294967295 4294967295 repeat 7 from 2 to 12 [4294967295:4294967295 def 7216:7322 #42]" from 0 to 7;
+        }
+      }
+    in let shared80 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note g5 1/16 [4294967295:4294967295 def 7394:7402 #43]" from 0 to 1/16;
+        occurrence "voice 4294967295 4294967295 note b5 1/16 [4294967295:4294967295 def 7415:7423 #43]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note a5 1/8 [4294967295:4294967295 def 7436:7443 #43]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 7456:7463 #43]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note fs5 1/2 [4294967295:4294967295 def 7476:7484 #43]" from 1/2 to 1;
+      }
+    in let shared81 = overlay {
+        sequence {
+          shared80 @ "depth 0 via repeat 0";
+          shared80 @ "depth 0 via repeat 1";
+          shared80 @ "depth 0 via repeat 2";
+          shared80 @ "depth 0 via repeat 3";
+          shared80 @ "depth 0 via repeat 4";
+          shared80 @ "depth 0 via repeat 5";
+          shared80 @ "depth 0 via repeat 6"
+        };
+        timeline 7 {
+          occurrence "voice 4294967295 4294967295 repeat 7 from 3 to 9 [4294967295:4294967295 def 7366:7494 #43]" from 0 to 7;
+        }
+      }
+    in let shared82 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 7571:7578 #44]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 7591:7599 #44]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 7612:7619 #44]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note b4 1/4 [4294967295:4294967295 def 7632:7639 #44]" from 3/4 to 1;
+      }
+    in let shared83 = overlay {
+        sequence {
+          shared82 @ "depth 0 via repeat 0";
+          shared82 @ "depth 0 via repeat 1";
+          shared82 @ "depth 0 via repeat 2";
+          shared82 @ "depth 0 via repeat 3";
+          shared82 @ "depth 0 via repeat 4";
+          shared82 @ "depth 0 via repeat 5";
+          shared82 @ "depth 0 via repeat 6";
+          shared82 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 4 to 11 [4294967295:4294967295 def 7542:7649 #44]" from 0 to 8;
+        }
+      }
+    in let shared84 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note d5 1/2 [4294967295:4294967295 def 7726:7733 #45]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 7746:7754 #45]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 7767:7774 #45]" from 3/4 to 1;
+      }
+    in let shared85 = overlay {
+        sequence {
+          shared84 @ "depth 0 via repeat 0";
+          shared84 @ "depth 0 via repeat 1";
+          shared84 @ "depth 0 via repeat 2";
+          shared84 @ "depth 0 via repeat 3"
+        };
+        timeline 4 {
+          occurrence "voice 4294967295 4294967295 repeat 4 from 2 to 10 [4294967295:4294967295 def 7697:7784 #45]" from 0 to 4;
+        }
+      }
+    in let shared86 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note f5 1/4 [4294967295:4294967295 def 7863:7870 #46]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note bf4 1/2 [4294967295:4294967295 def 7883:7891 #46]" from 1/4 to 3/4;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 7904:7911 #46]" from 3/4 to 1;
+      }
+    in let shared87 = overlay {
+        sequence {
+          shared86 @ "depth 0 via repeat 0";
+          shared86 @ "depth 0 via repeat 1";
+          shared86 @ "depth 0 via repeat 2";
+          shared86 @ "depth 0 via repeat 3";
+          shared86 @ "depth 0 via repeat 4";
+          shared86 @ "depth 0 via repeat 5";
+          shared86 @ "depth 0 via repeat 6"
+        };
+        timeline 7 {
+          occurrence "voice 4294967295 4294967295 repeat 7 from 3 to 12 [4294967295:4294967295 def 7834:7921 #46]" from 0 to 7;
+        }
+      }
+    in let shared88 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note g4 1/16 [4294967295:4294967295 def 7999:8007 #47]" from 0 to 1/16;
+        occurrence "voice 4294967295 4294967295 note f5 1/16 [4294967295:4294967295 def 8020:8028 #47]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note d5 1/16 [4294967295:4294967295 def 8041:8049 #47]" from 1/8 to 3/16;
+        occurrence "voice 4294967295 4294967295 note bf4 1/16 [4294967295:4294967295 def 8062:8071 #47]" from 3/16 to 1/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 8084:8091 #47]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note f5 1/4 [4294967295:4294967295 def 8104:8111 #47]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 8124:8132 #47]" from 3/4 to 1;
+      }
+    in let shared89 = overlay {
+        sequence {
+          shared88 @ "depth 0 via repeat 0";
+          shared88 @ "depth 0 via repeat 1";
+          shared88 @ "depth 0 via repeat 2";
+          shared88 @ "depth 0 via repeat 3";
+          shared88 @ "depth 0 via repeat 4";
+          shared88 @ "depth 0 via repeat 5";
+          shared88 @ "depth 0 via repeat 6";
+          shared88 @ "depth 0 via repeat 7";
+          shared88 @ "depth 0 via repeat 8";
+          shared88 @ "depth 0 via repeat 9";
+          shared88 @ "depth 0 via repeat 10";
+          shared88 @ "depth 0 via repeat 11";
+          shared88 @ "depth 0 via repeat 12"
+        };
+        timeline 13 {
+          occurrence "voice 4294967295 4294967295 repeat 13 from 4 to 14 [4294967295:4294967295 def 7970:8142 #47]" from 0 to 13;
+        }
+      }
+    in let shared90 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note bf4 1 [4294967295:4294967295 def 8219:8225 #48]" from 0 to 1;
+      }
+    in let shared91 = overlay {
+        sequence {
+          shared90 @ "depth 0 via repeat 0";
+          shared90 @ "depth 0 via repeat 1"
+        };
+        timeline 2 {
+          occurrence "voice 4294967295 4294967295 repeat 2 from 2 to 8 [4294967295:4294967295 def 8191:8235 #48]" from 0 to 2;
+        }
+      }
+    in let shared92 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note bf4 1/2 [4294967295:4294967295 def 8312:8320 #49]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note c5 1/2 [4294967295:4294967295 def 8333:8340 #49]" from 1/2 to 1;
+      }
+    in let shared93 = overlay {
+        sequence {
+          shared92 @ "depth 0 via repeat 0";
+          shared92 @ "depth 0 via repeat 1";
+          shared92 @ "depth 0 via repeat 2";
+          shared92 @ "depth 0 via repeat 3";
+          shared92 @ "depth 0 via repeat 4";
+          shared92 @ "depth 0 via repeat 5";
+          shared92 @ "depth 0 via repeat 6"
+        };
+        timeline 7 {
+          occurrence "voice 4294967295 4294967295 repeat 7 from 3 to 10 [4294967295:4294967295 def 8283:8350 #49]" from 0 to 7;
+        }
+      }
+    in let shared94 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note f5 1/8 [4294967295:4294967295 def 8429:8436 #50]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note d5 1/8 [4294967295:4294967295 def 8449:8456 #50]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 8469:8477 #50]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note g5 1/2 [4294967295:4294967295 def 8490:8497 #50]" from 1/2 to 1;
+      }
+    in let shared95 = overlay {
+        sequence {
+          shared94 @ "depth 0 via repeat 0";
+          shared94 @ "depth 0 via repeat 1";
+          shared94 @ "depth 0 via repeat 2";
+          shared94 @ "depth 0 via repeat 3";
+          shared94 @ "depth 0 via repeat 4";
+          shared94 @ "depth 0 via repeat 5";
+          shared94 @ "depth 0 via repeat 6";
+          shared94 @ "depth 0 via repeat 7";
+          shared94 @ "depth 0 via repeat 8";
+          shared94 @ "depth 0 via repeat 9"
+        };
+        timeline 10 {
+          occurrence "voice 4294967295 4294967295 repeat 10 from 4 to 12 [4294967295:4294967295 def 8400:8507 #50]" from 0 to 10;
+        }
+      }
+    in let shared96 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 8586:8593 #51]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note f5 1/8 [4294967295:4294967295 def 8606:8613 #51]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note bf4 1/8 [4294967295:4294967295 def 8626:8634 #51]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 8647:8654 #51]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note g4 1/8 [4294967295:4294967295 def 8667:8674 #51]" from 1/2 to 5/8;
+        occurrence "voice 4294967295 4294967295 note f5 1/8 [4294967295:4294967295 def 8687:8694 #51]" from 5/8 to 3/4;
+        occurrence "voice 4294967295 4294967295 note d5 1/8 [4294967295:4294967295 def 8707:8714 #51]" from 3/4 to 7/8;
+        occurrence "voice 4294967295 4294967295 note bf4 1/8 [4294967295:4294967295 def 8727:8735 #51]" from 7/8 to 1;
+      }
+    in let shared97 = overlay {
+        sequence {
+          shared96 @ "depth 0 via repeat 0";
+          shared96 @ "depth 0 via repeat 1";
+          shared96 @ "depth 0 via repeat 2"
+        };
+        timeline 3 {
+          occurrence "voice 4294967295 4294967295 repeat 3 from 2 to 11 [4294967295:4294967295 def 8557:8745 #51]" from 0 to 3;
+        }
+      }
+    in let shared98 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 8823:8830 #52]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note g4 1/4 [4294967295:4294967295 def 8843:8850 #52]" from 1/8 to 3/8;
+        occurrence "voice 4294967295 4294967295 note f5 1/8 [4294967295:4294967295 def 8863:8870 #52]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note d5 1/8 [4294967295:4294967295 def 8883:8890 #52]" from 1/2 to 5/8;
+        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 8903:8911 #52]" from 5/8 to 7/8;
+        occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 8924:8931 #52]" from 7/8 to 1;
+      }
+    in let shared99 = overlay {
+        sequence {
+          shared98 @ "depth 0 via repeat 0";
+          shared98 @ "depth 0 via repeat 1";
+          shared98 @ "depth 0 via repeat 2";
+          shared98 @ "depth 0 via repeat 3";
+          shared98 @ "depth 0 via repeat 4";
+          shared98 @ "depth 0 via repeat 5";
+          shared98 @ "depth 0 via repeat 6";
+          shared98 @ "depth 0 via repeat 7";
+          shared98 @ "depth 0 via repeat 8";
+          shared98 @ "depth 0 via repeat 9";
+          shared98 @ "depth 0 via repeat 10";
+          shared98 @ "depth 0 via repeat 11";
+          shared98 @ "depth 0 via repeat 12"
+        };
+        timeline 13 {
+          occurrence "voice 4294967295 4294967295 repeat 13 from 3 to 13 [4294967295:4294967295 def 8794:8941 #52]" from 0 to 13;
+        }
+      }
+    in let shared100 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note d5 3/4 [4294967295:4294967295 def 9014:9021 #53]" from 0 to 3/4;
+        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 9034:9042 #53]" from 3/4 to 1;
+      }
+    in let shared101 = overlay {
+        sequence {
+          shared100 @ "depth 0 via repeat 0";
+          shared100 @ "depth 0 via repeat 1";
+          shared100 @ "depth 0 via repeat 2";
+          shared100 @ "depth 0 via repeat 3";
+          shared100 @ "depth 0 via repeat 4";
+          shared100 @ "depth 0 via repeat 5";
+          shared100 @ "depth 0 via repeat 6";
+          shared100 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 4 to 10 [4294967295:4294967295 def 8985:9052 #53]" from 0 to 8;
+        }
+      }
+    in let shared102 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note f5 1/4 [4294967295:4294967295 def 9128:9135 #54]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note bf4 1/8 [4294967295:4294967295 def 9148:9156 #54]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 9169:9176 #54]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note g4 1/2 [4294967295:4294967295 def 9189:9196 #54]" from 1/2 to 1;
+      }
+    in let shared103 = overlay {
+        sequence {
+          shared102 @ "depth 0 via repeat 0";
+          shared102 @ "depth 0 via repeat 1";
+          shared102 @ "depth 0 via repeat 2";
+          shared102 @ "depth 0 via repeat 3";
+          shared102 @ "depth 0 via repeat 4";
+          shared102 @ "depth 0 via repeat 5";
+          shared102 @ "depth 0 via repeat 6";
+          shared102 @ "depth 0 via repeat 7"
+        };
+        timeline 8 {
+          occurrence "voice 4294967295 4294967295 repeat 8 from 2 to 9 [4294967295:4294967295 def 9100:9206 #54]" from 0 to 8;
+        }
+      }
+    in let shared104 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note g4 1/16 [4294967295:4294967295 def 9283:9291 #55]" from 0 to 1/16;
+        occurrence "voice 4294967295 4294967295 note f5 1/16 [4294967295:4294967295 def 9304:9312 #55]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note d5 1/8 [4294967295:4294967295 def 9325:9332 #55]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 9345:9353 #55]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note g5 1/2 [4294967295:4294967295 def 9366:9373 #55]" from 1/2 to 1;
+      }
+    in let shared105 = overlay {
+        sequence {
+          shared104 @ "depth 0 via repeat 0";
+          shared104 @ "depth 0 via repeat 1";
+          shared104 @ "depth 0 via repeat 2";
+          shared104 @ "depth 0 via repeat 3"
+        };
+        timeline 4 {
+          occurrence "voice 4294967295 4294967295 repeat 4 from 3 to 11 [4294967295:4294967295 def 9254:9383 #55]" from 0 to 4;
+        }
+      }
+    in let shared106 = timeline 1 {
+        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 9462:9470 #56]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 9483:9490 #56]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note f5 1/4 [4294967295:4294967295 def 9503:9510 #56]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 9523:9531 #56]" from 3/4 to 1;
+      }
+    in let shared107 = overlay {
+        sequence {
+          shared106 @ "depth 0 via repeat 0";
+          shared106 @ "depth 0 via repeat 1";
+          shared106 @ "depth 0 via repeat 2";
+          shared106 @ "depth 0 via repeat 3";
+          shared106 @ "depth 0 via repeat 4";
+          shared106 @ "depth 0 via repeat 5";
+          shared106 @ "depth 0 via repeat 6";
+          shared106 @ "depth 0 via repeat 7";
+          shared106 @ "depth 0 via repeat 8";
+          shared106 @ "depth 0 via repeat 9"
+        };
+        timeline 10 {
+          occurrence "voice 4294967295 4294967295 repeat 10 from 4 to 13 [4294967295:4294967295 def 9433:9541 #56]" from 0 to 10;
+        }
+      }
+    in overlay {
+      shared1 @ "depth 0 origin 10063:10080 scope voice 0 0 via motif 10063:10080";
+      sequence {
+        shared3 @ "depth 0 origin 10169:10184 scope voice 1 0 via motif 10169:10184";
+        shared5 @ "depth 0 origin 10201:10216 scope voice 1 0 via motif 10201:10216";
+        shared7 @ "depth 0 origin 10233:10250 scope voice 1 0 via motif 10233:10250";
+        shared9 @ "depth 0 origin 10267:10283 scope voice 1 0 via motif 10267:10283";
+        shared11 @ "depth 0 origin 10300:10316 scope voice 1 0 via motif 10300:10316";
+        shared13 @ "depth 0 origin 10333:10348 scope voice 1 0 via motif 10333:10348";
+        shared15 @ "depth 0 origin 10365:10382 scope voice 1 0 via motif 10365:10382";
+        shared17 @ "depth 0 origin 10399:10416 scope voice 1 0 via motif 10399:10416";
+        shared19 @ "depth 0 origin 10433:10449 scope voice 1 0 via motif 10433:10449";
+        shared21 @ "depth 0 origin 10466:10481 scope voice 1 0 via motif 10466:10481";
+        shared23 @ "depth 0 origin 10498:10516 scope voice 1 0 via motif 10498:10516";
+        shared25 @ "depth 0 origin 10533:10551 scope voice 1 0 via motif 10533:10551";
+        shared27 @ "depth 0 origin 10568:10588 scope voice 1 0 via motif 10568:10588";
+        shared29 @ "depth 0 origin 10605:10625 scope voice 1 0 via motif 10605:10625";
+        shared31 @ "depth 0 origin 10642:10661 scope voice 1 0 via motif 10642:10661";
+        shared33 @ "depth 0 origin 10678:10697 scope voice 1 0 via motif 10678:10697";
+        shared35 @ "depth 0 origin 10714:10735 scope voice 1 0 via motif 10714:10735";
+        shared37 @ "depth 0 origin 10752:10772 scope voice 1 0 via motif 10752:10772";
+        shared39 @ "depth 0 origin 10789:10809 scope voice 1 0 via motif 10789:10809";
+        shared41 @ "depth 0 origin 10826:10844 scope voice 1 0 via motif 10826:10844";
+        shared43 @ "depth 0 origin 10861:10883 scope voice 1 0 via motif 10861:10883";
+        shared45 @ "depth 0 origin 10900:10922 scope voice 1 0 via motif 10900:10922";
+        shared47 @ "depth 0 origin 10939:10963 scope voice 1 0 via motif 10939:10963";
+        shared49 @ "depth 0 origin 10980:11003 scope voice 1 0 via motif 10980:11003";
+        shared51 @ "depth 0 origin 11020:11043 scope voice 1 0 via motif 11020:11043";
+        shared53 @ "depth 0 origin 11060:11082 scope voice 1 0 via motif 11060:11082";
+        shared55 @ "depth 0 origin 11099:11123 scope voice 1 0 via motif 11099:11123";
+        shared57 @ "depth 0 origin 11140:11164 scope voice 1 0 via motif 11140:11164";
+        shared59 @ "depth 0 origin 11181:11204 scope voice 1 0 via motif 11181:11204";
+        shared61 @ "depth 0 origin 11221:11239 scope voice 1 0 via motif 11221:11239";
+        shared63 @ "depth 0 origin 11256:11278 scope voice 1 0 via motif 11256:11278";
+        shared65 @ "depth 0 origin 11295:11317 scope voice 1 0 via motif 11295:11317";
+        shared67 @ "depth 0 origin 11334:11358 scope voice 1 0 via motif 11334:11358";
+        shared69 @ "depth 0 origin 11375:11398 scope voice 1 0 via motif 11375:11398";
+        shared71 @ "depth 0 origin 11415:11438 scope voice 1 0 via motif 11415:11438";
+        shared73 @ "depth 0 origin 11455:11477 scope voice 1 0 via motif 11455:11477";
+        shared75 @ "depth 0 origin 11494:11518 scope voice 1 0 via motif 11494:11518";
+        shared77 @ "depth 0 origin 11535:11559 scope voice 1 0 via motif 11535:11559";
+        shared79 @ "depth 0 origin 11576:11599 scope voice 1 0 via motif 11576:11599";
+        shared81 @ "depth 0 origin 11616:11633 scope voice 1 0 via motif 11616:11633";
+        shared83 @ "depth 0 origin 11650:11671 scope voice 1 0 via motif 11650:11671";
+        shared85 @ "depth 0 origin 11688:11709 scope voice 1 0 via motif 11688:11709";
+        shared87 @ "depth 0 origin 11726:11749 scope voice 1 0 via motif 11726:11749";
+        shared89 @ "depth 0 origin 11766:11788 scope voice 1 0 via motif 11766:11788";
+        shared91 @ "depth 0 origin 11805:11827 scope voice 1 0 via motif 11805:11827";
+        shared93 @ "depth 0 origin 11844:11865 scope voice 1 0 via motif 11844:11865";
+        shared95 @ "depth 0 origin 11882:11905 scope voice 1 0 via motif 11882:11905";
+        shared97 @ "depth 0 origin 11922:11945 scope voice 1 0 via motif 11922:11945";
+        shared99 @ "depth 0 origin 11962:11984 scope voice 1 0 via motif 11962:11984";
+        shared101 @ "depth 0 origin 12001:12018 scope voice 1 0 via motif 12001:12018";
+        shared103 @ "depth 0 origin 12035:12056 scope voice 1 0 via motif 12035:12056";
+        shared105 @ "depth 0 origin 12073:12094 scope voice 1 0 via motif 12073:12094";
+        shared107 @ "depth 0 origin 12111:12134 scope voice 1 0 via motif 12111:12134"
+      };
+      timeline 404 {
+        occurrence "piece meter 4/4 [1243:1258]" from 0 to 404;
+        occurrence "piece tempo 1/4=120 [1221:1243]" from 0 to 404;
+        occurrence "piece key c major [1258:1275]" from 0 to 404;
+      }
+    };
+}

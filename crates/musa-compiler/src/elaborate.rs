@@ -1153,13 +1153,12 @@ impl Share {
     }
 }
 
-/// A reference's mark: `<depth>|<origin-span>|<scope>|<steps>`, with `-` for
-/// the two that a given reference does not rewrite.
+/// A reference's mark, in `factext`'s word stream:
+/// `depth N ("origin" span)? ("scope" scope)? ("via" step+)?`.
 ///
-/// The steps come last so they are escaped once rather than twice: `depth`,
-/// the span and the scope contain no `|`, so the reader splits three times and
-/// takes the rest verbatim. Marks land in the interchange file, and a reader
-/// counting backslashes is a reader who has stopped reading the music.
+/// Marks land in the interchange file beside the labels, and they are written
+/// by the same writer for that reason: one tokenizer, one escape rule, and a
+/// mark that can be read aloud like the facts around it.
 ///
 /// The mark is what makes sharing and provenance compatible
 /// (`10-term-calculus.md` T6): the body is stated once, and each *use* says
@@ -1170,10 +1169,12 @@ impl Share {
 /// the whole path leading to the call at depth zero, because its body was
 /// elaborated with no path at all so that two call sites could share it.
 fn mark_of(depth: usize, steps: &[ExpansionStep], origin: Option<SourceSpan>, scope: Option<Scope>) -> String {
-    let origin = origin.map_or_else(|| "-".to_owned(), crate::factext::span_text);
-    let scope = scope.map_or_else(|| "-".to_owned(), crate::factext::scope_text);
-    let steps: Vec<_> = steps.iter().map(crate::factext::step_text).collect();
-    format!("{depth}|{origin}|{scope}|{}", crate::factext::join(&steps, ','))
+    crate::factext::reference_mark(&crate::factext::ReferenceMark {
+        depth,
+        steps: steps.to_vec(),
+        origin,
+        scope,
+    })
 }
 
 /// Apply a mark to a freshly instantiated body (E-Mark).
@@ -1182,17 +1183,15 @@ fn mark_of(depth: usize, steps: &[ExpansionStep], origin: Option<SourceSpan>, sc
 /// the count and the order are the instantiated timeline's own and are not
 /// touched here.
 pub(crate) fn instantiate(mark: &str, instance: &mut Timeline<ScoreFact>) {
-    let fields: Vec<_> = mark.splitn(4, '|').collect();
-    let [depth, origin, scope, steps] = fields.as_slice() else {
+    let Some(crate::factext::ReferenceMark {
+        depth,
+        steps,
+        origin,
+        scope,
+    }) = crate::factext::read_reference_mark(mark)
+    else {
         return;
     };
-    let depth: usize = depth.parse().unwrap_or_default();
-    let steps: Vec<_> = crate::factext::split_escaped(steps, ',')
-        .iter()
-        .filter_map(|step| crate::factext::read_step(step))
-        .collect();
-    let origin = crate::factext::read_span(origin);
-    let scope = crate::factext::read_scope(scope);
     for payload in instance.payloads_mut() {
         let path = &mut payload.origin.expansion_path;
         let at = depth.min(path.len());
