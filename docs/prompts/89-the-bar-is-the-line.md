@@ -1,7 +1,7 @@
 ---
 id: 89
 slug: the-bar-is-the-line
-status: pending
+status: in-progress
 depends_on: [88, 57, 62]
 phase: 2
 ---
@@ -45,7 +45,7 @@ worth asserting rather than assuming:
 - `content_end()`, `lint::copied_bars` and `elaborate_bar`'s bar-length check all keep working unchanged, which means
   `|` inherits the assertion the brace was there for.
 - `voice_items` gains `Pipe` to its exit condition **and** its dispatch, exit checked first, so `| a | b` closes one
-  bar before opening the next and never trips `nested_bar`.
+  bar before opening the next and never trips `nested_bar`. What else closes it is below.
 
 `bulgarian.musa` has no bars today and so has never been length-checked. Giving it barlines subjects it to
 `check_bar_length` for the first time. It passes — eight bars of 7/8 and seven of 4/4 both come to 7 — but it is a
@@ -65,8 +65,28 @@ exactly that shape inside a motif (`root 1/8 tenuto; d5 1/8;`). The `;` is what 
 > `Rational` or `Integer`.
 
 One token of lookahead on a kind, using the `nth_significant` helper that already exists for the same class of problem
-in the studio grammar. `Identifier Identifier` — a pitch parameter followed by a duration parameter — stays genuinely
-ambiguous and gets a diagnostic saying so.
+in the studio grammar. `Identifier Identifier` needs no rule: a note's duration is read *before* the articulations
+are, and the duration is mandatory, so the second word is the duration and there is nothing left to guess at.
+
+### Where a `|` bar ends
+
+A brace said where a bar ended. A pipe has to be told, and "at the next pipe" is not enough: `ending 1 { … }` written
+under a `|` would otherwise be swallowed by the bar above it, and the bar would be an ending too long.
+
+> **A `|` bar ends at the next `|`, at the end of its block, or before a statement that is itself at least a bar
+> long** — `bar`, `repeat`, `ending`, `senza`, `mobile`, `improvise`, `transpose`, `retrograde`, `invert`, `stretch`,
+> `phrase`.
+
+Stated as a whitelist of what *continues* a bar — the events, and the things written among them: `use`, `dynamic`,
+`clef`, `meter`, `key`, `tempo`, `mark`, `crescendo`, `diminuendo`, `tuplet`, `slur`, `grace`. A statement kind added
+next year therefore ends the bar, which is wrong where the composer can see it, rather than lengthening the bar,
+which is wrong where only the length check notices.
+
+A brace resets it: a `tuplet` inside a `|` bar reads its own block, so `block()` clears the flag and restores it.
+
+One consequence, and it is the right one: a voice that plays whole bars by name — `bar refrain { … }` followed by
+`use refrain;` — keeps the braced form throughout, because `use` continues a bar and a named bar ends one. That is
+`examples/refrain.musa`, which is the file about named bars, and it stays as it is written.
 
 ### Recovery gets better, not worse
 
@@ -127,6 +147,8 @@ bulgarian's explanatory comment is deleted in the same commit, because the group
 - `crates/musa-language/src/{ast,highlight,keywords}.rs`: `ChordKw` removed from the exhaustive matches; the marks
   mapped in `articulation_names`.
 - `crates/musa-language/src/edits.rs`: the six rows above.
+- `crates/musa-language/src/formatter.rs`: `>` and `^` close up to the note the way `/` and `.` do, and an event ends
+  its own line — nothing inside it does that now the `;` is gone. Neither is bar layout; that is still prompt 90.
 - `crates/musa-compiler/src/marks.rs`: `MarkDef::shorthand`.
 - `editors/tree-sitter-musa/grammar.js` + regenerated `src/parser.c`, and `queries/highlights.scm`.
 - Every `examples/**/*.musa`, converted. `examples/broken/missing-semicolon.musa` becomes `extra-semicolon.musa`;
