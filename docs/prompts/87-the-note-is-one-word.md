@@ -115,7 +115,10 @@ composer typed, and `score.rs`'s doc comment saying otherwise is amended in this
 - `crates/musa-language/src/formatter.rs`: `Slash` tight both sides; `Dot` leaves `closes_right`; `ParamPath` joins
   `Position | ChordSymbol` in the tight-node list, which is where the `Dot` rule actually belonged.
 - `crates/musa-compiler/src/resolve.rs`: `parse_duration` reads the node, and understands `/N` and dots.
-- `crates/musa-language/src/edits.rs`: `set_duration`, and a `spell_duration` helper both it and prompt 89 use.
+- `crates/musa-language/src/edits.rs`: `set_duration` replaces the `Duration` node's value range — which stops
+  before `to`, so rewriting a note's value leaves the performer's bound alone. The `spell_duration` helper this
+  prompt once listed here arrives in prompt 89 instead, with the `Statement::text()` rewrite that is its only caller:
+  a helper landed a commit before anything calls it is a public item with no caller, which this repo does not keep.
 - `editors/tree-sitter-musa/grammar.js` + regenerated `src/parser.c`, and `queries/highlights.scm`.
 - `apps/musa-desktop/ui/src/lib/session/generated/spellings.json`, regenerated.
 
@@ -129,9 +132,13 @@ for f in examples/*.musa examples/album/pieces/*.musa; do cargo run -p musa-cli 
 ```
 
 New laws: every maximal-munch claim above, one case each; `c4/4` and `c4 1/4` elaborate to the same fact; `/4.` is
-3/8 and `/4..` is 7/16; `c4 3/8.` is a diagnostic, not 9/16. The corpus is unchanged, so every existing golden,
-snapshot and fixture must pass untouched — that is this prompt's real check, and if one moves, something silently
-changed meaning.
+3/8 and `/4..` is 7/16; `c4 3/8.` is a diagnostic, not 9/16; and a bar of 7/8 beams 2+2+3.
+
+The corpus is unchanged, so every kernel golden, compiler and render snapshot, lexed fixture and tree-sitter fixture
+must pass untouched — that is this prompt's real check, and if one moves, something silently changed meaning. The two
+exceptions are named in advance because they are the change itself: `parser__invention_parses_cleanly` and
+`parser__glass_mountain_parses_cleanly` are pictures of the parse tree, and this prompt adds a node to it. Their diff
+must be nothing but a `Duration` wrapper appearing around durations that are otherwise byte-identical.
 
 ## Stop
 
