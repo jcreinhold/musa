@@ -183,6 +183,12 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 84 | keyword-documentation | 3 | Every keyword's plain-English doc, exhaustive by construction, over hover |
 | 84 | the-project-is-the-unit | 3 | `Project` above `ProjectSession`: a running order, a piece each, material that opens |
 | 85 | the-contents-page | 2 | The volume's front matter on the leaf, and the running order in the margin |
+| 86 | the-kernel-file-reads | 3 | The interchange payload as named, quoted words; the corpus becomes `.musa.kernel` |
+| 87 | the-note-is-one-word | 2 | `c4/4` and the augmentation dot; the `Duration` node the shorthand needs |
+| 88 | sharps-and-flats | 2 | `f#3` and `eb4`, the spelling every DAW and chord chart uses |
+| 89 | the-bar-is-the-line | 2 | `\|` for the anonymous bar, events without `;`, `[c3 g3]/2`, `>` and `^` |
+| 90 | the-formatter-draws-the-bar | 2 | One bar per line, beat groups in the whitespace — a beam, written in text |
+| 91 | bars-drawn-to-scale | 2 | One optional setting: horizontal position proportional to time |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
@@ -306,6 +312,26 @@ would model a freedom the format lacks while burying the running order. A bound 
 needed, a contents page and an editorial note at the foot for the shared material, and both say things a file browser
 cannot. Neither prompt changes anything about a loose `.musa` file: it is a project of one, and with one entry no
 contents appears anywhere.
+
+**86–91 are about legibility, and they are one argument in two places.** A notation language has two texts a person
+reads — the source and the interchange file — and both had been optimised for the machine that parses them. Measured
+across `examples/`, 35% of non-blank lines are a single note averaging 7.5 characters, of which 54% is the duration;
+`bulgarian.musa` spends 96 lines on fifteen bars and carries a comment apologising in prose for the grouping its
+layout hides. The diagnosis is that musa took `**kern`'s one-event-per-line shape, which Humdrum's own documentation
+says is "designed to facilitate analytic applications rather than music printing" — an analysis database's layout for
+a composition language. **86** takes the interchange file, and goes first because 88 and 89 each regenerate all 24
+goldens and a diff is only reviewable against a format that can be read; it also settles the extension on the rule
+`docs/kernel/01-grammar.md` already states about unexplained shorthand. **87** makes a duration cost one character, which is the
+whole constraint: musa keeps scientific pitch, so the octave digit is spoken for and a separator is the only way out —
+every other system freed that digit by making octave non-numeric. **88** spells accidentals as musicians do. **89** is
+the substance: a `|` where notation uses a separator, no `;` where the next pitch already says the note ended, and the
+two marks with exact ASCII analogues. **90** then spends what 89 earned, one bar per line with the beat groups in the
+whitespace — a beam, written in text — and **91** offers the one thing musa genuinely cannot decide for a project,
+whether that line is drawn to scale.
+
+Read 87 and 90 together as the pair: 87 argues that notation gets away with stating every duration because a glyph is
+*free*, so text must make it cheap; 90 argues that notation groups beats with a beam, so text must group them with
+space. Neither prompt invents a device. Both take one notation already has and ask what it costs in characters.
 
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
 ("Verovio score preview", "play, stop, seek, loop") but which this sequence deliberately runs after the CLI-provable
