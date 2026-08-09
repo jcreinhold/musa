@@ -829,21 +829,119 @@ fn articulation_names(node: &SyntaxNode) -> Vec<String> {
         .collect()
 }
 
+/// `1/2`, `3/8`, `1`, `/4`, `/4.`, or a duration parameter's name — how long
+/// one note, rest or chord lasts.
+pub struct Duration(SyntaxNode);
+wrapper!(Duration, SyntaxKind::Duration);
+
+impl Duration {
+    /// The duration inside a note, rest, chord or improvised frame.
+    pub fn of(statement: &SyntaxNode) -> Option<Self> {
+        child(statement)
+    }
+
+    /// The notated duration as a fraction of a whole note, with the short
+    /// form spelled out: `/4` reads `1/4` and `/4.` reads `3/8`.
+    ///
+    /// One duration has one spelling on purpose. `c4/4.` and `c4 3/8` are the
+    /// same note, and a reader that could tell them apart would be a reader
+    /// that could disagree with itself about how long the note lasts.
+    ///
+    /// `None` when the duration is a parameter reference, which only the
+    /// caller holding the binding can resolve.
+    pub fn value(&self) -> Option<String> {
+        spell(&mut self.parts())
+    }
+
+    /// The name of the duration parameter this stands for, when it is one
+    /// (`root 1/8` binds `root`; `use ostinato(long)` binds a duration).
+    ///
+    /// A statement's pitch reference is a bare identifier too, so the name is
+    /// read from inside the duration and nowhere else.
+    pub fn parameter(&self) -> Option<String> {
+        self.parts()
+            .next()
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .map(|token| token.text().to_string())
+    }
+
+    /// The longest this may be held, when the statement gives the performer a
+    /// range (`g4 1/4 to 2/1;`), spelled the same way.
+    pub fn held_to(&self) -> Option<String> {
+        let mut after = self
+            .parts()
+            .skip_while(|token| token.kind() != SyntaxKind::ToKw)
+            .skip(1);
+        spell(&mut after)
+    }
+
+    fn parts(&self) -> impl Iterator<Item = SyntaxToken> + '_ {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| !token.kind().is_trivia())
+    }
+}
+
+/// Read one duration value off the front of a token run.
+fn spell(tokens: &mut impl Iterator<Item = SyntaxToken>) -> Option<String> {
+    let first = tokens.next()?;
+    if matches!(first.kind(), SyntaxKind::Rational | SyntaxKind::Integer) {
+        return Some(first.text().to_string());
+    }
+    if first.kind() != SyntaxKind::Slash {
+        // An identifier: a duration parameter, resolved somewhere that knows
+        // what it is bound to.
+        return None;
+    }
+    let value = tokens.next().filter(|token| token.kind() == SyntaxKind::Integer)?;
+    let dots = tokens.take_while(|token| token.kind() == SyntaxKind::Dot).count();
+    dotted(value.text().parse().ok()?, dots)
+}
+
+/// `/N` with `d` augmentation dots, as a fraction: `(1/N)·(2 − 2⁻ᵈ)`.
+///
+/// Eight dots is the ceiling because the ninth would be a note held for
+/// 511/512 of the value of one that is already unplayable; past it the
+/// duration is not a duration and the caller says so.
+fn dotted(value: i64, dots: usize) -> Option<String> {
+    if value <= 0 || dots > 8 {
+        return None;
+    }
+    let scale = 1_i64.checked_shl(u32::try_from(dots).ok()?)?;
+    let numerator = scale.checked_mul(2)?.checked_sub(1)?;
+    let denominator = value.checked_mul(scale)?;
+    let divisor = gcd(numerator, denominator);
+    let numerator = numerator.checked_div(divisor)?;
+    let denominator = denominator.checked_div(divisor)?;
+    // A whole note is written `1`, not `1/1`: the long form spells it that
+    // way, and the two forms must not disagree about one duration.
+    Some(if denominator == 1 {
+        numerator.to_string()
+    } else {
+        format!("{numerator}/{denominator}")
+    })
+}
+
+fn gcd(a: i64, b: i64) -> i64 {
+    let (mut a, mut b) = (a.abs(), b.abs());
+    while b != 0 {
+        let rest = a.checked_rem(b).unwrap_or(0);
+        a = b;
+        b = rest;
+    }
+    a.max(1)
+}
+
 /// The duration written after `to`, when the statement gives the performer a
 /// range (`g4 1/4 to 2/1;`).
-///
-/// Read as "the token after `to`" rather than "the second duration token",
-/// because a note's duration may be a parameter reference and a parameter
-/// reference is an identifier — counting tokens by kind would mistake an
-/// articulation for a duration.
 fn held_to(node: &SyntaxNode) -> Option<String> {
-    let mut tokens = node
-        .children_with_tokens()
-        .filter_map(SyntaxElement::into_token)
-        .filter(|token| !token.kind().is_trivia())
-        .skip_while(|token| token.kind() != SyntaxKind::ToKw);
-    drop(tokens.next());
-    tokens.next().map(|token| token.text().to_string())
+    Duration::of(node).and_then(|duration| duration.held_to())
+}
+
+/// How long a note, rest, chord or improvised frame lasts, as written.
+fn duration_text(node: &SyntaxNode) -> Option<String> {
+    Duration::of(node).and_then(|duration| duration.value())
 }
 
 /// Whether a statement carries the postfix tie mark.
@@ -863,7 +961,7 @@ impl NoteStmt {
 
     /// The duration text (`1/2`, `3/8`, `1`).
     pub fn duration(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Rational).or_else(|| token_text(&self.0, SyntaxKind::Integer))
+        duration_text(&self.0)
     }
 
     /// The articulation names written after the duration, in source order.
@@ -890,7 +988,7 @@ wrapper!(RestStmt, SyntaxKind::RestStmt);
 impl RestStmt {
     /// The duration text.
     pub fn duration(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Rational).or_else(|| token_text(&self.0, SyntaxKind::Integer))
+        duration_text(&self.0)
     }
 
     /// The longest this rest may be held.
@@ -946,7 +1044,7 @@ wrapper!(ImproviseStmt, SyntaxKind::ImproviseStmt);
 impl ImproviseStmt {
     /// How long the frame lasts.
     pub fn duration(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Rational).or_else(|| token_text(&self.0, SyntaxKind::Integer))
+        duration_text(&self.0)
     }
 
     /// The changes to play over, if any were written.

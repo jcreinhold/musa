@@ -1543,14 +1543,20 @@ pub(crate) fn parse_ratio(text: &str) -> Option<Ratio<i64>> {
     Some(Ratio::new(numerator.parse().ok()?, denominator.parse().ok()?))
 }
 
-/// Parse a duration token (`1/2`, `3/8`, `1`) into value + spelling.
+/// Parse a statement's duration (`1/2`, `3/8`, `1`, `/4`, `/4.`) into value +
+/// spelling.
+///
+/// It reads the statement's `Duration` node rather than its first numeral,
+/// which is what makes the short form safe: the `4` in `c4/4` is a numeral
+/// like any other, and a search for one would find the octave and call every
+/// quarter a whole note without ever failing.
+///
+/// The short form is spelled out — `/4.` records `3/8` — because that spelling
+/// reaches diagnostics, the desktop inspector and every kernel golden, and one
+/// duration must not arrive there under two names.
 pub(crate) fn parse_duration(node: &SyntaxNode) -> Option<NotatedDuration> {
-    let (kind, text) = node
-        .children_with_tokens()
-        .filter_map(SyntaxElement::into_token)
-        .find(|token| token.kind() == SyntaxKind::Rational || token.kind() == SyntaxKind::Integer)
-        .map(|token| (token.kind(), token.text().to_string()))?;
-    let value = if kind == SyntaxKind::Rational {
+    let text = musa_language::ast::Duration::of(node)?.value()?;
+    let value = if text.contains('/') {
         parse_ratio(&text)?
     } else {
         Ratio::from_integer(text.parse().ok()?)
@@ -1610,7 +1616,7 @@ pub(crate) fn resolve_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &
     if let Some(duration) = parse_duration(node) {
         return Some(duration);
     }
-    if let Some(text) = token_text(node, SyntaxKind::Identifier)
+    if let Some(text) = musa_language::ast::Duration::of(node).and_then(|duration| duration.parameter())
         && let Some(BoundValue::Duration(duration)) = cx.params.get(&text)
     {
         return Some(duration.clone());

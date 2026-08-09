@@ -72,32 +72,37 @@ Root@0..2195
         NoteStmt@226..244
           Whitespace@226..235 "\n        "
           Identifier@235..239 "root"
-          Whitespace@239..240 " "
-          Rational@240..243 "1/2"
+          Duration@239..243
+            Whitespace@239..240 " "
+            Rational@240..243 "1/2"
           Semicolon@243..244 ";"
         RestStmt@244..262
           Whitespace@244..253 "\n        "
           RestKw@253..257 "rest"
-          Whitespace@257..258 " "
-          Rational@258..261 "1/4"
+          Duration@257..261
+            Whitespace@257..258 " "
+            Rational@258..261 "1/4"
           Semicolon@261..262 ";"
         NoteStmt@262..278
           Whitespace@262..271 "\n        "
           PitchLiteral@271..273 "c5"
-          Whitespace@273..274 " "
-          Rational@274..277 "1/2"
+          Duration@273..277
+            Whitespace@273..274 " "
+            Rational@274..277 "1/2"
           Semicolon@277..278 ";"
         NoteStmt@278..294
           Whitespace@278..287 "\n        "
           PitchLiteral@287..289 "b4"
-          Whitespace@289..290 " "
-          Rational@290..293 "1/4"
+          Duration@289..293
+            Whitespace@289..290 " "
+            Rational@290..293 "1/4"
           Semicolon@293..294 ";"
         NoteStmt@294..310
           Whitespace@294..303 "\n        "
           PitchLiteral@303..305 "a4"
-          Whitespace@305..306 " "
-          Rational@306..309 "1/2"
+          Duration@305..309
+            Whitespace@305..306 " "
+            Rational@306..309 "1/2"
           Semicolon@309..310 ";"
         Whitespace@310..315 "\n    "
         RBrace@315..316 "}"
@@ -175,26 +180,30 @@ Root@0..2195
           NoteStmt@591..613
             Whitespace@591..608 "\n                "
             PitchLiteral@608..610 "c5"
-            Whitespace@610..611 " "
-            Integer@611..612 "1"
+            Duration@610..612
+              Whitespace@610..611 " "
+              Integer@611..612 "1"
             Semicolon@612..613 ";"
           NoteStmt@613..635
             Whitespace@613..630 "\n                "
             PitchLiteral@630..632 "c5"
-            Whitespace@632..633 " "
-            Integer@633..634 "1"
+            Duration@632..634
+              Whitespace@632..633 " "
+              Integer@633..634 "1"
             Semicolon@634..635 ";"
           NoteStmt@635..657
             Whitespace@635..652 "\n                "
             PitchLiteral@652..654 "a4"
-            Whitespace@654..655 " "
-            Integer@655..656 "1"
+            Duration@654..656
+              Whitespace@654..655 " "
+              Integer@655..656 "1"
             Semicolon@656..657 ";"
           NoteStmt@657..680
             Whitespace@657..674 "\n                "
             PitchLiteral@674..677 "gs4"
-            Whitespace@677..678 " "
-            Integer@678..679 "1"
+            Duration@677..679
+              Whitespace@677..678 " "
+              Integer@678..679 "1"
             Semicolon@679..680 ";"
           Whitespace@680..693 "\n            "
           RBrace@693..694 "}"
@@ -222,26 +231,30 @@ Root@0..2195
               NoteStmt@940..966
                 Whitespace@940..961 "\n                    "
                 PitchLiteral@961..963 "a2"
-                Whitespace@963..964 " "
-                Integer@964..965 "1"
+                Duration@963..965
+                  Whitespace@963..964 " "
+                  Integer@964..965 "1"
                 Semicolon@965..966 ";"
               NoteStmt@966..992
                 Whitespace@966..987 "\n                    "
                 PitchLiteral@987..989 "f2"
-                Whitespace@989..990 " "
-                Integer@990..991 "1"
+                Duration@989..991
+                  Whitespace@989..990 " "
+                  Integer@990..991 "1"
                 Semicolon@991..992 ";"
               NoteStmt@992..1018
                 Whitespace@992..1013 "\n                    "
                 PitchLiteral@1013..1015 "d2"
-                Whitespace@1015..1016 " "
-                Integer@1016..1017 "1"
+                Duration@1015..1017
+                  Whitespace@1015..1016 " "
+                  Integer@1016..1017 "1"
                 Semicolon@1017..1018 ";"
               NoteStmt@1018..1044
                 Whitespace@1018..1039 "\n                    "
                 PitchLiteral@1039..1041 "e2"
-                Whitespace@1041..1042 " "
-                Integer@1042..1043 "1"
+                Duration@1041..1043
+                  Whitespace@1041..1042 " "
+                  Integer@1042..1043 "1"
                 Semicolon@1043..1044 ";"
               Whitespace@1044..1061 "\n                "
               RBrace@1061..1062 "}"

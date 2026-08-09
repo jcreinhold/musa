@@ -347,12 +347,19 @@ module.exports = grammar({
     // a bare identifier here is an articulation, not a reference.
     articulation_list: ($) => repeat1($.identifier),
 
-    // Parser::duration — `1/4`, `1`, or a parameter reference; `to` bounds
-    // how long the written value may be held (roadmap §2).
+    // Parser::duration — `1/4`, `1`, `/4`, `/4.`, or a parameter reference;
+    // `to` bounds how long the written value may be held (roadmap §2).
+    // Augmentation dots follow the short form only: `3/8.` is refused because
+    // the long form already writes 9/16.
     duration: ($) =>
-      seq(
-        choice($.rational, $.integer, $.identifier),
-        optional(seq('to', choice($.rational, $.integer, $.identifier))),
+      seq($._duration_value, optional(seq('to', $._duration_value))),
+
+    _duration_value: ($) =>
+      choice(
+        seq('/', $.integer, repeat('.')),
+        $.rational,
+        $.integer,
+        $.identifier,
       ),
 
     rest_statement: ($) => seq('rest', $.duration, ';'),

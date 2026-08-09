@@ -110,6 +110,11 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::Minus => "-",
         SyntaxKind::Tilde => "~",
         SyntaxKind::Dot => ".",
+        SyntaxKind::Slash => "/",
+        SyntaxKind::Pipe => "|",
+        SyntaxKind::Greater => ">",
+        SyntaxKind::Caret => "^",
+        SyntaxKind::Hash => "#",
         SyntaxKind::PieceKw => "piece",
         SyntaxKind::TempoKw => "tempo",
         SyntaxKind::MeterKw => "meter",
@@ -214,6 +219,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::LibraryDecl
         | SyntaxKind::ImportStmt
         | SyntaxKind::HairpinStmt
+        | SyntaxKind::Duration
         | SyntaxKind::ArticulationList
         | SyntaxKind::PerformanceDecl
         | SyntaxKind::ProfileDecl

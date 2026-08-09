@@ -1369,14 +1369,27 @@ fn plan_staff(
     })
 }
 
-/// The beat unit for beaming: compound meters (`6/8`, `9/8`, `12/8`) beam in
-/// groups of three eighths; simple meters beam per notated beat.
-fn beam_unit(meter: Meter) -> Ratio<i64> {
-    if meter.denominator() == 8 && meter.numerator().is_multiple_of(3) && meter.numerator() > 3 {
-        Ratio::new(3, 8)
-    } else {
-        Ratio::new(1, i64::from(meter.denominator()))
+/// Which beat group an onset falls in, and where that group ends.
+///
+/// The grouping itself comes from `beat_groups`, at the bottom of the graph,
+/// so a bar of 7/8 beams 2+2+3 — the way it is counted — and beams it the same
+/// way the formatter spaces it. A single beat *unit* cannot say that: the
+/// groups of an irregular meter are not all the same length.
+///
+/// `None` for an onset past the end of the bar, which has no group.
+fn beat_group_at(meter: Meter, onset: Ratio<i64>) -> Option<(usize, Ratio<i64>)> {
+    let unit = Ratio::new(1, i64::from(meter.denominator()));
+    let mut end = Ratio::from_integer(0);
+    for (index, group) in musa_compiler::beat_groups(meter.numerator(), meter.denominator())
+        .into_iter()
+        .enumerate()
+    {
+        end += unit * Ratio::from_integer(i64::from(group));
+        if onset < end {
+            return Some((index, end));
+        }
     }
+    None
 }
 
 /// Notate one voice's events inside one measure.
@@ -1579,7 +1592,6 @@ fn kind_of(event: &ScoreEvent) -> NotatedKind {
 
 /// Beam consecutive eighth-and-shorter items that stay inside one beat.
 fn assign_beams(items: &mut [NotatedItem], meter: Meter, measure_len: Ratio<i64>) {
-    let unit = beam_unit(meter);
     let eighth = Ratio::new(1, 8);
     for item in items.iter_mut() {
         // Whether a symbol beams is a question about the symbol: a triplet
@@ -1599,11 +1611,11 @@ fn assign_beams(items: &mut [NotatedItem], meter: Meter, measure_len: Ratio<i64>
         if item_end > measure_len {
             continue;
         }
-        let beat = onset / unit;
-        let beat_index = beat.numer() / beat.denom();
-        let beat_end = Ratio::from_integer(beat_index.saturating_add(1)) * unit;
-        if item_end <= beat_end {
-            item.beam = Some(BeamGroup(u32::try_from(beat_index).unwrap_or(u32::MAX)));
+        let Some((group, group_end)) = beat_group_at(meter, onset) else {
+            continue;
+        };
+        if item_end <= group_end {
+            item.beam = Some(BeamGroup(u32::try_from(group).unwrap_or(u32::MAX)));
         }
     }
 }

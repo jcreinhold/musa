@@ -51,6 +51,30 @@ fn messy_source_is_canonicalized() {
     insta::assert_snapshot!(formatted);
 }
 
+/// A short-form duration is part of the note's word, and the formatter leaves
+/// both spellings exactly as the composer wrote them: `format` rewrites
+/// whitespace, so it cannot prefer one over the other.
+#[test]
+fn both_spellings_of_a_duration_survive_formatting() {
+    let source = "piece \"D\" {\n    score {\n        part p {\n            voice v {\n                c5/4;\n                d5/4.;\n                e5/4..;\n                f5 1/4;\n                rest/8;\n                g5/4 to 1;\n            }\n        }\n    }\n}\n";
+    let formatted = fmt(source);
+    assert_eq!(formatted, source, "the shapes are already canonical");
+    assert_eq!(fmt(&formatted), formatted, "idempotence");
+    assert_semantics_preserved(source, &formatted);
+}
+
+/// Spacing is not lost around a short duration when the source has too much
+/// of it, and the dot never swallows the note after it.
+#[test]
+fn a_short_duration_closes_up_to_its_note() {
+    let source = "piece \"D\" { score { part p { voice v { c5 / 4 . ; d5 1/4; } } } }";
+    let formatted = fmt(source);
+    assert!(formatted.contains("c5/4.;"), "got:\n{formatted}");
+    assert!(formatted.contains("d5 1/4;"), "got:\n{formatted}");
+    assert_eq!(fmt(&formatted), formatted, "idempotence");
+    assert_semantics_preserved(source, &formatted);
+}
+
 #[test]
 fn comments_keep_their_attachment() {
     let source = "piece \"C\" {\n    // header comment\n    meter 4/4; // trailing\n    score {\n        part p {\n            voice v {\n                c5 1/4; /* inline block */\n                // detached comment\n                d5 1/4;\n            }\n        }\n    }\n}\n";

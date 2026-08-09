@@ -79,8 +79,20 @@ pub enum SyntaxKind {
     Minus,
     /// `~` — the tie mark, postfix on a note or chord statement.
     Tilde,
-    /// `.` — the path separator in a modulation target.
+    /// `.` — the path separator in a modulation target, and the augmentation
+    /// dot on a short-form duration (`c4/4.`).
     Dot,
+    /// `/` — the duration separator (`c4/4`), and the fraction bar inside a
+    /// [`SyntaxKind::Rational`], which the lexer keeps whole.
+    Slash,
+    /// `|` — the barline.
+    Pipe,
+    /// `>` — the accent mark.
+    Greater,
+    /// `^` — the marcato mark.
+    Caret,
+    /// `#` — the sharp.
+    Hash,
 
     // --- Structural keywords. Processor names (`oscillator`, `lowpass`, …)
     /// are deliberately *not* keywords: they lex as identifiers so the
@@ -293,6 +305,13 @@ pub enum SyntaxKind {
     /// `crescendo to f { ... }` / `diminuendo to p { ... }` — a hairpin over
     /// the notes it wraps.
     HairpinStmt,
+    /// `1/4`, `1`, `/4`, `/4.`, or a duration parameter's name — how long one
+    /// note, rest or chord lasts, with the longest it may be held after `to`.
+    /// Its own node for the same reason [`SyntaxKind::ArticulationList`] is:
+    /// the numeral in `c4/4` is a `4` like any other, and a reader that finds
+    /// a duration by taking the first numeral under the statement would call
+    /// every quarter a whole note without ever failing.
+    Duration,
     /// The articulation names trailing a note or chord's duration. Their own
     /// node so a pitch reference and an articulation name — both bare
     /// identifiers — never have to be told apart by position.

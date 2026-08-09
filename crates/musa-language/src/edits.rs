@@ -675,9 +675,36 @@ fn set_duration(root: &SyntaxNode, at: u32, duration: &str) -> Result<Vec<TextEd
     ) {
         return Err(EditError::NoDuration { at });
     }
-    let range =
-        token_of(&statement, &[SyntaxKind::Rational, SyntaxKind::Integer]).ok_or(EditError::NoDuration { at })?;
+    let range = duration_range(&statement).ok_or(EditError::NoDuration { at })?;
     Ok(vec![TextEdit::new(range, duration)])
+}
+
+/// Where a statement's written duration is, so that setting it replaces the
+/// whole of it and nothing else.
+///
+/// The range covers the value and stops at `to`: rewriting `1/4` in
+/// `g4 1/4 to 2/1;` must leave the performer's bound alone. Taking the range
+/// from the `Duration` node rather than from the first numeral is what makes
+/// the short form safe — the `4` in `c4/4` is a numeral like any other, and
+/// a token search would find the one in the pitch.
+fn duration_range(statement: &SyntaxNode) -> Option<TextRange> {
+    let node = statement
+        .children()
+        .find(|child| child.kind() == SyntaxKind::Duration)?;
+    let mut range: Option<TextRange> = None;
+    for token in node.children_with_tokens().filter_map(SyntaxElement::into_token) {
+        if token.kind() == SyntaxKind::ToKw {
+            break;
+        }
+        if token.kind().is_trivia() {
+            continue;
+        }
+        range = Some(range.map_or_else(
+            || token.text_range(),
+            |so_far: TextRange| so_far.cover(token.text_range()),
+        ));
+    }
+    range
 }
 
 /// The whitespace a line starts with, which a new line of it should match.

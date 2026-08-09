@@ -1,7 +1,7 @@
 ---
 id: 87
 slug: the-note-is-one-word
-status: in-progress
+status: done
 depends_on: [86, 57, 62]
 phase: 2
 ---
@@ -105,7 +105,7 @@ composer typed, and `score.rs`'s doc comment saying otherwise is amended in this
 
 - `crates/musa-language/src/meter.rs` (new): `beat_groups`, exported from `lib.rs` and re-exported by
   `musa-compiler` beside `musa_kernel::SemanticHash`, so `musa-render` reaches it without a new edge in the graph.
-  `musa-render`'s `beam_unit` loses its own answer and becomes `beat_group_bounds`, which returns the group a given
+  `musa-render`'s `beam_unit` loses its own answer and becomes `beat_group_at`, which returns the group a given
   onset falls in — a uniform unit cannot describe 2+2+3.
 - `crates/musa-language/src/lexer.rs`, `syntax_kind.rs`, `highlight.rs` (`SPELLINGS` and `TokenClass::of`),
   `keywords.rs`, and `tests/tree_sitter_fixtures.rs`'s `tree_sitter_name`: five tokens, five exhaustive matches.

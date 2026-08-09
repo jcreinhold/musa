@@ -90,3 +90,8 @@ pub use crate::time::{MusicalDuration, MusicalTime};
 /// The kernel's semantic digest, re-exported so a consumer can hold a
 /// compilation's identity without depending on the kernel directly.
 pub use musa_kernel::SemanticHash;
+// How a bar divides into the groups a player hears. It lives at the bottom of
+// the graph because both readers of that fact are above it: the engraver beams
+// a group together and the formatter spaces one. Re-exported here so
+// `musa-render` reaches it without an edge of its own to the language.
+pub use musa_language::beat_groups;

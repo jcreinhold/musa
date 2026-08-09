@@ -99,6 +99,11 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("-", SyntaxKind::Minus),
     ("~", SyntaxKind::Tilde),
     (".", SyntaxKind::Dot),
+    ("/", SyntaxKind::Slash),
+    ("|", SyntaxKind::Pipe),
+    (">", SyntaxKind::Greater),
+    ("^", SyntaxKind::Caret),
+    ("#", SyntaxKind::Hash),
 ];
 
 /// What a token is, for setting purposes.
@@ -187,7 +192,12 @@ impl TokenClass {
             | SyntaxKind::Equals
             | SyntaxKind::Minus
             | SyntaxKind::Tilde
-            | SyntaxKind::Dot => Self::Punctuation,
+            | SyntaxKind::Dot
+            | SyntaxKind::Slash
+            | SyntaxKind::Pipe
+            | SyntaxKind::Greater
+            | SyntaxKind::Caret
+            | SyntaxKind::Hash => Self::Punctuation,
 
             SyntaxKind::UseKw => Self::Use,
 
@@ -289,6 +299,7 @@ impl TokenClass {
             | SyntaxKind::LibraryDecl
             | SyntaxKind::ImportStmt
             | SyntaxKind::HairpinStmt
+            | SyntaxKind::Duration
             | SyntaxKind::ArticulationList
             | SyntaxKind::PerformanceDecl
             | SyntaxKind::ProfileDecl

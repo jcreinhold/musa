@@ -203,6 +203,19 @@ enum RawToken {
     Tilde,
     #[token(".")]
     Dot,
+    // Maximal munch keeps every longer spelling that starts with these
+    // characters: `//` and `/*` still open comments, `1/4` is still one
+    // `Rational`, `|>` is still `PipeForward`, and `->` is still `Arrow`.
+    #[token("/")]
+    Slash,
+    #[token("|")]
+    Pipe,
+    #[token(">")]
+    Greater,
+    #[token("^")]
+    Caret,
+    #[token("#")]
+    Hash,
 
     #[token("piece", priority = 3)]
     PieceKw,
@@ -361,6 +374,11 @@ impl RawToken {
             | Self::Minus
             | Self::Tilde
             | Self::Dot
+            | Self::Slash
+            | Self::Pipe
+            | Self::Greater
+            | Self::Caret
+            | Self::Hash
             | Self::PieceKw
             | Self::TempoKw
             | Self::MeterKw
@@ -456,6 +474,11 @@ impl RawToken {
             Self::Minus => SyntaxKind::Minus,
             Self::Tilde => SyntaxKind::Tilde,
             Self::Dot => SyntaxKind::Dot,
+            Self::Slash => SyntaxKind::Slash,
+            Self::Pipe => SyntaxKind::Pipe,
+            Self::Greater => SyntaxKind::Greater,
+            Self::Caret => SyntaxKind::Caret,
+            Self::Hash => SyntaxKind::Hash,
             Self::PieceKw => SyntaxKind::PieceKw,
             Self::TempoKw => SyntaxKind::TempoKw,
             Self::MeterKw => SyntaxKind::MeterKw,
@@ -574,6 +597,53 @@ mod tests {
         ];
         assert!(significant.starts_with(&expected_prefix), "got: {significant:?}");
         assert!(significant.contains(&SyntaxKind::PitchLiteral)); // c5, a4, gs4
+    }
+
+    /// The five tokens added for the compact note syntax take nothing away
+    /// from the spellings that already existed.
+    ///
+    /// Every one of these is a longer match that starts with a character the
+    /// lexer now also accepts alone, which is precisely the class maximal
+    /// munch is supposed to settle. Settled by test, not by comment.
+    #[test]
+    fn a_longer_spelling_still_wins_over_the_new_single_characters() {
+        for (source, expected) in [
+            ("//x", SyntaxKind::LineComment),
+            ("/* x */", SyntaxKind::BlockComment),
+            ("/* x", SyntaxKind::Error),
+            ("1/4", SyntaxKind::Rational),
+            ("->", SyntaxKind::Arrow),
+            ("|>", SyntaxKind::PipeForward),
+            ("a-1", SyntaxKind::PitchLiteral),
+            ("0.55", SyntaxKind::Float),
+        ] {
+            assert_eq!(kinds(source), [expected], "source: {source}");
+            assert_round_trip(source);
+        }
+    }
+
+    #[test]
+    fn the_compact_note_syntax_lexes_one_character_at_a_time() {
+        assert_eq!(
+            kinds("c4/4."),
+            [
+                SyntaxKind::PitchLiteral,
+                SyntaxKind::Slash,
+                SyntaxKind::Integer,
+                SyntaxKind::Dot,
+            ]
+        );
+        assert_eq!(
+            kinds("|>>^#"),
+            [
+                SyntaxKind::PipeForward,
+                SyntaxKind::Greater,
+                SyntaxKind::Caret,
+                SyntaxKind::Hash,
+            ],
+            "`|>` is still one token; the `>` after it is its own"
+        );
+        assert_round_trip("| c4/4 > ^ #");
     }
 
     #[test]

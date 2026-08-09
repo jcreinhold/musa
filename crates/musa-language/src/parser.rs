@@ -1800,23 +1800,72 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// A duration: `1`, `1/2`, `3/8`, `1/12`, …
+    /// A duration: `1`, `1/2`, `3/8`, `1/12`, `/4`, `/4.`, …
+    ///
+    /// It gets a node of its own because `c4/4` puts a bare `4` inside a note
+    /// statement, and every reader that finds a duration by taking the first
+    /// numeral it sees would read that as a whole note — silently, and on the
+    /// path of every note in the language. With a node, a reader that looks in
+    /// the wrong place finds nothing instead of finding the wrong thing.
     fn duration(&mut self) {
-        if self.at_any(&[SyntaxKind::Rational, SyntaxKind::Integer, SyntaxKind::Identifier]) {
-            self.bump(); // literal or duration-parameter reference
-        } else {
-            self.expected("a duration");
-        }
+        self.start(SyntaxKind::Duration);
+        self.duration_value("a duration");
         // `g4 1/4 to 2/1;` — written as a quarter, held as long as the
         // performer likes up to a double whole. The first value is the
         // notated one and the second bounds the performed one (roadmap §2).
         if self.at(SyntaxKind::ToKw) {
             self.bump();
-            if self.at_any(&[SyntaxKind::Rational, SyntaxKind::Integer, SyntaxKind::Identifier]) {
+            self.duration_value("the longest the note may be held");
+        }
+        self.finish();
+    }
+
+    /// One duration value, in either spelling.
+    ///
+    /// `/N` says the same thing as `1/N` in one character less than the
+    /// pitch beside it, and augmentation dots multiply it by `2 − 2⁻ᵈ`:
+    /// `/4.` is 3/8 and `/4..` is 7/16.
+    fn duration_value(&mut self, what: &str) {
+        if self.at(SyntaxKind::Slash) {
+            self.bump(); // `/`
+            if self.at(SyntaxKind::Integer) {
                 self.bump();
             } else {
-                self.expected("the longest the note may be held");
+                self.expected("a note value such as `4` or `8`");
             }
+            while self.at(SyntaxKind::Dot) {
+                self.bump();
+            }
+            return;
+        }
+        if self.at_any(&[SyntaxKind::Rational, SyntaxKind::Integer, SyntaxKind::Identifier]) {
+            self.bump(); // literal or duration-parameter reference
+            self.no_dots_on_the_long_form();
+            return;
+        }
+        self.expected(what);
+    }
+
+    /// A dot after `3/8` is refused rather than read as 9/16: the long form
+    /// already writes 9/16, so two spellings of one duration would be one
+    /// spelling too many.
+    fn no_dots_on_the_long_form(&mut self) {
+        if !self.at(SyntaxKind::Dot) || self.cascading() {
+            return;
+        }
+        if let Some(token) = self.significant() {
+            let at = token.range;
+            self.errors.push(
+                SyntaxError::new(
+                    at,
+                    "an augmentation dot needs the short form",
+                    "this dot has nothing to dot",
+                )
+                .with_help("`/8.` is a dotted eighth; written as a fraction it is `3/16`"),
+            );
+        }
+        while self.at(SyntaxKind::Dot) {
+            self.bump();
         }
     }
 }

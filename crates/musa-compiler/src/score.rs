@@ -87,7 +87,14 @@ fn spell_value(value: Ratio<i64>) -> String {
 pub struct NotatedDuration {
     /// Exact temporal value in whole notes.
     pub value: MusicalDuration,
-    /// The written form as the composer typed it (`1/2`, `3/8`, `1/4 ~ 1/8`).
+    /// The written form, as a fraction of a whole note (`1/2`, `3/8`,
+    /// `1/4 ~ 1/8`).
+    ///
+    /// One duration has one spelling here even where the language has two:
+    /// `c4/4.` records `3/8`, because this string reaches diagnostics, the
+    /// desktop inspector and every kernel golden, and a duration that arrived
+    /// there under two names would be two facts. The record of what the
+    /// composer typed is the CST, which is lossless and is right there.
     pub spelling: String,
     /// The written pieces this duration is spelled with, in order, joined by
     /// ties. Non-empty, and they sum to `value` exactly.

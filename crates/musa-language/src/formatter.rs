@@ -94,9 +94,13 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer) {
                 writer.blank_line_if_pending();
                 // Some constructs are one word with punctuation in them: a
                 // `measure:beat` coordinate is written `3:1` the way a bar
-                // number is, and a chord symbol is `fmaj7` however many
-                // tokens it happens to lex as. Their insides take no spaces.
-                if matches!(node.kind(), SyntaxKind::Position | SyntaxKind::ChordSymbol) {
+                // number is, a chord symbol is `fmaj7` however many tokens it
+                // happens to lex as, and a modulation target is one path with
+                // dots in it. Their insides take no spaces.
+                if matches!(
+                    node.kind(),
+                    SyntaxKind::Position | SyntaxKind::ChordSymbol | SyntaxKind::ParamPath
+                ) {
                     writer.write_word(kind, token.text(), tight);
                     tight = true;
                     continue;
@@ -154,9 +158,10 @@ fn format_token(kind: SyntaxKind, text: &str, writer: &mut Writer) {
         writer.write(text);
     } else if kind == SyntaxKind::LParen || kind == SyntaxKind::RBracket || kind == SyntaxKind::RParen {
         writer.write(text);
-    } else if kind == SyntaxKind::Dot {
-        // A modulation path is one word with dots in it, not three words.
-        writer.write(".");
+    } else if kind == SyntaxKind::Slash || kind == SyntaxKind::Dot {
+        // A short-form duration is part of the note's word: `c4/4.` is one
+        // note written one way, not a pitch beside a fraction beside a dot.
+        writer.write(text);
     } else {
         if writer.needs_word_space() {
             writer.space();
@@ -227,11 +232,16 @@ fn spaced_before(kind: SyntaxKind, prev: Option<SyntaxKind>) -> bool {
             | SyntaxKind::LParen
             | SyntaxKind::RParen
             | SyntaxKind::RBracket
+            | SyntaxKind::Slash
             | SyntaxKind::Dot
     );
+    // A `.` is *not* here: inside a bar it is an augmentation dot, and the
+    // note after `c4/4.` needs its space. The modulation path that wanted a
+    // dot to close right is a `ParamPath`, which never appears in a bar and
+    // is written as one word by `format_node`.
     let closes_right = matches!(
         prev,
-        SyntaxKind::LParen | SyntaxKind::LBracket | SyntaxKind::Minus | SyntaxKind::Dot
+        SyntaxKind::LParen | SyntaxKind::LBracket | SyntaxKind::Minus | SyntaxKind::Slash
     );
     !closes_left && !closes_right
 }
@@ -398,7 +408,7 @@ impl Writer {
                 | SyntaxKind::Equals
                 | SyntaxKind::Arrow
                 | SyntaxKind::PipeForward
-                | SyntaxKind::Dot
+                | SyntaxKind::Slash
         )
     }
 

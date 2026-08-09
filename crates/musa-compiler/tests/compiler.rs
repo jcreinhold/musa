@@ -227,6 +227,68 @@ fn nested_motifs_and_duration_parameters_expand() {
     assert_eq!(voice.span().to_string(), "3/4");
 }
 
+/// The written durations of the first voice, in order.
+fn durations_of(source: &str) -> Vec<String> {
+    let compilation = compile_source(source);
+    assert!(
+        !compilation.has_errors(),
+        "errors: {}",
+        messages(&compilation).join("\n")
+    );
+    let Some(snapshot) = compilation.snapshot() else {
+        return Vec::new();
+    };
+    snapshot
+        .parts()
+        .iter()
+        .next()
+        .and_then(|(_, part)| part.voices().map(|(_, voice)| voice).next())
+        .map(|voice| {
+            voice
+                .events()
+                .iter()
+                .map(|event| event.notated_duration.spelling.clone())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// `c4/4` is not a shorthand that means something like `c4 1/4`. It is the
+/// same note: same value, same spelling, same fact.
+#[test]
+fn the_short_and_long_forms_of_a_duration_are_one_duration() {
+    let short = durations_of("piece \"x\" { score { part p { voice v { c4/4; d4/8; e4/1; } } } }");
+    let long = durations_of("piece \"x\" { score { part p { voice v { c4 1/4; d4 1/8; e4 1; } } } }");
+    assert_eq!(short, long);
+    assert_eq!(short, vec!["1/4", "1/8", "1"]);
+}
+
+/// An augmentation dot multiplies by `2 − 2⁻ᵈ`, and what the score records is
+/// the fraction — one duration, one spelling, however it was written.
+#[test]
+fn an_augmentation_dot_is_half_again() {
+    assert_eq!(
+        durations_of("piece \"x\" { score { part p { voice v { c4/4.; d4/4..; e4/2.; f4/3.; } } } }"),
+        vec!["3/8", "7/16", "3/4", "1/2"]
+    );
+}
+
+/// The long form already writes what a dot on it would mean, so it does not
+/// get one: `3/8.` would be 9/16, which `9/16` says.
+#[test]
+fn a_dot_on_the_long_form_is_refused() {
+    let compilation = compile_source("piece \"x\" { score { part p { voice v { c4 3/8.; } } } }");
+    assert!(
+        compilation.has_errors(),
+        "expected a diagnostic, got: {}",
+        messages(&compilation).join("\n")
+    );
+    assert_eq!(
+        durations_of("piece \"x\" { score { part p { voice v { c4 9/16; } } } }"),
+        vec!["9/16"]
+    );
+}
+
 #[test]
 fn missing_argument_without_default_is_an_error() {
     let compilation = compile_source(

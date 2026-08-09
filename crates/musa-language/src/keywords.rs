@@ -560,6 +560,11 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::Minus
         | SyntaxKind::Tilde
         | SyntaxKind::Dot
+        | SyntaxKind::Slash
+        | SyntaxKind::Pipe
+        | SyntaxKind::Greater
+        | SyntaxKind::Caret
+        | SyntaxKind::Hash
         | SyntaxKind::Error
         | SyntaxKind::Root
         | SyntaxKind::PieceDecl
@@ -598,6 +603,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::LibraryDecl
         | SyntaxKind::ImportStmt
         | SyntaxKind::HairpinStmt
+        | SyntaxKind::Duration
         | SyntaxKind::ArticulationList
         | SyntaxKind::PerformanceDecl
         | SyntaxKind::ProfileDecl

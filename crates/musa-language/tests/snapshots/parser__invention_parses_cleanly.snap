@@ -67,26 +67,30 @@ Root@0..305
               NoteStmt@190..198
                 Whitespace@190..191 " "
                 PitchLiteral@191..193 "c4"
-                Whitespace@193..194 " "
-                Rational@194..197 "1/4"
+                Duration@193..197
+                  Whitespace@193..194 " "
+                  Rational@194..197 "1/4"
                 Semicolon@197..198 ";"
               NoteStmt@198..206
                 Whitespace@198..199 " "
                 PitchLiteral@199..201 "d4"
-                Whitespace@201..202 " "
-                Rational@202..205 "1/4"
+                Duration@201..205
+                  Whitespace@201..202 " "
+                  Rational@202..205 "1/4"
                 Semicolon@205..206 ";"
               NoteStmt@206..214
                 Whitespace@206..207 " "
                 PitchLiteral@207..209 "e4"
-                Whitespace@209..210 " "
-                Rational@210..213 "1/4"
+                Duration@209..213
+                  Whitespace@209..210 " "
+                  Rational@210..213 "1/4"
                 Semicolon@213..214 ";"
               NoteStmt@214..222
                 Whitespace@214..215 " "
                 PitchLiteral@215..217 "f4"
-                Whitespace@217..218 " "
-                Rational@218..221 "1/4"
+                Duration@217..221
+                  Whitespace@217..218 " "
+                  Rational@218..221 "1/4"
                 Semicolon@221..222 ";"
               Whitespace@222..223 " "
               RBrace@223..224 "}"
@@ -99,20 +103,23 @@ Root@0..305
               NoteStmt@246..254
                 Whitespace@246..247 " "
                 PitchLiteral@247..249 "g4"
-                Whitespace@249..250 " "
-                Rational@250..253 "1/2"
+                Duration@249..253
+                  Whitespace@249..250 " "
+                  Rational@250..253 "1/2"
                 Semicolon@253..254 ";"
               NoteStmt@254..262
                 Whitespace@254..255 " "
                 PitchLiteral@255..257 "a4"
-                Whitespace@257..258 " "
-                Rational@258..261 "1/4"
+                Duration@257..261
+                  Whitespace@257..258 " "
+                  Rational@258..261 "1/4"
                 Semicolon@261..262 ";"
               NoteStmt@262..270
                 Whitespace@262..263 " "
                 PitchLiteral@263..265 "b4"
-                Whitespace@265..266 " "
-                Rational@266..269 "1/4"
+                Duration@265..269
+                  Whitespace@265..266 " "
+                  Rational@266..269 "1/4"
                 Semicolon@269..270 ";"
               Whitespace@270..271 " "
               RBrace@271..272 "}"

@@ -95,6 +95,30 @@ fn beaming_follows_the_meter() {
     );
 }
 
+/// An irregular meter beams the way it is counted. 7/8 is 2+2+3 — the
+/// grouping a player hears — and before this fact lived at the bottom of the
+/// graph, a bar of it beamed as seven separate eighths.
+#[test]
+fn an_irregular_meter_beams_in_the_groups_it_is_counted_in() {
+    let eighths = "c4/8; c4/8; c4/8; c4/8; c4/8; c4/8; c4/8;";
+    let Some(seven_eight) = plan(&std::format!(
+        "piece \"x\" {{ meter 7/8; score {{ part p {{ voice v {{ {eighths} }} }} }} }}"
+    )) else {
+        return;
+    };
+    let groups: Vec<Option<u32>> = seven_eight
+        .staves()
+        .first()
+        .and_then(|staff| staff.measures().first())
+        .and_then(|measure| measure.lanes().first())
+        .map(|lane| lane.items().iter().map(|item| item.beam().map(|beam| beam.0)).collect())
+        .unwrap_or_default();
+    assert_eq!(
+        groups,
+        vec![Some(0), Some(0), Some(1), Some(1), Some(2), Some(2), Some(2)]
+    );
+}
+
 #[test]
 fn non_binary_durations_need_tuplets() {
     let source = "piece \"x\" { meter 4/4; score { part p { voice v { c4 1/3; } } } }";

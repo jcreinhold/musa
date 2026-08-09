@@ -33,6 +33,7 @@ mod highlight;
 mod keywords;
 mod language;
 mod lexer;
+mod meter;
 mod parser;
 mod syntax_kind;
 
@@ -45,5 +46,6 @@ pub use crate::highlight::{SPELLINGS, TokenClass};
 pub use crate::keywords::{KeywordDoc, keyword_doc};
 pub use crate::language::{MusaLanguage, SyntaxElement, SyntaxNode, SyntaxToken};
 pub use crate::lexer::{LexError, LexErrorKind, Lexed, Token, lex};
+pub use crate::meter::beat_groups;
 pub use crate::parser::{ParsedDocument, parse};
 pub use crate::syntax_kind::SyntaxKind;

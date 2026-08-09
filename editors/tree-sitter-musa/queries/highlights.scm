@@ -155,4 +155,5 @@
   ","
   ":"
   "."
+  "/"
 ] @punctuation.delimiter
