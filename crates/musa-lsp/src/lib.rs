@@ -66,6 +66,11 @@ const INVALID_PARAMS: i32 = -32602;
 pub fn serve() -> ExitCode {
     let (connection, io_threads) = Connection::stdio();
     let outcome = run(&connection);
+    // Drop the connection — and with it every sender — before joining: the
+    // writer thread ends when its channel closes, and the channel closes
+    // only once this handle is gone. Joining first deadlocks the shutdown
+    // the protocol just agreed to.
+    drop(connection);
     let joined = io_threads.join();
     match (outcome, joined) {
         (Ok(()), Ok(())) => ExitCode::SUCCESS,
