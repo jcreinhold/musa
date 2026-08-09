@@ -8,6 +8,15 @@ license = "Apache-2.0"
 repository = "https://github.com/jcreinhold/musa"
 version = "0.1.0"
 
+[workspace.dependencies]
+musa-audio = { path = "crates/musa-audio", version = "0.1.0" }
+musa-compiler = { path = "crates/musa-compiler", version = "0.1.0" }
+musa-engine = { path = "crates/musa-engine", version = "0.1.0" }
+musa-kernel = { path = "crates/musa-kernel", version = "0.1.0" }
+musa-language = { path = "crates/musa-language", version = "0.1.0" }
+musa-project = { path = "crates/musa-project", version = "0.1.0" }
+musa-render = { path = "crates/musa-render", version = "0.1.0" }
+
 [workspace.lints.rust]
 future-incompatible = "warn"
 let-underscore = "warn"

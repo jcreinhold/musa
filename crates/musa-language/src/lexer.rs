@@ -130,7 +130,7 @@ fn text_range(span: Range<usize>) -> TextRange {
 enum RawToken {
     #[regex(r"[ \t\r\n]+")]
     Whitespace,
-    #[regex(r"//[^\n]*")]
+    #[regex(r"//[^\n]*", allow_greedy = true)]
     LineComment,
     #[regex(r"(?s)/\*([^*]|\*[^/])*\*/")]
     BlockComment,

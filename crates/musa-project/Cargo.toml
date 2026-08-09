@@ -1,8 +1,8 @@
 [package]
 description = "Project session: documents, revisions, commands, compilation orchestration, and exports"
-name = "musa-project"
 edition.workspace = true
 license.workspace = true
+name = "musa-project"
 repository.workspace = true
 version.workspace = true
 
@@ -11,11 +11,11 @@ workspace = true
 
 [dependencies]
 hound = "3"
-musa-audio = { path = "../musa-audio" }
-musa-compiler = { path = "../musa-compiler" }
-musa-engine = { path = "../musa-engine" }
-musa-language = { path = "../musa-language" }
-musa-render = { path = "../musa-render" }
+musa-audio = { workspace = true }
+musa-compiler = { workspace = true }
+musa-engine = { workspace = true }
+musa-language = { workspace = true }
+musa-render = { workspace = true }
 num-rational = "0.4"
 serde = { version = "1", features = ["derive"] }
 # `preserve_order` so the wire snapshot keeps the field order `SnapshotWire`
@@ -25,8 +25,8 @@ serde = { version = "1", features = ["derive"] }
 # and every regeneration into a large diff.
 serde_json = { version = "1", features = ["preserve_order"] }
 text-size = "1"
-toml = "0.9"
 thiserror = "2"
+toml = "1"
 tracing = "0.1"
 
 [dev-dependencies]

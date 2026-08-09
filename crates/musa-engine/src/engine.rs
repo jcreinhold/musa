@@ -91,7 +91,7 @@ impl AudioEngine {
 
         let stream = device
             .build_output_stream(
-                &stream_config,
+                stream_config,
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| core.process(data),
                 |error| tracing::error!(%error, "audio stream error"),
                 None,
@@ -176,7 +176,7 @@ fn negotiate(device: &cpal::Device, rate: u32) -> Result<cpal::StreamConfig, Eng
         .map_err(|error| EngineError::Stream(error.to_string()))?;
     let found = configs.find_map(|range| {
         if range.channels() == 2 && range.sample_format() == cpal::SampleFormat::F32 {
-            range.try_with_sample_rate(cpal::SampleRate(rate))
+            range.try_with_sample_rate(rate)
         } else {
             None
         }

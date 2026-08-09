@@ -1,8 +1,8 @@
 [package]
 description = "Thin CLI over musa-project"
-name = "musa-cli"
 edition.workspace = true
 license.workspace = true
+name = "musa-cli"
 repository.workspace = true
 version.workspace = true
 
@@ -11,7 +11,7 @@ workspace = true
 
 [dependencies]
 miette = { version = "7", features = ["fancy"] }
-musa-project = { path = "../musa-project" }
+musa-project = { workspace = true }
 thiserror = "2"
 
 [dev-dependencies]

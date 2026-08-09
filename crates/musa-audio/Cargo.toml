@@ -1,8 +1,8 @@
 [package]
 description = "Declarative studio graph compiler, DSP processors, and deterministic offline rendering"
-name = "musa-audio"
 edition.workspace = true
 license.workspace = true
+name = "musa-audio"
 repository.workspace = true
 version.workspace = true
 
@@ -10,8 +10,8 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-musa-compiler = { path = "../musa-compiler" }
 hound = "3"
+musa-compiler = { workspace = true }
 thiserror = "2"
 
 [dev-dependencies]

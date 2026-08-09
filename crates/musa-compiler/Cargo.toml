@@ -1,8 +1,8 @@
 [package]
 description = "Name resolution, units, compositional model, expansion, and score/performance snapshots"
-name = "musa-compiler"
 edition.workspace = true
 license.workspace = true
+name = "musa-compiler"
 repository.workspace = true
 version.workspace = true
 
@@ -11,8 +11,8 @@ workspace = true
 
 [dependencies]
 indexmap = { version = "2", features = ["serde"] }
-musa-kernel = { path = "../musa-kernel" }
-musa-language = { path = "../musa-language" }
+musa-kernel = { workspace = true }
+musa-language = { workspace = true }
 num-rational = { version = "0.4", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 slotmap = "1"

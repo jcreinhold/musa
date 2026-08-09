@@ -296,7 +296,7 @@ fn measure_arithmetic(text: &str) -> Vec<(String, String, i64, i64)> {
                 }
             }
             Ok(quick_xml::events::Event::Text(body)) => {
-                let value = body.unescape().unwrap_or_default().trim().parse::<i64>().unwrap_or(0);
+                let value = body.decode().unwrap_or_default().trim().parse::<i64>().unwrap_or(0);
                 match text_of.take() {
                     Some("divisions") => divisions = value,
                     Some("beats") => beats = value,
@@ -353,7 +353,7 @@ fn durations_of(text: &str) -> Vec<i64> {
             }
             Ok(quick_xml::events::Event::Text(body)) if want => {
                 want = false;
-                out.push(body.unescape().unwrap_or_default().trim().parse::<i64>().unwrap_or(0));
+                out.push(body.decode().unwrap_or_default().trim().parse::<i64>().unwrap_or(0));
             }
             Ok(quick_xml::events::Event::Eof) => break,
             Ok(_) => {}

@@ -1,8 +1,8 @@
 [package]
 description = "Finite temporal kernel: exact ambient time, typed occurrences, timeline/sequence/overlay"
-name = "musa-kernel"
 edition.workspace = true
 license.workspace = true
+name = "musa-kernel"
 repository.workspace = true
 version.workspace = true
 

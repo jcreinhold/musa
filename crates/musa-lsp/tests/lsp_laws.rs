@@ -139,8 +139,9 @@ impl Client {
     /// the notifications that overtake it.
     fn request<R: lsp_types::request::Request>(&mut self, params: R::Params) -> serde_json::Value {
         let response = self.response::<R>(params);
-        assert!(response.error.is_none(), "`{}` failed: {:?}", R::METHOD, response.error);
-        response.result.unwrap_or(serde_json::Value::Null)
+        response
+            .response_result
+            .unwrap_or_else(|error| panic!("`{}` failed: {error:?}", R::METHOD))
     }
 
     /// Send a request and return the raw response — the tests that assert a
@@ -412,7 +413,7 @@ fn rename_refuses_a_collision_in_the_namespace() {
         shifted(at(GLASS_MOUNTAIN, "part violin"), 5),
         "strings",
     ));
-    let error = response.error.expect("the rename must be refused");
+    let error = response.response_result.expect_err("the rename must be refused");
     assert!(error.message.contains("already names"), "{}", error.message);
     server.stop();
 }
@@ -424,13 +425,13 @@ fn rename_refuses_an_illegal_name_and_a_nameless_position() {
     let response = server
         .client
         .response::<Rename>(rename_params(&uri, at(GLASS_MOUNTAIN, "sigh();"), "4x"));
-    let error = response.error.expect("`4x` is not a name");
+    let error = response.response_result.expect_err("`4x` is not a name");
     assert!(error.message.contains("not a valid name"), "{}", error.message);
     // `4x` must not have edited anything: the document still compiles.
     let response = server
         .client
         .response::<Rename>(rename_params(&uri, at(GLASS_MOUNTAIN, "tempo"), "beat"));
-    let error = response.error.expect("there is no name under `tempo`");
+    let error = response.response_result.expect_err("there is no name under `tempo`");
     assert!(error.message.contains("no named thing"), "{}", error.message);
     server.stop();
 }

@@ -1,8 +1,8 @@
 [package]
 description = "Backend-neutral notation planning and MEI/LilyPond/MusicXML/MIDI export"
-name = "musa-render"
 edition.workspace = true
 license.workspace = true
+name = "musa-render"
 repository.workspace = true
 version.workspace = true
 
@@ -10,10 +10,10 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-musa-compiler = { path = "../musa-compiler" }
-serde = { version = "1", features = ["derive"] }
+musa-compiler = { workspace = true }
 num-rational = "0.4"
-quick-xml = "0.37"
+quick-xml = "0.41"
+serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 # `parallel` (rayon) is for parsing huge files; we only write.
 midly = { version = "0.5", default-features = false, features = ["std"] }

@@ -51,6 +51,7 @@ allow = [
   "MPL-2.0",
   "Unicode-3.0",
   "Unicode-DFS-2016",
+  "Unlicense",
   "Zlib",
 ]
 # Don't warn about entries in `allow` that no crate currently uses — the list
