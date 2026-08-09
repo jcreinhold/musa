@@ -69,6 +69,7 @@
   "mobile"
   "improvise"
   "over"
+  "senza"
 ] @keyword
 
 ; `use` alone, as TokenClass::Use says: it is where material comes from —
@@ -105,6 +106,16 @@
 
 (setting_statement name: (identifier) @variable.parameter)
 (motif_parameter name: (identifier) @variable.parameter)
+
+; --- Vocabulary names -----------------------------------------------------
+; Not the composer's names but the language's: marks, dynamics, and clefs are
+; chosen from a fixed vocabulary the compiler checks, so they highlight like
+; constants, not like names.
+
+(mark_statement name: (identifier) @constant)
+(mark_rule name: (identifier) @constant)
+(dynamic_statement mark: (identifier) @constant)
+(clef_statement name: (identifier) @constant)
 
 (assign_statement source: (identifier) @type)
 (assign_statement destination: (identifier) @type)
