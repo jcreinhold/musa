@@ -180,6 +180,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 81 | vscode-extension | 3 | vscode-musa: generated TextMate grammar plus the language client |
 | 82 | zed-extension | 3 | zed-musa: WASM extension, grammar queries, server wiring |
 | 83 | lint-pass | 3 | Style-guide warnings as ordinary diagnostics; suppression lives in the source |
+| 84 | keyword-documentation | 3 | Every keyword's plain-English doc, exhaustive by construction, over hover |
 | 84 | the-project-is-the-unit | 3 | `Project` above `ProjectSession`: a running order, a piece each, material that opens |
 | 85 | the-contents-page | 2 | The volume's front matter on the leaf, and the running order in the margin |
 

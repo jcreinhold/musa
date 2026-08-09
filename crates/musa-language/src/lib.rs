@@ -30,6 +30,7 @@ mod edits;
 mod error;
 mod formatter;
 mod highlight;
+mod keywords;
 mod language;
 mod lexer;
 mod parser;
@@ -41,6 +42,7 @@ pub use crate::edits::{
 pub use crate::error::SyntaxError;
 pub use crate::formatter::{FormattedSource, format};
 pub use crate::highlight::{SPELLINGS, TokenClass};
+pub use crate::keywords::{KeywordDoc, keyword_doc};
 pub use crate::language::{MusaLanguage, SyntaxElement, SyntaxNode, SyntaxToken};
 pub use crate::lexer::{LexError, LexErrorKind, Lexed, Token, lex};
 pub use crate::parser::{ParsedDocument, parse};

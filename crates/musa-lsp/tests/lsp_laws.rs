@@ -894,3 +894,22 @@ fn a_lint_warning_publishes_with_its_quick_fix() {
     assert_eq!(edit.new_text, "");
     server.stop();
 }
+
+#[test]
+fn hover_on_a_keyword_reports_its_documentation() {
+    let mut server = Server::start();
+    let (uri, published) = server.open("hover", HOVER_PIECE);
+    assert!(published.diagnostics.is_empty(), "the piece should compile");
+    let hover = server.client.request::<HoverRequest>(HoverParams {
+        text_document_position_params: position_params(&uri, at(HOVER_PIECE, "tempo")),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    let hover: Hover = serde_json::from_value(hover).expect("a hover");
+    let HoverContents::Markup(content) = hover.contents else {
+        panic!("expected markdown hover");
+    };
+    assert!(content.value.contains("**tempo**"), "{}", content.value);
+    assert!(content.value.contains("where it changes"), "{}", content.value);
+    assert!(content.value.contains("```musa"), "{}", content.value);
+    server.stop();
+}

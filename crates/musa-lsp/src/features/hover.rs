@@ -3,8 +3,9 @@
 //! The lookup order is the order of specificity: a `use` site (one statement,
 //! one occurrence) before the event it produced (the note is a fact of the
 //! score) before the statement inside a motif body that spells a generated
-//! note (provenance reading inward), and studio values last because their
-//! spans never overlap the score's.
+//! note (provenance reading inward); then a keyword's own documentation,
+//! because a `use` keyword is its use site and the fact is the better answer;
+//! and studio values last because their spans never overlap the score's.
 
 use lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
 use musa_project::{EventFacts, EventKind, ScoreFacts, Span};
@@ -25,7 +26,32 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
             return Some(found);
         }
     }
+    if let Some(found) = at_keyword(&snapshot, byte, lines) {
+        return Some(found);
+    }
     at_studio(document, byte, lines)
+}
+
+/// A keyword: its own documentation (prompt 84). After the score's facts —
+/// a `use` keyword *is* its use site, and the expansion is the better answer
+/// there — and before the studio's, whose spans never overlap a keyword.
+fn at_keyword(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
+    let parsed = musa_language::parse(snapshot.source());
+    let token = parsed
+        .syntax()
+        .token_at_offset(byte.into())
+        .find(|token| musa_language::keyword_doc(token.kind()).is_some())?;
+    let doc = musa_language::keyword_doc(token.kind())?;
+    let range = token.text_range();
+    let span = Span {
+        start: u32::from(range.start()),
+        end: u32::from(range.end()),
+    };
+    Some(answer(
+        lines,
+        span,
+        format!("**{}** — *{}*\n\n{}", doc.spelling, doc.summary, doc.doc),
+    ))
 }
 
 /// Build the hover answer: markdown, ranged at the span that matched, so the
