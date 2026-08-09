@@ -295,6 +295,7 @@ impl TokenClass {
             | SyntaxKind::HarmonyDecl
             | SyntaxKind::HarmonyStmt
             | SyntaxKind::Position
+            | SyntaxKind::PitchClass
             | SyntaxKind::ChordSymbol
             | SyntaxKind::LibraryDecl
             | SyntaxKind::ImportStmt

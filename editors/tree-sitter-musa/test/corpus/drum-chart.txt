@@ -21,13 +21,13 @@ piece "Drum Chart" {
     fragment groove_bar {
         repeat 8 {
             c2 1/8;
-            fs3 1/8;
+            f#3 1/8;
             d2 1/8;
-            fs3 1/8;
+            f#3 1/8;
             c2 1/8;
-            fs3 1/8;
+            f#3 1/8;
             d2 1/8;
-            fs3 1/8;
+            f#3 1/8;
         }
     }
 
@@ -67,13 +67,13 @@ piece "Drum Chart" {
 
                 dynamic f;
                 c2 1/8 accent;
-                fs3 1/8;
+                f#3 1/8;
                 d2 1/8;
-                fs3 1/8;
+                f#3 1/8;
                 c2 1/8 accent;
-                fs3 1/8;
+                f#3 1/8;
                 d2 1/8;
-                fs3 1/8;
+                f#3 1/8;
                 c2 1/16 accent;
                 c2 1/16;
                 c2 1/16;
@@ -124,7 +124,8 @@ piece "Drum Chart" {
     (meter_statement
       (rational))
     (key_statement
-      (identifier)
+      (pitch_class
+        (identifier))
       (identifier))
     (fragment_declaration
       (identifier)

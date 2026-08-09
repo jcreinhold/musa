@@ -97,7 +97,7 @@ fn the_file_is_metrical_with_one_track_per_part_plus_tempo() {
 #[test]
 fn written_pitch_reaches_midi_through_twelve_tet() {
     let source = "piece \"x\" { tempo 1/4 = 60; meter 4/4; score { part p { voice v { c4 1/4; a4 1/4; \
-                  cs4 1/4; df4 1/4; } } } }";
+                  c#4 1/4; db4 1/4; } } } }";
     let keys: Vec<u8> = read_back(&midi_of(source, MidiMode::Score))
         .iter()
         .map(|note| note.key)

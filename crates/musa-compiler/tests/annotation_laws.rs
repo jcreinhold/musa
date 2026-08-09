@@ -184,12 +184,12 @@ fn every_chord_goes_in_one_harmony_lane() {
 /// notes, which musa never computes (§8.2).
 #[test]
 fn the_chord_grammar_reads_what_a_lead_sheet_writes() {
-    let table: [(&str, &str, ChordQuality, Option<&str>, Option<u8>); 14] = [
+    let table: [(&str, &str, ChordQuality, Option<&str>, Option<u8>); 15] = [
         ("c", "c", ChordQuality::Major, None, None),
         ("am", "a", ChordQuality::Minor, None, None),
         ("cmin", "c", ChordQuality::Minor, None, None),
-        ("efmaj", "ef", ChordQuality::Major, None, None),
-        ("fsdim", "fs", ChordQuality::Diminished, None, None),
+        ("ebmaj", "eb", ChordQuality::Major, None, None),
+        ("f#dim", "f#", ChordQuality::Diminished, None, None),
         ("gaug", "g", ChordQuality::Augmented, None, None),
         ("dsus4", "d", ChordQuality::Suspended4, None, None),
         ("dsus2", "d", ChordQuality::Suspended2, None, None),
@@ -198,7 +198,10 @@ fn the_chord_grammar_reads_what_a_lead_sheet_writes() {
         ("fmaj7", "f", ChordQuality::Major, Some("major"), None),
         ("bm7", "b", ChordQuality::Minor, Some("minor"), None),
         ("cmmaj7", "c", ChordQuality::Minor, Some("major"), None),
-        ("bfdim7", "bf", ChordQuality::Diminished, Some("diminished"), None),
+        ("bbdim7", "bb", ChordQuality::Diminished, Some("diminished"), None),
+        // A sharp on the root cannot be read as the head of `sus`, which is
+        // why the parser no longer needs an exception for `dsus4`.
+        ("d#sus4", "d#", ChordQuality::Suspended4, None, None),
     ];
     for (written, root, quality, seventh, extension) in table {
         let chord = ChordSymbol::parse(written).unwrap_or_else(|| panic!("`{written}` should parse"));
@@ -224,7 +227,9 @@ fn an_extension_implies_the_seventh_below_it() {
 
 #[test]
 fn a_symbol_outside_the_grammar_does_not_parse() {
-    for written in ["h", "c4", "cmaj8", "", "c#", "cm7b5"] {
+    // `c#` used to be here, and is now a chord: `#` spells the sharp a chart
+    // writes. `cs` is what stopped being one.
+    for written in ["h", "c4", "cmaj8", "", "cs", "cm7b5"] {
         assert!(
             ChordSymbol::parse(written).is_none(),
             "`{written}` should not parse as a chord symbol"
@@ -291,10 +296,10 @@ fn letter_of(chord: &ChordSymbol) -> &'static str {
 
 fn accidental_of(chord: &ChordSymbol) -> &'static str {
     match chord.accidental.0 {
-        -2 => "ff",
-        -1 => "f",
-        1 => "s",
-        2 => "ss",
+        -2 => "bb",
+        -1 => "b",
+        1 => "#",
+        2 => "##",
         _ => "",
     }
 }

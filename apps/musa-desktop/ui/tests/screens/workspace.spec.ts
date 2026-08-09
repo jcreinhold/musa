@@ -46,13 +46,13 @@ test("⌘4 opens the Source workspace, with the page still on it", async ({ page
 test("choosing a note on the page puts the caret in the text it came from", async ({ page }) => {
   await inSource(page);
 
-  // `gs4` is written once in Glass Mountain, so the note and the word are
+  // `g#4` is written once in Glass Mountain, so the note and the word are
   // unambiguously each other.
   await page.locator('.engraving [id="event-d"]').first().click({ force: true });
 
   // The note's own text is marked, and the keyboard stays on the page:
   // choosing a note is not asking to type.
-  await expect.poll(() => marked(page)).toContain("gs4 1;");
+  await expect.poll(() => marked(page)).toContain("g#4 1;");
   expect(
     await page.evaluate(() => document.activeElement?.closest('[role="application"]') !== null),
     "the keyboard is still on the page",
@@ -64,7 +64,7 @@ test("moving the caret in the text chooses the note on the page", async ({ page 
 
   // Click the word itself: the tokenizer sets it in its own element, which is
   // what makes the text clickable note by note.
-  await page.locator(".cm-content").getByText("gs4", { exact: true }).click();
+  await page.locator(".cm-content").getByText("g#4", { exact: true }).click();
 
   await expect(page.locator(".overlay .selection")).toHaveCount(1);
   const chosen = await page.evaluate(() => {

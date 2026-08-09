@@ -27,7 +27,7 @@ kernel "Ruchenitsa" {
         occurrence "voice 0 0 note c5 1/8 [1938:1945 #4]" from 11/4 to 23/8;
         occurrence "voice 0 0 note b4 1/8 [1962:1969 #4]" from 23/8 to 3;
         occurrence "voice 0 0 note a4 1/8 [1986:1993 #4]" from 3 to 25/8;
-        occurrence "voice 0 0 note gs4 1/8 [2010:2018 #4]" from 25/8 to 13/4;
+        occurrence "voice 0 0 note g#4 1/8 [2010:2018 #4]" from 25/8 to 13/4;
         occurrence "voice 0 0 note a4 1/4 [2035:2042 #4]" from 13/4 to 7/2;
         occurrence "voice 0 0 note a4 1/8 [2060:2067 #4]" from 7/2 to 29/8;
         occurrence "voice 0 0 note b4 1/8 [2084:2091 #4]" from 29/8 to 15/4;
@@ -44,12 +44,12 @@ kernel "Ruchenitsa" {
         occurrence "voice 0 0 note c5 1/8 [2350:2357 #4]" from 21/4 to 43/8;
         occurrence "voice 0 0 note b4 1/8 [2374:2381 #4]" from 43/8 to 11/2;
         occurrence "voice 0 0 note a4 1/8 [2398:2405 #4]" from 11/2 to 45/8;
-        occurrence "voice 0 0 note gs4 1/8 [2422:2430 #4]" from 45/8 to 23/4;
+        occurrence "voice 0 0 note g#4 1/8 [2422:2430 #4]" from 45/8 to 23/4;
         occurrence "voice 0 0 note a4 1/8 [2447:2454 #4]" from 23/4 to 47/8;
         occurrence "voice 0 0 note b4 1/4 [2471:2478 #4]" from 47/8 to 49/8;
         occurrence "voice 0 0 note b4 1/8 [2496:2503 #4]" from 49/8 to 25/4;
         occurrence "voice 0 0 note a4 1/8 [2520:2527 #4]" from 25/4 to 51/8;
-        occurrence "voice 0 0 note gs4 1/8 [2544:2552 #4]" from 51/8 to 13/2;
+        occurrence "voice 0 0 note g#4 1/8 [2544:2552 #4]" from 51/8 to 13/2;
         occurrence "voice 0 0 note a4 1/8 [2569:2576 #4]" from 13/2 to 53/8;
         occurrence "voice 0 0 note b4 1/8 [2593:2600 #4]" from 53/8 to 27/4;
         occurrence "voice 0 0 note a4 1/4 [2617:2624 #4]" from 27/4 to 7;

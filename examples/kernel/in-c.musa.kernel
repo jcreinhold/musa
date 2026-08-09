@@ -762,7 +762,7 @@ kernel "Fifty-Three" {
         }
       }
     in let shared30 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 3462:3470 #18]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note f#5 1/4 [4294967295:4294967295 def 3462:3470 #18]" from 0 to 1/4;
         occurrence "voice 4294967295 4294967295 note a4 1/8 [4294967295:4294967295 def 3483:3490 #18]" from 1/4 to 3/8;
         occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 3503:3510 #18]" from 3/8 to 1/2;
         occurrence "voice 4294967295 4294967295 note e5 1/2 [4294967295:4294967295 def 3523:3530 #18]" from 1/2 to 1;
@@ -781,7 +781,7 @@ kernel "Fifty-Three" {
       }
     in let shared32 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note e5 1/16 [4294967295:4294967295 def 3615:3623 #19]" from 0 to 1/16;
-        occurrence "voice 4294967295 4294967295 note fs5 1/16 [4294967295:4294967295 def 3636:3645 #19]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note f#5 1/16 [4294967295:4294967295 def 3636:3645 #19]" from 1/16 to 1/8;
         occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 3658:3665 #19]" from 1/8 to 1/4;
         occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 3678:3685 #19]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note c5 1/2 [4294967295:4294967295 def 3698:3705 #19]" from 1/2 to 1;
@@ -804,7 +804,7 @@ kernel "Fifty-Three" {
     in let shared34 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 3792:3799 #20]" from 0 to 1/4;
         occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 3812:3819 #20]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 3832:3840 #20]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note f#5 1/4 [4294967295:4294967295 def 3832:3840 #20]" from 1/2 to 3/4;
         occurrence "voice 4294967295 4294967295 note a4 1/4 [4294967295:4294967295 def 3853:3860 #20]" from 3/4 to 1;
       }
     in let shared35 = overlay {
@@ -846,7 +846,7 @@ kernel "Fifty-Three" {
         }
       }
     in let shared38 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 4079:4087 #22]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note f#5 1/4 [4294967295:4294967295 def 4079:4087 #22]" from 0 to 1/4;
         occurrence "voice 4294967295 4294967295 note g5 1/2 [4294967295:4294967295 def 4100:4107 #22]" from 1/4 to 3/4;
         occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 4120:4127 #22]" from 3/4 to 1;
       }
@@ -867,11 +867,11 @@ kernel "Fifty-Three" {
       }
     in let shared40 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note c5 1/16 [4294967295:4294967295 def 4211:4219 #23]" from 0 to 1/16;
-        occurrence "voice 4294967295 4294967295 note fs5 1/16 [4294967295:4294967295 def 4232:4241 #23]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note f#5 1/16 [4294967295:4294967295 def 4232:4241 #23]" from 1/16 to 1/8;
         occurrence "voice 4294967295 4294967295 note a4 1/16 [4294967295:4294967295 def 4254:4262 #23]" from 1/8 to 3/16;
         occurrence "voice 4294967295 4294967295 note g5 1/16 [4294967295:4294967295 def 4275:4283 #23]" from 3/16 to 1/4;
         occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 4296:4303 #23]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 4316:4324 #23]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note f#5 1/4 [4294967295:4294967295 def 4316:4324 #23]" from 1/2 to 3/4;
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 4337:4344 #23]" from 3/4 to 1;
       }
     in let shared41 = overlay {
@@ -921,7 +921,7 @@ kernel "Fifty-Three" {
         }
       }
     in let shared46 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note fs5 1/8 [4294967295:4294967295 def 4641:4649 #26]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note f#5 1/8 [4294967295:4294967295 def 4641:4649 #26]" from 0 to 1/8;
         occurrence "voice 4294967295 4294967295 note a4 1/8 [4294967295:4294967295 def 4662:4669 #26]" from 1/8 to 1/4;
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 4682:4689 #26]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note e5 1/2 [4294967295:4294967295 def 4702:4709 #26]" from 1/2 to 1;
@@ -945,11 +945,11 @@ kernel "Fifty-Three" {
       }
     in let shared48 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 4798:4805 #27]" from 0 to 1/8;
-        occurrence "voice 4294967295 4294967295 note fs5 1/8 [4294967295:4294967295 def 4818:4826 #27]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note f#5 1/8 [4294967295:4294967295 def 4818:4826 #27]" from 1/8 to 1/4;
         occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 4839:4846 #27]" from 1/4 to 3/8;
         occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 4859:4866 #27]" from 3/8 to 1/2;
         occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 4879:4886 #27]" from 1/2 to 5/8;
-        occurrence "voice 4294967295 4294967295 note fs5 1/8 [4294967295:4294967295 def 4899:4907 #27]" from 5/8 to 3/4;
+        occurrence "voice 4294967295 4294967295 note f#5 1/8 [4294967295:4294967295 def 4899:4907 #27]" from 5/8 to 3/4;
         occurrence "voice 4294967295 4294967295 note a4 1/8 [4294967295:4294967295 def 4920:4927 #27]" from 3/4 to 7/8;
         occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 4940:4947 #27]" from 7/8 to 1;
       }
@@ -971,7 +971,7 @@ kernel "Fifty-Three" {
     in let shared50 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 5035:5042 #28]" from 0 to 1/8;
         occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 5055:5062 #28]" from 1/8 to 3/8;
-        occurrence "voice 4294967295 4294967295 note fs5 1/8 [4294967295:4294967295 def 5075:5083 #28]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note f#5 1/8 [4294967295:4294967295 def 5075:5083 #28]" from 3/8 to 1/2;
         occurrence "voice 4294967295 4294967295 note a4 1/8 [4294967295:4294967295 def 5096:5103 #28]" from 1/2 to 5/8;
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 5116:5123 #28]" from 5/8 to 7/8;
         occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 5136:5143 #28]" from 7/8 to 1;
@@ -1011,7 +1011,7 @@ kernel "Fifty-Three" {
         }
       }
     in let shared54 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 5348:5356 #30]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note f#5 1/4 [4294967295:4294967295 def 5348:5356 #30]" from 0 to 1/4;
         occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 5369:5376 #30]" from 1/4 to 3/8;
         occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 5389:5396 #30]" from 3/8 to 1/2;
         occurrence "voice 4294967295 4294967295 note c5 1/2 [4294967295:4294967295 def 5409:5416 #30]" from 1/2 to 1;
@@ -1028,7 +1028,7 @@ kernel "Fifty-Three" {
       }
     in let shared56 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note c5 1/16 [4294967295:4294967295 def 5506:5514 #31]" from 0 to 1/16;
-        occurrence "voice 4294967295 4294967295 note fs5 1/16 [4294967295:4294967295 def 5527:5536 #31]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note f#5 1/16 [4294967295:4294967295 def 5527:5536 #31]" from 1/16 to 1/8;
         occurrence "voice 4294967295 4294967295 note a4 1/8 [4294967295:4294967295 def 5549:5556 #31]" from 1/8 to 1/4;
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 5569:5576 #31]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note e5 1/2 [4294967295:4294967295 def 5589:5596 #31]" from 1/2 to 1;
@@ -1070,7 +1070,7 @@ kernel "Fifty-Three" {
     in let shared60 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note a5 1/2 [4294967295:4294967295 def 5835:5842 #33]" from 0 to 1/2;
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 5855:5862 #33]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 5875:5883 #33]" from 3/4 to 1;
+        occurrence "voice 4294967295 4294967295 note f#5 1/4 [4294967295:4294967295 def 5875:5883 #33]" from 3/4 to 1;
       }
     in let shared61 = overlay {
         sequence {
@@ -1108,7 +1108,7 @@ kernel "Fifty-Three" {
         occurrence "voice 4294967295 4294967295 note b5 1/16 [4294967295:4294967295 def 6127:6135 #35]" from 1/16 to 1/8;
         occurrence "voice 4294967295 4294967295 note a5 1/16 [4294967295:4294967295 def 6148:6156 #35]" from 1/8 to 3/16;
         occurrence "voice 4294967295 4294967295 note g5 1/16 [4294967295:4294967295 def 6169:6177 #35]" from 3/16 to 1/4;
-        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 6190:6198 #35]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note f#5 1/4 [4294967295:4294967295 def 6190:6198 #35]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 6211:6218 #35]" from 1/2 to 3/4;
         occurrence "voice 4294967295 4294967295 note b4 1/4 [4294967295:4294967295 def 6231:6238 #35]" from 3/4 to 1;
       }
@@ -1166,7 +1166,7 @@ kernel "Fifty-Three" {
         occurrence "voice 4294967295 4294967295 note b5 1/8 [4294967295:4294967295 def 6538:6545 #38]" from 0 to 1/8;
         occurrence "voice 4294967295 4294967295 note a5 1/8 [4294967295:4294967295 def 6558:6565 #38]" from 1/8 to 1/4;
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 6578:6585 #38]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note fs5 1/2 [4294967295:4294967295 def 6598:6606 #38]" from 1/2 to 1;
+        occurrence "voice 4294967295 4294967295 note f#5 1/2 [4294967295:4294967295 def 6598:6606 #38]" from 1/2 to 1;
       }
     in let shared71 = overlay {
         sequence {
@@ -1181,7 +1181,7 @@ kernel "Fifty-Three" {
         }
       }
     in let shared72 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note fs5 1/8 [4294967295:4294967295 def 6693:6701 #39]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note f#5 1/8 [4294967295:4294967295 def 6693:6701 #39]" from 0 to 1/8;
         occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 6714:6721 #39]" from 1/8 to 1/4;
         occurrence "voice 4294967295 4294967295 note b4 1/8 [4294967295:4294967295 def 6734:6741 #39]" from 1/4 to 3/8;
         occurrence "voice 4294967295 4294967295 note d5 1/8 [4294967295:4294967295 def 6754:6761 #39]" from 3/8 to 1/2;
@@ -1210,7 +1210,7 @@ kernel "Fifty-Three" {
         occurrence "voice 4294967295 4294967295 note b5 1/8 [4294967295:4294967295 def 6971:6978 #40]" from 3/8 to 1/2;
         occurrence "voice 4294967295 4294967295 note a5 1/8 [4294967295:4294967295 def 6991:6998 #40]" from 1/2 to 5/8;
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 7011:7018 #40]" from 5/8 to 7/8;
-        occurrence "voice 4294967295 4294967295 note fs5 1/8 [4294967295:4294967295 def 7031:7039 #40]" from 7/8 to 1;
+        occurrence "voice 4294967295 4294967295 note f#5 1/8 [4294967295:4294967295 def 7031:7039 #40]" from 7/8 to 1;
       }
     in let shared75 = overlay {
         sequence {
@@ -1272,7 +1272,7 @@ kernel "Fifty-Three" {
         occurrence "voice 4294967295 4294967295 note b5 1/16 [4294967295:4294967295 def 7415:7423 #43]" from 1/16 to 1/8;
         occurrence "voice 4294967295 4294967295 note a5 1/8 [4294967295:4294967295 def 7436:7443 #43]" from 1/8 to 1/4;
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 7456:7463 #43]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note fs5 1/2 [4294967295:4294967295 def 7476:7484 #43]" from 1/2 to 1;
+        occurrence "voice 4294967295 4294967295 note f#5 1/2 [4294967295:4294967295 def 7476:7484 #43]" from 1/2 to 1;
       }
     in let shared81 = overlay {
         sequence {
@@ -1290,7 +1290,7 @@ kernel "Fifty-Three" {
       }
     in let shared82 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 7571:7578 #44]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note fs5 1/4 [4294967295:4294967295 def 7591:7599 #44]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note f#5 1/4 [4294967295:4294967295 def 7591:7599 #44]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 7612:7619 #44]" from 1/2 to 3/4;
         occurrence "voice 4294967295 4294967295 note b4 1/4 [4294967295:4294967295 def 7632:7639 #44]" from 3/4 to 1;
       }
@@ -1311,7 +1311,7 @@ kernel "Fifty-Three" {
       }
     in let shared84 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note d5 1/2 [4294967295:4294967295 def 7726:7733 #45]" from 0 to 1/2;
-        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 7746:7754 #45]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note bb4 1/4 [4294967295:4294967295 def 7746:7754 #45]" from 1/2 to 3/4;
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 7767:7774 #45]" from 3/4 to 1;
       }
     in let shared85 = overlay {
@@ -1327,7 +1327,7 @@ kernel "Fifty-Three" {
       }
     in let shared86 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note f5 1/4 [4294967295:4294967295 def 7863:7870 #46]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note bf4 1/2 [4294967295:4294967295 def 7883:7891 #46]" from 1/4 to 3/4;
+        occurrence "voice 4294967295 4294967295 note bb4 1/2 [4294967295:4294967295 def 7883:7891 #46]" from 1/4 to 3/4;
         occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 7904:7911 #46]" from 3/4 to 1;
       }
     in let shared87 = overlay {
@@ -1348,10 +1348,10 @@ kernel "Fifty-Three" {
         occurrence "voice 4294967295 4294967295 note g4 1/16 [4294967295:4294967295 def 7999:8007 #47]" from 0 to 1/16;
         occurrence "voice 4294967295 4294967295 note f5 1/16 [4294967295:4294967295 def 8020:8028 #47]" from 1/16 to 1/8;
         occurrence "voice 4294967295 4294967295 note d5 1/16 [4294967295:4294967295 def 8041:8049 #47]" from 1/8 to 3/16;
-        occurrence "voice 4294967295 4294967295 note bf4 1/16 [4294967295:4294967295 def 8062:8071 #47]" from 3/16 to 1/4;
+        occurrence "voice 4294967295 4294967295 note bb4 1/16 [4294967295:4294967295 def 8062:8071 #47]" from 3/16 to 1/4;
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 8084:8091 #47]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note f5 1/4 [4294967295:4294967295 def 8104:8111 #47]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 8124:8132 #47]" from 3/4 to 1;
+        occurrence "voice 4294967295 4294967295 note bb4 1/4 [4294967295:4294967295 def 8124:8132 #47]" from 3/4 to 1;
       }
     in let shared89 = overlay {
         sequence {
@@ -1374,7 +1374,7 @@ kernel "Fifty-Three" {
         }
       }
     in let shared90 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note bf4 1 [4294967295:4294967295 def 8219:8225 #48]" from 0 to 1;
+        occurrence "voice 4294967295 4294967295 note bb4 1 [4294967295:4294967295 def 8219:8225 #48]" from 0 to 1;
       }
     in let shared91 = overlay {
         sequence {
@@ -1386,7 +1386,7 @@ kernel "Fifty-Three" {
         }
       }
     in let shared92 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note bf4 1/2 [4294967295:4294967295 def 8312:8320 #49]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note bb4 1/2 [4294967295:4294967295 def 8312:8320 #49]" from 0 to 1/2;
         occurrence "voice 4294967295 4294967295 note c5 1/2 [4294967295:4294967295 def 8333:8340 #49]" from 1/2 to 1;
       }
     in let shared93 = overlay {
@@ -1406,7 +1406,7 @@ kernel "Fifty-Three" {
     in let shared94 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note f5 1/8 [4294967295:4294967295 def 8429:8436 #50]" from 0 to 1/8;
         occurrence "voice 4294967295 4294967295 note d5 1/8 [4294967295:4294967295 def 8449:8456 #50]" from 1/8 to 1/4;
-        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 8469:8477 #50]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note bb4 1/4 [4294967295:4294967295 def 8469:8477 #50]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note g5 1/2 [4294967295:4294967295 def 8490:8497 #50]" from 1/2 to 1;
       }
     in let shared95 = overlay {
@@ -1429,12 +1429,12 @@ kernel "Fifty-Three" {
     in let shared96 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 8586:8593 #51]" from 0 to 1/8;
         occurrence "voice 4294967295 4294967295 note f5 1/8 [4294967295:4294967295 def 8606:8613 #51]" from 1/8 to 1/4;
-        occurrence "voice 4294967295 4294967295 note bf4 1/8 [4294967295:4294967295 def 8626:8634 #51]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note bb4 1/8 [4294967295:4294967295 def 8626:8634 #51]" from 1/4 to 3/8;
         occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 8647:8654 #51]" from 3/8 to 1/2;
         occurrence "voice 4294967295 4294967295 note g4 1/8 [4294967295:4294967295 def 8667:8674 #51]" from 1/2 to 5/8;
         occurrence "voice 4294967295 4294967295 note f5 1/8 [4294967295:4294967295 def 8687:8694 #51]" from 5/8 to 3/4;
         occurrence "voice 4294967295 4294967295 note d5 1/8 [4294967295:4294967295 def 8707:8714 #51]" from 3/4 to 7/8;
-        occurrence "voice 4294967295 4294967295 note bf4 1/8 [4294967295:4294967295 def 8727:8735 #51]" from 7/8 to 1;
+        occurrence "voice 4294967295 4294967295 note bb4 1/8 [4294967295:4294967295 def 8727:8735 #51]" from 7/8 to 1;
       }
     in let shared97 = overlay {
         sequence {
@@ -1451,7 +1451,7 @@ kernel "Fifty-Three" {
         occurrence "voice 4294967295 4294967295 note g4 1/4 [4294967295:4294967295 def 8843:8850 #52]" from 1/8 to 3/8;
         occurrence "voice 4294967295 4294967295 note f5 1/8 [4294967295:4294967295 def 8863:8870 #52]" from 3/8 to 1/2;
         occurrence "voice 4294967295 4294967295 note d5 1/8 [4294967295:4294967295 def 8883:8890 #52]" from 1/2 to 5/8;
-        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 8903:8911 #52]" from 5/8 to 7/8;
+        occurrence "voice 4294967295 4294967295 note bb4 1/4 [4294967295:4294967295 def 8903:8911 #52]" from 5/8 to 7/8;
         occurrence "voice 4294967295 4294967295 note g5 1/8 [4294967295:4294967295 def 8924:8931 #52]" from 7/8 to 1;
       }
     in let shared99 = overlay {
@@ -1476,7 +1476,7 @@ kernel "Fifty-Three" {
       }
     in let shared100 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note d5 3/4 [4294967295:4294967295 def 9014:9021 #53]" from 0 to 3/4;
-        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 9034:9042 #53]" from 3/4 to 1;
+        occurrence "voice 4294967295 4294967295 note bb4 1/4 [4294967295:4294967295 def 9034:9042 #53]" from 3/4 to 1;
       }
     in let shared101 = overlay {
         sequence {
@@ -1495,7 +1495,7 @@ kernel "Fifty-Three" {
       }
     in let shared102 = timeline 1 {
         occurrence "voice 4294967295 4294967295 note f5 1/4 [4294967295:4294967295 def 9128:9135 #54]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note bf4 1/8 [4294967295:4294967295 def 9148:9156 #54]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note bb4 1/8 [4294967295:4294967295 def 9148:9156 #54]" from 1/4 to 3/8;
         occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 9169:9176 #54]" from 3/8 to 1/2;
         occurrence "voice 4294967295 4294967295 note g4 1/2 [4294967295:4294967295 def 9189:9196 #54]" from 1/2 to 1;
       }
@@ -1518,7 +1518,7 @@ kernel "Fifty-Three" {
         occurrence "voice 4294967295 4294967295 note g4 1/16 [4294967295:4294967295 def 9283:9291 #55]" from 0 to 1/16;
         occurrence "voice 4294967295 4294967295 note f5 1/16 [4294967295:4294967295 def 9304:9312 #55]" from 1/16 to 1/8;
         occurrence "voice 4294967295 4294967295 note d5 1/8 [4294967295:4294967295 def 9325:9332 #55]" from 1/8 to 1/4;
-        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 9345:9353 #55]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note bb4 1/4 [4294967295:4294967295 def 9345:9353 #55]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note g5 1/2 [4294967295:4294967295 def 9366:9373 #55]" from 1/2 to 1;
       }
     in let shared105 = overlay {
@@ -1533,10 +1533,10 @@ kernel "Fifty-Three" {
         }
       }
     in let shared106 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 9462:9470 #56]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note bb4 1/4 [4294967295:4294967295 def 9462:9470 #56]" from 0 to 1/4;
         occurrence "voice 4294967295 4294967295 note g5 1/4 [4294967295:4294967295 def 9483:9490 #56]" from 1/4 to 1/2;
         occurrence "voice 4294967295 4294967295 note f5 1/4 [4294967295:4294967295 def 9503:9510 #56]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note bf4 1/4 [4294967295:4294967295 def 9523:9531 #56]" from 3/4 to 1;
+        occurrence "voice 4294967295 4294967295 note bb4 1/4 [4294967295:4294967295 def 9523:9531 #56]" from 3/4 to 1;
       }
     in let shared107 = overlay {
         sequence {

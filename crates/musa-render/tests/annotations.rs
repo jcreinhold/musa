@@ -123,7 +123,7 @@ fn lilypond_carries_every_annotation() {
 #[test]
 fn a_chord_symbol_survives_every_backend_as_itself() {
     let source = "piece \"P\" { tempo 1/4 = 60; meter 4/4; key c major; score {
-        harmony { at 1:1 csus4; at 2:1 cmmaj7; at 3:1 bfdim7; at 4:1 c6; }
+        harmony { at 1:1 csus4; at 2:1 cmmaj7; at 3:1 bbdim7; at 4:1 c6; }
         part piano { voice one { c4 1; d4 1; e4 1; f4 1; } } } }";
     let score = score_of(source);
     let xml = render_notation(&score, NotationTarget::MusicXml, &NotationOptions::default())
@@ -135,7 +135,7 @@ fn a_chord_symbol_survives_every_backend_as_itself() {
         &[
             "<kind text=\"csus4\">suspended-fourth</kind>",
             "<kind text=\"cmmaj7\">major-minor</kind>",
-            "<kind text=\"bfdim7\">diminished-seventh</kind>",
+            "<kind text=\"bbdim7\">diminished-seventh</kind>",
             "<kind text=\"c6\">major-sixth</kind>",
         ],
         "the MusicXML kinds",
@@ -147,6 +147,7 @@ fn a_chord_symbol_survives_every_backend_as_itself() {
         .to_string();
     // LilyPond spells a raised seventh `7+`, which is how a minor-major
     // seventh is written.
+    // The root is LilyPond's own spelling, not musa's: a flat is `f` there.
     assert_contains(&ly, &["c1:sus4", "c1:m7+", "bf1:dim7", "c1:6"], "the LilyPond chords");
 
     let mei = render_notation(&score, NotationTarget::Mei, &NotationOptions::default())
@@ -154,7 +155,7 @@ fn a_chord_symbol_survives_every_backend_as_itself() {
         .text()
         .to_string();
     // MEI prints the symbol verbatim: it has no chord vocabulary to lose.
-    assert_contains(&mei, &["csus4", "cmmaj7", "bfdim7", "c6"], "the MEI harmony");
+    assert_contains(&mei, &["csus4", "cmmaj7", "bbdim7", "c6"], "the MEI harmony");
 }
 
 /// A symbol written between beats keeps its place: the formats that count

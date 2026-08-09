@@ -72,7 +72,7 @@ function at(source: string, index: number): string {
 /**
  * A word, and what it turns out to be.
  *
- * The lexer's own order: a pitch (`gs4`, `a-1`) and an interval (`P5`) beat
+ * The lexer's own order: a pitch (`g#4`, `a-1`) and an interval (`P5`) beat
  * the identifier pattern, and a spelled word beats both. Everything the
  * composer named is a name.
  */
@@ -82,11 +82,20 @@ function word(source: string, from: number): Token {
 
   const letters = source.slice(from, end);
   const rest = source.slice(end);
-  // A pitch carries its octave — and the sign a negative octave takes — so
-  // the digits after the letters belong to the same token.
-  const octave = /^-?[0-9]+/.exec(rest);
-  if (octave && /^[a-g](ss|ff|[sfn])?$/.test(letters)) {
-    return { class: "pitch", start: from, end: end + octave[0].length };
+  // A pitch carries its accidental and its octave — and the sign a negative
+  // octave takes — so what follows the letters belongs to the same token. A
+  // flat is a letter and rides along in `letters`; a sharp is not, so it is
+  // picked up here.
+  const sharps = /^(##|#)/.exec(rest);
+  const afterSharps = sharps ? rest.slice(sharps[0].length) : rest;
+  const octave = /^-?[0-9]+/.exec(afterSharps);
+  const spelled = sharps ? /^[a-g]$/.test(letters) : /^[a-g](bb|[bn])?$/.test(letters);
+  if (octave && spelled) {
+    return {
+      class: "pitch",
+      start: from,
+      end: end + (sharps?.[0].length ?? 0) + octave[0].length,
+    };
   }
   const size = /^[0-9]+/.exec(rest);
   if (size && /^[PMm]$/.test(letters)) {

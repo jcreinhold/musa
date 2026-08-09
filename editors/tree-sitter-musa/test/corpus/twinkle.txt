@@ -38,7 +38,8 @@ piece "twinkle" {
     (meter_statement
       (rational))
     (key_statement
-      (identifier)
+      (pitch_class
+        (identifier))
       (identifier))
     (score_declaration
       (part_declaration

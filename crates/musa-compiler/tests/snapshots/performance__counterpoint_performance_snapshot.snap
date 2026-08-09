@@ -10,7 +10,7 @@ lane violin:
   on  128000 e4 329.63Hz event-2 i2
   off 192000 i2
   on  192000 d4 293.66Hz event-3 i3
-  on  192000 fs4 369.99Hz event-3 i4
+  on  192000 f#4 369.99Hz event-3 i4
   on  192000 a4 440.00Hz event-3 i5
   off 256000 i3
   off 256000 i4
@@ -20,7 +20,7 @@ lane viola:
   off 64000 i6
   on  64000 a2 110.00Hz event-5 i7
   off 128000 i7
-  on  128000 bf2 116.54Hz event-6 i8
+  on  128000 bb2 116.54Hz event-6 i8
   off 192000 i8
   on  192000 a2 110.00Hz event-7 i9
   off 256000 i9

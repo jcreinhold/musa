@@ -182,7 +182,8 @@ piece "House" {
     (meter_statement
       (rational))
     (key_statement
-      (identifier)
+      (pitch_class
+        (identifier))
       (identifier))
     (comment)
     (comment)

@@ -150,10 +150,15 @@
   ")"
 ] @punctuation.bracket
 
+; `#` is here rather than with the pitches because that is where the real
+; highlighter puts it: a sharp inside `g#4` never reaches this list — the
+; whole literal is one token — and the one that stands alone, in `key g#
+; minor` and `f#m7`, is `TokenClass::Punctuation` there.
 [
   ";"
   ","
   ":"
   "."
   "/"
+  "#"
 ] @punctuation.delimiter

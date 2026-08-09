@@ -13,9 +13,9 @@ timeline 2 {
   occurrence 0|0|note:f4|1/2|201|208|[] from 1/2 to 1;
   occurrence 1|0|note:a2|1/2|401|408|[] from 1/2 to 1;
   occurrence 0|0|note:e4|1/2|233|240|[] from 1 to 3/2;
-  occurrence 1|0|note:bf2|1/2|433|441|[] from 1 to 3/2;
+  occurrence 1|0|note:bb2|1/2|433|441|[] from 1 to 3/2;
   occurrence 0|0|note:a4|1/2|artic:fermata|241|273|[] from 3/2 to 2;
   occurrence 0|0|note:d4|1/2|artic:fermata|241|273|[] from 3/2 to 2;
-  occurrence 0|0|note:fs4|1/2|artic:fermata|241|273|[] from 3/2 to 2;
+  occurrence 0|0|note:f#4|1/2|artic:fermata|241|273|[] from 3/2 to 2;
   occurrence 1|0|note:a2|1/2|artic:fermata|442|457|[] from 3/2 to 2;
 }

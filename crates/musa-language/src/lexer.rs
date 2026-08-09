@@ -149,7 +149,10 @@ enum RawToken {
     /// a properly terminated comment always wins by longest match.
     #[regex(r"(?s)/\*([^*]|\*[^/])*")]
     UnterminatedBlockComment,
-    #[regex(r"[a-g](ss|ff|[sfn])?-?[0-9]+")]
+    // A pitch is a letter, an optional accidental, and an octave. `b` is both
+    // a letter and a flat, and the two never collide because the letter is
+    // always first: `b2` is B, `bb2` is B flat, `bbb2` is B double flat.
+    #[regex(r"[a-g](##|bb|[#bn])?-?[0-9]+")]
     PitchLiteral,
     #[regex(r"[PMm][0-9]+")]
     IntervalLiteral,
@@ -565,7 +568,7 @@ mod tests {
         assert_eq!(rebuilt, source, "tokens must tile the source");
     }
 
-    const SAMPLE: &str = "piece \"Glass Mountain\" {\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    score {\n        part strings {\n            voice upper {\n                c5 1;\n                c5 1/2; // held\n                a4 1;\n                gs4 1;\n            }\n        }\n    }\n}\n";
+    const SAMPLE: &str = "piece \"Glass Mountain\" {\n    tempo quarter = 72;\n    meter 4/4;\n    key a minor;\n\n    score {\n        part strings {\n            voice upper {\n                c5 1;\n                c5 1/2; // held\n                a4 1;\n                g#4 1;\n            }\n        }\n    }\n}\n";
 
     #[test]
     fn structural_source_lexes_and_round_trips() {
@@ -596,7 +599,7 @@ mod tests {
             SyntaxKind::Semicolon,
         ];
         assert!(significant.starts_with(&expected_prefix), "got: {significant:?}");
-        assert!(significant.contains(&SyntaxKind::PitchLiteral)); // c5, a4, gs4
+        assert!(significant.contains(&SyntaxKind::PitchLiteral)); // c5, a4, g#4
     }
 
     /// The five tokens added for the compact note syntax take nothing away
@@ -648,10 +651,23 @@ mod tests {
 
     #[test]
     fn pitch_literals() {
-        for source in ["c5", "gs4", "css3", "bf4", "bff2", "en5", "a-1"] {
+        for source in ["c5", "g#4", "c##3", "bb4", "bbb2", "en5", "a-1", "b2"] {
             assert_eq!(kinds(source), [SyntaxKind::PitchLiteral], "source: {source}");
             assert_round_trip(source);
         }
+    }
+
+    /// A bare letter is not a pitch. `key a minor;`, `mobile { a; b; c; }`
+    /// and a motif parameter named `a` all depend on it, so the octave is
+    /// required and this is the test that says so.
+    #[test]
+    fn a_letter_without_an_octave_is_a_name() {
+        for source in ["a", "b", "bb", "g", "f"] {
+            assert_eq!(kinds(source), [SyntaxKind::Identifier], "source: {source}");
+        }
+        // Which is why a pitch class with a sharp is two tokens, and why the
+        // parser builds a node out of them.
+        assert_eq!(kinds("g#"), [SyntaxKind::Identifier, SyntaxKind::Hash]);
     }
 
     #[test]

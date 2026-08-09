@@ -683,7 +683,7 @@ impl<'a> Parser<'a> {
     fn key_stmt(&mut self) {
         self.start(SyntaxKind::KeyStmt);
         self.bump(); // key
-        self.expect(SyntaxKind::Identifier, "a pitch class such as `a` or `gs`");
+        self.pitch_class();
         self.expect(SyntaxKind::Identifier, "a mode (`major` or `minor`)");
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
@@ -1742,11 +1742,38 @@ impl<'a> Parser<'a> {
         self.start(SyntaxKind::ChordSymbol);
         if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::PitchLiteral]) {
             self.bump();
+            // `f#m7` is a chord the way `fmaj7` is, but a sharp is its own
+            // token, so the root's accidental and the quality after it come
+            // in separately. The node is what makes them one word again.
+            while self.at(SyntaxKind::Hash) {
+                self.bump();
+            }
+            if self.at(SyntaxKind::Identifier) {
+                self.bump(); // the quality, after a sharp split it off
+            }
             if self.at(SyntaxKind::Integer) {
                 self.bump();
             }
         } else {
             self.expected("a chord such as `am` or `fmaj7`");
+        }
+        self.finish();
+    }
+
+    /// A pitch class with no octave: `a`, `g#`, `bb`.
+    ///
+    /// A flat is part of the identifier and a sharp is a token of its own, so
+    /// this is one token or three. Wrapping it settles that once, here, and
+    /// every reader downstream asks the node for its text.
+    fn pitch_class(&mut self) {
+        if !self.at(SyntaxKind::Identifier) {
+            self.expected("a pitch class such as `a` or `g#`");
+            return;
+        }
+        self.start(SyntaxKind::PitchClass);
+        self.bump();
+        while self.at(SyntaxKind::Hash) {
+            self.bump();
         }
         self.finish();
     }

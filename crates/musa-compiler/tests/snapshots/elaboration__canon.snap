@@ -14,12 +14,12 @@ timeline 15/4 {
   occurrence 0|1|note:d5|1/4|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 3/4 to 1;
   occurrence 0|1|note:e5|1/4|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 1 to 5/4;
   occurrence 0|0|note:c5|1/2|299|311|[MotifApplication { call_site: SourceSpan { start: 299, end: 311 } }] from 1 to 3/2;
-  occurrence 0|1|note:fs5|1/4|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 5/4 to 3/2;
+  occurrence 0|1|note:f#5|1/4|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 5/4 to 3/2;
   occurrence 0|1|note:d5|1/4|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 3/2 to 7/4;
   occurrence 0|0|note:b4|1/2|299|311|[MotifApplication { call_site: SourceSpan { start: 299, end: 311 } }] from 3/2 to 2;
   occurrence 0|1|note:g5|1/2|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 7/4 to 9/4;
   occurrence 0|0|note:a4|1/2|299|311|[MotifApplication { call_site: SourceSpan { start: 299, end: 311 } }] from 2 to 5/2;
-  occurrence 0|1|note:fs5|1/2|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 9/4 to 11/4;
+  occurrence 0|1|note:f#5|1/2|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 9/4 to 11/4;
   occurrence 0|0|note:g4|1/2|299|311|[MotifApplication { call_site: SourceSpan { start: 299, end: 311 } }] from 5/2 to 3;
   occurrence 0|1|note:e5|1/2|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 11/4 to 13/4;
   occurrence 0|1|note:d5|1/2|432|444|[Transposition(Interval { diatonic_steps: 4, semitones: 7 }), MotifApplication { call_site: SourceSpan { start: 432, end: 444 } }] from 13/4 to 15/4;

@@ -33,7 +33,7 @@ pub enum SyntaxKind {
     String,
     /// Written pitch: letter `a`–`g`, optional accidental (`s`/`ss` sharp,
     /// `f`/`ff` flat, `n` natural — `LilyPond` English convention), octave
-    /// digits with optional `-` sign: `c5`, `gs4`, `bff2`, `a-1`.
+    /// digits with optional `-` sign: `c5`, `g#4`, `bbb2`, `a-1`.
     PitchLiteral,
     /// Interval: quality `P`/`M`/`m` plus size — `P5`, `M3`, `m3`.
     IntervalLiteral,
@@ -295,8 +295,17 @@ pub enum SyntaxKind {
     HarmonyStmt,
     /// `1:1` — a measure:beat position.
     Position,
-    /// `fmaj7` — a chord symbol, as written.
+    /// `fmaj7`, `f#m7` — a chord symbol, as written.
     ChordSymbol,
+    /// `a`, `g#`, `bb` — a pitch class with no octave, as a key tonic is
+    /// written.
+    ///
+    /// Its own node because a sharp is a token and a flat is not: `bb` lexes
+    /// as one identifier while `g#` lexes as two, so the tonic of a key is
+    /// one token or three depending on which accidental it carries. The node
+    /// makes that a fact about the tree instead of a count the reader has to
+    /// get right.
+    PitchClass,
     /// `library { ... }` — a file of shared declarations, importable by a
     /// piece. Root of a library file, in place of a [`SyntaxKind::PieceDecl`].
     LibraryDecl,

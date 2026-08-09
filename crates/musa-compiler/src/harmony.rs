@@ -81,15 +81,16 @@ impl ChordSymbol {
         let mut chars = text.chars();
         let letter = Letter::from_char(chars.next()?)?;
         let rest = chars.as_str();
-        let (accidental, rest) = if let Some(rest) = rest.strip_prefix("ss") {
+        // The root's accidental. `#` and `b` cannot be mistaken for a
+        // quality, which is why `dsus4` no longer needs an exception here:
+        // `d#sus4` says which of the two it is.
+        let (accidental, rest) = if let Some(rest) = rest.strip_prefix("##") {
             (Accidental::DOUBLE_SHARP, rest)
-        } else if let Some(rest) = rest.strip_prefix("ff") {
+        } else if let Some(rest) = rest.strip_prefix("bb") {
             (Accidental::DOUBLE_FLAT, rest)
-        } else if let Some(rest) = rest.strip_prefix('s').filter(|_| !rest.starts_with("sus")) {
-            // `ds` is D sharp and `dsus4` is D suspended: the `s` of `sus`
-            // belongs to the quality, not to the root.
+        } else if let Some(rest) = rest.strip_prefix('#') {
             (Accidental::SHARP, rest)
-        } else if let Some(rest) = rest.strip_prefix('f') {
+        } else if let Some(rest) = rest.strip_prefix('b') {
             (Accidental::FLAT, rest)
         } else {
             (Accidental::NATURAL, rest)

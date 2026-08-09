@@ -131,7 +131,7 @@ pub struct EventFacts {
     pub pitch: Option<String>,
     /// Every pitch, for a chord.
     pub pitches: Vec<String>,
-    /// The same pitches as the *language* spells them (`gs4`), not as a
+    /// The same pitches as the *language* spells them (`g#4`), not as a
     /// reader reads them (`G♯4`). An editable field has to round-trip
     /// through the source, and converting `♯` back to `s` in the frontend
     /// would be the frontend spelling music (`03-interaction.md` §7).

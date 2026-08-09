@@ -128,7 +128,7 @@ fn transpose_spells_correctly() {
             musa_compiler::ScoreEventKind::Rest | musa_compiler::ScoreEventKind::Chord { .. } => None,
         })
         .collect();
-    assert_eq!(spellings, vec!["g4", "gs4", "b4", "c5"]);
+    assert_eq!(spellings, vec!["g4", "g#4", "b4", "c5"]);
 }
 
 #[test]

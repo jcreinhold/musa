@@ -29,7 +29,7 @@ type Result = std::result::Result<(), Box<dyn std::error::Error>>;
 const BARS: usize = 100;
 
 /// D natural minor, which is what the other fixtures are written in.
-const SCALE: [&str; 7] = ["d", "e", "f", "g", "a", "bf", "c"];
+const SCALE: [&str; 7] = ["d", "e", "f", "g", "a", "bb", "c"];
 
 /// One instrumental line: how it is notated, and how it moves.
 struct Line {

@@ -64,9 +64,9 @@ pub fn apply_edits(source: &str, edits: &[TextEdit]) -> String {
 /// A statement to write into a voice, in the language's own terms.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Statement {
-    /// `gs4 1/8;`
+    /// `g#4 1/8;`
     Note {
-        /// Written pitch, as it is spelled (`gs4`, `bf3`).
+        /// Written pitch, as it is spelled (`g#4`, `bb3`).
         pitch: String,
         /// Notated duration (`1/8`, `3/8`, `1`).
         duration: String,
@@ -660,7 +660,7 @@ fn set_pitch(root: &SyntaxNode, at: u32, pitch: &str) -> Result<Vec<TextEdit>, E
     if statement.kind() != SyntaxKind::NoteStmt {
         return Err(EditError::NotANote { at });
     }
-    // A note names its pitch either literally (`gs4`) or through a motif
+    // A note names its pitch either literally (`g#4`) or through a motif
     // parameter (`root`); both are the token to replace.
     let range =
         token_of(&statement, &[SyntaxKind::PitchLiteral, SyntaxKind::Identifier]).ok_or(EditError::NotANote { at })?;

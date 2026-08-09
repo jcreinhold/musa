@@ -370,7 +370,7 @@ fn the_transformations_and_their_bodies_are_typed_views() {
 #[test]
 fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
     let source = "piece \"x\" { motif m() { c4 1/4; } score { part p { voice v { \
-                  use m(); use m() with { note 2 = d5; note 3 = ef5; } } } } }";
+                  use m(); use m() with { note 2 = d5; note 3 = eb5; } } } } }";
     let doc = parse(source);
     assert_eq!(print_errors(&doc), "");
     let piece = PieceDecl::from_root(&doc.syntax()).expect("piece");
@@ -429,7 +429,7 @@ fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
         spelled,
         vec![
             (Some("2".to_owned()), Some("d5".to_owned())),
-            (Some("3".to_owned()), Some("ef5".to_owned())),
+            (Some("3".to_owned()), Some("eb5".to_owned())),
         ]
     );
 }

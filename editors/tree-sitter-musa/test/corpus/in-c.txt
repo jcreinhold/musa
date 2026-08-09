@@ -157,7 +157,7 @@ piece "Fifty-Three" {
 
     fragment figure_fifteen {
         repeat 2 to 8 {
-            fs5 1/4;
+            f#5 1/4;
             a4 1/8;
             g5 1/8;
             e5 1/2;
@@ -167,7 +167,7 @@ piece "Fifty-Three" {
     fragment figure_sixteen {
         repeat 3 to 10 {
             e5 1/16;
-            fs5 1/16;
+            f#5 1/16;
             g5 1/8;
             e5 1/4;
             c5 1/2;
@@ -178,7 +178,7 @@ piece "Fifty-Three" {
         repeat 4 to 12 {
             e5 1/4;
             c5 1/4;
-            fs5 1/4;
+            f#5 1/4;
             a4 1/4;
         }
     }
@@ -193,7 +193,7 @@ piece "Fifty-Three" {
 
     fragment figure_nineteen {
         repeat 3 to 13 {
-            fs5 1/4;
+            f#5 1/4;
             g5 1/2;
             e5 1/4;
         }
@@ -202,11 +202,11 @@ piece "Fifty-Three" {
     fragment figure_twenty {
         repeat 4 to 10 {
             c5 1/16;
-            fs5 1/16;
+            f#5 1/16;
             a4 1/16;
             g5 1/16;
             e5 1/4;
-            fs5 1/4;
+            f#5 1/4;
             g5 1/4;
         }
     }
@@ -226,7 +226,7 @@ piece "Fifty-Three" {
 
     fragment figure_twenty_three {
         repeat 4 to 13 {
-            fs5 1/8;
+            f#5 1/8;
             a4 1/8;
             g5 1/4;
             e5 1/2;
@@ -236,11 +236,11 @@ piece "Fifty-Three" {
     fragment figure_twenty_four {
         repeat 2 to 12 {
             e5 1/8;
-            fs5 1/8;
+            f#5 1/8;
             g5 1/8;
             e5 1/8;
             c5 1/8;
-            fs5 1/8;
+            f#5 1/8;
             a4 1/8;
             g5 1/8;
         }
@@ -250,7 +250,7 @@ piece "Fifty-Three" {
         repeat 3 to 9 {
             e5 1/8;
             c5 1/4;
-            fs5 1/8;
+            f#5 1/8;
             a4 1/8;
             g5 1/4;
             e5 1/8;
@@ -266,7 +266,7 @@ piece "Fifty-Three" {
 
     fragment figure_twenty_seven {
         repeat 2 to 10 {
-            fs5 1/4;
+            f#5 1/4;
             g5 1/8;
             e5 1/8;
             c5 1/2;
@@ -276,7 +276,7 @@ piece "Fifty-Three" {
     fragment figure_twenty_eight {
         repeat 3 to 12 {
             c5 1/16;
-            fs5 1/16;
+            f#5 1/16;
             a4 1/8;
             g5 1/4;
             e5 1/2;
@@ -296,7 +296,7 @@ piece "Fifty-Three" {
         repeat 2 to 8 {
             a5 1/2;
             g5 1/4;
-            fs5 1/4;
+            f#5 1/4;
         }
     }
 
@@ -314,7 +314,7 @@ piece "Fifty-Three" {
             b5 1/16;
             a5 1/16;
             g5 1/16;
-            fs5 1/4;
+            f#5 1/4;
             e5 1/4;
             b4 1/4;
         }
@@ -338,13 +338,13 @@ piece "Fifty-Three" {
             b5 1/8;
             a5 1/8;
             g5 1/4;
-            fs5 1/2;
+            f#5 1/2;
         }
     }
 
     fragment figure_thirty_six {
         repeat 2 to 9 {
-            fs5 1/8;
+            f#5 1/8;
             e5 1/8;
             b4 1/8;
             d5 1/8;
@@ -362,7 +362,7 @@ piece "Fifty-Three" {
             b5 1/8;
             a5 1/8;
             g5 1/4;
-            fs5 1/8;
+            f#5 1/8;
         }
     }
 
@@ -388,14 +388,14 @@ piece "Fifty-Three" {
             b5 1/16;
             a5 1/8;
             g5 1/4;
-            fs5 1/2;
+            f#5 1/2;
         }
     }
 
     fragment figure_forty_one {
         repeat 4 to 11 {
             g5 1/4;
-            fs5 1/4;
+            f#5 1/4;
             e5 1/4;
             b4 1/4;
         }
@@ -404,7 +404,7 @@ piece "Fifty-Three" {
     fragment figure_forty_two {
         repeat 2 to 10 {
             d5 1/2;
-            bf4 1/4;
+            bb4 1/4;
             g5 1/4;
         }
     }
@@ -412,7 +412,7 @@ piece "Fifty-Three" {
     fragment figure_forty_three {
         repeat 3 to 12 {
             f5 1/4;
-            bf4 1/2;
+            bb4 1/2;
             c5 1/4;
         }
     }
@@ -422,22 +422,22 @@ piece "Fifty-Three" {
             g4 1/16;
             f5 1/16;
             d5 1/16;
-            bf4 1/16;
+            bb4 1/16;
             g5 1/4;
             f5 1/4;
-            bf4 1/4;
+            bb4 1/4;
         }
     }
 
     fragment figure_forty_five {
         repeat 2 to 8 {
-            bf4 1;
+            bb4 1;
         }
     }
 
     fragment figure_forty_six {
         repeat 3 to 10 {
-            bf4 1/2;
+            bb4 1/2;
             c5 1/2;
         }
     }
@@ -446,7 +446,7 @@ piece "Fifty-Three" {
         repeat 4 to 12 {
             f5 1/8;
             d5 1/8;
-            bf4 1/4;
+            bb4 1/4;
             g5 1/2;
         }
     }
@@ -455,12 +455,12 @@ piece "Fifty-Three" {
         repeat 2 to 11 {
             g5 1/8;
             f5 1/8;
-            bf4 1/8;
+            bb4 1/8;
             c5 1/8;
             g4 1/8;
             f5 1/8;
             d5 1/8;
-            bf4 1/8;
+            bb4 1/8;
         }
     }
 
@@ -470,7 +470,7 @@ piece "Fifty-Three" {
             g4 1/4;
             f5 1/8;
             d5 1/8;
-            bf4 1/4;
+            bb4 1/4;
             g5 1/8;
         }
     }
@@ -478,14 +478,14 @@ piece "Fifty-Three" {
     fragment figure_fifty {
         repeat 4 to 10 {
             d5 3/4;
-            bf4 1/4;
+            bb4 1/4;
         }
     }
 
     fragment figure_fifty_one {
         repeat 2 to 9 {
             f5 1/4;
-            bf4 1/8;
+            bb4 1/8;
             c5 1/8;
             g4 1/2;
         }
@@ -496,17 +496,17 @@ piece "Fifty-Three" {
             g4 1/16;
             f5 1/16;
             d5 1/8;
-            bf4 1/4;
+            bb4 1/4;
             g5 1/2;
         }
     }
 
     fragment figure_fifty_three {
         repeat 4 to 13 {
-            bf4 1/4;
+            bb4 1/4;
             g5 1/4;
             f5 1/4;
-            bf4 1/4;
+            bb4 1/4;
         }
     }
 
@@ -625,7 +625,8 @@ piece "Fifty-Three" {
     (meter_statement
       (rational))
     (key_statement
-      (identifier)
+      (pitch_class
+        (identifier))
       (identifier))
     (fragment_declaration
       (identifier)

@@ -228,7 +228,7 @@
 
     <!--
       Pitch and duration are the two things a composer changes from here, and
-      they are typed in the language's own spelling — `gs4`, `3/8` — because
+      they are typed in the language's own spelling — `g#4`, `3/8` — because
       that is what the source will say and there is no second notation to
       learn. A single note only: a chord is four values in one row, which is a
       field this row is not.

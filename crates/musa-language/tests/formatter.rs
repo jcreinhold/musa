@@ -131,7 +131,7 @@ fn apply_edits_replaces_ranges_in_order() {
 fn pitch() -> impl Strategy<Value = String> {
     (
         prop::sample::select(vec!['a', 'b', 'c', 'd', 'e', 'f', 'g']),
-        prop::sample::select(vec!["", "s", "ss", "f", "ff", "n"]),
+        prop::sample::select(vec!["", "#", "##", "b", "bb", "n"]),
         -1i8..=8,
     )
         .prop_map(|(letter, accidental, octave)| format!("{letter}{accidental}{octave}"))

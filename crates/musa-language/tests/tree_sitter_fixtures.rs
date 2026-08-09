@@ -215,6 +215,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::HarmonyDecl
         | SyntaxKind::HarmonyStmt
         | SyntaxKind::Position
+        | SyntaxKind::PitchClass
         | SyntaxKind::ChordSymbol
         | SyntaxKind::LibraryDecl
         | SyntaxKind::ImportStmt

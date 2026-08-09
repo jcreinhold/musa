@@ -1,7 +1,7 @@
 ---
 id: 88
 slug: sharps-and-flats
-status: in-progress
+status: done
 depends_on: [87]
 phase: 2
 ---

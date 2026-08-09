@@ -188,7 +188,7 @@ fn inversion_mirrors_diatonically_and_spells_the_result() {
     // from c is a-flat, not g-sharp.
     let mirrored = music("invert around c5 { c5 1/4; e5 1/4; g5 1/4; }");
     let pitches: Vec<ScoreEventKind> = mirrored.iter().map(|(_, _, kind)| kind.clone()).collect();
-    let expected: Vec<ScoreEventKind> = ["c5", "af4", "f4"]
+    let expected: Vec<ScoreEventKind> = ["c5", "ab4", "f4"]
         .into_iter()
         .map(|text| ScoreEventKind::Note {
             pitch: WrittenPitch::parse(text).expect("a pitch literal"),
@@ -199,10 +199,10 @@ fn inversion_mirrors_diatonically_and_spells_the_result() {
 
 #[test]
 fn a_mirror_image_the_language_cannot_write_is_reported() {
-    // `bss4` mirrored about `c5` lands a diatonic step above the axis and
+    // `b##4` mirrored about `c5` lands a diatonic step above the axis and
     // three semitones below it: a d that would need a triple flat, which the
     // language cannot write — an error, never a silently approximated pitch.
-    let errors = errors_of(&piece("invert around c5 { bss4 1/4; }"));
+    let errors = errors_of(&piece("invert around c5 { b##4 1/4; }"));
     assert!(
         errors
             .iter()

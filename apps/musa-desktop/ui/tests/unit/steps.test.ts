@@ -64,12 +64,12 @@ describe("spelling a step away", () => {
   });
 
   it("carries the accidental rather than deciding one", () => {
-    expect(shiftStep("gs4", 1)).toBe("as4");
-    expect(shiftStep("ef5", -2)).toBe("cf5");
+    expect(shiftStep("g#4", 1)).toBe("a#4");
+    expect(shiftStep("eb5", -2)).toBe("cb5");
   });
 
   it("leaves a note that did not move exactly as it was", () => {
-    expect(shiftStep("gs4", 0)).toBe("gs4");
+    expect(shiftStep("g#4", 0)).toBe("g#4");
   });
 
   it("writes nothing for something that is not a written pitch", () => {
@@ -80,14 +80,14 @@ describe("spelling a step away", () => {
 
 describe("the accidental ladder", () => {
   it("walks flat to sharp, and stops at both ends", () => {
-    expect(shiftAccidental("g4", 1)).toBe("gs4");
-    expect(shiftAccidental("gs4", 1)).toBe("gss4");
-    expect(shiftAccidental("gss4", 1)).toBe("gss4");
-    expect(shiftAccidental("gff4", -1)).toBe("gff4");
+    expect(shiftAccidental("g4", 1)).toBe("g#4");
+    expect(shiftAccidental("g#4", 1)).toBe("g##4");
+    expect(shiftAccidental("g##4", 1)).toBe("g##4");
+    expect(shiftAccidental("gbb4", -1)).toBe("gbb4");
   });
 
   it("treats an explicit natural as the bare letter", () => {
-    expect(shiftAccidental("gn4", 1)).toBe("gs4");
+    expect(shiftAccidental("gn4", 1)).toBe("g#4");
   });
 });
 
@@ -154,7 +154,7 @@ describe("the gesture", () => {
     gesture.begin(press({ alt: true }));
     gesture.move(0, -5, 10);
     expect(gesture.axis).toBe("accidental");
-    expect(gesture.candidate).toMatchObject({ value: "gs4" });
+    expect(gesture.candidate).toMatchObject({ value: "g#4" });
   });
 
   it("is a range selection when it goes sideways", () => {

@@ -45,10 +45,14 @@ export function rungsFor(dx: number, staffSpace: number): number {
 /** The seven letters, in the order the staff puts them. */
 const LETTERS = "cdefgab";
 
-/** The accidental suffixes the language writes, longest first. */
-const ACCIDENTALS = ["ss", "ff", "s", "f", "n"] as const;
+/**
+ * The accidental suffixes the language writes, longest first. The letter is
+ * already off the front when these are matched, so the `b` here is a flat and
+ * never the note B.
+ */
+const ACCIDENTALS = ["##", "bb", "#", "b", "n"] as const;
 
-/** A written pitch, taken apart the way the language spells it: `gs4`. */
+/** A written pitch, taken apart the way the language spells it: `g#4`. */
 interface Written {
   letter: string;
   accidental: string;
@@ -80,7 +84,7 @@ function writePitch(written: Written): string {
  * The same note `steps` diatonic steps away.
  *
  * The accidental is carried through untouched — that is the whole answer to
- * roadmap §14.5's accidental ambiguity. Moving `gs4` up one step writes `as4`,
+ * roadmap §14.5's accidental ambiguity. Moving `g#4` up one step writes `a#4`,
  * because the gesture said *a step*, and what a step means in this key is the
  * key signature's business, not the pointer's.
  */
@@ -96,7 +100,7 @@ export function shiftStep(spelling: string, steps: number): string | null {
 }
 
 /** Flat to sharp, in the order `⇧↑` already walks them. */
-const CYCLE: readonly string[] = ["ff", "f", "", "s", "ss"];
+const CYCLE: readonly string[] = ["bb", "b", "", "#", "##"];
 
 /** The same note with its accidental moved along the ladder, step untouched. */
 export function shiftAccidental(spelling: string, by: number): string | null {

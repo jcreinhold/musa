@@ -41,7 +41,7 @@
     { "kind": "pitch_literal", "text": "g5" },
     { "kind": "rational", "text": "1/4" },
     { "kind": ";", "text": ";" },
-    { "kind": "pitch_literal", "text": "fs5" },
+    { "kind": "pitch_literal", "text": "f#5" },
     { "kind": "rational", "text": "1/4" },
     { "kind": ";", "text": ";" },
     { "kind": "pitch_literal", "text": "g5" },

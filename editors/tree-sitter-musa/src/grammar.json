@@ -390,7 +390,7 @@
           "name": "pitch_class",
           "content": {
             "type": "SYMBOL",
-            "name": "identifier"
+            "name": "pitch_class"
           }
         },
         {
@@ -404,6 +404,22 @@
         {
           "type": "STRING",
           "value": ";"
+        }
+      ]
+    },
+    "pitch_class": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "identifier"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "STRING",
+            "value": "#"
+          }
         }
       ]
     },
@@ -2910,6 +2926,25 @@
           ]
         },
         {
+          "type": "REPEAT",
+          "content": {
+            "type": "STRING",
+            "value": "#"
+          }
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "identifier"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
           "type": "CHOICE",
           "members": [
             {
@@ -2925,7 +2960,7 @@
     },
     "pitch_literal": {
       "type": "PATTERN",
-      "value": "[a-g](ss|ff|[sfn])?-?[0-9]+"
+      "value": "[a-g](##|bb|[#bn])?-?[0-9]+"
     },
     "interval_literal": {
       "type": "PATTERN",

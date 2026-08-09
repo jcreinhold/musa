@@ -145,7 +145,12 @@ module.exports = grammar({
     meter_statement: ($) => seq('meter', field('meter', choice($.rational, $.identifier)), ';'),
 
     // Parser::key_stmt — `key a minor;`
-    key_statement: ($) => seq('key', field('pitch_class', $.identifier), field('mode', $.identifier), ';'),
+    key_statement: ($) =>
+      seq('key', field('pitch_class', $.pitch_class), field('mode', $.identifier), ';'),
+
+    // Parser::pitch_class — `a`, `g#`, `bb`. A flat is part of the identifier
+    // and a sharp is a token of its own, so a tonic is one token or three.
+    pitch_class: ($) => seq($.identifier, repeat('#')),
 
     // Parser::motif_decl — parameters inline, as in the hand parser: a
     // comma-joined run of `name: type (= default)?`, trailing comma allowed.
@@ -484,14 +489,23 @@ module.exports = grammar({
     // Parser::position — `<measure>:<beat>`
     position: ($) => seq(field('measure', $.integer), ':', field('beat', choice($.integer, $.rational))),
 
-    // Parser::chord_symbol — one word, however it lexes.
-    chord_symbol: ($) => seq(choice($.identifier, $.pitch_literal), optional($.integer)),
+    // Parser::chord_symbol — `am`, `fmaj7`, `f#m7`. One word, however it
+    // lexes: a sharp on the root splits the quality off into its own
+    // identifier.
+    chord_symbol: ($) =>
+      seq(
+        choice($.identifier, $.pitch_literal),
+        repeat('#'),
+        optional($.identifier),
+        optional($.integer),
+      ),
 
     // --- Tokens (crates/musa-language/src/lexer.rs) ----------------------
 
-    // `[a-g](ss|ff|[sfn])?-?[0-9]+` — a written pitch: letter, accidental,
-    // octave.
-    pitch_literal: ($) => /[a-g](ss|ff|[sfn])?-?[0-9]+/,
+    // `[a-g](##|bb|[#bn])?-?[0-9]+` — a written pitch: letter, accidental,
+    // octave. The letter is always first, so the `b` of `bb2` is a flat and
+    // the `b` of `b2` is the note.
+    pitch_literal: ($) => /[a-g](##|bb|[#bn])?-?[0-9]+/,
 
     // `[PMm][0-9]+` — an interval: quality and size.
     interval_literal: ($) => /[PMm][0-9]+/,

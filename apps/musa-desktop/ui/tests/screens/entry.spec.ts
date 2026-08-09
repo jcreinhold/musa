@@ -87,7 +87,7 @@ test("the octave and the accidental follow the letters until they are changed", 
 
   await settled(page, 2);
   const asked = await edits(page);
-  expect(asked.map((edit) => (edit.note as { pitch: string }).pitch)).toEqual(["gs5", "as5"]);
+  expect(asked.map((edit) => (edit.note as { pitch: string }).pitch)).toEqual(["g#5", "a#5"]);
 });
 
 test("editing a generated note asks first, and states what it would change", async ({ page }) => {
@@ -194,14 +194,14 @@ test("a keyboard is named while entry is on, and its notes are written", async (
   await expect(page.getByText("Stub Keyboard", { exact: true })).toBeVisible();
 
   await page.keyboard.press("8");
-  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["ef4"] }));
+  await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["eb4"] }));
   await settled(page, 1);
   const [written] = await edits(page);
   expect(written?.kind).toBe("insertNote");
   // The pitch is the core's spelling — the interface never decides whether a
   // black key is a sharp or a flat — and the duration is the one entry is set
   // to, because a keyboard cannot say how long a note is notated for.
-  expect(written?.note).toEqual({ kind: "note", pitch: "ef4", duration: "1/8" });
+  expect(written?.note).toEqual({ kind: "note", pitch: "eb4", duration: "1/8" });
 
   // Several keys held together arrive as one chord, already grouped.
   await page.evaluate(() => window.__musaEmit("musa://midi", { pitches: ["c4", "e4", "g4"] }));

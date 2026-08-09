@@ -2,7 +2,7 @@
 //!
 //! Each wrapper is a thin cast around a [`SyntaxNode`] with accessors for its
 //! significant children. Wrappers cache nothing and perform no semantic
-//! resolution: `NoteStmt::pitch` returns the written text `gs4`, not a
+//! resolution: `NoteStmt::pitch` returns the written text `g#4`, not a
 //! computed pitch. New wrappers are cheap; create them with
 //! [`AstNode::cast`].
 
@@ -954,7 +954,7 @@ pub struct NoteStmt(SyntaxNode);
 wrapper!(NoteStmt, SyntaxKind::NoteStmt);
 
 impl NoteStmt {
-    /// The written pitch (`gs4`) or pitch reference (`root`).
+    /// The written pitch (`g#4`) or pitch reference (`root`).
     pub fn pitch(&self) -> Option<String> {
         token_text(&self.0, SyntaxKind::PitchLiteral).or_else(|| token_text(&self.0, SyntaxKind::Identifier))
     }
@@ -1292,7 +1292,7 @@ pub struct GraceNote(SyntaxNode);
 wrapper!(GraceNote, SyntaxKind::GraceNote);
 
 impl GraceNote {
-    /// The written pitch (`gs4`) or pitch reference (`root`).
+    /// The written pitch (`g#4`) or pitch reference (`root`).
     pub fn pitch(&self) -> Option<String> {
         token_text(&self.0, SyntaxKind::PitchLiteral).or_else(|| token_text(&self.0, SyntaxKind::Identifier))
     }

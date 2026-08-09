@@ -732,7 +732,7 @@
         "required": true,
         "types": [
           {
-            "type": "identifier",
+            "type": "pitch_class",
             "named": true
           }
         ]
@@ -1257,6 +1257,21 @@
         },
         {
           "type": "tempo_statement",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "pitch_class",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "identifier",
           "named": true
         }
       ]
@@ -2140,6 +2155,10 @@
         }
       ]
     }
+  },
+  {
+    "type": "#",
+    "named": false
   },
   {
     "type": "(",

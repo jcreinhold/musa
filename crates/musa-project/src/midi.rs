@@ -109,9 +109,9 @@ const SHARP_ORDER: [Letter; 7] = [
 /// key's way, and a note outside the key is written as an alteration of its
 /// neighbour — raised in a sharp key, lowered in a flat one.**
 ///
-/// So in G major note 66 is `fs4`, because the key spells F sharp; in F major
-/// note 61 is `df4` and in D major it is `cs4`, because the two keys lean
-/// opposite ways; and in B major note 65 is `es4`, because the letter below
+/// So in G major note 66 is `f#4`, because the key spells F sharp; in F major
+/// note 61 is `db4` and in D major it is `c#4`, because the two keys lean
+/// opposite ways; and in B major note 65 is `e#4`, because the letter below
 /// it is the one the key has. A piece with no `key` declaration is treated as
 /// having none in the signature, which leans sharp — the same default every
 /// notation program uses.
@@ -151,7 +151,7 @@ pub(crate) fn spell(note: u8, key: Option<Key>) -> String {
         .find_map(|&(candidate, natural)| (candidate == letter).then_some(natural))
         .unwrap_or(0);
     // The written octave is the one that makes the spelling sound at `note`,
-    // which is not always the note number's own: `bs3` sounds where `c4` does.
+    // which is not always the note number's own: `b#3` sounds where `c4` does.
     let octave = (i32::from(note) - natural - alter).div_euclid(12) - 1;
     format!("{}{}{}", letter_name(letter), accidental(alter), octave.max(0))
 }
@@ -190,13 +190,13 @@ fn letter_name(letter: Letter) -> char {
     }
 }
 
-/// The language's accidental suffix (`s` sharp, `f` flat, doubled once).
+/// The language's accidental suffix (`#` sharp, `b` flat, doubled once).
 fn accidental(alter: i32) -> &'static str {
     match alter {
-        2 => "ss",
-        1 => "s",
-        -1 => "f",
-        -2 => "ff",
+        2 => "##",
+        1 => "#",
+        -1 => "b",
+        -2 => "bb",
         _ => "",
     }
 }
@@ -235,20 +235,20 @@ mod midi_laws {
             (60, f_major, "c4"),
             (60, None, "c4"),
             // The key's own accidentals come back as the key writes them.
-            (66, g_major, "fs4"),
-            (70, f_major, "bf4"),
-            (63, e_flat, "ef4"),
+            (66, g_major, "f#4"),
+            (70, f_major, "bb4"),
+            (63, e_flat, "eb4"),
             // Outside the key, the signature decides which way to lean.
-            (61, c_major, "cs4"),
-            (61, d_major, "cs4"),
-            (61, f_major, "df4"),
-            (63, f_major, "ef4"),
+            (61, c_major, "c#4"),
+            (61, d_major, "c#4"),
+            (61, f_major, "db4"),
+            (63, f_major, "eb4"),
             // A sharp key raises the letter below, even across a semitone
             // where the natural would have been easier to read.
-            (65, b_major, "es4"),
+            (65, b_major, "e#4"),
             // A minor key is its relative major's signature.
             (60, a_minor, "c4"),
-            (61, a_minor, "cs4"),
+            (61, a_minor, "c#4"),
             // Octaves follow the note number, an octave to twelve semitones.
             (48, c_major, "c3"),
         ];
@@ -258,7 +258,7 @@ mod midi_laws {
     }
 
     /// A spelling has to *sound* where the note number says, including when
-    /// the letter and the number disagree about the octave (`bs3` is 60).
+    /// the letter and the number disagree about the octave (`b#3` is 60).
     #[test]
     fn every_spelling_sounds_at_the_note_it_came_from() {
         for fifths in [-6i8, -3, 0, 2, 5] {
@@ -309,10 +309,10 @@ mod midi_laws {
         let rest: String = chars.collect();
         let (accidental, octave) = rest.split_at(rest.find(|c: char| c.is_ascii_digit())?);
         let alter = match accidental {
-            "ss" => 2,
-            "s" => 1,
-            "f" => -1,
-            "ff" => -2,
+            "##" => 2,
+            "#" => 1,
+            "b" => -1,
+            "bb" => -2,
             "" => 0,
             _ => return None,
         };

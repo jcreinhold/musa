@@ -1525,11 +1525,20 @@ pub(crate) fn parse_meter(meter: &musa_language::ast::MeterStmt) -> Option<Meter
 
 pub(crate) fn parse_key(key: &KeyStmt) -> Option<Key> {
     let syntax = key.syntax();
+    // The tonic is a node, not a token: `bb` is one identifier and `g#` is
+    // two tokens, and only the node knows it is one pitch class either way.
+    let tonic = PitchClass::parse(
+        syntax
+            .children()
+            .find(|child| child.kind() == SyntaxKind::PitchClass)?
+            .text()
+            .to_string()
+            .trim(),
+    )?;
     let mut identifiers = syntax
         .children_with_tokens()
         .filter_map(SyntaxElement::into_token)
         .filter(|token| token.kind() == SyntaxKind::Identifier);
-    let tonic = PitchClass::parse(identifiers.next()?.text())?;
     let mode = match identifiers.next()?.text() {
         "major" => Mode::Major,
         "minor" => Mode::Minor,
@@ -1579,7 +1588,7 @@ pub(crate) fn resolve_pitch(
         resolver.report(
             Diagnostic::error(Code::NotAValue, format!("`{text}` is not a pitch"))
                 .at(trimmed_span(node), "expected a pitch")
-                .note("a pitch is a letter, an optional `s` or `f`, and an octave: `c4`, `gs5`, `bf3`"),
+                .note("a pitch is a letter, an optional `#` or `b`, and an octave: `c4`, `g#5`, `bb3`"),
         );
         return None;
     };
@@ -1648,7 +1657,7 @@ pub(crate) fn bind_argument(
                 resolver.report(
                     Diagnostic::error(Code::NotAValue, format!("`{text}` is not a pitch"))
                         .at(trimmed_span(node), format!("passed to motif `{motif}`"))
-                        .note("a pitch is a letter, an optional `s` or `f`, and an octave: `c4`, `gs5`, `bf3`"),
+                        .note("a pitch is a letter, an optional `#` or `b`, and an octave: `c4`, `g#5`, `bb3`"),
                 );
                 None
             }

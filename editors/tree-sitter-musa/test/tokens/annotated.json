@@ -104,7 +104,7 @@
     { "kind": "pitch_literal", "text": "e5" },
     { "kind": "rational", "text": "1/4" },
     { "kind": ";", "text": ";" },
-    { "kind": "pitch_literal", "text": "gs5" },
+    { "kind": "pitch_literal", "text": "g#5" },
     { "kind": "rational", "text": "1/2" },
     { "kind": ";", "text": ";" },
     { "kind": "pitch_literal", "text": "a5" },

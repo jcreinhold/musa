@@ -2,7 +2,7 @@
   "document": 0,
   "name": "loop-lengths.musa",
   "kind": "piece",
-  "source": "// A four-bar house pattern whose fills run \"a few times\" rather than a fixed\n// number. `repeat 2 to 6 { … }` is the piece saying how long the figure may\n// run and leaving the rest to the performance — the same sentence a DJ writes\n// as \"loop until the cue lands\" and a folk singer writes as \"as many verses as\n// there are\".\n//\n// The count is chosen once, at compile time, from the realization\n// (`musa check examples/loop-lengths.musa --seed 42`). Everything below that\n// choice is an ordinary exact repeat, which is why the kernel gains nothing\n// from this file: see docs/kernel/11-realization.md.\npiece \"Loop Lengths\" {\n    composer \"musa\";\n\n    tempo 1/4 = 124;\n    meter 4/4;\n    key a minor;\n\n    score {\n        part drums {\n            voice kick {\n                repeat 4 {\n                    c2 1/4;\n                    c2 1/4;\n                    c2 1/4;\n                    c2 1/4;\n                }\n                repeat 2 to 6 {\n                    c2 1/4;\n                    c2 1/4;\n                    c2 1/8;\n                    c2 1/8;\n                    c2 1/4;\n                }\n            }\n\n            voice hats {\n                repeat 4 {\n                    rest 1/8;\n                    fs3 1/8;\n                    rest 1/8;\n                    fs3 1/8;\n                    rest 1/8;\n                    fs3 1/8;\n                    rest 1/8;\n                    fs3 1/8;\n                }\n                repeat 2 to 6 {\n                    fs3 1/8;\n                    fs3 1/8;\n                    fs3 1/8;\n                    fs3 1/8;\n                    fs3 1/8;\n                    fs3 1/8;\n                    fs3 1/8;\n                    fs3 1/8;\n                }\n            }\n        }\n\n        part bass {\n            voice line {\n                repeat 4 {\n                    a1 1/2;\n                    e2 1/4;\n                    g1 1/4;\n                }\n                repeat 2 to 6 {\n                    a1 1/4;\n                    a1 1/4;\n                    c2 1/4;\n                    e2 1/4;\n                }\n            }\n        }\n    }\n}\n",
+  "source": "// A four-bar house pattern whose fills run \"a few times\" rather than a fixed\n// number. `repeat 2 to 6 { … }` is the piece saying how long the figure may\n// run and leaving the rest to the performance — the same sentence a DJ writes\n// as \"loop until the cue lands\" and a folk singer writes as \"as many verses as\n// there are\".\n//\n// The count is chosen once, at compile time, from the realization\n// (`musa check examples/loop-lengths.musa --seed 42`). Everything below that\n// choice is an ordinary exact repeat, which is why the kernel gains nothing\n// from this file: see docs/kernel/11-realization.md.\npiece \"Loop Lengths\" {\n    composer \"musa\";\n\n    tempo 1/4 = 124;\n    meter 4/4;\n    key a minor;\n\n    score {\n        part drums {\n            voice kick {\n                repeat 4 {\n                    c2 1/4;\n                    c2 1/4;\n                    c2 1/4;\n                    c2 1/4;\n                }\n                repeat 2 to 6 {\n                    c2 1/4;\n                    c2 1/4;\n                    c2 1/8;\n                    c2 1/8;\n                    c2 1/4;\n                }\n            }\n\n            voice hats {\n                repeat 4 {\n                    rest 1/8;\n                    f#3 1/8;\n                    rest 1/8;\n                    f#3 1/8;\n                    rest 1/8;\n                    f#3 1/8;\n                    rest 1/8;\n                    f#3 1/8;\n                }\n                repeat 2 to 6 {\n                    f#3 1/8;\n                    f#3 1/8;\n                    f#3 1/8;\n                    f#3 1/8;\n                    f#3 1/8;\n                    f#3 1/8;\n                    f#3 1/8;\n                    f#3 1/8;\n                }\n            }\n        }\n\n        part bass {\n            voice line {\n                repeat 4 {\n                    a1 1/2;\n                    e2 1/4;\n                    g1 1/4;\n                }\n                repeat 2 to 6 {\n                    a1 1/4;\n                    a1 1/4;\n                    c2 1/4;\n                    e2 1/4;\n                }\n            }\n        }\n    }\n}\n",
   "revision": 1,
   "compiles": true,
   "unsaved": true,
@@ -2167,7 +2167,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -2253,7 +2253,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -2339,7 +2339,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -2425,7 +2425,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -2511,7 +2511,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -2597,7 +2597,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -2683,7 +2683,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -2769,7 +2769,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -2855,7 +2855,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -2941,7 +2941,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3027,7 +3027,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3113,7 +3113,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3199,7 +3199,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3285,7 +3285,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3371,7 +3371,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3457,7 +3457,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3502,7 +3502,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3547,7 +3547,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3592,7 +3592,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3637,7 +3637,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3682,7 +3682,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3727,7 +3727,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3772,7 +3772,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3817,7 +3817,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3862,7 +3862,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3907,7 +3907,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3952,7 +3952,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -3997,7 +3997,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4042,7 +4042,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4087,7 +4087,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4132,7 +4132,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4177,7 +4177,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4222,7 +4222,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4267,7 +4267,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4312,7 +4312,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4357,7 +4357,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4402,7 +4402,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4447,7 +4447,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4492,7 +4492,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4537,7 +4537,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4582,7 +4582,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4627,7 +4627,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4672,7 +4672,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4717,7 +4717,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4762,7 +4762,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4807,7 +4807,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4852,7 +4852,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4897,7 +4897,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4942,7 +4942,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -4987,7 +4987,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5032,7 +5032,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5077,7 +5077,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5122,7 +5122,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5167,7 +5167,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5212,7 +5212,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5257,7 +5257,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5302,7 +5302,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5347,7 +5347,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5392,7 +5392,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5437,7 +5437,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5482,7 +5482,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5527,7 +5527,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5572,7 +5572,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,
@@ -5617,7 +5617,7 @@
           "F♯3"
         ],
         "pitchSpellings": [
-          "fs3"
+          "f#3"
         ],
         "duration": {
           "numerator": 1,

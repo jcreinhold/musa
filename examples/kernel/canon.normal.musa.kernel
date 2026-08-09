@@ -14,10 +14,10 @@ kernel "canon" {
       occurrence "voice 0 1 rest 3/4 [368:377 #6]" from 0 to 3/4;
       occurrence "voice 0 1 note d5 1/4 [432:444 def 97:104 #4 via transpose 4 7 motif 432:444]" from 3/4 to 1;
       occurrence "voice 0 1 note e5 1/4 [432:444 def 113:120 #4 via transpose 4 7 motif 432:444]" from 1 to 5/4;
-      occurrence "voice 0 1 note fs5 1/4 [432:444 def 129:136 #4 via transpose 4 7 motif 432:444]" from 5/4 to 3/2;
+      occurrence "voice 0 1 note f#5 1/4 [432:444 def 129:136 #4 via transpose 4 7 motif 432:444]" from 5/4 to 3/2;
       occurrence "voice 0 1 note d5 1/4 [432:444 def 145:152 #4 via transpose 4 7 motif 432:444]" from 3/2 to 7/4;
       occurrence "voice 0 1 note g5 1/2 [432:444 def 161:168 #4 via transpose 4 7 motif 432:444]" from 7/4 to 9/4;
-      occurrence "voice 0 1 note fs5 1/2 [432:444 def 177:184 #4 via transpose 4 7 motif 432:444]" from 9/4 to 11/4;
+      occurrence "voice 0 1 note f#5 1/2 [432:444 def 177:184 #4 via transpose 4 7 motif 432:444]" from 9/4 to 11/4;
       occurrence "voice 0 1 note e5 1/2 [432:444 def 193:200 #4 via transpose 4 7 motif 432:444]" from 11/4 to 13/4;
       occurrence "voice 0 1 note d5 1/2 [432:444 def 209:216 #4 via transpose 4 7 motif 432:444]" from 13/4 to 15/4;
       occurrence "piece meter 3/4 [35:50]" from 0 to 15/4;

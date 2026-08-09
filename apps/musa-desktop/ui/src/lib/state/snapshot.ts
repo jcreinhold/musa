@@ -159,7 +159,7 @@ export interface EventFacts {
   kind: "note" | "rest" | "chord";
   pitch: string | null;
   pitches: string[];
-  /** The same pitches as the source spells them (`gs4`), for editing. */
+  /** The same pitches as the source spells them (`g#4`), for editing. */
   pitchSpellings: string[];
   duration: Fraction;
   durationSpelling: string;

@@ -645,7 +645,7 @@ piece "Glass Mountain" {
                 c5 1;
                 c5 1;
                 a4 1;
-                gs4 1;
+                g#4 1;
             }
 
             voice bass {

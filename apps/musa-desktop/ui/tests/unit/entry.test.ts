@@ -43,8 +43,8 @@ describe("spelling", () => {
     // A dot is arithmetic on the notation: a dotted eighth is three sixteenths.
     expect(spellDuration(8, true)).toBe("3/16");
     expect(spellDuration(4, true)).toBe("3/8");
-    expect(spellPitch("g", "s", 4)).toBe("gs4");
-    expect(spellPitch("b", "f", 3)).toBe("bf3");
+    expect(spellPitch("g", "#", 4)).toBe("g#4");
+    expect(spellPitch("b", "b", 3)).toBe("bb3");
     expect(spellPitch("c", "", 5)).toBe("c5");
   });
 
@@ -62,7 +62,7 @@ describe("entry state", () => {
     entry.set(true);
     expect(entry.chooseDuration("8")).toBe(true);
     entry.shiftAccidental(1);
-    expect(entry.pitch("f")).toBe("fs4");
+    expect(entry.pitch("f")).toBe("f#4");
     entry.set(false);
     entry.set(true);
     // The duration is a working setting; the accidental was about one note.
@@ -89,16 +89,16 @@ describe("entry state", () => {
   it("climbs the accidental ladder in one direction and back in the other", () => {
     const entry = new NoteEntry();
     entry.shiftAccidental(1);
-    expect(entry.accidental).toBe("s");
+    expect(entry.accidental).toBe("#");
     // Sharp is the top: pressing again does not invent a double sharp.
     entry.shiftAccidental(1);
-    expect(entry.accidental).toBe("s");
+    expect(entry.accidental).toBe("#");
     entry.shiftAccidental(-1);
     expect(entry.accidental).toBe("");
     entry.shiftAccidental(-1);
-    expect(entry.accidental).toBe("f");
+    expect(entry.accidental).toBe("b");
     entry.shiftAccidental(-1);
-    expect(entry.accidental).toBe("f");
+    expect(entry.accidental).toBe("b");
   });
 
   it("stops the octave at the ends of a keyboard", () => {
@@ -194,7 +194,7 @@ describe("a keystroke against a selection", () => {
     expect(stroke(key("ArrowDown", { shiftKey: true }), entry, space)).toEqual({
       kind: "settings",
     });
-    expect(entry.accidental).toBe("f");
+    expect(entry.accidental).toBe("b");
     // Unmodified arrows stay navigation, and so does everything unbound.
     expect(stroke(key("ArrowLeft"), entry, space)).toEqual({ kind: "pass" });
     expect(stroke(key("z"), entry, space)).toEqual({ kind: "pass" });
@@ -236,13 +236,13 @@ describe("a note played in on a MIDI keyboard", () => {
     const entry = new NoteEntry();
     entry.chooseDuration("8");
 
-    expect(played(["ef4"], entry, space)).toEqual({
+    expect(played(["eb4"], entry, space)).toEqual({
       kind: "edit",
       at: { kind: "after", event: "event-3" },
       edit: {
         kind: "insertNote",
         at: { kind: "after", event: "event-3" },
-        note: { kind: "note", pitch: "ef4", duration: "1/8" },
+        note: { kind: "note", pitch: "eb4", duration: "1/8" },
       },
     });
   });
@@ -267,11 +267,11 @@ describe("a note played in on a MIDI keyboard", () => {
     // note already knows what it is, and must come through untouched.
     entry.shiftAccidental(1);
     entry.shiftOctave(-2);
-    const asked = played(["bf2"], entry, space);
+    const asked = played(["bb2"], entry, space);
 
     expect(asked.kind === "edit" && asked.edit.kind === "insertNote" && asked.edit.note).toEqual({
       kind: "note",
-      pitch: "bf2",
+      pitch: "bb2",
       duration: "1/4",
     });
   });

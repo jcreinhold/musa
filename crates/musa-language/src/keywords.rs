@@ -599,6 +599,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::HarmonyDecl
         | SyntaxKind::HarmonyStmt
         | SyntaxKind::Position
+        | SyntaxKind::PitchClass
         | SyntaxKind::ChordSymbol
         | SyntaxKind::LibraryDecl
         | SyntaxKind::ImportStmt

@@ -98,7 +98,8 @@ piece "Profile Fixture" {
     (meter_statement
       (rational))
     (key_statement
-      (identifier)
+      (pitch_class
+        (identifier))
       (identifier))
     (performance_declaration
       (profile_declaration

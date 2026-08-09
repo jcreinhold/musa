@@ -125,20 +125,22 @@ pub struct WrittenPitch {
 }
 
 impl WrittenPitch {
-    /// Parse source text like `gs4`, `bff2`, `a-1`, `en5` (the lexer's
+    /// Parse source text like `g#4`, `bbb2`, `a-1`, `en5` (the lexer's
     /// pitch-literal shape). Returns `None` for malformed text.
     pub fn parse(text: &str) -> Option<Self> {
         let mut chars = text.chars();
         let letter = Letter::from_char(chars.next()?)?;
         let rest = chars.as_str();
-        // Accidental is the longest matching prefix of s/ss/f/ff/n.
-        let (accidental, octave_text) = if let Some(octave) = rest.strip_prefix("ss") {
+        // Accidental is the longest matching prefix of #/##/b/bb/n. The
+        // letter is already off the front, so the `b` here is only ever a
+        // flat: `bb2` arrives as letter `b` and rest `b2`.
+        let (accidental, octave_text) = if let Some(octave) = rest.strip_prefix("##") {
             (Accidental::DOUBLE_SHARP, octave)
-        } else if let Some(octave) = rest.strip_prefix("ff") {
+        } else if let Some(octave) = rest.strip_prefix("bb") {
             (Accidental::DOUBLE_FLAT, octave)
-        } else if let Some(octave) = rest.strip_prefix('s') {
+        } else if let Some(octave) = rest.strip_prefix('#') {
             (Accidental::SHARP, octave)
-        } else if let Some(octave) = rest.strip_prefix('f') {
+        } else if let Some(octave) = rest.strip_prefix('b') {
             (Accidental::FLAT, octave)
         } else if let Some(octave) = rest.strip_prefix('n') {
             (Accidental::NATURAL, octave)
@@ -191,7 +193,7 @@ impl WrittenPitch {
     /// letter and the accidental absorbs the semitone difference, so a
     /// third above the axis comes back a third below it and the result is
     /// still a note an engraver would write. Chromatic mirroring would put
-    /// `ef4` a *diminished* somewhere and spell the answer by pitch class,
+    /// `eb4` a *diminished* somewhere and spell the answer by pitch class,
     /// which is how a spelling-preserving language loses its spelling.
     ///
     /// Returns `None` when the mirror image needs more than a double
@@ -259,15 +261,15 @@ pub struct PitchClass {
 }
 
 impl std::fmt::Display for PitchClass {
-    /// As the language spells it: `g`, `bf`, `fs`. One place spells a pitch
+    /// As the language spells it: `g`, `bb`, `f#`. One place spells a pitch
     /// class, so a written pitch and a key tonic can never disagree.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let accidental = match self.accidental.0 {
-            2 => "ss",
-            1 => "s",
+            2 => "##",
+            1 => "#",
             0 => "",
-            -1 => "f",
-            -2 => "ff",
+            -1 => "b",
+            -2 => "bb",
             _ => "?",
         };
         write!(f, "{}{}", self.letter.as_char(), accidental)
@@ -275,16 +277,19 @@ impl std::fmt::Display for PitchClass {
 }
 
 impl PitchClass {
-    /// Parse a key tonic like `a`, `gs`, `bf`.
+    /// Parse a key tonic like `a`, `g#`, `bb`.
+    ///
+    /// The letter comes off first, so the `b` that remains is a flat and
+    /// never the note B: `bb` is B flat, and `b` on its own is B.
     pub fn parse(text: &str) -> Option<Self> {
         let mut chars = text.chars();
         let letter = Letter::from_char(chars.next()?)?;
         let accidental = match chars.as_str() {
             "" => Accidental::NATURAL,
-            "s" => Accidental::SHARP,
-            "ss" => Accidental::DOUBLE_SHARP,
-            "f" => Accidental::FLAT,
-            "ff" => Accidental::DOUBLE_FLAT,
+            "#" => Accidental::SHARP,
+            "##" => Accidental::DOUBLE_SHARP,
+            "b" => Accidental::FLAT,
+            "bb" => Accidental::DOUBLE_FLAT,
             _ => return None,
         };
         Some(Self { letter, accidental })

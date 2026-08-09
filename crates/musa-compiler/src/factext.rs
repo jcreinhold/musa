@@ -1002,7 +1002,7 @@ mod tests {
     fn corpus() -> Option<Vec<ScoreFact>> {
         let kinds = vec![
             FactKind::Note {
-                pitch: WrittenPitch::parse("cs5")?,
+                pitch: WrittenPitch::parse("c#5")?,
                 duration: duration(),
                 articulations: vec![Mark::parse("staccato")?, Mark::parse("accent")?],
                 free: None,
@@ -1065,7 +1065,7 @@ mod tests {
                 shape: awkward_shape(),
             },
             FactKind::Key {
-                tonic: PitchClass::parse("bf")?,
+                tonic: PitchClass::parse("bb")?,
                 mode: Mode::Minor,
             },
             FactKind::Meter {

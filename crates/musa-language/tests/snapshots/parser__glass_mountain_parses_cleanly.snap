@@ -46,8 +46,9 @@ Root@0..2195
     KeyStmt@173..190
       Whitespace@173..178 "\n    "
       KeyKw@178..181 "key"
-      Whitespace@181..182 " "
-      Identifier@182..183 "a"
+      PitchClass@181..183
+        Whitespace@181..182 " "
+        Identifier@182..183 "a"
       Whitespace@183..184 " "
       Identifier@184..189 "minor"
       Semicolon@189..190 ";"
@@ -200,7 +201,7 @@ Root@0..2195
             Semicolon@656..657 ";"
           NoteStmt@657..680
             Whitespace@657..674 "\n                "
-            PitchLiteral@674..677 "gs4"
+            PitchLiteral@674..677 "g#4"
             Duration@677..679
               Whitespace@677..678 " "
               Integer@678..679 "1"

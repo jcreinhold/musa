@@ -28,8 +28,9 @@ Root@0..305
     KeyStmt@65..82
       Whitespace@65..70 "\n    "
       KeyKw@70..73 "key"
-      Whitespace@73..74 " "
-      Identifier@74..75 "c"
+      PitchClass@73..75
+        Whitespace@73..74 " "
+        Identifier@74..75 "c"
       Whitespace@75..76 " "
       Identifier@76..81 "major"
       Semicolon@81..82 ";"

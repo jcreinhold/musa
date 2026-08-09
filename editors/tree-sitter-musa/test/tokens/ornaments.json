@@ -237,7 +237,7 @@
     { "kind": "pitch_literal", "text": "d4" },
     { "kind": "rational", "text": "1/4" },
     { "kind": ";", "text": ";" },
-    { "kind": "pitch_literal", "text": "fs4" },
+    { "kind": "pitch_literal", "text": "f#4" },
     { "kind": "rational", "text": "1/4" },
     { "kind": ";", "text": ";" },
     { "kind": "pitch_literal", "text": "g3" },

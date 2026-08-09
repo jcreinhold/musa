@@ -94,7 +94,7 @@
     { "kind": "pitch_literal", "text": "a4" },
     { "kind": "integer", "text": "1" },
     { "kind": ";", "text": ";" },
-    { "kind": "pitch_literal", "text": "gs4" },
+    { "kind": "pitch_literal", "text": "g#4" },
     { "kind": "integer", "text": "1" },
     { "kind": ";", "text": ";" },
     { "kind": "}", "text": "}" },

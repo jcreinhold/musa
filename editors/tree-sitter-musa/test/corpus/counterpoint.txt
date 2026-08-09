@@ -13,7 +13,7 @@ piece "Counterpoint Study" {
 
             voice lead {
                 bar { d4 1/2; f4 1/2; }
-                bar { e4 1/2; chord [d4, fs4, a4] 1/2 fermata; }
+                bar { e4 1/2; chord [d4, f#4, a4] 1/2 fermata; }
             }
         }
 
@@ -22,7 +22,7 @@ piece "Counterpoint Study" {
 
             voice line {
                 bar { d3 1/2; a2 1/2; }
-                bar { bf2 1/2; a2 1/2 fermata; }
+                bar { bb2 1/2; a2 1/2 fermata; }
             }
         }
     }
@@ -39,7 +39,8 @@ piece "Counterpoint Study" {
     (meter_statement
       (rational))
     (key_statement
-      (identifier)
+      (pitch_class
+        (identifier))
       (identifier))
     (score_declaration
       (part_declaration

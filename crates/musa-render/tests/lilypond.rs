@@ -67,9 +67,10 @@ fn duration_spelling_and_ties() {
 #[test]
 fn pitch_and_chord_spelling() {
     let text =
-        "piece \"x\" { meter 4/4; score { part p { voice v { css5 1/4; bff3 1/4; chord [c4, ef4, g4] 1/2; } } } }";
+        "piece \"x\" { meter 4/4; score { part p { voice v { c##5 1/4; bbb3 1/4; chord [c4, eb4, g4] 1/2; } } } }";
     let out = lilypond_of(text);
     assert!(out.contains("css''4"), "double sharp octave 5:\n{out}");
+    // LilyPond spells a double flat `ff`, whatever musa's source said.
     assert!(out.contains("bff4"), "double flat octave 3 (no marks):\n{out}");
     assert!(out.contains("<c' ef' g'>2"), "chord:\n{out}");
 }

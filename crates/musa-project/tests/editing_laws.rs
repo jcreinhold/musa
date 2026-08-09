@@ -52,7 +52,7 @@ fn source(session: &ProjectSession) -> String {
 fn an_authored_note_changes_only_itself() {
     let mut session = session("glass-mountain.musa");
     let facts = score_facts(&session);
-    let id = nth_event(&facts, "upper", 3); // `gs4 1;`
+    let id = nth_event(&facts, "upper", 3); // `g#4 1;`
 
     let impact = session
         .edit_impact(&EditCommand::ChangePitch {
@@ -73,14 +73,14 @@ fn an_authored_note_changes_only_itself() {
             mode: GeneratedEditMode::EditDefinition,
         }))
         .expect("a legal respelling");
-    assert_eq!(source(&session), before.replace("gs4 1;", "g4 1;"));
+    assert_eq!(source(&session), before.replace("g#4 1;", "g4 1;"));
 }
 
 #[test]
 fn an_impact_carries_the_text_the_edit_would_write() {
     let session = session("glass-mountain.musa");
     let facts = score_facts(&session);
-    let id = nth_event(&facts, "upper", 3); // `gs4 1;`
+    let id = nth_event(&facts, "upper", 3); // `g#4 1;`
 
     let impact = session
         .edit_impact(&EditCommand::ChangePitch {
@@ -99,7 +99,7 @@ fn an_impact_carries_the_text_the_edit_would_write() {
     let source = source(&session);
     let start = usize::try_from(write.start).expect("an offset");
     let end = usize::try_from(write.end).expect("an offset");
-    assert_eq!(&source[start..end], "gs4");
+    assert_eq!(&source[start..end], "g#4");
 }
 
 #[test]

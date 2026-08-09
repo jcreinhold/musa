@@ -77,7 +77,8 @@ piece "Étude en sol — 𝄞" {
     (meter_statement
       (rational))
     (key_statement
-      (identifier)
+      (pitch_class
+        (identifier))
       (identifier))
     (motif_declaration
       (identifier)

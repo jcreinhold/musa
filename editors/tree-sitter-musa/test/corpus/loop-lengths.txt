@@ -40,23 +40,23 @@ piece "Loop Lengths" {
             voice hats {
                 repeat 4 {
                     rest 1/8;
-                    fs3 1/8;
+                    f#3 1/8;
                     rest 1/8;
-                    fs3 1/8;
+                    f#3 1/8;
                     rest 1/8;
-                    fs3 1/8;
+                    f#3 1/8;
                     rest 1/8;
-                    fs3 1/8;
+                    f#3 1/8;
                 }
                 repeat 2 to 6 {
-                    fs3 1/8;
-                    fs3 1/8;
-                    fs3 1/8;
-                    fs3 1/8;
-                    fs3 1/8;
-                    fs3 1/8;
-                    fs3 1/8;
-                    fs3 1/8;
+                    f#3 1/8;
+                    f#3 1/8;
+                    f#3 1/8;
+                    f#3 1/8;
+                    f#3 1/8;
+                    f#3 1/8;
+                    f#3 1/8;
+                    f#3 1/8;
                 }
             }
         }
@@ -102,7 +102,8 @@ piece "Loop Lengths" {
     (meter_statement
       (rational))
     (key_statement
-      (identifier)
+      (pitch_class
+        (identifier))
       (identifier))
     (score_declaration
       (part_declaration

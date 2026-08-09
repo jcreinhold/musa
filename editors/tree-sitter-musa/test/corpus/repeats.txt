@@ -16,7 +16,7 @@ piece "Two Ways Home" {
 
             voice tune {
                 repeat 2 {
-                    bar { d5 1/4; g5 1/4; fs5 1/4; g5 1/4; }
+                    bar { d5 1/4; g5 1/4; f#5 1/4; g5 1/4; }
                     bar { a5 1/2; b5 1/2; }
                     ending 1 {
                         bar { a5 1/2; d5 1/2; }
@@ -61,7 +61,8 @@ piece "Two Ways Home" {
     (meter_statement
       (rational))
     (key_statement
-      (identifier)
+      (pitch_class
+        (identifier))
       (identifier))
     (score_declaration
       (part_declaration

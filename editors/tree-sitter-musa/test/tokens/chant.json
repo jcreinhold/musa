@@ -59,7 +59,7 @@
     { "kind": "pitch_literal", "text": "a4" },
     { "kind": "rational", "text": "1/4" },
     { "kind": ";", "text": ";" },
-    { "kind": "pitch_literal", "text": "bf4" },
+    { "kind": "pitch_literal", "text": "bb4" },
     { "kind": "rational", "text": "1/4" },
     { "kind": ";", "text": ";" },
     { "kind": "pitch_literal", "text": "a4" },

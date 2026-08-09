@@ -226,7 +226,7 @@ pub fn explain(code: &str) -> Option<&'static str> {
         }
         musa_compiler::Code::NotAValue => {
             "Something in a value position will not read as one.\n\n\
-             The four value shapes are a pitch (`c4`, `bf3`, `gs5`), a duration \
+             The four value shapes are a pitch (`c4`, `bb3`, `g#5`), a duration \
              (`1/4`, `3/8`), a meter (`4/4`), and a key (`d major`). A number that \
              takes a unit must carry it — `250 hz`, not `250` — because a unit is part \
              of the syntax and musa never guesses one.\n\n\

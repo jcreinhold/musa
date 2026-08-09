@@ -117,7 +117,7 @@ piece "Ornaments" {
                 d4 1/4;
                 a3 1/4;
                 d4 1/4;
-                fs4 1/4;
+                f#4 1/4;
 
                 g3 1/4;
                 d3 1/4;
@@ -165,7 +165,8 @@ piece "Ornaments" {
     (meter_statement
       (rational))
     (key_statement
-      (identifier)
+      (pitch_class
+        (identifier))
       (identifier))
     (performance_declaration
       (comment)

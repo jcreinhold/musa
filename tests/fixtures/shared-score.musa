@@ -11,7 +11,7 @@ piece "Shared Score" {
     key d minor;
 
     motif upper_bar() {
-        d5 1/8; f5 1/8; a5 1/8; c5 1/8; e6 1/8; g6 1/8; bf6 1/8; d5 1/8;
+        d5 1/8; f5 1/8; a5 1/8; c5 1/8; e6 1/8; g6 1/8; bb6 1/8; d5 1/8;
     }
 
     motif middle_bar() {
@@ -19,7 +19,7 @@ piece "Shared Score" {
     }
 
     motif tenor_bar() {
-        d3 1/2; bf3 1/2;
+        d3 1/2; bb3 1/2;
     }
 
     motif bass_bar() {

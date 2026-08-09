@@ -35,7 +35,7 @@ export const DURATION_KEYS: ReadonlyMap<string, number> = new Map([
 export const PITCH_KEYS = "cdefgab";
 
 /** The accidentals entry can spell, in the language's own suffixes. */
-export type Accidental = "" | "s" | "f";
+export type Accidental = "" | "#" | "b";
 
 /** How far the octave key can go before it stops being a piano. */
 const OCTAVE_RANGE = { low: 0, high: 8 } as const;
@@ -130,7 +130,7 @@ export class NoteEntry {
    * other one is how it comes back.
    */
   shiftAccidental(by: number): void {
-    const ladder: Accidental[] = ["f", "", "s"];
+    const ladder: Accidental[] = ["b", "", "#"];
     const at = ladder.indexOf(this.accidental);
     this.accidental = ladder[Math.min(Math.max(at + by, 0), ladder.length - 1)] ?? "";
   }

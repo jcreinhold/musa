@@ -121,11 +121,11 @@ fn a_named_bar_plays_the_same_music_it_declared() {
 /// a reading of them (prompt 40).
 #[test]
 fn the_key_and_the_meter_are_facts_of_the_timeline() {
-    let source = "piece \"x\" { meter 3/4; key bf major; score { part p { voice v { c4 1/4; } } } }";
+    let source = "piece \"x\" { meter 3/4; key bb major; score { part p { voice v { c4 1/4; } } } }";
     let form =
         kernel_normal_form(&SourceDocument::new(source, "k"), &Realization::deterministic()).expect("elaborates");
     assert!(form.contains("meter:3/4"), "meter is not an occurrence: {form}");
-    assert!(form.contains("key:bf:major"), "key is not an occurrence: {form}");
+    assert!(form.contains("key:bb:major"), "key is not an occurrence: {form}");
 
     let snapshot = snapshot_of(source).expect("compiles");
     let meter = snapshot.meter_at(Scope::Piece, MusicalTime::ZERO);
@@ -134,7 +134,7 @@ fn the_key_and_the_meter_are_facts_of_the_timeline() {
         snapshot
             .key_at(Scope::Piece, MusicalTime::ZERO)
             .map(|key| key.tonic().to_string()),
-        Some("bf".to_owned())
+        Some("bb".to_owned())
     );
 }
 
@@ -248,9 +248,9 @@ fn the_fixtures_the_oracle_used_to_agree_about_still_say_what_they_said() {
     let unused_forward_reference = "piece \"x\" { motif a() { use b(); } motif b() { c4 1/4; } }";
     assert!(errors_of(unused_forward_reference).is_empty());
 
-    // `css4` two octaves and a minor second up is `dss6` — spellable, so no
+    // `c##4` two octaves and a minor second up is `d##6` — spellable, so no
     // error. Unspellable mirrors are `transform_laws`'s.
-    let stacked = "piece \"x\" { score { part p { voice v { transpose up P8 { transpose up P8 { transpose up m2 { css4 1/4; } } } } } } }";
+    let stacked = "piece \"x\" { score { part p { voice v { transpose up P8 { transpose up P8 { transpose up m2 { c##4 1/4; } } } } } } }";
     assert!(errors_of(stacked).is_empty());
     let snapshot = snapshot_of(stacked).expect("compiles");
     let (count, _) = measured(&snapshot, 0);
@@ -274,7 +274,7 @@ struct GeneratedVoice {
 }
 
 fn pitch_strategy() -> impl Strategy<Value = &'static str> {
-    prop::sample::select(vec!["c4", "d4", "e4", "f4", "g4", "a4", "b4", "c5", "ef4", "fs4"])
+    prop::sample::select(vec!["c4", "d4", "e4", "f4", "g4", "a4", "b4", "c5", "eb4", "f#4"])
 }
 
 fn duration_strategy() -> impl Strategy<Value = (&'static str, Ratio<i64>)> {

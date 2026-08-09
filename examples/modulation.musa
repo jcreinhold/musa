@@ -18,14 +18,14 @@ piece "Modulation" {
 
             voice right {
                 bar { f4 1/4; a4 1/4; c5 1/4; a4 1/4; }
-                bar { bf4 1/4; a4 1/4; g4 1/4; f4 1/4; }
+                bar { bb4 1/4; a4 1/4; g4 1/4; f4 1/4; }
 
                 key d minor;
                 bar { d4 1/4; f4 1/4; a4 1/4; f4 1/4; }
                 bar { g4 1/4; f4 1/4; e4 1/4; d4 1/4; }
 
                 key a major;
-                bar { a4 1/4; cs5 1/4; e5 1/4; cs5 1/4; }
+                bar { a4 1/4; c#5 1/4; e5 1/4; c#5 1/4; }
                 bar { a4 1/2; a4 1/2; }
             }
         }

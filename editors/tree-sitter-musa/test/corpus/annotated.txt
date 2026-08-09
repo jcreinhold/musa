@@ -39,7 +39,7 @@ piece "Annotated" {
                 phrase "consequent" {
                     b4 1/4;
                     e5 1/4;
-                    gs5 1/2;
+                    g#5 1/2;
                     a5 1;
                 }
             }
@@ -65,7 +65,8 @@ piece "Annotated" {
     (meter_statement
       (rational))
     (key_statement
-      (identifier)
+      (pitch_class
+        (identifier))
       (identifier))
     (score_declaration
       (section_statement

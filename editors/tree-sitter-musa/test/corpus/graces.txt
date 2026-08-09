@@ -64,7 +64,7 @@ piece "Graces" {
 
                 // One grace, the ordinary case.
                 grace {
-                    cs6;
+                    c#6;
                 }
                 d6 1/4;
 
@@ -75,7 +75,7 @@ piece "Graces" {
                 grace {
                     e6;
                     d6;
-                    cs6;
+                    c#6;
                 }
                 d6 1/2;
 
@@ -85,7 +85,7 @@ piece "Graces" {
                 // performer does, and so does the profile.
                 b5 1/4;
                 grace {
-                    as5;
+                    a#5;
                 }
                 b5 1/4;
 
@@ -94,7 +94,7 @@ piece "Graces" {
                 grace {
                     g5 staccato;
                 }
-                fs5 1/2;
+                f#5 1/2;
 
                 d5 1/1;
             }
@@ -117,7 +117,7 @@ piece "Graces" {
                     a3;
                 }
                 b3 1/2;
-                fs3 1/2;
+                f#3 1/2;
 
                 g3 1/2;
                 a3 1/2;
@@ -158,7 +158,8 @@ piece "Graces" {
     (meter_statement
       (rational))
     (key_statement
-      (identifier)
+      (pitch_class
+        (identifier))
       (identifier))
     (performance_declaration
       (comment)

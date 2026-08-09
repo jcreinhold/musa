@@ -41,7 +41,7 @@ pub enum GeneratedEditMode {
 pub enum NoteSpec {
     /// A note: a written pitch and a notated duration, both as spelled.
     Note {
-        /// Written pitch (`gs4`).
+        /// Written pitch (`g#4`).
         pitch: String,
         /// Notated duration (`1/8`).
         duration: String,

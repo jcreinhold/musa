@@ -1701,7 +1701,7 @@ fn elaborate_item(
                         resolver.report(
                             Diagnostic::error(Code::NotAValue, format!("`{text}` is not a pitch"))
                                 .at(resolve::trimmed_span(chord.syntax()), "inside this chord")
-                                .note("a pitch is a letter, an optional `s` or `f`, and an octave: `c4`, `gs5`, `bf3`"),
+                                .note("a pitch is a letter, an optional `#` or `b`, and an octave: `c4`, `g#5`, `bb3`"),
                         );
                     }
                 }

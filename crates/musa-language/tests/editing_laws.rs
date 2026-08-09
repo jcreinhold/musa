@@ -58,10 +58,10 @@ fn changing_a_pitch_touches_only_the_pitch_token() {
         PIECE,
         &EditIntent::SetPitch {
             at: at(PIECE, "a4 1/4;"),
-            pitch: "gs4".to_owned(),
+            pitch: "g#4".to_owned(),
         },
     );
-    assert_eq!(out, PIECE.replace("a4 1/4;", "gs4 1/4;"));
+    assert_eq!(out, PIECE.replace("a4 1/4;", "g#4 1/4;"));
 }
 
 #[test]
@@ -317,10 +317,10 @@ fn specializing_a_note_that_is_already_specialized_respells_it() {
         &EditIntent::Specialize {
             at: call(CALLS, 1),
             position: 2,
-            pitch: "ef5".to_owned(),
+            pitch: "eb5".to_owned(),
         },
     );
-    assert_eq!(out, CALLS.replace("note 2 = d5;", "note 2 = ef5;"));
+    assert_eq!(out, CALLS.replace("note 2 = d5;", "note 2 = eb5;"));
 }
 
 #[test]
@@ -351,7 +351,7 @@ fn specializing_something_that_is_not_an_occurrence_is_refused() {
             &EditIntent::Specialize {
                 at: at(PIECE, "a4 1/4;"),
                 position: 1,
-                pitch: "gs4".to_owned(),
+                pitch: "g#4".to_owned(),
             }
         ),
         Err(EditError::NotAnOccurrence { .. })

@@ -99,7 +99,7 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer) {
                 // dots in it. Their insides take no spaces.
                 if matches!(
                     node.kind(),
-                    SyntaxKind::Position | SyntaxKind::ChordSymbol | SyntaxKind::ParamPath
+                    SyntaxKind::Position | SyntaxKind::ChordSymbol | SyntaxKind::ParamPath | SyntaxKind::PitchClass
                 ) {
                     writer.write_word(kind, token.text(), tight);
                     tight = true;
