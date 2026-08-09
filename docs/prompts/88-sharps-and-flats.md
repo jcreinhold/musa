@@ -1,7 +1,7 @@
 ---
 id: 88
 slug: sharps-and-flats
-status: pending
+status: in-progress
 depends_on: [87]
 phase: 2
 ---
@@ -58,14 +58,20 @@ the source and confined to one node.
 ## Target
 
 - `crates/musa-language/src/lexer.rs`: the regex, and cases for `b2`/`bb2`/`bbb2`/`f#3`/`c##3`/`en5`/`a-1`.
-- `crates/musa-language/src/parser.rs`, `ast.rs`, `syntax_kind.rs`: the `PitchClass` node, used by `key`,
-  `invert around`, and `chord_symbol`.
+- `crates/musa-language/src/parser.rs`, `ast.rs`, `syntax_kind.rs`: the `PitchClass` node, used by `key` and
+  `chord_symbol`. **Not `invert around`**, whose axis is a whole pitch (`invert around c5`) and so is one
+  `PitchLiteral` however it is spelled — the node exists only where the octave is absent.
 - `crates/musa-language/src/formatter.rs`: `PitchClass` joins the tight-node list.
 - `crates/musa-compiler/src/pitch.rs`: `WrittenPitch::parse`, `PitchClass::parse`, both `Display`s.
 - `crates/musa-compiler/src/resolve.rs` and `elaborate.rs`: the two diagnostics that offer "an optional `s` or `f`".
 - `crates/musa-language/tests/formatter.rs`: the proptest `pitch()` generator.
-- `editors/tree-sitter-musa/grammar.js` (`pitch_literal`) + regenerated `src/parser.c`;
-  `apps/musa-desktop/ui/src/lib/session/tokenize.ts` (`bb2` already works; `f#3` needs the `#`).
+- `editors/tree-sitter-musa/grammar.js` (`pitch_literal`, `pitch_class`, `chord_symbol`) + regenerated `src/parser.c`
+  and the corpus expectations; `apps/musa-desktop/ui/src/lib/lang-musa/tokenize.ts` (`bb2` already works; `f#3` needs
+  the `#`).
+- The three places outside the compiler that spell an accidental in the language's own vocabulary and would otherwise
+  keep writing `s`/`f`: `crates/musa-project/src/midi.rs` (`accidental`), the desktop's `steps.ts` (`ACCIDENTALS` and
+  the accidental `CYCLE`) and `entry.svelte.ts` (the `Accidental` type). LilyPond's `s`/`f` and MEI's `s`/`x`/`f` are
+  those formats' own spellings and do not move.
 - Every `examples/**/*.musa`, and every golden, snapshot and fixture that follows: 24 `*.musa.kernel`, the compiler and
   render `insta` snapshots, `fixtures/lexed/*.json`, `*.snapshot.json`, and the tree-sitter token fixtures.
 
