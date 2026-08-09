@@ -1,7 +1,7 @@
 ---
 id: 81
 slug: vscode-extension
-status: pending
+status: done
 depends_on: [77, 80]
 phase: 3
 ---
