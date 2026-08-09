@@ -137,6 +137,8 @@ pub enum SyntaxKind {
     ProfileKw,
     /// `mark`
     MarkKw,
+    /// `groove`
+    GrooveKw,
     /// `studio`
     StudioKw,
     /// `patch`
@@ -289,6 +291,8 @@ pub enum SyntaxKind {
     MarkRule,
     /// `dynamic <mark> { ... }` inside a profile.
     DynamicRule,
+    /// `groove <name> { ... }` inside a profile.
+    GrooveRule,
     /// `<name> = <number> [unit];` inside a rule.
     SettingStmt,
     /// `profile <name>;` inside a part: which profile realizes it.

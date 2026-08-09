@@ -248,6 +248,8 @@ enum RawToken {
     SlurKw,
     #[token("dynamic", priority = 3)]
     DynamicKw,
+    #[token("groove", priority = 3)]
+    GrooveKw,
     #[token("tuplet", priority = 3)]
     TupletKw,
     #[token("performance", priority = 3)]
@@ -377,6 +379,7 @@ impl RawToken {
             | Self::RepeatKw
             | Self::SlurKw
             | Self::DynamicKw
+            | Self::GrooveKw
             | Self::TupletKw
             | Self::PerformanceKw
             | Self::ProfileKw
@@ -469,6 +472,7 @@ impl RawToken {
             Self::RepeatKw => SyntaxKind::RepeatKw,
             Self::SlurKw => SyntaxKind::SlurKw,
             Self::DynamicKw => SyntaxKind::DynamicKw,
+            Self::GrooveKw => SyntaxKind::GrooveKw,
             Self::TupletKw => SyntaxKind::TupletKw,
             Self::PerformanceKw => SyntaxKind::PerformanceKw,
             Self::ProfileKw => SyntaxKind::ProfileKw,

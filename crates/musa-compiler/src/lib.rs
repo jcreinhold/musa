@@ -35,6 +35,7 @@ mod context;
 mod diagnose;
 mod elaborate;
 mod factext;
+mod groove;
 mod harmony;
 mod imports;
 mod kernel_text;
@@ -57,6 +58,7 @@ pub use crate::context::ContextTrack;
 pub use crate::diagnose::{Code, Diagnostic, Fix, FixEdit, Label, Severity};
 #[doc(hidden)]
 pub use crate::elaborate::kernel_normal_form;
+pub use crate::groove::Groove;
 pub use crate::harmony::{ChordQuality, ChordSymbol, Seventh};
 pub use crate::imports::{ImportSources, resolve_import};
 #[doc(hidden)]

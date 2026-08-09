@@ -211,6 +211,12 @@ impl ProfileDecl {
     pub fn dynamics(&self) -> Vec<DynamicRule> {
         children(&self.0)
     }
+
+    /// The groove rules, in source order. At most one is meaningful — a part
+    /// has one beat — and the compiler says so when there are more.
+    pub fn grooves(&self) -> Vec<GrooveRule> {
+        children(&self.0)
+    }
 }
 
 /// One rule's head name and its settings; `mark` and `dynamic` rules
@@ -222,8 +228,8 @@ macro_rules! rule_wrapper {
         wrapper!($name, $kind);
 
         impl $name {
-            #[doc = concat!("The ", $what, " this rule realizes.")]
-            pub fn mark(&self) -> Option<String> {
+            #[doc = concat!("The ", $what, " this rule names.")]
+            pub fn name(&self) -> Option<String> {
                 token_text(&self.0, SyntaxKind::Identifier)
             }
 
@@ -237,6 +243,7 @@ macro_rules! rule_wrapper {
 
 rule_wrapper!(MarkRule, SyntaxKind::MarkRule, "mark");
 rule_wrapper!(DynamicRule, SyntaxKind::DynamicRule, "dynamic");
+rule_wrapper!(GrooveRule, SyntaxKind::GrooveRule, "groove");
 
 /// `gate = 0.55;`, `attack = 8 ms;`
 pub struct SettingStmt(SyntaxNode);
@@ -248,9 +255,18 @@ impl SettingStmt {
         token_text(&self.0, SyntaxKind::Identifier)
     }
 
-    /// The written number, without its unit.
+    /// The written number with its sign, without its unit.
+    ///
+    /// The minus is a token of its own, so it is put back here rather than
+    /// left for each reader to look for: a value is one string either way.
     pub fn value(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Float).or_else(|| token_text(&self.0, SyntaxKind::Integer))
+        let magnitude = token_text(&self.0, SyntaxKind::Float)
+            .or_else(|| token_text(&self.0, SyntaxKind::Integer))
+            .or_else(|| token_text(&self.0, SyntaxKind::Rational))?;
+        Some(match token_text(&self.0, SyntaxKind::Minus) {
+            Some(_) => format!("-{magnitude}"),
+            None => magnitude,
+        })
     }
 
     /// The unit written after the number (`ms`, `s`), if any.

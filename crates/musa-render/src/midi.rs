@@ -242,15 +242,21 @@ fn lane_track<'a>(
             event: note.event,
             what: format!("written pitch {} is outside MIDI's range", note.pitch),
         })?;
-        let (off_frame, velocity) = match options.mode {
-            MidiMode::Score => (note.notated_off, NEUTRAL_VELOCITY),
+        // Score mode reads the *written* on-frame, not the scheduled one.
+        // The part's groove is in the scheduled frame (prompt 69), and a
+        // notation program handed a swung onset would draw triplets — which
+        // is an engraver printing an interpretation, the thing the groove
+        // module exists not to do.
+        let (on_frame, off_frame, velocity) = match options.mode {
+            MidiMode::Score => (note.notated_on, note.notated_off, NEUTRAL_VELOCITY),
             MidiMode::Performance => (
+                *frame,
                 ends.get(instance).copied().unwrap_or(note.notated_off),
                 velocity_of(note.amplitude),
             ),
         };
         absolute.push((
-            ticks.of(*frame),
+            ticks.of(on_frame),
             // Note-on sorts after note-off at the same tick, so a repeated
             // pitch retriggers instead of being cut by its predecessor.
             1,
@@ -260,7 +266,7 @@ fn lane_track<'a>(
             },
         ));
         absolute.push((
-            ticks.of(off_frame.max(*frame)),
+            ticks.of(off_frame.max(on_frame)),
             0,
             MidiMessage::NoteOff {
                 key: u7::new(key),

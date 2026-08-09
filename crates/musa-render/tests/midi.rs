@@ -14,6 +14,9 @@
 // the test itself, and panicking is the correct behavior there.
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
+// Fixtures index their own fixed-length results; a bad index is a broken
+// fixture, and the panic names it immediately.
+#![allow(clippy::indexing_slicing)]
 // Tick arithmetic over small integers.
 #![allow(clippy::arithmetic_side_effects)]
 
@@ -188,4 +191,38 @@ fn output_is_deterministic() {
     for mode in [MidiMode::Score, MidiMode::Performance] {
         assert_eq!(midi_of(PROFILE_FIXTURE, mode), midi_of(PROFILE_FIXTURE, mode));
     }
+}
+
+/// A MIDI file is a performance, so it swings; a score-mode file is a
+/// notation program's input, so it does not (prompt 69).
+///
+/// Both facts come out of the same plan, which is why `PerformedNote` carries
+/// the written on-frame beside the scheduled one — the same shape
+/// `notated_off` already had, in the other direction.
+#[test]
+fn a_performance_swings_and_a_score_does_not() {
+    let swung = "piece \"Feel\" { tempo 1/4 = 60; meter 4/4; key c major;
+        performance { profile band { groove swing { ratio = 2/3; } } }
+        score { part p { profile band; voice v {
+            c5 1/8; d5 1/8; c5 1/8; d5 1/8;
+        } } } }";
+    let starts = |mode| {
+        let mut starts: Vec<u32> = read_back(&midi_of(swung, mode))
+            .into_iter()
+            .map(|note| note.start)
+            .collect();
+        starts.sort_unstable();
+        starts
+    };
+    let written = starts(MidiMode::Score);
+    let played = starts(MidiMode::Performance);
+    assert_eq!(written.len(), 4);
+    // On the page the eighths are even, whatever the band does with them.
+    let step = written[1];
+    assert_eq!(written, vec![0, step, step * 2, step * 3]);
+    // Played, the offbeats are late and the beats are exactly where they were.
+    assert_eq!(played[0], written[0]);
+    assert_eq!(played[2], written[2]);
+    assert!(played[1] > written[1], "the offbeat did not swing: {played:?}");
+    assert!(played[3] > written[3], "the offbeat did not swing: {played:?}");
 }

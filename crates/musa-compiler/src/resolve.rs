@@ -20,8 +20,8 @@
 
 use indexmap::IndexMap;
 use musa_language::ast::{
-    AstNode as _, DynamicRule, FrontMatterRole, KeyStmt, MarkRule, PerformanceDecl, PieceDecl, SettingStmt, TempoStmt,
-    VoiceItem,
+    AstNode as _, DynamicRule, FrontMatterRole, KeyStmt, MarkRule, PerformanceDecl, PieceDecl, ProfileDecl,
+    SettingStmt, TempoStmt, VoiceItem,
 };
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
@@ -712,7 +712,7 @@ pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceD
         }
         let mut profile = PerformanceProfile::named(&name);
         for rule in declaration.marks() {
-            let written = rule.mark().unwrap_or_default();
+            let written = rule.name().unwrap_or_default();
             let Some(mark) = crate::Mark::parse(&written) else {
                 resolver.report(
                     Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a mark"))
@@ -724,7 +724,7 @@ pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceD
             profile.set_mark(mark, mark_settings(resolver, &rule));
         }
         for rule in declaration.dynamics() {
-            let written = rule.mark().unwrap_or_default();
+            let written = rule.name().unwrap_or_default();
             let Some(mark) = DynamicMark::parse(&written) else {
                 resolver.report(
                     Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a dynamic marking"))
@@ -737,9 +737,140 @@ pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceD
                 profile.set_dynamic(mark, amplitude);
             }
         }
+        if let Some(groove) = groove_of(resolver, &declaration) {
+            profile.set_groove(groove);
+        }
         set.insert(profile);
     }
     set
+}
+
+/// The one groove a profile declares, if it declares one.
+///
+/// More than one is refused rather than merged: a part has one beat, and two
+/// grooves composed in written order would mean something no musician asked
+/// for.
+fn groove_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<crate::Groove> {
+    let rules = declaration.grooves();
+    let (first, rest) = rules.split_first()?;
+    for extra in rest {
+        resolver.error(
+            Code::DuplicateName,
+            "this profile has more than one groove",
+            trimmed_span(extra.syntax()),
+            "a part has one beat",
+        );
+    }
+    let written = first.name().unwrap_or_default();
+    let Some(def) = crate::groove::lookup(&written) else {
+        resolver.report(
+            Diagnostic::error(Code::UnknownWord, format!("`{written}` is not a groove"))
+                .at(trimmed_span(first.syntax()), "unknown groove")
+                .help(suggest(&written, &crate::groove::names(), "grooves")),
+        );
+        return None;
+    };
+    let mut values: indexmap::IndexMap<String, Ratio<i64>> = indexmap::IndexMap::new();
+    for setting in first.settings() {
+        let name = setting.name().unwrap_or_default();
+        if !def.params.contains(&name.as_str()) {
+            resolver.report(
+                Diagnostic::error(
+                    Code::UnknownWord,
+                    format!("`{}` has no setting called `{name}`", def.name),
+                )
+                .at(trimmed_span(setting.syntax()), "unknown setting")
+                .help(suggest(&name, def.params, "settings")),
+            );
+            continue;
+        }
+        if let Some(value) = beat_setting(resolver, &setting) {
+            values.insert(name, value);
+        }
+    }
+    let mut required = |param: &str| match values.get(param) {
+        Some(value) => Some(*value),
+        None => {
+            resolver.report(
+                Diagnostic::error(Code::NotAValue, format!("`{}` needs a `{param}`", def.name))
+                    .at(trimmed_span(first.syntax()), format!("no `{param}`"))
+                    .help(example_of(def.name)),
+            );
+            None
+        }
+    };
+    let groove = match def.name {
+        "straight" => Some(crate::Groove::STRAIGHT),
+        "swing" => crate::Groove::swing(required("ratio")?),
+        "push" => crate::Groove::push(required("grid")?, required("by")?),
+        other => {
+            // `VOCABULARY` and this match are the same list. A row added to
+            // one and not the other would be a groove the parser accepts and
+            // the compiler quietly ignores, so it is reported rather than
+            // dropped on the floor.
+            resolver.error(
+                Code::UnknownWord,
+                format!("`{other}` is a groove musa does not know how to build"),
+                trimmed_span(first.syntax()),
+                "not implemented",
+            );
+            None
+        }
+    };
+    if groove.is_none() {
+        resolver.report(
+            Diagnostic::error(
+                Code::OutOfRange,
+                format!("this `{}` cannot be laid over the beat", def.name),
+            )
+            .at(trimmed_span(first.syntax()), "out of range")
+            .note("a groove displaces the beat inside a cell it never leaves: it may not move a note past its neighbour, and its cell must tile the whole note or the downbeat it fixes would drift from bar to bar")
+            .help(example_of(def.name)),
+        );
+    }
+    groove
+}
+
+/// What a groove looks like written correctly, for the diagnostics above.
+fn example_of(name: &str) -> &'static str {
+    match name {
+        "swing" => "write `groove swing { ratio = 2/3; }` — the first of each pair takes two thirds",
+        "push" => "write `groove push { grid = 1/8; by = -1/64; }` — the offbeat eighths land early",
+        _ => "write `groove straight {}`",
+    }
+}
+
+/// A position or a length in whole notes, exact and possibly negative: a
+/// swing ratio, a grid, or a displacement. Not a gate, so `0..=1` is not the
+/// range, and not a time, so a unit is a category error.
+fn beat_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio<i64>> {
+    let name = setting.name().unwrap_or_default();
+    let span = trimmed_span(setting.syntax());
+    if let Some(unit) = setting.unit() {
+        resolver.report(
+            Diagnostic::error(Code::OutOfRange, format!("`{name}` does not take a unit"))
+                .at(span, format!("drop the `{unit}`"))
+                .note("a groove is written in beats, so it survives a tempo change"),
+        );
+        return None;
+    }
+    let written = setting.value()?;
+    let (sign, magnitude) = written
+        .strip_prefix('-')
+        .map_or((Ratio::ONE, written.as_str()), |rest| (-Ratio::ONE, rest));
+    let value = parse_ratio(magnitude).or_else(|| crate::profile::parse_decimal(magnitude));
+    match value {
+        Some(value) => Some(value * sign),
+        None => {
+            resolver.error(
+                Code::NotAValue,
+                format!("`{written}` is not a beat value"),
+                span,
+                "not a ratio",
+            );
+            None
+        }
+    }
 }
 
 /// `gate` (a ratio of the written value) and `attack` (a time).

@@ -19,10 +19,11 @@
 // allowed at module scope for that reason.
 #![allow(clippy::arithmetic_side_effects)]
 
+use crate::groove::Groove;
 use crate::origin::Origin;
 use crate::pitch::WrittenPitch;
-use crate::profile::ArticulationRealization;
-use crate::score::{EventId, PartId, ScoreEvent, ScoreEventKind, ScoreSnapshot};
+use crate::profile::{ArticulationRealization, PerformanceProfile};
+use crate::score::{EventId, Meter, PartId, ScoreEvent, ScoreEventKind, ScoreSnapshot};
 use crate::time::MusicalTime;
 use num_rational::Ratio;
 
@@ -229,6 +230,11 @@ pub struct PerformedNote {
     /// Notated duration ≠ performed duration (§2) and both are facts: score
     /// MIDI wants this one, performance MIDI wants the note-off's.
     pub notated_off: u64,
+    /// The frame the note starts at *on the page*, before the part's groove.
+    /// The same fact as `notated_off` in the other direction: a swung file is
+    /// a performance, and a notation program reading a score-mode export must
+    /// not be handed an interpretation to draw (prompt 69).
+    pub notated_on: u64,
 }
 
 /// One scheduled performance event.
@@ -383,6 +389,14 @@ pub fn lower_performance(
     let mut next_instance = 0u32;
     for (_, part) in score.parts().iter() {
         let profile = score.profiles().for_part(part.name());
+        // The groove is the part's, because feel is an ensemble's sections
+        // disagreeing on purpose: a swung horn over a straight bass is a
+        // arrangement, not a mistake.
+        let clock = Clock {
+            tempo: &tempo,
+            meters: score.meters(),
+            groove: profile.map_or(Groove::STRAIGHT, PerformanceProfile::groove),
+        };
         let mut events = Vec::new();
         for (_, voice) in part.voices() {
             // The prevailing dynamic is per voice: a marking applies from its
@@ -437,7 +451,7 @@ pub fn lower_performance(
                     attack: ratio_to_f32(realization.attack),
                     amplitude: ratio_to_f32(amplitude),
                 };
-                lower_event(options, &tempo, event, &interpreted, &mut events, &mut next_instance);
+                lower_event(options, &clock, event, &interpreted, &mut events, &mut next_instance);
             }
         }
         sort_events(&mut events);
@@ -469,6 +483,35 @@ pub fn lower_performance(
         keys,
         lanes,
     })
+}
+
+/// Written time to frames, for one part.
+///
+/// The composition order is the whole point (course correction §22): the
+/// groove is a `Beat → Beat` warp and tempo is `Beat → Second`, so the groove
+/// goes **first**. Composed the other way a shuffle would be specified in
+/// seconds and would straighten out as the band sped up.
+///
+/// It is one operation rather than two exposed ones because a caller that
+/// reached for `tempo.frames` directly would silently drop the groove, and
+/// nothing in the output would say so.
+struct Clock<'a> {
+    tempo: &'a IntegratedTempoMap,
+    meters: &'a crate::ContextTrack<Meter>,
+    groove: Groove,
+}
+
+impl Clock<'_> {
+    /// The frame a written instant is played at.
+    fn frames(&self, at: MusicalTime) -> u64 {
+        let meter = self.meters.at(crate::Scope::Piece, at).unwrap_or_default();
+        self.tempo.frames(self.groove.warp(meter, at))
+    }
+
+    /// The frame a written instant sits at *on the page* — tempo, no groove.
+    fn written_frames(&self, at: MusicalTime) -> u64 {
+        self.tempo.frames(at)
+    }
 }
 
 /// What the part's profile makes of one event, resolved once per event.
@@ -573,7 +616,7 @@ fn ratio_to_f32(value: Ratio<i64>) -> f32 {
 /// schedule nothing (absence is silence; course correction §2).
 fn lower_event(
     options: &PerformanceOptions,
-    tempo: &IntegratedTempoMap,
+    clock: &Clock<'_>,
     event: &ScoreEvent,
     interpreted: &Interpreted,
     events: &mut Vec<PerformanceEvent>,
@@ -587,9 +630,10 @@ fn lower_event(
     let written = event.notated_duration.value;
     let notated_end = event.onset + written;
     let sounded_end = event.onset + crate::time::MusicalDuration::new(written.as_ratio() * interpreted.gate);
-    let on_frame = tempo.frames(event.onset);
-    let off_frame = tempo.frames(sounded_end);
-    let notated_off = tempo.frames(notated_end);
+    let on_frame = clock.frames(event.onset);
+    let off_frame = clock.frames(sounded_end);
+    let notated_off = clock.written_frames(notated_end);
+    let notated_on = clock.written_frames(event.onset);
     for pitch in pitches {
         let instance = VoiceInstanceId(*next_instance);
         *next_instance = next_instance.saturating_add(1);
@@ -601,6 +645,7 @@ fn lower_event(
             amplitude: interpreted.amplitude,
             attack: interpreted.attack,
             notated_off,
+            notated_on,
         };
         events.push(PerformanceEvent::NoteOn {
             frame: on_frame,

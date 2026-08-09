@@ -33,6 +33,7 @@ use indexmap::IndexMap;
 use num_rational::Ratio;
 use serde::{Deserialize, Serialize};
 
+use crate::groove::Groove;
 use crate::marks::Mark;
 use crate::score::DynamicMark;
 
@@ -61,6 +62,7 @@ pub struct PerformanceProfile {
     name: String,
     articulations: IndexMap<Mark, ArticulationRealization>,
     dynamics: IndexMap<DynamicMark, Ratio<i64>>,
+    groove: Groove,
 }
 
 impl PerformanceProfile {
@@ -99,6 +101,19 @@ impl PerformanceProfile {
 
     pub(crate) fn set_dynamic(&mut self, mark: DynamicMark, amplitude: Ratio<i64>) {
         self.dynamics.insert(mark, amplitude);
+    }
+
+    /// Where this profile's beat sits against the page's.
+    ///
+    /// A profile without a `groove` rule is straight, which is the identity —
+    /// so the profiles written before this existed perform exactly as they
+    /// did, and no caller needs to ask whether a groove was declared.
+    pub fn groove(&self) -> Groove {
+        self.groove
+    }
+
+    pub(crate) fn set_groove(&mut self, groove: Groove) {
+        self.groove = groove;
     }
 
     pub(crate) fn named(name: impl Into<String>) -> Self {

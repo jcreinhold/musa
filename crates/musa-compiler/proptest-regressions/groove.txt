@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 2232729cb4b58b260cf36e3ee6a1099ab0e1841c6ea7f21c2001be945533562f # shrinks to groove = Groove(Push { grid: Ratio { numer: 1, denom: 3 }, by: Ratio { numer: 1, denom: 288 } }), meter = Meter { numerator: 3, denominator: 1 }, bar = 5
+cc 3ecbff579796f7641bbda1e6c1cb51c4ba9f9c7515767377add621ff705501a1 # shrinks to groove = Groove(Push { grid: Ratio { numer: 1, denom: 3 }, by: Ratio { numer: -1, denom: 288 } }), meter = Meter { numerator: 1, denominator: 1 }, whole = 11

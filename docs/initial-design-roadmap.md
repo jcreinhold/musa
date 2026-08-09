@@ -116,6 +116,13 @@ page and the fourth measure heard are different questions with different answers
 computes — measure numbers, where a tempo mark or a barline goes — is counted on the page; every performed position is
 counted in the timeline; and the one place they meet is the fold in §12.1.
 
+Duration varies the same way, and until prompt 69 nothing in musa used that row. A **groove** is its first
+implementation: a written pair of eighths that sounds long-short, a house bass a sixty-fourth ahead of the offbeat.
+The groove lives in the performance profile as a `Beat → Beat` warp composed *before* the tempo map — beats rather
+than seconds, so a shuffle does not straighten out when the band speeds up — and it never reaches notation, because
+there is no swung notation to draw. The asymmetry between `musa render --to midi --mode score` and `--mode
+performance` is this row working: the same plan, read once as a page and once as a performance.
+
 ---
 
 # 3. Applying Ousterhout’s deep-module design

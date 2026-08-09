@@ -123,6 +123,7 @@ const PROFILE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::RBrace,
     SyntaxKind::MarkKw,
     SyntaxKind::DynamicKw,
+    SyntaxKind::GrooveKw,
 ];
 const STUDIO_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::Semicolon,
@@ -860,18 +861,20 @@ impl<'a> Parser<'a> {
                 self.rule(SyntaxKind::MarkRule, "a mark name");
             } else if self.at(SyntaxKind::DynamicKw) {
                 self.rule(SyntaxKind::DynamicRule, "a dynamic marking");
+            } else if self.at(SyntaxKind::GrooveKw) {
+                self.rule(SyntaxKind::GrooveRule, "a groove name");
             } else {
-                self.expected("a `mark` or `dynamic` rule");
+                self.expected("a `mark`, `dynamic`, or `groove` rule");
                 self.recover(PROFILE_RECOVERY);
             }
         }
         self.finish();
     }
 
-    /// `mark|dynamic <name> { <setting>* }` — one shape, two heads.
+    /// `mark|dynamic|groove <name> { <setting>* }` — one shape, three heads.
     fn rule(&mut self, kind: SyntaxKind, what: &str) {
         self.start(kind);
-        self.bump(); // mark | dynamic
+        self.bump(); // mark | dynamic | groove
         self.expect(SyntaxKind::Identifier, what);
         self.expect(SyntaxKind::LBrace, "`{`");
         loop {
@@ -895,13 +898,22 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `<name> = <number> [unit];` — the unit is the value's, not the
+    /// `<name> = [-]<number> [unit];` — the unit is the value's, not the
     /// setting's, so `attack = 8 ms;` and `attack = 0.008 s;` both parse.
+    ///
+    /// A rational is admitted beside a decimal because some settings are
+    /// musical rather than numeric: `ratio = 2/3` is a swing, and writing it
+    /// `0.667` would put an approximation where §4 wants an exact one. The
+    /// sign is a separate token, so `by = -1/64` is a rational with a minus
+    /// in front rather than a third number syntax.
     fn setting_stmt(&mut self) {
         self.start(SyntaxKind::SettingStmt);
         self.bump(); // setting name
         self.expect(SyntaxKind::Equals, "`=`");
-        if self.at_any(&[SyntaxKind::Float, SyntaxKind::Integer]) {
+        if self.at(SyntaxKind::Minus) {
+            self.bump();
+        }
+        if self.at_any(&[SyntaxKind::Float, SyntaxKind::Integer, SyntaxKind::Rational]) {
             self.bump();
         } else {
             self.expected("a number");

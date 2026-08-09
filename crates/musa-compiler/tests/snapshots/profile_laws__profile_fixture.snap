@@ -973,6 +973,9 @@ ScoreSnapshot {
                         denom: 20,
                     },
                 },
+                groove: Groove(
+                    Straight,
+                ),
             },
             "winds": PerformanceProfile {
                 name: "winds",
@@ -998,6 +1001,9 @@ ScoreSnapshot {
                         denom: 20,
                     },
                 },
+                groove: Groove(
+                    Straight,
+                ),
             },
         },
         parts: {
