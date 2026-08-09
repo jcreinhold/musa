@@ -64,7 +64,10 @@ pub struct ProjectSession {
     realization: musa_compiler::Realization,
     /// Diagnostics for the *current* source.
     diagnostics: Vec<Diagnostic>,
-    /// Whether the current source compiles.
+    /// Which of the two things this document is (prompt 84). Material has no
+    /// score and never will, which is a different fact from "no score yet".
+    kind: musa_compiler::DocumentKind,
+    /// Whether the current source is well-formed as what it is.
     compiles: bool,
     /// The last successful compile's artifacts (roadmap §14.7).
     valid: Option<ValidArtifacts>,
@@ -210,6 +213,10 @@ impl ProjectSession {
             recovery: self.recovery.as_deref(),
             midi_port: self.midi.as_ref().and_then(MidiInput::port),
             playback: self.playback_state(),
+            kind: self.kind,
+            // A session on its own knows nothing about the volume it is filed
+            // in; `Project::snapshot` is what fills this in.
+            contents: None,
         }
     }
 
@@ -516,6 +523,7 @@ impl ProjectSession {
             revision,
             next_revision: 1,
             diagnostics: Vec::new(),
+            kind: musa_compiler::DocumentKind::Piece,
             compiles: false,
             valid: None,
             cursor: 0,
@@ -636,6 +644,20 @@ impl ProjectSession {
         &self.import_paths
     }
 
+    /// Stop, and give the audio device back (prompt 84).
+    ///
+    /// Only the piece in hand may sound, so turning to another one releases
+    /// this one's stream. A session that never played never opened a device,
+    /// so for most pieces in a project this does nothing at all — which is
+    /// what makes holding several of them affordable.
+    pub fn release_audio(&mut self) {
+        if let Some(audio) = self.audio.take() {
+            drop(audio);
+        }
+        self.installed = None;
+        self.total_frames = 0;
+    }
+
     /// The first error a candidate source would produce, if any.
     fn first_error(&self, candidate: &str) -> Option<String> {
         let document = SourceDocument::new(candidate.to_owned(), self.name.clone());
@@ -717,6 +739,8 @@ impl ProjectSession {
 
         let revision = self.revision;
         let identity = compilation.identity();
+        let kind = compilation.kind();
+        let had_errors = compilation.has_errors();
         // A snapshot alongside error diagnostics is a partial recovery, not a
         // score: taking it would show the user something they did not write.
         // The reference record travels with the successful compile, like
@@ -736,7 +760,14 @@ impl ProjectSession {
         } else {
             compilation.into_parts()
         };
-        self.compiles = score.is_some();
+        self.kind = kind;
+        // `compiles` means well-formed as *what it is*. Material declares and
+        // does not sound, so it has no score, and the absence of one is not a
+        // failure — which is the whole reason `kind` exists (prompt 84).
+        self.compiles = match kind {
+            musa_compiler::DocumentKind::Piece => score.is_some(),
+            musa_compiler::DocumentKind::Material => !had_errors,
+        };
         let mut score_changed = false;
         if let Some(mut score) = score {
             // The project's composer, for a piece that named none. Done here

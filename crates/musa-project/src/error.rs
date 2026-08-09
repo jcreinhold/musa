@@ -63,6 +63,17 @@ pub enum ProjectError {
     #[error("nothing to {0}")]
     NothingTo(&'static str),
 
+    /// A directory was opened as a project and holds no `.musa` file.
+    ///
+    /// A project always has a piece in hand (prompt 84), so an empty folder is
+    /// refused at the door rather than opened into a screen with nothing on
+    /// it.
+    #[error("no piece in {root}")]
+    NoPieces {
+        /// The directory that was opened.
+        root: String,
+    },
+
     /// An export was requested but the piece has never compiled, so there is
     /// no score to export.
     #[error("cannot export: the piece has never compiled successfully")]

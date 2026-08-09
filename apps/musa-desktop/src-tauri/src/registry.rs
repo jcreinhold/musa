@@ -112,7 +112,24 @@ pub const SETTINGS: CommandDescriptor = command(
 pub const COMMANDS: &[CommandDescriptor] = &[
     command("file.new", "New piece", Section::File, Some("CmdOrCtrl+N"), true),
     command("file.open", "Open a piece", Section::File, Some("CmdOrCtrl+O"), true),
+    // A project is a folder of pieces (roadmap §16), and opening one is a
+    // different question from opening a file — so it is a different item,
+    // rather than a file dialog that guesses from what was chosen.
+    command(
+        "file.openProject",
+        "Open a project",
+        Section::File,
+        Some("CmdOrCtrl+Shift+O"),
+        true,
+    ),
     apart(command("file.save", "Save", Section::File, Some("CmdOrCtrl+S"), true)),
+    command(
+        "file.saveAll",
+        "Save every piece",
+        Section::File,
+        Some("CmdOrCtrl+Alt+S"),
+        true,
+    ),
     // One verb, four objects. Four sibling `Export …` items read as four
     // different things a composer might do; they are one thing with a choice
     // of format, and a submenu is how a menu says so.
@@ -141,6 +158,16 @@ pub const COMMANDS: &[CommandDescriptor] = &[
         Some("CmdOrCtrl+Shift+F"),
         true,
     )),
+    // The volume, before the piece: a contents page is what a bound book puts
+    // in front of its first movement, and `⌘0` is the number before the four
+    // workspaces for the same reason (prompt 85).
+    command(
+        "view.workspace.contents",
+        "Contents",
+        Section::View,
+        Some("CmdOrCtrl+0"),
+        false,
+    ),
     // The four workspaces of roadmap §14.4, in the order they are numbered:
     // what the music is, what it sounds like, how it is balanced, and what it
     // says in text.
@@ -187,11 +214,14 @@ pub const COMMANDS: &[CommandDescriptor] = &[
         true,
     )),
     command("view.zoom.in", "Zoom in", Section::View, Some("CmdOrCtrl+="), true),
+    // `⇧⌘0` rather than `⌘0`: the number keys number the leaf's screens, and
+    // `⌘0` is the contents page above them. Reset keeps the shape every other
+    // reset in the application has — a modifier and a nought.
     command(
         "view.zoom.reset",
         "Reset zoom",
         Section::View,
-        Some("CmdOrCtrl+0"),
+        Some("CmdOrCtrl+Shift+0"),
         true,
     ),
     apart(command(

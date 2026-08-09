@@ -130,7 +130,9 @@ function own(
 export const COMMANDS: readonly Command[] = [
   command("file.new", "File", ({ session }) => void session.create()),
   command("file.open", "File", ({ session }) => void session.open()),
+  command("file.openProject", "File", ({ session }) => void session.openProject()),
   command("file.save", "File", ({ session }) => void session.save()),
+  command("file.saveAll", "File", ({ session }) => void session.saveAll()),
   command("file.export.mei", "File", ({ session }) => void session.exportTo("mei")),
   command("file.export.lilypond", "File", ({ session }) => void session.exportTo("lilyPond")),
   command("file.export.musicxml", "File", ({ session }) => void session.exportTo("musicXml")),

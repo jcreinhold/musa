@@ -1,4 +1,4 @@
-//! The whole bridge. Eight commands, and it stays this small.
+//! The whole bridge. Ten commands, and it stays this small.
 //!
 //! Nothing here decides anything musical: each command translates a DTO into
 //! a `musa-project` request, hands it to the session thread, and returns what
@@ -20,13 +20,34 @@ use tauri::State;
 use crate::dto::{CommandDto, EditDto, ErrorDto, ErrorKindDto, ExportDto, TemplateDto, TransportDto};
 use crate::session::SessionHandle;
 
-/// Open a `.musa` file and make it the session's project.
+/// Open a `.musa` file, or a folder of them, as the session's project.
 ///
 /// # Errors
-/// If the file cannot be read.
+/// If the file cannot be read, or the folder holds no piece.
 #[tauri::command]
 pub fn open_project(path: String, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
     session.open(PathBuf::from(path))
+}
+
+/// Turn to another file of the project already open.
+///
+/// `file` is a name from the snapshot's contents, which is the only place the
+/// webview learns one: the shell never composes a path.
+///
+/// # Errors
+/// If nothing is open, or the file cannot be read.
+#[tauri::command]
+pub fn show_piece(file: String, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.show(file)
+}
+
+/// Write every piece of the project that has unsaved edits.
+///
+/// # Errors
+/// If nothing is open, or a piece cannot be written.
+#[tauri::command]
+pub fn save_all(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.save_all()
 }
 
 /// Start a new piece. Without a path it is unsaved but immediately playable.

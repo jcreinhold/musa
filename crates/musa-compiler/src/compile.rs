@@ -56,9 +56,26 @@ pub struct CompileOptions {
     pub realization: crate::realize::Realization,
 }
 
+/// Which of the two things a musa file may be (roadmap §16).
+///
+/// The grammar has always had both — a `piece` sounds, a `library` declares —
+/// but the compiler used to accept only the first at a document's root, which
+/// made "material has no score" indistinguishable from "this failed to
+/// compile". Callers ask this when they need to tell those apart; callers that
+/// only want a score still ask for one and still get `None`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DocumentKind {
+    /// `piece "…" { … }` — the thing that has a score.
+    #[default]
+    Piece,
+    /// `library { … }` — declarations for other files to import.
+    Material,
+}
+
 /// The result of compiling a document: diagnostics always, a snapshot and a
 /// studio when no error-severity diagnostic was produced.
 pub struct Compilation {
+    kind: DocumentKind,
     snapshot: Option<ScoreSnapshot>,
     studio: crate::studio::StudioSpec,
     diagnostics: Vec<Diagnostic>,
@@ -70,6 +87,7 @@ pub struct Compilation {
 impl Compilation {
     pub(crate) fn new(snapshot: Option<ScoreSnapshot>, diagnostics: Vec<Diagnostic>) -> Self {
         Self {
+            kind: DocumentKind::Piece,
             snapshot,
             studio: crate::studio::StudioSpec::default(),
             diagnostics,
@@ -77,6 +95,20 @@ impl Compilation {
             decisions: Vec::new(),
             references: crate::resolve::ReferenceIndex::new(),
         }
+    }
+
+    pub(crate) fn into_material(mut self) -> Self {
+        self.kind = DocumentKind::Material;
+        self
+    }
+
+    /// Which of the two things this document is (roadmap §16).
+    ///
+    /// Material compiles to no score and that is not a failure: a caller
+    /// deciding what to *show* needs the distinction, because "no score yet"
+    /// and "no score ever" are different screens.
+    pub fn kind(&self) -> DocumentKind {
+        self.kind
     }
 
     pub(crate) fn with_studio(mut self, studio: crate::studio::StudioSpec) -> Self {

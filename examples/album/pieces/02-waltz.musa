@@ -1,0 +1,38 @@
+// The album's second piece (roadmap 16). It draws on the same material as the
+// first and says something else with it: the running order is two pieces that
+// share a vocabulary, which is the whole reason a project is a folder rather
+// than a file.
+piece "Waltz" {
+    use "../library/motifs.musa";
+    use "../library/patches.musa";
+
+    tempo 1/4 = 152;
+    meter 3/4;
+    key g major;
+
+    score {
+        part reeds {
+            profile album;
+            clef treble;
+
+            voice lead {
+                dynamic mf;
+
+                // The same motif the opening begins with, taken at a
+                // different root: an occurrence is not a copy of the notes,
+                // and the Origin view can still name where these came from.
+                use rise(g4);
+                use fall(d5);
+
+                diminuendo to p {
+                    use rise(e4);
+                }
+            }
+        }
+    }
+
+    studio {
+        assign reeds -> reed;
+        route reeds -> master;
+    }
+}

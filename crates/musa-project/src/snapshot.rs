@@ -25,6 +25,11 @@ pub struct ProjectSnapshot<'session> {
     pub(crate) recovery: Option<&'session str>,
     pub(crate) midi_port: Option<&'session str>,
     pub(crate) playback: PlaybackState,
+    pub(crate) kind: musa_compiler::DocumentKind,
+    /// The project this piece is one of, when a [`Project`](crate::Project)
+    /// took the snapshot. A session on its own knows nothing about the volume
+    /// it is filed in, and says so.
+    pub(crate) contents: Option<&'session crate::contents::ContentsFacts>,
 }
 
 /// The artifacts of the most recent *successful* compilation. They survive
@@ -79,6 +84,21 @@ impl<'session> ProjectSnapshot<'session> {
     /// The document's display name.
     pub fn name(&self) -> &str {
         self.name
+    }
+
+    /// Which of the two things this document is (roadmap §16, prompt 84).
+    ///
+    /// Material has no score and never will; a piece that has not compiled
+    /// yet has none either. Those are different screens, which is why this is
+    /// a separate question from [`Self::score`] being `None`.
+    pub fn kind(&self) -> musa_compiler::DocumentKind {
+        self.kind
+    }
+
+    /// The project this piece is one of, if the snapshot came from a
+    /// [`Project`](crate::Project).
+    pub fn contents(&self) -> Option<&crate::ContentsFacts> {
+        self.contents
     }
 
     /// Which document this is a snapshot of.
@@ -188,6 +208,8 @@ struct SnapshotWire<'a> {
     /// counts within it and not across pieces.
     document: u64,
     name: &'a str,
+    /// `piece` or `material` — which of the two things this file is.
+    kind: &'static str,
     source: &'a str,
     revision: u64,
     compiles: bool,
@@ -201,6 +223,8 @@ struct SnapshotWire<'a> {
     studio: Option<&'a crate::studio::StudioFacts>,
     score_revision: Option<u64>,
     playback: PlaybackState,
+    /// Absent for a session opened on its own; a project always sends it.
+    contents: Option<&'a crate::contents::ContentsFacts>,
 }
 
 impl ProjectSnapshot<'_> {
@@ -217,6 +241,10 @@ impl ProjectSnapshot<'_> {
         let mut wire = serde_json::to_value(SnapshotWire {
             document: self.document.0,
             name: self.name,
+            kind: match self.kind {
+                musa_compiler::DocumentKind::Piece => "piece",
+                musa_compiler::DocumentKind::Material => "material",
+            },
             source: self.source,
             revision: self.revision.0,
             compiles: self.compiles,
@@ -230,6 +258,7 @@ impl ProjectSnapshot<'_> {
             studio: self.studio(),
             score_revision: self.score_revision().map(|revision| revision.0),
             playback: self.playback,
+            contents: self.contents,
         })
         // `SnapshotWire` is a plain struct of strings, numbers, and derived
         // types; `to_value` fails only on things it cannot contain, such as a

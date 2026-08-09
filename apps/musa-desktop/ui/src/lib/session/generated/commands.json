@@ -18,12 +18,30 @@
     "available": true
   },
   {
+    "id": "file.openProject",
+    "title": "Open a project",
+    "section": "file",
+    "submenu": null,
+    "apart": false,
+    "accelerator": "CmdOrCtrl+Shift+O",
+    "available": true
+  },
+  {
     "id": "file.save",
     "title": "Save",
     "section": "file",
     "submenu": null,
     "apart": true,
     "accelerator": "CmdOrCtrl+S",
+    "available": true
+  },
+  {
+    "id": "file.saveAll",
+    "title": "Save every piece",
+    "section": "file",
+    "submenu": null,
+    "apart": false,
+    "accelerator": "CmdOrCtrl+Alt+S",
     "available": true
   },
   {
@@ -88,6 +106,15 @@
     "apart": true,
     "accelerator": "CmdOrCtrl+Shift+F",
     "available": true
+  },
+  {
+    "id": "view.workspace.contents",
+    "title": "Contents",
+    "section": "view",
+    "submenu": null,
+    "apart": false,
+    "accelerator": "CmdOrCtrl+0",
+    "available": false
   },
   {
     "id": "view.workspace.compose",
@@ -158,7 +185,7 @@
     "section": "view",
     "submenu": null,
     "apart": false,
-    "accelerator": "CmdOrCtrl+0",
+    "accelerator": "CmdOrCtrl+Shift+0",
     "available": true
   },
   {

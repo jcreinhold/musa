@@ -4,3 +4,6 @@
 [project]
 name = "Album"
 composer = "musa"
+# The running order. It sets an order, not a membership: a piece the folder
+# has and this list does not name still appears, after the ones it does.
+pieces = ["pieces/01-opening.musa", "pieces/02-waltz.musa"]

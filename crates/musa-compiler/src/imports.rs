@@ -23,7 +23,7 @@
 
 use std::collections::HashMap;
 
-use musa_language::ast::{AstNode as _, LibraryDecl, PieceDecl};
+use musa_language::ast::{AstNode as _, LibraryDecl};
 
 use crate::diagnose::{Code, Diagnostic};
 use crate::origin::SourceSpan;
@@ -99,12 +99,21 @@ impl Libraries {
     }
 }
 
-/// Load the import closure of `piece`, reporting every way it can go wrong
+/// Load the import closure of `imports`, reporting every way it can go wrong
 /// against the `use` statement that caused it.
 ///
 /// Diagnostics from inside a library name the file, because a span from
 /// another document would point at the wrong bytes of this one.
-pub(crate) fn load(resolver: &mut Resolver, importer: &str, piece: &PieceDecl, sources: &ImportSources) -> Libraries {
+///
+/// Takes the statements rather than the piece because a library opened on its
+/// own imports too, and checking one means reading what it builds on
+/// (prompt 84).
+pub(crate) fn load(
+    resolver: &mut Resolver,
+    importer: &str,
+    imports: &[musa_language::ast::ImportStmt],
+    sources: &ImportSources,
+) -> Libraries {
     let mut loader = Loader {
         sources,
         libraries: Libraries {
@@ -114,7 +123,7 @@ pub(crate) fn load(resolver: &mut Resolver, importer: &str, piece: &PieceDecl, s
         loaded: std::collections::HashSet::new(),
         stack: Vec::new(),
     };
-    for import in piece.imports() {
+    for import in imports {
         let span = crate::resolve::trimmed_span(import.syntax());
         let Some(written) = import.path() else { continue };
         loader.load_one(resolver, importer, &written, span);

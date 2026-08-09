@@ -21,7 +21,7 @@ use std::thread;
 use std::time::Duration;
 
 use musa_project::{
-    EditCommand, ExportRequest, PlaybackState, ProjectCommand, ProjectSession, Template, TransportRequest, Utf16Offsets,
+    EditCommand, ExportRequest, PlaybackState, Project, ProjectCommand, Template, TransportRequest, Utf16Offsets,
 };
 use serde_json::Value;
 use tauri::{AppHandle, Emitter};
@@ -48,8 +48,13 @@ pub const MIDI_EVENT: &str = "musa://midi";
 
 /// One unit of work for the session thread.
 enum Job {
+    /// Open a piece, or a folder of them.
     Open(PathBuf),
     New(Template, Option<PathBuf>),
+    /// Turn to another file of the project already open.
+    Show(String),
+    /// Write every piece of it that has unsaved edits.
+    SaveAll,
     Apply(Request),
     Transport(TransportRequest),
     Export(ExportRequest, PathBuf),
@@ -111,6 +116,14 @@ impl SessionHandle {
         self.ask(Job::New(template, path))
     }
 
+    pub(crate) fn show(&self, file: String) -> Reply {
+        self.ask(Job::Show(file))
+    }
+
+    pub(crate) fn save_all(&self) -> Reply {
+        self.ask(Job::SaveAll)
+    }
+
     pub(crate) fn apply(&self, request: Request) -> Reply {
         self.ask(Job::Apply(request))
     }
@@ -138,7 +151,7 @@ impl SessionHandle {
 
 /// The session thread.
 fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
-    let mut session: Option<ProjectSession> = None;
+    let mut session: Option<Project> = None;
     let mut playing = false;
     let mut listening = false;
     let mut caret: Option<String> = None;
@@ -176,18 +189,18 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
             // A dropped receiver means the webview went away mid-command;
             // the work is already done and there is nobody to tell.
             reply.send(answer).ok();
-            if changed && let Some(open) = session.as_ref() {
+            if changed && let Some(open) = session.as_mut() {
                 emit(app, SNAPSHOT_EVENT, &snapshot_json(open));
             }
         }
 
         if listening && let Some(open) = session.as_mut() {
-            for entry in open.midi_entry(caret.as_deref()) {
+            for entry in open.current_mut().midi_entry(caret.as_deref()) {
                 emit(app, MIDI_EVENT, &entry);
             }
         }
 
-        if let Some(open) = session.as_ref() {
+        if let Some(open) = session.as_mut() {
             let state = open.snapshot().playback();
             if state.playing {
                 emit(app, POSITION_EVENT, &state);
@@ -211,53 +224,72 @@ fn emit<T: serde::Serialize>(app: &AppHandle, event: &str, payload: &T) {
 /// `musa-project` owns the shape *and* the unit: `to_wire` states every span
 /// in UTF-16 code units, which is what `CodeMirror` and every JavaScript string
 /// index count in (`musa_project::Utf16Offsets`).
-fn snapshot_json(session: &ProjectSession) -> Value {
+fn snapshot_json(session: &mut Project) -> Value {
     session.snapshot().to_wire()
 }
 
 /// Run one job against the session.
-fn perform(session: &mut Option<ProjectSession>, job: Job) -> Reply {
+fn perform(session: &mut Option<Project>, job: Job) -> Reply {
     match job {
         Job::Open(path) => {
-            let opened = ProjectSession::open(&path).map_err(|error| ErrorDto::from(&error))?;
+            let opened = Project::open(&path).map_err(|error| ErrorDto::from(&error))?;
             Ok(replace(session, opened))
         }
         Job::New(template, path) => {
             let created = match path {
-                Some(path) => ProjectSession::create(&path, template).map_err(|e| ErrorDto::from(&e))?,
-                None => ProjectSession::new_piece(template, "Untitled"),
+                Some(path) => Project::create(&path, template).map_err(|e| ErrorDto::from(&e))?,
+                None => Project::new_piece(template, "Untitled"),
             };
             Ok(replace(session, created))
         }
+        Job::Show(file) => {
+            let open = session.as_mut().ok_or_else(no_project)?;
+            open.show(&file).map_err(|error| ErrorDto::from(&error))?;
+            Ok(snapshot_json(open))
+        }
+        Job::SaveAll => {
+            let open = session.as_mut().ok_or_else(no_project)?;
+            open.save_all().map_err(|error| ErrorDto::from(&error))?;
+            Ok(snapshot_json(open))
+        }
         Job::Apply(request) => {
             let open = session.as_mut().ok_or_else(no_project)?;
+            // Saving is the one document command that can change what the
+            // contents page says about the *file*: a piece written for the
+            // first time is a file the directory did not have.
+            let wrote = matches!(request, Request::Command(ProjectCommand::Save));
+            let piece = open.current_mut();
             let outcome = match request {
                 // The webview states an edit's range in its own measure; the
                 // session applies it to a Rust string, which is measured in
                 // bytes. This is the inbound half of the same contract
                 // `snapshot_json` keeps on the way out.
                 Request::Command(ProjectCommand::ApplyEdits(edits)) => {
-                    let offsets = Utf16Offsets::new(open.snapshot().source());
-                    open.apply(ProjectCommand::ApplyEdits(
+                    let offsets = Utf16Offsets::new(piece.snapshot().source());
+                    piece.apply(ProjectCommand::ApplyEdits(
                         edits.into_iter().map(|edit| to_bytes(edit, &offsets)).collect(),
                     ))
                 }
-                Request::Command(command) => open.apply(command),
-                Request::Undo => open.undo(),
-                Request::Redo => open.redo(),
+                Request::Command(command) => piece.apply(command),
+                Request::Undo => piece.undo(),
+                Request::Redo => piece.redo(),
             };
             outcome.map_err(|error| ErrorDto::from(&error))?;
+            if wrote {
+                open.rescan();
+            }
             Ok(snapshot_json(open))
         }
         Job::Transport(request) => {
             let open = session.as_mut().ok_or_else(no_project)?;
-            open.apply(ProjectCommand::Transport(request))
+            open.current_mut()
+                .apply(ProjectCommand::Transport(request))
                 .map_err(|e| ErrorDto::from(&e))?;
             Ok(snapshot_json(open))
         }
         Job::Export(request, path) => {
             let open = session.as_ref().ok_or_else(no_project)?;
-            let artifact = open.export(request).map_err(|error| ErrorDto::from(&error))?;
+            let artifact = open.current().export(request).map_err(|error| ErrorDto::from(&error))?;
             std::fs::write(&path, artifact.as_bytes())
                 .map_err(|error| ErrorDto::shell(ErrorKindDto::File, format!("{}: {error}", path.display())))?;
             serde_json::to_value(ExportedDto::from(path))
@@ -265,14 +297,17 @@ fn perform(session: &mut Option<ProjectSession>, job: Job) -> Reply {
         }
         Job::Impact(command) => {
             let open = session.as_ref().ok_or_else(no_project)?;
-            let impact = open.edit_impact(&command).map_err(|error| ErrorDto::from(&error))?;
+            let impact = open
+                .current()
+                .edit_impact(&command)
+                .map_err(|error| ErrorDto::from(&error))?;
             serde_json::to_value(impact).map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
         }
-        Job::Snapshot => session.as_ref().map(snapshot_json).ok_or_else(no_project),
+        Job::Snapshot => session.as_mut().map(snapshot_json).ok_or_else(no_project),
         Job::Midi(listening, _) => {
             let open = session.as_mut().ok_or_else(no_project)?;
             if listening {
-                open.listen_to_midi();
+                open.current_mut().listen_to_midi();
             }
             Ok(snapshot_json(open))
         }
@@ -291,7 +326,7 @@ fn to_bytes(edit: musa_project::TextEdit, offsets: &Utf16Offsets) -> musa_projec
 }
 
 /// Install a newly opened project and answer with its snapshot.
-fn replace(session: &mut Option<ProjectSession>, opened: ProjectSession) -> Value {
+fn replace(session: &mut Option<Project>, opened: Project) -> Value {
     let installed = session.insert(opened);
     snapshot_json(installed)
 }
@@ -307,7 +342,7 @@ pub type Position = PlaybackState;
 mod session_laws {
     use super::{Job, Request, perform};
     use crate::dto::{CommandDto, ErrorKindDto};
-    use musa_project::ProjectSession;
+    use musa_project::Project;
     use serde_json::Value;
 
     type Result = std::result::Result<(), Box<dyn std::error::Error>>;
@@ -328,8 +363,8 @@ mod session_laws {
         "}\n",
     );
 
-    fn opened() -> Option<ProjectSession> {
-        Some(ProjectSession::from_text(PIECE, "test.musa"))
+    fn opened() -> Option<Project> {
+        Some(Project::from_text(PIECE, "test.musa"))
     }
 
     /// A field of a snapshot, or `Null` when the wire format has lost it —
@@ -339,7 +374,7 @@ mod session_laws {
         snapshot.get(name).unwrap_or(&MISSING)
     }
 
-    fn apply(session: &mut Option<ProjectSession>, source: &str) -> super::Reply {
+    fn apply(session: &mut Option<Project>, source: &str) -> super::Reply {
         let command = CommandDto::SetSource {
             source: source.to_owned(),
         };
@@ -467,7 +502,7 @@ mod session_laws {
     /// same voice, so the launch state has one message to render.
     #[test]
     fn commands_without_a_piece_report_nothing_open() {
-        let mut nothing: Option<ProjectSession> = None;
+        let mut nothing: Option<Project> = None;
         let jobs = [Job::Snapshot, Job::Apply(Request::Undo), Job::Apply(Request::Redo)];
         for job in jobs {
             let kind = perform(&mut nothing, job).err().map(|error| error.kind);

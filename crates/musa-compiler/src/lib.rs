@@ -54,7 +54,7 @@ mod studio;
 mod time;
 
 pub use crate::bars::{BarBeat, BarLines, Measure};
-pub use crate::compile::{Compilation, CompileOptions, SourceDocument, compile};
+pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile};
 pub use crate::context::ContextTrack;
 pub use crate::diagnose::{Code, Diagnostic, Fix, FixEdit, Label, Severity};
 #[doc(hidden)]

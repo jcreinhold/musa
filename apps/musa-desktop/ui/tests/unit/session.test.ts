@@ -53,6 +53,9 @@ function recorder(): Recorder {
     answer: (source) => snapshotOf(source, ++revision),
     openProject: vi.fn(async () => VALID),
     newProject: vi.fn(async () => VALID),
+    showPiece: vi.fn(async () => VALID),
+    saveAll: vi.fn(async () => VALID),
+    askToOpenProject: vi.fn(async () => null),
     apply: vi.fn(async (command) => {
       const source = command.kind === "setSource" ? command.source : VALID.source;
       link.applied.push(source);

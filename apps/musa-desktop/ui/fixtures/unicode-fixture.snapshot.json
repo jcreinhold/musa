@@ -1,6 +1,7 @@
 {
   "document": 0,
   "name": "unicode-fixture.musa",
+  "kind": "piece",
   "source": "// Text above U+007F, in every place a piece can carry it — the title, a\n// section name, a phrase name, and these comments.\n//\n// It is here because the two sides of the desktop app measure the source\n// differently: Rust counts bytes, JavaScript and CodeMirror count UTF-16\n// code units, and the two agree only while the text is ASCII. The em dash on\n// the line above is three bytes and one code unit; the flat sign below is\n// three and one; the treble clef is four and two. Every span the interface\n// receives from a piece like this one is wrong by the accumulated difference\n// unless the shell restates it — see docs/interface/03-interaction.md §7.\n//\n// Nothing here is about notation. The notes are the plainest possible, so\n// that when a linking or highlighting test fails it is the measure that is\n// wrong and not the music.\npiece \"Étude en sol — 𝄞\" {\n    tempo 1/4 = 88;\n    meter 3/4;\n    key g major;\n\n    motif sigh(root: pitch = d5) {\n        root 1/4;\n        c5 1/4;\n        b4 1/4;\n    }\n\n    score {\n        section \"Ouverture\" at 1:1;\n        section \"Réponse — variée\" at 3:1;\n\n        part piano {\n            clef treble;\n\n            voice lead {\n                phrase \"première idée\" {\n                    g4 1/4;\n                    b4 1/4;\n                    d5 1/4;\n                }\n                use sigh();\n                use sigh(g5);\n                phrase \"cadence — ♭VII\" {\n                    f5 1/4;\n                    d5 1/4;\n                    g4 1/4;\n                }\n            }\n        }\n    }\n}\n",
   "revision": 0,
   "compiles": true,
@@ -735,5 +736,6 @@
     "totalFrames": 0,
     "sampleRate": 48000,
     "loopRegion": null
-  }
+  },
+  "contents": null
 }

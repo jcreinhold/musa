@@ -34,6 +34,7 @@
 
 mod autosave;
 mod command;
+mod contents;
 mod diagnostic;
 mod edit;
 mod error;
@@ -52,6 +53,7 @@ mod template;
 mod utf16;
 
 pub use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
+pub use crate::contents::{ContentsFacts, EntryFacts};
 pub use crate::diagnostic::{Diagnostic, Fix, FixEdit, Label, Severity, Span, codes, explain};
 pub use crate::edit::{CandidateEdit, EditCommand, EditImpact, GeneratedEditMode, InsertAt, NoteSpec};
 pub use crate::error::ProjectError;
@@ -62,7 +64,7 @@ pub use crate::facts::{
 };
 pub use crate::midi::MidiEntry;
 pub use crate::position::Position;
-pub use crate::project::ProjectMeta;
+pub use crate::project::{Project, ProjectMeta};
 pub use crate::session::ProjectSession;
 pub use crate::snapshot::{PlaybackState, ProjectSnapshot};
 pub use crate::studio::{
@@ -71,6 +73,6 @@ pub use crate::studio::{
 };
 pub use crate::template::Template;
 pub use crate::utf16::Utf16Offsets;
-pub use musa_compiler::{ChoicePath, ChoiceStep, Decision, DecisionRecord, Realization};
+pub use musa_compiler::{ChoicePath, ChoiceStep, Decision, DecisionRecord, DocumentKind, Realization};
 pub use musa_language::HeaderField;
 pub use musa_render::MidiMode;

@@ -34,6 +34,8 @@ pub fn run() -> tauri::Result<()> {
         .invoke_handler(tauri::generate_handler![
             commands::open_project,
             commands::new_project,
+            commands::show_piece,
+            commands::save_all,
             commands::apply,
             commands::edit_impact,
             commands::transport,

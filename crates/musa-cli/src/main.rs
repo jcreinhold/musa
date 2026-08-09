@@ -579,26 +579,64 @@ fn plural(count: u32, word: &str) -> String {
     }
 }
 
-/// `musa check <file>...` — full semantic check.
+/// `musa check <file|folder>...` — full semantic check.
 fn cmd_check(args: &[String], realization: &Realization) -> ExitCode {
     let fix = args.iter().any(|arg| arg == "--fix");
     let mut status = ExitCode::SUCCESS;
     let mut files: u32 = 0;
     let mut tally = Tally::default();
-    for path in args.iter().filter(|arg| !arg.starts_with("--")) {
-        files = files.saturating_add(1);
-        if cmd_check_one(path, realization, &mut tally, fix) == ExitCode::FAILURE {
-            status = ExitCode::FAILURE;
+    for argument in args.iter().filter(|arg| !arg.starts_with("--")) {
+        let listed = match expand(argument) {
+            Ok(listed) => listed,
+            Err(code) => {
+                status = code;
+                continue;
+            }
+        };
+        for path in listed {
+            files = files.saturating_add(1);
+            if cmd_check_one(&path, realization, &mut tally, fix) == ExitCode::FAILURE {
+                status = ExitCode::FAILURE;
+            }
         }
     }
     if files == 0 {
-        eprintln!("error: check needs a file");
+        eprintln!("error: check needs a file or a project folder");
         return ExitCode::FAILURE;
     }
     if let Some(summary) = tally.summary() {
         eprintln!("{summary}");
     }
     status
+}
+
+/// The files one argument names: itself, or everything a project folder holds.
+///
+/// The order is the project's own — the manifest's running order, then its
+/// material — so `musa check` on an album reads it the way the album is meant
+/// to be read, and the material it all rests on is checked too. A folder that
+/// holds no piece is not a project, and says so.
+fn expand(argument: &str) -> Result<Vec<String>, ExitCode> {
+    let root = std::path::Path::new(argument);
+    if !root.is_dir() {
+        return Ok(vec![argument.to_owned()]);
+    }
+    let mut project = musa_project::Project::open(root).map_err(|error| {
+        eprintln!("error: {error}");
+        ExitCode::FAILURE
+    })?;
+    let snapshot = project.snapshot();
+    let contents = snapshot.contents();
+    Ok(contents
+        .map(|contents| {
+            contents
+                .pieces
+                .iter()
+                .chain(&contents.material)
+                .map(|entry| root.join(&entry.file).display().to_string())
+                .collect()
+        })
+        .unwrap_or_default())
 }
 
 fn cmd_check_one(path: &str, realization: &Realization, tally: &mut Tally, fix: bool) -> ExitCode {

@@ -1,7 +1,7 @@
 ---
 id: 84
 slug: the-project-is-the-unit
-status: pending
+status: done
 depends_on: [19, 36, 76]
 phase: 3
 ---
@@ -117,12 +117,17 @@ ever", and prompt 85 routes on exactly that.
 
 ### Surfaces
 
-- Desktop: `SessionHandle` holds a `Project`. `open_project` accepts a folder as well as a file, a new `show_piece`
-  command turns to another one, and `dto.rs` exports `ContentsDto`/`EntryDto`. `registry.rs` gains *Open a project*
-  (`Shift+CmdOrCtrl+O`), *Save all*, and the Contents workspace on `CmdOrCtrl+0` — declared here, `available: false`
-  until prompt 85 implements the screen, which is what the flag is for.
-- CLI: `musa check <dir>` checks every piece in the running order. It is the same listing the contents page reads, so
-  the two cannot disagree about what is in a project.
+- Desktop: `SessionHandle` holds a `Project`. `open_project` accepts a folder as well as a file, and new `show_piece`
+  and `save_all` commands turn to another piece and write them all. No `ContentsDto`: `musa-project` owns the wire
+  shape, and mirroring `ContentsFacts` into a ts-rs DTO would create the second wire format `session.rs` exists to
+  prevent — the interface reads it through `state/snapshot.ts`, as it reads every other part of a snapshot.
+  `registry.rs` gains *Open a project* (`Shift+CmdOrCtrl+O`), *Save every piece* (`CmdOrCtrl+Alt+S`), and the Contents
+  workspace on `CmdOrCtrl+0` — declared here, `available: false` until prompt 85 implements the screen, which is what
+  the flag is for. `⌘0` is the number before the four workspaces because the volume comes before the piece, so *Reset
+  zoom* moves to `⇧⌘0` and keeps the shape every other reset in the application has.
+- CLI: `musa check <dir>` checks every file the project lists — the running order first, then the material under it.
+  It is the same listing the contents page reads, so the two cannot disagree about what is in a project, and a project
+  whose libraries are broken does not pass.
 
 ## Target
 
@@ -131,7 +136,9 @@ ever", and prompt 85 routes on exactly that.
 - `crates/musa-compiler`: the `Library` root branch in `elaborate.rs`, and `Compilation` carrying which kind of
   document it compiled.
 - `crates/musa-cli`: `check` over a directory; one line of usage.
-- `apps/musa-desktop/src-tauri`: `Project` in the session thread, `show_piece`, the DTOs, three registry commands.
+- `apps/musa-desktop/src-tauri`: `Project` in the session thread, `show_piece` and `save_all`, three registry commands.
+- `apps/musa-desktop/ui`: `kind` and `contents` on `ProjectSnapshot`, the bridge calls behind them, and the two new
+  File commands in `commands/map.ts`. No screen: prompt 85 owns that.
 - `examples/album/`: `pieces/02-waltz.musa`, the manifest's running order, and the deleted `.recovery` file.
 - Tests: `crates/musa-project/tests/project_laws.rs`.
 

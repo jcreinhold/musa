@@ -59,6 +59,8 @@ export type Link = Pick<
   typeof bridge,
   | "openProject"
   | "newProject"
+  | "showPiece"
+  | "saveAll"
   | "apply"
   | "editImpact"
   | "transport"
@@ -66,6 +68,7 @@ export type Link = Pick<
   | "snapshot"
   | "on"
   | "askToOpen"
+  | "askToOpenProject"
   | "askToSave"
   | "listenToMidi"
 >;
@@ -306,6 +309,43 @@ export class Session {
     }
   }
 
+  /**
+   * Open a folder of pieces (roadmap §16).
+   *
+   * A separate way in from {@link open}, because a folder and a file are
+   * different questions to ask the file dialog, and a dialog that accepted
+   * both would make the composer guess which one it meant.
+   */
+  async openProject(path?: string): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      const chosen = path ?? (await link.askToOpenProject());
+      if (chosen === null) return;
+      this.receive(await link.openProject(chosen), true);
+      this.dismiss();
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  /**
+   * Turn to another file of the project.
+   *
+   * The piece left behind keeps its text, its unsaved edits and its undo
+   * history, so this is turning back rather than reopening. `file` is a name
+   * out of the snapshot's contents, which is the only place it comes from.
+   */
+  async showPiece(file: string): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      this.receive(await link.showPiece(file), true);
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
   async create(template: TemplateDto = "piece"): Promise<void> {
     const link = this.#link;
     if (!link) return;
@@ -319,6 +359,18 @@ export class Session {
 
   async save(): Promise<void> {
     await this.run({ kind: "save" }, (snapshot) => `Saved ${snapshot.name}.`);
+  }
+
+  /** Write every piece of the project that has unsaved edits. */
+  async saveAll(): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      this.receive(await link.saveAll());
+      this.say({ tone: "result", message: "Saved every piece." });
+    } catch (thrown) {
+      this.fail(thrown);
+    }
   }
 
   /**

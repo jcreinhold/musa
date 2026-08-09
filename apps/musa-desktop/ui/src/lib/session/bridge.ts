@@ -50,6 +50,10 @@ export const bridge = {
   openProject: (path: string) => call<ProjectSnapshot>("open_project", { path }),
   newProject: (template: TemplateDto, path: string | null) =>
     call<ProjectSnapshot>("new_project", { template, path }),
+  /** Turn to another file of the project already open. */
+  showPiece: (file: string) => call<ProjectSnapshot>("show_piece", { file }),
+  /** Write every piece of it that has unsaved edits. */
+  saveAll: () => call<ProjectSnapshot>("save_all", {}),
   apply: (command: CommandDto) => call<ProjectSnapshot>("apply", { command }),
   /** What an edit would change, asked before it is made. */
   editImpact: (edit: EditDto) => call<EditImpact>("edit_impact", { edit }),
@@ -78,6 +82,13 @@ export const bridge = {
       directory: false,
       filters: [{ name: "Musa piece", extensions: ["musa"] }],
     });
+    return typeof chosen === "string" ? chosen : null;
+  },
+
+  /** Ask the user for a folder of pieces. `null` when they cancel. */
+  async askToOpenProject(): Promise<string | null> {
+    const { open } = await import("@tauri-apps/plugin-dialog");
+    const chosen = await open({ multiple: false, directory: true });
     return typeof chosen === "string" ? chosen : null;
   },
 

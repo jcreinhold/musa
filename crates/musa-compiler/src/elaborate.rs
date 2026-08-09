@@ -521,6 +521,9 @@ pub(crate) fn elaborate_parsed(
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
     let Some(piece) = PieceDecl::from_root(&document.syntax()) else {
+        if let Some(library) = musa_language::ast::LibraryDecl::from_root(&document.syntax()) {
+            return elaborate_material(resolver, &library, name, options);
+        }
         resolver.report(
             Diagnostic::error(Code::Misplaced, "this file declares no piece")
                 .at(SourceSpan::new(0, 0), "expected `piece \"…\" { … }`")
@@ -531,7 +534,7 @@ pub(crate) fn elaborate_parsed(
 
     resolver.realization = options.realization.clone();
     let mut snapshot = ScoreSnapshot::default();
-    let libraries = crate::imports::load(resolver, name, &piece, &options.imports);
+    let libraries = crate::imports::load(resolver, name, &piece.imports(), &options.imports);
     elaborate_libraries(resolver, &libraries, &mut snapshot);
     resolve::lower_header(resolver, &piece, &mut snapshot);
     let identity = piece.score().map_or_else(musa_kernel::SemanticHash::default, |score| {
@@ -930,6 +933,46 @@ fn point_at(at: MusicalTime, fact: ScoreFact) -> Occurrence<ScoreFact> {
 /// Register everything the imported libraries declare, before the piece's
 /// own declarations, so a collision is reported against the library that
 /// caused it (roadmap §16).
+/// Check a `library { … }` opened on its own (prompt 84).
+///
+/// A library declares and does not sound, so there is no score to build and
+/// the absence of one is not a failure — that is the whole difference between
+/// this path and the piece path, and it is why [`Compilation::kind`] exists.
+/// What it *does* do is everything a check is for: resolve what the library
+/// builds on, register its declarations so a duplicate or a malformed motif is
+/// reported, and hold its `studio` to a library's rules.
+///
+/// The library's own studio arrives as an *imported* block rather than as the
+/// document's. That is not a trick: the rules for a library's studio are the
+/// rules that apply to it wherever it is read, and a library that could wire
+/// itself to a score when opened directly and not when imported would compile
+/// two different ways.
+fn elaborate_material(
+    resolver: &mut Resolver,
+    library: &musa_language::ast::LibraryDecl,
+    name: &str,
+    options: &crate::CompileOptions,
+) -> Compilation {
+    let mut snapshot = ScoreSnapshot::default();
+    let libraries = crate::imports::load(resolver, name, &library.imports(), &options.imports);
+    elaborate_libraries(resolver, &libraries, &mut snapshot);
+    if let Some(performance) = library.performance() {
+        let profiles = resolve::parse_profiles(resolver, &performance);
+        let span = resolve::span_of(performance.syntax());
+        resolve::merge_profiles(resolver, &mut snapshot, &profiles, span, None);
+    }
+    resolve::register_motifs(resolver, &mut snapshot, &library.motifs(), None);
+    resolve::register_fragments(resolver, &mut snapshot, &library.fragments(), None);
+    let studios: Vec<musa_language::ast::StudioDecl> = libraries
+        .each()
+        .filter_map(|(_, imported)| imported.studio())
+        .chain(library.studio())
+        .collect();
+    let mut references = std::mem::take(&mut resolver.references);
+    crate::studio::resolve(None, &studios, &[], &mut references, &mut resolver.diagnostics);
+    Compilation::new(None, std::mem::take(&mut resolver.diagnostics)).into_material()
+}
+
 fn elaborate_libraries(resolver: &mut Resolver, libraries: &crate::imports::Libraries, snapshot: &mut ScoreSnapshot) {
     for (path, library) in libraries.each() {
         if let Some(performance) = library.performance() {

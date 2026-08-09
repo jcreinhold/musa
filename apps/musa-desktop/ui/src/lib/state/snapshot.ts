@@ -353,6 +353,29 @@ export interface MidiEntry {
   pitches: string[];
 }
 
+/** A project's running order and its shared material (prompt 84). */
+export interface ContentsFacts {
+  /** What to call the project: the manifest's name, else the folder's. */
+  name: string;
+  composer: string | null;
+  /** The pieces, in the order they are meant to be read. */
+  pieces: EntryFacts[];
+  /** The libraries the pieces draw on. */
+  material: EntryFacts[];
+}
+
+/** One file in a project, as the contents page prints it. */
+export interface EntryFacts {
+  /** What the composer called it — set in Academico on the page. */
+  title: string;
+  /** What the filesystem calls it — set in mono, and the name to turn to. */
+  file: string;
+  current: boolean;
+  unsaved: boolean;
+  /** Material the piece in hand imports. Always false for a piece. */
+  used: boolean;
+}
+
 export interface ProjectSnapshot {
   /**
    * Which piece this is. Compared before `revision`, which counts within a
@@ -360,6 +383,11 @@ export interface ProjectSnapshot {
    */
   document: number;
   name: string;
+  /**
+   * Which of the two things this file is (roadmap §16). Material has no score
+   * and never will, which is a different fact from "no score yet".
+   */
+  kind: "piece" | "material";
   source: string;
   revision: number;
   compiles: boolean;
@@ -376,6 +404,8 @@ export interface ProjectSnapshot {
   studio: StudioFacts | null;
   scoreRevision: number | null;
   playback: PlaybackState;
+  /** The project this piece is one of, or null when nothing is open. */
+  contents: ContentsFacts | null;
 }
 
 /** The event with this id, or undefined. */
