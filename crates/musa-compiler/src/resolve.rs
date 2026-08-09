@@ -904,9 +904,82 @@ pub(crate) fn parse_profiles(resolver: &mut Resolver, performance: &PerformanceD
         if let Some(groove) = groove_of(resolver, &declaration) {
             profile.set_groove(groove);
         }
+        if let Some(grace) = grace_of(resolver, &declaration) {
+            profile.set_grace(grace);
+        }
         set.insert(profile);
     }
     set
+}
+
+/// The one grace reading a profile declares, if it declares one.
+///
+/// More than one is refused for the same reason two grooves are: a reading of
+/// a grace note is a single decision, and two of them composed in written
+/// order would mean nothing a performer could act on.
+fn grace_of(resolver: &mut Resolver, declaration: &ProfileDecl) -> Option<crate::GracePolicy> {
+    let rules = declaration.graces();
+    let (first, rest) = rules.split_first()?;
+    for extra in rest {
+        resolver.error(
+            Code::DuplicateName,
+            "this profile has more than one grace rule",
+            trimmed_span(extra.syntax()),
+            "a reading plays a grace note one way",
+        );
+    }
+    let mut policy = crate::GracePolicy::DEFAULT;
+    for setting in first.settings() {
+        let name = setting.name().unwrap_or_default();
+        match name.as_str() {
+            "steal" => {
+                if let Some(steal) = beat_setting(resolver, &setting) {
+                    if steal <= Ratio::ZERO {
+                        resolver.error(
+                            Code::OutOfRange,
+                            "`steal` is not a length",
+                            trimmed_span(setting.syntax()),
+                            "zero or less",
+                        );
+                    } else {
+                        policy.steal = steal;
+                    }
+                }
+            }
+            "from" => {
+                if let Some(from) = steal_from(resolver, &setting) {
+                    policy.from = from;
+                }
+            }
+            other => resolver.report(
+                Diagnostic::error(
+                    Code::UnknownWord,
+                    format!("a grace rule has no setting called `{other}`"),
+                )
+                .at(trimmed_span(setting.syntax()), "unknown setting")
+                .help(suggest(other, &["steal", "from"], "settings")),
+            ),
+        }
+    }
+    Some(policy)
+}
+
+/// `from = principal;` or `from = previous;`.
+fn steal_from(resolver: &mut Resolver, setting: &SettingStmt) -> Option<crate::StealFrom> {
+    let written = setting.word().or_else(|| setting.value())?;
+    match written.as_str() {
+        "principal" => Some(crate::StealFrom::Principal),
+        "previous" => Some(crate::StealFrom::Previous),
+        other => {
+            resolver.report(
+                Diagnostic::error(Code::UnknownWord, format!("`{other}` is not a note to steal from"))
+                    .at(trimmed_span(setting.syntax()), "unknown source")
+                    .help(suggest(other, &["principal", "previous"], "sources"))
+                    .note("a grace note takes its time from the note it leans on, or from the one before it"),
+            );
+            None
+        }
+    }
 }
 
 /// The one groove a profile declares, if it declares one.
@@ -1018,7 +1091,9 @@ fn beat_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio<
         );
         return None;
     }
-    let written = setting.value()?;
+    // A word reaches here too, so a setting given the wrong kind of value
+    // is refused by name rather than dropped without a word (see `word`).
+    let written = setting.value().or_else(|| setting.word())?;
     let (sign, magnitude) = written
         .strip_prefix('-')
         .map_or((Ratio::ONE, written.as_str()), |rest| (-Ratio::ONE, rest));
@@ -1115,7 +1190,9 @@ fn hold_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio<
         );
         return None;
     }
-    let written = setting.value()?;
+    // A word reaches here too, so a setting given the wrong kind of value
+    // is refused by name rather than dropped without a word (see `word`).
+    let written = setting.value().or_else(|| setting.word())?;
     let Some(value) = parse_ratio(&written).or_else(|| crate::profile::parse_decimal(&written)) else {
         resolver.error(
             Code::NotAValue,
@@ -1154,7 +1231,9 @@ fn ratio_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio
     // Both spellings, and a value that will not parse is reported rather than
     // dropped. `gate = 1/2` used to resolve to nothing at all — a half-length
     // staccato that compiled clean and performed at full length.
-    let written = setting.value()?;
+    // A word reaches here too, so a setting given the wrong kind of value
+    // is refused by name rather than dropped without a word (see `word`).
+    let written = setting.value().or_else(|| setting.word())?;
     let Some(value) = parse_ratio(&written).or_else(|| crate::profile::parse_decimal(&written)) else {
         resolver.error(
             Code::NotAValue,
@@ -1180,7 +1259,16 @@ fn ratio_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio
 fn time_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio<i64>> {
     let name = setting.name().unwrap_or_default();
     let span = trimmed_span(setting.syntax());
-    let value = crate::profile::parse_decimal(&setting.value()?)?;
+    let written = setting.value().or_else(|| setting.word())?;
+    let Some(value) = crate::profile::parse_decimal(&written) else {
+        resolver.error(
+            Code::NotAValue,
+            format!("`{written}` is not a length of time"),
+            span,
+            "not a number",
+        );
+        return None;
+    };
     let seconds = match setting.unit().as_deref() {
         Some("ms") => value / 1000,
         Some("s") => value,

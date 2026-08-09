@@ -217,6 +217,12 @@ impl ProfileDecl {
     pub fn grooves(&self) -> Vec<GrooveRule> {
         children(&self.0)
     }
+
+    /// The grace rules, in source order. At most one is meaningful, for the
+    /// same reason a groove is.
+    pub fn graces(&self) -> Vec<GraceRule> {
+        children(&self.0)
+    }
 }
 
 /// One rule's head name and its settings; `mark` and `dynamic` rules
@@ -245,6 +251,20 @@ rule_wrapper!(MarkRule, SyntaxKind::MarkRule, "mark");
 rule_wrapper!(DynamicRule, SyntaxKind::DynamicRule, "dynamic");
 rule_wrapper!(GrooveRule, SyntaxKind::GrooveRule, "groove");
 
+/// `grace { steal = 1/16; from = principal; }` inside a profile.
+///
+/// No `name`: a profile has one reading of a grace note, so there is nothing
+/// for a name to choose between.
+pub struct GraceRule(SyntaxNode);
+wrapper!(GraceRule, SyntaxKind::GraceRule);
+
+impl GraceRule {
+    /// The rule's settings, in source order.
+    pub fn settings(&self) -> Vec<SettingStmt> {
+        children(&self.0)
+    }
+}
+
 /// `gate = 0.55;`, `attack = 8 ms;`
 pub struct SettingStmt(SyntaxNode);
 wrapper!(SettingStmt, SyntaxKind::SettingStmt);
@@ -267,6 +287,20 @@ impl SettingStmt {
             Some(_) => format!("-{magnitude}"),
             None => magnitude,
         })
+    }
+
+    /// The written word, for a setting whose value is a named reading rather
+    /// than a quantity (`from = principal;`).
+    ///
+    /// Read as the identifier *after* the `=`, because the setting's own name
+    /// is an identifier too and is the one before it.
+    pub fn word(&self) -> Option<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .skip_while(|token| token.kind() != SyntaxKind::Equals)
+            .find(|token| token.kind() == SyntaxKind::Identifier)
+            .map(|token| token.text().to_string())
     }
 
     /// The unit written after the number (`ms`, `s`), if any.
@@ -607,6 +641,8 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             PhraseStmt::cast(child).map(VoiceItem::Phrase)
         } else if kind == SyntaxKind::MarkStmt {
             MarkStmt::cast(child).map(VoiceItem::Mark)
+        } else if kind == SyntaxKind::GraceStmt {
+            GraceStmt::cast(child).map(VoiceItem::Grace)
         } else if kind == SyntaxKind::HairpinStmt {
             HairpinStmt::cast(child).map(VoiceItem::Hairpin)
         } else if kind == SyntaxKind::MeterStmt {
@@ -662,6 +698,8 @@ pub enum VoiceItem {
     Phrase(PhraseStmt),
     /// `mark breath;` / `mark pedal { ... }`
     Mark(MarkStmt),
+    /// `grace { c5; d5; }` — the notes crushed before the next one.
+    Grace(GraceStmt),
     /// `crescendo to f { ... }`
     Hairpin(HairpinStmt),
     /// `meter 3/4;` — written where the music reaches it.
@@ -1033,6 +1071,37 @@ impl MarkStmt {
     /// The music inside the block, in source order.
     pub fn items(&self) -> Vec<VoiceItem> {
         voice_items(&self.0)
+    }
+}
+
+/// `grace { c5; d5; }`
+pub struct GraceStmt(SyntaxNode);
+wrapper!(GraceStmt, SyntaxKind::GraceStmt);
+
+impl GraceStmt {
+    /// The grace notes, in written order.
+    ///
+    /// The order is the value: `grace { c5; d5; }` and `grace { d5; c5; }`
+    /// are different music, and nothing downstream can recover the difference
+    /// once this sequence is lost.
+    pub fn notes(&self) -> Vec<GraceNote> {
+        self.0.children().filter_map(GraceNote::cast).collect()
+    }
+}
+
+/// One pitch inside a `grace` block.
+pub struct GraceNote(SyntaxNode);
+wrapper!(GraceNote, SyntaxKind::GraceNote);
+
+impl GraceNote {
+    /// The written pitch (`gs4`) or pitch reference (`root`).
+    pub fn pitch(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::PitchLiteral).or_else(|| token_text(&self.0, SyntaxKind::Identifier))
+    }
+
+    /// The articulation names written after the pitch, in source order.
+    pub fn articulations(&self) -> Vec<String> {
+        articulation_names(&self.0)
     }
 }
 

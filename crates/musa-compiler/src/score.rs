@@ -600,6 +600,28 @@ pub struct ArticulationMarking {
     pub origin: Origin,
 }
 
+/// One grace note, leaning on the event it precedes.
+///
+/// Attached to the principal rather than standing among the events, because a
+/// grace note has no place in the measure's rhythm: it fills none of the bar,
+/// and an event with zero notated duration would have to be excluded by hand
+/// from every bar check, every measure fill and every plan decomposition. In
+/// the kernel it *is* an occurrence with its own identity — see
+/// `FactKind::Grace` — and this is how that occurrence reaches the page.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GraceNote {
+    /// The note this one leans on.
+    pub at: EventId,
+    /// The written pitch, spelled as written (§6.3).
+    pub pitch: WrittenPitch,
+    /// Its place in the group it was written in. The order is the music.
+    pub index: u8,
+    /// The articulations written on it.
+    pub articulations: Vec<Mark>,
+    /// Why this grace note exists.
+    pub origin: Origin,
+}
+
 /// A notation mark standing at one place: a breath, a text direction, a
 /// rehearsal letter, a sample name.
 ///
@@ -836,6 +858,7 @@ pub struct AnnotationStore {
     tuplets: Vec<TupletSpan>,
     dynamics: Vec<DynamicMarking>,
     articulations: Vec<ArticulationMarking>,
+    graces: Vec<GraceNote>,
     phrases: Vec<PhraseSpan>,
     hairpins: Vec<HairpinSpan>,
     sections: Vec<SectionMark>,
@@ -870,6 +893,11 @@ impl AnnotationStore {
     /// Articulations, in source order.
     pub fn articulations(&self) -> &[ArticulationMarking] {
         &self.articulations
+    }
+
+    /// Grace notes, in the order they were written.
+    pub fn graces(&self) -> &[GraceNote] {
+        &self.graces
     }
 
     /// Phrases, in source order.
@@ -953,6 +981,10 @@ impl AnnotationStore {
 
     pub(crate) fn push_articulation(&mut self, articulation: ArticulationMarking) {
         self.articulations.push(articulation);
+    }
+
+    pub(crate) fn push_grace(&mut self, grace: GraceNote) {
+        self.graces.push(grace);
     }
 
     pub(crate) fn set_repeats(&mut self, repeats: Vec<RepeatRegion>) {

@@ -124,6 +124,7 @@ const PROFILE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::MarkKw,
     SyntaxKind::DynamicKw,
     SyntaxKind::GrooveKw,
+    SyntaxKind::GraceKw,
 ];
 const STUDIO_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::Semicolon,
@@ -151,6 +152,7 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::EndingKw,
     SyntaxKind::SlurKw,
     SyntaxKind::PhraseKw,
+    SyntaxKind::GraceKw,
     SyntaxKind::CrescendoKw,
     SyntaxKind::DiminuendoKw,
     SyntaxKind::DynamicKw,
@@ -864,8 +866,10 @@ impl<'a> Parser<'a> {
                 self.rule(SyntaxKind::DynamicRule, "a dynamic marking");
             } else if self.at(SyntaxKind::GrooveKw) {
                 self.rule(SyntaxKind::GrooveRule, "a groove name");
+            } else if self.at(SyntaxKind::GraceKw) {
+                self.grace_rule();
             } else {
-                self.expected("a `mark`, `dynamic`, or `groove` rule");
+                self.expected("a `mark`, `dynamic`, `groove`, or `grace` rule");
                 self.recover(PROFILE_RECOVERY);
             }
         }
@@ -877,6 +881,24 @@ impl<'a> Parser<'a> {
         self.start(kind);
         self.bump(); // mark | dynamic | groove
         self.expect(SyntaxKind::Identifier, what);
+        self.settings_block();
+        self.finish();
+    }
+
+    /// `grace { <setting>* }` — the same block with no name in front.
+    ///
+    /// Nameless because a profile has one reading of a grace note, not a
+    /// vocabulary of them: `groove` is named because the name chooses the
+    /// shape, and there is no such choice here.
+    fn grace_rule(&mut self) {
+        self.start(SyntaxKind::GraceRule);
+        self.bump(); // grace
+        self.settings_block();
+        self.finish();
+    }
+
+    /// `{ <setting>* }` — the body every profile rule shares.
+    fn settings_block(&mut self) {
         self.expect(SyntaxKind::LBrace, "`{`");
         loop {
             if self.at(SyntaxKind::RBrace) {
@@ -896,7 +918,6 @@ impl<'a> Parser<'a> {
                 self.recover(&[SyntaxKind::Semicolon, SyntaxKind::RBrace]);
             }
         }
-        self.finish();
     }
 
     /// `<name> = [-]<number> [unit];` — the unit is the value's, not the
@@ -914,10 +935,19 @@ impl<'a> Parser<'a> {
         if self.at(SyntaxKind::Minus) {
             self.bump();
         }
-        if self.at_any(&[SyntaxKind::Float, SyntaxKind::Integer, SyntaxKind::Rational]) {
+        // A word is a value too: some settings are a choice between named
+        // readings rather than a quantity — `from = principal;`. Which of the
+        // two a given setting takes is the reader's answer, not the grammar's,
+        // so both parse here and the profile says which it wanted.
+        if self.at_any(&[
+            SyntaxKind::Float,
+            SyntaxKind::Integer,
+            SyntaxKind::Rational,
+            SyntaxKind::Identifier,
+        ]) {
             self.bump();
         } else {
-            self.expected("a number");
+            self.expected("a number or a word");
         }
         if self.at_any(&[SyntaxKind::UnitMs, SyntaxKind::UnitS]) {
             self.bump();
@@ -1223,6 +1253,8 @@ impl<'a> Parser<'a> {
                 self.repeat_stmt();
             } else if self.at(SyntaxKind::BarKw) {
                 self.bar_stmt();
+            } else if self.at(SyntaxKind::GraceKw) {
+                self.grace_stmt();
             } else if self.at(SyntaxKind::MobileKw) {
                 self.mobile_stmt();
             } else if self.at(SyntaxKind::ImproviseKw) {
@@ -1527,6 +1559,40 @@ impl<'a> Parser<'a> {
             self.block();
         } else {
             self.expect(SyntaxKind::Semicolon, "`;` or a block");
+        }
+        self.finish();
+    }
+
+    /// `grace { c5; d5; }` — the notes crushed before the one that follows.
+    ///
+    /// The block holds pitches and nothing else: a grace note has no written
+    /// duration, which is the one shape a `NoteStmt` cannot hold, so it gets a
+    /// node of its own rather than a note with an optional duration. Making
+    /// the duration optional on every note would let `c5;` be written anywhere
+    /// and mean nothing.
+    fn grace_stmt(&mut self) {
+        self.start(SyntaxKind::GraceStmt);
+        self.bump(); // grace
+        if self.at(SyntaxKind::LBrace) {
+            self.bump();
+            while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+                if self.at_any(&[SyntaxKind::PitchLiteral, SyntaxKind::Identifier]) {
+                    self.start(SyntaxKind::GraceNote);
+                    self.bump(); // pitch literal or pitch reference
+                    self.articulations();
+                    self.expect(SyntaxKind::Semicolon, "`;`");
+                    self.finish();
+                } else {
+                    self.expected("a pitch");
+                    self.recover(&[SyntaxKind::Semicolon, SyntaxKind::RBrace, SyntaxKind::PitchLiteral]);
+                    if self.at(SyntaxKind::Semicolon) {
+                        self.bump();
+                    }
+                }
+            }
+            self.expect(SyntaxKind::RBrace, "`}`");
+        } else {
+            self.expected("a block of pitches, like `grace { c5; d5; }`");
         }
         self.finish();
     }

@@ -14,7 +14,7 @@
 //! signatures affect only `<scoreDef>`; pitch spelling passes through
 //! verbatim (§6.3).
 
-use musa_compiler::{Clef, EventId, Mode, Slot, WrittenPitch};
+use musa_compiler::{Clef, EventId, Mark, Mode, Slot, WrittenPitch};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
@@ -900,23 +900,30 @@ fn write_layer(
 
 /// Whether any of an item's marks belongs inside its `<note>`.
 fn has_artics(item: &NotatedItem) -> bool {
-    item.articulations().iter().any(|mark| {
-        matches!(
-            (mark.def().mei, mark.slot()),
-            (Some(_), Some(Slot::Articulation | Slot::Technical))
-        )
-    })
+    item.articulations().iter().any(|mark| artic_name(*mark).is_some())
+}
+
+/// The `@artic` spelling for a mark, when MEI writes it *inside* the note.
+///
+/// Only two slots qualify: `@artic` holds articulations and technical
+/// indications. An ornament and a fermata are control events, which stand
+/// beside the note rather than in it, so they are written by
+/// [`write_control_events`] instead.
+fn artic_name(mark: Mark) -> Option<&'static str> {
+    match (mark.def().mei, mark.slot()) {
+        (Some(spelling), Some(Slot::Articulation | Slot::Technical)) => Some(spelling),
+        _ => None,
+    }
 }
 
 /// `<artic>` children for an item, when it carries any.
-///
-/// Only the slots MEI writes *inside* the note: `@artic` holds articulations
-/// and technical indications. An ornament and a fermata are control events,
-/// which stand beside the note rather than in it, so they are written by
-/// [`write_control_events`] instead.
 fn write_artics(writer: &mut Writer<Vec<u8>>, item: &NotatedItem) -> Result<(), RenderError> {
-    for mark in item.articulations() {
-        let (Some(spelling), Some(Slot::Articulation | Slot::Technical)) = (mark.def().mei, mark.slot()) else {
+    write_mark_artics(writer, item.articulations())
+}
+
+fn write_mark_artics(writer: &mut Writer<Vec<u8>>, marks: &[Mark]) -> Result<(), RenderError> {
+    for mark in marks {
+        let Some(spelling) = artic_name(*mark) else {
             continue;
         };
         let mut artic = element("artic");
@@ -991,6 +998,51 @@ fn push_note_pitch(elem: &mut BytesStart<'_>, pitch: WrittenPitch, octave: &str)
     }
 }
 
+/// The grace notes leaning on an item, as a `<graceGrp>` immediately before
+/// it.
+///
+/// `attach="pre"` says the group belongs to the note that follows, which is
+/// what the source says too. `grace="unknown"` on each note is deliberate:
+/// MEI's other two values, `acc` and `unacc`, are *performance* answers —
+/// on the beat or ahead of it — and that question belongs to the profile
+/// (`musa_compiler::GracePolicy`), not to the page. Writing either one here
+/// would put one reading of the piece into a file that is meant to carry the
+/// piece. A consumer with a house style applies it, exactly as a performer
+/// does.
+///
+/// `dur="8"` because MEI requires a written duration on a note and a grace has
+/// none. It is a drawing instruction — an eighth-note flag — and nothing reads
+/// it as time: the group is outside the measure's duration arithmetic.
+fn write_graces(writer: &mut Writer<Vec<u8>>, item: &NotatedItem) -> Result<(), RenderError> {
+    if item.graces().is_empty() {
+        return Ok(());
+    }
+    let mut group = element("graceGrp");
+    group.push_attribute(("attach", "pre"));
+    writer
+        .write_event(Event::Start(group))
+        .map_err(|error| RenderError::xml(&error))?;
+    for grace in item.graces() {
+        let mut note = element("note");
+        note.push_attribute(("dur", "8"));
+        note.push_attribute(("grace", "unknown"));
+        push_note_pitch(&mut note, grace.pitch, &grace.pitch.octave.to_string());
+        if grace.articulations.iter().any(|mark| artic_name(*mark).is_some()) {
+            writer
+                .write_event(Event::Start(note))
+                .map_err(|error| RenderError::xml(&error))?;
+            write_mark_artics(writer, &grace.articulations)?;
+            end(writer, "note")?;
+        } else {
+            writer
+                .write_event(Event::Empty(note))
+                .map_err(|error| RenderError::xml(&error))?;
+        }
+    }
+    end(writer, "graceGrp")?;
+    Ok(())
+}
+
 fn write_item(
     writer: &mut Writer<Vec<u8>>,
     item: &NotatedItem,
@@ -998,6 +1050,7 @@ fn write_item(
 ) -> Result<(), RenderError> {
     let id = item_id(item, piece_counts);
     let (dur, dots) = dur_attrs(item);
+    write_graces(writer, item)?;
     match item.kind() {
         NotatedKind::Rest => {
             let mut rest = element("rest");

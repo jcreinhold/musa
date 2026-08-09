@@ -1,7 +1,7 @@
 ---
 id: 71
 slug: grace-notes
-status: pending
+status: done
 depends_on: [70]
 phase: 3
 ---
@@ -69,8 +69,8 @@ takes half the principal's value; a Romantic acciaccatura is crushed before the 
 Musa puts it where it belongs:
 
 ```musa
-profile baroque  { mark grace { steal = 1/2;  from = principal; } }
-profile romantic { mark grace { steal = 1/32; from = previous;  } }
+profile baroque  { grace { steal = 1/8;  from = principal; } }
+profile romantic { grace { steal = 1/32; from = previous;  } }
 ```
 
 Same notation, two performances, and neither is written into the file. This is the clearest payoff §2 has produced
@@ -95,13 +95,15 @@ tie-breaker hack.
 
 | | |
 | --- | --- |
-| MEI | `<graceGrp>` with `<note grace="acc">`, ordered by `index` |
+| MEI | `<graceGrp attach="pre">` with `<note grace="unknown">`, ordered by `index` |
 | MusicXML | `<grace slash="yes"/>`; **do not** emit `steal-time-*` — the interpretation is not in the file |
-| LilyPond | `\acciaccatura` / `\appoggiatura` per the profile's `steal`, since LilyPond has no neutral form |
+| LilyPond | `\grace { … }` — the one command that carries no reading |
 | MIDI | the realized notes, at the profile's timing |
 
-LilyPond is the interesting one: it has no way to write a grace note without choosing, so the export *must* pick,
-and the choice comes from the profile rather than the source. Say so in `07-backend-contract.md`.
+LilyPond looked like the interesting one: `\acciaccatura` and `\appoggiatura` each bake in a reading, so the export
+seemed forced to pick from the profile. It is not — `\grace` is neutral, and it is what a notation backend must
+write, because a backend that consulted the profile would break the law the Check asserts one line later. See repair
+5 below, and `07-backend-contract.md`.
 
 ## Target
 
@@ -127,11 +129,48 @@ cargo run -p musa-cli -- check examples/graces.musa
 # order matters — the two must differ:
 diff <(cargo run -q -p musa-cli -- kernel examples/graces.musa) \
      <(cargo run -q -p musa-cli -- kernel examples/graces-reordered.musa) && exit 1
-# notation is profile-independent, performance is not:
-cargo run -p musa-cli -- render examples/graces.musa --to mei > /tmp/a.mei
+# notation is profile-independent, performance is not — the pair of tests
+# that say so, in the two crates that own the two halves:
+cargo nextest run -p musa-render --test graces -p musa-compiler --test graces
 ```
 
 Commit as `Add grace notes`.
+
+## Repairs made while implementing
+
+1. **The profile rule is `grace { … }`, not `mark grace { … }`.** The prompt's own thesis is that a grace note is not
+   a mark; writing its settings under the `mark` head would have said the opposite in the one place a reader looks
+   for the answer. It is a nameless rule head of its own, following prompt 69's `groove` precedent.
+2. **`SettingStmt` gained a word value and `SettingStmt::word()`.** `from = principal;` is the first setting whose
+   value is a *choice between named readings* rather than a quantity, and the grammar had no way to write one. All
+   four number readers were taught to read a word too, so a word where a quantity belongs is refused by name
+   (``​`wide` is not a hold``) instead of being dropped silently.
+3. **The steal is bounded at both ends, and the bounds are stated rather than discovered.** Graces taken from the
+   principal may take at most half its written value; graces taken from the previous note may reach back at most to
+   that note's midpoint, and asking for more — or standing at the start of a voice — is read as taking from the
+   principal instead. Without the first bound a greedy profile produces a note whose off precedes its on; without
+   the second, a grace swallows the note behind it.
+4. **`from = previous` really shortens the note before.** The previous note's note-off is pulled back to where the
+   grace starts (never later — a staccato note does not grow because the next note has a grace). "Stealing" that
+   left the previous note ringing under the grace would have been the word without the deed.
+5. **LilyPond writes `\grace`, and no notation backend sees a profile.** The prompt asked the LilyPond export to
+   choose `\acciaccatura`/`\appoggiatura` from the profile. It must not: `NotationPlan` is built without one, and
+   giving one to a notation backend would break "the page does not say how a grace is played" — the law this prompt
+   exists to establish — in the same commit that asserts it. `\grace` is neutral and is what a house style expects
+   to interpret.
+6. **MEI writes `grace="unknown"`, not `grace="acc"`.** MEI's `acc` and `unacc` are the two readings; `unknown` is
+   the page. The prompt named `acc` by inheriting `MusicXML`'s framing, which is exactly the framing it rejects.
+7. **`MusicalTime::new` clamps negatives, so the reach-back test is on the ratio.** Comparing constructed times made
+   a grace before the start of the piece look legal, and it sounded on top of the note it was supposed to precede —
+   a bug that only a test asserting on *frames* could see.
+8. **Beaming needed no change.** The prompt assigned `plan.rs` grace beaming and a slur to the principal. Because a
+   `PlannedGrace` lives *inside* its `NotatedItem` rather than among the items — which is what all three backends
+   want — beaming is untouched by construction, and the slur is a house-style flourish that each of the three
+   neutral grace forms deliberately omits.
+9. **The example pair is byte-aligned.** `graces-reordered.musa` is `graces.musa` with two groups reversed and its
+   explanatory comment at the *bottom* of the file, so every byte above is identical and the kernel diff shows the
+   reordering and nothing else. Occurrence payloads carry source spans; a comment at the top would have moved every
+   span and buried the finding.
 
 ## Stop
 

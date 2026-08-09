@@ -66,6 +66,56 @@ impl ArticulationRealization {
     };
 }
 
+/// Where a grace note's time comes from.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum StealFrom {
+    /// From the note it leans on: the principal starts late and ends where it
+    /// was written. A Baroque appoggiatura, on the beat.
+    #[default]
+    Principal,
+    /// From the note before it: the grace sounds ahead of the beat and the
+    /// principal is untouched. A Romantic acciaccatura, crushed.
+    ///
+    /// With nothing before it — a grace on the first note of a voice — there
+    /// is nothing to take from, so it falls back to the principal rather than
+    /// starting the piece at a negative time.
+    Previous,
+}
+
+/// How a profile plays the grace notes the score writes.
+///
+/// The question this answers is one Baroque and Romantic practice genuinely
+/// disagree about, which is exactly why it is here and not in the notation.
+/// `MusicXML` writes `steal-time-previous="50"` into the file and so makes the
+/// *editor* settle it; musa writes the grace note and lets the reading decide,
+/// which is roadmap §2's row — notated duration ≠ performed duration — with
+/// both values kept instead of one standing in for the other.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GracePolicy {
+    /// How much written time each grace note takes, in whole notes.
+    pub steal: Ratio<i64>,
+    /// Which note it takes that time from.
+    pub from: StealFrom,
+}
+
+impl GracePolicy {
+    /// A short grace on the beat: what a modern performer defaults to, and
+    /// what an unprofiled piece gets.
+    ///
+    /// The default is inside rather than at the call sites: no caller passes
+    /// this, and a piece with no `performance` block still has to sound.
+    pub const DEFAULT: Self = Self {
+        steal: Ratio::new_raw(1, 16),
+        from: StealFrom::Principal,
+    };
+}
+
+impl Default for GracePolicy {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
 /// One named profile: an instrument's reading of the written marks.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PerformanceProfile {
@@ -73,6 +123,7 @@ pub struct PerformanceProfile {
     articulations: IndexMap<Mark, ArticulationRealization>,
     dynamics: IndexMap<DynamicMark, Ratio<i64>>,
     groove: Groove,
+    grace: GracePolicy,
 }
 
 impl PerformanceProfile {
@@ -126,6 +177,19 @@ impl PerformanceProfile {
 
     pub(crate) fn set_groove(&mut self, groove: Groove) {
         self.groove = groove;
+    }
+
+    /// How this profile plays a grace note.
+    ///
+    /// A profile that says nothing gets [`GracePolicy::DEFAULT`], so a piece
+    /// written before profiles existed still sounds its graces, and no caller
+    /// has to ask whether a rule was declared.
+    pub fn grace(&self) -> GracePolicy {
+        self.grace
+    }
+
+    pub(crate) fn set_grace(&mut self, grace: GracePolicy) {
+        self.grace = grace;
     }
 
     pub(crate) fn named(name: impl Into<String>) -> Self {

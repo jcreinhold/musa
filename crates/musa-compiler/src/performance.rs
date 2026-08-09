@@ -385,6 +385,7 @@ pub fn lower_performance(
     // The hairpin index covers the whole piece: an event belongs to exactly
     // one voice, so one map keyed by event id serves every voice.
     let curves = hairpin_curves(score);
+    let graces = grace_index(score);
     let mut lanes = Vec::new();
     let mut next_instance = 0u32;
     for (_, part) in score.parts().iter() {
@@ -397,6 +398,11 @@ pub fn lower_performance(
             meters: score.meters(),
             groove: profile.map_or(Groove::STRAIGHT, PerformanceProfile::groove),
         };
+        // What the part's reading makes of a grace note. Notation is silent on
+        // this by design (roadmap §2): the page says *a grace note*, and
+        // whether it lands on the beat or ahead of it is the performer's, so
+        // it is the profile's here.
+        let policy = profile.map_or(crate::GracePolicy::DEFAULT, PerformanceProfile::grace);
         let mut events = Vec::new();
         for (_, voice) in part.voices() {
             // The prevailing dynamic is per voice: a marking applies from its
@@ -415,6 +421,11 @@ pub fn lower_performance(
             // The loudness a hairpin grows from: whatever was in force at its
             // first note, which is what a hairpin means on the page.
             let mut curve_from: Option<Ratio<i64>> = None;
+            // How far back a grace note may reach, and what it shortens when
+            // it does. Both are per voice: a grace leans on the line it is
+            // written in, not on whatever else the part happens to sound.
+            let mut floor = MusicalTime::ZERO;
+            let mut previous = 0..0;
             for event in voice.events() {
                 if let Some(mark) = marks.dynamics.get(&event.id) {
                     dynamic = Some(*mark);
@@ -451,7 +462,54 @@ pub fn lower_performance(
                     attack: ratio_to_f32(realization.attack),
                     amplitude: ratio_to_f32(amplitude),
                 };
-                lower_event(options, &clock, event, &interpreted, &mut events, &mut next_instance);
+                // A grace note's own marks are read by the same profile that
+                // reads the principal's: a staccato grace is short for the same
+                // reason a staccato note is, and nothing about leaning on
+                // another note changes that.
+                let leaning: Vec<GraceSlot> = graces
+                    .get(&event.id)
+                    .map_or(&[][..], Vec::as_slice)
+                    .iter()
+                    .map(|grace| GraceSlot {
+                        pitch: grace.pitch,
+                        gate: profile.map_or(Ratio::ONE, |profile| {
+                            let realized = profile.realize(&grace.articulations);
+                            realized.gate * realized.hold
+                        }),
+                    })
+                    .collect();
+                let lowered = lower_event(
+                    options,
+                    &clock,
+                    event,
+                    &interpreted,
+                    &leaning,
+                    policy,
+                    floor,
+                    &mut events,
+                    &mut next_instance,
+                );
+                // A grace taken from the note before is only honest if that
+                // note actually gives the time up: the previous note-off is
+                // pulled back to where the grace starts. `min` because a gate
+                // may already have ended it sooner — a staccato note does not
+                // get *longer* because the next note has a grace.
+                if let Some(at) = lowered.anticipated {
+                    let frame = clock.frames(at);
+                    for index in previous.clone() {
+                        if let Some(PerformanceEvent::NoteOff { frame: off, .. }) = events.get_mut(index) {
+                            *off = (*off).min(frame);
+                        }
+                    }
+                }
+                // The bound the next event's graces may reach back to: the
+                // midpoint of this note. Rests leave it where it was — silence
+                // gives way freely, so a grace may take all of one.
+                if !matches!(event.kind, ScoreEventKind::Rest) {
+                    floor =
+                        event.onset + crate::time::MusicalDuration::new(event.notated_duration.value.as_ratio() / 2);
+                }
+                previous = lowered.pushed;
             }
         }
         sort_events(&mut events);
@@ -608,6 +666,36 @@ fn hairpin_curves(score: &ScoreSnapshot) -> std::collections::HashMap<EventId, R
     curves
 }
 
+/// Index the grace notes by the event they lean on, in written order.
+///
+/// The snapshot stores them in one flat lane keyed by principal, so this is
+/// the same bulk-index-once shape as [`Interpretation::collect`]: one pass
+/// here rather than a scan of every grace per event.
+///
+/// The sort is by `index`, the ordering the payload carries (docs/kernel/05
+/// N2). Normalization sorts occurrences by span then payload key, and every
+/// grace in a group shares a span — so `grace { c5; d5; }` and
+/// `grace { d5; c5; }` are told apart by nothing else. Reading the lane's
+/// order instead would make the sound depend on projection order, which is
+/// exactly the thing `index` exists to stop.
+fn grace_index(score: &ScoreSnapshot) -> std::collections::HashMap<EventId, Vec<&crate::score::GraceNote>> {
+    let mut index: std::collections::HashMap<_, Vec<&crate::score::GraceNote>> = std::collections::HashMap::new();
+    for grace in score.annotations().graces() {
+        index.entry(grace.at).or_default().push(grace);
+    }
+    for group in index.values_mut() {
+        group.sort_by_key(|grace| grace.index);
+    }
+    index
+}
+
+/// One grace note as the clock sees it: a pitch and how much of its stolen
+/// slot it actually sounds.
+struct GraceSlot {
+    pitch: WrittenPitch,
+    gate: Ratio<i64>,
+}
+
 /// Exact ratio → the float the DSP edge needs. This is the boundary the
 /// roadmap allows floats to appear at, and the only one.
 fn ratio_to_f32(value: Ratio<i64>) -> f32 {
@@ -616,14 +704,27 @@ fn ratio_to_f32(value: Ratio<i64>) -> f32 {
 
 /// Lower one score event: notes and chord tones become on/off pairs; rests
 /// schedule nothing (absence is silence; course correction §2).
+///
+/// **Where a grace note's time comes from.** A grace is a *point* occurrence —
+/// zero written duration — so performance is where it acquires one, and the
+/// time has to come out of a neighbour. Which neighbour is `policy`, and the
+/// asymmetry between the two answers is the point of keeping it out of the
+/// notation: stealing from the principal delays it and leaves the bar intact;
+/// stealing from the previous note leaves the principal exactly where the page
+/// puts it. Either way `notated_on`/`notated_off` — what the editor highlights
+/// — are computed from the written values and never move.
+#[allow(clippy::too_many_arguments)]
 fn lower_event(
     options: &PerformanceOptions,
     clock: &Clock<'_>,
     event: &ScoreEvent,
     interpreted: &Interpreted,
+    leaning: &[GraceSlot],
+    policy: crate::GracePolicy,
+    floor: MusicalTime,
     events: &mut Vec<PerformanceEvent>,
     next_instance: &mut u32,
-) {
+) -> Lowered {
     let pitches: &[WrittenPitch] = match &event.kind {
         ScoreEventKind::Note { pitch } => std::slice::from_ref(pitch),
         ScoreEventKind::Chord { pitches } => pitches,
@@ -631,11 +732,43 @@ fn lower_event(
     };
     let written = event.notated_duration.value;
     let notated_end = event.onset + written;
-    let sounded_end = event.onset + crate::time::MusicalDuration::new(written.as_ratio() * interpreted.gate);
-    let on_frame = clock.frames(event.onset);
-    let off_frame = clock.frames(sounded_end);
     let notated_off = clock.written_frames(notated_end);
     let notated_on = clock.written_frames(event.onset);
+    let stolen = steal(event, written, leaning.len(), policy, floor);
+    let mut at = stolen.graces_start_at;
+    for slot in leaning {
+        let instance = VoiceInstanceId(*next_instance);
+        *next_instance = next_instance.saturating_add(1);
+        let sounds = crate::time::MusicalDuration::new(stolen.each.as_ratio() * slot.gate);
+        events.push(PerformanceEvent::NoteOn {
+            frame: clock.frames(at),
+            note: PerformedNote {
+                pitch: slot.pitch,
+                frequency: options.tuning.frequency(&slot.pitch),
+                // A grace belongs to the note it leans on: selecting it in the
+                // editor selects that note, and highlighting follows the
+                // principal's written span because a grace has none of its own.
+                event: event.id,
+                origin: event.origin.clone(),
+                amplitude: interpreted.amplitude,
+                attack: interpreted.attack,
+                notated_off,
+                notated_on,
+            },
+            instance,
+        });
+        events.push(PerformanceEvent::NoteOff {
+            frame: clock.frames(at + sounds),
+            instance,
+        });
+        at = at + stolen.each;
+    }
+    let sounded_start = stolen.principal_starts_at;
+    let sounded_end =
+        sounded_start + crate::time::MusicalDuration::new(stolen.principal_sounds.as_ratio() * interpreted.gate);
+    let on_frame = clock.frames(sounded_start);
+    let off_frame = clock.frames(sounded_end);
+    let first = events.len();
     for pitch in pitches {
         let instance = VoiceInstanceId(*next_instance);
         *next_instance = next_instance.saturating_add(1);
@@ -658,6 +791,105 @@ fn lower_event(
             frame: off_frame,
             instance,
         });
+    }
+    Lowered {
+        pushed: first..events.len(),
+        anticipated: stolen.anticipated,
+    }
+}
+
+/// What the voice loop needs to know about an event it has just lowered.
+struct Lowered {
+    /// Where in `events` the *principal's* on/off pairs went, so the next
+    /// event's graces can shorten them. The graces this event pushed are
+    /// deliberately outside the range: a grace is not something a later grace
+    /// takes time from.
+    pushed: std::ops::Range<usize>,
+    /// When this event's graces began, if they were taken from the note
+    /// before. `None` when they were taken from the principal, which is the
+    /// case that costs the previous note nothing.
+    anticipated: Option<MusicalTime>,
+}
+
+/// How a grace group's time is paid for.
+///
+/// Every field is exact musical time, decided before a single frame is
+/// computed: the steal is a fact about the written values, and rounding it
+/// through the clock first would make the principal's start depend on the
+/// tempo.
+struct Stolen {
+    /// Where the first grace note sounds.
+    graces_start_at: MusicalTime,
+    /// The slot each grace note gets. Equal shares: the profile states one
+    /// duration, and a group of three is three of them.
+    each: crate::time::MusicalDuration,
+    /// Where the principal actually sounds.
+    principal_starts_at: MusicalTime,
+    /// How much of the written value the principal has left.
+    principal_sounds: crate::time::MusicalDuration,
+    /// Set when the time came from the previous note (see [`Lowered`]).
+    anticipated: Option<MusicalTime>,
+}
+
+/// Decide who pays for a grace group, and how much.
+///
+/// Two rules bound the answer, and both exist so that a profile cannot write
+/// a performance that contradicts the page:
+///
+/// - Graces taken from the **principal** may take at most half its written
+///   value. A profile asking for more gets equal shares of that half rather
+///   than a note that starts after it ends.
+/// - Graces taken from the **previous** note may reach back at most to
+///   `floor` — the caller's bound, which is the midpoint of the note before.
+///   Asking for more is read as taking from the principal instead, because a
+///   grace that swallows the whole preceding note is not what the sign means.
+///   This is also what happens at the start of a voice, where there is
+///   nothing behind the beat to take from.
+fn steal(
+    event: &ScoreEvent,
+    written: crate::time::MusicalDuration,
+    count: usize,
+    policy: crate::GracePolicy,
+    floor: MusicalTime,
+) -> Stolen {
+    let plain = Stolen {
+        graces_start_at: event.onset,
+        each: crate::time::MusicalDuration::ZERO,
+        principal_starts_at: event.onset,
+        principal_sounds: written,
+        anticipated: None,
+    };
+    let Ok(count) = i64::try_from(count) else {
+        return plain;
+    };
+    if count == 0 || policy.steal <= Ratio::ZERO {
+        return plain;
+    }
+    let asked = policy.steal * count;
+    if policy.from == crate::StealFrom::Previous {
+        // The comparison is on the ratio, not on a `MusicalTime`: the
+        // constructor clamps a negative time to zero, so a grace reaching back
+        // past the start of the piece would arrive here looking legal and
+        // sound on top of the note it is supposed to precede.
+        let back = event.onset.as_ratio() - asked;
+        if back >= floor.as_ratio() {
+            return Stolen {
+                graces_start_at: MusicalTime::new(back),
+                each: crate::time::MusicalDuration::new(policy.steal),
+                anticipated: Some(MusicalTime::new(back)),
+                ..plain
+            };
+        }
+    }
+    let room = written.as_ratio() / 2;
+    let each = if asked > room { room / count } else { policy.steal };
+    let total = crate::time::MusicalDuration::new(each * count);
+    Stolen {
+        graces_start_at: event.onset,
+        each: crate::time::MusicalDuration::new(each),
+        principal_starts_at: event.onset + total,
+        principal_sounds: crate::time::MusicalDuration::new(written.as_ratio() - total.as_ratio()),
+        anticipated: None,
     }
 }
 

@@ -185,6 +185,36 @@ MIDI carries the realization and nothing else, and warns about nothing: a perfor
 The `.kernel` file remains the lossless one. A consumer that needs the freedom itself reads the occurrence payload,
 where the fragments, their chosen order, and the bounds of a held note all survive.
 
+## A grace note is written, not read (prompt 71)
+
+A grace note is a **point occurrence**: start equal to end, standing at the onset of the note it leans on, carrying a
+written pitch, its own marks, and an `index` giving its place in the group. It has no written duration, and that is
+the fact rather than an omission — so a consumer cannot read a length off the page, and must not invent one and call
+it the piece.
+
+How long it sounds and whose time it takes are the **profile's** (`musa_compiler::GracePolicy`: `steal` and `from`).
+Two profiles read the same page as an appoggiatura on the beat and an acciaccatura ahead of it, and the engraving is
+byte-identical under both.
+
+Every notation format offers to settle this for you, and a conforming backend declines all three offers:
+
+| Format | The offer | What musa writes |
+| --- | --- | --- |
+| MEI | `@grace="acc"` / `"unacc"` — on the beat or ahead of it | `@grace="unknown"`, inside `<graceGrp attach="pre">` |
+| `MusicXML` | `steal-time-previous` / `steal-time-following` | neither attribute; `<grace slash="yes"/>` and no `<duration>` |
+| `LilyPond` | `\acciaccatura` / `\appoggiatura` | `\grace { … }` |
+
+`LilyPond` is the one worth naming, because its vocabulary complects the two layers hardest: its only *neutral*
+command is `\grace`, and the two named ones each add a slash, a slur, and a reading. musa writes `\grace` and lets the
+house style do what a performer does. The written durations inside it (`c8`) are stem flags, not lengths — MEI's
+`dur="8"` and `MusicXML`'s `<type>eighth</type>` are the same instruction, and no consumer may read any of the three
+as time.
+
+The order within a group is normative. Normalization (05, N2) sorts occurrences by span and then by payload key, and
+every grace in a group shares a span — so the order lives in the payload's `index`, and a consumer that prints or
+plays them in any other order is printing different music. `examples/graces.musa` and `examples/graces-reordered.musa`
+are the conformance pair: identical but for two reversed groups, and their kernel terms differ.
+
 ## Falsification duty (§33)
 
 Consumers built against this contract are evidence for or against it. If several materially different musical examples

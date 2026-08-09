@@ -268,18 +268,14 @@ fn settings_are_checked_by_name_range_and_unit() {
             "profile v { mark fermata { hold = 2 ms; } }",
             "`hold` does not take a unit",
         ),
-        // A number too big to be one. The parser admits it — it is spelled
-        // like a number — so the reader is the one that has to say so, and
-        // this is the case that reaches the branch below.
-        (
-            "profile v { mark fermata { hold = 99999999999999999999; } }",
-            "`99999999999999999999` is not a hold",
-        ),
+        // A word where a quantity belongs. The grammar admits it — some
+        // settings really are words — so the reader is what has to say no.
+        ("profile v { mark fermata { hold = wide; } }", "`wide` is not a hold"),
         // The setting that used to vanish: a value the reader cannot parse is
         // refused out loud rather than leaving the rule silently neutral.
         (
-            "profile v { mark staccato { gate = 99999999999999999999; } }",
-            "`99999999999999999999` is not a fraction of the written value",
+            "profile v { mark staccato { gate = half; } }",
+            "`half` is not a fraction of the written value",
         ),
     ];
     for (profiles, expected) in cases {

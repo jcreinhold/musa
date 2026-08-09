@@ -915,6 +915,7 @@ ScoreSnapshot {
                 },
             },
         ],
+        graces: [],
         phrases: [],
         hairpins: [],
         sections: [],
@@ -990,6 +991,13 @@ ScoreSnapshot {
                 groove: Groove(
                     Straight,
                 ),
+                grace: GracePolicy {
+                    steal: Ratio {
+                        numer: 1,
+                        denom: 16,
+                    },
+                    from: Principal,
+                },
             },
             "winds": PerformanceProfile {
                 name: "winds",
@@ -1022,6 +1030,13 @@ ScoreSnapshot {
                 groove: Groove(
                     Straight,
                 ),
+                grace: GracePolicy {
+                    steal: Ratio {
+                        numer: 1,
+                        denom: 16,
+                    },
+                    from: Principal,
+                },
             },
         },
         parts: {

@@ -79,6 +79,31 @@ pub(crate) enum FactKind {
         mark: crate::Mark,
         argument: Option<crate::marks::MarkArgument>,
     },
+    /// One grace note, as a **point** occurrence at the principal note's
+    /// onset: a written pitch with no written duration.
+    ///
+    /// Not a [`FactKind::Mark`], by this enum's own rule. A grace note has its
+    /// own pitch, its own accidental, its own beam and its own slur to the
+    /// note it leans on, and four of them stand in an order that matters —
+    /// that is an identity. A mark whose payload was a list of pitches would
+    /// be a note under another name.
+    ///
+    /// What time it steals is *not* here: that is a reading, and readings
+    /// belong to the profile (§2 — notated duration ≠ performed duration).
+    Grace {
+        pitch: WrittenPitch,
+        articulations: Vec<crate::Mark>,
+        /// Where this grace note stands among the ones written with it.
+        ///
+        /// Load-bearing rather than decorative. N2 orders occurrences by
+        /// `(start, end, payload key)`, and every grace note in one group
+        /// shares a start and an end — so without the index in the payload,
+        /// `grace { c5; d5; }` and `grace { d5; c5; }` normalize to the same
+        /// timeline and the kernel calls them equal music. They are not. The
+        /// alternative, giving them nonzero written durations so they sort,
+        /// would put performed time into the notation.
+        index: u8,
+    },
     /// A slur over the region it spans.
     Slur,
     /// A named phrase over the region it spans.
@@ -141,6 +166,7 @@ impl FactKind {
         match self {
             Self::Note { articulations, .. } | Self::Rest { articulations, .. } => articulations,
             Self::Mark { .. }
+            | Self::Grace { .. }
             | Self::Slur
             | Self::Phrase { .. }
             | Self::Tuplet { .. }
@@ -163,6 +189,7 @@ impl FactKind {
         match self {
             Self::Note { duration, .. } | Self::Rest { duration, .. } => Some(duration),
             Self::Mark { .. }
+            | Self::Grace { .. }
             | Self::Slur
             | Self::Phrase { .. }
             | Self::Tuplet { .. }
@@ -185,6 +212,7 @@ impl FactKind {
         match self {
             Self::Note { free, .. } | Self::Rest { free, .. } => free.as_ref(),
             Self::Mark { .. }
+            | Self::Grace { .. }
             | Self::Slur
             | Self::Phrase { .. }
             | Self::Tuplet { .. }
@@ -237,6 +265,7 @@ impl ScoreFact {
                 *duration = duration.stretched(factor);
             }
             FactKind::Mark { .. }
+            | FactKind::Grace { .. }
             | FactKind::Slur
             | FactKind::Phrase { .. }
             | FactKind::Tuplet { .. }
@@ -275,6 +304,7 @@ impl ScoreFact {
             FactKind::Note { pitch, .. } => Some(*pitch),
             FactKind::Rest { .. }
             | FactKind::Mark { .. }
+            | FactKind::Grace { .. }
             | FactKind::Slur
             | FactKind::Phrase { .. }
             | FactKind::Tuplet { .. }
@@ -341,6 +371,14 @@ impl musa_kernel::Canonical for ScoreFact {
                 Some(argument) => format!("mark:{mark}:{argument}|"),
                 None => format!("mark:{mark}|"),
             },
+            // The index is in the key for the reason its own doc gives: every
+            // grace note of a group shares a span, so this string is the only
+            // thing N2 has to order them by.
+            FactKind::Grace {
+                pitch,
+                articulations: marks,
+                index,
+            } => format!("grace:{pitch}:{index}|{}", articulations(marks)),
             FactKind::Slur => "slur|".to_owned(),
             FactKind::Phrase { name } => format!("phrase:{name}|"),
             FactKind::Tuplet { num, den } => format!("tuplet:{num}/{den}|"),
@@ -1333,6 +1371,62 @@ fn articulations_of(resolver: &mut Resolver, names: &[String], span: SourceSpan)
     articulations
 }
 
+/// `grace { c5; d5; }` — the group as point occurrences at one instant.
+///
+/// Every occurrence gets `Span::ZERO`, so the group advances the cursor by
+/// nothing and the note written after it starts exactly where it would have
+/// without the graces. That is what a grace note *is* in notation: it takes no
+/// written time, and the time it takes in performance is the profile's answer.
+fn elaborate_grace(
+    resolver: &mut Resolver,
+    statement: &musa_language::ast::GraceStmt,
+    cx: &ExpandCx,
+    scope: Scope,
+) -> Segment {
+    let span = resolve::trimmed_span(statement.syntax());
+    let notes = statement.notes();
+    if notes.is_empty() {
+        resolver.report(
+            Diagnostic::error(Code::NotAValue, "this grace group has no notes")
+                .at(span, "nothing to play")
+                .help("write the pitches it leans on: `grace { c5; d5; }`"),
+        );
+        return Segment::empty();
+    }
+    // The index orders the group and must be unique within it, so a group too
+    // long to index is refused rather than silently collapsed into equal music.
+    if u8::try_from(notes.len()).is_err() {
+        resolver.report(
+            Diagnostic::error(Code::OutOfRange, "this grace group is too long")
+                .at(span, "more than 255 notes")
+                .note("grace notes are ordered by their place in the group, and musa counts that place in one byte"),
+        );
+        return Segment::empty();
+    }
+
+    let mut occurrences = Vec::with_capacity(notes.len());
+    for (index, note) in notes.iter().enumerate() {
+        let note_span = resolve::trimmed_span(note.syntax());
+        let pitch_text = note.pitch().unwrap_or_default();
+        let Some(pitch) = resolve::resolve_pitch(resolver, &pitch_text, note.syntax(), cx) else {
+            continue;
+        };
+        let articulations = articulations_of(resolver, &note.articulations(), note_span);
+        let index = u8::try_from(index).unwrap_or(u8::MAX);
+        let fact = ScoreFact::new(
+            scope,
+            FactKind::Grace {
+                pitch,
+                articulations,
+                index,
+            },
+            origin_of(cx, note_span),
+        );
+        occurrences.push(Occurrence::new(Span::ZERO, fact));
+    }
+    Segment::literal(timeline_or_empty(Beat::ZERO, occurrences))
+}
+
 /// `mark <name> [<argument>] ;` or `… { … }`.
 ///
 /// Everything the grammar deliberately did not check happens here, against the
@@ -1448,6 +1542,7 @@ fn elaborate_item(
         VoiceItem::Clef(stmt) => elaborate_clef(resolver, stmt, cx, scope, place),
         VoiceItem::Mobile(stmt) => elaborate_mobile(resolver, share, stmt, cx, scope),
         VoiceItem::Improvise(stmt) => elaborate_improvise(resolver, stmt, cx, scope),
+        VoiceItem::Grace(grace) => elaborate_grace(resolver, grace, cx, scope),
         VoiceItem::Note(note) => {
             let Some(duration) = resolve_scaled_duration(resolver, note.syntax(), cx) else {
                 return Segment::empty();

@@ -139,6 +139,8 @@ pub enum SyntaxKind {
     MarkKw,
     /// `groove`
     GrooveKw,
+    /// `grace`
+    GraceKw,
     /// `studio`
     StudioKw,
     /// `patch`
@@ -264,6 +266,12 @@ pub enum SyntaxKind {
     /// mark that is not written on a note. One node for every such mark,
     /// because the vocabulary decides the shape and the grammar does not.
     MarkStmt,
+    /// `grace { c5; d5; }` — the grace notes crushed before the note that
+    /// follows. Not a mark: each has a pitch, an accidental and a place in an
+    /// order that matters, which is an identity.
+    GraceStmt,
+    /// One pitch inside a `grace` block: a notehead with no written duration.
+    GraceNote,
     /// `section "Exposition" at 1:1;` — a form marker in the score.
     SectionStmt,
     /// `harmony { ... }` — the chord-symbol lane.
@@ -297,6 +305,9 @@ pub enum SyntaxKind {
     DynamicRule,
     /// `groove <name> { ... }` inside a profile.
     GrooveRule,
+    /// `grace { steal = 1/16; from = principal; }` inside a profile — how
+    /// this reading plays the grace notes the score writes.
+    GraceRule,
     /// `<name> = <number> [unit];` inside a rule.
     SettingStmt,
     /// `profile <name>;` inside a part: which profile realizes it.

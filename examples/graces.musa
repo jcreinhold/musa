@@ -1,0 +1,125 @@
+// Grace notes, and the question the page refuses to answer (docs/prompts/71).
+//
+// A grace note has no written duration. That is not an omission musa has to
+// patch over — it is the fact about grace notes, and the temporal kernel says
+// it exactly: a grace is a *point* occurrence, start equal to end, standing at
+// the onset of the note it leans on.
+//
+// So the time it sounds for has to come from somewhere, and *where* is a
+// question Baroque and Romantic practice genuinely disagree about. On the
+// beat, delaying the principal, is an appoggiatura; ahead of it, leaving the
+// principal where the bar puts it, is an acciaccatura. MusicXML settles this
+// in the file — `steal-time-previous="50"` — and so makes the editor decide
+// once, for every performer, forever. musa keeps it where it belongs: two
+// profiles read the same page two ways, and the page is unchanged.
+//
+// Compare with `graces-reordered.musa`, which is this piece with one grace
+// group written backwards. The two must not compile to the same kernel term:
+// normalization orders occurrences by span and then by payload, every grace in
+// a group shares a span, so the order is carried in the payload or it is lost.
+piece "Graces" {
+    tempo 1/4 = 84;
+    meter 4/4;
+    key d major;
+
+    performance {
+        // The Baroque reading: the grace is a real note of the melody, it
+        // falls on the beat, and the principal comes late.
+        profile baroque {
+            grace {
+                steal = 1/8;
+                from = principal;
+            }
+
+            dynamic mf {
+                amplitude = 0.6;
+            }
+        }
+
+        // The Romantic reading: the grace is crushed in ahead of the beat, and
+        // the principal lands exactly where the page says.
+        profile romantic {
+            grace {
+                steal = 1/32;
+                from = previous;
+            }
+
+            dynamic mf {
+                amplitude = 0.6;
+            }
+        }
+    }
+
+    score {
+        part upper {
+            clef treble;
+            profile baroque;
+
+            voice tune {
+                dynamic mf;
+
+                // One grace, the ordinary case.
+                grace {
+                    cs6;
+                }
+                d6 1/4;
+
+                a5 1/4;
+
+                // Three of them, and the order is the music: this is a turn
+                // written out rather than named.
+                grace {
+                    e6;
+                    d6;
+                    cs6;
+                }
+                d6 1/2;
+
+                // A grace on the first note of a voice has nothing behind the
+                // beat to take from, so even the Romantic profile takes it
+                // from the principal. The page does not know that; the
+                // performer does, and so does the profile.
+                b5 1/4;
+                grace {
+                    as5;
+                }
+                b5 1/4;
+
+                // Marks on a grace are marks: the profile that shortens a
+                // staccato note shortens a staccato grace for the same reason.
+                grace {
+                    g5 staccato;
+                }
+                fs5 1/2;
+
+                d5 1/1;
+            }
+        }
+
+        part lower {
+            clef bass;
+            profile romantic;
+
+            voice bass {
+                dynamic mf;
+
+                d4 1/2;
+                a3 1/2;
+
+                // The same figure, read the other way: these graces sound
+                // before the beat and the principal is untouched.
+                grace {
+                    g3;
+                    a3;
+                }
+                b3 1/2;
+                fs3 1/2;
+
+                g3 1/2;
+                a3 1/2;
+
+                d3 1/1;
+            }
+        }
+    }
+}

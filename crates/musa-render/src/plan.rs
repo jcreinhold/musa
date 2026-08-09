@@ -554,8 +554,30 @@ pub struct NotatedItem {
     hairpin: Option<HairpinMark>,
     dynamic: Option<DynamicMark>,
     articulations: Vec<Mark>,
+    graces: Vec<PlannedGrace>,
     spans: Vec<SpanMark>,
     free: Option<musa_compiler::FreeDuration>,
+}
+
+/// One grace note leaning on a notated item, ready to print.
+///
+/// It is *inside* the item rather than beside it because that is what every
+/// backend wants: MEI nests a `<graceGrp>` before the note, `MusicXML` writes
+/// `<grace/>` notes ahead of it, and `LilyPond` writes `\acciaccatura` as a
+/// prefix. A grace has no place of its own in the measure — it has no written
+/// duration to occupy one — so a plan that laid graces out among the items
+/// would have to invent onsets no backend would use.
+///
+/// No duration field, and that is the point: how long a grace lasts is the
+/// profile's answer (`musa_compiler::GracePolicy`), and the page is silent on
+/// it. What the page *does* say — which pitches, in what order, with what
+/// marks — is exactly what is here.
+#[derive(Clone, Debug)]
+pub struct PlannedGrace {
+    /// The spelled pitch, verbatim from the score.
+    pub pitch: WrittenPitch,
+    /// Articulations printed on the grace note itself.
+    pub articulations: Vec<Mark>,
 }
 
 impl NotatedItem {
@@ -633,6 +655,11 @@ impl NotatedItem {
     /// Articulations printed on this item, in written order.
     pub fn articulations(&self) -> &[Mark] {
         &self.articulations
+    }
+
+    /// The grace notes leaning on this item, in written order.
+    pub fn graces(&self) -> &[PlannedGrace] {
+        &self.graces
     }
 
     /// The notation marks spanning this item, with the ends they open or
@@ -962,6 +989,7 @@ struct Marks {
     slur_stops: HashSet<EventId>,
     dynamics: HashMap<EventId, DynamicMark>,
     articulations: HashMap<EventId, Vec<Mark>>,
+    graces: HashMap<EventId, Vec<PlannedGrace>>,
     phrases: HashMap<EventId, PhraseMark>,
     phrase_ends: HashMap<EventId, EventId>,
     hairpins: HashMap<EventId, HairpinMark>,
@@ -987,6 +1015,18 @@ impl Marks {
                 .entry(articulation.at)
                 .or_default()
                 .push(articulation.mark);
+        }
+        // Sorted by the payload's own index, not by the order the annotation
+        // lane happens to hold: `grace { c5; d5; }` and `grace { d5; c5; }`
+        // differ only in that number (docs/kernel/05 N2), so it is what the
+        // page has to print by.
+        let mut graces: Vec<_> = annotations.graces().iter().collect();
+        graces.sort_by_key(|grace| (grace.at.0, grace.index));
+        for grace in graces {
+            marks.graces.entry(grace.at).or_default().push(PlannedGrace {
+                pitch: grace.pitch,
+                articulations: grace.articulations.clone(),
+            });
         }
         // A group's members are the events between its ends; the snapshot
         // answers which those are, so planning does not re-derive it.
@@ -1287,6 +1327,14 @@ fn plan_lane(
                 },
                 articulations: if is_first {
                     marks.articulations.get(&event.id).cloned().unwrap_or_default()
+                } else {
+                    Vec::new()
+                },
+                // Graces lean on the *attack*, so they print before the first
+                // piece of a tied pair and nowhere else — the same rule as the
+                // dynamic, for the same reason.
+                graces: if is_first {
+                    marks.graces.get(&event.id).cloned().unwrap_or_default()
                 } else {
                     Vec::new()
                 },

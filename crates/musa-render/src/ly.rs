@@ -600,7 +600,30 @@ fn item_node(item: &NotatedItem) -> Result<LyNode, RenderError> {
             format!("<{}>{duration}{tie}", tones.join(" "))
         }
     };
-    let mut body = head;
+    // `\grace`, and neither `\acciaccatura` nor `\appoggiatura`. Those two are
+    // LilyPond's names for the two *performances* — crushed ahead of the beat,
+    // or leaning on it — and picking one here would put a reading of the piece
+    // into the engraving. That question is the profile's
+    // (`musa_compiler::GracePolicy`), and the notation backends are given no
+    // way to ask it: the plan carries the written pitches and nothing else.
+    // `8` is a stem flag, not a length; a grace has no written duration.
+    let mut body = if item.graces().is_empty() {
+        head
+    } else {
+        let notes: Vec<String> = item
+            .graces()
+            .iter()
+            .map(|grace| {
+                let scripts: String = grace
+                    .articulations
+                    .iter()
+                    .map(|mark| articulation_script(*mark))
+                    .collect();
+                format!("{}8{scripts}", pitch_name(grace.pitch))
+            })
+            .collect();
+        format!("\\grace {{ {} }} {head}", notes.join(" "))
+    };
     for mark in item.articulations() {
         body.push_str(&articulation_script(*mark));
     }

@@ -201,6 +201,7 @@ fn project_piece(resolver: &mut Resolver, occurrences: &[&Occurrence<ScoreFact>]
             }),
             FactKind::Note { .. }
             | FactKind::Rest { .. }
+            | FactKind::Grace { .. }
             | FactKind::Mark { .. }
             | FactKind::Slur
             | FactKind::Phrase { .. }
@@ -230,6 +231,10 @@ fn project_voice(
     let mut extents: Vec<(MusicalTime, MusicalTime, EventId)> = Vec::with_capacity(occurrences.len());
     let mut regions: Vec<&Occurrence<ScoreFact>> = Vec::new();
     let mut points: Vec<&Occurrence<ScoreFact>> = Vec::new();
+    // Grace notes stand at the onset of the note they lean on, and a point
+    // sorts before a span that starts with it, so they arrive first and wait
+    // here for their principal.
+    let mut pending_graces: Vec<&Occurrence<ScoreFact>> = Vec::new();
 
     let mut index = 0;
     while index < occurrences.len() {
@@ -250,9 +255,30 @@ fn project_voice(
                             origin: event.origin.clone(),
                         });
                     }
+                    for grace in std::mem::take(&mut pending_graces) {
+                        let FactKind::Grace {
+                            pitch,
+                            articulations,
+                            index,
+                        } = &grace.payload().kind
+                        else {
+                            continue;
+                        };
+                        resolver.annotations.push_grace(crate::score::GraceNote {
+                            at: event.id,
+                            pitch: *pitch,
+                            index: *index,
+                            articulations: articulations.clone(),
+                            origin: grace.payload().origin.clone(),
+                        });
+                    }
                     events.push(event);
                 }
                 index = index.saturating_add(consumed);
+            }
+            FactKind::Grace { .. } => {
+                pending_graces.push(occurrence);
+                index = index.saturating_add(1);
             }
             FactKind::Dynamic { .. } => {
                 points.push(occurrence);
@@ -319,6 +345,20 @@ fn project_voice(
                 index = index.saturating_add(1);
             }
         }
+    }
+
+    // A grace note leans on the note after it, so one with nothing after it
+    // was written where it cannot be played. Reported rather than dropped:
+    // the pitches are in the source and would vanish from the page.
+    for grace in pending_graces {
+        resolver.report(
+            crate::diagnose::Diagnostic::error(
+                crate::diagnose::Code::Misplaced,
+                "this grace note has no note to lean on",
+            )
+            .at(grace.payload().origin.source_span, "nothing follows it")
+            .help("a grace note is written before the note it belongs to"),
+        );
     }
 
     project_points(resolver, &points, &extents);
@@ -581,6 +621,7 @@ fn project_regions(
             // by [`repeats_of`] and in [`project_voice`] instead.
             FactKind::Note { .. }
             | FactKind::Rest { .. }
+            | FactKind::Grace { .. }
             | FactKind::Dynamic { .. }
             | FactKind::Key { .. }
             | FactKind::Meter { .. }

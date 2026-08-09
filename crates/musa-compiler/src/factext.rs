@@ -226,6 +226,16 @@ fn kind_text(kind: &FactKind) -> String {
                 None => String::new(),
             },
         ],
+        FactKind::Grace {
+            pitch,
+            articulations,
+            index,
+        } => vec![
+            "grace".to_owned(),
+            pitch.to_string(),
+            index.to_string(),
+            articulations_text(articulations),
+        ],
         FactKind::Slur => vec!["slur".to_owned()],
         FactKind::Phrase { name } => vec!["phrase".to_owned(), name.clone()],
         FactKind::Tuplet { num, den } => vec!["tuplet".to_owned(), num.to_string(), den.to_string()],
@@ -309,6 +319,11 @@ fn read_kind(text: &str) -> Option<FactKind> {
                     _ => return None,
                 }),
             },
+        }),
+        ("grace", 4) => Some(FactKind::Grace {
+            pitch: WrittenPitch::parse(arg(1)?)?,
+            index: arg(2)?.parse().ok()?,
+            articulations: read_articulations(arg(3)?)?,
         }),
         ("slur", 1) => Some(FactKind::Slur),
         ("phrase", 2) => Some(FactKind::Phrase {

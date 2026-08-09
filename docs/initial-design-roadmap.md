@@ -123,6 +123,19 @@ than seconds, so a shuffle does not straighten out when the band speeds up — a
 there is no swung notation to draw. The asymmetry between `musa render --to midi --mode score` and `--mode
 performance` is this row working: the same plan, read once as a page and once as a performance.
 
+The **grace note** (prompt 71) is where the row is not a refinement but the whole thing. A grace has *no* notated
+duration — it is a point in the timeline, start equal to end — so there is no written value for a performed value to
+differ from, and the performed one has to be taken out of a neighbour. Which neighbour is a question Baroque and
+Romantic practice answer differently: on the beat, delaying the principal, or ahead of it, leaving the principal
+where the bar puts it. Both are correct readings of one page.
+
+`MusicXML` settles it in the file, with `steal-time-previous="50"` on the grace note. That is the collapse this table
+exists to prevent, and it is instructive because it looks so reasonable: the format needed *a* number, so the editor
+supplies one, and from then on every performer inherits one person's reading as though it were the composer's text.
+musa writes the grace note and nothing else, and puts `steal` and `from` in the interpretation profile — so the same
+`examples/graces.musa` engraves byte-identically under two profiles and performs two different ways, which is exactly
+what "notated duration ≠ performed duration" asserts.
+
 ---
 
 # 3. Applying Ousterhout’s deep-module design

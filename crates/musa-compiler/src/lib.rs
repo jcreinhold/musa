@@ -72,7 +72,7 @@ pub use crate::performance::{
     PerformanceOptions, PerformancePlan, PerformedNote, TempoSegment, Tuning, VoiceInstanceId, lower_performance,
 };
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
-pub use crate::profile::{ArticulationRealization, PerformanceProfile, ProfileSet};
+pub use crate::profile::{ArticulationRealization, GracePolicy, PerformanceProfile, ProfileSet, StealFrom};
 pub use crate::realize::{Decision, Realization};
 pub use crate::resolve::{NameKind, NameReference};
 pub use crate::scope::{ContextKind, Scope};

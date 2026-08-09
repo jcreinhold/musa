@@ -886,6 +886,7 @@ fn write_item(
     open_slurs: &mut Vec<u32>,
 ) -> Result<(), RenderError> {
     let duration = ticks(sounding(item), divisions);
+    write_graces(xml, item, voice)?;
     let mut spelling = NoteSpelling {
         item,
         pitch: None,
@@ -911,6 +912,58 @@ fn write_item(
             Ok(())
         }
     }
+}
+
+/// The grace notes leaning on an item, as `<note>` elements ahead of it.
+///
+/// A grace `<note>` carries **no `<duration>`** — the spec forbids it, and
+/// musa has none to write: a grace is a point occurrence.
+///
+/// Two attributes are deliberately absent. `steal-time-previous` and
+/// `steal-time-following` are `MusicXML` asking the *editor* to settle how the
+/// grace is played, and that is the question roadmap §2 keeps out of the
+/// notation: musa answers it per part, in the profile, from the same page. A
+/// file without them says what was written and leaves the reading open, which
+/// is the whole difference this prompt exists to make visible.
+///
+/// `slash="yes"` is the one choice that has to be made, because `MusicXML` has
+/// no way to decline it. It is the right one: the *unslashed* grace is the
+/// form whose length is notated as a proportion of the principal, and musa's
+/// grace has no written length at all. The slashed grace is the ornamental
+/// one, which is what this is.
+fn write_graces(xml: &mut Xml, item: &NotatedItem, voice: usize) -> Result<(), RenderError> {
+    for grace in item.graces() {
+        xml.open("note", &[])?;
+        xml.empty("grace", &[("slash", "yes")])?;
+        xml.open("pitch", &[])?;
+        xml.leaf("step", &[], step_of(grace.pitch))?;
+        if grace.pitch.accidental.0 != 0 {
+            xml.leaf("alter", &[], &grace.pitch.accidental.0.to_string())?;
+        }
+        xml.leaf("octave", &[], &grace.pitch.octave.to_string())?;
+        xml.close("pitch")?;
+        xml.leaf("voice", &[], &voice.to_string())?;
+        // An eighth is a drawing instruction, not a length: `<type>` is
+        // required and a grace's stem is conventionally flagged.
+        xml.leaf("type", &[], "eighth")?;
+        let named: Vec<&str> = grace
+            .articulations
+            .iter()
+            .filter(|mark| mark.slot() == Some(Slot::Articulation))
+            .filter_map(|mark| mark.def().musicxml)
+            .collect();
+        if !named.is_empty() {
+            xml.open("notations", &[])?;
+            xml.open("articulations", &[])?;
+            for name in named {
+                xml.empty(name, &[("placement", place(ARTICULATION_PLACEMENT))])?;
+            }
+            xml.close("articulations")?;
+            xml.close("notations")?;
+        }
+        xml.close("note")?;
+    }
+    Ok(())
 }
 
 fn write_note(xml: &mut Xml, note: &NoteSpelling<'_>, open_slurs: &mut Vec<u32>) -> Result<(), RenderError> {

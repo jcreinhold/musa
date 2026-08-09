@@ -1449,6 +1449,7 @@ ScoreSnapshot {
                 },
             },
         ],
+        graces: [],
         phrases: [],
         hairpins: [],
         sections: [],
