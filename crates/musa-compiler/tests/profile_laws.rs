@@ -127,6 +127,43 @@ fn a_gate_shortens_the_sounding_value_and_leaves_the_onset_alone() {
     );
 }
 
+/// A gate may be written as a ratio, and it has to *arrive*.
+///
+/// `gate = 1/2` used to parse as a decimal, fail, and resolve to nothing —
+/// the note performed at full length and the piece compiled clean, so the
+/// only symptom was the sound. The assertion is on the sounded value for
+/// that reason: a test that the rule was stored would have passed throughout.
+#[test]
+fn a_gate_written_as_a_ratio_shortens_the_note() {
+    let source = piece(
+        "profile violin { mark staccato { gate = 1/4; } }",
+        "profile violin;",
+        "c4 1 staccato;",
+    );
+    let notes = notes_of(&score_of(&source));
+    assert_eq!(notes, vec![(0, 48_000, 1.0)], "a quarter of four seconds");
+}
+
+/// A fermata lengthens the note and leaves the next one where it was written.
+///
+/// The bar does not wait: a hold that stopped the clock would be a tempo fact,
+/// which musa cannot yet state.
+#[test]
+fn a_hold_lengthens_the_note_without_moving_the_next() {
+    let source = piece(
+        "profile organ { mark fermata { hold = 2/1; } }",
+        "profile organ;",
+        "c4 1/2 fermata; c4 1/2;",
+    );
+    let notes = notes_of(&score_of(&source));
+    let half = 2 * 48_000;
+    assert_eq!(
+        notes,
+        vec![(0, 2 * half, 1.0), (half, half + half, 1.0)],
+        "the first rings on under the second, which starts where it is written"
+    );
+}
+
 #[test]
 fn gates_multiply_when_a_note_carries_two_realized_marks() {
     let source = piece(
@@ -225,6 +262,25 @@ fn settings_are_checked_by_name_range_and_unit() {
             "a dynamic has no setting called `level`",
         ),
         ("profile v { dynamic p { } }", "this dynamic rule says nothing"),
+        // A hold is a multiple, not a fraction, so it has the opposite bound.
+        ("profile v { mark fermata { hold = 1/2; } }", "`hold` is less than 1"),
+        (
+            "profile v { mark fermata { hold = 2 ms; } }",
+            "`hold` does not take a unit",
+        ),
+        // A number too big to be one. The parser admits it — it is spelled
+        // like a number — so the reader is the one that has to say so, and
+        // this is the case that reaches the branch below.
+        (
+            "profile v { mark fermata { hold = 99999999999999999999; } }",
+            "`99999999999999999999` is not a hold",
+        ),
+        // The setting that used to vanish: a value the reader cannot parse is
+        // refused out loud rather than leaving the rule silently neutral.
+        (
+            "profile v { mark staccato { gate = 99999999999999999999; } }",
+            "`99999999999999999999` is not a fraction of the written value",
+        ),
     ];
     for (profiles, expected) in cases {
         let errors = errors_of(&piece(profiles, "", "c4 1;"));

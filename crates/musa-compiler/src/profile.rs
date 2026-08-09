@@ -83,9 +83,10 @@ impl PerformanceProfile {
 
     /// How this profile reads a note's articulations, in written order.
     ///
-    /// Gates **multiply** — two shortening marks shorten twice — while the
-    /// attack is the last written rule's, because two attack times cannot be
-    /// combined into a third that either performer would recognize.
+    /// Gates **multiply** — two shortening marks shorten twice — and holds
+    /// multiply for the same reason, while the attack is the last written
+    /// rule's, because two attack times cannot be combined into a third that
+    /// either performer would recognize.
     pub fn realize(&self, marks: &[Mark]) -> ArticulationRealization {
         let mut realization = ArticulationRealization::NEUTRAL;
         for mark in marks {
@@ -93,6 +94,7 @@ impl PerformanceProfile {
                 continue;
             };
             realization.gate *= rule.gate;
+            realization.hold *= rule.hold;
             realization.attack = rule.attack;
         }
         realization

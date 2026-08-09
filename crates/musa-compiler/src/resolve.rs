@@ -890,7 +890,7 @@ fn mark_settings(resolver: &mut Resolver, rule: &MarkRule) -> ArticulationRealiz
                 }
             }
             "hold" => {
-                if let Some(hold) = ratio_setting(resolver, &setting) {
+                if let Some(hold) = hold_setting(resolver, &setting) {
                     realization.hold = hold;
                 }
             }
@@ -930,6 +930,48 @@ fn dynamic_settings(resolver: &mut Resolver, rule: &DynamicRule) -> Option<Ratio
     amplitude
 }
 
+/// A multiplier of at least one: how much longer than written a note is held.
+///
+/// Not [`ratio_setting`], and the difference is the whole point of the
+/// setting. A gate is a *fraction* of the written value and so lives in
+/// `0..=1`; a hold is a *multiple* of it, and a fermata that lasts twice as
+/// long is the ordinary case. Reusing the gate's reader would make `hold = 2`
+/// — the one value anybody writes first — an error.
+///
+/// Written as a ratio or as a decimal, like a groove's beat: `hold = 2/1` and
+/// `hold = 1.5` are both a person saying the same kind of thing.
+fn hold_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio<i64>> {
+    let name = setting.name().unwrap_or_default();
+    let span = trimmed_span(setting.syntax());
+    if let Some(unit) = setting.unit() {
+        resolver.report(
+            Diagnostic::error(Code::OutOfRange, format!("`{name}` does not take a unit"))
+                .at(span, format!("drop the `{unit}`"))
+                .note("a hold is a multiple of the written value, not a length of time: it survives a tempo change"),
+        );
+        return None;
+    }
+    let written = setting.value()?;
+    let Some(value) = parse_ratio(&written).or_else(|| crate::profile::parse_decimal(&written)) else {
+        resolver.error(
+            Code::NotAValue,
+            format!("`{written}` is not a hold"),
+            span,
+            "not a number",
+        );
+        return None;
+    };
+    if value < Ratio::ONE {
+        resolver.report(
+            Diagnostic::error(Code::OutOfRange, format!("`{name}` is less than 1"))
+                .at(span, "shorter than written")
+                .note("a hold lengthens a note; to shorten one, write a `gate`"),
+        );
+        return None;
+    }
+    Some(value)
+}
+
 /// A unitless ratio in `0..=1`. A unit here is a category error: a gate is a
 /// fraction of the written value, not a length of time.
 fn ratio_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio<i64>> {
@@ -945,7 +987,19 @@ fn ratio_setting(resolver: &mut Resolver, setting: &SettingStmt) -> Option<Ratio
         );
         return None;
     }
-    let value = crate::profile::parse_decimal(&setting.value()?)?;
+    // Both spellings, and a value that will not parse is reported rather than
+    // dropped. `gate = 1/2` used to resolve to nothing at all — a half-length
+    // staccato that compiled clean and performed at full length.
+    let written = setting.value()?;
+    let Some(value) = parse_ratio(&written).or_else(|| crate::profile::parse_decimal(&written)) else {
+        resolver.error(
+            Code::NotAValue,
+            format!("`{written}` is not a fraction of the written value"),
+            span,
+            "not a number",
+        );
+        return None;
+    };
     if value < Ratio::ZERO || value > Ratio::ONE {
         resolver.error(
             Code::OutOfRange,

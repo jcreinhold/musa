@@ -176,6 +176,17 @@ Commit as `Add the notation marks`.
 11. **The Check line for MEI assumed a pipe.** `musa render` writes a file and prints where it wrote it, so
     `render … | grep -c` counts nothing. Corrected below to read the file.
 
+12. **`hold` needed its own reader, and finding out uncovered an older silent drop.** (Committed separately, after
+    this prompt, as `Make a profile setting arrive or say why`.) Wiring `hold` through `ratio_setting` was wrong
+    twice over: a gate is a *fraction* of the written value and lives in `0..=1`, while a hold is a *multiple* of
+    it, so `hold = 2` — the first value anyone writes — was refused. Worse, `ratio_setting` read decimals only and
+    returned `None` with **no diagnostic** when the text was a ratio, so `hold = 2/1` and `gate = 1/2` resolved to
+    nothing at all: `examples/ornaments.musa` compiled clean while both of its profile rules were dropped on the
+    floor. Settings now accept either spelling, refuse what they cannot read out loud, and `hold` has its own bound.
+    `PerformanceProfile::realize` was also never propagating `hold`, so even a stored value stopped at the profile.
+    The regression tests assert on the *sounded* value, because every one of these bugs was invisible to a test
+    that only asked whether the rule had been stored.
+
 ## Stop
 
 - No collapsing of slur, phrase, or hairpin into `mark`. See above.
