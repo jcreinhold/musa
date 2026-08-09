@@ -13,7 +13,7 @@
 
 use std::path::{Path, PathBuf};
 
-use musa_language::{SPELLINGS, SyntaxKind, TokenClass, lex};
+use musa_language::{SPELLINGS, SyntaxKind, TokenClass, keyword_doc, lex};
 
 type Result = std::result::Result<(), Box<dyn std::error::Error>>;
 
@@ -91,6 +91,28 @@ fn spellings_are_current() -> Result {
     let mut json = serde_json::to_string_pretty(&table)?;
     json.push('\n');
     generated(&ui("src/lib/session/generated/spellings.json"), &json)
+}
+
+/// Every keyword's own documentation (prompt 84), so the source editor's
+/// hover teaches the same words the language server serves — written out of
+/// the one table, because a tooltip the editor authored itself would drift
+/// the first time a keyword's doc changed.
+#[test]
+fn keyword_docs_are_current() -> Result {
+    let table: Vec<serde_json::Value> = SPELLINGS
+        .iter()
+        .filter_map(|&(_text, kind)| {
+            let doc = keyword_doc(kind)?;
+            Some(serde_json::json!({
+                "spelling": doc.spelling,
+                "summary": doc.summary,
+                "doc": doc.doc,
+            }))
+        })
+        .collect();
+    let mut json = serde_json::to_string_pretty(&table)?;
+    json.push('\n');
+    generated(&ui("src/lib/session/generated/keyword-docs.json"), &json)
 }
 
 #[test]

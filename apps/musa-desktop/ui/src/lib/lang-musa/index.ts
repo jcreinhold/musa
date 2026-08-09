@@ -94,4 +94,5 @@ export function musa(): LanguageSupport {
 }
 
 export { CLASS_TAGS, musaHighlighting } from "./highlight";
+export { docParts, keywordDoc, proseRuns, type DocParts, type KeywordDoc, type ProseRun } from "./keywords";
 export { TOKEN_CLASSES, tokenize, type Token, type TokenClass } from "./tokenize";

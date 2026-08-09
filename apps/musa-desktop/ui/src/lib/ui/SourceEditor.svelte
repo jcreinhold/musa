@@ -40,12 +40,13 @@
     keymap,
     lineNumbers,
     WidgetType,
+    hoverTooltip,
     type DecorationSet,
   } from "@codemirror/view";
 
   import { untrack } from "svelte";
 
-  import { musa, musaHighlighting } from "../lang-musa";
+  import { musa, musaHighlighting, docParts, keywordDoc, proseRuns, type KeywordDoc } from "../lang-musa";
   import type { Reveal } from "../state/reveal";
   import type { Diagnostic, Span } from "../state/snapshot";
   import { modal as modalKeymap, serve } from "./vim";
@@ -389,6 +390,29 @@
       fontFamily: "var(--f-ui)",
       fontSize: "var(--t-small-size)",
     },
+    /*
+     * The keyword's own documentation, hovered (prompt 84). A tooltip is a
+     * leaf the size of a thought: prose in the interface's face, the example
+     * in the editor's, and one hairline between what is said and what is
+     * shown — the same rule the prose column uses for a footnote.
+     */
+    ".cm-musa-keyword-doc": {
+      maxWidth: "42ch",
+      padding: "var(--s-3) var(--s-4)",
+    },
+    ".cm-musa-keyword-doc p": { margin: "0" },
+    ".cm-musa-keyword-doc .head em": {
+      color: "var(--ink-muted)",
+      fontStyle: "normal",
+    },
+    ".cm-musa-keyword-doc code": { fontFamily: "var(--f-mono)" },
+    ".cm-musa-keyword-doc pre": {
+      borderTop: "1px solid var(--rule)",
+      fontFamily: "var(--f-mono)",
+      margin: "var(--s-2) 0 0",
+      paddingTop: "var(--s-2)",
+      whiteSpace: "pre-wrap",
+    },
   });
 
   let host = $state<HTMLElement | undefined>();
@@ -432,6 +456,7 @@
       keymap.of([...defaultKeymap, ...foldKeymap, indentWithTab]),
       musa(),
       syntaxHighlighting(musaHighlighting),
+      keywordDocs,
       marks,
       focusMarks,
       gutterMarks,
@@ -471,6 +496,73 @@
     span.style.color = "var(--ink-muted)";
     return span;
   }
+
+  /*
+   * The keyword under the pointer teaches (prompt 84). The words are the
+   * language's own — generated out of `keywords.rs`, so the tooltip cannot
+   * drift from what the lexer and the language server say — and this file
+   * only sets them: prose in the interface's face, the example in the
+   * editor's, one hairline between.
+   */
+  const LETTER = /[a-z]/;
+
+  /** The word at `pos`, when it is a keyword the language documents. */
+  function keywordAt(view: EditorView, pos: number) {
+    const line = view.state.doc.lineAt(pos);
+    const text = line.text;
+    let start = pos - line.from;
+    let end = start;
+    while (start > 0 && LETTER.test(text.charAt(start - 1))) start -= 1;
+    while (end < text.length && LETTER.test(text.charAt(end))) end += 1;
+    const doc = keywordDoc(text.slice(start, end));
+    return doc ? { from: line.from + start, to: line.from + end, doc } : null;
+  }
+
+  /** The doc, set: the word and its summary, the prose, the example. */
+  function renderKeywordDoc(doc: KeywordDoc): HTMLElement {
+    const dom = document.createElement("div");
+    dom.className = "cm-musa-keyword-doc";
+
+    const head = document.createElement("p");
+    head.className = "head";
+    const word = document.createElement("strong");
+    word.textContent = doc.spelling;
+    const summary = document.createElement("em");
+    summary.textContent = doc.summary;
+    head.append(word, document.createTextNode(" — "), summary);
+
+    const { prose, example } = docParts(doc.doc);
+    const body = document.createElement("p");
+    body.className = "prose";
+    for (const run of proseRuns(prose)) {
+      if (run.code) {
+        const code = document.createElement("code");
+        code.textContent = run.text;
+        body.append(code);
+      } else {
+        body.append(document.createTextNode(run.text));
+      }
+    }
+    dom.append(head, body);
+
+    if (example !== null) {
+      const pre = document.createElement("pre");
+      pre.textContent = example;
+      dom.append(pre);
+    }
+    return dom;
+  }
+
+  const keywordDocs = hoverTooltip((view, pos) => {
+    const found = keywordAt(view, pos);
+    if (!found) return null;
+    return {
+      pos: found.from,
+      end: found.to,
+      above: true,
+      create: () => ({ dom: renderKeywordDoc(found.doc) }),
+    };
+  });
 
   // Built once, for the life of the element. The document and the settings
   // are read untracked on purpose: an editor that was torn down and rebuilt

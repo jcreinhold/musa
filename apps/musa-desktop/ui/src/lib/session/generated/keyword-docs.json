@@ -1,0 +1,297 @@
+[
+  {
+    "spelling": "piece",
+    "summary": "one file's one composition",
+    "doc": "A piece is one composition: everything a single file says about one work — its title, its starting tempo, meter, and key, its score, and its studio. Every `.musa` file that is not a `library` holds exactly one.\n\n```musa\npiece \"Ruchenitsa\" { meter 7/8; score { … } }\n```"
+  },
+  {
+    "spelling": "tempo",
+    "summary": "how fast, written where it changes",
+    "doc": "A tempo statement is a speed: a metronome mark, a word, or both, and a change of speed is a new statement written where the music reaches it — not a property of the piece. With `to` and `over` it is a gradual change that names where it arrives and how far that takes.\n\n```musa\ntempo 1/4 = 96;\ntempo 1/4 = 72 to 48 over 2/1 \"rit.\";\n```"
+  },
+  {
+    "spelling": "meter",
+    "summary": "the count, written where it changes",
+    "doc": "A meter statement is the count the music is measured in, as a fraction of the whole note: `meter 7/8;` counts seven eighths to a bar. It changes mid-piece by being written again where it changes, and `meter none;` stops the barlines entirely until the next one.\n\n```musa\nmeter 4/4;\n```"
+  },
+  {
+    "spelling": "key",
+    "summary": "the key signature, written where it changes",
+    "doc": "A key statement names the key the music is in — a pitch class and a mode. It is notation and knowledge, not a transposition: the notes are written at their sounding pitch either way.\n\n```musa\nkey a minor;\n```"
+  },
+  {
+    "spelling": "subtitle",
+    "summary": "a second line under the title",
+    "doc": "A subtitle is a line of front matter printed under the piece's title — a dedication, a movement name, an opus number.\n\n```musa\nsubtitle \"for eight players\";\n```"
+  },
+  {
+    "spelling": "composer",
+    "summary": "who wrote it",
+    "doc": "The composer line names who wrote the piece, printed in the front matter.\n\n```musa\ncomposer \"J. S. Bach\";\n```"
+  },
+  {
+    "spelling": "arranger",
+    "summary": "who arranged it",
+    "doc": "The arranger line names who arranged the piece, printed in the front matter beside the composer.\n\n```musa\narranger \"F. Busoni\";\n```"
+  },
+  {
+    "spelling": "copyright",
+    "summary": "the rights line",
+    "doc": "The copyright line is the rights notice printed in the front matter.\n\n```musa\ncopyright \"© 2026 J. Reinhold\";\n```"
+  },
+  {
+    "spelling": "motif",
+    "summary": "a named musical idea, used by name",
+    "doc": "A motif is a musical idea said once and given a name: a phrase, a figure, a rhythm, with parameters for what changes between uses. Write it out where it is wanted with `use name(args);` — an edit to the motif then reaches every occurrence.\n\n```musa\nmotif sigh(root: pitch) { root 1/8; root 1/8; }\n```"
+  },
+  {
+    "spelling": "score",
+    "summary": "the parts and their music",
+    "doc": "The score block is the music itself: the parts, each with its clef and its voices, written in the order they read. Everything before it is the header; everything after it is the studio.\n\n```musa\nscore { part violin { clef treble; voice one { … } } }\n```"
+  },
+  {
+    "spelling": "part",
+    "summary": "one instrument's staff",
+    "doc": "A part is one instrument's lane through the piece: its own clef, its own voices, and — when it differs from the piece — its own meter or tempo (polymeter, polytempo). A part is notation, not sound; the studio decides what plays it.\n\n```musa\npart kaval { clef treble; meter 7/8; voice melody { … } }\n```"
+  },
+  {
+    "spelling": "voice",
+    "summary": "one rhythmic line inside a part",
+    "doc": "A voice is one line of rhythm inside a part: notes, rests, and everything written where the music reaches it. Two voices in one part share the staff and count their own bars independently.\n\n```musa\nvoice right { c4 1/4; d4 1/4; }\n```"
+  },
+  {
+    "spelling": "clef",
+    "summary": "which clef the staff reads",
+    "doc": "A clef statement says which clef a part reads from here — `treble`, `bass`, `alto`, `tenor`. Written in a voice, it changes mid-part where the music reaches it.\n\n```musa\nclef treble;\n```"
+  },
+  {
+    "spelling": "use",
+    "summary": "write out a motif, or import a library",
+    "doc": "`use` writes out a declared motif where it stands, with arguments for its parameters: `use sigh(e5);` is the motif spelled here, once. At the top of a piece it imports a library file instead: `use \"strings\";`.\n\n```musa\nuse sigh(e5);\n```"
+  },
+  {
+    "spelling": "transpose",
+    "summary": "the same music, moved in pitch",
+    "doc": "A transpose block plays its contents moved by an interval — `up` or `down` a named interval like `P5` or `M3`. The original is untouched; the block is a reading of it at a new pitch.\n\n```musa\ntranspose up P5 { use theme(); }\n```"
+  },
+  {
+    "spelling": "down",
+    "summary": "the direction of a transposition, downward",
+    "doc": "`down` marks a transposition as downward: `transpose down P5 { … }` lowers its contents a perfect fifth. Its counterpart is `up`.\n\n```musa\ntranspose down m2 { … }\n```"
+  },
+  {
+    "spelling": "up",
+    "summary": "the direction of a transposition, upward",
+    "doc": "`up` marks a transposition as upward: `transpose up P5 { … }` raises its contents a perfect fifth. Its counterpart is `down`.\n\n```musa\ntranspose up M3 { … }\n```"
+  },
+  {
+    "spelling": "rest",
+    "summary": "silence with a duration",
+    "doc": "A rest is notated silence: it fills its duration in the bar exactly like a note fills its own. A bar that does not add up — rests included — is an error, because a missing rest is a missing beat.\n\n```musa\nrest 1/4;\n```"
+  },
+  {
+    "spelling": "chord",
+    "summary": "several pitches as one rhythmic thing",
+    "doc": "A chord is several pitches struck as one rhythmic event: `chord [c4 e4 g4] 1/4;` fills a quarter with all of them. It is one voice's one event, not three voices.\n\n```musa\nchord [c4 e4 g4] 1/2;\n```"
+  },
+  {
+    "spelling": "repeat",
+    "summary": "play the block again",
+    "doc": "A repeat block plays its contents more than once: `repeat 4 { … }` is four passes through the same bars, written once. With `ending` blocks inside, the passes differ where the endings say they do.\n\n```musa\nrepeat 2 { use verse(); }\n```"
+  },
+  {
+    "spelling": "bar",
+    "summary": "one measure, written out",
+    "doc": "A bar is one measure of music between braces: what a player reads between two barlines, and the unit that must add up to the meter. Named — `bar head { … }` — it also becomes an address an edit or a reader can point at.\n\n```musa\nbar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }\n```"
+  },
+  {
+    "spelling": "senza",
+    "summary": "an unmeasured stretch with a scope",
+    "doc": "A senza block is unmeasured music with braces around it: the barlines stop for exactly its contents and the meter returns after, without the `meter none;` … `meter 4/4;` pair you could otherwise forget the second half of. Cadenzas and chant are written this way.\n\n```musa\nsenza { c4 1/1; g4 1/1; }\n```"
+  },
+  {
+    "spelling": "ending",
+    "summary": "what changes on a given pass of a repeat",
+    "doc": "An ending block plays only on the numbered pass of the enclosing `repeat`: `ending 1 { … }` the first time, `ending 2 { … }` the second. It is how a repeated strain gets a different close.\n\n```musa\nrepeat 2 { use strain(); ending 1 { c4 1/1; } ending 2 { g4 1/1; } }\n```"
+  },
+  {
+    "spelling": "fragment",
+    "summary": "a labeled block a mobile can arrange",
+    "doc": "A fragment is a named block of music that means nothing in source order: it becomes music when a `mobile` arranges it among others. Fragments are how musa writes music whose order is chosen, not fixed.\n\n```musa\nfragment a { c4 1/4; d4 1/4; }\n```"
+  },
+  {
+    "spelling": "mobile",
+    "summary": "fragments in a chosen order",
+    "doc": "A mobile block plays its fragments in an order the performance chooses: `mobile { a; b; c; }` is those fragments, balanced like the sculpture, not fixed like a score. Each performance records the order it picked, so the chosen form is a fact you can read.\n\n```musa\nmobile { a; b; a; c; }\n```"
+  },
+  {
+    "spelling": "improvise",
+    "summary": "a constrained improvisation",
+    "doc": "An improvise statement asks for an improvisation over a span and a harmony: `improvise 8/1 over \"Dm7 | G7\";`. The constraints are written; the notes are the performance's, and the seed decides which ones.\n\n```musa\nimprovise 4/1 over \"Cmaj7\";\n```"
+  },
+  {
+    "spelling": "over",
+    "summary": "how far a gradual change reaches",
+    "doc": "`over` says how far a gradual change reaches, in the change's own unit: `tempo 1/4 = 72 to 48 over 2/1;` takes two whole notes to get there. It can also follow a worded marking — `tempo \"rit.\" over 1/1;` — where the player owns the speed.\n\n```musa\ntempo \"poco rit.\" over 1/1;\n```"
+  },
+  {
+    "spelling": "slur",
+    "summary": "a phrase mark over the block",
+    "doc": "A slur block is played legato under one bow or breath: the notation curve over its contents. It changes how the notes connect, not which notes they are.\n\n```musa\nslur { c4 1/8; d4 1/8; e4 1/8; }\n```"
+  },
+  {
+    "spelling": "dynamic",
+    "summary": "a loudness marking",
+    "doc": "A dynamic statement is a loudness marking — `pp` through `fff` — written where it takes force. It is a mark on the page, not a decibel value; what it does to the notes is the performance layer's business.\n\n```musa\ndynamic mf;\n```"
+  },
+  {
+    "spelling": "tuplet",
+    "summary": "notes in the time of fewer",
+    "doc": "A tuplet block fits its contents into the time a different count would take: `tuplet 3/2 { … }` is three in the time of two. The ratio is exact — tuplets are arithmetic, not feel.\n\n```musa\ntuplet 3/2 { c4 1/8; d4 1/8; e4 1/8; }\n```"
+  },
+  {
+    "spelling": "performance",
+    "summary": "rules for how the written becomes the played",
+    "doc": "A performance block declares how notation becomes playing: `mark`, `dynamic`, `groove`, and `grace` rules that say what a marking does to time and loudness. It is the piece's own answer to \"what does this mark mean here\", kept separate from the notation it interprets.\n\n```musa\nperformance { mark accent { weight: 1.3; } }\n```"
+  },
+  {
+    "spelling": "profile",
+    "summary": "which performance profile realizes this part",
+    "doc": "A profile statement names the performance profile a part is played with — a named bundle of humanization settings declared in a `performance` block. Without one, the part is played as written.\n\n```musa\nprofile strings;\n```"
+  },
+  {
+    "spelling": "mark",
+    "summary": "a performance mark: accent, fermata, rehearsal letter, sample",
+    "doc": "A mark statement attaches a performance mark — `accent`, `fermata`, `breath`, `rehearsal \"A\"`, and more — to the music at it. What a mark *does* to the playing is the `performance` block's `mark` rule, not this statement's: notation here, meaning there.\n\n```musa\nmark fermata;\nmark rehearsal \"A\";\n```"
+  },
+  {
+    "spelling": "groove",
+    "summary": "a named timing feel",
+    "doc": "A groove statement applies a named timing feel — a swing or shuffle declared in the `performance` block — to the music from here. The name is notation; the rule is what it does to the beats.\n\n```musa\ngroove shuffle;\n```"
+  },
+  {
+    "spelling": "grace",
+    "summary": "notes crushed before the beat",
+    "doc": "A grace block holds grace notes: small notes that lean on the event after them and fill no time in the bar. Where they steal their time from is the `performance` block's `grace` rule.\n\n```musa\ngrace { d5 1/16; } c5 1/4;\n```"
+  },
+  {
+    "spelling": "studio",
+    "summary": "what plays the score",
+    "doc": "The studio block is everything after the music: the patches that make sound, the assignments of parts to them, the buses, sends, routes, and modulations that wire the mix. The score says what the notes are; the studio says what they sound like.\n\n```musa\nstudio { patch pad { … } assign violin -> pad; }\n```"
+  },
+  {
+    "spelling": "patch",
+    "summary": "a signal graph with a name",
+    "doc": "A patch is a named signal chain: oscillators, filters, envelopes, and effects wired with `|>` into one instrument. A part is realized by the patch an `assign` points at it — and a patch nothing assigns is wired to silence.\n\n```musa\npatch glass_pad { oscillator(sine) |> lowpass(cutoff: 1400 Hz) |> output; }\n```"
+  },
+  {
+    "spelling": "modulate",
+    "summary": "let a signal drive a parameter",
+    "doc": "A modulate statement wires a control signal into a patch parameter: `modulate lfo -> glass_pad.lowpass.cutoff;` lets the LFO move the filter. The path names patch, node, and parameter with dots.\n\n```musa\nmodulate lfo -> pad.lowpass.cutoff;\n```"
+  },
+  {
+    "spelling": "bus",
+    "summary": "a shared channel in the mix",
+    "doc": "A bus is a named channel signals can be sent to and mixed through — a reverb hall every part shares. Parts reach it with `send`; it reaches the output with `route`.\n\n```musa\nbus hall { reverb(room: 0.8); }\n```"
+  },
+  {
+    "spelling": "assign",
+    "summary": "which patch realizes a part",
+    "doc": "An assign statement points a part at a patch: `assign violin -> glass_pad;` says the violin's notes are played by that graph. A part without one keeps the default instrument.\n\n```musa\nassign reeds -> reed;\n```"
+  },
+  {
+    "spelling": "route",
+    "summary": "where a signal goes in the mix",
+    "doc": "A route statement sends a part's or bus's output to a destination: `route violin -> master;`. Without one, a part still reaches the master; a route is for when it should go somewhere else, or somewhere else too.\n\n```musa\nroute hall -> master;\n```"
+  },
+  {
+    "spelling": "send",
+    "summary": "tap some of a signal into a bus",
+    "doc": "A send statement taps a level of a part's or bus's signal into a bus: `send violin -> hall at -18 dB;` puts some of the violin in the hall while it also plays dry. The level is written with `at`.\n\n```musa\nsend strings -> hall at -14 dB;\n```"
+  },
+  {
+    "spelling": "master",
+    "summary": "the final mix bus",
+    "doc": "`master` is the mix's final destination: the bus everything audible ultimately routes to. Route to it explicitly when a signal should arrive from more than one path.\n\n```musa\nroute hall -> master;\n```"
+  },
+  {
+    "spelling": "at",
+    "summary": "the level of a send",
+    "doc": "`at` writes the level of a `send`: `send violin -> hall at -18 dB;` is how much of the violin the hall gets, in decibels.\n\n```musa\nsend drums -> room at -24 dB;\n```"
+  },
+  {
+    "spelling": "output",
+    "summary": "where a patch's signal leaves",
+    "doc": "`output` ends a patch's signal chain: whatever reaches it is the sound the patch makes. A chain without one builds to nothing, and the compiler says so.\n\n```musa\noscillator(sine) |> gain(-15 dB) |> output;\n```"
+  },
+  {
+    "spelling": "pitch",
+    "summary": "the pitch parameter type",
+    "doc": "`pitch` is the type of a pitch parameter in a motif declaration: `motif sigh(root: pitch)` takes a written pitch like `e5` at each `use`. It is one of the small set of types parameters can have.\n\n```musa\nmotif call(root: pitch = c5) { root 1/4; }\n```"
+  },
+  {
+    "spelling": "stretch",
+    "summary": "the same music, at a different speed ratio",
+    "doc": "A stretch block plays its contents scaled in time by an exact factor: `stretch 3/2 { … }` takes half again as long. Rhythm and proportions are preserved; only the clock changes.\n\n```musa\nstretch 2/1 { use theme(); }\n```"
+  },
+  {
+    "spelling": "retrograde",
+    "summary": "the block, backwards",
+    "doc": "A retrograde block plays its contents in reverse order — the last note first. It is the classical transformation, written as a block rather than spelled out by hand.\n\n```musa\nretrograde { use subject(); }\n```"
+  },
+  {
+    "spelling": "invert",
+    "summary": "the block, mirrored in pitch",
+    "doc": "An invert block mirrors its contents in pitch around an axis note: what went up goes down by the same interval. The axis is written with `around`.\n\n```musa\ninvert around c5 { use subject(); }\n```"
+  },
+  {
+    "spelling": "around",
+    "summary": "the axis of an inversion",
+    "doc": "`around` names the axis pitch an `invert` block mirrors about: `invert around c5 { … }` leaves `c5` where it is and flips everything else across it.\n\n```musa\ninvert around g4 { … }\n```"
+  },
+  {
+    "spelling": "with",
+    "summary": "respell one note of a motif occurrence",
+    "doc": "A `with` clause overrides one parameter of a `use` for this occurrence only: `use sigh() with (root: e5)` is the motif, except here. The definition is untouched.\n\n```musa\nuse sigh() with (root: e5);\n```"
+  },
+  {
+    "spelling": "note",
+    "summary": "a literal note inside an override",
+    "doc": "`note` introduces a literal note where an override needs one — the spelled-out exception inside a `with` clause.\n\n```musa\nuse theme() with (pickup: note c5 1/8);\n```"
+  },
+  {
+    "spelling": "phrase",
+    "summary": "a named musical sentence",
+    "doc": "A phrase block names a stretch of music as one sentence: `phrase \"A\" { … }`. The name prints and anchors, so editors and readers can talk about the phrase as a thing.\n\n```musa\nphrase \"question\" { use ask(); }\n```"
+  },
+  {
+    "spelling": "section",
+    "summary": "a form marker in the score",
+    "doc": "A section statement marks a point of form — `section \"B\";` — anchored to the time it is written at, whether or not a note starts there. It prints and navigates; it changes no note.\n\n```musa\nsection \"Trio\";\n```"
+  },
+  {
+    "spelling": "harmony",
+    "summary": "the chord-symbol lane",
+    "doc": "A harmony block declares the piece's chord-symbol lane: symbols written at the times they govern, like `harmony { \"Dm7\" 1/1; \"G7\" 1/1; }`. The symbols are parsed, so later tooling reads structure instead of letters.\n\n```musa\nharmony { \"Cmaj7\" 2/1; }\n```"
+  },
+  {
+    "spelling": "library",
+    "summary": "declarations other pieces can import",
+    "doc": "A library is a file of declarations — motifs, fragments, studio patches — meant to be used by other files rather than played itself. A piece brings one in with `use \"path\";` and then speaks its names as its own.\n\n```musa\nlibrary { motif sigh(root: pitch) { … } }\n```"
+  },
+  {
+    "spelling": "crescendo",
+    "summary": "grow toward a named dynamic",
+    "doc": "A crescendo block grows the loudness of its contents toward a named arrival: `crescendo to f { … }`. The destination is part of the spelling, because a hairpin that arrives nowhere is a hairpin that lies.\n\n```musa\ncrescendo to f { use build(); }\n```"
+  },
+  {
+    "spelling": "diminuendo",
+    "summary": "fade toward a named dynamic",
+    "doc": "A diminuendo block fades the loudness of its contents toward a named arrival: `diminuendo to p { … }`. Like the crescendo, the destination is written, not implied.\n\n```musa\ndiminuendo to pp { use fall(); }\n```"
+  },
+  {
+    "spelling": "to",
+    "summary": "where a change arrives",
+    "doc": "`to` names where a change arrives: the dynamic a `crescendo` or `diminuendo` reaches, or the tempo a gradual `tempo` change ends at. Arriving somewhere is one idea, so it is one word.\n\n```musa\ntempo 1/4 = 72 to 48 over 2/1;\n```"
+  }
+]
