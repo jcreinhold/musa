@@ -6,15 +6,16 @@ depends_on: [104, 106, 108, 111, 112, 114, 116]
 phase: 3
 ---
 
-# Language and Theory Handbook
+# Score Language and Theory Handbook
 
 ## Task
 
-Turn the implemented language and bundled theory library into one tested reference with two reading paths: musicians
+Turn the implemented score language and bundled theory library into one tested reference with two reading paths: musicians
 can learn by musical task and language developers can recover the grammar, typing, elaboration, laws, ownership, and
 performance model precisely. Replace the proposal's provisional examples with compiling Musa source and make every
 public standard-library operation discoverable from source, editor hover, and the handbook without duplicating its
-definition.
+definition. This is not the final whole-language handbook: prompt 134 adds performance, instruments, studio, assets,
+packages, samples, and clips before prompt 137 graduates the complete specification.
 
 ## Read
 
@@ -62,7 +63,8 @@ errors and snapshot their plain-language diagnostic and repair. Test all interna
 - An explicit citation map from each implemented music-theory domain to the relevant local OMT chapter or Musa proof.
 - Compiling positive examples and diagnostic goldens for negative examples in `examples/` or focused doc-test fixtures.
 - Reconciliation of `docs/elaboration-language.md`: mark resolved choices as implemented, link to governing
-  `docs/language/`, and retain rejected alternatives and rationale as design history.
+  candidate `docs/language/`, and retain rejected alternatives and rationale as design history. Do not call the
+  candidate governing before prompt 137.
 
 ## Check
 
@@ -84,3 +86,5 @@ implementor guide. Commit as `Publish the Musa language and theory handbook`.
 - No exhaustive music-theory textbook and no claim that the bundled conventions cover every musical culture or style.
 - No copied OMT chapter text; cite and explain only the concepts Musa actually implements.
 - No separate hand-maintained LSP documentation table or public exposure of compiler pass types.
+- No placeholder prose for audio features that prompts 119–133 have not implemented; leave stable anchors for the later
+  generated sound-language reference instead.

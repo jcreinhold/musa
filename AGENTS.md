@@ -16,8 +16,8 @@ the semantic core is Rust, the UI is a replaceable projection.
    selection model, Origin view, states and voice, performance budgets. Roadmap §14 fixes the app's *architecture*;
    `docs/interface/` fixes everything §14 leaves open, and §14's wireframe is not a visual spec. Governing since prompt
    26.
-4. **`docs/prompts/`** — the work plan. 36 numbered feature prompts with their own README defining prompt anatomy and
-   execution rules. Implementation happens by executing prompts in dependency order (see the `prompt-stack` skill).
+4. **`docs/prompts/`** — the numbered work plan, currently through prompt 137, with its README defining prompt anatomy
+   and execution rules. Implementation happens in dependency order (see the `prompt-stack` skill).
 
 If code and these documents disagree, either the code is wrong or the document needs a deliberate repair — never let
 them drift silently.

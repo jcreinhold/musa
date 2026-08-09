@@ -16,9 +16,10 @@ states, and performance budgets — `docs/interface/` is the authority. Roadmap 
 20–26 implement `docs/interface/`; prompt 26 graduated it from candidate to governing, as prompt 12 did for the kernel.
 
 **The elaboration-language direction is a candidate until it earns graduation.** Prompt 92 turns
-`docs/elaboration-language.md` into a precise candidate specification under `docs/language/`; prompts 93–118 implement
-and test it; prompt 119 makes it governing only if the complete conformance matrix is green. Until then, the roadmap,
-course correction, and existing kernel remain authoritative where the candidate differs.
+`docs/elaboration-language.md` into a precise candidate specification under `docs/language/`; prompts 93–136 implement,
+measure, and audit its score, performance, sound, asset, and package semantics; prompt 137 makes it governing only if
+the complete conformance matrix is green. Until then, the roadmap, course correction, and existing kernel remain
+authoritative where the candidate differs.
 
 ## Prompt anatomy
 
@@ -221,7 +222,25 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 116 | elaboration-workbench | 3 | Musician-first desktop interaction for types, origin, assertions, analysis |
 | 117 | language-and-theory-handbook | 3 | Tested musician and implementor paths with theory citations |
 | 118 | elaboration-performance-closure | 3 | Profiled latency, allocation, memory, caching, and budget closure |
-| 119 | elaboration-conformance | 3 | Whole-stack audit and conditional language-spec graduation |
+| 119 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
+| 120 | exact-studio-values | 3 | Exact written quantities through audio preparation |
+| 121 | performance-gestures | 3 | Instrument-independent note gestures and musical control curves |
+| 122 | instrument-contracts | 3 | Typed exposed controls over private native/sample implementations |
+| 123 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
+| 124 | expressive-control-realization | 3 | Marks and automation reach exposed controls, then private parameters |
+| 125 | ergonomic-sound-bindings | 3 | Musician-facing sound/profile choice and stable defaults |
+| 126 | reproducible-assets | 4 | Content-addressed project/package audio assets and invalidation |
+| 127 | pinned-package-imports | 4 | Exact remote source/asset packages, lockfile, offline builds, no solver |
+| 128 | sampler-runtime | 4 | Deterministic native sample-map instrument implementation |
+| 129 | sfz-instruments | 4 | Checked SFZ v1-core adapter and compatibility matrix |
+| 130 | soundfont-instruments | 4 | Checked SoundFont 2.04 adapter and compatibility matrix |
+| 131 | media-cue-semantics | 4 | Musical clips versus fixed-physical-duration cues |
+| 132 | audio-clips | 4 | Prepared clip/cue playback, routing, seek, offline/live laws |
+| 133 | sound-mix-workbench | 4 | Progressive musician/developer Sound and Mix interaction |
+| 134 | audio-language-tooling | 4 | LSP/editor/handbook coverage for sound, assets, packages, formats |
+| 135 | audio-performance-closure | 4 | Measured preparation/render/asset/UI performance and RT closure |
+| 136 | audio-conformance | 4 | Complete performance/sound/assets conformance audit |
+| 137 | language-conformance | 4 | Whole-language audit and conditional language-spec graduation |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
@@ -367,12 +386,12 @@ Read 87 and 90 together as the pair: 87 argues that notation gets away with stat
 space. Neither prompt invents a device. Both take one notation already has and ask what it costs in characters.
 
 **92–99 build the elaboration-language foundation without weakening the kernel boundary.** 92 specifies the static and
-dynamic judgments before syntax is accepted; 93 freezes both observable compatibility and cost before the implementation
-can move either; 94–96 add syntax, a total typed functional core, finite data, and deterministic limits; 97–98 make
-`Music` a context-neutral elaboration result and allow higher-order construction only through structure-preserving
-operations; 99 makes the standard library ordinary inspectable Musa source. This order makes the kernel the denotation,
-not the programming language, and keeps the evaluator/type checker private to `musa-compiler` rather than growing a
-new crate or public HIR.
+dynamic judgments before syntax is accepted, including the score→gesture→instrument→signal→mix factorization and
+asset/package closure; 93 freezes both observable compatibility and cost before the implementation can move either;
+94–96 add syntax, a total typed functional core, finite data, and deterministic limits; 97–98 make `Music` a
+context-neutral elaboration result and allow higher-order construction only through structure-preserving operations;
+99 makes the standard library ordinary inspectable Musa source. This order makes the kernel the score denotation, not
+the programming language or audio engine, and keeps evaluator/type-checker types private to `musa-compiler`.
 
 **100–112 are a bounded theory block, not a universal “music theory engine.”** 100–105 establish distinct domains for
 spelled pitches, intervals, scales, keys, degrees, chord classes, voicings, `pc12`, pitch-class sets, and rows before an
@@ -388,26 +407,50 @@ and provenance. The language server, editor extensions, and desktop consume the 
 explain types, origins, assertions, and competing analyses, but may not grow a second checker, editable expanded AST, or
 visual programming model.
 
-**117–119 close the block rather than declaring victory after parsing examples.** 117 tests two documentation paths —
-one by musical task and one by language implementation — and generates standard-library signatures from source. 118
-compares the full system to 93's baseline, profiles regressions, and permits caching or incrementality only when their
-semantic keys and measured need are demonstrated. 119 traces every normative rule to implementation and evidence across
-the kernel, renderers, project, editors, and desktop; it graduates `docs/language/` only if no row is red or unowned.
+**117–118 close the score-elaboration implementation without prematurely graduating the language.** 117 tests two
+documentation paths — one by musical task and one by language implementation — and generates standard-library
+signatures from source. 118 compares score elaboration to 93's baseline and permits caching or incrementality only when
+semantic keys and measured need are demonstrated. Audio retains its frozen baseline and receives its own measured
+closure at 135.
+
+**119–125 replace the accidental score↔DSP wire with a typed instrument boundary.** 119 makes the studio vocabulary
+discoverable from one catalogue; 120 restores exact written quantities; 121 names the missing object, an exact
+instrument-independent gesture/control timeline; 122 makes an instrument a deep contract over a private implementation;
+123 preserves part identity through prepared routing; and 124 binds musical controls to private parameters only at
+audio preparation. 125 then spends that simplicity at the surface: choosing a sound/profile is one musical action,
+while expert graph and mix declarations remain available and source-compatible.
+
+**126–132 add external sound without making builds or time semantics implicit.** 126 defines verified content-addressed
+assets before a decoder exists. 127 adds exact-pinned fetch/lock/offline packages while retaining the roadmap's rejection
+of a registry and version solver. 128 builds one deterministic sampler runtime; 129 and 130 translate SFZ and SoundFont
+into it through explicit compatibility matrices rather than adopting either format as Musa's ontology. 131 distinguishes
+a beat-fitted clip from a point cue whose asset keeps its physical duration; 132 renders both through the same prepared
+offline/live plan.
+
+**133–137 make the sound language usable and make graduation expensive.** 133 repairs Sound/Mix around instruments,
+exposed controls, part outputs, assets, and media without creating GUI-owned state. 134 extends generated editor facts
+and the two-path handbook. 135 measures preparation, rendering, decoded memory, callback deadlines, and UI updates.
+136 audits every performance/sound/asset/package law and format support claim. Only 137 combines that green matrix with
+the score/theory/kernel/tooling matrix and conditionally graduates `docs/language/`.
 
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
 ("Verovio score preview", "play, stop, seek, loop") but which this sequence deliberately runs after the CLI-provable
 slice. Prompt 33 is roadmap Phase 2 scope ("MIDI step entry", "autosave") ordered after the desktop prompts it depends
 on; phases describe scope, not strict order.
 
-## Out of scope for this sequence (roadmap §18 Phase 4)
+## Out of scope for this sequence
 
-Do not create prompts for these until the native system is stable and the user asks:
+The user has now asked for the Phase 4 sample/media/library work, and it is deliberately ordered after prompt 118's
+native score/elaboration stability point. The following remain outside this sequence:
 
-- sample playback and SoundFont/orchestral support;
-- audio-file clips;
-- CLAP hosting and the macOS Audio Unit bridge;
+- CLAP/VST hosting and the macOS Audio Unit bridge;
+- a package registry, semantic-version range solver, implicit network during compilation, or packages containing native
+  executable code;
 - MusicXML import;
-- audio recording and waveform editing (rejected outright unless the product's purpose changes).
+- microphone/audio recording, destructive waveform editing, beat detection, transient slicing, and DAW-style timeline
+  editing;
+- pitch-preserving clip time-warping, convolution, mastering suites, and unbounded disk streaming until a separately
+  measured musical workload justifies each one.
 
 Prompts 100–112 are the requested, deliberately finite theory-library scope. Still out of scope are a universal or
 style-neutral theory engine, unconstrained automatic composition, corpus-trained inference, probabilistic analysis,

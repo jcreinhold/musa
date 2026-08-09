@@ -10,10 +10,12 @@ phase: 3
 
 ## Task
 
-Make functions, templates, modules, theory assertions, and analyses legible in the desktop workbench without turning
+Make score functions, templates, modules, theory assertions, and analyses legible in the desktop workbench without turning
 the application into a visual programming system or adding a second semantic model. A musician should be able to ask
 what a term means, where generated music came from, and why an advisory finding was reported; a language implementor
 should see the same types, definitions, source maps, and evidence that the compiler exposes through prompt 115.
+The existing Sound and Mix workspaces remain usable but are not redesigned here; prompt 133 integrates the later
+instrument/control/asset model through the same source-edit and immutable-fact boundaries.
 
 ## Read
 
@@ -86,3 +88,5 @@ keyboard. Commit as `Make elaboration legible in the workbench`.
 - No direct score edit of generated, included, quoted, or analysis-derived facts; navigate to editable source instead.
 - No automatic acceptance of an advisory analysis and no red-error styling for contestable theoretical judgments.
 - No new layout or animation work unrelated to understanding the elaboration language.
+- No audio graph redesign, instrument browser, asset browser, or sound-control model — prompt 133 owns that work after
+  the audio semantics exist.
