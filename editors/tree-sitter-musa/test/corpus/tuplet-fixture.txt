@@ -1,0 +1,218 @@
+================================================================================
+tuplet-fixture
+================================================================================
+
+// The expressive notation layer, end to end (docs/prompts/27): tuplets,
+// ties across a barline, slurs, dynamics, and articulations, including
+// articulations written inside a motif, so provenance carries them too.
+piece "Tuplet Fixture" {
+    tempo 1/4 = 96;
+    meter 4/4;
+    key c major;
+
+    motif turn(root: pitch = c5) {
+        root 1/8 tenuto;
+        d5 1/8;
+    }
+
+    score {
+        part flute {
+            clef treble;
+
+            voice lead {
+                dynamic mf;
+                tuplet 3/2 {
+                    c5 1/8;
+                    d5 1/8;
+                    e5 1/8;
+                }
+                slur {
+                    f5 1/8;
+                    g5 1/8;
+                }
+                a5 1/4 accent;
+                g5 1/4 staccato ~;
+                g5 1/4;
+                dynamic p;
+                use turn(a4);
+                tuplet 3/2 {
+                    c5 1/8;
+                    d5 1/8;
+                    e5 1/8;
+                }
+                slur {
+                    b4 1/8 marcato;
+                    c5 1/8;
+                }
+            }
+        }
+
+        part cello {
+            clef bass;
+
+            voice bass {
+                dynamic p;
+                chord [c3, g3] 1/2;
+                e3 1/4;
+                g3 1/4 ~;
+                g3 1/2;
+                slur {
+                    a3 1/4 tenuto;
+                    g3 1/4;
+                }
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (piece_declaration
+    (string)
+    (tempo_statement
+      (rational)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (motif_declaration
+      (identifier)
+      (motif_parameter
+        (identifier)
+        (pitch_literal))
+      (block
+        (note_statement
+          (identifier)
+          (duration
+            (rational))
+          (articulation_list
+            (identifier)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (dynamic_statement
+            (identifier))
+          (tuplet_statement
+            (rational)
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (slur_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (dynamic_statement
+            (identifier))
+          (use_statement
+            (identifier)
+            (pitch_literal))
+          (tuplet_statement
+            (rational)
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (slur_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational))
+                (articulation_list
+                  (identifier)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))))
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (dynamic_statement
+            (identifier))
+          (chord_statement
+            (pitch_literal)
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (slur_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational))
+                (articulation_list
+                  (identifier)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational))))))))))

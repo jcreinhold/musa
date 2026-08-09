@@ -1,0 +1,73 @@
+================================================================================
+invention
+================================================================================
+
+piece "Little Invention" {
+    tempo quarter = 96;
+    meter 4/4;
+    key c major;
+
+    score {
+        part piano {
+            clef treble;
+
+            voice right {
+                bar { c4 1/4; d4 1/4; e4 1/4; f4 1/4; }
+                bar { g4 1/2; a4 1/4; b4 1/4; }
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (piece_declaration
+    (string)
+    (tempo_statement
+      (identifier)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational))))))))))

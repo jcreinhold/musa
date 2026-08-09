@@ -1,0 +1,254 @@
+================================================================================
+profile-fixture
+================================================================================
+
+// Interpretation profiles (docs/prompts/28). The score says what is
+// written; the profile says what this instrument makes of it. Both parts
+// play the same marks and read them differently, which is the point: a
+// staccato is not a number until an instrument says so.
+piece "Profile Fixture" {
+    tempo 1/4 = 100;
+    meter 4/4;
+    key c major;
+
+    performance {
+        profile strings {
+            mark staccato {
+                gate = 0.5;
+                attack = 8 ms;
+            }
+            mark tenuto {
+                gate = 1;
+                attack = 30 ms;
+            }
+            mark accent {
+                gate = 0.9;
+            }
+            dynamic p {
+                amplitude = 0.35;
+            }
+            dynamic mf {
+                amplitude = 0.6;
+            }
+            dynamic f {
+                amplitude = 0.85;
+            }
+        }
+
+        profile winds {
+            mark staccato {
+                gate = 0.7;
+                attack = 4 ms;
+            }
+            dynamic p {
+                amplitude = 0.45;
+            }
+            dynamic f {
+                amplitude = 0.95;
+            }
+        }
+    }
+
+    score {
+        part flute {
+            clef treble;
+            profile winds;
+
+            voice lead {
+                dynamic p;
+                c5 1/4 staccato;
+                d5 1/4 staccato;
+                e5 1/2;
+                dynamic f;
+                g5 1/4 staccato;
+                a5 1/4;
+                b5 1/2;
+            }
+        }
+
+        part cello {
+            clef bass;
+            profile strings;
+
+            voice bass {
+                dynamic mf;
+                c3 1/4 staccato;
+                e3 1/4 tenuto;
+                g3 1/2 accent;
+                dynamic p;
+                c3 1/2;
+                g2 1/2;
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (piece_declaration
+    (string)
+    (tempo_statement
+      (rational)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (performance_declaration
+      (profile_declaration
+        (identifier)
+        (mark_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float))
+            (setting_statement
+              (identifier)
+              (integer)
+              (unit))))
+        (mark_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (integer))
+            (setting_statement
+              (identifier)
+              (integer)
+              (unit))))
+        (mark_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float))))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float))))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float))))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float)))))
+      (profile_declaration
+        (identifier)
+        (mark_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float))
+            (setting_statement
+              (identifier)
+              (integer)
+              (unit))))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float))))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float))))))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (profile_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (dynamic_statement
+            (identifier))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (dynamic_statement
+            (identifier))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))))
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (profile_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (dynamic_statement
+            (identifier))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (dynamic_statement
+            (identifier))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))))))))

@@ -1,0 +1,100 @@
+================================================================================
+01-opening
+================================================================================
+
+// The album's first piece (docs/prompts/36): what it shares it imports, and
+// what changes over its length — the tempo, the loudness — is written where
+// it changes rather than assumed constant.
+piece "Opening" {
+    use "../library/motifs.musa";
+    use "../library/patches.musa";
+
+    tempo 1/4 = 72;
+    meter 4/4;
+    key c major;
+
+    score {
+        part reeds {
+            profile album;
+            clef treble;
+
+            voice lead {
+                dynamic p;
+                use rise();
+
+                // The tempo is written where it changes, like the meter and
+                // the key: a place in the piece, not a coordinate quoted from
+                // somewhere else.
+                tempo 1/4 = 108 "poco più mosso";
+
+                crescendo to f {
+                    use fall();
+                }
+
+                use rise();
+                use fall();
+            }
+        }
+    }
+
+    studio {
+        assign reeds -> reed;
+        route reeds -> master;
+    }
+}
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (piece_declaration
+    (string)
+    (import_statement
+      (string))
+    (import_statement
+      (string))
+    (tempo_statement
+      (rational)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (profile_statement
+          (identifier))
+        (clef_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (dynamic_statement
+            (identifier))
+          (use_statement
+            (identifier))
+          (comment)
+          (comment)
+          (comment)
+          (tempo_statement
+            (rational)
+            (integer)
+            (string))
+          (hairpin_statement
+            (identifier)
+            (block
+              (use_statement
+                (identifier))))
+          (use_statement
+            (identifier))
+          (use_statement
+            (identifier)))))
+    (studio_declaration
+      (assign_statement
+        (identifier)
+        (identifier))
+      (route_statement
+        (identifier)))))

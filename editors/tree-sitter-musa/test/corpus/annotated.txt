@@ -1,0 +1,154 @@
+================================================================================
+annotated
+================================================================================
+
+// The annotation layer, end to end (docs/prompts/35): named phrases over the
+// notes, form markers at measure:beat positions, and a harmony lane.
+//
+// Nothing here is interpreted. The chord symbols are recorded and printed;
+// musa never derives notes from them, never checks the notes under them, and
+// has no opinion about the voice leading between them. Sections and phrases
+// name the structure a reader already hears; they change no sounding note.
+piece "Annotated" {
+    tempo 1/4 = 96;
+    meter 4/4;
+    key a minor;
+
+    score {
+        section "Exposition" at 1:1;
+        section "Development" at 3:1;
+
+        harmony {
+            at 1:1 am;
+            at 2:1 fmaj7;
+            at 3:1 e7;
+            at 4:1 am;
+        }
+
+        part piano {
+            clef treble;
+
+            voice lead {
+                phrase "antecedent" {
+                    a4 1/4;
+                    c5 1/4;
+                    e5 1/2;
+                    f5 1/2;
+                    e5 1/2;
+                }
+                phrase "consequent" {
+                    b4 1/4;
+                    e5 1/4;
+                    gs5 1/2;
+                    a5 1;
+                }
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (piece_declaration
+    (string)
+    (tempo_statement
+      (rational)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (score_declaration
+      (section_statement
+        (string)
+        (position
+          (integer)
+          (integer)))
+      (section_statement
+        (string)
+        (position
+          (integer)
+          (integer)))
+      (harmony_declaration
+        (harmony_statement
+          (position
+            (integer)
+            (integer))
+          (chord_symbol
+            (identifier)))
+        (harmony_statement
+          (position
+            (integer)
+            (integer))
+          (chord_symbol
+            (identifier)
+            (integer)))
+        (harmony_statement
+          (position
+            (integer)
+            (integer))
+          (chord_symbol
+            (pitch_literal)))
+        (harmony_statement
+          (position
+            (integer)
+            (integer))
+          (chord_symbol
+            (identifier))))
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (phrase_statement
+            (string)
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (phrase_statement
+            (string)
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (integer))))))))))

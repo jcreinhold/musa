@@ -1,7 +1,7 @@
 ---
 id: 80
 slug: tree-sitter-grammar
-status: pending
+status: done
 depends_on: [3]
 phase: 3
 ---
@@ -58,12 +58,16 @@ crash the parser — editors run the grammar on every keystroke, mid-word.
 
 ```sh
 cd editors/tree-sitter-musa && tree-sitter generate && tree-sitter test
+node editors/tree-sitter-musa/test/compare-tokens.js
 cargo nextest run -p musa-language
 cargo clippy --all-targets -p musa-language -- -D warnings && cargo fmt --check
 ```
 
-Behavior: every example parses without `ERROR`; every broken fixture parses *with* `ERROR` and without a panic; the
-token-for-token comparison against the real lexer is green.
+Behavior: every example parses without `ERROR`; every broken fixture parses without a panic, and exactly the
+fixtures the real parser calls syntactically broken (`test/broken.json`, written from `ParsedDocument::errors`)
+parse *with* `ERROR` — most of `examples/broken/` is semantically broken and syntactically fine, and the grammar
+must agree fixture by fixture, not blanket-fail. The token-for-token comparison against the real lexer is green
+(`UPDATE_FIXTURES=1 cargo test -p musa-language tree_sitter` refreshes the committed streams).
 
 ## Stop
 

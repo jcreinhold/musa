@@ -1,0 +1,39 @@
+{
+  "grammars": [
+    {
+      "name": "musa",
+      "camelcase": "Musa",
+      "scope": "source.musa",
+      "path": ".",
+      "file-types": ["musa"],
+      "highlights": "queries/highlights.scm",
+      "locals": "queries/locals.scm",
+      "folds": "queries/folds.scm",
+      "indents": "queries/indents.scm",
+      "tags": "queries/tags.scm",
+      "injection-regex": "musa"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "musa grammar for tree-sitter",
+    "authors": [
+      {
+        "name": "Jacob Reinhold"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/jcreinhold/musa"
+    }
+  },
+  "bindings": {
+    "c": true,
+    "go": true,
+    "node": true,
+    "python": true,
+    "rust": true,
+    "swift": true,
+    "zig": false
+  }
+}

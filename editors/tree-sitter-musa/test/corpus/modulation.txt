@@ -1,0 +1,173 @@
+================================================================================
+modulation
+================================================================================
+
+// A piece in three keys. The first phrase is in F major, the second turns to
+// D minor at the barline, and the last arrives in A major — which is what a
+// key signature is for and what musa could not say until a `key` could be
+// written where the music reaches it.
+//
+// Every change lands on a barline, because a key signature is printed at one.
+// A clef change is the exception and has its own example.
+piece "Modulation" {
+    composer "musa";
+
+    tempo 1/4 = 96;
+    meter 4/4;
+    key f major;
+
+    score {
+        part piano {
+            clef treble;
+
+            voice right {
+                bar { f4 1/4; a4 1/4; c5 1/4; a4 1/4; }
+                bar { bf4 1/4; a4 1/4; g4 1/4; f4 1/4; }
+
+                key d minor;
+                bar { d4 1/4; f4 1/4; a4 1/4; f4 1/4; }
+                bar { g4 1/4; f4 1/4; e4 1/4; d4 1/4; }
+
+                key a major;
+                bar { a4 1/4; cs5 1/4; e5 1/4; cs5 1/4; }
+                bar { a4 1/2; a4 1/2; }
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (piece_declaration
+    (string)
+    (front_matter_statement
+      (string))
+    (tempo_statement
+      (rational)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (key_statement
+            (identifier)
+            (identifier))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (key_statement
+            (identifier)
+            (identifier))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational))))))))))

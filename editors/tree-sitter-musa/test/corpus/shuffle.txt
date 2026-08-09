@@ -1,0 +1,867 @@
+================================================================================
+shuffle
+================================================================================
+
+// A twelve-bar blues, swung (docs/prompts/69).
+//
+// Every eighth on this page is written straight, because that is how a blues
+// is written and how a reader wants to read it. What makes it a shuffle is
+// the word `swing` in the profile — the notated duration is not the performed
+// duration (roadmap §2), and this is the first piece in the corpus where the
+// two differ.
+//
+// The proof is in the exports rather than in the sound: the MEI, LilyPond and
+// MusicXML of this piece contain even eighths, and the performance MIDI does
+// not. An engraver that drew triplets here would be printing an
+// interpretation nobody wrote down.
+piece "Shuffle" {
+    tempo 1/4 = 92;
+    meter 4/4;
+    key c major;
+
+    // One bar of the ride pattern, twelve times. Written as material rather
+    // than as a `repeat` among the voice's own items, because a repeat there
+    // is a barline the other parts would have to share.
+    fragment ride_bar {
+        repeat 12 {
+            d4 1/4;
+            d4 1/8;
+            d4 1/8;
+            d4 1/4;
+            d4 1/8;
+            d4 1/8;
+        }
+    }
+
+    performance {
+        // Two thirds to the first of each pair: the ordinary long-short of
+        // jazz and blues, and exact rather than a decimal that nearly is.
+        profile band {
+            groove swing {
+                ratio = 2/3;
+            }
+            dynamic mf {
+                amplitude = 0.6;
+            }
+            dynamic f {
+                amplitude = 0.85;
+            }
+        }
+
+        // The drummer keeps the same feel; the ride pattern is what carries
+        // it, so the two profiles agree on purpose rather than by default.
+        profile kit {
+            groove swing {
+                ratio = 2/3;
+            }
+            dynamic mf {
+                amplitude = 0.55;
+            }
+        }
+    }
+
+    score {
+        // The head: a riff on the tonic, answered on the subdominant and
+        // resolved through the turnaround. Twelve bars, I-IV-I-V-IV-I.
+        part lead {
+            clef treble;
+            profile band;
+
+            voice tune {
+                dynamic mf;
+
+                // I — four bars
+                c5 1/8;
+                ef5 1/8;
+                f5 1/8;
+                fs5 1/8;
+                g5 1/8;
+                f5 1/8;
+                ef5 1/8;
+                c5 1/8;
+                c5 1/8;
+                ef5 1/8;
+                f5 1/8;
+                fs5 1/8;
+                g5 1/4;
+                rest 1/4;
+                c5 1/8;
+                ef5 1/8;
+                f5 1/8;
+                fs5 1/8;
+                g5 1/8;
+                f5 1/8;
+                ef5 1/8;
+                c5 1/8;
+                bf4 1/4;
+                c5 1/4;
+                ef5 1/4;
+                f5 1/4;
+
+                // IV — two bars
+                f5 1/8;
+                af5 1/8;
+                bf5 1/8;
+                b5 1/8;
+                c6 1/8;
+                bf5 1/8;
+                af5 1/8;
+                f5 1/8;
+                f5 1/8;
+                af5 1/8;
+                bf5 1/8;
+                b5 1/8;
+                c6 1/4;
+                rest 1/4;
+
+                // I — two bars
+                c5 1/8;
+                ef5 1/8;
+                f5 1/8;
+                fs5 1/8;
+                g5 1/8;
+                f5 1/8;
+                ef5 1/8;
+                c5 1/8;
+                c5 1/4;
+                ef5 1/4;
+                g5 1/4;
+                bf5 1/4;
+
+                // V — IV — I — turnaround
+                dynamic f;
+                g5 1/8;
+                b5 1/8;
+                d6 1/8;
+                f6 1/8;
+                g6 1/4;
+                rest 1/4;
+                f5 1/8;
+                a5 1/8;
+                c6 1/8;
+                ef6 1/8;
+                f6 1/4;
+                rest 1/4;
+                c5 1/8;
+                ef5 1/8;
+                f5 1/8;
+                fs5 1/8;
+                g5 1/8;
+                f5 1/8;
+                ef5 1/8;
+                c5 1/8;
+                g4 1/4;
+                bf4 1/4;
+                c5 1/2;
+            }
+        }
+
+        // The walking bass: quarters, which a swing leaves exactly where they
+        // are — the warp fixes every beat boundary, so a walking line does
+        // not shuffle just because the horn does.
+        part bass {
+            clef bass;
+            profile band;
+
+            voice walk {
+                dynamic mf;
+
+                c3 1/4;
+                e3 1/4;
+                g3 1/4;
+                a3 1/4;
+                c3 1/4;
+                e3 1/4;
+                g3 1/4;
+                bf3 1/4;
+                c3 1/4;
+                e3 1/4;
+                g3 1/4;
+                a3 1/4;
+                c3 1/4;
+                bf3 1/4;
+                a3 1/4;
+                af3 1/4;
+
+                f3 1/4;
+                a3 1/4;
+                c4 1/4;
+                d4 1/4;
+                f3 1/4;
+                a3 1/4;
+                c4 1/4;
+                ef4 1/4;
+
+                c3 1/4;
+                e3 1/4;
+                g3 1/4;
+                a3 1/4;
+                c3 1/4;
+                e3 1/4;
+                g3 1/4;
+                bf3 1/4;
+
+                g3 1/4;
+                b3 1/4;
+                d4 1/4;
+                f4 1/4;
+                f3 1/4;
+                a3 1/4;
+                c4 1/4;
+                ef4 1/4;
+                c3 1/4;
+                e3 1/4;
+                g3 1/4;
+                a3 1/4;
+                g3 1/4;
+                f3 1/4;
+                e3 1/4;
+                c3 1/4;
+            }
+        }
+
+        // The ride: the pattern that states the shuffle, in the eighths the
+        // groove actually moves.
+        part drums {
+            clef bass;
+            profile kit;
+
+            voice ride {
+                dynamic mf;
+                use ride_bar;
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (piece_declaration
+    (string)
+    (tempo_statement
+      (rational)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (comment)
+    (comment)
+    (comment)
+    (fragment_declaration
+      (identifier)
+      (block
+        (repeat_statement
+          (integer)
+          (block
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))))))
+    (performance_declaration
+      (comment)
+      (comment)
+      (profile_declaration
+        (identifier)
+        (groove_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (rational))))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float))))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float)))))
+      (comment)
+      (comment)
+      (profile_declaration
+        (identifier)
+        (groove_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (rational))))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float))))))
+    (score_declaration
+      (comment)
+      (comment)
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (profile_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (dynamic_statement
+            (identifier))
+          (comment)
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (rest_statement
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (comment)
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (rest_statement
+            (duration
+              (rational)))
+          (comment)
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (comment)
+          (dynamic_statement
+            (identifier))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (rest_statement
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (rest_statement
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))))
+      (comment)
+      (comment)
+      (comment)
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (profile_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (dynamic_statement
+            (identifier))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))))
+      (comment)
+      (comment)
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (profile_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (dynamic_statement
+            (identifier))
+          (use_statement
+            (identifier)))))))

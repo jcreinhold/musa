@@ -1,0 +1,102 @@
+================================================================================
+counterpoint
+================================================================================
+
+piece "Counterpoint Study" {
+    tempo quarter = 90;
+    meter 4/4;
+    key d minor;
+
+    score {
+        part violin {
+            clef treble;
+
+            voice lead {
+                bar { d4 1/2; f4 1/2; }
+                bar { e4 1/2; chord [d4, fs4, a4] 1/2 fermata; }
+            }
+        }
+
+        part viola {
+            clef alto;
+
+            voice line {
+                bar { d3 1/2; a2 1/2; }
+                bar { bf2 1/2; a2 1/2 fermata; }
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (piece_declaration
+    (string)
+    (tempo_statement
+      (identifier)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (chord_statement
+                (pitch_literal)
+                (pitch_literal)
+                (pitch_literal)
+                (duration
+                  (rational))
+                (articulation_list
+                  (identifier)))))))
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational))
+                (articulation_list
+                  (identifier))))))))))

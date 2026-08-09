@@ -1,0 +1,17 @@
+{
+  "fixtures": [
+    { "name": "bar-too-long", "syntax_errors": false },
+    { "name": "bar-too-short", "syntax_errors": false },
+    { "name": "declared-twice", "syntax_errors": false },
+    { "name": "ending-outside-repeat", "syntax_errors": false },
+    { "name": "ending-past-the-count", "syntax_errors": false },
+    { "name": "meter-mid-bar", "syntax_errors": false },
+    { "name": "missing-semicolon", "syntax_errors": true },
+    { "name": "missing-unit", "syntax_errors": false },
+    { "name": "span-mark-without-block", "syntax_errors": false },
+    { "name": "unclosed-block", "syntax_errors": true },
+    { "name": "unknown-clef", "syntax_errors": false },
+    { "name": "unknown-mark", "syntax_errors": false },
+    { "name": "unknown-motif", "syntax_errors": false }
+  ]
+}

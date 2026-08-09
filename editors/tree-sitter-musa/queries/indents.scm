@@ -1,0 +1,24 @@
+; Indentation (prompt 80): every braced body indents; closers end it.
+[
+  (piece_declaration)
+  (library_declaration)
+  (score_declaration)
+  (part_declaration)
+  (voice_declaration)
+  (motif_declaration)
+  (fragment_declaration)
+  (performance_declaration)
+  (profile_declaration)
+  (settings_block)
+  (studio_declaration)
+  (patch_declaration)
+  (bus_declaration)
+  (block)
+  (with_clause)
+  (grace_statement)
+  (mobile_statement)
+  (harmony_declaration)
+  (argument_list)
+] @indent
+
+["}" "]" ")"] @end

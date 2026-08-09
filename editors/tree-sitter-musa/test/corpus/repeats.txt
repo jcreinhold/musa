@@ -1,0 +1,176 @@
+================================================================================
+repeats
+================================================================================
+
+// A repeat is one statement with two projections: the page prints the body
+// once between repeat barlines, and the performance plays it through twice.
+// The endings are the part that differs — first time out, second time home.
+piece "Two Ways Home" {
+    tempo quarter = 108;
+    meter 4/4;
+    key g major;
+
+    score {
+        part flute {
+            clef treble;
+
+            voice tune {
+                repeat 2 {
+                    bar { d5 1/4; g5 1/4; fs5 1/4; g5 1/4; }
+                    bar { a5 1/2; b5 1/2; }
+                    ending 1 {
+                        bar { a5 1/2; d5 1/2; }
+                    }
+                    ending 2 {
+                        bar { g5 1; }
+                    }
+                }
+            }
+        }
+
+        part cello {
+            clef bass;
+
+            voice line {
+                repeat 2 {
+                    bar { g2 1/2; b2 1/2; }
+                    bar { d3 1/2; g2 1/2; }
+                    ending 1 {
+                        bar { c3 1/2; a2 1/2; }
+                    }
+                    ending 2 {
+                        bar { g2 1; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (piece_declaration
+    (string)
+    (tempo_statement
+      (identifier)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (repeat_statement
+            (integer)
+            (block
+              (bar_statement
+                (block
+                  (note_statement
+                    (pitch_literal)
+                    (duration
+                      (rational)))
+                  (note_statement
+                    (pitch_literal)
+                    (duration
+                      (rational)))
+                  (note_statement
+                    (pitch_literal)
+                    (duration
+                      (rational)))
+                  (note_statement
+                    (pitch_literal)
+                    (duration
+                      (rational)))))
+              (bar_statement
+                (block
+                  (note_statement
+                    (pitch_literal)
+                    (duration
+                      (rational)))
+                  (note_statement
+                    (pitch_literal)
+                    (duration
+                      (rational)))))
+              (ending_statement
+                (integer)
+                (block
+                  (bar_statement
+                    (block
+                      (note_statement
+                        (pitch_literal)
+                        (duration
+                          (rational)))
+                      (note_statement
+                        (pitch_literal)
+                        (duration
+                          (rational)))))))
+              (ending_statement
+                (integer)
+                (block
+                  (bar_statement
+                    (block
+                      (note_statement
+                        (pitch_literal)
+                        (duration
+                          (integer)))))))))))
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (repeat_statement
+            (integer)
+            (block
+              (bar_statement
+                (block
+                  (note_statement
+                    (pitch_literal)
+                    (duration
+                      (rational)))
+                  (note_statement
+                    (pitch_literal)
+                    (duration
+                      (rational)))))
+              (bar_statement
+                (block
+                  (note_statement
+                    (pitch_literal)
+                    (duration
+                      (rational)))
+                  (note_statement
+                    (pitch_literal)
+                    (duration
+                      (rational)))))
+              (ending_statement
+                (integer)
+                (block
+                  (bar_statement
+                    (block
+                      (note_statement
+                        (pitch_literal)
+                        (duration
+                          (rational)))
+                      (note_statement
+                        (pitch_literal)
+                        (duration
+                          (rational)))))))
+              (ending_statement
+                (integer)
+                (block
+                  (bar_statement
+                    (block
+                      (note_statement
+                        (pitch_literal)
+                        (duration
+                          (integer))))))))))))))

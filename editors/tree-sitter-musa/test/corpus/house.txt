@@ -1,0 +1,471 @@
+================================================================================
+house
+================================================================================
+
+// Four-on-the-floor with a pushed bass (docs/prompts/69).
+//
+// Every part here is written on the grid, because that is what the grid is
+// for. What makes it move is that the bass's offbeat eighths land a
+// sixty-fourth early — the anticipation of house and garage, and a thing no
+// notation has an element for. It is a groove, so it is written once in the
+// profile and nowhere on the page.
+//
+// The kick does *not* push. That asymmetry is the piece: a groove is per
+// part, because the whole effect is one part disagreeing with another on
+// purpose.
+piece "House" {
+    tempo 1/4 = 124;
+    meter 4/4;
+    key a minor;
+
+    // Each part's pattern is material repeated, not a written repeat barline:
+    // the three disagree about how long a pattern is, and a barline cannot.
+    fragment four_on_the_floor {
+        repeat 16 {
+            c2 1/4;
+            c2 1/4;
+            c2 1/4;
+            c2 1/4;
+        }
+    }
+
+    fragment bass_a {
+        repeat 4 {
+            rest 1/8;
+            a2 1/8;
+            rest 1/8;
+            a2 1/8;
+            rest 1/8;
+            a2 1/8;
+            rest 1/8;
+            c3 1/8;
+            rest 1/8;
+            a2 1/8;
+            rest 1/8;
+            a2 1/8;
+            rest 1/8;
+            g2 1/8;
+            rest 1/8;
+            e2 1/8;
+        }
+    }
+
+    fragment bass_b {
+        repeat 4 {
+            rest 1/8;
+            f2 1/8;
+            rest 1/8;
+            f2 1/8;
+            rest 1/8;
+            f2 1/8;
+            rest 1/8;
+            a2 1/8;
+            rest 1/8;
+            g2 1/8;
+            rest 1/8;
+            g2 1/8;
+            rest 1/8;
+            d3 1/8;
+            rest 1/8;
+            c3 1/8;
+        }
+    }
+
+    fragment stab_bar {
+        repeat 16 {
+            rest 1/8;
+            chord [a4, c5, e5] 1/8;
+            rest 1/8;
+            chord [a4, c5, e5] 1/8;
+            rest 1/8;
+            chord [g4, c5, e5] 1/8;
+            rest 1/8;
+            chord [g4, b4, e5] 1/8;
+        }
+    }
+
+    performance {
+        // Negative is early. `by` may not reach `grid`, or the offbeat would
+        // arrive on top of the downbeat before it and the warp would stop
+        // being a warp — the compiler refuses that rather than clamping it.
+        profile bassline {
+            groove push {
+                grid = 1/8;
+                by = -1/64;
+            }
+            dynamic f {
+                amplitude = 0.9;
+            }
+        }
+
+        // Straight, said out loud: the kick is the reference everything else
+        // is early against, so it names its groove rather than inheriting a
+        // default nobody can see.
+        profile floor {
+            groove straight {
+            }
+            dynamic f {
+                amplitude = 0.95;
+            }
+        }
+
+        profile keys {
+            groove push {
+                grid = 1/8;
+                by = -1/64;
+            }
+            dynamic mf {
+                amplitude = 0.55;
+            }
+        }
+    }
+
+    score {
+        part kick {
+            clef bass;
+            profile floor;
+
+            voice pulse {
+                dynamic f;
+                use four_on_the_floor;
+            }
+        }
+
+        part bass {
+            clef bass;
+            profile bassline;
+
+            voice line {
+                dynamic f;
+
+                // The offbeats carry the line, which is exactly what the push
+                // moves; the downbeat rests are what make them audible.
+                use bass_a;
+                use bass_b;
+            }
+        }
+
+        part chords {
+            clef treble;
+            profile keys;
+
+            voice stabs {
+                dynamic mf;
+
+                // Offbeat chord stabs, pushed with the bass so the two agree
+                // and the kick is the only thing on the grid.
+                use stab_bar;
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (piece_declaration
+    (string)
+    (tempo_statement
+      (rational)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (comment)
+    (comment)
+    (fragment_declaration
+      (identifier)
+      (block
+        (repeat_statement
+          (integer)
+          (block
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (repeat_statement
+          (integer)
+          (block
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (repeat_statement
+          (integer)
+          (block
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (repeat_statement
+          (integer)
+          (block
+            (rest_statement
+              (duration
+                (rational)))
+            (chord_statement
+              (pitch_literal)
+              (pitch_literal)
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (chord_statement
+              (pitch_literal)
+              (pitch_literal)
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (chord_statement
+              (pitch_literal)
+              (pitch_literal)
+              (pitch_literal)
+              (duration
+                (rational)))
+            (rest_statement
+              (duration
+                (rational)))
+            (chord_statement
+              (pitch_literal)
+              (pitch_literal)
+              (pitch_literal)
+              (duration
+                (rational)))))))
+    (performance_declaration
+      (comment)
+      (comment)
+      (comment)
+      (profile_declaration
+        (identifier)
+        (groove_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (rational))
+            (setting_statement
+              (identifier)
+              (rational))))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float)))))
+      (comment)
+      (comment)
+      (comment)
+      (profile_declaration
+        (identifier)
+        (groove_rule
+          (identifier)
+          (settings_block))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float)))))
+      (profile_declaration
+        (identifier)
+        (groove_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (rational))
+            (setting_statement
+              (identifier)
+              (rational))))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float))))))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (profile_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (dynamic_statement
+            (identifier))
+          (use_statement
+            (identifier))))
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (profile_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (dynamic_statement
+            (identifier))
+          (comment)
+          (comment)
+          (use_statement
+            (identifier))
+          (use_statement
+            (identifier))))
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (profile_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (dynamic_statement
+            (identifier))
+          (comment)
+          (comment)
+          (use_statement
+            (identifier)))))))

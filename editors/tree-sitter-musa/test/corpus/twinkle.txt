@@ -1,0 +1,116 @@
+================================================================================
+twinkle
+================================================================================
+
+piece "twinkle" {
+    composer "traditional";
+    arranger "musa";
+
+    tempo 1/4 = 104;
+    meter 4/4;
+    key c major;
+
+    score {
+        part piano {
+            voice melody {
+                bar { c4 1/4; c4 1/4; g4 1/4; g4 1/4; }
+                bar { a4 1/4; a4 1/4; g4 1/2; }
+                bar { f4 1/4; f4 1/4; e4 1/4; e4 1/4; }
+                bar { d4 1/4; d4 1/4; c4 1/2; }
+                bar { rest 1; }
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (piece_declaration
+    (string)
+    (front_matter_statement
+      (string))
+    (front_matter_statement
+      (string))
+    (tempo_statement
+      (rational)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (rest_statement
+                (duration
+                  (integer))))))))))

@@ -1,0 +1,344 @@
+================================================================================
+drum-chart
+================================================================================
+
+// A drum chart, which is mostly words (docs/prompts/70).
+//
+// The reason this piece is in the corpus is that almost everything a drum
+// chart communicates is a printed direction rather than a note: which sample
+// the pad is loaded with, where the drop is, when the lights change. Those are
+// notation — a chart prints them above the staff exactly like a text direction
+// — and they are table rows here rather than a second language bolted on.
+//
+// Triggering the sample is the studio's job. `mark sample` prints a name; it
+// does not load anything. That separation is the same one the whole program is
+// built on: a part is not a synthesizer.
+piece "Drum Chart" {
+    tempo 1/4 = 128;
+    meter 4/4;
+    key c major;
+
+    fragment groove_bar {
+        repeat 8 {
+            c2 1/8;
+            fs3 1/8;
+            d2 1/8;
+            fs3 1/8;
+            c2 1/8;
+            fs3 1/8;
+            d2 1/8;
+            fs3 1/8;
+        }
+    }
+
+    performance {
+        profile kit {
+            mark accent {
+                gate = 1/1;
+            }
+
+            dynamic mf {
+                amplitude = 0.6;
+            }
+
+            dynamic f {
+                amplitude = 0.9;
+            }
+        }
+    }
+
+    score {
+        part drums {
+            clef bass;
+            profile kit;
+
+            voice kit {
+                dynamic mf;
+
+                mark rehearsal "A";
+                mark sample "kick_909";
+                mark sample "hat_909";
+                mark cue "lights down";
+
+                use groove_bar;
+
+                mark rehearsal "B";
+                mark text "build";
+
+                dynamic f;
+                c2 1/8 accent;
+                fs3 1/8;
+                d2 1/8;
+                fs3 1/8;
+                c2 1/8 accent;
+                fs3 1/8;
+                d2 1/8;
+                fs3 1/8;
+                c2 1/16 accent;
+                c2 1/16;
+                c2 1/16;
+                c2 1/16;
+                d2 1/16 accent;
+                d2 1/16;
+                d2 1/16;
+                d2 1/16;
+                c2 1/16 accent;
+                c2 1/16;
+                d2 1/16;
+                d2 1/16;
+                c2 1/16;
+                c2 1/16;
+                d2 1/16;
+                d2 1/16;
+
+                mark cue "drop";
+                mark sample "crash_909";
+
+                c2 1/4 accent;
+                rest 1/4;
+                rest 1/2;
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (piece_declaration
+    (string)
+    (tempo_statement
+      (rational)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (fragment_declaration
+      (identifier)
+      (block
+        (repeat_statement
+          (integer)
+          (block
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))
+            (note_statement
+              (pitch_literal)
+              (duration
+                (rational)))))))
+    (performance_declaration
+      (profile_declaration
+        (identifier)
+        (mark_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (rational))))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float))))
+        (dynamic_rule
+          (identifier)
+          (settings_block
+            (setting_statement
+              (identifier)
+              (float))))))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (profile_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (dynamic_statement
+            (identifier))
+          (mark_statement
+            (identifier)
+            (string))
+          (mark_statement
+            (identifier)
+            (string))
+          (mark_statement
+            (identifier)
+            (string))
+          (mark_statement
+            (identifier)
+            (string))
+          (use_statement
+            (identifier))
+          (mark_statement
+            (identifier)
+            (string))
+          (mark_statement
+            (identifier)
+            (string))
+          (dynamic_statement
+            (identifier))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational)))
+          (mark_statement
+            (identifier)
+            (string))
+          (mark_statement
+            (identifier)
+            (string))
+          (note_statement
+            (pitch_literal)
+            (duration
+              (rational))
+            (articulation_list
+              (identifier)))
+          (rest_statement
+            (duration
+              (rational)))
+          (rest_statement
+            (duration
+              (rational))))))))

@@ -95,6 +95,7 @@ language → compiler → { render, audio } → engine → project → { cli, ls
 | `musa-engine` | audio device, transport, real-time queues, MIDI input |
 | `musa-project` | the session facade: documents, revisions, commands, exports |
 | `musa-cli`, `apps/musa-desktop`, `musa-lsp` | thin shells over `musa-project` |
+| `editors/tree-sitter-musa` | tree-sitter grammar and editor queries; a second reader held honest by the lexer |
 
 Dependencies point one way only, and the boundaries are load-bearing: written pitch is not a MIDI number, notated
 duration is not performed duration, a voice is not a mixer track, a dynamic marking is not a number of decibels. Time is

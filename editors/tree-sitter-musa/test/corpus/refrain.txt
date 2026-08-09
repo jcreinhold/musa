@@ -1,0 +1,160 @@
+================================================================================
+refrain
+================================================================================
+
+piece "Refrain" {
+    subtitle "a bar, named where it sounds";
+    composer "musa";
+
+    tempo quarter = 88;
+    meter 3/4;
+    key g major;
+
+    score {
+        part flute {
+            clef treble;
+
+            // A bar sounds where it is written and, with a name on the
+            // front, can be played again from anywhere below it. `use` takes
+            // no parentheses here because there is nothing to pass.
+            voice tune {
+                bar refrain { d5 1/4; b4 1/4; g4 1/4; }
+                bar { a4 1/4; b4 1/4; c5 1/4; }
+                use refrain;
+                bar { e5 1/2; d5 1/4; }
+                use refrain;
+            }
+        }
+
+        part cello {
+            clef bass;
+
+            voice line {
+                bar { g2 1/2; b2 1/4; }
+                bar { d3 3/4; }
+                bar { g2 1/2; b2 1/4; }
+                bar { c3 1/2; a2 1/4; }
+                bar { g2 3/4; }
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (piece_declaration
+    (string)
+    (front_matter_statement
+      (string))
+    (front_matter_statement
+      (string))
+    (tempo_statement
+      (identifier)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (comment)
+        (comment)
+        (comment)
+        (voice_declaration
+          (identifier)
+          (bar_statement
+            (identifier)
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (use_statement
+            (identifier))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (use_statement
+            (identifier))))
+      (part_declaration
+        (identifier)
+        (clef_statement
+          (identifier))
+        (voice_declaration
+          (identifier)
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational)))))
+          (bar_statement
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (rational))))))))))

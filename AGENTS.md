@@ -36,6 +36,7 @@ them drift silently.
 | `crates/musa-cli` | thin CLI over musa-project |
 | `crates/musa-lsp` | thin language server (LSP) over musa-project + musa-language |
 | `apps/musa-desktop` | thin Tauri shell + Svelte UI over musa-project |
+| `editors/tree-sitter-musa` | tree-sitter grammar + editor queries, held to the real lexer by the drift law |
 | `examples/` | `.musa` fixtures — executable specifications, not demos |
 | `docs/kernel/` | the temporal-kernel specification (candidate until prompt 12) |
 | `docs/interface/` | the desktop interface specification (governing) |

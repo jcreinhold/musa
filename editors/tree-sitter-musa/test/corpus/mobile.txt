@@ -1,0 +1,557 @@
+================================================================================
+mobile
+================================================================================
+
+// Stockhausen's Klavierstück XI is nineteen fragments on one large sheet: the
+// pianist looks away, looks back, and plays whichever fragment their eye lands
+// on, until the sheet has been crossed three times. This file is that *shape* —
+// the fragments are written for musa, not transcribed — and it is here because
+// nineteen fragments have 19! orderings, which is the number that settled the
+// argument in `docs/kernel/11-realization.md`: a finite `choose` cannot hold
+// them, and a permutation costs nineteen `u32`s.
+//
+//     musa kernel examples/mobile.musa --seed 7
+//
+// The same seed is the same reading, every time; a different seed is a
+// different one. That is law R1, and it is what makes a mobile a piece a
+// recording can be made of rather than a lottery.
+piece "Nineteen" {
+    composer "musa, after the form of Klavierstück XI";
+
+    tempo 1/4 = 92;
+    meter 4/4;
+    key c major;
+
+    fragment group_one {
+        b5 1/8;
+        g4 1/8;
+        af5 1/4;
+        d5 1/2;
+    }
+    fragment group_two {
+        bf4 1/2;
+        cs5 1/2;
+    }
+    fragment group_three {
+        fs5 1;
+        c5 1;
+    }
+    fragment group_four {
+        d5 1/16;
+        e5 1/16;
+        bf4 1/16;
+        cs5 1/16;
+        ef4 1/4;
+        a4 1/4;
+        ds5 1/4;
+    }
+    fragment group_five {
+        a4 1/2;
+        ds5 1/2;
+    }
+    fragment group_six {
+        g4 1/2;
+        af5 1/4;
+        d5 1/4;
+    }
+    fragment group_seven {
+        cs5 1/4;
+        ef4 1/4;
+        a4 1/4;
+        ds5 1/4;
+    }
+    fragment group_eight {
+        c5 3/4;
+        b5 1/4;
+    }
+    fragment group_nine {
+        e5 1/4;
+        bf4 1/8;
+        cs5 1/8;
+        ef4 1/2;
+    }
+    fragment group_ten {
+        ds5 1/4;
+        fs5 1/2;
+        c5 1/4;
+    }
+    fragment group_eleven {
+        af5 1/8;
+        d5 1/4;
+        e5 1/8;
+        bf4 1/8;
+        cs5 1/4;
+        ef4 1/8;
+    }
+    fragment group_twelve {
+        ef4 1/8;
+        a4 1/8;
+        ds5 1/8;
+        fs5 1/8;
+        c5 1/8;
+        b5 1/8;
+        g4 1/8;
+        af5 1/8;
+    }
+    fragment group_thirteen {
+        b5 1/8;
+        g4 1/8;
+        af5 1/4;
+        d5 1/2;
+    }
+    fragment group_fourteen {
+        bf4 1/2;
+        cs5 1/2;
+    }
+    fragment group_fifteen {
+        fs5 1;
+        c5 1;
+    }
+    fragment group_sixteen {
+        d5 1/16;
+        e5 1/16;
+        bf4 1/16;
+        cs5 1/16;
+        ef4 1/4;
+        a4 1/4;
+        ds5 1/4;
+    }
+    fragment group_seventeen {
+        a4 1/2;
+        ds5 1/2;
+    }
+    fragment group_eighteen {
+        g4 1/2;
+        af5 1/4;
+        d5 1/4;
+    }
+    fragment group_nineteen {
+        cs5 1/4;
+        ef4 1/4;
+        a4 1/4;
+        ds5 1/4;
+    }
+
+    score {
+        part piano {
+            voice right {
+                mobile {
+                    group_one;
+                    group_two;
+                    group_three;
+                    group_four;
+                    group_five;
+                    group_six;
+                    group_seven;
+                    group_eight;
+                    group_nine;
+                    group_ten;
+                    group_eleven;
+                    group_twelve;
+                    group_thirteen;
+                    group_fourteen;
+                    group_fifteen;
+                    group_sixteen;
+                    group_seventeen;
+                    group_eighteen;
+                    group_nineteen;
+                }
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (piece_declaration
+    (string)
+    (front_matter_statement
+      (string))
+    (tempo_statement
+      (rational)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (fragment_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (mobile_statement
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)
+            (identifier)))))))

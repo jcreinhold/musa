@@ -1,0 +1,16 @@
+{
+  "name": "tree-sitter-musa",
+  "version": "0.1.0",
+  "description": "musa grammar for tree-sitter",
+  "main": "bindings/node",
+  "scripts": {
+    "generate": "tree-sitter generate",
+    "test": "tree-sitter generate && tree-sitter test && node test/compare-tokens.js",
+    "test:corpus": "tree-sitter test",
+    "test:update": "tree-sitter generate && tree-sitter test -u",
+    "parse": "tree-sitter parse"
+  },
+  "devDependencies": {
+    "tree-sitter-cli": "^0.26.11"
+  }
+}

@@ -1,0 +1,100 @@
+================================================================================
+canon
+================================================================================
+
+piece "canon" {
+    tempo 1/4 = 96;
+    meter 3/4;
+    key g major;
+
+    motif theme() {
+        g4 1/4;
+        a4 1/4;
+        b4 1/4;
+        g4 1/4;
+        c5 1/2;
+        b4 1/2;
+        a4 1/2;
+        g4 1/2;
+    }
+
+    score {
+        part strings {
+            voice dux {
+                use theme();
+            }
+            voice comes {
+                rest 3/4;
+                transpose up P5 {
+                    use theme();
+                }
+            }
+        }
+    }
+}
+
+---
+
+(source_file
+  (piece_declaration
+    (string)
+    (tempo_statement
+      (rational)
+      (integer))
+    (meter_statement
+      (rational))
+    (key_statement
+      (identifier)
+      (identifier))
+    (motif_declaration
+      (identifier)
+      (block
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (rational)))))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (use_statement
+            (identifier)))
+        (voice_declaration
+          (identifier)
+          (rest_statement
+            (duration
+              (rational)))
+          (transpose_statement
+            (interval_literal)
+            (block
+              (use_statement
+                (identifier)))))))))
