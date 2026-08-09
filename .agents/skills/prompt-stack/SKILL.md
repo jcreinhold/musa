@@ -11,7 +11,7 @@ live in `docs/prompts/README.md`; this skill is the operating procedure. Follow 
 ## 1. Select the prompt
 
 ```sh
-grep -l '^status: pending' docs/prompts/*.md | sort
+grep -l '^status: pending' docs/prompts/[0-9]*.md | LC_ALL=C sort -t/ -k3,3n -k3,3
 ```
 
 Pick the **lowest-numbered** pending prompt whose `depends_on` are all `done` (frontmatter grep). If the user named a

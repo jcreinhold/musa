@@ -586,6 +586,25 @@ service/library over `Timeline[ScoreFact]` or the score projection, returning da
 This keeps construction, annotation, and verification independent. A composer may generate a chord without annotating
 it, annotate a chord without deriving the notes from it, and ask an analysis to compare the two.
 
+The language should distinguish three strengths of guarantee:
+
+- **Type/constructor invariant, before a core value exists:** positive stretch, exact duration, `row12` uniqueness,
+  and PLR's `triad` domain.
+- **Explicit musical assertion, after each contextual instantiation:** a named bar fills its meter, selected notes
+  realize this chord symbol, or pitches lie in this scale.
+- **Interpretive analysis, on request over closed facts:** inferred key, Roman numeral, tonicization/modulation,
+  cadence, and counterpoint style.
+
+An assertion is a checked identity transform on `music`: if it succeeds, it returns the same musical facts and records
+the assertion in provenance; if it fails, instantiation returns a diagnostic. Its predicate is a compiler-owned or
+typed-library interface over a coherent musical view, not arbitrary access to `ScoreFact`. This permits a composer to
+ask for strict diatonic membership or chord/notes agreement exactly where intended.
+
+Musa must not globally reject a note because it is outside the prevailing key, infer that every simultaneity realizes
+the nearest chord label, or call a key change a modulation by syntax alone. Chromatic tones, incomplete voicings,
+non-chord tones, mixture, and tonicization are ordinary music. The compiler proves declared constructions and explicit
+claims; analysis proposes interpretations and reports evidence without rewriting the score.
+
 ## 9. Kernel files and the local splice
 
 ### 9.1 The subset claim
@@ -874,6 +893,8 @@ introduces them:
 - **Scale laws:** stepping composes additively within one located scale; chromatic transposition and scale stepping have
   tested non-commutation examples.
 - **Transform laws:** identity/composition/homomorphism claims only over the facts and domains actually transformed.
+- **Assertion law:** a successful explicit assertion preserves facts and extent while adding its Origin step; failure
+  produces the declared stable domain error instead of changing or guessing the music.
 - **Kernel-subset law:** every committed `.musa.kernel` fixture parses unchanged through the unified source entry and
   has the same term/denotation as direct kernel parsing.
 - **Splice law:** quotation followed by antiquotation is hygienic, closed, and preserves each hole's exact extent and

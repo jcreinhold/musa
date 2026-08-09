@@ -15,6 +15,11 @@ and install that kernel; prompts 13+ proceed exactly as before on top of it.
 states, and performance budgets — `docs/interface/` is the authority. Roadmap §14 still fixes the architecture. Prompts
 20–26 implement `docs/interface/`; prompt 26 graduated it from candidate to governing, as prompt 12 did for the kernel.
 
+**The elaboration-language direction is a candidate until it earns graduation.** Prompt 92 turns
+`docs/elaboration-language.md` into a precise candidate specification under `docs/language/`; prompts 93–118 implement
+and test it; prompt 119 makes it governing only if the complete conformance matrix is green. Until then, the roadmap,
+course correction, and existing kernel remain authoritative where the candidate differs.
+
 ## Prompt anatomy
 
 Each prompt is a markdown file `NN-<slug>.md` with YAML frontmatter:
@@ -189,6 +194,34 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 89 | the-bar-is-the-line | 2 | `\|` for the anonymous bar, events without `;`, `[c3 g3]/2`, `>` and `^` |
 | 90 | the-formatter-draws-the-bar | 2 | One bar per line, beat groups in the whitespace — a beam, written in text |
 | 91 | bars-drawn-to-scale | 2 | One optional setting: horizontal position proportional to time |
+| 92 | elaboration-language-spec | 3 | Normative candidate spec, formal judgments, decisions, proof obligations |
+| 93 | elaboration-baseline | 3 | Frozen compatibility oracle and end-to-end performance baseline |
+| 94 | expression-syntax | 3 | Lossless typed-expression grammar, formatting, editor grammar parity |
+| 95 | total-functional-core | 3 | Private total typed evaluator/checker and metatheory law suite |
+| 96 | finite-data-and-budgets | 3 | Finite values, structural folds, deterministic resource budgets |
+| 97 | contextual-music | 3 | Context-neutral `Music`, one elaboration path, compatibility migration |
+| 98 | higher-order-music | 3 | Music-producing functions, structural folds, controlled pitch mapping |
+| 99 | bundled-standard-library | 3 | Source-defined, inspectable, versioned standard library |
+| 100 | written-pitch-algebra | 3 | Spelled pitch/interval action and distinct pitch-class quotient |
+| 101 | scales-degrees-and-context | 3 | Keys, scales, degree resolution, register frames, modal collections |
+| 102 | chord-classes-and-voicings | 3 | Chord symbols/classes/voicings with explicit realization |
+| 103 | structural-templates | 3 | Typed piece/voice templates with stable generative identity |
+| 104 | library-modules-and-functors | 3 | Static signatures/modules/functors for coherent theory contexts |
+| 105 | pc12-sets-and-rows | 3 | Explicit post-tonal pitch-class, set, and row domain |
+| 106 | transformational-harmony-library | 3 | Source-defined, domain-correct neo-Riemannian operations |
+| 107 | tonal-harmony-construction | 3 | Typed Roman and chromatic harmony constructors, not analyses |
+| 108 | schemas-and-harmonization | 3 | Finite source-defined schemas, sequences, Rule of the Octave |
+| 109 | explicit-theory-assertions | 3 | Identity-preserving opt-in musical constraints |
+| 110 | analysis-service | 3 | Narrow evidence-bearing advisory-analysis boundary |
+| 111 | tonal-analysis | 3 | Ambiguity-preserving Roman, cadence, tonicization, modulation findings |
+| 112 | voice-leading-and-counterpoint | 3 | Explicit style profiles with rule strengths and evidence |
+| 113 | kernel-source-inclusion | 3 | Valid `.musa.kernel` documents and typed whole-document inclusion |
+| 114 | typed-kernel-quotation | 3 | Hygienic local quote/antiquote at the context-neutral boundary |
+| 115 | elaboration-language-tooling | 3 | One compiler-backed semantic tooling model across editors |
+| 116 | elaboration-workbench | 3 | Musician-first desktop interaction for types, origin, assertions, analysis |
+| 117 | language-and-theory-handbook | 3 | Tested musician and implementor paths with theory citations |
+| 118 | elaboration-performance-closure | 3 | Profiled latency, allocation, memory, caching, and budget closure |
+| 119 | elaboration-conformance | 3 | Whole-stack audit and conditional language-spec graduation |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
@@ -333,6 +366,34 @@ Read 87 and 90 together as the pair: 87 argues that notation gets away with stat
 *free*, so text must make it cheap; 90 argues that notation groups beats with a beam, so text must group them with
 space. Neither prompt invents a device. Both take one notation already has and ask what it costs in characters.
 
+**92–99 build the elaboration-language foundation without weakening the kernel boundary.** 92 specifies the static and
+dynamic judgments before syntax is accepted; 93 freezes both observable compatibility and cost before the implementation
+can move either; 94–96 add syntax, a total typed functional core, finite data, and deterministic limits; 97–98 make
+`Music` a context-neutral elaboration result and allow higher-order construction only through structure-preserving
+operations; 99 makes the standard library ordinary inspectable Musa source. This order makes the kernel the denotation,
+not the programming language, and keeps the evaluator/type checker private to `musa-compiler` rather than growing a
+new crate or public HIR.
+
+**100–112 are a bounded theory block, not a universal “music theory engine.”** 100–105 establish distinct domains for
+spelled pitches, intervals, scales, keys, degrees, chord classes, voicings, `pc12`, pitch-class sets, and rows before an
+operation can accidentally collapse them. 106–108 then implement transformational, tonal-construction, schema, and
+harmonization libraries as total source functions over those types. 109 separates explicit assertions from advisory
+inference; 110 gives analyses a narrow evidence-bearing service; 111–112 add tonal, voice-leading, and counterpoint
+profiles with their repertoire and convention stated. The prompts cite the local Open Music Theory corpus where it is
+authoritative and require local definitions, proofs, and exhaustive finite models where it is not.
+
+**113–116 pay the interchange and usability costs.** A `.musa.kernel` file becomes a valid typed Musa document before
+local quote/antiquote is admitted; quotation crosses only the context-neutral `ScoreFact` boundary and preserves hygiene
+and provenance. The language server, editor extensions, and desktop consume the same compiler/project facts. They may
+explain types, origins, assertions, and competing analyses, but may not grow a second checker, editable expanded AST, or
+visual programming model.
+
+**117–119 close the block rather than declaring victory after parsing examples.** 117 tests two documentation paths —
+one by musical task and one by language implementation — and generates standard-library signatures from source. 118
+compares the full system to 93's baseline, profiles regressions, and permits caching or incrementality only when their
+semantic keys and measured need are demonstrated. 119 traces every normative rule to implementation and evidence across
+the kernel, renderers, project, editors, and desktop; it graduates `docs/language/` only if no row is red or unowned.
+
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
 ("Verovio score preview", "play, stop, seek, loop") but which this sequence deliberately runs after the CLI-provable
 slice. Prompt 33 is roadmap Phase 2 scope ("MIDI step entry", "autosave") ordered after the desktop prompts it depends
@@ -348,7 +409,8 @@ Do not create prompts for these until the native system is stable and the user a
 - MusicXML import;
 - audio recording and waveform editing (rejected outright unless the product's purpose changes).
 
-Also deferred: the **theory libraries** of roadmap §8.2 (tonal analysis, Roman numerals, neo-Riemannian operations,
-scales/modes, voice-leading, counterpoint, auto-voicing). The roadmap lists them under Phase 3 but defines them as
-open-ended algorithms over the compositional model, not core features; prompt 35 builds the annotation and chord-symbol
-model they would consume. Scope a theory library as its own prompt sequence when a concrete operation is requested.
+Prompts 100–112 are the requested, deliberately finite theory-library scope. Still out of scope are a universal or
+style-neutral theory engine, unconstrained automatic composition, corpus-trained inference, probabilistic analysis,
+arbitrary tuning-system abstraction, and claims that one analytical vocabulary is musical truth. A new repertoire,
+style profile, or theory family needs its own named domain, sources or definitions, tests, and prompt; it must not enter
+through a widening “theory” trait or an undocumented default.
