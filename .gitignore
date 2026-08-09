@@ -4,3 +4,5 @@
 # Autosave copies (musa-project/src/autosave.rs). They sit beside the file
 # they recover and are deleted on save; none of them belongs in history.
 *.recovery
+
+.vscode/settings.json
