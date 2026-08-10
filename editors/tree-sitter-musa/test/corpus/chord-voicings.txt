@@ -3,8 +3,8 @@ chord classes, voicing policies, and the close-position sugar
 ================================================================================
 
 piece "Chord Voicings" {
-  use std::harmony;
-  use std::voicing;
+  import std::harmony;
+  import std::voicing;
   let sonority: chord_class = chord c major7;
   let close: option[voicing] = close_position(sonority, c4);
   fn held(chosen: voicing) -> music = play(chosen, 1/1);

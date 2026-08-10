@@ -203,14 +203,14 @@ module.exports = grammar({
         '}',
       ),
 
-    // Parser::import_stmt — `use "../library/motifs.musa";`
+    // Parser::import_stmt — `import "../library/motifs.musa";`
     // A module may be named after a type or a domain keyword — `harmony`,
     // `list`, `option`, `pitch`, `scale` — and the lexer writes the keyword
     // token wherever the word appears. The path position is what makes the
     // word a module name, exactly as in `Parser::import_stmt`.
     import_statement: ($) =>
       seq(
-        'use',
+        'import',
         field(
           'path',
           choice(
@@ -218,6 +218,7 @@ module.exports = grammar({
             seq($.identifier, ':', ':', choice($.identifier, 'harmony', 'list', 'option', 'pitch', 'scale')),
           ),
         ),
+        optional(seq('as', field('alias', $.identifier))),
         ';',
       ),
 

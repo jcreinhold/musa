@@ -14,10 +14,10 @@
 // flat bass under it does not, which is the whole difference between the
 // German sixth and the dominant seventh it sounds like.
 piece "Tonal construction" {
-    use std::harmony;
-    use std::scale;
-    use std::tonal_harmony;
-    use std::voicing;
+    import std::harmony;
+    import std::scale;
+    import std::tonal_harmony;
+    import std::voicing;
 
     // The three collections this piece names. C minor is not one collection,
     // so the two it uses are both written out.
@@ -124,12 +124,16 @@ piece "Tonal construction" {
     // spelled, which is why every chord below names its own bass instead of
     // sharing one.
     fn stacked(bass: pitch, content: option[chord_class]) -> music = match content {
-        none -> music { rest/1 },
+        none -> music {
+            rest/1
+        },
         some(sounding) -> voiced(close_position(sounding, bass)),
     };
 
     fn voiced(chosen: option[voicing]) -> music = match chosen {
-        none -> music { rest/1 },
+        none -> music {
+            rest/1
+        },
         some(spread) -> sound_for(spread, 1),
     };
 

@@ -253,6 +253,8 @@ enum RawToken {
     ClefKw,
     #[token("use", priority = 3)]
     UseKw,
+    #[token("import", priority = 3)]
+    ImportKw,
     #[token("transpose", priority = 3)]
     TransposeKw,
     #[token("down", priority = 3)]
@@ -443,6 +445,7 @@ impl RawToken {
             | Self::VoiceKw
             | Self::ClefKw
             | Self::UseKw
+            | Self::ImportKw
             | Self::TransposeKw
             | Self::DownKw
             | Self::UpKw
@@ -564,6 +567,7 @@ impl RawToken {
             Self::VoiceKw => SyntaxKind::VoiceKw,
             Self::ClefKw => SyntaxKind::ClefKw,
             Self::UseKw => SyntaxKind::UseKw,
+            Self::ImportKw => SyntaxKind::ImportKw,
             Self::TransposeKw => SyntaxKind::TransposeKw,
             Self::DownKw => SyntaxKind::DownKw,
             Self::UpKw => SyntaxKind::UpKw,

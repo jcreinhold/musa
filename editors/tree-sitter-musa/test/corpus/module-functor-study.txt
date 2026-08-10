@@ -8,7 +8,7 @@ module-functor-study: a signature, two modules, and a functor made twice
 // travel *together*: a key, its collection, and how the two spell a degree
 // are useless apart, and passing them one at a time is how they drift
 // (docs/language/04-templates-and-modules.md §4).
-use std::context;
+import std::context;
 
 // What a canon needs, gathered once. Members are `let` without their
 // definition — a function is a value of arrow type, so one member form

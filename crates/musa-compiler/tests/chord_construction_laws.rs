@@ -78,10 +78,10 @@ fn piece(body: &str) -> String {
 /// collection takes a register frame on `c4` and no other collection does, so
 /// the pitch that comes back names the class that went in.
 const PRELUDE: &str = "\
-    use std::collections;
-    use std::harmony;
-    use std::scale;
-    use std::voicing;
+    import std::collections;
+    import std::harmony;
+    import std::scale;
+    import std::voicing;
 
     fn held(chosen: voicing) -> music = play(chosen, 1/1);
     fn sounded(chosen: option[voicing]) -> music = option_fold(music { rest/1 }, held, chosen);

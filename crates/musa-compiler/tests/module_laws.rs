@@ -378,7 +378,7 @@ fn a_signature_a_module_names_must_exist() {
 #[test]
 fn a_bundled_context_is_imported_like_any_other_library() {
     let importing = r#"
-use std::context;
+import std::context;
 
 piece "Study" {
     meter 4/4;

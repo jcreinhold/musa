@@ -44,7 +44,7 @@ static LIBRARY: KeywordDoc = doc!(
     "library",
     "declarations other pieces can import",
     "A library is a file of declarations — motifs, fragments, studio patches — meant to be used by other files \
-     rather than played itself. A piece brings one in with `use \"path\";` and then speaks its names as its own.\n\n\
+     rather than played itself. A piece brings one in with `import \"path\";` and then speaks its names as its own.\n\n\
      ```musa\nlibrary { motif sigh(root: pitch) { … } }\n```"
 );
 static TEMPO: KeywordDoc = doc!(
@@ -156,11 +156,20 @@ static PERFORMANCE: KeywordDoc = doc!(
 );
 static USE: KeywordDoc = doc!(
     "use",
-    "write out a motif, or import a library",
+    "write out a motif where it stands",
     "`use` writes out a declared motif where it stands, with arguments for its parameters: `use sigh(e5);` is \
-     the motif spelled here, once. At the top of a piece it imports a relative library file, or an explicit bundled \
-     module such as `use std::core;`. Bundled modules are ordinary Musa source and add no hidden prelude.\n\n\
+     the motif spelled here, once. It is a splice and not a call: the music arrives at the cursor and is \
+     sequenced there. Bringing in another file is `import`, which is a different statement and now a different \
+     word.\n\n\
      ```musa\nuse sigh(e5);\n```"
+);
+static IMPORT: KeywordDoc = doc!(
+    "import",
+    "bring another file's names into this one",
+    "`import` reads a relative library file or a bundled module and binds its declarations as if they were \
+     written here: `import \"../library/motifs.musa\";` or `import std::core;`. Add `as name` to bring it in \
+     under a different name. Bundled modules are ordinary Musa source and add no hidden prelude.\n\n\
+     ```musa\nimport std::core;\n```"
 );
 static TRANSPOSE: KeywordDoc = doc!(
     "transpose",
@@ -684,6 +693,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::ProfileKw => &PROFILE,
         SyntaxKind::PerformanceKw => &PERFORMANCE,
         SyntaxKind::UseKw => &USE,
+        SyntaxKind::ImportKw => &IMPORT,
         SyntaxKind::TransposeKw => &TRANSPOSE,
         SyntaxKind::UpKw => &UP,
         SyntaxKind::DownKw => &DOWN,
@@ -913,6 +923,7 @@ mod tests {
             SyntaxKind::ProfileKw,
             SyntaxKind::PerformanceKw,
             SyntaxKind::UseKw,
+            SyntaxKind::ImportKw,
             SyntaxKind::TransposeKw,
             SyntaxKind::UpKw,
             SyntaxKind::DownKw,

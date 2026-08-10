@@ -212,7 +212,7 @@ fn material_is_marked_in_use_by_the_piece_in_hand() -> Result {
     std::fs::write(dir.path().join("library/spare.musa"), "library {\n}\n")?;
     std::fs::write(
         dir.path().join("pieces/draws.musa"),
-        "piece \"Draws\" {\n    use \"../library/used.musa\";\n    score {\n        part p {\n            voice v {\n                use rise();\n            }\n        }\n    }\n}\n",
+        "piece \"Draws\" {\n    import \"../library/used.musa\";\n    score {\n        part p {\n            voice v {\n                use rise();\n            }\n        }\n    }\n}\n",
     )?;
     std::fs::write(dir.path().join("pieces/alone.musa"), piece("Alone"))?;
 

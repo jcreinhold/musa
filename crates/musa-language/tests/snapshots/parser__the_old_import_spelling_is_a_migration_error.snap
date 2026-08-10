@@ -1,0 +1,8 @@
+---
+source: crates/musa-language/tests/parser.rs
+expression: print_errors(&doc)
+---
+14..17: `use` no longer imports
+  label: this brings in a file, so it is an `import`
+  help: `use` writes out a motif where it stands; `import` brings another file's names into this one
+  fix: write `import` -> "import"

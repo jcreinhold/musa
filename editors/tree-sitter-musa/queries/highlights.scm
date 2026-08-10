@@ -77,6 +77,7 @@
   "let"
   "fn"
   "music"
+  "import"
   "option"
   "list"
   "match"
@@ -86,8 +87,9 @@
   "false"
 ] @keyword
 
-; `use` alone, as TokenClass::Use says: it is where material comes from —
-; an import of a library or a call of a motif.
+; `use` alone, as TokenClass::Use says: it is where material comes from.
+; `import` is a structural keyword and belongs with the list above: it brings
+; in names, not material.
 "use" @keyword.import
 
 ; --- The music itself ------------------------------------------------------

@@ -480,7 +480,7 @@ impl LibraryDecl {
     }
 }
 
-/// `use "../library/motifs.musa";` or `use std::core;`
+/// `import "../library/motifs.musa";` or `import std::core;`
 pub struct ImportStmt(SyntaxNode);
 wrapper!(ImportStmt, SyntaxKind::ImportStmt);
 
@@ -500,6 +500,8 @@ impl ImportStmt {
             .0
             .children_with_tokens()
             .filter_map(SyntaxElement::into_token)
+            // The alias is a name too, and it is not part of the path.
+            .take_while(|token| token.kind() != SyntaxKind::AsKw)
             .filter(|token| {
                 matches!(
                     token.kind(),

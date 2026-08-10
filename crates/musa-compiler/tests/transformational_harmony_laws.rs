@@ -37,10 +37,10 @@ const MAJOR: usize = 2;
 
 /// The counting apparatus, and the two triads every fixture starts from.
 const PRELUDE: &str = r"
-    use std::harmony;
-    use std::pcset;
-    use std::transformational;
-    use std::voicing;
+    import std::harmony;
+    import std::pcset;
+    import std::transformational;
+    import std::voicing;
 
     meter 4/4;
 

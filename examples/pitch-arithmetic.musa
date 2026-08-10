@@ -3,7 +3,7 @@
 // guessed back from a MIDI number (Open Music Theory, Intervals; Pitch and
 // Pitch Class).
 piece "Pitch Arithmetic" {
-    use std::pitch;
+    import std::pitch;
 
     let two_octaves: interval = compose_intervals(octave, octave);
 

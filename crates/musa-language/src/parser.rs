@@ -545,7 +545,7 @@ impl<'a> Parser<'a> {
     fn root_preamble(&mut self) -> bool {
         let mut made = false;
         loop {
-            if self.at(SyntaxKind::UseKw) {
+            if self.at_any(&[SyntaxKind::ImportKw, SyntaxKind::UseKw]) {
                 self.import_stmt();
             } else if self.at(SyntaxKind::LetKw) {
                 self.let_decl();
@@ -694,7 +694,7 @@ impl<'a> Parser<'a> {
                 }
                 break;
             }
-            if self.at(SyntaxKind::UseKw) {
+            if self.at_any(&[SyntaxKind::ImportKw, SyntaxKind::UseKw]) {
                 self.import_stmt();
             } else if self.at(SyntaxKind::TempoKw) {
                 self.tempo_stmt();
@@ -802,7 +802,7 @@ impl<'a> Parser<'a> {
                 }
                 break;
             }
-            if self.at(SyntaxKind::UseKw) {
+            if self.at_any(&[SyntaxKind::ImportKw, SyntaxKind::UseKw]) {
                 self.import_stmt();
             } else if self.at(SyntaxKind::MotifKw) {
                 self.motif_decl();
@@ -840,13 +840,19 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `use "../library/motifs.musa";` — a relative import.
+    /// `import "../library/motifs.musa";` or `import std::core as core;`
     ///
-    /// Told apart from a motif call by what follows `use`: a string is a
-    /// file, a name is a motif.
+    /// Nothing is told apart by lookahead any more: `import` is one statement
+    /// and `use` is the other, which is the whole point of there being two
+    /// words. The old spelling is still read here so that a file written
+    /// against it parses into the same shape and gets one located complaint
+    /// instead of a cascade.
     fn import_stmt(&mut self) {
         self.start(SyntaxKind::ImportStmt);
-        self.bump(); // use
+        if self.at(SyntaxKind::UseKw) {
+            self.moved_to_import();
+        }
+        self.bump(); // `import`, or the `use` that should have been one
         if self.at(SyntaxKind::String) {
             self.bump();
         } else {
@@ -869,8 +875,36 @@ impl<'a> Parser<'a> {
                 self.expected("a standard-library module name");
             }
         }
+        if self.at(SyntaxKind::AsKw) {
+            self.bump();
+            self.expect(SyntaxKind::Identifier, "a name for the imported module");
+        }
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
+    }
+
+    /// The one complaint a file written against the old spelling gets.
+    ///
+    /// Located at the word itself and carrying the word that replaces it, so
+    /// the migration is an accepted fix rather than a search. Both meanings
+    /// are named because the reader's next question is which `use` this was:
+    /// the splices in their score are not affected and should not be touched.
+    fn moved_to_import(&mut self) {
+        if self.cascading() {
+            return;
+        }
+        let Some(token) = self.significant() else {
+            return;
+        };
+        self.errors.push(
+            SyntaxError::new(
+                token.range,
+                "`use` no longer imports",
+                "this brings in a file, so it is an `import`",
+            )
+            .with_help("`use` writes out a motif where it stands; `import` brings another file's names into this one")
+            .with_fix("write `import`", "import"),
+        );
     }
 
     /// `meter <n>/<d>;` or `meter none;`

@@ -59,7 +59,7 @@ pub struct EntryFacts {
     /// Whether it has edits that are not on disk.
     pub unsaved: bool,
     /// Material the current piece imports. Always false for a piece: what a
-    /// piece uses is its own business, and its `use` statements already say.
+    /// piece reads is its own business, and its `import` statements already say.
     pub used: bool,
 }
 

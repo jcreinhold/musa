@@ -8,7 +8,7 @@
     { "kind": "piece", "text": "piece" },
     { "kind": "string", "text": "\"Pitch Arithmetic\"" },
     { "kind": "{", "text": "{" },
-    { "kind": "use", "text": "use" },
+    { "kind": "import", "text": "import" },
     { "kind": "identifier", "text": "std" },
     { "kind": ":", "text": ":" },
     { "kind": ":", "text": ":" },

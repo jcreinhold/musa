@@ -7,7 +7,7 @@
     { "kind": "comment", "text": "// travel *together*: a key, its collection, and how the two spell a degree" },
     { "kind": "comment", "text": "// are useless apart, and passing them one at a time is how they drift" },
     { "kind": "comment", "text": "// (docs/language/04-templates-and-modules.md §4)." },
-    { "kind": "use", "text": "use" },
+    { "kind": "import", "text": "import" },
     { "kind": "identifier", "text": "std" },
     { "kind": ":", "text": ":" },
     { "kind": ":", "text": ":" },

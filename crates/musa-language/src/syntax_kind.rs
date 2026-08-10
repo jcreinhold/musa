@@ -127,6 +127,8 @@ pub enum SyntaxKind {
     ClefKw,
     /// `use`
     UseKw,
+    /// `import`
+    ImportKw,
     /// `transpose`
     TransposeKw,
     /// `down`
@@ -353,7 +355,7 @@ pub enum SyntaxKind {
     /// `library { ... }` — a file of shared declarations, importable by a
     /// piece. Root of a library file, in place of a [`SyntaxKind::PieceDecl`].
     LibraryDecl,
-    /// `use "../library/motifs.musa";` — a relative import.
+    /// `import "../library/motifs.musa";` — a relative import.
     ImportStmt,
     /// `crescendo to f { ... }` / `diminuendo to p { ... }` — a hairpin over
     /// the notes it wraps.

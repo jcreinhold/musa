@@ -97,11 +97,31 @@ fn backend_snapshot_digest(prefix: &str) -> Result<(usize, String)> {
     Ok((paths.len(), digest(&corpus)))
 }
 
+/// The deliberate breaks this baseline has absorbed, and why each one was
+/// allowed to move it.
+///
+/// `docs/language/README.md`'s graduation criterion 2 asks that a pre-candidate
+/// example either keep its meaning or have an explicit, tested migration
+/// diagnostic. A refreshed manifest cannot tell those two apart on its own —
+/// the digests simply become the new digests — so a break is named here before
+/// it is refreshed, and the manifest carries the list. Reviewing a baseline
+/// diff then means checking that the section above it explains the section
+/// below it.
+const BREAKS: [(u32, &str, &str); 1] = [(
+    109,
+    "`use` no longer imports; the import statement is spelled `import`",
+    "parser::the_old_import_spelling_is_a_migration_error",
+)];
+
 fn manifest() -> Result<String> {
     let mut out = String::from(
         "# musa elaboration compatibility manifest v1\n\
-         # Test oracle only; this is not a serialization or public interface.\n",
+         # Test oracle only; this is not a serialization or public interface.\n\
+         \n[breaks]\n",
     );
+    for (prompt, what, migration) in BREAKS {
+        let _ = writeln!(out, "break={prompt}:{what}:{migration}");
+    }
     for (name, source) in FIXTURES {
         let document_name = format!("tests/fixtures/{name}.musa");
         let document = SourceDocument::new(source, &document_name);

@@ -61,6 +61,23 @@ fn examples_format_to_themselves() {
     assert_eq!(fmt(BULGARIAN), BULGARIAN);
 }
 
+/// An import is one line whatever it names, and the alias is part of it.
+///
+/// The `::` in a module path is the one colon the formatter does not put a
+/// space after, and `as` is an ordinary word between two names; neither is
+/// worth a rule of its own, which is exactly what this pins.
+#[test]
+fn an_import_formats_to_one_line_with_its_alias() {
+    let source = "piece \"Aliased\"{\nimport std::core as basics;\nimport   \"../lib.musa\"   as shared;\n}\n";
+    let formatted = fmt(source);
+    assert_eq!(
+        formatted,
+        "piece \"Aliased\" {\n    import std::core as basics;\n    import \"../lib.musa\" as shared;\n}\n"
+    );
+    assert_eq!(fmt(&formatted), formatted, "idempotence");
+    assert_semantics_preserved(source, &formatted);
+}
+
 #[test]
 fn messy_source_is_canonicalized() {
     let source = "piece   \"Messy\"{\n\ttempo quarter=72;\n\n\nmeter 4/4;\nkey a minor;\nscore{\npart p{\nclef treble;\nvoice v{\nc5   1/4\n[a3   c4  e4]/2\nrest 1/4\n}\n}\n}\n}\n";

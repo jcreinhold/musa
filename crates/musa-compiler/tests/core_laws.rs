@@ -67,7 +67,7 @@ fn imported_values_are_lexical_dependencies_not_a_second_evaluator() {
         "library { let basis: nat = 5; fn preserve(x: nat) -> nat = x; }",
     );
     let source = SourceDocument::new(
-        "piece \"Imported core\" { use \"theory.musa\"; let answer: nat = preserve(basis); score { part p { voice v { c4/1 } } } }",
+        "piece \"Imported core\" { import \"theory.musa\"; let answer: nat = preserve(basis); score { part p { voice v { c4/1 } } } }",
         "piece.musa",
     );
     let compilation = compile(

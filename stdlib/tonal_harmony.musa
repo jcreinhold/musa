@@ -1,6 +1,6 @@
 library {
-    use std::harmony;
-    use std::scale;
+    import std::harmony;
+    import std::scale;
 
     // A Roman numeral is a coordinate, not a chord. It says which degree of a
     // tonal context a chord is built on, how many members it stacks, and which

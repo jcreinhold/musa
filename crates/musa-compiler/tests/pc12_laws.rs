@@ -29,8 +29,8 @@ use musa_compiler::{Code, CompileOptions, ScoreEventKind, ScoreSnapshot, Severit
 /// member of a list, so a count that has no other way out of the compiler
 /// leaves as notes in a voice.
 const PRELUDE: &str = r"
-    use std::pcset;
-    use std::serial;
+    import std::pcset;
+    import std::serial;
 
     meter 4/4;
 

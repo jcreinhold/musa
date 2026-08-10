@@ -38,7 +38,7 @@ const GLASS_MOUNTAIN: &str = include_str!("../../../examples/glass-mountain.musa
 const ANNOTATED: &str = include_str!("../../../examples/annotated.musa");
 const MISSING_SEMICOLON: &str = include_str!("../../../examples/broken/missing-semicolon.musa");
 const STDLIB_PIECE: &str = "piece \"Standard library\" {
-    use std::core;
+    import std::core;
     let answer: nat = identity_nat(42);
     tempo 1/4 = 60;
     meter 4/4;

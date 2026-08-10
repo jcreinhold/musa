@@ -660,7 +660,7 @@ fn cmd_check_one(path: &str, realization: &Realization, tally: &mut Tally, fix: 
         println!("{path}: ok");
         // What a piece is filed under and what it reads: the two facts a
         // directory project adds, and the two a reader would otherwise have
-        // to reconstruct from the `use` statements themselves.
+        // to reconstruct from the `import` statements themselves.
         if let Some(project) = session.project() {
             let name = project.name.as_deref().unwrap_or("untitled");
             println!("  project: {name} ({})", project.root.display());

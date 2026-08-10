@@ -9,8 +9,8 @@
 // most 48 labelled forms, not one 48-element group: `generic_forms` below is
 // 48 and `chromatic_forms` is 24, and each one times its own stabilizer is 48.
 piece "Serial Forms" {
-    use std::pcset;
-    use std::serial;
+    import std::pcset;
+    import std::serial;
 
     // A row is written as twelve numbers because a row has no spelling to
     // write. `pc` reduces modulo twelve, so this list is twelve residues.

@@ -34,6 +34,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("voice", SyntaxKind::VoiceKw),
     ("clef", SyntaxKind::ClefKw),
     ("use", SyntaxKind::UseKw),
+    ("import", SyntaxKind::ImportKw),
     ("transpose", SyntaxKind::TransposeKw),
     ("down", SyntaxKind::DownKw),
     ("up", SyntaxKind::UpKw),
@@ -139,7 +140,8 @@ pub enum TokenClass {
     /// Structural keywords: `piece`, `voice`, `motif`, `transpose`.
     Keyword,
     /// `use` alone. It is where generated material comes from, and the
-    /// interface marks it as such wherever it appears.
+    /// interface marks it as such wherever it appears. `import` is a
+    /// structural keyword and not this: it brings in names, not material.
     Use,
     /// Written pitches and intervals — the music itself, in the text.
     Pitch,
@@ -222,7 +224,8 @@ impl TokenClass {
 
             SyntaxKind::UseKw => Self::Use,
 
-            SyntaxKind::PieceKw
+            SyntaxKind::ImportKw
+            | SyntaxKind::PieceKw
             | SyntaxKind::TempoKw
             | SyntaxKind::MeterKw
             | SyntaxKind::KeyKw

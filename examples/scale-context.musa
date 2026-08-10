@@ -3,8 +3,8 @@
 // fact and claims no modulation. Because a `music` value is contextual, the
 // same saved phrase elaborates differently at two use sites.
 piece "Scale Context" {
-    use std::scale;
-    use std::collections;
+    import std::scale;
+    import std::collections;
 
     // The written key is three flats, from the first bar to the last. It is a
     // score fact; the scale statements below never touch it.

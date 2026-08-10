@@ -34,10 +34,10 @@ const TONAL_CONSTRUCTION: &str = include_str!("../../../examples/tonal-construct
 
 /// The imports and the one voicing policy every probe reads values through.
 const PRELUDE: &str = r"
-    use std::harmony;
-    use std::scale;
-    use std::tonal_harmony;
-    use std::voicing;
+    import std::harmony;
+    import std::scale;
+    import std::tonal_harmony;
+    import std::voicing;
 
     meter 4/4;
 

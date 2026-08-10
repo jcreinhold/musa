@@ -1,9 +1,9 @@
 // Standard modules are explicit, version-matched source libraries. Their
 // functions pass through the same checker and evaluator as these definitions.
 piece "Standard Library Basics" {
-    use std::core;
-    use std::list;
-    use std::option;
+    import std::core;
+    import std::list;
+    import std::option;
 
     let subject: music = music {
         c4/4

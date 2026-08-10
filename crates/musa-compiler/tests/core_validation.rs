@@ -53,7 +53,7 @@ fn named_arguments_must_name_a_parameter_once() {
 fn an_imported_core_error_is_located_at_the_local_use() {
     let mut imports = ImportSources::default();
     imports.insert("broken.musa", "library { let answer: nat = false; }");
-    let source_text = "piece \"Imported error\" { use \"broken.musa\"; score { part p { voice v { c4/1 } } } }";
+    let source_text = "piece \"Imported error\" { import \"broken.musa\"; score { part p { voice v { c4/1 } } } }";
     let compilation = compile(
         &SourceDocument::new(source_text, "piece.musa"),
         &CompileOptions {
@@ -68,6 +68,6 @@ fn an_imported_core_error_is_located_at_the_local_use() {
     assert!(matches!(diagnostic, Some(found) if found.message.contains("broken.musa")));
     assert!(matches!(
         diagnostic.and_then(|found| found.labels.iter().find(|label| label.primary)),
-        Some(label) if &source_text[label.span.start as usize..label.span.end as usize] == "use \"broken.musa\";"
+        Some(label) if &source_text[label.span.start as usize..label.span.end as usize] == "import \"broken.musa\";"
     ));
 }

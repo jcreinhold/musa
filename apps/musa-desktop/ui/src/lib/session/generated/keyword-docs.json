@@ -66,8 +66,13 @@
   },
   {
     "spelling": "use",
-    "summary": "write out a motif, or import a library",
-    "doc": "`use` writes out a declared motif where it stands, with arguments for its parameters: `use sigh(e5);` is the motif spelled here, once. At the top of a piece it imports a relative library file, or an explicit bundled module such as `use std::core;`. Bundled modules are ordinary Musa source and add no hidden prelude.\n\n```musa\nuse sigh(e5);\n```"
+    "summary": "write out a motif where it stands",
+    "doc": "`use` writes out a declared motif where it stands, with arguments for its parameters: `use sigh(e5);` is the motif spelled here, once. It is a splice and not a call: the music arrives at the cursor and is sequenced there. Bringing in another file is `import`, which is a different statement and now a different word.\n\n```musa\nuse sigh(e5);\n```"
+  },
+  {
+    "spelling": "import",
+    "summary": "bring another file's names into this one",
+    "doc": "`import` reads a relative library file or a bundled module and binds its declarations as if they were written here: `import \"../library/motifs.musa\";` or `import std::core;`. Add `as name` to bring it in under a different name. Bundled modules are ordinary Musa source and add no hidden prelude.\n\n```musa\nimport std::core;\n```"
   },
   {
     "spelling": "transpose",
@@ -272,7 +277,7 @@
   {
     "spelling": "library",
     "summary": "declarations other pieces can import",
-    "doc": "A library is a file of declarations — motifs, fragments, studio patches — meant to be used by other files rather than played itself. A piece brings one in with `use \"path\";` and then speaks its names as its own.\n\n```musa\nlibrary { motif sigh(root: pitch) { … } }\n```"
+    "doc": "A library is a file of declarations — motifs, fragments, studio patches — meant to be used by other files rather than played itself. A piece brings one in with `import \"path\";` and then speaks its names as its own.\n\n```musa\nlibrary { motif sigh(root: pitch) { … } }\n```"
   },
   {
     "spelling": "crescendo",

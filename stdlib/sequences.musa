@@ -1,6 +1,6 @@
 library {
-    use std::harmony;
-    use std::scale;
+    import std::harmony;
+    import std::scale;
 
     // A diatonic sequence is a pattern applied a finite number of times. OMT
     // `049-diatonic-sequences-in-middles.md` names them by the interval the

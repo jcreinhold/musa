@@ -136,7 +136,7 @@ fn declaration_heavy() -> String {
          piece \"Declaration Heavy Baseline\" {\n",
     );
     for index in 0..4 {
-        let _ = writeln!(source, "    use \"elaboration-libraries/library-{index}.musa\";");
+        let _ = writeln!(source, "    import \"elaboration-libraries/library-{index}.musa\";");
     }
     source.push_str("    tempo 1/4 = 96;\n    meter 4/4;\n    key c major;\n\n");
     for index in 0..48 {

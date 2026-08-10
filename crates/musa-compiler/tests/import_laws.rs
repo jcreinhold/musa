@@ -94,7 +94,7 @@ fn a_written_path_joins_onto_the_file_that_wrote_it() {
 fn an_imported_motif_sounds_exactly_as_it_would_written_in_place() {
     let imported = snapshot(compile_with(
         "p.musa",
-        &piece("use \"lib.musa\";"),
+        &piece("import \"lib.musa\";"),
         &[("lib.musa", MOTIFS)],
     ));
     let local = snapshot(compile_with(
@@ -120,8 +120,8 @@ fn an_imported_motif_sounds_exactly_as_it_would_written_in_place() {
 fn a_file_reached_twice_is_read_once() {
     let compilation = compile_with(
         "p.musa",
-        &piece("use \"lib.musa\"; use \"also.musa\";"),
-        &[("lib.musa", MOTIFS), ("also.musa", "library { use \"lib.musa\"; }")],
+        &piece("import \"lib.musa\"; import \"also.musa\";"),
+        &[("lib.musa", MOTIFS), ("also.musa", "library { import \"lib.musa\"; }")],
     );
     assert_eq!(errors(&compilation), Vec::<String>::new());
     assert_eq!(snapshot(compilation).motifs().len(), 1, "one declaration, not two");
@@ -133,10 +133,10 @@ fn a_file_reached_twice_is_read_once() {
 fn an_import_cycle_is_reported_with_its_files() {
     let compilation = compile_with(
         "p.musa",
-        &piece("use \"a.musa\";"),
+        &piece("import \"a.musa\";"),
         &[
-            ("a.musa", "library { use \"b.musa\"; }"),
-            ("b.musa", "library { use \"a.musa\"; }"),
+            ("a.musa", "library { import \"b.musa\"; }"),
+            ("b.musa", "library { import \"a.musa\"; }"),
         ],
     );
     let messages = errors(&compilation);
@@ -148,10 +148,10 @@ fn an_import_cycle_is_reported_with_its_files() {
     );
 }
 
-/// A file that is not there is named, at the `use` that asked for it.
+/// A file that is not there is named, at the `import` that asked for it.
 #[test]
 fn a_missing_import_names_the_path_it_looked_for() {
-    let compilation = compile_with("pieces/01.musa", &piece("use \"../library/gone.musa\";"), &[]);
+    let compilation = compile_with("pieces/01.musa", &piece("import \"../library/gone.musa\";"), &[]);
     assert!(
         errors(&compilation)
             .first()
@@ -166,7 +166,7 @@ fn a_missing_import_names_the_path_it_looked_for() {
 fn a_piece_cannot_be_imported() {
     let compilation = compile_with(
         "p.musa",
-        &piece("use \"other.musa\";"),
+        &piece("import \"other.musa\";"),
         &[(
             "other.musa",
             "piece \"Other\" { tempo 1/4 = 60; meter 4/4; key c major; score { part p { voice v { c5/1 } } } }",
@@ -186,7 +186,7 @@ fn a_piece_cannot_be_imported() {
 fn two_declarations_of_one_name_is_an_error_not_a_shadow() {
     let compilation = compile_with(
         "p.musa",
-        &piece("use \"lib.musa\"; motif rise() { c5/1 }"),
+        &piece("import \"lib.musa\"; motif rise() { c5/1 }"),
         &[("lib.musa", MOTIFS)],
     );
     let messages = errors(&compilation);
@@ -204,7 +204,7 @@ fn two_declarations_of_one_name_is_an_error_not_a_shadow() {
 fn a_library_studio_may_not_wire_a_score_it_cannot_see() {
     let compilation = compile_with(
         "p.musa",
-        &piece("use \"lib.musa\";"),
+        &piece("import \"lib.musa\";"),
         &[(
             "lib.musa",
             "library { motif rise() { c5/1 } studio { assign p -> reed; } }",
@@ -226,7 +226,7 @@ fn a_library_studio_may_not_wire_a_score_it_cannot_see() {
 fn a_broken_library_is_reported_by_name() {
     let compilation = compile_with(
         "p.musa",
-        &piece("use \"lib.musa\";"),
+        &piece("import \"lib.musa\";"),
         &[("lib.musa", "library { motif rise( { c5/1 } }")],
     );
     let messages = errors(&compilation);
@@ -240,7 +240,7 @@ fn a_broken_library_is_reported_by_name() {
 
 #[test]
 fn an_unknown_standard_module_reports_its_stable_virtual_uri() {
-    let compilation = compile_with("p.musa", &piece("use std::unknown; motif rise() { c5/1 }"), &[]);
+    let compilation = compile_with("p.musa", &piece("import std::unknown; motif rise() { c5/1 }"), &[]);
     let messages = errors(&compilation);
     assert!(
         messages

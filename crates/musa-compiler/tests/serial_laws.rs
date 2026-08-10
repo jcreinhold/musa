@@ -32,8 +32,8 @@ const SERIAL_FORMS: &str = include_str!("../../../examples/serial-forms.musa");
 /// against: one generic row, one the chromatic ascent, one sequence that is
 /// not a row at all.
 const PRELUDE: &str = r"
-    use std::pcset;
-    use std::serial;
+    import std::pcset;
+    import std::serial;
 
     meter 4/4;
 

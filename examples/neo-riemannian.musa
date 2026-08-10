@@ -14,9 +14,9 @@
 // written by this piece, which is the only place that knows what it wants to
 // hear.
 piece "Neo-Riemannian" {
-    use std::harmony;
-    use std::transformational;
-    use std::voicing;
+    import std::harmony;
+    import std::transformational;
+    import std::voicing;
 
     // The triad refinement is the domain, and this `option` is the proof of
     // membership. A seventh chord or a suspension has no answer here, which

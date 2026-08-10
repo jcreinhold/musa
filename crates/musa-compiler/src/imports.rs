@@ -1,7 +1,7 @@
 //! Source imports (roadmap §16): declarative, acyclic, deterministic, and
 //! side-effect-free.
 //!
-//! A piece writes `use "../library/patches.musa";` and gets that file's
+//! A piece writes `import "../library/patches.musa";` and gets that file's
 //! declarations — motifs, profiles, patches — as if it had written them
 //! itself. Three rules keep this from growing into a package manager:
 //!
@@ -268,7 +268,7 @@ impl Libraries {
 }
 
 /// Load the import closure of `imports`, reporting every way it can go wrong
-/// against the `use` statement that caused it.
+/// against the `import` statement that caused it.
 ///
 /// Diagnostics from inside a library name the file, because a span from
 /// another document would point at the wrong bytes of this one.

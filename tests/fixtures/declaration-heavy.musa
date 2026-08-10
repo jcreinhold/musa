@@ -2,10 +2,10 @@
 // Many small local and imported declarations, most deliberately unused.
 
 piece "Declaration Heavy Baseline" {
-    use "elaboration-libraries/library-0.musa";
-    use "elaboration-libraries/library-1.musa";
-    use "elaboration-libraries/library-2.musa";
-    use "elaboration-libraries/library-3.musa";
+    import "elaboration-libraries/library-0.musa";
+    import "elaboration-libraries/library-1.musa";
+    import "elaboration-libraries/library-2.musa";
+    import "elaboration-libraries/library-3.musa";
     tempo 1/4 = 96;
     meter 4/4;
     key c major;

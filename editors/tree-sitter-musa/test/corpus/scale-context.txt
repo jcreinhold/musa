@@ -3,7 +3,7 @@ scale, key, degree, and lexical pitch context
 ================================================================================
 
 piece "Scale Context" {
-  use std::scale;
+  import std::scale;
   let home: key = key c minor;
   let collection: scale = signature_scale(home);
   fn figure() -> music = music {

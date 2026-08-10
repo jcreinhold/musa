@@ -3,8 +3,8 @@
 // share a vocabulary, which is the whole reason a project is a folder rather
 // than a file.
 piece "Waltz" {
-    use "../library/motifs.musa";
-    use "../library/patches.musa";
+    import "../library/motifs.musa";
+    import "../library/patches.musa";
 
     tempo 1/4 = 152;
     meter 3/4;

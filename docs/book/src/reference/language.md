@@ -180,8 +180,8 @@ Patches, modulation, assignment, and routing are covered in [Write for the studi
 ## Imports
 
 ```musa
-use std::pitch;
-use "lib/my-matters.musa";
+import std::pitch;
+import "lib/my-matters.musa";
 ```
 
 A quoted path resolves relative to the importing file. `std::` names the bundled

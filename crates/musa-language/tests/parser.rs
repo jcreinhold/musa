@@ -594,7 +594,7 @@ fn an_import_is_a_path_and_a_motif_use_is_a_call() {
 
 #[test]
 fn standard_imports_preserve_their_reserved_namespace() {
-    let doc = parse("piece \"Imports\" { use std::core; use std::list; use std::option; }");
+    let doc = parse("piece \"Imports\" { import std::core; import std::list; import std::option; }");
     assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
     let piece = PieceDecl::from_root(&doc.syntax()).expect("a piece");
     let paths: Vec<_> = piece
@@ -603,6 +603,39 @@ fn standard_imports_preserve_their_reserved_namespace() {
         .filter_map(musa_language::ast::ImportStmt::path)
         .collect();
     assert_eq!(paths, ["std::core", "std::list", "std::option"]);
+}
+
+/// An alias parses and round-trips. It binds nothing yet — there is no
+/// qualified namespace for it to bind into until prompt 110 nests the module
+/// tree — so what this fixes is that the word survives the parser and does not
+/// leak into the path.
+#[test]
+fn an_import_may_be_renamed_without_changing_its_path() {
+    let source = "piece \"Aliased\" { import std::core as basics; import \"../lib.musa\" as shared; }";
+    let doc = parse(source);
+    assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
+    assert_round_trip(source);
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("a piece");
+    let paths: Vec<_> = piece
+        .imports()
+        .iter()
+        .filter_map(musa_language::ast::ImportStmt::path)
+        .collect();
+    assert_eq!(paths, ["std::core", "../lib.musa"]);
+}
+
+/// The old spelling is refused, not quietly accepted, and the refusal carries
+/// the word that replaces it.
+#[test]
+fn the_old_import_spelling_is_a_migration_error() {
+    let doc = parse("piece \"Old\" { use \"../library/motifs.musa\"; }");
+    insta::assert_snapshot!(print_errors(&doc));
+}
+
+#[test]
+fn the_old_bundled_import_spelling_is_a_migration_error() {
+    let doc = parse("piece \"Old\" { use std::core; }");
+    insta::assert_snapshot!(print_errors(&doc));
 }
 
 /// A hairpin is a block with a direction and a mark it arrives at, and the

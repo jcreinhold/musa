@@ -269,9 +269,9 @@ pub fn explain(code: &str) -> Option<&'static str> {
              import loop is an error rather than a resolution order, because the order \
              would be an accident of which file you opened.\n\n\
              Broken:\n    \
-             use \"patches.musa\";      // a piece\n\n\
+             import \"patches.musa\";      // a piece\n\n\
              Fixed:\n    \
-             use \"../library/patches.musa\";   // a library"
+             import \"../library/patches.musa\";   // a library"
         }
         musa_compiler::Code::Studio => {
             "The studio graph cannot be built: an input nothing feeds, a cycle, a send \

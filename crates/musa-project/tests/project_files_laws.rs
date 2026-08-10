@@ -241,7 +241,7 @@ fn a_library_edited_on_disk_reaches_the_piece_that_imports_it() -> Result {
     std::fs::write(&library, "library { motif tune() { c5/4 } }")?;
     std::fs::write(
         &piece,
-        "piece \"P\" { use \"lib.musa\"; tempo 1/4 = 60; meter 4/4; key c major;
+        "piece \"P\" { import \"lib.musa\"; tempo 1/4 = 60; meter 4/4; key c major;
          score { part p { voice v { use tune(); } } } }",
     )?;
 

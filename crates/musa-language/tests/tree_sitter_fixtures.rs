@@ -134,6 +134,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::VoiceKw => "voice",
         SyntaxKind::ClefKw => "clef",
         SyntaxKind::UseKw => "use",
+        SyntaxKind::ImportKw => "import",
         SyntaxKind::TransposeKw => "transpose",
         SyntaxKind::DownKw => "down",
         SyntaxKind::UpKw => "up",

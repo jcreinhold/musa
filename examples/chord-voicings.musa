@@ -6,8 +6,8 @@
 //
 // One class, read two ways and sounded four.
 piece "Chord Voicings" {
-    use std::harmony;
-    use std::voicing;
+    import std::harmony;
+    import std::voicing;
 
     // The content. Root C, major seventh: c, e, g, b — spelled, so the third
     // is a third and the seventh is a seventh.

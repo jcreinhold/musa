@@ -1,6 +1,6 @@
 library {
-    use std::scale;
-    use std::voicing;
+    import std::scale;
+    import std::voicing;
 
     // A tonal context is the small bundle of facts that always travel
     // together: what key a passage is in, which collection it steps through,

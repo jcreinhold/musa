@@ -8,7 +8,7 @@
 //!
 //! A file that cannot be read is left out rather than reported here. The
 //! compiler already has the one diagnostic worth showing — "cannot find
-//! `../library/patches.musa`", pointed at the `use` that asked for it — and
+//! `../library/patches.musa`", pointed at the `import` that asked for it — and
 //! an I/O error phrased against the same path would say it twice.
 
 use std::collections::HashSet;
@@ -45,12 +45,12 @@ pub(crate) fn closure(name: &str, source: &str) -> (ImportSources, Vec<PathBuf>)
     (sources, files)
 }
 
-/// The paths one file's `use` statements name, as written.
+/// The paths one file's `import` statements name, as written.
 fn written_imports(text: &str) -> Vec<String> {
     let document = musa_language::parse(text);
     let root = document.syntax();
     // The file's lexical root imports too, and a document whose piece is
-    // made by a template has its `use` statements only there.
+    // made by a template has its `import` statements only there.
     let mut statements = ImportStmt::all_at_root(&root);
     statements.extend(PieceDecl::of_document(&root).map_or_else(
         || {
