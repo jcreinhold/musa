@@ -191,10 +191,12 @@ static REST: KeywordDoc = doc!(
 );
 static REPEAT: KeywordDoc = doc!(
     "repeat",
-    "play the block again",
+    "repeat music, or make a finite list",
     "A repeat block plays its contents more than once: `repeat 4 { … }` is four passes through the same bars, \
-     written once. With `ending` blocks inside, the passes differ where the endings say they do.\n\n\
-     ```musa\nrepeat 2 { use verse(); }\n```"
+     written once. With `ending` blocks inside, the passes differ where the endings say they do. In expression \
+     position, `repeat(value, count)` is the finite value operation and returns a list of exactly `count` copies; \
+     it never creates an infinite stream.\n\n\
+     ```musa\nrepeat 2 { use verse(); }\nlet pedals: list[bool] = repeat(true, 4);\n```"
 );
 static BAR: KeywordDoc = doc!(
     "bar",

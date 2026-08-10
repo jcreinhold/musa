@@ -293,6 +293,15 @@ pub fn explain(code: &str) -> Option<&'static str> {
         musa_compiler::Code::DependencyCycle => {
             "Elaboration definitions are total and non-recursive, but these definitions depend on each other in a cycle. The diagnostic prints that cycle. Pass the changing value as an argument or use one of Musa's finite structural folds instead of recursion."
         }
+        musa_compiler::Code::ResourceLimit => {
+            "The expression is finite and type-correct, but its deterministic work, value size, specialization count, or estimated music output exceeds Musa's compilation budget. The diagnostic names the operation, metric, attempted amount, and limit; no partial value or score is published."
+        }
+        musa_compiler::Code::NonExhaustiveMatch => {
+            "A match must say what happens for every value of its scrutinee type. Cover both option or list constructors, both booleans, or finish literal cases with a binding or `_` fallback."
+        }
+        musa_compiler::Code::UnreachablePattern => {
+            "An earlier match arm already covers every value this pattern could select. Remove the arm or move a more specific pattern before the catch-all arm."
+        }
         musa_compiler::Code::UnsupportedLanguageStage => {
             "The source uses valid Musa syntax whose semantic compiler stage is not \
              installed yet. This is deliberately different from `syntax`: the editor, \

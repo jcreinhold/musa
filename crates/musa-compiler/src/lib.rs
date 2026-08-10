@@ -33,6 +33,7 @@ pub mod bench;
 mod compile;
 mod context;
 mod core;
+mod core_budget;
 mod diagnose;
 mod elaborate;
 mod factext;

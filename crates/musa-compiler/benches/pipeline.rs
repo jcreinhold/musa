@@ -140,6 +140,40 @@ fn p5_hash(bencher: divan::Bencher<'_, '_>, workload: &str) {
     bencher.bench_local(|| divan::black_box(&timelines).hash());
 }
 
+/// The prompt-96 evaluator curve. Source construction stays outside the
+/// timed closure; the count is the exact number of structural fold steps.
+#[divan::bench(args = [0u64, 1_000, 10_000, 50_000])]
+fn finite_core_fold(bencher: divan::Bencher<'_, '_>, count: u64) {
+    let source = SourceDocument::new(
+        format!(
+            "piece \"Finite core bench\" {{ \
+             fn keep(index: nat, accumulator: nat) -> nat = accumulator; \
+             let value: nat = nat_fold(0, keep, {count}); \
+             score {{ part p {{ voice v {{ c4/1 }} }} }} \
+             }}"
+        ),
+        "benches/finite-core.musa",
+    );
+    let options = CompileOptions::default();
+    bencher.bench_local(|| compile(divan::black_box(&source), &options));
+}
+
+/// A deterministic resource rejection is measured separately from accepted
+/// work, so it can never make the successful compilation curve look cheaper.
+#[divan::bench]
+fn finite_core_rejection(bencher: divan::Bencher<'_, '_>) {
+    let source = SourceDocument::new(
+        "piece \"Finite core rejection\" { \
+         fn keep(index: nat, accumulator: nat) -> nat = accumulator; \
+         let value: nat = nat_fold(0, keep, 200000); \
+         score { part p { voice v { c4/1 } } } \
+         }",
+        "benches/finite-core-rejection.musa",
+    );
+    let options = CompileOptions::default();
+    bencher.bench_local(|| compile(divan::black_box(&source), &options));
+}
+
 fn main() {
     // Report what is being measured, so a table row cannot be read without
     // knowing the size of the workload behind it.

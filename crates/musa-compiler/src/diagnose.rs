@@ -60,6 +60,12 @@ pub enum Code {
     WrongArity,
     /// Named elaboration definitions form a recursive dependency cycle.
     DependencyCycle,
+    /// A finite elaboration exceeds a deterministic compilation resource limit.
+    ResourceLimit,
+    /// A finite match leaves an inhabitant of its scrutinee type uncovered.
+    NonExhaustiveMatch,
+    /// A match arm can never be selected because an earlier arm covers it.
+    UnreachablePattern,
     /// Valid language syntax belongs to a compiler stage delivered by a
     /// later prompt, rather than being mistaken for a parse error.
     UnsupportedLanguageStage,
@@ -95,6 +101,9 @@ impl Code {
             Self::TypeMismatch => "type-mismatch",
             Self::WrongArity => "wrong-arity",
             Self::DependencyCycle => "dependency-cycle",
+            Self::ResourceLimit => "resource-limit",
+            Self::NonExhaustiveMatch => "non-exhaustive-match",
+            Self::UnreachablePattern => "unreachable-pattern",
             Self::UnsupportedLanguageStage => "unsupported-language-stage",
             Self::UnusedMaterial => "unused-material",
             Self::UnassignedPatch => "unassigned-patch",
@@ -105,7 +114,7 @@ impl Code {
 
     /// Every code, for `musa explain` with no argument and for the tests that
     /// keep the explanation table honest.
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 22] = [
         Self::Syntax,
         Self::UnknownName,
         Self::DuplicateName,
@@ -120,6 +129,9 @@ impl Code {
         Self::TypeMismatch,
         Self::WrongArity,
         Self::DependencyCycle,
+        Self::ResourceLimit,
+        Self::NonExhaustiveMatch,
+        Self::UnreachablePattern,
         Self::UnsupportedLanguageStage,
         Self::UnusedMaterial,
         Self::UnassignedPatch,

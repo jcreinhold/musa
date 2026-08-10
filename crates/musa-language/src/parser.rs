@@ -813,7 +813,7 @@ impl<'a> Parser<'a> {
 
     fn expr_atom(&mut self) {
         match self.current() {
-            Some(SyntaxKind::Identifier) => {
+            Some(SyntaxKind::Identifier | SyntaxKind::RepeatKw) => {
                 self.start(SyntaxKind::NameExpr);
                 self.bump();
                 self.finish();

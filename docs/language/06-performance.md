@@ -139,3 +139,39 @@ No comparable P1/P2 median regressed by more than the 10% review threshold. The 
 247 allocations and 9.7 KB relative to prompt 93; its P2 movement is smaller, and both remain far below the interactive
 budget. The negative audio-bridge deltas are ordinary run-to-run improvement, not a claimed optimization. Prompt 95
 therefore adds no compatibility exception and does not alter any baseline digest.
+
+## Prompt 96 finite-work curve and limits
+
+Command: `cargo bench -p musa-compiler --bench pipeline -- finite_core`. Same Apple M4 Pro and release configuration;
+medians are 100 samples. Source construction is outside the timed closure. The accepted workload performs exactly the
+stated number of `nat_fold` iterations with a scalar accumulator; the rejected workload states 200,000 iterations and
+measures time to the deterministic diagnostic, separately from successful compilation.
+
+| fold iterations | result | median | allocations | bytes allocated | maximum live allocator bytes |
+| ---: | --- | ---: | ---: | ---: | ---: |
+| 0 | accepted | 18.32 µs | 552 | 30.31 KB | 12.38 KB |
+| 1,000 | accepted | 172.3 µs | 5,553 | 466.3 KB | 12.41 KB |
+| 10,000 | accepted | 1.571 ms | 50,553 | 4.390 MB | 12.41 KB |
+| 50,000 | accepted | 7.795 ms | 250,553 | 21.83 MB | 12.41 KB |
+| 200,000 | resource diagnostic | 9.853 µs | 278 | 16.80 KB | 12.41 KB |
+
+The curve is linear over this deliberately allocation-heavy closure evaluator: about 0.155 µs and five transient
+allocations per fold iteration. Total allocated bytes are churn, not retained size—the flat maximum-live column is the
+reason the table reports both. Scheduler noise dominates the smallest rows; these local medians are design evidence,
+not CI timing thresholds. Boundary tests, rather than timing, fix acceptance exactly.
+
+Prompt 96 sets one internal deterministic meter with these language-version limits:
+
+| metric | limit | evidence and intent |
+| --- | ---: | --- |
+| reduction steps | 200,000 | admits the measured 50,000-step fold (about 150,000 charged reductions) below 8 ms while rejecting a stated 200,000-step fold before its loop |
+| constructed value nodes | 100,000 | admits useful finite collections but preflights `range(100001)` before allocation |
+| logical value bytes | 1,048,576 | separately bounds dense exact values; 65,536 repeated ratios crosses it while remaining below the node limit |
+| monomorphized prelude instances | 2,048 | far above ordinary declaration counts; a generated 2,049-call boundary fixture fixes the diagnostic |
+| estimated music occurrences | 1,000,000 | reserves substantial headroom over the 1,572-occurrence large fixture; prompt 97 activates the charge and prompt 118 retunes from music-producing curves |
+
+There is no public “make it bigger” compiler option: no current caller needs one, and exposing five implementation
+knobs as language API would make builds disagree silently. Each rejection names the operation, metric, attempted count,
+and limit with code `resource-limit`. Aggregate operations preflight their known shape before allocation; earlier
+private values are discarded, no snapshot is returned, and `ProjectSession` retains its last-valid engraving and
+playback artifacts. This is resource rejection of a finite program, never a nontermination diagnosis or timeout.

@@ -1164,8 +1164,17 @@
       ]
     },
     "name_expression": {
-      "type": "SYMBOL",
-      "name": "identifier"
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "identifier"
+        },
+        {
+          "type": "STRING",
+          "value": "repeat"
+        }
+      ]
     },
     "literal_expression": {
       "type": "CHOICE",

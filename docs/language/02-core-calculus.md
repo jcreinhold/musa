@@ -72,8 +72,11 @@ declarations, diagnostic witnesses, and provenance steps is source-stable, never
 
 ## 4. Resource acceptance
 
-Strong normalization does not bound a terminating program to useful project size. Before evaluation, Musa therefore
-computes or conservatively bounds:
+Strong normalization does not bound a terminating program to useful project size. Musa therefore maintains one
+deterministic meter over checking and evaluation. A finite aggregate operation charges its known count and logical
+result shape before entering its loop or allocating its result; nested work is charged when its enclosing operation is
+reached. All values remain private until the whole declaration graph succeeds, so exhaustion publishes neither a
+partial value nor a partial score. The meter covers:
 
 - monomorphized definition count and closure environment size;
 - natural/list fold work, including products induced by nested folds;
@@ -81,10 +84,13 @@ computes or conservatively bounds:
 - template/module instantiation count and static dependency depth;
 - quotation size after typed substitution.
 
-A project whose proven upper bound exceeds the configured deterministic budget is rejected before partial output. If a
-bound depends on a project literal, the diagnostic names that literal and the multiplicative path. Budgets are compile
-options included in cache keys, never timeouts. Interactive cancellation is an external compiler operation, not a
-language effect. Prompt 96 owns the bound analysis; prompts 118 and 135 benchmark the accepted envelope.
+A project whose next charge exceeds the deterministic budget is rejected at that operation. The diagnostic names the
+operation, metric, attempted amount, and limit. The prompt-96 defaults are 200,000 reduction steps, 100,000 constructed
+value nodes, 1,048,576 logical value bytes, 2,048 monomorphized prelude instances, and 1,000,000 estimated music
+occurrences. The scalar fragment charges zero output occurrences; prompt 97 connects music constructors to the already
+present output counter. These are language-version constants, not timeouts or machine-memory observations. Interactive
+cancellation remains an external compiler operation, not a language effect. Prompts 118 and 135 benchmark and may
+tighten the accepted envelope deliberately.
 
 ## 5. Prompt-95 fragment and metatheory
 
@@ -270,10 +276,79 @@ or a value whose reconstructed type differs from the checked type is reported as
 generated-law tests additionally compare the production environment evaluator with a separate small substitution
 evaluator and exercise products, lexical capture, higher-order functions, defaults, and rejected cycles.
 
-### 5.6 Obligations added later
+### 5.6 Strictly positive finite data
 
-Options, lists, and structural folds must extend the candidate proof with finite constructor and structurally smaller
-eliminator cases (prompt 96). `music` is not justified by STLC alone. Prompts 97–98 must prove: if `m : music`, `ρ` is a
+Prompt 96 extends terms and values by:
+
+```text
+e ::= … | none_τ | some(e) | []_τ | e :: e | match e with arms
+        | nat_fold(z,s,n) | list_fold(z,s,xs) | option_fold(z,s,o)
+v ::= … | none_τ | some(v) | []_τ | v :: v
+```
+
+The surface list literal elaborates to finite conses. `[head, ..tail]` is an elimination pattern, not a general spread
+operator. Constructor typing and the three eliminators are:
+
+```text
+Γ ⊢ e : τ                         Γ ⊢ h : τ   Γ ⊢ t : list τ
+────────────── Some               ───────────────────────── Cons
+Γ ⊢ some(e) : option τ            Γ ⊢ h::t : list τ
+
+Γ ⊢ z : A   Γ ⊢ s : (nat,A)→A   Γ ⊢ n : nat
+──────────────────────────────────────────────── NatFold
+Γ ⊢ nat_fold(z,s,n) : A
+
+Γ ⊢ z : A   Γ ⊢ s : (X,A)→A   Γ ⊢ xs : list X
+──────────────────────────────────────────────── ListFold
+Γ ⊢ list_fold(z,s,xs) : A
+
+Γ ⊢ z : A   Γ ⊢ s : X→A   Γ ⊢ o : option X
+────────────────────────────────────────────── OptionFold
+Γ ⊢ option_fold(z,s,o) : A
+```
+
+A match checks every arm under the bindings introduced by its pattern and requires one result type. Boolean matches
+cover `true` and `false`; option matches cover `none` and `some`; list matches cover `[]` and cons. A binding or `_`
+covers any type. Literal matches over naturals, ratios, durations, pitches, and intervals therefore require a final
+catch-all. Product binding patterns are irrefutable. An arm following complete coverage, or repeating a constructor or
+literal already covered, is rejected as unreachable. These finite coverage facts extend canonical forms and make the
+match case of progress immediate.
+
+The fold equations are deterministic left folds in source order:
+
+```text
+nat_fold(z,s,0)       → z
+nat_fold(z,s,n+1)     → s(n, nat_fold(z,s,n))
+list_fold(z,s,[])     → z
+list_fold(z,s,x::xs)  → list_fold(s(x,z),s,xs)
+option_fold(z,s,none) → z
+option_fold(z,s,some(x)) → s(x)
+```
+
+The implementation iterates rather than building these recursive terms; the equations specify the result. `map` and
+`filter` are list folds, `range(n)` constructs `[0,…,n−1]`, and value `repeat(x,n)` constructs `n` copies of `x`.
+Their rank-1 schemes are compiler-owned and instantiated once at a concrete type at each direct call. They cannot be
+stored as polymorphic values, partially applied, or used to infer a polymorphic user definition.
+
+Extend the reducibility candidates by:
+
+```text
+R_(option τ)(t) iff t ∈ SN and t →* none or t →* some(v) with R_τ(v)
+R_(list τ)(t)   iff t ∈ SN and t →* [v₁,…,vₙ] with every R_τ(vᵢ)
+```
+
+Constructor compatibility follows from the induction hypotheses for members. For eliminators, use the lexicographic
+measure `(constructor count, reduction height of arguments)`: `nat_fold` decreases the natural by one, `list_fold`,
+`map`, and `filter` decrease list length by one, `option_fold` consumes its sole constructor, and `range`/value-repeat
+decrease their compiler-owned natural counter. The step function is already reducible at the instantiated monomorphic
+arrow type, so applying it preserves the accumulator candidate. Induction on that measure proves each eliminator maps
+reducible arguments to a reducible result. These new cases extend the fundamental lemma and hence preservation,
+progress, determinism, and strong normalization. Finite monomorphization does not alter the proof: each instance is an
+ordinary monomorphic term, and the accepted instance graph is finite and acyclic.
+
+### 5.7 Obligations added later
+
+`music` is not justified by STLC alone. Prompts 97–98 must prove: if `m : music`, `ρ` is a
 well-formed `ElabEnv`, `p` is a valid exact placement, and resource checking accepts the instance, then
 `instantiate(m,ρ,p)` returns a finite well-typed fragment and `close` returns a closed `Term[ScoreFact]`. That proof is
 by induction over the private music constructors and must cover compatible binding-environment union, placement,

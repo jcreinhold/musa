@@ -11,6 +11,7 @@ use musa_language::ast::{AstNode as _, FnDecl, LetDecl};
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
 
+use crate::core_budget::WorkMeter;
 use crate::diagnose::{Code, Diagnostic};
 use crate::imports::Libraries;
 use crate::origin::{Interval, SourceSpan};
@@ -111,6 +112,8 @@ enum Type {
     Pitch,
     Interval,
     Product(Vec<Self>),
+    Option(Box<Self>),
+    List(Box<Self>),
     Function(Vec<Self>, Box<Self>),
 }
 
@@ -134,6 +137,8 @@ impl std::fmt::Display for Type {
                 }
                 out.write_str(")")
             }
+            Self::Option(member) => write!(out, "option[{member}]"),
+            Self::List(member) => write!(out, "list[{member}]"),
             Self::Function(parameters, result) => {
                 if parameters.len() == 1 {
                     let parameter = parameters.first().unwrap_or(&Self::Unit);
@@ -212,10 +217,75 @@ enum ExprKind {
     Literal(Value),
     Name(String),
     Product(Vec<Expr>),
+    Option(Option<Box<Expr>>),
+    List(Vec<Expr>),
     Apply {
         function: Box<Expr>,
         arguments: Vec<CallArgument>,
     },
+    Primitive {
+        primitive: Primitive,
+        arguments: Vec<Expr>,
+    },
+    Match {
+        scrutinee: Box<Expr>,
+        arms: Vec<CheckedArm>,
+    },
+}
+
+#[derive(Clone, Copy)]
+enum Primitive {
+    NatFold,
+    ListFold,
+    OptionFold,
+    Map,
+    Filter,
+    Range,
+    Repeat,
+}
+
+impl Primitive {
+    fn name(self) -> &'static str {
+        match self {
+            Self::NatFold => "nat_fold",
+            Self::ListFold => "list_fold",
+            Self::OptionFold => "option_fold",
+            Self::Map => "map",
+            Self::Filter => "filter",
+            Self::Range => "range",
+            Self::Repeat => "repeat",
+        }
+    }
+}
+
+#[derive(Clone)]
+struct CheckedArm {
+    pattern: Pattern,
+    body: Expr,
+}
+
+#[derive(Clone)]
+enum Pattern {
+    Wildcard,
+    Bind(String),
+    Literal(Value),
+    None,
+    Some(String),
+    EmptyList,
+    Cons { head: String, tail: String },
+    Product(Vec<String>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+enum Coverage {
+    CatchAll,
+    True,
+    False,
+    None,
+    Some,
+    EmptyList,
+    Cons,
+    Literal(String),
 }
 
 #[derive(Clone)]
@@ -259,6 +329,8 @@ enum Value {
     Pitch(WrittenPitch),
     Interval(Interval),
     Product(Vec<Self>),
+    Option { member: Type, value: Option<Box<Self>> },
+    List { member: Type, values: Vec<Self> },
     Closure(Box<Closure>),
 }
 
@@ -280,6 +352,8 @@ impl Value {
             Self::Pitch(_) => Type::Pitch,
             Self::Interval(_) => Type::Interval,
             Self::Product(members) => Type::Product(members.iter().map(Self::ty).collect()),
+            Self::Option { member, .. } => Type::Option(Box::new(member.clone())),
+            Self::List { member, .. } => Type::List(Box::new(member.clone())),
             Self::Closure(closure) => Type::Function(
                 closure
                     .parameters
@@ -314,6 +388,10 @@ impl Value {
             Self::Product(members) => members.iter().fold(0u64, |witness, member| {
                 witness.rotate_left(5) ^ member.normalization_witness()
             }),
+            Self::Option { value, .. } => value.as_deref().map_or(0, Self::normalization_witness).rotate_left(1),
+            Self::List { values, .. } => values.iter().fold(0u64, |witness, value| {
+                witness.rotate_left(5) ^ value.normalization_witness()
+            }),
             Self::Closure(closure) => closure.captures.values().fold(
                 u64::try_from(closure.parameters.len()).unwrap_or(u64::MAX),
                 |witness, captured| witness.rotate_left(5) ^ captured.normalization_witness(),
@@ -326,6 +404,7 @@ fn check_and_evaluate(
     resolver: &mut Resolver,
     declarations: impl Iterator<Item = SurfaceDefinition>,
 ) -> Option<IndexMap<String, Value>> {
+    let mut meter = WorkMeter::default();
     let mut raw = Vec::new();
     let mut names: IndexMap<String, (SourceSpan, bool)> = IndexMap::new();
     for declaration in declarations {
@@ -373,6 +452,7 @@ fn check_and_evaluate(
             dependencies: IndexMap::new(),
             foreign: definition.foreign,
             failed: false,
+            meter: &mut meter,
         };
         let kind = match &definition.kind {
             RawDefinitionKind::Let { body } => checker
@@ -426,12 +506,16 @@ fn check_and_evaluate(
             });
         }
     }
+    if meter.exhaustion().is_some() {
+        report_exhaustion(resolver, &meter);
+        return None;
+    }
     if type_errors || checked.len() != raw.len() {
         return None;
     }
 
     let order = dependency_order(resolver, &checked)?;
-    evaluate(resolver, &checked, &order)
+    evaluate(resolver, &checked, &order, &mut meter)
 }
 
 fn surface_identity(definition: &SurfaceDefinition) -> Option<(String, SourceSpan, SourceSpan, bool)> {
@@ -518,7 +602,9 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Duration
         | Type::Pitch
         | Type::Interval
-        | Type::Product(_) => None,
+        | Type::Product(_)
+        | Type::Option(_)
+        | Type::List(_) => None,
     }
 }
 
@@ -567,7 +653,12 @@ fn parse_type(resolver: &mut Resolver, node: &SyntaxNode) -> Option<Type> {
         return Some(Type::Function(vec![parameter], Box::new(result)));
     }
     if matches!(kind, SyntaxKind::OptionType | SyntaxKind::ListType) {
-        stage_error(resolver, node, "finite options and lists arrive in prompt 96");
+        let member = child_of(node, is_type_node).and_then(|child| parse_type(resolver, &child))?;
+        return if kind == SyntaxKind::OptionType {
+            Some(Type::Option(Box::new(member)))
+        } else {
+            Some(Type::List(Box::new(member)))
+        };
     }
     None
 }
@@ -580,6 +671,7 @@ struct Checker<'a> {
     dependencies: IndexMap<String, SourceSpan>,
     foreign: bool,
     failed: bool,
+    meter: &'a mut WorkMeter,
 }
 
 impl Checker<'_> {
@@ -594,15 +686,14 @@ impl Checker<'_> {
             self.name(node)
         } else if kind == SyntaxKind::ProductExpr {
             self.product(node, expected)
+        } else if kind == SyntaxKind::ListExpr {
+            self.list(node, expected)
+        } else if kind == SyntaxKind::OptionExpr {
+            self.option(node, expected)
         } else if kind == SyntaxKind::ApplyExpr {
-            self.application(node)
-        } else if matches!(
-            kind,
-            SyntaxKind::ListExpr | SyntaxKind::OptionExpr | SyntaxKind::MatchExpr
-        ) {
-            stage_error(self.resolver, node, "finite data elimination arrives in prompt 96");
-            self.failed = true;
-            None
+            self.application(node, expected)
+        } else if kind == SyntaxKind::MatchExpr {
+            self.match_expression(node, expected)
         } else if kind == SyntaxKind::MusicExpr {
             stage_error(self.resolver, node, "contextual `music` values arrive in prompt 97");
             self.failed = true;
@@ -669,7 +760,8 @@ impl Checker<'_> {
     }
 
     fn name(&mut self, node: &SyntaxNode) -> Option<Expr> {
-        let token = significant_tokens(node).find(|token| token.kind() == SyntaxKind::Identifier)?;
+        let token = significant_tokens(node)
+            .find(|token| matches!(token.kind(), SyntaxKind::Identifier | SyntaxKind::RepeatKw))?;
         let name = token.text().to_owned();
         let span = crate::resolve::trimmed_span(node);
         if let Some(ty) = self.locals.get(&name) {
@@ -679,8 +771,14 @@ impl Checker<'_> {
                 span,
             });
         }
-        if matches!(name.as_str(), "nat_fold" | "list_fold" | "option_fold") {
-            stage_error(self.resolver, node, "structural folds arrive in prompt 96");
+        if primitive_named(&name).is_some() {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::TypeMismatch,
+                    format!("`{name}` is a compiler-owned polymorphic operation"),
+                )
+                .at(span, "apply it directly so Musa can choose one concrete type"),
+            );
             self.failed = true;
             return None;
         }
@@ -722,9 +820,250 @@ impl Checker<'_> {
         })
     }
 
-    fn application(&mut self, node: &SyntaxNode) -> Option<Expr> {
+    fn list(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
+        let expected_member = match expected {
+            Some(Type::List(member)) => Some(member.as_ref()),
+            _ => None,
+        };
+        let children: Vec<_> = node.children().filter(|child| is_expr_node(child.kind())).collect();
+        if children.is_empty() && expected_member.is_none() {
+            self.resolver.report(
+                Diagnostic::error(Code::TypeMismatch, "the element type of this empty list is unknown")
+                    .at(crate::resolve::trimmed_span(node), "add a `list[...]` type annotation"),
+            );
+            self.failed = true;
+            return None;
+        }
+        let mut values = Vec::with_capacity(children.len());
+        let mut member = expected_member.cloned();
+        for child in &children {
+            let value = self.check(child, member.as_ref())?;
+            if member.is_none() {
+                member = Some(value.ty.clone());
+            }
+            values.push(value);
+        }
+        let member = member?;
+        Some(Expr {
+            kind: ExprKind::List(values),
+            ty: Type::List(Box::new(member)),
+            span: crate::resolve::trimmed_span(node),
+        })
+    }
+
+    fn option(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
+        let expected_member = match expected {
+            Some(Type::Option(member)) => Some(member.as_ref()),
+            _ => None,
+        };
+        let some = significant_tokens(node).any(|token| token.kind() == SyntaxKind::SomeKw);
+        let value = child_of(node, is_expr_node);
+        if !some && expected_member.is_none() {
+            self.resolver.report(
+                Diagnostic::error(Code::TypeMismatch, "the value type of `none` is unknown").at(
+                    crate::resolve::trimmed_span(node),
+                    "add an `option[...]` type annotation",
+                ),
+            );
+            self.failed = true;
+            return None;
+        }
+        let checked = if let Some(value) = value.as_ref() {
+            Some(Box::new(self.check(value, expected_member)?))
+        } else {
+            None
+        };
+        let member = expected_member
+            .cloned()
+            .or_else(|| checked.as_ref().map(|value| value.ty.clone()))?;
+        Some(Expr {
+            kind: ExprKind::Option(checked),
+            ty: Type::Option(Box::new(member)),
+            span: crate::resolve::trimmed_span(node),
+        })
+    }
+
+    fn match_expression(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
+        let scrutinee_node = child_of(node, is_expr_node)?;
+        let scrutinee = self.check(&scrutinee_node, None)?;
+        let mut coverage = IndexSet::new();
+        let mut catch_all = false;
+        let mut result = expected.cloned();
+        let mut arms = Vec::new();
+        for arm in node.children().filter(|child| child.kind() == SyntaxKind::MatchArm) {
+            let pattern_node = arm.children().find(|child| child.kind() == SyntaxKind::Pattern)?;
+            let (pattern, covered, bindings) = self.check_pattern(&pattern_node, &scrutinee.ty)?;
+            if catch_all || is_exhaustive(&scrutinee.ty, &coverage) || !coverage.insert(covered.clone()) {
+                self.resolver.report(
+                    Diagnostic::error(Code::UnreachablePattern, "this match arm can never be selected")
+                        .at(crate::resolve::trimmed_span(&pattern_node), "already covered above"),
+                );
+                self.failed = true;
+            }
+            catch_all |= covered == Coverage::CatchAll;
+            let saved = self.locals.clone();
+            self.locals.extend(bindings);
+            let body_node = child_of(&arm, is_expr_node)?;
+            let body = self.check(&body_node, result.as_ref())?;
+            self.locals = saved;
+            if result.is_none() {
+                result = Some(body.ty.clone());
+            }
+            arms.push(CheckedArm { pattern, body });
+        }
+        if !is_exhaustive(&scrutinee.ty, &coverage) {
+            self.resolver.report(
+                Diagnostic::error(Code::NonExhaustiveMatch, "this match leaves a possible value uncovered")
+                    .at(
+                        crate::resolve::trimmed_span(node),
+                        "add the missing constructor or a `_` fallback",
+                    )
+                    .note(format!("the matched value has type `{}`", scrutinee.ty)),
+            );
+            self.failed = true;
+            return None;
+        }
+        Some(Expr {
+            kind: ExprKind::Match {
+                scrutinee: Box::new(scrutinee),
+                arms,
+            },
+            ty: result?,
+            span: crate::resolve::trimmed_span(node),
+        })
+    }
+
+    fn check_pattern(
+        &mut self,
+        node: &SyntaxNode,
+        target: &Type,
+    ) -> Option<(Pattern, Coverage, IndexMap<String, Type>)> {
+        let tokens: Vec<_> = significant_tokens(node).collect();
+        let first = tokens.first()?;
+        let span = crate::resolve::trimmed_span(node);
+        let mut bindings = IndexMap::new();
+        if first.kind() == SyntaxKind::Identifier {
+            if first.text() == "_" {
+                return Some((Pattern::Wildcard, Coverage::CatchAll, bindings));
+            }
+            bindings.insert(first.text().to_owned(), target.clone());
+            return Some((Pattern::Bind(first.text().to_owned()), Coverage::CatchAll, bindings));
+        }
+        if first.kind() == SyntaxKind::NoneKw {
+            if !matches!(target, Type::Option(_)) {
+                return self.pattern_type_error(span, target, "`none` needs an option");
+            }
+            return Some((Pattern::None, Coverage::None, bindings));
+        }
+        if first.kind() == SyntaxKind::SomeKw {
+            let Type::Option(member) = target else {
+                return self.pattern_type_error(span, target, "`some` needs an option");
+            };
+            let name = tokens
+                .iter()
+                .find(|token| token.kind() == SyntaxKind::Identifier)
+                .map(|token| token.text().to_owned())?;
+            bindings.insert(name.clone(), member.as_ref().clone());
+            return Some((Pattern::Some(name), Coverage::Some, bindings));
+        }
+        if first.kind() == SyntaxKind::LBracket {
+            let Type::List(member) = target else {
+                return self.pattern_type_error(span, target, "a list pattern needs a list");
+            };
+            let names: Vec<_> = tokens
+                .iter()
+                .filter(|token| token.kind() == SyntaxKind::Identifier)
+                .map(|token| token.text().to_owned())
+                .collect();
+            return match names.as_slice() {
+                [] => Some((Pattern::EmptyList, Coverage::EmptyList, bindings)),
+                [head, tail] => {
+                    bindings.insert(head.clone(), member.as_ref().clone());
+                    bindings.insert(tail.clone(), Type::List(member.clone()));
+                    Some((
+                        Pattern::Cons {
+                            head: head.clone(),
+                            tail: tail.clone(),
+                        },
+                        Coverage::Cons,
+                        bindings,
+                    ))
+                }
+                _ => self.pattern_type_error(span, target, "write `[]` or `[head, ..tail]`"),
+            };
+        }
+        if first.kind() == SyntaxKind::LParen {
+            let Type::Product(members) = target else {
+                return self.pattern_type_error(span, target, "a product pattern needs a product");
+            };
+            let names: Vec<_> = tokens
+                .iter()
+                .filter(|token| token.kind() == SyntaxKind::Identifier)
+                .map(|token| token.text().to_owned())
+                .collect();
+            if names.len() != members.len() {
+                return self.pattern_type_error(span, target, "the product pattern has the wrong number of bindings");
+            }
+            for (name, member) in names.iter().zip(members) {
+                if bindings.insert(name.clone(), member.clone()).is_some() {
+                    self.resolver.report(
+                        Diagnostic::error(Code::DuplicateName, format!("pattern binding `{name}` is repeated"))
+                            .at(span, "bind each product member once"),
+                    );
+                    self.failed = true;
+                    return None;
+                }
+            }
+            return Some((Pattern::Product(names), Coverage::CatchAll, bindings));
+        }
+        let value = self.pattern_literal(first, target, span)?;
+        let covered = match value {
+            Value::Bool(true) => Coverage::True,
+            Value::Bool(false) => Coverage::False,
+            Value::Nat(_)
+            | Value::Ratio(_)
+            | Value::Duration(_)
+            | Value::Pitch(_)
+            | Value::Interval(_)
+            | Value::Product(_)
+            | Value::Option { .. }
+            | Value::List { .. }
+            | Value::Closure(_) => Coverage::Literal(literal_key(&value)),
+        };
+        Some((Pattern::Literal(value), covered, bindings))
+    }
+
+    fn pattern_literal(&mut self, token: &SyntaxToken, target: &Type, span: SourceSpan) -> Option<Value> {
+        let value = match (token.kind(), target) {
+            (SyntaxKind::TrueKw, Type::Bool) => Value::Bool(true),
+            (SyntaxKind::FalseKw, Type::Bool) => Value::Bool(false),
+            (SyntaxKind::Integer, Type::Nat) => Value::Nat(parse_u64(self.resolver, token)?),
+            (SyntaxKind::Integer, Type::Duration) => {
+                Value::Duration(Ratio::from_integer(parse_i64(self.resolver, token)?))
+            }
+            (SyntaxKind::Rational, Type::Ratio) => Value::Ratio(parse_ratio(self.resolver, token)?),
+            (SyntaxKind::Rational, Type::Duration) => Value::Duration(parse_ratio(self.resolver, token)?),
+            (SyntaxKind::PitchLiteral, Type::Pitch) => Value::Pitch(WrittenPitch::parse(token.text())?),
+            (SyntaxKind::IntervalLiteral, Type::Interval) => Value::Interval(Interval::parse(token.text(), false)?),
+            _ => return self.pattern_type_error(span, target, "this literal cannot match that value type"),
+        };
+        Some(value)
+    }
+
+    fn pattern_type_error<T>(&mut self, span: SourceSpan, target: &Type, message: &str) -> Option<T> {
+        self.resolver.report(
+            Diagnostic::error(Code::TypeMismatch, message).at(span, format!("the matched value has type `{target}`")),
+        );
+        self.failed = true;
+        None
+    }
+
+    fn application(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
         let mut children = node.children();
         let function_node = children.find(|child| is_expr_node(child.kind()))?;
+        if let Some(primitive) = name_of(&function_node).as_deref().and_then(primitive_named) {
+            return self.primitive_application(node, primitive, expected);
+        }
         let function = self.check(&function_node, None)?;
         let Type::Function(parameter_types, result) = function.ty.clone() else {
             self.resolver.report(
@@ -734,14 +1073,7 @@ impl Checker<'_> {
             self.failed = true;
             return None;
         };
-        let raw_arguments = node
-            .children()
-            .find(|child| child.kind() == SyntaxKind::ExprArgList)
-            .map_or_else(Vec::new, |list| {
-                list.children()
-                    .filter(|child| child.kind() == SyntaxKind::ExprArg)
-                    .collect()
-            });
+        let raw_arguments = raw_arguments(node);
         let parameter_shape = self.parameter_shape(&function_node, &parameter_types);
         let mut occupied = IndexSet::new();
         let mut positional = 0usize;
@@ -814,6 +1146,156 @@ impl Checker<'_> {
         })
     }
 
+    fn primitive_application(
+        &mut self,
+        node: &SyntaxNode,
+        primitive: Primitive,
+        expected: Option<&Type>,
+    ) -> Option<Expr> {
+        let span = crate::resolve::trimmed_span(node);
+        let raw = raw_arguments(node);
+        if raw.iter().any(|argument| argument_name(argument).is_some()) {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::WrongArity,
+                    format!("`{}` uses positional arguments", primitive.name()),
+                )
+                .at(span, "named arguments are not part of this prelude operation"),
+            );
+            self.failed = true;
+            return None;
+        }
+        let wanted = match primitive {
+            Primitive::NatFold | Primitive::ListFold | Primitive::OptionFold => 3,
+            Primitive::Map | Primitive::Filter | Primitive::Repeat => 2,
+            Primitive::Range => 1,
+        };
+        if raw.len() != wanted {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::WrongArity,
+                    format!("`{}` takes {wanted} arguments, found {}", primitive.name(), raw.len()),
+                )
+                .at(span, "wrong number of arguments"),
+            );
+            self.failed = true;
+            return None;
+        }
+        if !self.meter.instantiate(primitive.name(), span) {
+            self.failed = true;
+            return None;
+        }
+        let nodes: Vec<_> = raw
+            .iter()
+            .filter_map(|argument| child_of(argument, is_expr_node))
+            .collect();
+        let (arguments, ty) = match primitive {
+            Primitive::Range => {
+                let count = self.check(nodes.first()?, Some(&Type::Nat))?;
+                (vec![count], Type::List(Box::new(Type::Nat)))
+            }
+            Primitive::Repeat => {
+                let value = self.check(nodes.first()?, None)?;
+                let count = self.check(nodes.get(1)?, Some(&Type::Nat))?;
+                let result = Type::List(Box::new(value.ty.clone()));
+                (vec![value, count], result)
+            }
+            Primitive::Map => {
+                let function = self.check(nodes.first()?, None)?;
+                let Type::Function(parameters, result) = function.ty.clone() else {
+                    return self.primitive_type_error(span, "`map` first needs a one-argument function");
+                };
+                let Some(parameter) = unary_parameter(&parameters) else {
+                    return self.primitive_type_error(span, "`map` first needs a one-argument function");
+                };
+                let values = self.check(nodes.get(1)?, Some(&Type::List(Box::new(parameter.clone()))))?;
+                (vec![function, values], Type::List(result))
+            }
+            Primitive::Filter => {
+                let function = self.check(nodes.first()?, None)?;
+                let Type::Function(parameters, result) = function.ty.clone() else {
+                    return self.primitive_type_error(span, "`filter` first needs a predicate");
+                };
+                let Some(parameter) = unary_parameter(&parameters) else {
+                    return self.primitive_type_error(span, "`filter` first needs a one-argument predicate");
+                };
+                if result.as_ref() != &Type::Bool {
+                    return self.primitive_type_error(span, "a `filter` predicate must return `bool`");
+                }
+                let values = self.check(nodes.get(1)?, Some(&Type::List(Box::new(parameter.clone()))))?;
+                (vec![function, values], Type::List(Box::new(parameter.clone())))
+            }
+            Primitive::NatFold => {
+                let zero = self.check(nodes.first()?, expected)?;
+                let step = self.check(nodes.get(1)?, None)?;
+                let wanted = Type::Function(vec![Type::Nat, zero.ty.clone()], Box::new(zero.ty.clone()));
+                if step.ty != wanted {
+                    return self.primitive_type_error(
+                        step.span,
+                        "a `nat_fold` step must accept the index and accumulator and return the accumulator type",
+                    );
+                }
+                let count = self.check(nodes.get(2)?, Some(&Type::Nat))?;
+                let result = zero.ty.clone();
+                (vec![zero, step, count], result)
+            }
+            Primitive::ListFold => {
+                let zero = self.check(nodes.first()?, expected)?;
+                let step = self.check(nodes.get(1)?, None)?;
+                let Type::Function(parameters, result) = step.ty.clone() else {
+                    return self.primitive_type_error(step.span, "a `list_fold` step must be a two-argument function");
+                };
+                let Some((member, accumulator)) = binary_parameters(&parameters) else {
+                    return self.primitive_type_error(step.span, "a `list_fold` step must be a two-argument function");
+                };
+                if accumulator != &zero.ty || result.as_ref() != &zero.ty {
+                    return self
+                        .primitive_type_error(step.span, "a `list_fold` step must preserve the accumulator type");
+                }
+                let values = self.check(nodes.get(2)?, Some(&Type::List(Box::new(member.clone()))))?;
+                let result = zero.ty.clone();
+                (vec![zero, step, values], result)
+            }
+            Primitive::OptionFold => {
+                let zero = self.check(nodes.first()?, expected)?;
+                let some_case = self.check(nodes.get(1)?, None)?;
+                let Type::Function(parameters, result) = some_case.ty.clone() else {
+                    return self.primitive_type_error(
+                        some_case.span,
+                        "an `option_fold` some-case must be a one-argument function",
+                    );
+                };
+                let Some(member) = unary_parameter(&parameters) else {
+                    return self.primitive_type_error(
+                        some_case.span,
+                        "an `option_fold` some-case must be a one-argument function",
+                    );
+                };
+                if result.as_ref() != &zero.ty {
+                    return self.primitive_type_error(
+                        some_case.span,
+                        "an `option_fold` some-case must return the zero value's type",
+                    );
+                }
+                let value = self.check(nodes.get(2)?, Some(&Type::Option(Box::new(member.clone()))))?;
+                let result = zero.ty.clone();
+                (vec![zero, some_case, value], result)
+            }
+        };
+        Some(Expr {
+            kind: ExprKind::Primitive { primitive, arguments },
+            ty,
+            span,
+        })
+    }
+
+    fn primitive_type_error<T>(&mut self, span: SourceSpan, message: &str) -> Option<T> {
+        self.resolver
+            .report(Diagnostic::error(Code::TypeMismatch, message).at(span, "invalid prelude arguments"));
+        self.failed = true;
+        None
+    }
+
     fn parameter_shape(&self, function: &SyntaxNode, types: &[Type]) -> Vec<ParameterShape> {
         let global = name_of(function)
             .and_then(|name| self.symbols.get(&name))
@@ -840,6 +1322,72 @@ impl Checker<'_> {
 struct ParameterShape {
     name: Option<String>,
     has_default: bool,
+}
+
+fn primitive_named(name: &str) -> Option<Primitive> {
+    match name {
+        "nat_fold" => Some(Primitive::NatFold),
+        "list_fold" => Some(Primitive::ListFold),
+        "option_fold" => Some(Primitive::OptionFold),
+        "map" => Some(Primitive::Map),
+        "filter" => Some(Primitive::Filter),
+        "range" => Some(Primitive::Range),
+        "repeat" => Some(Primitive::Repeat),
+        _ => None,
+    }
+}
+
+fn unary_parameter(parameters: &[Type]) -> Option<&Type> {
+    match parameters {
+        [parameter] => Some(parameter),
+        _ => None,
+    }
+}
+
+fn binary_parameters(parameters: &[Type]) -> Option<(&Type, &Type)> {
+    match parameters {
+        [first, second] => Some((first, second)),
+        _ => None,
+    }
+}
+
+fn raw_arguments(node: &SyntaxNode) -> Vec<SyntaxNode> {
+    node.children()
+        .find(|child| child.kind() == SyntaxKind::ExprArgList)
+        .map_or_else(Vec::new, |list| {
+            list.children()
+                .filter(|child| child.kind() == SyntaxKind::ExprArg)
+                .collect()
+        })
+}
+
+fn is_exhaustive(target: &Type, coverage: &IndexSet<Coverage>) -> bool {
+    coverage.contains(&Coverage::CatchAll)
+        || match target {
+            Type::Bool => coverage.contains(&Coverage::True) && coverage.contains(&Coverage::False),
+            Type::Option(_) => coverage.contains(&Coverage::None) && coverage.contains(&Coverage::Some),
+            Type::List(_) => coverage.contains(&Coverage::EmptyList) && coverage.contains(&Coverage::Cons),
+            Type::Unit
+            | Type::Nat
+            | Type::Ratio
+            | Type::Duration
+            | Type::Pitch
+            | Type::Interval
+            | Type::Product(_)
+            | Type::Function(_, _) => false,
+        }
+}
+
+fn literal_key(value: &Value) -> String {
+    match value {
+        Value::Bool(value) => format!("bool:{value}"),
+        Value::Nat(value) => format!("nat:{value}"),
+        Value::Ratio(value) => format!("ratio:{}/{}", value.numer(), value.denom()),
+        Value::Duration(value) => format!("duration:{}/{}", value.numer(), value.denom()),
+        Value::Pitch(value) => format!("pitch:{}:{}:{}", value.letter.steps(), value.accidental.0, value.octave),
+        Value::Interval(value) => format!("interval:{}:{}", value.diatonic_steps, value.semitones),
+        Value::Product(_) | Value::Option { .. } | Value::List { .. } | Value::Closure(_) => "constructor".to_owned(),
+    }
 }
 
 fn dependency_order(resolver: &mut Resolver, definitions: &[CheckedDefinition]) -> Option<Vec<usize>> {
@@ -941,12 +1489,17 @@ fn evaluate(
     resolver: &mut Resolver,
     definitions: &[CheckedDefinition],
     order: &[usize],
+    meter: &mut WorkMeter,
 ) -> Option<IndexMap<String, Value>> {
     let mut values = IndexMap::new();
     for index in order {
         let definition = definitions.get(*index)?;
+        if !meter.output("scalar elaboration", 0, definition.span) {
+            report_exhaustion(resolver, meter);
+            return None;
+        }
         let value = match &definition.kind {
-            CheckedDefinitionKind::Let { body } => eval(body, &values),
+            CheckedDefinitionKind::Let { body } => eval(body, &values, meter),
             CheckedDefinitionKind::Function { parameters, body } => {
                 let mut captures = IndexMap::new();
                 for dependency in definition.dependencies.keys() {
@@ -962,6 +1515,10 @@ fn evaluate(
             }
         };
         let Some(value) = value else {
+            if meter.exhaustion().is_some() {
+                report_exhaustion(resolver, meter);
+                return None;
+            }
             resolver.report(
                 Diagnostic::error(Code::TypeMismatch, "this checked expression could not be evaluated")
                     .at(definition.span, "evaluation stopped here")
@@ -982,39 +1539,391 @@ fn evaluate(
     Some(values)
 }
 
-fn eval(expression: &Expr, environment: &IndexMap<String, Value>) -> Option<Value> {
+fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut WorkMeter) -> Option<Value> {
+    if !meter.step("expression evaluation", 1, expression.span) {
+        return None;
+    }
     let value = match &expression.kind {
         ExprKind::Literal(value) => Some(value.clone()),
         ExprKind::Name(name) => environment.get(name).cloned(),
         ExprKind::Product(members) => members
             .iter()
-            .map(|member| eval(member, environment))
+            .map(|member| eval(member, environment, meter))
             .collect::<Option<Vec<_>>>()
             .map(Value::Product),
+        ExprKind::Option(value) => {
+            let Type::Option(member) = &expression.ty else {
+                return None;
+            };
+            let member = member.as_ref().clone();
+            let value = if let Some(value) = value.as_deref() {
+                Some(Box::new(eval(value, environment, meter)?))
+            } else {
+                None
+            };
+            Some(Value::Option { member, value })
+        }
+        ExprKind::List(values) => {
+            let Type::List(member) = &expression.ty else {
+                return None;
+            };
+            let member = member.as_ref().clone();
+            let values = values
+                .iter()
+                .map(|value| eval(value, environment, meter))
+                .collect::<Option<Vec<_>>>()?;
+            Some(Value::List { member, values })
+        }
         ExprKind::Apply { function, arguments } => {
-            let Value::Closure(closure) = eval(function, environment)? else {
+            let Value::Closure(closure) = eval(function, environment, meter)? else {
                 return None;
             };
             let mut provided = vec![None; closure.parameters.len()];
             for argument in arguments {
                 let slot = provided.get_mut(argument.parameter)?;
-                *slot = Some(eval(&argument.value, environment)?);
+                *slot = Some(eval(&argument.value, environment, meter)?);
             }
-            let mut local = closure.captures.clone();
-            for (index, parameter) in closure.parameters.iter().enumerate() {
-                let value = provided
-                    .get_mut(index)
-                    .and_then(Option::take)
-                    .or_else(|| parameter.default.as_ref().and_then(|default| eval(default, &local)))?;
-                if value.ty() != parameter.ty {
+            apply_closure(&closure, provided, meter, expression.span)
+        }
+        ExprKind::Primitive { primitive, arguments } => {
+            eval_primitive(*primitive, arguments, environment, meter, expression)
+        }
+        ExprKind::Match { scrutinee, arms } => {
+            let value = eval(scrutinee, environment, meter)?;
+            let mut selected = None;
+            for arm in arms {
+                if !meter.step("match arm", 1, expression.span) {
                     return None;
                 }
-                local.insert(parameter.name.clone(), value);
+                if let Some(bindings) = match_pattern(&arm.pattern, &value) {
+                    selected = Some((arm, bindings));
+                    break;
+                }
             }
-            eval(&closure.body, &local)
+            let (arm, bindings) = selected?;
+            let mut local = environment.clone();
+            local.extend(bindings);
+            eval(&arm.body, &local, meter)
         }
     }?;
-    (value.ty() == expression.ty).then_some(value)
+    let (nodes, bytes) = value_shape(&value);
+    if value.ty() != expression.ty || !meter.construct("expression value", nodes, bytes, expression.span) {
+        return None;
+    }
+    Some(value)
+}
+
+fn apply_closure(
+    closure: &Closure,
+    mut provided: Vec<Option<Value>>,
+    meter: &mut WorkMeter,
+    span: SourceSpan,
+) -> Option<Value> {
+    if !meter.step("function application", 1, span) {
+        return None;
+    }
+    let mut local = closure.captures.clone();
+    for (index, parameter) in closure.parameters.iter().enumerate() {
+        let value = provided.get_mut(index).and_then(Option::take).or_else(|| {
+            parameter
+                .default
+                .as_ref()
+                .and_then(|default| eval(default, &local, meter))
+        })?;
+        if value.ty() != parameter.ty {
+            return None;
+        }
+        local.insert(parameter.name.clone(), value);
+    }
+    eval(&closure.body, &local, meter)
+}
+
+fn eval_primitive(
+    primitive: Primitive,
+    arguments: &[Expr],
+    environment: &IndexMap<String, Value>,
+    meter: &mut WorkMeter,
+    expression: &Expr,
+) -> Option<Value> {
+    let values = arguments
+        .iter()
+        .map(|argument| eval(argument, environment, meter))
+        .collect::<Option<Vec<_>>>()?;
+    match primitive {
+        Primitive::Range => {
+            let count = nat_value(values.first()?)?;
+            let nodes = count.saturating_add(1);
+            let bytes = count.saturating_mul(8);
+            if !meter.step("range", count, expression.span)
+                || !meter.preflight_construct("range", nodes, bytes, expression.span)
+            {
+                return None;
+            }
+            let capacity = usize::try_from(count).ok()?;
+            let values = (0..count).map(Value::Nat).collect::<Vec<_>>();
+            if values.len() != capacity {
+                return None;
+            }
+            Some(Value::List {
+                member: Type::Nat,
+                values,
+            })
+        }
+        Primitive::Repeat => {
+            let value = values.first()?.clone();
+            let count = nat_value(values.get(1)?)?;
+            let (value_nodes, value_bytes) = value_shape(&value);
+            let nodes = value_nodes.saturating_mul(count).saturating_add(1);
+            let bytes = value_bytes.saturating_mul(count);
+            if !meter.step("repeat", count, expression.span)
+                || !meter.preflight_construct("repeat", nodes, bytes, expression.span)
+            {
+                return None;
+            }
+            let count = usize::try_from(count).ok()?;
+            Some(Value::List {
+                member: value.ty(),
+                values: vec![value; count],
+            })
+        }
+        Primitive::Map => {
+            let Value::Closure(function) = values.first()? else {
+                return None;
+            };
+            let Value::List { values: source, .. } = values.get(1)? else {
+                return None;
+            };
+            if !meter.step("map", u64::try_from(source.len()).unwrap_or(u64::MAX), expression.span) {
+                return None;
+            }
+            let mapped = source
+                .iter()
+                .cloned()
+                .map(|value| apply_closure(function, vec![Some(value)], meter, expression.span))
+                .collect::<Option<Vec<_>>>()?;
+            let Type::List(member) = &expression.ty else {
+                return None;
+            };
+            let member = member.as_ref().clone();
+            Some(Value::List { member, values: mapped })
+        }
+        Primitive::Filter => {
+            let Value::Closure(predicate) = values.first()? else {
+                return None;
+            };
+            let Value::List { member, values } = values.get(1)? else {
+                return None;
+            };
+            if !meter.step(
+                "filter",
+                u64::try_from(values.len()).unwrap_or(u64::MAX),
+                expression.span,
+            ) {
+                return None;
+            }
+            let mut kept = Vec::new();
+            for value in values {
+                let decision = apply_closure(predicate, vec![Some(value.clone())], meter, expression.span)?;
+                let Value::Bool(keep) = decision else {
+                    return None;
+                };
+                if keep {
+                    kept.push(value.clone());
+                }
+            }
+            Some(Value::List {
+                member: member.clone(),
+                values: kept,
+            })
+        }
+        Primitive::NatFold => {
+            let mut accumulator = values.first()?.clone();
+            let Value::Closure(step) = values.get(1)? else {
+                return None;
+            };
+            let count = nat_value(values.get(2)?)?;
+            if !meter.step("nat_fold", count, expression.span) {
+                return None;
+            }
+            for index in 0..count {
+                accumulator = apply_closure(
+                    step,
+                    vec![Some(Value::Nat(index)), Some(accumulator)],
+                    meter,
+                    expression.span,
+                )?;
+            }
+            Some(accumulator)
+        }
+        Primitive::ListFold => {
+            let mut accumulator = values.first()?.clone();
+            let Value::Closure(step) = values.get(1)? else {
+                return None;
+            };
+            let Value::List { values, .. } = values.get(2)? else {
+                return None;
+            };
+            if !meter.step(
+                "list_fold",
+                u64::try_from(values.len()).unwrap_or(u64::MAX),
+                expression.span,
+            ) {
+                return None;
+            }
+            for value in values {
+                accumulator = apply_closure(
+                    step,
+                    vec![Some(value.clone()), Some(accumulator)],
+                    meter,
+                    expression.span,
+                )?;
+            }
+            Some(accumulator)
+        }
+        Primitive::OptionFold => {
+            let zero = values.first()?.clone();
+            let Value::Closure(some_case) = values.get(1)? else {
+                return None;
+            };
+            let Value::Option { value, .. } = values.get(2)? else {
+                return None;
+            };
+            match value {
+                Some(value) => {
+                    if !meter.step("option_fold", 1, expression.span) {
+                        return None;
+                    }
+                    apply_closure(some_case, vec![Some(value.as_ref().clone())], meter, expression.span)
+                }
+                None => Some(zero),
+            }
+        }
+    }
+}
+
+fn nat_value(value: &Value) -> Option<u64> {
+    if let Value::Nat(value) = value {
+        Some(*value)
+    } else {
+        None
+    }
+}
+
+fn match_pattern(pattern: &Pattern, value: &Value) -> Option<IndexMap<String, Value>> {
+    let mut bindings = IndexMap::new();
+    let matched = match pattern {
+        Pattern::Wildcard => true,
+        Pattern::Bind(name) => {
+            bindings.insert(name.clone(), value.clone());
+            true
+        }
+        Pattern::Literal(expected) => literal_values_equal(expected, value),
+        Pattern::None => matches!(value, Value::Option { value: None, .. }),
+        Pattern::Some(name) => {
+            if let Value::Option {
+                value: Some(member), ..
+            } = value
+            {
+                bindings.insert(name.clone(), member.as_ref().clone());
+                true
+            } else {
+                false
+            }
+        }
+        Pattern::EmptyList => matches!(value, Value::List { values, .. } if values.is_empty()),
+        Pattern::Cons { head, tail } => {
+            if let Value::List { member, values } = value
+                && !values.is_empty()
+            {
+                let first = values.first()?.clone();
+                let rest = values.get(1..)?.to_vec();
+                bindings.insert(head.clone(), first);
+                bindings.insert(
+                    tail.clone(),
+                    Value::List {
+                        member: member.clone(),
+                        values: rest,
+                    },
+                );
+                true
+            } else {
+                false
+            }
+        }
+        Pattern::Product(names) => {
+            if let Value::Product(members) = value
+                && names.len() == members.len()
+            {
+                bindings.extend(names.iter().cloned().zip(members.iter().cloned()));
+                true
+            } else {
+                false
+            }
+        }
+    };
+    matched.then_some(bindings)
+}
+
+fn literal_values_equal(left: &Value, right: &Value) -> bool {
+    if let (Value::Bool(left), Value::Bool(right)) = (left, right) {
+        left == right
+    } else if let (Value::Nat(left), Value::Nat(right)) = (left, right) {
+        left == right
+    } else if let (Value::Ratio(left), Value::Ratio(right)) = (left, right) {
+        left == right
+    } else if let (Value::Duration(left), Value::Duration(right)) = (left, right) {
+        left == right
+    } else if let (Value::Pitch(left), Value::Pitch(right)) = (left, right) {
+        left == right
+    } else if let (Value::Interval(left), Value::Interval(right)) = (left, right) {
+        left == right
+    } else {
+        false
+    }
+}
+
+fn value_shape(value: &Value) -> (u64, u64) {
+    match value {
+        Value::Bool(_) => (1, 1),
+        Value::Nat(_) => (1, 8),
+        Value::Ratio(_) | Value::Duration(_) => (1, 16),
+        Value::Pitch(_) | Value::Interval(_) => (1, 12),
+        Value::Product(members) => aggregate_shape(members.iter()),
+        Value::Option { value, .. } => value.as_deref().map_or((1, 1), |value| {
+            let (nodes, bytes) = value_shape(value);
+            (nodes.saturating_add(1), bytes.saturating_add(1))
+        }),
+        Value::List { values, .. } => aggregate_shape(values.iter()),
+        Value::Closure(closure) => aggregate_shape(closure.captures.values()),
+    }
+}
+
+fn aggregate_shape<'a>(values: impl Iterator<Item = &'a Value>) -> (u64, u64) {
+    values.fold((1u64, 0u64), |(nodes, bytes), value| {
+        let (value_nodes, value_bytes) = value_shape(value);
+        (nodes.saturating_add(value_nodes), bytes.saturating_add(value_bytes))
+    })
+}
+
+fn report_exhaustion(resolver: &mut Resolver, meter: &WorkMeter) {
+    let Some(exhaustion) = meter.exhaustion() else {
+        return;
+    };
+    resolver.report(
+        Diagnostic::error(
+            Code::ResourceLimit,
+            format!("`{}` exceeds the compilation budget", exhaustion.operation),
+        )
+        .at(
+            exhaustion.span,
+            format!(
+                "attempted {} {}, limit {}",
+                exhaustion.attempted, exhaustion.metric, exhaustion.limit
+            ),
+        )
+        .note("the expression is finite; Musa rejected its size before publishing a partial value")
+        .help("reduce the bound or split the generated material into smaller declarations"),
+    );
 }
 
 fn parse_i64(resolver: &mut Resolver, token: &SyntaxToken) -> Option<i64> {
@@ -1109,7 +2018,7 @@ fn name_of(node: &SyntaxNode) -> Option<String> {
         return None;
     }
     significant_tokens(node)
-        .find(|token| token.kind() == SyntaxKind::Identifier)
+        .find(|token| matches!(token.kind(), SyntaxKind::Identifier | SyntaxKind::RepeatKw))
         .map(|token| token.text().to_owned())
 }
 
@@ -1196,5 +2105,52 @@ mod tests {
             Some(Value::Product(members))
                 if matches!(members.as_slice(), [Value::Nat(3), Value::Bool(true)])
         ));
+    }
+
+    #[test]
+    fn finite_primitives_agree_with_small_reference_folds() {
+        for count in 0..16u64 {
+            let source = format!(
+                "piece \"law\" {{ \
+                 fn latest(index: nat, accumulator: nat) -> nat = index; \
+                 fn item(value: nat, accumulator: nat) -> nat = value; \
+                 fn id(value: nat) -> nat = value; \
+                 fn reject(value: nat) -> bool = false; \
+                 fn from_option(value: option[nat]) -> nat = match value {{ none -> 0, some(found) -> found }}; \
+                 let by_nat: nat = nat_fold(0, latest, {count}); \
+                 let values: list[nat] = range({count}); \
+                 let mapped: list[nat] = map(id, values); \
+                 let filtered: list[nat] = filter(reject, mapped); \
+                 let by_list: nat = list_fold(0, item, mapped); \
+                 let selected: nat = from_option(some(by_list)); \
+                 }}"
+            );
+            let actual = values(&source);
+            assert!(actual.is_some(), "generated finite source was rejected: {source}");
+            let expected = (0..count).last().unwrap_or(0);
+            assert!(matches!(
+                actual.as_ref().and_then(|bindings| bindings.get("by_nat")),
+                Some(Value::Nat(found)) if *found == expected
+            ));
+            assert!(matches!(
+                actual.as_ref().and_then(|bindings| bindings.get("by_list")),
+                Some(Value::Nat(found)) if *found == expected
+            ));
+            assert!(matches!(
+                actual.as_ref().and_then(|bindings| bindings.get("mapped")),
+                Some(Value::List { values, .. })
+                    if values.iter().enumerate().all(|(index, value)| {
+                        matches!(value, Value::Nat(found) if usize::try_from(*found).ok() == Some(index))
+                    })
+            ));
+            assert!(matches!(
+                actual.as_ref().and_then(|bindings| bindings.get("filtered")),
+                Some(Value::List { values, .. }) if values.is_empty()
+            ));
+            assert!(matches!(
+                actual.as_ref().and_then(|bindings| bindings.get("selected")),
+                Some(Value::Nat(found)) if *found == expected
+            ));
+        }
     }
 }

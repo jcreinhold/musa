@@ -1,7 +1,7 @@
 ---
 id: 96
 slug: finite-data-and-budgets
-status: pending
+status: done
 depends_on: [95]
 phase: 3
 ---

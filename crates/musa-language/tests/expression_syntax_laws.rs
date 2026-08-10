@@ -132,3 +132,24 @@ fn a_note_line_and_a_general_expression_are_unambiguous_in_music() {
         1
     );
 }
+
+#[test]
+fn repeat_is_a_statement_keyword_and_a_finite_value_operation() {
+    let source =
+        "piece \"x\" { let copies: list[nat] = repeat(1, 4); score { part p { voice v { repeat 2 { c4/4 } } } } }";
+    let document = parse(source);
+    assert!(document.errors().is_empty(), "{:?}", document.errors());
+    let root = document.syntax();
+    assert_eq!(
+        root.descendants()
+            .filter(|node| node.kind() == SyntaxKind::ApplyExpr)
+            .count(),
+        1
+    );
+    assert_eq!(
+        root.descendants()
+            .filter(|node| node.kind() == SyntaxKind::RepeatStmt)
+            .count(),
+        1
+    );
+}

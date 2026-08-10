@@ -3,7 +3,7 @@ use musa_compiler::{Code, CompileOptions, SourceDocument, compile};
 #[test]
 fn expressions_are_valid_syntax_but_stop_at_the_owned_stage() {
     let source = SourceDocument::new(
-        "piece \"staged\" { let answer: option[nat] = some(42); score { part p { voice v { c4/1 } } } }",
+        "piece \"staged\" { let answer: music = music { c4/1 }; score { part p { voice v { c4/1 } } } }",
         "staged.musa",
     );
     let compilation = compile(&source, &CompileOptions::default());
