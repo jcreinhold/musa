@@ -241,26 +241,103 @@ pub(crate) struct Libraries {
     /// Kept alive so the AST nodes below stay valid.
     documents: Vec<musa_language::ParsedDocument>,
     /// One entry per imported file, in registration order.
-    order: Vec<(String, usize, SourceSpan)>,
+    order: Vec<Entry>,
+}
+
+/// One imported file, and how the statement that reached it was written.
+struct Entry {
+    path: String,
+    document: usize,
+    span: SourceSpan,
+    alias: Option<String>,
+    /// The resolved paths this file itself imports — its own dependencies and
+    /// nothing else, which is what it must be checked against.
+    depends_on: Vec<String>,
+}
+
+/// One library as the importing document sees it.
+///
+/// The path is where the text came from; the qualifier is what the importer
+/// wrote after `as`, and it is `None` on nearly every import because binding
+/// is flat. Both travel together because a name and where it came from are
+/// the same question asked twice.
+#[derive(Clone, Copy)]
+pub(crate) struct Imported<'a> {
+    pub(crate) path: &'a str,
+    pub(crate) qualifier: Option<&'a str>,
 }
 
 impl Libraries {
     /// The imported libraries, with the path each was read from.
-    pub(crate) fn each(&self) -> impl Iterator<Item = (&str, LibraryDecl)> {
-        self.order.iter().filter_map(|(path, index, _)| {
-            let document = self.documents.get(*index)?;
-            Some((path.as_str(), LibraryDecl::from_root(&document.syntax())?))
+    pub(crate) fn each(&self) -> impl Iterator<Item = (Imported<'_>, LibraryDecl)> {
+        self.order.iter().filter_map(|entry| {
+            let document = self.documents.get(entry.document)?;
+            Some((entry.imported(), LibraryDecl::from_root(&document.syntax())?))
         })
     }
 
-    /// The imported libraries and the local `use` span through which each
-    /// was reached. Semantic consumers use this to remap a foreign failure
-    /// instead of displaying another document's byte offsets in this one.
-    pub(crate) fn each_with_import_span(&self) -> impl Iterator<Item = (&str, LibraryDecl, SourceSpan)> {
-        self.order.iter().filter_map(|(path, index, span)| {
-            let document = self.documents.get(*index)?;
-            Some((path.as_str(), LibraryDecl::from_root(&document.syntax())?, *span))
+    /// Each library, the `import` span through which it was reached, and the
+    /// libraries it may read — its own transitive imports, in reading order.
+    ///
+    /// A library is checked against *that* and not against everything already
+    /// registered: two libraries a piece happens to import side by side are
+    /// nothing to each other, and a name they share is the piece's collision
+    /// to report, not evidence that either one fails to compile.
+    ///
+    /// Semantic consumers use the span to remap a foreign failure instead of
+    /// displaying another document's byte offsets in this one.
+    pub(crate) fn each_with_dependencies(
+        &self,
+    ) -> impl Iterator<Item = (Imported<'_>, LibraryDecl, SourceSpan, Vec<LibraryDecl>)> {
+        self.order.iter().filter_map(|entry| {
+            let document = self.documents.get(entry.document)?;
+            let mut needed: Vec<&str> = Vec::new();
+            let mut seen: Vec<&str> = vec![entry.path.as_str()];
+            self.reach(entry, &mut seen, &mut needed);
+            let dependencies = needed
+                .into_iter()
+                .filter_map(|path| self.library(path))
+                .collect::<Vec<_>>();
+            Some((
+                entry.imported(),
+                LibraryDecl::from_root(&document.syntax())?,
+                entry.span,
+                dependencies,
+            ))
         })
+    }
+
+    /// Accumulate `entry`'s transitive dependencies, deepest first, once each.
+    ///
+    /// `seen` starts holding `entry` itself and grows before the recursion, so
+    /// a cycle — which is reported elsewhere, and reported rather than
+    /// followed — terminates here instead of exhausting the stack.
+    fn reach<'a>(&'a self, entry: &'a Entry, seen: &mut Vec<&'a str>, found: &mut Vec<&'a str>) {
+        for path in &entry.depends_on {
+            let Some(dependency) = self.order.iter().find(|other| other.path == *path) else {
+                continue;
+            };
+            if seen.contains(&dependency.path.as_str()) {
+                continue;
+            }
+            seen.push(&dependency.path);
+            self.reach(dependency, seen, found);
+            found.push(&dependency.path);
+        }
+    }
+
+    fn library(&self, path: &str) -> Option<LibraryDecl> {
+        let entry = self.order.iter().find(|entry| entry.path == path)?;
+        LibraryDecl::from_root(&self.documents.get(entry.document)?.syntax())
+    }
+}
+
+impl Entry {
+    fn imported(&self) -> Imported<'_> {
+        Imported {
+            path: &self.path,
+            qualifier: self.alias.as_deref(),
+        }
     }
 }
 
@@ -302,7 +379,7 @@ pub(crate) fn load(
                 resolver.report(fault.at(span, "the bundled library is imported here"));
             }
         }
-        loader.load_one(resolver, importer, &written, span);
+        loader.load_one(resolver, importer, &written, span, import.alias());
     }
     loader.libraries
 }
@@ -317,7 +394,17 @@ struct Loader<'a> {
 }
 
 impl Loader<'_> {
-    fn load_one(&mut self, resolver: &mut Resolver, importer: &str, written: &str, span: SourceSpan) {
+    /// `alias` is the importing statement's `as` clause, which belongs to that
+    /// statement and not to the file: a library reached transitively is bound
+    /// as it was written, however the piece at the top qualified its own.
+    fn load_one(
+        &mut self,
+        resolver: &mut Resolver,
+        importer: &str,
+        written: &str,
+        span: SourceSpan,
+        alias: Option<String>,
+    ) {
         let path = resolve_import(importer, written);
         if self.stack.contains(&path) {
             let cycle = self
@@ -375,13 +462,21 @@ impl Loader<'_> {
             .iter()
             .filter_map(musa_language::ast::ImportStmt::path)
             .collect();
+        let mut depends_on = Vec::with_capacity(nested.len());
         for import in nested {
-            self.load_one(resolver, &path, &import, span);
+            depends_on.push(resolve_import(&path, &import));
+            self.load_one(resolver, &path, &import, span, None);
         }
         self.stack.pop();
         self.libraries.documents.push(document);
-        let index = self.libraries.documents.len().saturating_sub(1);
-        self.libraries.order.push((path, index, span));
+        let document = self.libraries.documents.len().saturating_sub(1);
+        self.libraries.order.push(Entry {
+            path,
+            document,
+            span,
+            alias,
+            depends_on,
+        });
     }
 }
 

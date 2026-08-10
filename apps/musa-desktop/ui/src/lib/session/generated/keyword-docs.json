@@ -395,6 +395,11 @@
     "doc": "`module CMajor : TonalContext { let key = key c major; ... }` names a group of `let` and `fn` declarations, reached from outside as `CMajor.key`. `template module` parameterizes one over other modules, and `make` applies it. Modules are static: they hold no state, cross no boundary as values, and disappear into ordinary declarations once made.\n\n```musa\nmodule CMajor : TonalContext {\n    let key = key c major;\n    let scale = scale c major;\n}\n```"
   },
   {
+    "spelling": "mod",
+    "summary": "declare one child of a package's module tree",
+    "doc": "`mod tonal;` says this package has a module called `tonal` — a `tonal.musa` beside this file, or a `tonal/mod.musa` declaring children of its own. A package's tree is its `mod` declarations and nothing else: a `.musa` file no `mod` reaches is not part of the package, and saying so is an error rather than a silence.\n\n```musa\nmod core;\nmod tonal;\n```"
+  },
+  {
     "spelling": "make",
     "summary": "instantiate a template here",
     "doc": "`make study(key g major) as study_in_g;` evaluates the arguments in the scope it is written in and expands the template into an ordinary declaration at this place. A piece instance stands at the file's root and is that file's piece; a voice instance stands among a part's voices. The `as` name is the address; identity comes from the site, so two instances with equal arguments remain two declarations.\n\n```musa\nmake answer(subject, transpose(P8)) as follower;\n```"

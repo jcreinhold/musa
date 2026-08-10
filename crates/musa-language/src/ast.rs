@@ -539,6 +539,19 @@ impl ImportStmt {
         }
         Some(names.join("::"))
     }
+
+    /// The name written after `as`, which qualifies what the import binds.
+    ///
+    /// Absent on almost every import: binding is flat, and an alias is what
+    /// resolves a collision between two modules that export the same name.
+    pub fn alias(&self) -> Option<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .skip_while(|token| token.kind() != SyntaxKind::AsKw)
+            .find(|token| token.kind() == SyntaxKind::Identifier)
+            .map(|token| token.text().to_owned())
+    }
 }
 
 /// `crescendo to f { ... }` / `diminuendo to p { ... }`

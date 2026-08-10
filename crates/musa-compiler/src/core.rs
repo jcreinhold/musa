@@ -35,7 +35,7 @@ pub(crate) fn check_piece(
         resolver,
         libraries
             .each()
-            .flat_map(|(path, library)| declarations(library.syntax(), Some(path)))
+            .flat_map(|(from, library)| declarations(library.syntax(), Some(from)))
             .chain(root_preamble(root))
             .chain(bindings.into_iter().map(SurfaceDefinition::Bound))
             .chain(declarations(piece.syntax(), None)),
@@ -64,7 +64,7 @@ pub(crate) fn check_arguments(
         resolver,
         libraries
             .each()
-            .flat_map(|(path, library)| declarations(library.syntax(), Some(path)))
+            .flat_map(|(from, library)| declarations(library.syntax(), Some(from)))
             .chain(root_preamble(root))
             .chain(bindings.into_iter().map(SurfaceDefinition::Bound)),
         None,
@@ -92,7 +92,7 @@ pub(crate) fn check_template_voice(
         resolver,
         libraries
             .each()
-            .flat_map(|(path, library)| declarations(library.syntax(), Some(path)))
+            .flat_map(|(from, library)| declarations(library.syntax(), Some(from)))
             .chain(root_preamble(root))
             .chain(bindings.into_iter().map(SurfaceDefinition::Bound))
             .chain(declarations(voice.syntax(), None)),
@@ -110,7 +110,7 @@ fn module_owners<'a>(
 ) -> impl Iterator<Item = (Option<&'a str>, SyntaxNode)> {
     libraries
         .each()
-        .map(|(path, library)| (Some(path), library.syntax().clone()))
+        .map(|(from, library)| (Some(from.path), library.syntax().clone()))
         .chain(std::iter::once((None, root.clone())))
 }
 
@@ -124,11 +124,13 @@ fn root_preamble(root: &SyntaxNode) -> Vec<SurfaceDefinition> {
                 .map(|declaration| SurfaceDefinition::Let {
                     declaration,
                     source: None,
+                    qualifier: None,
                 })
                 .or_else(|| {
                     FnDecl::cast(node).map(|declaration| SurfaceDefinition::Function {
                         declaration,
                         source: None,
+                        qualifier: None,
                     })
                 })
         })
@@ -148,14 +150,14 @@ pub(crate) fn check_material(
         resolver,
         libraries
             .each()
-            .map(|(path, imported)| (Some(path), imported.syntax().clone()))
+            .map(|(from, imported)| (Some(from.path), imported.syntax().clone()))
             .chain(std::iter::once((None, library.syntax().clone()))),
     );
     check_and_evaluate(
         resolver,
         libraries
             .each()
-            .flat_map(|(path, imported)| declarations(imported.syntax(), Some(path)))
+            .flat_map(|(from, imported)| declarations(imported.syntax(), Some(from)))
             .chain(declarations(library.syntax(), None)),
         None,
         UnknownRootMusic::Reject,
@@ -164,14 +166,23 @@ pub(crate) fn check_material(
     .is_some()
 }
 
-/// Check each library with precisely the earlier libraries available to it.
-/// A failure is then restated at the importing document's `use` span: spans
-/// inside the foreign CST must never be published as spans in this document.
+/// Check each library against precisely what it imports. A failure is then
+/// restated at the importing document's `import` span: spans inside the
+/// foreign CST must never be published as spans in this document.
 fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
-    let mut prefix = Vec::new();
-    let mut owners: Vec<(Option<&str>, SyntaxNode)> = Vec::new();
-    for (path, library, import_span) in libraries.each_with_import_span() {
-        prefix.extend(declarations(library.syntax(), Some(path)));
+    for (from, library, import_span, dependencies) in libraries.each_with_dependencies() {
+        let path = from.path;
+        // Validated as written, never as the importer qualified it: an `as`
+        // belongs to the statement that wrote it, and a library must compile
+        // on its own terms or the diagnostic is about the wrong document.
+        let unqualified = |path| Some(crate::imports::Imported { path, qualifier: None });
+        let mut prefix = Vec::new();
+        let mut owners: Vec<(Option<&str>, SyntaxNode)> = Vec::new();
+        for dependency in &dependencies {
+            prefix.extend(declarations(dependency.syntax(), unqualified(path)));
+            owners.push((Some(path), dependency.syntax().clone()));
+        }
+        prefix.extend(declarations(library.syntax(), unqualified(path)));
         owners.push((Some(path), library.syntax().clone()));
         let mut foreign_resolver = Resolver::new();
         let modules = Modules::read(&mut foreign_resolver, owners.iter().cloned());
@@ -203,19 +214,30 @@ fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
     true
 }
 
-fn declarations(owner: &SyntaxNode, source: Option<&str>) -> Vec<SurfaceDefinition> {
+/// Every name `owner` declares, as the document reading it sees them.
+///
+/// `from` is absent for the document's own declarations and present for an
+/// imported library, carrying both where the text came from and the `as`
+/// qualifier the import wrote. An unqualified import binds flat — an imported
+/// motif is called what it is called — and a qualified one binds `alias.name`
+/// instead, which is how a collision between two modules is resolved.
+fn declarations(owner: &SyntaxNode, from: Option<crate::imports::Imported<'_>>) -> Vec<SurfaceDefinition> {
+    let source = from.map(|from| from.path.to_owned());
+    let qualifier = from.and_then(|from| from.qualifier).map(str::to_owned);
     let mut found: Vec<_> = owner
         .children()
         .filter_map(|node| {
             LetDecl::cast(node.clone())
                 .map(|declaration| SurfaceDefinition::Let {
                     declaration,
-                    source: source.map(str::to_owned),
+                    source: source.clone(),
+                    qualifier: qualifier.clone(),
                 })
                 .or_else(|| {
                     FnDecl::cast(node.clone()).map(|declaration| SurfaceDefinition::Function {
                         declaration,
-                        source: source.map(str::to_owned),
+                        source: source.clone(),
+                        qualifier: qualifier.clone(),
                     })
                 })
                 .or_else(|| {
@@ -224,7 +246,8 @@ fn declarations(owner: &SyntaxNode, source: Option<&str>) -> Vec<SurfaceDefiniti
                         syntax: declaration.syntax().clone(),
                         parameters: declaration.params(),
                         material: crate::resolve::Material::Motif,
-                        source: source.map(str::to_owned),
+                        source: source.clone(),
+                        qualifier: qualifier.clone(),
                     })
                 })
                 .or_else(|| {
@@ -233,7 +256,8 @@ fn declarations(owner: &SyntaxNode, source: Option<&str>) -> Vec<SurfaceDefiniti
                         syntax: declaration.syntax().clone(),
                         parameters: Vec::new(),
                         material: crate::resolve::Material::Fragment,
-                        source: source.map(str::to_owned),
+                        source: source.clone(),
+                        qualifier: qualifier.clone(),
                     })
                 })
         })
@@ -247,7 +271,8 @@ fn declarations(owner: &SyntaxNode, source: Option<&str>) -> Vec<SurfaceDefiniti
                 syntax: declaration.syntax().clone(),
                 parameters: Vec::new(),
                 material: crate::resolve::Material::Bar,
-                source: source.map(str::to_owned),
+                source: source.clone(),
+                qualifier: qualifier.clone(),
             })
         })
     }));
@@ -287,10 +312,12 @@ enum SurfaceDefinition {
     Let {
         declaration: LetDecl,
         source: Option<String>,
+        qualifier: Option<String>,
     },
     Function {
         declaration: FnDecl,
         source: Option<String>,
+        qualifier: Option<String>,
     },
     Legacy {
         name: String,
@@ -298,6 +325,7 @@ enum SurfaceDefinition {
         parameters: Vec<musa_language::ast::Param>,
         material: crate::resolve::Material,
         source: Option<String>,
+        qualifier: Option<String>,
     },
     /// A name a template body reads, and what stands for it — see
     /// [`Binding`].
@@ -1929,7 +1957,9 @@ fn check_and_evaluate(
     let root_uses = root.map(root_uses).unwrap_or_default();
     let mut meter = WorkMeter::default();
     let mut raw = Vec::new();
-    let mut names: IndexMap<String, (SourceSpan, bool, bool)> = IndexMap::new();
+    // Per bound name: where it was bound, which library it came from if it
+    // came from one, and whether it was a legacy material declaration.
+    let mut names: IndexMap<String, (SourceSpan, Option<String>, bool)> = IndexMap::new();
     // A module's members and a functor's arguments are ordinary definitions
     // in the one flat namespace: what a module changes is the name they are
     // filed under and the scope their bodies read in, never the pass.
@@ -1956,8 +1986,7 @@ fn check_and_evaluate(
     for declaration in declarations {
         let is_legacy = matches!(declaration, SurfaceDefinition::Legacy { .. });
         let (name, name_span, span, source) = surface_identity(&declaration)?;
-        let foreign = source.is_some();
-        if let Some((first, first_is_foreign, first_is_legacy)) = names.get(&name).copied() {
+        if let Some((first, first_source, first_is_legacy)) = names.get(&name).cloned() {
             // The structural resolver retains the established, role-specific
             // diagnostic for two legacy material declarations. The core must
             // still see only the first definition, but reporting here as well
@@ -1965,15 +1994,27 @@ fn check_and_evaluate(
             if is_legacy && first_is_legacy {
                 continue;
             }
-            let mut diagnostic = Diagnostic::error(Code::DuplicateName, format!("`{name}` is bound twice"))
-                .at(name_span, "bound again here");
-            if !first_is_foreign {
+            // Two imports exporting one name is the price of flat binding, so
+            // it is paid where it is incurred: the diagnostic names both
+            // modules, and `as` on either import resolves it.
+            let mut diagnostic = match (&first_source, &source) {
+                (Some(first_path), Some(path)) => Diagnostic::error(
+                    Code::DuplicateName,
+                    format!("`{first_path}` and `{path}` both declare `{name}`"),
+                )
+                .at(name_span, "imported again here")
+                .help("qualify one of the imports with `as`, so its names are reached through it"),
+                _ => Diagnostic::error(Code::DuplicateName, format!("`{name}` is bound twice"))
+                    .at(name_span, "bound again here")
+                    .help("give one of the bindings a different name"),
+            };
+            if first_source.is_none() {
                 diagnostic = diagnostic.also(first, "first bound here");
             }
-            resolver.report(diagnostic.help("give one of the bindings a different name"));
+            resolver.report(diagnostic);
             continue;
         }
-        names.insert(name.clone(), (name_span, foreign, is_legacy));
+        names.insert(name.clone(), (name_span, source.clone(), is_legacy));
         if let Some(definition) = lower_signature(resolver, declaration, name, name_span, span, source) {
             raw.push(definition);
         }
@@ -2341,14 +2382,24 @@ fn qualified_name(node: &SyntaxNode, first: &SyntaxToken) -> String {
 }
 
 fn surface_identity(definition: &SurfaceDefinition) -> Option<(String, SourceSpan, SourceSpan, Option<String>)> {
-    let (syntax, name, source) = match definition {
-        SurfaceDefinition::Let { declaration, source } => (declaration.syntax(), declaration.name(), source.clone()),
-        SurfaceDefinition::Function { declaration, source } => {
-            (declaration.syntax(), declaration.name(), source.clone())
-        }
+    let (syntax, name, source, qualifier) = match definition {
+        SurfaceDefinition::Let {
+            declaration,
+            source,
+            qualifier,
+        } => (declaration.syntax(), declaration.name(), source.clone(), qualifier),
+        SurfaceDefinition::Function {
+            declaration,
+            source,
+            qualifier,
+        } => (declaration.syntax(), declaration.name(), source.clone(), qualifier),
         SurfaceDefinition::Legacy {
-            name, syntax, source, ..
-        } => (syntax, Some(name.clone()), source.clone()),
+            name,
+            syntax,
+            source,
+            qualifier,
+            ..
+        } => (syntax, Some(name.clone()), source.clone(), qualifier),
         SurfaceDefinition::Bound(binding) => {
             return Some((binding.name.clone(), binding.name_span, binding.span, None));
         }
@@ -2366,6 +2417,12 @@ fn surface_identity(definition: &SurfaceDefinition) -> Option<(String, SourceSpa
         }
     };
     let name = name?;
+    // A qualified import reaches its names as `alias.name` and by nothing
+    // else: the point of writing `as` is that the bare name was ambiguous.
+    let name = match qualifier {
+        Some(qualifier) => format!("{qualifier}{}{name}", crate::module::DOT),
+        None => name,
+    };
     let name_span = crate::resolve::token_span(syntax, SyntaxKind::Identifier)?;
     Some((name, name_span, crate::resolve::trimmed_span(syntax), source))
 }
@@ -2511,10 +2568,14 @@ fn lower_signature(
                 crate::module::MemberItem::Let(declaration) => SurfaceDefinition::Let {
                     declaration,
                     source: source.clone(),
+                    // The name is already qualified by the module it belongs
+                    // to; qualifying it again would file it under two dots.
+                    qualifier: None,
                 },
                 crate::module::MemberItem::Function(declaration) => SurfaceDefinition::Function {
                     declaration,
                     source: source.clone(),
+                    qualifier: None,
                 },
             };
             let mut lowered = lower_signature(resolver, inner, name, name_span, span, source)?;

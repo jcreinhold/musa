@@ -58,9 +58,7 @@ impl Fault {
     /// The line that prevents the next one.
     pub(crate) fn help(&self) -> &'static str {
         match self {
-            Self::DeclaredNowhere { .. } => {
-                "add a `mod` for it in the module file beside it, or delete the file"
-            }
+            Self::DeclaredNowhere { .. } => "add a `mod` for it in the module file beside it, or delete the file",
             Self::Missing { .. } => "add the file the declaration names, or remove the declaration",
         }
     }
@@ -214,10 +212,7 @@ mod tests {
 
     #[test]
     fn a_declaration_reaching_no_file_is_missing() {
-        let files = [
-            ("lib.musa", "mod core;\nmod absent;\n"),
-            ("core.musa", "library { }"),
-        ];
+        let files = [("lib.musa", "mod core;\nmod absent;\n"), ("core.musa", "library { }")];
         let package = Package::read(&files);
         assert_eq!(
             package.faults(),
@@ -231,10 +226,7 @@ mod tests {
 
     #[test]
     fn a_missing_declaration_names_the_file_that_made_the_claim() {
-        let files = [
-            ("lib.musa", "mod tonal;\n"),
-            ("tonal/mod.musa", "mod harmony;\n"),
-        ];
+        let files = [("lib.musa", "mod tonal;\n"), ("tonal/mod.musa", "mod harmony;\n")];
         let package = Package::read(&files);
         assert_eq!(
             package.faults(),

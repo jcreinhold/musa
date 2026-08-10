@@ -11,6 +11,11 @@
 //! The listing is what lets the library be read at its `musa-stdlib:` URIs
 //! with no filesystem access, which the desktop and the web build both need.
 
+// A build script's failure is a build failure, and the only honest report of
+// one is a panic naming what could not be done. There is nobody to return an
+// error to.
+#![allow(clippy::expect_used)]
+
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 

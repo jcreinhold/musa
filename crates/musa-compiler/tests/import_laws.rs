@@ -249,3 +249,60 @@ fn an_unknown_standard_module_reports_its_stable_virtual_uri() {
         "expected the virtual URI in the diagnostic, got {messages:?}"
     );
 }
+
+/// Flat binding is affordable because the collision it risks is reported, and
+/// reported with enough to act on: which two modules, and which name.
+#[test]
+fn two_modules_exporting_one_name_are_both_named() {
+    let compilation = compile_with(
+        "p.musa",
+        &piece("import \"a.musa\"; import \"b.musa\";"),
+        &[
+            ("a.musa", "library { fn rise() -> music = music { c5/4 }; }"),
+            ("b.musa", "library { fn rise() -> music = music { g5/4 }; }"),
+        ],
+    );
+    let messages = errors(&compilation);
+    assert!(
+        messages
+            .iter()
+            .any(|message| message.contains("`a.musa` and `b.musa` both declare `rise`") && message.contains("`as`")),
+        "expected both modules named and `as` offered, got {messages:?}"
+    );
+}
+
+/// And `as` resolves it: the qualified import is reached through its alias and
+/// by nothing else, so the bare name means one thing again.
+#[test]
+fn an_alias_resolves_a_collision_by_qualifying_one_import() {
+    let compilation = compile_with(
+        "p.musa",
+        &piece("import \"a.musa\"; import \"b.musa\" as low; motif fall() { use low.rise(); }"),
+        &[
+            ("a.musa", "library { fn rise() -> music = music { c5/4 }; }"),
+            ("b.musa", "library { fn rise() -> music = music { g5/4 }; }"),
+        ],
+    );
+    assert_eq!(errors(&compilation), Vec::<String>::new());
+    let snapshot = snapshot(compilation);
+    assert!(
+        snapshot.motifs().iter().any(|motif| motif.name == "fall"),
+        "the aliased module's function is reachable through its alias"
+    );
+}
+
+/// The other half of the same rule: an alias is a qualification, not a second
+/// spelling. What it renames stops answering to its bare name.
+#[test]
+fn a_qualified_import_does_not_also_bind_flat() {
+    let compilation = compile_with(
+        "p.musa",
+        &piece("import \"a.musa\" as high; motif fall() { use rise(); }"),
+        &[("a.musa", "library { fn rise() -> music = music { c5/4 }; }")],
+    );
+    let messages = errors(&compilation);
+    assert!(
+        messages.iter().any(|message| message.contains("cannot find `rise`")),
+        "expected the bare name to be gone, got {messages:?}"
+    );
+}

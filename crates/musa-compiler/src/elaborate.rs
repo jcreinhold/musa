@@ -1209,7 +1209,8 @@ fn elaborate_material(
 }
 
 fn elaborate_libraries(resolver: &mut Resolver, libraries: &crate::imports::Libraries, snapshot: &mut ScoreSnapshot) {
-    for (path, library) in libraries.each() {
+    for (from, library) in libraries.each() {
+        let path = from.path;
         if let Some(performance) = library.performance() {
             let profiles = resolve::parse_profiles(resolver, &performance);
             resolve::merge_profiles(

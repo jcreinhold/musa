@@ -37,7 +37,7 @@ use crate::template::{DIGEST_VERSION, UNIT};
 /// A dot, because that is what the source writes. Names in the core's flat
 /// namespace are plain identifiers, so no member name can ever collide with a
 /// qualified one.
-const DOT: char = '.';
+pub(crate) const DOT: char = '.';
 
 /// One member of a module, flattened into the definition the core will check.
 pub(crate) struct Member {
