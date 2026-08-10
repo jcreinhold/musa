@@ -33,6 +33,7 @@ assertion    := "assert" IDENT "(" args? ")" "{" music-statement* "}"
 analysis     := "analysis" IDENT "=" expr ";"
 kernel-quote := "kernel" "Timeline" "[" "ScoreFact" "]" "{" kernel-item* "}"
 antiquote    := "${" expr "}"
+document     := (import | binding | function | template)* (piece | library | instance)
 template     := "template" decl-kind IDENT "(" params? ")" decl-body
 instance     := "make" IDENT "(" args? ")" "as" IDENT ";"
 sound-bind   := "sound" expr "using" expr ";"
@@ -210,29 +211,36 @@ absolute root fixing register; `stack c major7/2` is rejected, because a pitch c
 ## 6. Declaration templates
 
 ```musa
-template piece study(k: key, s: scale, subject: music) "Study" {
-    key k;
-    score {
-        part piano {
-            voice right { in scale s { use subject; } }
-        }
-    }
-}
-
-make study(key g major, scale g mixolydian, theme()) as study_in_g;
+fn theme() -> music = music {
+    c4/4
+    d4/4
+};
 
 template voice answer(subject: music, transform: music -> music) {
     use transform(subject);
 }
 
-part flute {
-    voice leader { use theme(); }
-    make answer(theme(), transpose(P8)) as follower;
+template piece study(k: key, s: scale, subject: music) "Study" {
+    key k;
+    score {
+        part piano {
+            voice right { in scale s { use subject; } }
+            make answer(subject, transpose(P8)) as follower;
+        }
+    }
 }
+
+make study(key g major, scale g mixolydian, theme()) as study_in_g;
 ```
 
 `template` and `make` are structural syntax, not expressions. The `as` name is mandatory and participates in stable
 generative identity. `piece`, `voice`, or `module` with parameters but without `template` is rejected.
+
+A file is still one piece or one library, so an instance is placed by the kind it makes: a `make` of a piece template
+stands at the file root and *is* that file's piece, and a `make` of a voice template stands among a part's voices.
+Whatever precedes the file's piece or library — imports, bindings, functions, templates — is the file's lexical root. A
+template body reads that root and its own parameters and nothing from the site that instantiates it; the arguments at a
+site are evaluated in the site's own scope, which is why `subject` above can be passed on from `study` to `answer`.
 
 ## 7. Kernel documents and quotation
 

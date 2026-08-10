@@ -61,21 +61,25 @@ result, not identity.
 The exact surface forms are those in `01-surface.md`:
 
 ```musa
+template voice answer(subject: music, transform: music -> music) {
+    use transform(subject);
+}
+
 template piece study(k: key, subject: music) "Study" {
     key k;
     score {
         part piano {
             voice right { use subject; }
+            make answer(subject, transpose(P8)) as follower;
         }
     }
 }
-make study(g major, theme()) as study_in_g;
 
-template voice answer(subject: music, transform: music -> music) {
-    use transform(subject);
-}
-make answer(theme(), transpose(P8)) as follower;
+make study(key g major, theme()) as study_in_g;
 ```
+
+An instance is placed by the kind it makes, because a document is still one piece or one library: a piece instance
+stands at the file root and is that file's piece, and a voice instance stands among a part's voices.
 
 A template voice may contain key, meter, tempo, and clef declarations because expansion produces an ordinary identity-
 bearing voice before those structural contexts are computed. A `music` value may not contain those declarations. This

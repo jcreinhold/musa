@@ -1,7 +1,7 @@
 ---
 id: 103
 slug: structural-templates
-status: pending
+status: in-progress
 depends_on: [63, 98, 101]
 phase: 3
 ---
@@ -34,6 +34,11 @@ may contain key/meter/tempo/clef statements because each instance has one struct
 `music` parameter remains context-neutral. Templates accept higher-order arguments such as `music -> music` but cannot
 return/take first-class `piece` or `voice` values or inspect their source.
 
+A document remains one piece or one library, so an instance site is placed by the kind it makes: a root `make` of a
+piece template *is* that document's piece, and a `make` of a voice template stands among a part's voices. A template
+body sees its own parameters and nothing from the site that instantiates it; instance arguments are evaluated in the
+site's scope. Sharing one template across documents is the import question prompt 104 answers, not this one.
+
 Prove/test determinism, stable identity under unrelated edits, distinct identity for distinct instance sites,
 alpha-renaming, substitution/type preservation, acyclic termination, and equivalence with handwritten declarations
 under musical equality plus a specified template-instance Origin step.
@@ -44,8 +49,10 @@ under musical equality plus a specified template-instance Origin step.
   the spec.
 - Private structural-template checker/expander before context-track construction.
 - Stable identity/provenance integration through compiler/project/editor facts.
-- `examples/template-study.musa`: two key/scale instances of one piece template and a voice template taking a
-  transposition function.
+- `examples/template-study.musa`: a key/scale/subject piece template standing as the file's piece through its `make`,
+  and a voice template taking a transposition function instantiated twice inside it. The second key/scale instance of
+  the same piece template is a `template_laws.rs` law rather than a second `make` in the example, because one document
+  is one piece.
 - `crates/musa-compiler/tests/template_laws.rs`: substitution, identity, context authority, equivalence, cycles, and
   negative type/kind cases.
 
