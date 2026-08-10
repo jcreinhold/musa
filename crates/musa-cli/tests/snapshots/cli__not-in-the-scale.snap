@@ -1,0 +1,19 @@
+---
+source: crates/musa-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+not-a-value
+
+  × `f#5` is not a member of `scale c major`
+    ╭─[examples/broken/not-in-the-scale.musa:10:21]
+  9 │                     f#5/4
+ 10 │                     (f#5 step 1)/4
+    ·                     ──────┬─────
+    ·                           ╰── `step` has no coordinate to move from here
+ 11 │                     rest/2
+    ╰────
+  help: step from a member of `scale c major`, or put another scale in force with `in scale`
+
+  note: membership is spelled: `eb5` and `d#5` are different written pitches
+
+1 problem (1 error)

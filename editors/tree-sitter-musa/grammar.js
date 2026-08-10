@@ -65,6 +65,7 @@ const VOICE_ITEMS = ($) => [
   $.mark_statement,
   $.hairpin_statement,
   $.senza_statement,
+  $.in_scale_statement,
 ];
 
 module.exports = grammar({
@@ -141,7 +142,7 @@ module.exports = grammar({
     import_statement: ($) =>
       seq(
         'use',
-        field('path', choice($.string, seq($.identifier, ':', ':', choice($.identifier, 'list', 'option', 'pitch')))),
+        field('path', choice($.string, seq($.identifier, ':', ':', choice($.identifier, 'list', 'option', 'pitch', 'scale')))),
         ';',
       ),
 
@@ -187,6 +188,16 @@ module.exports = grammar({
     // Parser::key_stmt — `key a minor;`
     key_statement: ($) =>
       seq('key', field('pitch_class', $.pitch_class), field('mode', $.identifier), ';'),
+
+    // Parser::in_scale_stmt — `in scale c dorian { ... }`, or `in scale s
+    // { ... }` when the scale is already a value. The tonic-and-collection
+    // form is written out here because `scale` is the statement's own
+    // keyword, not the start of a nested expression.
+    in_scale_statement: ($) =>
+      seq('in', 'scale', field('scale', $._scale_context), field('body', $.block)),
+
+    _scale_context: ($) =>
+      choice(seq(field('tonic', $.pitch_class), field('collection', $.identifier)), $.expression),
 
     // Parser::pitch_class — `a`, `g#`, `bb`. A flat is part of the identifier
     // and a sharp is a token of its own, so a tonic is one token or three.
@@ -268,7 +279,7 @@ module.exports = grammar({
         $.product_type,
       ),
 
-    type_name: ($) => choice('pitch', 'music', $.identifier),
+    type_name: ($) => choice('pitch', 'music', 'scale', 'key', 'degree', 'frame', $.identifier),
     option_type: ($) => seq('option', '[', $.type_expression, ']'),
     list_type: ($) => seq('list', '[', $.type_expression, ']'),
     product_type: ($) =>
@@ -282,6 +293,9 @@ module.exports = grammar({
         $.music_expression,
         $.application_expression,
         $.pitch_expression,
+        $.step_expression,
+        $.scale_expression,
+        $.key_expression,
         $._primary_expression,
       ),
 
@@ -297,6 +311,26 @@ module.exports = grammar({
           field('interval', $._pitch_operand),
         ),
       ),
+
+    // Parser::expr — `c5 step 2`, `c5 step down 1`. It binds tighter than
+    // `up`/`down`, because a step is a coordinate move and the interval move
+    // is applied to whatever it lands on.
+    step_expression: ($) =>
+      prec.left(
+        2,
+        seq($._pitch_operand, 'step', optional(field('direction', choice('up', 'down'))), field('steps', $._step_count)),
+      ),
+
+    // How many steps: a count, not a pitch, so this is its own operand.
+    _step_count: ($) => choice($.integer, $.identifier, seq('(', $.expression, ')')),
+
+    // Parser::scale_expr — `scale c dorian`.
+    scale_expression: ($) =>
+      seq('scale', field('tonic', $.pitch_class), field('collection', $.identifier)),
+
+    // Parser::key_expr — `key c minor` where a value, not a statement, is
+    // wanted.
+    key_expression: ($) => seq('key', field('tonic', $.pitch_class), field('mode', $.identifier)),
 
     _pitch_operand: ($) =>
       choice(
@@ -525,7 +559,13 @@ module.exports = grammar({
       seq(
         field(
           'pitch',
-          choice($.pitch_literal, $.identifier, $.pitch_expression, seq('(', $.expression, ')')),
+          choice(
+            $.pitch_literal,
+            $.identifier,
+            $.pitch_expression,
+            $.step_expression,
+            seq('(', $.expression, ')'),
+          ),
         ),
         $.duration,
         optional($.articulation_list),

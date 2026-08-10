@@ -1,0 +1,16 @@
+// A scale is in force here, but the note the step starts from is not one of
+// its members. Membership is spelled: `f#5` is not in C major however close
+// `f5` and `g5` are, so there is no coordinate to move from.
+piece "Not In The Scale" {
+    score {
+        part solo {
+            voice line {
+                in scale c major {
+                    f#5/4
+                    (f#5 step 1)/4
+                    rest/2
+                }
+            }
+        }
+    }
+}

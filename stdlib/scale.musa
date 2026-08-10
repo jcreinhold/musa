@@ -1,0 +1,60 @@
+library {
+    // A scale is a tonic pitch class, an ordered cycle of spelled offsets, and
+    // a spelled period. It carries no register: a degree names a coordinate,
+    // and a frame is what turns that coordinate into a written pitch. Every
+    // partial answer here stays an `option`, and no register is ever supplied
+    // silently.
+
+    // The first degree of any scale. Degrees are written from one, as
+    // musicians write them.
+    let tonic_degree: degree = degree_of(1);
+
+    // The scale a key's signature suggests for stepwise motion. It is a
+    // default, not a claim: `key c minor` fixes three flats, and a passage may
+    // still ask for the harmonic or melodic collection by name.
+    fn key_scale(written: key) -> scale = signature_scale(written);
+
+    // The tonic pitch class a scale is rooted on.
+    fn scale_root(collection: scale) -> pitchclass = scale_tonic(collection);
+
+    // How many degrees one period of a scale holds.
+    fn scale_degrees(collection: scale) -> nat = scale_size(collection);
+
+    // The degree a written pitch occupies, when it occupies one. Membership is
+    // spelled: `eb5` and `d#5` answer differently.
+    fn degree_in(collection: scale, written: pitch) -> option[degree] =
+        scale_pitch(collection, written);
+
+    // Whether a written pitch belongs to a scale at all.
+    fn belongs_to(collection: scale, written: pitch) -> bool =
+        option_fold(false, degree_is_present, scale_pitch(collection, written));
+
+    // The present case of `belongs_to`: a located degree means the pitch is a
+    // member, whichever degree it turned out to be.
+    fn degree_is_present(located: degree) -> bool = true;
+
+    // The register frame a scale takes on one absolute tonic pitch. It is
+    // absent when that pitch is not the scale's tonic class.
+    fn frame_on(collection: scale, root: pitch) -> option[frame] =
+        pitch_frame(collection, root);
+
+    // The written pitch a numbered degree names in one register frame.
+    fn frame_degree(register: frame, ordinal: nat) -> pitch =
+        frame_pitch(register, degree_of(ordinal));
+
+    // The tonic, third, and fifth degrees of a frame, in register.
+    fn frame_triad(register: frame) -> list[pitch] =
+        [frame_degree(register, 1), frame_degree(register, 3), frame_degree(register, 5)];
+
+    // Move a degree up by a whole number of scale steps.
+    fn up_steps(from: degree, steps: nat) -> degree = degree_step_up(from, steps);
+
+    // Move a degree down by a whole number of scale steps.
+    fn down_steps(from: degree, steps: nat) -> degree = degree_step_down(from, steps);
+
+    // Raise a degree chromatically without moving its coordinate.
+    fn raise(from: degree) -> degree = degree_raised(from);
+
+    // Lower a degree chromatically without moving its coordinate.
+    fn lower(from: degree) -> degree = degree_lowered(from);
+}

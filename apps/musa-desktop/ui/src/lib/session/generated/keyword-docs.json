@@ -67,12 +67,12 @@
   {
     "spelling": "use",
     "summary": "write out a motif, or import a library",
-    "doc": "`use` writes out a declared motif where it stands, with arguments for its parameters: `use sigh(e5);` is the motif spelled here, once. At the top of a piece it imports a library file instead: `use \"strings\";`.\n\n```musa\nuse sigh(e5);\n```"
+    "doc": "`use` writes out a declared motif where it stands, with arguments for its parameters: `use sigh(e5);` is the motif spelled here, once. At the top of a piece it imports a relative library file, or an explicit bundled module such as `use std::core;`. Bundled modules are ordinary Musa source and add no hidden prelude.\n\n```musa\nuse sigh(e5);\n```"
   },
   {
     "spelling": "transpose",
     "summary": "the same music, moved in pitch",
-    "doc": "A transpose block plays its contents moved by an interval — `up` or `down` a named interval like `P5` or `M3`. The original is untouched; the block is a reading of it at a new pitch.\n\n```musa\ntranspose up P5 { use theme(); }\n```"
+    "doc": "Transpose plays music moved by a written interval such as `P5` or `M3`; the block and function forms have the same musical meaning. Supplying only the interval makes a reusable answer function.\n\n```musa\nlet answer: music -> music = transpose(P5);\n```"
   },
   {
     "spelling": "down",
@@ -91,8 +91,8 @@
   },
   {
     "spelling": "repeat",
-    "summary": "play the block again",
-    "doc": "A repeat block plays its contents more than once: `repeat 4 { … }` is four passes through the same bars, written once. With `ending` blocks inside, the passes differ where the endings say they do.\n\n```musa\nrepeat 2 { use verse(); }\n```"
+    "summary": "repeat music, or make a finite list",
+    "doc": "A repeat block plays its contents more than once: `repeat 4 { … }` is four passes through the same bars, written once. With `ending` blocks inside, the passes differ where the endings say they do. In expression position, `repeat(value, count)` is the finite value operation and returns a list of exactly `count` copies; it never creates an infinite stream.\n\n```musa\nrepeat 2 { use verse(); }\nlet pedals: list[bool] = repeat(true, 4);\n```"
   },
   {
     "spelling": "bar",
@@ -227,17 +227,17 @@
   {
     "spelling": "stretch",
     "summary": "the same music, at a different speed ratio",
-    "doc": "A stretch block plays its contents scaled in time by an exact factor: `stretch 3/2 { … }` takes half again as long. Rhythm and proportions are preserved; only the clock changes.\n\n```musa\nstretch 2/1 { use theme(); }\n```"
+    "doc": "Stretch plays music scaled in written time by an exact factor: `stretch 3/2 { … }` takes half again as long. `stretch(3/2)` is the reusable function form with the same meaning.\n\n```musa\nlet broaden: music -> music = stretch(3/2);\n```"
   },
   {
     "spelling": "retrograde",
     "summary": "the block, backwards",
-    "doc": "A retrograde block plays its contents in reverse order — the last note first. It is the classical transformation, written as a block rather than spelled out by hand.\n\n```musa\nretrograde { use subject(); }\n```"
+    "doc": "Retrograde plays its music backwards — the last event first. The block and `retrograde(subject)` function forms are the same classical transformation.\n\n```musa\nlet answer: music = retrograde(subject);\n```"
   },
   {
     "spelling": "invert",
     "summary": "the block, mirrored in pitch",
-    "doc": "An invert block mirrors its contents in pitch around an axis note: what went up goes down by the same interval. The axis is written with `around`.\n\n```musa\ninvert around c5 { use subject(); }\n```"
+    "doc": "Invert mirrors music around an axis pitch: what went up goes down by the same written interval. `invert(c5)` makes a reusable function; the block writes the axis with `around`.\n\n```musa\nlet mirror: music -> music = invert(c5);\n```"
   },
   {
     "spelling": "around",
@@ -338,5 +338,30 @@
     "spelling": "false",
     "summary": "the negative boolean value",
     "doc": "`false` is one of the two `bool` values and can be handled by `match`.\n\n```musa\nlet muted: bool = false;\n```"
+  },
+  {
+    "spelling": "scale",
+    "summary": "a collection rooted on a note",
+    "doc": "A scale is an ordered collection of notes rooted on a spelled tonic — `scale c dorian` — and it is a set of pitch coordinates, not a key signature and not a register. `in scale s { … }` reads the music inside it against `s` without writing a key change.\n\n```musa\nlet home: scale = scale c major;\nin scale c dorian { use subject; }\n```"
+  },
+  {
+    "spelling": "degree",
+    "summary": "a scale ordinal, with no scale in it",
+    "doc": "A degree is a numbered position — 1 is the tonic, 8 the tonic a period higher — plus any chromatic alteration, and it belongs to no particular scale until one is supplied. Turning a degree into a note also needs a register, which is what a `frame` carries.\n\n```musa\nlet dominant: degree = scale_degree(5);\n```"
+  },
+  {
+    "spelling": "frame",
+    "summary": "a scale that knows which octave",
+    "doc": "A frame is a scale plus the written pitch its first degree sounds, and it is the only thing that can turn a degree into a note. Building one fails unless the tonic pitch spells the scale's own tonic.\n\n```musa\nfn dominant_of(home: frame) -> pitch = frame_pitch(home, scale_degree(5));\n```"
+  },
+  {
+    "spelling": "in",
+    "summary": "read this music in a scale",
+    "doc": "`in scale s { … }` supplies the pitch coordinates the enclosed music is read against, for `step` and for anything else that counts scale degrees. It is lexical and local: it emits no key signature and claims no modulation, so the same saved phrase can be used under two scales and mean two things.\n\n```musa\nin scale c dorian { use subject; }\n```"
+  },
+  {
+    "spelling": "step",
+    "summary": "move by scale steps, not by an interval",
+    "doc": "`p step n` moves `n` degrees up the scale in force, and `p step down n` moves down; the answer depends on where in the scale `p` sits, which is exactly how `up M2` differs from it. The note stepped from has to be in the scale, and there has to be a scale.\n\n```musa\nin scale c major { (c5 step 2)/4 }\n```"
   }
 ]

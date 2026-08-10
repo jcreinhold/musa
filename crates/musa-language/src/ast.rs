@@ -459,7 +459,11 @@ impl ImportStmt {
             .filter(|token| {
                 matches!(
                     token.kind(),
-                    SyntaxKind::Identifier | SyntaxKind::ListKw | SyntaxKind::OptionKw | SyntaxKind::PitchKw
+                    SyntaxKind::Identifier
+                        | SyntaxKind::ListKw
+                        | SyntaxKind::OptionKw
+                        | SyntaxKind::PitchKw
+                        | SyntaxKind::ScaleKw
                 )
             })
             .map(|token| token.text().to_owned())
@@ -754,6 +758,8 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             ChordStmt::cast(child).map(VoiceItem::Chord)
         } else if kind == SyntaxKind::UseStmt {
             UseStmt::cast(child).map(VoiceItem::Use)
+        } else if kind == SyntaxKind::InScaleStmt {
+            InScaleStmt::cast(child).map(VoiceItem::InScale)
         } else if kind == SyntaxKind::TransposeStmt {
             TransposeStmt::cast(child).map(VoiceItem::Transpose)
         } else if kind == SyntaxKind::RepeatStmt {
@@ -817,6 +823,8 @@ pub enum VoiceItem {
     Use(UseStmt),
     /// `transpose ... { ... }`
     Transpose(TransposeStmt),
+    /// `in scale <expr> { ... }`
+    InScale(InScaleStmt),
     /// `repeat n { ... }`
     Repeat(RepeatStmt),
     /// `bar { ... }` / `bar head { ... }`
@@ -1032,6 +1040,7 @@ impl NoteStmt {
                     | SyntaxKind::ParenExpr
                     | SyntaxKind::ApplyExpr
                     | SyntaxKind::PitchExpr
+                    | SyntaxKind::StepExpr
             )
         })
     }
@@ -1277,6 +1286,22 @@ impl TransposeStmt {
     }
 
     /// The block's items.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
+    }
+}
+
+/// `in scale <expr> { ... }` — the enclosed music read in a scale.
+pub struct InScaleStmt(SyntaxNode);
+wrapper!(InScaleStmt, SyntaxKind::InScaleStmt);
+
+impl InScaleStmt {
+    /// The expression that computes the scale.
+    pub fn scale_expr(&self) -> Option<SyntaxNode> {
+        self.0.children().find(|child| child.kind() != SyntaxKind::Block)
+    }
+
+    /// The items read in that scale.
     pub fn items(&self) -> Vec<VoiceItem> {
         voice_items(&self.0)
     }
@@ -1902,8 +1927,11 @@ wrapper!(CallExpr, SyntaxKind::CallExpr);
 
 impl CallExpr {
     /// The processor being constructed.
+    ///
+    /// `scale` is a keyword in the notation language and a processor in the
+    /// studio, so the studio's name may arrive as either token.
     pub fn callee(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::Identifier)
+        token_text(&self.0, SyntaxKind::Identifier).or_else(|| token_text(&self.0, SyntaxKind::ScaleKw))
     }
 
     /// Its arguments, in source order.

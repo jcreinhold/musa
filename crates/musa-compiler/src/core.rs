@@ -33,7 +33,7 @@ pub(crate) fn check_piece(
             .each()
             .flat_map(|(path, library)| declarations(library.syntax(), Some(path)))
             .chain(declarations(piece.syntax(), None)),
-        root_uses(piece.syntax()),
+        Some(piece.syntax()),
         UnknownRootMusic::Defer,
     )
 }
@@ -53,7 +53,7 @@ pub(crate) fn check_material(
             .each()
             .flat_map(|(path, imported)| declarations(imported.syntax(), Some(path)))
             .chain(declarations(library.syntax(), None)),
-        Vec::new(),
+        None,
         UnknownRootMusic::Reject,
     )
     .is_some()
@@ -70,7 +70,7 @@ fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
         let evaluated = check_and_evaluate(
             &mut foreign_resolver,
             prefix.clone().into_iter(),
-            Vec::new(),
+            None,
             UnknownRootMusic::Reject,
         )
         .is_some();
@@ -146,9 +146,19 @@ fn declarations(owner: &SyntaxNode, source: Option<&str>) -> Vec<SurfaceDefiniti
 }
 
 fn root_uses(owner: &SyntaxNode) -> Vec<SyntaxNode> {
+    root_nodes(owner, SyntaxKind::UseStmt)
+}
+
+/// Statements written among a piece's own items rather than inside material.
+///
+/// A motif, fragment, named bar or `music { ... }` body is a definition: the
+/// core checks and evaluates it once, under its own name, and what it writes
+/// belongs to that definition. Everything left over is written where the
+/// piece plays it, and is checked here instead.
+fn root_nodes(owner: &SyntaxNode, kind: SyntaxKind) -> Vec<SyntaxNode> {
     owner
         .descendants()
-        .filter(|node| node.kind() == SyntaxKind::UseStmt)
+        .filter(|node| node.kind() == kind)
         .filter(|node| {
             !node.ancestors().skip(1).any(|ancestor| {
                 matches!(
@@ -192,6 +202,10 @@ enum Type {
     Pitch,
     PitchClass,
     Interval,
+    Scale,
+    Key,
+    Degree,
+    Frame,
     Product(Vec<Self>),
     Option(Box<Self>),
     List(Box<Self>),
@@ -210,6 +224,10 @@ impl std::fmt::Display for Type {
             Self::Pitch => out.write_str("pitch"),
             Self::PitchClass => out.write_str("pitchclass"),
             Self::Interval => out.write_str("interval"),
+            Self::Scale => out.write_str("scale"),
+            Self::Key => out.write_str("key"),
+            Self::Degree => out.write_str("degree"),
+            Self::Frame => out.write_str("frame"),
             Self::Product(members) => {
                 out.write_str("(")?;
                 for (index, member) in members.iter().enumerate() {
@@ -342,6 +360,11 @@ enum ExprKind {
         scrutinee: Box<Expr>,
         arms: Vec<CheckedArm>,
     },
+    Step {
+        base: Box<Expr>,
+        steps: Box<Expr>,
+        down: bool,
+    },
     Music(CheckedMusic),
 }
 
@@ -350,6 +373,7 @@ struct CheckedMusic {
     items: Vec<VoiceItem>,
     uses: Vec<(SourceSpan, Expr)>,
     pitches: Vec<(SourceSpan, Expr)>,
+    scales: Vec<(SourceSpan, Expr)>,
     bindings: Vec<String>,
     role: Option<MusicRole>,
     definition_span: SourceSpan,
@@ -367,6 +391,20 @@ enum Primitive {
     IntervalAdd,
     IntervalInverse,
     PitchClassOf,
+    SignatureScale,
+    ScaleOn,
+    ScaleTonic,
+    ScaleSize,
+    ScalePitch,
+    PitchFrame,
+    FrameScale,
+    FrameTonic,
+    FramePitch,
+    DegreeOf,
+    DegreeStepUp,
+    DegreeStepDown,
+    DegreeRaised,
+    DegreeLowered,
 }
 
 #[derive(Clone, Copy)]
@@ -376,7 +414,7 @@ struct PrimitiveOwnership<T> {
     hidden_information: &'static str,
 }
 
-const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 10] = [
+const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 24] = [
     PrimitiveOwnership {
         operation: Primitive::NatFold,
         spelling: "nat_fold",
@@ -427,6 +465,76 @@ const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 10] = [
         spelling: "pitchclass_of",
         hidden_information: "the written pitch's octave coordinate and spelling-preserving quotient",
     },
+    PrimitiveOwnership {
+        operation: Primitive::SignatureScale,
+        spelling: "signature_scale",
+        hidden_information: "the compiler's table of named collections, which no source text can enumerate",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ScaleOn,
+        spelling: "scale_on",
+        hidden_information: "the scale's private ordered offset cycle, re-rooted without being exposed",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ScaleTonic,
+        spelling: "scale_tonic",
+        hidden_information: "the scale's private tonic field",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ScaleSize,
+        spelling: "scale_size",
+        hidden_information: "the length of the scale's private offset cycle",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ScalePitch,
+        spelling: "scale_pitch",
+        hidden_information: "spelled membership against the scale's private offset cycle",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::PitchFrame,
+        spelling: "pitch_frame",
+        hidden_information: "the register frame's representation invariant, which only the compiler can enforce",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::FrameScale,
+        spelling: "frame_scale",
+        hidden_information: "the frame's private scale field",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::FrameTonic,
+        spelling: "frame_tonic",
+        hidden_information: "the frame's private registered tonic field",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::FramePitch,
+        spelling: "frame_pitch",
+        hidden_information: "Euclidean division of a degree through the scale's private period",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::DegreeOf,
+        spelling: "degree_of",
+        hidden_information: "the degree's private signed coordinate, which is not the written ordinal",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::DegreeStepUp,
+        spelling: "degree_step_up",
+        hidden_information: "the degree's private signed coordinate and its machine-integer bound",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::DegreeStepDown,
+        spelling: "degree_step_down",
+        hidden_information: "the degree's private signed coordinate and its machine-integer bound",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::DegreeRaised,
+        spelling: "degree_raised",
+        hidden_information: "the degree's private chromatic alteration and its machine-integer bound",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::DegreeLowered,
+        spelling: "degree_lowered",
+        hidden_information: "the degree's private chromatic alteration and its machine-integer bound",
+    },
 ];
 
 impl Primitive {
@@ -442,6 +550,20 @@ impl Primitive {
             Self::IntervalAdd => "interval_add",
             Self::IntervalInverse => "interval_inverse",
             Self::PitchClassOf => "pitchclass_of",
+            Self::SignatureScale => "signature_scale",
+            Self::ScaleOn => "scale_on",
+            Self::ScaleTonic => "scale_tonic",
+            Self::ScaleSize => "scale_size",
+            Self::ScalePitch => "scale_pitch",
+            Self::PitchFrame => "pitch_frame",
+            Self::FrameScale => "frame_scale",
+            Self::FrameTonic => "frame_tonic",
+            Self::FramePitch => "frame_pitch",
+            Self::DegreeOf => "degree_of",
+            Self::DegreeStepUp => "degree_step_up",
+            Self::DegreeStepDown => "degree_step_down",
+            Self::DegreeRaised => "degree_raised",
+            Self::DegreeLowered => "degree_lowered",
         }
     }
 }
@@ -517,6 +639,10 @@ enum Value {
     Pitch(WrittenPitch),
     PitchClass(PitchClass),
     Interval(Interval),
+    Scale(crate::scale::Scale),
+    Key(crate::Key),
+    Degree(crate::scale::Degree),
+    Frame(crate::scale::Frame),
     Product(Vec<Self>),
     Option { member: Type, value: Option<Box<Self>> },
     List { member: Type, values: Vec<Self> },
@@ -607,11 +733,97 @@ impl Builtin {
 pub(crate) struct Music {
     pub(crate) items: Vec<VoiceItem>,
     pub(crate) uses: IndexMap<u64, Self>,
-    pub(crate) pitches: Box<IndexMap<u64, WrittenPitch>>,
+    pub(crate) pitches: Box<IndexMap<u64, PitchTerm>>,
+    pub(crate) scales: Box<IndexMap<u64, crate::scale::Scale>>,
     pub(crate) bindings: IndexMap<String, crate::resolve::BoundValue>,
     pub(crate) role: Option<MusicRole>,
     pub(crate) definition_span: SourceSpan,
     pub(crate) operation: Option<Box<MusicOperation>>,
+}
+
+/// A written note's pitch, evaluated as far as a scale-free evaluator can
+/// take it.
+///
+/// A pitch that reads the ambient scale has no answer while the `music` value
+/// is being built: the same binding is used under `in scale c major` and
+/// `in scale c dorian`, and freezing either would make saving a phrase change
+/// what it means. So `step` stays a term here and is finished once per use,
+/// when a voice supplies the scale in force. Everything that does not read the
+/// scale is evaluated once, at the definition.
+#[derive(Clone)]
+pub(crate) enum PitchTerm {
+    /// Already a pitch: no scale was read.
+    Written(WrittenPitch),
+    /// `base step n` — `n` scale steps from `base`, signed.
+    Stepped { base: Box<Self>, steps: i64 },
+    /// `base up i` / `base down i` over a base that still reads the scale.
+    Moved {
+        base: Box<Self>,
+        interval: Interval,
+        down: bool,
+    },
+}
+
+/// Why a deferred pitch could not be finished under the scale in force.
+pub(crate) enum PitchTermError {
+    /// `step` was written where no scale is in force.
+    NoScale,
+    /// `step` was written from a pitch the scale in force does not contain.
+    NotInScale {
+        pitch: WrittenPitch,
+        scale: crate::scale::Scale,
+    },
+    /// The written coordinates left the range exact arithmetic covers.
+    OutOfRange,
+}
+
+impl PitchTerm {
+    /// Whether finishing this term needs a scale.
+    pub(crate) fn reads_scale(&self) -> bool {
+        match self {
+            Self::Written(_) => false,
+            Self::Stepped { .. } => true,
+            Self::Moved { base, .. } => base.reads_scale(),
+        }
+    }
+
+    /// Finish the term under the scale in force, if one is.
+    pub(crate) fn resolve(&self, scale: Option<crate::scale::Scale>) -> Result<WrittenPitch, PitchTermError> {
+        match self {
+            Self::Written(pitch) => Ok(*pitch),
+            Self::Stepped { base, steps } => {
+                let from = base.resolve(scale)?;
+                let scale = scale.ok_or(PitchTermError::NoScale)?;
+                let frame = crate::scale::Frame::around(scale, from).ok_or(PitchTermError::OutOfRange)?;
+                let degree = frame
+                    .locate(from)
+                    .ok_or(PitchTermError::NotInScale { pitch: from, scale })?;
+                let moved = degree.step(*steps).ok_or(PitchTermError::OutOfRange)?;
+                frame.pitch(moved).ok_or(PitchTermError::OutOfRange)
+            }
+            Self::Moved { base, interval, down } => {
+                let from = base.resolve(scale)?;
+                let interval = if *down {
+                    interval.inverse().ok_or(PitchTermError::OutOfRange)?
+                } else {
+                    *interval
+                };
+                from.transpose(interval).ok_or(PitchTermError::OutOfRange)
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for PitchTerm {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Written(pitch) => write!(out, "{pitch}"),
+            Self::Stepped { base, steps } => write!(out, "{base}step{steps}"),
+            Self::Moved { base, interval, down } => {
+                write!(out, "{base}{}{:?}", if *down { "-" } else { "+" }, interval)
+            }
+        }
+    }
 }
 
 /// Opaque contextual constructors. They are interpreted only when a voice
@@ -669,8 +881,12 @@ impl Music {
         self.uses.get(&span_key(span))
     }
 
-    pub(crate) fn pitch_at(&self, span: SourceSpan) -> Option<&WrittenPitch> {
+    pub(crate) fn pitch_at(&self, span: SourceSpan) -> Option<&PitchTerm> {
         self.pitches.get(&span_key(span))
+    }
+
+    pub(crate) fn scale_at(&self, span: SourceSpan) -> Option<crate::scale::Scale> {
+        self.scales.get(&span_key(span)).copied()
     }
 }
 
@@ -678,6 +894,8 @@ impl Music {
 /// value evaluator into contextual score elaboration.
 pub(crate) struct Program {
     uses: IndexMap<u64, Music>,
+    pitches: IndexMap<u64, PitchTerm>,
+    scales: IndexMap<u64, crate::scale::Scale>,
     named_music: IndexMap<String, Music>,
     #[cfg(test)]
     values: IndexMap<String, Value>,
@@ -688,7 +906,8 @@ impl Program {
         Music {
             items: Vec::new(),
             uses: self.uses.clone(),
-            pitches: Box::default(),
+            pitches: Box::new(self.pitches.clone()),
+            scales: Box::new(self.scales.clone()),
             bindings: IndexMap::new(),
             role: None,
             definition_span: SourceSpan::default(),
@@ -719,6 +938,10 @@ impl Value {
             Self::Pitch(_) => Type::Pitch,
             Self::PitchClass(_) => Type::PitchClass,
             Self::Interval(_) => Type::Interval,
+            Self::Scale(_) => Type::Scale,
+            Self::Key(_) => Type::Key,
+            Self::Degree(_) => Type::Degree,
+            Self::Frame(_) => Type::Frame,
             Self::Product(members) => Type::Product(members.iter().map(Self::ty).collect()),
             Self::Option { member, .. } => Type::Option(Box::new(member.clone())),
             Self::List { member, .. } => Type::List(Box::new(member.clone())),
@@ -767,6 +990,15 @@ impl Value {
             Self::Interval(value) => {
                 value.diatonic_steps.unsigned_abs().rotate_left(8) ^ value.semitones.unsigned_abs()
             }
+            Self::Scale(value) => scale_witness(*value),
+            Self::Key(value) => {
+                Self::PitchClass(value.tonic()).normalization_witness().rotate_left(2)
+                    ^ u64::from(value.mode() == crate::Mode::Minor)
+            }
+            Self::Degree(value) => value.ordinal().unsigned_abs().rotate_left(8) ^ value.alteration().unsigned_abs(),
+            Self::Frame(value) => {
+                scale_witness(value.scale()).rotate_left(5) ^ Self::Pitch(value.tonic()).normalization_witness()
+            }
             Self::Product(members) => members.iter().fold(0u64, |witness, member| {
                 witness.rotate_left(5) ^ member.normalization_witness()
             }),
@@ -784,6 +1016,12 @@ impl Value {
             }),
         }
     }
+}
+
+/// Read a scale into a witness the same way the other finite values are read.
+fn scale_witness(scale: crate::scale::Scale) -> u64 {
+    Value::PitchClass(scale.tonic()).normalization_witness().rotate_left(3)
+        ^ u64::try_from(scale.collection() as usize).unwrap_or(0)
 }
 
 fn music_witness(music: &Music) -> u64 {
@@ -806,9 +1044,10 @@ fn music_witness(music: &Music) -> u64 {
 fn check_and_evaluate(
     resolver: &mut Resolver,
     declarations: impl Iterator<Item = SurfaceDefinition>,
-    root_uses: Vec<SyntaxNode>,
+    root: Option<&SyntaxNode>,
     unknown_root_music: UnknownRootMusic,
 ) -> Option<Program> {
+    let root_uses = root.map(root_uses).unwrap_or_default();
     let mut meter = WorkMeter::default();
     let mut raw = Vec::new();
     let mut names: IndexMap<String, (SourceSpan, bool, bool)> = IndexMap::new();
@@ -872,6 +1111,7 @@ fn check_and_evaluate(
             failed: false,
             meter: &mut meter,
             music_role: definition.role.clone(),
+            deferred_pitch: false,
             definition_span: definition.span,
         };
         let kind = match &definition.kind {
@@ -992,6 +1232,7 @@ fn check_and_evaluate(
                             items: Vec::new(),
                             uses: IndexMap::new(),
                             pitches: Box::default(),
+                            scales: Box::default(),
                             bindings: IndexMap::new(),
                             role: None,
                             definition_span: span,
@@ -1013,12 +1254,43 @@ fn check_and_evaluate(
             meter: &mut meter,
             music_role: None,
             definition_span: span,
+            deferred_pitch: false,
         };
         let checked_use = checker.check(&expression, Some(&Type::Music))?;
         let Value::Music(music) = eval(&checked_use, &values, &mut meter)? else {
             return None;
         };
         uses.insert(span_key(span), music);
+    }
+    // `in scale` and note pitches written among a piece's own items, rather
+    // than inside a definition. `music { ... }` collects its own; these are
+    // what is left, and the elaborator reads both through the same root value.
+    let mut scales = IndexMap::new();
+    let mut pitches = IndexMap::new();
+    if let Some(root) = root {
+        for statement in root_nodes(root, SyntaxKind::InScaleStmt) {
+            let Some(expression) = child_of(&statement, is_expr_node) else {
+                continue;
+            };
+            let span = crate::resolve::trimmed_span(&statement);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span);
+            let checked = checker.check(&expression, Some(&Type::Scale))?;
+            let Value::Scale(scale) = eval(&checked, &values, &mut meter)? else {
+                return None;
+            };
+            scales.insert(span_key(span), scale);
+        }
+        for statement in root_nodes(root, SyntaxKind::NoteStmt) {
+            let Some(expression) =
+                musa_language::ast::NoteStmt::cast(statement.clone()).and_then(|note| note.pitch_expr())
+            else {
+                continue;
+            };
+            let span = crate::resolve::trimmed_span(&statement);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span);
+            let checked = checker.deferring_pitch(|checker| checker.check(&expression, Some(&Type::Pitch)))?;
+            pitches.insert(span_key(span), pitch_term(&checked, &values, &mut meter)?);
+        }
     }
     if meter.exhaustion().is_some() {
         report_exhaustion(resolver, &meter);
@@ -1035,6 +1307,10 @@ fn check_and_evaluate(
             | Value::Pitch(_)
             | Value::PitchClass(_)
             | Value::Interval(_)
+            | Value::Scale(_)
+            | Value::Key(_)
+            | Value::Degree(_)
+            | Value::Frame(_)
             | Value::Product(_)
             | Value::Option { .. }
             | Value::List { .. }
@@ -1044,10 +1320,35 @@ fn check_and_evaluate(
         .collect();
     Some(Program {
         uses,
+        pitches,
+        scales,
         named_music,
         #[cfg(test)]
         values,
     })
+}
+
+/// A checker for one expression written among a piece's own items.
+fn root_checker<'a>(
+    resolver: &'a mut Resolver,
+    definitions: &'a [RawDefinition],
+    symbols: &'a IndexMap<String, Symbol>,
+    meter: &'a mut WorkMeter,
+    span: SourceSpan,
+) -> Checker<'a> {
+    Checker {
+        resolver,
+        definitions,
+        symbols,
+        locals: IndexMap::new(),
+        dependencies: IndexMap::new(),
+        foreign: false,
+        failed: false,
+        meter,
+        music_role: None,
+        definition_span: span,
+        deferred_pitch: false,
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -1064,7 +1365,7 @@ pub(crate) fn check_piece_for_kernel(
     check_and_evaluate(
         resolver,
         declarations(piece.syntax(), None).into_iter(),
-        root_uses(piece.syntax()),
+        Some(piece.syntax()),
         UnknownRootMusic::Silent,
     )
 }
@@ -1224,6 +1525,10 @@ fn legacy_default(ty: &Type, written: &str) -> Option<Value> {
         | Type::Ratio
         | Type::PitchClass
         | Type::Interval
+        | Type::Scale
+        | Type::Key
+        | Type::Degree
+        | Type::Frame
         | Type::Product(_)
         | Type::Option(_)
         | Type::List(_)
@@ -1243,6 +1548,10 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Pitch
         | Type::PitchClass
         | Type::Interval
+        | Type::Scale
+        | Type::Key
+        | Type::Degree
+        | Type::Frame
         | Type::Music
         | Type::Product(_)
         | Type::Option(_)
@@ -1267,12 +1576,16 @@ fn parse_type(resolver: &mut Resolver, node: &SyntaxNode) -> Option<Type> {
             "pitch" => Some(Type::Pitch),
             "pitchclass" => Some(Type::PitchClass),
             "interval" => Some(Type::Interval),
+            "scale" => Some(Type::Scale),
+            "key" => Some(Type::Key),
+            "degree" => Some(Type::Degree),
+            "frame" => Some(Type::Frame),
             "music" => Some(Type::Music),
             _ => {
                 resolver.report(
                     Diagnostic::error(Code::UnknownName, format!("unknown type `{text}`"))
                         .at(crate::resolve::trimmed_span(node), "not a value type")
-                        .help("use `bool`, `nat`, `ratio`, `duration`, `pitch`, `pitchclass`, `interval`, a product, or a function type"),
+                        .help("use `bool`, `nat`, `ratio`, `duration`, `pitch`, `pitchclass`, `interval`, `scale`, `key`, `degree`, `frame`, a product, or a function type"),
                 );
                 None
             }
@@ -1314,6 +1627,9 @@ struct Checker<'a> {
     meter: &'a mut WorkMeter,
     music_role: Option<MusicRole>,
     definition_span: SourceSpan,
+    /// Whether the expression being checked is a note's pitch inside music,
+    /// which is the one place a scale is supplied later rather than now.
+    deferred_pitch: bool,
 }
 
 impl Checker<'_> {
@@ -1350,6 +1666,12 @@ impl Checker<'_> {
             self.application(node, expected)
         } else if kind == SyntaxKind::PitchExpr {
             self.pitch_action(node)
+        } else if kind == SyntaxKind::ScaleExpr {
+            self.scale_literal(node)
+        } else if kind == SyntaxKind::KeyExpr {
+            self.key_literal(node)
+        } else if kind == SyntaxKind::StepExpr {
+            self.scale_step(node)
         } else if kind == SyntaxKind::MatchExpr {
             self.match_expression(node, expected)
         } else if kind == SyntaxKind::MusicExpr {
@@ -1384,6 +1706,14 @@ impl Checker<'_> {
         }
 
         let mut pitches = Vec::new();
+        let mut scales = Vec::new();
+        for statement in owned_descendants(node, SyntaxKind::InScaleStmt) {
+            let Some(expression) = child_of(&statement, is_expr_node) else {
+                continue;
+            };
+            let checked = self.check(&expression, Some(&Type::Scale))?;
+            scales.push((crate::resolve::trimmed_span(&statement), checked));
+        }
 
         if self.music_role.is_none() {
             for statement in owned_descendants(node, SyntaxKind::TempoStmt)
@@ -1409,7 +1739,7 @@ impl Checker<'_> {
         for statement in owned_descendants(node, SyntaxKind::NoteStmt) {
             if let Some(note) = musa_language::ast::NoteStmt::cast(statement.clone()) {
                 if let Some(expression) = note.pitch_expr() {
-                    let checked = self.check(&expression, Some(&Type::Pitch))?;
+                    let checked = self.deferring_pitch(|checker| checker.check(&expression, Some(&Type::Pitch)))?;
                     pitches.push((crate::resolve::trimmed_span(&statement), checked));
                 } else if let Some(name) = note.pitch().filter(|text| WrittenPitch::parse(text).is_none()) {
                     self.music_binding(
@@ -1448,6 +1778,7 @@ impl Checker<'_> {
                 items,
                 uses,
                 pitches,
+                scales,
                 bindings: bindings.into_iter().collect(),
                 role: self.music_role.clone(),
                 definition_span: self.definition_span,
@@ -1455,6 +1786,113 @@ impl Checker<'_> {
             ty: Type::Music,
             span,
         })
+    }
+
+    /// Check a note's pitch, where `step` may read a scale supplied later.
+    fn deferring_pitch<T>(&mut self, check: impl FnOnce(&mut Self) -> Option<T>) -> Option<T> {
+        let outer = std::mem::replace(&mut self.deferred_pitch, true);
+        let checked = check(self);
+        self.deferred_pitch = outer;
+        checked
+    }
+
+    /// `scale c dorian` — a tonic pitch class and a named collection.
+    fn scale_literal(&mut self, node: &SyntaxNode) -> Option<Expr> {
+        let span = crate::resolve::trimmed_span(node);
+        let tonic = self.written_pitch_class(node, span)?;
+        let word = significant_tokens(node)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .last();
+        let word = word.map(|token| token.text().to_owned()).unwrap_or_default();
+        let Some(collection) = crate::scale::Collection::named(&word) else {
+            self.resolver.report(
+                Diagnostic::error(Code::UnknownName, format!("unknown collection `{word}`"))
+                    .at(span, "not a named scale collection")
+                    .help(format!("try one of: {}", collection_list()))
+                    .note("a mode is a rotation of the diatonic collection; other collections are their own values"),
+            );
+            self.failed = true;
+            return None;
+        };
+        Some(Expr {
+            kind: ExprKind::Literal(Value::Scale(crate::scale::Scale::new(tonic, collection))),
+            ty: Type::Scale,
+            span,
+        })
+    }
+
+    /// `key c minor` — the structural fact, read here as a value.
+    fn key_literal(&mut self, node: &SyntaxNode) -> Option<Expr> {
+        let span = crate::resolve::trimmed_span(node);
+        let tonic = self.written_pitch_class(node, span)?;
+        let word = significant_tokens(node)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .last();
+        let mode = match word.as_ref().map(|token| token.text()) {
+            Some("major") => crate::Mode::Major,
+            Some("minor") => crate::Mode::Minor,
+            _ => {
+                self.resolver.report(
+                    Diagnostic::error(Code::NotAValue, "this key cannot be read")
+                        .at(span, "expected a tonic and a mode, like `key a minor`")
+                        .help("a key names a signature and a mode; a collection is written `scale a dorian`"),
+                );
+                self.failed = true;
+                return None;
+            }
+        };
+        Some(Expr {
+            kind: ExprKind::Literal(Value::Key(crate::Key::new(tonic, mode))),
+            ty: Type::Key,
+            span,
+        })
+    }
+
+    /// `p step n` / `p step down n` — a move along the scale in force.
+    fn scale_step(&mut self, node: &SyntaxNode) -> Option<Expr> {
+        let span = crate::resolve::trimmed_span(node);
+        if !self.deferred_pitch {
+            self.resolver.report(
+                Diagnostic::error(Code::Misplaced, "`step` needs a scale in force")
+                    .at(span, "no scale reaches this expression")
+                    .help(
+                        "write the note inside `in scale c major { ... }`, or move the expression into `music { ... }`",
+                    )
+                    .note("an absent scale is never an implicit C major: the coordinate has to come from somewhere"),
+            );
+            self.failed = true;
+            return None;
+        }
+        let mut children = node.children().filter(|child| is_expr_node(child.kind()));
+        let base = self.check(&children.next()?, Some(&Type::Pitch))?;
+        let steps = self.check(&children.next()?, Some(&Type::Nat))?;
+        let down = significant_tokens(node).any(|token| token.kind() == SyntaxKind::DownKw);
+        Some(Expr {
+            kind: ExprKind::Step {
+                base: Box::new(base),
+                steps: Box::new(steps),
+                down,
+            },
+            ty: Type::Pitch,
+            span,
+        })
+    }
+
+    /// The single `PitchClass` node a `scale` or `key` literal spells.
+    fn written_pitch_class(&mut self, node: &SyntaxNode, span: SourceSpan) -> Option<PitchClass> {
+        let written = node
+            .children()
+            .find(|child| child.kind() == SyntaxKind::PitchClass)
+            .map(|child| child.text().to_string());
+        let parsed = written.as_deref().map(str::trim).and_then(PitchClass::parse);
+        if parsed.is_none() {
+            self.resolver.report(
+                Diagnostic::error(Code::NotAValue, "this tonic cannot be read")
+                    .at(span, "expected a spelled pitch class such as `bf` or `g#`"),
+            );
+            self.failed = true;
+        }
+        parsed
     }
 
     fn pitch_action(&mut self, node: &SyntaxNode) -> Option<Expr> {
@@ -1839,6 +2277,10 @@ impl Checker<'_> {
             | Value::Pitch(_)
             | Value::PitchClass(_)
             | Value::Interval(_)
+            | Value::Scale(_)
+            | Value::Key(_)
+            | Value::Degree(_)
+            | Value::Frame(_)
             | Value::Product(_)
             | Value::Option { .. }
             | Value::List { .. }
@@ -2003,8 +2445,27 @@ impl Checker<'_> {
         }
         let wanted = match primitive {
             Primitive::NatFold | Primitive::ListFold | Primitive::OptionFold => 3,
-            Primitive::Map | Primitive::Filter | Primitive::Repeat | Primitive::IntervalAdd => 2,
-            Primitive::Range | Primitive::IntervalInverse | Primitive::PitchClassOf => 1,
+            Primitive::Map
+            | Primitive::Filter
+            | Primitive::Repeat
+            | Primitive::IntervalAdd
+            | Primitive::ScaleOn
+            | Primitive::ScalePitch
+            | Primitive::PitchFrame
+            | Primitive::FramePitch
+            | Primitive::DegreeStepUp
+            | Primitive::DegreeStepDown => 2,
+            Primitive::Range
+            | Primitive::IntervalInverse
+            | Primitive::PitchClassOf
+            | Primitive::SignatureScale
+            | Primitive::ScaleTonic
+            | Primitive::ScaleSize
+            | Primitive::FrameScale
+            | Primitive::FrameTonic
+            | Primitive::DegreeOf
+            | Primitive::DegreeRaised
+            | Primitive::DegreeLowered => 1,
         };
         if raw.len() != wanted {
             self.resolver.report(
@@ -2038,6 +2499,59 @@ impl Checker<'_> {
             Primitive::PitchClassOf => {
                 let pitch = self.check(nodes.first()?, Some(&Type::Pitch))?;
                 (vec![pitch], Type::PitchClass)
+            }
+            Primitive::SignatureScale => {
+                let key = self.check(nodes.first()?, Some(&Type::Key))?;
+                (vec![key], Type::Scale)
+            }
+            Primitive::ScaleOn => {
+                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
+                let tonic = self.check(nodes.get(1)?, Some(&Type::PitchClass))?;
+                (vec![scale, tonic], Type::Scale)
+            }
+            Primitive::ScaleTonic => {
+                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
+                (vec![scale], Type::PitchClass)
+            }
+            Primitive::ScaleSize => {
+                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
+                (vec![scale], Type::Nat)
+            }
+            Primitive::ScalePitch => {
+                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
+                let pitch = self.check(nodes.get(1)?, Some(&Type::Pitch))?;
+                (vec![scale, pitch], Type::Option(Box::new(Type::Degree)))
+            }
+            Primitive::PitchFrame => {
+                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
+                let tonic = self.check(nodes.get(1)?, Some(&Type::Pitch))?;
+                (vec![scale, tonic], Type::Option(Box::new(Type::Frame)))
+            }
+            Primitive::FrameScale => {
+                let frame = self.check(nodes.first()?, Some(&Type::Frame))?;
+                (vec![frame], Type::Scale)
+            }
+            Primitive::FrameTonic => {
+                let frame = self.check(nodes.first()?, Some(&Type::Frame))?;
+                (vec![frame], Type::Pitch)
+            }
+            Primitive::FramePitch => {
+                let frame = self.check(nodes.first()?, Some(&Type::Frame))?;
+                let degree = self.check(nodes.get(1)?, Some(&Type::Degree))?;
+                (vec![frame, degree], Type::Pitch)
+            }
+            Primitive::DegreeOf => {
+                let ordinal = self.check(nodes.first()?, Some(&Type::Nat))?;
+                (vec![ordinal], Type::Degree)
+            }
+            Primitive::DegreeStepUp | Primitive::DegreeStepDown => {
+                let degree = self.check(nodes.first()?, Some(&Type::Degree))?;
+                let steps = self.check(nodes.get(1)?, Some(&Type::Nat))?;
+                (vec![degree, steps], Type::Degree)
+            }
+            Primitive::DegreeRaised | Primitive::DegreeLowered => {
+                let degree = self.check(nodes.first()?, Some(&Type::Degree))?;
+                (vec![degree], Type::Degree)
             }
             Primitive::Range => {
                 let count = self.check(nodes.first()?, Some(&Type::Nat))?;
@@ -2218,6 +2732,10 @@ fn is_exhaustive(target: &Type, coverage: &IndexSet<Coverage>) -> bool {
             | Type::Pitch
             | Type::PitchClass
             | Type::Interval
+            | Type::Scale
+            | Type::Key
+            | Type::Degree
+            | Type::Frame
             | Type::Music
             | Type::Product(_)
             | Type::Function(_, _) => false,
@@ -2233,6 +2751,10 @@ fn literal_key(value: &Value) -> String {
         Value::Pitch(value) => format!("pitch:{}:{}:{}", value.letter.steps(), value.accidental.0, value.octave),
         Value::PitchClass(value) => format!("pitchclass:{}:{}", value.letter.steps(), value.accidental.0),
         Value::Interval(value) => format!("interval:{}:{}", value.diatonic_steps, value.semitones),
+        Value::Scale(value) => format!("scale:{value}"),
+        Value::Key(value) => format!("key:{}:{:?}", value.tonic(), value.mode()),
+        Value::Degree(value) => format!("degree:{}:{}", value.ordinal(), value.alteration()),
+        Value::Frame(value) => format!("frame:{}:{}", value.scale(), value.tonic()),
         Value::Product(_)
         | Value::Option { .. }
         | Value::List { .. }
@@ -2455,6 +2977,10 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Pitch(_)
                 | Value::PitchClass(_)
                 | Value::Interval(_)
+                | Value::Scale(_)
+                | Value::Key(_)
+                | Value::Degree(_)
+                | Value::Frame(_)
                 | Value::Product(_)
                 | Value::Option { .. }
                 | Value::List { .. }
@@ -2493,6 +3019,13 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
             local.extend(bindings);
             eval(&arm.body, &local, meter)
         }
+        ExprKind::Step { base, steps, down } => {
+            // Reachable only through `pitch_term`; a `step` outside a `music`
+            // value is refused while checking, where the diagnostic can name
+            // the missing context.
+            let _ = (base, steps, down);
+            None
+        }
         ExprKind::Music(music) => {
             let mut uses = IndexMap::new();
             for (span, expression) in &music.uses {
@@ -2503,10 +3036,14 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
             }
             let mut pitches = IndexMap::new();
             for (span, expression) in &music.pitches {
-                let Value::Pitch(value) = eval(expression, environment, meter)? else {
+                pitches.insert(span_key(*span), pitch_term(expression, environment, meter)?);
+            }
+            let mut scales = IndexMap::new();
+            for (span, expression) in &music.scales {
+                let Value::Scale(value) = eval(expression, environment, meter)? else {
                     return None;
                 };
-                pitches.insert(span_key(*span), value);
+                scales.insert(span_key(*span), value);
             }
             let mut bindings = IndexMap::new();
             for name in &music.bindings {
@@ -2523,6 +3060,10 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     | Value::Ratio(_)
                     | Value::PitchClass(_)
                     | Value::Interval(_)
+                    | Value::Scale(_)
+                    | Value::Key(_)
+                    | Value::Degree(_)
+                    | Value::Frame(_)
                     | Value::Product(_)
                     | Value::Option { .. }
                     | Value::List { .. }
@@ -2536,6 +3077,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 items: music.items.clone(),
                 uses,
                 pitches: Box::new(pitches),
+                scales: Box::new(scales),
                 bindings,
                 role: music.role.clone(),
                 definition_span: music.definition_span,
@@ -2548,6 +3090,54 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
         return None;
     }
     Some(value)
+}
+
+/// Evaluate a note's pitch expression as far as the ambient scale allows.
+fn pitch_term(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut WorkMeter) -> Option<PitchTerm> {
+    match &expression.kind {
+        ExprKind::Step { base, steps, down } => {
+            if !meter.step("scale step", 1, expression.span) {
+                return None;
+            }
+            let base = pitch_term(base, environment, meter)?;
+            let steps = i64::try_from(nat_value(&eval(steps, environment, meter)?)?).ok()?;
+            let steps = if *down { steps.checked_neg()? } else { steps };
+            Some(PitchTerm::Stepped {
+                base: Box::new(base),
+                steps,
+            })
+        }
+        ExprKind::PitchAction { pitch, interval, down } => {
+            let base = pitch_term(pitch, environment, meter)?;
+            let Value::Interval(interval) = eval(interval, environment, meter)? else {
+                return None;
+            };
+            let moved = PitchTerm::Moved {
+                base: Box::new(base),
+                interval,
+                down: *down,
+            };
+            if moved.reads_scale() {
+                return Some(moved);
+            }
+            // Nothing here reads the scale, so it is finished once, now.
+            moved.resolve(None).ok().map(PitchTerm::Written)
+        }
+        ExprKind::Literal(_)
+        | ExprKind::Name(_)
+        | ExprKind::Product(_)
+        | ExprKind::Option(_)
+        | ExprKind::List(_)
+        | ExprKind::Apply { .. }
+        | ExprKind::Primitive { .. }
+        | ExprKind::Match { .. }
+        | ExprKind::Music(_) => {
+            let Value::Pitch(pitch) = eval(expression, environment, meter)? else {
+                return None;
+            };
+            Some(PitchTerm::Written(pitch))
+        }
+    }
 }
 
 fn apply_closure(
@@ -2656,6 +3246,7 @@ fn apply_builtin(builtin: &BuiltinValue, provided: Vec<Option<Value>>, span: Sou
         items: Vec::new(),
         uses: IndexMap::new(),
         pitches: Box::default(),
+        scales: Box::default(),
         bindings: IndexMap::new(),
         role: None,
         definition_span: span,
@@ -2720,6 +3311,93 @@ fn eval_primitive(
                 return None;
             };
             Some(Value::PitchClass(pitch.pitch_class()))
+        }
+        Primitive::SignatureScale => {
+            let Value::Key(key) = values.first()? else {
+                return None;
+            };
+            Some(Value::Scale(crate::scale::signature_scale(*key)))
+        }
+        Primitive::ScaleOn => {
+            let (Value::Scale(scale), Value::PitchClass(tonic)) = (values.first()?, values.get(1)?) else {
+                return None;
+            };
+            Some(Value::Scale(scale.rooted_at(*tonic)))
+        }
+        Primitive::ScaleTonic => {
+            let Value::Scale(scale) = values.first()? else {
+                return None;
+            };
+            Some(Value::PitchClass(scale.tonic()))
+        }
+        Primitive::ScaleSize => {
+            let Value::Scale(scale) = values.first()? else {
+                return None;
+            };
+            Some(Value::Nat(u64::try_from(scale.size()).ok()?))
+        }
+        Primitive::ScalePitch => {
+            let (Value::Scale(scale), Value::Pitch(pitch)) = (values.first()?, values.get(1)?) else {
+                return None;
+            };
+            let located = crate::scale::Frame::around(*scale, *pitch).and_then(|frame| frame.locate(*pitch));
+            Some(optional(Type::Degree, located.map(Value::Degree)))
+        }
+        Primitive::PitchFrame => {
+            let (Value::Scale(scale), Value::Pitch(tonic)) = (values.first()?, values.get(1)?) else {
+                return None;
+            };
+            Some(optional(
+                Type::Frame,
+                crate::scale::Frame::new(*scale, *tonic).map(Value::Frame),
+            ))
+        }
+        Primitive::FrameScale => {
+            let Value::Frame(frame) = values.first()? else {
+                return None;
+            };
+            Some(Value::Scale(frame.scale()))
+        }
+        Primitive::FrameTonic => {
+            let Value::Frame(frame) = values.first()? else {
+                return None;
+            };
+            Some(Value::Pitch(frame.tonic()))
+        }
+        Primitive::FramePitch => {
+            let (Value::Frame(frame), Value::Degree(degree)) = (values.first()?, values.get(1)?) else {
+                return None;
+            };
+            frame.pitch(*degree).map(Value::Pitch)
+        }
+        Primitive::DegreeOf => {
+            let ordinal = nat_value(values.first()?)?;
+            let ordinal = i64::try_from(ordinal).ok()?;
+            Some(Value::Degree(crate::scale::Degree::new(ordinal.checked_sub(1)?)))
+        }
+        Primitive::DegreeStepUp | Primitive::DegreeStepDown => {
+            let Value::Degree(degree) = values.first()? else {
+                return None;
+            };
+            let steps = i64::try_from(nat_value(values.get(1)?)?).ok()?;
+            let steps = if primitive == Primitive::DegreeStepDown {
+                steps.checked_neg()?
+            } else {
+                steps
+            };
+            degree.step(steps).map(Value::Degree)
+        }
+        Primitive::DegreeRaised => {
+            let Value::Degree(degree) = values.first()? else {
+                return None;
+            };
+            degree.raised().map(Value::Degree)
+        }
+        Primitive::DegreeLowered => {
+            let Value::Degree(degree) = values.first()? else {
+                return None;
+            };
+            degree.lowered().map(Value::Degree)
         }
         Primitive::Range => {
             let count = nat_value(values.first()?)?;
@@ -2872,6 +3550,14 @@ fn eval_primitive(
     }
 }
 
+/// Wrap a partial answer as this evaluator's option value.
+fn optional(member: Type, value: Option<Value>) -> Value {
+    Value::Option {
+        member,
+        value: value.map(Box::new),
+    }
+}
+
 fn nat_value(value: &Value) -> Option<u64> {
     if let Value::Nat(value) = value {
         Some(*value)
@@ -2972,7 +3658,9 @@ fn value_shape(value: &Value) -> (u64, u64) {
         Value::Bool(_) => (1, 1),
         Value::Nat(_) => (1, 8),
         Value::Ratio(_) | Value::Duration(_) => (1, 16),
-        Value::Pitch(_) | Value::PitchClass(_) | Value::Interval(_) => (1, 12),
+        Value::Pitch(_) | Value::PitchClass(_) | Value::Interval(_) | Value::Key(_) | Value::Degree(_) => (1, 12),
+        Value::Scale(_) => (1, 24),
+        Value::Frame(_) => (1, 36),
         Value::Product(members) => aggregate_shape(members.iter()),
         Value::Option { value, .. } => value.as_deref().map_or((1, 1), |value| {
             let (nodes, bytes) = value_shape(value);
@@ -3118,6 +3806,13 @@ fn is_type_node(kind: SyntaxKind) -> bool {
     )
 }
 
+/// Every collection spelling, for the diagnostic that lists them.
+fn collection_list() -> String {
+    let mut spellings: Vec<_> = crate::scale::Collection::spellings().collect();
+    spellings.sort_unstable();
+    format!("`{}`", spellings.join("`, `"))
+}
+
 fn is_expr_node(kind: SyntaxKind) -> bool {
     matches!(
         kind,
@@ -3129,6 +3824,9 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::OptionExpr
             | SyntaxKind::ApplyExpr
             | SyntaxKind::PitchExpr
+            | SyntaxKind::ScaleExpr
+            | SyntaxKind::KeyExpr
+            | SyntaxKind::StepExpr
             | SyntaxKind::MatchExpr
             | SyntaxKind::MusicExpr
     )
@@ -3209,7 +3907,7 @@ mod tests {
         check_and_evaluate(
             &mut resolver,
             declarations(piece.syntax(), None).into_iter(),
-            Vec::new(),
+            Some(piece.syntax()),
             UnknownRootMusic::Reject,
         )
         .map(|program| program.values)
@@ -3228,7 +3926,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            17,
+            31,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();

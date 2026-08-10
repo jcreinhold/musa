@@ -68,6 +68,13 @@ pub enum ExpansionStep {
     },
     /// A checked `pitch -> pitch` function was applied to sounding pitches.
     MapNotePitches,
+    /// A lexical scale was in force here, as the source spells it
+    /// (`scale c dorian`). It changes generative pitch coordinates only; it
+    /// is never a key signature.
+    ScaleContext {
+        /// The scale the enclosing `in scale` named.
+        scale: String,
+    },
     /// One note of a motif occurrence was respelled by a `with` clause.
     Specialization {
         /// The span of the override that respelled it.

@@ -29,6 +29,9 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
     if let Some(found) = at_keyword(&snapshot, byte, lines) {
         return Some(found);
     }
+    if let Some(found) = at_collection(&snapshot, byte, lines) {
+        return Some(found);
+    }
     if let Some(found) = at_imported_name(&snapshot, byte, lines) {
         return Some(found);
     }
@@ -108,6 +111,29 @@ fn at_keyword(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &L
         lines,
         span,
         format!("**{}** — *{}*\n\n{}", doc.spelling, doc.summary, doc.doc),
+    ))
+}
+
+/// The word after `scale` is a collection name, not a free identifier: it is
+/// answered from the compiler's own table, so the hover cannot describe a
+/// collection the language does not have.
+fn at_collection(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
+    let parsed = musa_language::parse(snapshot.source());
+    let token = parsed
+        .syntax()
+        .token_at_offset(byte.into())
+        .find(|token| token.kind() == musa_language::SyntaxKind::Identifier)?;
+    let word = token.text();
+    let (name, doc) = musa_project::scale_collections().find(|(spelling, _)| *spelling == word)?;
+    let range = token.text_range();
+    let span = Span {
+        start: u32::from(range.start()),
+        end: u32::from(range.end()),
+    };
+    Some(answer(
+        lines,
+        span,
+        format!("**{name}** — *scale collection*\n\n`scale c {name}` collects {doc}."),
     ))
 }
 

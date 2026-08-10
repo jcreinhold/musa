@@ -1,0 +1,75 @@
+// A scale is a lexical coordinate system, not a key signature. `in scale`
+// changes only what `step` means for the music it encloses; it emits no key
+// fact and claims no modulation. Because a `music` value is contextual, the
+// same saved phrase elaborates differently at two use sites.
+piece "Scale Context" {
+    use std::scale;
+    use std::collections;
+
+    // The written key is three flats, from the first bar to the last. It is a
+    // score fact; the scale statements below never touch it.
+    key c minor;
+
+    fn figure() -> music = music {
+        c5/8
+        (c5 step 1)/8
+        (c5 step 2)/4
+    };
+
+    let subject: music = figure();
+
+    // Read as values, the domains stay separate: a key is a signature and a
+    // mode, and the collection it suggests is a default a passage may refuse.
+    let home: key = key c minor;
+    let default_collection: scale = key_scale(home);
+    let raised_seventh: scale = harmonic_minor_on(scale_root(default_collection));
+    let anchored: option[frame] = frame_on(default_collection, c5);
+
+    score {
+        part keyboard {
+            voice upper {
+                // One phrase, two coordinate systems. Under C major the thirds
+                // are `e5` and `g5`; under C dorian the third is `eb5`.
+                in scale c major {
+                    use subject;
+                }
+                in scale c dorian {
+                    use subject;
+                }
+
+                // Natural and harmonic minor are distinct collections, and
+                // saying so is how the leading tone appears. Neither is
+                // implied by the key statement above.
+                in scale c natural_minor {
+                    c5/4
+                    (c5 step 6)/4
+                }
+                in scale c harmonic_minor {
+                    c5/4
+                    (c5 step 6)/4
+                }
+            }
+
+            voice lower {
+                // Five- and eight-note collections step by their own period,
+                // not by a diatonic one.
+                in scale c major_pentatonic {
+                    c4/4
+                    (c4 step 2)/4
+                    (c4 step 4)/2
+                }
+                in scale c octatonic_half_whole {
+                    c4/4
+                    (c4 step 3)/4
+                    (c4 step 7)/2
+                }
+
+                // With no scale of its own, `step` walks the collection the
+                // written key suggests: C natural minor.
+                c4/4
+                (c4 step 2)/4
+                rest/2
+            }
+        }
+    }
+}

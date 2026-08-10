@@ -681,11 +681,15 @@ impl<'a> Parser<'a> {
             self.expect(SyntaxKind::Identifier, "a relative path in quotes, or `std::module`");
             self.expect(SyntaxKind::Colon, "`::`");
             self.expect(SyntaxKind::Colon, "`::`");
+            // A module may be named after a type or a domain keyword: `pitch`,
+            // `list`, `option`, `scale`. The path position is what makes the
+            // word a module name.
             if self.at_any(&[
                 SyntaxKind::Identifier,
                 SyntaxKind::ListKw,
                 SyntaxKind::OptionKw,
                 SyntaxKind::PitchKw,
+                SyntaxKind::ScaleKw,
             ]) {
                 self.bump();
             } else {
@@ -807,7 +811,15 @@ impl<'a> Parser<'a> {
             return;
         }
         self.start(SyntaxKind::TypeName);
-        if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::PitchKw, SyntaxKind::MusicKw]) {
+        if self.at_any(&[
+            SyntaxKind::Identifier,
+            SyntaxKind::PitchKw,
+            SyntaxKind::MusicKw,
+            SyntaxKind::ScaleKw,
+            SyntaxKind::KeyKw,
+            SyntaxKind::DegreeKw,
+            SyntaxKind::FrameKw,
+        ]) {
             self.bump();
         } else {
             self.expected("a type");
@@ -815,8 +827,12 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// An ordinary expression. Calls bind tighter than the single
-    /// non-associative written-pitch operator.
+    /// An ordinary expression. Calls bind tighter than the written-pitch
+    /// operators, and `step` binds tighter than `up`/`down`
+    /// (`01-surface.md` §1), so `p step 1 up m2` steps first.
+    ///
+    /// Both pitch operators are non-associative: `p up M2 down m2` needs
+    /// parentheses, and so does a second `step`.
     fn expr(&mut self) {
         let checkpoint = self.events.len();
         self.expr_atom();
@@ -825,12 +841,45 @@ impl<'a> Parser<'a> {
             self.expr_arg_list();
             self.finish();
         }
+        if self.at(SyntaxKind::StepKw) {
+            self.start_at(checkpoint, SyntaxKind::StepExpr);
+            self.bump();
+            // The direction is optional and defaults to up, which is what
+            // `c5 step 2` reads as on the page.
+            if self.at_any(&[SyntaxKind::UpKw, SyntaxKind::DownKw]) {
+                self.bump();
+            }
+            self.expr_atom();
+            self.finish();
+        }
         if self.at_any(&[SyntaxKind::UpKw, SyntaxKind::DownKw]) {
             self.start_at(checkpoint, SyntaxKind::PitchExpr);
             self.bump();
             self.expr_atom();
             self.finish();
         }
+    }
+
+    /// `scale <tonic> <collection>` — a collection rooted on a pitch class.
+    fn scale_expr(&mut self) {
+        self.start(SyntaxKind::ScaleExpr);
+        self.bump(); // scale
+        self.pitch_class();
+        self.expect(SyntaxKind::Identifier, "a collection such as `major` or `dorian`");
+        self.finish();
+    }
+
+    /// `key <tonic> <mode>` in a value position.
+    ///
+    /// The same three words as the `key` *statement*, and deliberately not
+    /// the same thing: this one is a value a function can take, and writing
+    /// it changes no signature and declares no modulation.
+    fn key_expr(&mut self) {
+        self.start(SyntaxKind::KeyExpr);
+        self.bump(); // key
+        self.pitch_class();
+        self.expect(SyntaxKind::Identifier, "a mode (`major` or `minor`)");
+        self.finish();
     }
 
     fn expr_atom(&mut self) {
@@ -864,6 +913,8 @@ impl<'a> Parser<'a> {
             Some(SyntaxKind::LParen) => self.paren_or_product_expr(),
             Some(SyntaxKind::MatchKw) => self.match_expr(),
             Some(SyntaxKind::MusicKw) => self.music_expr(),
+            Some(SyntaxKind::ScaleKw) => self.scale_expr(),
+            Some(SyntaxKind::KeyKw) => self.key_expr(),
             _ => self.expected("an expression"),
         }
     }
@@ -1474,7 +1525,12 @@ impl<'a> Parser<'a> {
             self.start(SyntaxKind::NameRef);
             self.bump();
             self.finish();
-        } else if self.at(SyntaxKind::Identifier) {
+        // `scale` is a processor here and a musical collection everywhere
+        // else. The studio vocabulary is deliberately made of identifiers so
+        // it can grow without the lexer (prompt 19), and this is the one word
+        // the score side also needed; the stage accepts the keyword token so
+        // that a signal can still be scaled.
+        } else if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::ScaleKw]) {
             if self.nth_significant(1) == Some(SyntaxKind::LParen) {
                 self.call_expr();
             } else {
@@ -1649,6 +1705,8 @@ impl<'a> Parser<'a> {
                 self.stray_semicolon();
             } else if self.at(SyntaxKind::UseKw) {
                 self.use_stmt();
+            } else if self.at(SyntaxKind::InKw) {
+                self.in_scale_stmt();
             } else if self.at(SyntaxKind::TransposeKw) {
                 self.transpose_stmt();
             } else if self.at(SyntaxKind::RepeatKw) {
@@ -1769,7 +1827,11 @@ impl<'a> Parser<'a> {
     /// starts that way.
     fn note_stmt(&mut self) {
         self.start(SyntaxKind::NoteStmt);
-        if self.at(SyntaxKind::LParen) || matches!(self.nth_significant(1), Some(SyntaxKind::UpKw | SyntaxKind::DownKw))
+        if self.at(SyntaxKind::LParen)
+            || matches!(
+                self.nth_significant(1),
+                Some(SyntaxKind::UpKw | SyntaxKind::DownKw | SyntaxKind::StepKw)
+            )
         {
             self.expr();
         } else {
@@ -1901,6 +1963,37 @@ impl<'a> Parser<'a> {
         self.expect(SyntaxKind::Equals, "`=`");
         self.expect(SyntaxKind::PitchLiteral, "a pitch");
         self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `in scale <expr> { ... }` — the enclosed music read in a scale.
+    ///
+    /// Only `scale` follows `in`. There is no `in key` or `in meter`: those
+    /// are structural facts a score states at a place, and a lexical block
+    /// that quietly changed one would be a modulation nobody wrote.
+    fn in_scale_stmt(&mut self) {
+        self.start(SyntaxKind::InScaleStmt);
+        self.bump(); // in
+        if !self.at(SyntaxKind::ScaleKw) {
+            self.expected("`scale` — a scale is the only context entered lexically");
+            self.expr();
+            self.block();
+            self.finish();
+            return;
+        }
+        // `in scale c major { … }` writes the collection out and `in scale s
+        // { … }` names one. Two words after `scale` is the literal; anything
+        // else is an expression, and the block's `{` is what tells them
+        // apart.
+        let written_out = matches!(self.nth_significant(1), Some(SyntaxKind::Identifier))
+            && matches!(self.nth_significant(2), Some(SyntaxKind::Identifier | SyntaxKind::Hash));
+        if written_out {
+            self.scale_expr();
+        } else {
+            self.bump(); // scale
+            self.expr();
+        }
+        self.block();
         self.finish();
     }
 

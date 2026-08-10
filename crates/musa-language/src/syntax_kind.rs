@@ -236,6 +236,16 @@ pub enum SyntaxKind {
     TrueKw,
     /// `false`
     FalseKw,
+    /// `scale`
+    ScaleKw,
+    /// `degree`
+    DegreeKw,
+    /// `frame`
+    FrameKw,
+    /// `in`
+    InKw,
+    /// `step`
+    StepKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -459,6 +469,16 @@ pub enum SyntaxKind {
     Pattern,
     /// `music { ... }`, a notation-first contextual music value.
     MusicExpr,
+    /// `scale c dorian` — a collection rooted on a spelled tonic class.
+    ScaleExpr,
+    /// `key c minor` in a value position, which is the tonal fact and not a
+    /// statement that changes the key.
+    KeyExpr,
+    /// `pitch step <n>` — motion by scale steps, read against the scale in
+    /// force rather than against a written interval.
+    StepExpr,
+    /// `in scale <expr> { ... }` — the lexically scoped pitch context.
+    InScaleStmt,
 }
 
 impl SyntaxKind {

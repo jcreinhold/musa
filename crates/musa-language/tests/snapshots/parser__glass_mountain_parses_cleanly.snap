@@ -459,7 +459,7 @@ Root@0..2172
           PipeForward@1739..1741 "|>"
           CallExpr@1741..1755
             Whitespace@1741..1742 " "
-            Identifier@1742..1747 "scale"
+            ScaleKw@1742..1747 "scale"
             ArgList@1747..1755
               LParen@1747..1748 "("
               Arg@1748..1754

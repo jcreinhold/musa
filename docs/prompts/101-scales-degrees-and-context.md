@@ -1,7 +1,7 @@
 ---
 id: 101
 slug: scales-degrees-and-context
-status: pending
+status: done
 depends_on: [65, 100]
 phase: 3
 ---

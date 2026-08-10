@@ -1,0 +1,106 @@
+================================================================================
+scale, key, degree, and lexical pitch context
+================================================================================
+
+piece "Scale Context" {
+  use std::scale;
+  let home: key = key c minor;
+  let collection: scale = signature_scale(home);
+  fn figure() -> music = music {
+    c5/8
+    (c5 step 1)/8
+    (c5 step down 2)/4
+  };
+  score {
+    part p {
+      voice v {
+        in scale c dorian {
+          use figure();
+        }
+        in scale collection {
+          c4/4
+        }
+      }
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (piece_declaration
+    (string)
+    (import_statement
+      (identifier))
+    (let_declaration
+      (identifier)
+      (type_expression
+        (type_name))
+      (expression
+        (key_expression
+          (pitch_class
+            (identifier))
+          (identifier))))
+    (let_declaration
+      (identifier)
+      (type_expression
+        (type_name))
+      (expression
+        (application_expression
+          (name_expression
+            (identifier))
+          (expression_argument_list
+            (expression_argument
+              (expression
+                (name_expression
+                  (identifier))))))))
+    (function_declaration
+      (identifier)
+      (parameter_list)
+      (type_expression
+        (type_name))
+      (expression
+        (music_expression
+          (note_statement
+            (pitch_literal)
+            (duration
+              (integer)))
+          (note_statement
+            (expression
+              (step_expression
+                (pitch_literal)
+                (integer)))
+            (duration
+              (integer)))
+          (note_statement
+            (expression
+              (step_expression
+                (pitch_literal)
+                (integer)))
+            (duration
+              (integer))))))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (in_scale_statement
+            (pitch_class
+              (identifier))
+            (identifier)
+            (block
+              (use_statement
+                (expression
+                  (application_expression
+                    (name_expression
+                      (identifier))
+                    (expression_argument_list))))))
+          (in_scale_statement
+            (expression
+              (name_expression
+                (identifier)))
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (integer))))))))))

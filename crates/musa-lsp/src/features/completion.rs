@@ -8,7 +8,10 @@
 //! markdown, so the menu itself teaches. Names come from the last valid
 //! compile's facts: motifs, parts, voices, and the studio's containers —
 //! offered with the kind of thing they are, so the menu reads as music
-//! rather than as text.
+//! rather than as text. The words that name a scale collection are neither:
+//! they are identifiers the lexer cannot tell from any other, so they come
+//! from the compiler's own collection table, which is the only place that
+//! knows which collections exist.
 
 use std::collections::BTreeMap;
 
@@ -33,6 +36,21 @@ pub(crate) fn completions(document: &Document) -> CompletionResponse {
         items
             .entry((*spelling).to_owned())
             .or_insert_with(|| keyword_item(spelling, *kind, item_kind, class));
+    }
+    // The words that may follow `scale`. They are identifiers to the lexer,
+    // so the vocabulary comes from the compiler's collection table rather
+    // than from `SPELLINGS`.
+    for (name, doc) in musa_project::scale_collections() {
+        items.entry(name.to_owned()).or_insert_with(|| CompletionItem {
+            label: name.to_owned(),
+            kind: Some(CompletionItemKind::ENUM_MEMBER),
+            detail: Some("scale collection".to_owned()),
+            documentation: Some(lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+                kind: lsp_types::MarkupKind::Markdown,
+                value: format!("**{name}** — *scale collection*\n\n`scale c {name}` collects {doc}."),
+            })),
+            ..CompletionItem::default()
+        });
     }
     if let Some(score) = document.snapshot().score() {
         for part in &score.parts {

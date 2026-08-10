@@ -88,6 +88,11 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("none", SyntaxKind::NoneKw),
     ("true", SyntaxKind::TrueKw),
     ("false", SyntaxKind::FalseKw),
+    ("scale", SyntaxKind::ScaleKw),
+    ("degree", SyntaxKind::DegreeKw),
+    ("frame", SyntaxKind::FrameKw),
+    ("in", SyntaxKind::InKw),
+    ("step", SyntaxKind::StepKw),
     ("Hz", SyntaxKind::UnitHz),
     ("ms", SyntaxKind::UnitMs),
     ("s", SyntaxKind::UnitS),
@@ -276,7 +281,12 @@ impl TokenClass {
             | SyntaxKind::SomeKw
             | SyntaxKind::NoneKw
             | SyntaxKind::TrueKw
-            | SyntaxKind::FalseKw => Self::Keyword,
+            | SyntaxKind::FalseKw
+            | SyntaxKind::ScaleKw
+            | SyntaxKind::DegreeKw
+            | SyntaxKind::FrameKw
+            | SyntaxKind::InKw
+            | SyntaxKind::StepKw => Self::Keyword,
 
             SyntaxKind::Error => Self::Invalid,
 
@@ -374,7 +384,11 @@ impl TokenClass {
             | SyntaxKind::MatchExpr
             | SyntaxKind::MatchArm
             | SyntaxKind::Pattern
-            | SyntaxKind::MusicExpr => return None,
+            | SyntaxKind::MusicExpr
+            | SyntaxKind::ScaleExpr
+            | SyntaxKind::KeyExpr
+            | SyntaxKind::StepExpr
+            | SyntaxKind::InScaleStmt => return None,
         };
         Some(class)
     }

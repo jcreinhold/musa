@@ -1355,6 +1355,7 @@ fn elaborate_voice(
         foreign: false,
         music: core.root_music(),
         named_music: core.named_music_values(),
+        pitch_scale: None,
     };
     resolver.cursor = MusicalTime::ZERO;
     let segment = elaborate_place(
@@ -1668,6 +1669,120 @@ fn elaborate_mark(
     }
 }
 
+/// The span of what a node actually spells, from its first significant token
+/// to its last.
+fn written_span(node: &musa_language::SyntaxNode) -> SourceSpan {
+    let mut tokens = node
+        .descendants_with_tokens()
+        .filter_map(musa_language::SyntaxElement::into_token)
+        .filter(|token| !token.kind().is_trivia())
+        .map(|token| token.text_range());
+    let Some(first) = tokens.next() else {
+        return resolve::span_of(node);
+    };
+    let last = tokens.last().unwrap_or(first);
+    SourceSpan::new(u32::from(first.start()), u32::from(last.end()))
+}
+
+/// The scale `step` reads at this point: the innermost `in scale`, and
+/// otherwise the default collection of the key the piece has stated.
+///
+/// The key's default is a *default*, not a claim: `key c minor` says the
+/// signature is three flats, and the natural-minor collection is what a bare
+/// `step` then walks. Writing `in scale c harmonic_minor` around the passage
+/// is how the other minor collections are asked for, and neither reading
+/// changes the other.
+fn scale_in_force(resolver: &Resolver, cx: &ExpandCx) -> Option<crate::scale::Scale> {
+    if let Some(scale) = cx.pitch_scale {
+        return Some(scale);
+    }
+    // The key in force is the latest one written at or before the cursor,
+    // falling back to the one the header stated. `Latest` is the same rule the
+    // score snapshot reads for the printed signature.
+    resolver
+        .key_changes
+        .iter()
+        .filter(|(at, _, _)| *at <= resolver.cursor)
+        .max_by_key(|(at, _, _)| *at)
+        .map(|(_, key, _)| *key)
+        .or(resolver.key)
+        .map(crate::scale::signature_scale)
+}
+
+/// Finish a note's pitch under the scale in force, reporting exactly what is
+/// missing when it cannot be finished.
+fn resolve_pitch_term(
+    resolver: &mut Resolver,
+    term: &crate::core::PitchTerm,
+    cx: &ExpandCx,
+    span: SourceSpan,
+) -> Option<WrittenPitch> {
+    let scale = scale_in_force(resolver, cx);
+    match term.resolve(scale) {
+        Ok(pitch) => Some(pitch),
+        Err(crate::core::PitchTermError::NoScale) => {
+            resolver.report(
+                Diagnostic::error(Code::Misplaced, "`step` needs a scale in force")
+                    .at(span, "no scale reaches this note")
+                    .help("wrap the music in `in scale c major { ... }`, or write a `key` before it")
+                    .note("an absent scale is never an implicit C major: the coordinate has to come from somewhere"),
+            );
+            None
+        }
+        Err(crate::core::PitchTermError::NotInScale { pitch, scale }) => {
+            resolver.report(
+                Diagnostic::error(Code::NotAValue, format!("`{pitch}` is not a member of `{scale}`"))
+                    .at(span, "`step` has no coordinate to move from here")
+                    .help(format!(
+                        "step from a member of `{scale}`, or put another scale in force with `in scale`"
+                    ))
+                    .note("membership is spelled: `eb5` and `d#5` are different written pitches"),
+            );
+            None
+        }
+        Err(crate::core::PitchTermError::OutOfRange) => {
+            resolver.report(
+                Diagnostic::error(Code::NotAValue, "this pitch leaves the written range")
+                    .at(span, "the step lands outside the coordinates a written pitch can hold"),
+            );
+            None
+        }
+    }
+}
+
+/// `in scale s { ... }` — Reader `local`.
+///
+/// It puts one scale in force for the items it encloses, emits no `Key` fact,
+/// and adds one `ScaleContext` step to their origins so the page can say why
+/// a note was spelled the way it was. A nested `in scale` shadows it; a `use`
+/// inside it reads it, which is what lets one saved phrase elaborate
+/// differently at two use sites.
+fn elaborate_in_scale(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    stmt: &musa_language::ast::InScaleStmt,
+    cx: &ExpandCx,
+    scope: Scope,
+    place: Place,
+) -> Segment {
+    let span = resolve::trimmed_span(stmt.syntax());
+    let Some(scale) = cx.music.scale_at(span) else {
+        resolver.error(
+            Code::NotAValue,
+            "this scale cannot be read",
+            span,
+            "expected a scale, like `scale c dorian`",
+        );
+        return Segment::empty();
+    };
+    let mut inner = cx.clone();
+    inner.pitch_scale = Some(scale);
+    inner.path.push(ExpansionStep::ScaleContext {
+        scale: scale.to_string(),
+    });
+    elaborate_place(resolver, share, &stmt.items(), &inner, scope, place)
+}
+
 /// Elaborate one item; malformed items elaborate to the empty segment
 /// `(0, ∅)` — the direct lowerer's `continue` (diagnostic already emitted).
 fn elaborate_item(
@@ -1683,6 +1798,7 @@ fn elaborate_item(
         VoiceItem::Meter(stmt) => elaborate_meter(resolver, stmt, cx, place),
         VoiceItem::Senza(stmt) => elaborate_senza(resolver, share, stmt, cx, scope, place),
         VoiceItem::Key(stmt) => elaborate_key(resolver, stmt, cx, place),
+        VoiceItem::InScale(stmt) => elaborate_in_scale(resolver, share, stmt, cx, scope, place),
         VoiceItem::Clef(stmt) => elaborate_clef(resolver, stmt, cx, scope, place),
         VoiceItem::Mobile(stmt) => elaborate_mobile(resolver, share, stmt, cx, scope),
         VoiceItem::Improvise(stmt) => elaborate_improvise(resolver, stmt, cx, scope),
@@ -1692,7 +1808,19 @@ fn elaborate_item(
                 return Segment::empty();
             };
             let span = resolve::trimmed_span(note.syntax());
-            let pitch = if let Some(pitch) = cx.music.pitch_at(span).copied() {
+            let pitch = if let Some(term) = cx.music.pitch_at(span) {
+                // The statement's span is the lookup key; the diagnostic wants
+                // the pitch the composer wrote, not the whole event.
+                let written = note.pitch_expr().map_or(span, |node| written_span(&node));
+                let Some(pitch) = resolve_pitch_term(resolver, term, cx, written) else {
+                    return Segment::empty();
+                };
+                // A computed pitch enters the transposition stack exactly as a
+                // written one does: the enclosing `transpose` block moves the
+                // sound, and the scale it stepped through is untouched.
+                let Some(pitch) = resolve::apply_intervals(resolver, pitch, cx, note.syntax()) else {
+                    return Segment::empty();
+                };
                 pitch
             } else {
                 let pitch_text = note.pitch().unwrap_or_default();
@@ -2947,6 +3075,7 @@ fn instantiate_music(
         origin_span: Some(SHARED_ORIGIN),
         max_motif: index,
         scale: cx.scale,
+        pitch_scale: cx.pitch_scale,
         foreign,
         choice: material.map_or_else(
             || cx.choice.clone(),

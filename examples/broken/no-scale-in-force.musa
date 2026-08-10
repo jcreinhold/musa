@@ -1,0 +1,14 @@
+// `step` is a coordinate move, and a coordinate needs a system. This piece
+// states no key and opens no `in scale`, so there is nothing for the step to
+// walk — and an absent scale is never an implicit C major.
+piece "No Scale In Force" {
+    score {
+        part solo {
+            voice line {
+                c5/4
+                (c5 step 1)/4
+                rest/2
+            }
+        }
+    }
+}

@@ -94,14 +94,18 @@ pub fn resolve_import(importer: &str, written: &str) -> String {
 /// Version of the source language expected by the embedded standard library.
 pub const STANDARD_LIBRARY_LANGUAGE_VERSION: u32 = 1;
 
+const COLLECTIONS_URI: &str = "musa-stdlib:/std/collections.musa";
 const CORE_URI: &str = "musa-stdlib:/std/core.musa";
 const LIST_URI: &str = "musa-stdlib:/std/list.musa";
 const OPTION_URI: &str = "musa-stdlib:/std/option.musa";
 const PITCH_URI: &str = "musa-stdlib:/std/pitch.musa";
+const SCALE_URI: &str = "musa-stdlib:/std/scale.musa";
+const COLLECTIONS_SOURCE: &str = include_str!("../../../stdlib/collections.musa");
 const CORE_SOURCE: &str = include_str!("../../../stdlib/core.musa");
 const LIST_SOURCE: &str = include_str!("../../../stdlib/list.musa");
 const OPTION_SOURCE: &str = include_str!("../../../stdlib/option.musa");
 const PITCH_SOURCE: &str = include_str!("../../../stdlib/pitch.musa");
+const SCALE_SOURCE: &str = include_str!("../../../stdlib/scale.musa");
 #[cfg(test)]
 const MANIFEST: &str = include_str!("../../../stdlib/manifest.toml");
 
@@ -109,10 +113,12 @@ const MANIFEST: &str = include_str!("../../../stdlib/manifest.toml");
 #[must_use]
 pub fn standard_library_source(uri: &str) -> Option<&'static str> {
     match uri {
+        COLLECTIONS_URI => Some(COLLECTIONS_SOURCE),
         CORE_URI => Some(CORE_SOURCE),
         LIST_URI => Some(LIST_SOURCE),
         OPTION_URI => Some(OPTION_SOURCE),
         PITCH_URI => Some(PITCH_SOURCE),
+        SCALE_URI => Some(SCALE_SOURCE),
         _ => None,
     }
 }
@@ -120,10 +126,12 @@ pub fn standard_library_source(uri: &str) -> Option<&'static str> {
 /// Every bundled module, in stable documentation and packaging order.
 pub fn standard_library_modules() -> impl Iterator<Item = (&'static str, &'static str)> {
     [
+        (COLLECTIONS_URI, COLLECTIONS_SOURCE),
         (CORE_URI, CORE_SOURCE),
         (LIST_URI, LIST_SOURCE),
         (OPTION_URI, OPTION_SOURCE),
         (PITCH_URI, PITCH_SOURCE),
+        (SCALE_URI, SCALE_SOURCE),
     ]
     .into_iter()
 }

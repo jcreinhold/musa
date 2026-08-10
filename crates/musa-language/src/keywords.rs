@@ -545,6 +545,46 @@ static FALSE: KeywordDoc = doc!(
      ```musa\nlet muted: bool = false;\n```"
 );
 
+static SCALE: KeywordDoc = doc!(
+    "scale",
+    "a collection rooted on a note",
+    "A scale is an ordered collection of notes rooted on a spelled tonic — `scale c dorian` — and it is a set of \
+     pitch coordinates, not a key signature and not a register. `in scale s { … }` reads the music inside it \
+     against `s` without writing a key change.\n\n\
+     ```musa\nlet home: scale = scale c major;\nin scale c dorian { use subject; }\n```"
+);
+static DEGREE: KeywordDoc = doc!(
+    "degree",
+    "a scale ordinal, with no scale in it",
+    "A degree is a numbered position — 1 is the tonic, 8 the tonic a period higher — plus any chromatic \
+     alteration, and it belongs to no particular scale until one is supplied. Turning a degree into a note also \
+     needs a register, which is what a `frame` carries.\n\n\
+     ```musa\nlet dominant: degree = scale_degree(5);\n```"
+);
+static FRAME: KeywordDoc = doc!(
+    "frame",
+    "a scale that knows which octave",
+    "A frame is a scale plus the written pitch its first degree sounds, and it is the only thing that can turn a \
+     degree into a note. Building one fails unless the tonic pitch spells the scale's own tonic.\n\n\
+     ```musa\nfn dominant_of(home: frame) -> pitch = frame_pitch(home, scale_degree(5));\n```"
+);
+static IN: KeywordDoc = doc!(
+    "in",
+    "read this music in a scale",
+    "`in scale s { … }` supplies the pitch coordinates the enclosed music is read against, for `step` and for \
+     anything else that counts scale degrees. It is lexical and local: it emits no key signature and claims no \
+     modulation, so the same saved phrase can be used under two scales and mean two things.\n\n\
+     ```musa\nin scale c dorian { use subject; }\n```"
+);
+static STEP: KeywordDoc = doc!(
+    "step",
+    "move by scale steps, not by an interval",
+    "`p step n` moves `n` degrees up the scale in force, and `p step down n` moves down; the answer depends on \
+     where in the scale `p` sits, which is exactly how `up M2` differs from it. The note stepped from has to be \
+     in the scale, and there has to be a scale.\n\n\
+     ```musa\nin scale c major { (c5 step 2)/4 }\n```"
+);
+
 /// The keyword's documentation, or `None` for anything that is not a
 /// keyword.
 ///
@@ -554,6 +594,11 @@ static FALSE: KeywordDoc = doc!(
 /// on purpose, not a default fallen into.
 pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
     let doc = match kind {
+        SyntaxKind::ScaleKw => &SCALE,
+        SyntaxKind::DegreeKw => &DEGREE,
+        SyntaxKind::FrameKw => &FRAME,
+        SyntaxKind::InKw => &IN,
+        SyntaxKind::StepKw => &STEP,
         SyntaxKind::PieceKw => &PIECE,
         SyntaxKind::LibraryKw => &LIBRARY,
         SyntaxKind::TempoKw => &TEMPO,
@@ -755,7 +800,11 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::MatchExpr
         | SyntaxKind::MatchArm
         | SyntaxKind::Pattern
-        | SyntaxKind::MusicExpr => return None,
+        | SyntaxKind::MusicExpr
+        | SyntaxKind::ScaleExpr
+        | SyntaxKind::KeyExpr
+        | SyntaxKind::StepExpr
+        | SyntaxKind::InScaleStmt => return None,
     };
     Some(doc)
 }
@@ -840,6 +889,11 @@ mod tests {
             SyntaxKind::NoneKw,
             SyntaxKind::TrueKw,
             SyntaxKind::FalseKw,
+            SyntaxKind::ScaleKw,
+            SyntaxKind::DegreeKw,
+            SyntaxKind::FrameKw,
+            SyntaxKind::InKw,
+            SyntaxKind::StepKw,
         ];
         for kind in kinds {
             let doc = keyword_doc(kind);

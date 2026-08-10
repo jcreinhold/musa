@@ -356,6 +356,16 @@ enum RawToken {
     TrueKw,
     #[token("false", priority = 3)]
     FalseKw,
+    #[token("scale", priority = 3)]
+    ScaleKw,
+    #[token("degree", priority = 3)]
+    DegreeKw,
+    #[token("frame", priority = 3)]
+    FrameKw,
+    #[token("in", priority = 3)]
+    InKw,
+    #[token("step", priority = 3)]
+    StepKw,
 }
 
 impl RawToken {
@@ -467,7 +477,12 @@ impl RawToken {
             | Self::SomeKw
             | Self::NoneKw
             | Self::TrueKw
-            | Self::FalseKw => None,
+            | Self::FalseKw
+            | Self::ScaleKw
+            | Self::DegreeKw
+            | Self::FrameKw
+            | Self::InKw
+            | Self::StepKw => None,
         }
     }
 
@@ -577,6 +592,11 @@ impl RawToken {
             Self::NoneKw => SyntaxKind::NoneKw,
             Self::TrueKw => SyntaxKind::TrueKw,
             Self::FalseKw => SyntaxKind::FalseKw,
+            Self::ScaleKw => SyntaxKind::ScaleKw,
+            Self::DegreeKw => SyntaxKind::DegreeKw,
+            Self::FrameKw => SyntaxKind::FrameKw,
+            Self::InKw => SyntaxKind::InKw,
+            Self::StepKw => SyntaxKind::StepKw,
         }
     }
 }

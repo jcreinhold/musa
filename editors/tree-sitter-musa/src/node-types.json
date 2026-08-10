@@ -249,6 +249,10 @@
           "named": true
         },
         {
+          "type": "in_scale_statement",
+          "named": true
+        },
+        {
           "type": "invert_statement",
           "named": true
         },
@@ -566,6 +570,10 @@
           "named": true
         },
         {
+          "type": "key_expression",
+          "named": true
+        },
+        {
           "type": "list_expression",
           "named": true
         },
@@ -595,6 +603,14 @@
         },
         {
           "type": "product_expression",
+          "named": true
+        },
+        {
+          "type": "scale_expression",
+          "named": true
+        },
+        {
+          "type": "step_expression",
           "named": true
         }
       ]
@@ -905,6 +921,10 @@
             "named": false
           },
           {
+            "type": "scale",
+            "named": false
+          },
+          {
             "type": "string",
             "named": true
           }
@@ -939,6 +959,60 @@
     }
   },
   {
+    "type": "in_scale_statement",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "block",
+            "named": true
+          }
+        ]
+      },
+      "collection": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "scale": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "pitch_class",
+            "named": true
+          }
+        ]
+      },
+      "tonic": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "pitch_class",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "invert_statement",
     "named": true,
     "fields": {
@@ -958,6 +1032,32 @@
         "types": [
           {
             "type": "block",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "key_expression",
+    "named": true,
+    "fields": {
+      "mode": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "tonic": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "pitch_class",
             "named": true
           }
         ]
@@ -1435,6 +1535,10 @@
           "named": true
         },
         {
+          "type": "in_scale_statement",
+          "named": true
+        },
+        {
           "type": "invert_statement",
           "named": true
         },
@@ -1565,6 +1669,10 @@
           },
           {
             "type": "pitch_literal",
+            "named": true
+          },
+          {
+            "type": "step_expression",
             "named": true
           }
         ]
@@ -2231,6 +2339,32 @@
     }
   },
   {
+    "type": "scale_expression",
+    "named": true,
+    "fields": {
+      "collection": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "tonic": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "pitch_class",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "score_declaration",
     "named": true,
     "fields": {},
@@ -2493,6 +2627,74 @@
         },
         {
           "type": "name_reference",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "step_expression",
+    "named": true,
+    "fields": {
+      "direction": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "down",
+            "named": false
+          },
+          {
+            "type": "up",
+            "named": false
+          }
+        ]
+      },
+      "steps": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "(",
+            "named": false
+          },
+          {
+            "type": ")",
+            "named": false
+          },
+          {
+            "type": "expression",
+            "named": true
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "integer",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        },
+        {
+          "type": "identifier",
+          "named": true
+        },
+        {
+          "type": "interval_literal",
+          "named": true
+        },
+        {
+          "type": "pitch_literal",
           "named": true
         }
       ]
@@ -2867,6 +3069,10 @@
           "named": true
         },
         {
+          "type": "in_scale_statement",
+          "named": true
+        },
+        {
           "type": "invert_statement",
           "named": true
         },
@@ -3053,6 +3259,10 @@
     "named": false
   },
   {
+    "type": "degree",
+    "named": false
+  },
+  {
     "type": "diminuendo",
     "named": false
   },
@@ -3085,6 +3295,10 @@
     "named": false
   },
   {
+    "type": "frame",
+    "named": false
+  },
+  {
     "type": "grace",
     "named": false
   },
@@ -3102,6 +3316,10 @@
   },
   {
     "type": "improvise",
+    "named": false
+  },
+  {
+    "type": "in",
     "named": false
   },
   {
@@ -3237,6 +3455,10 @@
     "named": false
   },
   {
+    "type": "scale",
+    "named": false
+  },
+  {
     "type": "score",
     "named": false
   },
@@ -3258,6 +3480,10 @@
   },
   {
     "type": "some",
+    "named": false
+  },
+  {
+    "type": "step",
     "named": false
   },
   {

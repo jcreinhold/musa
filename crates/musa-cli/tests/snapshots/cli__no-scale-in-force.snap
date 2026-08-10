@@ -1,0 +1,19 @@
+---
+source: crates/musa-cli/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+misplaced
+
+  × `step` needs a scale in force
+    ╭─[examples/broken/no-scale-in-force.musa:9:17]
+  8 │                 c5/4
+  9 │                 (c5 step 1)/4
+    ·                 ─────┬─────
+    ·                      ╰── no scale reaches this note
+ 10 │                 rest/2
+    ╰────
+  help: wrap the music in `in scale c major { ... }`, or write a `key` before it
+
+  note: an absent scale is never an implicit C major: the coordinate has to come from somewhere
+
+1 problem (1 error)

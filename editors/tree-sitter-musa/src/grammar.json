@@ -200,6 +200,10 @@
                       {
                         "type": "STRING",
                         "value": "pitch"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "scale"
                       }
                     ]
                   }
@@ -467,6 +471,65 @@
         {
           "type": "STRING",
           "value": ";"
+        }
+      ]
+    },
+    "in_scale_statement": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "in"
+        },
+        {
+          "type": "STRING",
+          "value": "scale"
+        },
+        {
+          "type": "FIELD",
+          "name": "scale",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_scale_context"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "body",
+          "content": {
+            "type": "SYMBOL",
+            "name": "block"
+          }
+        }
+      ]
+    },
+    "_scale_context": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "tonic",
+              "content": {
+                "type": "SYMBOL",
+                "name": "pitch_class"
+              }
+            },
+            {
+              "type": "FIELD",
+              "name": "collection",
+              "content": {
+                "type": "SYMBOL",
+                "name": "identifier"
+              }
+            }
+          ]
+        },
+        {
+          "type": "SYMBOL",
+          "name": "expression"
         }
       ]
     },
@@ -943,6 +1006,22 @@
           "value": "music"
         },
         {
+          "type": "STRING",
+          "value": "scale"
+        },
+        {
+          "type": "STRING",
+          "value": "key"
+        },
+        {
+          "type": "STRING",
+          "value": "degree"
+        },
+        {
+          "type": "STRING",
+          "value": "frame"
+        },
+        {
           "type": "SYMBOL",
           "name": "identifier"
         }
@@ -1052,6 +1131,18 @@
         },
         {
           "type": "SYMBOL",
+          "name": "step_expression"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "scale_expression"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "key_expression"
+        },
+        {
+          "type": "SYMBOL",
           "name": "_primary_expression"
         }
       ]
@@ -1113,6 +1204,136 @@
           }
         ]
       }
+    },
+    "step_expression": {
+      "type": "PREC_LEFT",
+      "value": 2,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "_pitch_operand"
+          },
+          {
+            "type": "STRING",
+            "value": "step"
+          },
+          {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "FIELD",
+                "name": "direction",
+                "content": {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "STRING",
+                      "value": "up"
+                    },
+                    {
+                      "type": "STRING",
+                      "value": "down"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "BLANK"
+              }
+            ]
+          },
+          {
+            "type": "FIELD",
+            "name": "steps",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_step_count"
+            }
+          }
+        ]
+      }
+    },
+    "_step_count": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "integer"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "identifier"
+        },
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "("
+            },
+            {
+              "type": "SYMBOL",
+              "name": "expression"
+            },
+            {
+              "type": "STRING",
+              "value": ")"
+            }
+          ]
+        }
+      ]
+    },
+    "scale_expression": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "scale"
+        },
+        {
+          "type": "FIELD",
+          "name": "tonic",
+          "content": {
+            "type": "SYMBOL",
+            "name": "pitch_class"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "collection",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        }
+      ]
+    },
+    "key_expression": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "key"
+        },
+        {
+          "type": "FIELD",
+          "name": "tonic",
+          "content": {
+            "type": "SYMBOL",
+            "name": "pitch_class"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "mode",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        }
+      ]
     },
     "_pitch_operand": {
       "type": "CHOICE",
@@ -1799,6 +2020,10 @@
               {
                 "type": "SYMBOL",
                 "name": "senza_statement"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "in_scale_statement"
               }
             ]
           }
@@ -2064,6 +2289,10 @@
               {
                 "type": "SYMBOL",
                 "name": "senza_statement"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "in_scale_statement"
               }
             ]
           }
@@ -3023,6 +3252,10 @@
               {
                 "type": "SYMBOL",
                 "name": "senza_statement"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "in_scale_statement"
               }
             ]
           }
@@ -3053,6 +3286,10 @@
               {
                 "type": "SYMBOL",
                 "name": "pitch_expression"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "step_expression"
               },
               {
                 "type": "SEQ",

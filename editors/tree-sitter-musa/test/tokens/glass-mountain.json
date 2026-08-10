@@ -216,7 +216,7 @@
     { "kind": "unit", "text": "Hz" },
     { "kind": ")", "text": ")" },
     { "kind": "|>", "text": "|>" },
-    { "kind": "identifier", "text": "scale" },
+    { "kind": "scale", "text": "scale" },
     { "kind": "(", "text": "(" },
     { "kind": "integer", "text": "250" },
     { "kind": "unit", "text": "Hz" },

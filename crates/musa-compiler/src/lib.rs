@@ -50,6 +50,7 @@ mod profile;
 mod project;
 mod realize;
 mod resolve;
+mod scale;
 mod scope;
 mod score;
 mod studio;
@@ -81,6 +82,7 @@ pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::profile::{ArticulationRealization, GracePolicy, PerformanceProfile, ProfileSet, StealFrom};
 pub use crate::realize::{Decision, DecisionRecord, Realization};
 pub use crate::resolve::{NameKind, NameReference, SourceLocation};
+pub use crate::scale::scale_collections;
 pub use crate::scope::{ContextKind, Scope};
 pub use crate::score::{
     AnnotationStore, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, FreeDuration, FrontMatter,

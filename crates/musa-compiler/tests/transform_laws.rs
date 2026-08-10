@@ -278,6 +278,7 @@ fn the_variation_fixture_says_where_every_note_came_from() {
                         ExpansionStep::Retrograde => "retrograde".to_owned(),
                         ExpansionStep::Inversion { axis } => format!("invert around {axis}"),
                         ExpansionStep::MapNotePitches => "map note pitches".to_owned(),
+                        ExpansionStep::ScaleContext { scale } => format!("in {scale}"),
                         ExpansionStep::Specialization { .. } => "specialized".to_owned(),
                     })
                     .collect();

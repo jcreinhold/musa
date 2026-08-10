@@ -296,6 +296,14 @@ pub(crate) struct ExpandCx {
     /// Named music values needed by non-expression consumers such as a
     /// mobile's fragment list.
     pub(crate) named_music: IndexMap<String, crate::core::Music>,
+    /// The scale `step` reads here, if `in scale` put one in force.
+    ///
+    /// This is the whole of the lexical pitch context: it is inherited by
+    /// every nested item and by the body of every `use`, and it is *not* the
+    /// key. A `None` here means the key's default collection is asked next,
+    /// and if the piece has stated no key either, `step` is a diagnostic
+    /// rather than an implicit C major.
+    pub(crate) pitch_scale: Option<crate::scale::Scale>,
 }
 
 /// What resolution accumulates while a piece is read: the tables names are
