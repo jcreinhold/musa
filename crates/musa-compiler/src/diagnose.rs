@@ -54,6 +54,12 @@ pub enum Code {
     Studio,
     /// Something was skipped, and the piece is still playable without it.
     Ignored,
+    /// An elaboration expression has a different type than its context requires.
+    TypeMismatch,
+    /// A function call supplies too many, too few, repeated, or unknown arguments.
+    WrongArity,
+    /// Named elaboration definitions form a recursive dependency cycle.
+    DependencyCycle,
     /// Valid language syntax belongs to a compiler stage delivered by a
     /// later prompt, rather than being mistaken for a parse error.
     UnsupportedLanguageStage,
@@ -86,6 +92,9 @@ impl Code {
             Self::Import => "import",
             Self::Studio => "studio",
             Self::Ignored => "ignored",
+            Self::TypeMismatch => "type-mismatch",
+            Self::WrongArity => "wrong-arity",
+            Self::DependencyCycle => "dependency-cycle",
             Self::UnsupportedLanguageStage => "unsupported-language-stage",
             Self::UnusedMaterial => "unused-material",
             Self::UnassignedPatch => "unassigned-patch",
@@ -96,7 +105,7 @@ impl Code {
 
     /// Every code, for `musa explain` with no argument and for the tests that
     /// keep the explanation table honest.
-    pub const ALL: [Self; 16] = [
+    pub const ALL: [Self; 19] = [
         Self::Syntax,
         Self::UnknownName,
         Self::DuplicateName,
@@ -108,6 +117,9 @@ impl Code {
         Self::Import,
         Self::Studio,
         Self::Ignored,
+        Self::TypeMismatch,
+        Self::WrongArity,
+        Self::DependencyCycle,
         Self::UnsupportedLanguageStage,
         Self::UnusedMaterial,
         Self::UnassignedPatch,

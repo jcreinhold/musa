@@ -86,15 +86,25 @@ pub(crate) struct Libraries {
     /// Kept alive so the AST nodes below stay valid.
     documents: Vec<musa_language::ParsedDocument>,
     /// One entry per imported file, in registration order.
-    order: Vec<(String, usize)>,
+    order: Vec<(String, usize, SourceSpan)>,
 }
 
 impl Libraries {
     /// The imported libraries, with the path each was read from.
     pub(crate) fn each(&self) -> impl Iterator<Item = (&str, LibraryDecl)> {
-        self.order.iter().filter_map(|(path, index)| {
+        self.order.iter().filter_map(|(path, index, _)| {
             let document = self.documents.get(*index)?;
             Some((path.as_str(), LibraryDecl::from_root(&document.syntax())?))
+        })
+    }
+
+    /// The imported libraries and the local `use` span through which each
+    /// was reached. Semantic consumers use this to remap a foreign failure
+    /// instead of displaying another document's byte offsets in this one.
+    pub(crate) fn each_with_import_span(&self) -> impl Iterator<Item = (&str, LibraryDecl, SourceSpan)> {
+        self.order.iter().filter_map(|(path, index, span)| {
+            let document = self.documents.get(*index)?;
+            Some((path.as_str(), LibraryDecl::from_root(&document.syntax())?, *span))
         })
     }
 }
@@ -205,6 +215,6 @@ impl Loader<'_> {
         self.stack.pop();
         self.libraries.documents.push(document);
         let index = self.libraries.documents.len().saturating_sub(1);
-        self.libraries.order.push((path, index));
+        self.libraries.order.push((path, index, span));
     }
 }

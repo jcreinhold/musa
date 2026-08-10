@@ -806,6 +806,10 @@ fn interval_name(interval: Interval) -> String {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum NameKind {
+    /// An immutable elaboration `let` binding.
+    Value,
+    /// A named elaboration function.
+    Function,
     /// A `motif` declaration.
     Motif,
     /// A named `bar`.
@@ -845,6 +849,8 @@ impl NameFact {
     /// Restate one compiler reference in this crate's own vocabulary.
     pub(crate) fn from_compiler(reference: &musa_compiler::NameReference) -> Self {
         let kind = match reference.kind {
+            musa_compiler::NameKind::Value => NameKind::Value,
+            musa_compiler::NameKind::Function => NameKind::Function,
             musa_compiler::NameKind::Motif => NameKind::Motif,
             musa_compiler::NameKind::Bar => NameKind::Bar,
             musa_compiler::NameKind::Fragment => NameKind::Fragment,

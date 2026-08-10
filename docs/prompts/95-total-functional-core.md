@@ -1,7 +1,7 @@
 ---
 id: 95
 slug: total-functional-core
-status: pending
+status: done
 depends_on: [94]
 phase: 3
 ---

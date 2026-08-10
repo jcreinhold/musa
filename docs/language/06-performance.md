@@ -116,3 +116,26 @@ Prompt 96's resource-exhaustion cases are a separate suite. They must use genera
 measure time-to-diagnostic and maximum allocation, and run outside these steady-state samples. A rejected cyclic or
 oversized program is not averaged into successful compilation, and an operating-system kill is never reported as a
 language diagnostic.
+
+## Prompt 95 comparison
+
+The private functional core was measured on the same Apple M4 Pro in the same release configuration, with 100 samples.
+These workloads contain no new expression declarations, so this comparison isolates the cost imposed on existing Musa
+programs by collecting an empty definition graph. The exact expression evaluator is exercised by the generated law
+suite; prompt 118 owns accepted-envelope evaluator benchmarks.
+
+| phase | workload | median | versus prompt 93 | allocations | bytes allocated |
+| --- | --- | ---: | ---: | ---: | ---: |
+| P1 | open-shape | 322.8 µs | +6.1% | 8,206 | 424.8 KB |
+| P1 | higher-order-shape | 223.5 µs | −1.6% | 3,775 | 256.4 KB |
+| P1 | declaration-heavy | 469.3 µs | +1.2% | 16,044 | 734.0 KB |
+| P1 | audio-bridge | 107.8 µs | −9.6% | 3,388 | 160.4 KB |
+| P2 | open-shape | 293.6 µs | +3.5% | 7,997 | 405.3 KB |
+| P2 | higher-order-shape | 207.4 µs | −2.2% | 3,676 | 248.6 KB |
+| P2 | declaration-heavy | 412.9 µs | +2.0% | 15,760 | 704.8 KB |
+| P2 | audio-bridge | 84.98 µs | −5.1% | 3,151 | 140.1 KB |
+
+No comparable P1/P2 median regressed by more than the 10% review threshold. The largest regression, open-shape P1, adds
+247 allocations and 9.7 KB relative to prompt 93; its P2 movement is smaller, and both remain far below the interactive
+budget. The negative audio-bridge deltas are ordinary run-to-run improvement, not a claimed optimization. Prompt 95
+therefore adds no compatibility exception and does not alter any baseline digest.

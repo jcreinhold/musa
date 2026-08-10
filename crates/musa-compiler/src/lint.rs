@@ -60,7 +60,12 @@ fn unused_material(document: &ParsedDocument, source: &str, references: &Referen
         let what = match entry.kind {
             NameKind::Motif => "motif",
             NameKind::Fragment => "fragment",
-            NameKind::Bar | NameKind::Part | NameKind::Voice | NameKind::Patch => continue,
+            NameKind::Value
+            | NameKind::Function
+            | NameKind::Bar
+            | NameKind::Part
+            | NameKind::Voice
+            | NameKind::Patch => continue,
         };
         let Some(statement) = statement_node(
             document,

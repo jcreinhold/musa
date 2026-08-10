@@ -284,6 +284,15 @@ pub fn explain(code: &str) -> Option<&'static str> {
             "Something was skipped and the piece still plays without it. The label \
              points at what was skipped; the message says what was lost."
         }
+        musa_compiler::Code::TypeMismatch => {
+            "An elaboration expression has a different type from the value its context requires. Musa does not insert hidden coercions: written pitch, exact ratios, durations, and natural numbers remain distinct values. The primary label names the expression and the message states both types."
+        }
+        musa_compiler::Code::WrongArity => {
+            "A function call does not supply its declared parameters exactly once. Positional arguments fill parameters from left to right; named arguments use the parameter's written name; only a parameter with a default may be omitted."
+        }
+        musa_compiler::Code::DependencyCycle => {
+            "Elaboration definitions are total and non-recursive, but these definitions depend on each other in a cycle. The diagnostic prints that cycle. Pass the changing value as an argument or use one of Musa's finite structural folds instead of recursion."
+        }
         musa_compiler::Code::UnsupportedLanguageStage => {
             "The source uses valid Musa syntax whose semantic compiler stage is not \
              installed yet. This is deliberately different from `syntax`: the editor, \

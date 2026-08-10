@@ -86,11 +86,16 @@ impl Material {
 
 /// What kind of thing a recorded name names (prompt 78).
 ///
-/// Motifs, bars, and fragments share one namespace (see [`Material`]); parts,
+/// Values and functions share the elaboration-value namespace. Motifs, bars,
+/// and fragments share the material namespace (see [`Material`]); parts,
 /// voices, and patches are a namespace each. The kind is what a rename checks
 /// a collision against.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum NameKind {
+    /// An immutable elaboration `let` binding.
+    Value,
+    /// A named elaboration function.
+    Function,
     /// A `motif` declaration.
     Motif,
     /// A named `bar`.

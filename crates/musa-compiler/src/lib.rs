@@ -32,6 +32,7 @@ mod bars;
 pub mod bench;
 mod compile;
 mod context;
+mod core;
 mod diagnose;
 mod elaborate;
 mod factext;

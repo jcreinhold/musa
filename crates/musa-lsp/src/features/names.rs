@@ -102,10 +102,13 @@ fn check_new_name(document: &Document, entry: &NameFact, new_name: &str) -> Resu
             .iter()
             .any(|other| other.kind == kind && other.name == new_name && other.name != entry.name)
     };
-    // Motifs, bars, and fragments share one namespace in the resolver, so a
-    // rename collides against all three; the other kinds have a namespace
-    // each.
+    // Elaborated values and functions share the value namespace. Motifs,
+    // bars, and fragments retain their existing material namespace; the
+    // remaining kinds each have their own.
     let collision = match entry.kind {
+        musa_project::NameKind::Value | musa_project::NameKind::Function => {
+            collides(musa_project::NameKind::Value) || collides(musa_project::NameKind::Function)
+        }
         musa_project::NameKind::Motif | musa_project::NameKind::Bar | musa_project::NameKind::Fragment => {
             collides(musa_project::NameKind::Motif)
                 || collides(musa_project::NameKind::Bar)

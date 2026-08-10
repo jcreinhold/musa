@@ -520,28 +520,6 @@ pub(crate) fn elaborate_parsed(
     {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
-    if let Some(node) = document.syntax().descendants().find(|node| {
-        matches!(
-            node.kind(),
-            musa_language::SyntaxKind::LetDecl
-                | musa_language::SyntaxKind::FnDecl
-                | musa_language::SyntaxKind::ProductExpr
-                | musa_language::SyntaxKind::ListExpr
-                | musa_language::SyntaxKind::OptionExpr
-                | musa_language::SyntaxKind::MatchExpr
-                | musa_language::SyntaxKind::MusicExpr
-        )
-    }) {
-        resolver.report(
-            Diagnostic::error(
-                Code::UnsupportedLanguageStage,
-                "this elaboration expression is valid but cannot be evaluated yet",
-            )
-            .at(resolve::trimmed_span(&node), "the expression stage stops here")
-            .help("prompt 95 adds checking and evaluation for the first expression fragment"),
-        );
-        return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
-    }
     let Some(piece) = PieceDecl::from_root(&document.syntax()) else {
         if let Some(library) = musa_language::ast::LibraryDecl::from_root(&document.syntax()) {
             return elaborate_material(resolver, &library, name, options);
@@ -557,6 +535,9 @@ pub(crate) fn elaborate_parsed(
     resolver.realization = options.realization.clone();
     let mut snapshot = ScoreSnapshot::default();
     let libraries = crate::imports::load(resolver, name, &piece.imports(), &options.imports);
+    if !crate::core::check_piece(resolver, &libraries, &piece) {
+        return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
+    }
     elaborate_libraries(resolver, &libraries, &mut snapshot);
     resolve::lower_header(resolver, &piece, &mut snapshot);
     let identity = piece.score().map_or_else(musa_kernel::SemanticHash::default, |score| {
@@ -977,6 +958,9 @@ fn elaborate_material(
 ) -> Compilation {
     let mut snapshot = ScoreSnapshot::default();
     let libraries = crate::imports::load(resolver, name, &library.imports(), &options.imports);
+    if !crate::core::check_material(resolver, &libraries, library) {
+        return Compilation::new(None, std::mem::take(&mut resolver.diagnostics)).into_material();
+    }
     elaborate_libraries(resolver, &libraries, &mut snapshot);
     if let Some(performance) = library.performance() {
         let profiles = resolve::parse_profiles(resolver, &performance);
