@@ -27,9 +27,18 @@ const SNIPPET_LAYOUT: Partial<LayoutOptions> = {
 
 /** The shared engraver, created on the first render and never by parse. */
 let engraver: Engraver | undefined;
+let engraverFactory: () => Engraver = createEngraver;
+
+/**
+ * Install a custom engraver factory. Internal: the CDN build uses it to
+ * inject its Blob-inlined worker; not part of the documented API.
+ */
+export function setEngraverFactory(factory: () => Engraver): void {
+  engraverFactory = factory;
+}
 
 function theEngraver(): Engraver {
-  engraver ??= createEngraver();
+  engraver ??= engraverFactory();
   return engraver;
 }
 

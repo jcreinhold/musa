@@ -6,7 +6,7 @@
  * or a raw SVG string. Rust owns MEI; this is a projection, not a model.
  */
 
-export type { Engraver } from "./engraver";
+export type { Engraver, EngraverOptions } from "./engraver";
 export { createEngraver } from "./engraver";
 export type { Box, Layout, LayoutOptions, PageSvg } from "./protocol";
 export {

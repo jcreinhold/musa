@@ -299,6 +299,42 @@ impl Scale {
         Self { tonic, ..self }
     }
 
+    /// The pitch class a degree names, with no register at all.
+    ///
+    /// [`Frame::pitch`] answers the same question of a scale that has been
+    /// given an absolute tonic, and it must be given one, because a written
+    /// pitch has an octave and something has to choose it. A Roman numeral
+    /// has no octave to choose: `V` in C major is the class `g`, and which
+    /// `g` sounds is the voicing's business and nobody else's. So this is
+    /// that arithmetic with the tonic left a class — the ordinal reduced
+    /// into the collection, the collection's own spelled offset applied, and
+    /// the degree's alteration moving the semitone coordinate without
+    /// touching the letter.
+    ///
+    /// The period count is carried rather than discarded, so that degree
+    /// nine answers as degree two only because this collection repeats at
+    /// the octave, and not because the octave was assumed here.
+    ///
+    /// Absent only on machine-integer overflow, which no ordinal a score can
+    /// write comes near.
+    pub(crate) fn class(self, degree: Degree) -> Option<PitchClass> {
+        let size = i64::try_from(self.size()).ok()?;
+        let position = degree.ordinal().checked_sub(1)?;
+        let periods = position.div_euclid(size);
+        let within = usize::try_from(position.rem_euclid(size)).ok()?;
+        let step = self.collection().offsets().get(within)?;
+        let period = self.period();
+        self.tonic.transpose(Interval {
+            diatonic_steps: periods
+                .checked_mul(period.diatonic_steps)?
+                .checked_add(step.diatonic_steps)?,
+            semitones: periods
+                .checked_mul(period.semitones)?
+                .checked_add(step.semitones)?
+                .checked_add(degree.alteration())?,
+        })
+    }
+
     /// How many degrees the pattern has before it repeats.
     pub(crate) fn size(self) -> usize {
         self.collection.offsets().len()

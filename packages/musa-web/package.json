@@ -8,17 +8,22 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./cdn": "./dist-cdn/musa-web.js",
+    "./wasm": "./wasm/musa_wasm_bg.wasm"
   },
   "files": [
     "dist",
+    "dist-cdn",
     "wasm"
   ],
   "sideEffects": true,
   "scripts": {
     "build": "vite build",
+    "build:cdn": "vite build --config vite.cdn.config.ts && node scripts/prepare-cdn.mjs",
     "check": "tsc --noEmit",
-    "test": "vitest run && playwright test"
+    "test": "vitest run && playwright test",
+    "prepublishOnly": "bash ../../scripts/build-wasm.sh && pnpm run test && pnpm run build && pnpm run build:cdn"
   },
   "dependencies": {
     "musa-engrave": "workspace:*"

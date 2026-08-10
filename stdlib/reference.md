@@ -108,6 +108,8 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `frame_on(collection: scale, root: pitch) -> option[frame]` — The register frame a scale takes on one absolute tonic pitch. It is absent when that pitch is not the scale's tonic class.
 - `frame_degree(register: frame, ordinal: nat) -> pitch` — The written pitch a numbered degree names in one register frame.
 - `frame_triad(register: frame) -> list[pitch]` — The tonic, third, and fifth degrees of a frame, in register.
+- `degree_class(collection: scale, ordinal: nat) -> option[pitchclass]` — The pitch class a numbered degree names, with no register at all. `frame_degree` asks the same thing of a scale that has been given an absolute tonic, and it has to be given one, because a written pitch has an octave and something must choose it. A Roman numeral has no octave to choose — `V` in C major is the class `g`, and which `g` sounds is the voicing's business. Absent only for an ordinal no score can write.
+- `altered_class(collection: scale, altered: degree) -> option[pitchclass]` — The same for a degree that already carries an alteration, so that a `raise` or `lower` composes into the spelling rather than being lost. This is how a borrowed or Neapolitan degree is spelled without a frame.
 - `up_steps(from: degree, steps: nat) -> degree` — Move a degree up by a whole number of scale steps.
 - `down_steps(from: degree, steps: nat) -> degree` — Move a degree down by a whole number of scale steps.
 - `raise(from: degree) -> degree` — Raise a degree chromatically without moving its coordinate.

@@ -5,7 +5,8 @@
   "type": "module",
   "description": "The shared worker engraver: Verovio, in a worker, behind the Engraver interface",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./worker": "./src/worker.ts"
   },
   "scripts": {
     "check": "tsc --noEmit",

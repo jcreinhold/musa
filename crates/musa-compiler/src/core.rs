@@ -588,6 +588,7 @@ enum Primitive {
     ScaleTonic,
     ScaleSize,
     ScalePitch,
+    ScaleClass,
     PitchFrame,
     FrameScale,
     FrameTonic,
@@ -645,7 +646,7 @@ struct PrimitiveOwnership<T> {
     hidden_information: &'static str,
 }
 
-const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 63] = [
+const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 64] = [
     PrimitiveOwnership {
         operation: Primitive::NatFold,
         spelling: "nat_fold",
@@ -720,6 +721,11 @@ const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 63] = [
         operation: Primitive::ScalePitch,
         spelling: "scale_pitch",
         hidden_information: "spelled membership against the scale's private offset cycle",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ScaleClass,
+        spelling: "scale_class",
+        hidden_information: "the scale's private offset cycle, read without a register",
     },
     PrimitiveOwnership {
         operation: Primitive::PitchFrame,
@@ -981,6 +987,7 @@ impl Primitive {
             Self::ScaleTonic => "scale_tonic",
             Self::ScaleSize => "scale_size",
             Self::ScalePitch => "scale_pitch",
+            Self::ScaleClass => "scale_class",
             Self::PitchFrame => "pitch_frame",
             Self::FrameScale => "frame_scale",
             Self::FrameTonic => "frame_tonic",
@@ -3336,6 +3343,7 @@ impl Checker<'_> {
             | Primitive::IntervalAdd
             | Primitive::ScaleOn
             | Primitive::ScalePitch
+            | Primitive::ScaleClass
             | Primitive::PitchFrame
             | Primitive::FramePitch
             | Primitive::DegreeStepUp
@@ -3519,6 +3527,11 @@ impl Checker<'_> {
                 let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
                 let pitch = self.check(nodes.get(1)?, Some(&Type::Pitch))?;
                 (vec![scale, pitch], Type::Option(Box::new(Type::Degree)))
+            }
+            Primitive::ScaleClass => {
+                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
+                let degree = self.check(nodes.get(1)?, Some(&Type::Degree))?;
+                (vec![scale, degree], Type::Option(Box::new(Type::PitchClass)))
             }
             Primitive::PitchFrame => {
                 let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
@@ -4603,6 +4616,12 @@ fn eval_primitive(
             let located = crate::scale::Frame::around(*scale, *pitch).and_then(|frame| frame.locate(*pitch));
             Some(optional(Type::Degree, located.map(Value::Degree)))
         }
+        Primitive::ScaleClass => {
+            let (Value::Scale(scale), Value::Degree(degree)) = (values.first()?, values.get(1)?) else {
+                return None;
+            };
+            Some(optional(Type::PitchClass, scale.class(*degree).map(Value::PitchClass)))
+        }
         Primitive::PitchFrame => {
             let (Value::Scale(scale), Value::Pitch(tonic)) = (values.first()?, values.get(1)?) else {
                 return None;
@@ -5396,7 +5415,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            71,
+            72,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();

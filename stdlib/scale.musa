@@ -46,6 +46,21 @@ library {
     fn frame_triad(register: frame) -> list[pitch] =
         [frame_degree(register, 1), frame_degree(register, 3), frame_degree(register, 5)];
 
+    // The pitch class a numbered degree names, with no register at all.
+    // `frame_degree` asks the same thing of a scale that has been given an
+    // absolute tonic, and it has to be given one, because a written pitch has
+    // an octave and something must choose it. A Roman numeral has no octave
+    // to choose — `V` in C major is the class `g`, and which `g` sounds is
+    // the voicing's business. Absent only for an ordinal no score can write.
+    fn degree_class(collection: scale, ordinal: nat) -> option[pitchclass] =
+        scale_class(collection, degree_of(ordinal));
+
+    // The same for a degree that already carries an alteration, so that a
+    // `raise` or `lower` composes into the spelling rather than being lost.
+    // This is how a borrowed or Neapolitan degree is spelled without a frame.
+    fn altered_class(collection: scale, altered: degree) -> option[pitchclass] =
+        scale_class(collection, altered);
+
     // Move a degree up by a whole number of scale steps.
     fn up_steps(from: degree, steps: nat) -> degree = degree_step_up(from, steps);
 

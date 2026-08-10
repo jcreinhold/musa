@@ -11,6 +11,7 @@ export type { LayoutOptions } from "musa-engrave";
 export type { MusaDiagnostic, MusaLabel, RenderOptions, RenderResult } from "./types";
 
 import { configure, type WebConfig } from "./configure";
+import { noteScriptBase } from "./assets";
 import { registerElements } from "./elements";
 import { typeset } from "./typeset";
 
@@ -25,6 +26,7 @@ declare global {
 // and opt-in auto-start. Node skips all three (its DOM is somebody else's).
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   registerElements();
+  noteScriptBase();
   const preset = window.MusaWeb;
   if (preset !== undefined) configure(preset);
 

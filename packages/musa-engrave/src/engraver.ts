@@ -9,6 +9,7 @@
 import { DEFAULT_LAYOUT } from "./options";
 import type { Box, Layout, LayoutOptions, PageSvg, Request, Response } from "./protocol";
 import type { EngraveOutcome } from "./core";
+import { defaultWorker } from "./worker-default";
 
 export type { Box, Layout, LayoutOptions, PageSvg };
 
@@ -33,8 +34,8 @@ class WorkerEngraver implements Engraver {
   #generation = 0;
   #options: LayoutOptions = { ...DEFAULT_LAYOUT };
 
-  constructor() {
-    this.#worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
+  constructor(worker?: Worker) {
+    this.#worker = worker ?? defaultWorker();
     this.#worker.onmessage = (event: MessageEvent<Response>) => {
       const response = event.data;
       const pending = this.#pending.get(response.id);
@@ -162,10 +163,16 @@ class LocalEngraver implements Engraver {
   }
 }
 
+/** How the worker arrives, when the default URL construction does not fit
+ *  (the CDN build inlines the worker as a Blob). */
+export interface EngraverOptions {
+  worker?: () => Worker;
+}
+
 /**
  * An engraver for the platform we are on: a worker where workers exist, the
  * same rules in-process where they do not (Node).
  */
-export function createEngraver(): Engraver {
-  return typeof Worker === "undefined" ? new LocalEngraver() : new WorkerEngraver();
+export function createEngraver(options?: EngraverOptions): Engraver {
+  return typeof Worker === "undefined" ? new LocalEngraver() : new WorkerEngraver(options?.worker());
 }
