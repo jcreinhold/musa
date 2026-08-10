@@ -1,0 +1,21 @@
+[package]
+description = "WebAssembly shell: musa source to MEI for @musa/web"
+edition.workspace = true
+license.workspace = true
+name = "musa-wasm"
+repository.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+console_error_panic_hook = "0.1"
+musa-compiler = { workspace = true }
+musa-render = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "0.2"

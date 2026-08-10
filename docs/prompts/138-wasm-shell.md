@@ -1,7 +1,7 @@
 ---
 id: 138
 slug: wasm-shell
-status: pending
+status: done
 depends_on: [13]
 phase: 5
 ---
@@ -55,13 +55,15 @@ pub struct WebDiagnostic {
     pub note: Option<String>,
 }
 
-// Native-testable core (private):
+// Native-testable core, `#[doc(hidden)] pub` so the integration tests reach
+// it without a browser; not part of the documented surface:
 fn typeset_impl(source: &str) -> TypesetResult;
 fn validate_impl(source: &str) -> Vec<WebDiagnostic>;
 
-// The entire wasm surface:
-#[wasm_bindgen] pub fn typeset(source: &str) -> JsValue;   // serde_wasm_bindgen
-#[wasm_bindgen] pub fn validate(source: &str) -> JsValue;
+// The entire wasm surface (returns `Result<JsValue, JsValue>`: an internal
+// serialization failure rejects, an invalid score is a *result*):
+#[wasm_bindgen] pub fn typeset(source: &str) -> Result<JsValue, JsValue>;   // serde_wasm_bindgen
+#[wasm_bindgen] pub fn validate(source: &str) -> Result<JsValue, JsValue>;
 ```
 
 Semantics: compile with `CompileOptions::default()` (deterministic realization — a snippet with open
@@ -76,7 +78,9 @@ Spans stay **byte offsets**. Line/column is a display concern of the JS layer, w
 text and can compute it losslessly; sending both is information duplicated, not information hidden.
 
 Build and size: workspace `[profile.wasm]` (inherits `release`; `opt-level = "z"`, `lto = true`,
-`codegen-units = 1`, `panic = "abort"`, `strip = true`), then `wasm-opt -Oz`. `scripts/build-wasm.sh`
+`codegen-units = 1`, `panic = "abort"`, `strip = true`), then `wasm-opt -Oz` with the target features
+Rust emits by default enabled (`--enable-bulk-memory --enable-mutable-globals --enable-sign-ext`).
+`scripts/build-wasm.sh`
 runs the three steps and prints the brotli'd size; tool versions are pinned in `mise.toml`
 (`ubi:rustwasm/wasm-bindgen`, `ubi:WebAssembly/binaryen`) with the manual `cargo install` fallback
 documented in the script header. The wasm-bindgen **CLI** version must equal the crate's

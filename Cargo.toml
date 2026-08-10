@@ -111,3 +111,12 @@ implicit_clone = "warn"
 map_flatten = "warn"
 map_unwrap_or = "warn"
 needless_collect = "warn"
+
+[profile.wasm]
+# Web typesetting artifact (prompt 138): size over speed, then wasm-opt -Oz.
+inherits = "release"
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
