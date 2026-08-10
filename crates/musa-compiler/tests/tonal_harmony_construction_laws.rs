@@ -41,25 +41,24 @@ const PRELUDE: &str = r"
 
     meter 4/4;
 
-    fn spelled(bass: pitch, content: option[chord_class]) -> music = match content {
+    fn spelled(bass: pitch, content: option[chord_class]) -> music { match content {
         none -> music { rest/1 },
         some(sounding) -> stacked(close_position(sounding, bass)),
-    };
+    } }
 
-    fn stacked(chosen: option[voicing]) -> music = match chosen {
+    fn stacked(chosen: option[voicing]) -> music { match chosen {
         none -> music { rest/1 },
         some(spread) -> sound_for(spread, 1),
-    };
+    } }
 
-    fn tick(one: music, carried: music) -> music = overlay(one, carried);
-    fn beat() -> music = music { c4/1 };
-    fn tally(count: nat) -> music = list_fold(music { rest/1 }, tick, repeat(beat(), count));
+    fn tick(one: music, carried: music) -> music { overlay(one, carried) }
+    fn beat() -> music { music { c4/1 } }
+    fn tally(count: nat) -> music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
 
-    fn numeral_in(collection: scale, written: option[roman]) -> option[chord_class] =
-        match written {
+    fn numeral_in(collection: scale, written: option[roman]) -> option[chord_class] { match written {
             none -> none,
             some(numbered) -> numeral_chord(collection, numbered),
-        };
+        } }
 ";
 
 /// A piece whose one voice sounds `expression`.
@@ -125,10 +124,10 @@ fn keyed(collection: &str, tonic: &str) -> String {
     format!(
         "    let collection: scale = {collection};
     let register: option[frame] = frame_on(collection, {tonic});
-    fn root_of_degree(written: degree) -> pitch = match register {{
+    fn root_of_degree(written: degree) -> pitch {{ match register {{
         none -> c0,
         some(placed) -> frame_pitch(placed, written),
-    }};"
+    }} }}"
     )
 }
 
@@ -554,10 +553,10 @@ fn a_numeral_that_cannot_be_written_is_not_a_numeral() {
 fn a_numerals_parts_are_what_it_was_built_from() {
     let reader = |accessor: &str| {
         format!(
-            "    fn read(written: option[roman]) -> nat = match written {{
+            "    fn read(written: option[roman]) -> nat {{ match written {{
         none -> 0,
         some(numbered) -> {accessor}(numbered),
-    }};
+    }} }}
     let counted: music = tally(read(numeral(6, 4, 2)));"
         )
     };

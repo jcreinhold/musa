@@ -2809,7 +2809,10 @@ impl Checker<'_> {
     fn check(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
         let span = crate::resolve::trimmed_span(node);
         let kind = node.kind();
-        let checked = if kind == SyntaxKind::ParenExpr {
+        let checked = if kind == SyntaxKind::ParenExpr || kind == SyntaxKind::BlockExpr {
+            // `⟦{ e }⟧ = ⟦e⟧`, exactly as for parentheses. A block delimits
+            // one expression and holds no sequence, so it adds a shape to the
+            // surface and no case to this checker.
             child_of(node, is_expr_node).and_then(|child| self.check(&child, expected))
         } else if kind == SyntaxKind::LiteralExpr {
             self.literal(node, expected)
@@ -5458,6 +5461,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
         SyntaxKind::NameExpr
             | SyntaxKind::LiteralExpr
             | SyntaxKind::ParenExpr
+            | SyntaxKind::BlockExpr
             | SyntaxKind::ProductExpr
             | SyntaxKind::ListExpr
             | SyntaxKind::OptionExpr
@@ -5516,7 +5520,7 @@ fn token_span(token: &SyntaxToken) -> SourceSpan {
 }
 
 #[cfg(test)]
-// A law suite reports a violated law by failing, which is what `panic!` and `expect` are for here;
+// A law suite reports a violated law by failing, which is what `panic!` and `expect` are for here }
 // the crate's integration tests carry the same allowances for the same reason.
 #[allow(clippy::expect_used, clippy::panic)]
 mod tests {
@@ -5992,7 +5996,7 @@ mod tests {
                     reference = ReferenceTerm::Identity(Box::new(reference));
                 }
                 let applied = reference.source();
-                let source = format!("piece \"law\" {{ fn id(x: nat) -> nat = x; let result: nat = {applied}; }}");
+                let source = format!("piece \"law\" {{ fn id(x: nat) -> nat {{ x }} let result: nat = {applied}; }}");
                 let actual = values(&source);
                 assert!(actual.is_some(), "generated well-typed source was rejected: {source}");
                 assert!(matches!(
@@ -6005,7 +6009,7 @@ mod tests {
 
     #[test]
     fn every_evaluated_binding_has_its_checked_type() {
-        let source = "piece \"law\" { let pair: (nat, bool) = (3, true); fn keep(x: (nat, bool)) -> (nat, bool) = x; let result: (nat, bool) = keep(pair); }";
+        let source = "piece \"law\" { let pair: (nat, bool) = (3, true); fn keep(x: (nat, bool)) -> (nat, bool) { x } let result: (nat, bool) = keep(pair); }";
         let actual = values(source);
         assert!(actual.is_some(), "well-typed source was rejected");
         assert!(matches!(
@@ -6020,11 +6024,11 @@ mod tests {
         for count in 0..16u64 {
             let source = format!(
                 "piece \"law\" {{ \
-                 fn latest(index: nat, accumulator: nat) -> nat = index; \
-                 fn item(value: nat, accumulator: nat) -> nat = value; \
-                 fn id(value: nat) -> nat = value; \
-                 fn reject(value: nat) -> bool = false; \
-                 fn from_option(value: option[nat]) -> nat = match value {{ none -> 0, some(found) -> found }}; \
+                 fn latest(index: nat, accumulator: nat) -> nat {{ index }} \
+                 fn item(value: nat, accumulator: nat) -> nat {{ value }} \
+                 fn id(value: nat) -> nat {{ value }} \
+                 fn reject(value: nat) -> bool {{ false }} \
+                 fn from_option(value: option[nat]) -> nat {{ match value {{ none -> 0, some(found) -> found }} }} \
                  let by_nat: nat = nat_fold(0, latest, {count}); \
                  let values: list[nat] = range({count}); \
                  let mapped: list[nat] = map(id, values); \

@@ -66,8 +66,8 @@ fn function_identity_and_composition_hold_for_contextual_music() {
     let score = snapshot(
         "piece \"identity\" {
             let subject: music = music { c4/4 d4/4 };
-            fn identity(value: music) -> music = value;
-            fn compose(f: music -> music, g: music -> music, value: music) -> music = f(g(value));
+            fn identity(value: music) -> music { value }
+            fn compose(f: music -> music, g: music -> music, value: music) -> music { f(g(value)) }
             score { part p {
                 voice direct { use subject; }
                 voice identity { use identity(subject); }
@@ -89,8 +89,8 @@ fn pitch_mapping_preserves_support_and_non_pitch_fields() {
                 c4/4 staccato
                 rest/4
             };
-            fn identity(p: pitch) -> pitch = p;
-            fn pedal(_: pitch) -> pitch = g3;
+            fn identity(p: pitch) -> pitch { p }
+            fn pedal(_: pitch) -> pitch { g3 }
             score { part p {
                 voice original { use subject; }
                 voice same { use map_note_pitches(identity, subject); }
@@ -136,9 +136,9 @@ fn mapping_composition_agrees_with_nested_mapping() {
     let score = snapshot(
         "piece \"composition\" {
             let subject: music = music { c4/2 };
-            fn pedal(_: pitch) -> pitch = e3;
-            fn twice(f: pitch -> pitch, p: pitch) -> pitch = f(f(p));
-            fn pedal_twice(p: pitch) -> pitch = twice(pedal, p);
+            fn pedal(_: pitch) -> pitch { e3 }
+            fn twice(f: pitch -> pitch, p: pitch) -> pitch { f(f(p)) }
+            fn pedal_twice(p: pitch) -> pitch { twice(pedal, p) }
             score { part p {
                 voice nested { use map_note_pitches(pedal, map_note_pitches(pedal, subject)); }
                 voice composed { use map_note_pitches(pedal_twice, subject); }
@@ -206,8 +206,8 @@ fn every_existing_transform_has_one_block_and_function_meaning() {
 #[test]
 fn wrong_higher_order_arguments_are_rejected_statically() {
     for declaration in [
-        "fn wrong(n: nat) -> nat = n; let bad: music = map_note_pitches(wrong, music { c4/1 });",
-        "fn answer_pitch(p: pitch) -> pitch = p; let bad: music = map_note_pitches(answer_pitch, 1);",
+        "fn wrong(n: nat) -> nat { n } let bad: music = map_note_pitches(wrong, music { c4/1 });",
+        "fn answer_pitch(p: pitch) -> pitch { p } let bad: music = map_note_pitches(answer_pitch, 1);",
     ] {
         let source = format!("piece \"wrong\" {{ {declaration} score {{ part p {{ voice v {{ c4/1 }} }} }} }}");
         let compilation = compile_text(&source);
@@ -228,8 +228,8 @@ fn distinct_mappers_and_call_sites_do_not_alias_shared_instantiations() {
     let score = snapshot(
         "piece \"cache separation\" {
             let subject: music = music { c4/4 };
-            fn low(_: pitch) -> pitch = c3;
-            fn high(_: pitch) -> pitch = c5;
+            fn low(_: pitch) -> pitch { c3 }
+            fn high(_: pitch) -> pitch { c5 }
             score { part p { voice v {
                 use map_note_pitches(low, subject);
                 use map_note_pitches(high, subject);

@@ -34,13 +34,13 @@ const PRELUDE: &str = r"
 
     meter 4/4;
 
-    fn tick(one: music, carried: music) -> music = overlay(one, carried);
-    fn beat() -> music = music { c4/1 };
-    fn tally(count: nat) -> music = list_fold(music { rest/1 }, tick, repeat(beat(), count));
-    fn beat_for_pc(member: pc12) -> music = beat();
-    fn beat_for_nat(count: nat) -> music = beat();
-    fn beat_for_spelling(spelled: pitchclass) -> music = beat();
-    fn chorus(voices: list[music]) -> music = list_fold(music { rest/1 }, tick, voices);
+    fn tick(one: music, carried: music) -> music { overlay(one, carried) }
+    fn beat() -> music { music { c4/1 } }
+    fn tally(count: nat) -> music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
+    fn beat_for_pc(member: pc12) -> music { beat() }
+    fn beat_for_nat(count: nat) -> music { beat() }
+    fn beat_for_spelling(spelled: pitchclass) -> music { beat() }
+    fn chorus(voices: list[music]) -> music { list_fold(music { rest/1 }, tick, voices) }
 ";
 
 /// A piece whose one voice sounds `expression`.
@@ -144,7 +144,7 @@ fn forgetting_a_spelling_is_total_and_not_injective() {
 #[test]
 fn a_spelling_needs_a_collection_and_may_not_exist_in_it() {
     let bindings = "
-    fn present(spelled: pitchclass) -> music = beat();
+    fn present(spelled: pitchclass) -> music { beat() }
     let in_c: music = option_fold(music { rest/1 }, present, spelled_in(pc(1), scale c major));
     let in_d: music = option_fold(music { rest/1 }, present, spelled_in(pc(1), scale d major));
 ";

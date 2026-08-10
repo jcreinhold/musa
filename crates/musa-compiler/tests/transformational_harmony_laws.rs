@@ -44,18 +44,18 @@ const PRELUDE: &str = r"
 
     meter 4/4;
 
-    fn tick(one: music, carried: music) -> music = overlay(one, carried);
-    fn beat() -> music = music { c4/1 };
-    fn tally(count: nat) -> music = list_fold(music { rest/1 }, tick, repeat(beat(), count));
-    fn chorus(voices: list[music]) -> music = list_fold(music { rest/1 }, tick, voices);
-    fn beat_for_pc(member: pc12) -> music = beat();
-    fn beat_for_voicing(chosen: voicing) -> music = beat();
-    fn beat_for_triad(refined: triad) -> music = beat();
-    fn numbered(member: pc12) -> music = overlay(beat(), tally(number_of(member)));
-    fn quality(refined: triad) -> music = match is_major(refined) {
+    fn tick(one: music, carried: music) -> music { overlay(one, carried) }
+    fn beat() -> music { music { c4/1 } }
+    fn tally(count: nat) -> music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
+    fn chorus(voices: list[music]) -> music { list_fold(music { rest/1 }, tick, voices) }
+    fn beat_for_pc(member: pc12) -> music { beat() }
+    fn beat_for_voicing(chosen: voicing) -> music { beat() }
+    fn beat_for_triad(refined: triad) -> music { beat() }
+    fn numbered(member: pc12) -> music { overlay(beat(), tally(number_of(member))) }
+    fn quality(refined: triad) -> music { match is_major(refined) {
         true -> tally(2),
         false -> tally(1),
-    };
+    } }
 
     let c_major: option[triad] = as_triad(chord c major);
     let c_minor: option[triad] = as_triad(chord c minor);
@@ -115,9 +115,9 @@ fn counted(bindings: &str, expression: &str) -> usize {
 fn asked(start: &str, reached: &str, question: &str) -> usize {
     counted(
         &format!(
-            "    fn reached(refined: triad) -> triad = {reached};
-    fn question(probed: triad) -> music = {question};
-    fn combined(refined: triad) -> music = question(reached(refined));
+            "    fn reached(refined: triad) -> triad {{ {reached} }}
+    fn question(probed: triad) -> music {{ {question} }}
+    fn combined(refined: triad) -> music {{ question(reached(refined)) }}
     let sounded: music = option_fold(music {{ rest/1 }}, combined, {start});"
         ),
         "sounded",
@@ -287,7 +287,7 @@ fn a_chain_is_the_composition_it_is_written_as() {
 #[test]
 fn only_a_triad_is_in_the_domain() {
     let refinements = "
-    fn present(refined: triad) -> music = beat_for_triad(refined);
+    fn present(refined: triad) -> music { beat_for_triad(refined) }
     let seventh: music = option_fold(music { rest/1 }, present, as_triad(chord c major7));
     let suspended: music = option_fold(music { rest/1 }, present, as_triad(chord c sus4));
     let diminished: music = option_fold(music { rest/1 }, present, as_triad(chord c dim));
@@ -303,7 +303,7 @@ fn only_a_triad_is_in_the_domain() {
     assert_eq!(counted(refinements, "minor"), 1, "the two that are, are");
 
     let widened = probe(
-        "    fn widened(content: chord_class) -> triad = parallel(content);",
+        "    fn widened(content: chord_class) -> triad { parallel(content) }",
         "music { c4/1 }",
     );
     let errors = errors_of(&widened);

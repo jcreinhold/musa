@@ -443,7 +443,7 @@ pub enum SyntaxKind {
     ImproviseStmt,
     /// `let name: type = expression;`
     LetDecl,
-    /// `fn name(parameters) -> type = expression;`
+    /// `fn name(parameters) -> type { expression }`
     FnDecl,
     /// One annotated parameter, with an optional default expression.
     Param,
@@ -467,6 +467,12 @@ pub enum SyntaxKind {
     LiteralExpr,
     /// `(expression)`.
     ParenExpr,
+    /// `{ expression }` — a block expression, and a function's body.
+    ///
+    /// It holds exactly one expression and means exactly that expression:
+    /// `⟦{ e }⟧ = ⟦e⟧`. The braces delimit, they do not sequence, so there
+    /// is no statement here to be the second one.
+    BlockExpr,
     /// `(left, right, ...)` in a value position.
     ProductExpr,
     /// `[left, right, ...]` in a value position.

@@ -7,17 +7,21 @@ piece "Pitch Arithmetic" {
 
     let two_octaves: interval = compose_intervals(octave, octave);
 
-    fn turn(root: pitch) -> music = music {
-        root/4
-        (root up M2)/4
-        (root up M10)/4
-        (root down m2)/4
-    };
+    fn turn(root: pitch) -> music {
+        music {
+            root/4
+            (root up M2)/4
+            (root up M10)/4
+            (root down m2)/4
+        }
+    }
 
-    fn echo_above(root: pitch) -> music = music {
-        root/2
-        (root up two_octaves)/2
-    };
+    fn echo_above(root: pitch) -> music {
+        music {
+            root/2
+            (root up two_octaves)/2
+        }
+    }
 
     score {
         part keyboard {

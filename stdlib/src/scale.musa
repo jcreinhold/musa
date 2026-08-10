@@ -12,39 +12,44 @@ library {
     // The scale a key's signature suggests for stepwise motion. It is a
     // default, not a claim: `key c minor` fixes three flats, and a passage may
     // still ask for the harmonic or melodic collection by name.
-    fn key_scale(written: key) -> scale = signature_scale(written);
+    fn key_scale(written: key) -> scale { signature_scale(written) }
 
     // The tonic pitch class a scale is rooted on.
-    fn scale_root(collection: scale) -> pitchclass = scale_tonic(collection);
+    fn scale_root(collection: scale) -> pitchclass { scale_tonic(collection) }
 
     // How many degrees one period of a scale holds.
-    fn scale_degrees(collection: scale) -> nat = scale_size(collection);
+    fn scale_degrees(collection: scale) -> nat { scale_size(collection) }
 
     // The degree a written pitch occupies, when it occupies one. Membership is
     // spelled: `eb5` and `d#5` answer differently.
-    fn degree_in(collection: scale, written: pitch) -> option[degree] =
-        scale_pitch(collection, written);
+    fn degree_in(collection: scale, written: pitch) -> option[degree] {
+        scale_pitch(collection, written)
+    }
 
     // Whether a written pitch belongs to a scale at all.
-    fn belongs_to(collection: scale, written: pitch) -> bool =
-        option_fold(false, degree_is_present, scale_pitch(collection, written));
+    fn belongs_to(collection: scale, written: pitch) -> bool {
+        option_fold(false, degree_is_present, scale_pitch(collection, written))
+    }
 
     // The present case of `belongs_to`: a located degree means the pitch is a
     // member, whichever degree it turned out to be.
-    fn degree_is_present(located: degree) -> bool = true;
+    fn degree_is_present(located: degree) -> bool { true }
 
     // The register frame a scale takes on one absolute tonic pitch. It is
     // absent when that pitch is not the scale's tonic class.
-    fn frame_on(collection: scale, root: pitch) -> option[frame] =
-        pitch_frame(collection, root);
+    fn frame_on(collection: scale, root: pitch) -> option[frame] {
+        pitch_frame(collection, root)
+    }
 
     // The written pitch a numbered degree names in one register frame.
-    fn frame_degree(register: frame, ordinal: nat) -> pitch =
-        frame_pitch(register, degree_of(ordinal));
+    fn frame_degree(register: frame, ordinal: nat) -> pitch {
+        frame_pitch(register, degree_of(ordinal))
+    }
 
     // The tonic, third, and fifth degrees of a frame, in register.
-    fn frame_triad(register: frame) -> list[pitch] =
-        [frame_degree(register, 1), frame_degree(register, 3), frame_degree(register, 5)];
+    fn frame_triad(register: frame) -> list[pitch] {
+        [frame_degree(register, 1), frame_degree(register, 3), frame_degree(register, 5)]
+    }
 
     // The pitch class a numbered degree names, with no register at all.
     // `frame_degree` asks the same thing of a scale that has been given an
@@ -52,14 +57,16 @@ library {
     // an octave and something must choose it. A Roman numeral has no octave
     // to choose — `V` in C major is the class `g`, and which `g` sounds is
     // the voicing's business. Absent only for an ordinal no score can write.
-    fn degree_class(collection: scale, ordinal: nat) -> option[pitchclass] =
-        scale_class(collection, degree_of(ordinal));
+    fn degree_class(collection: scale, ordinal: nat) -> option[pitchclass] {
+        scale_class(collection, degree_of(ordinal))
+    }
 
     // The same for a degree that already carries an alteration, so that a
     // `raise` or `lower` composes into the spelling rather than being lost.
     // This is how a borrowed or Neapolitan degree is spelled without a frame.
-    fn altered_class(collection: scale, altered: degree) -> option[pitchclass] =
-        scale_class(collection, altered);
+    fn altered_class(collection: scale, altered: degree) -> option[pitchclass] {
+        scale_class(collection, altered)
+    }
 
     // The chord the collection stacks in thirds from a degree. `members`
     // counts the notes, so three is a triad and four a seventh chord. The
@@ -71,26 +78,29 @@ library {
     // could not. Absent for an altered degree, which is not asking for the
     // collection's own chord, and absent when the collection stacks to a
     // sonority the chord vocabulary cannot name.
-    fn degree_chord(collection: scale, written: degree, members: nat) -> option[chord_class] =
-        scale_chord(collection, written, members);
+    fn degree_chord(collection: scale, written: degree, members: nat) -> option[chord_class] {
+        scale_chord(collection, written, members)
+    }
 
     // The diatonic triad on a degree.
-    fn degree_triad(collection: scale, written: degree) -> option[chord_class] =
-        scale_chord(collection, written, 3);
+    fn degree_triad(collection: scale, written: degree) -> option[chord_class] {
+        scale_chord(collection, written, 3)
+    }
 
     // The diatonic seventh chord on a degree.
-    fn degree_seventh(collection: scale, written: degree) -> option[chord_class] =
-        scale_chord(collection, written, 4);
+    fn degree_seventh(collection: scale, written: degree) -> option[chord_class] {
+        scale_chord(collection, written, 4)
+    }
 
     // Move a degree up by a whole number of scale steps.
-    fn up_steps(from: degree, steps: nat) -> degree = degree_step_up(from, steps);
+    fn up_steps(from: degree, steps: nat) -> degree { degree_step_up(from, steps) }
 
     // Move a degree down by a whole number of scale steps.
-    fn down_steps(from: degree, steps: nat) -> degree = degree_step_down(from, steps);
+    fn down_steps(from: degree, steps: nat) -> degree { degree_step_down(from, steps) }
 
     // Raise a degree chromatically without moving its coordinate.
-    fn raise(from: degree) -> degree = degree_raised(from);
+    fn raise(from: degree) -> degree { degree_raised(from) }
 
     // Lower a degree chromatically without moving its coordinate.
-    fn lower(from: degree) -> degree = degree_lowered(from);
+    fn lower(from: degree) -> degree { degree_lowered(from) }
 }

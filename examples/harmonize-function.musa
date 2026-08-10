@@ -7,9 +7,11 @@ piece "Harmonize Function" {
         e4/4
     };
 
-    fn pedal(_: pitch) -> pitch = c3;
+    fn pedal(_: pitch) -> pitch { c3 }
 
-    fn harmonize(subject: music, answer_pitch: pitch -> pitch) -> music = overlay(subject, map_note_pitches(answer_pitch, subject));
+    fn harmonize(subject: music, answer_pitch: pitch -> pitch) -> music {
+        overlay(subject, map_note_pitches(answer_pitch, subject))
+    }
 
     score {
         part strings {

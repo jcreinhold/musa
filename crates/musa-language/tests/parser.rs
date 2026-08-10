@@ -656,6 +656,33 @@ fn the_old_functor_spelling_is_a_migration_error() {
     insta::assert_snapshot!(print_errors(&doc));
 }
 
+/// `fn f() -> τ = e;` was the only unbraced body in the language until
+/// prompt 112. The old spelling is refused where it stood, and the fix is
+/// the body written back between braces.
+#[test]
+fn the_old_function_body_spelling_is_a_migration_error() {
+    let doc = parse("piece \"Old\" { fn double(x: nat) -> nat = add(x, x); }");
+    insta::assert_snapshot!(print_errors(&doc));
+}
+
+/// A block delimits one expression. Two of them is the rule being broken,
+/// and saying so is how a statement language stays out of this one.
+#[test]
+fn a_block_holding_two_expressions_names_the_rule() {
+    let doc = parse("piece \"Two\" { fn double(x: nat) -> nat { add(x, x) add(x, x) } }");
+    insta::assert_snapshot!(print_errors(&doc));
+}
+
+/// A block is an expression form, not a special case of `fn`: it is
+/// grammatical wherever an expression is, and it means what it holds.
+#[test]
+fn a_block_is_an_expression_anywhere_one_is() {
+    let source = "piece \"Block\" { let doubled: nat = { add(1, 1) }; }";
+    let doc = parse(source);
+    assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
+    assert_round_trip(source);
+}
+
 /// A hairpin is a block with a direction and a mark it arrives at, and the
 /// notes it covers are its items.
 #[test]

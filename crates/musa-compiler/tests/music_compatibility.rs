@@ -42,7 +42,7 @@ fn motif_sugar_and_a_music_function_have_the_same_score_facts() {
         "use turn(); use turn(e4);",
     );
     let general = sounding_facts(
-        "fn turn(root: pitch = c4) -> music = music { root/4 d4/4 };",
+        "fn turn(root: pitch = c4) -> music { music { root/4 d4/4 } }",
         "use turn(); use turn(e4);",
     );
     assert_eq!(legacy, general);

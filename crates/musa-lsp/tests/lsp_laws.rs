@@ -1003,7 +1003,7 @@ fn hover_on_a_keyword_reports_its_documentation() {
 fn hover_on_a_controlled_music_function_explains_its_boundary() {
     let source = "piece \"hover builtin\" {
         let subject: music = music { c4/1 };
-        fn same(p: pitch) -> pitch = p;
+        fn same(p: pitch) -> pitch { p }
         let transformed: music = map_note_pitches(same, subject);
         score { part p { voice v { use transformed; } } }
     }";

@@ -1,0 +1,8 @@
+---
+source: crates/musa-language/tests/parser.rs
+expression: print_errors(&doc)
+---
+39..51: a function body is written in braces
+  label: this body is `= expression;`
+  help: `fn f(x: nat) -> nat { g(x) }` — the braces are the body, and they hold one expression
+  fix: write the body in braces -> "{ add(x, x) }"

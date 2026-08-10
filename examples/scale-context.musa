@@ -10,11 +10,13 @@ piece "Scale Context" {
     // score fact; the scale statements below never touch it.
     key c minor;
 
-    fn figure() -> music = music {
-        c5/8
-        (c5 step 1)/8
-        (c5 step 2)/4
-    };
+    fn figure() -> music {
+        music {
+            c5/8
+            (c5 step 1)/8
+            (c5 step 2)/4
+        }
+    }
 
     let subject: music = figure();
 

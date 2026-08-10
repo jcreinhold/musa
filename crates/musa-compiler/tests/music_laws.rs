@@ -34,7 +34,7 @@ fn voices(score: &ScoreSnapshot) -> Vec<Vec<ScoreEvent>> {
 #[test]
 fn sequence_adds_extent_and_each_use_reads_its_own_placement() {
     let source = "piece \"music\" {
-        fn figure(root: pitch) -> music = music { root/4 d4/4 };
+        fn figure(root: pitch) -> music { music { root/4 d4/4 } }
         let subject: music = figure(c4);
         score { part p { voice v {
             use subject;

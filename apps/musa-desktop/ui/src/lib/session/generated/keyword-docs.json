@@ -302,7 +302,7 @@
   {
     "spelling": "fn",
     "summary": "define a total named function",
-    "doc": "A function computes an elaboration value from typed parameters. Musa functions are total: they have no unrestricted recursion or effects.\n\n```musa\nfn identity(x: pitch) -> pitch = x;\n```"
+    "doc": "A function computes an elaboration value from typed parameters. Musa functions are total: they have no unrestricted recursion or effects.\n\n```musa\nfn identity(x: pitch) -> pitch { x }\n```"
   },
   {
     "spelling": "music",
@@ -322,7 +322,7 @@
   {
     "spelling": "match",
     "summary": "handle every form of a finite value",
-    "doc": "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n```musa\nfn keep(x: option[pitch]) -> option[pitch] = match x { none -> none, some(p) -> some(p), };\n```"
+    "doc": "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n```musa\nfn keep(x: option[pitch]) -> option[pitch] { match x { none -> none, some(p) -> some(p), } }\n```"
   },
   {
     "spelling": "some",
@@ -357,7 +357,7 @@
   {
     "spelling": "frame",
     "summary": "a scale that knows which octave",
-    "doc": "A frame is a scale plus the written pitch its first degree sounds, and it is the only thing that can turn a degree into a note. Building one fails unless the tonic pitch spells the scale's own tonic.\n\n```musa\nfn dominant_of(home: frame) -> pitch = frame_pitch(home, scale_degree(5));\n```"
+    "doc": "A frame is a scale plus the written pitch its first degree sounds, and it is the only thing that can turn a degree into a note. Building one fails unless the tonic pitch spells the scale's own tonic.\n\n```musa\nfn dominant_of(home: frame) -> pitch { frame_pitch(home, scale_degree(5)) }\n```"
   },
   {
     "spelling": "in",
@@ -390,9 +390,14 @@
     "doc": "`signature TonalContext { let key: key; let scale: scale; }` fixes the members a module has to define, and their types. Matching is by name and exact type: a module that satisfies it may define more, and everything unlisted is private to that module. A signature is not a value — nothing can pass one or ask what is inside it.\n\n```musa\nsignature TonalContext {\n    let key: key;\n    let scale: scale;\n}\n```"
   },
   {
-    "spelling": "module",
+    "spelling": "structure",
     "summary": "group declarations behind a signature",
-    "doc": "`module CMajor : TonalContext { let key = key c major; ... }` names a group of `let` and `fn` declarations, reached from outside as `CMajor.key`. `template module` parameterizes one over other modules, and `make` applies it. Modules are static: they hold no state, cross no boundary as values, and disappear into ordinary declarations once made.\n\n```musa\nmodule CMajor : TonalContext {\n    let key = key c major;\n    let scale = scale c major;\n}\n```"
+    "doc": "`structure CMajor : TonalContext { let key = key c major; ... }` names a group of `let` and `fn` declarations, reached from outside as `CMajor.key`. `template structure` parameterizes one over other structures, and `make` applies it. Structures are static: they hold no state, cross no boundary as values, and disappear into ordinary declarations once made.\n\n```musa\nstructure CMajor : TonalContext {\n    let key = key c major;\n    let scale = scale c major;\n}\n```"
+  },
+  {
+    "spelling": "module",
+    "summary": "the old spelling of `structure`",
+    "doc": "`module` no longer declares anything. What it used to declare is a `structure` — the thing that provides a `signature` — and `module` now means only a node of a package's tree, which is declared with `mod`. The two were one letter apart and unrelated, so the rarer one took the name ML has used for it since 1984.\n\n```musa\nstructure CMajor : TonalContext {\n    let key = key c major;\n}\n```"
   },
   {
     "spelling": "mod",

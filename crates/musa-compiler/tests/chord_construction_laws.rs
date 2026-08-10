@@ -83,11 +83,10 @@ const PRELUDE: &str = "\
     import std::scale;
     import std::voicing;
 
-    fn held(chosen: voicing) -> music = play(chosen, 1/1);
-    fn sounded(chosen: option[voicing]) -> music = option_fold(music { rest/1 }, held, chosen);
-    fn tonic_of(register: frame) -> music = music { (frame_degree(register, 1))/1 };
-    fn named(root: pitchclass) -> music =
-        option_fold(music { rest/1 }, tonic_of, frame_on(major_on(root), c4));
+    fn held(chosen: voicing) -> music { play(chosen, 1/1) }
+    fn sounded(chosen: option[voicing]) -> music { option_fold(music { rest/1 }, held, chosen) }
+    fn tonic_of(register: frame) -> music { music { (frame_degree(register, 1))/1 } }
+    fn named(root: pitchclass) -> music { option_fold(music { rest/1 }, tonic_of, frame_on(major_on(root), c4)) }
 ";
 
 // --- The reference spelling formula -----------------------------------------
@@ -201,9 +200,8 @@ fn the_triad_refinement_admits_major_and_minor_and_refuses_the_rest() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    fn refined(content: chord_class) -> music =
-        option_fold(music {{ rest/1 }}, voiced, as_triad(content));
-    fn voiced(shape: triad) -> music = sounded(close_position(triad_content(shape), c4));
+    fn refined(content: chord_class) -> music {{ option_fold(music {{ rest/1 }}, voiced, as_triad(content)) }}
+    fn voiced(shape: triad) -> music {{ sounded(close_position(triad_content(shape), c4)) }}
 
     let major: music = refined(chord c major);
     let minor: music = refined(chord c minor);
@@ -222,7 +220,7 @@ fn an_inversion_designates_a_bass_and_leaves_the_root_alone() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    fn from_e(content: chord_class) -> option[voicing] = close_position(content, e4);
+    fn from_e(content: chord_class) -> option[voicing] {{ close_position(content, e4) }}
 
     let content: chord_class = chord c major;
     let first: option[chord_class] = inversion(content, 1);
@@ -244,7 +242,7 @@ fn a_slash_bass_is_not_an_inversion() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    fn from_d(content: chord_class) -> option[voicing] = close_position(content, d3);
+    fn from_d(content: chord_class) -> option[voicing] {{ close_position(content, d3) }}
 
     let slash: chord_class = slash_bass(chord c major, pitchclass_of(d3));
     let under_d: music = sounded(close_position(slash, d3));
@@ -300,7 +298,7 @@ fn an_omission_keeps_the_class_it_omits_from() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    fn class_root(chosen: voicing) -> pitchclass = root_of(chord_of(chosen));
+    fn class_root(chosen: voicing) -> pitchclass {{ root_of(chord_of(chosen)) }}
 
     let content: chord_class = chord c major7;
     let close: option[voicing] = close_position(content, c4);

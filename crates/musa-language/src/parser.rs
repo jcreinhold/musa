@@ -1019,7 +1019,12 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `fn name(parameters) -> result = expression;`
+    /// `fn name(parameters) -> result { expression }`
+    ///
+    /// The body is a [`Self::block_expr`], which every other body in this
+    /// language is delimited by. The old `= expression;` is read here too,
+    /// so that a file written against it gets one complaint carrying the
+    /// rewrite rather than a cascade about a missing `{`.
     fn fn_decl(&mut self) {
         self.start(SyntaxKind::FnDecl);
         self.bump();
@@ -1027,10 +1032,46 @@ impl<'a> Parser<'a> {
         self.param_list();
         self.expect(SyntaxKind::Arrow, "`->`");
         self.type_expr();
-        self.expect(SyntaxKind::Equals, "`=`");
-        self.expr();
-        self.expect(SyntaxKind::Semicolon, "`;`");
+        if self.at(SyntaxKind::Equals) {
+            self.old_function_body();
+        } else {
+            self.block_expr();
+        }
         self.finish();
+    }
+
+    /// The one complaint a file written against `fn f() -> τ = e;` gets.
+    ///
+    /// The whole `= e;` is read, so the tree is the tree the file describes
+    /// and the error spans exactly the text the fix replaces. The fix is the
+    /// body written back between braces: mechanical, because the expression
+    /// is unchanged and only its delimiters moved.
+    fn old_function_body(&mut self) {
+        let equals = self.significant().map(|token| token.range.start());
+        self.bump(); // `=`
+        let body_start = self.significant().map(|token| token.range.start());
+        self.expr();
+        let body_end = self.previous_end();
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        let end = self.previous_end();
+        if self.cascading() {
+            return;
+        }
+        let (Some(equals), Some(body_start)) = (equals, body_start) else {
+            return;
+        };
+        let Some(body) = self.source.get(usize::from(body_start)..usize::from(body_end)) else {
+            return;
+        };
+        self.errors.push(
+            SyntaxError::new(
+                TextRange::new(equals, end),
+                "a function body is written in braces",
+                "this body is `= expression;`",
+            )
+            .with_help("`fn f(x: nat) -> nat { g(x) }` — the braces are the body, and they hold one expression")
+            .with_fix("write the body in braces", format!("{{ {body} }}")),
+        );
     }
 
     fn param_list(&mut self) {
@@ -1220,6 +1261,7 @@ impl<'a> Parser<'a> {
             }
             Some(SyntaxKind::NoneKw | SyntaxKind::SomeKw) => self.option_expr(),
             Some(SyntaxKind::LBracket) => self.list_expr(),
+            Some(SyntaxKind::LBrace) => self.block_expr(),
             Some(SyntaxKind::LParen) => self.paren_or_product_expr(),
             Some(SyntaxKind::MatchKw) => self.match_expr(),
             Some(SyntaxKind::MusicKw) => self.music_expr(),
@@ -1228,6 +1270,47 @@ impl<'a> Parser<'a> {
             Some(SyntaxKind::ChordKw) => self.chord_expr(),
             _ => self.expected("an expression"),
         }
+    }
+
+    /// `{ expression }` — a block, which is a delimiter and not a sequence.
+    ///
+    /// Exactly one expression, because there is no statement here to be the
+    /// second one: `⟦{ e }⟧ = ⟦e⟧`, so a block adds a shape to the surface
+    /// and nothing to the calculus. Anything after the first expression is
+    /// reported as the rule it breaks rather than read as a sequence nobody
+    /// wrote a semantics for.
+    fn block_expr(&mut self) {
+        self.start(SyntaxKind::BlockExpr);
+        self.expect(SyntaxKind::LBrace, "`{`");
+        self.expr();
+        if !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+            self.second_expression_in_a_block();
+            self.recover(&[SyntaxKind::RBrace]);
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// A block holding more than one expression, named as the rule it breaks.
+    ///
+    /// A silent sequence would be a statement language arriving by accident,
+    /// so the complaint says what a block is instead of what was expected
+    /// where reading stopped.
+    fn second_expression_in_a_block(&mut self) {
+        if self.cascading() {
+            return;
+        }
+        let Some(token) = self.significant() else {
+            return;
+        };
+        self.errors.push(
+            SyntaxError::new(
+                token.range,
+                "a block holds one expression",
+                "a second expression begins here",
+            )
+            .with_help("braces delimit a body, they do not sequence one: `{ e }` is `e`"),
+        );
     }
 
     fn expr_arg_list(&mut self) {

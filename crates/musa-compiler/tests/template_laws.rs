@@ -88,7 +88,7 @@ fn instances(snapshot: &ScoreSnapshot) -> Vec<String> {
 
 /// The bundled example, which is the shape every law here varies.
 const MADE: &str = r#"
-fn theme() -> music = music { c4/4 d4/4 };
+fn theme() -> music { music { c4/4 d4/4 } }
 
 template voice answer(subject: music, transform: music -> music) {
     use transform(subject);

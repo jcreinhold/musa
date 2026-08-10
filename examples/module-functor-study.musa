@@ -36,7 +36,7 @@ template structure Canon(C: TonalContext, gap: duration): CanonMaterial {
 
     // The answer, a fifth above. Ordinary music functions: a structure exports
     // values, and a value of arrow type is a function.
-    fn answer(line: music) -> music = transpose(P5, line);
+    fn answer(line: music) -> music { transpose(P5, line) }
 
     // The canon itself: subject against its own answer, delayed by whatever
     // the site asked for.

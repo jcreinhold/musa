@@ -4,17 +4,17 @@ const EXPRESSIONS: &str = r#"piece "Expressions" {
     let fifth: interval = P5;
     let paths: list[(pitch, option[pitch])] = [(c4, some(e4)), (g4, none)];
 
-    fn choose(value: option[pitch], fallback: pitch = c4) -> pitch = match value {
+    fn choose(value: option[pitch], fallback: pitch = c4) -> pitch { match value {
         none -> fallback,
         some(found) -> found,
-    };
+    } }
 
-    fn transform(f: pitch -> pitch, root: pitch) -> pitch = f(root);
+    fn transform(f: pitch -> pitch, root: pitch) -> pitch { f(root) }
 
-    fn melody(root: pitch) -> music = music {
+    fn melody(root: pitch) -> music { music {
         root/4
         use answer(root);
-    };
+    } }
 
     score { part piano { voice one { c4/1 } } }
 }
@@ -101,7 +101,7 @@ fn formatting_round_trips_is_idempotent_and_keeps_comments() {
 #[test]
 fn incomplete_expressions_recover_without_losing_source() {
     for broken in [
-        "piece \"x\" { fn f(x: nat) -> = x; }",
+        "piece \"x\" { fn f(x: nat) -> { x } }",
         "piece \"x\" { let x: nat = f(1; }",
         "piece \"x\" { let x: nat -> = 1; }",
         "piece \"x\" { let x: option[nat] = match x { none -> }; }",
@@ -115,7 +115,7 @@ fn incomplete_expressions_recover_without_losing_source() {
 
 #[test]
 fn a_note_line_and_a_general_expression_are_unambiguous_in_music() {
-    let source = "piece \"x\" { fn p() -> music = music { c4/4 use answer(c4); }; }";
+    let source = "piece \"x\" { fn p() -> music { music { c4/4 use answer(c4); } } }";
     let document = parse(source);
     assert!(document.errors().is_empty(), "{:?}", document.errors());
     let root = document.syntax();
@@ -136,10 +136,10 @@ fn a_note_line_and_a_general_expression_are_unambiguous_in_music() {
 #[test]
 fn pitch_translation_is_a_single_non_associative_expression_layer() {
     let source = r#"piece "pitch" {
-        fn turn(root: pitch, by: interval) -> music = music {
+        fn turn(root: pitch, by: interval) -> music { music {
             (root up M2)/4
             ((root up by) down m2)/4
-        };
+        } }
     }"#;
     let parsed = parse(source);
     assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());

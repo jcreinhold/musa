@@ -258,8 +258,8 @@ fn two_modules_exporting_one_name_are_both_named() {
         "p.musa",
         &piece("import \"a.musa\"; import \"b.musa\";"),
         &[
-            ("a.musa", "library { fn rise() -> music = music { c5/4 }; }"),
-            ("b.musa", "library { fn rise() -> music = music { g5/4 }; }"),
+            ("a.musa", "library { fn rise() -> music { music { c5/4 } } }"),
+            ("b.musa", "library { fn rise() -> music { music { g5/4 } } }"),
         ],
     );
     let messages = errors(&compilation);
@@ -279,8 +279,8 @@ fn an_alias_resolves_a_collision_by_qualifying_one_import() {
         "p.musa",
         &piece("import \"a.musa\"; import \"b.musa\" as low; motif fall() { use low.rise(); }"),
         &[
-            ("a.musa", "library { fn rise() -> music = music { c5/4 }; }"),
-            ("b.musa", "library { fn rise() -> music = music { g5/4 }; }"),
+            ("a.musa", "library { fn rise() -> music { music { c5/4 } } }"),
+            ("b.musa", "library { fn rise() -> music { music { g5/4 } } }"),
         ],
     );
     assert_eq!(errors(&compilation), Vec::<String>::new());
@@ -298,7 +298,7 @@ fn a_qualified_import_does_not_also_bind_flat() {
     let compilation = compile_with(
         "p.musa",
         &piece("import \"a.musa\" as high; motif fall() { use rise(); }"),
-        &[("a.musa", "library { fn rise() -> music = music { c5/4 }; }")],
+        &[("a.musa", "library { fn rise() -> music { music { c5/4 } } }")],
     );
     let messages = errors(&compilation);
     assert!(

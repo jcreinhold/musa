@@ -21,8 +21,8 @@ piece "Chord Voicings" {
 
     // Sounding an inversion still takes a policy and a register. Close
     // position from the designated bass is the plainest one.
-    fn from_e(content: chord_class) -> option[voicing] = close_position(content, e4);
-    fn from_b(content: chord_class) -> option[voicing] = close_position(content, b3);
+    fn from_e(content: chord_class) -> option[voicing] { close_position(content, e4) }
+    fn from_b(content: chord_class) -> option[voicing] { close_position(content, b3) }
 
     // Three voicings, each a policy applied to the same class.
     //
@@ -42,10 +42,12 @@ piece "Chord Voicings" {
 
     // A voicing sounds only through `play`. A policy whose preconditions fail
     // sounds a rest, so an absent answer is silence rather than a guess.
-    fn held(chosen: voicing) -> music = play(chosen, 1/1);
-    fn sounded(chosen: option[voicing]) -> music = option_fold(music {
-        rest/1
-    }, held, chosen);
+    fn held(chosen: voicing) -> music { play(chosen, 1/1) }
+    fn sounded(chosen: option[voicing]) -> music {
+        option_fold(music {
+            rest/1
+        }, held, chosen)
+    }
 
     let first_bar: music = sounded(option_fold(none, from_e, first_inversion));
     let third_bar: music = sounded(option_fold(none, from_b, third_inversion));

@@ -503,7 +503,7 @@ static FN: KeywordDoc = doc!(
     "fn",
     "define a total named function",
     "A function computes an elaboration value from typed parameters. Musa functions are total: they have no unrestricted recursion or effects.\n\n\
-     ```musa\nfn identity(x: pitch) -> pitch = x;\n```"
+     ```musa\nfn identity(x: pitch) -> pitch { x }\n```"
 );
 static MUSIC: KeywordDoc = doc!(
     "music",
@@ -527,7 +527,7 @@ static MATCH: KeywordDoc = doc!(
     "match",
     "handle every form of a finite value",
     "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n\
-     ```musa\nfn keep(x: option[pitch]) -> option[pitch] = match x { none -> none, some(p) -> some(p), };\n```"
+     ```musa\nfn keep(x: option[pitch]) -> option[pitch] { match x { none -> none, some(p) -> some(p), } }\n```"
 );
 static SOME: KeywordDoc = doc!(
     "some",
@@ -575,7 +575,7 @@ static FRAME: KeywordDoc = doc!(
     "a scale that knows which octave",
     "A frame is a scale plus the written pitch its first degree sounds, and it is the only thing that can turn a \
      degree into a note. Building one fails unless the tonic pitch spells the scale's own tonic.\n\n\
-     ```musa\nfn dominant_of(home: frame) -> pitch = frame_pitch(home, scale_degree(5));\n```"
+     ```musa\nfn dominant_of(home: frame) -> pitch { frame_pitch(home, scale_degree(5)) }\n```"
 );
 static IN: KeywordDoc = doc!(
     "in",
@@ -885,6 +885,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::NameExpr
         | SyntaxKind::LiteralExpr
         | SyntaxKind::ParenExpr
+        | SyntaxKind::BlockExpr
         | SyntaxKind::ProductExpr
         | SyntaxKind::ListExpr
         | SyntaxKind::OptionExpr

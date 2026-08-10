@@ -6,58 +6,65 @@ library {
     // else, and no collection is a default for any other.
 
     // The major collection, W–W–H–W–W–W–H, rooted on tonic.
-    fn major_on(tonic: pitchclass) -> scale = scale_on(scale c major, tonic);
+    fn major_on(tonic: pitchclass) -> scale { scale_on(scale c major, tonic) }
 
     // The Dorian rotation of the diatonic collection.
-    fn dorian_on(tonic: pitchclass) -> scale = scale_on(scale c dorian, tonic);
+    fn dorian_on(tonic: pitchclass) -> scale { scale_on(scale c dorian, tonic) }
 
     // The Phrygian rotation.
-    fn phrygian_on(tonic: pitchclass) -> scale = scale_on(scale c phrygian, tonic);
+    fn phrygian_on(tonic: pitchclass) -> scale { scale_on(scale c phrygian, tonic) }
 
     // The Lydian rotation.
-    fn lydian_on(tonic: pitchclass) -> scale = scale_on(scale c lydian, tonic);
+    fn lydian_on(tonic: pitchclass) -> scale { scale_on(scale c lydian, tonic) }
 
     // The Mixolydian rotation.
-    fn mixolydian_on(tonic: pitchclass) -> scale = scale_on(scale c mixolydian, tonic);
+    fn mixolydian_on(tonic: pitchclass) -> scale { scale_on(scale c mixolydian, tonic) }
 
     // The natural minor collection, which is also the Aeolian rotation.
-    fn natural_minor_on(tonic: pitchclass) -> scale = scale_on(scale c natural_minor, tonic);
+    fn natural_minor_on(tonic: pitchclass) -> scale { scale_on(scale c natural_minor, tonic) }
 
     // The Locrian rotation.
-    fn locrian_on(tonic: pitchclass) -> scale = scale_on(scale c locrian, tonic);
+    fn locrian_on(tonic: pitchclass) -> scale { scale_on(scale c locrian, tonic) }
 
     // Harmonic minor: natural minor with a raised seventh degree. A distinct
     // collection, not a spelling of the natural one.
-    fn harmonic_minor_on(tonic: pitchclass) -> scale = scale_on(scale c harmonic_minor, tonic);
+    fn harmonic_minor_on(tonic: pitchclass) -> scale { scale_on(scale c harmonic_minor, tonic) }
 
     // Ascending melodic minor: raised sixth and seventh degrees.
-    fn melodic_minor_on(tonic: pitchclass) -> scale = scale_on(scale c melodic_minor, tonic);
+    fn melodic_minor_on(tonic: pitchclass) -> scale { scale_on(scale c melodic_minor, tonic) }
 
     // Descending melodic minor, whose offsets are the natural minor's and
     // whose identity is not.
-    fn descending_melodic_minor_on(tonic: pitchclass) -> scale =
-        scale_on(scale c descending_melodic_minor, tonic);
+    fn descending_melodic_minor_on(tonic: pitchclass) -> scale {
+        scale_on(scale c descending_melodic_minor, tonic)
+    }
 
     // The five-note major pentatonic collection.
-    fn major_pentatonic_on(tonic: pitchclass) -> scale = scale_on(scale c major_pentatonic, tonic);
+    fn major_pentatonic_on(tonic: pitchclass) -> scale {
+        scale_on(scale c major_pentatonic, tonic)
+    }
 
     // The five-note minor pentatonic collection.
-    fn minor_pentatonic_on(tonic: pitchclass) -> scale = scale_on(scale c minor_pentatonic, tonic);
+    fn minor_pentatonic_on(tonic: pitchclass) -> scale {
+        scale_on(scale c minor_pentatonic, tonic)
+    }
 
     // The six-note whole-tone collection.
-    fn whole_tone_on(tonic: pitchclass) -> scale = scale_on(scale c whole_tone, tonic);
+    fn whole_tone_on(tonic: pitchclass) -> scale { scale_on(scale c whole_tone, tonic) }
 
     // The eight-note octatonic collection beginning with a half step.
-    fn octatonic_half_whole_on(tonic: pitchclass) -> scale =
-        scale_on(scale c octatonic_half_whole, tonic);
+    fn octatonic_half_whole_on(tonic: pitchclass) -> scale {
+        scale_on(scale c octatonic_half_whole, tonic)
+    }
 
     // The eight-note octatonic collection beginning with a whole step.
-    fn octatonic_whole_half_on(tonic: pitchclass) -> scale =
-        scale_on(scale c octatonic_whole_half, tonic);
+    fn octatonic_whole_half_on(tonic: pitchclass) -> scale {
+        scale_on(scale c octatonic_whole_half, tonic)
+    }
 
     // The six-note hexatonic collection alternating minor thirds and half steps.
-    fn hexatonic_on(tonic: pitchclass) -> scale = scale_on(scale c hexatonic, tonic);
+    fn hexatonic_on(tonic: pitchclass) -> scale { scale_on(scale c hexatonic, tonic) }
 
     // The acoustic collection: raised fourth and lowered seventh.
-    fn acoustic_on(tonic: pitchclass) -> scale = scale_on(scale c acoustic, tonic);
+    fn acoustic_on(tonic: pitchclass) -> scale { scale_on(scale c acoustic, tonic) }
 }

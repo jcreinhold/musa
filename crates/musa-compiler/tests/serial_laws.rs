@@ -37,15 +37,15 @@ const PRELUDE: &str = r"
 
     meter 4/4;
 
-    fn tick(one: music, carried: music) -> music = overlay(one, carried);
-    fn beat() -> music = music { c4/1 };
-    fn tally(count: nat) -> music = list_fold(music { rest/1 }, tick, repeat(beat(), count));
-    fn beat_for_pc(member: pc12) -> music = beat();
-    fn beat_for_nat(count: nat) -> music = beat();
-    fn beat_for_row(series: row12) -> music = beat();
-    fn beat_for_spelling(spelled: pitchclass) -> music = beat();
-    fn chorus(voices: list[music]) -> music = list_fold(music { rest/1 }, tick, voices);
-    fn sounded(cell: option[pitchclass]) -> music = option_fold(music { rest/1 }, beat_for_spelling, cell);
+    fn tick(one: music, carried: music) -> music { overlay(one, carried) }
+    fn beat() -> music { music { c4/1 } }
+    fn tally(count: nat) -> music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
+    fn beat_for_pc(member: pc12) -> music { beat() }
+    fn beat_for_nat(count: nat) -> music { beat() }
+    fn beat_for_row(series: row12) -> music { beat() }
+    fn beat_for_spelling(spelled: pitchclass) -> music { beat() }
+    fn chorus(voices: list[music]) -> music { list_fold(music { rest/1 }, tick, voices) }
+    fn sounded(cell: option[pitchclass]) -> music { option_fold(music { rest/1 }, beat_for_spelling, cell) }
 
     let generic_pcs: list[pc12] = pcs([0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7]);
     let chromatic_pcs: list[pc12] = pcs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
@@ -104,7 +104,7 @@ fn counted(bindings: &str, expression: &str) -> usize {
 fn admitted(sequence: &str) -> usize {
     counted(
         &format!(
-            "    fn one(series: row12) -> music = beat();
+            "    fn one(series: row12) -> music {{ beat() }}
     let admitted: music = option_fold(music {{ rest/1 }}, one, row({sequence}));"
         ),
         "admitted",
@@ -170,7 +170,7 @@ fn a_refusal_says_which_position_repeated_and_which_class_never_came() {
 #[test]
 fn a_row_has_twelve_order_positions() {
     let bindings = "
-    fn spread(series: row12) -> music = chorus(map(beat_for_pc, pcs_of(series)));
+    fn spread(series: row12) -> music { chorus(map(beat_for_pc, pcs_of(series))) }
     let positions: music = option_fold(music { rest/1 }, spread, generic);
 ";
     assert_eq!(
@@ -183,8 +183,8 @@ fn a_row_has_twelve_order_positions() {
 #[test]
 fn the_forty_eight_labels_are_not_forty_eight_rows() {
     let bindings = "
-    fn form_count(series: row12) -> nat = distinct_forms(series);
-    fn symmetry_count(series: row12) -> nat = symmetries(series);
+    fn form_count(series: row12) -> nat { distinct_forms(series) }
+    fn symmetry_count(series: row12) -> nat { symmetries(series) }
     let generic_forms: nat = option_fold(0, form_count, generic);
     let generic_symmetries: nat = option_fold(0, symmetry_count, generic);
     let chromatic_forms: nat = option_fold(0, form_count, chromatic);
@@ -215,15 +215,15 @@ fn the_forty_eight_labels_are_not_forty_eight_rows() {
 #[test]
 fn every_row_stands_in_a_twelve_by_twelve_matrix() {
     let bindings = "
-    fn matrix_of(series: row12) -> list[row12] = matrix(series);
+    fn matrix_of(series: row12) -> list[row12] { matrix(series) }
     let rows: list[row12] = option_fold([], matrix_of, generic);
 ";
     assert_eq!(counted(bindings, "chorus(map(beat_for_row, rows))"), 12, "twelve rows");
     assert_eq!(
         counted(
             "
-    fn matrix_of(series: row12) -> list[row12] = matrix(series);
-    fn spread(series: row12) -> music = chorus(map(beat_for_pc, pcs_of(series)));
+    fn matrix_of(series: row12) -> list[row12] { matrix(series) }
+    fn spread(series: row12) -> music { chorus(map(beat_for_pc, pcs_of(series))) }
     let rows: list[row12] = option_fold([], matrix_of, generic);
 ",
             "chorus(map(spread, rows))"
@@ -236,11 +236,11 @@ fn every_row_stands_in_a_twelve_by_twelve_matrix() {
 #[test]
 fn a_form_is_numbered_only_once_a_convention_is_named() {
     let bindings = "
-    fn up_three(series: row12) -> row12 = transposed(series, 3);
-    fn fixed(series: row12) -> nat = fixed_zero_index(series);
-    fn fixed_of_moved(series: row12) -> nat = fixed_zero_index(up_three(series));
-    fn moveable_from(series: row12) -> nat = moveable_zero_index(series, series);
-    fn moveable_of_moved(series: row12) -> nat = moveable_zero_index(series, up_three(series));
+    fn up_three(series: row12) -> row12 { transposed(series, 3) }
+    fn fixed(series: row12) -> nat { fixed_zero_index(series) }
+    fn fixed_of_moved(series: row12) -> nat { fixed_zero_index(up_three(series)) }
+    fn moveable_from(series: row12) -> nat { moveable_zero_index(series, series) }
+    fn moveable_of_moved(series: row12) -> nat { moveable_zero_index(series, up_three(series)) }
 ";
     assert_eq!(
         counted(bindings, "tally(option_fold(0, fixed, generic))"),
@@ -267,8 +267,8 @@ fn a_form_is_numbered_only_once_a_convention_is_named() {
 #[test]
 fn spelling_a_row_loses_the_notes_the_collection_cannot_write() {
     let bindings = "
-    fn in_c_major(series: row12) -> list[option[pitchclass]] = row_spelled_in(series, scale c major);
-    fn in_octatonic(series: row12) -> list[option[pitchclass]] = row_spelled_in(series, scale c octatonic_half_whole);
+    fn in_c_major(series: row12) -> list[option[pitchclass]] { row_spelled_in(series, scale c major) }
+    fn in_octatonic(series: row12) -> list[option[pitchclass]] { row_spelled_in(series, scale c octatonic_half_whole) }
     let spelled_in_c: list[option[pitchclass]] = option_fold([], in_c_major, generic);
     let spelled_octatonically: list[option[pitchclass]] = option_fold([], in_octatonic, generic);
 ";

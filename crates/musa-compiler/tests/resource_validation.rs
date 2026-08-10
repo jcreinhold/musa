@@ -28,13 +28,13 @@ fn alphabetic_name(mut index: usize) -> String {
 #[test]
 fn finite_large_work_is_accepted_but_the_deterministic_boundary_is_not() {
     let accepted = compile_declarations(
-        "fn keep(index: nat, accumulator: nat) -> nat = accumulator; \
+        "fn keep(index: nat, accumulator: nat) -> nat { accumulator } \
          let value: nat = nat_fold(0, keep, 50000);",
     );
     assert!(!accepted.has_errors(), "{:?}", accepted.diagnostics());
 
     let rejected = compile_declarations(
-        "fn keep(index: nat, accumulator: nat) -> nat = accumulator; \
+        "fn keep(index: nat, accumulator: nat) -> nat { accumulator } \
          let value: nat = nat_fold(0, keep, 200000);",
     );
     let diagnostic = rejected
@@ -94,7 +94,7 @@ fn monomorphization_has_its_own_finite_limit() {
 
 #[test]
 fn matches_reject_missing_and_unreachable_cases_separately() {
-    let missing = compile_declarations("fn choose(value: option[nat]) -> nat = match value { none -> 0 };");
+    let missing = compile_declarations("fn choose(value: option[nat]) -> nat { match value { none -> 0 } }");
     assert!(
         missing
             .diagnostics()
@@ -102,7 +102,7 @@ fn matches_reject_missing_and_unreachable_cases_separately() {
             .any(|diagnostic| diagnostic.code == Code::NonExhaustiveMatch)
     );
 
-    let unreachable = compile_declarations("fn choose(value: bool) -> nat = match value { _ -> 0, true -> 1 };");
+    let unreachable = compile_declarations("fn choose(value: bool) -> nat { match value { _ -> 0, true -> 1 } }");
     assert!(
         unreachable
             .diagnostics()

@@ -2027,7 +2027,7 @@ impl LetDecl {
     }
 }
 
-/// `fn name(parameters) -> type = expression;`
+/// `fn name(parameters) -> type { expression }`
 pub struct FnDecl(SyntaxNode);
 wrapper!(FnDecl, SyntaxKind::FnDecl);
 

@@ -19,10 +19,10 @@ fn each_static_failure_has_a_stable_diagnostic_code() {
         ("let value: unknown = 1;", Code::UnknownName),
         ("let value: nat = absent;", Code::UnknownName),
         ("let value: ratio = 999999999999999999999/1;", Code::OutOfRange),
-        ("fn one(x: nat) -> nat = x; let value: nat = one();", Code::TypeMismatch),
+        ("fn one(x: nat) -> nat { x } let value: nat = one();", Code::TypeMismatch),
         ("let value: nat = 1; let value: nat = 2;", Code::DuplicateName),
         (
-            "fn left(x: nat) -> nat = right(x); fn right(x: nat) -> nat = left(x);",
+            "fn left(x: nat) -> nat { right(x) } fn right(x: nat) -> nat { left(x) }",
             Code::DependencyCycle,
         ),
         ("let value: music = music { meter 3/4; c4/1 };", Code::Misplaced),
@@ -37,15 +37,15 @@ fn each_static_failure_has_a_stable_diagnostic_code() {
 
 #[test]
 fn a_parameter_cannot_be_bound_twice() {
-    let actual = diagnostics("fn choose(value: nat, value: nat) -> nat = value;");
+    let actual = diagnostics("fn choose(value: nat, value: nat) -> nat { value }");
     assert!(actual.contains(&Code::DuplicateName), "{actual:?}");
 }
 
 #[test]
 fn named_arguments_must_name_a_parameter_once() {
-    let unknown = diagnostics("fn one(x: nat) -> nat = x; let value: nat = one(y: 1);");
+    let unknown = diagnostics("fn one(x: nat) -> nat { x } let value: nat = one(y: 1);");
     assert!(unknown.contains(&Code::WrongArity), "{unknown:?}");
-    let repeated = diagnostics("fn one(x: nat) -> nat = x; let value: nat = one(x: 1, x: 2);");
+    let repeated = diagnostics("fn one(x: nat) -> nat { x } let value: nat = one(x: 1, x: 2);");
     assert!(repeated.contains(&Code::WrongArity), "{repeated:?}");
 }
 

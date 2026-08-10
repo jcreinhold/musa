@@ -10,7 +10,7 @@ piece "Standard Library Basics" {
         d4/4
     };
 
-    fn same_pitch(p: pitch) -> pitch = p;
+    fn same_pitch(p: pitch) -> pitch { p }
 
     let answer: music = compose_music(transpose(P8), retrograde, subject);
     let chosen: pitch = pitch_or_else(c4, same_pitch, some(e4));

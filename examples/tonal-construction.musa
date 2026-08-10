@@ -94,48 +94,62 @@ piece "Tonal construction" {
     // Reading a numeral in a named collection. Written three times rather than
     // once with the collection as a parameter, because each one is a decision
     // the piece is making and a reader should see it made.
-    fn in_major(written: option[roman]) -> option[chord_class] = match written {
-        none -> none,
-        some(numbered) -> numeral_chord(home, numbered),
-    };
+    fn in_major(written: option[roman]) -> option[chord_class] {
+        match written {
+            none -> none,
+            some(numbered) -> numeral_chord(home, numbered),
+        }
+    }
 
-    fn in_minor(written: option[roman]) -> option[chord_class] = match written {
-        none -> none,
-        some(numbered) -> numeral_chord(parallel_minor, numbered),
-    };
+    fn in_minor(written: option[roman]) -> option[chord_class] {
+        match written {
+            none -> none,
+            some(numbered) -> numeral_chord(parallel_minor, numbered),
+        }
+    }
 
-    fn in_harmonic_minor(written: option[roman]) -> option[chord_class] = match written {
-        none -> none,
-        some(numbered) -> numeral_chord(harmonic, numbered),
-    };
+    fn in_harmonic_minor(written: option[roman]) -> option[chord_class] {
+        match written {
+            none -> none,
+            some(numbered) -> numeral_chord(harmonic, numbered),
+        }
+    }
 
-    fn mixed(written: option[roman]) -> option[chord_class] = match written {
-        none -> none,
-        some(numbered) -> borrowed(home, parallel_minor, numbered),
-    };
+    fn mixed(written: option[roman]) -> option[chord_class] {
+        match written {
+            none -> none,
+            some(numbered) -> borrowed(home, parallel_minor, numbered),
+        }
+    }
 
-    fn tonicizing(target: degree, written: option[roman]) -> option[chord_class] = match written {
-        none -> none,
-        some(numbered) -> secondary(home, target, tonicizing_mode, numbered),
-    };
+    fn tonicizing(target: degree, written: option[roman]) -> option[chord_class] {
+        match written {
+            none -> none,
+            some(numbered) -> secondary(home, target, tonicizing_mode, numbered),
+        }
+    }
 
     // The one voicing policy this piece uses: close position from a named
     // bass. It is absent when the bass is not a member of the class as
     // spelled, which is why every chord below names its own bass instead of
     // sharing one.
-    fn stacked(bass: pitch, content: option[chord_class]) -> music = match content {
-        none -> music {
-            rest/1
-        },
-        some(sounding) -> voiced(close_position(sounding, bass)),
-    };
+    fn stacked(bass: pitch, content: option[chord_class]) -> music {
+        match content {
+            none -> music {
+                rest/1
+            },
+            some(sounding) -> voiced(close_position(sounding, bass)),
+        }
+    }
 
-    fn voiced(chosen: option[voicing]) -> music = match chosen {
-        none -> music {
-            rest/1
-        },
-        some(spread) -> sound_for(spread, 1),
-    };
+    fn voiced(chosen: option[voicing]) -> music {
+        match chosen {
+            none -> music {
+                rest/1
+            },
+            some(spread) -> sound_for(spread, 1),
+        }
+    }
 
     // The diatonic progression, each chord over a bass that is one of its own
     // members. `V6` takes B in the bass because the numeral put the third

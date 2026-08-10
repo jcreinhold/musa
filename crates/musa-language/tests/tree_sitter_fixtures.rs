@@ -311,6 +311,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::SignatureDecl
         | SyntaxKind::SignatureMember
         | SyntaxKind::StructureDecl
+        | SyntaxKind::BlockExpr
         | SyntaxKind::ModDecl
         | SyntaxKind::PitchExpr => panic!("`{kind:?}` is a node, not a token"),
     }

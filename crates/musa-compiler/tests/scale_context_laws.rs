@@ -77,7 +77,7 @@ fn one_bound_phrase_elaborates_differently_under_two_scales() {
     // the scale in force where it is written. Saving a phrase does not freeze
     // its coordinates.
     let source = piece_with(
-        "    fn figure() -> music = music {\n        c5/8\n        (c5 step 1)/8\n        (c5 step 2)/4\n    };\n\n    let subject: music = figure();",
+        "    fn figure() -> music { music {\n        c5/8\n        (c5 step 1)/8\n        (c5 step 2)/4\n    } }\n\n    let subject: music = figure();",
         "        in scale c major { use subject; }\n        in scale c dorian { use subject; }",
     );
     assert_eq!(
@@ -130,7 +130,7 @@ fn a_numbered_degree_realizes_in_the_frame_that_registers_it() {
     // Degrees are written from one: degree 1 of a C major frame rooted on c4
     // is c4 itself, and 1/3/5 spell that frame's triad in its own register.
     let source = piece_with(
-        "    import std::scale;\n\n    fn triad(register: frame) -> music = music {\n        (frame_degree(register, 1))/4\n        (frame_degree(register, 3))/4\n        (frame_degree(register, 5))/4\n    };\n\n    let anchored: music = option_fold(music { rest/4 }, triad, frame_on(scale c major, c4));",
+        "    import std::scale;\n\n    fn triad(register: frame) -> music { music {\n        (frame_degree(register, 1))/4\n        (frame_degree(register, 3))/4\n        (frame_degree(register, 5))/4\n    } }\n\n    let anchored: music = option_fold(music { rest/4 }, triad, frame_on(scale c major, c4));",
         "        use anchored;",
     );
     assert_eq!(pitches(&source), ["c4", "e4", "g4"]);

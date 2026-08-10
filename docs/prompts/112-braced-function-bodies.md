@@ -1,7 +1,7 @@
 ---
 id: 112
 slug: braced-function-bodies
-status: pending
+status: in-progress
 depends_on: [110, 111]
 phase: 3
 ---

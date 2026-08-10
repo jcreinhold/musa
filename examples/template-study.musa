@@ -3,12 +3,14 @@
 // body may read is its own parameters and the file's lexical root — never
 // the site that makes it — so an instance means the same thing wherever it
 // stands (docs/language/04-templates-and-modules.md §3).
-fn theme() -> music = music {
-    c4/4
-    d4/4
-    e4/4
-    f4/4
-};
+fn theme() -> music {
+    music {
+        c4/4
+        d4/4
+        e4/4
+        f4/4
+    }
+}
 
 // A voice that answers a subject through whatever transformation it is
 // handed. Twice below: the same body, two instances, two identities.

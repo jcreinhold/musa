@@ -123,12 +123,12 @@ fn named_intervals_cover_compound_direction_and_multiple_alteration() {
 fn a_pitch_parameter_can_determine_every_note_of_contextual_music() {
     let source = r#"
 piece "Computed notes" {
-    fn turn(root: pitch) -> music = music {
+    fn turn(root: pitch) -> music { music {
         root/4
         (root up M2)/4
         (root up M10)/4
         (root down m2)/4
-    };
+    } }
     score { part p { voice v { use turn(c4); } } }
 }
 "#;

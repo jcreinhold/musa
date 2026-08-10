@@ -395,6 +395,7 @@ impl TokenClass {
             | SyntaxKind::NameExpr
             | SyntaxKind::LiteralExpr
             | SyntaxKind::ParenExpr
+            | SyntaxKind::BlockExpr
             | SyntaxKind::ProductExpr
             | SyntaxKind::ListExpr
             | SyntaxKind::OptionExpr

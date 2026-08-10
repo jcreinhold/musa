@@ -37,8 +37,8 @@ piece "Serial Forms" {
     // How many distinct rows the 48 labels produce, and how many of the 48
     // fix the row. The product is 48 in both cases; the factors are not the
     // same, which is why neither is assumed.
-    fn form_count(series: row12) -> nat = distinct_forms(series);
-    fn symmetry_count(series: row12) -> nat = symmetries(series);
+    fn form_count(series: row12) -> nat { distinct_forms(series) }
+    fn symmetry_count(series: row12) -> nat { symmetries(series) }
 
     let generic_forms: nat = option_fold(0, form_count, generic);
     let generic_symmetries: nat = option_fold(0, symmetry_count, generic);
@@ -48,16 +48,18 @@ piece "Serial Forms" {
     // The matrix: twelve rows, row zero the row as written, each column read
     // downward an inversion. The construction names no convention, so the
     // index a form is *called* is asked for separately and by name.
-    fn matrix_of(series: row12) -> list[row12] = matrix(series);
+    fn matrix_of(series: row12) -> list[row12] { matrix(series) }
     let generic_matrix: list[row12] = option_fold([], matrix_of, generic);
 
-    fn fixed_zero(series: row12) -> nat = fixed_zero_index(series);
+    fn fixed_zero(series: row12) -> nat { fixed_zero_index(series) }
     let generic_fixed_zero: nat = option_fold(0, fixed_zero, generic);
 
     // The spelling projection, and it is not a coercion. C major spells seven
     // of the twelve classes and nothing else, so five positions come back
     // absent — the loss is in the value, where it can be seen.
-    fn in_c_major(series: row12) -> list[option[pitchclass]] = row_spelled_in(series, scale c major);
+    fn in_c_major(series: row12) -> list[option[pitchclass]] {
+        row_spelled_in(series, scale c major)
+    }
     let generic_in_c_major: list[option[pitchclass]] = option_fold([], in_c_major, generic);
 
     // Sets forget order as well as spelling. This is the row's first

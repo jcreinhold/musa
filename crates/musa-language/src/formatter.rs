@@ -123,7 +123,16 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                 if writer.starts_a_beat_group(&child) {
                     writer.widen_next_gap();
                 }
-                if let Some(lines) = inline_run(&child, writer.indent, layout) {
+                // A bar or a grace note owns its line, so its width is
+                // measured from the indent. A block is a body written after
+                // what it belongs to — `fn f(x: nat) -> nat` — so its width
+                // is measured from where the line has already reached.
+                let start = if child.kind() == SyntaxKind::BlockExpr {
+                    writer.column()
+                } else {
+                    writer.indent
+                };
+                if let Some(lines) = inline_run(&child, start, layout) {
                     for line in lines {
                         writer.write_line(&line);
                     }
@@ -196,6 +205,11 @@ fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut W
         writer.end_line();
     } else if kind == SyntaxKind::RBrace {
         writer.indent_less();
+        // A block's one expression ends with no `;` to end its line, so the
+        // brace that closes it asks for the line itself.
+        if parent == SyntaxKind::BlockExpr {
+            writer.break_before_close();
+        }
         // On its own line the `}` needs no space in front of it, and
         // `needs_word_space` already knows that: `prep_line` has just put the
         // writer at the start of a line. On a one-line run there is no line
@@ -311,7 +325,10 @@ struct Run {
 /// wraps at its beat groups instead; with no groups to wrap at, the line runs
 /// long, because a long line is better than a wrong one.
 fn inline_run(node: &SyntaxNode, indent: usize, layout: &Layout) -> Option<Vec<String>> {
-    if !matches!(node.kind(), SyntaxKind::BarStmt | SyntaxKind::GraceStmt) {
+    if !matches!(
+        node.kind(),
+        SyntaxKind::BarStmt | SyntaxKind::GraceStmt | SyntaxKind::BlockExpr
+    ) {
         return None;
     }
     if node
@@ -319,6 +336,26 @@ fn inline_run(node: &SyntaxNode, indent: usize, layout: &Layout) -> Option<Vec<S
         .any(|element| matches!(element.kind(), SyntaxKind::LineComment | SyntaxKind::BlockComment))
     {
         return None;
+    }
+    // A block holds one expression, so there is nothing in it to space by
+    // beat group and nothing to wrap at: it is one line when it fits, and
+    // otherwise it breaks at its own braces like every other block.
+    if node.kind() == SyntaxKind::BlockExpr {
+        // Notation stays vertical. A block holding a `music` value would
+        // otherwise put a voice's notes on one line, which is the one layout
+        // this language does not write — only a *bar* is horizontal.
+        if node
+            .descendants()
+            .any(|descendant| descendant.kind() == SyntaxKind::MusicExpr)
+        {
+            return None;
+        }
+        let mut writer = Writer::one_line(HashSet::new());
+        format_node(node, &mut writer, layout);
+        // The run opens with the space its `{` takes after what precedes it,
+        // and the caller writes that space itself.
+        let line = writer.finish().trim_start().to_owned();
+        return (indent.saturating_add(line.chars().count()) <= MEASURE).then_some(vec![line]);
     }
     // The three rungs, in order: to scale if the project asked and the bar
     // fits; else compact if that fits; else wrapped.
@@ -812,6 +849,32 @@ impl Writer {
         self.need_newline = true;
     }
 
+    /// Put the closing brace of a stacked block on its own line.
+    ///
+    /// Nothing on a one-line run, where the brace joins its neighbour with a
+    /// space, and nothing at the start of a line, which is already what this
+    /// is for.
+    fn break_before_close(&mut self) {
+        if self.run.is_some() || self.at_line_start {
+            return;
+        }
+        self.newline();
+    }
+
+    /// Where the next thing written would land on the current line.
+    ///
+    /// The indent when the line has not been started — or has been ended and
+    /// not yet broken — and the width written so far when it has.
+    fn column(&self) -> usize {
+        if self.at_line_start || self.need_newline {
+            return self.indent;
+        }
+        self.out
+            .rsplit('\n')
+            .next()
+            .map_or(self.indent, |line| line.chars().count())
+    }
+
     fn write(&mut self, text: &str) {
         if self.at_line_start {
             for _ in 0..self.indent {
@@ -845,18 +908,26 @@ impl Writer {
         self.after_significant(SyntaxKind::RBrace);
     }
 
+    /// One space, or two in front of a beat group — and never one more than
+    /// that. On a one-line run the gap between two items can be asked for
+    /// twice, by the statement that ended and by the token that follows, and
+    /// what is wanted is the gap rather than the count of requests.
     fn space(&mut self) {
         if self.at_line_start {
             return;
         }
-        self.out.push(' ');
-        if self.run.as_mut().is_some_and(|run| std::mem::take(&mut run.wide_gap)) {
+        let wide = self.run.as_mut().is_some_and(|run| std::mem::take(&mut run.wide_gap));
+        let written = usize::from(self.out.ends_with(' ')).saturating_add(usize::from(self.out.ends_with("  ")));
+        for _ in written..if wide { 2 } else { 1 } {
             self.out.push(' ');
         }
     }
 
     fn newline(&mut self) {
         if self.run.is_some() {
+            // One line has no newlines in it, and a statement boundary that
+            // wanted one is the space between two items.
+            self.space();
             return;
         }
         if !self.at_line_start {

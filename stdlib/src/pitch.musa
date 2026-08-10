@@ -21,12 +21,13 @@ library {
     let octave: interval = P8;
 
     // Apply two spelling-preserving written intervals in sequence.
-    fn compose_intervals(first: interval, second: interval) -> interval =
-        interval_add(first, second);
+    fn compose_intervals(first: interval, second: interval) -> interval {
+        interval_add(first, second)
+    }
 
     // Reverse the direction of a written interval.
-    fn inverse_interval(value: interval) -> interval = interval_inverse(value);
+    fn inverse_interval(value: interval) -> interval { interval_inverse(value) }
 
     // Forget octave while retaining the written letter and accidental.
-    fn written_pitch_class(value: pitch) -> pitchclass = pitchclass_of(value);
+    fn written_pitch_class(value: pitch) -> pitchclass { pitchclass_of(value) }
 }

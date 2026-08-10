@@ -37,12 +37,14 @@ library {
         // where this one sits changes nothing anyone outside can name.
         let home: option[frame] = frame_on(collection, c4);
 
-        fn spell(ordinal: nat) -> option[pitch] = match home {
-            none -> none,
-            some(register) -> some(frame_degree(register, ordinal)),
-        };
+        fn spell(ordinal: nat) -> option[pitch] {
+            match home {
+                none -> none,
+                some(register) -> some(frame_degree(register, ordinal)),
+            }
+        }
 
-        fn voicing_for(content: chord_class) -> option[voicing] = close_position(content, c4);
+        fn voicing_for(content: chord_class) -> option[voicing] { close_position(content, c4) }
     }
 
     // A natural minor, spelled from the A below middle C. The same four
@@ -54,11 +56,13 @@ library {
 
         let home: option[frame] = frame_on(collection, a3);
 
-        fn spell(ordinal: nat) -> option[pitch] = match home {
-            none -> none,
-            some(register) -> some(frame_degree(register, ordinal)),
-        };
+        fn spell(ordinal: nat) -> option[pitch] {
+            match home {
+                none -> none,
+                some(register) -> some(frame_degree(register, ordinal)),
+            }
+        }
 
-        fn voicing_for(content: chord_class) -> option[voicing] = close_position(content, a3);
+        fn voicing_for(content: chord_class) -> option[voicing] { close_position(content, a3) }
     }
 }

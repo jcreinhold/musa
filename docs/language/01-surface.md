@@ -123,10 +123,9 @@ comments in `stdlib/reference.md`.
 ```musa
 let fifth: interval = P5;
 
-fn third(root: pitch) -> pitch = root up M3;
+fn third(root: pitch) -> pitch { root up M3 }
 
-fn transpose_answer(subject: music, by: interval) -> music =
-    transpose(by, subject);
+fn transpose_answer(subject: music, by: interval) -> music { transpose(by, subject) }
 
 motif turn(root: pitch = c5) {
     root/8
@@ -144,11 +143,11 @@ with a `Fragment` role. `use e;` checks `e : music`, instantiates it at the curr
 `music` values are contextual rather than captured timelines:
 
 ```musa
-fn figure() -> music = music {
+fn figure() -> music { music {
     c5/8
     (c5 step 1)/8
     (c5 step 2)/4
-};
+} }
 
 let subject: music = figure();
 in scale c major { use subject; }
@@ -161,13 +160,13 @@ fact. An absent scale makes `step` a type-context diagnostic, not an implicit C-
 ## 3. Higher-order construction with controlled traversal
 
 ```musa
-fn canon(subject: music, answer: music -> music, gap: duration) -> music = music {
+fn canon(subject: music, answer: music -> music, gap: duration) -> music { music {
     use overlay(subject, shift(gap, answer(subject)));
-};
+} }
 
-fn harmonize(subject: music, answer_pitch: pitch -> pitch) -> music = music {
+fn harmonize(subject: music, answer_pitch: pitch -> pitch) -> music { music {
     use overlay(subject, map_note_pitches(answer_pitch, subject));
-};
+} }
 
 use canon(theme(), transpose(P5), 1/2);
 ```
@@ -209,8 +208,8 @@ let sonority: chord_class = chord c major7;
 let close: option[voicing] = close_position(sonority, c4);
 let open: option[voicing] = drop_position(sonority, c3, 2);
 
-fn sound(chosen: voicing) -> music = play(chosen, 1/2);
-fn sounded(chosen: option[voicing]) -> music = option_fold(music { rest/2 }, sound, chosen);
+fn sound(chosen: voicing) -> music { play(chosen, 1/2) }
+fn sounded(chosen: option[voicing]) -> music { option_fold(music { rest/2 }, sound, chosen) }
 let close_bar: music = sounded(close);
 let open_bar: music = sounded(open);
 
@@ -234,10 +233,10 @@ absolute root fixing register; `stack c major7/2` is rejected, because a pitch c
 ## 6. Declaration templates
 
 ```musa
-fn theme() -> music = music {
+fn theme() -> music { music {
     c4/4
     d4/4
-};
+} }
 
 template voice answer(subject: music, transform: music -> music) {
     use transform(subject);
@@ -322,11 +321,10 @@ It has no imports, functions, surface pitch operations, or free variables. Its p
 A local quote is host syntax containing kernel syntax and typed antiquotation:
 
 ```musa
-fn delayed_double(subject: music) -> music =
-    kernel Timeline[ScoreFact] {
+fn delayed_double(subject: music) -> music { kernel Timeline[ScoreFact] {
         let s = ${subject} in
         overlay { s; shift by 1/2 s; }
-    };
+    } }
 ```
 
 `${subject}` is one `music` antiquotation. It is instantiated in the quote's host environment and inserted as a typed
