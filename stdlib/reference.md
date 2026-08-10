@@ -52,6 +52,7 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `triad_content(refined: triad) -> chord_class` — Forget the refinement: every triad is a chord class.
 - `is_triad(content: chord_class) -> bool` — Whether a chord class is a major or minor triad.
 - `triad_is_present(refined: triad) -> bool` — The present case of `is_triad`: a refinement that exists is a triad, whichever of the two it turned out to be.
+- `is_major(refined: triad) -> bool` — Which of the two a triad is. Total, and a `bool` rather than a partial answer, because the refinement admitted exactly two chord classes: not major is minor here, and only here. Every transformation in `std::transformational` branches on this, since which way a voice moves is the whole content of the transformation.
 
 ## `std::list`
 
@@ -130,6 +131,27 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `row_spelled_in(series: row12, collection: scale) -> list[option[pitchclass]]` — Spell one row inside a collection, position by position. A pitch class the collection cannot spell is absent, and the row keeps its length, so a projection that lost notes is visible as the gaps it left.
 - `spelling_in(collection: scale, member: pc12) -> option[pitchclass]` — The spelling policy of one collection, as a function a row can be carried across.
 - `first_pc(series: row12) -> pc12` — The pitch class a row begins on. Order position zero always exists, because a row has twelve of them.
+
+## `std::transformational`
+
+- `triad_root(refined: triad) -> pitchclass` — The root of a triad, spelled.
+- `triad_third(refined: triad) -> pitchclass` — The third, which is the tone that says which triad this is: a major third above the root for the major triad, a minor third for the minor.
+- `triad_fifth(refined: triad) -> pitchclass` — The fifth, which is perfect in both triads and so needs no question.
+- `major_triad_on(root: pitchclass, fallback: triad) -> triad` — The major triad rooted on a pitch class. `fallback` is returned only if a major triad were not a triad, which is why it is the argument the caller already had: an impossible answer is still a triad and still spelled from somewhere real, rather than a silence that would have to be explained. Every transformation below is total because of this function and the next.
+- `minor_triad_on(root: pitchclass, fallback: triad) -> triad` — The minor triad rooted on a pitch class, on the same terms.
+- `itself(refined: triad) -> triad` — The present case of the two constructors above.
+- `parallel(refined: triad) -> triad` — P, parallel: keep the root and the fifth, move the third by a chromatic semitone. The C major triad and the C minor triad, which share a letter and a key signature's worth of difference.
+- `leading_tone(refined: triad) -> triad` — L, Leittonwechsel: keep the third and the fifth, and move the remaining tone by a diatonic semitone. From a major triad that is its own third made a root — C major goes to E minor, the root `c` falling to `b`; from a minor triad the fifth rises, E minor back to C major.
+- `relative(refined: triad) -> triad` — R, relative: keep the root and the third, move the remaining tone by a whole step. C major goes to A minor and A minor back to C major, which is the relative pair every key signature already names.
+- `slide(refined: triad) -> triad` — S, slide: keep the third, move the root and the fifth by a chromatic semitone. C major goes to C sharp minor. Written as `L P R` because that is what it is — OMT 072 introduces S, N, and H as the named compositions worth having, not as further generators.
+- `nebenverwandt(refined: triad) -> triad` — N, Nebenverwandt: a major triad and its minor subdominant, C major to F minor. `R L P`.
+- `hexatonic_pole(refined: triad) -> triad` — H, the hexatonic pole: the triad sharing no tone at all with its argument, C major to G sharp minor. `L P L`.
+- `then(first: triad -> triad, second: triad -> triad, refined: triad) -> triad` — Two transformations, applied in the order written.
+- `chain(steps: list[triad -> triad], start: triad) -> triad` — A chain of transformations, applied left to right from a starting triad. Composition is what a chain is — no transformation here is a keyword or a special form, so a list of them is ordinary data and this is an ordinary fold.
+- `applied(operation: triad -> triad, carried: triad) -> triad` — One step of `chain`.
+- `unspelled(spelled: pitchclass) -> pc12` — Forget one spelling. Named for what it does to a pitch class rather than for the domain it lands in, so that a piece may import this and `std::pcset` together.
+- `triad_tones(refined: triad) -> list[pitchclass]` — The three tones of a triad, spelled, from the root upward.
+- `triad_classes(refined: triad) -> pcset12` — The projection into the chromatic quotient: the triad as a set of three unspelled pitch classes. This is where a finite group claim becomes sayable. `dbb` major and `c` major are two triads and one set, so a cycle that fails to close in spelling closes here, and the failure and the closing are both facts an author can hold at once rather than one hiding the other.
 
 ## `std::voicing`
 

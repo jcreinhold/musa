@@ -441,6 +441,14 @@ impl Triad {
     pub(crate) fn class(self) -> ChordClass {
         self.0
     }
+
+    /// Whether this is the major triad rather than the minor one.
+    ///
+    /// A `bool` and not a partial answer: the refinement admitted exactly two
+    /// chord classes, so "not major" is "minor" here and nowhere else.
+    pub(crate) fn is_major(self) -> bool {
+        matches!(self.0.kind(), ChordType::Major)
+    }
 }
 
 impl std::fmt::Display for Triad {

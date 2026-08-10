@@ -52,4 +52,11 @@ library {
     // The present case of `is_triad`: a refinement that exists is a triad,
     // whichever of the two it turned out to be.
     fn triad_is_present(refined: triad) -> bool = true;
+
+    // Which of the two a triad is. Total, and a `bool` rather than a partial
+    // answer, because the refinement admitted exactly two chord classes: not
+    // major is minor here, and only here. Every transformation in
+    // `std::transformational` branches on this, since which way a voice
+    // moves is the whole content of the transformation.
+    fn is_major(refined: triad) -> bool = triad_major(refined);
 }

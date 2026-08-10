@@ -57,8 +57,10 @@ import       := "use" (STRING | "std" "::" IDENT) ";"
 ```
 
 Function arrows associate right; call binds tighter than pitch operators; pitch operators bind as follows, tightest
-first: parentheses, `step`, `up`/`down`. `root up M2 down m2` is rejected as ambiguous; write parentheses. Every `fn`
-has an expression body. A multi-statement musical body is explicitly `music { ... }`.
+first: parentheses, `step`, `up`/`down`. `root up M2 down m2` is rejected as ambiguous; write parentheses. `up` and
+`down` take a `pitch` or a `pitchclass` and return whichever they were given, so `c4 up M3` is a pitch and
+`chord_root(triad) up M3` is a pitch class: the operand's own type decides, and no register is invented for a value
+that never had one. Every `fn` has an expression body. A multi-statement musical body is explicitly `music { ... }`.
 
 Named intervals use conventional `P`, `M`, `m`, and repeated `A`/`d` qualities. Because lowercase `d4` already means
 the written pitch D4, a singly diminished fourth is written `dim4`; `dd4` and `ddd4` remain the compact multiply

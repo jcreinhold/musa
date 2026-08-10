@@ -605,6 +605,7 @@ enum Primitive {
     ChordOver,
     ChordTriad,
     TriadChord,
+    TriadMajor,
     VoicingOf,
     VoicingPitches,
     VoicingBass,
@@ -644,7 +645,7 @@ struct PrimitiveOwnership<T> {
     hidden_information: &'static str,
 }
 
-const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 62] = [
+const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 63] = [
     PrimitiveOwnership {
         operation: Primitive::NatFold,
         spelling: "nat_fold",
@@ -804,6 +805,11 @@ const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 62] = [
         operation: Primitive::TriadChord,
         spelling: "triad_chord",
         hidden_information: "the triad refinement's private witness",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::TriadMajor,
+        spelling: "triad_major",
+        hidden_information: "the chord class's private type, which is the only place the two triads differ",
     },
     PrimitiveOwnership {
         operation: Primitive::VoicingOf,
@@ -992,6 +998,7 @@ impl Primitive {
             Self::ChordOver => "chord_over",
             Self::ChordTriad => "chord_triad",
             Self::TriadChord => "triad_chord",
+            Self::TriadMajor => "triad_major",
             Self::VoicingOf => "voicing_of",
             Self::VoicingPitches => "voicing_pitches",
             Self::VoicingBass => "voicing_bass",
@@ -2734,10 +2741,26 @@ impl Checker<'_> {
         parsed
     }
 
+    /// `<pitch-or-pitch-class> up|down <interval>`.
+    ///
+    /// One operator over two domains, because it is one action: a written
+    /// interval moves the letter by its generic size and lets the accidental
+    /// absorb the rest, and whether an octave is being carried along changes
+    /// nothing about that. The operand's own type decides the result's, so
+    /// `c4 up M3` is a pitch and `chord_root(triad) up M3` is a pitch class.
     fn pitch_action(&mut self, node: &SyntaxNode) -> Option<Expr> {
         let span = crate::resolve::trimmed_span(node);
         let mut children = node.children().filter(|child| is_expr_node(child.kind()));
-        let pitch = self.check(&children.next()?, Some(&Type::Pitch))?;
+        let pitch = self.check(&children.next()?, None)?;
+        if !matches!(pitch.ty, Type::Pitch | Type::PitchClass) {
+            self.resolver.report(
+                Diagnostic::error(Code::TypeMismatch, "only a pitch or a pitch class can be transposed")
+                    .at(pitch.span, format!("this is a `{}`", pitch.ty)),
+            );
+            self.failed = true;
+            return None;
+        }
+        let moved = pitch.ty.clone();
         let interval = self.check(&children.next()?, Some(&Type::Interval))?;
         let down = significant_tokens(node).any(|token| token.kind() == SyntaxKind::DownKw);
         Some(Expr {
@@ -2746,7 +2769,7 @@ impl Checker<'_> {
                 interval: Box::new(interval),
                 down,
             },
-            ty: Type::Pitch,
+            ty: moved,
             span,
         })
     }
@@ -3344,6 +3367,7 @@ impl Checker<'_> {
             | Primitive::ChordMembers
             | Primitive::ChordTriad
             | Primitive::TriadChord
+            | Primitive::TriadMajor
             | Primitive::VoicingPitches
             | Primitive::VoicingBass
             | Primitive::VoicingChord
@@ -3561,6 +3585,10 @@ impl Checker<'_> {
             Primitive::TriadChord => {
                 let triad = self.check(nodes.first()?, Some(&Type::Triad))?;
                 (vec![triad], Type::ChordClass)
+            }
+            Primitive::TriadMajor => {
+                let triad = self.check(nodes.first()?, Some(&Type::Triad))?;
+                (vec![triad], Type::Bool)
             }
             Primitive::VoicingOf => {
                 let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
@@ -4052,16 +4080,38 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
             }
         }
         ExprKind::PitchAction { pitch, interval, down } => {
-            let Value::Pitch(pitch) = eval(pitch, environment, meter)? else {
-                return None;
-            };
+            let moved = eval(pitch, environment, meter)?;
             let Value::Interval(mut interval) = eval(interval, environment, meter)? else {
                 return None;
             };
             if *down {
                 interval = interval.inverse()?;
             }
-            pitch.transpose(interval).map(Value::Pitch)
+            match moved {
+                Value::Pitch(pitch) => pitch.transpose(interval).map(Value::Pitch),
+                Value::PitchClass(spelled) => spelled.transpose(interval).map(Value::PitchClass),
+                Value::Bool(_)
+                | Value::Nat(_)
+                | Value::Ratio(_)
+                | Value::Duration(_)
+                | Value::Interval(_)
+                | Value::Scale(_)
+                | Value::Key(_)
+                | Value::Degree(_)
+                | Value::Frame(_)
+                | Value::ChordClass(_)
+                | Value::Triad(_)
+                | Value::Voicing(_)
+                | Value::Pc12(_)
+                | Value::PcSet12(_)
+                | Value::Row12(_)
+                | Value::Product(_)
+                | Value::Option { .. }
+                | Value::List { .. }
+                | Value::Music(_)
+                | Value::Closure(_)
+                | Value::Builtin(_) => None,
+            }
         }
         ExprKind::Primitive { primitive, arguments } => {
             eval_primitive(*primitive, arguments, environment, meter, expression)
@@ -4658,6 +4708,12 @@ fn eval_primitive(
                 return None;
             };
             Some(Value::ChordClass(triad.class()))
+        }
+        Primitive::TriadMajor => {
+            let Value::Triad(triad) = values.first()? else {
+                return None;
+            };
+            Some(Value::Bool(triad.is_major()))
         }
         Primitive::VoicingOf => {
             let (Value::ChordClass(class), Value::List { values: pitches, .. }) = (values.first()?, values.get(1)?)
@@ -5340,7 +5396,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            70,
+            71,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();

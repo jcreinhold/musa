@@ -286,4 +286,26 @@ impl PitchClass {
         };
         Some(Self { letter, accidental })
     }
+
+    /// Transpose by a written interval, without respelling and without an
+    /// octave.
+    ///
+    /// A written interval acts on a pitch class exactly as it acts on a
+    /// pitch — the letter moves by the generic size and the accidental
+    /// absorbs the rest — so this is that action with the octave dropped
+    /// afterwards rather than a second rule. Any octave would give the same
+    /// answer; one in the middle of the range is used so that the fixed
+    /// machine integer is never what decides.
+    ///
+    /// Failure means only that a diatonic or chromatic height overflowed,
+    /// which no interval a score can write comes near.
+    pub fn transpose(self, interval: Interval) -> Option<Self> {
+        WrittenPitch {
+            letter: self.letter,
+            accidental: self.accidental,
+            octave: 4,
+        }
+        .transpose(interval)
+        .map(WrittenPitch::pitch_class)
+    }
 }

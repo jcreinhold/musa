@@ -1,0 +1,143 @@
+// The hexatonic cycle, `P L P L P L`, and what it does not do.
+//
+// Each transformation is a function from the triad refinement to itself, so
+// the cycle is written as an ordinary chain and nothing here is a keyword.
+// Six steps return a triad that sounds like the one the cycle began on, and
+// is not it: `dbb` major is spelled from D and C major is spelled from C.
+// `returned_is_c_major` below is absent for exactly that reason, while
+// `returned_classes` and `tonic_classes` are one set. A finite-group claim
+// is true after the projection and not before, and both halves are values
+// here rather than a paragraph.
+//
+// Nothing in `std::transformational` chooses a register: a chord class is not
+// music, and a triad is not either. The bass pitch under every chord below is
+// written by this piece, which is the only place that knows what it wants to
+// hear.
+piece "Neo-Riemannian" {
+    use std::harmony;
+    use std::transformational;
+    use std::voicing;
+
+    // The triad refinement is the domain, and this `option` is the proof of
+    // membership. A seventh chord or a suspension has no answer here, which
+    // is why the transformations never have to check.
+    let tonic: option[triad] = as_triad(chord c major);
+
+    // The six waypoints. Each is written as the chain that reaches it, so
+    // the path is in the source rather than in a comment.
+    fn at_p(start: triad) -> triad = chain([parallel], start);
+    fn at_pl(start: triad) -> triad = chain([parallel, leading_tone], start);
+    fn at_plp(start: triad) -> triad = chain([parallel, leading_tone, parallel], start);
+    fn at_plpl(start: triad) -> triad = chain([parallel, leading_tone, parallel, leading_tone], start);
+    fn at_plplp(start: triad) -> triad = chain([parallel, leading_tone, parallel, leading_tone, parallel], start);
+    fn at_plplpl(start: triad) -> triad = chain([parallel, leading_tone, parallel, leading_tone, parallel, leading_tone], start);
+
+    // Two voicing policies, each a function the caller supplies a bass to.
+    // Partial application is what makes them `triad -> music`.
+    fn whole(chosen: voicing) -> music = sound_for(chosen, 1);
+
+    fn close_on(bass: pitch, refined: triad) -> music = option_fold(music {
+        rest/1
+    }, whole, close_position(triad_content(refined), bass));
+
+    fn drop_on(bass: pitch, refined: triad) -> music = option_fold(music {
+        rest/1
+    }, whole, drop_position(triad_content(refined), bass, 2));
+
+    // The cycle in close position. The bass under each chord is a pitch of
+    // that chord's own spelling — `ab3` under the A flat triads, `fb3` under
+    // the F flat ones — because a voicing is spelled or it does not exist.
+    let close_one: music = option_fold(music {
+        rest/1
+    }, close_on(c4), tonic);
+    let close_two: music = option_fold(music {
+        rest/1
+    }, compose_close(c4, at_p), tonic);
+    let close_three: music = option_fold(music {
+        rest/1
+    }, compose_close(ab3, at_pl), tonic);
+    let close_four: music = option_fold(music {
+        rest/1
+    }, compose_close(ab3, at_plp), tonic);
+    let close_five: music = option_fold(music {
+        rest/1
+    }, compose_close(fb3, at_plpl), tonic);
+    let close_six: music = option_fold(music {
+        rest/1
+    }, compose_close(fb3, at_plplp), tonic);
+
+    // The same six under drop-2, which is the same chord classes and a
+    // different sound: the policy is the caller's, never the library's.
+    let drop_one: music = option_fold(music {
+        rest/1
+    }, drop_on(c4), tonic);
+    let drop_two: music = option_fold(music {
+        rest/1
+    }, compose_drop(c4, at_p), tonic);
+    let drop_three: music = option_fold(music {
+        rest/1
+    }, compose_drop(ab3, at_pl), tonic);
+    let drop_four: music = option_fold(music {
+        rest/1
+    }, compose_drop(ab3, at_plp), tonic);
+    let drop_five: music = option_fold(music {
+        rest/1
+    }, compose_drop(fb3, at_plpl), tonic);
+    let drop_six: music = option_fold(music {
+        rest/1
+    }, compose_drop(fb3, at_plplp), tonic);
+
+    // Reach a waypoint, then voice it. Written out because a composition of
+    // two functions is a function and this language has no operator for it.
+    fn compose_close(bass: pitch, reach: triad -> triad, start: triad) -> music = close_on(bass, reach(start));
+    fn compose_drop(bass: pitch, reach: triad -> triad, start: triad) -> music = drop_on(bass, reach(start));
+
+    // What the cycle returned, asked two ways.
+    //
+    // The first is a spelling question: a voicing from `c4` exists only if
+    // `c` is a member of the class as written, and after six steps it is
+    // not. The second is a pitch-class question, and there the cycle closed.
+    fn voiced_from_c4(refined: triad) -> option[voicing] = close_position(triad_content(refined), c4);
+    fn returned(start: triad) -> option[voicing] = voiced_from_c4(at_plplpl(start));
+
+    let returned_is_c_major: option[voicing] = option_fold(none, returned, tonic);
+    let tonic_classes: option[pcset12] = option_fold(none, classes, tonic);
+    let returned_classes: option[pcset12] = option_fold(none, classes_after, tonic);
+
+    fn classes(refined: triad) -> option[pcset12] = some(triad_classes(refined));
+    fn classes_after(start: triad) -> option[pcset12] = some(triad_classes(at_plplpl(start)));
+
+    // The named compositions, on the triad OMT names them from.
+    let slid: option[triad] = option_fold(none, slid_from, tonic);
+    let neighboured: option[triad] = option_fold(none, neighboured_from, tonic);
+    let polar: option[triad] = option_fold(none, polar_from, tonic);
+
+    fn slid_from(refined: triad) -> option[triad] = some(slide(refined));
+    fn neighboured_from(refined: triad) -> option[triad] = some(nebenverwandt(refined));
+    fn polar_from(refined: triad) -> option[triad] = some(hexatonic_pole(refined));
+
+    meter 4/4;
+
+    score {
+        part close {
+            voice upper {
+                use close_one;
+                use close_two;
+                use close_three;
+                use close_four;
+                use close_five;
+                use close_six;
+            }
+        }
+        part dropped {
+            voice upper {
+                use drop_one;
+                use drop_two;
+                use drop_three;
+                use drop_four;
+                use drop_five;
+                use drop_six;
+            }
+        }
+    }
+}

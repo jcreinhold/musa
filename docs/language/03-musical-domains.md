@@ -27,6 +27,14 @@ SpelledPC = WrittenPitch / ((d,c) ~ (d+7k,c+12k), k∈ℤ).
 ```
 
 It forgets register but not enharmonic spelling: `C♯` and `D♭` have different diatonic coordinates and are unequal.
+**Lemma (the action descends).** The interval action passes to `SpelledPC`: if `(d,c) ~ (d+7k,c+12k)` then
+`(d,c)+(i,j) ~ (d+7k,c+12k)+(i,j)`, since both sides differ by the same `(7k,12k)`. The quotient action is therefore
+well-defined, and total, associative, and spelling-preserving for the same reasons the action on pitches is. This is
+what the surface writes as `root up M3` when `root` is a `pitchclass`: the same `up`/`down` operator as on a pitch,
+with the octave simply absent rather than chosen. A written interval acting on a spelled pitch class is what lets a
+transformation name the root of its image — `L` on a minor triad is the major triad a major third below it — without
+first inventing a register the transformation does not have.
+
 Define `pc12 = ℤ/12ℤ` and the forgetful map `χ([(d,c)]) = c mod 12`. This is well-defined because changing the
 representative adds `12k`; it is not injective because enharmonic spellings can share `c mod 12`. OMT
 `099-pitch-and-pitch-class.md` motivates octave equivalence for pitch-class work, while OMT
