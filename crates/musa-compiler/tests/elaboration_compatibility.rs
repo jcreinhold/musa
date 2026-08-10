@@ -107,7 +107,7 @@ fn backend_snapshot_digest(prefix: &str) -> Result<(usize, String)> {
 /// it is refreshed, and the manifest carries the list. Reviewing a baseline
 /// diff then means checking that the section above it explains the section
 /// below it.
-const BREAKS: [(u32, &str, &str); 2] = [
+const BREAKS: [(u32, &str, &str); 3] = [
     (
         109,
         "`use` no longer imports; the import statement is spelled `import`",
@@ -117,6 +117,11 @@ const BREAKS: [(u32, &str, &str); 2] = [
         111,
         "`module` no longer declares the static layer; that declaration is spelled `structure`",
         "parser::the_old_static_layer_spelling_is_a_migration_error",
+    ),
+    (
+        112,
+        "a function body is a block: `fn f() -> t { e }` replaces `fn f() -> t = e;`",
+        "parser::the_old_function_body_spelling_is_a_migration_error",
     ),
 ];
 

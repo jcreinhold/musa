@@ -133,10 +133,11 @@ Bindings and functions are typed, and live at the file's root or inside blocks:
 ```musa
 let fifth: interval = P5;
 
-fn third(root: pitch) -> pitch = root up M3;
+fn third(root: pitch) -> pitch { root up M3 }
 
-fn transpose_answer(subject: music, by: interval) -> music =
-    transpose(by, subject);
+fn transpose_answer(subject: music, by: interval) -> music {
+    transpose(by, subject)
+}
 ```
 
 The primitive types include `bool`, `nat`, `ratio`, `duration`, `pitch`, `interval`, `scale`, `key`, `chord_class`,

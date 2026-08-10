@@ -19,7 +19,10 @@ fn each_static_failure_has_a_stable_diagnostic_code() {
         ("let value: unknown = 1;", Code::UnknownName),
         ("let value: nat = absent;", Code::UnknownName),
         ("let value: ratio = 999999999999999999999/1;", Code::OutOfRange),
-        ("fn one(x: nat) -> nat { x } let value: nat = one();", Code::TypeMismatch),
+        (
+            "fn one(x: nat) -> nat { x } let value: nat = one();",
+            Code::TypeMismatch,
+        ),
         ("let value: nat = 1; let value: nat = 2;", Code::DuplicateName),
         (
             "fn left(x: nat) -> nat { right(x) } fn right(x: nat) -> nat { left(x) }",

@@ -53,7 +53,7 @@ Decisions recorded against course correction §32:
 | piece score | `overlay` of its part timelines: **one** `Timeline<ScoreFact>` per compilation. |
 | `let x: music = music { … };` | A private contextual value. It captures checked scalar bindings and nested music values, but no absolute beat, voice scope, or mutable key/meter/tempo/clef state. It emits no occurrence until `use`. |
 | `use e;` where `e : music` | Instantiate `e` at the current voice cursor and scope, sequence its fragment, and advance by its exact extent. A shared binding plus a marked reference preserves one body and distinct call-site Origin. Not a kernel concept. |
-| `motif name(args) { … }` | Desugars to `fn name(args) -> music = music { … };` with a retained `Motif` role. Its `use` follows the preceding general rule; there is no motif-only evaluator. |
+| `motif name(args) { … }` | Desugars to `fn name(args) -> music { music { … } }` with a retained `Motif` role. Its `use` follows the preceding general rule; there is no motif-only evaluator. |
 | `repeat n { … }` | HIR-level `sequence` of `n` evaluations (§19); each iteration's occurrences gain the `RepeatIteration(i)` provenance step. |
 | `transpose up P5 { … }` | `map_payload` with the transposition function on `pitch` (§13); occurrences gain the `Transposition` provenance step. |
 | `c4/4 ~` (tie) | **No kernel construct, and no fact.** A tie says two written noteheads spell *one* occurrence, so elaboration merges the tied statement with its continuation on the spot: one occurrence, span the sum, `NotatedDuration` the compound spelling. Merging happens at every nesting level, so a tie inside a `retrograde` is gone before the block is reversed and needs no repair. A tie onto a different pitch, or with nothing after it, is a diagnostic. |
@@ -167,8 +167,8 @@ The source forms are roles and assertions over that interface:
 | Written form | Checked desugaring | Retained role |
 | --- | --- | --- |
 | `let x: music = music { body };` | contextual music binding | ordinary value |
-| `fn f(p: T) -> music = music { body };` | contextual music-producing closure | ordinary function |
-| `motif f(p: T) { body }` | `fn f(p: T) -> music = music { body };` | `Motif` |
+| `fn f(p: T) -> music { music { body } }` | contextual music-producing closure | ordinary function |
+| `motif f(p: T) { body }` | `fn f(p: T) -> music { music { body } }` | `Motif` |
 | `fragment x { body }` | `let x: music = music { body };` | `Fragment` |
 | named `bar x { body }` | contextual binding used both at declaration and by `use x` | `Bar` |
 | `use e;` | check `e : music`, instantiate, then sequence | none |

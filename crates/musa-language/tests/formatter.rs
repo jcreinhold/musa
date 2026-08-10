@@ -466,6 +466,41 @@ fn the_same_beat_lands_in_the_same_column() {
     );
 }
 
+/// A function body is one line when it fits and a stacked block when it does
+/// not — the same two shapes every other braced body has, chosen by width
+/// rather than by what the body happens to be.
+#[test]
+fn a_function_body_keeps_its_line_until_it_cannot() {
+    let source = "piece \"P\" {\nfn near(x: nat) -> nat { add(x, x) }\nfn far(x: nat) -> nat { add(add(add(x, x), add(x, x)), add(add(x, x), add(add(x, x), add(x, x)))) }\n}\n";
+    let formatted = fmt(source);
+    assert!(
+        formatted.contains("    fn near(x: nat) -> nat { add(x, x) }\n"),
+        "a short body keeps its line:\n{formatted}"
+    );
+    assert!(
+        formatted.contains("    fn far(x: nat) -> nat {\n        add("),
+        "a long body stacks and indents:\n{formatted}"
+    );
+    assert!(
+        formatted.contains("\n    }\n"),
+        "and its brace takes a line:\n{formatted}"
+    );
+    assert_eq!(fmt(&formatted), formatted, "idempotent");
+}
+
+/// Notation stays vertical. A `music` value in a body is a voice's worth of
+/// statements, and this language writes only a *bar* horizontally.
+#[test]
+fn a_music_body_stacks_however_short_it_is() {
+    let source = "piece \"P\" {\nfn figure() -> music { music { c5/4 } }\n}\n";
+    let formatted = fmt(source);
+    assert!(
+        formatted.contains("    fn figure() -> music {\n        music {\n            c5/4\n        }\n    }\n"),
+        "{formatted}"
+    );
+    assert_eq!(fmt(&formatted), formatted, "idempotent");
+}
+
 #[test]
 fn apply_edits_replaces_ranges_in_order() {
     use musa_language::{TextEdit, apply_edits};

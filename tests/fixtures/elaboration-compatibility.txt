@@ -4,6 +4,7 @@
 [breaks]
 break=109:`use` no longer imports; the import statement is spelled `import`:parser::the_old_import_spelling_is_a_migration_error
 break=111:`module` no longer declares the static layer; that declaration is spelled `structure`:parser::the_old_static_layer_spelling_is_a_migration_error
+break=112:a function body is a block: `fn f() -> t { e }` replaces `fn f() -> t = e;`:parser::the_old_function_body_spelling_is_a_migration_error
 
 [fixture open-shape]
 identity=afc9b69e3b6dfb44287976bceb9ad8c0

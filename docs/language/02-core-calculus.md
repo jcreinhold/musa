@@ -43,7 +43,7 @@ The standard rules for products, sums, arrows, and immutable bindings apply. Rep
 ```text
 Γ,x:σ ⊢ e : τ
 ────────────────────────────── Lam
-Γ ⊢ (fn (x:σ) -> τ = e) : σ→τ
+Γ ⊢ (fn (x:σ) -> τ { e }) : σ→τ
 
 Γ ⊢ f : σ→τ    Γ ⊢ a : σ
 ────────────────────────────── App
@@ -110,7 +110,13 @@ v   ::= c | (v₁,…,vₙ) | λ(x₁:τ₁,…,xₙ:τₙ).e
 ```
 
 There is no anonymous-function surface syntax. A checked named `fn` supplies the lambda, and an acyclic named `let`
-graph supplies the lexical lets. Multi-argument arrows and applications are notation for the corresponding curried
+graph supplies the lexical lets. A `fn` body is written `{ e }` (prompt 112), and the braces are a **derived form**
+erased by the elaboration `⟦{ e }⟧ = ⟦e⟧`: a block holds exactly one expression, so `⟦·⟧` is defined on it by that one
+equation and is total. The erasure is applied where the surface is read, before any core term exists, so the set of
+core terms above is unchanged and every theorem in §§5.2–5.5 quantifies over exactly the same set it did before the
+form was added. There is no new value form, no new reduction rule, and hence no new case in preservation, progress,
+determinism, or strong normalization — not because a block resembles a parenthesis, but because after `⟦·⟧` there is
+no block left for a proof to be about. Multi-argument arrows and applications are notation for the corresponding curried
 STLC terms. A surface call with named arguments is permuted into parameter order; an omitted default is inserted in
 that order and may refer only to earlier parameters. Thus defaults and argument names add no core reduction rule.
 Products currently have introduction but no surface projection, which is a conservative sublanguage of the product

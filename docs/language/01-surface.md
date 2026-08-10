@@ -13,11 +13,12 @@ The normative schematic grammar is:
 type         := primitive | "option" "[" type "]" | "list" "[" type "]"
               | "(" type ")" | "(" type "," type ("," type)* ")" | type "->" type
 binding      := "let" IDENT ":" type "=" expr ";"
-function     := "fn" IDENT "(" params? ")" "->" type "=" expr ";"
+function     := "fn" IDENT "(" params? ")" "->" type block
 param        := IDENT ":" type ("=" expr)?
 call         := expr "(" args? ")"
-expr         := literal | IDENT | path | "(" expr ")" | product | list | option
+expr         := literal | IDENT | path | "(" expr ")" | block | product | list | option
               | call | match | music-expr
+block        := "{" expr "}"
 product      := "(" expr "," expr ("," expr)* ")"
 list         := "[" (expr ("," expr)*)? "]"
 option       := "none" | "some" "(" expr ")"
@@ -63,7 +64,12 @@ Function arrows associate right; call binds tighter than pitch operators; pitch 
 first: parentheses, `step`, `up`/`down`. `root up M2 down m2` is rejected as ambiguous; write parentheses. `up` and
 `down` take a `pitch` or a `pitchclass` and return whichever they were given, so `c4 up M3` is a pitch and
 `chord_root(triad) up M3` is a pitch class: the operand's own type decides, and no register is invented for a value
-that never had one. Every `fn` has an expression body. A multi-statement musical body is explicitly `music { ... }`.
+that never had one. Every `fn` has an expression body, written in braces: `{ e }` is a block, it holds exactly one
+expression, and it means that expression — `⟦{ e }⟧ = ⟦e⟧` (`02-core-calculus.md` §5). A block is an expression form
+wherever an expression is admitted, not a special case of `fn`. There is no statement language inside it: no `let`, no
+`return`, no `;`-separated sequence, and a second expression in a block is a static error naming the rule. A
+multi-statement musical body is explicitly `music { ... }`, which is a different construct that happens to abut the
+body's brace.
 
 Named intervals use conventional `P`, `M`, `m`, and repeated `A`/`d` qualities. Because lowercase `d4` already means
 the written pitch D4, a singly diminished fourth is written `dim4`; `dd4` and `ddd4` remain the compact multiply
@@ -135,7 +141,7 @@ motif turn(root: pitch = c5) {
 }
 ```
 
-`motif turn(...) { body }` desugars to a named `fn turn(...) -> music = music { body };` with a `Motif` role retained
+`motif turn(...) { body }` desugars to a named `fn turn(...) -> music { music { body } }` with a `Motif` role retained
 for lints, extraction, editing, and Origin. `fragment name { body }` desugars to `let name: music = music { body };`
 with a `Fragment` role. `use e;` checks `e : music`, instantiates it at the current cursor, and sequences it. Existing
 `use name(args);` is the same rule, not a second invocation mechanism.

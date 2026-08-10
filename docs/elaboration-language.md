@@ -302,7 +302,7 @@ fn transpose_answer(subject: music, by: interval) -> music {
     transpose(by, subject)
 }
 
-fn third(root: pitch) -> pitch = root up M3;
+fn third(root: pitch) -> pitch { root up M3 }
 ```
 
 `motif` is retained but narrowed to what its name means:
