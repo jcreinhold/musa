@@ -9,8 +9,8 @@
  * lives beside the application, never in the `.musa` source.
  */
 
-import type { ViewMode } from "../engrave/options";
-import { ZOOM_STEPS } from "../engrave/options";
+import type { ViewMode } from "musa-engrave";
+import { ZOOM_STEPS } from "musa-engrave";
 
 const STORE = "musa:view-modes";
 

@@ -15,7 +15,7 @@
    * position belongs to is the workspace's answer, not this screen's.
    */
   import Score from "../lib/score/Score.svelte";
-  import type { ViewMode } from "../lib/engrave/options";
+  import type { ViewMode } from "musa-engrave";
   import Leaf from "../lib/ui/Leaf.svelte";
   import Margin from "../lib/ui/Margin.svelte";
   import SourcePane from "../lib/ui/SourcePane.svelte";

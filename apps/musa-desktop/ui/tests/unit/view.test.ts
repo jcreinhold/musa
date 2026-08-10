@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { ZOOM_STEPS } from "../../src/lib/engrave/options";
+import { ZOOM_STEPS } from "musa-engrave";
 import { ViewPreferences, stepForPinch } from "../../src/lib/state/view.svelte";
 
 const HUNDRED = ZOOM_STEPS.indexOf(100);

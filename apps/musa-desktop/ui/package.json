@@ -25,6 +25,7 @@
     "@replit/codemirror-vim": "^6.4.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.2",
+    "musa-engrave": "workspace:*",
     "verovio": "6.2.0"
   },
   "devDependencies": {

@@ -13,7 +13,7 @@
    * `prefers-reduced-motion` the swap is instant, which is the same guarantee
    * without the animation.
    */
-  import type { Box, PageSvg } from "../engrave/engraver";
+  import type { Box, PageSvg } from "musa-engrave";
   import Overlay from "./Overlay.svelte";
   import type { Marks } from "./geometry";
 

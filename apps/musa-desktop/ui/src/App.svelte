@@ -26,7 +26,7 @@
   import Settings from "./screens/Settings.svelte";
   import Sheet from "./screens/Sheet.svelte";
   import Announcer from "./lib/ui/Announcer.svelte";
-  import { ZOOM_STEPS } from "./lib/engrave/options";
+  import { ZOOM_STEPS } from "musa-engrave";
   import { bridge } from "./lib/session/bridge";
   import type { Reveal } from "./lib/state/reveal";
   import { commandFor, dispatch, type Screen, type Surface } from "./lib/commands/map";

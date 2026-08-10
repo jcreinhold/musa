@@ -6,7 +6,9 @@ settings:
 
 importers:
 
-  .:
+  .: {}
+
+  apps/musa-desktop/ui:
     dependencies:
       '@codemirror/autocomplete':
         specifier: ^6.20.3
@@ -38,6 +40,9 @@ importers:
       '@tauri-apps/plugin-dialog':
         specifier: ^2.7.2
         version: 2.7.2
+      musa-engrave:
+        specifier: workspace:*
+        version: link:../../../packages/musa-engrave
       verovio:
         specifier: 6.2.0
         version: 6.2.0
@@ -72,6 +77,18 @@ importers:
       vite:
         specifier: ^6.0.0
         version: 6.4.3(@types/node@26.2.0)
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@26.2.0)
+
+  packages/musa-engrave:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      verovio:
+        specifier: 6.2.0
+        version: 6.2.0
       vitest:
         specifier: ^3.2.7
         version: 3.2.7(@types/node@26.2.0)

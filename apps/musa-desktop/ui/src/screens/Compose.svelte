@@ -10,7 +10,7 @@
   import { untrack } from "svelte";
 
   import Score from "../lib/score/Score.svelte";
-  import type { ViewMode } from "../lib/engrave/options";
+  import type { ViewMode } from "musa-engrave";
   import Leaf from "../lib/ui/Leaf.svelte";
   import Margin from "../lib/ui/Margin.svelte";
   import GlyphButton from "../lib/ui/GlyphButton.svelte";

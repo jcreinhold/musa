@@ -16,13 +16,13 @@ import { beforeAll, describe, expect, it } from "vitest";
 import createVerovioModule from "verovio/wasm";
 import { VerovioToolkit } from "verovio/esm";
 
-import { DEFAULT_LAYOUT, verovioOptions } from "../../src/lib/engrave/options";
-import { identifiers, pageBox, sanitize } from "../../src/lib/engrave/sanitize";
+import { DEFAULT_LAYOUT, verovioOptions } from "../src/options";
+import { identifiers, pageBox, sanitize } from "../src/sanitize";
 
 const FIXTURES = ["glass-mountain", "counterpoint", "twinkle"] as const;
 
 function fixturePath(name: string): string {
-  return fileURLToPath(new URL(`../../fixtures/${name}.mei`, import.meta.url));
+  return fileURLToPath(new URL(`../fixtures/${name}.mei`, import.meta.url));
 }
 
 let raw: Record<string, string> = {};

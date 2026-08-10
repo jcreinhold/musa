@@ -1,0 +1,22 @@
+{
+  "name": "musa-engrave",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The shared worker engraver: Verovio, in a worker, behind the Engraver interface",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "verovio": "^6.2.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "verovio": "6.2.0",
+    "vitest": "^3.2.7"
+  }
+}

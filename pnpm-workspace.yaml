@@ -1,3 +1,7 @@
+packages:
+  - "packages/*"
+  - "apps/musa-desktop/ui"
+
 # esbuild ships a platform binary its install script unpacks; vite will not
 # start without it. Nothing else here is allowed to run code at install time.
 allowBuilds:

@@ -12,3 +12,6 @@
 .vscode/settings.json
 
 *.wav
+
+# Root pnpm workspace (prompt 139).
+node_modules/

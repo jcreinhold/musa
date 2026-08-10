@@ -21,8 +21,8 @@
   import { onMount, untrack } from "svelte";
 
   import { mark } from "../perf";
-  import { createEngraver, type Engraver, type Layout, type PageSvg } from "../engrave/engraver";
-  import { modeOptions, pageFor, pixelsPerUnit, type ViewMode } from "../engrave/options";
+  import { createEngraver, type Engraver, type Layout, type PageSvg } from "musa-engrave";
+  import { modeOptions, pageFor, pixelsPerUnit, type ViewMode } from "musa-engrave";
   import type { Workspace } from "../state/selection.svelte";
   import Page from "./Page.svelte";
   import {
