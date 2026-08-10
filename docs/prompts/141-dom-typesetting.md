@@ -1,7 +1,7 @@
 ---
 id: 141
 slug: dom-typesetting
-status: pending
+status: done
 depends_on: [140]
 phase: 5
 ---

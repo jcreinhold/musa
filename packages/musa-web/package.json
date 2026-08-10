@@ -14,11 +14,11 @@
     "dist",
     "wasm"
   ],
-  "sideEffects": false,
+  "sideEffects": true,
   "scripts": {
     "build": "vite build",
     "check": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run && playwright test"
   },
   "dependencies": {
     "musa-engrave": "workspace:*"
@@ -27,6 +27,7 @@
     "verovio": "^6.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
     "@types/node": "^26.1.2",
     "typescript": "^5.7.0",
     "verovio": "6.2.0",

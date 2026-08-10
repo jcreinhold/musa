@@ -6,11 +6,11 @@ import dts from "vite-plugin-dts";
  * one version across the workspace, chosen by the app); the CDN build that
  * inlines everything is prompt 143's.
  */
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [dts({ include: ["src"] })],
   // Relative asset URLs: a library is served from anywhere, never from the
-  // server root.
-  base: "./",
+  // server root. The dev server (Playwright) keeps absolute paths.
+  base: command === "build" ? "./" : "/",
   build: {
     lib: {
       entry: "src/index.ts",
@@ -25,4 +25,4 @@ export default defineConfig({
     target: "es2022",
   },
   worker: { format: "es" },
-});
+}));

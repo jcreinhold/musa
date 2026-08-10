@@ -1,7 +1,8 @@
 /**
  * Configuration for `@musa/web`. Set it before the first `parse`/`render`;
- * the MathJax config-before-load convention, as a function rather than as a
- * global (prompt 141 adds the script-tag form).
+ * the MathJax config-before-load convention, available both as this function
+ * and as a `window.MusaWeb` object set before the module loads (read once at
+ * import, then `configure` takes over).
  */
 
 export interface WebConfig {
@@ -11,6 +12,17 @@ export interface WebConfig {
    * package as-is; set it when a bundler relocates assets.
    */
   wasmUrl?: string;
+  /**
+   * A CSS selector for additional snippet containers, beyond the built-in
+   * forms (`text/musa` script tags, `<musa-score>`, `[data-musa]`).
+   */
+  selector?: string;
+  /** Typeset the whole document on load, without an explicit call. */
+  autoStart?: boolean;
+  /** After each batch, the elements that were typeset. */
+  onTypeset?: (elements: Element[]) => void;
+  /** A snippet or the environment failed; the box is already shown. */
+  onError?: (error: Error, element: Element | null) => void;
 }
 
 let config: WebConfig = {};

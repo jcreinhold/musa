@@ -1,0 +1,19 @@
+import { defineConfig } from "@playwright/test";
+
+/**
+ * The DOM suite (prompt 141): real pages served by vite's dev server, so the
+ * package's source is exercised exactly as a browser would load it.
+ */
+export default defineConfig({
+  testDir: "tests/dom",
+  reporter: "line",
+  use: {
+    baseURL: "http://localhost:5199",
+  },
+  webServer: {
+    command: "npx vite serve --port 5199 --strictPort",
+    url: "http://localhost:5199/tests/dom/pages/basic.html",
+    reuseExistingServer: process.env["CI"] === undefined,
+    timeout: 30_000,
+  },
+});
