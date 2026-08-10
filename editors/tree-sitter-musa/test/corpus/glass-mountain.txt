@@ -312,7 +312,6 @@ piece "Glass Mountain" {
                     (unit))))))
           (stage
             (call_expression
-              (identifier)
               (argument_list
                 (argument
                   (value_literal

@@ -204,10 +204,20 @@ module.exports = grammar({
       ),
 
     // Parser::import_stmt — `use "../library/motifs.musa";`
+    // A module may be named after a type or a domain keyword — `harmony`,
+    // `list`, `option`, `pitch`, `scale` — and the lexer writes the keyword
+    // token wherever the word appears. The path position is what makes the
+    // word a module name, exactly as in `Parser::import_stmt`.
     import_statement: ($) =>
       seq(
         'use',
-        field('path', choice($.string, seq($.identifier, ':', ':', choice($.identifier, 'list', 'option', 'pitch', 'scale')))),
+        field(
+          'path',
+          choice(
+            $.string,
+            seq($.identifier, ':', ':', choice($.identifier, 'harmony', 'list', 'option', 'pitch', 'scale')),
+          ),
+        ),
         ';',
       ),
 
@@ -606,7 +616,17 @@ module.exports = grammar({
     signal_chain: ($) => seq($.stage, repeat(seq('|>', $.stage))),
 
     // Parser::stage — a construction, a bare name, or the `output` terminal.
-    stage: ($) => choice($.call_expression, $.name_reference),
+    //
+    // `scale` is a processor here and a musical collection everywhere else,
+    // so the lexer writes the keyword token and this position accepts it
+    // (`Parser::stage`). Only this position: a nested construction inside an
+    // argument is identifiers alone, as `Parser::value` is, which is why the
+    // keyword is added by aliasing rather than by widening the shared rules.
+    stage: ($) => choice(alias($._stage_call, $.call_expression), alias($._stage_name, $.name_reference)),
+
+    _stage_call: ($) => seq(field('name', choice($.identifier, 'scale')), $.argument_list),
+
+    _stage_name: ($) => choice('output', 'master', $.identifier, 'scale'),
 
     // Parser::call_expr.
     call_expression: ($) => seq(field('name', $.identifier), $.argument_list),

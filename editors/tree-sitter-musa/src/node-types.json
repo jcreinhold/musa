@@ -368,6 +368,10 @@
           {
             "type": "identifier",
             "named": true
+          },
+          {
+            "type": "scale",
+            "named": false
           }
         ]
       }
@@ -936,6 +940,10 @@
         "types": [
           {
             "type": ":",
+            "named": false
+          },
+          {
+            "type": "harmony",
             "named": false
           },
           {

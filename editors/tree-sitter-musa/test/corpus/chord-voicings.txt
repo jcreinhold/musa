@@ -24,7 +24,6 @@ piece "Chord Voicings" {
   (piece_declaration
     (string)
     (import_statement
-      (identifier)
       (identifier))
     (import_statement
       (identifier)
