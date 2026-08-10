@@ -65,6 +65,24 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `pitch_or_else(fallback: pitch, present: pitch -> pitch, value: option[pitch]) -> pitch` — Read an optional pitch, using fallback when it is absent and present when it is available.
 - `nat_or_else(fallback: nat, present: nat -> nat, value: option[nat]) -> nat` — Read an optional natural number under the same explicit policy.
 
+## `std::pcset`
+
+- `pc(number: nat) -> pc12` — The pitch class a number names, reduced modulo twelve. `pc(13)` and `pc(1)` are one pitch class, because they are one residue.
+- `pcs(numbers: list[nat]) -> list[pc12]` — The pitch classes a list of numbers names, each reduced modulo twelve. A row or a set is written as its numbers, because that is what this domain has instead of letters.
+- `number_of(member: pc12) -> nat` — The canonical representative, zero through eleven.
+- `forget_spelling(spelled: pitchclass) -> pc12` — Forget a spelling. This is the only total map from the spelled domain into this one; it is not injective, and it has no inverse without a policy.
+- `spelled_in(member: pc12, collection: scale) -> option[pitchclass]` — Spell a pitch class inside one collection — the explicit policy that `forget_spelling` has no inverse without. Absent when the collection holds no note of this pitch class.
+- `transposed_by(index: nat, member: pc12) -> pc12` — T_n: transposition by n semitones, `x + n` modulo twelve. The index comes first so that `transposed_by(3)` is the transposition itself, a `pc12 -> pc12` that `map_pc` can carry across a list.
+- `inverted_about(index: nat, member: pc12) -> pc12` — I_n: inversion about n, `n - x` modulo twelve. I_0 is the plain mirror through zero. The twelve transpositions and the twelve inversions are together the whole 24-element affine group on `pc12` — and 24 is the number, whatever a row's four form labels might suggest.
+- `map_pc(function: pc12 -> pc12, members: list[pc12]) -> list[pc12]` — Apply one pitch-class function to every member of a finite list.
+- `pcset(members: list[pc12]) -> pcset12` — The set of everything listed, however often it was listed. A set cannot hold a duplicate, so this cannot fail: a repetition is a mistake only where order matters, which is `std::serial`.
+- `members_of(set: pcset12) -> list[pc12]` — The members, ascending from zero. This is the set's own order and not its normal order.
+- `set_transposed(set: pcset12, index: nat) -> pcset12` — T_n applied to every member.
+- `set_inverted(set: pcset12, index: nat) -> pcset12` — I_n applied to every member.
+- `normal_order(set: pcset12) -> list[pc12]` — Normal order: the rotation of the ascending members packed most tightly to the left. Ties break inward — first to last, then first to the one before last, and so on — and finally by the lowest starting pitch class.
+- `prime_form(set: pcset12) -> pcset12` — Prime form: the set class this set belongs to. The normal orders of the set and of its inversion are each transposed to begin on zero, and whichever reads lower is the answer.
+- `interval_class_vector(set: pcset12) -> list[nat]` — The interval-class vector: six counts, for interval classes one through six. Six and not twelve, because interval class seven is interval class five heard the other way round.
+
 ## `std::pitch`
 
 - `unison: interval` — Open Music Theory `016-intervals.md` supplies the conventional generic/specific interval names; `005-half-steps-whole-steps-and-accidentals.md` supplies the spelling distinction retained by these values. The written unison has no staff displacement and no chromatic displacement.
@@ -93,6 +111,25 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `down_steps(from: degree, steps: nat) -> degree` — Move a degree down by a whole number of scale steps.
 - `raise(from: degree) -> degree` — Raise a degree chromatically without moving its coordinate.
 - `lower(from: degree) -> degree` — Lower a degree chromatically without moving its coordinate.
+
+## `std::serial`
+
+- `row(pcs: list[pc12]) -> option[row12]` — The row a sequence spells, or nothing when the sequence is not one.
+- `repeated_positions(pcs: list[pc12]) -> list[nat]` — The order positions whose pitch class already appeared earlier — the exact reason a sequence failed to be a row. The first occurrence is not among them, because that is where the pitch class belongs.
+- `missing_classes(pcs: list[pc12]) -> list[pc12]` — The pitch classes a sequence never names, ascending — the other exact reason. A sequence of the right length has one of these lists empty exactly when it has the other empty.
+- `pcs_of(series: row12) -> list[pc12]` — The row's pitch classes, in order position order.
+- `transposed(series: row12, index: nat) -> row12` — P: transposition by n semitones, order positions untouched.
+- `inverted(series: row12, index: nat) -> row12` — I: inversion about n, order positions untouched.
+- `retrograde_of(series: row12) -> row12` — R: the order positions reversed, pitch classes untouched. An involution, and it commutes with P and I because it acts on the other side of the row.
+- `retrograde_inversion_of(series: row12, index: nat) -> row12` — RI: the retrograde of the inversion, which is also the inversion of the retrograde. Writing it both ways and getting one row is what "commutes" means here.
+- `matrix(series: row12) -> list[row12]` — The twelve-tone matrix, as twelve rows. Row zero is the row as written; row i is the transposition beginning on the ith pitch class of the inversion about the row's own head, so every column read downward is an inversion. The construction fixes no naming convention, because the rows are rows and not labels: which transposition is called P0 is the question the two functions below answer, differently and by name.
+- `fixed_zero_index(series: row12) -> nat` — The transposition index under the fixed-zero convention: P0 is the form beginning on pitch class zero, so a row's index is simply the number of the pitch class it begins on.
+- `moveable_zero_index(reference: row12, form: row12) -> nat` — The transposition index under the moveable-zero convention: P0 is the row as written, so an index is only meaningful relative to a stated reference row. `moveable_zero_index(reference, form)` is how far the form stands above the reference.
+- `distinct_forms(series: row12) -> nat` — How many *distinct* rows the 48 labelled forms produce. Forty-eight for a generic row; fewer for a row some labelled operation fixes.
+- `symmetries(series: row12) -> nat` — The order of the row's stabilizer: how many of the 48 labelled operations send the row to itself. This times `distinct_forms` is always 48, which is the orbit-stabilizer accounting the four labels are so often asked to do on their own.
+- `row_spelled_in(series: row12, collection: scale) -> list[option[pitchclass]]` — Spell one row inside a collection, position by position. A pitch class the collection cannot spell is absent, and the row keeps its length, so a projection that lost notes is visible as the gaps it left.
+- `spelling_in(collection: scale, member: pc12) -> option[pitchclass]` — The spelling policy of one collection, as a function a row can be carried across.
+- `first_pc(series: row12) -> pc12` — The pitch class a row begins on. Order position zero always exists, because a row has twelve of them.
 
 ## `std::voicing`
 

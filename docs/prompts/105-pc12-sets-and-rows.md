@@ -1,7 +1,7 @@
 ---
 id: 105
 slug: pc12-sets-and-rows
-status: pending
+status: done
 depends_on: [96, 100]
 phase: 3
 ---

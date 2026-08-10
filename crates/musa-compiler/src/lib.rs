@@ -46,6 +46,7 @@ mod lint;
 mod marks;
 mod module;
 mod origin;
+mod pc12;
 mod performance;
 mod pitch;
 mod profile;

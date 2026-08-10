@@ -377,6 +377,9 @@ pub(crate) enum Type {
     ChordClass,
     Triad,
     Voicing,
+    Pc12,
+    PcSet12,
+    Row12,
     Product(Vec<Self>),
     Option(Box<Self>),
     List(Box<Self>),
@@ -402,6 +405,9 @@ impl std::fmt::Display for Type {
             Self::ChordClass => out.write_str("chord_class"),
             Self::Triad => out.write_str("triad"),
             Self::Voicing => out.write_str("voicing"),
+            Self::Pc12 => out.write_str("pc12"),
+            Self::PcSet12 => out.write_str("pcset12"),
+            Self::Row12 => out.write_str("row12"),
             Self::Product(members) => {
                 out.write_str("(")?;
                 for (index, member) in members.iter().enumerate() {
@@ -607,6 +613,28 @@ enum Primitive {
     CloseVoicing,
     DropVoicing,
     OmitVoicing,
+    Pc12Of,
+    Pc12Number,
+    Pc12Forget,
+    Pc12Transposed,
+    Pc12Inverted,
+    Pc12Spelled,
+    PcSet12Of,
+    PcSet12Members,
+    PcSet12Normal,
+    PcSet12Prime,
+    PcSet12Vector,
+    Row12Of,
+    Row12Pcs,
+    Row12Head,
+    Row12Transposed,
+    Row12Inverted,
+    Row12Retrograde,
+    Row12Matrix,
+    Row12Forms,
+    Row12Symmetries,
+    Row12Repeats,
+    Row12Missing,
 }
 
 #[derive(Clone, Copy)]
@@ -616,7 +644,7 @@ struct PrimitiveOwnership<T> {
     hidden_information: &'static str,
 }
 
-const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 40] = [
+const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 62] = [
     PrimitiveOwnership {
         operation: Primitive::NatFold,
         spelling: "nat_fold",
@@ -817,6 +845,116 @@ const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 40] = [
         spelling: "omit_voicing",
         hidden_information: "the private member stack, which is what says which pitch an omission removes",
     },
+    PrimitiveOwnership {
+        operation: Primitive::Pc12Of,
+        spelling: "pc12_of",
+        hidden_information: "the canonical representative of a residue class modulo twelve",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Pc12Number,
+        spelling: "pc12_number",
+        hidden_information: "the canonical representative, which is the only number a residue class has",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Pc12Forget,
+        spelling: "pc12_forget",
+        hidden_information: "the chromatic coordinate of a spelled pitch class, taken modulo twelve",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Pc12Transposed,
+        spelling: "pc12_transposed",
+        hidden_information: "modular addition, which a `nat` without subtraction cannot express",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Pc12Inverted,
+        spelling: "pc12_inverted",
+        hidden_information: "modular subtraction, which a `nat` without subtraction cannot express",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Pc12Spelled,
+        spelling: "pc12_spelled",
+        hidden_information: "the collection's spelled members, searched for the one this class forgets to",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::PcSet12Of,
+        spelling: "pcset12_of",
+        hidden_information: "the twelve-bit membership word that makes duplication unrepresentable",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::PcSet12Members,
+        spelling: "pcset12_members",
+        hidden_information: "the membership word, read out ascending",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::PcSet12Normal,
+        spelling: "pcset12_normal",
+        hidden_information: "every rotation of the set and the compactness order that chooses between them",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::PcSet12Prime,
+        spelling: "pcset12_prime",
+        hidden_information: "the normal orders of the set and its inversion, and which of the two reads lower",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::PcSet12Vector,
+        spelling: "pcset12_vector",
+        hidden_information: "every unordered pair of members and the interval class each realizes",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Row12Of,
+        spelling: "row12_of",
+        hidden_information: "the permutation invariant: twelve order positions and each pitch class once",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Row12Pcs,
+        spelling: "row12_pcs",
+        hidden_information: "the private order-position array",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Row12Head,
+        spelling: "row12_head",
+        hidden_information: "order position zero of the private array, which the finite list eliminators cannot index",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Row12Transposed,
+        spelling: "row12_transposed",
+        hidden_information: "modular addition, and the finite-closure lemma that keeps the result a row",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Row12Inverted,
+        spelling: "row12_inverted",
+        hidden_information: "modular subtraction, and the finite-closure lemma that keeps the result a row",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Row12Retrograde,
+        spelling: "row12_retrograde",
+        hidden_information: "reversal of the order positions, which the finite list eliminators cannot express",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Row12Matrix,
+        spelling: "row12_matrix",
+        hidden_information: "the classical construction: the inversion about the row's own head, read as starting pitches",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Row12Forms,
+        spelling: "row12_forms",
+        hidden_information: "the forty-eight labelled forms, compared for equality and counted once each",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Row12Symmetries,
+        spelling: "row12_symmetries",
+        hidden_information: "the forty-eight labelled forms, counted where they fix the row",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Row12Repeats,
+        spelling: "row12_repeats",
+        hidden_information: "pitch-class equality, which the surface has no operator for",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Row12Missing,
+        spelling: "row12_missing",
+        hidden_information: "pitch-class equality against the whole finite domain",
+    },
 ];
 
 impl Primitive {
@@ -862,6 +1000,28 @@ impl Primitive {
             Self::CloseVoicing => "close_voicing",
             Self::DropVoicing => "drop_voicing",
             Self::OmitVoicing => "omit_voicing",
+            Self::Pc12Of => "pc12_of",
+            Self::Pc12Number => "pc12_number",
+            Self::Pc12Forget => "pc12_forget",
+            Self::Pc12Transposed => "pc12_transposed",
+            Self::Pc12Inverted => "pc12_inverted",
+            Self::Pc12Spelled => "pc12_spelled",
+            Self::PcSet12Of => "pcset12_of",
+            Self::PcSet12Members => "pcset12_members",
+            Self::PcSet12Normal => "pcset12_normal",
+            Self::PcSet12Prime => "pcset12_prime",
+            Self::PcSet12Vector => "pcset12_vector",
+            Self::Row12Of => "row12_of",
+            Self::Row12Pcs => "row12_pcs",
+            Self::Row12Head => "row12_head",
+            Self::Row12Transposed => "row12_transposed",
+            Self::Row12Inverted => "row12_inverted",
+            Self::Row12Retrograde => "row12_retrograde",
+            Self::Row12Matrix => "row12_matrix",
+            Self::Row12Forms => "row12_forms",
+            Self::Row12Symmetries => "row12_symmetries",
+            Self::Row12Repeats => "row12_repeats",
+            Self::Row12Missing => "row12_missing",
         }
     }
 }
@@ -944,6 +1104,9 @@ enum Value {
     ChordClass(crate::chord::ChordClass),
     Triad(crate::chord::Triad),
     Voicing(crate::chord::Voicing),
+    Pc12(crate::pc12::Pc12),
+    PcSet12(crate::pc12::PcSet12),
+    Row12(crate::pc12::Row12),
     Product(Vec<Self>),
     Option { member: Type, value: Option<Box<Self>> },
     List { member: Type, values: Vec<Self> },
@@ -1321,6 +1484,9 @@ impl Value {
             Self::ChordClass(_) => Type::ChordClass,
             Self::Triad(_) => Type::Triad,
             Self::Voicing(_) => Type::Voicing,
+            Self::Pc12(_) => Type::Pc12,
+            Self::PcSet12(_) => Type::PcSet12,
+            Self::Row12(_) => Type::Row12,
             Self::Product(members) => Type::Product(members.iter().map(Self::ty).collect()),
             Self::Option { member, .. } => Type::Option(Box::new(member.clone())),
             Self::List { member, .. } => Type::List(Box::new(member.clone())),
@@ -1380,6 +1546,13 @@ impl Value {
             }
             Self::ChordClass(value) => chord_witness(*value),
             Self::Triad(value) => chord_witness(value.class()).rotate_left(1),
+            Self::Pc12(value) => u64::from(value.number()),
+            Self::PcSet12(value) => value.members().fold(0u64, |witness, member| {
+                witness.rotate_left(5) ^ u64::from(member.number())
+            }),
+            Self::Row12(value) => value.pcs().fold(1u64, |witness, member| {
+                witness.rotate_left(5) ^ u64::from(member.number())
+            }),
             Self::Voicing(value) => value.pitches().fold(chord_witness(value.class()), |witness, pitch| {
                 witness.rotate_left(5) ^ Self::Pitch(pitch).normalization_witness()
             }),
@@ -1770,6 +1943,9 @@ fn check_and_evaluate(
             | Value::ChordClass(_)
             | Value::Triad(_)
             | Value::Voicing(_)
+            | Value::Pc12(_)
+            | Value::PcSet12(_)
+            | Value::Row12(_)
             | Value::Product(_)
             | Value::Option { .. }
             | Value::List { .. }
@@ -2099,6 +2275,9 @@ fn legacy_default(ty: &Type, written: &str) -> Option<Value> {
         | Type::ChordClass
         | Type::Triad
         | Type::Voicing
+        | Type::Pc12
+        | Type::PcSet12
+        | Type::Row12
         | Type::Product(_)
         | Type::Option(_)
         | Type::List(_)
@@ -2125,6 +2304,9 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::ChordClass
         | Type::Triad
         | Type::Voicing
+        | Type::Pc12
+        | Type::PcSet12
+        | Type::Row12
         | Type::Music
         | Type::Product(_)
         | Type::Option(_)
@@ -2195,13 +2377,16 @@ fn lower_type(mut resolver: Option<&mut Resolver>, node: &SyntaxNode) -> Option<
             "chord_class" => Some(Type::ChordClass),
             "triad" => Some(Type::Triad),
             "voicing" => Some(Type::Voicing),
+            "pc12" => Some(Type::Pc12),
+            "pcset12" => Some(Type::PcSet12),
+            "row12" => Some(Type::Row12),
             "music" => Some(Type::Music),
             _ => {
                 if let Some(resolver) = resolver.as_deref_mut() {
                     resolver.report(
                         Diagnostic::error(Code::UnknownName, format!("unknown type `{text}`"))
                             .at(crate::resolve::trimmed_span(node), "not a value type")
-                            .help("use `bool`, `nat`, `ratio`, `duration`, `pitch`, `pitchclass`, `interval`, `scale`, `key`, `degree`, `frame`, `chord_class`, `triad`, `voicing`, a product, or a function type"),
+                            .help("use `bool`, `nat`, `ratio`, `duration`, `pitch`, `pitchclass`, `interval`, `scale`, `key`, `degree`, `frame`, `chord_class`, `triad`, `voicing`, `pc12`, `pcset12`, `row12`, a product, or a function type"),
                     );
                 }
                 None
@@ -2955,6 +3140,9 @@ impl Checker<'_> {
             | Value::ChordClass(_)
             | Value::Triad(_)
             | Value::Voicing(_)
+            | Value::Pc12(_)
+            | Value::PcSet12(_)
+            | Value::Row12(_)
             | Value::Product(_)
             | Value::Option { .. }
             | Value::List { .. }
@@ -3134,7 +3322,12 @@ impl Checker<'_> {
             | Primitive::ChordOver
             | Primitive::VoicingOf
             | Primitive::CloseVoicing
-            | Primitive::OmitVoicing => 2,
+            | Primitive::OmitVoicing
+            | Primitive::Pc12Transposed
+            | Primitive::Pc12Inverted
+            | Primitive::Pc12Spelled
+            | Primitive::Row12Transposed
+            | Primitive::Row12Inverted => 2,
             Primitive::Range
             | Primitive::IntervalInverse
             | Primitive::PitchClassOf
@@ -3154,7 +3347,24 @@ impl Checker<'_> {
             | Primitive::VoicingPitches
             | Primitive::VoicingBass
             | Primitive::VoicingChord
-            | Primitive::VoicingPosition => 1,
+            | Primitive::VoicingPosition
+            | Primitive::Pc12Of
+            | Primitive::Pc12Number
+            | Primitive::Pc12Forget
+            | Primitive::PcSet12Of
+            | Primitive::PcSet12Members
+            | Primitive::PcSet12Normal
+            | Primitive::PcSet12Prime
+            | Primitive::PcSet12Vector
+            | Primitive::Row12Of
+            | Primitive::Row12Pcs
+            | Primitive::Row12Head
+            | Primitive::Row12Retrograde
+            | Primitive::Row12Matrix
+            | Primitive::Row12Forms
+            | Primitive::Row12Symmetries
+            | Primitive::Row12Repeats
+            | Primitive::Row12Missing => 1,
         };
         if raw.len() != wanted {
             self.resolver.report(
@@ -3176,6 +3386,81 @@ impl Checker<'_> {
             .filter_map(|argument| child_of(argument, is_expr_node))
             .collect();
         let (arguments, ty) = match primitive {
+            Primitive::Pc12Of => {
+                let number = self.check(nodes.first()?, Some(&Type::Nat))?;
+                (vec![number], Type::Pc12)
+            }
+            Primitive::Pc12Number => {
+                let member = self.check(nodes.first()?, Some(&Type::Pc12))?;
+                (vec![member], Type::Nat)
+            }
+            Primitive::Pc12Forget => {
+                let spelled = self.check(nodes.first()?, Some(&Type::PitchClass))?;
+                (vec![spelled], Type::Pc12)
+            }
+            Primitive::Pc12Transposed | Primitive::Pc12Inverted => {
+                let member = self.check(nodes.first()?, Some(&Type::Pc12))?;
+                let index = self.check(nodes.get(1)?, Some(&Type::Nat))?;
+                (vec![member, index], Type::Pc12)
+            }
+            Primitive::Pc12Spelled => {
+                let member = self.check(nodes.first()?, Some(&Type::Pc12))?;
+                let collection = self.check(nodes.get(1)?, Some(&Type::Scale))?;
+                (vec![member, collection], Type::Option(Box::new(Type::PitchClass)))
+            }
+            Primitive::PcSet12Of => {
+                let members = self.check(nodes.first()?, Some(&Type::List(Box::new(Type::Pc12))))?;
+                (vec![members], Type::PcSet12)
+            }
+            Primitive::PcSet12Members | Primitive::PcSet12Normal => {
+                let set = self.check(nodes.first()?, Some(&Type::PcSet12))?;
+                (vec![set], Type::List(Box::new(Type::Pc12)))
+            }
+            Primitive::PcSet12Prime => {
+                let set = self.check(nodes.first()?, Some(&Type::PcSet12))?;
+                (vec![set], Type::PcSet12)
+            }
+            Primitive::PcSet12Vector => {
+                let set = self.check(nodes.first()?, Some(&Type::PcSet12))?;
+                (vec![set], Type::List(Box::new(Type::Nat)))
+            }
+            Primitive::Row12Of => {
+                let pcs = self.check(nodes.first()?, Some(&Type::List(Box::new(Type::Pc12))))?;
+                (vec![pcs], Type::Option(Box::new(Type::Row12)))
+            }
+            Primitive::Row12Pcs => {
+                let row = self.check(nodes.first()?, Some(&Type::Row12))?;
+                (vec![row], Type::List(Box::new(Type::Pc12)))
+            }
+            Primitive::Row12Head => {
+                let row = self.check(nodes.first()?, Some(&Type::Row12))?;
+                (vec![row], Type::Pc12)
+            }
+            Primitive::Row12Transposed | Primitive::Row12Inverted => {
+                let row = self.check(nodes.first()?, Some(&Type::Row12))?;
+                let index = self.check(nodes.get(1)?, Some(&Type::Nat))?;
+                (vec![row, index], Type::Row12)
+            }
+            Primitive::Row12Retrograde => {
+                let row = self.check(nodes.first()?, Some(&Type::Row12))?;
+                (vec![row], Type::Row12)
+            }
+            Primitive::Row12Matrix => {
+                let row = self.check(nodes.first()?, Some(&Type::Row12))?;
+                (vec![row], Type::List(Box::new(Type::Row12)))
+            }
+            Primitive::Row12Forms | Primitive::Row12Symmetries => {
+                let row = self.check(nodes.first()?, Some(&Type::Row12))?;
+                (vec![row], Type::Nat)
+            }
+            Primitive::Row12Repeats => {
+                let pcs = self.check(nodes.first()?, Some(&Type::List(Box::new(Type::Pc12))))?;
+                (vec![pcs], Type::List(Box::new(Type::Nat)))
+            }
+            Primitive::Row12Missing => {
+                let pcs = self.check(nodes.first()?, Some(&Type::List(Box::new(Type::Pc12))))?;
+                (vec![pcs], Type::List(Box::new(Type::Pc12)))
+            }
             Primitive::IntervalAdd => {
                 let first = self.check(nodes.first()?, Some(&Type::Interval))?;
                 let second = self.check(nodes.get(1)?, Some(&Type::Interval))?;
@@ -3500,6 +3785,9 @@ fn is_exhaustive(target: &Type, coverage: &IndexSet<Coverage>) -> bool {
             | Type::ChordClass
             | Type::Triad
             | Type::Voicing
+            | Type::Pc12
+            | Type::PcSet12
+            | Type::Row12
             | Type::Music
             | Type::Product(_)
             | Type::Function(_, _) => false,
@@ -3522,6 +3810,9 @@ fn literal_key(value: &Value) -> String {
         Value::ChordClass(value) => format!("chord_class:{value}"),
         Value::Triad(value) => format!("triad:{value}"),
         Value::Voicing(value) => format!("voicing:{value}"),
+        Value::Pc12(value) => format!("pc12:{value}"),
+        Value::PcSet12(value) => format!("pcset12:{value}"),
+        Value::Row12(value) => format!("row12:{value}"),
         Value::Product(_)
         | Value::Option { .. }
         | Value::List { .. }
@@ -3751,6 +4042,9 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::ChordClass(_)
                 | Value::Triad(_)
                 | Value::Voicing(_)
+                | Value::Pc12(_)
+                | Value::PcSet12(_)
+                | Value::Row12(_)
                 | Value::Product(_)
                 | Value::Option { .. }
                 | Value::List { .. }
@@ -3834,6 +4128,9 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     | Value::ChordClass(_)
                     | Value::Triad(_)
                     | Value::Voicing(_)
+                    | Value::Pc12(_)
+                    | Value::PcSet12(_)
+                    | Value::Row12(_)
                     | Value::Product(_)
                     | Value::Option { .. }
                     | Value::List { .. }
@@ -4073,6 +4370,137 @@ fn eval_primitive(
         .map(|argument| eval(argument, environment, meter))
         .collect::<Option<Vec<_>>>()?;
     match primitive {
+        Primitive::Pc12Of => Some(Value::Pc12(crate::pc12::Pc12::from_number(nat_value(values.first()?)?))),
+        Primitive::Pc12Number => {
+            let Value::Pc12(member) = values.first()? else {
+                return None;
+            };
+            Some(Value::Nat(u64::from(member.number())))
+        }
+        Primitive::Pc12Forget => {
+            let Value::PitchClass(spelled) = values.first()? else {
+                return None;
+            };
+            Some(Value::Pc12(crate::pc12::Pc12::forgetting(*spelled)))
+        }
+        Primitive::Pc12Transposed | Primitive::Pc12Inverted => {
+            let Value::Pc12(member) = values.first()? else {
+                return None;
+            };
+            let index = nat_value(values.get(1)?)?;
+            Some(Value::Pc12(if primitive == Primitive::Pc12Transposed {
+                member.transposed(index)
+            } else {
+                member.inverted(index)
+            }))
+        }
+        Primitive::Pc12Spelled => {
+            let (Value::Pc12(member), Value::Scale(collection)) = (values.first()?, values.get(1)?) else {
+                return None;
+            };
+            Some(optional(
+                Type::PitchClass,
+                member.spelled(*collection).map(Value::PitchClass),
+            ))
+        }
+        Primitive::PcSet12Of => Some(Value::PcSet12(crate::pc12::PcSet12::of(pc12_list(values.first()?)?))),
+        Primitive::PcSet12Members | Primitive::PcSet12Normal => {
+            let Value::PcSet12(set) = values.first()? else {
+                return None;
+            };
+            let members: Vec<crate::pc12::Pc12> = if primitive == Primitive::PcSet12Members {
+                set.members().collect()
+            } else {
+                set.normal_order()
+            };
+            Some(pc12_values(members))
+        }
+        Primitive::PcSet12Prime => {
+            let Value::PcSet12(set) = values.first()? else {
+                return None;
+            };
+            Some(Value::PcSet12(set.prime_form()))
+        }
+        Primitive::PcSet12Vector => {
+            let Value::PcSet12(set) = values.first()? else {
+                return None;
+            };
+            Some(Value::List {
+                member: Type::Nat,
+                values: set
+                    .interval_class_vector()
+                    .into_iter()
+                    .map(|count| Value::Nat(u64::from(count)))
+                    .collect(),
+            })
+        }
+        Primitive::Row12Of => {
+            let pcs = pc12_list(values.first()?)?;
+            Some(optional(
+                Type::Row12,
+                crate::pc12::Row12::checked(&pcs).map(Value::Row12),
+            ))
+        }
+        Primitive::Row12Pcs => {
+            let Value::Row12(row) = values.first()? else {
+                return None;
+            };
+            Some(pc12_values(row.pcs().collect()))
+        }
+        Primitive::Row12Head => {
+            let Value::Row12(row) = values.first()? else {
+                return None;
+            };
+            Some(Value::Pc12(row.head()))
+        }
+        Primitive::Row12Transposed | Primitive::Row12Inverted => {
+            let Value::Row12(row) = values.first()? else {
+                return None;
+            };
+            let index = nat_value(values.get(1)?)?;
+            Some(Value::Row12(if primitive == Primitive::Row12Transposed {
+                row.transposed(index)
+            } else {
+                row.inverted(index)
+            }))
+        }
+        Primitive::Row12Retrograde => {
+            let Value::Row12(row) = values.first()? else {
+                return None;
+            };
+            Some(Value::Row12(row.retrograde()))
+        }
+        Primitive::Row12Matrix => {
+            let Value::Row12(row) = values.first()? else {
+                return None;
+            };
+            Some(Value::List {
+                member: Type::Row12,
+                values: row.matrix().into_iter().map(Value::Row12).collect(),
+            })
+        }
+        Primitive::Row12Forms | Primitive::Row12Symmetries => {
+            let Value::Row12(row) = values.first()? else {
+                return None;
+            };
+            let count = if primitive == Primitive::Row12Forms {
+                row.forms()
+            } else {
+                row.symmetries()
+            };
+            Some(Value::Nat(u64::from(count)))
+        }
+        Primitive::Row12Repeats => {
+            let pcs = pc12_list(values.first()?)?;
+            Some(Value::List {
+                member: Type::Nat,
+                values: crate::pc12::repeated_positions(&pcs)
+                    .into_iter()
+                    .map(Value::Nat)
+                    .collect(),
+            })
+        }
+        Primitive::Row12Missing => Some(pc12_values(crate::pc12::missing_classes(&pc12_list(values.first()?)?))),
         Primitive::IntervalAdd => {
             let Value::Interval(first) = values.first()? else {
                 return None;
@@ -4253,6 +4681,9 @@ fn eval_primitive(
                     | Value::ChordClass(_)
                     | Value::Triad(_)
                     | Value::Voicing(_)
+                    | Value::Pc12(_)
+                    | Value::PcSet12(_)
+                    | Value::Row12(_)
                     | Value::Product(_)
                     | Value::Option { .. }
                     | Value::List { .. }
@@ -4495,6 +4926,35 @@ fn optional(member: Type, value: Option<Value>) -> Value {
     }
 }
 
+/// The unspelled pitch classes a checked `list[pc12]` holds.
+///
+/// The list's member type was already checked, so a value of any other shape
+/// means the evaluator and the checker disagree — which is a bug, not a
+/// musical failure, and so answers nothing rather than guessing.
+fn pc12_list(value: &Value) -> Option<Vec<crate::pc12::Pc12>> {
+    let Value::List { values, .. } = value else {
+        return None;
+    };
+    values
+        .iter()
+        .map(|member| {
+            if let Value::Pc12(member) = member {
+                Some(*member)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Unspelled pitch classes as a core list value.
+fn pc12_values(members: Vec<crate::pc12::Pc12>) -> Value {
+    Value::List {
+        member: Type::Pc12,
+        values: members.into_iter().map(Value::Pc12).collect(),
+    }
+}
+
 fn nat_value(value: &Value) -> Option<u64> {
     if let Value::Nat(value) = value {
         Some(*value)
@@ -4591,6 +5051,9 @@ fn value_shape(value: &Value) -> (u64, u64) {
         Value::Scale(_) => (1, 24),
         Value::Frame(_) => (1, 36),
         Value::ChordClass(_) | Value::Triad(_) => (1, 24),
+        Value::Pc12(_) => (1, 1),
+        Value::PcSet12(_) => (1, 2),
+        Value::Row12(_) => (1, 12),
         Value::Voicing(value) => (1, u64::try_from(value.size()).unwrap_or(u64::MAX).saturating_mul(12)),
         Value::Product(members) => aggregate_shape(members.iter()),
         Value::Option { value, .. } => value.as_deref().map_or((1, 1), |value| {
@@ -4877,7 +5340,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            48,
+            70,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();

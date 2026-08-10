@@ -86,9 +86,20 @@ A `PCSet` is a finite subset of `pc12`; transposition and inversion are the mod-
 checks exactly 12 entries and no duplicate. `P`, `I`, `R`, and `RI` are finite derived permutations as in
 `108-basics-of-twelve-tone-theory.md`.
 
-Row-form labels carry an explicit `RowConvention` because published naming conventions vary
-(`109-naming-conventions-for-rows.md`). A generic row may have 48 distinct forms; invariant transformations of a
-symmetric row can identify forms, so cardinality is computed rather than asserted (`110-row-properties.md`).
+Normal order is the rotation of the ascending members packed most tightly to the left; ties break inward — first to
+last, then first to the one before last, and so on — and finally by the lowest starting pitch class. Prime form
+transposes the normal orders of the set and of its inversion each to begin on zero and takes whichever reads lower.
+The interval-class vector has six entries and not twelve, because interval class seven is interval class five heard
+the other way round (`103-interval-class-vectors.md`).
+
+A row's matrix is twelve rows: row zero is the row as written, and row *i* is the transposition beginning on the *i*th
+pitch class of the inversion about the row's own head, so every column read downward is an inversion. The construction
+names no label, because published naming conventions vary (`109-naming-conventions-for-rows.md`). Which transposition
+is called P0 is asked separately and by name — `fixed_zero_index` for the convention where P0 begins on pitch class
+zero, `moveable_zero_index` for the one where P0 is a stated reference row — rather than by a convention value the
+operations carry, because the operations produce rows and not labels. A generic row may have 48 distinct forms;
+invariant transformations of a symmetric row can identify forms, so cardinality is computed rather than asserted
+(`110-row-properties.md`).
 
 There are 24 affine pitch-class operations: the 12 transpositions `Tₙ(x)=x+n` and the 12 inversions
 `Iₙ(x)=-x+n`. They are distinct functions on `pc12`, closed under composition, and every composition again has

@@ -99,8 +99,10 @@ const CORE_URI: &str = "musa-stdlib:/std/core.musa";
 const HARMONY_URI: &str = "musa-stdlib:/std/harmony.musa";
 const LIST_URI: &str = "musa-stdlib:/std/list.musa";
 const OPTION_URI: &str = "musa-stdlib:/std/option.musa";
+const PCSET_URI: &str = "musa-stdlib:/std/pcset.musa";
 const PITCH_URI: &str = "musa-stdlib:/std/pitch.musa";
 const SCALE_URI: &str = "musa-stdlib:/std/scale.musa";
+const SERIAL_URI: &str = "musa-stdlib:/std/serial.musa";
 const VOICING_URI: &str = "musa-stdlib:/std/voicing.musa";
 const CONTEXT_URI: &str = "musa-stdlib:/std/context.musa";
 const COLLECTIONS_SOURCE: &str = include_str!("../../../stdlib/collections.musa");
@@ -109,8 +111,10 @@ const CORE_SOURCE: &str = include_str!("../../../stdlib/core.musa");
 const HARMONY_SOURCE: &str = include_str!("../../../stdlib/harmony.musa");
 const LIST_SOURCE: &str = include_str!("../../../stdlib/list.musa");
 const OPTION_SOURCE: &str = include_str!("../../../stdlib/option.musa");
+const PCSET_SOURCE: &str = include_str!("../../../stdlib/pcset.musa");
 const PITCH_SOURCE: &str = include_str!("../../../stdlib/pitch.musa");
 const SCALE_SOURCE: &str = include_str!("../../../stdlib/scale.musa");
+const SERIAL_SOURCE: &str = include_str!("../../../stdlib/serial.musa");
 const VOICING_SOURCE: &str = include_str!("../../../stdlib/voicing.musa");
 #[cfg(test)]
 const MANIFEST: &str = include_str!("../../../stdlib/manifest.toml");
@@ -125,8 +129,10 @@ pub fn standard_library_source(uri: &str) -> Option<&'static str> {
         HARMONY_URI => Some(HARMONY_SOURCE),
         LIST_URI => Some(LIST_SOURCE),
         OPTION_URI => Some(OPTION_SOURCE),
+        PCSET_URI => Some(PCSET_SOURCE),
         PITCH_URI => Some(PITCH_SOURCE),
         SCALE_URI => Some(SCALE_SOURCE),
+        SERIAL_URI => Some(SERIAL_SOURCE),
         VOICING_URI => Some(VOICING_SOURCE),
         _ => None,
     }
@@ -141,8 +147,10 @@ pub fn standard_library_modules() -> impl Iterator<Item = (&'static str, &'stati
         (HARMONY_URI, HARMONY_SOURCE),
         (LIST_URI, LIST_SOURCE),
         (OPTION_URI, OPTION_SOURCE),
+        (PCSET_URI, PCSET_SOURCE),
         (PITCH_URI, PITCH_SOURCE),
         (SCALE_URI, SCALE_SOURCE),
+        (SERIAL_URI, SERIAL_SOURCE),
         (VOICING_URI, VOICING_SOURCE),
     ]
     .into_iter()

@@ -1,0 +1,100 @@
+// Pitch-class sets and twelve-tone rows are an algebra over `pc12 = Z/12Z`,
+// and `pc12` is not a spelling. Every value below forgets which letter a note
+// was written with; the only way back into notation is `spelled_in`, which
+// takes the collection that decides the spelling and answers nothing where
+// that collection has no such note.
+//
+// The four row labels P, I, R, and RI are 24 affine operations on pitch
+// classes times one reversal of order positions. That is `D12 x C2` and at
+// most 48 labelled forms, not one 48-element group: `generic_forms` below is
+// 48 and `chromatic_forms` is 24, and each one times its own stabilizer is 48.
+piece "Serial Forms" {
+    use std::pcset;
+    use std::serial;
+
+    // A row is written as twelve numbers because a row has no spelling to
+    // write. `pc` reduces modulo twelve, so this list is twelve residues.
+    let generic_pcs: list[pc12] = pcs([0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7]);
+
+    // The only way into `row12`, and it can fail: twelve entries, each pitch
+    // class once. Absence is the whole answer here, so the exact reason is
+    // asked for separately, below.
+    let generic: option[row12] = row(generic_pcs);
+
+    // The ascending chromatic row, which is a row and is also symmetric: the
+    // retrograde inversion about eleven sends it to itself.
+    let chromatic_pcs: list[pc12] = pcs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    let chromatic: option[row12] = row(chromatic_pcs);
+
+    // Not a row, and the constructor says only that. Which position repeated
+    // and which pitch class never arrived are exact questions with exact
+    // answers, and they are these — `[3]` and `[11]`.
+    let flawed_pcs: list[pc12] = pcs([0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3]);
+    let flawed: option[row12] = row(flawed_pcs);
+    let flawed_repeats: list[nat] = repeated_positions(flawed_pcs);
+    let flawed_missing: list[pc12] = missing_classes(flawed_pcs);
+
+    // How many distinct rows the 48 labels produce, and how many of the 48
+    // fix the row. The product is 48 in both cases; the factors are not the
+    // same, which is why neither is assumed.
+    fn form_count(series: row12) -> nat = distinct_forms(series);
+    fn symmetry_count(series: row12) -> nat = symmetries(series);
+
+    let generic_forms: nat = option_fold(0, form_count, generic);
+    let generic_symmetries: nat = option_fold(0, symmetry_count, generic);
+    let chromatic_forms: nat = option_fold(0, form_count, chromatic);
+    let chromatic_symmetries: nat = option_fold(0, symmetry_count, chromatic);
+
+    // The matrix: twelve rows, row zero the row as written, each column read
+    // downward an inversion. The construction names no convention, so the
+    // index a form is *called* is asked for separately and by name.
+    fn matrix_of(series: row12) -> list[row12] = matrix(series);
+    let generic_matrix: list[row12] = option_fold([], matrix_of, generic);
+
+    fn fixed_zero(series: row12) -> nat = fixed_zero_index(series);
+    let generic_fixed_zero: nat = option_fold(0, fixed_zero, generic);
+
+    // The spelling projection, and it is not a coercion. C major spells seven
+    // of the twelve classes and nothing else, so five positions come back
+    // absent — the loss is in the value, where it can be seen.
+    fn in_c_major(series: row12) -> list[option[pitchclass]] = row_spelled_in(series, scale c major);
+    let generic_in_c_major: list[option[pitchclass]] = option_fold([], in_c_major, generic);
+
+    // Sets forget order as well as spelling. This is the row's first
+    // tetrachord as a set: its normal order, its prime form, and its
+    // interval-class vector are facts about the set class, not the ordering.
+    let head_set: pcset12 = pcset(pcs([0, 1, 4, 9]));
+    let head_normal: list[pc12] = normal_order(head_set);
+    let head_prime: pcset12 = prime_form(head_set);
+    let head_vector: list[nat] = interval_class_vector(head_set);
+
+    // Transposition and inversion act on the set as they act on its members,
+    // and a set class is what survives both.
+    let head_up_three: pcset12 = set_transposed(head_set, 3);
+    let head_mirrored: pcset12 = set_inverted(head_set, 0);
+    let mirrored_prime: pcset12 = prime_form(head_mirrored);
+
+    meter 4/4;
+
+    // The music is written out, because nothing above is music: a row is an
+    // ordering of pitch classes, and turning one into notes needs a register
+    // and a rhythm that only the score has.
+    score {
+        part piano {
+            voice upper {
+                c5/4
+                c#5/4
+                e5/4
+                a5/4
+                f5/4
+                g#5/4
+                eb5/4
+                bb5/4
+                d5/4
+                b5/4
+                f#5/4
+                g5/4
+            }
+        }
+    }
+}
