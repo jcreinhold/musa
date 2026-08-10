@@ -1,7 +1,7 @@
 ---
 id: 108
 slug: domain-metatheory
-status: pending
+status: in-progress
 depends_on: [95, 96, 97, 98, 107]
 phase: 3
 ---
@@ -69,10 +69,16 @@ because a violation found by the gate is exactly the gate working.
   that declaration instead of restating them.
 - The inert base-type list, and a checker gate rejecting any destructuring pattern over a musical base type with a
   located diagnostic naming the type.
-- `crates/musa-compiler/tests/domain_extension_laws.rs`, proving: every primitive classified exactly once; families
-  disjoint and exhaustive; no δ-primitive signature containing an arrow; every base type reachable from a δ signature
-  inert; and every δ-primitive returning a value of its declared type over its sample — never panicking, never
-  diagnosing, never absent at a non-`option` result type.
+- The law suite, proving: every primitive classified exactly once; families disjoint and exhaustive; no δ-primitive
+  signature containing an arrow; every base type reachable from a δ signature inert; and every δ-primitive returning a
+  value of its declared type over its sample — never panicking, never diagnosing, never absent at a non-`option`
+  result type.
+
+  It lives in `core.rs`'s test module beside the existing `every_compiler_owned_operation_names_its_hidden_information`
+  law, **not** in `crates/musa-compiler/tests/`. `Type`, `Value`, and `Primitive` are `pub(crate)`, and an integration
+  test could only reach them by widening the public surface for a test's benefit — which the deep-module rule forbids
+  and which would make the registry's own boundary the first casualty of the prompt that exists to defend it. The
+  registry law it joins is already a unit test for exactly this reason.
 - The deterministic sampler, with per-domain bounds stated as named constants and the finite domains marked exhaustive.
 - `03-musical-domains.md` gains, for each of the twelve domains, the row §5.8's budget requires if it lacks one: its
   definition, its source, and a counterexample it rules out.
