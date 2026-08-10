@@ -103,6 +103,9 @@ module.exports = grammar({
             $.let_declaration,
             $.function_declaration,
             $.template_declaration,
+            $.signature_declaration,
+            $.module_declaration,
+            $.make_statement,
           ),
         ),
         choice($.piece_declaration, $.library_declaration, $.make_statement),
@@ -112,7 +115,30 @@ module.exports = grammar({
     // The declaration it parameterizes is its only child, so every query
     // written for a piece or a voice still matches inside one.
     template_declaration: ($) =>
-      seq('template', choice($.piece_declaration, $.voice_declaration)),
+      seq('template', choice($.piece_declaration, $.voice_declaration, $.module_declaration)),
+
+    // Parser::signature_decl — what a module must provide. A member is a
+    // `let` with its definition left out, because a function is a value of
+    // arrow type and one member form covers all of them.
+    signature_declaration: ($) =>
+      seq('signature', field('name', $.identifier), '{', repeat($.signature_member), '}'),
+
+    signature_member: ($) => seq('let', field('name', $.identifier), ':', field('type', $.type_expression), ';'),
+
+    // Parser::module_decl — a named group of declarations, reached from
+    // outside as `M.member`. The parameter list is what a `template module`
+    // adds, and nothing else about the node changes.
+    module_declaration: ($) =>
+      seq(
+        'module',
+        field('name', $.identifier),
+        optional($.parameter_list),
+        ':',
+        field('signature', $.identifier),
+        '{',
+        repeat(choice($.let_declaration, $.function_declaration)),
+        '}',
+      ),
 
     // Parser::make_stmt — one instance site.
     make_statement: ($) =>
@@ -168,6 +194,10 @@ module.exports = grammar({
             $.function_declaration,
             $.performance_declaration,
             $.studio_declaration,
+            $.signature_declaration,
+            $.module_declaration,
+            $.template_declaration,
+            $.make_statement,
           ),
         ),
         '}',
@@ -410,7 +440,17 @@ module.exports = grammar({
     // `repeat` is both the notation statement and the compiler-owned finite
     // value operation; expression position disambiguates it without making
     // the keyword a general identifier.
-    name_expression: ($) => choice($.identifier, 'repeat', 'transpose', 'stretch', 'retrograde', 'invert'),
+    // `M.member` is one name written in two words, which is why the dot is
+    // part of the name rather than an operator over two of them.
+    name_expression: ($) =>
+      choice(
+        seq($.identifier, optional(seq('.', field('member', $.identifier)))),
+        'repeat',
+        'transpose',
+        'stretch',
+        'retrograde',
+        'invert',
+      ),
     literal_expression: ($) => choice($.integer, $.rational, $.pitch_literal, $.interval_literal, 'true', 'false'),
     option_expression: ($) => choice('none', seq('some', '(', $.expression, ')')),
     list_expression: ($) => seq('[', optional(seq($.expression, repeat(seq(',', $.expression)))), ']'),

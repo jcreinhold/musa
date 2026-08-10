@@ -859,19 +859,135 @@ impl TemplateDecl {
         child(&self.0)
     }
 
+    /// The module this parameterizes, if it parameterizes a module.
+    pub fn module(&self) -> Option<ModuleDecl> {
+        child(&self.0)
+    }
+
     /// The name instance sites call it by.
     pub fn name(&self) -> Option<String> {
         self.piece()
             .and_then(|piece| piece.template_name())
             .or_else(|| self.voice().and_then(|voice| voice.name()))
+            .or_else(|| self.module().and_then(|module| module.name()))
     }
 
     /// Its parameters, in source order.
     pub fn params(&self) -> Vec<FnParam> {
         self.piece().map_or_else(
-            || self.voice().map(|voice| voice.params()).unwrap_or_default(),
+            || {
+                self.voice().map_or_else(
+                    || self.module().map(|module| module.params()).unwrap_or_default(),
+                    |voice| voice.params(),
+                )
+            },
             |piece| piece.params(),
         )
+    }
+}
+
+/// `signature TonalContext { let key: key; }` — the members a module must
+/// provide, and their types.
+pub struct SignatureDecl(SyntaxNode);
+wrapper!(SignatureDecl, SyntaxKind::SignatureDecl);
+
+impl SignatureDecl {
+    /// Every signature declared at a document's lexical root, in source
+    /// order.
+    pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
+        children(node)
+    }
+
+    /// The name modules and template parameters refer to it by.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// Its members, in source order.
+    pub fn members(&self) -> Vec<SignatureMember> {
+        children(&self.0)
+    }
+}
+
+/// `let key: key;` — one member of a signature: a name and the type a
+/// module's definition of it must have.
+pub struct SignatureMember(SyntaxNode);
+wrapper!(SignatureMember, SyntaxKind::SignatureMember);
+
+impl SignatureMember {
+    /// The member's name.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The type a module's definition of it must have.
+    ///
+    /// A written type is one of several node kinds rather than one wrapper,
+    /// so this answers with the node itself, the way every other reader of a
+    /// type annotation takes it.
+    pub fn ty(&self) -> Option<SyntaxNode> {
+        self.0.children().find(|node| {
+            matches!(
+                node.kind(),
+                SyntaxKind::TypeExpr
+                    | SyntaxKind::TypeName
+                    | SyntaxKind::FunctionType
+                    | SyntaxKind::ProductType
+                    | SyntaxKind::OptionType
+                    | SyntaxKind::ListType
+            )
+        })
+    }
+}
+
+/// `module CMajor : TonalContext { ... }` — a named group of declarations,
+/// reached from outside as `CMajor.member`.
+///
+/// A `template module` parameterizes one over other modules; the parameter
+/// list is the only difference in the node, and [`TemplateDecl`] is what says
+/// which of the two this is.
+pub struct ModuleDecl(SyntaxNode);
+wrapper!(ModuleDecl, SyntaxKind::ModuleDecl);
+
+impl ModuleDecl {
+    /// Every module declared directly at a document's lexical root, in
+    /// source order — not the ones a `template module` parameterizes.
+    pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
+        children(node)
+    }
+
+    /// The module's name: the qualifier its members are reached through.
+    pub fn name(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// The name of the signature it claims to provide.
+    ///
+    /// The second identifier, because `module M : S { ... }` writes the
+    /// module's own name first and the parameters, when there are any, live
+    /// inside a [`ParamList`] rather than among these tokens.
+    pub fn signature(&self) -> Option<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .nth(1)
+            .map(|token| token.text().to_string())
+    }
+
+    /// Its parameters, in source order — empty unless a `template` wraps it.
+    pub fn params(&self) -> Vec<FnParam> {
+        params_of(&self.0)
+    }
+
+    /// The values it defines, in source order.
+    pub fn lets(&self) -> Vec<LetDecl> {
+        children(&self.0)
+    }
+
+    /// The functions it defines, in source order.
+    pub fn fns(&self) -> Vec<FnDecl> {
+        children(&self.0)
     }
 }
 
@@ -880,10 +996,29 @@ pub struct MakeStmt(SyntaxNode);
 wrapper!(MakeStmt, SyntaxKind::MakeStmt);
 
 impl MakeStmt {
+    /// Every instance site at a document's lexical root, in source order.
+    pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
+        children(node)
+    }
+
     /// The instance site standing where a document's piece would be, if the
     /// document makes its piece rather than writing it out.
+    ///
+    /// Root sites also make modules, so which one this is cannot be read
+    /// from position alone: it is the first site that does not make a module.
+    /// Asking it that way rather than asking for a piece template keeps a
+    /// template of the wrong kind written here visible, which is what makes
+    /// misplacement reportable instead of silently absent.
     pub fn from_root(node: &SyntaxNode) -> Option<Self> {
-        child(node)
+        let modules: Vec<_> = TemplateDecl::all_at_root(node)
+            .into_iter()
+            .filter(|template| template.module().is_some())
+            .filter_map(|template| template.name())
+            .collect();
+        Self::all_at_root(node).into_iter().find(|site| {
+            site.template()
+                .is_none_or(|made| !modules.iter().any(|name| name == &made))
+        })
     }
 
     /// The template being instantiated.

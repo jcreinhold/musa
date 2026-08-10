@@ -162,11 +162,16 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                 // Some constructs are one word with punctuation in them: a
                 // `measure:beat` coordinate is written `3:1` the way a bar
                 // number is, a chord symbol is `fmaj7` however many tokens it
-                // happens to lex as, and a modulation target is one path with
-                // dots in it. Their insides take no spaces.
+                // happens to lex as, a modulation target is one path with
+                // dots in it, and `M.member` is one name written in two
+                // words. Their insides take no spaces.
                 if matches!(
                     node.kind(),
-                    SyntaxKind::Position | SyntaxKind::ChordSymbol | SyntaxKind::ParamPath | SyntaxKind::PitchClass
+                    SyntaxKind::Position
+                        | SyntaxKind::ChordSymbol
+                        | SyntaxKind::ParamPath
+                        | SyntaxKind::PitchClass
+                        | SyntaxKind::NameExpr
                 ) {
                     writer.write_word(kind, token.text(), tight);
                     tight = true;

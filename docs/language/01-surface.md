@@ -37,7 +37,7 @@ document     := (import | binding | function | signature | module | template | i
                 (piece | library | instance)
 signature    := "signature" IDENT "{" member* "}"
 member       := "let" IDENT ":" type ";"
-module       := "module" IDENT ":" IDENT "{" (binding | function)* "}"
+module       := "module" IDENT params? ":" IDENT "{" (binding | function)* "}"
 template     := "template" decl-kind IDENT "(" params? ")" decl-body
 instance     := "make" IDENT "(" args? ")" "as" IDENT ";"
 path         := IDENT "." IDENT
@@ -259,16 +259,17 @@ signature TonalContext {
     let spell: degree -> option[pitch];
 }
 
-module CMajor : TonalContext {
+module CMajor: TonalContext {
     let tonic: key = key c major;
     let collection: scale = scale c ionian;
     let spell: degree -> option[pitch] = degree_in_c;
 }
 
-template module Sequences(C: TonalContext, gap: duration) : SequenceMaterial {
-    let step_up: music -> music = transpose(M2);
+template module Sequences(C: TonalContext, gap: duration): TonalContext {
+    let tonic: key = C.tonic;
+    let collection: scale = C.collection;
+    let spell: degree -> option[pitch] = C.spell;
     let delay: duration = gap;
-    let home: key = C.tonic;
 }
 
 make Sequences(CMajor, 1/2) as CSequences;

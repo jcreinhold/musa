@@ -380,6 +380,16 @@
     "doc": "`template piece study(k: key) \"Study\" { ... }` writes a family of pieces rather than a piece. Parameters are ordinary typed values — a key, a scale, a `music`, or a `music -> music` — and a template body reads them and the file's root, never the site that makes it. A template is not a value: nothing can pass one, return one, or ask what is inside it.\n\n```musa\ntemplate voice answer(subject: music, transform: music -> music) {\n    use transform(subject);\n}\n```"
   },
   {
+    "spelling": "signature",
+    "summary": "name what a module must provide",
+    "doc": "`signature TonalContext { let key: key; let scale: scale; }` fixes the members a module has to define, and their types. Matching is by name and exact type: a module that satisfies it may define more, and everything unlisted is private to that module. A signature is not a value — nothing can pass one or ask what is inside it.\n\n```musa\nsignature TonalContext {\n    let key: key;\n    let scale: scale;\n}\n```"
+  },
+  {
+    "spelling": "module",
+    "summary": "group declarations behind a signature",
+    "doc": "`module CMajor : TonalContext { let key = key c major; ... }` names a group of `let` and `fn` declarations, reached from outside as `CMajor.key`. `template module` parameterizes one over other modules, and `make` applies it. Modules are static: they hold no state, cross no boundary as values, and disappear into ordinary declarations once made.\n\n```musa\nmodule CMajor : TonalContext {\n    let key = key c major;\n    let scale = scale c major;\n}\n```"
+  },
+  {
     "spelling": "make",
     "summary": "instantiate a template here",
     "doc": "`make study(key g major) as study_in_g;` evaluates the arguments in the scope it is written in and expands the template into an ordinary declaration at this place. A piece instance stands at the file's root and is that file's piece; a voice instance stands among a part's voices. The `as` name is the address; identity comes from the site, so two instances with equal arguments remain two declarations.\n\n```musa\nmake answer(subject, transpose(P8)) as follower;\n```"

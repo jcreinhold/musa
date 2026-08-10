@@ -15,6 +15,8 @@
   "piece"
   "library"
   "template"
+  "signature"
+  "module"
   "make"
   "as"
   "tempo"
@@ -119,6 +121,13 @@
 (piece_declaration template_name: (identifier) @function)
 (make_statement template: (identifier) @function.call)
 (make_statement name: (identifier) @variable)
+; A signature and a module are types in the editor's vocabulary: they name
+; structure, never a value.
+(signature_declaration name: (identifier) @type)
+(module_declaration name: (identifier) @type)
+(module_declaration signature: (identifier) @type)
+(signature_member name: (identifier) @variable)
+(name_expression member: (identifier) @variable)
 (profile_declaration name: (identifier) @variable)
 (bar_statement name: (identifier) @label)
 

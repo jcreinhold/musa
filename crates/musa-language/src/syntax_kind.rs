@@ -255,6 +255,10 @@ pub enum SyntaxKind {
     MakeKw,
     /// `as`
     AsKw,
+    /// `signature`
+    SignatureKw,
+    /// `module`
+    ModuleKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -499,6 +503,15 @@ pub enum SyntaxKind {
     TemplateDecl,
     /// `make study(key g major) as study_in_g;` — one instance site.
     MakeStmt,
+    /// `signature TonalContext { let tonic: key; }` — what a module must
+    /// provide, and nothing about how.
+    SignatureDecl,
+    /// `let tonic: key;` — one member of a signature: a `let` with its
+    /// definition left to the module.
+    SignatureMember,
+    /// `module CMajor : TonalContext { ... }` — a static named collection of
+    /// values. With a parameter list and `template` in front, a functor.
+    ModuleDecl,
 }
 
 impl SyntaxKind {

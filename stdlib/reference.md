@@ -23,6 +23,16 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `hexatonic_on(tonic: pitchclass) -> scale` — The six-note hexatonic collection alternating minor thirds and half steps.
 - `acoustic_on(tonic: pitchclass) -> scale` — The acoustic collection: raised fourth and lowered seventh.
 
+## `std::context`
+
+- `signature TonalContext` — A tonal context is the small bundle of facts that always travel together: what key a passage is in, which collection it steps through, how a numbered degree is spelled in register, and how a chord class is voiced. Passing them one at a time is how they drift apart, which is the whole reason a signature exists — Open Music Theory `020-diatonic-modes.md` names the collection, `026-triads.md` the chords, and neither is meaningful without the other.
+  - `TonalContext.tonic: key` — The key the passage is written in. A key is a signature and a tonic, never a scale.
+  - `TonalContext.collection: scale` — The collection stepwise motion reads. A default, not a claim: a passage may still name another collection where it wants one.
+  - `TonalContext.spell: nat -> option[pitch]` — The written pitch a numbered degree names, in this context's own register. Absent when the context has no register to spell in.
+  - `TonalContext.voicing_for: chord_class -> option[voicing]` — How this context voices a chord class. Absent when the class cannot be voiced from the register it chose.
+- `module CMajor: TonalContext` — C major, spelled from middle C.
+- `module ANaturalMinor: TonalContext` — A natural minor, spelled from the A below middle C. The same four members, answered differently — which is what makes the two modules interchangeable everywhere `TonalContext` is asked for.
+
 ## `std::core`
 
 - `identity_ratio(value: ratio) -> ratio` — Return an exact rational unchanged. This is useful when a public API wants to say explicitly that it preserves a proportion.

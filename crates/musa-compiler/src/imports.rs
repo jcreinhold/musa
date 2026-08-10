@@ -102,7 +102,9 @@ const OPTION_URI: &str = "musa-stdlib:/std/option.musa";
 const PITCH_URI: &str = "musa-stdlib:/std/pitch.musa";
 const SCALE_URI: &str = "musa-stdlib:/std/scale.musa";
 const VOICING_URI: &str = "musa-stdlib:/std/voicing.musa";
+const CONTEXT_URI: &str = "musa-stdlib:/std/context.musa";
 const COLLECTIONS_SOURCE: &str = include_str!("../../../stdlib/collections.musa");
+const CONTEXT_SOURCE: &str = include_str!("../../../stdlib/context.musa");
 const CORE_SOURCE: &str = include_str!("../../../stdlib/core.musa");
 const HARMONY_SOURCE: &str = include_str!("../../../stdlib/harmony.musa");
 const LIST_SOURCE: &str = include_str!("../../../stdlib/list.musa");
@@ -118,6 +120,7 @@ const MANIFEST: &str = include_str!("../../../stdlib/manifest.toml");
 pub fn standard_library_source(uri: &str) -> Option<&'static str> {
     match uri {
         COLLECTIONS_URI => Some(COLLECTIONS_SOURCE),
+        CONTEXT_URI => Some(CONTEXT_SOURCE),
         CORE_URI => Some(CORE_SOURCE),
         HARMONY_URI => Some(HARMONY_SOURCE),
         LIST_URI => Some(LIST_SOURCE),
@@ -133,6 +136,7 @@ pub fn standard_library_source(uri: &str) -> Option<&'static str> {
 pub fn standard_library_modules() -> impl Iterator<Item = (&'static str, &'static str)> {
     [
         (COLLECTIONS_URI, COLLECTIONS_SOURCE),
+        (CONTEXT_URI, CONTEXT_SOURCE),
         (CORE_URI, CORE_SOURCE),
         (HARMONY_URI, HARMONY_SOURCE),
         (LIST_URI, LIST_SOURCE),
@@ -160,9 +164,39 @@ pub fn standard_library_reference() -> String {
             .unwrap_or("unknown");
         let _ = write!(out, "\n## `std::{module}`\n\n");
         let mut comments = Vec::new();
+        // A signature's members are documented under it; a module's are not.
+        // What a reader may write is `M.x` for each `x` the signature lists,
+        // and everything else a module defines is private to it — so listing
+        // a module's own lines would document what nobody can name.
+        let mut requires: Option<&str> = None;
+        let mut inside_module = false;
         for line in source.lines().map(str::trim) {
             if let Some(comment) = line.strip_prefix("// ") {
                 comments.push(comment);
+                continue;
+            }
+            if let Some(rest) = line.strip_prefix("signature ") {
+                let name = rest.split([':', '(', ' ']).next().unwrap_or(rest);
+                let _ = writeln!(out, "- `signature {name}` — {}", comments.join(" "));
+                requires = Some(name);
+                comments.clear();
+                continue;
+            }
+            if let Some(rest) = line.strip_prefix("module ") {
+                let head = rest.split_once(" {").map_or(rest, |(head, _)| head);
+                let _ = writeln!(out, "- `module {head}` — {}", comments.join(" "));
+                inside_module = true;
+                comments.clear();
+                continue;
+            }
+            if line == "}" {
+                requires = None;
+                inside_module = false;
+                comments.clear();
+                continue;
+            }
+            if inside_module {
+                comments.clear();
                 continue;
             }
             if let Some(signature) = line.strip_prefix("fn ").or_else(|| line.strip_prefix("let ")) {
@@ -172,7 +206,14 @@ pub fn standard_library_reference() -> String {
                     .unwrap_or(signature)
                     .trim()
                     .trim_end_matches(';');
-                let _ = writeln!(out, "- `{signature}` — {}", comments.join(" "));
+                match requires {
+                    Some(named) => {
+                        let _ = writeln!(out, "  - `{named}.{signature}` — {}", comments.join(" "));
+                    }
+                    None => {
+                        let _ = writeln!(out, "- `{signature}` — {}", comments.join(" "));
+                    }
+                }
             }
             comments.clear();
         }
@@ -362,6 +403,13 @@ mod tests {
 
     #[test]
     fn checked_in_reference_is_derived_from_executable_source() {
+        if std::env::var_os("UPDATE_FIXTURES").is_some() {
+            std::fs::write(
+                concat!(env!("CARGO_MANIFEST_DIR"), "/../../stdlib/reference.md"),
+                standard_library_reference(),
+            )
+            .expect("write the reference");
+        }
         assert_eq!(
             standard_library_reference(),
             include_str!("../../../stdlib/reference.md"),

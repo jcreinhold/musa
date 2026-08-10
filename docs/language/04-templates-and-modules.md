@@ -99,12 +99,12 @@ signature CanonMaterial {
     let answer: music -> music;
 }
 
-module FifthMaterial : CanonMaterial {
+module FifthMaterial: CanonMaterial {
     let subject: music = theme();
     let answer: music -> music = transpose(P5);
 }
 
-template module DelayedCanon(C: CanonMaterial, gap: duration) : CanonMaterial {
+template module DelayedCanon(C: CanonMaterial, gap: duration): CanonMaterial {
     let subject: music = canon(C.subject, C.answer, gap);
     let answer: music -> music = C.answer;
 }
@@ -112,7 +112,7 @@ template module DelayedCanon(C: CanonMaterial, gap: duration) : CanonMaterial {
 make DelayedCanon(FifthMaterial, 1/2) as FifthCanon;
 ```
 
-A signature member is a `let` without its definition: a namespace, a name, and the type. Values, functions, and `music`
+A signature member is a `let` without its definition: a name and the type. Values, functions, and `music`
 bindings are all `let` members, because a function is a value of arrow type. Member kinds that name an identity-bearing
 declaration — `instrument`, `profile`, `patch` — are not implemented; when they arrive they will be spelled by their own
 keyword in the same position, and matching for them will be nominal rather than transparent.
@@ -127,10 +127,22 @@ searches remote packages or every imported module.
 
 Functor application checks the argument's signature against the parameter's, expands once at the named site, seals the
 result to the result signature, and assigns a stable generative identity derived from the functor, the argument modules'
-identities, and the instance site. Expansion is *binding*, not rewriting: the body is checked once per instance with
-`C.member` bound to what the argument module's member evaluated to, so no syntax is copied and no name can be captured.
-It does not construct a runtime module closure. There is no `module` value type, first-class module unpacking, recursive
-module, implicit functor application, or Rust `Functor` trait.
+identities, and the instance site — never the argument *expressions*, so two sites given equal arguments stay two
+modules, and never a span, so editing the text above a site does not change what it made. Instance sites are ordered by
+what they consume rather than by where they are written, and a cycle among them is refused: instantiation happens once,
+before anything is evaluated, so a functor consuming what it produces has no base case.
+
+Expansion is *binding*, not rewriting: the body is checked once per instance in a scope where `C` names the module the
+site passed, so no syntax is copied, no span moves, and no name can be captured. A functor sees exactly its parameter's
+signature, whatever else the module behind it happens to define.
+
+There is no `module` value type, first-class module unpacking, recursive module, implicit functor application, or Rust
+`Functor` trait — and the reason is the same one in every case. A module is a *name for a group of declarations*: it
+holds no state, is never a value, and has stopped existing by the time anything is evaluated. A Rust trait would model a
+functor as a value with methods and a public module object would model a module as a thing that exists at run time;
+neither is true, and either would invite the applicative sharing this design refuses. What a functor *is* is a second
+checking pass over one body, so what it is written as is a scope — see `crates/musa-compiler/src/module.rs`, where the
+whole of it is one `NameScope` and a flattening into the namespace the core already has.
 
 ## 5. Resolution and compilation order
 

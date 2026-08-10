@@ -3,6 +3,7 @@
 ; semantic rename; this is the lexical one.
 (piece_declaration) @local.scope
 (template_declaration) @local.scope
+(module_declaration) @local.scope
 (library_declaration) @local.scope
 (motif_declaration) @local.scope
 (block) @local.scope
@@ -18,6 +19,10 @@
 (piece_declaration template_name: (identifier) @local.definition)
 (make_statement name: (identifier) @local.definition)
 (make_statement template: (identifier) @local.reference)
+(signature_declaration name: (identifier) @local.definition)
+(signature_member name: (identifier) @local.definition)
+(module_declaration name: (identifier) @local.definition)
+(module_declaration signature: (identifier) @local.reference)
 (bar_statement name: (identifier) @local.definition)
 (patch_declaration name: (identifier) @local.definition)
 (bus_declaration name: (identifier) @local.definition)
@@ -27,6 +32,7 @@
 (parameter name: (identifier) @local.definition)
 
 (name_expression (identifier) @local.reference)
+(name_expression member: (identifier) @local.reference)
 (mobile_statement fragment: (identifier) @local.reference)
 (assign_statement source: (identifier) @local.reference)
 (assign_statement destination: (identifier) @local.reference)

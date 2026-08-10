@@ -14,6 +14,7 @@ use num_rational::Ratio;
 use crate::core_budget::WorkMeter;
 use crate::diagnose::{Code, Diagnostic};
 use crate::imports::Libraries;
+use crate::module::Modules;
 use crate::origin::{Interval, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::resolve::{NameKind, Resolver};
@@ -29,6 +30,7 @@ pub(crate) fn check_piece(
     if !validate_imports(resolver, libraries) {
         return None;
     }
+    let modules = Modules::read(resolver, module_owners(libraries, root));
     check_and_evaluate(
         resolver,
         libraries
@@ -39,6 +41,7 @@ pub(crate) fn check_piece(
             .chain(declarations(piece.syntax(), None)),
         Some(piece.syntax()),
         UnknownRootMusic::Defer,
+        &modules,
     )
 }
 
@@ -56,6 +59,7 @@ pub(crate) fn check_arguments(
     if !validate_imports(resolver, libraries) {
         return None;
     }
+    let modules = Modules::read(resolver, module_owners(libraries, root));
     check_and_evaluate(
         resolver,
         libraries
@@ -65,6 +69,7 @@ pub(crate) fn check_arguments(
             .chain(bindings.into_iter().map(SurfaceDefinition::Bound)),
         None,
         UnknownRootMusic::Reject,
+        &modules,
     )
 }
 
@@ -82,6 +87,7 @@ pub(crate) fn check_template_voice(
     voice: &musa_language::ast::VoiceDecl,
     bindings: Vec<Binding>,
 ) -> Option<Program> {
+    let modules = Modules::read(resolver, module_owners(libraries, root));
     check_and_evaluate(
         resolver,
         libraries
@@ -92,7 +98,20 @@ pub(crate) fn check_template_voice(
             .chain(declarations(voice.syntax(), None)),
         Some(voice.syntax()),
         UnknownRootMusic::Defer,
+        &modules,
     )
+}
+
+/// Every place a document's signatures and modules may be written: what its
+/// imports export, in import order, then its own lexical root.
+fn module_owners<'a>(
+    libraries: &'a Libraries,
+    root: &SyntaxNode,
+) -> impl Iterator<Item = (Option<&'a str>, SyntaxNode)> {
+    libraries
+        .each()
+        .map(|(path, library)| (Some(path), library.syntax().clone()))
+        .chain(std::iter::once((None, root.clone())))
 }
 
 /// The definitions written at a document's lexical root, before its piece or
@@ -125,6 +144,13 @@ pub(crate) fn check_material(
     if !validate_imports(resolver, libraries) {
         return false;
     }
+    let modules = Modules::read(
+        resolver,
+        libraries
+            .each()
+            .map(|(path, imported)| (Some(path), imported.syntax().clone()))
+            .chain(std::iter::once((None, library.syntax().clone()))),
+    );
     check_and_evaluate(
         resolver,
         libraries
@@ -133,6 +159,7 @@ pub(crate) fn check_material(
             .chain(declarations(library.syntax(), None)),
         None,
         UnknownRootMusic::Reject,
+        &modules,
     )
     .is_some()
 }
@@ -142,14 +169,18 @@ pub(crate) fn check_material(
 /// inside the foreign CST must never be published as spans in this document.
 fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
     let mut prefix = Vec::new();
+    let mut owners: Vec<(Option<&str>, SyntaxNode)> = Vec::new();
     for (path, library, import_span) in libraries.each_with_import_span() {
         prefix.extend(declarations(library.syntax(), Some(path)));
+        owners.push((Some(path), library.syntax().clone()));
         let mut foreign_resolver = Resolver::new();
+        let modules = Modules::read(&mut foreign_resolver, owners.iter().cloned());
         let evaluated = check_and_evaluate(
             &mut foreign_resolver,
             prefix.clone().into_iter(),
             None,
             UnknownRootMusic::Reject,
+            &modules,
         )
         .is_some();
         let first_error = foreign_resolver
@@ -271,6 +302,15 @@ enum SurfaceDefinition {
     /// A name a template body reads, and what stands for it — see
     /// [`Binding`].
     Bound(Binding),
+    /// A module's member, held in the one flat namespace under the qualified
+    /// name it is reached by. See [`crate::module`] for why a module needs
+    /// nothing else from the core than a name and a scope.
+    Member {
+        name: String,
+        item: crate::module::MemberItem,
+        scope: crate::module::NameScope,
+        source: Option<String>,
+    },
 }
 
 /// One name bound into a checking pass from outside the source it checks.
@@ -321,7 +361,7 @@ impl Binding {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-enum Type {
+pub(crate) enum Type {
     Unit,
     Bool,
     Nat,
@@ -425,6 +465,9 @@ struct RawDefinition {
     /// are held under names no one can type, so they must not enter the
     /// reference index and be offered for rename or completion.
     hidden: bool,
+    /// How names read inside it. Empty for everything but a module's members
+    /// — see [`crate::module::NameScope`].
+    scope: crate::module::NameScope,
 }
 
 enum RawDefinitionKind {
@@ -1407,11 +1450,35 @@ fn check_and_evaluate(
     declarations: impl Iterator<Item = SurfaceDefinition>,
     root: Option<&SyntaxNode>,
     unknown_root_music: UnknownRootMusic,
+    modules: &Modules,
 ) -> Option<Program> {
     let root_uses = root.map(root_uses).unwrap_or_default();
     let mut meter = WorkMeter::default();
     let mut raw = Vec::new();
     let mut names: IndexMap<String, (SourceSpan, bool, bool)> = IndexMap::new();
+    // A module's members and a functor's arguments are ordinary definitions
+    // in the one flat namespace: what a module changes is the name they are
+    // filed under and the scope their bodies read in, never the pass.
+    let declarations = modules
+        .members()
+        .iter()
+        .map(|member| SurfaceDefinition::Member {
+            name: member.name.clone(),
+            item: member.item.clone(),
+            scope: member.scope.clone(),
+            source: member.source.clone(),
+        })
+        .chain(modules.arguments().iter().map(|argument| {
+            SurfaceDefinition::Bound(Binding::argument(
+                argument.holder.clone(),
+                argument.name_span,
+                argument.span,
+                argument.ty.clone(),
+                argument.expr.clone(),
+                true,
+            ))
+        }))
+        .chain(declarations);
     for declaration in declarations {
         let is_legacy = matches!(declaration, SurfaceDefinition::Legacy { .. });
         let (name, name_span, span, source) = surface_identity(&declaration)?;
@@ -1474,6 +1541,8 @@ fn check_and_evaluate(
             music_role: definition.role.clone(),
             deferred_pitch: false,
             definition_span: definition.span,
+            scope: &definition.scope,
+            modules,
         };
         let kind = match &definition.kind {
             RawDefinitionKind::Bound { value } => Some(CheckedDefinitionKind::Let {
@@ -1624,6 +1693,8 @@ fn check_and_evaluate(
             music_role: None,
             definition_span: span,
             deferred_pitch: false,
+            scope: crate::module::NameScope::empty(),
+            modules,
         };
         let checked_use = checker.check(&expression, Some(&Type::Music))?;
         let Value::Music(music) = eval(&checked_use, &values, &mut meter)? else {
@@ -1643,7 +1714,7 @@ fn check_and_evaluate(
                 continue;
             };
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span, modules);
             let checked = checker.check(&expression, Some(&Type::Scale))?;
             let Value::Scale(scale) = eval(&checked, &values, &mut meter)? else {
                 return None;
@@ -1658,7 +1729,7 @@ fn check_and_evaluate(
                 continue;
             };
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span, modules);
             let checked = checker.check(&expression, Some(&Type::Key))?;
             let Value::Key(key) = eval(&checked, &values, &mut meter)? else {
                 return None;
@@ -1672,7 +1743,7 @@ fn check_and_evaluate(
                 continue;
             };
             let span = crate::resolve::trimmed_span(&statement);
-            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span, modules);
             let checked = checker.deferring_pitch(|checker| checker.check(&expression, Some(&Type::Pitch)))?;
             pitches.insert(span_key(span), pitch_term(&checked, &values, &mut meter)?);
         }
@@ -1723,6 +1794,7 @@ fn root_checker<'a>(
     symbols: &'a IndexMap<String, Symbol>,
     meter: &'a mut WorkMeter,
     span: SourceSpan,
+    modules: &'a Modules,
 ) -> Checker<'a> {
     Checker {
         resolver,
@@ -1736,6 +1808,8 @@ fn root_checker<'a>(
         music_role: None,
         definition_span: span,
         deferred_pitch: false,
+        scope: crate::module::NameScope::empty(),
+        modules,
     }
 }
 
@@ -1760,6 +1834,7 @@ pub(crate) fn check_for_kernel(
     scope: Option<&SyntaxNode>,
     bindings: Vec<Binding>,
 ) -> Option<Program> {
+    let modules = Modules::read(resolver, std::iter::once((None, root.clone())));
     check_and_evaluate(
         resolver,
         root_preamble(root)
@@ -1768,7 +1843,23 @@ pub(crate) fn check_for_kernel(
             .chain(scope.map(|node| declarations(node, None)).unwrap_or_default()),
         scope,
         UnknownRootMusic::Silent,
+        &modules,
     )
+}
+
+/// The name a [`SyntaxKind::NameExpr`] writes, starting at its first name
+/// token: one identifier, or the two words of a `Module.member` path joined
+/// the way the flat namespace holds it.
+fn qualified_name(node: &SyntaxNode, first: &SyntaxToken) -> String {
+    let mut name = first.text().to_owned();
+    let mut rest = significant_tokens(node).skip_while(|token| token != first).skip(1);
+    if rest.next().is_some_and(|token| token.kind() == SyntaxKind::Dot)
+        && let Some(member) = rest.next().filter(|token| token.kind() == SyntaxKind::Identifier)
+    {
+        name.push('.');
+        name.push_str(member.text());
+    }
+    name
 }
 
 fn surface_identity(definition: &SurfaceDefinition) -> Option<(String, SourceSpan, SourceSpan, Option<String>)> {
@@ -1782,6 +1873,18 @@ fn surface_identity(definition: &SurfaceDefinition) -> Option<(String, SourceSpa
         } => (syntax, Some(name.clone()), source.clone()),
         SurfaceDefinition::Bound(binding) => {
             return Some((binding.name.clone(), binding.name_span, binding.span, None));
+        }
+        SurfaceDefinition::Member { name, item, source, .. } => {
+            let syntax = match item {
+                crate::module::MemberItem::Let(declaration) => declaration.syntax(),
+                crate::module::MemberItem::Function(declaration) => declaration.syntax(),
+            };
+            return Some((
+                name.clone(),
+                crate::resolve::token_span(syntax, SyntaxKind::Identifier)?,
+                crate::resolve::trimmed_span(syntax),
+                source.clone(),
+            ));
         }
     };
     let name = name?;
@@ -1813,6 +1916,7 @@ fn lower_signature(
                 source,
                 role: None,
                 hidden: false,
+                scope: crate::module::NameScope::default(),
             })
         }
         SurfaceDefinition::Function { declaration, .. } => {
@@ -1855,6 +1959,7 @@ fn lower_signature(
                 source,
                 role: None,
                 hidden: false,
+                scope: crate::module::NameScope::default(),
             })
         }
         SurfaceDefinition::Legacy {
@@ -1915,7 +2020,28 @@ fn lower_signature(
                     foreign,
                 }),
                 hidden: false,
+                scope: crate::module::NameScope::default(),
             })
+        }
+        SurfaceDefinition::Member {
+            item, scope: member, ..
+        } => {
+            // A member is lowered exactly as the same declaration written at
+            // a document's root would be. All a module changes is the name it
+            // is filed under and the scope its body reads in.
+            let inner = match item {
+                crate::module::MemberItem::Let(declaration) => SurfaceDefinition::Let {
+                    declaration,
+                    source: source.clone(),
+                },
+                crate::module::MemberItem::Function(declaration) => SurfaceDefinition::Function {
+                    declaration,
+                    source: source.clone(),
+                },
+            };
+            let mut lowered = lower_signature(resolver, inner, name, name_span, span, source)?;
+            lowered.scope = member;
+            Some(lowered)
         }
         SurfaceDefinition::Bound(binding) => {
             let ty = parse_type(resolver, &binding.ty)?;
@@ -1948,6 +2074,7 @@ fn lower_signature(
                 source: None,
                 role: None,
                 hidden: binding.hidden,
+                scope: crate::module::NameScope::default(),
             })
         }
     }
@@ -2006,9 +2133,48 @@ fn function_result(ty: &Type) -> Option<&Type> {
 }
 
 fn parse_type(resolver: &mut Resolver, node: &SyntaxNode) -> Option<Type> {
+    lower_type(Some(resolver), node)
+}
+
+/// The type a node declares, read without reporting what it is not.
+///
+/// The module stage asks a member what its type *is*, in order to match it
+/// against a signature; whether the type exists at all is a question the core
+/// answers once, where the declaration is lowered, so asking here would
+/// report the same mistake twice.
+pub(crate) fn declared_type(node: &SyntaxNode) -> Option<Type> {
+    lower_type(None, node)
+}
+
+/// The type a signature member declares.
+///
+/// Reporting, unlike [`declared_type`]: a signature member's type is read
+/// exactly once, here, so this is the only place that can say it is not a
+/// type at all.
+pub(crate) fn signature_type(resolver: &mut Resolver, node: &SyntaxNode) -> Option<Type> {
+    lower_type(Some(resolver), node)
+}
+
+/// The arrow type a `fn` declares, which is the type a signature member of
+/// arrow type must match.
+pub(crate) fn function_type(declaration: &FnDecl) -> Option<Type> {
+    let mut parameters = Vec::new();
+    for parameter in declaration.params() {
+        let ty_node = child_of(parameter.syntax(), is_type_node)?;
+        parameters.push(declared_type(&ty_node)?);
+    }
+    let result = declaration
+        .syntax()
+        .children()
+        .filter(|node| is_type_node(node.kind()))
+        .last()?;
+    Some(Type::Function(parameters, Box::new(declared_type(&result)?)))
+}
+
+fn lower_type(mut resolver: Option<&mut Resolver>, node: &SyntaxNode) -> Option<Type> {
     let kind = node.kind();
     if kind == SyntaxKind::TypeExpr {
-        return child_of(node, is_type_node).and_then(|child| parse_type(resolver, &child));
+        return child_of(node, is_type_node).and_then(|child| lower_type(resolver, &child));
     }
     if kind == SyntaxKind::TypeName {
         let text = node.to_string();
@@ -2031,11 +2197,13 @@ fn parse_type(resolver: &mut Resolver, node: &SyntaxNode) -> Option<Type> {
             "voicing" => Some(Type::Voicing),
             "music" => Some(Type::Music),
             _ => {
-                resolver.report(
-                    Diagnostic::error(Code::UnknownName, format!("unknown type `{text}`"))
-                        .at(crate::resolve::trimmed_span(node), "not a value type")
-                        .help("use `bool`, `nat`, `ratio`, `duration`, `pitch`, `pitchclass`, `interval`, `scale`, `key`, `degree`, `frame`, `chord_class`, `triad`, `voicing`, a product, or a function type"),
-                );
+                if let Some(resolver) = resolver.as_deref_mut() {
+                    resolver.report(
+                        Diagnostic::error(Code::UnknownName, format!("unknown type `{text}`"))
+                            .at(crate::resolve::trimmed_span(node), "not a value type")
+                            .help("use `bool`, `nat`, `ratio`, `duration`, `pitch`, `pitchclass`, `interval`, `scale`, `key`, `degree`, `frame`, `chord_class`, `triad`, `voicing`, a product, or a function type"),
+                    );
+                }
                 None
             }
         };
@@ -2044,18 +2212,20 @@ fn parse_type(resolver: &mut Resolver, node: &SyntaxNode) -> Option<Type> {
         let members: Option<Vec<_>> = node
             .children()
             .filter(|child| is_type_node(child.kind()))
-            .map(|child| parse_type(resolver, &child))
+            .map(|child| lower_type(resolver.as_deref_mut(), &child))
             .collect();
         return members.map(Type::Product);
     }
     if kind == SyntaxKind::FunctionType {
         let mut parts = node.children().filter(|child| is_type_node(child.kind()));
-        let parameter = parts.next().and_then(|part| parse_type(resolver, &part))?;
-        let result = parts.next().and_then(|part| parse_type(resolver, &part))?;
+        let parameter = parts
+            .next()
+            .and_then(|part| lower_type(resolver.as_deref_mut(), &part))?;
+        let result = parts.next().and_then(|part| lower_type(resolver, &part))?;
         return Some(Type::Function(vec![parameter], Box::new(result)));
     }
     if matches!(kind, SyntaxKind::OptionType | SyntaxKind::ListType) {
-        let member = child_of(node, is_type_node).and_then(|child| parse_type(resolver, &child))?;
+        let member = child_of(node, is_type_node).and_then(|child| lower_type(resolver, &child))?;
         return if kind == SyntaxKind::OptionType {
             Some(Type::Option(Box::new(member)))
         } else {
@@ -2079,6 +2249,9 @@ struct Checker<'a> {
     /// Whether the expression being checked is a note's pitch inside music,
     /// which is the one place a scale is supplied later rather than now.
     deferred_pitch: bool,
+    /// How names read here: empty everywhere but inside a module's members.
+    scope: &'a crate::module::NameScope,
+    modules: &'a Modules,
 }
 
 impl Checker<'_> {
@@ -2481,15 +2654,32 @@ impl Checker<'_> {
                     | SyntaxKind::InvertKw
             )
         })?;
-        let name = token.text().to_owned();
+        let written = qualified_name(node, &token);
         let span = crate::resolve::trimmed_span(node);
-        if let Some(ty) = self.locals.get(&name) {
+        if let Some(ty) = self.locals.get(&written) {
             return Some(Expr {
-                kind: ExprKind::Name(name),
+                kind: ExprKind::Name(written),
                 ty: ty.clone(),
                 span,
             });
         }
+        // How a name reads is settled once, here, before anything is looked
+        // up: inside a module it may name a sibling, and inside a functor's
+        // body its parameters name what the site passed.
+        let reading = self
+            .modules
+            .read_name(self.scope, &written, &|candidate| self.symbols.contains_key(candidate));
+        if let Some((signature, ascription)) = reading.sealed_by {
+            self.resolver.report(
+                Diagnostic::error(Code::UnknownName, format!("`{written}` is private"))
+                    .at(span, "named from outside the module that defines it")
+                    .also(ascription, format!("`{signature}` does not export it"))
+                    .help("a module exports exactly what its signature lists; everything else is its own"),
+            );
+            self.failed = true;
+            return None;
+        }
+        let name = reading.name;
         if let Some(builtin) = Builtin::named(&name) {
             let value = Value::Builtin(Box::new(BuiltinValue {
                 builtin,
@@ -4669,6 +4859,7 @@ mod tests {
             declarations(piece.syntax(), None).into_iter(),
             Some(piece.syntax()),
             UnknownRootMusic::Reject,
+            &Modules::default(),
         )
         .map(|program| program.values)
     }

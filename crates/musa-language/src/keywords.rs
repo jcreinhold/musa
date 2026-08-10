@@ -619,6 +619,24 @@ static MAKE: KeywordDoc = doc!(
      the site, so two instances with equal arguments remain two declarations.\n\n\
      ```musa\nmake answer(subject, transpose(P8)) as follower;\n```"
 );
+static SIGNATURE: KeywordDoc = doc!(
+    "signature",
+    "name what a module must provide",
+    "`signature TonalContext { let key: key; let scale: scale; }` fixes the members a module has to define, and \
+     their types. Matching is by name and exact type: a module that satisfies it may define more, and everything \
+     unlisted is private to that module. A signature is not a value — nothing can pass one or ask what is inside \
+     it.\n\n\
+     ```musa\nsignature TonalContext {\n    let key: key;\n    let scale: scale;\n}\n```"
+);
+static MODULE: KeywordDoc = doc!(
+    "module",
+    "group declarations behind a signature",
+    "`module CMajor : TonalContext { let key = key c major; ... }` names a group of `let` and `fn` declarations, \
+     reached from outside as `CMajor.key`. `template module` parameterizes one over other modules, and `make` \
+     applies it. Modules are static: they hold no state, cross no boundary as values, and disappear into ordinary \
+     declarations once made.\n\n\
+     ```musa\nmodule CMajor : TonalContext {\n    let key = key c major;\n    let scale = scale c major;\n}\n```"
+);
 static AS: KeywordDoc = doc!(
     "as",
     "name what an instance makes",
@@ -644,6 +662,8 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::ChordKw => &CHORD,
         SyntaxKind::StackKw => &STACK,
         SyntaxKind::TemplateKw => &TEMPLATE,
+        SyntaxKind::SignatureKw => &SIGNATURE,
+        SyntaxKind::ModuleKw => &MODULE,
         SyntaxKind::MakeKw => &MAKE,
         SyntaxKind::AsKw => &AS,
         SyntaxKind::PieceKw => &PIECE,
@@ -855,7 +875,10 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::ChordExpr
         | SyntaxKind::StackStmt
         | SyntaxKind::TemplateDecl
-        | SyntaxKind::MakeStmt => return None,
+        | SyntaxKind::MakeStmt
+        | SyntaxKind::SignatureDecl
+        | SyntaxKind::SignatureMember
+        | SyntaxKind::ModuleDecl => return None,
     };
     Some(doc)
 }

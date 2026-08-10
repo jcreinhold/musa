@@ -381,6 +381,10 @@ enum RawToken {
     MakeKw,
     #[token("as", priority = 3)]
     AsKw,
+    #[token("signature", priority = 3)]
+    SignatureKw,
+    #[token("module", priority = 3)]
+    ModuleKw,
 }
 
 impl RawToken {
@@ -502,7 +506,9 @@ impl RawToken {
             | Self::StackKw
             | Self::TemplateKw
             | Self::MakeKw
-            | Self::AsKw => None,
+            | Self::AsKw
+            | Self::SignatureKw
+            | Self::ModuleKw => None,
         }
     }
 
@@ -622,6 +628,8 @@ impl RawToken {
             Self::TemplateKw => SyntaxKind::TemplateKw,
             Self::MakeKw => SyntaxKind::MakeKw,
             Self::AsKw => SyntaxKind::AsKw,
+            Self::SignatureKw => SyntaxKind::SignatureKw,
+            Self::ModuleKw => SyntaxKind::ModuleKw,
         }
     }
 }

@@ -832,6 +832,9 @@ pub enum NameKind {
     Voice,
     /// A `patch` in the studio.
     Patch,
+    /// A `signature` or a `module`: static structure naming a group of
+    /// declarations, never a value.
+    Module,
 }
 
 /// One named thing and everywhere it is spoken, for an editor's references
@@ -879,6 +882,7 @@ impl NameFact {
             musa_compiler::NameKind::Part => NameKind::Part,
             musa_compiler::NameKind::Voice => NameKind::Voice,
             musa_compiler::NameKind::Patch => NameKind::Patch,
+            musa_compiler::NameKind::Module => NameKind::Module,
         };
         let span = |span: musa_compiler::SourceSpan| crate::diagnostic::Span {
             start: span.start,

@@ -2,6 +2,7 @@ language_version = 1
 
 [modules]
 collections = "collections.musa"
+context = "context.musa"
 core = "core.musa"
 harmony = "harmony.musa"
 list = "list.musa"

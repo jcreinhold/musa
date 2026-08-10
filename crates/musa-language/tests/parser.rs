@@ -861,3 +861,64 @@ fn a_stray_semicolon_carries_the_edit_that_removes_it() {
     }
     assert_eq!(print_errors(&parse(&repaired)), "", "{repaired}");
 }
+
+#[test]
+fn a_signature_and_a_module_parse_into_their_own_nodes() {
+    let source = "\
+signature TonalContext {
+    let tonic: key;
+}
+
+module CMajor: TonalContext {
+    let tonic: key = key c major;
+}
+
+template module Shift(C: TonalContext, gap: duration): TonalContext {
+    let tonic: key = C.tonic;
+}
+
+make Shift(CMajor, 1/4) as Shifted;
+
+piece \"Study\" {
+}
+";
+    let parsed = musa_language::parse(source);
+    assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
+    let root = parsed.syntax();
+
+    let signatures = musa_language::ast::SignatureDecl::all_at_root(&root);
+    let [signature] = signatures.as_slice() else {
+        panic!("one signature, found {}", signatures.len());
+    };
+    assert_eq!(signature.name().as_deref(), Some("TonalContext"));
+    let members = signature.members();
+    let [member] = members.as_slice() else {
+        panic!("one member, found {}", members.len());
+    };
+    assert_eq!(member.name().as_deref(), Some("tonic"));
+    assert!(member.ty().is_some());
+
+    let modules = musa_language::ast::ModuleDecl::all_at_root(&root);
+    let [module] = modules.as_slice() else {
+        panic!("a `template module` is not a root module, found {}", modules.len());
+    };
+    assert_eq!(module.name().as_deref(), Some("CMajor"));
+    assert_eq!(module.signature().as_deref(), Some("TonalContext"));
+    assert_eq!(module.lets().len(), 1);
+    assert!(module.params().is_empty());
+
+    let templates = musa_language::ast::TemplateDecl::all_at_root(&root);
+    let [template] = templates.as_slice() else {
+        panic!("one template, found {}", templates.len());
+    };
+    let shift = template.module().expect("a template module");
+    assert_eq!(template.name().as_deref(), Some("Shift"));
+    assert_eq!(shift.signature().as_deref(), Some("TonalContext"));
+    assert_eq!(template.params().len(), 2);
+
+    assert_eq!(musa_language::ast::MakeStmt::all_at_root(&root).len(), 1);
+    assert!(
+        musa_language::ast::MakeStmt::from_root(&root).is_none(),
+        "a module instance is not the document's piece"
+    );
+}

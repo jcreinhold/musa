@@ -109,6 +109,10 @@ pub enum NameKind {
     Voice,
     /// A `patch` in the studio.
     Patch,
+    /// A `signature` or a `module`. Static structure: it names a group of
+    /// declarations, never a value, and stops existing once the group has
+    /// been checked.
+    Module,
 }
 
 /// One named thing and everywhere it is spoken in the compiled document

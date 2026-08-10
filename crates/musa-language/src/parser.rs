@@ -105,6 +105,8 @@ const ROOT_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::Semicolon,
     SyntaxKind::TemplateKw,
     SyntaxKind::MakeKw,
+    SyntaxKind::SignatureKw,
+    SyntaxKind::ModuleKw,
     SyntaxKind::PieceKw,
     SyntaxKind::LibraryKw,
 ];
@@ -235,15 +237,16 @@ impl<'a> Parser<'a> {
         // rule someone has to remember.
         //
         // What may precede it is the file's lexical root: imports, values,
-        // functions, and templates. A `make` of a piece template stands in
+        // functions, signatures, modules, and templates, plus every `make`
+        // they are instantiated by. A `make` of a piece template stands in
         // the piece's place and is that piece — one file is still one piece,
         // whether it is written out or made.
-        self.root_preamble();
+        let made = self.root_preamble();
         if self.at(SyntaxKind::LibraryKw) {
             self.library_decl();
-        } else if self.at(SyntaxKind::MakeKw) {
-            self.make_stmt();
-        } else {
+        } else if self.at(SyntaxKind::PieceKw) || !made {
+            // A file that made nothing still owes a piece, and saying so here
+            // is how `piece_decl` reports the one it cannot find.
             self.piece_decl();
         }
         self.eat_trivia();
@@ -539,7 +542,8 @@ impl<'a> Parser<'a> {
     /// These are the file's lexical root, and the only scope a template body
     /// reads besides its own parameters. Nothing here is the file's
     /// declaration — the piece or library that follows is.
-    fn root_preamble(&mut self) {
+    fn root_preamble(&mut self) -> bool {
+        let mut made = false;
         loop {
             if self.at(SyntaxKind::UseKw) {
                 self.import_stmt();
@@ -549,10 +553,78 @@ impl<'a> Parser<'a> {
                 self.fn_decl();
             } else if self.at(SyntaxKind::TemplateKw) {
                 self.template_decl();
+            } else if self.at(SyntaxKind::SignatureKw) {
+                self.signature_decl();
+            } else if self.at(SyntaxKind::ModuleKw) {
+                self.module_decl();
+            } else if self.at(SyntaxKind::MakeKw) {
+                // Every `make` a file's root writes is read here, whether it
+                // makes a module or the piece itself. Which one is the piece
+                // is a question about what the names mean, and the parser
+                // does not know what anything means.
+                self.make_stmt();
+                made = true;
             } else {
                 break;
             }
         }
+        made
+    }
+
+    /// `signature TonalContext { let tonic: key; }` — the members a module
+    /// must provide, each a `let` with its definition left out.
+    fn signature_decl(&mut self) {
+        self.start(SyntaxKind::SignatureDecl);
+        self.bump(); // signature
+        self.expect(SyntaxKind::Identifier, "a signature name");
+        self.expect(SyntaxKind::LBrace, "`{`");
+        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+            if self.at(SyntaxKind::LetKw) {
+                self.signature_member();
+            } else {
+                self.expected("`let`, or `}`");
+                self.recover(&[SyntaxKind::LetKw, SyntaxKind::RBrace]);
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `let tonic: key;` — one signature member.
+    fn signature_member(&mut self) {
+        self.start(SyntaxKind::SignatureMember);
+        self.bump(); // let
+        self.expect(SyntaxKind::Identifier, "a member name");
+        self.expect(SyntaxKind::Colon, "`:`");
+        self.type_expr();
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `module CMajor : TonalContext { ... }`, or the same with a parameter
+    /// list for the module a `template` parameterizes.
+    fn module_decl(&mut self) {
+        self.start(SyntaxKind::ModuleDecl);
+        self.expect(SyntaxKind::ModuleKw, "`module`");
+        self.expect(SyntaxKind::Identifier, "a module name");
+        if self.at(SyntaxKind::LParen) {
+            self.param_list();
+        }
+        self.expect(SyntaxKind::Colon, "`:`");
+        self.expect(SyntaxKind::Identifier, "the signature this module provides");
+        self.expect(SyntaxKind::LBrace, "`{`");
+        while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
+            if self.at(SyntaxKind::LetKw) {
+                self.let_decl();
+            } else if self.at(SyntaxKind::FnKw) {
+                self.fn_decl();
+            } else {
+                self.expected("`let`, `fn`, or `}`");
+                self.recover(&[SyntaxKind::LetKw, SyntaxKind::FnKw, SyntaxKind::RBrace]);
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
     }
 
     /// `template piece study(k: key) "Study" { ... }`, or the same for a
@@ -570,10 +642,12 @@ impl<'a> Parser<'a> {
             self.piece_decl();
         } else if self.at(SyntaxKind::VoiceKw) {
             self.voice_decl();
+        } else if self.at(SyntaxKind::ModuleKw) {
+            self.module_decl();
         } else {
             self.expected_with_help(
-                "`piece` or `voice`",
-                "a template parameterizes a declaration, and those are the two kinds it may parameterize",
+                "`piece`, `voice`, or `module`",
+                "a template parameterizes a declaration, and those are the three kinds it may parameterize",
             );
             self.recover(ROOT_RECOVERY);
         }
@@ -742,12 +816,23 @@ impl<'a> Parser<'a> {
                 self.performance_decl();
             } else if self.at(SyntaxKind::StudioKw) {
                 self.studio_decl();
+            } else if self.at(SyntaxKind::SignatureKw) {
+                self.signature_decl();
+            } else if self.at(SyntaxKind::ModuleKw) {
+                self.module_decl();
+            } else if self.at(SyntaxKind::TemplateKw) && self.nth_significant(1) == Some(SyntaxKind::ModuleKw) {
+                // A piece or a voice belongs to a piece, so the one template
+                // a library may hold is the one that makes a module.
+                self.template_decl();
+            } else if self.at(SyntaxKind::MakeKw) {
+                self.make_stmt();
             } else {
                 // A library holds what can be shared. Music belongs to a
                 // piece, which is why `score` is not in this list.
                 self.expected_with_help(
                     "a declaration",
-                    "a library holds imports, reusable values/functions, material, performance, and studio declarations",
+                    "a library holds imports, reusable values/functions, material, signatures, modules, performance, \
+                     and studio declarations",
                 );
                 self.recover(PIECE_RECOVERY);
             }
@@ -996,6 +1081,13 @@ impl<'a> Parser<'a> {
             ) => {
                 self.start(SyntaxKind::NameExpr);
                 self.bump();
+                // `Module.member` — one name in two words. A dot only ever
+                // reads this way here: a dotted duration follows a rational,
+                // never a name.
+                if self.at(SyntaxKind::Dot) && self.nth_significant(1) == Some(SyntaxKind::Identifier) {
+                    self.bump();
+                    self.bump();
+                }
                 self.finish();
             }
             Some(
@@ -1176,11 +1268,16 @@ impl<'a> Parser<'a> {
     fn key_stmt(&mut self) {
         self.start(SyntaxKind::KeyStmt);
         self.bump(); // key
-        // `key a minor;` writes the key out; `key k;` names one a template
-        // was given. One word before the `;` cannot be both a tonic and a
-        // mode, so it is a name — and `key a;` was never valid, so nothing
-        // that parsed before parses differently now.
-        if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::Semicolon) {
+        // `key a minor;` writes the key out; `key k;` and `key M.k;` name one
+        // a template was given or a module holds. One word before the `;`
+        // cannot be both a tonic and a mode, so it is a name — and `key a;`
+        // was never valid, so nothing that parsed before parses differently
+        // now.
+        let named = self.at(SyntaxKind::Identifier)
+            && (self.nth_significant(1) == Some(SyntaxKind::Semicolon)
+                || (self.nth_significant(1) == Some(SyntaxKind::Dot)
+                    && self.nth_significant(3) == Some(SyntaxKind::Semicolon)));
+        if named {
             self.expr();
         } else {
             self.pitch_class();

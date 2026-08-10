@@ -1,0 +1,88 @@
+// A signature names what a bundle of declarations must provide; a module
+// provides it; a `template module` is a functor from modules to a module.
+// The one thing this adds over an ordinary typed parameter is that the facts
+// travel *together*: a key, its collection, and how the two spell a degree
+// are useless apart, and passing them one at a time is how they drift
+// (docs/language/04-templates-and-modules.md §4).
+use std::context;
+
+// What a canon needs, gathered once. Members are `let` without their
+// definition — a function is a value of arrow type, so one member form
+// covers values, functions, and music alike.
+signature CanonMaterial {
+    let subject: music;
+    let answer: music -> music;
+    let canon: music;
+}
+
+// The functor. It reads a tonal context through `TonalContext` and nothing
+// else: whatever else `CMajor` happens to define is private to `CMajor`, and
+// naming it here would be an error rather than a coincidence that works.
+//
+// Expansion is binding, not rewriting: this body is checked once per
+// instance with `C` naming the module the site passed, so no syntax is
+// copied and every span an editor points at is the one written here.
+template module Canon(C: TonalContext, gap: duration): CanonMaterial {
+    // The subject steps through whatever collection the context named.
+    let subject: music = music {
+        in scale C.collection {
+            c5/4
+            d5/4
+            e5/4
+            f5/4
+        }
+    };
+
+    // The answer, a fifth above. Ordinary music functions: a module exports
+    // values, and a value of arrow type is a function.
+    fn answer(line: music) -> music = transpose(P5, line);
+
+    // The canon itself: subject against its own answer, delayed by whatever
+    // the site asked for.
+    let canon: music = overlay(subject, shift(gap, answer(subject)));
+
+    // Private. `CanonMaterial` does not list it, so nothing outside this
+    // module may name `MajorCanon.stretto` — which is what sealing means.
+    let stretto: music = overlay(subject, shift(1/2, answer(subject)));
+}
+
+// Two instances, two modules. Identity is generative and comes from the
+// *site*: making the same functor twice with equal arguments would still be
+// two declarations, and here the arguments differ as well.
+make Canon(CMajor, 1/1) as MajorCanon;
+make Canon(ANaturalMinor, 2/1) as MinorCanon;
+
+// One piece template reads a single canon.
+template piece study(material: music, home: key) "Canon Study" {
+    meter 4/4;
+    key home;
+
+    score {
+        part piano {
+            voice right {
+                use material;
+            }
+        }
+    }
+}
+
+// Another reads two, which is the point of exporting ordinary music values
+// rather than a module object: what leaves a module is a value like any
+// other, and the template that takes it never learns where it came from.
+template piece duet(major: music, minor: music, home: key) "Canon Duet" {
+    meter 4/4;
+    key home;
+
+    score {
+        part piano {
+            voice upper {
+                use major;
+            }
+            voice lower {
+                use minor;
+            }
+        }
+    }
+}
+
+make duet(MajorCanon.canon, MinorCanon.canon, CMajor.tonic) as canon_duet;

@@ -1,0 +1,64 @@
+library {
+    use std::scale;
+    use std::voicing;
+
+    // A tonal context is the small bundle of facts that always travel
+    // together: what key a passage is in, which collection it steps through,
+    // how a numbered degree is spelled in register, and how a chord class is
+    // voiced. Passing them one at a time is how they drift apart, which is
+    // the whole reason a signature exists — Open Music Theory
+    // `020-diatonic-modes.md` names the collection, `026-triads.md` the
+    // chords, and neither is meaningful without the other.
+    signature TonalContext {
+        // The key the passage is written in. A key is a signature and a
+        // tonic, never a scale.
+        let tonic: key;
+
+        // The collection stepwise motion reads. A default, not a claim: a
+        // passage may still name another collection where it wants one.
+        let collection: scale;
+
+        // The written pitch a numbered degree names, in this context's own
+        // register. Absent when the context has no register to spell in.
+        let spell: nat -> option[pitch];
+
+        // How this context voices a chord class. Absent when the class
+        // cannot be voiced from the register it chose.
+        let voicing_for: chord_class -> option[voicing];
+    }
+
+    // C major, spelled from middle C.
+    module CMajor: TonalContext {
+        let tonic: key = key c major;
+        let collection: scale = scale c ionian;
+
+        // The register degrees are spelled in. Private: a context promises
+        // spelled pitches, not the frame it spells them from, so changing
+        // where this one sits changes nothing anyone outside can name.
+        let home: option[frame] = frame_on(collection, c4);
+
+        fn spell(ordinal: nat) -> option[pitch] = match home {
+            none -> none,
+            some(register) -> some(frame_degree(register, ordinal)),
+        };
+
+        fn voicing_for(content: chord_class) -> option[voicing] = close_position(content, c4);
+    }
+
+    // A natural minor, spelled from the A below middle C. The same four
+    // members, answered differently — which is what makes the two modules
+    // interchangeable everywhere `TonalContext` is asked for.
+    module ANaturalMinor: TonalContext {
+        let tonic: key = key a minor;
+        let collection: scale = scale a aeolian;
+
+        let home: option[frame] = frame_on(collection, a3);
+
+        fn spell(ordinal: nat) -> option[pitch] = match home {
+            none -> none,
+            some(register) -> some(frame_degree(register, ordinal)),
+        };
+
+        fn voicing_for(content: chord_class) -> option[voicing] = close_position(content, a3);
+    }
+}

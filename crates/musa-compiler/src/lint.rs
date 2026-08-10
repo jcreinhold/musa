@@ -65,7 +65,8 @@ fn unused_material(document: &ParsedDocument, source: &str, references: &Referen
             | NameKind::Bar
             | NameKind::Part
             | NameKind::Voice
-            | NameKind::Patch => continue,
+            | NameKind::Patch
+            | NameKind::Module => continue,
         };
         let Some(statement) = statement_node(
             document,

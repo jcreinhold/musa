@@ -1,7 +1,7 @@
 ---
 id: 104
 slug: library-modules-and-functors
-status: in-progress
+status: done
 depends_on: [99, 103]
 phase: 3
 ---

@@ -28,6 +28,15 @@
 (make_statement
   template: (identifier) @name) @reference.call
 
+(signature_declaration
+  name: (identifier) @name) @definition.type
+
+(module_declaration
+  name: (identifier) @name) @definition.type
+
+(module_declaration
+  signature: (identifier) @name) @reference.type
+
 (patch_declaration
   name: (identifier) @name) @definition.type
 

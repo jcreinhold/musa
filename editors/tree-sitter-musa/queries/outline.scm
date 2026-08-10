@@ -10,6 +10,12 @@
 (make_statement
   name: (identifier) @name) @item
 
+(signature_declaration
+  name: (identifier) @name) @item
+
+(module_declaration
+  name: (identifier) @name) @item
+
 (motif_declaration
   name: (identifier) @name) @item
 

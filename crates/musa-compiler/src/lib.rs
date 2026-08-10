@@ -44,6 +44,7 @@ mod imports;
 mod kernel_text;
 mod lint;
 mod marks;
+mod module;
 mod origin;
 mod performance;
 mod pitch;

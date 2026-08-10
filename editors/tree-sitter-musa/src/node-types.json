@@ -1195,6 +1195,14 @@
           "named": true
         },
         {
+          "type": "make_statement",
+          "named": true
+        },
+        {
+          "type": "module_declaration",
+          "named": true
+        },
+        {
           "type": "motif_declaration",
           "named": true
         },
@@ -1203,7 +1211,15 @@
           "named": true
         },
         {
+          "type": "signature_declaration",
+          "named": true
+        },
+        {
           "type": "studio_declaration",
+          "named": true
+        },
+        {
+          "type": "template_declaration",
           "named": true
         }
       ]
@@ -1491,6 +1507,50 @@
     }
   },
   {
+    "type": "module_declaration",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "signature": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "function_declaration",
+          "named": true
+        },
+        {
+          "type": "let_declaration",
+          "named": true
+        },
+        {
+          "type": "parameter_list",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "motif_declaration",
     "named": true,
     "fields": {
@@ -1696,7 +1756,18 @@
   {
     "type": "name_expression",
     "named": true,
-    "fields": {},
+    "fields": {
+      "member": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
     "children": {
       "multiple": false,
       "required": false,
@@ -2680,6 +2751,58 @@
     }
   },
   {
+    "type": "signature_declaration",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "signature_member",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "signature_member",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "type_expression",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "slur_statement",
     "named": true,
     "fields": {
@@ -2725,7 +2848,15 @@
           "named": true
         },
         {
+          "type": "module_declaration",
+          "named": true
+        },
+        {
           "type": "piece_declaration",
+          "named": true
+        },
+        {
+          "type": "signature_declaration",
           "named": true
         },
         {
@@ -2943,6 +3074,10 @@
       "multiple": false,
       "required": true,
       "types": [
+        {
+          "type": "module_declaration",
+          "named": true
+        },
         {
           "type": "piece_declaration",
           "named": true
@@ -3580,6 +3715,10 @@
     "named": false
   },
   {
+    "type": "module",
+    "named": false
+  },
+  {
     "type": "motif",
     "named": false
   },
@@ -3677,6 +3816,10 @@
   },
   {
     "type": "senza",
+    "named": false
+  },
+  {
+    "type": "signature",
     "named": false
   },
   {

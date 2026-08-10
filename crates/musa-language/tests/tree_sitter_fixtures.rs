@@ -116,6 +116,8 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::Caret => "^",
         SyntaxKind::Hash => "#",
         SyntaxKind::TemplateKw => "template",
+        SyntaxKind::SignatureKw => "signature",
+        SyntaxKind::ModuleKw => "module",
         SyntaxKind::MakeKw => "make",
         SyntaxKind::AsKw => "as",
         SyntaxKind::PieceKw => "piece",
@@ -303,6 +305,9 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::StackStmt
         | SyntaxKind::TemplateDecl
         | SyntaxKind::MakeStmt
+        | SyntaxKind::SignatureDecl
+        | SyntaxKind::SignatureMember
+        | SyntaxKind::ModuleDecl
         | SyntaxKind::PitchExpr => panic!("`{kind:?}` is a node, not a token"),
     }
 }

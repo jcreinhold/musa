@@ -31,12 +31,12 @@ use crate::resolve::{Resolver, trimmed_span};
 /// The digest version. Bumping it changes every generated identity on
 /// purpose, which is why it is written down rather than implied by the code
 /// that happens to compute one.
-const DIGEST_VERSION: &str = "musa-template-1";
+pub(crate) const DIGEST_VERSION: &str = "musa-template-1";
 
 /// The separator inside a generated key. A unit separator, because no part of
 /// a key — a document name, a template name, a structural path — can contain
 /// one, so no two different keys can encode to the same bytes.
-const UNIT: char = '\u{1f}';
+pub(crate) const UNIT: char = '\u{1f}';
 
 /// What a template parameterizes.
 ///
