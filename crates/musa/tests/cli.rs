@@ -107,6 +107,83 @@ fn format_check_leaves_the_directory_alone() -> std::io::Result<()> {
     std::fs::remove_file(&path)
 }
 
+const MESSY: &str = "piece   \"M\"{\nmeter 4/4;\n}\n";
+const TIDY: &str = "piece \"M\" {\n    meter 4/4;\n}\n";
+
+fn temp_dir(name: &str) -> std::io::Result<std::path::PathBuf> {
+    let path = std::env::temp_dir().join(format!("musa-test-{}-{name}", std::process::id()));
+    if path.exists() {
+        std::fs::remove_dir_all(&path)?;
+    }
+    std::fs::create_dir_all(&path)?;
+    Ok(path)
+}
+
+/// One command formats a folder, the way `ruff format` and `cargo fmt` do.
+///
+/// The file worth formatting is rarely the one that happens to be open, so a
+/// folder argument is walked whole: nested folders are reached, hidden ones
+/// are not, and a file that is not `.musa` is not a musa file whatever it
+/// holds.
+#[test]
+fn format_walks_a_folder_and_skips_what_is_not_its_business() -> std::io::Result<()> {
+    let root = temp_dir("walk")?;
+    std::fs::create_dir_all(root.join("inner"))?;
+    std::fs::create_dir_all(root.join(".hidden"))?;
+    std::fs::write(root.join("top.musa"), MESSY)?;
+    std::fs::write(root.join("inner/deep.musa"), MESSY)?;
+    std::fs::write(root.join(".hidden/kept.musa"), MESSY)?;
+    std::fs::write(root.join("notes.txt"), MESSY)?;
+
+    let output = musa(&["format", &root.to_string_lossy()])?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "stderr: {stderr}");
+    assert_eq!(std::fs::read_to_string(root.join("top.musa"))?, TIDY);
+    assert_eq!(std::fs::read_to_string(root.join("inner/deep.musa"))?, TIDY);
+    assert_eq!(std::fs::read_to_string(root.join(".hidden/kept.musa"))?, MESSY);
+    assert_eq!(std::fs::read_to_string(root.join("notes.txt"))?, MESSY);
+    assert!(
+        stderr.contains("2 files formatted, 0 already formatted"),
+        "stderr: {stderr}"
+    );
+    std::fs::remove_dir_all(&root)
+}
+
+/// No path means this folder — the shape a formatter is run in.
+#[test]
+fn format_with_no_path_formats_the_folder_it_was_run_in() -> std::io::Result<()> {
+    let root = temp_dir("here")?;
+    std::fs::write(root.join("here.musa"), MESSY)?;
+    let output = Command::new(env!("CARGO_BIN_EXE_musa"))
+        .arg("format")
+        .current_dir(&root)
+        .output()?;
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(std::fs::read_to_string(root.join("here.musa"))?, TIDY);
+    std::fs::remove_dir_all(&root)
+}
+
+/// A file that does not parse is reported and left exactly as it was.
+///
+/// It matters more now that one command reaches a whole folder: the formatter
+/// would be guessing at what half-written text meant, and it would write the
+/// guess over the text its author was in the middle of.
+#[test]
+fn format_leaves_a_file_that_does_not_parse_alone() -> std::io::Result<()> {
+    let broken = "piece \"B\" { meter 4/4\n";
+    let path = temp_file("unparsed.musa", broken)?;
+    let output = musa(&["format", &path.to_string_lossy()])?;
+    assert!(!output.status.success());
+    assert_eq!(std::fs::read_to_string(&path)?, broken);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("does not parse"), "stderr: {stderr}");
+    std::fs::remove_file(&path)
+}
+
 // --- WAV export (prompt 17) -----------------------------------------------------
 
 /// Every shipped example renders to WAV deterministically (same source →

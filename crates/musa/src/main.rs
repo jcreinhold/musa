@@ -67,7 +67,7 @@ fn print_usage() {
     println!("  musa check <file.musa>… [--fix]         every problem in a piece, with its place");
     println!("      --fix                                  apply warnings' certain fixes in place");
     println!("  musa explain <code>                    the rule behind a diagnostic code");
-    println!("  musa format <file.musa> [--check]      format in place (--check to fail instead)");
+    println!("  musa format [<file|folder>…] [--check] format in place; no path means here");
     println!("      --diff                               print the diff instead of writing");
     println!("  musa render <file.musa> --to <target>  mei | lilypond | musicxml | midi | wav");
     println!("      --to plan | performance              the debug dumps, to stdout");
@@ -369,30 +369,111 @@ fn cmd_play(args: &[String]) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-/// `musa format <file> [--check | --diff]`
+/// What formatting asks of one file — the three things the flags choose between.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Formatting {
+    /// Rewrite the file and save it.
+    Write,
+    /// Say whether it is canonical, and change nothing.
+    Check,
+    /// Print what `Write` would change, and change nothing.
+    Diff,
+}
+
+/// What formatting one file found — the three things the summary counts.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Formatted {
+    /// Already canonical.
+    Unchanged,
+    /// Rewritten, or — under `--check` and `--diff` — waiting to be.
+    Changed,
+    /// Could not be opened or saved. Already reported.
+    Failed,
+}
+
+/// `musa format [<file|folder>…] [--check | --diff]`
+///
+/// A folder is formatted whole and no argument means this one, the way `ruff
+/// format`, `black` and `cargo fmt` work: the file worth formatting is rarely
+/// the file you happen to have open, and a formatter you must aim one file at
+/// a time is one that runs on a subset of the project forever.
 fn cmd_format(args: &[String]) -> ExitCode {
-    let check_only = args.iter().any(|arg| arg == "--check");
-    let diff_only = args.iter().any(|arg| arg == "--diff");
-    let Some(path) = args.iter().find(|arg| !arg.starts_with("--")) else {
-        eprintln!("error: format needs a file");
+    let formatting = if args.iter().any(|arg| arg == "--diff") {
+        Formatting::Diff
+    } else if args.iter().any(|arg| arg == "--check") {
+        Formatting::Check
+    } else {
+        Formatting::Write
+    };
+    let mut arguments: Vec<&str> = args
+        .iter()
+        .filter(|arg| !arg.starts_with("--"))
+        .map(String::as_str)
+        .collect();
+    if arguments.is_empty() {
+        arguments.push(".");
+    }
+    let mut paths = Vec::new();
+    for argument in arguments {
+        match sources(argument) {
+            Ok(listed) => paths.extend(listed),
+            Err(error) => {
+                eprintln!("error: {error}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
+    if paths.is_empty() {
+        eprintln!("error: no `.musa` file to format");
         return ExitCode::FAILURE;
+    }
+    let (mut changed, mut unchanged, mut failed) = (0u32, 0u32, 0u32);
+    for path in &paths {
+        match format_one(path, formatting) {
+            Formatted::Changed => changed = changed.saturating_add(1),
+            Formatted::Unchanged => unchanged = unchanged.saturating_add(1),
+            Formatted::Failed => failed = failed.saturating_add(1),
+        }
+    }
+    if paths.len() > 1 {
+        eprintln!("{}", format_summary(formatting, changed, unchanged, failed));
+    }
+    // Under `--check` and `--diff` a difference is the answer, and the answer
+    // is no.
+    if failed > 0 || (formatting != Formatting::Write && changed > 0) {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+/// One file, formatted or asked about.
+fn format_one(path: &str, formatting: Formatting) -> Formatted {
+    let Ok(mut session) = open(path, &Realization::deterministic()) else {
+        return Formatted::Failed;
     };
-    let mut session = match open(path, &Realization::deterministic()) {
-        Ok(session) => session,
-        Err(code) => return code,
-    };
+    // A file that does not parse is not formatted. The tree is lossless, so
+    // the formatter could produce *something* — but the something is a guess
+    // at what half-written text meant, written over the text its author was
+    // in the middle of. Prompt 56's rule for fixes is the rule here: a file
+    // that does not compile is a conversation, not a draft. It matters more
+    // now that one command formats a whole folder at once.
+    if session.snapshot().diagnostics().iter().any(unparsed) {
+        eprintln!("error: {path}: does not parse, so it is left alone");
+        return Formatted::Failed;
+    }
     // `--check` and `--diff` ask rather than edit: an edit would be
     // autosaved, and a check that leaves a `.recovery` copy behind is not a
     // check. The diff is the check with its evidence attached — a formatter
     // you cannot preview is a formatter you cannot trust.
-    if check_only || diff_only {
+    if formatting != Formatting::Write {
         let formatted = session.formatted_source();
         let snapshot = session.snapshot();
         let source = snapshot.source();
         if formatted == source {
-            return ExitCode::SUCCESS;
+            return Formatted::Unchanged;
         }
-        if diff_only {
+        if formatting == Formatting::Diff {
             let diff = unified_diff(path, source, &formatted);
             if diff.is_empty() {
                 // Lines compare equal; the difference is the final newline,
@@ -404,28 +485,87 @@ fn cmd_format(args: &[String]) -> ExitCode {
         } else {
             eprintln!("{path}: not formatted");
         }
-        return ExitCode::FAILURE;
+        return Formatted::Changed;
     }
     let update = match session.apply(ProjectCommand::Format) {
         Ok(update) => update,
         Err(error) => {
-            eprintln!("error: {error}");
-            return ExitCode::FAILURE;
+            eprintln!("error: {path}: {error}");
+            return Formatted::Failed;
         }
     };
     if !update.source_changed {
-        return ExitCode::SUCCESS;
+        return Formatted::Unchanged;
     }
     match session.apply(ProjectCommand::Save) {
         Ok(_) => {
             println!("{path}: formatted");
-            ExitCode::SUCCESS
+            Formatted::Changed
         }
         Err(error) => {
-            eprintln!("error: {error}");
-            ExitCode::FAILURE
+            eprintln!("error: {path}: {error}");
+            Formatted::Failed
         }
     }
+}
+
+/// Whether a diagnostic says the text is not a piece yet.
+fn unparsed(diagnostic: &musa_project::Diagnostic) -> bool {
+    diagnostic.severity == musa_project::Severity::Error && diagnostic.code == "syntax"
+}
+
+/// The one line a run over many files ends with.
+fn format_summary(formatting: Formatting, changed: u32, unchanged: u32, failed: u32) -> String {
+    let (verb, rest) = if formatting == Formatting::Write {
+        ("formatted", "already formatted")
+    } else {
+        ("not formatted", "formatted")
+    };
+    let unread = if failed > 0 {
+        format!(", {failed} {} left alone", plural(failed, "file"))
+    } else {
+        String::new()
+    };
+    format!(
+        "{changed} {} {verb}, {unchanged} {rest}{unread}",
+        plural(changed, "file")
+    )
+}
+
+/// Every `.musa` file an argument names: itself, or the folder's, in path order.
+///
+/// A folder is walked, not opened as a project: formatting is a fact about
+/// text alone, so a file no manifest lists is still a file to format. Hidden
+/// entries, `target`, and symbolic links are passed over — a formatter that
+/// writes through a link edits a file the caller did not name.
+fn sources(argument: &str) -> Result<Vec<String>, String> {
+    let root = std::path::Path::new(argument);
+    if !root.is_dir() {
+        return Ok(vec![argument.to_owned()]);
+    }
+    let mut found = Vec::new();
+    walk(root, &mut found).map_err(|error| format!("{argument}: {error}"))?;
+    found.sort();
+    Ok(found)
+}
+
+fn walk(folder: &std::path::Path, found: &mut Vec<String>) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(folder)? {
+        let entry = entry?;
+        let path = entry.path();
+        let name = entry.file_name();
+        if name.to_string_lossy().starts_with('.') || name == "target" {
+            continue;
+        }
+        let kind = entry.file_type()?;
+        if kind.is_dir() {
+            walk(&path, found)?;
+        } else if kind.is_file() && path.extension().is_some_and(|extension| extension == "musa") {
+            let shown = path.display().to_string();
+            found.push(shown.strip_prefix("./").unwrap_or(&shown).to_owned());
+        }
+    }
+    Ok(())
 }
 
 /// A diagnostic rendered with source context by miette.

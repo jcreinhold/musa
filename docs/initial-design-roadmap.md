@@ -2209,6 +2209,7 @@ Commands:
 ```text
 musa check piece.musa
 musa format piece.musa
+musa format                     # this folder, walked whole
 musa render piece.musa --to lilypond
 musa render piece.musa --to musicxml
 musa render piece.musa --to wav
