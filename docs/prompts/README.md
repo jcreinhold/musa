@@ -241,6 +241,13 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 135 | audio-performance-closure | 4 | Measured preparation/render/asset/UI performance and RT closure |
 | 136 | audio-conformance | 4 | Complete performance/sound/assets conformance audit |
 | 137 | language-conformance | 4 | Whole-language audit and conditional language-spec graduation |
+| 138 | wasm-shell | 5 | `musa-wasm`: the whole pipeline as one small WebAssembly module |
+| 139 | shared-engrave-package | 5 | `packages/musa-engrave`: the worker engraver shared by desktop and web |
+| 140 | web-package-scaffold | 5 | `@musa/web` ESM package: low-level `parse`/`render` |
+| 141 | dom-typesetting | 5 | `MusaWeb.typeset`, `<musa-score>`, error boxes, MutationObserver |
+| 142 | provenance-interaction | 5 | Event-id callbacks and highlight via the MEI `xml:id` contract |
+| 143 | web-distribution-and-examples | 5 | CDN iife build, example pages, build-time typesetting recipe |
+| 144 | snippet-playback | 5 | **Deferred**: in-page PCM playback with playhead provenance |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
@@ -432,6 +439,18 @@ exposed controls, part outputs, assets, and media without creating GUI-owned sta
 and the two-path handbook. 135 measures preparation, rendering, decoded memory, callback deadlines, and UI updates.
 136 audits every performance/sound/asset/package law and format support claim. Only 137 combines that green matrix with
 the score/theory/kernel/tooling matrix and conditionally graduates `docs/language/`.
+
+**Prompts 138–144 are the web block: musa as a MathJax-like library for any page.** The stack the desktop app already
+proved — Rust compiles source to MEI, a worker engraver turns MEI into SVG, `xml:id`s carry provenance — is packaged,
+not reinvented. **138** crosses the existing pipeline to WebAssembly as a shell crate with the post-wasm-pack toolchain
+(`wasm-bindgen --target web` + pinned `wasm-opt`; wasm-pack was sunset in 2025). **139** extracts the desktop's worker
+engraver into `packages/musa-engrave` so two platforms share one provenance-critical module instead of drifting apart.
+**140** scaffolds `@musa/web` with the low-level `parse`/`render` pair (the mermaid shape). **141** adds the MathJax
+layer: `typeset()`, the `<musa-score>` element, visible error boxes, an opt-in observer — with the source kept in the
+DOM, because text is canonical on the web too. **142** wires the `event-<hex>` contract to page callbacks, the feature
+that makes it musa and not another notation renderer. **143** ships the CDN single-tag build (Blob-inlined worker),
+example pages, and the build-time recipe for static sites. **144** is deferred: in-page playback, scheduled only when
+a real need is demonstrated.
 
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
 ("Verovio score preview", "play, stop, seek, loop") but which this sequence deliberately runs after the CLI-provable
