@@ -1,7 +1,7 @@
 ---
 id: 104
 slug: library-modules-and-functors
-status: pending
+status: in-progress
 depends_on: [99, 103]
 phase: 3
 ---
@@ -23,10 +23,13 @@ real tonal-context bundle as the caller, while keeping modules out of the value 
 
 ## Design
 
-A signature lists exported values/functions/music bindings/templates with their ordinary types. No abstract types,
-type members, subtyping, implicit module search, or first-class modules are needed for the concrete caller. Matching is
-structural by name and exact type, reports missing/extra/mismatched members with definition labels, and preserves
-read-only source locations across imports.
+A signature lists exported values, functions, and music bindings with their ordinary types; each member is a `let`
+without its definition, because a function is a value of arrow type and one member form covers all three. Signature
+members that name an identity-bearing declaration, and template members, are deferred until something calls for them.
+No abstract types, type members, subtyping, implicit module search, or first-class modules are needed for the concrete
+caller. Matching is structural by name and exact type; a missing member and a mistyped member are reported with both
+the signature's and the module's labels. A member the signature does not list is *private* rather than an error —
+that is what sealing means — and naming one from outside is reported against the signature that hides it.
 
 A functor is a statically named map from modules matching signatures to a library module. Instantiation is generative
 at the structural level with stable identity derived from functor, argument-module identities, and instance site. It is

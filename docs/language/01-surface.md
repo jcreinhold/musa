@@ -16,7 +16,7 @@ binding      := "let" IDENT ":" type "=" expr ";"
 function     := "fn" IDENT "(" params? ")" "->" type "=" expr ";"
 param        := IDENT ":" type ("=" expr)?
 call         := expr "(" args? ")"
-expr         := literal | IDENT | "(" expr ")" | product | list | option
+expr         := literal | IDENT | path | "(" expr ")" | product | list | option
               | call | match | music-expr
 product      := "(" expr "," expr ("," expr)* ")"
 list         := "[" (expr ("," expr)*)? "]"
@@ -33,9 +33,14 @@ assertion    := "assert" IDENT "(" args? ")" "{" music-statement* "}"
 analysis     := "analysis" IDENT "=" expr ";"
 kernel-quote := "kernel" "Timeline" "[" "ScoreFact" "]" "{" kernel-item* "}"
 antiquote    := "${" expr "}"
-document     := (import | binding | function | template)* (piece | library | instance)
+document     := (import | binding | function | signature | module | template | instance)*
+                (piece | library | instance)
+signature    := "signature" IDENT "{" member* "}"
+member       := "let" IDENT ":" type ";"
+module       := "module" IDENT ":" IDENT "{" (binding | function)* "}"
 template     := "template" decl-kind IDENT "(" params? ")" decl-body
 instance     := "make" IDENT "(" args? ")" "as" IDENT ";"
+path         := IDENT "." IDENT
 sound-bind   := "sound" expr "using" expr ";"
 instrument   := "instrument" IDENT ("from" STRING)? "conforms" path
                 (";" | "{" instrument-item* "}")
@@ -241,6 +246,42 @@ stands at the file root and *is* that file's piece, and a `make` of a voice temp
 Whatever precedes the file's piece or library — imports, bindings, functions, templates — is the file's lexical root. A
 template body reads that root and its own parameters and nothing from the site that instantiates it; the arguments at a
 site are evaluated in the site's own scope, which is why `subject` above can be passed on from `study` to `answer`.
+
+## 6.1 Signatures and static modules
+
+A signature names what a bundle of values must provide; a module provides them; a `template module` is a functor from
+modules to a module.
+
+```musa
+signature TonalContext {
+    let tonic: key;
+    let collection: scale;
+    let spell: degree -> option[pitch];
+}
+
+module CMajor : TonalContext {
+    let tonic: key = key c major;
+    let collection: scale = scale c ionian;
+    let spell: degree -> option[pitch] = degree_in_c;
+}
+
+template module Sequences(C: TonalContext, gap: duration) : SequenceMaterial {
+    let step_up: music -> music = transpose(M2);
+    let delay: duration = gap;
+    let home: key = C.tonic;
+}
+
+make Sequences(CMajor, 1/2) as CSequences;
+```
+
+A signature member is a `let` without its definition: a name and the type the module must give it. Matching is by name
+and exact type — a missing member and a member of the wrong type are both errors, each labelled at the signature and at
+the module. A member the signature does not mention stays private to the module: it is what the module's own definitions
+may use and what nothing outside may name.
+
+Members are read as `Module.member`. Inside a module, a sibling member is read by its bare name. There is no module
+value, no module argument to a function, no unpacking, and no recursion: `module`, `signature`, and `template module`
+are structural syntax that has finished before any value exists.
 
 ## 7. Kernel documents and quotation
 

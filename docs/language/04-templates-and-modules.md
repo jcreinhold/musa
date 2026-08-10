@@ -90,36 +90,13 @@ A piece template does not package mutable studio state into a piece value.
 
 ## 4. Module signatures
 
-Modules are static named collections of types, values, and declarations. The candidate syntax is:
-
-```musa
-signature ChamberSound {
-    instrument lead: note_instrument;
-    profile lyrical: profile[note_instrument];
-}
-
-module DryStrings : ChamberSound {
-    instrument lead from "assets/violin.sfz" conforms note_instrument;
-    performance {
-        profile lyrical for note_instrument {
-            dynamic p -> expression 0.30;
-            dynamic f -> expression 0.85;
-        }
-    }
-}
-```
-
-A signature member specifies its namespace, name, and type/signature. Matching is transparent for value types and
-nominal for identity-bearing declarations. Extra private members are hidden after sealing. Paths are `Module.member`;
-unqualified lookup never searches remote packages or every imported module.
-
-Module parameters use a genuine static functor. This example consumes a related bundle that direct value parameters
-cannot name as one unit:
+Modules are static named collections of values. A signature says what a module must provide; a module provides it; a
+`template module` is a functor from modules to a module. The implemented spelling is:
 
 ```musa
 signature CanonMaterial {
-    value subject: music;
-    value answer: music -> music;
+    let subject: music;
+    let answer: music -> music;
 }
 
 module FifthMaterial : CanonMaterial {
@@ -135,10 +112,25 @@ template module DelayedCanon(C: CanonMaterial, gap: duration) : CanonMaterial {
 make DelayedCanon(FifthMaterial, 1/2) as FifthCanon;
 ```
 
-Functor application checks the argument signature, expands once at the named site, seals the result to the result
-signature, and assigns stable generative identities. It does not construct a runtime module closure. There is no
-`module` value type, first-class module unpacking, recursive module, implicit functor application, or Rust `Functor`
-trait.
+A signature member is a `let` without its definition: a namespace, a name, and the type. Values, functions, and `music`
+bindings are all `let` members, because a function is a value of arrow type. Member kinds that name an identity-bearing
+declaration — `instrument`, `profile`, `patch` — are not implemented; when they arrive they will be spelled by their own
+keyword in the same position, and matching for them will be nominal rather than transparent.
+
+Matching is transparent and by name: every member the signature lists must be defined by the module with exactly that
+type, and a missing or mistyped member is reported at both the signature's member and the module. A member the signature
+does not list is private — usable by the module's own definitions and nameable by nothing outside it, which is what
+sealing means here.
+
+Paths are `Module.member`, and inside a module a sibling member is read by its bare name. Unqualified lookup never
+searches remote packages or every imported module.
+
+Functor application checks the argument's signature against the parameter's, expands once at the named site, seals the
+result to the result signature, and assigns a stable generative identity derived from the functor, the argument modules'
+identities, and the instance site. Expansion is *binding*, not rewriting: the body is checked once per instance with
+`C.member` bound to what the argument module's member evaluated to, so no syntax is copied and no name can be captured.
+It does not construct a runtime module closure. There is no `module` value type, first-class module unpacking, recursive
+module, implicit functor application, or Rust `Functor` trait.
 
 ## 5. Resolution and compilation order
 
