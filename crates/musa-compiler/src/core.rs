@@ -646,11 +646,177 @@ enum Primitive {
     Row12Missing,
 }
 
+/// A base type as a primitive signature names it.
+///
+/// These are the inert types of `docs/language/02-core-calculus.md` §5.8: a closed value of one is
+/// an opaque constant, no reduction rule inspects its structure, and everything observable about it
+/// is observed by applying a primitive. That is condition D1, and it holds here by construction —
+/// there is no variant for a type with an eliminator.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Base {
+    Bool,
+    Nat,
+    Pitch,
+    PitchClass,
+    Interval,
+    Key,
+    Scale,
+    Degree,
+    Frame,
+    ChordClass,
+    Triad,
+    Roman,
+    Voicing,
+    Pc12,
+    PcSet12,
+    Row12,
+}
+
+/// An argument or result type of a δ-primitive.
+///
+/// There is deliberately no arrow constructor. §5.8's no-arrow premise is therefore true of every
+/// declared δ signature by construction rather than by inspection, and a primitive that wanted a
+/// function argument could not be spelled here at all — it would have to join the eliminators,
+/// which is exactly the classification the theorem depends on.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Shape {
+    Base(Base),
+    Option(&'static Self),
+    List(&'static Self),
+}
+
+impl Shape {
+    /// The core type this shape denotes.
+    fn ty(self) -> Type {
+        match self {
+            Self::Base(base) => base.ty(),
+            Self::Option(member) => Type::Option(Box::new(member.ty())),
+            Self::List(member) => Type::List(Box::new(member.ty())),
+        }
+    }
+
+    /// Whether absence is expressible in this shape's outermost position.
+    ///
+    /// D2 lets a primitive be partial only by saying so in its result type, so this is what the
+    /// sampling law consults before it accepts a `None` from an evaluator.
+    #[cfg(test)]
+    const fn admits_absence(self) -> bool {
+        matches!(self, Self::Option(_))
+    }
+}
+
+impl Base {
+    fn ty(self) -> Type {
+        match self {
+            Self::Bool => Type::Bool,
+            Self::Nat => Type::Nat,
+            Self::Pitch => Type::Pitch,
+            Self::PitchClass => Type::PitchClass,
+            Self::Interval => Type::Interval,
+            Self::Key => Type::Key,
+            Self::Scale => Type::Scale,
+            Self::Degree => Type::Degree,
+            Self::Frame => Type::Frame,
+            Self::ChordClass => Type::ChordClass,
+            Self::Triad => Type::Triad,
+            Self::Roman => Type::Roman,
+            Self::Voicing => Type::Voicing,
+            Self::Pc12 => Type::Pc12,
+            Self::PcSet12 => Type::PcSet12,
+            Self::Row12 => Type::Row12,
+        }
+    }
+}
+
+/// Which of `02-core-calculus.md` §5.8's three families a compiler-owned operation belongs to.
+///
+/// The families are disjoint and exhaustive, which is what lets Theorem 5 be stated once instead of
+/// once per musical domain. A new domain is admissible when its operations can be declared here as
+/// `Delta` and discharge D1–D4; it does not get a new induction.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Family {
+    /// First-order and arrow-free. Covered by Theorem 5 once D1–D4 hold, and the declared
+    /// signature is the single statement of the operation's type: the checker reads argument and
+    /// result types from it rather than restating them.
+    Delta { arguments: &'static [Shape], result: Shape },
+    /// Takes a function argument or carries a rank-1 scheme. Covered by §5.6, and checked by hand
+    /// because its type depends on its arguments' types.
+    Eliminator(Eliminator),
+    /// Constructs or transforms `music`. Covered by §5.7 and constrained by prompt 98.
+    Music,
+}
+
+/// The seven structural eliminators of `02-core-calculus.md` §5.6.
+///
+/// They are named as a closed set rather than matched out of [`Primitive`] because §5.6's proof is
+/// about exactly these seven. Naming them here is what lets the checker's remaining hand-written
+/// arms be exhaustive: once a primitive's family is an `Eliminator`, which one it is has already
+/// been decided, and no arm is left over for the sixty-two δ-primitives to fall into by accident.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Eliminator {
+    NatFold,
+    ListFold,
+    OptionFold,
+    Map,
+    Filter,
+    Range,
+    Repeat,
+}
+
+impl Eliminator {
+    const fn arity(self) -> usize {
+        match self {
+            Self::NatFold | Self::ListFold | Self::OptionFold => 3,
+            Self::Map | Self::Filter | Self::Repeat => 2,
+            Self::Range => 1,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 struct PrimitiveOwnership<T> {
     operation: T,
     spelling: &'static str,
     hidden_information: &'static str,
+    family: Family,
+}
+
+const BOOL: Shape = Shape::Base(Base::Bool);
+const NAT: Shape = Shape::Base(Base::Nat);
+const PITCH: Shape = Shape::Base(Base::Pitch);
+const CLASS: Shape = Shape::Base(Base::PitchClass);
+const INTERVAL: Shape = Shape::Base(Base::Interval);
+const KEY: Shape = Shape::Base(Base::Key);
+const SCALE: Shape = Shape::Base(Base::Scale);
+const DEGREE: Shape = Shape::Base(Base::Degree);
+const FRAME: Shape = Shape::Base(Base::Frame);
+const CHORD: Shape = Shape::Base(Base::ChordClass);
+const TRIAD: Shape = Shape::Base(Base::Triad);
+const ROMAN: Shape = Shape::Base(Base::Roman);
+const VOICING: Shape = Shape::Base(Base::Voicing);
+const PC12: Shape = Shape::Base(Base::Pc12);
+const PCSET12: Shape = Shape::Base(Base::PcSet12);
+const ROW12: Shape = Shape::Base(Base::Row12);
+
+const NATS: Shape = Shape::List(&NAT);
+const PITCHES: Shape = Shape::List(&PITCH);
+const INTERVALS: Shape = Shape::List(&INTERVAL);
+const PC12S: Shape = Shape::List(&PC12);
+const ROW12S: Shape = Shape::List(&ROW12);
+
+const MAYBE_NAT: Shape = Shape::Option(&NAT);
+const MAYBE_CLASS: Shape = Shape::Option(&CLASS);
+const MAYBE_DEGREE: Shape = Shape::Option(&DEGREE);
+const MAYBE_FRAME: Shape = Shape::Option(&FRAME);
+const MAYBE_CHORD: Shape = Shape::Option(&CHORD);
+const MAYBE_TRIAD: Shape = Shape::Option(&TRIAD);
+const MAYBE_ROMAN: Shape = Shape::Option(&ROMAN);
+const MAYBE_VOICING: Shape = Shape::Option(&VOICING);
+const MAYBE_ROW12: Shape = Shape::Option(&ROW12);
+
+/// A first-order signature, for the common case of writing one inline.
+const fn delta(arguments: &'static [Shape], result: Shape) -> Family {
+    Family::Delta { arguments, result }
 }
 
 const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 69] = [
@@ -658,346 +824,415 @@ const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 69] = [
         operation: Primitive::NatFold,
         spelling: "nat_fold",
         hidden_information: "the evaluator's finite natural representation and structural work budget",
+        family: Family::Eliminator(Eliminator::NatFold),
     },
     PrimitiveOwnership {
         operation: Primitive::ListFold,
         spelling: "list_fold",
         hidden_information: "the evaluator's finite list representation and structural work budget",
+        family: Family::Eliminator(Eliminator::ListFold),
     },
     PrimitiveOwnership {
         operation: Primitive::OptionFold,
         spelling: "option_fold",
         hidden_information: "the evaluator's hidden option representation and total case dispatch",
+        family: Family::Eliminator(Eliminator::OptionFold),
     },
     PrimitiveOwnership {
         operation: Primitive::Map,
         spelling: "map",
         hidden_information: "rank-1 monomorphization over the evaluator's hidden finite list representation",
+        family: Family::Eliminator(Eliminator::Map),
     },
     PrimitiveOwnership {
         operation: Primitive::Filter,
         spelling: "filter",
         hidden_information: "rank-1 monomorphization over the evaluator's hidden finite list representation",
+        family: Family::Eliminator(Eliminator::Filter),
     },
     PrimitiveOwnership {
         operation: Primitive::Range,
         spelling: "range",
         hidden_information: "bounded construction governed by the evaluator's structural work budget",
+        family: Family::Eliminator(Eliminator::Range),
     },
     PrimitiveOwnership {
         operation: Primitive::Repeat,
         spelling: "repeat",
         hidden_information: "rank-1 finite-list construction governed by the structural work budget",
+        family: Family::Eliminator(Eliminator::Repeat),
     },
     PrimitiveOwnership {
         operation: Primitive::IntervalAdd,
         spelling: "interval_add",
         hidden_information: "the evaluator's exact written-interval coordinate representation",
+        family: delta(&[INTERVAL, INTERVAL], INTERVAL),
     },
     PrimitiveOwnership {
         operation: Primitive::IntervalInverse,
         spelling: "interval_inverse",
         hidden_information: "the evaluator's exact written-interval coordinate representation",
+        family: delta(&[INTERVAL], INTERVAL),
     },
     PrimitiveOwnership {
         operation: Primitive::PitchClassOf,
         spelling: "pitchclass_of",
         hidden_information: "the written pitch's octave coordinate and spelling-preserving quotient",
+        family: delta(&[PITCH], CLASS),
     },
     PrimitiveOwnership {
         operation: Primitive::SignatureScale,
         spelling: "signature_scale",
         hidden_information: "the compiler's table of named collections, which no source text can enumerate",
+        family: delta(&[KEY], SCALE),
     },
     PrimitiveOwnership {
         operation: Primitive::ScaleOn,
         spelling: "scale_on",
         hidden_information: "the scale's private ordered offset cycle, re-rooted without being exposed",
+        family: delta(&[SCALE, CLASS], SCALE),
     },
     PrimitiveOwnership {
         operation: Primitive::ScaleTonic,
         spelling: "scale_tonic",
         hidden_information: "the scale's private tonic field",
+        family: delta(&[SCALE], CLASS),
     },
     PrimitiveOwnership {
         operation: Primitive::ScaleSize,
         spelling: "scale_size",
         hidden_information: "the length of the scale's private offset cycle",
+        family: delta(&[SCALE], NAT),
     },
     PrimitiveOwnership {
         operation: Primitive::ScalePitch,
         spelling: "scale_pitch",
         hidden_information: "spelled membership against the scale's private offset cycle",
+        family: delta(&[SCALE, PITCH], MAYBE_DEGREE),
     },
     PrimitiveOwnership {
         operation: Primitive::ScaleClass,
         spelling: "scale_class",
         hidden_information: "the scale's private offset cycle, read without a register",
+        family: delta(&[SCALE, DEGREE], MAYBE_CLASS),
     },
     PrimitiveOwnership {
         operation: Primitive::ScaleChord,
         spelling: "scale_chord",
         hidden_information: "the scale's offset cycle and the chord vocabulary's member table at once",
+        family: delta(&[SCALE, DEGREE, NAT], MAYBE_CHORD),
     },
     PrimitiveOwnership {
         operation: Primitive::PitchFrame,
         spelling: "pitch_frame",
         hidden_information: "the register frame's representation invariant, which only the compiler can enforce",
+        family: delta(&[SCALE, PITCH], MAYBE_FRAME),
     },
     PrimitiveOwnership {
         operation: Primitive::FrameScale,
         spelling: "frame_scale",
         hidden_information: "the frame's private scale field",
+        family: delta(&[FRAME], SCALE),
     },
     PrimitiveOwnership {
         operation: Primitive::FrameTonic,
         spelling: "frame_tonic",
         hidden_information: "the frame's private registered tonic field",
+        family: delta(&[FRAME], PITCH),
     },
     PrimitiveOwnership {
         operation: Primitive::FramePitch,
         spelling: "frame_pitch",
         hidden_information: "Euclidean division of a degree through the scale's private period",
+        family: delta(&[FRAME, DEGREE], PITCH),
     },
     PrimitiveOwnership {
         operation: Primitive::DegreeOf,
         spelling: "degree_of",
         hidden_information: "the degree's private signed coordinate, which is not the written ordinal",
+        family: delta(&[NAT], DEGREE),
     },
     PrimitiveOwnership {
         operation: Primitive::DegreeStepUp,
         spelling: "degree_step_up",
         hidden_information: "the degree's private signed coordinate and its machine-integer bound",
+        family: delta(&[DEGREE, NAT], DEGREE),
     },
     PrimitiveOwnership {
         operation: Primitive::DegreeStepDown,
         spelling: "degree_step_down",
         hidden_information: "the degree's private signed coordinate and its machine-integer bound",
+        family: delta(&[DEGREE, NAT], DEGREE),
     },
     PrimitiveOwnership {
         operation: Primitive::DegreeRaised,
         spelling: "degree_raised",
         hidden_information: "the degree's private chromatic alteration and its machine-integer bound",
+        family: delta(&[DEGREE], DEGREE),
     },
     PrimitiveOwnership {
         operation: Primitive::DegreeLowered,
         spelling: "degree_lowered",
         hidden_information: "the degree's private chromatic alteration and its machine-integer bound",
+        family: delta(&[DEGREE], DEGREE),
     },
     PrimitiveOwnership {
         operation: Primitive::ChordOn,
         spelling: "chord_on",
         hidden_information: "the compiler's table of chord types, re-rooted without being exposed",
+        family: delta(&[CHORD, CLASS], CHORD),
     },
     PrimitiveOwnership {
         operation: Primitive::ChordRoot,
         spelling: "chord_root",
         hidden_information: "the chord class's private root field",
+        family: delta(&[CHORD], CLASS),
     },
     PrimitiveOwnership {
         operation: Primitive::ChordBass,
         spelling: "chord_bass",
         hidden_information: "the chord class's private bass designation, which is absent and not the root",
+        family: delta(&[CHORD], MAYBE_CLASS),
     },
     PrimitiveOwnership {
         operation: Primitive::ChordMembers,
         spelling: "chord_members",
         hidden_information: "the private spelled member stack, which no source text can enumerate",
+        family: delta(&[CHORD], INTERVALS),
     },
     PrimitiveOwnership {
         operation: Primitive::ChordInversion,
         spelling: "chord_inversion",
         hidden_information: "membership of the private member stack, which is what makes an inversion true",
+        family: delta(&[CHORD, NAT], MAYBE_CHORD),
     },
     PrimitiveOwnership {
         operation: Primitive::ChordOver,
         spelling: "chord_over",
         hidden_information: "the chord class's private bass designation",
+        family: delta(&[CHORD, CLASS], CHORD),
     },
     PrimitiveOwnership {
         operation: Primitive::ChordTriad,
         spelling: "chord_triad",
         hidden_information: "the triad refinement's representation invariant, which only the compiler can enforce",
+        family: delta(&[CHORD], MAYBE_TRIAD),
     },
     PrimitiveOwnership {
         operation: Primitive::TriadChord,
         spelling: "triad_chord",
         hidden_information: "the triad refinement's private witness",
+        family: delta(&[TRIAD], CHORD),
     },
     PrimitiveOwnership {
         operation: Primitive::RomanOf,
         spelling: "roman_of",
         hidden_information: "the numeral's representation invariant, which only the compiler can enforce",
+        family: delta(&[NAT, NAT, NAT], MAYBE_ROMAN),
     },
     PrimitiveOwnership {
         operation: Primitive::RomanOrdinal,
         spelling: "roman_ordinal",
         hidden_information: "the numeral's private ordinal",
+        family: delta(&[ROMAN], NAT),
     },
     PrimitiveOwnership {
         operation: Primitive::RomanSize,
         spelling: "roman_size",
         hidden_information: "the numeral's private member count",
+        family: delta(&[ROMAN], NAT),
     },
     PrimitiveOwnership {
         operation: Primitive::RomanInversion,
         spelling: "roman_inversion",
         hidden_information: "the numeral's private bass designation, which is a position and not a pitch",
+        family: delta(&[ROMAN], NAT),
     },
     PrimitiveOwnership {
         operation: Primitive::TriadMajor,
         spelling: "triad_major",
         hidden_information: "the chord class's private type, which is the only place the two triads differ",
+        family: delta(&[TRIAD], BOOL),
     },
     PrimitiveOwnership {
         operation: Primitive::VoicingOf,
         spelling: "voicing_of",
         hidden_information: "the voicing's representation invariant: ascending distinct pitches drawn from the class",
+        family: delta(&[CHORD, PITCHES], MAYBE_VOICING),
     },
     PrimitiveOwnership {
         operation: Primitive::VoicingPitches,
         spelling: "voicing_pitches",
         hidden_information: "the voicing's private ordered pitch sequence",
+        family: delta(&[VOICING], PITCHES),
     },
     PrimitiveOwnership {
         operation: Primitive::VoicingBass,
         spelling: "voicing_bass",
         hidden_information: "the voicing's private lowest pitch, held apart from the rest",
+        family: delta(&[VOICING], PITCH),
     },
     PrimitiveOwnership {
         operation: Primitive::VoicingChord,
         spelling: "voicing_chord",
         hidden_information: "the voicing's private association to the class it voices",
+        family: delta(&[VOICING], CHORD),
     },
     PrimitiveOwnership {
         operation: Primitive::VoicingPosition,
         spelling: "voicing_position",
         hidden_information: "membership of the private member stack, which is what classifies an inversion",
+        family: delta(&[VOICING], MAYBE_NAT),
     },
     PrimitiveOwnership {
         operation: Primitive::CloseVoicing,
         spelling: "close_voicing",
         hidden_information: "the private member stack walked upward, and the voicing invariant it must satisfy",
+        family: delta(&[CHORD, PITCH], MAYBE_VOICING),
     },
     PrimitiveOwnership {
         operation: Primitive::DropVoicing,
         spelling: "drop_voicing",
         hidden_information: "the private member stack walked upward, and the voicing invariant it must satisfy",
+        family: delta(&[CHORD, PITCH, NAT], MAYBE_VOICING),
     },
     PrimitiveOwnership {
         operation: Primitive::OmitVoicing,
         spelling: "omit_voicing",
         hidden_information: "the private member stack, which is what says which pitch an omission removes",
+        family: delta(&[VOICING, NAT], MAYBE_VOICING),
     },
     PrimitiveOwnership {
         operation: Primitive::Pc12Of,
         spelling: "pc12_of",
         hidden_information: "the canonical representative of a residue class modulo twelve",
+        family: delta(&[NAT], PC12),
     },
     PrimitiveOwnership {
         operation: Primitive::Pc12Number,
         spelling: "pc12_number",
         hidden_information: "the canonical representative, which is the only number a residue class has",
+        family: delta(&[PC12], NAT),
     },
     PrimitiveOwnership {
         operation: Primitive::Pc12Forget,
         spelling: "pc12_forget",
         hidden_information: "the chromatic coordinate of a spelled pitch class, taken modulo twelve",
+        family: delta(&[CLASS], PC12),
     },
     PrimitiveOwnership {
         operation: Primitive::Pc12Transposed,
         spelling: "pc12_transposed",
         hidden_information: "modular addition, which a `nat` without subtraction cannot express",
+        family: delta(&[PC12, NAT], PC12),
     },
     PrimitiveOwnership {
         operation: Primitive::Pc12Inverted,
         spelling: "pc12_inverted",
         hidden_information: "modular subtraction, which a `nat` without subtraction cannot express",
+        family: delta(&[PC12, NAT], PC12),
     },
     PrimitiveOwnership {
         operation: Primitive::Pc12Spelled,
         spelling: "pc12_spelled",
         hidden_information: "the collection's spelled members, searched for the one this class forgets to",
+        family: delta(&[PC12, SCALE], MAYBE_CLASS),
     },
     PrimitiveOwnership {
         operation: Primitive::PcSet12Of,
         spelling: "pcset12_of",
         hidden_information: "the twelve-bit membership word that makes duplication unrepresentable",
+        family: delta(&[PC12S], PCSET12),
     },
     PrimitiveOwnership {
         operation: Primitive::PcSet12Members,
         spelling: "pcset12_members",
         hidden_information: "the membership word, read out ascending",
+        family: delta(&[PCSET12], PC12S),
     },
     PrimitiveOwnership {
         operation: Primitive::PcSet12Normal,
         spelling: "pcset12_normal",
         hidden_information: "every rotation of the set and the compactness order that chooses between them",
+        family: delta(&[PCSET12], PC12S),
     },
     PrimitiveOwnership {
         operation: Primitive::PcSet12Prime,
         spelling: "pcset12_prime",
         hidden_information: "the normal orders of the set and its inversion, and which of the two reads lower",
+        family: delta(&[PCSET12], PCSET12),
     },
     PrimitiveOwnership {
         operation: Primitive::PcSet12Vector,
         spelling: "pcset12_vector",
         hidden_information: "every unordered pair of members and the interval class each realizes",
+        family: delta(&[PCSET12], NATS),
     },
     PrimitiveOwnership {
         operation: Primitive::Row12Of,
         spelling: "row12_of",
         hidden_information: "the permutation invariant: twelve order positions and each pitch class once",
+        family: delta(&[PC12S], MAYBE_ROW12),
     },
     PrimitiveOwnership {
         operation: Primitive::Row12Pcs,
         spelling: "row12_pcs",
         hidden_information: "the private order-position array",
+        family: delta(&[ROW12], PC12S),
     },
     PrimitiveOwnership {
         operation: Primitive::Row12Head,
         spelling: "row12_head",
         hidden_information: "order position zero of the private array, which the finite list eliminators cannot index",
+        family: delta(&[ROW12], PC12),
     },
     PrimitiveOwnership {
         operation: Primitive::Row12Transposed,
         spelling: "row12_transposed",
         hidden_information: "modular addition, and the finite-closure lemma that keeps the result a row",
+        family: delta(&[ROW12, NAT], ROW12),
     },
     PrimitiveOwnership {
         operation: Primitive::Row12Inverted,
         spelling: "row12_inverted",
         hidden_information: "modular subtraction, and the finite-closure lemma that keeps the result a row",
+        family: delta(&[ROW12, NAT], ROW12),
     },
     PrimitiveOwnership {
         operation: Primitive::Row12Retrograde,
         spelling: "row12_retrograde",
         hidden_information: "reversal of the order positions, which the finite list eliminators cannot express",
+        family: delta(&[ROW12], ROW12),
     },
     PrimitiveOwnership {
         operation: Primitive::Row12Matrix,
         spelling: "row12_matrix",
         hidden_information: "the classical construction: the inversion about the row's own head, read as starting pitches",
+        family: delta(&[ROW12], ROW12S),
     },
     PrimitiveOwnership {
         operation: Primitive::Row12Forms,
         spelling: "row12_forms",
         hidden_information: "the forty-eight labelled forms, compared for equality and counted once each",
+        family: delta(&[ROW12], NAT),
     },
     PrimitiveOwnership {
         operation: Primitive::Row12Symmetries,
         spelling: "row12_symmetries",
         hidden_information: "the forty-eight labelled forms, counted where they fix the row",
+        family: delta(&[ROW12], NAT),
     },
     PrimitiveOwnership {
         operation: Primitive::Row12Repeats,
         spelling: "row12_repeats",
         hidden_information: "pitch-class equality, which the surface has no operator for",
+        family: delta(&[PC12S], NATS),
     },
     PrimitiveOwnership {
         operation: Primitive::Row12Missing,
         spelling: "row12_missing",
         hidden_information: "pitch-class equality against the whole finite domain",
+        family: delta(&[PC12S], PC12S),
     },
 ];
 
@@ -1184,41 +1419,49 @@ const BUILTIN_OWNERSHIP: [PrimitiveOwnership<Builtin>; 8] = [
         operation: Builtin::Transpose,
         spelling: "transpose",
         hidden_information: "contextual music representation, written-pitch provenance, and kernel construction",
+        family: Family::Music,
     },
     PrimitiveOwnership {
         operation: Builtin::Stretch,
         spelling: "stretch",
         hidden_information: "contextual music representation, exact-time provenance, and kernel construction",
+        family: Family::Music,
     },
     PrimitiveOwnership {
         operation: Builtin::Retrograde,
         spelling: "retrograde",
         hidden_information: "contextual music extent, occurrence provenance, and kernel construction",
+        family: Family::Music,
     },
     PrimitiveOwnership {
         operation: Builtin::Invert,
         spelling: "invert",
         hidden_information: "contextual music representation, written-pitch provenance, and kernel construction",
+        family: Family::Music,
     },
     PrimitiveOwnership {
         operation: Builtin::Shift,
         spelling: "shift",
         hidden_information: "contextual music representation, exact-time provenance, and kernel construction",
+        family: Family::Music,
     },
     PrimitiveOwnership {
         operation: Builtin::Overlay,
         spelling: "overlay",
         hidden_information: "contextual music representation, origin paths, and kernel overlay construction",
+        family: Family::Music,
     },
     PrimitiveOwnership {
         operation: Builtin::MapNotePitches,
         spelling: "map_note_pitches",
         hidden_information: "controlled traversal of contextual notes while preserving non-note facts and provenance",
+        family: Family::Music,
     },
     PrimitiveOwnership {
         operation: Builtin::Play,
         spelling: "play",
         hidden_information: "contextual music construction: the voicing's private pitches become sounded occurrences with provenance",
+        family: Family::Music,
     },
 ];
 
@@ -3384,76 +3627,10 @@ impl Checker<'_> {
             self.failed = true;
             return None;
         }
-        let wanted = match primitive {
-            Primitive::NatFold
-            | Primitive::ListFold
-            | Primitive::OptionFold
-            | Primitive::DropVoicing
-            | Primitive::ScaleChord
-            | Primitive::RomanOf => 3,
-            Primitive::Map
-            | Primitive::Filter
-            | Primitive::Repeat
-            | Primitive::IntervalAdd
-            | Primitive::ScaleOn
-            | Primitive::ScalePitch
-            | Primitive::ScaleClass
-            | Primitive::PitchFrame
-            | Primitive::FramePitch
-            | Primitive::DegreeStepUp
-            | Primitive::DegreeStepDown
-            | Primitive::ChordOn
-            | Primitive::ChordInversion
-            | Primitive::ChordOver
-            | Primitive::VoicingOf
-            | Primitive::CloseVoicing
-            | Primitive::OmitVoicing
-            | Primitive::Pc12Transposed
-            | Primitive::Pc12Inverted
-            | Primitive::Pc12Spelled
-            | Primitive::Row12Transposed
-            | Primitive::Row12Inverted => 2,
-            Primitive::Range
-            | Primitive::IntervalInverse
-            | Primitive::PitchClassOf
-            | Primitive::SignatureScale
-            | Primitive::ScaleTonic
-            | Primitive::ScaleSize
-            | Primitive::FrameScale
-            | Primitive::FrameTonic
-            | Primitive::DegreeOf
-            | Primitive::DegreeRaised
-            | Primitive::DegreeLowered
-            | Primitive::ChordRoot
-            | Primitive::ChordBass
-            | Primitive::ChordMembers
-            | Primitive::ChordTriad
-            | Primitive::TriadChord
-            | Primitive::TriadMajor
-            | Primitive::RomanOrdinal
-            | Primitive::RomanSize
-            | Primitive::RomanInversion
-            | Primitive::VoicingPitches
-            | Primitive::VoicingBass
-            | Primitive::VoicingChord
-            | Primitive::VoicingPosition
-            | Primitive::Pc12Of
-            | Primitive::Pc12Number
-            | Primitive::Pc12Forget
-            | Primitive::PcSet12Of
-            | Primitive::PcSet12Members
-            | Primitive::PcSet12Normal
-            | Primitive::PcSet12Prime
-            | Primitive::PcSet12Vector
-            | Primitive::Row12Of
-            | Primitive::Row12Pcs
-            | Primitive::Row12Head
-            | Primitive::Row12Retrograde
-            | Primitive::Row12Matrix
-            | Primitive::Row12Forms
-            | Primitive::Row12Symmetries
-            | Primitive::Row12Repeats
-            | Primitive::Row12Missing => 1,
+        let wanted = match primitive.family()? {
+            Family::Delta { arguments, .. } => arguments.len(),
+            Family::Eliminator(eliminator) => eliminator.arity(),
+            Family::Music => 1,
         };
         if raw.len() != wanted {
             self.resolver.report(
@@ -3474,256 +3651,36 @@ impl Checker<'_> {
             .iter()
             .filter_map(|argument| child_of(argument, is_expr_node))
             .collect();
-        let (arguments, ty) = match primitive {
-            Primitive::Pc12Of => {
-                let number = self.check(nodes.first()?, Some(&Type::Nat))?;
-                (vec![number], Type::Pc12)
+        let family = primitive.family()?;
+        if let Family::Delta { arguments, result } = family {
+            let mut checked = Vec::with_capacity(arguments.len());
+            for (index, shape) in arguments.iter().enumerate() {
+                checked.push(self.check(nodes.get(index)?, Some(&shape.ty()))?);
             }
-            Primitive::Pc12Number => {
-                let member = self.check(nodes.first()?, Some(&Type::Pc12))?;
-                (vec![member], Type::Nat)
-            }
-            Primitive::Pc12Forget => {
-                let spelled = self.check(nodes.first()?, Some(&Type::PitchClass))?;
-                (vec![spelled], Type::Pc12)
-            }
-            Primitive::Pc12Transposed | Primitive::Pc12Inverted => {
-                let member = self.check(nodes.first()?, Some(&Type::Pc12))?;
-                let index = self.check(nodes.get(1)?, Some(&Type::Nat))?;
-                (vec![member, index], Type::Pc12)
-            }
-            Primitive::Pc12Spelled => {
-                let member = self.check(nodes.first()?, Some(&Type::Pc12))?;
-                let collection = self.check(nodes.get(1)?, Some(&Type::Scale))?;
-                (vec![member, collection], Type::Option(Box::new(Type::PitchClass)))
-            }
-            Primitive::PcSet12Of => {
-                let members = self.check(nodes.first()?, Some(&Type::List(Box::new(Type::Pc12))))?;
-                (vec![members], Type::PcSet12)
-            }
-            Primitive::PcSet12Members | Primitive::PcSet12Normal => {
-                let set = self.check(nodes.first()?, Some(&Type::PcSet12))?;
-                (vec![set], Type::List(Box::new(Type::Pc12)))
-            }
-            Primitive::PcSet12Prime => {
-                let set = self.check(nodes.first()?, Some(&Type::PcSet12))?;
-                (vec![set], Type::PcSet12)
-            }
-            Primitive::PcSet12Vector => {
-                let set = self.check(nodes.first()?, Some(&Type::PcSet12))?;
-                (vec![set], Type::List(Box::new(Type::Nat)))
-            }
-            Primitive::Row12Of => {
-                let pcs = self.check(nodes.first()?, Some(&Type::List(Box::new(Type::Pc12))))?;
-                (vec![pcs], Type::Option(Box::new(Type::Row12)))
-            }
-            Primitive::Row12Pcs => {
-                let row = self.check(nodes.first()?, Some(&Type::Row12))?;
-                (vec![row], Type::List(Box::new(Type::Pc12)))
-            }
-            Primitive::Row12Head => {
-                let row = self.check(nodes.first()?, Some(&Type::Row12))?;
-                (vec![row], Type::Pc12)
-            }
-            Primitive::Row12Transposed | Primitive::Row12Inverted => {
-                let row = self.check(nodes.first()?, Some(&Type::Row12))?;
-                let index = self.check(nodes.get(1)?, Some(&Type::Nat))?;
-                (vec![row, index], Type::Row12)
-            }
-            Primitive::Row12Retrograde => {
-                let row = self.check(nodes.first()?, Some(&Type::Row12))?;
-                (vec![row], Type::Row12)
-            }
-            Primitive::Row12Matrix => {
-                let row = self.check(nodes.first()?, Some(&Type::Row12))?;
-                (vec![row], Type::List(Box::new(Type::Row12)))
-            }
-            Primitive::Row12Forms | Primitive::Row12Symmetries => {
-                let row = self.check(nodes.first()?, Some(&Type::Row12))?;
-                (vec![row], Type::Nat)
-            }
-            Primitive::Row12Repeats => {
-                let pcs = self.check(nodes.first()?, Some(&Type::List(Box::new(Type::Pc12))))?;
-                (vec![pcs], Type::List(Box::new(Type::Nat)))
-            }
-            Primitive::Row12Missing => {
-                let pcs = self.check(nodes.first()?, Some(&Type::List(Box::new(Type::Pc12))))?;
-                (vec![pcs], Type::List(Box::new(Type::Pc12)))
-            }
-            Primitive::IntervalAdd => {
-                let first = self.check(nodes.first()?, Some(&Type::Interval))?;
-                let second = self.check(nodes.get(1)?, Some(&Type::Interval))?;
-                (vec![first, second], Type::Interval)
-            }
-            Primitive::IntervalInverse => {
-                let interval = self.check(nodes.first()?, Some(&Type::Interval))?;
-                (vec![interval], Type::Interval)
-            }
-            Primitive::PitchClassOf => {
-                let pitch = self.check(nodes.first()?, Some(&Type::Pitch))?;
-                (vec![pitch], Type::PitchClass)
-            }
-            Primitive::SignatureScale => {
-                let key = self.check(nodes.first()?, Some(&Type::Key))?;
-                (vec![key], Type::Scale)
-            }
-            Primitive::ScaleOn => {
-                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
-                let tonic = self.check(nodes.get(1)?, Some(&Type::PitchClass))?;
-                (vec![scale, tonic], Type::Scale)
-            }
-            Primitive::ScaleTonic => {
-                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
-                (vec![scale], Type::PitchClass)
-            }
-            Primitive::ScaleSize => {
-                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
-                (vec![scale], Type::Nat)
-            }
-            Primitive::ScalePitch => {
-                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
-                let pitch = self.check(nodes.get(1)?, Some(&Type::Pitch))?;
-                (vec![scale, pitch], Type::Option(Box::new(Type::Degree)))
-            }
-            Primitive::ScaleClass => {
-                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
-                let degree = self.check(nodes.get(1)?, Some(&Type::Degree))?;
-                (vec![scale, degree], Type::Option(Box::new(Type::PitchClass)))
-            }
-            Primitive::ScaleChord => {
-                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
-                let degree = self.check(nodes.get(1)?, Some(&Type::Degree))?;
-                let members = self.check(nodes.get(2)?, Some(&Type::Nat))?;
-                (vec![scale, degree, members], Type::Option(Box::new(Type::ChordClass)))
-            }
-            Primitive::PitchFrame => {
-                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
-                let tonic = self.check(nodes.get(1)?, Some(&Type::Pitch))?;
-                (vec![scale, tonic], Type::Option(Box::new(Type::Frame)))
-            }
-            Primitive::FrameScale => {
-                let frame = self.check(nodes.first()?, Some(&Type::Frame))?;
-                (vec![frame], Type::Scale)
-            }
-            Primitive::FrameTonic => {
-                let frame = self.check(nodes.first()?, Some(&Type::Frame))?;
-                (vec![frame], Type::Pitch)
-            }
-            Primitive::FramePitch => {
-                let frame = self.check(nodes.first()?, Some(&Type::Frame))?;
-                let degree = self.check(nodes.get(1)?, Some(&Type::Degree))?;
-                (vec![frame, degree], Type::Pitch)
-            }
-            Primitive::DegreeOf => {
-                let ordinal = self.check(nodes.first()?, Some(&Type::Nat))?;
-                (vec![ordinal], Type::Degree)
-            }
-            Primitive::DegreeStepUp | Primitive::DegreeStepDown => {
-                let degree = self.check(nodes.first()?, Some(&Type::Degree))?;
-                let steps = self.check(nodes.get(1)?, Some(&Type::Nat))?;
-                (vec![degree, steps], Type::Degree)
-            }
-            Primitive::DegreeRaised | Primitive::DegreeLowered => {
-                let degree = self.check(nodes.first()?, Some(&Type::Degree))?;
-                (vec![degree], Type::Degree)
-            }
-            Primitive::ChordOn => {
-                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
-                let root = self.check(nodes.get(1)?, Some(&Type::PitchClass))?;
-                (vec![class, root], Type::ChordClass)
-            }
-            Primitive::ChordRoot => {
-                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
-                (vec![class], Type::PitchClass)
-            }
-            Primitive::ChordBass => {
-                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
-                (vec![class], Type::Option(Box::new(Type::PitchClass)))
-            }
-            Primitive::ChordMembers => {
-                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
-                (vec![class], Type::List(Box::new(Type::Interval)))
-            }
-            Primitive::ChordInversion => {
-                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
-                let position = self.check(nodes.get(1)?, Some(&Type::Nat))?;
-                (vec![class, position], Type::Option(Box::new(Type::ChordClass)))
-            }
-            Primitive::ChordOver => {
-                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
-                let bass = self.check(nodes.get(1)?, Some(&Type::PitchClass))?;
-                (vec![class, bass], Type::ChordClass)
-            }
-            Primitive::ChordTriad => {
-                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
-                (vec![class], Type::Option(Box::new(Type::Triad)))
-            }
-            Primitive::TriadChord => {
-                let triad = self.check(nodes.first()?, Some(&Type::Triad))?;
-                (vec![triad], Type::ChordClass)
-            }
-            Primitive::RomanOf => {
-                let ordinal = self.check(nodes.first()?, Some(&Type::Nat))?;
-                let members = self.check(nodes.get(1)?, Some(&Type::Nat))?;
-                let inversion = self.check(nodes.get(2)?, Some(&Type::Nat))?;
-                (vec![ordinal, members, inversion], Type::Option(Box::new(Type::Roman)))
-            }
-            Primitive::RomanOrdinal | Primitive::RomanSize | Primitive::RomanInversion => {
-                let numeral = self.check(nodes.first()?, Some(&Type::Roman))?;
-                (vec![numeral], Type::Nat)
-            }
-            Primitive::TriadMajor => {
-                let triad = self.check(nodes.first()?, Some(&Type::Triad))?;
-                (vec![triad], Type::Bool)
-            }
-            Primitive::VoicingOf => {
-                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
-                let pitches = self.check(nodes.get(1)?, Some(&Type::List(Box::new(Type::Pitch))))?;
-                (vec![class, pitches], Type::Option(Box::new(Type::Voicing)))
-            }
-            Primitive::VoicingPitches => {
-                let voicing = self.check(nodes.first()?, Some(&Type::Voicing))?;
-                (vec![voicing], Type::List(Box::new(Type::Pitch)))
-            }
-            Primitive::VoicingBass => {
-                let voicing = self.check(nodes.first()?, Some(&Type::Voicing))?;
-                (vec![voicing], Type::Pitch)
-            }
-            Primitive::VoicingChord => {
-                let voicing = self.check(nodes.first()?, Some(&Type::Voicing))?;
-                (vec![voicing], Type::ChordClass)
-            }
-            Primitive::VoicingPosition => {
-                let voicing = self.check(nodes.first()?, Some(&Type::Voicing))?;
-                (vec![voicing], Type::Option(Box::new(Type::Nat)))
-            }
-            Primitive::CloseVoicing => {
-                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
-                let bass = self.check(nodes.get(1)?, Some(&Type::Pitch))?;
-                (vec![class, bass], Type::Option(Box::new(Type::Voicing)))
-            }
-            Primitive::DropVoicing => {
-                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
-                let bass = self.check(nodes.get(1)?, Some(&Type::Pitch))?;
-                let voice = self.check(nodes.get(2)?, Some(&Type::Nat))?;
-                (vec![class, bass, voice], Type::Option(Box::new(Type::Voicing)))
-            }
-            Primitive::OmitVoicing => {
-                let voicing = self.check(nodes.first()?, Some(&Type::Voicing))?;
-                let position = self.check(nodes.get(1)?, Some(&Type::Nat))?;
-                (vec![voicing, position], Type::Option(Box::new(Type::Voicing)))
-            }
-            Primitive::Range => {
+            return Some(Expr {
+                kind: ExprKind::Primitive {
+                    primitive,
+                    arguments: checked,
+                },
+                ty: result.ty(),
+                span,
+            });
+        }
+        let Family::Eliminator(eliminator) = family else {
+            return None;
+        };
+        let (arguments, ty) = match eliminator {
+            Eliminator::Range => {
                 let count = self.check(nodes.first()?, Some(&Type::Nat))?;
                 (vec![count], Type::List(Box::new(Type::Nat)))
             }
-            Primitive::Repeat => {
+            Eliminator::Repeat => {
                 let value = self.check(nodes.first()?, None)?;
                 let count = self.check(nodes.get(1)?, Some(&Type::Nat))?;
                 let result = Type::List(Box::new(value.ty.clone()));
                 (vec![value, count], result)
             }
-            Primitive::Map => {
+            Eliminator::Map => {
                 let function = self.check(nodes.first()?, None)?;
                 let Type::Function(parameters, result) = function.ty.clone() else {
                     return self.primitive_type_error(span, "`map` first needs a one-argument function");
@@ -3734,7 +3691,7 @@ impl Checker<'_> {
                 let values = self.check(nodes.get(1)?, Some(&Type::List(Box::new(parameter.clone()))))?;
                 (vec![function, values], Type::List(result))
             }
-            Primitive::Filter => {
+            Eliminator::Filter => {
                 let function = self.check(nodes.first()?, None)?;
                 let Type::Function(parameters, result) = function.ty.clone() else {
                     return self.primitive_type_error(span, "`filter` first needs a predicate");
@@ -3748,7 +3705,7 @@ impl Checker<'_> {
                 let values = self.check(nodes.get(1)?, Some(&Type::List(Box::new(parameter.clone()))))?;
                 (vec![function, values], Type::List(Box::new(parameter.clone())))
             }
-            Primitive::NatFold => {
+            Eliminator::NatFold => {
                 let zero = self.check(nodes.first()?, expected)?;
                 let step = self.check(nodes.get(1)?, None)?;
                 let wanted = Type::Function(vec![Type::Nat, zero.ty.clone()], Box::new(zero.ty.clone()));
@@ -3762,7 +3719,7 @@ impl Checker<'_> {
                 let result = zero.ty.clone();
                 (vec![zero, step, count], result)
             }
-            Primitive::ListFold => {
+            Eliminator::ListFold => {
                 let zero = self.check(nodes.first()?, expected)?;
                 let step = self.check(nodes.get(1)?, None)?;
                 let Type::Function(parameters, result) = step.ty.clone() else {
@@ -3779,7 +3736,7 @@ impl Checker<'_> {
                 let result = zero.ty.clone();
                 (vec![zero, step, values], result)
             }
-            Primitive::OptionFold => {
+            Eliminator::OptionFold => {
                 let zero = self.check(nodes.first()?, expected)?;
                 let some_case = self.check(nodes.get(1)?, None)?;
                 let Type::Function(parameters, result) = some_case.ty.clone() else {
@@ -3853,6 +3810,21 @@ fn primitive_named(name: &str) -> Option<Primitive> {
     let entry = PRIMITIVE_OWNERSHIP.iter().find(|entry| entry.spelling == name)?;
     debug_assert!(!entry.hidden_information.is_empty());
     Some(entry.operation)
+}
+
+impl Primitive {
+    /// Which of §5.8's three families this operation belongs to, and for a δ-primitive its declared
+    /// signature.
+    ///
+    /// This is the single statement of a δ-primitive's type: the checker reads argument and result
+    /// types from here rather than restating them, so the two cannot disagree.
+    /// Absent only if the registry has lost an entry, which the registry's own laws forbid.
+    fn family(self) -> Option<Family> {
+        PRIMITIVE_OWNERSHIP
+            .iter()
+            .find(|entry| entry.operation == self)
+            .map(|entry| entry.family)
+    }
 }
 
 fn unary_parameter(parameters: &[Type]) -> Option<&Type> {
@@ -5483,6 +5455,9 @@ fn token_span(token: &SyntaxToken) -> SourceSpan {
 }
 
 #[cfg(test)]
+// A law suite reports a violated law by failing, which is what `panic!` and `expect` are for here;
+// the crate's integration tests carry the same allowances for the same reason.
+#[allow(clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
 
@@ -5546,6 +5521,404 @@ mod tests {
         assert!(
             entries.iter().all(|(_, reason)| !reason.trim().is_empty()),
             "compiler ownership requires a hidden-information justification"
+        );
+    }
+
+    // --- `docs/language/02-core-calculus.md` §5.8: the conservative-extension laws ---
+    //
+    // Theorem 5 holds for any base type with no eliminator and any δ-primitives satisfying D1–D4.
+    // These laws check its premises against the implementation, so that a later musical domain
+    // costs a registry entry rather than a new induction and cannot be added without discharging
+    // them. They say nothing about whether the musical content is right; that is what the domain
+    // law suites in `crates/musa-compiler/tests/` are for.
+
+    /// How far the natural samples run. Thirteen covers every ordinal, member count, inversion,
+    /// transposition index, and voice position the current domains accept, plus the first value
+    /// past each — which is the half that matters, since D2 is about total answers on the whole
+    /// declared domain rather than correct answers on the intended one.
+    const SAMPLED_NATS: u64 = 13;
+
+    /// How many times the sample pool is closed under the δ-primitives. Three rounds is what it
+    /// takes to reach every constructed domain from the seeds: degrees and pitch classes appear in
+    /// the first, frames, chords, rows and sets in the second, triads and voicings in the third.
+    const SAMPLE_ROUNDS: usize = 3;
+
+    /// How many applications each δ-primitive is sampled at. The pool is deliberately not
+    /// exhausted combinatorially: a three-argument primitive over a pool of forty would be sixty
+    /// thousand evaluations for no additional coverage of the property being checked. The budget
+    /// is spent per *primitive* rather than per argument position so that a unary primitive sees
+    /// its whole domain — which is how all twelve pitch classes reach the pool.
+    const SAMPLED_APPLICATIONS: usize = 64;
+
+    /// How long a synthesized list sample is. Twelve, because the row domain's whole point is that
+    /// a row is an ordering of all twelve pitch classes, and a sampler that never offered twelve
+    /// distinct classes would only ever see `row12_of` decline.
+    const SAMPLED_LIST_LENGTH: usize = 12;
+
+    /// How many values one argument position draws, given the primitive's arity, so that the
+    /// product stays within [`SAMPLED_APPLICATIONS`].
+    const fn samples_per_argument(arity: usize) -> usize {
+        match arity {
+            0 | 1 => SAMPLED_APPLICATIONS,
+            2 => 8,
+            _ => 4,
+        }
+    }
+
+    /// The type of an evaluated value, for the shapes a δ-primitive can return.
+    ///
+    /// Absent for `music`, closures, and builtins, none of which a δ signature can name — which is
+    /// itself part of what the totality law checks.
+    fn value_type(value: &Value) -> Option<Type> {
+        Some(match value {
+            Value::Bool(_) => Type::Bool,
+            Value::Nat(_) => Type::Nat,
+            Value::Ratio(_) => Type::Ratio,
+            Value::Duration(_) => Type::Duration,
+            Value::Pitch(_) => Type::Pitch,
+            Value::PitchClass(_) => Type::PitchClass,
+            Value::Interval(_) => Type::Interval,
+            Value::Scale(_) => Type::Scale,
+            Value::Key(_) => Type::Key,
+            Value::Degree(_) => Type::Degree,
+            Value::Frame(_) => Type::Frame,
+            Value::ChordClass(_) => Type::ChordClass,
+            Value::Triad(_) => Type::Triad,
+            Value::Roman(_) => Type::Roman,
+            Value::Voicing(_) => Type::Voicing,
+            Value::Pc12(_) => Type::Pc12,
+            Value::PcSet12(_) => Type::PcSet12,
+            Value::Row12(_) => Type::Row12,
+            Value::Option { member, .. } => Type::Option(Box::new(member.clone())),
+            Value::List { member, .. } => Type::List(Box::new(member.clone())),
+            Value::Product(members) => Type::Product(members.iter().map(value_type).collect::<Option<Vec<_>>>()?),
+            Value::Music(_) | Value::Closure(_) | Value::Builtin(_) => return None,
+        })
+    }
+
+    /// The values every base type the seeds cannot reach is later constructed from.
+    ///
+    /// Only the domains with surface literals are seeded here. Everything else — degrees, frames,
+    /// triads, numerals, voicings, and the twelve-tone domains — is reached by *applying the
+    /// primitives*, which is why the closure below doubles as the totality check rather than
+    /// needing a separate constructor for each domain.
+    fn sample_seeds() -> Vec<Value> {
+        let source = "piece \"law\" { \
+             let a_pitch: pitch = c4; \
+             let b_pitch: pitch = eb3; \
+             let c_pitch: pitch = f5; \
+             let an_interval: interval = P5; \
+             let b_interval: interval = m3; \
+             let a_scale: scale = scale c major; \
+             let b_scale: scale = scale eb harmonic_minor; \
+             let a_key: key = key c major; \
+             let b_key: key = key f# minor; \
+             let a_chord: chord_class = chord c major; \
+             let b_chord: chord_class = chord ab dominant7; \
+         }";
+        let mut pool: Vec<Value> = (0..SAMPLED_NATS).map(Value::Nat).collect();
+        pool.push(Value::Bool(true));
+        pool.push(Value::Bool(false));
+        pool.extend(values(source).expect("the seed piece must compile").into_values());
+        pool
+    }
+
+    /// Group a pool of values by the type they inhabit, and offer a list of each base type.
+    ///
+    /// The lists are synthesized rather than discovered because several list arguments are not
+    /// reachable from any result: `pcset12_of` wants a `list[pc12]`, and the only primitive that
+    /// returns one wants a `pcset12`. Seeding the list closes that circle without seeding any
+    /// value the language itself could not write.
+    fn by_type(pool: &[Value]) -> IndexMap<String, Vec<Value>> {
+        let mut grouped: IndexMap<String, Vec<Value>> = IndexMap::new();
+        for value in pool {
+            let Some(ty) = value_type(value) else { continue };
+            grouped.entry(ty.to_string()).or_default().push(value.clone());
+        }
+        let mut lists: Vec<(String, Value)> = Vec::new();
+        for members in grouped.values() {
+            let Some(member) = members.first().and_then(value_type) else {
+                continue;
+            };
+            if matches!(member, Type::Option(_) | Type::List(_) | Type::Product(_)) {
+                continue;
+            }
+            let ty = Type::List(Box::new(member.clone())).to_string();
+            // An empty list and a full one: the first is the edge case every list primitive has to
+            // answer for, the second is what a domain of twelve needs before it can say yes.
+            lists.push((
+                ty.clone(),
+                Value::List {
+                    member: member.clone(),
+                    values: Vec::new(),
+                },
+            ));
+            lists.push((
+                ty,
+                Value::List {
+                    member,
+                    values: members.iter().take(SAMPLED_LIST_LENGTH).cloned().collect(),
+                },
+            ));
+        }
+        for (spelling, list) in lists {
+            // At the front, so that a synthesized list is inside the sample even where discovered
+            // lists of the same type already fill the position's budget.
+            grouped.entry(spelling).or_default().insert(0, list);
+        }
+        grouped
+    }
+
+    /// Evaluate one δ-primitive on already-evaluated arguments.
+    fn apply(primitive: Primitive, arguments: &[(Type, Value)]) -> Option<Value> {
+        let span = SourceSpan::new(0, 0);
+        let exprs: Vec<Expr> = arguments
+            .iter()
+            .map(|(ty, value)| Expr {
+                kind: ExprKind::Literal(value.clone()),
+                ty: ty.clone(),
+                span,
+            })
+            .collect();
+        let site = Expr {
+            kind: ExprKind::Literal(Value::Nat(0)),
+            ty: Type::Nat,
+            span,
+        };
+        eval_primitive(primitive, &exprs, &IndexMap::new(), &mut WorkMeter::default(), &site)
+    }
+
+    /// Every δ-primitive applied to every sampled argument tuple, with what it answered.
+    fn sampled_applications() -> Vec<(Primitive, Shape, Option<Value>)> {
+        let mut pool = sample_seeds();
+        let mut observed = Vec::new();
+        for _ in 0..SAMPLE_ROUNDS {
+            let grouped = by_type(&pool);
+            let mut discovered = Vec::new();
+            for entry in &PRIMITIVE_OWNERSHIP {
+                let Family::Delta { arguments, result } = entry.family else {
+                    continue;
+                };
+                let budget = samples_per_argument(arguments.len());
+                let choices: Vec<Vec<Value>> = arguments
+                    .iter()
+                    .map(|shape| {
+                        grouped
+                            .get(&shape.ty().to_string())
+                            .map(|values| values.iter().take(budget).cloned().collect())
+                            .unwrap_or_default()
+                    })
+                    .collect();
+                if choices.iter().any(Vec::is_empty) {
+                    continue;
+                }
+                for tuple in tuples(&choices) {
+                    let typed: Vec<(Type, Value)> = arguments.iter().map(|shape| shape.ty()).zip(tuple).collect();
+                    let answer = apply(entry.operation, &typed);
+                    if let Some(value) = &answer {
+                        discovered.push(value.clone());
+                        // An option's or list's members are themselves samples, which is how the
+                        // pool reaches domains no seed can spell.
+                        if let Value::Option { value: Some(inner), .. } = value {
+                            discovered.push(inner.as_ref().clone());
+                        } else if let Value::List { values, .. } = value {
+                            discovered.extend(values.iter().cloned());
+                        }
+                    }
+                    observed.push((entry.operation, result, answer));
+                }
+            }
+            pool.extend(discovered);
+        }
+        observed
+    }
+
+    /// The cartesian product of the per-position choices, in a stable order.
+    fn tuples(choices: &[Vec<Value>]) -> Vec<Vec<Value>> {
+        choices.iter().fold(vec![Vec::new()], |built, options| {
+            built
+                .iter()
+                .flat_map(|prefix| {
+                    options.iter().map(move |option| {
+                        let mut next = prefix.clone();
+                        next.push(option.clone());
+                        next
+                    })
+                })
+                .collect()
+        })
+    }
+
+    #[test]
+    fn every_compiler_owned_operation_belongs_to_exactly_one_family() {
+        let primitives = PRIMITIVE_OWNERSHIP.iter().map(|entry| entry.family);
+        let music = BUILTIN_OWNERSHIP.iter().map(|entry| entry.family);
+        let (delta, eliminator) = primitives.clone().fold((0, 0), |(d, e), family| match family {
+            Family::Delta { .. } => (d + 1, e),
+            Family::Eliminator(_) => (d, e + 1),
+            Family::Music => panic!("a `music` operation belongs in the builtin registry"),
+        });
+        assert_eq!(delta + eliminator, PRIMITIVE_OWNERSHIP.len());
+        assert_eq!(
+            eliminator, 7,
+            "the structural eliminators of §5.6 are nat_fold, list_fold, option_fold, map, filter, range, and repeat"
+        );
+        assert!(
+            music.clone().all(|family| family == Family::Music),
+            "every builtin constructs or transforms `music`"
+        );
+        assert_eq!(
+            delta + eliminator + music.count(),
+            77,
+            "a new compiler operation must be classified before it is admitted"
+        );
+    }
+
+    #[test]
+    fn no_first_order_signature_mentions_a_function() {
+        for entry in &PRIMITIVE_OWNERSHIP {
+            let Family::Delta { arguments, result } = entry.family else {
+                continue;
+            };
+            for ty in arguments.iter().chain([&result]).map(|shape| shape.ty()) {
+                assert!(
+                    !mentions_function(&ty),
+                    "`{}` is classified δ but its signature contains an arrow; it belongs with the eliminators",
+                    entry.spelling
+                );
+            }
+        }
+    }
+
+    fn mentions_function(ty: &Type) -> bool {
+        match ty {
+            Type::Function(..) => true,
+            Type::Option(member) | Type::List(member) => mentions_function(member),
+            Type::Product(members) => members.iter().any(mentions_function),
+            // Listed rather than wildcarded: a new *type former* would otherwise be assumed
+            // arrow-free, and this law is the only thing standing between that assumption and
+            // §5.8's no-arrow premise.
+            Type::Unit
+            | Type::Bool
+            | Type::Nat
+            | Type::Ratio
+            | Type::Duration
+            | Type::Pitch
+            | Type::PitchClass
+            | Type::Interval
+            | Type::Scale
+            | Type::Key
+            | Type::Degree
+            | Type::Frame
+            | Type::ChordClass
+            | Type::Triad
+            | Type::Roman
+            | Type::Voicing
+            | Type::Pc12
+            | Type::PcSet12
+            | Type::Row12
+            | Type::Music => false,
+        }
+    }
+
+    #[test]
+    fn a_musical_value_admits_no_destructuring_pattern() {
+        // D1: a musical base value is an opaque constant. Nothing takes it apart, which is what
+        // lets its reducibility candidate be the plain `SN` clause every base type already has.
+        for (ty, literal) in [
+            ("scale", "scale c major"),
+            ("key", "key c major"),
+            ("chord_class", "chord c major"),
+            ("pitch", "c4"),
+            ("interval", "P5"),
+        ] {
+            for pattern in ["some(inner)", "[]", "[head, ..others]", "(left, right)"] {
+                let source = format!(
+                    "piece \"law\" {{ let subject: {ty} = {literal}; \
+                     let result: nat = match subject {{ {pattern} -> 0, _ -> 1 }}; }}"
+                );
+                let refusals = refusals(&source);
+                // Not merely "it failed": a parse error would satisfy that vacuously, and a
+                // renamed binding is enough to turn one of these into a parse error. The refusal
+                // has to be the type checker saying which type refused.
+                assert!(
+                    refusals.iter().any(|diagnostic| diagnostic.code == Code::TypeMismatch
+                        && diagnostic.labels.iter().any(|label| label.text.contains(ty))),
+                    "`{pattern}` over a `{ty}` must be refused by the type checker, naming the \
+                     type; saw {refusals:?}"
+                );
+            }
+        }
+    }
+
+    /// Why a piece was refused.
+    fn refusals(source: &str) -> Vec<Diagnostic> {
+        let parsed = musa_language::parse(source);
+        let Some(piece) = musa_language::ast::PieceDecl::from_root(&parsed.syntax()) else {
+            return Vec::new();
+        };
+        let mut resolver = Resolver::new();
+        check_and_evaluate(
+            &mut resolver,
+            declarations(piece.syntax(), None).into_iter(),
+            Some(piece.syntax()),
+            UnknownRootMusic::Reject,
+            &Modules::default(),
+        );
+        resolver.diagnostics
+    }
+
+    #[test]
+    fn every_first_order_primitive_is_total_on_its_declared_domain() {
+        let observed = sampled_applications();
+        assert!(
+            observed.len() > 1_000,
+            "the sample must actually exercise the domains, saw {} applications",
+            observed.len()
+        );
+        let mut exercised: Vec<Primitive> = Vec::new();
+        for (primitive, result, answer) in observed {
+            if !exercised.contains(&primitive) {
+                exercised.push(primitive);
+            }
+            let Some(value) = answer else {
+                panic!(
+                    "`{}` returned no value on a well-typed argument tuple; D2 requires partiality \
+                     to be declared in the result type, not reported by the evaluator",
+                    primitive.name()
+                );
+            };
+            let actual = value_type(&value)
+                .unwrap_or_else(|| panic!("`{}` returned a value with no first-order type", primitive.name()));
+            assert_eq!(
+                actual,
+                result.ty(),
+                "`{}` returned a `{actual}` where its signature declares `{}`",
+                primitive.name(),
+                result.ty()
+            );
+            if !result.admits_absence() {
+                assert!(
+                    !matches!(value, Value::Option { value: None, .. }),
+                    "`{}` reported absence at a result type that cannot express it",
+                    primitive.name()
+                );
+            }
+        }
+        let declared = PRIMITIVE_OWNERSHIP
+            .iter()
+            .filter(|entry| matches!(entry.family, Family::Delta { .. }))
+            .count();
+        assert_eq!(
+            exercised.len(),
+            declared,
+            "every δ-primitive must be reached by the sample; unreached: {:?}",
+            PRIMITIVE_OWNERSHIP
+                .iter()
+                .filter(|entry| matches!(entry.family, Family::Delta { .. }))
+                .filter(|entry| !exercised.contains(&entry.operation))
+                .map(|entry| entry.spelling)
+                .collect::<Vec<_>>()
         );
     }
 

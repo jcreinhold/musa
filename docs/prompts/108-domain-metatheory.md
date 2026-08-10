@@ -1,7 +1,7 @@
 ---
 id: 108
 slug: domain-metatheory
-status: in-progress
+status: done
 depends_on: [95, 96, 97, 98, 107]
 phase: 3
 ---

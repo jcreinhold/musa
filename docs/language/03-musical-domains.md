@@ -146,6 +146,12 @@ becoming type checking.
 
 ## 6. Source map and falsifiers
 
+Every base type this document adds owes a row here. That is `02-core-calculus.md` §5.8's standing budget: a new base
+type is admitted by a registry entry rather than a new induction, and the price of the cheap admission is that the type
+says here what it means, where the meaning comes from, and what it refuses to identify. A row without a falsifying
+example is a type that has not yet said what it is *for*, since a domain that rules nothing out could have been a
+`nat`.
+
 | Concept | Musa definition | Source or local theorem | Falsifying example | Prompt |
 | --- | --- | --- | --- | --- |
 | written pitch/interval | `ℤ²` and its faithful action | OMT `005-half-steps-whole-steps-and-accidentals.md`, `016-intervals.md`; faithful-action lemma above | `C♯4 + d2` must not spell `E♭4` | 100 |
@@ -154,10 +160,12 @@ becoming type checking.
 | scale | ordered distinct cyclic spelled collection | OMT `013`, `014`, `105`, `106` exact filenames above | treating melodic minor as one immutable ascending/descending fact | 101 |
 | key | tonic/signature/mode-family context | OMT `013`, `014`, `050`, `051` | `key c minor` cannot determine one registered pitch for degree 6 | 101 |
 | degree/register | ordinal plus explicit periodic lift | Musa definition and round-trip lemma | `degree(scale c major, 1)` cannot have type `pitch` without register | 101 |
+| frame | scale plus the absolute tonic pitch that registers it | Musa definition; the round-trip lemma is stated over exactly this pair | the same `scale c major` framed at `c4` and at `c5` are different frames, so degree 1 realizes to one pitch only once one is chosen | 101 |
 | chord class | rooted spelled membership, no register | OMT `017-triads.md`, `018-seventh-chords.md`, `075-chord-symbols.md` | a Cmaj7 symbol does not choose C3 or C4 bass | 102 |
 | triad | checked three-member tertian subtype | OMT `017-triads.md` | `{C,D,G}` is not a triad merely because it has three notes | 102 |
 | roman numeral | ordinal, member count, and bass position, against no collection | OMT `020-roman-numerals.md`, `021-figured-bass-and-roman-numerals-with-figures.md` | `V` alone names no pitch class, and a triad has no third inversion | 107 |
 | inversion/voicing | exact pitches plus bass/spacing/doubling choices | OMT `019-inversion.md`, `076-jazz-voicings.md`; forgetfulness lemma | drop-2 and close position cannot compare equal as voicings | 102 |
+| pcset12 | finite subset of `pc12`, with normal order, prime form, and interval-class vector | OMT `101-pitch-class-sets-normal-order-and-transformations.md`, `103-interval-class-vectors.md` | a set is unordered and duplicate-free, so `[0,4,7]` and `[7,4,0,0]` are the same `pcset12` and neither is a `row12` | 105 |
 | row12 | bijection `Fin 12 → pc12` | OMT `108-basics-of-twelve-tone-theory.md`; finite-closure lemma | a repeated pc rejects construction | 105 |
 | row convention | explicit naming policy | OMT `109-naming-conventions-for-rows.md` | bare `P7` in a convention-free API is ambiguous | 105 |
 | symmetric row | row with nontrivial stabilizer | OMT `110-row-properties.md` | requiring exactly 48 distinct forms rejects valid rows | 105 |
