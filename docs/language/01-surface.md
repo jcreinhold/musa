@@ -87,7 +87,8 @@ articulation, span/grouping mark, pedal, or technique pattern; it is not an arbi
 staged and desugared by `08-performance-and-sound.md`, not values in the core calculus.
 
 Imports are explicit. A quoted path is resolved lexically relative to the importing file. `std::core`, `std::list`,
-`std::option`, and `std::pitch` name version-matched source libraries bundled with Musa; `std` is reserved, never searched in the
+`std::option`, `std::pitch`, `std::scale`, `std::collections`, `std::harmony`, and `std::voicing` name
+version-matched source libraries bundled with Musa; `std` is reserved, never searched in the
 working directory or environment, and has no implicit prelude. Imported definitions use the current flat value
 namespace. Their source remains available at stable `musa-stdlib:/std/…` URIs for hover and go-to-definition, but is
 read-only; a musician customizes one by writing a local wrapper. The authoritative signatures and prose are generated
@@ -180,15 +181,19 @@ a decidable property of the result.
 ## 5. Chords, rows, and explicit register
 
 ```musa
-let harmony: chord_class = chord c major7;
-let close: option[voicing] = close_position(harmony, c4);
-let open: option[voicing] = drop_voicing(harmony, c3, 2);
+let sonority: chord_class = chord c major7;
+let close: option[voicing] = close_position(sonority, c4);
+let open: option[voicing] = drop_position(sonority, c3, 2);
 
 fn sound(chosen: voicing) -> music = play(chosen, 1/2);
-use option_fold(music { rest/2 }, sound, close);
-use option_fold(music { rest/2 }, sound, open);
+fn sounded(chosen: option[voicing]) -> music = option_fold(music { rest/2 }, sound, chosen);
+let close_bar: music = sounded(close);
+let open_bar: music = sounded(open);
 
-stack c4 major7/2;
+use close_bar;
+use open_bar;
+
+stack c4 major7/2
 
 let row: row12 = row12(c, cs, e, d, fs, f, as, g, gs, b, a, ds);
 let symmetric: row12 = row12(c, fs, d, gs, e, as, f, b, g, cs, a, ds);
