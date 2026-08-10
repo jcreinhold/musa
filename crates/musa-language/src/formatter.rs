@@ -371,22 +371,30 @@ fn grid(elapsed: Beat) -> Option<usize> {
 /// somewhere no other bar's do, and a column that means one thing per line is
 /// no column at all.
 ///
-/// The recurrence is `col(k) = max(grid(t_k), col(k-1) + len(k-1) + 1)` — the
-/// onset's column, or one space past the previous event when the music is
-/// denser than the grid. Because the second term is always taken into account,
-/// a drawn bar is never *narrower* than the compact one, which is what makes
-/// the setting safe: turning it on can never push a bar over the line that was
-/// not already over it.
+/// The recurrence is `col(k) = max(grid(t_k), col(k-1) + len(k-1) + gap(k))` —
+/// the onset's column, or the compact layout's own gap past the previous event
+/// when the music is denser than the grid. Because the second term is always
+/// taken into account, a drawn bar is never *narrower* than the compact one,
+/// which is what makes the setting safe: turning it on can never push a bar
+/// over the line that was not already over it.
+///
+/// `gap(k)` is the compact writer's gap and not a constant one, which is the
+/// whole of that guarantee: a beat-group boundary is written two spaces wide
+/// there, so a grid that reserved one would draw a *narrower* line than the
+/// compact layout at every group start dense enough to be pushed off its
+/// column.
 fn drawn_to_scale(bar: &SyntaxNode, layout: &Layout) -> Option<String> {
     if bar.children().any(|child| child.kind() == SyntaxKind::Block) {
         return None;
     }
     let measured = measured_bar(bar, &layout.meters)?;
+    let groups = beat_group_starts(bar, &layout.meters);
     let mut body = String::new();
     let mut elapsed = Beat::ZERO;
     let mut next = 0_usize;
     for (item, length) in measured.items {
-        let column = grid(elapsed)?.max(next);
+        let gap = usize::from(groups.contains(&item.text_range()));
+        let column = grid(elapsed)?.max(next.saturating_add(gap));
         while body.chars().count() < column {
             body.push(' ');
         }

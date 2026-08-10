@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 079b5e81c2b337ff28459b559bafd46d0b704750db1d4dc64e07a85af83f35af # shrinks to source = "piece \"Gen\" {\n    tempo quarter = 72;\n    meter 4/4;\n    key c major;\n    score {\n        part p {\n            voice v {\na0 1;\n\n            }\n        }\n    }\n}\n"
+cc 006d9521938c57f3dc8d277b5f90f1db3abf256775fd5271ce2ee1a62cc88217 # shrinks to source = "piece \"Gen\" {\n    tempo quarter = 72;\n    meter 4/4;\n    key c major;\n    score {\n        part p {\n            voice v {\n| [a0 a0]/8 [a0 a#0 a#0]/4 rest/8\na0/2\nbar { a0/1 }\n\n            }\n        }\n    }\n}\n"

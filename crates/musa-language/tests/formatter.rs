@@ -603,3 +603,26 @@ fn examples_satisfy_the_laws() {
         assert_eq!(fmt_to_scale(&fmt_to_scale(source)), fmt_to_scale(source), "idempotence");
     }
 }
+
+/// A beat-group gap is two spaces wide in the compact layout, so the grid has
+/// to reserve two as well.
+///
+/// The property above says the same thing over generated pieces, and found
+/// this only when the generator happened to produce a bar dense enough for the
+/// grid to fall back on its "one past the previous event" rule *at* a group
+/// boundary. Written out, it is one bar and it fails every run.
+#[test]
+fn the_grid_reserves_the_beat_group_gap() {
+    let source = concat!(
+        "piece \"Gap\" {\n    tempo quarter = 72;\n    meter 4/4;\n    key c major;\n",
+        "    score {\n        part p {\n            voice v {\n",
+        "| [a0 a0]/8 [a0 a#0 a#0]/4 rest/8\na0/2\n",
+        "            }\n        }\n    }\n}\n"
+    );
+    for (narrow, wide) in fmt(source).lines().zip(fmt_to_scale(source).lines()) {
+        assert!(
+            wide.chars().count() >= narrow.chars().count(),
+            "drawing to scale narrowed a line:\n  compact {narrow:?}\n  to scale {wide:?}"
+        );
+    }
+}
