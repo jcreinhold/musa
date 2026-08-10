@@ -15,8 +15,8 @@ thiserror = "2"
 
 [dev-dependencies]
 divan = "0.1.21"
-insta = "1"
 hound = "3"
+insta = "1"
 
 [[bench]]
 harness = false

@@ -114,9 +114,9 @@ needless_collect = "warn"
 
 [profile.wasm]
 # Web typesetting artifact (prompt 138): size over speed, then wasm-opt -Oz.
-inherits = "release"
-opt-level = "z"
-lto = true
 codegen-units = 1
+inherits = "release"
+lto = true
+opt-level = "z"
 panic = "abort"
 strip = true
