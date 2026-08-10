@@ -1,7 +1,7 @@
 ---
 id: 113
 slug: capitalized-type-names
-status: in-progress
+status: done
 depends_on: [110, 112]
 phase: 3
 ---
