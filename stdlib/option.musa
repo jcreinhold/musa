@@ -1,0 +1,10 @@
+library {
+    // Read an optional pitch, using fallback when it is absent and present
+    // when it is available.
+    fn pitch_or_else(fallback: pitch, present: pitch -> pitch, value: option[pitch]) -> pitch =
+        option_fold(fallback, present, value);
+
+    // Read an optional natural number under the same explicit policy.
+    fn nat_or_else(fallback: nat, present: nat -> nat, value: option[nat]) -> nat =
+        option_fold(fallback, present, value);
+}

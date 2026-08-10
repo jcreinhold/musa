@@ -9,6 +9,7 @@ use lsp_types::{
     Location, Position, PrepareRenameResponse, ReferenceParams, RenameParams, TextEdit, Uri, WorkspaceEdit,
 };
 use musa_project::NameFact;
+use std::str::FromStr as _;
 
 use crate::convert;
 use crate::workspace::Document;
@@ -22,6 +23,16 @@ pub(crate) fn references(document: &Document, uri: &Uri, params: &ReferenceParam
     {
         locations.push(location(uri, document, span));
     }
+    if params.context.include_declaration
+        && let Some(external) = &entry.external_declaration
+        && let Some(source) = musa_project::standard_library_source(&external.uri)
+        && let Ok(external_uri) = Uri::from_str(&external.uri)
+    {
+        locations.push(Location {
+            uri: external_uri,
+            range: crate::convert::LineIndex::new(source).range(external.span),
+        });
+    }
     locations.extend(entry.uses.iter().map(|span| location(uri, document, *span)));
     Some(locations)
 }
@@ -29,6 +40,9 @@ pub(crate) fn references(document: &Document, uri: &Uri, params: &ReferenceParam
 /// Is the cursor on a renameable name, and over what range.
 pub(crate) fn prepare_rename(document: &Document, position: Position) -> Option<PrepareRenameResponse> {
     let (entry, span) = entry_at(document, position)?;
+    if entry.external_declaration.is_some() {
+        return None;
+    }
     Some(PrepareRenameResponse::RangeWithPlaceholder {
         range: document.lines().range(span),
         placeholder: entry.name.clone(),
@@ -44,6 +58,9 @@ pub(crate) fn prepare_rename(document: &Document, position: Position) -> Option<
 pub(crate) fn rename(document: &Document, params: &RenameParams) -> Result<Option<WorkspaceEdit>, String> {
     let (entry, _) = entry_at(document, params.text_document_position.position)
         .ok_or_else(|| "there is no named thing at the cursor, or the document has never compiled".to_owned())?;
+    if entry.external_declaration.is_some() {
+        return Err("imported source is read-only here; define a local wrapper instead".to_owned());
+    }
     check_new_name(document, entry, &params.new_name)?;
     let mut edits: Vec<TextEdit> = Vec::new();
     if let Some(span) = entry.declaration {

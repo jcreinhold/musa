@@ -214,7 +214,9 @@ fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut W
         writer.space();
     } else if kind == SyntaxKind::Colon {
         writer.write(":");
-        writer.space();
+        if parent != SyntaxKind::ImportStmt {
+            writer.space();
+        }
     } else if kind == SyntaxKind::PipeForward && writer.in_wrapped_chain() {
         // A long chain reads as a stack of stages, which is how the roadmap
         // writes it and how a patch is actually thought about.

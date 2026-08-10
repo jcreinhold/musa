@@ -47,6 +47,7 @@ fixed-media  := "fixed_media" IDENT "from" STRING ";"
 cue          := "cue" IDENT "at" position ("repeat" NAT)? ";"
 room         := "room" IDENT "{" room-setting* "}"
 fallback     := "unsupported" "technique" IDENT "->" "notation_only" "warning" ";"
+import       := "use" (STRING | "std" "::" IDENT) ";"
 ```
 
 Function arrows associate right; call binds tighter than pitch operators; pitch operators bind as follows, tightest
@@ -80,6 +81,13 @@ A pitch-name literal is checked in its expected domain: `chord(cs, minor)` suppl
 identifier such as `std.sound.basic_sine` or `bow.pressure`. `notation-selector` is one documented dynamic,
 articulation, span/grouping mark, pedal, or technique pattern; it is not an arbitrary graph path. The sound forms are
 staged and desugared by `08-performance-and-sound.md`, not values in the core calculus.
+
+Imports are explicit. A quoted path is resolved lexically relative to the importing file. `std::core`, `std::list`,
+and `std::option` name version-matched source libraries bundled with Musa; `std` is reserved, never searched in the
+working directory or environment, and has no implicit prelude. Imported definitions use the current flat value
+namespace. Their source remains available at stable `musa-stdlib:/std/…` URIs for hover and go-to-definition, but is
+read-only; a musician customizes one by writing a local wrapper. The authoritative signatures and prose are generated
+from source comments in `stdlib/reference.md`.
 
 ## 2. Functions and music
 

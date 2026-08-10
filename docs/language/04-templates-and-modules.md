@@ -4,6 +4,12 @@ Value functions construct values, including contextual `music`. Declaration temp
 score contexts are built. Keeping those stages separate permits reusable pieces and voices without making source syntax
 or identity-bearing structures first-class.
 
+The implemented source-library boundary is deliberately smaller than the static module system specified below.
+`use "path.musa";` imports a local `library`; `use std::core;`, `use std::list;`, and `use std::option;` import the
+version-matched bundled sources at stable virtual URIs. Both paths run through the same parser, checker, evaluator,
+cycle detection, and flat-name collision rules. There is no prelude, environment search, registry, or dependency
+solver. The signatures/modules in §4 are a later static abstraction layer, not a second runtime import mechanism.
+
 ## 1. Declaration-template judgment
 
 For `κ ∈ {library, piece, part, voice, performance, instrument, mix, module}`:

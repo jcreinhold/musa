@@ -31,8 +31,8 @@ pub(crate) fn check_piece(
         resolver,
         libraries
             .each()
-            .flat_map(|(_, library)| declarations(library.syntax(), true))
-            .chain(declarations(piece.syntax(), false)),
+            .flat_map(|(path, library)| declarations(library.syntax(), Some(path)))
+            .chain(declarations(piece.syntax(), None)),
         root_uses(piece.syntax()),
         UnknownRootMusic::Defer,
     )
@@ -51,8 +51,8 @@ pub(crate) fn check_material(
         resolver,
         libraries
             .each()
-            .flat_map(|(_, imported)| declarations(imported.syntax(), true))
-            .chain(declarations(library.syntax(), false)),
+            .flat_map(|(path, imported)| declarations(imported.syntax(), Some(path)))
+            .chain(declarations(library.syntax(), None)),
         Vec::new(),
         UnknownRootMusic::Reject,
     )
@@ -65,7 +65,7 @@ pub(crate) fn check_material(
 fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
     let mut prefix = Vec::new();
     for (path, library, import_span) in libraries.each_with_import_span() {
-        prefix.extend(declarations(library.syntax(), true));
+        prefix.extend(declarations(library.syntax(), Some(path)));
         let mut foreign_resolver = Resolver::new();
         let evaluated = check_and_evaluate(
             &mut foreign_resolver,
@@ -94,14 +94,20 @@ fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
     true
 }
 
-fn declarations(owner: &SyntaxNode, foreign: bool) -> Vec<SurfaceDefinition> {
+fn declarations(owner: &SyntaxNode, source: Option<&str>) -> Vec<SurfaceDefinition> {
     let mut found: Vec<_> = owner
         .children()
         .filter_map(|node| {
             LetDecl::cast(node.clone())
-                .map(|declaration| SurfaceDefinition::Let { declaration, foreign })
+                .map(|declaration| SurfaceDefinition::Let {
+                    declaration,
+                    source: source.map(str::to_owned),
+                })
                 .or_else(|| {
-                    FnDecl::cast(node.clone()).map(|declaration| SurfaceDefinition::Function { declaration, foreign })
+                    FnDecl::cast(node.clone()).map(|declaration| SurfaceDefinition::Function {
+                        declaration,
+                        source: source.map(str::to_owned),
+                    })
                 })
                 .or_else(|| {
                     musa_language::ast::MotifDecl::cast(node.clone()).map(|declaration| SurfaceDefinition::Legacy {
@@ -109,7 +115,7 @@ fn declarations(owner: &SyntaxNode, foreign: bool) -> Vec<SurfaceDefinition> {
                         syntax: declaration.syntax().clone(),
                         parameters: declaration.params(),
                         material: crate::resolve::Material::Motif,
-                        foreign,
+                        source: source.map(str::to_owned),
                     })
                 })
                 .or_else(|| {
@@ -118,7 +124,7 @@ fn declarations(owner: &SyntaxNode, foreign: bool) -> Vec<SurfaceDefinition> {
                         syntax: declaration.syntax().clone(),
                         parameters: Vec::new(),
                         material: crate::resolve::Material::Fragment,
-                        foreign,
+                        source: source.map(str::to_owned),
                     })
                 })
         })
@@ -132,7 +138,7 @@ fn declarations(owner: &SyntaxNode, foreign: bool) -> Vec<SurfaceDefinition> {
                 syntax: declaration.syntax().clone(),
                 parameters: Vec::new(),
                 material: crate::resolve::Material::Bar,
-                foreign,
+                source: source.map(str::to_owned),
             })
         })
     }));
@@ -161,18 +167,18 @@ fn root_uses(owner: &SyntaxNode) -> Vec<SyntaxNode> {
 enum SurfaceDefinition {
     Let {
         declaration: LetDecl,
-        foreign: bool,
+        source: Option<String>,
     },
     Function {
         declaration: FnDecl,
-        foreign: bool,
+        source: Option<String>,
     },
     Legacy {
         name: String,
         syntax: SyntaxNode,
         parameters: Vec<musa_language::ast::Param>,
         material: crate::resolve::Material,
-        foreign: bool,
+        source: Option<String>,
     },
 }
 
@@ -259,6 +265,7 @@ struct RawDefinition {
     name_span: SourceSpan,
     span: SourceSpan,
     foreign: bool,
+    source: Option<String>,
     role: Option<MusicRole>,
 }
 
@@ -299,6 +306,7 @@ struct Symbol {
     ty: Type,
     kind: NameKind,
     definition: usize,
+    external_declaration: Option<crate::resolve::SourceLocation>,
 }
 
 #[derive(Clone)]
@@ -339,7 +347,7 @@ struct CheckedMusic {
     definition_span: SourceSpan,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Primitive {
     NatFold,
     ListFold,
@@ -349,6 +357,51 @@ enum Primitive {
     Range,
     Repeat,
 }
+
+#[derive(Clone, Copy)]
+struct PrimitiveOwnership<T> {
+    operation: T,
+    spelling: &'static str,
+    hidden_information: &'static str,
+}
+
+const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 7] = [
+    PrimitiveOwnership {
+        operation: Primitive::NatFold,
+        spelling: "nat_fold",
+        hidden_information: "the evaluator's finite natural representation and structural work budget",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ListFold,
+        spelling: "list_fold",
+        hidden_information: "the evaluator's finite list representation and structural work budget",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::OptionFold,
+        spelling: "option_fold",
+        hidden_information: "the evaluator's hidden option representation and total case dispatch",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Map,
+        spelling: "map",
+        hidden_information: "rank-1 monomorphization over the evaluator's hidden finite list representation",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Filter,
+        spelling: "filter",
+        hidden_information: "rank-1 monomorphization over the evaluator's hidden finite list representation",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Range,
+        spelling: "range",
+        hidden_information: "bounded construction governed by the evaluator's structural work budget",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::Repeat,
+        spelling: "repeat",
+        hidden_information: "rank-1 finite-list construction governed by the structural work budget",
+    },
+];
 
 impl Primitive {
     fn name(self) -> &'static str {
@@ -442,7 +495,7 @@ enum Value {
     Builtin(Box<BuiltinValue>),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Builtin {
     Transpose,
     Stretch,
@@ -453,6 +506,44 @@ enum Builtin {
     MapNotePitches,
 }
 
+const BUILTIN_OWNERSHIP: [PrimitiveOwnership<Builtin>; 7] = [
+    PrimitiveOwnership {
+        operation: Builtin::Transpose,
+        spelling: "transpose",
+        hidden_information: "contextual music representation, written-pitch provenance, and kernel construction",
+    },
+    PrimitiveOwnership {
+        operation: Builtin::Stretch,
+        spelling: "stretch",
+        hidden_information: "contextual music representation, exact-time provenance, and kernel construction",
+    },
+    PrimitiveOwnership {
+        operation: Builtin::Retrograde,
+        spelling: "retrograde",
+        hidden_information: "contextual music extent, occurrence provenance, and kernel construction",
+    },
+    PrimitiveOwnership {
+        operation: Builtin::Invert,
+        spelling: "invert",
+        hidden_information: "contextual music representation, written-pitch provenance, and kernel construction",
+    },
+    PrimitiveOwnership {
+        operation: Builtin::Shift,
+        spelling: "shift",
+        hidden_information: "contextual music representation, exact-time provenance, and kernel construction",
+    },
+    PrimitiveOwnership {
+        operation: Builtin::Overlay,
+        spelling: "overlay",
+        hidden_information: "contextual music representation, origin paths, and kernel overlay construction",
+    },
+    PrimitiveOwnership {
+        operation: Builtin::MapNotePitches,
+        spelling: "map_note_pitches",
+        hidden_information: "controlled traversal of contextual notes while preserving non-note facts and provenance",
+    },
+];
+
 #[derive(Clone)]
 struct BuiltinValue {
     builtin: Builtin,
@@ -461,16 +552,9 @@ struct BuiltinValue {
 
 impl Builtin {
     fn named(name: &str) -> Option<Self> {
-        match name {
-            "transpose" => Some(Self::Transpose),
-            "stretch" => Some(Self::Stretch),
-            "retrograde" => Some(Self::Retrograde),
-            "invert" => Some(Self::Invert),
-            "shift" => Some(Self::Shift),
-            "overlay" => Some(Self::Overlay),
-            "map_note_pitches" => Some(Self::MapNotePitches),
-            _ => None,
-        }
+        let entry = BUILTIN_OWNERSHIP.iter().find(|entry| entry.spelling == name)?;
+        debug_assert!(!entry.hidden_information.is_empty());
+        Some(entry.operation)
     }
 
     fn parameters(self) -> Vec<Type> {
@@ -690,7 +774,8 @@ fn check_and_evaluate(
     let mut names: IndexMap<String, (SourceSpan, bool, bool)> = IndexMap::new();
     for declaration in declarations {
         let is_legacy = matches!(declaration, SurfaceDefinition::Legacy { .. });
-        let (name, name_span, span, foreign) = surface_identity(&declaration)?;
+        let (name, name_span, span, source) = surface_identity(&declaration)?;
+        let foreign = source.is_some();
         if let Some((first, first_is_foreign, first_is_legacy)) = names.get(&name).copied() {
             // The structural resolver retains the established, role-specific
             // diagnostic for two legacy material declarations. The core must
@@ -708,7 +793,7 @@ fn check_and_evaluate(
             continue;
         }
         names.insert(name.clone(), (name_span, foreign, is_legacy));
-        if let Some(definition) = lower_signature(resolver, declaration, name, name_span, span, foreign) {
+        if let Some(definition) = lower_signature(resolver, declaration, name, name_span, span, source) {
             raw.push(definition);
         }
     }
@@ -721,6 +806,10 @@ fn check_and_evaluate(
                 ty: definition.ty.clone(),
                 kind: definition.name_kind(),
                 definition: index,
+                external_declaration: definition.source.as_ref().map(|uri| crate::resolve::SourceLocation {
+                    uri: uri.clone(),
+                    span: definition.name_span,
+                }),
             },
         );
         if !definition.foreign && definition.role.is_none() {
@@ -932,23 +1021,25 @@ pub(crate) fn check_piece_for_kernel(
 ) -> Option<Program> {
     check_and_evaluate(
         resolver,
-        declarations(piece.syntax(), false).into_iter(),
+        declarations(piece.syntax(), None).into_iter(),
         root_uses(piece.syntax()),
         UnknownRootMusic::Silent,
     )
 }
 
-fn surface_identity(definition: &SurfaceDefinition) -> Option<(String, SourceSpan, SourceSpan, bool)> {
-    let (syntax, name, foreign) = match definition {
-        SurfaceDefinition::Let { declaration, foreign } => (declaration.syntax(), declaration.name(), *foreign),
-        SurfaceDefinition::Function { declaration, foreign } => (declaration.syntax(), declaration.name(), *foreign),
+fn surface_identity(definition: &SurfaceDefinition) -> Option<(String, SourceSpan, SourceSpan, Option<String>)> {
+    let (syntax, name, source) = match definition {
+        SurfaceDefinition::Let { declaration, source } => (declaration.syntax(), declaration.name(), source.clone()),
+        SurfaceDefinition::Function { declaration, source } => {
+            (declaration.syntax(), declaration.name(), source.clone())
+        }
         SurfaceDefinition::Legacy {
-            name, syntax, foreign, ..
-        } => (syntax, Some(name.clone()), *foreign),
+            name, syntax, source, ..
+        } => (syntax, Some(name.clone()), source.clone()),
     };
     let name = name?;
     let name_span = crate::resolve::token_span(syntax, SyntaxKind::Identifier)?;
-    Some((name, name_span, crate::resolve::trimmed_span(syntax), foreign))
+    Some((name, name_span, crate::resolve::trimmed_span(syntax), source))
 }
 
 fn lower_signature(
@@ -957,8 +1048,9 @@ fn lower_signature(
     name: String,
     name_span: SourceSpan,
     span: SourceSpan,
-    foreign: bool,
+    source: Option<String>,
 ) -> Option<RawDefinition> {
+    let foreign = source.is_some();
     match definition {
         SurfaceDefinition::Let { declaration, .. } => {
             let ty_node = child_of(declaration.syntax(), is_type_node)?;
@@ -971,6 +1063,7 @@ fn lower_signature(
                 name_span,
                 span,
                 foreign,
+                source,
                 role: None,
             })
         }
@@ -1011,6 +1104,7 @@ fn lower_signature(
                 name_span,
                 span,
                 foreign,
+                source,
                 role: None,
             })
         }
@@ -1065,6 +1159,7 @@ fn lower_signature(
                 name_span,
                 span,
                 foreign,
+                source,
                 role: Some(MusicRole {
                     name,
                     material,
@@ -1321,7 +1416,9 @@ impl Checker<'_> {
         } else if let Some(symbol) = self.symbols.get(name) {
             self.dependencies.entry(name.to_owned()).or_insert(span);
             if !self.foreign {
-                self.resolver.references.record_use(symbol.kind, name, span);
+                self.resolver
+                    .references
+                    .record_use_from(symbol.kind, name, span, symbol.external_declaration.clone());
             }
             Some(symbol.ty.clone())
         } else {
@@ -1436,7 +1533,9 @@ impl Checker<'_> {
         };
         self.dependencies.entry(name.clone()).or_insert(span);
         if !self.foreign {
-            self.resolver.references.record_use(symbol.kind, &name, span);
+            self.resolver
+                .references
+                .record_use_from(symbol.kind, &name, span, symbol.external_declaration.clone());
         }
         Some(Expr {
             kind: ExprKind::Name(name),
@@ -1993,16 +2092,9 @@ struct ParameterShape {
 }
 
 fn primitive_named(name: &str) -> Option<Primitive> {
-    match name {
-        "nat_fold" => Some(Primitive::NatFold),
-        "list_fold" => Some(Primitive::ListFold),
-        "option_fold" => Some(Primitive::OptionFold),
-        "map" => Some(Primitive::Map),
-        "filter" => Some(Primitive::Filter),
-        "range" => Some(Primitive::Range),
-        "repeat" => Some(Primitive::Repeat),
-        _ => None,
-    }
+    let entry = PRIMITIVE_OWNERSHIP.iter().find(|entry| entry.spelling == name)?;
+    debug_assert!(!entry.hidden_information.is_empty());
+    Some(entry.operation)
 }
 
 fn unary_parameter(parameters: &[Type]) -> Option<&Type> {
@@ -2983,11 +3075,39 @@ mod tests {
         let mut resolver = Resolver::new();
         check_and_evaluate(
             &mut resolver,
-            declarations(piece.syntax(), false).into_iter(),
+            declarations(piece.syntax(), None).into_iter(),
             Vec::new(),
             UnknownRootMusic::Reject,
         )
         .map(|program| program.values)
+    }
+
+    #[test]
+    fn every_compiler_owned_operation_names_its_hidden_information() {
+        let entries = PRIMITIVE_OWNERSHIP
+            .iter()
+            .map(|entry| (entry.spelling, entry.hidden_information))
+            .chain(
+                BUILTIN_OWNERSHIP
+                    .iter()
+                    .map(|entry| (entry.spelling, entry.hidden_information)),
+            )
+            .collect::<Vec<_>>();
+        assert_eq!(
+            entries.len(),
+            14,
+            "new compiler operations must enter the ownership registry"
+        );
+        let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();
+        assert_eq!(
+            unique.len(),
+            entries.len(),
+            "compiler operation spellings must be unique"
+        );
+        assert!(
+            entries.iter().all(|(_, reason)| !reason.trim().is_empty()),
+            "compiler ownership requires a hidden-information justification"
+        );
     }
 
     #[test]

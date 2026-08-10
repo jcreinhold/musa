@@ -51,6 +51,14 @@ The value stage uses the ordinary static and evaluation judgments:
 The declaration kinds are `library`, `piece`, `part`, `voice`, `performance`, `instrument`, `mix`, and `module`; they
 are not value types.
 
+Compiler ownership is an information boundary, not a convenience category. An operation may be primitive only when it
+needs the intentionally hidden contextual-`music` representation, source-aware provenance, direct kernel construction,
+or the private finite representation/work budget needed to preserve total evaluation under rank-1 monomorphization.
+Everything expressible through public values and those operations belongs in ordinary `.musa` source, including the
+bundled standard library. Adding a Rust implementation merely because a source function is familiar or potentially
+faster is not semantics-preserving evidence; prompt 118 requires measurement and an equivalence law before such an
+optimization.
+
 Contextual music has one private semantic observation:
 
 ```text

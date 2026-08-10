@@ -63,7 +63,10 @@ pub use crate::diagnose::{Code, Diagnostic, Fix, FixEdit, Label, Severity};
 pub use crate::elaborate::kernel_normal_form;
 pub use crate::groove::Groove;
 pub use crate::harmony::{ChordQuality, ChordSymbol, Seventh};
-pub use crate::imports::{ImportSources, resolve_import};
+pub use crate::imports::{
+    ImportSources, STANDARD_LIBRARY_LANGUAGE_VERSION, resolve_import, standard_library_modules,
+    standard_library_reference, standard_library_source,
+};
 #[doc(hidden)]
 pub use crate::kernel_text::{
     KernelCheck, check_kernel_text, kernel_normalized_text, kernel_text, kernel_text_meaning,
@@ -77,7 +80,7 @@ pub use crate::performance::{
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::profile::{ArticulationRealization, GracePolicy, PerformanceProfile, ProfileSet, StealFrom};
 pub use crate::realize::{Decision, DecisionRecord, Realization};
-pub use crate::resolve::{NameKind, NameReference};
+pub use crate::resolve::{NameKind, NameReference, SourceLocation};
 pub use crate::scope::{ContextKind, Scope};
 pub use crate::score::{
     AnnotationStore, ArticulationMarking, Clef, DynamicMark, DynamicMarking, EventId, FreeDuration, FrontMatter,

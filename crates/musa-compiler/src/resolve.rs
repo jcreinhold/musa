@@ -117,8 +117,9 @@ pub enum NameKind {
 /// Spans are the *name tokens'* spans, not the statements': a rename rewrites
 /// exactly these ranges and nothing around them. A name declared in an
 /// imported library has no declaration here — its uses in the document are
-/// recorded honestly and its declaration is `None`, which is what makes
-/// cross-file rename impossible to ask for rather than silently wrong.
+/// recorded honestly, its declaration is `None`, and `external_declaration`
+/// identifies its source. That makes navigation exact while keeping a
+/// one-document rename from silently editing only half a name.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NameReference {
     /// The name as written.
@@ -127,9 +128,21 @@ pub struct NameReference {
     pub kind: NameKind,
     /// Where the declaration's name token is, when it is in this document.
     pub declaration: Option<SourceSpan>,
+    /// Where an imported declaration is written. Bundled modules use a
+    /// stable `musa-stdlib:` URI; ordinary imports retain their resolved path.
+    pub external_declaration: Option<SourceLocation>,
     /// Every resolved use's name token, in the order the resolver met them.
     /// A name that does not resolve records nothing: no uses, no entry.
     pub uses: Vec<SourceSpan>,
+}
+
+/// A declaration in another source document.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceLocation {
+    /// Resolved path or virtual URI of the source document.
+    pub uri: String,
+    /// Byte range of the declaration's name in that document.
+    pub span: SourceSpan,
 }
 
 /// The reference record the resolver accumulates (prompt 78).
@@ -165,12 +178,14 @@ impl ReferenceIndex {
             .find(|entry| entry.kind == kind && entry.name == name && entry.declaration.is_none())
         {
             entry.declaration = Some(span);
+            entry.external_declaration = None;
             return;
         }
         self.entries.push(NameReference {
             name: name.to_owned(),
             kind,
             declaration: Some(span),
+            external_declaration: None,
             uses: Vec::new(),
         });
     }
@@ -183,16 +198,33 @@ impl ReferenceIndex {
     /// declaration, which is the record's way of saying "used here, spelled
     /// elsewhere".
     pub(crate) fn record_use(&mut self, kind: NameKind, name: &str, span: SourceSpan) {
+        self.record_use_from(kind, name, span, None);
+    }
+
+    /// Record one resolved use, retaining an imported declaration's source.
+    pub(crate) fn record_use_from(
+        &mut self,
+        kind: NameKind,
+        name: &str,
+        span: SourceSpan,
+        external_declaration: Option<SourceLocation>,
+    ) {
         match self
             .entries
             .iter_mut()
             .find(|entry| entry.kind == kind && entry.name == name)
         {
-            Some(entry) => entry.uses.push(span),
+            Some(entry) => {
+                entry.uses.push(span);
+                if entry.external_declaration.is_none() {
+                    entry.external_declaration = external_declaration;
+                }
+            }
             None => self.entries.push(NameReference {
                 name: name.to_owned(),
                 kind,
                 declaration: None,
+                external_declaration,
                 uses: vec![span],
             }),
         }

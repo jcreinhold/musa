@@ -675,7 +675,18 @@ impl<'a> Parser<'a> {
     fn import_stmt(&mut self) {
         self.start(SyntaxKind::ImportStmt);
         self.bump(); // use
-        self.expect(SyntaxKind::String, "a relative path in quotes");
+        if self.at(SyntaxKind::String) {
+            self.bump();
+        } else {
+            self.expect(SyntaxKind::Identifier, "a relative path in quotes, or `std::module`");
+            self.expect(SyntaxKind::Colon, "`::`");
+            self.expect(SyntaxKind::Colon, "`::`");
+            if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::ListKw, SyntaxKind::OptionKw]) {
+                self.bump();
+            } else {
+                self.expected("a standard-library module name");
+            }
+        }
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }

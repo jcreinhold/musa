@@ -37,6 +37,15 @@ use lsp_types::{
 const GLASS_MOUNTAIN: &str = include_str!("../../../examples/glass-mountain.musa");
 const ANNOTATED: &str = include_str!("../../../examples/annotated.musa");
 const MISSING_SEMICOLON: &str = include_str!("../../../examples/broken/missing-semicolon.musa");
+const STDLIB_PIECE: &str = "piece \"Standard library\" {
+    use std::core;
+    let answer: nat = identity_nat(42);
+    tempo 1/4 = 60;
+    meter 4/4;
+    key c major;
+    score { part piano { voice melody { c4/1 } } }
+}
+";
 
 /// A small valid piece whose every position the tests can count by hand —
 /// one full bar of 4/4, because a bar is written down and checked (prompt 57).
@@ -375,6 +384,64 @@ fn prepare_rename_names_the_name_and_refuses_plain_text() {
         .client
         .request::<PrepareRenameRequest>(position_params(&uri, at(GLASS_MOUNTAIN, "tempo")));
     assert!(answer.is_null(), "expected null on `tempo`: {answer}");
+    server.stop();
+}
+
+#[test]
+fn bundled_names_keep_source_maps_docs_and_read_only_identity() {
+    let mut server = Server::start();
+    let (uri, published) = server.open("stdlib", STDLIB_PIECE);
+    assert!(published.diagnostics.is_empty(), "{published:?}");
+    let position = at(STDLIB_PIECE, "identity_nat");
+
+    let definition = server
+        .client
+        .request::<GotoDefinition>(lsp_types::GotoDefinitionParams {
+            text_document_position_params: position_params(&uri, position),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+            partial_result_params: PartialResultParams::default(),
+        });
+    let definition: GotoDefinitionResponse = serde_json::from_value(definition).expect("a definition");
+    let GotoDefinitionResponse::Scalar(location) = definition else {
+        panic!("expected one definition");
+    };
+    assert_eq!(location.uri.as_str(), "musa-stdlib:/std/core.musa");
+
+    let references = server
+        .client
+        .request::<References>(reference_params(&uri, position, true));
+    let references: Vec<Location> = serde_json::from_value(references).expect("references");
+    assert_eq!(
+        references.len(),
+        2,
+        "external declaration and local use: {references:?}"
+    );
+    assert!(
+        references
+            .iter()
+            .any(|location| location.uri.as_str() == "musa-stdlib:/std/core.musa")
+    );
+
+    let hover = server.client.request::<HoverRequest>(HoverParams {
+        text_document_position_params: position_params(&uri, position),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    let hover: Hover = serde_json::from_value(hover).expect("hover");
+    let HoverContents::Markup(content) = hover.contents else {
+        panic!("expected markdown");
+    };
+    assert!(content.value.contains("fn identity_nat"), "{}", content.value);
+    assert!(content.value.contains("read-only"), "{}", content.value);
+
+    let prepared = server
+        .client
+        .request::<PrepareRenameRequest>(position_params(&uri, position));
+    assert!(prepared.is_null(), "bundled source must not prepare rename: {prepared}");
+    let response = server
+        .client
+        .response::<Rename>(rename_params(&uri, position, "my_identity"));
+    let error = response.response_result.expect_err("bundled rename must be refused");
+    assert!(error.message.contains("read-only"), "{}", error.message);
     server.stop();
 }
 

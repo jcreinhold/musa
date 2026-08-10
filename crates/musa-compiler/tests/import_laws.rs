@@ -237,3 +237,15 @@ fn a_broken_library_is_reported_by_name() {
         "expected the library's name in the message, got {messages:?}"
     );
 }
+
+#[test]
+fn an_unknown_standard_module_reports_its_stable_virtual_uri() {
+    let compilation = compile_with("p.musa", &piece("use std::unknown; motif rise() { c5/1 }"), &[]);
+    let messages = errors(&compilation);
+    assert!(
+        messages
+            .iter()
+            .any(|message| message.contains("musa-stdlib:/std/unknown.musa")),
+        "expected the virtual URI in the diagnostic, got {messages:?}"
+    );
+}

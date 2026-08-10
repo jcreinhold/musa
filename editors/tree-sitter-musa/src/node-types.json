@@ -877,9 +877,25 @@
     "named": true,
     "fields": {
       "path": {
-        "multiple": false,
+        "multiple": true,
         "required": true,
         "types": [
+          {
+            "type": ":",
+            "named": false
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "list",
+            "named": false
+          },
+          {
+            "type": "option",
+            "named": false
+          },
           {
             "type": "string",
             "named": true

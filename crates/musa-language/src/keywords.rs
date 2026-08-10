@@ -158,7 +158,8 @@ static USE: KeywordDoc = doc!(
     "use",
     "write out a motif, or import a library",
     "`use` writes out a declared motif where it stands, with arguments for its parameters: `use sigh(e5);` is \
-     the motif spelled here, once. At the top of a piece it imports a library file instead: `use \"strings\";`.\n\n\
+     the motif spelled here, once. At the top of a piece it imports a relative library file, or an explicit bundled \
+     module such as `use std::core;`. Bundled modules are ordinary Musa source and add no hidden prelude.\n\n\
      ```musa\nuse sigh(e5);\n```"
 );
 static TRANSPOSE: KeywordDoc = doc!(

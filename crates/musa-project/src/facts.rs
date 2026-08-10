@@ -832,8 +832,8 @@ pub enum NameKind {
 ///
 /// Spans are the *name tokens'* spans: a rename rewrites exactly these
 /// ranges, never a textual match. A name declared in an imported library has
-/// `declaration: None` — its uses here are recorded, and cross-file rename
-/// is impossible to ask for rather than silently wrong.
+/// `declaration: None` and an `external_declaration`, so editors can navigate
+/// there without offering an incomplete one-document rename.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NameFact {
@@ -843,8 +843,21 @@ pub struct NameFact {
     pub kind: NameKind,
     /// Where the declaration's name token is, when it is in this document.
     pub declaration: Option<crate::diagnostic::Span>,
+    /// Declaration in an imported source, when the name is not defined in
+    /// the open document.
+    pub external_declaration: Option<SourceLocation>,
     /// Every resolved use's name token, in the order the resolver met them.
     pub uses: Vec<crate::diagnostic::Span>,
+}
+
+/// A stable editor target in another source document.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceLocation {
+    /// Resolved filesystem path or readable virtual URI.
+    pub uri: String,
+    /// Byte range of the declaration name in that source.
+    pub span: crate::diagnostic::Span,
 }
 
 impl NameFact {
@@ -868,6 +881,10 @@ impl NameFact {
             name: reference.name.clone(),
             kind,
             declaration: reference.declaration.map(span),
+            external_declaration: reference.external_declaration.as_ref().map(|location| SourceLocation {
+                uri: location.uri.clone(),
+                span: span(location.span),
+            }),
             uses: reference.uses.iter().map(|use_span| span(*use_span)).collect(),
         }
     }

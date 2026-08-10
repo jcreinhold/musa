@@ -161,8 +161,47 @@
           "type": "FIELD",
           "name": "path",
           "content": {
-            "type": "SYMBOL",
-            "name": "string"
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "string"
+              },
+              {
+                "type": "SEQ",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "identifier"
+                  },
+                  {
+                    "type": "STRING",
+                    "value": ":"
+                  },
+                  {
+                    "type": "STRING",
+                    "value": ":"
+                  },
+                  {
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "identifier"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "list"
+                      },
+                      {
+                        "type": "STRING",
+                        "value": "option"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
           }
         },
         {

@@ -60,7 +60,7 @@ pub use crate::error::ProjectError;
 pub use crate::export::{ExportArtifact, ExportRequest, KernelReport, check_kernel};
 pub use crate::facts::{
     DecisionFact, EventFacts, EventKind, Fraction, HeaderFact, NameFact, NameKind, OccurrenceFacts, OriginFacts,
-    OutlineFacts, OutlineKind, PartFacts, ScoreFacts, VoiceFacts,
+    OutlineFacts, OutlineKind, PartFacts, ScoreFacts, SourceLocation, VoiceFacts,
 };
 pub use crate::midi::MidiEntry;
 pub use crate::position::Position;
@@ -73,6 +73,7 @@ pub use crate::studio::{
 };
 pub use crate::template::Template;
 pub use crate::utf16::Utf16Offsets;
+pub use musa_compiler::standard_library_source;
 pub use musa_compiler::{ChoicePath, ChoiceStep, Decision, DecisionRecord, DocumentKind, Realization};
 pub use musa_language::{BarSpacing, HeaderField, KeywordDoc, keyword_doc};
 pub use musa_render::MidiMode;

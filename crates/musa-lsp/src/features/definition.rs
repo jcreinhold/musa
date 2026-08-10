@@ -6,6 +6,8 @@
 //! the edit-definition edit's target, so "go to definition" and "edit the
 //! definition" point at the same place.
 
+use std::str::FromStr as _;
+
 use lsp_types::{GotoDefinitionResponse, Location, Position, Uri};
 use musa_project::ScoreFacts;
 
@@ -16,9 +18,36 @@ use crate::workspace::Document;
 pub(crate) fn definition(document: &Document, uri: &Uri, position: Position) -> Option<GotoDefinitionResponse> {
     let byte = document.lines().byte(position);
     let snapshot = document.snapshot();
+    if let Some(answer) = at_named_definition(&snapshot, byte, uri, document.lines()) {
+        return Some(answer);
+    }
     let score = snapshot.score()?;
     let lines = document.lines();
     at_use_site(score, byte, lines, uri).or_else(|| at_generated_event(score, byte, lines, uri))
+}
+
+fn at_named_definition(
+    snapshot: &musa_project::ProjectSnapshot<'_>,
+    byte: u32,
+    local_uri: &Uri,
+    local_lines: &LineIndex,
+) -> Option<GotoDefinitionResponse> {
+    let name = snapshot.names().iter().find(|name| {
+        name.declaration.is_some_and(|span| covers(span, byte)) || name.uses.iter().any(|span| covers(*span, byte))
+    })?;
+    if let Some(span) = name.declaration {
+        return Some(GotoDefinitionResponse::Scalar(Location {
+            uri: local_uri.clone(),
+            range: local_lines.range(span),
+        }));
+    }
+    let external = name.external_declaration.as_ref()?;
+    let source = musa_project::standard_library_source(&external.uri)?;
+    let uri = Uri::from_str(&external.uri).ok()?;
+    Some(GotoDefinitionResponse::Scalar(Location {
+        uri,
+        range: LineIndex::new(source).range(external.span),
+    }))
 }
 
 fn at_use_site(score: &ScoreFacts, byte: u32, lines: &LineIndex, uri: &Uri) -> Option<GotoDefinitionResponse> {

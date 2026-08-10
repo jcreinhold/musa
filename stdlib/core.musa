@@ -1,0 +1,16 @@
+library {
+    // Return an exact rational unchanged. This is useful when a public API
+    // wants to say explicitly that it preserves a proportion.
+    fn identity_ratio(value: ratio) -> ratio = value;
+
+    // Return a natural number unchanged.
+    fn identity_nat(value: nat) -> nat = value;
+
+    // Apply the second musical transformation, then the first.
+    fn compose_music(first: music -> music, second: music -> music, value: music) -> music =
+        first(second(value));
+
+    // Apply the second pitch function, then the first.
+    fn compose_pitch(first: pitch -> pitch, second: pitch -> pitch, value: pitch) -> pitch =
+        first(second(value));
+}

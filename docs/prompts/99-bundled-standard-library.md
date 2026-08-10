@@ -1,7 +1,7 @@
 ---
 id: 99
 slug: bundled-standard-library
-status: pending
+status: done
 depends_on: [36, 98]
 phase: 3
 ---

@@ -442,14 +442,32 @@ impl LibraryDecl {
     }
 }
 
-/// `use "../library/motifs.musa";`
+/// `use "../library/motifs.musa";` or `use std::core;`
 pub struct ImportStmt(SyntaxNode);
 wrapper!(ImportStmt, SyntaxKind::ImportStmt);
 
 impl ImportStmt {
-    /// The path as written, without its quotes.
+    /// The path as written, without quotes for a relative import.
     pub fn path(&self) -> Option<String> {
-        token_text(&self.0, SyntaxKind::String).map(|text| unquote(&text))
+        if let Some(text) = token_text(&self.0, SyntaxKind::String) {
+            return Some(unquote(&text));
+        }
+        let names = self
+            .0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| {
+                matches!(
+                    token.kind(),
+                    SyntaxKind::Identifier | SyntaxKind::ListKw | SyntaxKind::OptionKw
+                )
+            })
+            .map(|token| token.text().to_owned())
+            .collect::<Vec<_>>();
+        match names.as_slice() {
+            [namespace, module] => Some(format!("{namespace}::{module}")),
+            _ => None,
+        }
     }
 }
 

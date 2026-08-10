@@ -1,4 +1,4 @@
-//! Relative imports (roadmap §16): declarative, acyclic, local, and
+//! Source imports (roadmap §16): declarative, acyclic, deterministic, and
 //! side-effect-free.
 //!
 //! A piece writes `use "../library/patches.musa";` and gets that file's
@@ -17,11 +17,13 @@
 //!    two identically named motifs is the kind of thing that makes a piece
 //!    sound different on someone else's machine.
 //!
-//! Paths are joined lexically, never canonicalized: `resolve` is a string
+//! Relative paths are joined lexically, never canonicalized: `resolve` is a string
 //! function, so the same import graph resolves the same way on every machine
-//! and inside tests that have no files at all.
+//! and inside tests that have no files at all. The reserved `std::` namespace
+//! instead maps to embedded, version-matched source under stable virtual URIs.
 
 use std::collections::HashMap;
+use std::fmt::Write as _;
 
 use musa_language::ast::{AstNode as _, LibraryDecl};
 
@@ -31,8 +33,9 @@ use crate::resolve::Resolver;
 
 /// The text of every file a compilation may import, by resolved path.
 ///
-/// Empty by default: a piece that imports nothing needs no filesystem, and a
-/// piece that imports something is handed exactly the files it named.
+/// Empty by default: a piece that imports no local file needs no filesystem,
+/// and one that does is handed exactly the files it named. Bundled standard
+/// modules are available without being inserted here.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ImportSources {
     files: HashMap<String, String>,
@@ -46,7 +49,10 @@ impl ImportSources {
 
     /// The text of a resolved path, if it was provided.
     pub fn get(&self, path: &str) -> Option<&str> {
-        self.files.get(path).map(String::as_str)
+        self.files
+            .get(path)
+            .map(String::as_str)
+            .or_else(|| standard_library_source(path))
     }
 
     /// Whether any file was provided at all.
@@ -62,6 +68,12 @@ impl ImportSources {
 /// its leading `..` and fails to resolve later, as a missing file.
 #[must_use]
 pub fn resolve_import(importer: &str, written: &str) -> String {
+    if let Some(module) = written.strip_prefix("std::") {
+        return format!("musa-stdlib:/std/{module}.musa");
+    }
+    if let Some((namespace, module)) = written.split_once("::") {
+        return format!("musa-import:/{namespace}/{module}.musa");
+    }
     // An absolute importer stays absolute: the root is not a segment that
     // `..` can climb past, it is where the path starts.
     let root = if importer.starts_with('/') { "/" } else { "" };
@@ -77,6 +89,70 @@ pub fn resolve_import(importer: &str, written: &str) -> String {
         }
     }
     format!("{root}{}", segments.join("/"))
+}
+
+/// Version of the source language expected by the embedded standard library.
+pub const STANDARD_LIBRARY_LANGUAGE_VERSION: u32 = 1;
+
+const CORE_URI: &str = "musa-stdlib:/std/core.musa";
+const LIST_URI: &str = "musa-stdlib:/std/list.musa";
+const OPTION_URI: &str = "musa-stdlib:/std/option.musa";
+const CORE_SOURCE: &str = include_str!("../../../stdlib/core.musa");
+const LIST_SOURCE: &str = include_str!("../../../stdlib/list.musa");
+const OPTION_SOURCE: &str = include_str!("../../../stdlib/option.musa");
+#[cfg(test)]
+const MANIFEST: &str = include_str!("../../../stdlib/manifest.toml");
+
+/// Source behind one readable virtual standard-library URI.
+#[must_use]
+pub fn standard_library_source(uri: &str) -> Option<&'static str> {
+    match uri {
+        CORE_URI => Some(CORE_SOURCE),
+        LIST_URI => Some(LIST_SOURCE),
+        OPTION_URI => Some(OPTION_SOURCE),
+        _ => None,
+    }
+}
+
+/// Every bundled module, in stable documentation and packaging order.
+pub fn standard_library_modules() -> impl Iterator<Item = (&'static str, &'static str)> {
+    [
+        (CORE_URI, CORE_SOURCE),
+        (LIST_URI, LIST_SOURCE),
+        (OPTION_URI, OPTION_SOURCE),
+    ]
+    .into_iter()
+}
+
+/// Reference markdown derived from source comments.
+///
+/// The checked-in copy makes the library readable outside tooling; its law
+/// test prevents prose and executable source from drifting.
+#[must_use]
+pub fn standard_library_reference() -> String {
+    let mut out = String::from(
+        "# Musa standard library 1\n\nThis reference is generated from the source comments in the bundled `.musa` modules. Standard functions are ordinary\nMusa definitions; importing a module is explicit and never searches the filesystem.\n",
+    );
+    for (uri, source) in standard_library_modules() {
+        let module = uri
+            .strip_prefix("musa-stdlib:/std/")
+            .and_then(|name| name.strip_suffix(".musa"))
+            .unwrap_or("unknown");
+        let _ = write!(out, "\n## `std::{module}`\n\n");
+        let mut comments = Vec::new();
+        for line in source.lines().map(str::trim) {
+            if let Some(comment) = line.strip_prefix("// ") {
+                comments.push(comment);
+                continue;
+            }
+            if let Some(signature) = line.strip_prefix("fn ") {
+                let signature = signature.split(" =").next().unwrap_or(signature).trim_end_matches(';');
+                let _ = writeln!(out, "- `{signature}` — {}", comments.join(" "));
+            }
+            comments.clear();
+        }
+    }
+    out
 }
 
 /// Every library a piece imports, transitively, in the order a reader would
@@ -216,5 +292,55 @@ impl Loader<'_> {
         self.libraries.documents.push(document);
         let index = self.libraries.documents.len().saturating_sub(1);
         self.libraries.order.push((path, index, span));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::expect_used)]
+
+    use musa_language::ast::LibraryDecl;
+
+    use super::*;
+
+    #[test]
+    fn bundled_manifest_and_sources_are_one_versioned_set() {
+        assert!(
+            MANIFEST.contains(&format!("language_version = {STANDARD_LIBRARY_LANGUAGE_VERSION}")),
+            "the embedded source language and manifest must advance together"
+        );
+        for (uri, source) in standard_library_modules() {
+            let module = uri
+                .strip_prefix("musa-stdlib:/std/")
+                .and_then(|name| name.strip_suffix(".musa"))
+                .expect("standard URI shape");
+            assert!(MANIFEST.contains(&format!("{module} = \"{module}.musa\"")));
+            let parsed = musa_language::parse(source);
+            assert!(parsed.errors().is_empty(), "{uri}: {:?}", parsed.errors());
+            assert!(
+                LibraryDecl::from_root(&parsed.syntax()).is_some(),
+                "{uri} is not a library"
+            );
+        }
+    }
+
+    #[test]
+    fn standard_imports_are_installation_independent() {
+        assert_eq!(resolve_import("/a/piece.musa", "std::list"), LIST_URI);
+        assert_eq!(resolve_import("elsewhere/piece.musa", "std::list"), LIST_URI);
+        assert_eq!(resolve_import("album/piece.musa", "../shared.musa"), "shared.musa");
+        assert_eq!(
+            resolve_import("piece.musa", "vendor::list"),
+            "musa-import:/vendor/list.musa"
+        );
+    }
+
+    #[test]
+    fn checked_in_reference_is_derived_from_executable_source() {
+        assert_eq!(
+            standard_library_reference(),
+            include_str!("../../../stdlib/reference.md"),
+            "run the source-derived reference generator logic when comments or signatures change"
+        );
     }
 }

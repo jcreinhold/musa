@@ -1,0 +1,28 @@
+// Standard modules are explicit, version-matched source libraries. Their
+// functions pass through the same checker and evaluator as these definitions.
+piece "Standard Library Basics" {
+    use std::core;
+    use std::list;
+    use std::option;
+
+    let subject: music = music {
+        c4/4
+        d4/4
+    };
+
+    fn same_pitch(p: pitch) -> pitch = p;
+
+    let answer: music = compose_music(transpose(P8), retrograde, subject);
+    let chosen: pitch = pitch_or_else(c4, same_pitch, some(e4));
+    let counting: list[nat] = naturals(4);
+
+    score {
+        part strings {
+            voice duet {
+                use overlay(subject, shift(1/2, answer));
+                c5/2
+                rest/2
+            }
+        }
+    }
+}

@@ -586,6 +586,19 @@ fn an_import_is_a_path_and_a_motif_use_is_a_call() {
     assert!(items.iter().any(|item| matches!(item, VoiceItem::Use(_))));
 }
 
+#[test]
+fn standard_imports_preserve_their_reserved_namespace() {
+    let doc = parse("piece \"Imports\" { use std::core; use std::list; use std::option; }");
+    assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
+    let piece = PieceDecl::from_root(&doc.syntax()).expect("a piece");
+    let paths: Vec<_> = piece
+        .imports()
+        .iter()
+        .filter_map(musa_language::ast::ImportStmt::path)
+        .collect();
+    assert_eq!(paths, ["std::core", "std::list", "std::option"]);
+}
+
 /// A hairpin is a block with a direction and a mark it arrives at, and the
 /// notes it covers are its items.
 #[test]

@@ -138,7 +138,12 @@ module.exports = grammar({
       ),
 
     // Parser::import_stmt — `use "../library/motifs.musa";`
-    import_statement: ($) => seq('use', field('path', $.string), ';'),
+    import_statement: ($) =>
+      seq(
+        'use',
+        field('path', choice($.string, seq($.identifier, ':', ':', choice($.identifier, 'list', 'option')))),
+        ';',
+      ),
 
     // Parser::front_matter_stmt — one shape, four heads.
     front_matter_statement: ($) =>
