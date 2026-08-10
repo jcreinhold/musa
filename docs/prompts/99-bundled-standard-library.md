@@ -31,9 +31,9 @@ reports definitions/diagnostics against readable virtual standard-library URIs.
 
 The first library is intentionally small: exact rational helpers, list/option combinators, function composition, and
 named wrappers over already-existing primitives. Its purpose is to prove the boundary and source maps, not to preempt
-prompts 100–113. A test enumerates registered primitives and requires each to cite which hidden information justifies
+prompts 100–115. A test enumerates registered primitives and requires each to cite which hidden information justifies
 compiler ownership. There is no `musa-theory` crate and no Rust reimplementation of a source function for speed until
-prompt 123 measures that function as a bottleneck and proves equivalence.
+prompt 125 measures that function as a bottleneck and proves equivalence.
 
 ## Target
 

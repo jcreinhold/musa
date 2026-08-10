@@ -30,7 +30,7 @@ a registry entry rather than a new induction, and cannot be added without one.
 ## Design
 
 The obligation is real and must not be met twelve times. Twelve near-identical inductions would be written once, read
-never, and rot silently as prompts 113–118 add more domains. §5.8 therefore states one theorem parametric in the base
+never, and rot silently as prompts 117–120 add more domains. §5.8 therefore states one theorem parametric in the base
 type, and this prompt's work is to make its premises *checked facts about the implementation* rather than claims in
 prose.
 
@@ -106,4 +106,4 @@ Commit as `Prove the musical domains a conservative extension`.
 - Do not claim the theorem says anything about musical correctness. It is about type safety; whether a German sixth
   spells its top note correctly is a separate law suite and stays one.
 - Do not convert a δ-primitive's `option` result into a diagnostic to make a signature tidier; that inverts D2.
-- No performance work. Prompt 123 owns the evaluator's measured envelope.
+- No performance work. Prompt 125 owns the evaluator's measured envelope.
