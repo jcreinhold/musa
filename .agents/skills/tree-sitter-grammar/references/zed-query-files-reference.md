@@ -1,0 +1,1 @@
+../../zed-extension/references/query-files-reference.md

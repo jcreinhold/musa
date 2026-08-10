@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tree-Sitter Grammar"
+  short_description: "Edit and debug tree-sitter grammars"
+  default_prompt: "Use $tree-sitter-grammar to implement or debug a tree-sitter grammar, query, scanner, or corpus test."
