@@ -32,8 +32,8 @@ only by an explicit non-reproducible scratch command and cannot produce a releas
 
 ## 2. Exact-pinned packages without a solver
 
-The roadmap's relative-import-only rule remains governing until prompt 137. This candidate extends it in prompts
-126–127 with a fetch layer, not a package ecosystem or dependency solver. Project syntax is:
+The roadmap's relative-import-only rule remains governing until prompt 140. This candidate extends it in prompts
+129–130 with a fetch layer, not a package ecosystem or dependency solver. Project syntax is:
 
 ```toml
 [packages]
@@ -43,8 +43,12 @@ orchestra = { git = "https://example.org/musa/orchestra.git", rev = "sha1:8f4200
 Source resolves a package path explicitly:
 
 ```musa
-use "pkg:orchestra/instruments/strings.musa";
+import "pkg:orchestra/instruments/strings.musa";
 ```
+
+A remote package is the package shape `04-templates-and-modules.md` fixes — `musa.toml`, a source root, and a `mod`
+tree — fetched by exact pin rather than bundled. Prompt 130 adds the fetch layer and the lockfile and no second notion
+of what a package is.
 
 `rev` is a full immutable commit object ID with explicit `sha1:` or `sha256:` algorithm. Branches, tags, version ranges,
 “latest,” registries, and implicit network lookup are rejected. `musa fetch` materializes and verifies the exact tree
@@ -81,7 +85,7 @@ control-side token service with a stable input ordinal. The audio callback consu
 SFZ and SoundFont are interchange adapters, not Musa ontology. SFZ's text regions and opcodes compile into the supported
 `SampleMap` subset; every unsupported opcode is diagnosed by name and policy. SoundFont's banks/presets compile through
 a separate adapter to the same internal contract. Neither format's global defaults, MIDI numbering, modulation IDs, or
-binary layout leaks into an instrument signature. Prompts 128–130 specify supported subsets, licensing metadata,
+binary layout leaks into an instrument signature. Prompts 131–133 specify supported subsets, licensing metadata,
 streaming/preload budgets, decoding, and conformance fixtures.
 
 ## 4. Three distinct recorded-media semantics
@@ -209,4 +213,4 @@ contract failure, and preparation-budget excess. None degrades silently to the d
 6. **Media distinction:** tempo transformation changes beat-fitted physical playback but not fixed-media duration;
    changing instrument assignment affects note-driven samples but not clip or fixed-media lanes.
 
-Prompts 126–132 implement these laws; prompts 135–137 measure preparation cost and audit deterministic artifacts.
+Prompts 129–135 implement these laws; prompts 138–140 measure preparation cost and audit deterministic artifacts.

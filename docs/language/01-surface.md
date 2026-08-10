@@ -53,7 +53,10 @@ fixed-media  := "fixed_media" IDENT "from" STRING ";"
 cue          := "cue" IDENT "at" position ("repeat" NAT)? ";"
 room         := "room" IDENT "{" room-setting* "}"
 fallback     := "unsupported" "technique" IDENT "->" "notation_only" "warning" ";"
-import       := "use" (STRING | "std" "::" IDENT) ";"
+import       := "import" (STRING | module-path) ("as" IDENT)? ";"
+module-path  := IDENT ("::" IDENT)*
+mod-decl     := "mod" IDENT ";"
+module-file  := mod-decl*
 ```
 
 Function arrows associate right; call binds tighter than pitch operators; pitch operators bind as follows, tightest
@@ -94,13 +97,26 @@ identifier such as `std.sound.basic_sine` or `bow.pressure`. `notation-selector`
 articulation, span/grouping mark, pedal, or technique pattern; it is not an arbitrary graph path. The sound forms are
 staged and desugared by `08-performance-and-sound.md`, not values in the core calculus.
 
-Imports are explicit. A quoted path is resolved lexically relative to the importing file. `std::core`, `std::list`,
-`std::option`, `std::pitch`, `std::scale`, `std::collections`, `std::harmony`, and `std::voicing` name
-version-matched source libraries bundled with Musa; `std` is reserved, never searched in the
-working directory or environment, and has no implicit prelude. Imported definitions use the current flat value
-namespace. Their source remains available at stable `musa-stdlib:/std/…` URIs for hover and go-to-definition, but is
-read-only; a musician customizes one by writing a local wrapper. The authoritative signatures and prose are generated
-from source comments in `stdlib/reference.md`.
+Imports are explicit and are spelled `import`. A quoted path is resolved lexically relative to the importing file; a
+`module-path` names a module of a package. `std` is reserved, is never searched in the working directory or
+environment, and has no implicit prelude. `use` is not an import: it is the score's splice statement, and the two were
+one keyword until `docs/language-correction.md` §4 separated them. The former spelling `use std::…;` is a hard error
+carrying an applicable fix.
+
+Paths nest to any depth, so a bundled module is named by its position in the package's module tree —
+`std::tonal::harmony`, not `std::tonal_harmony`. `docs/language-correction.md` §3 fixes the package layout: a package
+is a directory with `musa.toml` and a source root whose `lib.musa` declares its children with `mod`, a directory module
+declares its own in `mod.musa`, and a source file no `mod` reaches is rejected rather than silently unreachable.
+
+Imported definitions enter the current **flat** value namespace, so a score writes `numeral_chord(home, five)` rather
+than qualifying every call. This deliberately differs from the `Module.member` rule that §6.1's static modules use, and
+the reason is the reader: qualification is information to someone building an abstraction and noise to a musician
+reading a score. Importing two modules that export the same name is an error naming both; `import p::q as alias;`
+resolves it by qualifying that one, so an alias is required exactly at a real conflict and absent otherwise.
+
+Bundled source remains available at stable `musa-stdlib:/std/…` URIs for hover and go-to-definition, but is read-only;
+a musician customizes one by writing a local wrapper. The authoritative signatures and prose are generated from source
+comments in `stdlib/reference.md`.
 
 ## 2. Functions and music
 

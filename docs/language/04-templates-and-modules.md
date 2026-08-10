@@ -4,11 +4,21 @@ Value functions construct values, including contextual `music`. Declaration temp
 score contexts are built. Keeping those stages separate permits reusable pieces and voices without making source syntax
 or identity-bearing structures first-class.
 
-The implemented source-library boundary is deliberately smaller than the static module system specified below.
-`use "path.musa";` imports a local `library`; `use std::core;`, `use std::list;`, and `use std::option;` import the
-version-matched bundled sources at stable virtual URIs. Both paths run through the same parser, checker, evaluator,
-cycle detection, and flat-name collision rules. There is no prelude, environment search, registry, or dependency
-solver. The signatures/modules in §4 are a later static abstraction layer, not a second runtime import mechanism.
+The source-library boundary is deliberately smaller than the static module system specified below, and the two are not
+alternatives: §4's signatures and modules are a checking-time abstraction layer, not a second import mechanism.
+
+A **package** is a directory containing `musa.toml` and a source root. Its root file `lib.musa` declares its children
+with `mod`, a directory module declares its own in `mod.musa`, and module paths nest to any depth. Resolution follows
+those declarations and never scans the directory: a `.musa` file under the source root that no `mod` reaches is
+rejected as declared nowhere, and a `mod` naming no file is rejected as missing. The bundled standard library is one
+such package, embedded at build time so that its `musa-stdlib:/std/…` URIs are readable without filesystem access, with
+the embedding generated from the `mod` traversal rather than transcribed beside it.
+
+`import "path.musa";` imports a local `library`; `import std::list;` and `import std::tonal::harmony;` import bundled
+modules. Both run through the same parser, checker, evaluator, cycle detection, and name-collision rules, and both bind
+into the flat value namespace — see `01-surface.md` for why that differs from §4's `Module.member` rule, and
+`docs/language-correction.md` §3 for the correction that introduced packages. There is no prelude, environment search,
+registry, or dependency solver.
 
 ## 1. Declaration-template judgment
 
@@ -167,5 +177,5 @@ The following are static errors: a parameterized declaration without `template`;
 first-class `piece`, `voice`, `module`, or source-syntax use; a module member that fails its signature; two generated
 declarations with the same public address; and a structural declaration embedded in `music`.
 
-Prompts 103–104 implement this stage. Prompt 118 measures expansion and caching. Prompt 137 verifies that identity and
+Prompts 103–104 implement this stage. Prompt 121 measures expansion and caching. Prompt 140 verifies that identity and
 Origin remain stable through the migration.

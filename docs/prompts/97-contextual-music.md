@@ -75,4 +75,4 @@ Commit as `Elaborate contextual music through one path`.
 - No new kernel form and no public `Music`, fragment, closure, HIR, or environment type.
 - No context-changing fact inside reusable `music`; structural parameterization is prompt 103.
 - No higher-order music traversal or canon library — prompt 98.
-- No cache optimization. A correctness-only conservative key is allowed; measurement-driven caching is prompt 118.
+- No cache optimization. A correctness-only conservative key is allowed; measurement-driven caching is prompt 121.

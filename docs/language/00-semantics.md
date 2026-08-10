@@ -1,7 +1,7 @@
 # Semantic staging and ownership
 
 This document fixes the objects Musa computes and the boundaries between them. “Must” is normative for prompts
-93–136; candidate precedence is defined in `README.md`.
+93–139; candidate precedence is defined in `README.md`.
 
 ## 1. Representations
 
@@ -56,7 +56,7 @@ needs the intentionally hidden contextual-`music` representation, source-aware p
 or the private finite representation/work budget needed to preserve total evaluation under rank-1 monomorphization.
 Everything expressible through public values and those operations belongs in ordinary `.musa` source, including the
 bundled standard library. Adding a Rust implementation merely because a source function is familiar or potentially
-faster is not semantics-preserving evidence; prompt 118 requires measurement and an equivalence law before such an
+faster is not semantics-preserving evidence; prompt 121 requires measurement and an equivalence law before such an
 optimization.
 
 Contextual music has one private semantic observation:
@@ -179,5 +179,5 @@ different scales or meter tracks.
 
 If a project resolves, all declarations check, `Σ ⊢piece Δ ⇓ t : Term[ScoreFact]`, and resource checking accepts it,
 then `t` is finite, closed, kernel-well-formed, and every payload decodes as `ScoreFact`. Kernel totality then gives a
-unique finite `Timeline[ScoreFact]`. Prompts 93–114 must establish the typing, normalization, contextual closure,
-quotation closure, and adapter lemmas; prompt 137 audits the end-to-end theorem against the implementation.
+unique finite `Timeline[ScoreFact]`. Prompts 93–117 must establish the typing, normalization, contextual closure,
+quotation closure, and adapter lemmas; prompt 140 audits the end-to-end theorem against the implementation.

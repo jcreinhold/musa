@@ -79,7 +79,7 @@ nothing later in the sequence fixes that.
 cargo nextest run -p musa-project
 cargo fmt --check
 cd apps/musa-desktop/ui && npm ci && npm run check && npm run test && npm run build
-cd apps/musa-desktop/ui && npm run dev   # review: light and dark, 1440 and 1100, zoom 50–200 %
+cd apps/musa-desktop/ui && npm run dev   # review: light and dark, 1440 and 1100, zoom 50–203 %
 ```
 
 Review gate before the prompt is `done`: the four committed screenshots are attached to the commit message or the PR,

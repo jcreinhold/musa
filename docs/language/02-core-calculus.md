@@ -6,7 +6,9 @@ the kernel and deliberately less expressive than a general-purpose programming l
 
 ## 1. Syntax
 
-Let base types `b` include the finite and exact musical domains named in `01-surface.md`. Core types are:
+Let base types `b` include the finite and exact musical domains named in `01-surface.md`. Each musical domain beyond
+the prompt-95 fragment enters through §5.8's conservative-extension theorem and its checked discipline, not by
+assumption. Core types are:
 
 ```text
 τ ::= b | unit | bool | nat | ratio | τ × τ | option τ | list τ | τ → τ | music
@@ -89,14 +91,15 @@ operation, metric, attempted amount, and limit. The prompt-96 defaults are 200,0
 value nodes, 1,048,576 logical value bytes, 2,048 monomorphized prelude instances, and 1,000,000 estimated music
 occurrences. The scalar fragment charges zero output occurrences; prompt 97 connects music constructors to the already
 present output counter. These are language-version constants, not timeouts or machine-memory observations. Interactive
-cancellation remains an external compiler operation, not a language effect. Prompts 118 and 135 benchmark and may
+cancellation remains an external compiler operation, not a language effect. Prompts 121 and 138 benchmark and may
 tighten the accepted envelope deliberately.
 
 ## 5. Prompt-95 fragment and metatheory
 
 This section fixes the proof obligation already implemented by prompt 95. Options, lists, folds, primitive pitch
 operations, and `music` extend the calculus later and require their own compatibility cases; they are not smuggled into
-this theorem by an appeal to “standard STLC.” Let `b` range over `bool`, `nat`, `ratio`, `duration`, `pitch`, and
+this theorem by an appeal to “standard STLC.” §5.6 discharges finite data, §5.7 discharges `music`, and §5.8 discharges
+every musical base type and compiler-owned operation added after prompt 95. Let `b` range over `bool`, `nat`, `ratio`, `duration`, `pitch`, and
 `interval`. The implemented fragment is:
 
 ```text
@@ -401,6 +404,70 @@ exactly `n` occurrences. ∎
 
 Prompt 98 may add higher-order constructors only by proving that each maps well-formed finite fragments to
 well-formed finite fragments; it does not reopen this closure argument.
+
+### 5.8 Musical domains as a conservative extension
+
+Prompts 100–107 add the base types `spelled_pc`, `pc12`, `scale`, `key`, `degree`, `frame`, `chord_class`, `triad`,
+`voicing`, `pcset12`, `row12`, and `roman`, and the compiler-owned operations over them. §5's warning applies to every
+one of them: they are not covered by an appeal to standard STLC. They are covered instead by one parametric theorem
+whose premises are mechanically checked, so that a later domain costs a registry entry rather than a new induction.
+`docs/language-correction.md` §2 is the governing statement; this section is its calculus-side text.
+
+Every compiler-owned primitive belongs to exactly one of three families, and that the families are disjoint and
+exhaustive is a checked law:
+
+- **δ-primitives** — every argument type and the result type is a base type or a finite constructor (`option`, `list`,
+  product) over base types, with no arrow anywhere in the signature;
+- **structural eliminators** — `nat_fold`, `list_fold`, `option_fold`, `map`, `filter`, `range`, `repeat`, proved in
+  §5.6;
+- **music primitives** — the constructors and controlled transforms of §5.7.
+
+A δ-primitive must satisfy four conditions:
+
+- **D1 inertness.** Its base types have no eliminator. A closed value of a musical base type is an opaque constant; no
+  reduction rule inspects its structure, and the only pattern that may match it is a literal or a catch-all, which
+  §5.6 already requires to be followed by a catch-all arm.
+- **D2 totality.** For every tuple of closed values of the declared argument types the primitive yields a closed value
+  of the declared result type. Partiality is expressed *in the result type* as an `option` — never as a stuck term, a
+  panic, or a diagnostic.
+- **D3 purity.** The result is a function of the argument values alone: no ambient context, no evaluation-order
+  dependence, no hash-iteration order, no diagnostic emission.
+- **D4 finiteness.** The result's constructed-node count is bounded by a function of the argument sizes, charged to the
+  §4 meter before construction begins.
+
+**Theorem 5 — conservative extension.** Let `𝔅` be the base types of the proved fragment. Adding a base type `b ∉ 𝔅`
+with no eliminator, together with any finite set of δ-primitives over `𝔅 ∪ {b}` satisfying D1–D4, preserves
+Theorems 1–4.
+
+*Proof.* Take `R_b(t) ⟺ t : b ∧ t ∈ SN`, which is the clause §5.5 already assigns every base type, so candidate
+properties (i)–(iii) hold by the existing induction with one additional leaf and no new case shape. *Preservation*: by
+D2 the primitive's actual result type is its declared result type, so inverting its application rule goes through
+unchanged. *Progress*: an application whose arguments are all values steps by D2, one with a non-value argument steps
+by `Context`, and D1 removes the only other way a value of `b` could stand at a redex position; so no δ application is
+stuck. *Determinism*: D3 makes the primitive a function, and the leftmost-context decomposition of §5.4 is unchanged
+because no new context former is introduced. *Strong normalization*: by D2 a δ redex whose arguments are values
+contracts to a value in one step, and values are normal, so the fundamental lemma's new case is immediate. The arrow,
+product, option, list, and `music` cases of §5.5–§5.7 quantify over the base-type set without inspecting it and
+therefore carry over verbatim. ∎
+
+**Corollary.** A later musical domain needs no new proof — it needs a base type with no eliminator, primitive
+signatures containing no arrow, and a discharge of D1–D4.
+
+The theorem concerns the type system only. That a German sixth spells its top note as an augmented sixth, that `ii` is
+minor in a major collection, and that a harmonic-minor `III7` is honestly absent rather than rounded to a named chord
+are claims about music, checked by the law suites in `crates/musa-compiler/tests/` and defined in
+`03-musical-domains.md`. Neither statement substitutes for the other.
+
+The implementation carries the premises rather than trusting them. The primitive-ownership registry records each
+operation's family and declared signature, and its law suite checks that every primitive is classified exactly once,
+that no δ-primitive signature contains an arrow, that every base type reachable from a δ signature is inert and admits
+no destructuring pattern, and that evaluating each δ-primitive over a finite sample of its argument domains — exhaustive
+where the domain is finite, generated to a documented bound where it is not — returns a value of the declared type
+without panicking, diagnosing, or reporting a Rust-level absence at a non-`option` result type.
+
+A new base type is admissible only with a stated reason no existing domain can carry the distinction, a D1–D4 discharge
+with its registry entries, and a row in `03-musical-domains.md` giving its definition, source, and a counterexample it
+rules out.
 
 ## 6. Implementation boundary
 

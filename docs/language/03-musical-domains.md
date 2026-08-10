@@ -161,9 +161,9 @@ becoming type checking.
 | row12 | bijection `Fin 12 → pc12` | OMT `108-basics-of-twelve-tone-theory.md`; finite-closure lemma | a repeated pc rejects construction | 105 |
 | row convention | explicit naming policy | OMT `109-naming-conventions-for-rows.md` | bare `P7` in a convention-free API is ambiguous | 105 |
 | symmetric row | row with nontrivial stabilizer | OMT `110-row-properties.md` | requiring exactly 48 distinct forms rejects valid rows | 105 |
-| harmonic transform | library operation over typed harmony | OMT `061`–`073`, especially `072-neo-riemannian-triadic-progressions.md` | calling every common-tone move a kernel primitive | 106–108 |
+| harmonic transform | library operation over typed harmony | OMT `061`–`073`, especially `072-neo-riemannian-triadic-progressions.md` | calling every common-tone move a kernel primitive | 106–111 |
 | assertion | decidable, evidence-producing check | Musa definition; style evidence OMT `023`–`028` | species rules applied as universal well-formedness | 109, 112 |
-| analysis result | named method, assumptions, alternatives, evidence | OMT `020`, `021`, `050`, `051` | one Roman-numeral reading mutates the chord facts | 110–111 |
+| analysis result | named method, assumptions, alternatives, evidence | OMT `020`, `021`, `050`, `051` | one Roman-numeral reading mutates the chord facts | 113–114 |
 
 Abbreviated OMT numbers in the table refer to the exact filenames already written in the corresponding definition row;
 implementing prompts must cite the filename in user-facing reference documentation.

@@ -30,7 +30,7 @@ generated.
   - selection is restored by `EventId`; if the event is gone, move to the nearest surviving neighbor in the same voice
     and say so in the inspector;
   - 90 ms cross-fade, no white frame, no scrollbar jump, instant swap under `prefers-reduced-motion`.
-- **Zoom as re-layout** (§5): discrete steps 50–200 %, `⌘−`/`⌘=`/`⌘0`, transient CSS transform during a pinch gesture
+- **Zoom as re-layout** (§5): discrete steps 50–203 %, `⌘−`/`⌘=`/`⌘0`, transient CSS transform during a pinch gesture
   replaced by a true re-layout 120 ms after it settles. Staff size (rastral) is a separate remembered preference. A
   persistent CSS-transform zoom is explicitly rejected — it is the reason score apps look like PDF viewers. Rastral
   itself gets no control here — it stays at Verovio's `unit: 11` — because the Target of this prompt is the zoom

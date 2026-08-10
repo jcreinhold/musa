@@ -15,8 +15,8 @@ or compiler path is implemented. Reconcile the roadmap, course correction, kerne
 and prompt stack around one staged design: a total value calculus; contextual, context-neutral `music`; closed kernel
 terms; declaration templates; a typed kernel escape; and an explicit score→performance-gesture→instrument→signal→mix
 pipeline. Settle the remaining surface spellings with a corpus that a musician can read and a language implementor can
-type-check without hidden rules. The candidate is the implementation contract for prompts 93–136 but does not outrank
-the existing governing documents until prompt 137's audit graduates it.
+type-check without hidden rules. The candidate is the implementation contract for prompts 93–139 but does not outrank
+the existing governing documents until prompt 140's audit graduates it.
 
 ## Read
 
@@ -56,7 +56,7 @@ Create `docs/language/` as a small normative candidate specification, not a seco
 5. `04-templates-and-modules.md` — declaration-template judgment, stable generative identity, module signatures and
    static functors; no first-class pieces, voices, modules, or source reflection.
 6. `05-verification.md` — constructor invariants, explicit assertions, interpretive analyses, laws, counterexamples,
-   and the compatibility/performance gates for prompts 93–137.
+   and the compatibility/performance gates for prompts 93–140.
 7. `08-performance-and-sound.md` — the staged semantic judgments from score facts through exact performance gestures,
    physical scheduling, typed instrument contracts, private implementations, audio signals, and mix routing. Define
    standard and namespaced controls, exact control curves, instrument swapping, part isolation, block-partition
@@ -107,7 +107,7 @@ No new public API is justified by a specification document.
   05-verification,08-performance-and-sound,09-assets-and-packages}.md`.
 - Deliberate repairs to `docs/{initial-design-roadmap,course-correction,style-guide}.md` and
   `docs/kernel/06-surface-elaboration.md`; remove or mark every contradiction while keeping existing governing
-  precedence until prompt 137.
+  precedence until prompt 140.
 - `docs/language/README.md`: candidate status, precedence, scope, document map, and prompt-137 graduation condition.
 - `docs/elaboration-language.md`: marked as non-governing design input and linked to the split candidate specification.
 - A source-map table in `03-musical-domains.md`: concept, Musa definition, OMT chapter or local theorem, falsifying

@@ -40,7 +40,7 @@ position policy with the absolute root fixing register; `stack c maj7/2` is inco
 Chord spelling follows the diatonic letter stack and interval quality from OMT 017–018, not pitch-class arithmetic
 that can spell a third as a second. Property tests compare a small reference formula across roots/qualities and cover
 inversions, extensions, omissions, and backend round trips. No constructor asserts that separately authored notes match
-an annotation; prompt 109 adds that explicit claim.
+an annotation; prompt 112 adds that explicit claim.
 
 ## Target
 

@@ -16,7 +16,12 @@ the semantic core is Rust, the UI is a replaceable projection.
    selection model, Origin view, states and voice, performance budgets. Roadmap §14 fixes the app's *architecture*;
    `docs/interface/` fixes everything §14 leaves open, and §14's wireframe is not a visual spec. Governing since prompt
    26.
-4. **`docs/prompts/`** — the numbered work plan, currently through prompt 137, with its README defining prompt anatomy
+4. **`docs/language-correction.md`** — the language correction: the musical domains are a *proved* conservative
+   extension rather than an accumulating fragment, the standard library is a package with a real module tree, and
+   `import` and `use` are two words because they were always two statements. It governs over **`docs/language/`** (the
+   elaboration-language specification; candidate until prompt 140 graduates it) the way the course correction governs
+   over the roadmap.
+5. **`docs/prompts/`** — the numbered work plan, currently through prompt 140, with its README defining prompt anatomy
    and execution rules. Implementation happens in dependency order (see the `prompt-stack` skill).
 
 If code and these documents disagree, either the code is wrong or the document needs a deliberate repair — never let

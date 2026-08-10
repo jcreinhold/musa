@@ -1,6 +1,6 @@
 # 06 — Elaboration Performance and Compatibility Baseline
 
-Status: **governing for the prompt 93–137 migration**.
+Status: **governing for the prompt 93–140 migration**.
 
 This is the before-picture for `docs/elaboration-language.md`. It measures the compiler that accepts only the old
 surface language and fixes what that language means before its evaluator, type checker, and parser change. It is not a
@@ -101,7 +101,7 @@ owner. Update requires `UPDATE_ELABORATION_BASELINE=1`; an update is never a rou
 the prompt that authorizes the semantic change.
 
 `tests/fixtures/elaboration-expected-changes.json` is the only exception list. Each defect belongs to exactly one of
-prompts 119–124. The repairing prompt removes the entry and replaces the negative observation with a positive law; no
+prompts 122–127. The repairing prompt removes the entry and replaces the negative observation with a positive law; no
 later prompt may preserve wrong sound by copying the old digest.
 
 ## Gates and budgets
@@ -122,7 +122,7 @@ language diagnostic.
 The private functional core was measured on the same Apple M4 Pro in the same release configuration, with 100 samples.
 These workloads contain no new expression declarations, so this comparison isolates the cost imposed on existing Musa
 programs by collecting an empty definition graph. The exact expression evaluator is exercised by the generated law
-suite; prompt 118 owns accepted-envelope evaluator benchmarks.
+suite; prompt 121 owns accepted-envelope evaluator benchmarks.
 
 | phase | workload | median | versus prompt 93 | allocations | bytes allocated |
 | --- | --- | ---: | ---: | ---: | ---: |
@@ -168,7 +168,7 @@ Prompt 96 sets one internal deterministic meter with these language-version limi
 | constructed value nodes | 100,000 | admits useful finite collections but preflights `range(100001)` before allocation |
 | logical value bytes | 1,048,576 | separately bounds dense exact values; 65,536 repeated ratios crosses it while remaining below the node limit |
 | monomorphized prelude instances | 2,048 | far above ordinary declaration counts; a generated 2,049-call boundary fixture fixes the diagnostic |
-| estimated music occurrences | 1,000,000 | reserves substantial headroom over the 1,572-occurrence large fixture; prompt 97 activates the charge and prompt 118 retunes from music-producing curves |
+| estimated music occurrences | 1,000,000 | reserves substantial headroom over the 1,572-occurrence large fixture; prompt 97 activates the charge and prompt 121 retunes from music-producing curves |
 
 There is no public “make it bigger” compiler option: no current caller needs one, and exposing five implementation
 knobs as language API would make builds disagree silently. Each rejection names the operation, metric, attempted count,
