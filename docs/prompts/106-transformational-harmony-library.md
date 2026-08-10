@@ -50,9 +50,15 @@ chord class.
 
 - The written-interval action on a spelled pitch class: `pitchclass up <interval>` and `pitchclass down <interval>`,
   checked and evaluated beside the pitch form it already has.
+- One primitive, `triad_major`, and it is the exception this list allows: which of the two triads a `triad` is lives in
+  `ChordType`, which is private to the compiler, and every transformation branches on it — `P` alone cannot say which
+  way to move without it. It is total precisely because the refinement already excluded every other chord class, and it
+  is a `bool` rather than a quality value because the refinement leaves exactly two cases. `std::harmony` reads it as
+  `is_major`.
 - `stdlib/transformational.musa`: PLR/SNH, chain helpers, explicit spelled-to-`pc12` projection helpers, source docs
   citing OMT 072 sections.
-- Any private primitive only if the prompt proves the function needs hidden representation; the expected count is zero.
+- No further primitive: `P`, `L`, and `R` are the root moved by a written interval and re-rooted, and `S`, `N`, and `H`
+  are compositions of those three, all of it ordinary `.musa`.
 - `examples/neo-riemannian.musa`: OMT chain/cycle examples rendered under two voicing policies.
 - `crates/musa-compiler/tests/transformational_harmony_laws.rs`: OMT examples, involutions, domain rejection, quotient
   agreement, finite cycles, and spelling-sensitive counterexamples.
