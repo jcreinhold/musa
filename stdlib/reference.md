@@ -76,7 +76,7 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `inverted_about(index: nat, member: pc12) -> pc12` — I_n: inversion about n, `n - x` modulo twelve. I_0 is the plain mirror through zero. The twelve transpositions and the twelve inversions are together the whole 24-element affine group on `pc12` — and 24 is the number, whatever a row's four form labels might suggest.
 - `map_pc(function: pc12 -> pc12, members: list[pc12]) -> list[pc12]` — Apply one pitch-class function to every member of a finite list.
 - `pcset(members: list[pc12]) -> pcset12` — The set of everything listed, however often it was listed. A set cannot hold a duplicate, so this cannot fail: a repetition is a mistake only where order matters, which is `std::serial`.
-- `members_of(set: pcset12) -> list[pc12]` — The members, ascending from zero. This is the set's own order and not its normal order.
+- `set_members(set: pcset12) -> list[pc12]` — The members, ascending from zero. This is the set's own order and not its normal order. Named for the set rather than `members_of`, because `std::harmony` already reads the members of a chord class and a piece that reasons about both must be able to import both.
 - `set_transposed(set: pcset12, index: nat) -> pcset12` — T_n applied to every member.
 - `set_inverted(set: pcset12, index: nat) -> pcset12` — I_n applied to every member.
 - `normal_order(set: pcset12) -> list[pc12]` — Normal order: the rotation of the ascending members packed most tightly to the left. Ties break inward — first to last, then first to the one before last, and so on — and finally by the lowest starting pitch class.

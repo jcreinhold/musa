@@ -59,16 +59,18 @@ library {
     fn pcset(members: list[pc12]) -> pcset12 = pcset12_of(members);
 
     // The members, ascending from zero. This is the set's own order and not
-    // its normal order.
-    fn members_of(set: pcset12) -> list[pc12] = pcset12_members(set);
+    // its normal order. Named for the set rather than `members_of`, because
+    // `std::harmony` already reads the members of a chord class and a piece
+    // that reasons about both must be able to import both.
+    fn set_members(set: pcset12) -> list[pc12] = pcset12_members(set);
 
     // T_n applied to every member.
     fn set_transposed(set: pcset12, index: nat) -> pcset12 =
-        pcset12_of(map_pc(transposed_by(index), pcset12_members(set)));
+        pcset12_of(map_pc(transposed_by(index), set_members(set)));
 
     // I_n applied to every member.
     fn set_inverted(set: pcset12, index: nat) -> pcset12 =
-        pcset12_of(map_pc(inverted_about(index), pcset12_members(set)));
+        pcset12_of(map_pc(inverted_about(index), set_members(set)));
 
     // Normal order: the rotation of the ascending members packed most
     // tightly to the left. Ties break inward — first to last, then first to

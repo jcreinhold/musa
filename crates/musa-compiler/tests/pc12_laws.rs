@@ -161,7 +161,7 @@ fn a_set_holds_a_repeated_member_once() {
     assert_eq!(
         counted(
             "    let triad: pcset12 = pcset(pcs([0, 0, 4, 7, 7]));",
-            "chorus(map(beat_for_pc, members_of(triad)))"
+            "chorus(map(beat_for_pc, set_members(triad)))"
         ),
         3,
         "a set is what was asked for, so a repetition is not an error and not a member twice"
@@ -172,7 +172,7 @@ fn a_set_holds_a_repeated_member_once() {
 fn a_set_reads_out_ascending_and_normal_order_need_not() {
     let bindings = "
     let set: pcset12 = pcset(pcs([0, 5, 8]));
-    let ascending: music = chorus(map(tally, map(number_of, members_of(set))));
+    let ascending: music = chorus(map(tally, map(number_of, set_members(set))));
     let normal: music = chorus(map(tally, map(number_of, normal_order(set))));
 ";
     assert_eq!(counted(bindings, "ascending"), 13, "0 + 5 + 8 read ascending");
@@ -207,15 +207,15 @@ fn a_set_class_survives_transposition_and_inversion() {
 ";
     let upright = counted(
         bindings,
-        "chorus(map(tally, map(number_of, members_of(prime_form(triad)))))",
+        "chorus(map(tally, map(number_of, set_members(prime_form(triad)))))",
     );
     let moved = counted(
         bindings,
-        "chorus(map(tally, map(number_of, members_of(prime_form(moved)))))",
+        "chorus(map(tally, map(number_of, set_members(prime_form(moved)))))",
     );
     let mirrored = counted(
         bindings,
-        "chorus(map(tally, map(number_of, members_of(prime_form(mirrored)))))",
+        "chorus(map(tally, map(number_of, set_members(prime_form(mirrored)))))",
     );
     assert_eq!(upright, 10, "the major triad's prime form is 0, 3, 7");
     assert_eq!(moved, upright, "transposition does not change the set class");
