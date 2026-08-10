@@ -152,9 +152,9 @@ enum RawToken {
     // A pitch is a letter, an optional accidental, and an octave. `b` is both
     // a letter and a flat, and the two never collide because the letter is
     // always first: `b2` is B, `bb2` is B flat, `bbb2` is B double flat.
-    #[regex(r"[a-g](##|bb|[#bn])?-?[0-9]+")]
+    #[regex(r"[a-g](#+|b+|n)?-?[0-9]+")]
     PitchLiteral,
-    #[regex(r"[PMm][0-9]+")]
+    #[regex(r"(P|M|m|A+|d{2,}|dim)[0-9]+")]
     IntervalLiteral,
     #[regex(r"[0-9]+\.[0-9]+")]
     Float,
@@ -687,9 +687,16 @@ mod tests {
 
     #[test]
     fn pitch_literals() {
-        for source in ["c5", "g#4", "c##3", "bb4", "bbb2", "en5", "a-1", "b2"] {
+        for source in ["c5", "g#4", "c####3", "bb4", "bbbbb2", "en5", "a-1", "b2"] {
             assert_eq!(kinds(source), [SyntaxKind::PitchLiteral], "source: {source}");
             assert_round_trip(source);
+        }
+    }
+
+    #[test]
+    fn simple_compound_and_multiply_altered_intervals_are_literals() {
+        for source in ["P1", "m2", "M10", "AAA4", "dim5", "ddd17"] {
+            assert_eq!(kinds(source), [SyntaxKind::IntervalLiteral], "source: {source}");
         }
     }
 

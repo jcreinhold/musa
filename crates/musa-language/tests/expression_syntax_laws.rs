@@ -134,6 +134,55 @@ fn a_note_line_and_a_general_expression_are_unambiguous_in_music() {
 }
 
 #[test]
+fn pitch_translation_is_a_single_non_associative_expression_layer() {
+    let source = r#"piece "pitch" {
+        fn turn(root: pitch, by: interval) -> music = music {
+            (root up M2)/4
+            ((root up by) down m2)/4
+        };
+    }"#;
+    let parsed = parse(source);
+    assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
+    assert_eq!(
+        parsed
+            .syntax()
+            .descendants()
+            .filter(|node| node.kind() == SyntaxKind::PitchExpr)
+            .count(),
+        3
+    );
+    let formatted = format(&parsed, BarSpacing::Compact).to_string();
+    let reparsed = parse(&formatted);
+    assert!(reparsed.errors().is_empty(), "{:?}\n{formatted}", reparsed.errors());
+
+    let chained = parse("piece \"pitch\" { let x: pitch = c4 up M2 down m2; }");
+    assert!(
+        !chained.errors().is_empty(),
+        "unparenthesized pitch operators must not associate"
+    );
+}
+
+#[test]
+fn diminished_interval_spelling_does_not_steal_the_note_d4() {
+    let parsed = parse("piece \"pitch\" { let sounded: pitch = d4; let distance: interval = dim4; }");
+    assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
+    let tokens = parsed
+        .syntax()
+        .descendants_with_tokens()
+        .filter_map(SyntaxElement::into_token)
+        .filter(|token| matches!(token.kind(), SyntaxKind::PitchLiteral | SyntaxKind::IntervalLiteral))
+        .map(|token| (token.kind(), token.text().to_owned()))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        tokens,
+        [
+            (SyntaxKind::PitchLiteral, "d4".to_owned()),
+            (SyntaxKind::IntervalLiteral, "dim4".to_owned()),
+        ]
+    );
+}
+
+#[test]
 fn repeat_is_a_statement_keyword_and_a_finite_value_operation() {
     let source =
         "piece \"x\" { let copies: list[nat] = repeat(1, 4); score { part p { voice v { repeat 2 { c4/4 } } } } }";

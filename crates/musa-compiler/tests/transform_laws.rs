@@ -195,16 +195,18 @@ fn inversion_mirrors_diatonically_and_spells_the_result() {
 }
 
 #[test]
-fn a_mirror_image_the_language_cannot_write_is_reported() {
+fn a_mirror_image_may_produce_an_exact_triple_accidental() {
     // `b##4` mirrored about `c5` lands a diatonic step above the axis and
-    // three semitones below it: a d that would need a triple flat, which the
-    // language cannot write — an error, never a silently approximated pitch.
-    let errors = errors_of(&piece("invert around c5 { b##4/4 }"));
-    assert!(
-        errors
-            .iter()
-            .any(|message| message.contains("cannot be spelled when mirrored")),
-        "expected an unspellable-mirror error; got {errors:?}"
+    // three semitones below it: D triple-flat. The integer pitch algebra keeps
+    // that spelling instead of refusing or approximating it.
+    let source = "invert around c5 { b##4/4 }";
+    assert!(errors_of(&piece(source)).is_empty());
+    let event = music(source).into_iter().next().expect("one note event");
+    assert_eq!(
+        event.2,
+        ScoreEventKind::Note {
+            pitch: WrittenPitch::parse("dbbb5").expect("a pitch literal"),
+        }
     );
 }
 

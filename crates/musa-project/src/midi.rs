@@ -211,7 +211,7 @@ mod midi_laws {
         Some(Key::new(
             PitchClass {
                 letter,
-                accidental: Accidental(accidental),
+                accidental: Accidental(i32::from(accidental)),
             },
             mode,
         ))

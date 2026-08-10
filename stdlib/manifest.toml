@@ -4,3 +4,4 @@ language_version = 1
 core = "core.musa"
 list = "list.musa"
 option = "option.musa"
+pitch = "pitch.musa"

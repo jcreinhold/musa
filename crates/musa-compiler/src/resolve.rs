@@ -1642,10 +1642,13 @@ pub(crate) fn apply_intervals(
             resolver.report(
                 Diagnostic::error(
                     Code::OutOfRange,
-                    format!("`{current}` cannot be spelled after this transposition"),
+                    format!("`{current}` is outside Musa's stored coordinate range after this transposition"),
                 )
-                .at(trimmed_span(node), "would need a triple accidental")
-                .help("transpose by a different interval, or write the passage out"),
+                .at(
+                    trimmed_span(node),
+                    "the exact integer result exceeds the implementation range",
+                )
+                .help("use a smaller interval or reduce the register displacement"),
             );
             return None;
         };

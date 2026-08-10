@@ -97,9 +97,11 @@ pub const STANDARD_LIBRARY_LANGUAGE_VERSION: u32 = 1;
 const CORE_URI: &str = "musa-stdlib:/std/core.musa";
 const LIST_URI: &str = "musa-stdlib:/std/list.musa";
 const OPTION_URI: &str = "musa-stdlib:/std/option.musa";
+const PITCH_URI: &str = "musa-stdlib:/std/pitch.musa";
 const CORE_SOURCE: &str = include_str!("../../../stdlib/core.musa");
 const LIST_SOURCE: &str = include_str!("../../../stdlib/list.musa");
 const OPTION_SOURCE: &str = include_str!("../../../stdlib/option.musa");
+const PITCH_SOURCE: &str = include_str!("../../../stdlib/pitch.musa");
 #[cfg(test)]
 const MANIFEST: &str = include_str!("../../../stdlib/manifest.toml");
 
@@ -110,6 +112,7 @@ pub fn standard_library_source(uri: &str) -> Option<&'static str> {
         CORE_URI => Some(CORE_SOURCE),
         LIST_URI => Some(LIST_SOURCE),
         OPTION_URI => Some(OPTION_SOURCE),
+        PITCH_URI => Some(PITCH_SOURCE),
         _ => None,
     }
 }
@@ -120,6 +123,7 @@ pub fn standard_library_modules() -> impl Iterator<Item = (&'static str, &'stati
         (CORE_URI, CORE_SOURCE),
         (LIST_URI, LIST_SOURCE),
         (OPTION_URI, OPTION_SOURCE),
+        (PITCH_URI, PITCH_SOURCE),
     ]
     .into_iter()
 }
@@ -131,7 +135,7 @@ pub fn standard_library_modules() -> impl Iterator<Item = (&'static str, &'stati
 #[must_use]
 pub fn standard_library_reference() -> String {
     let mut out = String::from(
-        "# Musa standard library 1\n\nThis reference is generated from the source comments in the bundled `.musa` modules. Standard functions are ordinary\nMusa definitions; importing a module is explicit and never searches the filesystem.\n",
+        "# Musa standard library 1\n\nThis reference is generated from the source comments in the bundled `.musa` modules. Standard definitions are ordinary\nMusa definitions; importing a module is explicit and never searches the filesystem.\n",
     );
     for (uri, source) in standard_library_modules() {
         let module = uri
@@ -145,8 +149,13 @@ pub fn standard_library_reference() -> String {
                 comments.push(comment);
                 continue;
             }
-            if let Some(signature) = line.strip_prefix("fn ") {
-                let signature = signature.split(" =").next().unwrap_or(signature).trim_end_matches(';');
+            if let Some(signature) = line.strip_prefix("fn ").or_else(|| line.strip_prefix("let ")) {
+                let signature = signature
+                    .split('=')
+                    .next()
+                    .unwrap_or(signature)
+                    .trim()
+                    .trim_end_matches(';');
                 let _ = writeln!(out, "- `{signature}` — {}", comments.join(" "));
             }
             comments.clear();

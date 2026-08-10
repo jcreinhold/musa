@@ -16,6 +16,10 @@ accidentals distinguish (`005-half-steps-whole-steps-and-accidentals.md`).
 **Lemma (faithful action).** `p + 0 = p` and `(p+i)+j = p+(i+j)` by componentwise integer identities. If `p+i=p+j`,
 integer cancellation gives `i=j`. Thus transposition is total, associative, and spelling-preserving.
 
+The Rust facade stores these coordinates in checked fixed-width integers. That is an implementation representation,
+not a musical accidental bound: triple and more deeply altered spellings are ordinary values, while the unreachable
+machine-overflow fringe is rejected explicitly rather than clamped or respelled.
+
 Define spelled pitch class as the octave quotient
 
 ```text

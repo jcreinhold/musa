@@ -284,7 +284,8 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::MatchExpr
         | SyntaxKind::MatchArm
         | SyntaxKind::Pattern
-        | SyntaxKind::MusicExpr => panic!("`{kind:?}` is a node, not a token"),
+        | SyntaxKind::MusicExpr
+        | SyntaxKind::PitchExpr => panic!("`{kind:?}` is a node, not a token"),
     }
 }
 

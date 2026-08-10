@@ -312,8 +312,8 @@ impl ScoreFact {
         stretched
     }
 
-    /// The same fact with its pitch mirrored about `axis`, or `None` when
-    /// the mirror image is not spellable (roadmap §5.4's meaningful failure).
+    /// The same fact with its pitch mirrored about `axis`, or `None` only
+    /// when a fixed-width storage coordinate would overflow.
     fn inverted(&self, axis: WrittenPitch) -> Option<Self> {
         let FactKind::Note { pitch, .. } = &self.kind else {
             return Some(self.clone());
@@ -1691,11 +1691,16 @@ fn elaborate_item(
             let Some(duration) = resolve_scaled_duration(resolver, note.syntax(), cx) else {
                 return Segment::empty();
             };
-            let pitch_text = note.pitch().unwrap_or_default();
-            let Some(pitch) = resolve::resolve_pitch(resolver, &pitch_text, note.syntax(), cx) else {
-                return Segment::empty();
-            };
             let span = resolve::trimmed_span(note.syntax());
+            let pitch = if let Some(pitch) = cx.music.pitch_at(span).copied() {
+                pitch
+            } else {
+                let pitch_text = note.pitch().unwrap_or_default();
+                let Some(pitch) = resolve::resolve_pitch(resolver, &pitch_text, note.syntax(), cx) else {
+                    return Segment::empty();
+                };
+                pitch
+            };
             let articulations = articulations_of(resolver, &note.articulations(), span);
             let origin = origin_of(cx, span);
             let (duration, free) = held(resolver, note.held_to().as_deref(), cx, duration, span);
@@ -3017,6 +3022,9 @@ fn append_contextual_key(key: &mut String, music: &crate::core::Music) {
     for (name, value) in &music.bindings {
         let _ = write!(key, "{name}={value:?};");
     }
+    for (site, pitch) in music.pitches.iter() {
+        let _ = write!(key, "pitch{site}={pitch};");
+    }
     for (site, nested) in &music.uses {
         let _ = write!(key, "use{site}[");
         append_contextual_key(key, nested);
@@ -3373,10 +3381,10 @@ fn invert_segment(
         resolver.report(
             Diagnostic::error(
                 Code::OutOfRange,
-                format!("`{pitch}` cannot be spelled when mirrored around `{axis_text}`"),
+                format!("`{pitch}` is outside Musa's stored coordinate range when mirrored around `{axis_text}`"),
             )
-            .at(at, "would need a triple accidental")
-            .help("mirror around a different pitch, or write the passage out"),
+            .at(at, "the exact integer result exceeds the implementation range")
+            .help("mirror around a nearer pitch, or reduce the register displacement"),
         );
     }
     Segment::literal(inverted)
@@ -3511,10 +3519,13 @@ fn apply_intervals(
             resolver.report(
                 Diagnostic::error(
                     Code::OutOfRange,
-                    format!("`{current}` cannot be spelled after this transposition"),
+                    format!("`{current}` is outside Musa's stored coordinate range after this transposition"),
                 )
-                .at(resolve::trimmed_span(node), "would need a triple accidental")
-                .help("transpose by a different interval, or write the passage out"),
+                .at(
+                    resolve::trimmed_span(node),
+                    "the exact integer result exceeds the implementation range",
+                )
+                .help("use a smaller interval or reduce the register displacement"),
             );
             return None;
         };

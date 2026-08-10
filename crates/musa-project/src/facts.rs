@@ -683,14 +683,15 @@ fn pitch_class(class: PitchClass) -> String {
     )
 }
 
-fn accidental(steps: i8) -> &'static str {
+fn accidental(steps: i32) -> String {
     match steps {
-        2 => "\u{1d12a}", // double sharp
-        1 => "\u{266f}",  // sharp
-        0 => "",
-        -1 => "\u{266d}",  // flat
-        -2 => "\u{1d12b}", // double flat
-        _ => "?",
+        2 => "\u{1d12a}".to_owned(), // double sharp
+        1 => "\u{266f}".to_owned(),  // sharp
+        0 => String::new(),
+        -1 => "\u{266d}".to_owned(),  // flat
+        -2 => "\u{1d12b}".to_owned(), // double flat
+        positive if positive > 0 => "\u{266f}".repeat(usize::try_from(positive).unwrap_or(usize::MAX)),
+        negative => "\u{266d}".repeat(usize::try_from(negative.unsigned_abs()).unwrap_or(usize::MAX)),
     }
 }
 

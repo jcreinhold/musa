@@ -522,7 +522,14 @@ impl Key {
             crate::Letter::F => -1,
         };
         // Each accidental on the tonic moves the key seven fifths.
-        let major = letter.saturating_add(self.tonic.accidental.0.saturating_mul(7));
+        let alteration = i8::try_from(self.tonic.accidental.0).unwrap_or_else(|_| {
+            if self.tonic.accidental.0.is_negative() {
+                i8::MIN
+            } else {
+                i8::MAX
+            }
+        });
+        let major = letter.saturating_add(alteration.saturating_mul(7));
         match self.mode {
             Mode::Major => major,
             // A minor key's signature is its relative major's: three fifths down.

@@ -1,6 +1,6 @@
 # Musa standard library 1
 
-This reference is generated from the source comments in the bundled `.musa` modules. Standard functions are ordinary
+This reference is generated from the source comments in the bundled `.musa` modules. Standard definitions are ordinary
 Musa definitions; importing a module is explicit and never searches the filesystem.
 
 ## `std::core`
@@ -21,3 +21,15 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 
 - `pitch_or_else(fallback: pitch, present: pitch -> pitch, value: option[pitch]) -> pitch` — Read an optional pitch, using fallback when it is absent and present when it is available.
 - `nat_or_else(fallback: nat, present: nat -> nat, value: option[nat]) -> nat` — Read an optional natural number under the same explicit policy.
+
+## `std::pitch`
+
+- `unison: interval` — Open Music Theory `016-intervals.md` supplies the conventional generic/specific interval names; `005-half-steps-whole-steps-and-accidentals.md` supplies the spelling distinction retained by these values. The written unison has no staff displacement and no chromatic displacement.
+- `minor_second: interval` — The chromatic semitone spelled as a minor second.
+- `major_second: interval` — The diatonic tone spelled as a major second.
+- `perfect_fourth: interval` — The perfect fourth.
+- `perfect_fifth: interval` — The perfect fifth.
+- `octave: interval` — The written octave, which changes both coordinates by (7, 12).
+- `compose_intervals(first: interval, second: interval) -> interval` — Apply two spelling-preserving written intervals in sequence.
+- `inverse_interval(value: interval) -> interval` — Reverse the direction of a written interval.
+- `written_pitch_class(value: pitch) -> pitchclass` — Forget octave while retaining the written letter and accidental.

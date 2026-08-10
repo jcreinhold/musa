@@ -503,7 +503,7 @@ proptest! {
 }
 
 fn pitch_literal() -> impl Strategy<Value = musa_compiler::WrittenPitch> {
-    (0i8..7, -2i8..=2, 1i8..7).prop_map(|(steps, accidental, octave)| musa_compiler::WrittenPitch {
+    (0i8..7, -2i32..=2, 1i32..7).prop_map(|(steps, accidental, octave)| musa_compiler::WrittenPitch {
         letter: musa_compiler::Letter::from_steps(steps).unwrap_or(musa_compiler::Letter::C),
         accidental: musa_compiler::Accidental(accidental),
         octave,
@@ -512,7 +512,7 @@ fn pitch_literal() -> impl Strategy<Value = musa_compiler::WrittenPitch> {
 
 fn interval_literal() -> impl Strategy<Value = musa_compiler::Interval> {
     prop::sample::select(vec![
-        (1i8, 1i8),
+        (1i64, 1i64),
         (1, 2),
         (2, 3),
         (2, 4),

@@ -54,6 +54,10 @@ Function arrows associate right; call binds tighter than pitch operators; pitch 
 first: parentheses, `step`, `up`/`down`. `root up M2 down m2` is rejected as ambiguous; write parentheses. Every `fn`
 has an expression body. A multi-statement musical body is explicitly `music { ... }`.
 
+Named intervals use conventional `P`, `M`, `m`, and repeated `A`/`d` qualities. Because lowercase `d4` already means
+the written pitch D4, a singly diminished fourth is written `dim4`; `dd4` and `ddd4` remain the compact multiply
+diminished spellings.
+
 `match` is the sole added case-analysis spelling. Arms are comma-separated and a final comma is accepted; braces and
 arrows keep the alternatives legible when an arm's expression spans lines. The initial patterns cover booleans,
 naturals and other literal domains, options, empty/cons lists, and products. A bare identifier binds the whole value;
@@ -83,7 +87,7 @@ articulation, span/grouping mark, pedal, or technique pattern; it is not an arbi
 staged and desugared by `08-performance-and-sound.md`, not values in the core calculus.
 
 Imports are explicit. A quoted path is resolved lexically relative to the importing file. `std::core`, `std::list`,
-and `std::option` name version-matched source libraries bundled with Musa; `std` is reserved, never searched in the
+`std::option`, and `std::pitch` name version-matched source libraries bundled with Musa; `std` is reserved, never searched in the
 working directory or environment, and has no implicit prelude. Imported definitions use the current flat value
 namespace. Their source remains available at stable `musa-stdlib:/std/…` URIs for hover and go-to-definition, but is
 read-only; a musician customizes one by writing a local wrapper. The authoritative signatures and prose are generated

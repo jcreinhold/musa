@@ -681,7 +681,12 @@ impl<'a> Parser<'a> {
             self.expect(SyntaxKind::Identifier, "a relative path in quotes, or `std::module`");
             self.expect(SyntaxKind::Colon, "`::`");
             self.expect(SyntaxKind::Colon, "`::`");
-            if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::ListKw, SyntaxKind::OptionKw]) {
+            if self.at_any(&[
+                SyntaxKind::Identifier,
+                SyntaxKind::ListKw,
+                SyntaxKind::OptionKw,
+                SyntaxKind::PitchKw,
+            ]) {
                 self.bump();
             } else {
                 self.expected("a standard-library module name");
@@ -810,14 +815,20 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// An ordinary expression with postfix application at the highest
-    /// precedence. Pitch operators are added by prompt 100.
+    /// An ordinary expression. Calls bind tighter than the single
+    /// non-associative written-pitch operator.
     fn expr(&mut self) {
         let checkpoint = self.events.len();
         self.expr_atom();
         while self.at(SyntaxKind::LParen) {
             self.start_at(checkpoint, SyntaxKind::ApplyExpr);
             self.expr_arg_list();
+            self.finish();
+        }
+        if self.at_any(&[SyntaxKind::UpKw, SyntaxKind::DownKw]) {
+            self.start_at(checkpoint, SyntaxKind::PitchExpr);
+            self.bump();
+            self.expr_atom();
             self.finish();
         }
     }
@@ -1628,7 +1639,7 @@ impl<'a> Parser<'a> {
             }
             if self.at(SyntaxKind::Pipe) {
                 self.pipe_bar_stmt();
-            } else if self.at_any(&[SyntaxKind::PitchLiteral, SyntaxKind::Identifier]) {
+            } else if self.at_any(&[SyntaxKind::PitchLiteral, SyntaxKind::Identifier, SyntaxKind::LParen]) {
                 self.note_stmt();
             } else if self.at(SyntaxKind::RestKw) {
                 self.rest_stmt();
@@ -1716,6 +1727,7 @@ impl<'a> Parser<'a> {
                 kind,
                 SyntaxKind::PitchLiteral
                     | SyntaxKind::Identifier
+                    | SyntaxKind::LParen
                     | SyntaxKind::RestKw
                     | SyntaxKind::LBracket
                     | SyntaxKind::Semicolon
@@ -1757,7 +1769,12 @@ impl<'a> Parser<'a> {
     /// starts that way.
     fn note_stmt(&mut self) {
         self.start(SyntaxKind::NoteStmt);
-        self.bump(); // pitch literal or pitch reference
+        if self.at(SyntaxKind::LParen) || matches!(self.nth_significant(1), Some(SyntaxKind::UpKw | SyntaxKind::DownKw))
+        {
+            self.expr();
+        } else {
+            self.bump(); // simple pitch literal or pitch reference
+        }
         self.duration();
         self.articulations();
         self.tie();

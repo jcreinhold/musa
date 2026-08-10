@@ -1,0 +1,30 @@
+// Written intervals move two coordinates: staff position and chromatic
+// height. The spelling therefore remains part of the result; it is never
+// guessed back from a MIDI number (Open Music Theory, Intervals; Pitch and
+// Pitch Class).
+piece "Pitch Arithmetic" {
+    use std::pitch;
+
+    let two_octaves: interval = compose_intervals(octave, octave);
+
+    fn turn(root: pitch) -> music = music {
+        root/4
+        (root up M2)/4
+        (root up M10)/4
+        (root down m2)/4
+    };
+
+    fn echo_above(root: pitch) -> music = music {
+        root/2
+        (root up two_octaves)/2
+    };
+
+    score {
+        part keyboard {
+            voice right_hand {
+                use turn(c4);
+                use echo_above(g3);
+            }
+        }
+    }
+}

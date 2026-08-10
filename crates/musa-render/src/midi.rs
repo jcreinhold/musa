@@ -325,7 +325,10 @@ fn message_key(message: MidiMessage) -> (u8, u8) {
 /// 12-TET written pitch → MIDI note number. This is the tuning service's
 /// edge: middle C (`c4`) is 60.
 fn midi_key(pitch: WrittenPitch) -> Option<u8> {
-    let number = 12 * (i32::from(pitch.octave) + 1) + i32::from(pitch.semitone());
+    let number = i64::from(pitch.octave)
+        .checked_add(1)?
+        .checked_mul(12)?
+        .checked_add(pitch.semitone())?;
     u8::try_from(number).ok().filter(|key| *key <= 127)
 }
 

@@ -81,9 +81,9 @@ pub enum ExpansionStep {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Interval {
     /// Signed diatonic steps (a fifth is 4).
-    pub diatonic_steps: i8,
+    pub diatonic_steps: i64,
     /// Signed semitones (a perfect fifth is 7).
-    pub semitones: i8,
+    pub semitones: i64,
 }
 
 impl Interval {
@@ -93,30 +93,137 @@ impl Interval {
         semitones: 0,
     };
 
-    /// Parse an interval literal (`P5`, `M3`, `m3`) with a direction.
+    /// Parse a simple or compound interval literal with a direction.
+    ///
+    /// Perfect-class sizes (unisons, fourths, fifths, and their compounds)
+    /// accept `P`, repeated `A`, or repeated `d`. Major-class sizes accept
+    /// `M`, `m`, repeated `A`, or repeated `d`. The repetitions are not a
+    /// semantic bound: `AAA4` and `ddd10` are ordinary integer pairs.
     pub fn parse(text: &str, down: bool) -> Option<Self> {
-        let (quality, size_text) = text.split_at(1);
-        let size: i8 = size_text.parse().ok()?;
-        let (steps, semitones): (i8, i8) = match (quality, size) {
-            ("P", 1) => (0, 0),
-            ("P", 4) => (3, 5),
-            ("P", 5) => (4, 7),
-            ("P", 8) => (7, 12),
-            ("M", 2) => (1, 2),
-            ("M", 3) => (2, 4),
-            ("M", 6) => (5, 9),
-            ("M", 7) => (6, 11),
-            ("m", 2) => (1, 1),
-            ("m", 3) => (2, 3),
-            ("m", 6) => (5, 8),
-            ("m", 7) => (6, 10),
+        let quality_end = text.find(|character: char| character.is_ascii_digit())?;
+        let (quality, size_text) = text.split_at(quality_end);
+        if quality.is_empty() {
+            return None;
+        }
+        let size: i64 = size_text.parse().ok()?;
+        if size == 0 {
+            return None;
+        }
+        let steps = size.checked_sub(1)?;
+        let simple = steps.rem_euclid(7);
+        let octaves = steps.div_euclid(7);
+        let natural_simple = *[0_i64, 2, 4, 5, 7, 9, 11].get(usize::try_from(simple).ok()?)?;
+        let natural = octaves.checked_mul(12)?.checked_add(natural_simple)?;
+        let perfect_class = matches!(simple, 0 | 3 | 4);
+        let alteration = match quality {
+            "P" if perfect_class => 0,
+            "M" if !perfect_class => 0,
+            "m" if !perfect_class => -1,
+            "dim" => {
+                if perfect_class {
+                    -1
+                } else {
+                    -2
+                }
+            }
+            quality if quality.bytes().all(|byte| byte == b'A') => i64::try_from(quality.len()).ok()?,
+            quality if quality.bytes().all(|byte| byte == b'd') => {
+                let degrees = i64::try_from(quality.len()).ok()?;
+                if perfect_class {
+                    degrees.checked_neg()?
+                } else {
+                    degrees.checked_add(1)?.checked_neg()?
+                }
+            }
             _ => return None,
         };
-        let sign: i8 = if down { -1 } else { 1 };
+        let semitones = natural.checked_add(alteration)?;
+        let sign = if down { -1 } else { 1 };
         Some(Self {
-            diatonic_steps: steps.saturating_mul(sign),
-            semitones: semitones.saturating_mul(sign),
+            diatonic_steps: steps.checked_mul(sign)?,
+            semitones: semitones.checked_mul(sign)?,
         })
+    }
+
+    /// Compose two written intervals componentwise.
+    pub fn compose(self, other: Self) -> Option<Self> {
+        Some(Self {
+            diatonic_steps: self.diatonic_steps.checked_add(other.diatonic_steps)?,
+            semitones: self.semitones.checked_add(other.semitones)?,
+        })
+    }
+
+    /// The interval which undoes this interval.
+    pub fn inverse(self) -> Option<Self> {
+        Some(Self {
+            diatonic_steps: self.diatonic_steps.checked_neg()?,
+            semitones: self.semitones.checked_neg()?,
+        })
+    }
+}
+
+impl std::fmt::Display for Interval {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let down = self.diatonic_steps.is_negative() || (self.diatonic_steps == 0 && self.semitones.is_negative());
+        let Some(steps) = (if down {
+            self.diatonic_steps.checked_neg()
+        } else {
+            Some(self.diatonic_steps)
+        }) else {
+            return write!(out, "({}, {})", self.diatonic_steps, self.semitones);
+        };
+        let Some(semitones) = (if down {
+            self.semitones.checked_neg()
+        } else {
+            Some(self.semitones)
+        }) else {
+            return write!(out, "({}, {})", self.diatonic_steps, self.semitones);
+        };
+        let Some(size) = steps.checked_add(1) else {
+            return write!(out, "({}, {})", self.diatonic_steps, self.semitones);
+        };
+        let simple = steps.rem_euclid(7);
+        let natural = steps.div_euclid(7).checked_mul(12).and_then(|octaves| {
+            [0_i64, 2, 4, 5, 7, 9, 11]
+                .get(usize::try_from(simple).ok()?)
+                .and_then(|simple| octaves.checked_add(*simple))
+        });
+        let Some(alteration) = natural.and_then(|natural| semitones.checked_sub(natural)) else {
+            return write!(out, "({}, {})", self.diatonic_steps, self.semitones);
+        };
+        let perfect_class = matches!(simple, 0 | 3 | 4);
+        let quality = match (perfect_class, alteration) {
+            (true, 0) => Some("P".to_owned()),
+            (false, 0) => Some("M".to_owned()),
+            (false, -1) => Some("m".to_owned()),
+            (_, positive) if positive > 0 => usize::try_from(positive).ok().map(|count| "A".repeat(count)),
+            (true, negative) => usize::try_from(negative.unsigned_abs()).ok().map(|count| {
+                if count == 1 {
+                    "dim".to_owned()
+                } else {
+                    "d".repeat(count)
+                }
+            }),
+            (false, negative) => negative
+                .checked_neg()
+                .and_then(|magnitude| magnitude.checked_sub(1))
+                .and_then(|degrees| usize::try_from(degrees).ok())
+                .map(|count| {
+                    if count == 1 {
+                        "dim".to_owned()
+                    } else {
+                        "d".repeat(count)
+                    }
+                }),
+        };
+        let Some(quality) = quality else {
+            return write!(out, "({}, {})", self.diatonic_steps, self.semitones);
+        };
+        if down {
+            write!(out, "down {quality}{size}")
+        } else {
+            write!(out, "{quality}{size}")
+        }
     }
 }
 

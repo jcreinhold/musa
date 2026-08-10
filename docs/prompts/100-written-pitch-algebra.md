@@ -1,7 +1,7 @@
 ---
 id: 100
 slug: written-pitch-algebra
-status: pending
+status: done
 depends_on: [98, 99]
 phase: 3
 ---

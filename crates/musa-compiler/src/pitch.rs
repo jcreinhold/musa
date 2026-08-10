@@ -95,10 +95,13 @@ impl Letter {
     }
 }
 
-/// A pitch alteration in semitones: `ss`=+2, `s`=+1, none=0, `f`=-1,
-/// `ff`=-2.
+/// A pitch alteration in semitones.
+///
+/// This is an integer coordinate, not a fixed accidental vocabulary. A
+/// renderer may have a smaller notational capability, but the semantic value
+/// remains exact and may be triply or more deeply altered.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct Accidental(pub i8);
+pub struct Accidental(pub i32);
 
 impl Accidental {
     /// Double sharp (𝄪).
@@ -121,7 +124,7 @@ pub struct WrittenPitch {
     /// The accidental.
     pub accidental: Accidental,
     /// The octave (scientific pitch notation).
-    pub octave: i8,
+    pub octave: i32,
 }
 
 impl WrittenPitch {
@@ -131,23 +134,24 @@ impl WrittenPitch {
         let mut chars = text.chars();
         let letter = Letter::from_char(chars.next()?)?;
         let rest = chars.as_str();
-        // Accidental is the longest matching prefix of #/##/b/bb/n. The
+        // Accidental is the longest matching run of sharps or flats. The
         // letter is already off the front, so the `b` here is only ever a
         // flat: `bb2` arrives as letter `b` and rest `b2`.
-        let (accidental, octave_text) = if let Some(octave) = rest.strip_prefix("##") {
-            (Accidental::DOUBLE_SHARP, octave)
-        } else if let Some(octave) = rest.strip_prefix("bb") {
-            (Accidental::DOUBLE_FLAT, octave)
-        } else if let Some(octave) = rest.strip_prefix('#') {
-            (Accidental::SHARP, octave)
-        } else if let Some(octave) = rest.strip_prefix('b') {
-            (Accidental::FLAT, octave)
-        } else if let Some(octave) = rest.strip_prefix('n') {
+        let (accidental, octave_text) = if let Some(octave) = rest.strip_prefix('n') {
             (Accidental::NATURAL, octave)
+        } else if rest.starts_with('#') {
+            let count = rest.bytes().take_while(|byte| *byte == b'#').count();
+            (Accidental(i32::try_from(count).ok()?), rest.get(count..)?)
+        } else if rest.starts_with('b') {
+            let count = rest.bytes().take_while(|byte| *byte == b'b').count();
+            (
+                Accidental(i32::try_from(count).ok()?.checked_neg()?),
+                rest.get(count..)?,
+            )
         } else {
             (Accidental::NATURAL, rest)
         };
-        let octave = octave_text.parse::<i8>().ok()?;
+        let octave = octave_text.parse::<i32>().ok()?;
         Some(Self {
             letter,
             accidental,
@@ -156,35 +160,51 @@ impl WrittenPitch {
     }
 
     /// Semitones above C within the octave, accounting for the accidental.
-    pub fn semitone(self) -> i8 {
-        self.letter.natural_semitone().saturating_add(self.accidental.0)
+    pub fn semitone(self) -> i64 {
+        i64::from(self.letter.natural_semitone()).saturating_add(i64::from(self.accidental.0))
     }
 
-    /// Transpose by an interval, keeping the result spellable (roadmap
-    /// §5.4): the letter moves by the interval's diatonic steps and the
-    /// accidental absorbs whatever semitone difference remains. Returns
-    /// `None` when the result needs more than a double accidental.
-    pub fn transpose(self, interval: Interval) -> Option<Self> {
-        let steps = i32::from(self.letter.steps()).saturating_add(i32::from(interval.diatonic_steps));
-        let letter = Letter::from_steps(i8::try_from(steps.rem_euclid(7)).ok()?)?;
-        let octave_shift = steps.div_euclid(7);
-        let current = i32::from(self.octave)
+    /// Absolute staff coordinate above C0.
+    pub fn diatonic_height(self) -> i64 {
+        i64::from(self.octave)
+            .saturating_mul(7)
+            .saturating_add(i64::from(self.letter.steps()))
+    }
+
+    /// Absolute twelve-semitone coordinate above C0.
+    pub fn chromatic_height(self) -> i64 {
+        i64::from(self.octave)
             .saturating_mul(12)
-            .saturating_add(i32::from(self.semitone()));
-        let moved = current.saturating_add(i32::from(interval.semitones));
-        let octave_i32 = i32::from(self.octave).saturating_add(octave_shift);
-        let natural = octave_i32
-            .saturating_mul(12)
-            .saturating_add(i32::from(letter.natural_semitone()));
-        let accidental = moved.saturating_sub(natural);
-        if !(-2..=2).contains(&accidental) {
-            return None;
-        }
+            .saturating_add(self.semitone())
+    }
+
+    /// Build the unique written pitch at two compatible integer coordinates.
+    ///
+    /// Every pair is compatible: the diatonic coordinate chooses a letter
+    /// and octave, while the difference from that natural staff position is
+    /// retained as an unbounded accidental.
+    pub fn from_heights(diatonic: i64, chromatic: i64) -> Option<Self> {
+        let letter = Letter::from_steps(i8::try_from(diatonic.rem_euclid(7)).ok()?)?;
+        let octave = i32::try_from(diatonic.div_euclid(7)).ok()?;
+        let natural = i64::from(octave)
+            .checked_mul(12)?
+            .checked_add(i64::from(letter.natural_semitone()))?;
         Some(Self {
             letter,
-            accidental: Accidental(i8::try_from(accidental).ok()?),
-            octave: i8::try_from(octave_i32).ok()?,
+            accidental: Accidental(i32::try_from(chromatic.checked_sub(natural)?).ok()?),
+            octave,
         })
+    }
+
+    /// Transpose by a written interval without respelling.
+    ///
+    /// Failure means only that the fixed machine integer was exceeded; no
+    /// accidental magnitude is rejected.
+    pub fn transpose(self, interval: Interval) -> Option<Self> {
+        Self::from_heights(
+            self.diatonic_height().checked_add(interval.diatonic_steps)?,
+            self.chromatic_height().checked_add(interval.semitones)?,
+        )
     }
 
     /// Mirror this pitch about `axis` (roadmap §5.4).
@@ -196,37 +216,16 @@ impl WrittenPitch {
     /// `eb4` a *diminished* somewhere and spell the answer by pitch class,
     /// which is how a spelling-preserving language loses its spelling.
     ///
-    /// Returns `None` when the mirror image needs more than a double
-    /// accidental — a meaningful failure the caller reports as a diagnostic
-    /// rather than silently writing a different note.
+    /// No accidental magnitude is rejected.
     pub fn invert(self, axis: Self) -> Option<Self> {
-        let steps = i32::from(axis.diatonic_index())
-            .saturating_mul(2)
-            .saturating_sub(i32::from(self.diatonic_index()));
-        let letter = Letter::from_steps(i8::try_from(steps.rem_euclid(7)).ok()?)?;
-        let octave = steps.div_euclid(7);
-        let sounding = i32::from(axis.chromatic_index())
-            .saturating_mul(2)
-            .saturating_sub(i32::from(self.chromatic_index()));
-        let natural = octave
-            .saturating_mul(12)
-            .saturating_add(i32::from(letter.natural_semitone()));
-        let accidental = sounding.saturating_sub(natural);
-        if !(-2..=2).contains(&accidental) {
-            return None;
-        }
-        Some(Self {
-            letter,
-            accidental: Accidental(i8::try_from(accidental).ok()?),
-            octave: i8::try_from(octave).ok()?,
-        })
-    }
-
-    /// Diatonic steps above `c0`: the staff position, ignoring accidentals.
-    fn diatonic_index(self) -> i16 {
-        i16::from(self.octave)
-            .saturating_mul(7)
-            .saturating_add(i16::from(self.letter.steps()))
+        Self::from_heights(
+            axis.diatonic_height()
+                .checked_mul(2)?
+                .checked_sub(self.diatonic_height())?,
+            axis.chromatic_height()
+                .checked_mul(2)?
+                .checked_sub(self.chromatic_height())?,
+        )
     }
 
     /// The pitch class this pitch spells, without its octave.
@@ -235,13 +234,6 @@ impl WrittenPitch {
             letter: self.letter,
             accidental: self.accidental,
         }
-    }
-
-    /// Semitones above `c0`: what the pitch sounds at, ignoring spelling.
-    fn chromatic_index(self) -> i16 {
-        i16::from(self.octave)
-            .saturating_mul(12)
-            .saturating_add(i16::from(self.semitone()))
     }
 }
 
@@ -264,15 +256,13 @@ impl std::fmt::Display for PitchClass {
     /// As the language spells it: `g`, `bb`, `f#`. One place spells a pitch
     /// class, so a written pitch and a key tonic can never disagree.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let accidental = match self.accidental.0 {
-            2 => "##",
-            1 => "#",
-            0 => "",
-            -1 => "b",
-            -2 => "bb",
-            _ => "?",
+        let count = usize::try_from(self.accidental.0.unsigned_abs()).map_err(|_| std::fmt::Error)?;
+        let accidental = match self.accidental.0.cmp(&0) {
+            std::cmp::Ordering::Greater => "#".repeat(count),
+            std::cmp::Ordering::Less => "b".repeat(count),
+            std::cmp::Ordering::Equal => String::new(),
         };
-        write!(f, "{}{}", self.letter.as_char(), accidental)
+        write!(f, "{}{accidental}", self.letter.as_char())
     }
 }
 
@@ -284,13 +274,15 @@ impl PitchClass {
     pub fn parse(text: &str) -> Option<Self> {
         let mut chars = text.chars();
         let letter = Letter::from_char(chars.next()?)?;
-        let accidental = match chars.as_str() {
-            "" => Accidental::NATURAL,
-            "#" => Accidental::SHARP,
-            "##" => Accidental::DOUBLE_SHARP,
-            "b" => Accidental::FLAT,
-            "bb" => Accidental::DOUBLE_FLAT,
-            _ => return None,
+        let rest = chars.as_str();
+        let accidental = if rest.is_empty() {
+            Accidental::NATURAL
+        } else if rest.bytes().all(|byte| byte == b'#') {
+            Accidental(i32::try_from(rest.len()).ok()?)
+        } else if rest.bytes().all(|byte| byte == b'b') {
+            Accidental(i32::try_from(rest.len()).ok()?.checked_neg()?)
+        } else {
+            return None;
         };
         Some(Self { letter, accidental })
     }

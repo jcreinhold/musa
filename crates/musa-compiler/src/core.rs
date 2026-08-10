@@ -15,7 +15,7 @@ use crate::core_budget::WorkMeter;
 use crate::diagnose::{Code, Diagnostic};
 use crate::imports::Libraries;
 use crate::origin::{Interval, SourceSpan};
-use crate::pitch::WrittenPitch;
+use crate::pitch::{PitchClass, WrittenPitch};
 use crate::resolve::{NameKind, Resolver};
 
 /// Check and evaluate imported definitions followed by a piece's definitions.
@@ -190,6 +190,7 @@ enum Type {
     Ratio,
     Duration,
     Pitch,
+    PitchClass,
     Interval,
     Product(Vec<Self>),
     Option(Box<Self>),
@@ -207,6 +208,7 @@ impl std::fmt::Display for Type {
             Self::Ratio => out.write_str("ratio"),
             Self::Duration => out.write_str("duration"),
             Self::Pitch => out.write_str("pitch"),
+            Self::PitchClass => out.write_str("pitchclass"),
             Self::Interval => out.write_str("interval"),
             Self::Product(members) => {
                 out.write_str("(")?;
@@ -327,6 +329,11 @@ enum ExprKind {
         function: Box<Expr>,
         arguments: Vec<CallArgument>,
     },
+    PitchAction {
+        pitch: Box<Expr>,
+        interval: Box<Expr>,
+        down: bool,
+    },
     Primitive {
         primitive: Primitive,
         arguments: Vec<Expr>,
@@ -342,6 +349,7 @@ enum ExprKind {
 struct CheckedMusic {
     items: Vec<VoiceItem>,
     uses: Vec<(SourceSpan, Expr)>,
+    pitches: Vec<(SourceSpan, Expr)>,
     bindings: Vec<String>,
     role: Option<MusicRole>,
     definition_span: SourceSpan,
@@ -356,6 +364,9 @@ enum Primitive {
     Filter,
     Range,
     Repeat,
+    IntervalAdd,
+    IntervalInverse,
+    PitchClassOf,
 }
 
 #[derive(Clone, Copy)]
@@ -365,7 +376,7 @@ struct PrimitiveOwnership<T> {
     hidden_information: &'static str,
 }
 
-const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 7] = [
+const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 10] = [
     PrimitiveOwnership {
         operation: Primitive::NatFold,
         spelling: "nat_fold",
@@ -401,6 +412,21 @@ const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 7] = [
         spelling: "repeat",
         hidden_information: "rank-1 finite-list construction governed by the structural work budget",
     },
+    PrimitiveOwnership {
+        operation: Primitive::IntervalAdd,
+        spelling: "interval_add",
+        hidden_information: "the evaluator's exact written-interval coordinate representation",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::IntervalInverse,
+        spelling: "interval_inverse",
+        hidden_information: "the evaluator's exact written-interval coordinate representation",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::PitchClassOf,
+        spelling: "pitchclass_of",
+        hidden_information: "the written pitch's octave coordinate and spelling-preserving quotient",
+    },
 ];
 
 impl Primitive {
@@ -413,6 +439,9 @@ impl Primitive {
             Self::Filter => "filter",
             Self::Range => "range",
             Self::Repeat => "repeat",
+            Self::IntervalAdd => "interval_add",
+            Self::IntervalInverse => "interval_inverse",
+            Self::PitchClassOf => "pitchclass_of",
         }
     }
 }
@@ -486,6 +515,7 @@ enum Value {
     Ratio(Ratio<i64>),
     Duration(Ratio<i64>),
     Pitch(WrittenPitch),
+    PitchClass(PitchClass),
     Interval(Interval),
     Product(Vec<Self>),
     Option { member: Type, value: Option<Box<Self>> },
@@ -577,6 +607,7 @@ impl Builtin {
 pub(crate) struct Music {
     pub(crate) items: Vec<VoiceItem>,
     pub(crate) uses: IndexMap<u64, Self>,
+    pub(crate) pitches: Box<IndexMap<u64, WrittenPitch>>,
     pub(crate) bindings: IndexMap<String, crate::resolve::BoundValue>,
     pub(crate) role: Option<MusicRole>,
     pub(crate) definition_span: SourceSpan,
@@ -592,7 +623,7 @@ pub(crate) enum MusicOperation {
     Retrograde { source: Music },
     Invert { axis: WrittenPitch, source: Music },
     Shift { by: Ratio<i64>, source: Music },
-    Overlay { left: Music, right: Music },
+    Overlay { left: Music, right: Box<Music> },
     MapNotePitches { mapper: PitchFunction, source: Music },
 }
 
@@ -637,6 +668,10 @@ impl Music {
     pub(crate) fn music_at(&self, span: SourceSpan) -> Option<&Self> {
         self.uses.get(&span_key(span))
     }
+
+    pub(crate) fn pitch_at(&self, span: SourceSpan) -> Option<&WrittenPitch> {
+        self.pitches.get(&span_key(span))
+    }
 }
 
 /// Checked root `use` expressions. This is the only bridge from the total
@@ -653,6 +688,7 @@ impl Program {
         Music {
             items: Vec::new(),
             uses: self.uses.clone(),
+            pitches: Box::default(),
             bindings: IndexMap::new(),
             role: None,
             definition_span: SourceSpan::default(),
@@ -681,6 +717,7 @@ impl Value {
             Self::Ratio(_) => Type::Ratio,
             Self::Duration(_) => Type::Duration,
             Self::Pitch(_) => Type::Pitch,
+            Self::PitchClass(_) => Type::PitchClass,
             Self::Interval(_) => Type::Interval,
             Self::Product(members) => Type::Product(members.iter().map(Self::ty).collect()),
             Self::Option { member, .. } => Type::Option(Box::new(member.clone())),
@@ -723,9 +760,12 @@ impl Value {
                     ^ u64::from(value.accidental.0.unsigned_abs()).rotate_left(4)
                     ^ u64::from(value.octave.unsigned_abs())
             }
+            Self::PitchClass(value) => {
+                u64::from(value.letter.steps().unsigned_abs()).rotate_left(8)
+                    ^ u64::from(value.accidental.0.unsigned_abs())
+            }
             Self::Interval(value) => {
-                u64::from(value.diatonic_steps.unsigned_abs()).rotate_left(8)
-                    ^ u64::from(value.semitones.unsigned_abs())
+                value.diatonic_steps.unsigned_abs().rotate_left(8) ^ value.semitones.unsigned_abs()
             }
             Self::Product(members) => members.iter().fold(0u64, |witness, member| {
                 witness.rotate_left(5) ^ member.normalization_witness()
@@ -951,6 +991,7 @@ fn check_and_evaluate(
                         Music {
                             items: Vec::new(),
                             uses: IndexMap::new(),
+                            pitches: Box::default(),
                             bindings: IndexMap::new(),
                             role: None,
                             definition_span: span,
@@ -992,6 +1033,7 @@ fn check_and_evaluate(
             | Value::Ratio(_)
             | Value::Duration(_)
             | Value::Pitch(_)
+            | Value::PitchClass(_)
             | Value::Interval(_)
             | Value::Product(_)
             | Value::Option { .. }
@@ -1180,6 +1222,7 @@ fn legacy_default(ty: &Type, written: &str) -> Option<Value> {
         | Type::Bool
         | Type::Nat
         | Type::Ratio
+        | Type::PitchClass
         | Type::Interval
         | Type::Product(_)
         | Type::Option(_)
@@ -1198,6 +1241,7 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Ratio
         | Type::Duration
         | Type::Pitch
+        | Type::PitchClass
         | Type::Interval
         | Type::Music
         | Type::Product(_)
@@ -1221,13 +1265,14 @@ fn parse_type(resolver: &mut Resolver, node: &SyntaxNode) -> Option<Type> {
             "ratio" => Some(Type::Ratio),
             "duration" => Some(Type::Duration),
             "pitch" => Some(Type::Pitch),
+            "pitchclass" => Some(Type::PitchClass),
             "interval" => Some(Type::Interval),
             "music" => Some(Type::Music),
             _ => {
                 resolver.report(
                     Diagnostic::error(Code::UnknownName, format!("unknown type `{text}`"))
                         .at(crate::resolve::trimmed_span(node), "not a value type")
-                        .help("use `bool`, `nat`, `ratio`, `duration`, `pitch`, `interval`, a product, or a function type"),
+                        .help("use `bool`, `nat`, `ratio`, `duration`, `pitch`, `pitchclass`, `interval`, a product, or a function type"),
                 );
                 None
             }
@@ -1303,6 +1348,8 @@ impl Checker<'_> {
             self.option(node, expected)
         } else if kind == SyntaxKind::ApplyExpr {
             self.application(node, expected)
+        } else if kind == SyntaxKind::PitchExpr {
+            self.pitch_action(node)
         } else if kind == SyntaxKind::MatchExpr {
             self.match_expression(node, expected)
         } else if kind == SyntaxKind::MusicExpr {
@@ -1336,6 +1383,8 @@ impl Checker<'_> {
             uses.push((crate::resolve::trimmed_span(&statement), checked));
         }
 
+        let mut pitches = Vec::new();
+
         if self.music_role.is_none() {
             for statement in owned_descendants(node, SyntaxKind::TempoStmt)
                 .into_iter()
@@ -1358,15 +1407,18 @@ impl Checker<'_> {
 
         let mut bindings = IndexSet::new();
         for statement in owned_descendants(node, SyntaxKind::NoteStmt) {
-            if let Some(note) = musa_language::ast::NoteStmt::cast(statement.clone())
-                && let Some(name) = note.pitch().filter(|text| WrittenPitch::parse(text).is_none())
-            {
-                self.music_binding(
-                    &name,
-                    &Type::Pitch,
-                    crate::resolve::trimmed_span(&statement),
-                    &mut bindings,
-                )?;
+            if let Some(note) = musa_language::ast::NoteStmt::cast(statement.clone()) {
+                if let Some(expression) = note.pitch_expr() {
+                    let checked = self.check(&expression, Some(&Type::Pitch))?;
+                    pitches.push((crate::resolve::trimmed_span(&statement), checked));
+                } else if let Some(name) = note.pitch().filter(|text| WrittenPitch::parse(text).is_none()) {
+                    self.music_binding(
+                        &name,
+                        &Type::Pitch,
+                        crate::resolve::trimmed_span(&statement),
+                        &mut bindings,
+                    )?;
+                }
             }
             if let Some(name) = musa_language::ast::Duration::of(&statement).and_then(|duration| duration.parameter()) {
                 self.music_binding(
@@ -1395,11 +1447,29 @@ impl Checker<'_> {
             kind: ExprKind::Music(CheckedMusic {
                 items,
                 uses,
+                pitches,
                 bindings: bindings.into_iter().collect(),
                 role: self.music_role.clone(),
                 definition_span: self.definition_span,
             }),
             ty: Type::Music,
+            span,
+        })
+    }
+
+    fn pitch_action(&mut self, node: &SyntaxNode) -> Option<Expr> {
+        let span = crate::resolve::trimmed_span(node);
+        let mut children = node.children().filter(|child| is_expr_node(child.kind()));
+        let pitch = self.check(&children.next()?, Some(&Type::Pitch))?;
+        let interval = self.check(&children.next()?, Some(&Type::Interval))?;
+        let down = significant_tokens(node).any(|token| token.kind() == SyntaxKind::DownKw);
+        Some(Expr {
+            kind: ExprKind::PitchAction {
+                pitch: Box::new(pitch),
+                interval: Box::new(interval),
+                down,
+            },
+            ty: Type::Pitch,
             span,
         })
     }
@@ -1767,6 +1837,7 @@ impl Checker<'_> {
             | Value::Ratio(_)
             | Value::Duration(_)
             | Value::Pitch(_)
+            | Value::PitchClass(_)
             | Value::Interval(_)
             | Value::Product(_)
             | Value::Option { .. }
@@ -1932,8 +2003,8 @@ impl Checker<'_> {
         }
         let wanted = match primitive {
             Primitive::NatFold | Primitive::ListFold | Primitive::OptionFold => 3,
-            Primitive::Map | Primitive::Filter | Primitive::Repeat => 2,
-            Primitive::Range => 1,
+            Primitive::Map | Primitive::Filter | Primitive::Repeat | Primitive::IntervalAdd => 2,
+            Primitive::Range | Primitive::IntervalInverse | Primitive::PitchClassOf => 1,
         };
         if raw.len() != wanted {
             self.resolver.report(
@@ -1955,6 +2026,19 @@ impl Checker<'_> {
             .filter_map(|argument| child_of(argument, is_expr_node))
             .collect();
         let (arguments, ty) = match primitive {
+            Primitive::IntervalAdd => {
+                let first = self.check(nodes.first()?, Some(&Type::Interval))?;
+                let second = self.check(nodes.get(1)?, Some(&Type::Interval))?;
+                (vec![first, second], Type::Interval)
+            }
+            Primitive::IntervalInverse => {
+                let interval = self.check(nodes.first()?, Some(&Type::Interval))?;
+                (vec![interval], Type::Interval)
+            }
+            Primitive::PitchClassOf => {
+                let pitch = self.check(nodes.first()?, Some(&Type::Pitch))?;
+                (vec![pitch], Type::PitchClass)
+            }
             Primitive::Range => {
                 let count = self.check(nodes.first()?, Some(&Type::Nat))?;
                 (vec![count], Type::List(Box::new(Type::Nat)))
@@ -2132,6 +2216,7 @@ fn is_exhaustive(target: &Type, coverage: &IndexSet<Coverage>) -> bool {
             | Type::Ratio
             | Type::Duration
             | Type::Pitch
+            | Type::PitchClass
             | Type::Interval
             | Type::Music
             | Type::Product(_)
@@ -2146,6 +2231,7 @@ fn literal_key(value: &Value) -> String {
         Value::Ratio(value) => format!("ratio:{}/{}", value.numer(), value.denom()),
         Value::Duration(value) => format!("duration:{}/{}", value.numer(), value.denom()),
         Value::Pitch(value) => format!("pitch:{}:{}:{}", value.letter.steps(), value.accidental.0, value.octave),
+        Value::PitchClass(value) => format!("pitchclass:{}:{}", value.letter.steps(), value.accidental.0),
         Value::Interval(value) => format!("interval:{}:{}", value.diatonic_steps, value.semitones),
         Value::Product(_)
         | Value::Option { .. }
@@ -2367,12 +2453,25 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Ratio(_)
                 | Value::Duration(_)
                 | Value::Pitch(_)
+                | Value::PitchClass(_)
                 | Value::Interval(_)
                 | Value::Product(_)
                 | Value::Option { .. }
                 | Value::List { .. }
                 | Value::Music(_) => None,
             }
+        }
+        ExprKind::PitchAction { pitch, interval, down } => {
+            let Value::Pitch(pitch) = eval(pitch, environment, meter)? else {
+                return None;
+            };
+            let Value::Interval(mut interval) = eval(interval, environment, meter)? else {
+                return None;
+            };
+            if *down {
+                interval = interval.inverse()?;
+            }
+            pitch.transpose(interval).map(Value::Pitch)
         }
         ExprKind::Primitive { primitive, arguments } => {
             eval_primitive(*primitive, arguments, environment, meter, expression)
@@ -2402,6 +2501,13 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 };
                 uses.insert(span_key(*span), value);
             }
+            let mut pitches = IndexMap::new();
+            for (span, expression) in &music.pitches {
+                let Value::Pitch(value) = eval(expression, environment, meter)? else {
+                    return None;
+                };
+                pitches.insert(span_key(*span), value);
+            }
             let mut bindings = IndexMap::new();
             for name in &music.bindings {
                 let bound = match environment.get(name)? {
@@ -2415,6 +2521,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     Value::Bool(_)
                     | Value::Nat(_)
                     | Value::Ratio(_)
+                    | Value::PitchClass(_)
                     | Value::Interval(_)
                     | Value::Product(_)
                     | Value::Option { .. }
@@ -2428,6 +2535,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
             Some(Value::Music(Music {
                 items: music.items.clone(),
                 uses,
+                pitches: Box::new(pitches),
                 bindings,
                 role: music.role.clone(),
                 definition_span: music.definition_span,
@@ -2532,7 +2640,7 @@ fn apply_builtin(builtin: &BuiltinValue, provided: Vec<Option<Value>>, span: Sou
         }
         Builtin::Overlay => MusicOperation::Overlay {
             left: music_value(arguments.next()?)?,
-            right: music_value(arguments.next()?)?,
+            right: Box::new(music_value(arguments.next()?)?),
         },
         Builtin::MapNotePitches => {
             let Value::Closure(mapper) = arguments.next()? else {
@@ -2547,6 +2655,7 @@ fn apply_builtin(builtin: &BuiltinValue, provided: Vec<Option<Value>>, span: Sou
     Some(Value::Music(Music {
         items: Vec::new(),
         uses: IndexMap::new(),
+        pitches: Box::default(),
         bindings: IndexMap::new(),
         role: None,
         definition_span: span,
@@ -2591,6 +2700,27 @@ fn eval_primitive(
         .map(|argument| eval(argument, environment, meter))
         .collect::<Option<Vec<_>>>()?;
     match primitive {
+        Primitive::IntervalAdd => {
+            let Value::Interval(first) = values.first()? else {
+                return None;
+            };
+            let Value::Interval(second) = values.get(1)? else {
+                return None;
+            };
+            first.compose(*second).map(Value::Interval)
+        }
+        Primitive::IntervalInverse => {
+            let Value::Interval(interval) = values.first()? else {
+                return None;
+            };
+            interval.inverse().map(Value::Interval)
+        }
+        Primitive::PitchClassOf => {
+            let Value::Pitch(pitch) = values.first()? else {
+                return None;
+            };
+            Some(Value::PitchClass(pitch.pitch_class()))
+        }
         Primitive::Range => {
             let count = nat_value(values.first()?)?;
             let nodes = count.saturating_add(1);
@@ -2828,6 +2958,8 @@ fn literal_values_equal(left: &Value, right: &Value) -> bool {
         left == right
     } else if let (Value::Pitch(left), Value::Pitch(right)) = (left, right) {
         left == right
+    } else if let (Value::PitchClass(left), Value::PitchClass(right)) = (left, right) {
+        left == right
     } else if let (Value::Interval(left), Value::Interval(right)) = (left, right) {
         left == right
     } else {
@@ -2840,7 +2972,7 @@ fn value_shape(value: &Value) -> (u64, u64) {
         Value::Bool(_) => (1, 1),
         Value::Nat(_) => (1, 8),
         Value::Ratio(_) | Value::Duration(_) => (1, 16),
-        Value::Pitch(_) | Value::Interval(_) => (1, 12),
+        Value::Pitch(_) | Value::PitchClass(_) | Value::Interval(_) => (1, 12),
         Value::Product(members) => aggregate_shape(members.iter()),
         Value::Option { value, .. } => value.as_deref().map_or((1, 1), |value| {
             let (nodes, bytes) = value_shape(value);
@@ -2996,6 +3128,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::ListExpr
             | SyntaxKind::OptionExpr
             | SyntaxKind::ApplyExpr
+            | SyntaxKind::PitchExpr
             | SyntaxKind::MatchExpr
             | SyntaxKind::MusicExpr
     )
@@ -3095,7 +3228,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            14,
+            17,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();

@@ -1,0 +1,32 @@
+library {
+    // Open Music Theory `016-intervals.md` supplies the conventional generic/specific
+    // interval names; `005-half-steps-whole-steps-and-accidentals.md` supplies
+    // the spelling distinction retained by these values. The written unison
+    // has no staff displacement and no chromatic displacement.
+    let unison: interval = P1;
+
+    // The chromatic semitone spelled as a minor second.
+    let minor_second: interval = m2;
+
+    // The diatonic tone spelled as a major second.
+    let major_second: interval = M2;
+
+    // The perfect fourth.
+    let perfect_fourth: interval = P4;
+
+    // The perfect fifth.
+    let perfect_fifth: interval = P5;
+
+    // The written octave, which changes both coordinates by (7, 12).
+    let octave: interval = P8;
+
+    // Apply two spelling-preserving written intervals in sequence.
+    fn compose_intervals(first: interval, second: interval) -> interval =
+        interval_add(first, second);
+
+    // Reverse the direction of a written interval.
+    fn inverse_interval(value: interval) -> interval = interval_inverse(value);
+
+    // Forget octave while retaining the written letter and accidental.
+    fn written_pitch_class(value: pitch) -> pitchclass = pitchclass_of(value);
+}

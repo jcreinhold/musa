@@ -368,6 +368,7 @@ impl TokenClass {
             | SyntaxKind::ListExpr
             | SyntaxKind::OptionExpr
             | SyntaxKind::ApplyExpr
+            | SyntaxKind::PitchExpr
             | SyntaxKind::ExprArgList
             | SyntaxKind::ExprArg
             | SyntaxKind::MatchExpr

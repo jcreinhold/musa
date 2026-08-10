@@ -459,7 +459,7 @@ impl ImportStmt {
             .filter(|token| {
                 matches!(
                     token.kind(),
-                    SyntaxKind::Identifier | SyntaxKind::ListKw | SyntaxKind::OptionKw
+                    SyntaxKind::Identifier | SyntaxKind::ListKw | SyntaxKind::OptionKw | SyntaxKind::PitchKw
                 )
             })
             .map(|token| token.text().to_owned())
@@ -1020,6 +1020,20 @@ impl NoteStmt {
     /// The written pitch (`g#4`) or pitch reference (`root`).
     pub fn pitch(&self) -> Option<String> {
         token_text(&self.0, SyntaxKind::PitchLiteral).or_else(|| token_text(&self.0, SyntaxKind::Identifier))
+    }
+
+    /// The expression which computes this note's written pitch.
+    pub fn pitch_expr(&self) -> Option<SyntaxNode> {
+        self.0.children().find(|child| {
+            matches!(
+                child.kind(),
+                SyntaxKind::NameExpr
+                    | SyntaxKind::LiteralExpr
+                    | SyntaxKind::ParenExpr
+                    | SyntaxKind::ApplyExpr
+                    | SyntaxKind::PitchExpr
+            )
+        })
     }
 
     /// The duration text (`1/2`, `3/8`, `1`).

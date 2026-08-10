@@ -44,7 +44,8 @@ impl Default for Tuning {
 impl Tuning {
     /// The frequency of a written pitch in 12-TET.
     pub fn frequency(&self, pitch: &WrittenPitch) -> f64 {
-        let midi = 12.0f64.mul_add(f64::from(pitch.octave + 1), f64::from(pitch.semitone()));
+        let chromatic = f64::from(pitch.letter.natural_semitone()) + f64::from(pitch.accidental.0);
+        let midi = 12.0f64.mul_add(f64::from(pitch.octave + 1), chromatic);
         self.concert_a * ((midi - 69.0) / 12.0).exp2()
     }
 }

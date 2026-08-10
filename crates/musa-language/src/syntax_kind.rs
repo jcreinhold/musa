@@ -31,11 +31,13 @@ pub enum SyntaxKind {
     Rational,
     /// `"..."` with `\`-escapes; newlines terminate (and are an error).
     String,
-    /// Written pitch: letter `a`–`g`, optional accidental (`s`/`ss` sharp,
-    /// `f`/`ff` flat, `n` natural — `LilyPond` English convention), octave
-    /// digits with optional `-` sign: `c5`, `g#4`, `bbb2`, `a-1`.
+    /// Written pitch: letter `a`–`g`, an optional run of `#` or `b` (or
+    /// explicit `n`), and octave digits with optional `-` sign: `c5`,
+    /// `g#4`, `bbb2`, `a-1`.
     PitchLiteral,
-    /// Interval: quality `P`/`M`/`m` plus size — `P5`, `M3`, `m3`.
+    /// Named interval: `P`/`M`/`m`, repeated `A`/`d`, or `dim`, then a
+    /// size — `P5`, `M10`, `AA4`, `dim5`, `ddd7`. `dim` disambiguates a
+    /// singly diminished interval from the written pitch `d4`.
     IntervalLiteral,
 
     // --- Unit suffixes (roadmap §7.2: units are part of the syntax).
@@ -443,6 +445,8 @@ pub enum SyntaxKind {
     OptionExpr,
     /// Ordinary function application.
     ApplyExpr,
+    /// Spelling-preserving written-pitch translation: `pitch up M2`.
+    PitchExpr,
     /// The comma-separated arguments of an ordinary application.
     ExprArgList,
     /// One positional or named ordinary-call argument.

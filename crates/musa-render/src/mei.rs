@@ -1055,7 +1055,12 @@ fn dur_attrs(item: &NotatedItem) -> (String, Option<&'static str>) {
     }
 }
 
-fn push_note_pitch(elem: &mut BytesStart<'_>, pitch: WrittenPitch, octave: &str) {
+fn push_note_pitch(
+    elem: &mut BytesStart<'_>,
+    pitch: WrittenPitch,
+    octave: &str,
+    event: EventId,
+) -> Result<(), RenderError> {
     let letter = match pitch.letter {
         musa_compiler::Letter::C => "c",
         musa_compiler::Letter::D => "d",
@@ -1070,13 +1075,22 @@ fn push_note_pitch(elem: &mut BytesStart<'_>, pitch: WrittenPitch, octave: &str)
     let accid = match pitch.accidental.0 {
         1 => Some("s"),
         2 => Some("x"),
+        3 => Some("ts"),
         -1 => Some("f"),
         -2 => Some("ff"),
-        _ => None,
+        -3 => Some("tf"),
+        0 => None,
+        alteration => {
+            return Err(RenderError::Unsupported {
+                event,
+                what: format!("MEI cannot faithfully encode written pitch {pitch} with alteration {alteration}"),
+            });
+        }
     };
     if let Some(accid) = accid {
         elem.push_attribute(("accid", accid));
     }
+    Ok(())
 }
 
 /// The grace notes leaning on an item, as a `<graceGrp>` immediately before
@@ -1107,7 +1121,7 @@ fn write_graces(writer: &mut Writer<Vec<u8>>, item: &NotatedItem) -> Result<(), 
         let mut note = element("note");
         note.push_attribute(("dur", "8"));
         note.push_attribute(("grace", "unknown"));
-        push_note_pitch(&mut note, grace.pitch, &grace.pitch.octave.to_string());
+        push_note_pitch(&mut note, grace.pitch, &grace.pitch.octave.to_string(), item.event())?;
         if grace.articulations.iter().any(|mark| artic_name(*mark).is_some()) {
             writer
                 .write_event(Event::Start(note))
@@ -1151,7 +1165,7 @@ fn write_item(
             if let Some(dots) = dots {
                 note.push_attribute(("dots", dots));
             }
-            push_note_pitch(&mut note, *pitch, &pitch.octave.to_string());
+            push_note_pitch(&mut note, *pitch, &pitch.octave.to_string(), item.event())?;
             if let Some(tie) = tie_attr(item) {
                 note.push_attribute(("tie", tie));
             }
@@ -1183,7 +1197,7 @@ fn write_item(
             write_artics(writer, item)?;
             for pitch in pitches {
                 let mut tone = element("note");
-                push_note_pitch(&mut tone, *pitch, &pitch.octave.to_string());
+                push_note_pitch(&mut tone, *pitch, &pitch.octave.to_string(), item.event())?;
                 writer
                     .write_event(Event::Empty(tone))
                     .map_err(|error| RenderError::xml(&error))?;

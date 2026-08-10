@@ -141,7 +141,7 @@ module.exports = grammar({
     import_statement: ($) =>
       seq(
         'use',
-        field('path', choice($.string, seq($.identifier, ':', ':', choice($.identifier, 'list', 'option')))),
+        field('path', choice($.string, seq($.identifier, ':', ':', choice($.identifier, 'list', 'option', 'pitch')))),
         ';',
       ),
 
@@ -281,11 +281,30 @@ module.exports = grammar({
         $.match_expression,
         $.music_expression,
         $.application_expression,
+        $.pitch_expression,
         $._primary_expression,
       ),
 
     application_expression: ($) =>
       prec.left(2, seq($._primary_expression, repeat1($.expression_argument_list))),
+
+    pitch_expression: ($) =>
+      prec.left(
+        1,
+        seq(
+          $._pitch_operand,
+          field('direction', choice('up', 'down')),
+          field('interval', $._pitch_operand),
+        ),
+      ),
+
+    _pitch_operand: ($) =>
+      choice(
+        $.pitch_literal,
+        $.interval_literal,
+        $.identifier,
+        seq('(', $.expression, ')'),
+      ),
 
     expression_argument_list: ($) =>
       seq('(', optional(seq($.expression_argument, repeat(seq(',', $.expression_argument)), optional(','))), ')'),
@@ -504,7 +523,10 @@ module.exports = grammar({
     // No terminator: an event is self-delimiting.
     note_statement: ($) =>
       seq(
-        field('pitch', choice($.pitch_literal, $.identifier)),
+        field(
+          'pitch',
+          choice($.pitch_literal, $.identifier, $.pitch_expression, seq('(', $.expression, ')')),
+        ),
         $.duration,
         optional($.articulation_list),
         optional('~'),
@@ -561,7 +583,7 @@ module.exports = grammar({
 
     // Parser::transpose_stmt — `transpose up|down <interval> { ... }`
     transpose_statement: ($) =>
-      seq('transpose', field('direction', choice('up', 'down')), field('interval', $.interval_literal), field('body', $.block)),
+      prec(3, seq('transpose', field('direction', choice('up', 'down')), field('interval', $.interval_literal), field('body', $.block))),
 
     // Parser::repeat_stmt — a count, or a range the realization chooses in.
     repeat_statement: ($) =>
@@ -661,13 +683,14 @@ module.exports = grammar({
 
     // --- Tokens (crates/musa-language/src/lexer.rs) ----------------------
 
-    // `[a-g](##|bb|[#bn])?-?[0-9]+` — a written pitch: letter, accidental,
+    // `[a-g](#+|b+|n)?-?[0-9]+` — a written pitch: letter, accidental,
     // octave. The letter is always first, so the `b` of `bb2` is a flat and
     // the `b` of `b2` is the note.
-    pitch_literal: ($) => /[a-g](##|bb|[#bn])?-?[0-9]+/,
+    pitch_literal: ($) => /[a-g](#+|b+|n)?-?[0-9]+/,
 
-    // `[PMm][0-9]+` — an interval: quality and size.
-    interval_literal: ($) => /[PMm][0-9]+/,
+    // `d4` is the pitch D4, so a singly diminished interval is `dim4`;
+    // repeated diminution remains compact (`dd4`, `ddd4`).
+    interval_literal: ($) => /(P|M|m|A+|d{2,}|dim)[0-9]+/,
 
     rational: ($) => /[0-9]+\/[0-9]+/,
     float: ($) => /[0-9]+\.[0-9]+/,

@@ -817,18 +817,18 @@ fn pitch_name(pitch: WrittenPitch) -> String {
         musa_compiler::Letter::A => "a",
         musa_compiler::Letter::B => "b",
     };
-    let accidental = match pitch.accidental.0 {
-        1 => "s",
-        2 => "ss",
-        -1 => "f",
-        -2 => "ff",
-        _ => "",
+    let accidental = match pitch.accidental.0.cmp(&0) {
+        std::cmp::Ordering::Greater => "s".repeat(usize::try_from(pitch.accidental.0).unwrap_or(usize::MAX)),
+        std::cmp::Ordering::Less => {
+            "f".repeat(usize::try_from(pitch.accidental.0.unsigned_abs()).unwrap_or(usize::MAX))
+        }
+        std::cmp::Ordering::Equal => String::new(),
     };
     // LilyPond: c' is middle C (our octave 4); each ' raises, each , lowers.
     let marks: String = if pitch.octave >= 3 {
         "'".repeat(usize::try_from(pitch.octave.saturating_sub(3)).unwrap_or(usize::MAX))
     } else {
-        ",".repeat(usize::try_from(3i8.saturating_sub(pitch.octave)).unwrap_or(usize::MAX))
+        ",".repeat(usize::try_from(3i32.saturating_sub(pitch.octave)).unwrap_or(usize::MAX))
     };
     format!("{letter}{accidental}{marks}")
 }
