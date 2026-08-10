@@ -14,7 +14,7 @@ Establish the compatibility and performance oracle for the elaboration-language 
 changes. Extend the existing semantic benchmark harness with workloads that distinguish plain source, repeated/shared
 material, deep transform nesting, many small declarations, and the existing performance/studio/audio pipeline; record
 time and allocations; and freeze the semantic, provenance, diagnostic, graph, scheduling, and backend outputs that
-prompts 94–140 must preserve for source using no new syntax, except where the baseline explicitly records a defect for
+prompts 94–142 must preserve for source using no new syntax, except where the baseline explicitly records a defect for
 one named repairing prompt.
 
 ## Read
@@ -54,7 +54,7 @@ API.
 
 Keep a machine-readable expected-change ledger beside the manifest. It records, rather than blesses, the current shared
 note-stream warning, ignored `Parameter` event, processor-hover gap, graph-topology modulation address, and eager studio
-`f64` conversion. Each entry names exactly one repairing prompt (122–127); any other change is a compatibility failure.
+`f64` conversion. Each entry names exactly one repairing prompt (124–129); any other change is a compatibility failure.
 When its prompt lands, replace the defect observation with the positive law and remove the ledger entry. Never preserve
 known-wrong audio merely because it was baselined.
 
@@ -86,6 +86,6 @@ Commit as `Baseline the elaboration language migration`.
 
 - Change no compiled meaning, parser behavior, diagnostic, public API, or backend output; document observed audio
   defects instead of repairing them here.
-- Do not optimize anything the benchmark exposes; report the finding for prompt 121.
+- Do not optimize anything the benchmark exposes; report the finding for prompt 123.
 - No benchmark-only public fields, traits, or phase objects.
 - No future-syntax fixture. A baseline must compile on the compiler it measures.

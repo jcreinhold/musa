@@ -31,7 +31,7 @@ individually small and collectively make the surface read as improvised. They we
    reviewed, and merged without ever being part of the standard library.
 
 3. **Modules cannot nest, so names carry the hierarchy.** A bundled module's virtual URI is its file name, so
-   `std::tonal::harmony` is unspellable and the module is called `std::tonal::harmony`. The underscore is not a naming
+   `std::tonal::harmony` is unspellable and the module is called `std::tonal_harmony`. The underscore is not a naming
    preference; it is a missing feature wearing one. The same limitation makes the flat value namespace a hard
    constraint rather than a default: two modules cannot export the same name, with no way to disambiguate.
 
@@ -39,15 +39,29 @@ individually small and collectively make the surface read as improvised. They we
    and `music-use := "use" expr ";"`, disambiguated only by whether the operand happens to be a string literal or a
    `std::` path. One is a file-level declaration; the other is the score's most common statement.
 
-A fifth item was examined and **kept**: `fn f(x: τ) -> υ = expr;`. It is not a shorthand for a block form; there is no
-block form, because there is no statement language. `02-core-calculus.md` §5 depends on it — "There is no
-anonymous-function surface syntax. A checked named `fn` supplies the lambda" — and one total expression per function is
-what makes strong normalization statable at all. It stays, and this paragraph exists so it is not re-litigated.
+Two more were found by *running* corrections A–C rather than by writing musa, and they are recorded here with the
+first four because they have the same cause: a spelling was chosen locally, and nothing was comparing it to the rest of
+the language.
+
+5. **`module` and `mod` are one letter apart and unrelated.** Correction B needed a word for a package's children and
+   took `mod`, while §4 of `04-templates-and-modules.md` already spends `module` on the static signature/module/functor
+   layer. That is fault 4 exactly — two spellings a reader must tell apart by context — committed in the act of fixing
+   fault 4. One of the two words has to go.
+
+6. **`fn` is the only declaration whose body is not a block.** `piece`, `library`, `voice`, `motif`, `fragment`,
+   `signature`, `module`, and `music` all write their contents between braces; `fn` alone writes `= expr;`. This
+   document's first draft **defended** that as forced — "there is no block form, because there is no statement
+   language" — and that argument is wrong. A block is not a statement language. Rust's function body is a *block
+   expression* whose value is its trailing expression, and admitting that shape here adds no statement form, no
+   `return`, no sequencing, and no new typing rule: `{ e }` is `e`. The rule the defense actually rested on — one total
+   expression per function, which is what makes strong normalization statable — is untouched by how that expression is
+   delimited. What the `=` bought was two fewer characters; what it cost was the one place where a reader who knows the
+   rest of the language has to be told.
 
 ## 2. Correction A — one theorem, not one proof per domain
 
 The obligation §5 states is real and must be discharged. Discharging it twelve times, once per musical domain, and
-again for every domain prompts 109–112 add, would produce a dozen near-identical inductions that no one reads and that
+again for every domain prompts 109–114 add, would produce a dozen near-identical inductions that no one reads and that
 silently rot. The correction is to prove it **once, parametrically**, with premises a test can check.
 
 ### A.1 Three primitive families
@@ -181,7 +195,7 @@ decision for the prompt; that it has exactly one hand-edited input is not.
 ### B.4 Paths, and why binding stays flat
 
 Import paths are qualified to any depth: `import std::tonal::harmony;`. The `std::IDENT` production becomes
-`std::IDENT ("::" IDENT)*`, and `std::tonal::harmony` becomes `std::tonal::harmony`.
+`std::IDENT ("::" IDENT)*`, and `std::tonal_harmony` becomes `std::tonal::harmony`.
 
 Binding, however, stays **flat by default**. An import brings the module's public names into the current flat value
 namespace, so a score writes `numeral_chord(home, five)` rather than `harmony.numeral_chord(home, five)`. This is a
@@ -201,7 +215,7 @@ import std::jazz::harmony as jazz;
 Importing two modules that export the same name is an error naming both, and an `as` alias on either resolves it by
 qualifying that one. Aliasing is therefore required exactly at a real conflict and absent otherwise.
 
-### B.5 Relation to prompt 130
+### B.5 Relation to prompt 132
 
 The remote-package prompt (pinned imports, lockfile, offline builds, no version solver) inherits this shape rather than
 inventing a second one. A remote package is the same directory layout fetched by exact pin; the roadmap's rejection of
@@ -235,7 +249,53 @@ The old spelling becomes a **hard error with an applicable fix**, not a silent a
 machinery already carries fixes, and a language that quietly accepts both spellings has three years of mixed corpus
 ahead of it.
 
-## 5. Order and cost
+## 5. Correction D — `structure` for the static layer, `module` for nothing else
+
+Two words, one letter apart, for unrelated things. The resolution is to rename the rarer one: `04-templates-and-modules.md`
+§4's static layer is ML's, and ML's word for the thing that implements a signature is **`structure`**.
+
+```musa
+signature TonalContext { let tonic: key; let collection: scale; }
+
+structure CMajor : TonalContext {
+    let tonic = key c major;
+    let collection = signature_scale(tonic);
+}
+
+template structure InKey(home: key) : TonalContext { … }
+make Home = InKey(key g major);
+```
+
+`module` then means one thing — a node of a package's tree — and `mod` is its declaration keyword, spelled short
+because a module file is a list of them and nothing else. `signature`, `template`, and `make` are unchanged.
+
+The alternative was to keep `module` for both and tell the two apart by what follows the name, as Rust tells `mod foo;`
+from `mod foo { }`. It was rejected because the two are not two forms of one idea: a package module is a file, and a
+structure is a checked value of a signature type. Rust's two `mod`s really are the same thing written twice.
+
+`structure` costs less than it looks like: the layer is used at four sites in `examples/` and `stdlib/`, against
+`mod`'s fourteen in the standard library alone and every package written after this.
+
+## 6. Correction E — a function body is a block expression
+
+`fn f(x: τ) -> υ { e }` replaces `fn f(x: τ) -> υ = e;`.
+
+The braces are a **block expression**: `{ e }` elaborates to `e`, and it is admitted as an expression form so that a
+function body is one, exactly as `piece`'s body is a piece body. Nothing else follows from it. There is no statement
+sequence, no `let`-in-block, no `return`, and no early exit; a block holds exactly one expression, and a second one is
+a parse error that says so. `02-core-calculus.md` §5's fragment gains one derived form with the equation `⟦{ e } ⟧ =
+⟦e⟧`, which is a definitional expansion and therefore changes no proof.
+
+The `= e;` spelling becomes a **hard error with an applicable fix**, on correction C's precedent and for its reason: a
+language that accepts both has a mixed corpus forever, and the fix machinery makes one spelling affordable.
+
+Two consequences worth stating, because both look like objections and neither is one. A body that is a `music` block
+reads `fn triad(register: frame) -> music { music { … } }`, and the doubled brace is honest — the outer one delimits
+the function, the inner one is a `music` value, and they are genuinely two things. And a `match` body loses its
+trailing semicolon, which is the one place the old form read well; it reads better inside braces, where every other
+`match` in the language already sits.
+
+## 7. Order and cost
 
 The corrections are independent and are implemented in this order because it minimizes rework:
 
@@ -244,16 +304,23 @@ The corrections are independent and are implemented in this order because it min
 | A | domain metatheory | `02-core-calculus.md` §5.8, the primitive registry, one law suite. No `.musa` source moves. |
 | C | the `import` keyword | 24 import sites, the grammar, the formatter, the lexer's keyword set, tree-sitter, the LSP, lexed fixtures. |
 | B | packages and module trees | the `stdlib/` layout, `imports.rs`, the reference generator, every `use std::…;` site. |
+| D | `structure` for the static layer | 4 declaration sites, the grammar, the formatter, tree-sitter, the LSP, `04-templates-and-modules.md` §4. |
+| E | braced function bodies | every `fn` in `examples/` and `stdlib/`, the grammar, the formatter, tree-sitter, the LSP, `02-core-calculus.md` §5. |
 
 C runs before B so that import sites are rewritten once rather than twice. A runs first because it is the standing gate
-on everything the theory block does next, and because nothing else depends on it.
+on everything the theory block does next, and because nothing else depends on it. D and E were found by running A–C
+and are implemented immediately after them, before the theory block resumes writing `.musa` source that would otherwise
+have to be rewritten twice — E in particular touches every function in the standard library, and the library grows with
+every prompt after this one.
 
-## 6. What is explicitly not changed
+## 8. What is explicitly not changed
 
 - The temporal kernel, its operations, its normal forms, and its law suite.
 - `music` as a context-reading recipe, the contextual-instantiation theorem, and prompt 98's higher-order constraint.
-- `fn f(x: τ) -> υ = expr;` — see §1.
+- One total expression per function, which is what makes strong normalization statable. §6 changes how that expression
+  is delimited and nothing about what it is.
 - The absence of user parametric polymorphism, recursion, `fix`, effects, and anonymous lambdas.
-- The static `signature` / `module` / `template module` layer, which is a checking-time abstraction and is not a second
-  import mechanism. §B.4 states where its qualification rule and the import rule deliberately differ.
+- The static layer itself, which is a checking-time abstraction and is not a second import mechanism. §5 renames its
+  middle keyword and changes nothing about what it means; §B.4 states where its qualification rule and the import rule
+  deliberately differ.
 - The rejection of a package registry, a semantic-version range solver, and implicit network access at compile time.

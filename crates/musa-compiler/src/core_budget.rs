@@ -2,7 +2,7 @@
 //!
 //! These are language acceptance limits, not wall-clock timeouts. The same
 //! source and compiler version therefore fail at the same operation on every
-//! machine. Prompt 118 may tune the constants from a wider corpus, but may not
+//! machine. Prompt 120 may tune the constants from a wider corpus, but may not
 //! change this accounting into an interrupt or a partial-result mechanism.
 
 use crate::origin::SourceSpan;

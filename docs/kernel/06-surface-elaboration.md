@@ -330,7 +330,7 @@ it.
 ## Prompt-92 language candidate
 
 The rules above remain the governing account of the implemented grammar. `docs/language/` is the candidate contract for
-prompts 93–136 and becomes governing only after prompt 137. Its private elaboration subsystem adds a total value calculus
+prompts 93–138 and becomes governing only after prompt 139. Its private elaboration subsystem adds a total value calculus
 and contextual, context-neutral `music`; neither is a kernel type. The candidate staging is:
 
 ```text

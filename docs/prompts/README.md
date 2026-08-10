@@ -16,8 +16,8 @@ states, and performance budgets — `docs/interface/` is the authority. Roadmap 
 20–26 implement `docs/interface/`; prompt 26 graduated it from candidate to governing, as prompt 12 did for the kernel.
 
 **The elaboration-language direction is a candidate until it earns graduation.** Prompt 92 turns
-`docs/elaboration-language.md` into a precise candidate specification under `docs/language/`; prompts 93–139 implement,
-measure, and audit its score, performance, sound, asset, and package semantics; prompt 140 makes it governing only if
+`docs/elaboration-language.md` into a precise candidate specification under `docs/language/`; prompts 93–141 implement,
+measure, and audit its score, performance, sound, asset, and package semantics; prompt 142 makes it governing only if
 the complete conformance matrix is green. Until then, the roadmap, course correction, and existing kernel remain
 authoritative where the candidate differs.
 
@@ -214,43 +214,45 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 108 | domain-metatheory | 3 | The musical domains proved a conservative extension, with a checked registry |
 | 109 | the-import-keyword | 3 | `import` for imports, `use` for material; the old spelling errors with a fix |
 | 110 | packages-and-module-trees | 3 | `musa.toml`, `lib.musa`, `mod`, nested paths, one derived source of truth |
-| 111 | schemas-and-harmonization | 3 | Finite source-defined schemas, sequences, Rule of the Octave |
-| 112 | explicit-theory-assertions | 3 | Identity-preserving opt-in musical constraints |
-| 113 | analysis-service | 3 | Narrow evidence-bearing advisory-analysis boundary |
-| 114 | tonal-analysis | 3 | Ambiguity-preserving Roman, cadence, tonicization, modulation findings |
-| 115 | voice-leading-and-counterpoint | 3 | Explicit style profiles with rule strengths and evidence |
-| 116 | kernel-source-inclusion | 3 | Valid `.musa.kernel` documents and typed whole-document inclusion |
-| 117 | typed-kernel-quotation | 3 | Hygienic local quote/antiquote at the context-neutral boundary |
-| 118 | elaboration-language-tooling | 3 | One compiler-backed semantic tooling model across editors |
-| 119 | elaboration-workbench | 3 | Musician-first desktop interaction for types, origin, assertions, analysis |
-| 120 | language-and-theory-handbook | 3 | Tested musician and implementor paths with theory citations |
-| 121 | elaboration-performance-closure | 3 | Profiled latency, allocation, memory, caching, and budget closure |
-| 122 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
-| 123 | exact-studio-values | 3 | Exact written quantities through audio preparation |
-| 124 | performance-gestures | 3 | Instrument-independent note gestures and musical control curves |
-| 125 | instrument-contracts | 3 | Typed exposed controls over private native/sample implementations |
-| 126 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
-| 127 | expressive-control-realization | 3 | Marks and automation reach exposed controls, then private parameters |
-| 128 | ergonomic-sound-bindings | 3 | Musician-facing sound/profile choice and stable defaults |
-| 129 | reproducible-assets | 4 | Content-addressed project/package audio assets and invalidation |
-| 130 | pinned-package-imports | 4 | Exact remote source/asset packages, lockfile, offline builds, no solver |
-| 131 | sampler-runtime | 4 | Deterministic native sample-map instrument implementation |
-| 132 | sfz-instruments | 4 | Checked SFZ v1-core adapter and compatibility matrix |
-| 133 | soundfont-instruments | 4 | Checked SoundFont 2.04 adapter and compatibility matrix |
-| 134 | media-cue-semantics | 4 | Musical clips versus fixed-physical-duration cues |
-| 135 | audio-clips | 4 | Prepared clip/cue playback, routing, seek, offline/live laws |
-| 136 | sound-mix-workbench | 4 | Progressive musician/developer Sound and Mix interaction |
-| 137 | audio-language-tooling | 4 | LSP/editor/handbook coverage for sound, assets, packages, formats |
-| 138 | audio-performance-closure | 4 | Measured preparation/render/asset/UI performance and RT closure |
-| 139 | audio-conformance | 4 | Complete performance/sound/assets conformance audit |
-| 140 | language-conformance | 4 | Whole-language audit and conditional language-spec graduation |
-| 141 | wasm-shell | 5 | `musa-wasm`: the whole pipeline as one small WebAssembly module |
-| 142 | shared-engrave-package | 5 | `packages/musa-engrave`: the worker engraver shared by desktop and web |
-| 143 | web-package-scaffold | 5 | `@musa/web` ESM package: low-level `parse`/`render` |
-| 144 | dom-typesetting | 5 | `MusaWeb.typeset`, `<musa-score>`, error boxes, MutationObserver |
-| 145 | provenance-interaction | 5 | Event-id callbacks and highlight via the MEI `xml:id` contract |
-| 146 | web-distribution-and-examples | 5 | CDN iife build, example pages, build-time typesetting recipe |
-| 147 | snippet-playback | 5 | **Deferred**: in-page PCM playback with playhead provenance |
+| 111 | the-structure-keyword | 3 | ML's `structure` for the static layer, so `module` means a package node |
+| 112 | braced-function-bodies | 3 | `fn f() -> τ { e }`: a block expression holding exactly one expression |
+| 113 | schemas-and-harmonization | 3 | Finite source-defined schemas, sequences, Rule of the Octave |
+| 114 | explicit-theory-assertions | 3 | Identity-preserving opt-in musical constraints |
+| 115 | analysis-service | 3 | Narrow evidence-bearing advisory-analysis boundary |
+| 116 | tonal-analysis | 3 | Ambiguity-preserving Roman, cadence, tonicization, modulation findings |
+| 117 | voice-leading-and-counterpoint | 3 | Explicit style profiles with rule strengths and evidence |
+| 118 | kernel-source-inclusion | 3 | Valid `.musa.kernel` documents and typed whole-document inclusion |
+| 119 | typed-kernel-quotation | 3 | Hygienic local quote/antiquote at the context-neutral boundary |
+| 120 | elaboration-language-tooling | 3 | One compiler-backed semantic tooling model across editors |
+| 121 | elaboration-workbench | 3 | Musician-first desktop interaction for types, origin, assertions, analysis |
+| 122 | language-and-theory-handbook | 3 | Tested musician and implementor paths with theory citations |
+| 123 | elaboration-performance-closure | 3 | Profiled latency, allocation, memory, caching, and budget closure |
+| 124 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
+| 125 | exact-studio-values | 3 | Exact written quantities through audio preparation |
+| 126 | performance-gestures | 3 | Instrument-independent note gestures and musical control curves |
+| 127 | instrument-contracts | 3 | Typed exposed controls over private native/sample implementations |
+| 128 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
+| 129 | expressive-control-realization | 3 | Marks and automation reach exposed controls, then private parameters |
+| 130 | ergonomic-sound-bindings | 3 | Musician-facing sound/profile choice and stable defaults |
+| 131 | reproducible-assets | 4 | Content-addressed project/package audio assets and invalidation |
+| 132 | pinned-package-imports | 4 | Exact remote source/asset packages, lockfile, offline builds, no solver |
+| 133 | sampler-runtime | 4 | Deterministic native sample-map instrument implementation |
+| 134 | sfz-instruments | 4 | Checked SFZ v1-core adapter and compatibility matrix |
+| 135 | soundfont-instruments | 4 | Checked SoundFont 2.04 adapter and compatibility matrix |
+| 136 | media-cue-semantics | 4 | Musical clips versus fixed-physical-duration cues |
+| 137 | audio-clips | 4 | Prepared clip/cue playback, routing, seek, offline/live laws |
+| 138 | sound-mix-workbench | 4 | Progressive musician/developer Sound and Mix interaction |
+| 139 | audio-language-tooling | 4 | LSP/editor/handbook coverage for sound, assets, packages, formats |
+| 140 | audio-performance-closure | 4 | Measured preparation/render/asset/UI performance and RT closure |
+| 141 | audio-conformance | 4 | Complete performance/sound/assets conformance audit |
+| 142 | language-conformance | 4 | Whole-language audit and conditional language-spec graduation |
+| 143 | wasm-shell | 5 | `musa-wasm`: the whole pipeline as one small WebAssembly module |
+| 144 | shared-engrave-package | 5 | `packages/musa-engrave`: the worker engraver shared by desktop and web |
+| 145 | web-package-scaffold | 5 | `@musa/web` ESM package: low-level `parse`/`render` |
+| 146 | dom-typesetting | 5 | `MusaWeb.typeset`, `<musa-score>`, error boxes, MutationObserver |
+| 147 | provenance-interaction | 5 | Event-id callbacks and highlight via the MEI `xml:id` contract |
+| 148 | web-distribution-and-examples | 5 | CDN iife build, example pages, build-time typesetting recipe |
+| 149 | snippet-playback | 5 | **Deferred**: in-page PCM playback with playhead provenance |
 
 Prompts 08–12 are the course-correction insertion. The direct CST→score lowering built by prompts 05–06 was **frozen as
 the regression oracle** when prompt 11 landed: the new kernel elaboration had to reproduce its snapshots exactly
@@ -403,17 +405,18 @@ context-neutral elaboration result and allow higher-order construction only thro
 99 makes the standard library ordinary inspectable Musa source. This order makes the kernel the score denotation, not
 the programming language or audio engine, and keeps evaluator/type-checker types private to `musa-compiler`.
 
-**100–115 are a bounded theory block, not a universal “music theory engine.”** 100–105 establish distinct domains for
+**100–117 are a bounded theory block, not a universal “music theory engine.”** 100–105 establish distinct domains for
 spelled pitches, intervals, scales, keys, degrees, chord classes, voicings, `pc12`, pitch-class sets, and rows before an
-operation can accidentally collapse them. 106–107 and 111 then implement transformational, tonal-construction, schema,
-and harmonization libraries as total source functions over those types. 112 separates explicit assertions from advisory
-inference; 113 gives analyses a narrow evidence-bearing service; 114–115 add tonal, voice-leading, and counterpoint
+operation can accidentally collapse them. 106–107 and 113 then implement transformational, tonal-construction, schema,
+and harmonization libraries as total source functions over those types. 114 separates explicit assertions from advisory
+inference; 115 gives analyses a narrow evidence-bearing service; 116–117 add tonal, voice-leading, and counterpoint
 profiles with their repertoire and convention stated. The prompts cite the local Open Music Theory corpus where it is
 authoritative and require local definitions, proofs, and exhaustive finite models where it is not.
 
-**108–110 interrupt that block, and they are the correction it earned.** Governed by
+**108–112 interrupt that block, and they are the correction it earned.** Governed by
 [`../language-correction.md`](../language-correction.md), they answer a complaint that the language had started to read
-as improvised, and each of the three names a fault that was found by *writing* musa rather than by auditing it. **108**
+as improvised, and each of the five names a fault that was found by *writing* or *running* musa rather than by auditing
+it. **108**
 is the one that matters: `02-core-calculus.md` §5 proves safety and normalization for a fragment of six base types and
 says in its own words that later additions are not covered by an appeal to standard STLC — and prompts 100–107 then
 added twelve musical base types and sixty-nine compiler-owned operations without one compatibility case between them.
@@ -424,54 +427,61 @@ operand happened to be a string. **110** makes the standard library a package wi
 `stdlib/manifest.toml` was compiled under `#[cfg(test)]` while four hand-maintained parallel lists did the actual
 resolving — a state that let `stdlib/sequences.musa` be committed, be unreachable from every import, and build green.
 
-They run in that order because 108 gates everything the theory block does next and depends on nothing, and because
-running 109 before 110 rewrites each import site once rather than twice. A fourth complaint — that `fn f(x: τ) -> υ =
-expr;` looked like a shorthand — was examined and **rejected**: there is no block form because there is no statement
-language, and one total expression per function is what makes strong normalization statable at all. The correction
-document records that finding so it is not re-litigated.
+**111** and **112** were found by running the first three. 110 needed a word for a package's children and took `mod`,
+while `module` was already spent on the static signature/module/functor layer — 109's fault committed in the act of
+fixing it — so **111** renames the rarer construct to ML's own word, `structure`, and `module` is left meaning one
+thing. **112** gives a function body braces. That complaint had been examined during the first three and **rejected**,
+on the grounds that there is no block form because there is no statement language; the argument was wrong, because a
+block is a delimiter and not a statement sequence. `{ e }` elaborates to `e`, holds exactly one expression, and admits
+no `let`, no `return`, and no sequencing — so `fn` stops being the one declaration in the language whose body is not
+braced, and §5's normalization proof gains a derived form rather than a case.
 
-**116–119 pay the interchange and usability costs.** A `.musa.kernel` file becomes a valid typed Musa document before
+They run in that order because 108 gates everything the theory block does next and depends on nothing; because running
+109 before 110 rewrites each import site once rather than twice; and because 111 and 112 rewrite every declaration in
+`stdlib/`, which grows with every prompt after them.
+
+**118–121 pay the interchange and usability costs.** A `.musa.kernel` file becomes a valid typed Musa document before
 local quote/antiquote is admitted; quotation crosses only the context-neutral `ScoreFact` boundary and preserves hygiene
 and provenance. The language server, editor extensions, and desktop consume the same compiler/project facts. They may
 explain types, origins, assertions, and competing analyses, but may not grow a second checker, editable expanded AST, or
 visual programming model.
 
-**120–121 close the score-elaboration implementation without prematurely graduating the language.** 120 tests two
+**122–123 close the score-elaboration implementation without prematurely graduating the language.** 122 tests two
 documentation paths — one by musical task and one by language implementation — and generates standard-library
-signatures from source. 121 compares score elaboration to 93's baseline and permits caching or incrementality only when
+signatures from source. 123 compares score elaboration to 93's baseline and permits caching or incrementality only when
 semantic keys and measured need are demonstrated. Audio retains its frozen baseline and receives its own measured
 closure at 138.
 
-**122–128 replace the accidental score↔DSP wire with a typed instrument boundary.** 122 makes the studio vocabulary
-discoverable from one catalogue; 123 restores exact written quantities; 124 names the missing object, an exact
-instrument-independent gesture/control timeline; 125 makes an instrument a deep contract over a private implementation;
-126 preserves part identity through prepared routing; and 127 binds musical controls to private parameters only at
-audio preparation. 128 then spends that simplicity at the surface: choosing a sound/profile is one musical action,
+**124–130 replace the accidental score↔DSP wire with a typed instrument boundary.** 124 makes the studio vocabulary
+discoverable from one catalogue; 125 restores exact written quantities; 126 names the missing object, an exact
+instrument-independent gesture/control timeline; 127 makes an instrument a deep contract over a private implementation;
+128 preserves part identity through prepared routing; and 129 binds musical controls to private parameters only at
+audio preparation. 130 then spends that simplicity at the surface: choosing a sound/profile is one musical action,
 while expert graph and mix declarations remain available and source-compatible.
 
-**129–135 add external sound without making builds or time semantics implicit.** 129 defines verified content-addressed
-assets before a decoder exists. 130 adds exact-pinned fetch/lock/offline packages while retaining the roadmap's rejection
-of a registry and version solver. 131 builds one deterministic sampler runtime; 132 and 133 translate SFZ and SoundFont
-into it through explicit compatibility matrices rather than adopting either format as Musa's ontology. 134 distinguishes
-a beat-fitted clip from a point cue whose asset keeps its physical duration; 135 renders both through the same prepared
+**131–137 add external sound without making builds or time semantics implicit.** 131 defines verified content-addressed
+assets before a decoder exists. 132 adds exact-pinned fetch/lock/offline packages while retaining the roadmap's rejection
+of a registry and version solver. 133 builds one deterministic sampler runtime; 134 and 135 translate SFZ and SoundFont
+into it through explicit compatibility matrices rather than adopting either format as Musa's ontology. 136 distinguishes
+a beat-fitted clip from a point cue whose asset keeps its physical duration; 137 renders both through the same prepared
 offline/live plan.
 
-**136–140 make the sound language usable and make graduation expensive.** 136 repairs Sound/Mix around instruments,
-exposed controls, part outputs, assets, and media without creating GUI-owned state. 137 extends generated editor facts
-and the two-path handbook. 138 measures preparation, rendering, decoded memory, callback deadlines, and UI updates.
-139 audits every performance/sound/asset/package law and format support claim. Only 140 combines that green matrix with
+**138–142 make the sound language usable and make graduation expensive.** 138 repairs Sound/Mix around instruments,
+exposed controls, part outputs, assets, and media without creating GUI-owned state. 139 extends generated editor facts
+and the two-path handbook. 140 measures preparation, rendering, decoded memory, callback deadlines, and UI updates.
+141 audits every performance/sound/asset/package law and format support claim. Only 142 combines that green matrix with
 the score/theory/kernel/tooling matrix and conditionally graduates `docs/language/`.
 
-**Prompts 141–147 are the web block: musa as a MathJax-like library for any page.** The stack the desktop app already
+**Prompts 143–149 are the web block: musa as a MathJax-like library for any page.** The stack the desktop app already
 proved — Rust compiles source to MEI, a worker engraver turns MEI into SVG, `xml:id`s carry provenance — is packaged,
-not reinvented. **141** crosses the existing pipeline to WebAssembly as a shell crate with the post-wasm-pack toolchain
-(`wasm-bindgen --target web` + pinned `wasm-opt`; wasm-pack was sunset in 2025). **142** extracts the desktop's worker
+not reinvented. **143** crosses the existing pipeline to WebAssembly as a shell crate with the post-wasm-pack toolchain
+(`wasm-bindgen --target web` + pinned `wasm-opt`; wasm-pack was sunset in 2025). **144** extracts the desktop's worker
 engraver into `packages/musa-engrave` so two platforms share one provenance-critical module instead of drifting apart.
-**143** scaffolds `@musa/web` with the low-level `parse`/`render` pair (the mermaid shape). **144** adds the MathJax
+**145** scaffolds `@musa/web` with the low-level `parse`/`render` pair (the mermaid shape). **146** adds the MathJax
 layer: `typeset()`, the `<musa-score>` element, visible error boxes, an opt-in observer — with the source kept in the
-DOM, because text is canonical on the web too. **145** wires the `event-<hex>` contract to page callbacks, the feature
-that makes it musa and not another notation renderer. **146** ships the CDN single-tag build (Blob-inlined worker),
-example pages, and the build-time recipe for static sites. **147** is deferred: in-page playback, scheduled only when
+DOM, because text is canonical on the web too. **147** wires the `event-<hex>` contract to page callbacks, the feature
+that makes it musa and not another notation renderer. **148** ships the CDN single-tag build (Blob-inlined worker),
+example pages, and the build-time recipe for static sites. **149** is deferred: in-page playback, scheduled only when
 a real need is demonstrated.
 
 Phase numbers follow roadmap §18. "Phase 1.5" is the project layer and GUI, which the roadmap places inside Phase 1
@@ -481,7 +491,7 @@ on; phases describe scope, not strict order.
 
 ## Out of scope for this sequence
 
-The user has now asked for the Phase 4 sample/media/library work, and it is deliberately ordered after prompt 121's
+The user has now asked for the Phase 4 sample/media/library work, and it is deliberately ordered after prompt 125's
 native score/elaboration stability point. The following remain outside this sequence:
 
 - CLAP/VST hosting and the macOS Audio Unit bridge;
@@ -493,7 +503,7 @@ native score/elaboration stability point. The following remain outside this sequ
 - pitch-preserving clip time-warping, convolution, mastering suites, and unbounded disk streaming until a separately
   measured musical workload justifies each one.
 
-Prompts 100–115 are the requested, deliberately finite theory-library scope. Still out of scope are a universal or
+Prompts 100–117 are the requested, deliberately finite theory-library scope. Still out of scope are a universal or
 style-neutral theory engine, unconstrained automatic composition, corpus-trained inference, probabilistic analysis,
 arbitrary tuning-system abstraction, and claims that one analytical vocabulary is musical truth. A new repertoire,
 style profile, or theory family needs its own named domain, sources or definitions, tests, and prompt; it must not enter

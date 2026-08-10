@@ -177,5 +177,5 @@ The following are static errors: a parameterized declaration without `template`;
 first-class `piece`, `voice`, `module`, or source-syntax use; a module member that fails its signature; two generated
 declarations with the same public address; and a structural declaration embedded in `music`.
 
-Prompts 103–104 implement this stage. Prompt 121 measures expansion and caching. Prompt 140 verifies that identity and
+Prompts 103–104 implement this stage. Prompt 123 measures expansion and caching. Prompt 142 verifies that identity and
 Origin remain stable through the migration.

@@ -39,7 +39,7 @@ kernel payloads unless the author explicitly writes an annotation derived from o
 choice.
 
 There is no privileged “the analysis.” Two methods may return different well-typed results. A failed or ambiguous
-analysis is data, not malformed music. Prompts 113–115 must keep construction APIs independent of analysis APIs.
+analysis is data, not malformed music. Prompts 115–117 must keep construction APIs independent of analysis APIs.
 
 ## 4. Semantic laws
 
@@ -95,14 +95,14 @@ Each rejected shortcut has a fixture that would fail if the shortcut returned:
 | --- | --- |
 | 93–96 | baseline fixtures captured; grammar/core type safety; finite budget diagnostics; no public elaboration API |
 | 97–99 | contextual laws, higher-order corpus, and bundled library pass without eager occurrence explosion |
-| 100–115 | domain constructor laws, source citations, assertions/analyses split, tonal and post-tonal counterexamples |
-| 116–117 | standalone kernel and quotation preserve the existing kernel grammar and closure guarantees |
-| 118–120 | formatter, LSP, workbench, and handbook expose exact syntax and teach domain distinctions |
-| 121 | incremental and cold compilation meet recorded budgets; cache keys include context and build closure |
-| 122–128 | sound vocabulary, exact values, gestures, typed instruments, part isolation, expression, and ergonomic binding |
-| 129–135 | immutable assets, exact-pinned offline packages, sample adapters, media cues, and clip/fixed-media distinction |
-| 136–139 | workbench and tooling preserve source authority; performance and conformance laws pass |
-| 140 | full corpus, migration, docs, public API, performance, and governing-precedence audit |
+| 100–117 | domain constructor laws, source citations, assertions/analyses split, tonal and post-tonal counterexamples |
+| 118–119 | standalone kernel and quotation preserve the existing kernel grammar and closure guarantees |
+| 120–122 | formatter, LSP, workbench, and handbook expose exact syntax and teach domain distinctions |
+| 123 | incremental and cold compilation meet recorded budgets; cache keys include context and build closure |
+| 124–130 | sound vocabulary, exact values, gestures, typed instruments, part isolation, expression, and ergonomic binding |
+| 131–137 | immutable assets, exact-pinned offline packages, sample adapters, media cues, and clip/fixed-media distinction |
+| 138–141 | workbench and tooling preserve source authority; performance and conformance laws pass |
+| 142 | full corpus, migration, docs, public API, performance, and governing-precedence audit |
 
 No gate is satisfied by a unit test that recreates the implementation in the assertion. Property generators use small
 independent models; end-to-end fixtures inspect public compilation/render results; compile-fail tests assert stable
@@ -110,7 +110,7 @@ diagnostic codes and salient labels, not whole prose strings.
 
 ## 7. Graduation evidence
 
-Prompt 140 records: every law and counterexample fixture; benchmark baselines and variance policy; old/new corpus
+Prompt 142 records: every law and counterexample fixture; benchmark baselines and variance policy; old/new corpus
 compatibility; public API diff; kernel constructor diff (which must be empty); reproducible asset lock audit; live/offline
 audio comparison; and a contradiction scan of all governing documents. Only then may `README.md` change from candidate
 to governing.

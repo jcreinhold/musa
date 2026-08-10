@@ -23,7 +23,7 @@ parallel lists in `crates/musa-compiler/src/imports.rs` collapse to one table de
   this is deliberately *not* — signatures and modules are a checking-time abstraction, not a second import mechanism.
 - `docs/language/01-surface.md` on nested module paths, flat binding, and the alias-at-a-collision rule.
 - Prompt 99, which built the bundled library and mandated the layout this prompt corrects.
-- Prompt 130 (pinned package imports), which inherits this shape and must not invent a second one.
+- Prompt 132 (pinned package imports), which inherits this shape and must not invent a second one.
 
 ## Design
 
@@ -57,7 +57,7 @@ The collision is handled where it occurs instead: importing two modules that exp
 both, and prompt 109's `as` clause resolves it by qualifying one. An alias is therefore required exactly at a real
 conflict and absent otherwise.
 
-`sequences.musa` is registered by this prompt rather than deleted — it is prompt 111's material, it is already written,
+`sequences.musa` is registered by this prompt rather than deleted — it is prompt 113's material, it is already written,
 and leaving it orphaned while adding the machinery that exists to catch orphans would be its own joke.
 
 ## Target
@@ -90,7 +90,7 @@ Commit as `Make the standard library a package with a module tree`.
 ## Stop
 
 - No registry, no version-range solver, no network access during compilation, and no dependency resolution of any kind.
-  Prompt 130 adds exact pinned fetching on top of this shape and nothing here anticipates it.
+  Prompt 132 adds exact pinned fetching on top of this shape and nothing here anticipates it.
 - No directory scanning, no implicit module discovery, and no convention that a file's presence makes it importable.
 - No prelude, no implicit import, no glob import, and no re-export (`pub use`) form.
 - No `module` value, no first-class module, and no change to §4's static signature/module/functor layer.

@@ -1,14 +1,14 @@
 # Musa language candidate
 
-**Status: candidate. Not yet governing.** These documents are the implementation contract for prompts 93–139. Until
-prompt 140 completes its compatibility audit, `docs/course-correction.md`, `docs/kernel/`, and the relevant settled
+**Status: candidate. Not yet governing.** These documents are the implementation contract for prompts 93–141. Until
+prompt 142 completes its compatibility audit, `docs/course-correction.md`, `docs/kernel/`, and the relevant settled
 parts of `docs/initial-design-roadmap.md` take precedence. A contradiction is a prompt defect to repair, not permission
 to implement whichever text is convenient.
 
 **`docs/language-correction.md` governs over this directory.** It corrects four faults these documents accumulated
 through prompt 107 — an unproved musical-domain extension, a decorative standard-library manifest, a module system that
 cannot nest, and `use` spelled for two unrelated statements. Where it and a section here disagree, it wins, and the
-section is repaired in the prompt that implements the correction. Prompts 108–111 are that work.
+section is repaired in the prompt that implements the correction. Prompts 108–113 are that work.
 
 This candidate specifies the language *above* the temporal kernel and the sound pipeline *after* it. It does not add a
 fourth kernel combinator or make sound a temporal-kernel concern. The source remains canonical; every UI edits or
@@ -32,9 +32,9 @@ project contracts.
 
 ## Graduation
 
-Prompt 140 may mark this specification governing only after all of the following hold:
+Prompt 142 may mark this specification governing only after all of the following hold:
 
-1. prompts 93–139 have discharged the proof, compatibility, performance, diagnostics, editor, and audio obligations
+1. prompts 93–141 have discharged the proof, compatibility, performance, diagnostics, editor, and audio obligations
    named here;
 2. every pre-candidate example either retains its meaning or has an explicit, tested migration diagnostic;
 3. the kernel law suite still passes unchanged and no surface convenience has entered `musa-kernel`;
