@@ -5,6 +5,8 @@
 //! parsing, one `ProjectSession` call, and printing — if a subcommand here
 //! ever needs to orchestrate, the orchestration belongs in `musa-project`.
 
+mod ignore;
+
 use std::process::ExitCode;
 
 use musa_project::{
@@ -413,30 +415,34 @@ fn cmd_format(args: &[String]) -> ExitCode {
     if arguments.is_empty() {
         arguments.push(".");
     }
-    let mut paths = Vec::new();
+    let mut walked = Walked::default();
     for argument in arguments {
-        match sources(argument) {
-            Ok(listed) => paths.extend(listed),
-            Err(error) => {
-                eprintln!("error: {error}");
-                return ExitCode::FAILURE;
-            }
+        if let Err(error) = walked.extend(argument) {
+            eprintln!("error: {error}");
+            return ExitCode::FAILURE;
         }
     }
-    if paths.is_empty() {
-        eprintln!("error: no `.musa` file to format");
+    if walked.paths.is_empty() {
+        if walked.ignored > 0 {
+            eprintln!("error: every `.musa` file found is excluded by `.musaignore`");
+        } else {
+            eprintln!("error: no `.musa` file to format");
+        }
         return ExitCode::FAILURE;
     }
     let (mut changed, mut unchanged, mut failed) = (0u32, 0u32, 0u32);
-    for path in &paths {
+    for path in &walked.paths {
         match format_one(path, formatting) {
             Formatted::Changed => changed = changed.saturating_add(1),
             Formatted::Unchanged => unchanged = unchanged.saturating_add(1),
             Formatted::Failed => failed = failed.saturating_add(1),
         }
     }
-    if paths.len() > 1 {
-        eprintln!("{}", format_summary(formatting, changed, unchanged, failed));
+    if walked.paths.len() > 1 || walked.ignored > 0 {
+        eprintln!(
+            "{}",
+            format_summary(formatting, changed, unchanged, failed, walked.ignored)
+        );
     }
     // Under `--check` and `--diff` a difference is the answer, and the answer
     // is no.
@@ -515,11 +521,18 @@ fn unparsed(diagnostic: &musa_project::Diagnostic) -> bool {
 }
 
 /// The one line a run over many files ends with.
-fn format_summary(formatting: Formatting, changed: u32, unchanged: u32, failed: u32) -> String {
+fn format_summary(formatting: Formatting, changed: u32, unchanged: u32, failed: u32, ignored: u32) -> String {
     let (verb, rest) = if formatting == Formatting::Write {
         ("formatted", "already formatted")
     } else {
         ("not formatted", "formatted")
+    };
+    // What was passed over is said out loud. A run that quietly skipped
+    // fifteen files reads exactly like a run that had nothing to skip.
+    let passed = if ignored > 0 {
+        format!(", {ignored} {} ignored", plural(ignored, "path"))
+    } else {
+        String::new()
     };
     let unread = if failed > 0 {
         format!(", {failed} {} left alone", plural(failed, "file"))
@@ -527,45 +540,73 @@ fn format_summary(formatting: Formatting, changed: u32, unchanged: u32, failed: 
         String::new()
     };
     format!(
-        "{changed} {} {verb}, {unchanged} {rest}{unread}",
+        "{changed} {} {verb}, {unchanged} {rest}{passed}{unread}",
         plural(changed, "file")
     )
 }
 
-/// Every `.musa` file an argument names: itself, or the folder's, in path order.
-///
-/// A folder is walked, not opened as a project: formatting is a fact about
-/// text alone, so a file no manifest lists is still a file to format. Hidden
-/// entries, `target`, and symbolic links are passed over — a formatter that
-/// writes through a link edits a file the caller did not name.
-fn sources(argument: &str) -> Result<Vec<String>, String> {
-    let root = std::path::Path::new(argument);
-    if !root.is_dir() {
-        return Ok(vec![argument.to_owned()]);
-    }
-    let mut found = Vec::new();
-    walk(root, &mut found).map_err(|error| format!("{argument}: {error}"))?;
-    found.sort();
-    Ok(found)
+/// What the arguments named: the files to format, and how many paths the
+/// `.musaignore` took off the list.
+#[derive(Default)]
+struct Walked {
+    paths: Vec<String>,
+    ignored: u32,
 }
 
-fn walk(folder: &std::path::Path, found: &mut Vec<String>) -> std::io::Result<()> {
-    for entry in std::fs::read_dir(folder)? {
-        let entry = entry?;
-        let path = entry.path();
-        let name = entry.file_name();
-        if name.to_string_lossy().starts_with('.') || name == "target" {
-            continue;
+impl Walked {
+    /// Add what one argument names: the file itself, or the folder's files.
+    ///
+    /// A folder is walked, not opened as a project: formatting is a fact about
+    /// text alone, so a file no manifest lists is still a file to format.
+    /// Hidden entries, `target`, and symbolic links are passed over — a
+    /// formatter that writes through a link edits a file nobody named — and so
+    /// is whatever the nearest [`ignore::Ignore`] excludes.
+    ///
+    /// A file named directly is formatted whatever the list says, which is why
+    /// the list is consulted here and not in [`format_one`].
+    fn extend(&mut self, argument: &str) -> Result<(), String> {
+        let root = std::path::Path::new(argument);
+        if !root.is_dir() {
+            self.paths.push(argument.to_owned());
+            return Ok(());
         }
-        let kind = entry.file_type()?;
-        if kind.is_dir() {
-            walk(&path, found)?;
-        } else if kind.is_file() && path.extension().is_some_and(|extension| extension == "musa") {
-            let shown = path.display().to_string();
-            found.push(shown.strip_prefix("./").unwrap_or(&shown).to_owned());
-        }
+        let ignore = ignore::Ignore::found_at(root);
+        let first = self.paths.len();
+        self.walk(root, &ignore)
+            .map_err(|error| format!("{argument}: {error}"))?;
+        self.paths.get_mut(first..).unwrap_or_default().sort();
+        Ok(())
     }
-    Ok(())
+
+    fn walk(&mut self, folder: &std::path::Path, ignore: &ignore::Ignore) -> std::io::Result<()> {
+        for entry in std::fs::read_dir(folder)? {
+            let entry = entry?;
+            let path = entry.path();
+            let name = entry.file_name();
+            if name.to_string_lossy().starts_with('.') || name == "target" {
+                continue;
+            }
+            let kind = entry.file_type()?;
+            let source = kind.is_file() && path.extension().is_some_and(|extension| extension == "musa");
+            if !kind.is_dir() && !source {
+                continue;
+            }
+            if ignore.excludes(&path) {
+                // A folder counts once, as the one path the list named. Its
+                // contents are not walked to be counted more precisely: an
+                // ignored folder is ignored, which is the point of naming it.
+                self.ignored = self.ignored.saturating_add(1);
+                continue;
+            }
+            if kind.is_dir() {
+                self.walk(&path, ignore)?;
+            } else {
+                let shown = path.display().to_string();
+                self.paths.push(shown.strip_prefix("./").unwrap_or(&shown).to_owned());
+            }
+        }
+        Ok(())
+    }
 }
 
 /// A diagnostic rendered with source context by miette.

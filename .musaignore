@@ -1,0 +1,13 @@
+# Files `musa format` leaves alone, because they are written the way they are
+# on purpose. See `docs/book/src/reference/cli.md` for the syntax.
+
+# Written by the generators in crates/musa-project/tests/large_score_generators.rs
+# and crates/musa-compiler/tests/elaboration_fixture_generators.rs, which
+# compare them byte for byte. Formatting them is a diff the generator will
+# undo, and `large-score.musa` and `declaration-heavy.musa` are also what the
+# pipeline benchmark measures, so their shape is the measurement.
+tests/fixtures/
+
+# Deliberately malformed: each one is a diagnostic's fixture, and the CLI
+# snapshots pin the byte positions it reports.
+examples/broken/

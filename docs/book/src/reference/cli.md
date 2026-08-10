@@ -29,6 +29,28 @@ musa kernel --check <file.musa.kernel>  parse, check, and evaluate kernel text
   A file that does not parse is reported and left exactly as it was, because the formatter would otherwise write a guess
   over text its author is in the middle of.
 - Text render targets accept `-o -` for stdout; binary targets (`midi`, `wav`) require `-o <path>`.
+
+## `.musaignore`
+
+Some files are shaped the way they are on purpose — a generator writes them and a test compares them byte for byte, or a
+diagnostic's snapshot pins their byte positions. A `.musaignore` names what a `musa format` walk passes over. The
+nearest one at or above the folder being walked governs it, and it wins outright rather than merging with the lists
+above it, so the answer to "is this file excluded?" is in one file. What it passed over is counted in the run's summary
+rather than skipped in silence.
+
+```text
+# comments and blank lines are skipped
+tests/fixtures/         a path, and everything under it
+*.generated.musa        `*` matches inside one path segment
+examples/**/draft.musa  `**` matches across separators
+build                   with no `/`, a name matched at any depth
+```
+
+Two stated departures from `.gitignore`: a trailing `/` reads as documentation and is not a folders-only assertion, and
+there is no negation. What matches a folder matches everything in it.
+
+The list governs what a walk *finds*, which is where a file gets rewritten by accident. A file named on the command line
+is formatted whatever the list says.
 - `--seed` selects a performance reading when a piece carries more than one. It applies to `check`, `render`, and
   `kernel` — the three commands that compile.
 - Exit codes follow the convention: success is silent, failure prints diagnostics to stderr.

@@ -167,6 +167,80 @@ fn format_with_no_path_formats_the_folder_it_was_run_in() -> std::io::Result<()>
     std::fs::remove_dir_all(&root)
 }
 
+/// `.musaignore` names what the walk passes over.
+///
+/// Some files are shaped the way they are on purpose — a generator writes
+/// them, or a diagnostic's snapshot pins their byte positions — and a walk
+/// that reaches them rewrites them by accident.
+#[test]
+fn format_passes_over_what_the_ignore_file_names() -> std::io::Result<()> {
+    let root = temp_dir("ignored")?;
+    std::fs::create_dir_all(root.join("fixtures"))?;
+    std::fs::write(root.join(".musaignore"), "# on purpose\nfixtures/\n*.pinned.musa\n")?;
+    std::fs::write(root.join("ordinary.musa"), MESSY)?;
+    std::fs::write(root.join("a.pinned.musa"), MESSY)?;
+    std::fs::write(root.join("fixtures/generated.musa"), MESSY)?;
+
+    let output = musa(&["format", &root.to_string_lossy()])?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "stderr: {stderr}");
+    assert_eq!(std::fs::read_to_string(root.join("ordinary.musa"))?, TIDY);
+    assert_eq!(std::fs::read_to_string(root.join("a.pinned.musa"))?, MESSY);
+    assert_eq!(std::fs::read_to_string(root.join("fixtures/generated.musa"))?, MESSY);
+    // What was passed over is said out loud, not skipped in silence.
+    assert!(stderr.contains("2 paths ignored"), "stderr: {stderr}");
+    std::fs::remove_dir_all(&root)
+}
+
+/// A file named on the command line is formatted whatever the list says.
+///
+/// The list governs what a walk *finds*, which is where a file gets rewritten
+/// by accident. Naming one is not an accident.
+#[test]
+fn format_still_formats_an_ignored_file_that_is_named() -> std::io::Result<()> {
+    let root = temp_dir("named")?;
+    std::fs::write(root.join(".musaignore"), "*.musa\n")?;
+    let path = root.join("pinned.musa");
+    std::fs::write(&path, MESSY)?;
+
+    let output = musa(&["format", &path.to_string_lossy()])?;
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(std::fs::read_to_string(&path)?, TIDY);
+
+    // And the same file, reached by walking, is not.
+    std::fs::write(&path, MESSY)?;
+    let output = musa(&["format", &root.to_string_lossy()])?;
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("excluded by `.musaignore`"), "stderr: {stderr}");
+    assert_eq!(std::fs::read_to_string(&path)?, MESSY);
+    std::fs::remove_dir_all(&root)
+}
+
+/// The list is found from above, so it governs a walk started inside it.
+#[test]
+fn format_finds_the_ignore_file_above_the_folder_it_walks() -> std::io::Result<()> {
+    let root = temp_dir("above")?;
+    std::fs::create_dir_all(root.join("scores/drafts"))?;
+    std::fs::write(root.join(".musaignore"), "scores/drafts/\n")?;
+    std::fs::write(root.join("scores/keep.musa"), MESSY)?;
+    std::fs::write(root.join("scores/drafts/skip.musa"), MESSY)?;
+
+    let output = musa(&["format", &root.join("scores").to_string_lossy()])?;
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(std::fs::read_to_string(root.join("scores/keep.musa"))?, TIDY);
+    assert_eq!(std::fs::read_to_string(root.join("scores/drafts/skip.musa"))?, MESSY);
+    std::fs::remove_dir_all(&root)
+}
+
 /// A file that does not parse is reported and left exactly as it was.
 ///
 /// It matters more now that one command reaches a whole folder: the formatter
