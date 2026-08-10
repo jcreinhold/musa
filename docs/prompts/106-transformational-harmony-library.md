@@ -1,7 +1,7 @@
 ---
 id: 106
 slug: transformational-harmony-library
-status: pending
+status: in-progress
 depends_on: [102, 105]
 phase: 3
 ---
@@ -30,6 +30,16 @@ function is defined by the tones it preserves and the directed motion of the oth
 from pitch/chord operations in `.musa`. Suspended, quartal, augmented, diminished, and altered chord classes are not
 silently coerced into the domain.
 
+Writing those definitions needs one operation the spelled domain does not have yet: a written interval acting on a
+written pitch class. A chord class is rooted on a `pitchclass`, every transformation names the root of its image by an
+interval from the root of its argument (`L` on a minor triad is the major triad a major third below it), and today a
+`pitchclass` can only be obtained — from `pitchclass_of` or `chord_root` — never moved. Reading a member out of the
+argument covers only the transformations that move upward through a chord tone, which is half of them, so this hole
+is what makes the other half unwritable rather than merely awkward. The `up`/`down` operator that already transposes a
+`pitch` therefore extends to a `pitchclass`, spelled exactly as it is for a pitch and with the octave simply absent:
+`root up M3` is a `pitchclass` when `root` is one. This is an existing operator gaining the neighbouring domain, not a
+new primitive, and the expected primitive count below is still zero.
+
 Prove from the definitions that all six operations are involutions on spelled major/minor triads. Do not assert every
 finite Neo-Riemannian group relation on the infinite spelled domain: project with `forget_spelling` to the `pc12`
 triad action. State the quotient law there and test the corresponding finite Tonnetz cycles. Transformation-chain
@@ -38,6 +48,8 @@ chord class.
 
 ## Target
 
+- The written-interval action on a spelled pitch class: `pitchclass up <interval>` and `pitchclass down <interval>`,
+  checked and evaluated beside the pitch form it already has.
 - `stdlib/transformational.musa`: PLR/SNH, chain helpers, explicit spelled-to-`pc12` projection helpers, source docs
   citing OMT 072 sections.
 - Any private primitive only if the prompt proves the function needs hidden representation; the expected count is zero.
