@@ -67,8 +67,13 @@ because a violation found by the gate is exactly the gate working.
 
 - `PrimitiveOwnership` gains a family and a declared signature; the checker and evaluator read arity and types from
   that declaration instead of restating them.
-- The inert base-type list, and a checker gate rejecting any destructuring pattern over a musical base type with a
-  located diagnostic naming the type.
+- The inert base types named as a closed set, and their inertness established as a **law rather than a new gate**.
+  `check_pattern` already refuses a `some`, list, or product pattern whose target is not the matching constructor type,
+  and already reports `type-mismatch` with a label naming the matched value's type — so the rejection this prompt was
+  going to add exists, and adding a second one would be a duplicate rule with a second chance to disagree with the
+  first. What is missing is the *claim* that this rejection is D1, and a law that fails if it ever weakens. The law
+  therefore asserts the code and the label, not merely that compilation failed: a refusal that is only a parse error
+  satisfies "it failed" vacuously, and one of these patterns does produce a parse error under a different binding name.
 - The law suite, proving: every primitive classified exactly once; families disjoint and exhaustive; no δ-primitive
   signature containing an arrow; every base type reachable from a δ signature inert; and every δ-primitive returning a
   value of its declared type over its sample — never panicking, never diagnosing, never absent at a non-`option`
