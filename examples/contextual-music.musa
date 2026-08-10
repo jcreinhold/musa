@@ -1,0 +1,27 @@
+// General music values and legacy material declarations share one contextual
+// elaboration path. A saved phrase is instantiated where each `use` appears;
+// it is not a frozen timeline or a hidden copy of these notes.
+piece "Contextual Music" {
+    fn figure(root: pitch) -> music = music {
+        root/4
+        d4/4
+    };
+
+    let subject: music = figure(c4);
+
+    motif answer(root: pitch = e4) {
+        root/4
+        f4/4
+    }
+
+    score {
+        part ensemble {
+            voice line {
+                use subject;
+                use figure(d4);
+                use answer();
+                rest/2
+            }
+        }
+    }
+}

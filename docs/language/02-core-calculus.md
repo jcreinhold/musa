@@ -346,13 +346,61 @@ reducible arguments to a reducible result. These new cases extend the fundamenta
 progress, determinism, and strong normalization. Finite monomorphization does not alter the proof: each instance is an
 ordinary monomorphic term, and the accepted instance graph is finite and acyclic.
 
-### 5.7 Obligations added later
+### 5.7 Contextual-music safety (prompt 97)
 
-`music` is not justified by STLC alone. Prompts 97–98 must prove: if `m : music`, `ρ` is a
-well-formed `ElabEnv`, `p` is a valid exact placement, and resource checking accepts the instance, then
-`instantiate(m,ρ,p)` returns a finite well-typed fragment and `close` returns a closed `Term[ScoreFact]`. That proof is
-by induction over the private music constructors and must cover compatible binding-environment union, placement,
-quotation substitution, and provenance attachment.
+`music` is not a stored `Timeline[ScoreFact]`. Its checked value is a finite, context-reading recipe whose scalar free
+variables have already been captured and whose nested `use` expressions have already evaluated to checked `music`
+values. Write a private fragment as `F = (t,B,d,n)`, where `t : Term[ScoreFact]`, `B` is a finite acyclic environment of
+term bindings, `d ∈ ℚ≥0` is the exact extent, and `n ∈ ℕ` is the exact occurrence count after instantiation. Its
+well-formedness judgment requires:
+
+1. every free term name of `t` is in `dom(B)`;
+2. binding edges in `B` point to earlier completed bindings;
+3. every literal in `t` is a valid finite `Timeline[ScoreFact]` and every mark is a total payload map;
+4. `d` and `n` agree structurally with `t` after its bindings are instantiated; and
+5. all facts have the requested scope, exact nonnegative placement, and a complete `Origin`.
+
+**Lemma 1 — compatible composition.** If `F₁,…,Fₖ` are well formed, their sequential and overlay compositions are
+well formed. Sequence has extent `Σᵢdᵢ` and count `Σᵢnᵢ`; overlay has extent `maxᵢdᵢ` and the same count sum.
+
+*Proof.* The kernel constructors validate nonempty finite operands and preserve literal well-formedness. Musa's shared
+binding table interns equal contextual instances by a conservative key. A new binding is appended only after every
+binding its body references has completed; a reused binding names that same completed body. Thus union is compatible,
+finite, and acyclic. Sequence shifts the `i`th operand by `Σ_{j<i}dⱼ`, while overlay shifts none, giving the stated
+extent equations. Neither operation deletes or duplicates an occurrence, giving the count equation. ∎
+
+**Lemma 2 — marked reference.** Replacing a well-formed fragment by a reference to its completed binding, marked with a
+call scope, call span, and finite Origin path, preserves its extent and occurrence count and yields valid facts when
+evaluated.
+
+*Proof.* Kernel marked evaluation instantiates the bound term and applies Musa's mark only to payloads. The mark changes
+`Scope` and `Origin`; it does not change spans, multiplicity, ordering, or extent. Its operation is total because the
+checker constructs the mark rather than accepting arbitrary mark text at this boundary. ∎
+
+**Theorem 4 — contextual instantiation and closure.** If `Γ ⊢ m : music`, `ρ ⊨ Γ`, `p` is a valid exact placement,
+and the deterministic resource meter accepts the required output, then `instantiate(m,ρ,p)` returns a finite
+well-formed fragment. Closing that fragment returns a closed, checked `Term[ScoreFact]` whose evaluation has exactly
+the fragment's `n` occurrences.
+
+*Proof.* Use well-founded induction on the pair consisting of the declaration dependency rank and the finite syntax
+size of `m`. A note, rest, point mark, or region constructs a finite literal; exact rational validation supplies its
+span, and the checked scalar environment supplies any pitch or duration variable. A region overlays one valid fact on
+the inductively obtained body. Sequence and voice overlay follow from Lemma 1. A `use` targets either a value already
+evaluated in the acyclic declaration graph or a syntactically nested checked value of smaller size; apply the induction
+hypothesis and Lemma 2. A finite repeat uses a checked natural count, and the existing transpose, stretch, inversion,
+retrograde, tie, and specialization operations are total finite transformations already covered by their kernel and
+compiler law suites. Context-changing statements have no case: checking rejects key, meter, tempo, and clef inside
+reusable material, so contextual music reads placement but cannot mutate the ambient structural context.
+
+For closure, traverse completed bindings in reverse completion order and wrap exactly those reachable from `t`. By
+condition 2, when a binding is wrapped, every name it can expose is wrapped later and hence dominates it in the final
+term. Condition 1 therefore leaves no free name. Literal validity and constructor preservation make `Term::check`
+succeed. Structural occurrence accounting uses addition, multiplication by a finite repeat count, and one for each
+region; the resource preflight occurs before occurrence-sized allocation, so accepted evaluation is finite and has
+exactly `n` occurrences. ∎
+
+Prompt 98 may add higher-order constructors only by proving that each maps well-formed finite fragments to
+well-formed finite fragments; it does not reopen this closure argument.
 
 ## 6. Implementation boundary
 

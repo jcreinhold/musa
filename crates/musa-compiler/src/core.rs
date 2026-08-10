@@ -7,7 +7,7 @@
 //! can observe or orchestrate the pass representation.
 
 use indexmap::{IndexMap, IndexSet};
-use musa_language::ast::{AstNode as _, FnDecl, LetDecl};
+use musa_language::ast::{AstNode as _, FnDecl, LetDecl, VoiceItem};
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken};
 use num_rational::Ratio;
 
@@ -23,9 +23,9 @@ pub(crate) fn check_piece(
     resolver: &mut Resolver,
     libraries: &Libraries,
     piece: &musa_language::ast::PieceDecl,
-) -> bool {
+) -> Option<Program> {
     if !validate_imports(resolver, libraries) {
-        return false;
+        return None;
     }
     check_and_evaluate(
         resolver,
@@ -33,8 +33,9 @@ pub(crate) fn check_piece(
             .each()
             .flat_map(|(_, library)| declarations(library.syntax(), true))
             .chain(declarations(piece.syntax(), false)),
+        root_uses(piece.syntax()),
+        UnknownRootMusic::Defer,
     )
-    .is_some()
 }
 
 /// Check and evaluate imported definitions followed by an opened library's.
@@ -52,6 +53,8 @@ pub(crate) fn check_material(
             .each()
             .flat_map(|(_, imported)| declarations(imported.syntax(), true))
             .chain(declarations(library.syntax(), false)),
+        Vec::new(),
+        UnknownRootMusic::Reject,
     )
     .is_some()
 }
@@ -64,7 +67,13 @@ fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
     for (path, library, import_span) in libraries.each_with_import_span() {
         prefix.extend(declarations(library.syntax(), true));
         let mut foreign_resolver = Resolver::new();
-        let evaluated = check_and_evaluate(&mut foreign_resolver, prefix.clone().into_iter()).is_some();
+        let evaluated = check_and_evaluate(
+            &mut foreign_resolver,
+            prefix.clone().into_iter(),
+            Vec::new(),
+            UnknownRootMusic::Reject,
+        )
+        .is_some();
         let first_error = foreign_resolver
             .diagnostics
             .iter()
@@ -86,20 +95,85 @@ fn validate_imports(resolver: &mut Resolver, libraries: &Libraries) -> bool {
 }
 
 fn declarations(owner: &SyntaxNode, foreign: bool) -> Vec<SurfaceDefinition> {
-    owner
+    let mut found: Vec<_> = owner
         .children()
         .filter_map(|node| {
             LetDecl::cast(node.clone())
                 .map(|declaration| SurfaceDefinition::Let { declaration, foreign })
-                .or_else(|| FnDecl::cast(node).map(|declaration| SurfaceDefinition::Function { declaration, foreign }))
+                .or_else(|| {
+                    FnDecl::cast(node.clone()).map(|declaration| SurfaceDefinition::Function { declaration, foreign })
+                })
+                .or_else(|| {
+                    musa_language::ast::MotifDecl::cast(node.clone()).map(|declaration| SurfaceDefinition::Legacy {
+                        name: declaration.name().unwrap_or_default(),
+                        syntax: declaration.syntax().clone(),
+                        parameters: declaration.params(),
+                        material: crate::resolve::Material::Motif,
+                        foreign,
+                    })
+                })
+                .or_else(|| {
+                    musa_language::ast::FragmentDecl::cast(node).map(|declaration| SurfaceDefinition::Legacy {
+                        name: declaration.name().unwrap_or_default(),
+                        syntax: declaration.syntax().clone(),
+                        parameters: Vec::new(),
+                        material: crate::resolve::Material::Fragment,
+                        foreign,
+                    })
+                })
+        })
+        .collect();
+    // Named bars are declarations even though they sit inside the score.
+    // Anonymous bars remain ordinary structure and never enter a namespace.
+    found.extend(owner.descendants().filter_map(|node| {
+        musa_language::ast::BarStmt::cast(node).and_then(|declaration| {
+            declaration.name().map(|name| SurfaceDefinition::Legacy {
+                name,
+                syntax: declaration.syntax().clone(),
+                parameters: Vec::new(),
+                material: crate::resolve::Material::Bar,
+                foreign,
+            })
+        })
+    }));
+    found
+}
+
+fn root_uses(owner: &SyntaxNode) -> Vec<SyntaxNode> {
+    owner
+        .descendants()
+        .filter(|node| node.kind() == SyntaxKind::UseStmt)
+        .filter(|node| {
+            !node.ancestors().skip(1).any(|ancestor| {
+                matches!(
+                    ancestor.kind(),
+                    SyntaxKind::MusicExpr | SyntaxKind::MotifDecl | SyntaxKind::FragmentDecl
+                ) || (ancestor.kind() == SyntaxKind::BarStmt
+                    && musa_language::ast::BarStmt::cast(ancestor)
+                        .and_then(|bar| bar.name())
+                        .is_some())
+            })
         })
         .collect()
 }
 
 #[derive(Clone)]
 enum SurfaceDefinition {
-    Let { declaration: LetDecl, foreign: bool },
-    Function { declaration: FnDecl, foreign: bool },
+    Let {
+        declaration: LetDecl,
+        foreign: bool,
+    },
+    Function {
+        declaration: FnDecl,
+        foreign: bool,
+    },
+    Legacy {
+        name: String,
+        syntax: SyntaxNode,
+        parameters: Vec<musa_language::ast::Param>,
+        material: crate::resolve::Material,
+        foreign: bool,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -114,6 +188,7 @@ enum Type {
     Product(Vec<Self>),
     Option(Box<Self>),
     List(Box<Self>),
+    Music,
     Function(Vec<Self>, Box<Self>),
 }
 
@@ -139,6 +214,7 @@ impl std::fmt::Display for Type {
             }
             Self::Option(member) => write!(out, "option[{member}]"),
             Self::List(member) => write!(out, "list[{member}]"),
+            Self::Music => out.write_str("music"),
             Self::Function(parameters, result) => {
                 if parameters.len() == 1 {
                     let parameter = parameters.first().unwrap_or(&Self::Unit);
@@ -166,8 +242,14 @@ impl std::fmt::Display for Type {
 struct RawParameter {
     name: String,
     ty: Type,
-    default: Option<SyntaxNode>,
+    default: Option<RawDefault>,
     span: SourceSpan,
+}
+
+#[derive(Clone)]
+enum RawDefault {
+    Expression(SyntaxNode),
+    Value(Value),
 }
 
 struct RawDefinition {
@@ -177,6 +259,7 @@ struct RawDefinition {
     name_span: SourceSpan,
     span: SourceSpan,
     foreign: bool,
+    role: Option<MusicRole>,
 }
 
 enum RawDefinitionKind {
@@ -187,6 +270,11 @@ enum RawDefinitionKind {
         parameters: Vec<RawParameter>,
         body: SyntaxNode,
     },
+    Music {
+        parameters: Vec<RawParameter>,
+        body: SyntaxNode,
+        callable: bool,
+    },
 }
 
 impl RawDefinition {
@@ -194,6 +282,14 @@ impl RawDefinition {
         match self.kind {
             RawDefinitionKind::Let { .. } => NameKind::Value,
             RawDefinitionKind::Function { .. } => NameKind::Function,
+            RawDefinitionKind::Music { ref parameters, .. } if parameters.is_empty() => self
+                .role
+                .as_ref()
+                .map_or(NameKind::Value, |role| role.material.name_kind()),
+            RawDefinitionKind::Music { .. } => self
+                .role
+                .as_ref()
+                .map_or(NameKind::Function, |role| role.material.name_kind()),
         }
     }
 }
@@ -231,6 +327,16 @@ enum ExprKind {
         scrutinee: Box<Expr>,
         arms: Vec<CheckedArm>,
     },
+    Music(CheckedMusic),
+}
+
+#[derive(Clone)]
+struct CheckedMusic {
+    items: Vec<VoiceItem>,
+    uses: Vec<(SourceSpan, Expr)>,
+    bindings: Vec<String>,
+    role: Option<MusicRole>,
+    definition_span: SourceSpan,
 }
 
 #[derive(Clone, Copy)]
@@ -331,7 +437,58 @@ enum Value {
     Product(Vec<Self>),
     Option { member: Type, value: Option<Box<Self>> },
     List { member: Type, values: Vec<Self> },
+    Music(Music),
     Closure(Box<Closure>),
+}
+
+/// A notation-first value retained until a voice supplies scope and onset.
+/// Its representation is crate-private by design: only the elaborator may
+/// instantiate it, and consumers continue to see a closed kernel term.
+#[derive(Clone)]
+pub(crate) struct Music {
+    pub(crate) items: Vec<VoiceItem>,
+    pub(crate) uses: IndexMap<u64, Self>,
+    pub(crate) bindings: IndexMap<String, crate::resolve::BoundValue>,
+    pub(crate) role: Option<MusicRole>,
+    pub(crate) definition_span: SourceSpan,
+}
+
+#[derive(Clone)]
+pub(crate) struct MusicRole {
+    pub(crate) name: String,
+    pub(crate) material: crate::resolve::Material,
+    pub(crate) foreign: bool,
+}
+
+impl Music {
+    pub(crate) fn music_at(&self, span: SourceSpan) -> Option<&Self> {
+        self.uses.get(&span_key(span))
+    }
+}
+
+/// Checked root `use` expressions. This is the only bridge from the total
+/// value evaluator into contextual score elaboration.
+pub(crate) struct Program {
+    uses: IndexMap<u64, Music>,
+    named_music: IndexMap<String, Music>,
+    #[cfg(test)]
+    values: IndexMap<String, Value>,
+}
+
+impl Program {
+    pub(crate) fn root_music(&self) -> Music {
+        Music {
+            items: Vec::new(),
+            uses: self.uses.clone(),
+            bindings: IndexMap::new(),
+            role: None,
+            definition_span: SourceSpan::default(),
+        }
+    }
+
+    pub(crate) fn named_music_values(&self) -> IndexMap<String, Music> {
+        self.named_music.clone()
+    }
 }
 
 #[derive(Clone)]
@@ -354,6 +511,7 @@ impl Value {
             Self::Product(members) => Type::Product(members.iter().map(Self::ty).collect()),
             Self::Option { member, .. } => Type::Option(Box::new(member.clone())),
             Self::List { member, .. } => Type::List(Box::new(member.clone())),
+            Self::Music(_) => Type::Music,
             Self::Closure(closure) => Type::Function(
                 closure
                     .parameters
@@ -392,6 +550,7 @@ impl Value {
             Self::List { values, .. } => values.iter().fold(0u64, |witness, value| {
                 witness.rotate_left(5) ^ value.normalization_witness()
             }),
+            Self::Music(music) => u64::try_from(music.items.len()).unwrap_or(u64::MAX),
             Self::Closure(closure) => closure.captures.values().fold(
                 u64::try_from(closure.parameters.len()).unwrap_or(u64::MAX),
                 |witness, captured| witness.rotate_left(5) ^ captured.normalization_witness(),
@@ -403,13 +562,23 @@ impl Value {
 fn check_and_evaluate(
     resolver: &mut Resolver,
     declarations: impl Iterator<Item = SurfaceDefinition>,
-) -> Option<IndexMap<String, Value>> {
+    root_uses: Vec<SyntaxNode>,
+    unknown_root_music: UnknownRootMusic,
+) -> Option<Program> {
     let mut meter = WorkMeter::default();
     let mut raw = Vec::new();
-    let mut names: IndexMap<String, (SourceSpan, bool)> = IndexMap::new();
+    let mut names: IndexMap<String, (SourceSpan, bool, bool)> = IndexMap::new();
     for declaration in declarations {
+        let is_legacy = matches!(declaration, SurfaceDefinition::Legacy { .. });
         let (name, name_span, span, foreign) = surface_identity(&declaration)?;
-        if let Some((first, first_is_foreign)) = names.get(&name).copied() {
+        if let Some((first, first_is_foreign, first_is_legacy)) = names.get(&name).copied() {
+            // The structural resolver retains the established, role-specific
+            // diagnostic for two legacy material declarations. The core must
+            // still see only the first definition, but reporting here as well
+            // would turn one source mistake into two diagnostics.
+            if is_legacy && first_is_legacy {
+                continue;
+            }
             let mut diagnostic = Diagnostic::error(Code::DuplicateName, format!("`{name}` is bound twice"))
                 .at(name_span, "bound again here");
             if !first_is_foreign {
@@ -418,7 +587,7 @@ fn check_and_evaluate(
             resolver.report(diagnostic.help("give one of the bindings a different name"));
             continue;
         }
-        names.insert(name.clone(), (name_span, foreign));
+        names.insert(name.clone(), (name_span, foreign, is_legacy));
         if let Some(definition) = lower_signature(resolver, declaration, name, name_span, span, foreign) {
             raw.push(definition);
         }
@@ -434,7 +603,7 @@ fn check_and_evaluate(
                 definition: index,
             },
         );
-        if !definition.foreign {
+        if !definition.foreign && definition.role.is_none() {
             resolver
                 .references
                 .declare(definition.name_kind(), &definition.name, definition.name_span);
@@ -453,6 +622,8 @@ fn check_and_evaluate(
             foreign: definition.foreign,
             failed: false,
             meter: &mut meter,
+            music_role: definition.role.clone(),
+            definition_span: definition.span,
         };
         let kind = match &definition.kind {
             RawDefinitionKind::Let { body } => checker
@@ -475,10 +646,15 @@ fn check_and_evaluate(
                         continue;
                     }
                     duplicate_parameters.insert(parameter.name.clone(), parameter.span);
-                    let default = parameter
-                        .default
-                        .as_ref()
-                        .and_then(|expression| checker.check(expression, Some(&parameter.ty)));
+                    let default = parameter.default.as_ref().and_then(|default| match default {
+                        RawDefault::Expression(expression) => checker.check(expression, Some(&parameter.ty)),
+                        RawDefault::Value(value) if value.ty() == parameter.ty => Some(Expr {
+                            kind: ExprKind::Literal(value.clone()),
+                            ty: parameter.ty.clone(),
+                            span: parameter.span,
+                        }),
+                        RawDefault::Value(_) => None,
+                    });
                     checker.locals.insert(parameter.name.clone(), parameter.ty.clone());
                     checked_parameters.push(CheckedParameter {
                         name: parameter.name.clone(),
@@ -492,6 +668,42 @@ fn check_and_evaluate(
                         parameters: checked_parameters,
                         body,
                     })
+            }
+            RawDefinitionKind::Music {
+                parameters,
+                body,
+                callable,
+            } => {
+                if *callable {
+                    let mut checked_parameters = Vec::with_capacity(parameters.len());
+                    for parameter in parameters {
+                        let default = parameter.default.as_ref().and_then(|default| match default {
+                            RawDefault::Expression(expression) => checker.check(expression, Some(&parameter.ty)),
+                            RawDefault::Value(value) if value.ty() == parameter.ty => Some(Expr {
+                                kind: ExprKind::Literal(value.clone()),
+                                ty: parameter.ty.clone(),
+                                span: parameter.span,
+                            }),
+                            RawDefault::Value(_) => None,
+                        });
+                        checker.locals.insert(parameter.name.clone(), parameter.ty.clone());
+                        checked_parameters.push(CheckedParameter {
+                            name: parameter.name.clone(),
+                            ty: parameter.ty.clone(),
+                            default,
+                        });
+                    }
+                    checker
+                        .music_expression(body)
+                        .map(|body| CheckedDefinitionKind::Function {
+                            parameters: checked_parameters,
+                            body,
+                        })
+                } else {
+                    checker
+                        .music_expression(body)
+                        .map(|body| CheckedDefinitionKind::Let { body })
+                }
             }
         };
         type_errors |= checker.failed || kind.is_none();
@@ -515,13 +727,102 @@ fn check_and_evaluate(
     }
 
     let order = dependency_order(resolver, &checked)?;
-    evaluate(resolver, &checked, &order, &mut meter)
+    let values = evaluate(resolver, &checked, &order, &mut meter)?;
+    let mut uses = IndexMap::new();
+    for statement in root_uses {
+        let expression = child_of(&statement, is_expr_node)?;
+        let span = crate::resolve::trimmed_span(&statement);
+        if first_name(&expression).is_some_and(|name| !symbols.contains_key(&name)) {
+            match unknown_root_music {
+                UnknownRootMusic::Reject => {}
+                UnknownRootMusic::Defer => continue,
+                UnknownRootMusic::Silent => {
+                    uses.insert(
+                        span_key(span),
+                        Music {
+                            items: Vec::new(),
+                            uses: IndexMap::new(),
+                            bindings: IndexMap::new(),
+                            role: None,
+                            definition_span: span,
+                        },
+                    );
+                    continue;
+                }
+            }
+        }
+        let mut checker = Checker {
+            resolver,
+            definitions: &raw,
+            symbols: &symbols,
+            locals: IndexMap::new(),
+            dependencies: IndexMap::new(),
+            foreign: false,
+            failed: false,
+            meter: &mut meter,
+            music_role: None,
+            definition_span: span,
+        };
+        let checked_use = checker.check(&expression, Some(&Type::Music))?;
+        let Value::Music(music) = eval(&checked_use, &values, &mut meter)? else {
+            return None;
+        };
+        uses.insert(span_key(span), music);
+    }
+    if meter.exhaustion().is_some() {
+        report_exhaustion(resolver, &meter);
+        return None;
+    }
+    let named_music = values
+        .iter()
+        .filter_map(|(name, value)| match value {
+            Value::Music(music) => Some((name.clone(), music.clone())),
+            Value::Bool(_)
+            | Value::Nat(_)
+            | Value::Ratio(_)
+            | Value::Duration(_)
+            | Value::Pitch(_)
+            | Value::Interval(_)
+            | Value::Product(_)
+            | Value::Option { .. }
+            | Value::List { .. }
+            | Value::Closure(_) => None,
+        })
+        .collect();
+    Some(Program {
+        uses,
+        named_music,
+        #[cfg(test)]
+        values,
+    })
+}
+
+#[derive(Clone, Copy)]
+enum UnknownRootMusic {
+    Reject,
+    Defer,
+    Silent,
+}
+
+pub(crate) fn check_piece_for_kernel(
+    resolver: &mut Resolver,
+    piece: &musa_language::ast::PieceDecl,
+) -> Option<Program> {
+    check_and_evaluate(
+        resolver,
+        declarations(piece.syntax(), false).into_iter(),
+        root_uses(piece.syntax()),
+        UnknownRootMusic::Silent,
+    )
 }
 
 fn surface_identity(definition: &SurfaceDefinition) -> Option<(String, SourceSpan, SourceSpan, bool)> {
     let (syntax, name, foreign) = match definition {
         SurfaceDefinition::Let { declaration, foreign } => (declaration.syntax(), declaration.name(), *foreign),
         SurfaceDefinition::Function { declaration, foreign } => (declaration.syntax(), declaration.name(), *foreign),
+        SurfaceDefinition::Legacy {
+            name, syntax, foreign, ..
+        } => (syntax, Some(name.clone()), *foreign),
     };
     let name = name?;
     let name_span = crate::resolve::token_span(syntax, SyntaxKind::Identifier)?;
@@ -548,6 +849,7 @@ fn lower_signature(
                 name_span,
                 span,
                 foreign,
+                role: None,
             })
         }
         SurfaceDefinition::Function { declaration, .. } => {
@@ -565,7 +867,7 @@ fn lower_signature(
                 parameters.push(RawParameter {
                     name: parameter_name,
                     ty: parameter_ty,
-                    default: child_of(parameter.syntax(), is_expr_node),
+                    default: child_of(parameter.syntax(), is_expr_node).map(RawDefault::Expression),
                     span: parameter_span,
                 });
             }
@@ -587,8 +889,86 @@ fn lower_signature(
                 name_span,
                 span,
                 foreign,
+                role: None,
             })
         }
+        SurfaceDefinition::Legacy {
+            syntax,
+            parameters,
+            material,
+            ..
+        } => {
+            let mut raw_parameters = Vec::with_capacity(parameters.len());
+            for parameter in parameters {
+                let ty = match parameter.kind.as_str() {
+                    "pitch" => Type::Pitch,
+                    "duration" => Type::Duration,
+                    other => {
+                        resolver.report(
+                            Diagnostic::error(Code::UnknownName, format!("unknown type `{other}`"))
+                                .at(span, "not a motif parameter type"),
+                        );
+                        return None;
+                    }
+                };
+                let default = parameter
+                    .default
+                    .as_deref()
+                    .and_then(|written| legacy_default(&ty, written))
+                    .map(RawDefault::Value);
+                raw_parameters.push(RawParameter {
+                    name: parameter.name,
+                    ty,
+                    default,
+                    span,
+                });
+            }
+            let callable = material == crate::resolve::Material::Motif;
+            let ty = if callable {
+                Type::Function(
+                    raw_parameters.iter().map(|parameter| parameter.ty.clone()).collect(),
+                    Box::new(Type::Music),
+                )
+            } else {
+                Type::Music
+            };
+            Some(RawDefinition {
+                name: name.clone(),
+                ty,
+                kind: RawDefinitionKind::Music {
+                    parameters: raw_parameters,
+                    body: syntax,
+                    callable,
+                },
+                name_span,
+                span,
+                foreign,
+                role: Some(MusicRole {
+                    name,
+                    material,
+                    foreign,
+                }),
+            })
+        }
+    }
+}
+
+fn legacy_default(ty: &Type, written: &str) -> Option<Value> {
+    match ty {
+        Type::Pitch => WrittenPitch::parse(written).map(Value::Pitch),
+        Type::Duration => crate::resolve::parse_ratio(written)
+            .or_else(|| written.parse::<i64>().ok().map(Ratio::from_integer))
+            .map(Value::Duration),
+        Type::Unit
+        | Type::Bool
+        | Type::Nat
+        | Type::Ratio
+        | Type::Interval
+        | Type::Product(_)
+        | Type::Option(_)
+        | Type::List(_)
+        | Type::Music
+        | Type::Function(_, _) => None,
     }
 }
 
@@ -602,6 +982,7 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Duration
         | Type::Pitch
         | Type::Interval
+        | Type::Music
         | Type::Product(_)
         | Type::Option(_)
         | Type::List(_) => None,
@@ -624,10 +1005,7 @@ fn parse_type(resolver: &mut Resolver, node: &SyntaxNode) -> Option<Type> {
             "duration" => Some(Type::Duration),
             "pitch" => Some(Type::Pitch),
             "interval" => Some(Type::Interval),
-            "music" => {
-                stage_error(resolver, node, "`music` values arrive in prompt 97");
-                None
-            }
+            "music" => Some(Type::Music),
             _ => {
                 resolver.report(
                     Diagnostic::error(Code::UnknownName, format!("unknown type `{text}`"))
@@ -672,6 +1050,8 @@ struct Checker<'a> {
     foreign: bool,
     failed: bool,
     meter: &'a mut WorkMeter,
+    music_role: Option<MusicRole>,
+    definition_span: SourceSpan,
 }
 
 impl Checker<'_> {
@@ -683,7 +1063,21 @@ impl Checker<'_> {
         } else if kind == SyntaxKind::LiteralExpr {
             self.literal(node, expected)
         } else if kind == SyntaxKind::NameExpr {
-            self.name(node)
+            let named = self.name(node)?;
+            if expected == Some(&Type::Music)
+                && matches!(&named.ty, Type::Function(parameters, result) if parameters.is_empty() && result.as_ref() == &Type::Music)
+            {
+                Some(Expr {
+                    kind: ExprKind::Apply {
+                        function: Box::new(named),
+                        arguments: Vec::new(),
+                    },
+                    ty: Type::Music,
+                    span,
+                })
+            } else {
+                Some(named)
+            }
         } else if kind == SyntaxKind::ProductExpr {
             self.product(node, expected)
         } else if kind == SyntaxKind::ListExpr {
@@ -695,9 +1089,7 @@ impl Checker<'_> {
         } else if kind == SyntaxKind::MatchExpr {
             self.match_expression(node, expected)
         } else if kind == SyntaxKind::MusicExpr {
-            stage_error(self.resolver, node, "contextual `music` values arrive in prompt 97");
-            self.failed = true;
-            None
+            self.music_expression(node)
         } else {
             None
         }?;
@@ -715,6 +1107,114 @@ impl Checker<'_> {
             return None;
         }
         Some(checked)
+    }
+
+    fn music_expression(&mut self, node: &SyntaxNode) -> Option<Expr> {
+        let span = crate::resolve::trimmed_span(node);
+        let items = music_items(node);
+        let mut uses = Vec::new();
+        for statement in owned_descendants(node, SyntaxKind::UseStmt) {
+            let expression = child_of(&statement, is_expr_node)?;
+            let checked = self.check(&expression, Some(&Type::Music))?;
+            uses.push((crate::resolve::trimmed_span(&statement), checked));
+        }
+
+        if self.music_role.is_none() {
+            for statement in owned_descendants(node, SyntaxKind::TempoStmt)
+                .into_iter()
+                .chain(owned_descendants(node, SyntaxKind::MeterStmt))
+                .chain(owned_descendants(node, SyntaxKind::KeyStmt))
+                .chain(owned_descendants(node, SyntaxKind::ClefStmt))
+            {
+                self.resolver.report(
+                    Diagnostic::error(Code::Misplaced, "context changes cannot be stored in a `music` value")
+                        .at(
+                            crate::resolve::trimmed_span(&statement),
+                            "this statement needs one absolute place",
+                        )
+                        .help("write the change among the voice's own items, before `use`")
+                        .note("reusable music may read the context supplied at each use, but it cannot change the caller's context"),
+                );
+                self.failed = true;
+            }
+        }
+
+        let mut bindings = IndexSet::new();
+        for statement in owned_descendants(node, SyntaxKind::NoteStmt) {
+            if let Some(note) = musa_language::ast::NoteStmt::cast(statement.clone())
+                && let Some(name) = note.pitch().filter(|text| WrittenPitch::parse(text).is_none())
+            {
+                self.music_binding(
+                    &name,
+                    &Type::Pitch,
+                    crate::resolve::trimmed_span(&statement),
+                    &mut bindings,
+                )?;
+            }
+            if let Some(name) = musa_language::ast::Duration::of(&statement).and_then(|duration| duration.parameter()) {
+                self.music_binding(
+                    &name,
+                    &Type::Duration,
+                    crate::resolve::trimmed_span(&statement),
+                    &mut bindings,
+                )?;
+            }
+        }
+        for statement in owned_descendants(node, SyntaxKind::RestStmt)
+            .into_iter()
+            .chain(owned_descendants(node, SyntaxKind::ChordStmt))
+        {
+            if let Some(name) = musa_language::ast::Duration::of(&statement).and_then(|duration| duration.parameter()) {
+                self.music_binding(
+                    &name,
+                    &Type::Duration,
+                    crate::resolve::trimmed_span(&statement),
+                    &mut bindings,
+                )?;
+            }
+        }
+
+        Some(Expr {
+            kind: ExprKind::Music(CheckedMusic {
+                items,
+                uses,
+                bindings: bindings.into_iter().collect(),
+                role: self.music_role.clone(),
+                definition_span: self.definition_span,
+            }),
+            ty: Type::Music,
+            span,
+        })
+    }
+
+    fn music_binding(
+        &mut self,
+        name: &str,
+        expected: &Type,
+        span: SourceSpan,
+        bindings: &mut IndexSet<String>,
+    ) -> Option<()> {
+        let found = if let Some(ty) = self.locals.get(name) {
+            Some(ty.clone())
+        } else if let Some(symbol) = self.symbols.get(name) {
+            self.dependencies.entry(name.to_owned()).or_insert(span);
+            if !self.foreign {
+                self.resolver.references.record_use(symbol.kind, name, span);
+            }
+            Some(symbol.ty.clone())
+        } else {
+            None
+        };
+        if found.as_ref() != Some(expected) {
+            self.resolver.report(
+                Diagnostic::error(Code::TypeMismatch, format!("`{name}` is not a `{expected}` value"))
+                    .at(span, format!("this position needs `{expected}`")),
+            );
+            self.failed = true;
+            return None;
+        }
+        bindings.insert(name.to_owned());
+        Some(())
     }
 
     fn literal(&mut self, node: &SyntaxNode, expected: Option<&Type>) -> Option<Expr> {
@@ -784,7 +1284,7 @@ impl Checker<'_> {
         }
         let Some(symbol) = self.symbols.get(&name) else {
             self.resolver.report(
-                Diagnostic::error(Code::UnknownName, format!("cannot find value `{name}`"))
+                Diagnostic::error(Code::UnknownName, format!("cannot find `{name}`"))
                     .at(span, "nothing binds this name"),
             );
             self.failed = true;
@@ -1028,6 +1528,7 @@ impl Checker<'_> {
             | Value::Product(_)
             | Value::Option { .. }
             | Value::List { .. }
+            | Value::Music(_)
             | Value::Closure(_) => Coverage::Literal(literal_key(&value)),
         };
         Some((Pattern::Literal(value), covered, bindings))
@@ -1129,9 +1630,21 @@ impl Checker<'_> {
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
+            let legacy = name_of(&function_node)
+                .and_then(|name| self.symbols.get(&name))
+                .and_then(|symbol| self.definitions.get(symbol.definition))
+                .and_then(|definition| definition.role.as_ref());
+            let (code, message) = legacy.map_or_else(
+                || (Code::WrongArity, format!("this call is missing {names}")),
+                |role| {
+                    (
+                        Code::NotAValue,
+                        format!("{} `{}` needs a value for `{names}`", role.material.word(), role.name),
+                    )
+                },
+            );
             self.resolver.report(
-                Diagnostic::error(Code::WrongArity, format!("this call is missing {names}"))
-                    .at(crate::resolve::trimmed_span(node), "not enough arguments"),
+                Diagnostic::error(code, message).at(crate::resolve::trimmed_span(node), "not enough arguments"),
             );
             self.failed = true;
             return None;
@@ -1301,13 +1814,15 @@ impl Checker<'_> {
             .and_then(|name| self.symbols.get(&name))
             .and_then(|symbol| self.definitions.get(symbol.definition));
         match global.map(|definition| &definition.kind) {
-            Some(RawDefinitionKind::Function { parameters, .. }) => parameters
-                .iter()
-                .map(|parameter| ParameterShape {
-                    name: Some(parameter.name.clone()),
-                    has_default: parameter.default.is_some(),
-                })
-                .collect(),
+            Some(RawDefinitionKind::Function { parameters, .. } | RawDefinitionKind::Music { parameters, .. }) => {
+                parameters
+                    .iter()
+                    .map(|parameter| ParameterShape {
+                        name: Some(parameter.name.clone()),
+                        has_default: parameter.default.is_some(),
+                    })
+                    .collect()
+            }
             _ => types
                 .iter()
                 .map(|_| ParameterShape {
@@ -1373,6 +1888,7 @@ fn is_exhaustive(target: &Type, coverage: &IndexSet<Coverage>) -> bool {
             | Type::Duration
             | Type::Pitch
             | Type::Interval
+            | Type::Music
             | Type::Product(_)
             | Type::Function(_, _) => false,
         }
@@ -1386,7 +1902,9 @@ fn literal_key(value: &Value) -> String {
         Value::Duration(value) => format!("duration:{}/{}", value.numer(), value.denom()),
         Value::Pitch(value) => format!("pitch:{}:{}:{}", value.letter.steps(), value.accidental.0, value.octave),
         Value::Interval(value) => format!("interval:{}:{}", value.diatonic_steps, value.semitones),
-        Value::Product(_) | Value::Option { .. } | Value::List { .. } | Value::Closure(_) => "constructor".to_owned(),
+        Value::Product(_) | Value::Option { .. } | Value::List { .. } | Value::Music(_) | Value::Closure(_) => {
+            "constructor".to_owned()
+        }
     }
 }
 
@@ -1605,6 +2123,44 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
             local.extend(bindings);
             eval(&arm.body, &local, meter)
         }
+        ExprKind::Music(music) => {
+            let mut uses = IndexMap::new();
+            for (span, expression) in &music.uses {
+                let Value::Music(value) = eval(expression, environment, meter)? else {
+                    return None;
+                };
+                uses.insert(span_key(*span), value);
+            }
+            let mut bindings = IndexMap::new();
+            for name in &music.bindings {
+                let bound = match environment.get(name)? {
+                    Value::Pitch(pitch) => crate::resolve::BoundValue::Pitch(*pitch),
+                    Value::Duration(duration) => {
+                        crate::resolve::BoundValue::Duration(crate::score::NotatedDuration::single(
+                            crate::MusicalDuration::new(*duration),
+                            ratio_text(duration),
+                        ))
+                    }
+                    Value::Bool(_)
+                    | Value::Nat(_)
+                    | Value::Ratio(_)
+                    | Value::Interval(_)
+                    | Value::Product(_)
+                    | Value::Option { .. }
+                    | Value::List { .. }
+                    | Value::Music(_)
+                    | Value::Closure(_) => return None,
+                };
+                bindings.insert(name.clone(), bound);
+            }
+            Some(Value::Music(Music {
+                items: music.items.clone(),
+                uses,
+                bindings,
+                role: music.role.clone(),
+                definition_span: music.definition_span,
+            }))
+        }
     }?;
     let (nodes, bytes) = value_shape(&value);
     if value.ty() != expression.ty || !meter.construct("expression value", nodes, bytes, expression.span) {
@@ -1809,6 +2365,18 @@ fn nat_value(value: &Value) -> Option<u64> {
     }
 }
 
+fn ratio_text(value: &Ratio<i64>) -> String {
+    if *value.denom() == 1 {
+        value.numer().to_string()
+    } else {
+        format!("{}/{}", value.numer(), value.denom())
+    }
+}
+
+const fn span_key(span: SourceSpan) -> u64 {
+    (span.start as u64) << 32 | span.end as u64
+}
+
 fn match_pattern(pattern: &Pattern, value: &Value) -> Option<IndexMap<String, Value>> {
     let mut bindings = IndexMap::new();
     let matched = match pattern {
@@ -1894,6 +2462,10 @@ fn value_shape(value: &Value) -> (u64, u64) {
             (nodes.saturating_add(1), bytes.saturating_add(1))
         }),
         Value::List { values, .. } => aggregate_shape(values.iter()),
+        Value::Music(music) => {
+            let items = u64::try_from(music.items.len()).unwrap_or(u64::MAX);
+            (items.saturating_add(1), items.saturating_mul(32))
+        }
         Value::Closure(closure) => aggregate_shape(closure.captures.values()),
     }
 }
@@ -1905,7 +2477,7 @@ fn aggregate_shape<'a>(values: impl Iterator<Item = &'a Value>) -> (u64, u64) {
     })
 }
 
-fn report_exhaustion(resolver: &mut Resolver, meter: &WorkMeter) {
+pub(crate) fn report_exhaustion(resolver: &mut Resolver, meter: &WorkMeter) {
     let Some(exhaustion) = meter.exhaustion() else {
         return;
     };
@@ -1965,15 +2537,32 @@ fn parse_ratio(resolver: &mut Resolver, token: &SyntaxToken) -> Option<Ratio<i64
     Some(Ratio::new(numerator, denominator))
 }
 
-fn stage_error(resolver: &mut Resolver, node: &SyntaxNode, help: &str) {
-    resolver.report(
-        Diagnostic::error(
-            Code::UnsupportedLanguageStage,
-            "this expression is valid Musa syntax but belongs to a later elaboration stage",
-        )
-        .at(crate::resolve::trimmed_span(node), "not available in the scalar core")
-        .help(help),
-    );
+fn music_items(node: &SyntaxNode) -> Vec<VoiceItem> {
+    if let Some(expression) = musa_language::ast::MusicExpr::cast(node.clone()) {
+        expression.items()
+    } else if let Some(declaration) = musa_language::ast::MotifDecl::cast(node.clone()) {
+        declaration.items()
+    } else if let Some(declaration) = musa_language::ast::FragmentDecl::cast(node.clone()) {
+        declaration.items()
+    } else if let Some(declaration) = musa_language::ast::BarStmt::cast(node.clone()) {
+        declaration.items()
+    } else {
+        Vec::new()
+    }
+}
+
+fn owned_descendants(owner: &SyntaxNode, kind: SyntaxKind) -> Vec<SyntaxNode> {
+    owner
+        .descendants()
+        .filter(|node| node.kind() == kind)
+        .filter(|node| {
+            !node
+                .ancestors()
+                .skip(1)
+                .take_while(|ancestor| ancestor != owner)
+                .any(|ancestor| ancestor.kind() == SyntaxKind::MusicExpr)
+        })
+        .collect()
 }
 
 fn child_of(node: &SyntaxNode, predicate: fn(SyntaxKind) -> bool) -> Option<SyntaxNode> {
@@ -2019,6 +2608,13 @@ fn name_of(node: &SyntaxNode) -> Option<String> {
     }
     significant_tokens(node)
         .find(|token| matches!(token.kind(), SyntaxKind::Identifier | SyntaxKind::RepeatKw))
+        .map(|token| token.text().to_owned())
+}
+
+fn first_name(node: &SyntaxNode) -> Option<String> {
+    node.descendants_with_tokens()
+        .filter_map(SyntaxElement::into_token)
+        .find(|token| token.kind() == SyntaxKind::Identifier)
         .map(|token| token.text().to_owned())
 }
 
@@ -2072,7 +2668,13 @@ mod tests {
         let parsed = musa_language::parse(source);
         let piece = musa_language::ast::PieceDecl::from_root(&parsed.syntax())?;
         let mut resolver = Resolver::new();
-        check_and_evaluate(&mut resolver, declarations(piece.syntax(), false).into_iter())
+        check_and_evaluate(
+            &mut resolver,
+            declarations(piece.syntax(), false).into_iter(),
+            Vec::new(),
+            UnknownRootMusic::Reject,
+        )
+        .map(|program| program.values)
     }
 
     #[test]

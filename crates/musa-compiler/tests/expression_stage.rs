@@ -1,17 +1,16 @@
-use musa_compiler::{Code, CompileOptions, SourceDocument, compile};
+use musa_compiler::{CompileOptions, SourceDocument, compile};
 
 #[test]
-fn expressions_are_valid_syntax_but_stop_at_the_owned_stage() {
+fn contextual_music_crosses_the_expression_stage_at_use() {
     let source = SourceDocument::new(
-        "piece \"staged\" { let answer: music = music { c4/1 }; score { part p { voice v { c4/1 } } } }",
+        "piece \"staged\" { let answer: music = music { c4/4 d4/4 }; score { part p { voice v { use answer; } } } }",
         "staged.musa",
     );
     let compilation = compile(&source, &CompileOptions::default());
-    assert!(compilation.has_errors());
-    assert!(compilation.snapshot().is_none());
-    assert_eq!(compilation.diagnostics().len(), 1);
-    assert_eq!(
-        compilation.diagnostics().first().map(|diagnostic| diagnostic.code),
-        Some(Code::UnsupportedLanguageStage)
-    );
+    assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
+    let events = compilation
+        .snapshot()
+        .and_then(|snapshot| snapshot.parts().iter().next().map(|(_, part)| part))
+        .and_then(|part| part.voices().next().map(|(_, voice)| voice.events()));
+    assert!(matches!(events, Some(events) if events.len() == 2));
 }

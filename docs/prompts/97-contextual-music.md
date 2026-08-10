@@ -1,7 +1,7 @@
 ---
 id: 97
 slug: contextual-music
-status: pending
+status: complete
 depends_on: [49, 63, 96]
 phase: 3
 ---
@@ -53,7 +53,8 @@ change.
 - Context-neutrality diagnostics and placement-aware instantiation.
 - `crates/musa-compiler/tests/{music_laws,music_compatibility}.rs`: sequence/overlay extent laws, binding closure,
   context-change rejection, per-use placement checks, sharing/provenance, and prompt 93's compatibility manifest.
-- A minimal new fixture showing `fn phrase(root: pitch) -> music`, `let`, and `use` alongside legacy `motif` syntax.
+- A minimal new fixture showing `fn figure(root: pitch) -> music`, `let`, and `use` alongside legacy `motif` syntax.
+  (`phrase` remains the reserved span construct `phrase "A" { … }`; this prompt does not add escaped identifiers.)
 
 ## Check
 

@@ -21,7 +21,7 @@
 use indexmap::IndexMap;
 use musa_language::ast::{
     AstNode as _, DynamicRule, FrontMatterRole, KeyStmt, MarkRule, PerformanceDecl, PieceDecl, ProfileDecl,
-    SettingStmt, TempoStmt, VoiceItem,
+    SettingStmt, TempoStmt,
 };
 use musa_language::{SyntaxElement, SyntaxKind, SyntaxNode};
 use num_rational::Ratio;
@@ -155,10 +155,18 @@ impl ReferenceIndex {
 
     /// Record a declaration in the compiled document.
     ///
-    /// Always a new entry: declarations reach here only past the duplicate
-    /// checks, so a repeated `(kind, name)` is two voices in two parts, not
-    /// a collision.
+    /// A checked elaboration expression may have recorded a use before the
+    /// structural walk registers its legacy declaration. In that case this
+    /// completes the same entry; every other declaration remains new.
     pub(crate) fn declare(&mut self, kind: NameKind, name: &str, span: SourceSpan) {
+        if let Some(entry) = self
+            .entries
+            .iter_mut()
+            .find(|entry| entry.kind == kind && entry.name == name && entry.declaration.is_none())
+        {
+            entry.declaration = Some(span);
+            return;
+        }
         self.entries.push(NameReference {
             name: name.to_owned(),
             kind,
@@ -198,8 +206,6 @@ impl ReferenceIndex {
 
 /// A collected motif or named bar, ready for expansion.
 pub(crate) struct MotifDef {
-    pub(crate) params: Vec<musa_language::ast::Param>,
-    pub(crate) body: Vec<VoiceItem>,
     pub(crate) declaration: DeclarationId,
     pub(crate) material: Material,
     /// Where the declaration is written.
@@ -210,13 +216,6 @@ pub(crate) struct MotifDef {
     /// is either forward reference or the bar quoting itself, and both are the
     /// same mistake seen from different sides.
     pub(crate) span: SourceSpan,
-    /// Whether the declaration lives in an imported library.
-    ///
-    /// The reference record only records spans in the compiled document's own
-    /// text; a use inside a foreign body is elaborated through an
-    /// [`ExpandCx`] this flag marks, so nothing foreign-text ever reaches the
-    /// record.
-    pub(crate) foreign: bool,
 }
 
 /// A parameter bound at a `use` site.
@@ -258,6 +257,13 @@ pub(crate) struct ExpandCx {
     /// never recorded. Set by `expand_material` when the body being expanded
     /// came from an import; the piece's own root context is never foreign.
     pub(crate) foreign: bool,
+    /// The contextual value whose nested `use` expressions were evaluated by
+    /// the total core. The score root uses an empty value carrying only its
+    /// checked root uses.
+    pub(crate) music: crate::core::Music,
+    /// Named music values needed by non-expression consumers such as a
+    /// mobile's fragment list.
+    pub(crate) named_music: IndexMap<String, crate::core::Music>,
 }
 
 /// What resolution accumulates while a piece is read: the tables names are
@@ -537,20 +543,6 @@ pub(crate) fn token_span(node: &SyntaxNode, kind: SyntaxKind) -> Option<SourceSp
     Some(SourceSpan::new(u32::from(range.start()), u32::from(range.end())))
 }
 
-/// Span of the first token of `kind` anywhere below `node`.
-///
-/// Most compiler nodes keep their named token as a direct child and should
-/// use [`token_span`]. Expression syntax nests a `use` callee under
-/// `NameExpr`/`ApplyExpr`, so that one bridge asks explicitly for descent.
-pub(crate) fn descendant_token_span(node: &SyntaxNode, kind: SyntaxKind) -> Option<SourceSpan> {
-    let range = node
-        .descendants_with_tokens()
-        .filter_map(SyntaxElement::into_token)
-        .find(|token| token.kind() == kind)?
-        .text_range();
-    Some(SourceSpan::new(u32::from(range.start()), u32::from(range.end())))
-}
-
 pub(crate) fn token_text(node: &SyntaxNode, kind: SyntaxKind) -> Option<String> {
     node.children_with_tokens()
         .filter_map(SyntaxElement::into_token)
@@ -706,12 +698,9 @@ pub(crate) fn register_motifs(
         }
         let key = resolver.declare(DeclInfo::Motif);
         let definition = MotifDef {
-            params: motif.params(),
-            body: motif.items(),
             declaration: ordinal(resolver, key),
             material: Material::Motif,
             span,
-            foreign: from.is_some(),
         };
         snapshot.push_motif(crate::score::MotifDeclaration {
             name: name.clone(),
@@ -746,12 +735,9 @@ pub(crate) fn register_fragments(
         }
         let key = resolver.declare(DeclInfo::Motif);
         let definition = MotifDef {
-            params: Vec::new(),
-            body: fragment.items(),
             declaration: ordinal(resolver, key),
             material: Material::Fragment,
             span,
-            foreign: from.is_some(),
         };
         snapshot.push_motif(crate::score::MotifDeclaration {
             name: name.clone(),
@@ -785,12 +771,9 @@ pub(crate) fn register_bars(
         }
         let key = resolver.declare(DeclInfo::Motif);
         let definition = MotifDef {
-            params: Vec::new(),
-            body: bar.items(),
             declaration: ordinal(resolver, key),
             material: Material::Bar,
             span,
-            foreign: false,
         };
         snapshot.push_motif(crate::score::MotifDeclaration {
             name: name.clone(),
@@ -1655,57 +1638,6 @@ pub(crate) fn resolve_duration(resolver: &mut Resolver, node: &SyntaxNode, cx: &
             .note("a duration is a fraction or a whole number of whole notes: `1/4`, `3/8`, `1`"),
     );
     None
-}
-
-/// Bind one argument text to a parameter kind.
-pub(crate) fn bind_argument(
-    resolver: &mut Resolver,
-    motif: &str,
-    param: &musa_language::ast::Param,
-    text: &str,
-    cx: &ExpandCx,
-    node: &SyntaxNode,
-) -> Option<BoundValue> {
-    match param.kind.as_str() {
-        "pitch" => {
-            if let Some(pitch) = WrittenPitch::parse(text) {
-                Some(BoundValue::Pitch(pitch))
-            } else if let Some(BoundValue::Pitch(pitch)) = cx.params.get(text) {
-                Some(BoundValue::Pitch(*pitch))
-            } else {
-                resolver.report(
-                    Diagnostic::error(Code::NotAValue, format!("`{text}` is not a pitch"))
-                        .at(trimmed_span(node), format!("passed to motif `{motif}`"))
-                        .note("a pitch is a letter, an optional `#` or `b`, and an octave: `c4`, `g#5`, `bb3`"),
-                );
-                None
-            }
-        }
-        "duration" => {
-            if let Some(value) = parse_ratio(text).or_else(|| text.parse::<i64>().ok().map(Ratio::from_integer)) {
-                Some(BoundValue::Duration(NotatedDuration::single(
-                    MusicalDuration::new(value),
-                    text,
-                )))
-            } else if let Some(BoundValue::Duration(duration)) = cx.params.get(text) {
-                Some(BoundValue::Duration(duration.clone()))
-            } else {
-                resolver.report(
-                    Diagnostic::error(Code::NotAValue, format!("`{text}` is not a duration"))
-                        .at(trimmed_span(node), format!("passed to motif `{motif}`")),
-                );
-                None
-            }
-        }
-        other => {
-            resolver.report(
-                Diagnostic::error(Code::UnknownWord, format!("`{other}` is not a kind of parameter"))
-                    .at(trimmed_span(node), format!("declared by motif `{motif}`"))
-                    .help("a motif parameter is a `pitch` or a `duration`"),
-            );
-            None
-        }
-    }
 }
 
 /// A groove needs a meter to swing against.

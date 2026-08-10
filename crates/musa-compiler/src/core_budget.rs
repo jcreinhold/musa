@@ -120,6 +120,22 @@ impl WorkMeter {
         )
     }
 
+    /// Check an eventual timeline before any occurrence-sized allocation is
+    /// performed. This is deliberately separate from [`Self::output`]: a
+    /// transform may need a temporary value, while the published score is
+    /// charged exactly once at the compilation boundary.
+    pub(crate) fn preflight_output(&mut self, operation: &'static str, amount: u64, span: SourceSpan) -> bool {
+        Self::preview(
+            self.output,
+            OUTPUT_LIMIT,
+            operation,
+            "estimated music occurrences",
+            amount,
+            span,
+            &mut self.exhaustion,
+        )
+    }
+
     pub(crate) fn exhaustion(&self) -> Option<Exhaustion> {
         self.exhaustion
     }

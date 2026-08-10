@@ -25,7 +25,7 @@ fn each_static_failure_has_a_stable_diagnostic_code() {
             "fn left(x: nat) -> nat = right(x); fn right(x: nat) -> nat = left(x);",
             Code::DependencyCycle,
         ),
-        ("let value: music = music { c4/1 };", Code::UnsupportedLanguageStage),
+        ("let value: music = music { meter 3/4; c4/1 };", Code::Misplaced),
     ] {
         let actual = diagnostics(declarations);
         assert!(

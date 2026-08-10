@@ -107,13 +107,13 @@ with a `Fragment` role. `use e;` checks `e : music`, instantiates it at the curr
 `music` values are contextual rather than captured timelines:
 
 ```musa
-fn phrase() -> music = music {
+fn figure() -> music = music {
     c5/8
     (c5 step 1)/8
     (c5 step 2)/4
 };
 
-let subject: music = phrase();
+let subject: music = figure();
 in scale c major { use subject; }
 in scale c dorian { use subject; }
 ```

@@ -51,7 +51,9 @@ Decisions recorded against course correction §32:
 | voice body | `sequence` of its items in source order (cursor semantics = left-fold of successive extents). |
 | part | `overlay` of its voice timelines. Voice identity is the fact's `Scope`, not a timeline of its own. |
 | piece score | `overlay` of its part timelines: **one** `Timeline<ScoreFact>` per compilation. |
-| `use motif(args);` | Binding + reference at the HIR level: the motif body elaborates with bound arguments; each resulting occurrence's `Origin` gains the `MotifApplication` step. Not a kernel concept. |
+| `let x: music = music { … };` | A private contextual value. It captures checked scalar bindings and nested music values, but no absolute beat, voice scope, or mutable key/meter/tempo/clef state. It emits no occurrence until `use`. |
+| `use e;` where `e : music` | Instantiate `e` at the current voice cursor and scope, sequence its fragment, and advance by its exact extent. A shared binding plus a marked reference preserves one body and distinct call-site Origin. Not a kernel concept. |
+| `motif name(args) { … }` | Desugars to `fn name(args) -> music = music { … };` with a retained `Motif` role. Its `use` follows the preceding general rule; there is no motif-only evaluator. |
 | `repeat n { … }` | HIR-level `sequence` of `n` evaluations (§19); each iteration's occurrences gain the `RepeatIteration(i)` provenance step. |
 | `transpose up P5 { … }` | `map_payload` with the transposition function on `pitch` (§13); occurrences gain the `Transposition` provenance step. |
 | `c4/4 ~` (tie) | **No kernel construct, and no fact.** A tie says two written noteheads spell *one* occurrence, so elaboration merges the tied statement with its continuation on the spot: one occurrence, span the sum, `NotatedDuration` the compound spelling. Merging happens at every nesting level, so a tie inside a `retrograde` is gone before the block is reversed and needs no repair. A tie onto a different pitch, or with nothing after it, is a diagnostic. |
@@ -145,6 +147,41 @@ a promise the project already made.
 **What does not share.** `transpose`, `invert` and `stretch` bodies are payload maps and time scaling applied during
 elaboration; `scale` has a term and the payload maps do not, and inventing one would breach the calculus's absent list.
 Voices become `over` and voice items `seq` — structural, and what makes a printed file legible.
+
+## Contextual music and the single path (prompt 97)
+
+The compiler now has one private construction interface:
+
+```text
+instantiate : Music × ElabEnv × Beat × Scope → KernelFragment
+close       : KernelFragment → checked closed Term[ScoreFact]
+```
+
+`KernelFragment` hides a term, an acyclic compatible binding environment, exact extent, and exact eventual occurrence
+count. Sequence adds extents; overlay takes their maximum; both add occurrence counts. Closing retains only reachable
+bindings, wraps them in dependency order, and checks the resulting term before the semantic boundary evaluates it.
+There is no `Timeline[Timeline[A]]`, flattening operation, public HIR, or public environment type.
+
+The source forms are roles and assertions over that interface:
+
+| Written form | Checked desugaring | Retained role |
+| --- | --- | --- |
+| `let x: music = music { body };` | contextual music binding | ordinary value |
+| `fn f(p: T) -> music = music { body };` | contextual music-producing closure | ordinary function |
+| `motif f(p: T) { body }` | `fn f(p: T) -> music = music { body };` | `Motif` |
+| `fragment x { body }` | `let x: music = music { body };` | `Fragment` |
+| named `bar x { body }` | contextual binding used both at declaration and by `use x` | `Bar` |
+| `use e;` | check `e : music`, instantiate, then sequence | none |
+
+Roles preserve diagnostics, lints, mobile eligibility, editor identity, and Origin vocabulary; they do not select a
+second semantic implementation. General functions and bindings returning `music` and every legacy form enter the same
+checked `Music` representation and the same instantiator.
+
+Music is **context-reading and context-neutral**. Placement, duration scale, transformation stack, call scope, and
+Origin are supplied at each use. Structural mutations—key, meter, tempo, and clef changes—remain in the piece/voice
+walk and are rejected inside reusable material, because “from here onward” has no unique meaning in a value usable at
+several places. A call's reference mark changes only payload scope and provenance, so sharing preserves temporal facts.
+The proof that this construction is finite, closed, and well typed is `docs/language/02-core-calculus.md` §5.7.
 
 ## `ScoreFact`'s interchange text form (prompts 48, 86)
 

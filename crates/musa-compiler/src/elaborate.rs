@@ -535,13 +535,13 @@ pub(crate) fn elaborate_parsed(
     resolver.realization = options.realization.clone();
     let mut snapshot = ScoreSnapshot::default();
     let libraries = crate::imports::load(resolver, name, &piece.imports(), &options.imports);
-    if !crate::core::check_piece(resolver, &libraries, &piece) {
+    let Some(core) = crate::core::check_piece(resolver, &libraries, &piece) else {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
-    }
+    };
     elaborate_libraries(resolver, &libraries, &mut snapshot);
     resolve::lower_header(resolver, &piece, &mut snapshot);
     let identity = piece.score().map_or_else(musa_kernel::SemanticHash::default, |score| {
-        elaborate_score(resolver, &piece, &score, &mut snapshot)
+        elaborate_score(resolver, &piece, &score, &mut snapshot, &core)
     });
     snapshot.set_annotations(std::mem::take(&mut resolver.annotations));
     // Advice about a piece that does not compile is advice about a piece that
@@ -607,6 +607,7 @@ fn elaborate_score(
     piece: &PieceDecl,
     score: &musa_language::ast::ScoreDecl,
     snapshot: &mut ScoreSnapshot,
+    core: &crate::core::Program,
 ) -> musa_kernel::SemanticHash {
     let mut voice_names: indexmap::IndexMap<PartId, indexmap::IndexMap<VoiceId, String>> = indexmap::IndexMap::new();
     let mut metadata: Vec<(PartId, String)> = Vec::new();
@@ -686,6 +687,7 @@ fn elaborate_score(
                 declaration,
                 id.0,
                 voice_id.0,
+                core,
             ));
             names.insert(voice_id, voice_name);
         }
@@ -709,6 +711,19 @@ fn elaborate_score(
         check_bar_length(resolver, &bar, here.as_ref().unwrap_or(&bars));
     }
     let context = context_facts(resolver, piece, score, &declared, &bars, extent);
+    let lane_occurrences = lanes
+        .iter()
+        .fold(0u64, |count, lane| count.saturating_add(lane.occurrences));
+    let context_occurrences = u64::try_from(context.occurrences().len()).unwrap_or(u64::MAX);
+    let output_occurrences = lane_occurrences.saturating_add(context_occurrences);
+    if !share.reserve_output(
+        "elaborating the piece timeline",
+        output_occurrences,
+        resolve::trimmed_span(score.syntax()),
+    ) {
+        share.report_exhaustion(resolver);
+        return musa_kernel::SemanticHash::default();
+    }
     if let Some(sink) = &mut resolver.timeline_sink {
         // Measurement only, and the one place a voice is wanted on its own;
         // the piece itself is evaluated once, below.
@@ -723,7 +738,17 @@ fn elaborate_score(
         .map(|lane| lane.term)
         .chain(std::iter::once(Term::literal(context)))
         .collect();
-    let whole = Term::over(parts).map_or_else(|_| musa_kernel::zero(), |term| share.evaluate(term));
+    let open = Term::over(parts).unwrap_or_else(|_| musa_kernel::Term::literal(empty_segment()));
+    let closed = share.close(open);
+    if let Err(error) = closed.check() {
+        resolver.report(
+            Diagnostic::error(Code::TypeMismatch, "elaboration produced an invalid kernel term")
+                .at(resolve::trimmed_span(score.syntax()), error.to_string())
+                .note("this is a compiler invariant failure"),
+        );
+        return musa_kernel::SemanticHash::default();
+    }
+    let whole = musa_kernel::evaluate_marked(closed, instantiate);
     // The piece's identity, taken where the piece exists as one temporal
     // object and nowhere else: after this line the timeline is a projection,
     // and a hash of the projection would be a hash of a view.
@@ -1052,6 +1077,10 @@ fn resolve_position(
 struct Segment {
     term: Term<ScoreFact>,
     extent: Beat,
+    /// Exact number of occurrences after this term is instantiated. Keeping
+    /// it structurally avoids evaluating a shared term merely to decide
+    /// whether evaluating it is safe.
+    occurrences: u64,
     /// A tie left open at this segment's end. Merging a tie needs two
     /// occurrences in one value, so a level that has one cannot stay a term.
     tied: bool,
@@ -1059,9 +1088,11 @@ struct Segment {
 
 impl Segment {
     fn literal(value: Timeline<ScoreFact>) -> Self {
+        let occurrences = u64::try_from(value.occurrences().len()).unwrap_or(u64::MAX);
         Self {
             extent: value.extent(),
             tied: value.occurrences().iter().any(|it| it.payload().tied),
+            occurrences,
             term: Term::literal(value),
         }
     }
@@ -1085,7 +1116,8 @@ struct Share {
     bindings: Vec<(String, Term<ScoreFact>)>,
     /// What has already been elaborated, keyed by everything its payloads
     /// depend on, mapping to the binding's name and extent.
-    named: std::collections::HashMap<String, (String, Beat)>,
+    named: std::collections::HashMap<String, (String, Beat, u64)>,
+    output_meter: crate::core_budget::WorkMeter,
 }
 
 /// The placeholder a shared body carries where the call site would be.
@@ -1136,15 +1168,29 @@ impl Share {
     }
 
     /// The binding for `key`, or `None` if this body has not been elaborated.
-    fn lookup(&self, key: &str) -> Option<(String, Beat)> {
+    fn lookup(&self, key: &str) -> Option<(String, Beat, u64)> {
         self.named.get(key).cloned()
     }
 
     /// Record an elaborated body under `key` and return its binding name.
     fn bind(&mut self, key: String, body: Segment) -> String {
+        let extent = body.extent;
+        let occurrences = body.occurrences;
         let name = self.bind_anonymous(body.term);
-        self.named.insert(key, (name.clone(), body.extent));
+        self.named.insert(key, (name.clone(), extent, occurrences));
         name
+    }
+
+    fn preflight_output(&mut self, operation: &'static str, amount: u64, span: SourceSpan) -> bool {
+        self.output_meter.preflight_output(operation, amount, span)
+    }
+
+    fn reserve_output(&mut self, operation: &'static str, amount: u64, span: SourceSpan) -> bool {
+        self.output_meter.output(operation, amount, span)
+    }
+
+    fn report_exhaustion(&self, resolver: &mut Resolver) {
+        crate::core::report_exhaustion(resolver, &self.output_meter);
     }
 
     /// Record a body that nothing else can share and return its binding name.
@@ -1234,6 +1280,7 @@ fn region(body: Segment, fact: ScoreFact) -> Segment {
     Segment {
         term,
         extent,
+        occurrences: body.occurrences.saturating_add(1),
         tied: body.tied,
     }
 }
@@ -1289,6 +1336,7 @@ fn elaborate_voice(
     declaration: crate::origin::DeclarationId,
     part: u32,
     voice_id: u32,
+    core: &crate::core::Program,
 ) -> Segment {
     // Sites written among a voice's own items are numbered from zero in every
     // voice, so the k-th of them is the *same* site in all of them — which is
@@ -1305,6 +1353,8 @@ fn elaborate_voice(
         scale: Ratio::ONE,
         choice: crate::ChoicePath::default(),
         foreign: false,
+        music: core.root_music(),
+        named_music: core.named_music_values(),
     };
     resolver.cursor = MusicalTime::ZERO;
     let segment = elaborate_place(
@@ -1396,6 +1446,9 @@ fn one_after_another(resolver: &mut Resolver, share: &Share, segments: Vec<Segme
         // a value, so nothing is evaluated and any sharing below survives
         // into the printed term.
         let extent = total_extent(&segments);
+        let occurrences = segments
+            .iter()
+            .fold(0u64, |count, segment| count.saturating_add(segment.occurrences));
         let parts = coalesce(segments.into_iter().map(|segment| segment.term));
         let term = match <[_; 1]>::try_from(parts) {
             Ok([only]) => only,
@@ -1404,6 +1457,7 @@ fn one_after_another(resolver: &mut Resolver, share: &Share, segments: Vec<Segme
         return Segment {
             term,
             extent,
+            occurrences,
             tied: false,
         };
     }
@@ -2026,6 +2080,9 @@ fn sequence_of(segments: Vec<Segment>) -> Segment {
         return Segment::empty();
     }
     let extent = total_extent(&segments);
+    let occurrences = segments
+        .iter()
+        .fold(0u64, |count, segment| count.saturating_add(segment.occurrences));
     let parts = coalesce(segments.into_iter().map(|segment| segment.term));
     let term = match <[_; 1]>::try_from(parts) {
         Ok([only]) => only,
@@ -2034,6 +2091,7 @@ fn sequence_of(segments: Vec<Segment>) -> Segment {
     Segment {
         term,
         extent,
+        occurrences,
         tied: false,
     }
 }
@@ -2066,6 +2124,7 @@ fn elaborate_improvise(
     Segment {
         term: Term::literal(timeline_or_empty(extent, vec![Occurrence::new(region, fact)])),
         extent,
+        occurrences: 1,
         tied: false,
     }
 }
@@ -2142,29 +2201,44 @@ fn elaborate_repeat(
     // expanding is exactly what happened before — and an expanded repeat is
     // engraved the way it is written, because no repeat fact reaches the page.
     if body.tied || played.iter().any(|segment| segment.tied) {
-        return expanded_repeat(share, cx, body, &played, count);
+        return expanded_repeat(resolver, share, cx, body, &played, count);
+    }
+
+    let output = body
+        .occurrences
+        .saturating_mul(u64::from(count))
+        .saturating_add(repeated_ending_occurrences(&played, count))
+        .saturating_add(if played.is_empty() { 0 } else { u64::from(count) })
+        .saturating_add(1);
+    if !share.preflight_output("expanding a repeat", output, resolve::trimmed_span(repeat.syntax())) {
+        share.report_exhaustion(resolver);
+        return Segment::empty();
     }
 
     let mark = |iteration: u32| mark_of(cx.path.len(), &[ExpansionStep::RepeatIteration(iteration)], None, None);
+    let body_occurrences = body.occurrences;
     let body_name = share.bind_anonymous(body.term);
-    let ending_names: Vec<(String, Beat)> = played
+    let ending_names: Vec<(String, Beat, u64)> = played
         .into_iter()
-        .map(|segment| (share.bind_anonymous(segment.term), segment.extent))
+        .map(|segment| (share.bind_anonymous(segment.term), segment.extent, segment.occurrences))
         .collect();
     let mut passes: Vec<Term<ScoreFact>> = Vec::with_capacity(count as usize);
     let mut extent = Ratio::ZERO;
+    let mut occurrences = 0u64;
     for iteration in 0..count {
         passes.push(Term::var_marked(&body_name, mark(iteration)));
         extent += body.extent.as_ratio();
+        occurrences = occurrences.saturating_add(body_occurrences);
         // Fewer endings than passes is legal: the last one covers the rest,
         // which is what `1.–3.` means on a volta bracket.
-        let Some((bracket, name, length)) = ending_of(&ending_names, iteration) else {
+        let Some((bracket, name, length, ending_occurrences)) = ending_of(&ending_names, iteration) else {
             continue;
         };
         let origin = origin_of(cx, resolve::trimmed_span(repeat.syntax()));
         let reference = Segment {
             term: Term::var_marked(name, mark(iteration)),
             extent: length,
+            occurrences: ending_occurrences,
             tied: false,
         };
         let fact = ScoreFact::new(
@@ -2177,10 +2251,12 @@ fn elaborate_repeat(
         );
         passes.push(region(reference, fact).term);
         extent += length.as_ratio();
+        occurrences = occurrences.saturating_add(ending_occurrences.saturating_add(1));
     }
     let whole = Segment {
         term: Term::seq(passes).unwrap_or_else(|_| Term::literal(empty_segment())),
         extent: Beat::new(extent),
+        occurrences,
         tied: false,
     };
     let origin = origin_of(cx, resolve::trimmed_span(repeat.syntax()));
@@ -2192,17 +2268,32 @@ fn elaborate_repeat(
 
 /// The ending a given pass plays — its 1-based bracket, binding, and length —
 /// by the rule that the last one covers every pass after it.
-fn ending_of(endings: &[(String, Beat)], iteration: u32) -> Option<(u32, &str, Beat)> {
+fn ending_of(endings: &[(String, Beat, u64)], iteration: u32) -> Option<(u32, &str, Beat, u64)> {
     let index = (iteration as usize).min(endings.len().checked_sub(1)?);
     let bracket = u32::try_from(index.saturating_add(1)).unwrap_or(u32::MAX);
     endings
         .get(index)
-        .map(|(name, length)| (bracket, name.as_str(), *length))
+        .map(|(name, length, occurrences)| (bracket, name.as_str(), *length, *occurrences))
 }
 
 /// The fallback for a repeat that cannot be shared: every pass written out,
 /// exactly as it was before sharing existed.
-fn expanded_repeat(share: &Share, cx: &ExpandCx, body: Segment, endings: &[Segment], count: u32) -> Segment {
+fn expanded_repeat(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    cx: &ExpandCx,
+    body: Segment,
+    endings: &[Segment],
+    count: u32,
+) -> Segment {
+    let body_output = body.occurrences.saturating_mul(u64::from(count));
+    let ending_output = repeated_ending_occurrences(endings, count);
+    let output = body_output.saturating_add(ending_output);
+    let span = cx.music.definition_span;
+    if !share.preflight_output("expanding a tied repeat", output, span) {
+        share.report_exhaustion(resolver);
+        return Segment::empty();
+    }
     let body = share.evaluate(body.term);
     let played: Vec<Timeline<ScoreFact>> = endings
         .iter()
@@ -2222,6 +2313,21 @@ fn expanded_repeat(share: &Share, cx: &ExpandCx, body: Segment, endings: &[Segme
         }
     }
     Segment::literal(sequence(segments))
+}
+
+fn repeated_ending_occurrences(endings: &[Segment], count: u32) -> u64 {
+    if endings.is_empty() {
+        0
+    } else {
+        let distinct = usize::try_from(count).unwrap_or(usize::MAX).min(endings.len());
+        let initial = endings
+            .get(..distinct)
+            .unwrap_or_default()
+            .iter()
+            .fold(0u64, |sum, ending| sum.saturating_add(ending.occurrences));
+        let remaining = u64::from(count).saturating_sub(u64::try_from(distinct).unwrap_or(u64::MAX));
+        initial.saturating_add(remaining.saturating_mul(endings.last().map_or(0, |ending| ending.occurrences)))
+    }
 }
 
 /// A repeat's body and its endings, with everything wrong about them said.
@@ -2766,7 +2872,7 @@ fn fraction(value: Ratio<i64>) -> String {
     }
 }
 
-/// Expand a `use` statement, mirroring the direct lowerer's binding rules.
+/// Instantiate the checked contextual value named by a `use` statement.
 fn elaborate_use(
     resolver: &mut Resolver,
     share: &mut Share,
@@ -2774,21 +2880,11 @@ fn elaborate_use(
     cx: &ExpandCx,
     scope: Scope,
 ) -> Segment {
-    let name = call.motif().unwrap_or_default();
-    let found = resolver.motifs.get_full(&name).map(|(index, _, motif)| {
-        (
-            index,
-            motif.params.clone(),
-            motif.body.clone(),
-            motif.declaration,
-            motif.material,
-            motif.span,
-            motif.foreign,
-        )
-    });
     let call_span = resolve::trimmed_span(call.syntax());
-    let Some((index, motif_params, body, declaration, material, declared_at, foreign)) = found else {
-        let known: Vec<&str> = resolver.motifs.keys().map(String::as_str).collect();
+    let Some(music) = cx.music.music_at(call_span).cloned() else {
+        let name = call.motif().unwrap_or_default();
+        let mut known: Vec<&str> = resolver.motifs.keys().map(String::as_str).collect();
+        known.extend(cx.named_music.keys().map(String::as_str));
         resolver.report(
             Diagnostic::error(Code::UnknownName, format!("cannot find `{name}`"))
                 .at(call_span, "not declared in this piece")
@@ -2796,105 +2892,7 @@ fn elaborate_use(
         );
         return Segment::empty();
     };
-    // The name resolved, so this `use` is a reference to it — recorded in
-    // the document's own text only: a use inside an imported library's body
-    // names text the record does not cover.
-    if !cx.foreign
-        && let Some(use_span) = resolve::descendant_token_span(call.syntax(), SyntaxKind::Identifier)
-    {
-        resolver.references.record_use(material.name_kind(), &name, use_span);
-    }
-    // A bar is declared in the middle of the music, so "declared above" is a
-    // real question rather than a guarantee of the grammar. Ending *after*
-    // this `use` starts covers both ways of getting it wrong: quoting a bar
-    // written further down, and a bar quoting itself.
-    if material == crate::resolve::Material::Bar && call_span.start < declared_at.end {
-        // Inside its own braces the second label would point at the box the
-        // first label is already in, which miette draws as two carets on one
-        // line and a reader reads as one fact stated twice.
-        let diagnostic = if call_span.start >= declared_at.start {
-            Diagnostic::error(Code::Misplaced, format!("the bar `{name}` plays itself"))
-                .at(call_span, format!("this is inside `bar {name}`"))
-                .help("write the notes out, or play a bar declared above this one")
-        } else {
-            Diagnostic::error(Code::Misplaced, format!("the bar `{name}` is written after this"))
-                .at(call_span, "used before it exists")
-                .also(declared_at, "declared here")
-                .help("move the `use` below the bar, or the bar above the `use`")
-                .note("material is read top to bottom, which is what makes a piece that quotes itself impossible")
-        };
-        resolver.report(diagnostic);
-        return Segment::empty();
-    }
-    if index >= cx.max_motif {
-        let word = material.word();
-        resolver.report(
-            Diagnostic::error(Code::Misplaced, format!("{word} `{name}` is declared after this one"))
-                .at(call_span, "used before it exists")
-                .help(format!(
-                    "move the declaration above the motif that uses it, or write the {word}'s notes out here"
-                ))
-                .note("a motif sees only the material above it, which is what makes a cycle impossible"),
-        );
-        return Segment::empty();
-    }
-    let args = call.args();
-    if args.len() > motif_params.len() {
-        resolver.report(
-            Diagnostic::error(
-                Code::NotAValue,
-                format!(
-                    "motif `{name}` takes {} argument{}, and this passes {}",
-                    motif_params.len(),
-                    if motif_params.len() == 1 { "" } else { "s" },
-                    args.len()
-                ),
-            )
-            .at(resolve::trimmed_span(call.syntax()), "too many arguments"),
-        );
-        return Segment::empty();
-    }
-    let mut params = indexmap::IndexMap::new();
-    for (position, param) in motif_params.iter().enumerate() {
-        let text = args.get(position).cloned().or_else(|| param.default.clone());
-        let Some(text) = text else {
-            resolver.report(
-                Diagnostic::error(
-                    Code::NotAValue,
-                    format!("motif `{name}` needs a value for `{}`", param.name),
-                )
-                .at(
-                    resolve::trimmed_span(call.syntax()),
-                    format!("no `{}` here", param.name),
-                )
-                .help(format!(
-                    "pass one, or give `{}` a default in the declaration",
-                    param.name
-                )),
-            );
-            return Segment::empty();
-        };
-        let Some(value) = resolve::bind_argument(resolver, &name, param, &text, cx, call.syntax()) else {
-            return Segment::empty();
-        };
-        params.insert(param.name.clone(), value);
-    }
-    let reference = expand_material(
-        resolver,
-        share,
-        &Expansion {
-            name: &name,
-            material,
-            index,
-            body: &body,
-            declaration,
-            params,
-            foreign,
-        },
-        cx,
-        scope,
-        call_span,
-    );
+    let reference = instantiate_music(resolver, share, &music, cx, scope, call_span);
     if call.overrides().is_empty() {
         return reference;
     }
@@ -2902,61 +2900,104 @@ fn elaborate_use(
     Segment::literal(specialize(resolver, call, &share.evaluate(reference.term)))
 }
 
-/// What one reference to a piece of material needs to know about it.
-struct Expansion<'a> {
-    name: &'a str,
-    material: crate::resolve::Material,
-    index: usize,
-    body: &'a [VoiceItem],
-    declaration: crate::origin::DeclarationId,
-    params: indexmap::IndexMap<String, crate::resolve::BoundValue>,
-    /// Whether the body's text belongs to an imported library (prompt 78).
-    foreign: bool,
-}
-
-/// Elaborate a piece of material once and refer to it from here.
-///
-/// The body is elaborated *without* the path that leads to this reference, and
-/// with placeholders where the call site and the voice would be, so that a
-/// second reference can reach the same body. Everything a reference
-/// contributes rides on its mark instead (T6).
-///
-/// The choice prefix is reset for the same reason the path is: the body is
-/// elaborated once and shared, so a decision inside it belongs to the
-/// *material* and not to any one use of it. A ranged repeat inside a motif
-/// therefore takes one count per motif — the reading
-/// `docs/kernel/11-realization.md` says T2 forces once sharing is
-/// load-bearing, settled here by construction rather than by a rule.
-fn expand_material(
+/// Instantiate one contextual value, preserving legacy material roles while
+/// giving ordinary `let`/`fn` values the same sharing and provenance path.
+fn instantiate_music(
     resolver: &mut Resolver,
     share: &mut Share,
-    expansion: &Expansion<'_>,
+    music: &crate::core::Music,
     cx: &ExpandCx,
     scope: Scope,
     call_span: SourceSpan,
 ) -> Segment {
+    let legacy = music.role.as_ref().and_then(|role| {
+        resolver.motifs.get_full(&role.name).map(|(index, _, definition)| {
+            (
+                role.name.clone(),
+                role.material,
+                index,
+                definition.declaration,
+                definition.span,
+                role.foreign,
+            )
+        })
+    });
+    if let Some((name, material, index, _, declared_at, _)) = &legacy {
+        if *material == crate::resolve::Material::Bar && call_span.start < declared_at.end {
+            let diagnostic = if call_span.start >= declared_at.start {
+                Diagnostic::error(Code::Misplaced, format!("the bar `{name}` plays itself"))
+                    .at(call_span, format!("this is inside `bar {name}`"))
+                    .help("write the notes out, or play a bar declared above this one")
+            } else {
+                Diagnostic::error(Code::Misplaced, format!("the bar `{name}` is written after this"))
+                    .at(call_span, "used before it exists")
+                    .also(*declared_at, "declared here")
+                    .help("move the `use` below the bar, or the bar above the `use`")
+                    .note("material is read top to bottom, which is what makes a piece that quotes itself impossible")
+            };
+            resolver.report(diagnostic);
+            return Segment::empty();
+        }
+        if *index >= cx.max_motif {
+            let word = material.word();
+            resolver.report(
+                Diagnostic::error(Code::Misplaced, format!("{word} `{name}` is declared after this one"))
+                    .at(call_span, "used before it exists")
+                    .help(format!(
+                        "move the declaration above the motif that uses it, or write the {word}'s notes out here"
+                    ))
+                    .note("a motif sees only the material above it, which is what makes a cycle impossible"),
+            );
+            return Segment::empty();
+        }
+    }
+
+    let (name, material, index, declaration, foreign) = legacy.as_ref().map_or_else(
+        || {
+            (
+                format!("value@{}:{}", music.definition_span.start, music.definition_span.end),
+                None,
+                cx.max_motif,
+                cx.declaration,
+                cx.foreign,
+            )
+        },
+        |(name, material, index, declaration, _, foreign)| {
+            (name.clone(), Some(*material), *index, *declaration, *foreign)
+        },
+    );
+    let mut params = cx.params.clone();
+    params.extend(music.bindings.clone());
     let inner = ExpandCx {
-        params: expansion.params.clone(),
+        params,
         intervals: cx.intervals.clone(),
         path: Vec::new(),
-        declaration: expansion.declaration,
+        declaration,
         origin_span: Some(SHARED_ORIGIN),
-        max_motif: expansion.index,
+        max_motif: index,
         scale: cx.scale,
-        foreign: expansion.foreign,
-        choice: crate::ChoicePath::default().then(match expansion.material {
-            crate::resolve::Material::Bar => crate::ChoiceStep::Bar(expansion.name.into()),
-            crate::resolve::Material::Motif => crate::ChoiceStep::Motif(expansion.name.into()),
-            crate::resolve::Material::Fragment => crate::ChoiceStep::Fragment(expansion.name.into()),
-        }),
+        foreign,
+        choice: material.map_or_else(
+            || cx.choice.clone(),
+            |material| {
+                crate::ChoicePath::default().then(match material {
+                    crate::resolve::Material::Bar => crate::ChoiceStep::Bar(name.as_str().into()),
+                    crate::resolve::Material::Motif => crate::ChoiceStep::Motif(name.as_str().into()),
+                    crate::resolve::Material::Fragment => crate::ChoiceStep::Fragment(name.as_str().into()),
+                })
+            },
+        ),
+        music: music.clone(),
+        named_music: cx.named_music.clone(),
     };
-    let key = motif_key(expansion.name, &inner);
-    let (binding, extent) = match share.lookup(&key) {
+    let key = music_key(&name, &inner, music.definition_span);
+    let (binding, extent, occurrences) = match share.lookup(&key) {
         Some(found) => found,
         None => {
-            let elaborated = elaborate_items(resolver, share, expansion.body, &inner, SHARED_SCOPE);
+            let elaborated = elaborate_items(resolver, share, &music.items, &inner, SHARED_SCOPE);
             let extent = elaborated.extent;
-            (share.bind(key, elaborated), extent)
+            let occurrences = elaborated.occurrences;
+            (share.bind(key, elaborated), extent, occurrences)
         }
     };
     let steps = cx
@@ -2970,7 +3011,39 @@ fn expand_material(
     Segment {
         term: Term::var_marked(binding, mark_of(0, &steps, Some(call_span), Some(scope))),
         extent,
+        occurrences,
         tied: false,
+    }
+}
+
+fn music_key(name: &str, inner: &ExpandCx, definition: SourceSpan) -> String {
+    let mut key = format!("{name}|{}:{}|{}|", definition.start, definition.end, inner.scale);
+    for interval in &inner.intervals {
+        let _ = write!(key, "{interval:?},");
+    }
+    key.push('|');
+    for (param, value) in &inner.params {
+        let _ = write!(key, "{param}={value:?};");
+    }
+    append_contextual_key(&mut key, &inner.music);
+    key
+}
+
+fn append_contextual_key(key: &mut String, music: &crate::core::Music) {
+    let _ = write!(
+        key,
+        "@{}:{}#{}",
+        music.definition_span.start,
+        music.definition_span.end,
+        music.items.len()
+    );
+    for (name, value) in &music.bindings {
+        let _ = write!(key, "{name}={value:?};");
+    }
+    for (site, nested) in &music.uses {
+        let _ = write!(key, "use{site}[");
+        append_contextual_key(key, nested);
+        key.push(']');
     }
 }
 
@@ -2988,16 +3061,20 @@ fn elaborate_fragment(
     span: SourceSpan,
     use_span: SourceSpan,
 ) -> Segment {
-    let found = resolver.motifs.get_full(name).map(|(index, _, motif)| {
-        (
-            index,
-            motif.body.clone(),
-            motif.declaration,
-            motif.material,
-            motif.foreign,
-        )
-    });
-    let Some((index, body, declaration, material, foreign)) = found else {
+    if let Some(definition) = resolver.motifs.get(name)
+        && definition.material != crate::resolve::Material::Fragment
+    {
+        resolver.report(
+            Diagnostic::error(
+                Code::Misplaced,
+                format!("`{name}` is a {}, not a fragment", definition.material.word()),
+            )
+            .at(span, "a mobile arranges fragments")
+            .help(format!("declare it as `fragment {name} {{ … }}`")),
+        );
+        return Segment::empty();
+    }
+    let Some(music) = cx.named_music.get(name).cloned() else {
         let known: Vec<&str> = resolver.motifs.keys().map(String::as_str).collect();
         resolver.report(
             Diagnostic::error(Code::UnknownName, format!("cannot find `{name}`"))
@@ -3006,11 +3083,15 @@ fn elaborate_fragment(
         );
         return Segment::empty();
     };
-    if material != crate::resolve::Material::Fragment {
+    let material = music.role.as_ref().map(|role| role.material);
+    if material != Some(crate::resolve::Material::Fragment) {
         resolver.report(
             Diagnostic::error(
                 Code::Misplaced,
-                format!("`{name}` is a {}, not a fragment", material.word()),
+                format!(
+                    "`{name}` is {}, not a fragment",
+                    material.map_or("a music value", crate::resolve::Material::word)
+                ),
             )
             .at(span, "a mobile arranges fragments")
             .help(format!("declare it as `fragment {name} {{ … }}`")),
@@ -3019,39 +3100,11 @@ fn elaborate_fragment(
     }
     // A name in a mobile's list is a use of the fragment it resolves to.
     if !cx.foreign {
-        resolver.references.record_use(material.name_kind(), name, use_span);
+        resolver
+            .references
+            .record_use(crate::resolve::NameKind::Fragment, name, use_span);
     }
-    expand_material(
-        resolver,
-        share,
-        &Expansion {
-            name,
-            material,
-            index,
-            body: &body,
-            declaration,
-            params: indexmap::IndexMap::new(),
-            foreign,
-        },
-        cx,
-        scope,
-        span,
-    )
-}
-
-/// The sharing key for a motif body: the motif, and everything its payloads
-/// depend on that is not supplied by the reference's mark.
-fn motif_key(name: &str, inner: &ExpandCx) -> String {
-    use std::fmt::Write as _;
-    let mut key = format!("{name}|{}|", inner.scale);
-    for interval in &inner.intervals {
-        let _ = write!(key, "{interval:?},");
-    }
-    key.push('|');
-    for (param, value) in &inner.params {
-        let _ = write!(key, "{param}={value:?};");
-    }
-    key
+    instantiate_music(resolver, share, &music, cx, scope, span)
 }
 
 /// Apply an occurrence's `with { note n = <pitch>; }` overrides (roadmap §9).
@@ -3526,6 +3579,12 @@ pub(crate) fn piece_term(
     let mut resolver = Resolver::new();
     resolver.realization = realization.clone();
     let mut snapshot = ScoreSnapshot::default();
+    // This interchange helper historically has no import-source parameter.
+    // Preserve that contract: local material elaborates, and a use whose
+    // declaration only an unavailable import could supply is the empty error
+    // segment the pre-core helper produced. Full compilation always uses the
+    // checked build closure above.
+    let core = crate::core::check_piece_for_kernel(&mut resolver, &piece)?;
     resolve::lower_header(&mut resolver, &piece, &mut snapshot);
     let score = piece.score()?;
     let mut share = Share::default();
@@ -3545,6 +3604,7 @@ pub(crate) fn piece_term(
                 declaration,
                 part_id,
                 u32::try_from(index).unwrap_or(u32::MAX),
+                &core,
             ));
         }
     }
@@ -3558,11 +3618,23 @@ pub(crate) fn piece_term(
     let bars = resolve_meters(&mut resolver);
     check_keys(&mut resolver, &bars);
     let context = context_facts(&mut resolver, &piece, &score, &declared, &bars, extent);
+    let lane_occurrences = lanes
+        .iter()
+        .fold(0u64, |count, lane| count.saturating_add(lane.occurrences));
+    let context_occurrences = u64::try_from(context.occurrences().len()).unwrap_or(u64::MAX);
+    if !share.reserve_output(
+        "elaborating the piece timeline",
+        lane_occurrences.saturating_add(context_occurrences),
+        resolve::trimmed_span(score.syntax()),
+    ) {
+        return None;
+    }
     let parts: Vec<musa_kernel::Term<ScoreFact>> = lanes
         .into_iter()
         .map(|lane| lane.term)
         .chain(std::iter::once(musa_kernel::Term::literal(context)))
         .collect();
     let term = share.close(musa_kernel::Term::over(parts).ok()?);
+    term.check().ok()?;
     Some((piece.name().unwrap_or_default(), term, resolver.decisions))
 }
