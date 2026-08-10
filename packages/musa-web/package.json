@@ -1,0 +1,37 @@
+{
+  "name": "@musa/web",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Typeset musa scores in the browser: MathJax-like engraving for the musa language",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "wasm"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "vite build",
+    "check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "musa-engrave": "workspace:*"
+  },
+  "peerDependencies": {
+    "verovio": "^6.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "typescript": "^5.7.0",
+    "verovio": "6.2.0",
+    "vite": "^6.0.0",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.2.7"
+  }
+}

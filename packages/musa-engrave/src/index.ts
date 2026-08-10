@@ -10,6 +10,7 @@ export type { Engraver } from "./engraver";
 export { createEngraver } from "./engraver";
 export type { Box, Layout, LayoutOptions, PageSvg } from "./protocol";
 export {
+  CONTINUOUS_WIDTH,
   DEFAULT_LAYOUT,
   ZOOM_STEPS,
   modeOptions,

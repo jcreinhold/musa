@@ -30,7 +30,7 @@ export type ViewMode = "page" | "continuous";
  * currently produce. The page is trimmed back to its content, so this is a
  * ceiling rather than a size.
  */
-const CONTINUOUS_WIDTH = 1_000_000;
+export const CONTINUOUS_WIDTH = 1_000_000;
 
 /**
  * The layout a view mode implies.
@@ -103,11 +103,16 @@ export function pixelsPerUnit(zoom: number): number {
 
 /** The Verovio option object for a layout. */
 export function verovioOptions(options: LayoutOptions): Record<string, unknown> {
+  // Verovio bounds page dimensions to [100, 100000] (a hundred metres was
+  // never really on offer); out-of-bounds values are refused with a console
+  // error. Clamp here so the continuous ceiling stays silent and every
+  // caller — desktop and web — gets the same layout.
+  const clampPage = (units: number) => Math.min(Math.max(units, 100), 100_000);
   return {
     font: "Bravura",
     breaks: options.breaks,
-    pageWidth: options.pageWidth,
-    pageHeight: options.pageHeight,
+    pageWidth: clampPage(options.pageWidth),
+    pageHeight: clampPage(options.pageHeight),
     adjustPageHeight: options.adjustPageHeight,
     adjustPageWidth: options.adjustPageWidth,
     // Zoom lives in the page size, never in `scale`: see `pageFor`.

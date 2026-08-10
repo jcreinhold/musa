@@ -30,6 +30,11 @@ cargo build -p "${CRATE}" --target wasm32-unknown-unknown --profile "${PROFILE}"
 mkdir -p "${OUT}"
 wasm-bindgen --target web --out-dir "${OUT}" "target/wasm32-unknown-unknown/${PROFILE}/${ARTIFACT}.wasm"
 
+# The glue's default module URL would be inlined as base64 by vite's library
+# mode; `@musa/web` always passes an explicit URL to init, so mark the
+# default @vite-ignore and keep the wasm a separate file.
+sed -i.bak "s|new URL('${ARTIFACT}_bg.wasm', import.meta.url)|new URL(/* @vite-ignore */ '${ARTIFACT}_bg.wasm', import.meta.url)|" "${OUT}/${ARTIFACT}.js" && rm "${OUT}/${ARTIFACT}.js.bak"
+
 if command -v wasm-opt >/dev/null 2>&1; then
     # Rust's wasm32 target emits these target features by default; wasm-opt
     # validates against MVP unless told otherwise.

@@ -147,7 +147,7 @@ pub fn validate_impl(source: &str) -> Vec<WebDiagnostic> {
 /// Install the panic hook once, so a panic is legible in the console rather
 /// than an opaque `unreachable executed`.
 #[wasm_bindgen(start)]
-pub fn init() {
+pub fn install_panic_hook() {
     console_error_panic_hook::set_once();
 }
 

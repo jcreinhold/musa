@@ -1,7 +1,7 @@
 ---
 id: 140
 slug: web-package-scaffold
-status: pending
+status: done
 depends_on: [138, 139]
 phase: 5
 ---
