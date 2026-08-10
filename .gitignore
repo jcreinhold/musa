@@ -172,3 +172,9 @@ flamegraph.svg
 # @musa/web build outputs (prompts 140, 143): rebuilt by vite, never committed.
 packages/musa-web/dist-cdn/
 packages/musa-web/examples/build-time/out/
+
+# Agent runtime artifacts: pi sessions and subagent state are local-only,
+# and Claude's settings.local.json holds per-machine permission overrides.
+.pi/sessions/
+.pi-subagents/
+.claude/settings.local.json

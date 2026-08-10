@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(cargo *)",
+      "Bash(cargo nextest *)",
+      "Bash(make *)",
+      "Bash(scripts/*)",
+      "Bash(git add *)",
+      "Bash(git branch *)",
+      "Bash(git commit *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git status *)",
+      "Bash(git stash list*)",
+      "Bash(gh *)",
+      "Bash(rustfmt *)",
+      "Bash(taplo *)",
+      "Bash(mdwright *)",
+      "Bash(tree-sitter *)",
+      "Bash(node *)",
+      "Bash(npx *)",
+      "Bash(pnpm *)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "Bash(tree *)",
+      "Bash(wc *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(python3 *)",
+      "Edit(apps/**)",
+      "Edit(crates/**)",
+      "Edit(docs/**)",
+      "Edit(editors/**)",
+      "Edit(examples/**)",
+      "Edit(packages/**)",
+      "Edit(scripts/*)",
+      "Edit(stdlib/**)",
+      "Edit(tests/**)",
+      "Edit(*.md)",
+      "Edit(*.toml)",
+      "Edit(*.json)",
+      "WebFetch",
+      "WebSearch"
+    ],
+    "ask": [
+      "Bash(git stash)",
+      "Bash(git stash apply *)",
+      "Bash(git stash drop *)",
+      "Bash(git stash pop *)",
+      "Bash(git stash push *)",
+      "Bash(git reset *)",
+      "Bash(rm -rf *)",
+      "Bash(npm install *)",
+      "Bash(pnpm install *)"
+    ],
+    "deny": [
+      "Bash(cargo publish *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/generated-guard.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
