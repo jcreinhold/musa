@@ -1,9 +1,19 @@
 ; Highlighting, in the language's own vocabulary (prompt 80).
 ;
-; Captures mirror `TokenClass` in crates/musa-language/src/highlight.rs:
-; Comment, Keyword, Use, Pitch, Duration, Number, Text, Unit, Name,
-; punctuation. Specific name captures come first; the generic identifier
-; rule is last, so anything more specific already won.
+; The colors are the theme's business; the captures are ours. Zed's default
+; themes paint the standard captures the way Rust readers expect: @function
+; blue, @property red, @type cyan, @keyword purple, @string green,
+; @constant yellow, @variable plain. So this file maps musa's vocabulary to
+; those captures — a motif is a function, a named argument is a field, a
+; dynamic is a variant — and the theme does the rest.
+;
+; Two Zed rules the file obeys:
+;
+;   1. Only captures in Zed's taxonomy highlight at all (see the
+;      zed-extension skill's query-files reference). `@module` and
+;      `@function.call` are not in it; using them renders text UNCOLORED.
+;   2. The LAST matching pattern wins. General fallbacks come first, the
+;      specific name captures last.
 
 ; --- Comment ------------------------------------------------------------
 
@@ -78,16 +88,10 @@
   "music"
   "import"
   "match"
-  "some"
-  "none"
-  "true"
-  "false"
+  ; `use` alone, as TokenClass::Use says: it is where material comes from.
+  ; Zed has no keyword subcategories, so it takes the keyword color.
+  "use"
 ] @keyword
-
-; `use` alone, as TokenClass::Use says: it is where material comes from.
-; `import` is a structural keyword and belongs with the list above: it brings
-; in names, not material.
-"use" @keyword.import
 
 ; --- Keywords whose class depends on where they stand -----------------------
 ;
@@ -101,32 +105,25 @@
 (harmony_declaration "harmony" @keyword)
 (option_type "option" @keyword)
 (list_type "list" @keyword)
-(type_name "pitch" @keyword)
-(type_name "scale" @keyword)
 (scale_expression "scale" @keyword)
 (in_scale_statement "scale" @keyword)
 
-; --- Modules: the name positions --------------------------------------------
-;
-; Every segment of an import path, a `mod` child's name, and an import's
-; alias name a module. `_module_name` is hidden, so the borrowed keyword
-; tokens are direct children of the statement — these patterns are exact.
+; Literals that behave like keywords: booleans and the option constructors.
+; Rust readers know these as the yellow-ish built-ins, not as control words.
+[
+  "true"
+  "false"
+] @boolean
 
-(import_statement (identifier) @module)
-(import_statement "harmony" @module)
-(import_statement "option" @module)
-(import_statement "list" @module)
-(import_statement "pitch" @module)
-(import_statement "scale" @module)
-
-(mod_declaration (identifier) @module)
-(mod_declaration "harmony" @module)
-(mod_declaration "option" @module)
-(mod_declaration "list" @module)
-(mod_declaration "pitch" @module)
-(mod_declaration "scale" @module)
+[
+  "some"
+  "none"
+] @constant.builtin
 
 ; --- The music itself ------------------------------------------------------
+;
+; Written pitches and intervals are the piece's constants: yellow, like the
+; variants in `ExitCode::SUCCESS`.
 
 (pitch_literal) @constant
 (interval_literal) @constant
@@ -137,64 +134,10 @@
 (float) @number
 
 (string) @string
-(unit) @string.special
 
-; --- Names the composer gave things ----------------------------------------
-
-(motif_declaration name: (identifier) @function)
-(fragment_declaration name: (identifier) @function)
-(function_declaration name: (identifier) @function)
-(let_declaration name: (identifier) @variable)
-(application_expression (name_expression (identifier) @function.call))
-(mobile_statement fragment: (identifier) @function.call)
-
-(part_declaration name: (identifier) @type)
-(patch_declaration name: (identifier) @type)
-(bus_declaration name: (identifier) @type)
-
-(voice_declaration name: (identifier) @variable)
-; A template's own name, and the name a `make` gives what it makes.
-(piece_declaration template_name: (identifier) @function)
-(make_statement template: (identifier) @function.call)
-(make_statement name: (identifier) @variable)
-; A signature and a structure are types in the editor's vocabulary: they name
-; structure, never a value.
-(signature_declaration name: (identifier) @type)
-(structure_declaration name: (identifier) @type)
-(structure_declaration signature: (identifier) @type)
-(signature_member name: (identifier) @variable)
-(name_expression member: (identifier) @variable)
-(profile_declaration name: (identifier) @variable)
-(bar_statement name: (identifier) @label)
-
-(setting_statement name: (identifier) @variable.parameter)
-(motif_parameter name: (identifier) @variable.parameter)
-(parameter name: (identifier) @variable.parameter)
-(expression_argument name: (identifier) @variable.parameter)
-
-; --- Vocabulary names -----------------------------------------------------
-; Not the composer's names but the language's: marks, dynamics, and clefs are
-; chosen from a fixed vocabulary the compiler checks, so they highlight like
-; constants, not like names.
-
-(mark_statement name: (identifier) @constant)
-(mark_rule name: (identifier) @constant)
-(dynamic_statement mark: (identifier) @constant)
-(clef_statement name: (identifier) @constant)
-
-(assign_statement source: (identifier) @type)
-(assign_statement destination: (identifier) @type)
-(route_statement source: (identifier) @type)
-(send_statement source: (identifier) @type)
-(send_statement bus: (identifier) @type)
-(modulate_statement signal: (identifier) @variable)
-(parameter_path patch: (identifier) @type)
-
-(call_expression name: (identifier) @function.builtin)
-(name_reference (identifier) @variable)
-
-; Everything else a name can be: articulations, references, clefs, dynamics.
-(identifier) @variable
+; Units (`Hz`, `dB`, `bpm`) are a fixed vocabulary the compiler checks, so
+; they paint like constants, not like text the composer wrote.
+(unit) @constant
 
 ; --- Operators and punctuation ----------------------------------------------
 
@@ -234,3 +177,106 @@
   ">"
   "^"
 ] @punctuation.delimiter
+
+; --- The fallback: every name is plain until a rule below says otherwise ----
+;
+; Rust leaves `let x = ...` uncolored, and so does musa: a name the composer
+; gave a value takes no ink. Everything more specific comes after this line
+; and wins over it.
+
+(identifier) @variable
+
+; --- Modules -----------------------------------------------------------------
+;
+; Every segment of an import path, a `mod` child's name, and an import's
+; alias names a module. `_module_name` is hidden, so the borrowed keyword
+; tokens are direct children of the statement — these patterns are exact.
+; Modules are names, and Rust leaves module paths uncolored too, so they
+; take the variable capture on purpose.
+
+(import_statement (identifier) @variable)
+(import_statement "harmony" @variable)
+(import_statement "option" @variable)
+(import_statement "list" @variable)
+(import_statement "pitch" @variable)
+(import_statement "scale" @variable)
+
+(mod_declaration (identifier) @variable)
+(mod_declaration "harmony" @variable)
+(mod_declaration "option" @variable)
+(mod_declaration "list" @variable)
+(mod_declaration "pitch" @variable)
+(mod_declaration "scale" @variable)
+
+; --- Types: cyan --------------------------------------------------------------
+;
+; The language's own type words are builtins; what the composer declares as
+; structure — parts, patches, buses, signatures, structures — is a type in
+; the editor's vocabulary.
+
+(type_name "pitch" @type.builtin)
+(type_name "music" @type.builtin)
+(type_name "scale" @type.builtin)
+(type_name "key" @type.builtin)
+(type_name "degree" @type.builtin)
+(type_name "frame" @type.builtin)
+(type_name (identifier) @type)
+
+(part_declaration name: (identifier) @type)
+(patch_declaration name: (identifier) @type)
+(bus_declaration name: (identifier) @type)
+(signature_declaration name: (identifier) @type)
+(structure_declaration name: (identifier) @type)
+(structure_declaration signature: (identifier) @type)
+
+(assign_statement source: (identifier) @type)
+(assign_statement destination: (identifier) @type)
+(route_statement source: (identifier) @type)
+(send_statement source: (identifier) @type)
+(send_statement bus: (identifier) @type)
+(parameter_path patch: (identifier) @type)
+
+; --- Functions: blue ------------------------------------------------------------
+;
+; Definitions and calls alike: Zed does not distinguish @function.call, so
+; both take @function.
+
+(motif_declaration name: (identifier) @function)
+(fragment_declaration name: (identifier) @function)
+(function_declaration name: (identifier) @function)
+; A template's own name, and the template a `make` is made from.
+(piece_declaration template_name: (identifier) @function)
+(make_statement template: (identifier) @function)
+
+(application_expression (name_expression (identifier) @function))
+(mobile_statement fragment: (identifier) @function)
+
+; The studio's processors are the language's builtins.
+(call_expression name: (identifier) @function.builtin)
+
+; --- Fields and arguments: red ---------------------------------------------------
+;
+; Rust paints struct fields red; musa's fields are the named parts of a
+; statement or expression: settings keys, signature members, and named
+; arguments.
+
+(setting_statement name: (identifier) @property)
+(signature_member name: (identifier) @property)
+(expression_argument name: (identifier) @property)
+
+; Parameters are the declaration side of an argument.
+(motif_parameter name: (identifier) @variable.parameter)
+(parameter name: (identifier) @variable.parameter)
+
+; --- Vocabulary names: yellow -----------------------------------------------------
+; Not the composer's names but the language's: marks, dynamics, and clefs are
+; chosen from a fixed vocabulary the compiler checks, so they highlight like
+; the variants of an enum, not like names.
+
+(mark_statement name: (identifier) @constant)
+(mark_rule name: (identifier) @constant)
+(dynamic_statement mark: (identifier) @constant)
+(clef_statement name: (identifier) @constant)
+
+; A bar's name is a target, not a value.
+(bar_statement name: (identifier) @label)
