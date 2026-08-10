@@ -43,6 +43,18 @@ primitives beside `scale_pitch`: the same ordered-offset table answering the reg
 ordinal is outside the collection's period. It reads private scale state, which is why it is a primitive and not
 `.musa`.
 
+Spelling the members is a second operation, and it is not the same one. A diatonic chord's quality is not chosen and
+then transposed; it *falls out* of the collection, which is why `ii` is minor in major and `II` is major in Dorian
+without either being stipulated. Stacking degrees `n`, `n+2`, `n+4` gives three spelled classes, but nothing turns
+three classes back into a `chord_class`: there is no interval between two pitch classes, no equality on `pitchclass`
+or `interval` with which to test a candidate template, and `chord_on` re-roots a template rather than building one.
+`scale_chord(scale, degree, members) -> option[chord_class]` is therefore the second primitive — the diatonic stack of
+`members` thirds from `degree`, named as the chord type it turns out to be, and absent when the collection stacks to
+no nameable type. It hides the scale's offsets and the chord-type table at once, which is exactly why neither half can
+be written in source. Chords that are *not* diatonic — Neapolitan, augmented sixth, mixture, altered dominants — name
+their altered degrees explicitly and build on `scale_class` plus `chord_on`, so both primitives are load-bearing and
+neither subsumes the other.
+
 Every constructor cites the OMT chapter/table it implements and has a formula test over several keys, including minor.
 Where OMT presents stylistic tendencies or multiple spellings rather than a definition, expose a named policy or return
 several candidates—never bake one interpretation into `chord_class`. Tonicization is a local harmonic relationship;
@@ -50,7 +62,9 @@ modulation remains a claim about a passage and belongs to analysis.
 
 ## Target
 
-- The register-free degree lookup `scale_class`, checked and evaluated beside `scale_pitch`, and read by `std::scale`.
+- The register-free degree lookup `scale_class` and the diatonic stack `scale_chord`, checked and evaluated beside
+  `scale_pitch`, and read by `std::scale`. These two are the whole primitive budget: every chromatic constructor below
+  is `scale_class` and `chord_on` in ordinary `.musa`.
 - `stdlib/tonal-harmony.musa` and source docs for typed Roman values and constructors.
 - Small core refinements only where invalid states cannot be represented in source; no public Rust theory surface.
   A `roman` is such a case: a bare product of degree, quality, and inversion is constructible with a degree of nine or
