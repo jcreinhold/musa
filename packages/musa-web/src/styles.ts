@@ -62,6 +62,11 @@ const SHADOW_CSS = `
   display: inline-block;
   vertical-align: middle;
 }
+/* The host hides its light-DOM source with font-size: 0; rem restores real
+   text inside the shadow (em would inherit the zero). */
+.musa-content {
+  font-size: 1rem;
+}
 svg {
   max-width: 100%;
   height: auto;

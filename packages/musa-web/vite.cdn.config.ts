@@ -2,22 +2,27 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig, type Plugin } from "vite";
 
-const STUB = fileURLToPath(new URL("./src/cdn-worker-default-stub.ts", import.meta.url));
+const WORKER_STUB = fileURLToPath(new URL("./src/cdn-worker-default-stub.ts", import.meta.url));
+const CORE_STUB = fileURLToPath(new URL("./src/cdn-core-stub.ts", import.meta.url));
 
 /**
- * The default worker URL would emit a worker asset nobody fetches — the
- * Blob-inlined worker replaces it (see cdn-entry.ts). Alias at resolution,
- * where the importer is known.
+ * Two aliasing rules keep the main file lean (prompt 143):
+ * - the default worker URL would emit a worker asset nobody fetches — the
+ *   Blob-inlined worker replaces it (see cdn-entry.ts);
+ * - the in-process engraver path would pull Verovio into the main thread —
+ *   unreachable in a browser, where the worker always exists.
+ * Both alias only the main-thread importer; the worker sub-build keeps the
+ * real modules.
  */
-function noDefaultWorker(): Plugin {
+function cdnAliases(): Plugin {
   return {
-    name: "musa-cdn-no-default-worker",
+    name: "musa-cdn-aliases",
     enforce: "pre",
     resolveId: {
-      filter: { id: /^\.\/worker-default$/ },
+      filter: { id: /^\.(\/worker-default|\/core)$/ },
       handler(source, importer) {
-        if (importer?.endsWith("musa-engrave/src/engraver.ts") === true) return STUB;
-        return null;
+        if (importer?.endsWith("musa-engrave/src/engraver.ts") !== true) return null;
+        return source === "./core" ? CORE_STUB : WORKER_STUB;
       },
     },
   };
@@ -34,7 +39,7 @@ function noDefaultWorker(): Plugin {
  *     musa_wasm_bg.wasm   ← the compiler
  */
 export default defineConfig({
-  plugins: [noDefaultWorker()],
+  plugins: [cdnAliases()],
   build: {
     lib: {
       entry: "src/cdn-entry.ts",
@@ -45,14 +50,7 @@ export default defineConfig({
     outDir: "dist-cdn",
     emptyOutDir: true,
     rollupOptions: {
-      // The in-process fallback's Verovio is dead code here (a browser has
-      // workers); externalizing keeps the main thread from carrying a second
-      // copy. It is only ever reached where this file is never used.
-      external: ["verovio/wasm"],
-      output: {
-        inlineDynamicImports: true,
-        globals: { "verovio/wasm": "MusaWebVerovioFallback" },
-      },
+      output: { inlineDynamicImports: true },
     },
     assetsInlineLimit: 0,
     target: "es2022",

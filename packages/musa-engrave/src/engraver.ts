@@ -174,5 +174,5 @@ export interface EngraverOptions {
  * same rules in-process where they do not (Node).
  */
 export function createEngraver(options?: EngraverOptions): Engraver {
-  return typeof Worker === "undefined" ? new LocalEngraver() : new WorkerEngraver(options?.worker());
+  return typeof Worker === "undefined" ? new LocalEngraver() : new WorkerEngraver(options?.worker?.());
 }

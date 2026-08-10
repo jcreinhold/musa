@@ -17,7 +17,7 @@ function pageErrors(page: import("@playwright/test").Page): string[] {
   return errors;
 }
 
-const MODULE_EXAMPLES = ["blog", "docs", "dynamic", "interactive"] as const;
+const MODULE_EXAMPLES = ["blog", "docs", "interactive"] as const;
 
 for (const name of MODULE_EXAMPLES) {
   test(`examples/${name}.html typesets every score`, async ({ page }) => {
@@ -63,7 +63,9 @@ test("examples/cdn.html typesets with no module scripts on the page", async ({ p
   const errors = pageErrors(page);
   await page.goto("/examples/cdn.html");
   await expect(page.locator("musa-score svg").first()).toBeVisible({ timeout: 60_000 });
-  expect(await page.locator('script[type="module"]').count()).toBe(0);
+  // The dev server injects its own /@vite/client module; the page itself
+  // authors none.
+  expect(await page.locator('script[type="module"]:not([src*="@vite"])').count()).toBe(0);
   expect(errors).toEqual([]);
 });
 

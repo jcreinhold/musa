@@ -168,3 +168,7 @@ __pycache__/
 *.profraw
 *.perf
 flamegraph.svg
+
+# @musa/web build outputs (prompts 140, 143): rebuilt by vite, never committed.
+packages/musa-web/dist-cdn/
+packages/musa-web/examples/build-time/out/

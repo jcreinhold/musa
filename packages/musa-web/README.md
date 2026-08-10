@@ -75,3 +75,40 @@ Unmapped elements (barlines, staff lines, text) never fire: there is no "unident
 
 Both functions work in Node (the engraver takes its in-process path there), which is what the unit
 tests and the static-site build-time recipe use.
+
+## Three ways to consume it
+
+**1. npm, with a bundler** — `npm i @musa/web`, then `import { typeset } from "@musa/web"` as
+above. The musa wasm resolves beside the package module; bundlers rewrite it, or set
+`configure({ wasmUrl })`.
+
+**2. CDN, one script tag** — serve `dist-cdn/` (also published as `@musa/web/cdn`):
+
+```html
+<script src="musa-web.js" data-musa-autostart></script>
+<musa-score>
+piece "plain" { … }
+</musa-score>
+```
+
+The worker (with the engraver inside) arrives as an inlined Blob — there is no worker URL to
+configure. The only external asset is the compiler wasm, which the script resolves from its own
+directory; serve it from elsewhere with `window.MusaWeb = { assetsPath: "…" }` before the tag.
+
+```
+dist-cdn/
+  musa-web.js         ← the one <script src>        (8.7 MB, 2.4 MB gzip)
+  musa_wasm_bg.wasm   ← the compiler                (0.93 MB, 0.29 MB brotli)
+```
+
+**3. Build time, no client wasm** — for static sites: `examples/build-time/typeset.mjs` renders
+every `text/musa` block in a glob of HTML to baked-in SVG using Node (the in-process engraver path),
+so the deployed page needs no JavaScript at all. `npm i @musa/web`, point the script at your pages.
+
+## The examples
+
+`packages/musa-web/examples/` — `blog.html` (prose with excerpts and an inline fragment),
+`docs.html` (auto-start, the error box), `dynamic.html` (snippets added after load),
+`interactive.html` (event callbacks + highlight + reveal-source), `cdn.html` (the iife build, any
+static server), `build-time/` (the recipe above). The module examples run under the package's vite
+server; `cdn.html` runs from any static file server.

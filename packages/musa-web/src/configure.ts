@@ -13,6 +13,12 @@ export interface WebConfig {
    */
   wasmUrl?: string;
   /**
+   * The directory the musa wasm is served from, the MathJax convention for
+   * CDN users: `window.MusaWeb = { assetsPath: "…/musa" }` beside
+   * `musa-web.js`, or anywhere else. `wasmUrl` wins when both are set.
+   */
+  assetsPath?: string;
+  /**
    * A CSS selector for additional snippet containers, beyond the built-in
    * forms (`text/musa` script tags, `<musa-score>`, `[data-musa]`).
    */

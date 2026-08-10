@@ -1,7 +1,7 @@
 ---
 id: 143
 slug: web-distribution-and-examples
-status: pending
+status: done
 depends_on: [141, 142]
 phase: 5
 ---
@@ -28,22 +28,28 @@ static sites, using `musa-cli` and Node, with zero wasm on the client.
 
 ## Design
 
-**CDN build.** A second vite library entry producing `dist/musa-web.js` (iife, everything JS inlined:
-API, typesetter, engraver client). Two assets cannot be inlined into JS: the musa wasm and the Verovio
-wasm. The iife build therefore:
+**CDN build.** A second vite library entry (`src/cdn-entry.ts`) producing `dist-cdn/musa-web.js`
+(iife, everything JS inlined: API, typesetter, engraver client). Implementation evidence corrected
+two assumptions of the original design: Verovio ships its wasm base64-inlined inside its own module
+— there is no separate Verovio wasm file to serve — so the **only** external asset is the musa
+compiler wasm; and vite's first-class `?worker&inline` (with `musa-engrave` gaining
+`createEngraver({ worker })` and a `./worker` subpath) does the Blob inlining, so no worker source
+surgery is needed. The iife build therefore:
 
-1. Inlines the *worker* as a Blob: the worker module is emitted as raw text by the build and spawned
-   with `new Worker(URL.createObjectURL(new Blob([source])))`, so the CDN user never configures a
-   worker URL.
-2. Resolves the two wasm URLs the MathJax way: an explicit `window.MusaWeb = { assetsPath: "…" }` set
-   before the script tag wins; otherwise the URL is derived from the script's own `src`
-   (`document.currentScript`), so serving the package's `dist/` directory from any static host or CDN
-   just works. Both wasm files are copied into `dist/` by the build and must sit beside `musa-web.js`.
+1. Inlines the *worker* as a Blob (`?worker&inline`): the CDN user never configures a worker URL.
+   Two resolution aliases keep the main file lean: the default worker-URL construction (would emit
+   a worker asset nobody fetches) and the in-process engraver path (would carry Verovio's 7 MB into
+   the main thread) are stubbed — both unreachable in a browser.
+2. Resolves the musa wasm the MathJax way: `configure({ wasmUrl })` wins, then
+   `window.MusaWeb = { assetsPath: "…" }` set before the script tag, then the script's own directory
+   (`document.currentScript`, captured at import), then beside the module. `scripts/prepare-cdn.mjs`
+   copies `musa_wasm_bg.wasm` beside `musa-web.js` so serving `dist-cdn/` from any static host or
+   CDN just works.
 
 **npm publish layout.** `exports`: `.` (ESM, types), `./cdn` (the iife file, for hosts that proxy npm),
-`./wasm` (the musa wasm asset path). `sideEffects: false` except the stylesheet injection and custom
-element registration, which are marked. A `prepublishOnly` script runs the wasm build, tests, and the
-bundles; publishing itself is manual for now (no CI registry credentials in this prompt).
+`./wasm` (the musa wasm asset path). `sideEffects: true` (element registration and auto-start happen
+at import). A `prepublishOnly` script runs the wasm build, tests, and both bundles; publishing itself
+is manual for now (no CI registry credentials in this prompt).
 
 **Examples** (`packages/musa-web/examples/`, plain HTML, served by `vite preview` or any static
 server; each page is also a Playwright smoke test so the examples can never silently rot):
@@ -65,7 +71,9 @@ script, one test proving the emitted page needs no JS.
 
 ## Target
 
-- `vite.cdn.config.ts` (iife + Blob-inlined worker + wasm copying), asset-path resolution as designed.
+- `vite.cdn.config.ts` (iife + `?worker&inline` Blob worker + the two aliases), `src/cdn-entry.ts`,
+  `scripts/prepare-cdn.mjs` (wasm copied beside the bundle).
+- `musa-engrave`: `createEngraver({ worker })`, a `./worker` subpath export, `worker-default.ts`.
 - `package.json` publish layout: `exports`, `files`, `sideEffects`, `prepublishOnly`.
 - The five example pages + `examples/build-time/` script and its test.
 - Playwright smoke test per example page (typesets without console errors; `cdn.html` typesets with no
