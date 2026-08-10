@@ -19,5 +19,4 @@ thiserror = "2"
 tracing = "0.1"
 
 [dev-dependencies]
-insta = "1"
 rtrb = "0.3"

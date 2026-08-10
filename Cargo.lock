@@ -2313,7 +2313,6 @@ dependencies = [
  "hound",
  "insta",
  "musa-compiler",
- "proptest",
  "thiserror 2.0.20",
 ]
 
@@ -2364,7 +2363,6 @@ name = "musa-engine"
 version = "0.1.0"
 dependencies = [
  "cpal",
- "insta",
  "midir",
  "musa-audio",
  "musa-compiler",
@@ -2388,7 +2386,6 @@ version = "0.1.0"
 dependencies = [
  "insta",
  "logos",
- "miette",
  "num_enum",
  "proptest",
  "rowan",
@@ -2438,7 +2435,6 @@ dependencies = [
  "num-rational",
  "proptest",
  "quick-xml",
- "serde",
  "thiserror 2.0.20",
 ]
 

@@ -53,6 +53,7 @@ mod profile;
 mod project;
 mod realize;
 mod resolve;
+mod roman;
 mod scale;
 mod scope;
 mod score;

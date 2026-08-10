@@ -95,6 +95,13 @@ pub(crate) enum ChordType {
     Dominant11,
     /// A dominant eleventh with a major thirteenth.
     Dominant13,
+    Dominant7FlatFive,
+    Dominant7SharpFive,
+    Dominant7FlatNine,
+    Dominant7SharpNine,
+    ItalianSixth,
+    FrenchSixth,
+    GermanSixth,
 }
 
 /// One row per chord type: the value, the words that name it, the spelled
@@ -105,7 +112,7 @@ pub(crate) enum ChordType {
 /// them. The first spelling of each row is the one values print as, and the
 /// unison is written explicitly because a chord class is normalized to contain
 /// its own root (`03-musical-domains.md` §3) even when a voicing omits it.
-const TYPES: [(ChordType, &[&str], &[Interval], &str); 19] = [
+const TYPES: [(ChordType, &[&str], &[Interval], &str); 26] = [
     (
         ChordType::Major,
         &["major", "maj"],
@@ -220,6 +227,48 @@ const TYPES: [(ChordType, &[&str], &[Interval], &str); 19] = [
         &[M(0, 0), M(2, 4), M(4, 7), M(6, 10), M(8, 14), M(10, 17), M(12, 21)],
         "a dominant eleventh with a major thirteenth",
     ),
+    (
+        ChordType::Dominant7FlatFive,
+        &["dominant7b5", "dom7b5"],
+        &[M(0, 0), M(2, 4), M(4, 6), M(6, 10)],
+        "a dominant seventh with a lowered fifth",
+    ),
+    (
+        ChordType::Dominant7SharpFive,
+        &["dominant7s5", "dom7s5"],
+        &[M(0, 0), M(2, 4), M(4, 8), M(6, 10)],
+        "a dominant seventh with a raised fifth",
+    ),
+    (
+        ChordType::Dominant7FlatNine,
+        &["dominant7b9", "dom7b9"],
+        &[M(0, 0), M(2, 4), M(4, 7), M(6, 10), M(8, 13)],
+        "a dominant seventh with a lowered ninth",
+    ),
+    (
+        ChordType::Dominant7SharpNine,
+        &["dominant7s9", "dom7s9"],
+        &[M(0, 0), M(2, 4), M(4, 7), M(6, 10), M(8, 15)],
+        "a dominant seventh with a raised ninth",
+    ),
+    (
+        ChordType::ItalianSixth,
+        &["italian6", "it6"],
+        &[M(0, 0), M(2, 4), M(5, 10)],
+        "a major third and an augmented sixth, with no fifth",
+    ),
+    (
+        ChordType::FrenchSixth,
+        &["french6", "fr6"],
+        &[M(0, 0), M(2, 4), M(3, 6), M(5, 10)],
+        "a major third, an augmented fourth, and an augmented sixth",
+    ),
+    (
+        ChordType::GermanSixth,
+        &["german6", "ger6"],
+        &[M(0, 0), M(2, 4), M(4, 7), M(5, 10)],
+        "a major third, a perfect fifth, and an augmented sixth",
+    ),
 ];
 
 /// Every word that may follow `chord`, with the sentence that says what it
@@ -264,6 +313,22 @@ impl ChordType {
             .iter()
             .find(|(kind, _, _, _)| *kind == self)
             .map_or(&[], |(_, _, members, _)| *members)
+    }
+
+    /// The type whose members are exactly these intervals, if the table names
+    /// one.
+    ///
+    /// The inverse of [`ChordType::members`], and partial because the table is
+    /// a vocabulary rather than a computation: a diatonic collection can stack
+    /// thirds into a sonority conventional harmony has no word for, and this
+    /// says so by being absent rather than by inventing a name. Matching is on
+    /// the spelled intervals, so a diminished fourth is not a major third and
+    /// the two never collapse into one answer.
+    pub(crate) fn spelling(members: &[Interval]) -> Option<Self> {
+        TYPES
+            .iter()
+            .find(|(_, _, table, _)| *table == members)
+            .map(|(kind, _, _, _)| *kind)
     }
 }
 
@@ -682,12 +747,20 @@ mod tests {
             assert_eq!(members.first(), Some(&M(0, 0)), "{spellings:?} omits its root");
             let suspended = matches!(kind, ChordType::Suspended2 | ChordType::Suspended4);
             let sixth = matches!(kind, ChordType::Major6 | ChordType::Minor6);
+            let augmented_sixth = matches!(
+                kind,
+                ChordType::ItalianSixth | ChordType::FrenchSixth | ChordType::GermanSixth
+            );
             for (index, member) in members.iter().enumerate() {
                 let steps = i64::try_from(index).expect("a small chord");
-                if suspended || (sixth && index == 3) {
+                if suspended || (sixth && index == 3) || augmented_sixth {
                     // A suspension replaces the third with its neighbour and a
                     // sixth is added above the fifth; both are named exactly
-                    // because they are not the third stacked on the third.
+                    // because they are not the third stacked on the third. An
+                    // augmented sixth is not a stack of thirds at all — the
+                    // interval it is named for is the whole point of it, and
+                    // spelling that interval as a seventh would make a German
+                    // sixth into the dominant seventh it only sounds like.
                     continue;
                 }
                 assert_eq!(

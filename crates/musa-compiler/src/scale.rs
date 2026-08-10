@@ -20,6 +20,7 @@
 //! ones — a pitch may not belong to a collection ([`Frame::locate`]), and a
 //! register may not belong to a tonic class ([`Frame::new`]).
 
+use crate::chord::{ChordClass, ChordType};
 use crate::origin::Interval;
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::score::{Key, Mode};
@@ -318,13 +319,23 @@ impl Scale {
     /// Absent only on machine-integer overflow, which no ordinal a score can
     /// write comes near.
     pub(crate) fn class(self, degree: Degree) -> Option<PitchClass> {
+        self.tonic.transpose(self.offset(degree)?)
+    }
+
+    /// The interval from the tonic to a degree, counting periods.
+    ///
+    /// The one place the ordered offset table is turned into arithmetic, so
+    /// that [`Scale::class`] and [`Scale::stacked`] cannot disagree about
+    /// what a degree means. [`Frame::pitch`] is the same arithmetic applied
+    /// to an absolute tonic instead of a class.
+    fn offset(self, degree: Degree) -> Option<Interval> {
         let size = i64::try_from(self.size()).ok()?;
         let position = degree.ordinal().checked_sub(1)?;
         let periods = position.div_euclid(size);
         let within = usize::try_from(position.rem_euclid(size)).ok()?;
         let step = self.collection().offsets().get(within)?;
         let period = self.period();
-        self.tonic.transpose(Interval {
+        Some(Interval {
             diatonic_steps: periods
                 .checked_mul(period.diatonic_steps)?
                 .checked_add(step.diatonic_steps)?,
@@ -333,6 +344,42 @@ impl Scale {
                 .checked_add(step.semitones)?
                 .checked_add(degree.alteration())?,
         })
+    }
+
+    /// The chord this collection stacks in thirds from an ordinal.
+    ///
+    /// This is what makes a Roman numeral diatonic. The quality is not
+    /// chosen and then transposed onto a degree — it *falls out* of the
+    /// collection, which is why `ii` is minor in major and `II` is major in
+    /// Dorian without either being stipulated anywhere. `members` counts the
+    /// notes, so three is a triad and four a seventh chord, and the degrees
+    /// taken are the ordinal and every second one above it.
+    ///
+    /// The ordinal is unaltered on purpose, and that is why this takes one
+    /// rather than a [`Degree`]: a stack of the collection's own notes is
+    /// exactly what "diatonic" means, so there is no alteration for it to
+    /// carry and none to silently drop. A chromatic chord names its altered
+    /// degrees itself, through [`Scale::class`] and a re-rooted template.
+    ///
+    /// Absent when the ordinal is unwritable or when the collection stacks to
+    /// a sonority the chord vocabulary has no name for — a whole-tone
+    /// collection stacks to no triad, and saying so is better than inventing
+    /// a word for it.
+    pub(crate) fn stacked(self, ordinal: i64, members: usize) -> Option<ChordClass> {
+        let base = self.offset(Degree::new(ordinal))?;
+        let mut intervals = Vec::with_capacity(members);
+        for index in 0..members {
+            let step = i64::try_from(index).ok()?.checked_mul(2)?;
+            let above = self.offset(Degree::new(ordinal.checked_add(step)?))?;
+            intervals.push(Interval {
+                diatonic_steps: above.diatonic_steps.checked_sub(base.diatonic_steps)?,
+                semitones: above.semitones.checked_sub(base.semitones)?,
+            });
+        }
+        Some(ChordClass::new(
+            self.tonic.transpose(base)?,
+            ChordType::spelling(&intervals)?,
+        ))
     }
 
     /// How many degrees the pattern has before it repeats.
@@ -619,6 +666,127 @@ mod tests {
                 let degree = Degree::new(ordinal);
                 let pitch = frame.pitch(degree).expect("a total realization");
                 assert_eq!(frame.locate(pitch), Some(degree), "{spellings:?} at {ordinal}");
+            }
+        }
+    }
+
+    /// The register-free lookup and the framed one cannot disagree: forgetting
+    /// the octave after realizing a degree is the same as never choosing one.
+    /// This is what lets a Roman numeral be spelled without a register while
+    /// still naming the note a frame would have written.
+    #[test]
+    fn a_classs_degree_is_its_framed_degree_with_the_register_forgotten() {
+        for (collection, spellings, _, _) in COLLECTIONS {
+            let frame = frame("eb4", collection);
+            for ordinal in -6..=17 {
+                let degree = Degree::new(ordinal);
+                assert_eq!(
+                    frame.scale().class(degree),
+                    frame.pitch(degree).map(WrittenPitch::pitch_class),
+                    "{spellings:?} at {ordinal}"
+                );
+            }
+        }
+    }
+
+    /// OMT 020's table: the quality of a diatonic chord is not stipulated and
+    /// then transposed onto a degree — it is whatever the collection's own
+    /// notes stack up to, which is why `ii` is minor in major and `II` is
+    /// major in Dorian without either being a special case. The one absence
+    /// is the point of the `Option`: harmonic minor stacks an augmented major
+    /// seventh on `III`, and the chord vocabulary of prompt 102 has no name
+    /// for it, so the stack reports that it cannot be named rather than
+    /// rounding to a type that would spell different notes.
+    #[test]
+    fn a_stacked_chords_quality_is_the_collections_and_not_the_callers() {
+        use ChordType::{
+            Augmented, Diminished, Diminished7, Dominant7, HalfDiminished7, Major, Major7, Minor, Minor7, MinorMajor7,
+        };
+
+        let cases: [(Collection, [ChordType; 7], [Option<ChordType>; 7]); 3] = [
+            (
+                Collection::Major,
+                [Major, Minor, Minor, Major, Major, Minor, Diminished],
+                [
+                    Some(Major7),
+                    Some(Minor7),
+                    Some(Minor7),
+                    Some(Major7),
+                    Some(Dominant7),
+                    Some(Minor7),
+                    Some(HalfDiminished7),
+                ],
+            ),
+            (
+                Collection::NaturalMinor,
+                [Minor, Diminished, Major, Minor, Minor, Major, Major],
+                [
+                    Some(Minor7),
+                    Some(HalfDiminished7),
+                    Some(Major7),
+                    Some(Minor7),
+                    Some(Minor7),
+                    Some(Major7),
+                    Some(Dominant7),
+                ],
+            ),
+            (
+                Collection::HarmonicMinor,
+                [Minor, Diminished, Augmented, Minor, Major, Major, Diminished],
+                [
+                    Some(MinorMajor7),
+                    Some(HalfDiminished7),
+                    None,
+                    Some(Minor7),
+                    Some(Dominant7),
+                    Some(Major7),
+                    Some(Diminished7),
+                ],
+            ),
+        ];
+
+        for (collection, triads, sevenths) in cases {
+            let scale = Scale::new(class("c"), collection);
+            for (index, expected) in triads.into_iter().enumerate() {
+                let ordinal = i64::try_from(index).expect("a small index") + 1;
+                assert_eq!(
+                    scale.stacked(ordinal, 3).map(ChordClass::kind),
+                    Some(expected),
+                    "{collection:?} triad on {ordinal}"
+                );
+            }
+            for (index, expected) in sevenths.into_iter().enumerate() {
+                let ordinal = i64::try_from(index).expect("a small index") + 1;
+                assert_eq!(
+                    scale.stacked(ordinal, 4).map(ChordClass::kind),
+                    expected,
+                    "{collection:?} seventh on {ordinal}"
+                );
+            }
+        }
+    }
+
+    /// A stack is rooted on the degree it was asked for, and the ordinal is
+    /// periodic there too: `VIII` is `I`, one period of degrees later.
+    #[test]
+    fn a_stack_is_rooted_on_its_degree_and_repeats_by_period() {
+        for (collection, spellings, _, _) in COLLECTIONS {
+            let scale = Scale::new(class("a"), collection);
+            let size = i64::try_from(scale.size()).expect("a small collection");
+            for ordinal in 1..=7 {
+                let Some(chord) = scale.stacked(ordinal, 3) else {
+                    continue;
+                };
+                assert_eq!(
+                    Some(chord.root()),
+                    scale.class(Degree::new(ordinal)),
+                    "{spellings:?} at {ordinal}"
+                );
+                assert_eq!(
+                    scale.stacked(ordinal + size, 3),
+                    Some(chord),
+                    "{spellings:?} at {ordinal}"
+                );
             }
         }
     }

@@ -376,6 +376,7 @@ pub(crate) enum Type {
     Frame,
     ChordClass,
     Triad,
+    Roman,
     Voicing,
     Pc12,
     PcSet12,
@@ -404,6 +405,7 @@ impl std::fmt::Display for Type {
             Self::Frame => out.write_str("frame"),
             Self::ChordClass => out.write_str("chord_class"),
             Self::Triad => out.write_str("triad"),
+            Self::Roman => out.write_str("roman"),
             Self::Voicing => out.write_str("voicing"),
             Self::Pc12 => out.write_str("pc12"),
             Self::PcSet12 => out.write_str("pcset12"),
@@ -589,6 +591,7 @@ enum Primitive {
     ScaleSize,
     ScalePitch,
     ScaleClass,
+    ScaleChord,
     PitchFrame,
     FrameScale,
     FrameTonic,
@@ -607,6 +610,10 @@ enum Primitive {
     ChordTriad,
     TriadChord,
     TriadMajor,
+    RomanOf,
+    RomanOrdinal,
+    RomanSize,
+    RomanInversion,
     VoicingOf,
     VoicingPitches,
     VoicingBass,
@@ -646,7 +653,7 @@ struct PrimitiveOwnership<T> {
     hidden_information: &'static str,
 }
 
-const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 64] = [
+const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 69] = [
     PrimitiveOwnership {
         operation: Primitive::NatFold,
         spelling: "nat_fold",
@@ -726,6 +733,11 @@ const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 64] = [
         operation: Primitive::ScaleClass,
         spelling: "scale_class",
         hidden_information: "the scale's private offset cycle, read without a register",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ScaleChord,
+        spelling: "scale_chord",
+        hidden_information: "the scale's offset cycle and the chord vocabulary's member table at once",
     },
     PrimitiveOwnership {
         operation: Primitive::PitchFrame,
@@ -811,6 +823,26 @@ const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 64] = [
         operation: Primitive::TriadChord,
         spelling: "triad_chord",
         hidden_information: "the triad refinement's private witness",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::RomanOf,
+        spelling: "roman_of",
+        hidden_information: "the numeral's representation invariant, which only the compiler can enforce",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::RomanOrdinal,
+        spelling: "roman_ordinal",
+        hidden_information: "the numeral's private ordinal",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::RomanSize,
+        spelling: "roman_size",
+        hidden_information: "the numeral's private member count",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::RomanInversion,
+        spelling: "roman_inversion",
+        hidden_information: "the numeral's private bass designation, which is a position and not a pitch",
     },
     PrimitiveOwnership {
         operation: Primitive::TriadMajor,
@@ -988,6 +1020,7 @@ impl Primitive {
             Self::ScaleSize => "scale_size",
             Self::ScalePitch => "scale_pitch",
             Self::ScaleClass => "scale_class",
+            Self::ScaleChord => "scale_chord",
             Self::PitchFrame => "pitch_frame",
             Self::FrameScale => "frame_scale",
             Self::FrameTonic => "frame_tonic",
@@ -1006,6 +1039,10 @@ impl Primitive {
             Self::ChordTriad => "chord_triad",
             Self::TriadChord => "triad_chord",
             Self::TriadMajor => "triad_major",
+            Self::RomanOf => "roman_of",
+            Self::RomanOrdinal => "roman_ordinal",
+            Self::RomanSize => "roman_size",
+            Self::RomanInversion => "roman_inversion",
             Self::VoicingOf => "voicing_of",
             Self::VoicingPitches => "voicing_pitches",
             Self::VoicingBass => "voicing_bass",
@@ -1117,6 +1154,7 @@ enum Value {
     Frame(crate::scale::Frame),
     ChordClass(crate::chord::ChordClass),
     Triad(crate::chord::Triad),
+    Roman(crate::roman::Roman),
     Voicing(crate::chord::Voicing),
     Pc12(crate::pc12::Pc12),
     PcSet12(crate::pc12::PcSet12),
@@ -1497,6 +1535,7 @@ impl Value {
             Self::Frame(_) => Type::Frame,
             Self::ChordClass(_) => Type::ChordClass,
             Self::Triad(_) => Type::Triad,
+            Self::Roman(_) => Type::Roman,
             Self::Voicing(_) => Type::Voicing,
             Self::Pc12(_) => Type::Pc12,
             Self::PcSet12(_) => Type::PcSet12,
@@ -1560,6 +1599,11 @@ impl Value {
             }
             Self::ChordClass(value) => chord_witness(*value),
             Self::Triad(value) => chord_witness(value.class()).rotate_left(1),
+            Self::Roman(value) => value
+                .ordinal()
+                .rotate_left(5)
+                .wrapping_add(value.members().rotate_left(10))
+                .wrapping_add(value.inversion()),
             Self::Pc12(value) => u64::from(value.number()),
             Self::PcSet12(value) => value.members().fold(0u64, |witness, member| {
                 witness.rotate_left(5) ^ u64::from(member.number())
@@ -1956,6 +2000,7 @@ fn check_and_evaluate(
             | Value::Frame(_)
             | Value::ChordClass(_)
             | Value::Triad(_)
+            | Value::Roman(_)
             | Value::Voicing(_)
             | Value::Pc12(_)
             | Value::PcSet12(_)
@@ -2288,6 +2333,7 @@ fn legacy_default(ty: &Type, written: &str) -> Option<Value> {
         | Type::Frame
         | Type::ChordClass
         | Type::Triad
+        | Type::Roman
         | Type::Voicing
         | Type::Pc12
         | Type::PcSet12
@@ -2317,6 +2363,7 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Frame
         | Type::ChordClass
         | Type::Triad
+        | Type::Roman
         | Type::Voicing
         | Type::Pc12
         | Type::PcSet12
@@ -2390,6 +2437,7 @@ fn lower_type(mut resolver: Option<&mut Resolver>, node: &SyntaxNode) -> Option<
             "frame" => Some(Type::Frame),
             "chord_class" => Some(Type::ChordClass),
             "triad" => Some(Type::Triad),
+            "roman" => Some(Type::Roman),
             "voicing" => Some(Type::Voicing),
             "pc12" => Some(Type::Pc12),
             "pcset12" => Some(Type::PcSet12),
@@ -3169,6 +3217,7 @@ impl Checker<'_> {
             | Value::Frame(_)
             | Value::ChordClass(_)
             | Value::Triad(_)
+            | Value::Roman(_)
             | Value::Voicing(_)
             | Value::Pc12(_)
             | Value::PcSet12(_)
@@ -3336,7 +3385,12 @@ impl Checker<'_> {
             return None;
         }
         let wanted = match primitive {
-            Primitive::NatFold | Primitive::ListFold | Primitive::OptionFold | Primitive::DropVoicing => 3,
+            Primitive::NatFold
+            | Primitive::ListFold
+            | Primitive::OptionFold
+            | Primitive::DropVoicing
+            | Primitive::ScaleChord
+            | Primitive::RomanOf => 3,
             Primitive::Map
             | Primitive::Filter
             | Primitive::Repeat
@@ -3376,6 +3430,9 @@ impl Checker<'_> {
             | Primitive::ChordTriad
             | Primitive::TriadChord
             | Primitive::TriadMajor
+            | Primitive::RomanOrdinal
+            | Primitive::RomanSize
+            | Primitive::RomanInversion
             | Primitive::VoicingPitches
             | Primitive::VoicingBass
             | Primitive::VoicingChord
@@ -3533,6 +3590,12 @@ impl Checker<'_> {
                 let degree = self.check(nodes.get(1)?, Some(&Type::Degree))?;
                 (vec![scale, degree], Type::Option(Box::new(Type::PitchClass)))
             }
+            Primitive::ScaleChord => {
+                let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
+                let ordinal = self.check(nodes.get(1)?, Some(&Type::Nat))?;
+                let members = self.check(nodes.get(2)?, Some(&Type::Nat))?;
+                (vec![scale, ordinal, members], Type::Option(Box::new(Type::ChordClass)))
+            }
             Primitive::PitchFrame => {
                 let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
                 let tonic = self.check(nodes.get(1)?, Some(&Type::Pitch))?;
@@ -3598,6 +3661,16 @@ impl Checker<'_> {
             Primitive::TriadChord => {
                 let triad = self.check(nodes.first()?, Some(&Type::Triad))?;
                 (vec![triad], Type::ChordClass)
+            }
+            Primitive::RomanOf => {
+                let ordinal = self.check(nodes.first()?, Some(&Type::Nat))?;
+                let members = self.check(nodes.get(1)?, Some(&Type::Nat))?;
+                let inversion = self.check(nodes.get(2)?, Some(&Type::Nat))?;
+                (vec![ordinal, members, inversion], Type::Option(Box::new(Type::Roman)))
+            }
+            Primitive::RomanOrdinal | Primitive::RomanSize | Primitive::RomanInversion => {
+                let numeral = self.check(nodes.first()?, Some(&Type::Roman))?;
+                (vec![numeral], Type::Nat)
             }
             Primitive::TriadMajor => {
                 let triad = self.check(nodes.first()?, Some(&Type::Triad))?;
@@ -3825,6 +3898,7 @@ fn is_exhaustive(target: &Type, coverage: &IndexSet<Coverage>) -> bool {
             | Type::Frame
             | Type::ChordClass
             | Type::Triad
+            | Type::Roman
             | Type::Voicing
             | Type::Pc12
             | Type::PcSet12
@@ -3850,6 +3924,7 @@ fn literal_key(value: &Value) -> String {
         Value::Frame(value) => format!("frame:{}:{}", value.scale(), value.tonic()),
         Value::ChordClass(value) => format!("chord_class:{value}"),
         Value::Triad(value) => format!("triad:{value}"),
+        Value::Roman(value) => format!("roman:{value}"),
         Value::Voicing(value) => format!("voicing:{value}"),
         Value::Pc12(value) => format!("pc12:{value}"),
         Value::PcSet12(value) => format!("pcset12:{value}"),
@@ -4082,6 +4157,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Frame(_)
                 | Value::ChordClass(_)
                 | Value::Triad(_)
+                | Value::Roman(_)
                 | Value::Voicing(_)
                 | Value::Pc12(_)
                 | Value::PcSet12(_)
@@ -4114,6 +4190,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Frame(_)
                 | Value::ChordClass(_)
                 | Value::Triad(_)
+                | Value::Roman(_)
                 | Value::Voicing(_)
                 | Value::Pc12(_)
                 | Value::PcSet12(_)
@@ -4190,6 +4267,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     | Value::Frame(_)
                     | Value::ChordClass(_)
                     | Value::Triad(_)
+                    | Value::Roman(_)
                     | Value::Voicing(_)
                     | Value::Pc12(_)
                     | Value::PcSet12(_)
@@ -4622,6 +4700,17 @@ fn eval_primitive(
             };
             Some(optional(Type::PitchClass, scale.class(*degree).map(Value::PitchClass)))
         }
+        Primitive::ScaleChord => {
+            let Value::Scale(scale) = values.first()? else {
+                return None;
+            };
+            let ordinal = i64::try_from(nat_value(values.get(1)?)?).ok()?;
+            let members = usize::try_from(nat_value(values.get(2)?)?).ok()?;
+            Some(optional(
+                Type::ChordClass,
+                scale.stacked(ordinal, members).map(Value::ChordClass),
+            ))
+        }
         Primitive::PitchFrame => {
             let (Value::Scale(scale), Value::Pitch(tonic)) = (values.first()?, values.get(1)?) else {
                 return None;
@@ -4728,6 +4817,35 @@ fn eval_primitive(
             };
             Some(Value::ChordClass(triad.class()))
         }
+        Primitive::RomanOf => {
+            let (Value::Nat(ordinal), Value::Nat(members), Value::Nat(inversion)) =
+                (values.first()?, values.get(1)?, values.get(2)?)
+            else {
+                return None;
+            };
+            Some(optional(
+                Type::Roman,
+                crate::roman::Roman::new(*ordinal, *members, *inversion).map(Value::Roman),
+            ))
+        }
+        Primitive::RomanOrdinal => {
+            let Value::Roman(numeral) = values.first()? else {
+                return None;
+            };
+            Some(Value::Nat(numeral.ordinal()))
+        }
+        Primitive::RomanSize => {
+            let Value::Roman(numeral) = values.first()? else {
+                return None;
+            };
+            Some(Value::Nat(numeral.members()))
+        }
+        Primitive::RomanInversion => {
+            let Value::Roman(numeral) = values.first()? else {
+                return None;
+            };
+            Some(Value::Nat(numeral.inversion()))
+        }
         Primitive::TriadMajor => {
             let Value::Triad(triad) = values.first()? else {
                 return None;
@@ -4755,6 +4873,7 @@ fn eval_primitive(
                     | Value::Frame(_)
                     | Value::ChordClass(_)
                     | Value::Triad(_)
+                    | Value::Roman(_)
                     | Value::Voicing(_)
                     | Value::Pc12(_)
                     | Value::PcSet12(_)
@@ -5126,6 +5245,7 @@ fn value_shape(value: &Value) -> (u64, u64) {
         Value::Scale(_) => (1, 24),
         Value::Frame(_) => (1, 36),
         Value::ChordClass(_) | Value::Triad(_) => (1, 24),
+        Value::Roman(_) => (1, 12),
         Value::Pc12(_) => (1, 1),
         Value::PcSet12(_) => (1, 2),
         Value::Row12(_) => (1, 12),
@@ -5415,7 +5535,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            72,
+            77,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();

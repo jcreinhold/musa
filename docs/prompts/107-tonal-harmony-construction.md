@@ -55,6 +55,26 @@ be written in source. Chords that are *not* diatonic — Neapolitan, augmented s
 their altered degrees explicitly and build on `scale_class` plus `chord_on`, so both primitives are load-bearing and
 neither subsumes the other.
 
+The `roman` refinement's own constructor and accessors are not part of that budget and are not theory. They are the
+wiring every refinement in this crate already has — `chord_triad`/`triad_chord`/`triad_major` for the triad,
+`voicing_of` and its readers for the voicing — because a refinement's invariant is the one thing source cannot check
+for itself. A numeral carries an ordinal, a member count, and an inversion, and no quality: in a tonal context the
+quality is the collection's, so storing one would let a caller write a numeral that disagreed with the collection it
+is realized against, with no honest answer to which wins. Realization is therefore ordinary `.musa` — the diatonic
+stack, then the inversion — and not a third primitive.
+
+Two chromatic sonorities the Target names cannot be built from `scale_class` and `chord_on` as the paragraph above
+assumes, because `chord_on` re-roots a chord type and prompt 102's vocabulary has no type for them. The augmented
+sixths are the clearer case: an Italian sixth is a root, a major third, and an *augmented sixth*, and a German sixth
+spells that augmented sixth where a dominant seventh spells a minor seventh — the same twelve-tone content, a
+different chord, and re-rooting `dominant7` produces the wrong letters. Altered dominants are the same problem one
+step further: a seventh with a lowered fifth or a raised ninth is a distinct stack, and "name which members are
+present" has no way to say so if the vocabulary cannot name them. So this prompt adds seven entries to the chord-type
+table — the three augmented sixths and the four common alterations of the dominant seventh — and nothing else about
+the chord domain changes. The augmented sixths are also the table's first types that are not stacks of thirds, which
+the table's own invariant test has to record by name, exactly as it already records the suspensions and the added
+sixths.
+
 Every constructor cites the OMT chapter/table it implements and has a formula test over several keys, including minor.
 Where OMT presents stylistic tendencies or multiple spellings rather than a definition, expose a named policy or return
 several candidates—never bake one interpretation into `chord_class`. Tonicization is a local harmonic relationship;
@@ -63,12 +83,16 @@ modulation remains a claim about a passage and belongs to analysis.
 ## Target
 
 - The register-free degree lookup `scale_class` and the diatonic stack `scale_chord`, checked and evaluated beside
-  `scale_pitch`, and read by `std::scale`. These two are the whole primitive budget: every chromatic constructor below
-  is `scale_class` and `chord_on` in ordinary `.musa`.
+  `scale_pitch`, and read by `std::scale`. These two are the whole *theory* budget: every chromatic constructor below
+  is `scale_class`, `scale_on`, and `chord_on` in ordinary `.musa`.
+- The three augmented sixths and the four altered dominant sevenths in the chord-type table, spelled by letter like
+  every other entry, with the stacked-thirds invariant naming the augmented sixths as it already names the
+  suspensions.
 - `stdlib/tonal-harmony.musa` and source docs for typed Roman values and constructors.
 - Small core refinements only where invalid states cannot be represented in source; no public Rust theory surface.
   A `roman` is such a case: a bare product of degree, quality, and inversion is constructible with a degree of nine or
-  an inversion of five, so the checked constructor and its `option` are what make the invalid states unsayable.
+  an inversion of five, so the checked constructor and its `option` are what make the invalid states unsayable. Its
+  constructor and three accessors are the refinement wiring the triad and the voicing already have.
 - `examples/tonal-construction.musa`: major/minor diatonic harmonies, secondary dominant, mixture, Neapolitan,
   augmented sixth, and altered dominant, each voiced by an explicit policy.
 - `crates/musa-compiler/tests/tonal_harmony_construction_laws.rs`: OMT formula tables across keys, inversion spelling,
