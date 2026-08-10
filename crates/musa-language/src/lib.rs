@@ -44,7 +44,7 @@ pub use crate::edits::{
 pub use crate::error::SyntaxError;
 pub use crate::formatter::{BarSpacing, FormattedSource, format};
 pub use crate::highlight::{SPELLINGS, TokenClass};
-pub use crate::keywords::{KeywordDoc, keyword_doc};
+pub use crate::keywords::{KeywordDoc, builtin_doc, keyword_doc};
 pub use crate::language::{MusaLanguage, SyntaxElement, SyntaxNode, SyntaxToken};
 pub use crate::lexer::{LexError, LexErrorKind, Lexed, Token, lex};
 pub use crate::meter::beat_groups;

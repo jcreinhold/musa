@@ -933,6 +933,30 @@ fn hover_on_a_keyword_reports_its_documentation() {
 }
 
 #[test]
+fn hover_on_a_controlled_music_function_explains_its_boundary() {
+    let source = "piece \"hover builtin\" {
+        let subject: music = music { c4/1 };
+        fn same(p: pitch) -> pitch = p;
+        let transformed: music = map_note_pitches(same, subject);
+        score { part p { voice v { use transformed; } } }
+    }";
+    let mut server = Server::start();
+    let (uri, published) = server.open("hover-builtin", source);
+    assert!(published.diagnostics.is_empty(), "the piece should compile");
+    let hover = server.client.request::<HoverRequest>(HoverParams {
+        text_document_position_params: position_params(&uri, at(source, "map_note_pitches")),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    let hover: Hover = serde_json::from_value(hover).expect("a hover");
+    let HoverContents::Markup(content) = hover.contents else {
+        panic!("expected markdown hover");
+    };
+    assert!(content.value.contains("**map_note_pitches**"), "{}", content.value);
+    assert!(content.value.contains("Key signatures"), "{}", content.value);
+    server.stop();
+}
+
+#[test]
 fn opening_a_piece_beside_its_libraries_resolves_the_imports() {
     // A directory project from the corpus, opened the way an editor opens
     // it: the URI names the file, and `use "../library/…"` must resolve

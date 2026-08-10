@@ -596,6 +596,7 @@ fn occurrence_facts(
         | ExpansionStep::Stretch(_)
         | ExpansionStep::Retrograde
         | ExpansionStep::Inversion { .. }
+        | ExpansionStep::MapNotePitches
         | ExpansionStep::Specialization { .. } => None,
     });
     let motif = call_site.map(|span| motif_name(source, span.start, span.end));
@@ -758,6 +759,7 @@ fn step(step: &ExpansionStep, source: &str) -> String {
         ExpansionStep::Stretch(factor) => format!("stretch {}/{}", factor.numer(), factor.denom()),
         ExpansionStep::Retrograde => "retrograde".to_owned(),
         ExpansionStep::Inversion { ref axis } => format!("invert around {axis}"),
+        ExpansionStep::MapNotePitches => "map note pitches".to_owned(),
         ExpansionStep::Specialization { .. } => "specialized".to_owned(),
     }
 }

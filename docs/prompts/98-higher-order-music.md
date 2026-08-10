@@ -1,7 +1,7 @@
 ---
 id: 98
 slug: higher-order-music
-status: pending
+status: complete
 depends_on: [97]
 phase: 3
 ---

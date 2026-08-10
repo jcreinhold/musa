@@ -125,17 +125,11 @@ fact. An absent scale makes `step` a type-context diagnostic, not an implicit C-
 
 ```musa
 fn canon(subject: music, answer: music -> music, gap: duration) -> music = music {
-    overlay {
-        use subject;
-        use shift(gap, answer(subject));
-    }
+    use overlay(subject, shift(gap, answer(subject)));
 };
 
 fn harmonize(subject: music, answer_pitch: pitch -> pitch) -> music = music {
-    overlay {
-        use subject;
-        use map_note_pitches(answer_pitch, subject);
-    }
+    use overlay(subject, map_note_pitches(answer_pitch, subject));
 };
 
 use canon(theme(), transpose(P5), 1/2);

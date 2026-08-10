@@ -66,6 +66,8 @@ pub enum ExpansionStep {
         /// The axis the block was mirrored about.
         axis: String,
     },
+    /// A checked `pitch -> pitch` function was applied to sounding pitches.
+    MapNotePitches,
     /// One note of a motif occurrence was respelled by a `with` clause.
     Specialization {
         /// The span of the override that respelled it.

@@ -97,6 +97,36 @@ inst(in_scale(s,m), ρ, p) = inst(m, ρ[scale := s], p)
 These are equations about the chosen constructors, not a monadic join. `in scale` emits no key signature and is not a
 claim of modulation or tonicization.
 
+### Higher-order construction and the pitch traversal
+
+`music` and function values may be passed and returned without revealing either representation. An application with
+unsupplied required parameters evaluates to a closure over the supplied arguments; consequently
+`transpose(i) : music -> music`. The function and block spellings of transpose, stretch, retrograde, and inversion
+invoke the same semantic action, so their equality is an implementation theorem rather than a duplicated convention.
+
+The sole pitch traversal is
+
+```text
+map_note_pitches : (Pitch -> Pitch) -> Music -> Music.
+```
+
+For an occurrence `o = ([a,b), f)` its action is `([a,b), mapPitch(g,f))`, where `mapPitch` changes the written pitch
+of `Note` and `Grace` facts and is the identity on every other `FactKind`; sounded chord tones are represented by
+simultaneous `Note` facts at this layer. In particular it does not map the tonic of `Key` or the root of `Harmony`.
+This distinction is music-theoretic, not merely representational: a key signature and a Roman-numeral/chord analysis
+state a tonal reading, while a written note states a sounded pitch. Rewriting the latter does not prove the former has
+changed.
+
+The temporal-support law follows directly: the traversal changes no occurrence span and no term constructor, hence
+the set of pairs `(onset, extent)` and the enclosing timeline extent are identical before and after mapping. Identity
+and composition follow by cases on the exhaustive `FactKind` table: on pitch-bearing facts they reduce to the
+corresponding function equations; on all other facts both sides are the identity. Origin is deliberately finer: one
+`MapNotePitches` step is retained, so equality holds under `≈facts`, not byte-for-byte payload equality.
+
+Interval answers use Musa's signed pair of written diatonic steps and semitones. This follows the distinction between
+generic interval size and specific quality in *Open Music Theory*, “Intervals” (`016-intervals.md`): `P8` therefore
+means seven diatonic steps and twelve semitones, preserving spelling rather than reducing the answer to a MIDI offset.
+
 ## 4. Ownership
 
 | Owner | Knows | Must not know |

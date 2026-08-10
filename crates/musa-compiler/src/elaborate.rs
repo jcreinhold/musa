@@ -1878,23 +1878,13 @@ fn elaborate_item(
             let mut inner = cx.clone();
             inner.path.push(ExpansionStep::Stretch(factor));
             let segment = elaborate_items(resolver, share, &stretch.items(), &inner, scope);
-            let elaborated = share.evaluate(segment.term);
-            // The kernel's time-scaling action (course correction §14) plus
-            // the matching renotation: a stretched quarter is *written* as a
-            // half, not as a quarter that lasts twice as long.
-            Segment::literal(
-                elaborated
-                    .map_payload(|payload| payload.stretched(factor))
-                    .scale(factor)
-                    .unwrap_or_else(|_| empty_segment()),
-            )
+            stretch_segment(share, segment, factor)
         }
         VoiceItem::Retrograde(retrograde) => {
             let mut inner = cx.clone();
             inner.path.push(ExpansionStep::Retrograde);
             let segment = elaborate_items(resolver, share, &retrograde.items(), &inner, scope);
-            let elaborated = share.evaluate(segment.term);
-            Segment::literal(reverse(&elaborated))
+            retrograde_segment(share, segment)
         }
         VoiceItem::Invert(invert) => {
             let text = invert.axis().unwrap_or_default();
@@ -1911,31 +1901,7 @@ fn elaborate_item(
             let mut inner = cx.clone();
             inner.path.push(ExpansionStep::Inversion { axis: text.clone() });
             let segment = elaborate_items(resolver, share, &invert.items(), &inner, scope);
-            let elaborated = share.evaluate(segment.term);
-            // Inversion is a payload map (course correction §13). A note
-            // whose mirror image is unspellable is reported where it is
-            // written and left alone, so one impossible note does not take
-            // the rest of the phrase with it.
-            let refused = std::cell::RefCell::new(Vec::new());
-            let inverted = elaborated.map_payload(|payload| {
-                payload.inverted(axis).unwrap_or_else(|| {
-                    if let Some(pitch) = payload.pitch_of() {
-                        refused.borrow_mut().push((pitch, payload.origin.definition_span));
-                    }
-                    payload.clone()
-                })
-            });
-            for (pitch, at) in refused.into_inner() {
-                resolver.report(
-                    Diagnostic::error(
-                        Code::OutOfRange,
-                        format!("`{pitch}` cannot be spelled when mirrored around `{text}`"),
-                    )
-                    .at(at, "would need a triple accidental")
-                    .help("mirror around a different pitch, or write the passage out"),
-                );
-            }
-            Segment::literal(inverted)
+            invert_segment(resolver, share, segment, axis, &text)
         }
         VoiceItem::Dynamic(dynamic) => {
             let text = dynamic.mark().unwrap_or_default();
@@ -2990,11 +2956,11 @@ fn instantiate_music(
         music: music.clone(),
         named_music: cx.named_music.clone(),
     };
-    let key = music_key(&name, &inner, music.definition_span);
+    let key = music_key(&name, &inner, music.definition_span, call_span);
     let (binding, extent, occurrences) = match share.lookup(&key) {
         Some(found) => found,
         None => {
-            let elaborated = elaborate_items(resolver, share, &music.items, &inner, SHARED_SCOPE);
+            let elaborated = elaborate_music_value(resolver, share, music, &inner, SHARED_SCOPE);
             let extent = elaborated.extent;
             let occurrences = elaborated.occurrences;
             (share.bind(key, elaborated), extent, occurrences)
@@ -3016,8 +2982,19 @@ fn instantiate_music(
     }
 }
 
-fn music_key(name: &str, inner: &ExpandCx, definition: SourceSpan) -> String {
-    let mut key = format!("{name}|{}:{}|{}|", definition.start, definition.end, inner.scale);
+fn music_key(name: &str, inner: &ExpandCx, definition: SourceSpan, placement: SourceSpan) -> String {
+    let mut key = format!(
+        "{name}|{}:{}|at={}:{}|scale={}|decl={:?}|limit={}|foreign={}|choice={:?}|",
+        definition.start,
+        definition.end,
+        placement.start,
+        placement.end,
+        inner.scale,
+        inner.declaration,
+        inner.max_motif,
+        inner.foreign,
+        inner.choice,
+    );
     for interval in &inner.intervals {
         let _ = write!(key, "{interval:?},");
     }
@@ -3044,6 +3021,108 @@ fn append_contextual_key(key: &mut String, music: &crate::core::Music) {
         let _ = write!(key, "use{site}[");
         append_contextual_key(key, nested);
         key.push(']');
+    }
+    match music.operation.as_deref() {
+        None => key.push_str("|surface"),
+        Some(crate::core::MusicOperation::Transpose { interval, source }) => {
+            let _ = write!(key, "|transpose:{interval:?}[");
+            append_contextual_key(key, source);
+            key.push(']');
+        }
+        Some(crate::core::MusicOperation::Stretch { factor, source }) => {
+            let _ = write!(key, "|stretch:{factor}[");
+            append_contextual_key(key, source);
+            key.push(']');
+        }
+        Some(crate::core::MusicOperation::Retrograde { source }) => {
+            key.push_str("|retrograde[");
+            append_contextual_key(key, source);
+            key.push(']');
+        }
+        Some(crate::core::MusicOperation::Invert { axis, source }) => {
+            let _ = write!(key, "|invert:{axis}[");
+            append_contextual_key(key, source);
+            key.push(']');
+        }
+        Some(crate::core::MusicOperation::Shift { by, source }) => {
+            let _ = write!(key, "|shift:{by}[");
+            append_contextual_key(key, source);
+            key.push(']');
+        }
+        Some(crate::core::MusicOperation::Overlay { left, right }) => {
+            key.push_str("|overlay[");
+            append_contextual_key(key, left);
+            key.push('|');
+            append_contextual_key(key, right);
+            key.push(']');
+        }
+        Some(crate::core::MusicOperation::MapNotePitches { mapper, source }) => {
+            let _ = write!(key, "|map:{}[", crate::core::pitch_function_key(mapper));
+            append_contextual_key(key, source);
+            key.push(']');
+        }
+    }
+}
+
+/// Interpret an opaque contextual value after a voice has supplied scope and
+/// onset. Every constructor delegates to the same transform helpers as its
+/// block spelling; the kernel still receives only a closed `Term<ScoreFact>`.
+fn elaborate_music_value(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    music: &crate::core::Music,
+    cx: &ExpandCx,
+    scope: Scope,
+) -> Segment {
+    let mut local = cx.clone();
+    local.params.extend(music.bindings.clone());
+    local.music = music.clone();
+    match music.operation.as_deref() {
+        None => elaborate_items(resolver, share, &music.items, &local, scope),
+        Some(crate::core::MusicOperation::Transpose { interval, source }) => {
+            local.intervals.push(*interval);
+            local.path.push(ExpansionStep::Transposition(*interval));
+            elaborate_music_value(resolver, share, source, &local, scope)
+        }
+        Some(crate::core::MusicOperation::Stretch { factor, source }) => {
+            local.path.push(ExpansionStep::Stretch(*factor));
+            let segment = elaborate_music_value(resolver, share, source, &local, scope);
+            stretch_segment(share, segment, *factor)
+        }
+        Some(crate::core::MusicOperation::Retrograde { source }) => {
+            local.path.push(ExpansionStep::Retrograde);
+            let segment = elaborate_music_value(resolver, share, source, &local, scope);
+            retrograde_segment(share, segment)
+        }
+        Some(crate::core::MusicOperation::Invert { axis, source }) => {
+            local.path.push(ExpansionStep::Inversion { axis: axis.to_string() });
+            let segment = elaborate_music_value(resolver, share, source, &local, scope);
+            invert_segment(resolver, share, segment, *axis, &axis.to_string())
+        }
+        Some(crate::core::MusicOperation::Shift { by, source }) => {
+            let segment = elaborate_music_value(resolver, share, source, &local, scope);
+            Segment {
+                term: Term::shift(Beat::new(*by), segment.term).unwrap_or_else(|_| Term::literal(empty_segment())),
+                extent: Beat::new(*by + segment.extent.as_ratio()),
+                occurrences: segment.occurrences,
+                tied: false,
+            }
+        }
+        Some(crate::core::MusicOperation::Overlay { left, right }) => {
+            let left = elaborate_music_value(resolver, share, left, &local, scope);
+            let right = elaborate_music_value(resolver, share, right, &local, scope);
+            Segment {
+                term: Term::over(vec![left.term, right.term]).unwrap_or_else(|_| Term::literal(empty_segment())),
+                extent: left.extent.max(right.extent),
+                occurrences: left.occurrences.saturating_add(right.occurrences),
+                tied: false,
+            }
+        }
+        Some(crate::core::MusicOperation::MapNotePitches { mapper, source }) => {
+            local.path.push(ExpansionStep::MapNotePitches);
+            let segment = elaborate_music_value(resolver, share, source, &local, scope);
+            map_note_pitches_segment(resolver, share, segment, mapper)
+        }
     }
 }
 
@@ -3257,6 +3336,106 @@ fn specialize(
 /// Every mark stays with the note that carries it — a staccato is written on
 /// a note, and reversing time does not move it. Ties need no repair: they
 /// were merged when the enclosed items were elaborated, so what reverses is
+/// Apply the kernel scale action and the matching written-duration action.
+/// Both block and function spellings call this one implementation.
+fn stretch_segment(share: &Share, segment: Segment, factor: Ratio<i64>) -> Segment {
+    let elaborated = share.evaluate(segment.term);
+    Segment::literal(
+        elaborated
+            .map_payload(|payload| payload.stretched(factor))
+            .scale(factor)
+            .unwrap_or_else(|_| empty_segment()),
+    )
+}
+
+fn retrograde_segment(share: &Share, segment: Segment) -> Segment {
+    Segment::literal(reverse(&share.evaluate(segment.term)))
+}
+
+fn invert_segment(
+    resolver: &mut Resolver,
+    share: &Share,
+    segment: Segment,
+    axis: WrittenPitch,
+    axis_text: &str,
+) -> Segment {
+    let elaborated = share.evaluate(segment.term);
+    let refused = std::cell::RefCell::new(Vec::new());
+    let inverted = elaborated.map_payload(|payload| {
+        payload.inverted(axis).unwrap_or_else(|| {
+            if let Some(pitch) = payload.pitch_of() {
+                refused.borrow_mut().push((pitch, payload.origin.definition_span));
+            }
+            payload.clone()
+        })
+    });
+    for (pitch, at) in refused.into_inner() {
+        resolver.report(
+            Diagnostic::error(
+                Code::OutOfRange,
+                format!("`{pitch}` cannot be spelled when mirrored around `{axis_text}`"),
+            )
+            .at(at, "would need a triple accidental")
+            .help("mirror around a different pitch, or write the passage out"),
+        );
+    }
+    Segment::literal(inverted)
+}
+
+fn map_note_pitches_segment(
+    resolver: &mut Resolver,
+    share: &Share,
+    segment: Segment,
+    mapper: &crate::core::PitchFunction,
+) -> Segment {
+    let elaborated = share.evaluate(segment.term);
+    let failed = std::cell::Cell::new(false);
+    let mapped = elaborated.map_payload(|payload| {
+        map_note_pitch_fact(payload, |pitch| crate::core::apply_pitch_function(mapper, pitch)).unwrap_or_else(|| {
+            failed.set(true);
+            payload.clone()
+        })
+    });
+    if failed.get() {
+        resolver.report(
+            Diagnostic::error(Code::ResourceLimit, "a pitch mapping exceeded the elaboration budget")
+                .at(SourceSpan::default(), "while mapping sounding pitches"),
+        );
+    }
+    Segment::literal(mapped)
+}
+
+/// The one exhaustive coverage table for the controlled traversal. Keeping
+/// it at the fact boundary makes a newly-added `FactKind` a compile error
+/// until its sounding-pitch policy is chosen deliberately.
+pub(crate) fn map_note_pitch_fact(
+    payload: &ScoreFact,
+    mut mapper: impl FnMut(WrittenPitch) -> Option<WrittenPitch>,
+) -> Option<ScoreFact> {
+    let mut mapped = payload.clone();
+    match &mut mapped.kind {
+        FactKind::Note { pitch, .. } | FactKind::Grace { pitch, .. } => *pitch = mapper(*pitch)?,
+        FactKind::Rest { .. }
+        | FactKind::Mark { .. }
+        | FactKind::Slur
+        | FactKind::Phrase { .. }
+        | FactKind::Tuplet { .. }
+        | FactKind::Dynamic { .. }
+        | FactKind::Hairpin { .. }
+        | FactKind::Key { .. }
+        | FactKind::Meter { .. }
+        | FactKind::Clef { .. }
+        | FactKind::Tempo { .. }
+        | FactKind::Section { .. }
+        | FactKind::Harmony { .. }
+        | FactKind::Repeat { .. }
+        | FactKind::Mobile { .. }
+        | FactKind::Improvise { .. }
+        | FactKind::Ending { .. } => {}
+    }
+    Some(mapped)
+}
+
 /// an ordinary occurrence with an ordinary span.
 fn reverse(timeline: &Timeline<ScoreFact>) -> Timeline<ScoreFact> {
     let extent = timeline.extent();

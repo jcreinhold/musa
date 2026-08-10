@@ -457,13 +457,14 @@ fn take_origin(words: &mut Words) -> Option<Origin> {
 /// The words an expansion step can begin with, and so the words that continue
 /// a `via` run. A run ends at the first word that is not one of these — `]`
 /// in a label, and the end of the stream in a reference mark.
-const STEP_TAGS: [&str; 7] = [
+const STEP_TAGS: [&str; 8] = [
     "motif",
     "repeat",
     "transpose",
     "stretch",
     "retrograde",
     "invert",
+    "map-pitches",
     "special",
 ];
 
@@ -491,6 +492,7 @@ fn write_step(words: &mut Words, step: &ExpansionStep) {
             words.word("invert");
             words.text(axis);
         }
+        ExpansionStep::MapNotePitches => words.word("map-pitches"),
         ExpansionStep::Specialization { override_site } => {
             words.word("special");
             words.word(span_word(*override_site));
@@ -519,6 +521,7 @@ fn take_step(words: &mut Words) -> Option<ExpansionStep> {
         "stretch" => Some(ExpansionStep::Stretch(words.ratio()?)),
         "retrograde" => Some(ExpansionStep::Retrograde),
         "invert" => Some(ExpansionStep::Inversion { axis: words.quoted()? }),
+        "map-pitches" => Some(ExpansionStep::MapNotePitches),
         "special" => Some(ExpansionStep::Specialization {
             override_site: words.span()?,
         }),
@@ -965,6 +968,7 @@ mod tests {
                 ExpansionStep::Inversion {
                     axis: "c4 d4 'e4' [f4] \\g4".to_owned(),
                 },
+                ExpansionStep::MapNotePitches,
                 ExpansionStep::Specialization {
                     override_site: SourceSpan::new(0, 1),
                 },
@@ -1130,6 +1134,23 @@ mod tests {
                 ScoreFact::from_text(&text).as_ref(),
                 Some(&fact),
                 "did not round trip: {text}"
+            );
+        }
+    }
+
+    /// The controlled traversal is total and identity-preserving on one fact
+    /// of every kind. Together with its wildcard-free match, this makes a new
+    /// fact variant fail both compilation and this corpus obligation until a
+    /// pitch policy is chosen.
+    #[test]
+    fn every_fact_kind_has_an_explicit_pitch_mapping_policy() {
+        let corpus = corpus();
+        assert!(corpus.is_some(), "the corpus itself does not parse");
+        for fact in corpus.into_iter().flatten() {
+            assert_eq!(
+                crate::elaborate::map_note_pitch_fact(&fact, Some).as_ref(),
+                Some(&fact),
+                "identity pitch mapping changed {fact:?}"
             );
         }
     }

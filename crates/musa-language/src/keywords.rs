@@ -164,9 +164,9 @@ static USE: KeywordDoc = doc!(
 static TRANSPOSE: KeywordDoc = doc!(
     "transpose",
     "the same music, moved in pitch",
-    "A transpose block plays its contents moved by an interval — `up` or `down` a named interval like `P5` or \
-     `M3`. The original is untouched; the block is a reading of it at a new pitch.\n\n\
-     ```musa\ntranspose up P5 { use theme(); }\n```"
+    "Transpose plays music moved by a written interval such as `P5` or `M3`; the block and function forms have \
+     the same musical meaning. Supplying only the interval makes a reusable answer function.\n\n\
+     ```musa\nlet answer: music -> music = transpose(P5);\n```"
 );
 static UP: KeywordDoc = doc!(
     "up",
@@ -266,24 +266,54 @@ static TUPLET: KeywordDoc = doc!(
 static STRETCH: KeywordDoc = doc!(
     "stretch",
     "the same music, at a different speed ratio",
-    "A stretch block plays its contents scaled in time by an exact factor: `stretch 3/2 { … }` takes half \
-     again as long. Rhythm and proportions are preserved; only the clock changes.\n\n\
-     ```musa\nstretch 2/1 { use theme(); }\n```"
+    "Stretch plays music scaled in written time by an exact factor: `stretch 3/2 { … }` takes half again as \
+     long. `stretch(3/2)` is the reusable function form with the same meaning.\n\n\
+     ```musa\nlet broaden: music -> music = stretch(3/2);\n```"
 );
 static RETROGRADE: KeywordDoc = doc!(
     "retrograde",
     "the block, backwards",
-    "A retrograde block plays its contents in reverse order — the last note first. It is the classical \
-     transformation, written as a block rather than spelled out by hand.\n\n\
-     ```musa\nretrograde { use subject(); }\n```"
+    "Retrograde plays its music backwards — the last event first. The block and `retrograde(subject)` function \
+     forms are the same classical transformation.\n\n\
+     ```musa\nlet answer: music = retrograde(subject);\n```"
 );
 static INVERT: KeywordDoc = doc!(
     "invert",
     "the block, mirrored in pitch",
-    "An invert block mirrors its contents in pitch around an axis note: what went up goes down by the same \
-     interval. The axis is written with `around`.\n\n\
-     ```musa\ninvert around c5 { use subject(); }\n```"
+    "Invert mirrors music around an axis pitch: what went up goes down by the same written interval. \
+     `invert(c5)` makes a reusable function; the block writes the axis with `around`.\n\n\
+     ```musa\nlet mirror: music -> music = invert(c5);\n```"
 );
+
+static SHIFT_FUNCTION: KeywordDoc = doc!(
+    "shift",
+    "the same music, entering later",
+    "`shift` delays music by an exact written duration without adding a rest event. Supply only the delay to make \
+     a reusable entrance function.\n\n```musa\nlet later: music -> music = shift(1/2);\n```"
+);
+static OVERLAY_FUNCTION: KeywordDoc = doc!(
+    "overlay",
+    "music sounding together",
+    "`overlay` starts two music values together and lasts until the later one ends. It expresses simultaneity, \
+     not voice or mixer-track identity.\n\n```musa\nuse overlay(subject, answer);\n```"
+);
+static MAP_NOTE_PITCHES_FUNCTION: KeywordDoc = doc!(
+    "map_note_pitches",
+    "replace each sounding written pitch",
+    "`map_note_pitches` applies a checked `pitch -> pitch` function to notes and sounded chord notes while keeping \
+     their rhythm, marks, spelling provenance, and score context. Key signatures and harmony annotations are not \
+     rewritten.\n\n```musa\nuse map_note_pitches(answer_pitch, subject);\n```"
+);
+
+/// Documentation for compiler-owned functions spelled as identifiers.
+pub fn builtin_doc(name: &str) -> Option<&'static KeywordDoc> {
+    match name {
+        "shift" => Some(&SHIFT_FUNCTION),
+        "overlay" => Some(&OVERLAY_FUNCTION),
+        "map_note_pitches" => Some(&MAP_NOTE_PITCHES_FUNCTION),
+        _ => None,
+    }
+}
 static AROUND: KeywordDoc = doc!(
     "around",
     "the axis of an inversion",

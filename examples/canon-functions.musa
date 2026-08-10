@@ -1,0 +1,22 @@
+// A canon lets the answer remain swappable: here it enters an octave above
+// after a half-note delay. P8 names the written perfect octave, preserving
+// both diatonic spelling and chromatic distance (Open Music Theory, Intervals).
+piece "Canon Functions" {
+    let subject: music = music {
+        c4/4
+        d4/4
+    };
+
+    fn canon(subject: music, answer: music -> music, gap: duration) -> music =
+        overlay(subject, shift(gap, answer(subject)));
+
+    let octave_answer: music -> music = transpose(P8);
+
+    score {
+        part strings {
+            voice duet {
+                use canon(subject, octave_answer, 1/2);
+            }
+        }
+    }
+}

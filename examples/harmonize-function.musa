@@ -1,0 +1,23 @@
+// A harmonizer says how each sounding written pitch supplies another voice.
+// This simple pedal mapping is intentionally replaceable without exposing
+// score events, key signatures, chord symbols, or temporal structure.
+piece "Harmonize Function" {
+    let subject: music = music {
+        c4/4
+        e4/4
+    };
+
+    fn pedal(_: pitch) -> pitch = c3;
+
+    fn harmonize(subject: music, answer_pitch: pitch -> pitch) -> music =
+        overlay(subject, map_note_pitches(answer_pitch, subject));
+
+    score {
+        part strings {
+            voice duet {
+                use harmonize(subject, pedal);
+                rest/2
+            }
+        }
+    }
+}

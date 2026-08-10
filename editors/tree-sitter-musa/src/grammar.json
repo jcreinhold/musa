@@ -1173,6 +1173,22 @@
         {
           "type": "STRING",
           "value": "repeat"
+        },
+        {
+          "type": "STRING",
+          "value": "transpose"
+        },
+        {
+          "type": "STRING",
+          "value": "stretch"
+        },
+        {
+          "type": "STRING",
+          "value": "retrograde"
+        },
+        {
+          "type": "STRING",
+          "value": "invert"
         }
       ]
     },

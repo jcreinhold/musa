@@ -249,7 +249,7 @@ struct RawParameter {
 #[derive(Clone)]
 enum RawDefault {
     Expression(SyntaxNode),
-    Value(Value),
+    Value(Box<Value>),
 }
 
 struct RawDefinition {
@@ -439,6 +439,51 @@ enum Value {
     List { member: Type, values: Vec<Self> },
     Music(Music),
     Closure(Box<Closure>),
+    Builtin(Box<BuiltinValue>),
+}
+
+#[derive(Clone, Copy)]
+enum Builtin {
+    Transpose,
+    Stretch,
+    Retrograde,
+    Invert,
+    Shift,
+    Overlay,
+    MapNotePitches,
+}
+
+#[derive(Clone)]
+struct BuiltinValue {
+    builtin: Builtin,
+    bound: Vec<Option<Value>>,
+}
+
+impl Builtin {
+    fn named(name: &str) -> Option<Self> {
+        match name {
+            "transpose" => Some(Self::Transpose),
+            "stretch" => Some(Self::Stretch),
+            "retrograde" => Some(Self::Retrograde),
+            "invert" => Some(Self::Invert),
+            "shift" => Some(Self::Shift),
+            "overlay" => Some(Self::Overlay),
+            "map_note_pitches" => Some(Self::MapNotePitches),
+            _ => None,
+        }
+    }
+
+    fn parameters(self) -> Vec<Type> {
+        match self {
+            Self::Transpose => vec![Type::Interval, Type::Music],
+            Self::Stretch => vec![Type::Ratio, Type::Music],
+            Self::Retrograde => vec![Type::Music],
+            Self::Invert => vec![Type::Pitch, Type::Music],
+            Self::Shift => vec![Type::Duration, Type::Music],
+            Self::Overlay => vec![Type::Music, Type::Music],
+            Self::MapNotePitches => vec![Type::Function(vec![Type::Pitch], Box::new(Type::Pitch)), Type::Music],
+        }
+    }
 }
 
 /// A notation-first value retained until a voice supplies scope and onset.
@@ -451,6 +496,50 @@ pub(crate) struct Music {
     pub(crate) bindings: IndexMap<String, crate::resolve::BoundValue>,
     pub(crate) role: Option<MusicRole>,
     pub(crate) definition_span: SourceSpan,
+    pub(crate) operation: Option<Box<MusicOperation>>,
+}
+
+/// Opaque contextual constructors. They are interpreted only when a voice
+/// supplies scope and onset; no kernel occurrence is exposed as a value.
+#[derive(Clone)]
+pub(crate) enum MusicOperation {
+    Transpose { interval: Interval, source: Music },
+    Stretch { factor: Ratio<i64>, source: Music },
+    Retrograde { source: Music },
+    Invert { axis: WrittenPitch, source: Music },
+    Shift { by: Ratio<i64>, source: Music },
+    Overlay { left: Music, right: Music },
+    MapNotePitches { mapper: PitchFunction, source: Music },
+}
+
+/// A checked total `pitch -> pitch` closure. Its representation stays inside
+/// the elaboration core, so the controlled traversal cannot become a general
+/// callback over score facts.
+#[derive(Clone)]
+pub(crate) struct PitchFunction(Box<Closure>);
+
+pub(crate) fn apply_pitch_function(function: &PitchFunction, pitch: WrittenPitch) -> Option<WrittenPitch> {
+    let mut meter = WorkMeter::default();
+    let value = apply_closure(
+        &function.0,
+        vec![Some(Value::Pitch(pitch))],
+        &mut meter,
+        SourceSpan::default(),
+    )?;
+    let Value::Pitch(pitch) = value else {
+        return None;
+    };
+    Some(pitch)
+}
+
+pub(crate) fn pitch_function_key(function: &PitchFunction) -> String {
+    let closure = &function.0;
+    let mut key = format!("{}:{}", closure.body.span.start, closure.body.span.end);
+    for (name, value) in &closure.captures {
+        use std::fmt::Write as _;
+        let _ = write!(key, "|{name}={}", value.normalization_witness());
+    }
+    key
 }
 
 #[derive(Clone)]
@@ -483,6 +572,7 @@ impl Program {
             bindings: IndexMap::new(),
             role: None,
             definition_span: SourceSpan::default(),
+            operation: None,
         }
     }
 
@@ -520,6 +610,16 @@ impl Value {
                     .collect(),
                 Box::new(closure.result.clone()),
             ),
+            Self::Builtin(value) => {
+                let parameters = value
+                    .builtin
+                    .parameters()
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(index, ty)| value.bound.get(index).is_none_or(Option::is_none).then_some(ty))
+                    .collect();
+                Type::Function(parameters, Box::new(Type::Music))
+            }
         }
     }
 
@@ -550,13 +650,33 @@ impl Value {
             Self::List { values, .. } => values.iter().fold(0u64, |witness, value| {
                 witness.rotate_left(5) ^ value.normalization_witness()
             }),
-            Self::Music(music) => u64::try_from(music.items.len()).unwrap_or(u64::MAX),
+            Self::Music(music) => music_witness(music),
             Self::Closure(closure) => closure.captures.values().fold(
                 u64::try_from(closure.parameters.len()).unwrap_or(u64::MAX),
                 |witness, captured| witness.rotate_left(5) ^ captured.normalization_witness(),
             ),
+            Self::Builtin(value) => value.bound.iter().flatten().fold(0, |witness, value| {
+                witness.rotate_left(5) ^ value.normalization_witness()
+            }),
         }
     }
+}
+
+fn music_witness(music: &Music) -> u64 {
+    let base = u64::try_from(music.items.len()).unwrap_or(u64::MAX);
+    let operation = match music.operation.as_deref() {
+        None => 0,
+        Some(
+            MusicOperation::Transpose { source, .. }
+            | MusicOperation::Stretch { source, .. }
+            | MusicOperation::Retrograde { source }
+            | MusicOperation::Invert { source, .. }
+            | MusicOperation::Shift { source, .. }
+            | MusicOperation::MapNotePitches { source, .. },
+        ) => music_witness(source),
+        Some(MusicOperation::Overlay { left, right }) => music_witness(left).rotate_left(7) ^ music_witness(right),
+    };
+    base.rotate_left(3) ^ operation
 }
 
 fn check_and_evaluate(
@@ -649,7 +769,7 @@ fn check_and_evaluate(
                     let default = parameter.default.as_ref().and_then(|default| match default {
                         RawDefault::Expression(expression) => checker.check(expression, Some(&parameter.ty)),
                         RawDefault::Value(value) if value.ty() == parameter.ty => Some(Expr {
-                            kind: ExprKind::Literal(value.clone()),
+                            kind: ExprKind::Literal(value.as_ref().clone()),
                             ty: parameter.ty.clone(),
                             span: parameter.span,
                         }),
@@ -680,7 +800,7 @@ fn check_and_evaluate(
                         let default = parameter.default.as_ref().and_then(|default| match default {
                             RawDefault::Expression(expression) => checker.check(expression, Some(&parameter.ty)),
                             RawDefault::Value(value) if value.ty() == parameter.ty => Some(Expr {
-                                kind: ExprKind::Literal(value.clone()),
+                                kind: ExprKind::Literal(value.as_ref().clone()),
                                 ty: parameter.ty.clone(),
                                 span: parameter.span,
                             }),
@@ -732,7 +852,7 @@ fn check_and_evaluate(
     for statement in root_uses {
         let expression = child_of(&statement, is_expr_node)?;
         let span = crate::resolve::trimmed_span(&statement);
-        if first_name(&expression).is_some_and(|name| !symbols.contains_key(&name)) {
+        if first_name(&expression).is_some_and(|name| !symbols.contains_key(&name) && Builtin::named(&name).is_none()) {
             match unknown_root_music {
                 UnknownRootMusic::Reject => {}
                 UnknownRootMusic::Defer => continue,
@@ -745,6 +865,7 @@ fn check_and_evaluate(
                             bindings: IndexMap::new(),
                             role: None,
                             definition_span: span,
+                            operation: None,
                         },
                     );
                     continue;
@@ -786,7 +907,8 @@ fn check_and_evaluate(
             | Value::Product(_)
             | Value::Option { .. }
             | Value::List { .. }
-            | Value::Closure(_) => None,
+            | Value::Closure(_)
+            | Value::Builtin(_) => None,
         })
         .collect();
     Some(Program {
@@ -915,7 +1037,7 @@ fn lower_signature(
                     .default
                     .as_deref()
                     .and_then(|written| legacy_default(&ty, written))
-                    .map(RawDefault::Value);
+                    .map(|value| RawDefault::Value(Box::new(value)));
                 raw_parameters.push(RawParameter {
                     name: parameter.name,
                     ty,
@@ -1227,6 +1349,8 @@ impl Checker<'_> {
             Value::Bool(false)
         } else if kind == SyntaxKind::Integer && expected == Some(&Type::Duration) {
             Value::Duration(Ratio::from_integer(parse_i64(self.resolver, &token)?))
+        } else if kind == SyntaxKind::Integer && expected == Some(&Type::Ratio) {
+            Value::Ratio(Ratio::from_integer(parse_i64(self.resolver, &token)?))
         } else if kind == SyntaxKind::Rational && expected == Some(&Type::Duration) {
             Value::Duration(parse_ratio(self.resolver, &token)?)
         } else if kind == SyntaxKind::Integer {
@@ -1260,14 +1384,34 @@ impl Checker<'_> {
     }
 
     fn name(&mut self, node: &SyntaxNode) -> Option<Expr> {
-        let token = significant_tokens(node)
-            .find(|token| matches!(token.kind(), SyntaxKind::Identifier | SyntaxKind::RepeatKw))?;
+        let token = significant_tokens(node).find(|token| {
+            matches!(
+                token.kind(),
+                SyntaxKind::Identifier
+                    | SyntaxKind::RepeatKw
+                    | SyntaxKind::TransposeKw
+                    | SyntaxKind::StretchKw
+                    | SyntaxKind::RetrogradeKw
+                    | SyntaxKind::InvertKw
+            )
+        })?;
         let name = token.text().to_owned();
         let span = crate::resolve::trimmed_span(node);
         if let Some(ty) = self.locals.get(&name) {
             return Some(Expr {
                 kind: ExprKind::Name(name),
                 ty: ty.clone(),
+                span,
+            });
+        }
+        if let Some(builtin) = Builtin::named(&name) {
+            let value = Value::Builtin(Box::new(BuiltinValue {
+                builtin,
+                bound: vec![None; builtin.parameters().len()],
+            }));
+            return Some(Expr {
+                ty: value.ty(),
+                kind: ExprKind::Literal(value),
                 span,
             });
         }
@@ -1529,7 +1673,8 @@ impl Checker<'_> {
             | Value::Option { .. }
             | Value::List { .. }
             | Value::Music(_)
-            | Value::Closure(_) => Coverage::Literal(literal_key(&value)),
+            | Value::Closure(_)
+            | Value::Builtin(_) => Coverage::Literal(literal_key(&value)),
         };
         Some((Pattern::Literal(value), covered, bindings))
     }
@@ -1634,27 +1779,35 @@ impl Checker<'_> {
                 .and_then(|name| self.symbols.get(&name))
                 .and_then(|symbol| self.definitions.get(symbol.definition))
                 .and_then(|definition| definition.role.as_ref());
-            let (code, message) = legacy.map_or_else(
-                || (Code::WrongArity, format!("this call is missing {names}")),
-                |role| {
-                    (
+            if let Some(role) = legacy {
+                self.resolver.report(
+                    Diagnostic::error(
                         Code::NotAValue,
                         format!("{} `{}` needs a value for `{names}`", role.material.word(), role.name),
                     )
-                },
-            );
-            self.resolver.report(
-                Diagnostic::error(code, message).at(crate::resolve::trimmed_span(node), "not enough arguments"),
-            );
-            self.failed = true;
-            return None;
+                    .at(crate::resolve::trimmed_span(node), "not enough arguments"),
+                );
+                self.failed = true;
+                return None;
+            }
         }
+        let result_ty = if missing.is_empty() {
+            result.as_ref().clone()
+        } else {
+            Type::Function(
+                missing
+                    .iter()
+                    .filter_map(|(index, _)| parameter_types.get(*index).cloned())
+                    .collect(),
+                result,
+            )
+        };
         Some(Expr {
             kind: ExprKind::Apply {
                 function: Box::new(function),
                 arguments,
             },
-            ty: result.as_ref().clone(),
+            ty: result_ty,
             span: crate::resolve::trimmed_span(node),
         })
     }
@@ -1902,9 +2055,12 @@ fn literal_key(value: &Value) -> String {
         Value::Duration(value) => format!("duration:{}/{}", value.numer(), value.denom()),
         Value::Pitch(value) => format!("pitch:{}:{}:{}", value.letter.steps(), value.accidental.0, value.octave),
         Value::Interval(value) => format!("interval:{}:{}", value.diatonic_steps, value.semitones),
-        Value::Product(_) | Value::Option { .. } | Value::List { .. } | Value::Music(_) | Value::Closure(_) => {
-            "constructor".to_owned()
-        }
+        Value::Product(_)
+        | Value::Option { .. }
+        | Value::List { .. }
+        | Value::Music(_)
+        | Value::Closure(_)
+        | Value::Builtin(_) => "constructor".to_owned(),
     }
 }
 
@@ -2093,15 +2249,38 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
             Some(Value::List { member, values })
         }
         ExprKind::Apply { function, arguments } => {
-            let Value::Closure(closure) = eval(function, environment, meter)? else {
-                return None;
-            };
-            let mut provided = vec![None; closure.parameters.len()];
-            for argument in arguments {
-                let slot = provided.get_mut(argument.parameter)?;
-                *slot = Some(eval(&argument.value, environment, meter)?);
+            let function = eval(function, environment, meter)?;
+            match function {
+                Value::Closure(closure) => {
+                    let mut provided = vec![None; closure.parameters.len()];
+                    for argument in arguments {
+                        let slot = provided.get_mut(argument.parameter)?;
+                        *slot = Some(eval(&argument.value, environment, meter)?);
+                    }
+                    apply_closure(&closure, provided, meter, expression.span)
+                }
+                Value::Builtin(value) => {
+                    let Type::Function(parameters, _) = Value::Builtin(value.clone()).ty() else {
+                        return None;
+                    };
+                    let mut provided = vec![None; parameters.len()];
+                    for argument in arguments {
+                        let slot = provided.get_mut(argument.parameter)?;
+                        *slot = Some(eval(&argument.value, environment, meter)?);
+                    }
+                    apply_builtin(&value, provided, expression.span)
+                }
+                Value::Bool(_)
+                | Value::Nat(_)
+                | Value::Ratio(_)
+                | Value::Duration(_)
+                | Value::Pitch(_)
+                | Value::Interval(_)
+                | Value::Product(_)
+                | Value::Option { .. }
+                | Value::List { .. }
+                | Value::Music(_) => None,
             }
-            apply_closure(&closure, provided, meter, expression.span)
         }
         ExprKind::Primitive { primitive, arguments } => {
             eval_primitive(*primitive, arguments, environment, meter, expression)
@@ -2149,7 +2328,8 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     | Value::Option { .. }
                     | Value::List { .. }
                     | Value::Music(_)
-                    | Value::Closure(_) => return None,
+                    | Value::Closure(_)
+                    | Value::Builtin(_) => return None,
                 };
                 bindings.insert(name.clone(), bound);
             }
@@ -2159,6 +2339,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 bindings,
                 role: music.role.clone(),
                 definition_span: music.definition_span,
+                operation: None,
             }))
         }
     }?;
@@ -2179,19 +2360,131 @@ fn apply_closure(
         return None;
     }
     let mut local = closure.captures.clone();
+    let mut remaining = Vec::new();
     for (index, parameter) in closure.parameters.iter().enumerate() {
         let value = provided.get_mut(index).and_then(Option::take).or_else(|| {
             parameter
                 .default
                 .as_ref()
                 .and_then(|default| eval(default, &local, meter))
-        })?;
-        if value.ty() != parameter.ty {
-            return None;
+        });
+        if let Some(value) = value {
+            if value.ty() != parameter.ty {
+                return None;
+            }
+            local.insert(parameter.name.clone(), value);
+        } else {
+            remaining.push(parameter.clone());
         }
-        local.insert(parameter.name.clone(), value);
     }
-    eval(&closure.body, &local, meter)
+    if remaining.is_empty() {
+        eval(&closure.body, &local, meter)
+    } else {
+        Some(Value::Closure(Box::new(Closure {
+            parameters: remaining,
+            result: closure.result.clone(),
+            body: closure.body.clone(),
+            captures: local,
+        })))
+    }
+}
+
+fn apply_builtin(builtin: &BuiltinValue, provided: Vec<Option<Value>>, span: SourceSpan) -> Option<Value> {
+    let mut value = builtin.clone();
+    let remaining = value
+        .bound
+        .iter()
+        .enumerate()
+        .filter_map(|(index, slot)| slot.is_none().then_some(index))
+        .collect::<Vec<_>>();
+    for (argument, target) in provided.into_iter().zip(remaining) {
+        if let Some(argument) = argument {
+            *value.bound.get_mut(target)? = Some(argument);
+        }
+    }
+    if value.bound.iter().any(Option::is_none) {
+        return Some(Value::Builtin(Box::new(value)));
+    }
+    let mut arguments = value.bound.into_iter().collect::<Option<Vec<_>>>()?.into_iter();
+    let operation = match value.builtin {
+        Builtin::Transpose => MusicOperation::Transpose {
+            interval: interval_value(&arguments.next()?)?,
+            source: music_value(arguments.next()?)?,
+        },
+        Builtin::Stretch => {
+            let factor = ratio_value(&arguments.next()?)?;
+            if factor <= Ratio::ZERO {
+                return None;
+            }
+            MusicOperation::Stretch {
+                factor,
+                source: music_value(arguments.next()?)?,
+            }
+        }
+        Builtin::Retrograde => MusicOperation::Retrograde {
+            source: music_value(arguments.next()?)?,
+        },
+        Builtin::Invert => MusicOperation::Invert {
+            axis: pitch_value(&arguments.next()?)?,
+            source: music_value(arguments.next()?)?,
+        },
+        Builtin::Shift => {
+            let by = duration_value(&arguments.next()?)?;
+            if by < Ratio::ZERO {
+                return None;
+            }
+            MusicOperation::Shift {
+                by,
+                source: music_value(arguments.next()?)?,
+            }
+        }
+        Builtin::Overlay => MusicOperation::Overlay {
+            left: music_value(arguments.next()?)?,
+            right: music_value(arguments.next()?)?,
+        },
+        Builtin::MapNotePitches => {
+            let Value::Closure(mapper) = arguments.next()? else {
+                return None;
+            };
+            MusicOperation::MapNotePitches {
+                mapper: PitchFunction(mapper),
+                source: music_value(arguments.next()?)?,
+            }
+        }
+    };
+    Some(Value::Music(Music {
+        items: Vec::new(),
+        uses: IndexMap::new(),
+        bindings: IndexMap::new(),
+        role: None,
+        definition_span: span,
+        operation: Some(Box::new(operation)),
+    }))
+}
+
+fn music_value(value: Value) -> Option<Music> {
+    let Value::Music(value) = value else { return None };
+    Some(value)
+}
+
+fn pitch_value(value: &Value) -> Option<WrittenPitch> {
+    let Value::Pitch(value) = value else { return None };
+    Some(*value)
+}
+
+fn interval_value(value: &Value) -> Option<Interval> {
+    let Value::Interval(value) = value else { return None };
+    Some(*value)
+}
+
+fn ratio_value(value: &Value) -> Option<Ratio<i64>> {
+    let Value::Ratio(value) = value else { return None };
+    Some(*value)
+}
+
+fn duration_value(value: &Value) -> Option<Ratio<i64>> {
+    let Value::Duration(value) = value else { return None };
+    Some(*value)
 }
 
 fn eval_primitive(
@@ -2462,12 +2755,32 @@ fn value_shape(value: &Value) -> (u64, u64) {
             (nodes.saturating_add(1), bytes.saturating_add(1))
         }),
         Value::List { values, .. } => aggregate_shape(values.iter()),
-        Value::Music(music) => {
-            let items = u64::try_from(music.items.len()).unwrap_or(u64::MAX);
-            (items.saturating_add(1), items.saturating_mul(32))
-        }
+        Value::Music(music) => music_shape(music),
         Value::Closure(closure) => aggregate_shape(closure.captures.values()),
+        Value::Builtin(value) => aggregate_shape(value.bound.iter().flatten()),
     }
+}
+
+fn music_shape(music: &Music) -> (u64, u64) {
+    let items = u64::try_from(music.items.len()).unwrap_or(u64::MAX);
+    let base = (items.saturating_add(1), items.saturating_mul(32));
+    let child = match music.operation.as_deref() {
+        None => (0, 0),
+        Some(
+            MusicOperation::Transpose { source, .. }
+            | MusicOperation::Stretch { source, .. }
+            | MusicOperation::Retrograde { source }
+            | MusicOperation::Invert { source, .. }
+            | MusicOperation::Shift { source, .. }
+            | MusicOperation::MapNotePitches { source, .. },
+        ) => music_shape(source),
+        Some(MusicOperation::Overlay { left, right }) => {
+            let left = music_shape(left);
+            let right = music_shape(right);
+            (left.0.saturating_add(right.0), left.1.saturating_add(right.1))
+        }
+    };
+    (base.0.saturating_add(child.0), base.1.saturating_add(child.1))
 }
 
 fn aggregate_shape<'a>(values: impl Iterator<Item = &'a Value>) -> (u64, u64) {

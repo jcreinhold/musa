@@ -301,7 +301,7 @@ module.exports = grammar({
     // `repeat` is both the notation statement and the compiler-owned finite
     // value operation; expression position disambiguates it without making
     // the keyword a general identifier.
-    name_expression: ($) => choice($.identifier, 'repeat'),
+    name_expression: ($) => choice($.identifier, 'repeat', 'transpose', 'stretch', 'retrograde', 'invert'),
     literal_expression: ($) => choice($.integer, $.rational, $.pitch_literal, $.interval_literal, 'true', 'false'),
     option_expression: ($) => choice('none', seq('some', '(', $.expression, ')')),
     list_expression: ($) => seq('[', optional(seq($.expression, repeat(seq(',', $.expression)))), ']'),

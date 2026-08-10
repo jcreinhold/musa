@@ -29,7 +29,27 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
     if let Some(found) = at_keyword(&snapshot, byte, lines) {
         return Some(found);
     }
+    if let Some(found) = at_builtin(&snapshot, byte, lines) {
+        return Some(found);
+    }
     at_studio(document, byte, lines)
+}
+
+fn at_builtin(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
+    let parsed = musa_language::parse(snapshot.source());
+    let token = parsed.syntax().token_at_offset(byte.into()).find(|token| {
+        token.kind() == musa_language::SyntaxKind::Identifier && musa_language::builtin_doc(token.text()).is_some()
+    })?;
+    let doc = musa_language::builtin_doc(token.text())?;
+    let range = token.text_range();
+    Some(answer(
+        lines,
+        Span {
+            start: u32::from(range.start()),
+            end: u32::from(range.end()),
+        },
+        format!("**{}** — *{}*\n\n{}", doc.spelling, doc.summary, doc.doc),
+    ))
 }
 
 /// A keyword: its own documentation (prompt 84). After the score's facts —
