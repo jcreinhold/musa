@@ -1,7 +1,7 @@
 ---
 id: 102
 slug: chord-classes-and-voicings
-status: pending
+status: in-progress
 depends_on: [35, 101]
 phase: 3
 ---

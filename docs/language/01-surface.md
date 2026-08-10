@@ -77,7 +77,7 @@ The core literals introduced here are `true`, `false`, nonnegative decimal natur
 products, finite lists, and `some`/`none`. Existing pitch and interval literals are also expression atoms. Strings and
 floating-point values remain syntax of their owning declaration domains rather than core values.
 
-A pitch-name literal is checked in its expected domain: `chord(cs, minor)` supplies `spelled_pc`, while an argument to
+A pitch-name literal is checked in its expected domain: `chord c# minor` supplies `spelled_pc`, while an argument to
 `row12` supplies `pc12`. Outside such an expected constructor position, write a type annotation. Converting an existing
 `spelled_pc` value to `pc12` requires `forget_spelling`; there is no implicit value coercion in the opposite direction.
 
@@ -180,19 +180,26 @@ a decidable property of the result.
 ## 5. Chords, rows, and explicit register
 
 ```musa
-let harmony: chord_class = chord(c, major7);
-let close: voicing = voice(harmony, bass: c4, layout: close_position);
-let open: voicing = voice(harmony, bass: c3, layout: drop_2);
-use play(close, 1/2);
-use play(open, 1/2);
+let harmony: chord_class = chord c major7;
+let close: option[voicing] = close_position(harmony, c4);
+let open: option[voicing] = drop_voicing(harmony, c3, 2);
+
+fn sound(chosen: voicing) -> music = play(chosen, 1/2);
+use option_fold(music { rest/2 }, sound, close);
+use option_fold(music { rest/2 }, sound, open);
+
+stack c4 major7/2;
 
 let row: row12 = row12(c, cs, e, d, fs, f, as, g, gs, b, a, ds);
 let symmetric: row12 = row12(c, fs, d, gs, e, as, f, b, g, cs, a, ds);
 let matrix: list[list[pc12]] = row_matrix(symmetric, convention: zero_based);
 ```
 
-`chord` does not sound. `voice` selects register, bass, spacing, doubling, and omissions and returns exact pitches.
-`play` alone creates sounded music. `row12` statically requires each `pc12` exactly once; symmetry may make fewer than
+`chord` does not sound: a chord class is rooted spelled content with no register, spacing, doubling, or bass. A
+voicing policy is an ordinary named function that selects those and returns `option[voicing]`, absent when its
+preconditions do not hold — a bass the class does not contain, or a register the written range cannot reach. `play`
+alone creates sounded music. `stack <pitch> <quality>/<duration>` is sugar for the close-position policy with the
+absolute root fixing register; `stack c major7/2` is rejected, because a pitch class chooses no register. `row12` statically requires each `pc12` exactly once; symmetry may make fewer than
 48 distinct `P`/`I`/`R`/`RI` forms, which is a result, not an error. Row-form naming always states a convention.
 
 ## 6. Declaration templates
