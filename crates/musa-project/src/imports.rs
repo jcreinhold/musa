@@ -49,13 +49,16 @@ pub(crate) fn closure(name: &str, source: &str) -> (ImportSources, Vec<PathBuf>)
 fn written_imports(text: &str) -> Vec<String> {
     let document = musa_language::parse(text);
     let root = document.syntax();
-    let statements = PieceDecl::from_root(&root).map_or_else(
+    // The file's lexical root imports too, and a document whose piece is
+    // made by a template has its `use` statements only there.
+    let mut statements = ImportStmt::all_at_root(&root);
+    statements.extend(PieceDecl::of_document(&root).map_or_else(
         || {
             LibraryDecl::from_root(&root)
                 .map(|library| library.imports())
                 .unwrap_or_default()
         },
         |piece| piece.imports(),
-    );
+    ));
     statements.iter().filter_map(ImportStmt::path).collect()
 }

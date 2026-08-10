@@ -375,6 +375,12 @@ enum RawToken {
     ChordKw,
     #[token("stack", priority = 3)]
     StackKw,
+    #[token("template", priority = 3)]
+    TemplateKw,
+    #[token("make", priority = 3)]
+    MakeKw,
+    #[token("as", priority = 3)]
+    AsKw,
 }
 
 impl RawToken {
@@ -493,7 +499,10 @@ impl RawToken {
             | Self::InKw
             | Self::StepKw
             | Self::ChordKw
-            | Self::StackKw => None,
+            | Self::StackKw
+            | Self::TemplateKw
+            | Self::MakeKw
+            | Self::AsKw => None,
         }
     }
 
@@ -610,6 +619,9 @@ impl RawToken {
             Self::StepKw => SyntaxKind::StepKw,
             Self::ChordKw => SyntaxKind::ChordKw,
             Self::StackKw => SyntaxKind::StackKw,
+            Self::TemplateKw => SyntaxKind::TemplateKw,
+            Self::MakeKw => SyntaxKind::MakeKw,
+            Self::AsKw => SyntaxKind::AsKw,
         }
     }
 }

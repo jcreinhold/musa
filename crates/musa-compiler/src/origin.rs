@@ -75,6 +75,20 @@ pub enum ExpansionStep {
         /// The scale the enclosing `in scale` named.
         scale: String,
     },
+    /// A declaration template was expanded at an instance site.
+    ///
+    /// The first step of any event a `make` produced, and the reason Origin
+    /// can answer "which instance is this" and not only "which template".
+    TemplateInstance {
+        /// The template's name, as the site calls it.
+        template: String,
+        /// The `as` name the site gives what it made.
+        alias: String,
+        /// The span of the `make` statement.
+        site: SourceSpan,
+        /// The generated declaration's stable identity, as hex.
+        identity: String,
+    },
     /// One note of a motif occurrence was respelled by a `with` clause.
     Specialization {
         /// The span of the override that respelled it.

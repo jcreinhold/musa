@@ -1,0 +1,199 @@
+================================================================================
+template-study: a piece template made at the root, and voice templates in it
+================================================================================
+
+// A template is a declaration with parameters: the same piece, or the same
+// voice, written once and made as often as it is wanted. What a template
+// body may read is its own parameters and the file's lexical root — never
+// the site that makes it — so an instance means the same thing wherever it
+// stands (docs/language/04-templates-and-modules.md §3).
+fn theme() -> music = music {
+    c4/4
+    d4/4
+    e4/4
+    f4/4
+};
+
+// A voice that answers a subject through whatever transformation it is
+// handed. Twice below: the same body, two instances, two identities.
+template voice answer(subject: music, transform: music -> music) {
+    use transform(subject);
+}
+
+// The piece itself is the template. Its key and scale arrive as arguments,
+// so the study exists in whatever key it is made in.
+template piece study(k: key, mode: scale, subject: music) "Study" {
+    meter 4/4;
+    key k;
+
+    score {
+        part piano {
+            voice right {
+                in scale mode {
+                    use subject;
+                }
+            }
+            make answer(subject, transpose(P8)) as upper;
+            make answer(subject, transpose(P15)) as higher;
+        }
+    }
+}
+
+// One file is one piece, made or written out. This `make` stands where the
+// piece would, and is this file's piece.
+make study(key g major, scale g mixolydian, theme()) as study_in_g;
+
+---
+
+(source_file
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (comment)
+  (function_declaration
+    (identifier)
+    (parameter_list)
+    (type_expression
+      (type_name))
+    (expression
+      (music_expression
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer)))
+        (note_statement
+          (pitch_literal)
+          (duration
+            (integer))))))
+  (comment)
+  (comment)
+  (template_declaration
+    (voice_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name)))
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name)
+            (type_expression
+              (type_name)))))
+      (use_statement
+        (expression
+          (application_expression
+            (name_expression
+              (identifier))
+            (expression_argument_list
+              (expression_argument
+                (expression
+                  (name_expression
+                    (identifier))))))))))
+  (comment)
+  (comment)
+  (template_declaration
+    (piece_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name)))
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name)))
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name))))
+      (string)
+      (meter_statement
+        (rational))
+      (key_statement
+        (expression
+          (name_expression
+            (identifier))))
+      (score_declaration
+        (part_declaration
+          (identifier)
+          (voice_declaration
+            (identifier)
+            (in_scale_statement
+              (expression
+                (name_expression
+                  (identifier)))
+              (block
+                (use_statement
+                  (expression
+                    (name_expression
+                      (identifier)))))))
+          (make_statement
+            (identifier)
+            (expression_argument_list
+              (expression_argument
+                (expression
+                  (name_expression
+                    (identifier))))
+              (expression_argument
+                (expression
+                  (application_expression
+                    (name_expression)
+                    (expression_argument_list
+                      (expression_argument
+                        (expression
+                          (literal_expression
+                            (interval_literal)))))))))
+            (identifier))
+          (make_statement
+            (identifier)
+            (expression_argument_list
+              (expression_argument
+                (expression
+                  (name_expression
+                    (identifier))))
+              (expression_argument
+                (expression
+                  (application_expression
+                    (name_expression)
+                    (expression_argument_list
+                      (expression_argument
+                        (expression
+                          (literal_expression
+                            (interval_literal)))))))))
+            (identifier))))))
+  (comment)
+  (comment)
+  (make_statement
+    (identifier)
+    (expression_argument_list
+      (expression_argument
+        (expression
+          (key_expression
+            (pitch_class
+              (identifier))
+            (identifier))))
+      (expression_argument
+        (expression
+          (scale_expression
+            (pitch_class
+              (identifier))
+            (identifier))))
+      (expression_argument
+        (expression
+          (application_expression
+            (name_expression
+              (identifier))
+            (expression_argument_list)))))
+    (identifier)))

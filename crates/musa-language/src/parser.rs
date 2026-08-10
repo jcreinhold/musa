@@ -100,6 +100,14 @@ const PIECE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::LetKw,
     SyntaxKind::FnKw,
 ];
+/// What ends a broken declaration at the file's lexical root.
+const ROOT_RECOVERY: &[SyntaxKind] = &[
+    SyntaxKind::Semicolon,
+    SyntaxKind::TemplateKw,
+    SyntaxKind::MakeKw,
+    SyntaxKind::PieceKw,
+    SyntaxKind::LibraryKw,
+];
 /// The four front-matter keywords, which open statements of one shape.
 const FRONT_MATTER: &[SyntaxKind] = &[
     SyntaxKind::SubtitleKw,
@@ -121,6 +129,7 @@ const PART_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::TempoKw,
     SyntaxKind::ProfileKw,
     SyntaxKind::VoiceKw,
+    SyntaxKind::MakeKw,
 ];
 const PERFORMANCE_RECOVERY: &[SyntaxKind] = &[SyntaxKind::RBrace, SyntaxKind::ProfileKw];
 const PROFILE_RECOVERY: &[SyntaxKind] = &[
@@ -224,8 +233,16 @@ impl<'a> Parser<'a> {
         // top of it rather than inferred from what it happens to contain: a
         // library with a `score` in it is then a parse error rather than a
         // rule someone has to remember.
+        //
+        // What may precede it is the file's lexical root: imports, values,
+        // functions, and templates. A `make` of a piece template stands in
+        // the piece's place and is that piece — one file is still one piece,
+        // whether it is written out or made.
+        self.root_preamble();
         if self.at(SyntaxKind::LibraryKw) {
             self.library_decl();
+        } else if self.at(SyntaxKind::MakeKw) {
+            self.make_stmt();
         } else {
             self.piece_decl();
         }
@@ -516,10 +533,80 @@ impl<'a> Parser<'a> {
 
     // --- Grammar --------------------------------------------------------
 
-    /// `piece "name" { ... }`
+    /// Whatever stands before the file's piece or library: imports, values,
+    /// functions, and templates.
+    ///
+    /// These are the file's lexical root, and the only scope a template body
+    /// reads besides its own parameters. Nothing here is the file's
+    /// declaration — the piece or library that follows is.
+    fn root_preamble(&mut self) {
+        loop {
+            if self.at(SyntaxKind::UseKw) {
+                self.import_stmt();
+            } else if self.at(SyntaxKind::LetKw) {
+                self.let_decl();
+            } else if self.at(SyntaxKind::FnKw) {
+                self.fn_decl();
+            } else if self.at(SyntaxKind::TemplateKw) {
+                self.template_decl();
+            } else {
+                break;
+            }
+        }
+    }
+
+    /// `template piece study(k: key) "Study" { ... }`, or the same for a
+    /// voice.
+    ///
+    /// The node wraps an ordinary [`SyntaxKind::PieceDecl`] or
+    /// [`SyntaxKind::VoiceDecl`] carrying a parameter list, so a template
+    /// body is read by exactly the accessors a written-out declaration is.
+    /// The only thing `template` adds is the word that says the declaration
+    /// is a pattern rather than a thing.
+    fn template_decl(&mut self) {
+        self.start(SyntaxKind::TemplateDecl);
+        self.bump(); // template
+        if self.at(SyntaxKind::PieceKw) {
+            self.piece_decl();
+        } else if self.at(SyntaxKind::VoiceKw) {
+            self.voice_decl();
+        } else {
+            self.expected_with_help(
+                "`piece` or `voice`",
+                "a template parameterizes a declaration, and those are the two kinds it may parameterize",
+            );
+            self.recover(ROOT_RECOVERY);
+        }
+        self.finish();
+    }
+
+    /// `make study(key g major) as study_in_g;` — one instance site.
+    fn make_stmt(&mut self) {
+        self.start(SyntaxKind::MakeStmt);
+        self.bump(); // make
+        self.expect(SyntaxKind::Identifier, "a template name");
+        if self.at(SyntaxKind::LParen) {
+            self.expr_arg_list();
+        } else {
+            self.expected("`(`");
+        }
+        self.expect(SyntaxKind::AsKw, "`as`");
+        self.expect(SyntaxKind::Identifier, "a name for what is made");
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
+    }
+
+    /// `piece "name" { ... }`, or `piece study(k: key) "Study" { ... }` for
+    /// the piece a `template` parameterizes.
     fn piece_decl(&mut self) {
         self.start(SyntaxKind::PieceDecl);
         self.expect(SyntaxKind::PieceKw, "`piece`");
+        // A template's piece is named twice: once as the template, in code,
+        // and once as the piece, on the page. The identifier is the first.
+        if self.at(SyntaxKind::Identifier) {
+            self.bump();
+            self.param_list();
+        }
         self.expect(SyntaxKind::String, "a piece name");
         self.expect(SyntaxKind::LBrace, "`{`");
         loop {
@@ -1089,8 +1176,16 @@ impl<'a> Parser<'a> {
     fn key_stmt(&mut self) {
         self.start(SyntaxKind::KeyStmt);
         self.bump(); // key
-        self.pitch_class();
-        self.expect(SyntaxKind::Identifier, "a mode (`major` or `minor`)");
+        // `key a minor;` writes the key out; `key k;` names one a template
+        // was given. One word before the `;` cannot be both a tonic and a
+        // mode, so it is a name — and `key a;` was never valid, so nothing
+        // that parsed before parses differently now.
+        if self.at(SyntaxKind::Identifier) && self.nth_significant(1) == Some(SyntaxKind::Semicolon) {
+            self.expr();
+        } else {
+            self.pitch_class();
+            self.expect(SyntaxKind::Identifier, "a mode (`major` or `minor`)");
+        }
         self.expect(SyntaxKind::Semicolon, "`;`");
         self.finish();
     }
@@ -1250,8 +1345,10 @@ impl<'a> Parser<'a> {
                 self.profile_stmt();
             } else if self.at(SyntaxKind::VoiceKw) {
                 self.voice_decl();
+            } else if self.at(SyntaxKind::MakeKw) {
+                self.make_stmt();
             } else {
-                self.expected("`clef`, `meter`, `tempo`, `profile`, or `voice`");
+                self.expected("`clef`, `meter`, `tempo`, `profile`, `voice`, or `make`");
                 self.recover(PART_RECOVERY);
             }
         }
@@ -1691,6 +1788,11 @@ impl<'a> Parser<'a> {
         self.start(SyntaxKind::VoiceDecl);
         self.bump(); // voice
         self.expect(SyntaxKind::Identifier, "a voice name");
+        // A parameter list is what makes this a template's voice rather than
+        // a part's; `template` in front of it is what says so out loud.
+        if self.at(SyntaxKind::LParen) {
+            self.param_list();
+        }
         self.expect(SyntaxKind::LBrace, "`{`");
         self.voice_items();
         self.expect(SyntaxKind::RBrace, "`}`");

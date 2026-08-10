@@ -55,6 +55,7 @@ mod scale;
 mod scope;
 mod score;
 mod studio;
+mod template;
 mod time;
 
 pub use crate::bars::{BarBeat, BarLines, Measure};

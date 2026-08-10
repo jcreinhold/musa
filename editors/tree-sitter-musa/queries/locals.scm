@@ -2,6 +2,7 @@
 ; occurrence-highlighting read. The language server (prompt 78) is the
 ; semantic rename; this is the lexical one.
 (piece_declaration) @local.scope
+(template_declaration) @local.scope
 (library_declaration) @local.scope
 (motif_declaration) @local.scope
 (block) @local.scope
@@ -14,6 +15,9 @@
 (motif_parameter name: (identifier) @local.definition)
 (part_declaration name: (identifier) @local.definition)
 (voice_declaration name: (identifier) @local.definition)
+(piece_declaration template_name: (identifier) @local.definition)
+(make_statement name: (identifier) @local.definition)
+(make_statement template: (identifier) @local.reference)
 (bar_statement name: (identifier) @local.definition)
 (patch_declaration name: (identifier) @local.definition)
 (bus_declaration name: (identifier) @local.definition)

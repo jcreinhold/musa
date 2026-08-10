@@ -19,6 +19,15 @@
 (voice_declaration
   name: (identifier) @name) @definition.variable
 
+(piece_declaration
+  template_name: (identifier) @name) @definition.type
+
+(make_statement
+  name: (identifier) @name) @definition.variable
+
+(make_statement
+  template: (identifier) @name) @reference.call
+
 (patch_declaration
   name: (identifier) @name) @definition.type
 

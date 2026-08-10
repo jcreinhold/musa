@@ -14,6 +14,9 @@
 [
   "piece"
   "library"
+  "template"
+  "make"
+  "as"
   "tempo"
   "meter"
   "key"
@@ -112,6 +115,10 @@
 (bus_declaration name: (identifier) @type)
 
 (voice_declaration name: (identifier) @variable)
+; A template's own name, and the name a `make` gives what it makes.
+(piece_declaration template_name: (identifier) @function)
+(make_statement template: (identifier) @function.call)
+(make_statement name: (identifier) @variable)
 (profile_declaration name: (identifier) @variable)
 (bar_statement name: (identifier) @label)
 

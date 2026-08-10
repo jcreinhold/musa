@@ -627,7 +627,12 @@ pub(crate) fn lower_studio(
 
 /// Tempo, meter, key — plus registration of motif declarations (expansion
 /// is prompt 06).
-pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot: &mut ScoreSnapshot) {
+pub(crate) fn lower_header(
+    resolver: &mut Resolver,
+    piece: &PieceDecl,
+    snapshot: &mut ScoreSnapshot,
+    core: &crate::core::Program,
+) {
     snapshot.set_title(piece.name().unwrap_or_default());
     if piece.tempo().is_some() {
         resolver.declare(DeclInfo::Tempo);
@@ -659,7 +664,9 @@ pub(crate) fn lower_header(resolver: &mut Resolver, piece: &PieceDecl, snapshot:
     }
     if let Some(key) = piece.key() {
         resolver.declare(DeclInfo::Key);
-        match parse_key(&key) {
+        // Written out, or named: `key k;` in a template's piece is the value
+        // the instance supplied, evaluated with everything else.
+        match parse_key(&key).or_else(|| core.key_at(trimmed_span(key.syntax()))) {
             Some(map) => resolver.key = Some(map),
             None => resolver.error(
                 Code::NotAValue,

@@ -601,6 +601,31 @@ static STACK: KeywordDoc = doc!(
      no octave.\n\n\
      ```musa\nstack c4 major7/2\n```"
 );
+static TEMPLATE: KeywordDoc = doc!(
+    "template",
+    "parameterize a piece or a voice",
+    "`template piece study(k: key) \"Study\" { ... }` writes a family of pieces rather than a piece. Parameters are \
+     ordinary typed values — a key, a scale, a `music`, or a `music -> music` — and a template body reads them and \
+     the file's root, never the site that makes it. A template is not a value: nothing can pass one, return one, or \
+     ask what is inside it.\n\n\
+     ```musa\ntemplate voice answer(subject: music, transform: music -> music) {\n    use transform(subject);\n}\n```"
+);
+static MAKE: KeywordDoc = doc!(
+    "make",
+    "instantiate a template here",
+    "`make study(key g major) as study_in_g;` evaluates the arguments in the scope it is written in and expands the \
+     template into an ordinary declaration at this place. A piece instance stands at the file's root and is that \
+     file's piece; a voice instance stands among a part's voices. The `as` name is the address; identity comes from \
+     the site, so two instances with equal arguments remain two declarations.\n\n\
+     ```musa\nmake answer(subject, transpose(P8)) as follower;\n```"
+);
+static AS: KeywordDoc = doc!(
+    "as",
+    "name what an instance makes",
+    "The mandatory second half of `make`. It is the source address other declarations refer to, and renaming it \
+     changes what can be written, not what the instance is.\n\n\
+     ```musa\nmake study(key g major) as study_in_g;\n```"
+);
 
 /// The keyword's documentation, or `None` for anything that is not a
 /// keyword.
@@ -618,6 +643,9 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::StepKw => &STEP,
         SyntaxKind::ChordKw => &CHORD,
         SyntaxKind::StackKw => &STACK,
+        SyntaxKind::TemplateKw => &TEMPLATE,
+        SyntaxKind::MakeKw => &MAKE,
+        SyntaxKind::AsKw => &AS,
         SyntaxKind::PieceKw => &PIECE,
         SyntaxKind::LibraryKw => &LIBRARY,
         SyntaxKind::TempoKw => &TEMPO,
@@ -825,7 +853,9 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::StepExpr
         | SyntaxKind::InScaleStmt
         | SyntaxKind::ChordExpr
-        | SyntaxKind::StackStmt => return None,
+        | SyntaxKind::StackStmt
+        | SyntaxKind::TemplateDecl
+        | SyntaxKind::MakeStmt => return None,
     };
     Some(doc)
 }

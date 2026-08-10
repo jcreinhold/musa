@@ -3,6 +3,13 @@
 (piece_declaration
   name: (string) @name) @item
 
+; A template is named where it is declared, and again where it is made.
+(piece_declaration
+  template_name: (identifier) @name) @item
+
+(make_statement
+  name: (identifier) @name) @item
+
 (motif_declaration
   name: (identifier) @name) @item
 

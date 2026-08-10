@@ -373,5 +373,20 @@
     "spelling": "stack",
     "summary": "sound a chord in close position",
     "doc": "`stack c4 major7/2` is sugar for the close-position voicing of that chord rooted at that written pitch, held for that long. The pitch is what fixes the register, so `stack c major7/2` is refused: a pitch class chooses no octave.\n\n```musa\nstack c4 major7/2\n```"
+  },
+  {
+    "spelling": "template",
+    "summary": "parameterize a piece or a voice",
+    "doc": "`template piece study(k: key) \"Study\" { ... }` writes a family of pieces rather than a piece. Parameters are ordinary typed values — a key, a scale, a `music`, or a `music -> music` — and a template body reads them and the file's root, never the site that makes it. A template is not a value: nothing can pass one, return one, or ask what is inside it.\n\n```musa\ntemplate voice answer(subject: music, transform: music -> music) {\n    use transform(subject);\n}\n```"
+  },
+  {
+    "spelling": "make",
+    "summary": "instantiate a template here",
+    "doc": "`make study(key g major) as study_in_g;` evaluates the arguments in the scope it is written in and expands the template into an ordinary declaration at this place. A piece instance stands at the file's root and is that file's piece; a voice instance stands among a part's voices. The `as` name is the address; identity comes from the site, so two instances with equal arguments remain two declarations.\n\n```musa\nmake answer(subject, transpose(P8)) as follower;\n```"
+  },
+  {
+    "spelling": "as",
+    "summary": "name what an instance makes",
+    "doc": "The mandatory second half of `make`. It is the source address other declarations refer to, and renaming it changes what can be written, not what the instance is.\n\n```musa\nmake study(key g major) as study_in_g;\n```"
   }
 ]

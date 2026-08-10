@@ -95,6 +95,9 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("step", SyntaxKind::StepKw),
     ("chord", SyntaxKind::ChordKw),
     ("stack", SyntaxKind::StackKw),
+    ("template", SyntaxKind::TemplateKw),
+    ("make", SyntaxKind::MakeKw),
+    ("as", SyntaxKind::AsKw),
     ("Hz", SyntaxKind::UnitHz),
     ("ms", SyntaxKind::UnitMs),
     ("s", SyntaxKind::UnitS),
@@ -264,6 +267,9 @@ impl TokenClass {
             | SyntaxKind::SectionKw
             | SyntaxKind::HarmonyKw
             | SyntaxKind::LibraryKw
+            | SyntaxKind::TemplateKw
+            | SyntaxKind::MakeKw
+            | SyntaxKind::AsKw
             | SyntaxKind::CrescendoKw
             | SyntaxKind::DiminuendoKw
             | SyntaxKind::ToKw
@@ -394,7 +400,9 @@ impl TokenClass {
             | SyntaxKind::StepExpr
             | SyntaxKind::InScaleStmt
             | SyntaxKind::ChordExpr
-            | SyntaxKind::StackStmt => return None,
+            | SyntaxKind::StackStmt
+            | SyntaxKind::TemplateDecl
+            | SyntaxKind::MakeStmt => return None,
         };
         Some(class)
     }

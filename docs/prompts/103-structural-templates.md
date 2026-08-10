@@ -1,7 +1,7 @@
 ---
 id: 103
 slug: structural-templates
-status: in-progress
+status: done
 depends_on: [63, 98, 101]
 phase: 3
 ---

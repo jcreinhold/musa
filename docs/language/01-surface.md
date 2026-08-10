@@ -220,11 +220,11 @@ template voice answer(subject: music, transform: music -> music) {
     use transform(subject);
 }
 
-template piece study(k: key, s: scale, subject: music) "Study" {
+template piece study(k: key, mode: scale, subject: music) "Study" {
     key k;
     score {
         part piano {
-            voice right { in scale s { use subject; } }
+            voice right { in scale mode { use subject; } }
             make answer(subject, transpose(P8)) as follower;
         }
     }

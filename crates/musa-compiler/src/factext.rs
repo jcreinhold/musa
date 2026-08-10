@@ -457,7 +457,8 @@ fn take_origin(words: &mut Words) -> Option<Origin> {
 /// The words an expansion step can begin with, and so the words that continue
 /// a `via` run. A run ends at the first word that is not one of these — `]`
 /// in a label, and the end of the stream in a reference mark.
-const STEP_TAGS: [&str; 9] = [
+const STEP_TAGS: [&str; 10] = [
+    "template",
     "motif",
     "scale",
     "repeat",
@@ -471,6 +472,18 @@ const STEP_TAGS: [&str; 9] = [
 
 fn write_step(words: &mut Words, step: &ExpansionStep) {
     match step {
+        ExpansionStep::TemplateInstance {
+            template,
+            alias,
+            site,
+            identity,
+        } => {
+            words.word("template");
+            words.text(template);
+            words.text(alias);
+            words.word(span_word(*site));
+            words.text(identity);
+        }
         ExpansionStep::MotifApplication { call_site } => {
             words.word("motif");
             words.word(span_word(*call_site));
@@ -515,6 +528,12 @@ fn take_steps(words: &mut Words) -> Option<Vec<ExpansionStep>> {
 
 fn take_step(words: &mut Words) -> Option<ExpansionStep> {
     match words.bare()?.as_str() {
+        "template" => Some(ExpansionStep::TemplateInstance {
+            template: words.quoted()?,
+            alias: words.quoted()?,
+            site: words.span()?,
+            identity: words.quoted()?,
+        }),
         "motif" => Some(ExpansionStep::MotifApplication {
             call_site: words.span()?,
         }),

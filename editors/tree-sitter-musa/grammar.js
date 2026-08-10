@@ -92,14 +92,47 @@ module.exports = grammar({
   word: ($) => $.identifier,
 
   rules: {
-    // Parser::run — a file is a piece or a library, written at the top.
-    source_file: ($) => choice($.piece_declaration, $.library_declaration),
+    // Parser::run — a file is a piece or a library, written at the top,
+    // behind whatever its lexical root declares. A `make` of a piece
+    // template stands where the piece would: one file is still one piece.
+    source_file: ($) =>
+      seq(
+        repeat(
+          choice(
+            $.import_statement,
+            $.let_declaration,
+            $.function_declaration,
+            $.template_declaration,
+          ),
+        ),
+        choice($.piece_declaration, $.library_declaration, $.make_statement),
+      ),
+
+    // Parser::template_decl — the word that says a declaration is a pattern.
+    // The declaration it parameterizes is its only child, so every query
+    // written for a piece or a voice still matches inside one.
+    template_declaration: ($) =>
+      seq('template', choice($.piece_declaration, $.voice_declaration)),
+
+    // Parser::make_stmt — one instance site.
+    make_statement: ($) =>
+      seq(
+        'make',
+        field('template', $.identifier),
+        $.expression_argument_list,
+        'as',
+        field('name', $.identifier),
+        ';',
+      ),
 
     // --- Piece level (Parser::piece_decl) -------------------------------
 
     piece_declaration: ($) =>
       seq(
         'piece',
+        // A template's piece is named twice: once as the template, in code,
+        // and once as the piece, on the page.
+        optional(seq(field('template_name', $.identifier), $.parameter_list)),
         field('name', $.string),
         '{',
         repeat(
@@ -187,9 +220,18 @@ module.exports = grammar({
     // followed by.
     meter_statement: ($) => seq('meter', field('meter', choice($.rational, 'none', $.identifier)), ';'),
 
-    // Parser::key_stmt — `key a minor;`
+    // Parser::key_stmt — `key a minor;`, or `key k;` when the key is
+    // already a value. One name and nothing after it is the value form; a
+    // tonic is always followed by its mode.
     key_statement: ($) =>
-      seq('key', field('pitch_class', $.pitch_class), field('mode', $.identifier), ';'),
+      seq(
+        'key',
+        choice(
+          seq(field('pitch_class', $.pitch_class), field('mode', $.identifier)),
+          field('key', $.expression),
+        ),
+        ';',
+      ),
 
     // Parser::in_scale_stmt — `in scale c dorian { ... }`, or `in scale s
     // { ... }` when the scale is already a value. The tonic-and-collection
@@ -430,6 +472,7 @@ module.exports = grammar({
             $.tempo_statement,
             $.profile_statement,
             $.voice_declaration,
+            $.make_statement,
           ),
         ),
         '}',
@@ -443,7 +486,14 @@ module.exports = grammar({
 
     // Parser::voice_decl — the braces are the declaration's own, no Block.
     voice_declaration: ($) =>
-      seq('voice', field('name', $.identifier), '{', repeat(choice(...VOICE_ITEMS($))), '}'),
+      seq(
+        'voice',
+        field('name', $.identifier),
+        optional($.parameter_list),
+        '{',
+        repeat(choice(...VOICE_ITEMS($))),
+        '}',
+      ),
 
     // --- Performance level (Parser::performance_decl) -------------------
 

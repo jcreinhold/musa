@@ -520,28 +520,77 @@ pub(crate) fn elaborate_parsed(
     {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
-    let Some(piece) = PieceDecl::from_root(&document.syntax()) else {
-        if let Some(library) = musa_language::ast::LibraryDecl::from_root(&document.syntax()) {
+    let root = document.syntax();
+    let mut templates = crate::template::Templates::collect(resolver, &root);
+    // The piece a document declares: written out, or made by an instance
+    // standing where it would be. Both are one piece, and everything after
+    // this line reads the same `PieceDecl` either way.
+    let made = musa_language::ast::MakeStmt::from_root(&root).and_then(|site| {
+        templates.instance(
+            resolver,
+            &site,
+            "piece".to_owned(),
+            crate::template::Kind::Piece,
+            None,
+            name,
+        )
+    });
+    let Some(piece) = PieceDecl::from_root(&root).or_else(|| made.as_ref().and_then(crate::template::Instance::piece))
+    else {
+        if let Some(library) = musa_language::ast::LibraryDecl::from_root(&root) {
             return elaborate_material(resolver, &library, name, options);
         }
-        resolver.report(
-            Diagnostic::error(Code::Misplaced, "this file declares no piece")
-                .at(SourceSpan::new(0, 0), "expected `piece \"…\" { … }`")
-                .help("every musa file is one piece, or a `library { … }` for others to import"),
-        );
+        if musa_language::ast::MakeStmt::from_root(&root).is_none() {
+            resolver.report(
+                Diagnostic::error(Code::Misplaced, "this file declares no piece")
+                    .at(SourceSpan::new(0, 0), "expected `piece \"…\" { … }`")
+                    .help("every musa file is one piece, or a `library { … }` for others to import"),
+            );
+        }
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     };
+    if piece.is_template() && made.is_none() {
+        resolver.report(
+            Diagnostic::error(Code::Misplaced, "a piece with parameters needs `template`")
+                .at(resolve::trimmed_span(piece.syntax()), "this piece takes parameters")
+                .help("write `template piece …` and a `make … as …;` for each instance"),
+        );
+        return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
+    }
 
     resolver.realization = options.realization.clone();
     let mut snapshot = ScoreSnapshot::default();
-    let libraries = crate::imports::load(resolver, name, &piece.imports(), &options.imports);
-    let Some(core) = crate::core::check_piece(resolver, &libraries, &piece) else {
+    let mut imports = musa_language::ast::ImportStmt::all_at_root(&root);
+    imports.extend(piece.imports());
+    let libraries = crate::imports::load(resolver, name, &imports, &options.imports);
+    // Every `make` inside this piece is resolved before it is checked: the
+    // arguments belong to the scope the sites stand in, so they are evaluated
+    // with the piece's own declarations, in one pass, and each instance reads
+    // its own values back out afterwards.
+    let enclosing = made.as_ref().map(crate::template::Instance::template);
+    let sites = collect_voice_sites(resolver, &mut templates, &piece, enclosing, name);
+    let mut bindings: Vec<crate::core::Binding> = Vec::new();
+    if let Some(instance) = &made {
+        let arguments = crate::core::check_arguments(resolver, &libraries, &root, instance.holders());
+        let Some(arguments) = arguments else {
+            return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
+        };
+        bindings.extend(instance.bindings(&arguments));
+    }
+    bindings.extend(sites.values().flat_map(crate::template::Instance::holders));
+    let Some(core) = crate::core::check_piece(resolver, &libraries, &root, &piece, bindings) else {
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     };
+    let expansion = Expansion {
+        root: root.clone(),
+        libraries: Some(&libraries),
+        sites: &sites,
+        prefix: made.as_ref().map(crate::template::Instance::step).into_iter().collect(),
+    };
     elaborate_libraries(resolver, &libraries, &mut snapshot);
-    resolve::lower_header(resolver, &piece, &mut snapshot);
+    resolve::lower_header(resolver, &piece, &mut snapshot, &core);
     let identity = piece.score().map_or_else(musa_kernel::SemanticHash::default, |score| {
-        elaborate_score(resolver, &piece, &score, &mut snapshot, &core)
+        elaborate_score(resolver, &piece, &score, &mut snapshot, &core, &expansion)
     });
     snapshot.set_annotations(std::mem::take(&mut resolver.annotations));
     // Advice about a piece that does not compile is advice about a piece that
@@ -588,6 +637,151 @@ pub(crate) fn elaborate_parsed(
         .with_references(references)
 }
 
+/// What a score needs to expand the instance sites written in it.
+///
+/// One value rather than four parameters because it is one idea — where the
+/// templates are, and how far in from the document the score already is —
+/// and because a voice instance and a made piece read the same fields.
+struct Expansion<'a> {
+    root: SyntaxNode,
+    /// The import closure a template body is read against, or `None` on the
+    /// import-free interchange path (see [`piece_term`]).
+    libraries: Option<&'a crate::imports::Libraries>,
+    /// Every voice instance in this piece, by the span of its `make`. The
+    /// sites are resolved once, before the piece is checked, because their
+    /// arguments are part of what the piece's own pass evaluates.
+    sites: &'a indexmap::IndexMap<u64, crate::template::Instance>,
+    /// The expansion steps this whole piece already stands behind: one, when
+    /// the piece itself was made.
+    prefix: Vec<crate::origin::ExpansionStep>,
+}
+
+impl Expansion<'_> {
+    /// Check one instance's body with its arguments bound, by whichever rule
+    /// this elaboration reads declarations under.
+    fn check_voice(
+        &self,
+        resolver: &mut Resolver,
+        voice: &musa_language::ast::VoiceDecl,
+        bindings: Vec<crate::core::Binding>,
+    ) -> Option<crate::core::Program> {
+        match self.libraries {
+            Some(libraries) => crate::core::check_template_voice(resolver, libraries, &self.root, voice, bindings),
+            None => crate::core::check_for_kernel(resolver, &self.root, Some(voice.syntax()), bindings),
+        }
+    }
+}
+
+/// One item of a part, read as the voice it stands for.
+///
+/// A written voice is itself, read with the piece's own program; a `make` is
+/// the template's voice, read with a program of its own arguments, standing
+/// one expansion step deeper than the score around it.
+struct VoiceSite {
+    voice: musa_language::ast::VoiceDecl,
+    name: String,
+    /// The instance's program, when the site is a `make`. A written voice
+    /// borrows the piece's, which this value cannot hold.
+    program: Option<crate::core::Program>,
+    name_span: Option<SourceSpan>,
+    path: Vec<crate::origin::ExpansionStep>,
+}
+
+impl VoiceSite {
+    /// The part item as a voice, or `None` when it is not one: an instance of
+    /// a template that failed to resolve or to check, or a parameterized
+    /// voice written where only a plain one belongs.
+    fn read(
+        resolver: &mut Resolver,
+        expansion: &Expansion<'_>,
+        core: &crate::core::Program,
+        item: &musa_language::ast::PartItem,
+    ) -> Option<Self> {
+        match item {
+            musa_language::ast::PartItem::Voice(voice) => {
+                if voice.is_template() {
+                    resolver.report(
+                        Diagnostic::error(Code::Misplaced, "a voice with parameters needs `template`")
+                            .at(resolve::trimmed_span(voice.syntax()), "this voice takes parameters")
+                            .help("write it as `template voice …` at the top of the file, and `make` it here"),
+                    );
+                    return None;
+                }
+                Some(Self {
+                    voice: voice.clone(),
+                    name: voice.name().unwrap_or_default(),
+                    program: None,
+                    name_span: resolve::token_span(voice.syntax(), SyntaxKind::Identifier),
+                    path: expansion.prefix.clone(),
+                })
+            }
+            musa_language::ast::PartItem::Make(stmt) => {
+                let instance = expansion.sites.get(&site_key(resolve::trimmed_span(stmt.syntax())))?;
+                let voice = instance.voice()?;
+                let program = expansion.check_voice(resolver, &voice, instance.bindings(core))?;
+                let mut path = expansion.prefix.clone();
+                path.push(instance.step());
+                Some(Self {
+                    voice,
+                    name: instance.alias().to_owned(),
+                    program: Some(program),
+                    name_span: Some(instance.span()),
+                    path,
+                })
+            }
+        }
+    }
+
+    /// The program this voice's body is read with.
+    fn program<'a>(&'a self, core: &'a crate::core::Program) -> &'a crate::core::Program {
+        self.program.as_ref().unwrap_or(core)
+    }
+}
+
+/// Resolve every voice instance written among this piece's parts.
+///
+/// Once, here, rather than during elaboration: resolving twice would report
+/// an unknown template twice, and the arguments have to be known before the
+/// piece is checked in any case.
+fn collect_voice_sites(
+    resolver: &mut Resolver,
+    templates: &mut crate::template::Templates,
+    piece: &PieceDecl,
+    enclosing: Option<&str>,
+    namespace: &str,
+) -> indexmap::IndexMap<u64, crate::template::Instance> {
+    let mut sites = indexmap::IndexMap::new();
+    let Some(score) = piece.score() else {
+        return sites;
+    };
+    for part in score.parts() {
+        let part_name = part.name().unwrap_or_default();
+        for (index, item) in part.items().into_iter().enumerate() {
+            let musa_language::ast::PartItem::Make(stmt) = item else {
+                continue;
+            };
+            let path = format!("score/part[{part_name}]/{index}");
+            let span = resolve::trimmed_span(stmt.syntax());
+            if let Some(instance) = templates.instance(
+                resolver,
+                &stmt,
+                path,
+                crate::template::Kind::Voice,
+                enclosing,
+                namespace,
+            ) {
+                sites.insert(site_key(span), instance);
+            }
+        }
+    }
+    sites
+}
+
+/// A site's span, as the key the resolved instances are held under.
+const fn site_key(span: SourceSpan) -> u64 {
+    ((span.start as u64) << 32) | span.end as u64
+}
+
 /// What the piece timeline says about the piece as a whole, for the callers
 /// that need it after the projection has run.
 ///
@@ -608,6 +802,7 @@ fn elaborate_score(
     score: &musa_language::ast::ScoreDecl,
     snapshot: &mut ScoreSnapshot,
     core: &crate::core::Program,
+    expansion: &Expansion<'_>,
 ) -> musa_kernel::SemanticHash {
     let mut voice_names: indexmap::IndexMap<PartId, indexmap::IndexMap<VoiceId, String>> = indexmap::IndexMap::new();
     let mut metadata: Vec<(PartId, String)> = Vec::new();
@@ -659,8 +854,16 @@ fn elaborate_score(
         declared.push((id.0, context));
 
         let mut names = indexmap::IndexMap::new();
-        for (index, voice) in part.voices().iter().enumerate() {
-            let voice_name = voice.name().unwrap_or_default();
+        // A part's voices are its written ones and the ones its instance
+        // sites make, in the order they stand: a `make` between two voices
+        // makes a voice there, and the numbering is positional.
+        for (index, item) in part.items().into_iter().enumerate() {
+            let Some(site) = VoiceSite::read(resolver, expansion, core, &item) else {
+                continue;
+            };
+            let voice = &site.voice;
+            let voice_name = site.name.clone();
+            let name_span = site.name_span;
             let voice_key = resolver.declare(crate::resolve::DeclInfo::Voice);
             let declaration = resolve::ordinal(resolver, voice_key);
             if names.values().any(|existing| *existing == voice_name) {
@@ -673,7 +876,7 @@ fn elaborate_score(
                 continue;
             }
             if !voice_name.is_empty()
-                && let Some(name_span) = resolve::token_span(voice.syntax(), SyntaxKind::Identifier)
+                && let Some(name_span) = name_span
             {
                 resolver
                     .references
@@ -687,7 +890,8 @@ fn elaborate_score(
                 declaration,
                 id.0,
                 voice_id.0,
-                core,
+                site.program(core),
+                site.path.clone(),
             ));
             names.insert(voice_id, voice_name);
         }
@@ -1337,6 +1541,7 @@ fn elaborate_voice(
     part: u32,
     voice_id: u32,
     core: &crate::core::Program,
+    path: Vec<crate::origin::ExpansionStep>,
 ) -> Segment {
     // Sites written among a voice's own items are numbered from zero in every
     // voice, so the k-th of them is the *same* site in all of them — which is
@@ -1346,7 +1551,9 @@ fn elaborate_voice(
     let cx = ExpandCx {
         params: indexmap::IndexMap::new(),
         intervals: Vec::new(),
-        path: Vec::new(),
+        // A voice a template made stands behind the instance that made it,
+        // and every event in it says so.
+        path,
         declaration,
         origin_span: None,
         max_motif: usize::MAX,
@@ -2799,7 +3006,9 @@ fn elaborate_key(resolver: &mut Resolver, stmt: &musa_language::ast::KeyStmt, cx
         resolver.report(misplaced_context("key", span));
         return Segment::empty();
     }
-    let Some(key) = resolve::parse_key(stmt) else {
+    // Written out, or named: `key k;` inside a template's voice is the value
+    // the instance supplied, evaluated before any of this ran.
+    let Some(key) = resolve::parse_key(stmt).or_else(|| cx.music.key_at(span)) else {
         resolver.error(
             Code::NotAValue,
             "this key cannot be read",
@@ -4028,17 +4237,45 @@ pub(crate) fn piece_term(
     if !document.errors().is_empty() {
         return None;
     }
-    let piece = PieceDecl::from_root(&document.syntax())?;
+    let root = document.syntax();
     let mut resolver = Resolver::new();
     resolver.realization = realization.clone();
+    // A made piece is this document's piece, so the term of a document whose
+    // piece is an instance is the term of what the instance makes.
+    let mut templates = crate::template::Templates::collect(&mut resolver, &root);
+    let made = musa_language::ast::MakeStmt::from_root(&root).and_then(|site| {
+        templates.instance(
+            &mut resolver,
+            &site,
+            "piece".to_owned(),
+            crate::template::Kind::Piece,
+            None,
+            source.name(),
+        )
+    });
+    let piece = PieceDecl::from_root(&root).or_else(|| made.as_ref().and_then(crate::template::Instance::piece))?;
     let mut snapshot = ScoreSnapshot::default();
+    let enclosing = made.as_ref().map(crate::template::Instance::template);
+    let sites = collect_voice_sites(&mut resolver, &mut templates, &piece, enclosing, source.name());
+    let mut bindings: Vec<crate::core::Binding> = Vec::new();
+    if let Some(instance) = &made {
+        let arguments = crate::core::check_for_kernel(&mut resolver, &root, None, instance.holders())?;
+        bindings.extend(instance.bindings(&arguments));
+    }
+    bindings.extend(sites.values().flat_map(crate::template::Instance::holders));
     // This interchange helper historically has no import-source parameter.
     // Preserve that contract: local material elaborates, and a use whose
     // declaration only an unavailable import could supply is the empty error
     // segment the pre-core helper produced. Full compilation always uses the
     // checked build closure above.
-    let core = crate::core::check_piece_for_kernel(&mut resolver, &piece)?;
-    resolve::lower_header(&mut resolver, &piece, &mut snapshot);
+    let core = crate::core::check_for_kernel(&mut resolver, &root, Some(piece.syntax()), bindings)?;
+    let expansion = Expansion {
+        root: root.clone(),
+        libraries: None,
+        sites: &sites,
+        prefix: made.as_ref().map(crate::template::Instance::step).into_iter().collect(),
+    };
+    resolve::lower_header(&mut resolver, &piece, &mut snapshot, &core);
     let score = piece.score()?;
     let mut share = Share::default();
     resolve::register_bars(&mut resolver, &mut snapshot, &score);
@@ -4047,17 +4284,21 @@ pub(crate) fn piece_term(
     for (part_index, part) in score.parts().iter().enumerate() {
         let part_id = u32::try_from(part_index).unwrap_or(u32::MAX);
         declared.push((part_id, resolve::part_context(&mut resolver, part, snapshot.profiles())));
-        for (index, voice) in part.voices().iter().enumerate() {
+        for (index, item) in part.items().into_iter().enumerate() {
+            let Some(site) = VoiceSite::read(&mut resolver, &expansion, &core, &item) else {
+                continue;
+            };
             let voice_key = resolver.declare(crate::resolve::DeclInfo::Voice);
             let declaration = resolve::ordinal(&resolver, voice_key);
             lanes.push(elaborate_voice(
                 &mut resolver,
                 &mut share,
-                voice,
+                &site.voice,
                 declaration,
                 part_id,
                 u32::try_from(index).unwrap_or(u32::MAX),
-                &core,
+                site.program(&core),
+                site.path.clone(),
             ));
         }
     }

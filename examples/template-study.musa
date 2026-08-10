@@ -1,0 +1,40 @@
+// A template is a declaration with parameters: the same piece, or the same
+// voice, written once and made as often as it is wanted. What a template
+// body may read is its own parameters and the file's lexical root — never
+// the site that makes it — so an instance means the same thing wherever it
+// stands (docs/language/04-templates-and-modules.md §3).
+fn theme() -> music = music {
+    c4/4
+    d4/4
+    e4/4
+    f4/4
+};
+
+// A voice that answers a subject through whatever transformation it is
+// handed. Twice below: the same body, two instances, two identities.
+template voice answer(subject: music, transform: music -> music) {
+    use transform(subject);
+}
+
+// The piece itself is the template. Its key and scale arrive as arguments,
+// so the study exists in whatever key it is made in.
+template piece study(k: key, mode: scale, subject: music) "Study" {
+    meter 4/4;
+    key k;
+
+    score {
+        part piano {
+            voice right {
+                in scale mode {
+                    use subject;
+                }
+            }
+            make answer(subject, transpose(P8)) as upper;
+            make answer(subject, transpose(P15)) as higher;
+        }
+    }
+}
+
+// One file is one piece, made or written out. This `make` stands where the
+// piece would, and is this file's piece.
+make study(key g major, scale g mixolydian, theme()) as study_in_g;

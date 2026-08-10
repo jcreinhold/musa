@@ -22,7 +22,9 @@ use crate::resolve::{NameKind, Resolver};
 pub(crate) fn check_piece(
     resolver: &mut Resolver,
     libraries: &Libraries,
+    root: &SyntaxNode,
     piece: &musa_language::ast::PieceDecl,
+    bindings: Vec<Binding>,
 ) -> Option<Program> {
     if !validate_imports(resolver, libraries) {
         return None;
@@ -32,10 +34,86 @@ pub(crate) fn check_piece(
         libraries
             .each()
             .flat_map(|(path, library)| declarations(library.syntax(), Some(path)))
+            .chain(root_preamble(root))
+            .chain(bindings.into_iter().map(SurfaceDefinition::Bound))
             .chain(declarations(piece.syntax(), None)),
         Some(piece.syntax()),
         UnknownRootMusic::Defer,
     )
+}
+
+/// Check and evaluate a root instance site's arguments, in the only scope a
+/// document root has: its imports and its own values and functions.
+///
+/// This exists as its own pass because a piece made at the root has no piece
+/// to be checked with — the piece *is* what the arguments are for.
+pub(crate) fn check_arguments(
+    resolver: &mut Resolver,
+    libraries: &Libraries,
+    root: &SyntaxNode,
+    bindings: Vec<Binding>,
+) -> Option<Program> {
+    if !validate_imports(resolver, libraries) {
+        return None;
+    }
+    check_and_evaluate(
+        resolver,
+        libraries
+            .each()
+            .flat_map(|(path, library)| declarations(library.syntax(), Some(path)))
+            .chain(root_preamble(root))
+            .chain(bindings.into_iter().map(SurfaceDefinition::Bound)),
+        None,
+        UnknownRootMusic::Reject,
+    )
+}
+
+/// Check one instance of a voice template: the template's body, read with
+/// its parameters bound and nothing else the site could lend it.
+///
+/// The site's own scope is deliberately absent. A template body that could
+/// read the piece it lands in would mean the same body means different
+/// things in different places, which is the dynamic scoping this design
+/// exists to avoid — the file's root is the one scope it shares.
+pub(crate) fn check_template_voice(
+    resolver: &mut Resolver,
+    libraries: &Libraries,
+    root: &SyntaxNode,
+    voice: &musa_language::ast::VoiceDecl,
+    bindings: Vec<Binding>,
+) -> Option<Program> {
+    check_and_evaluate(
+        resolver,
+        libraries
+            .each()
+            .flat_map(|(path, library)| declarations(library.syntax(), Some(path)))
+            .chain(root_preamble(root))
+            .chain(bindings.into_iter().map(SurfaceDefinition::Bound))
+            .chain(declarations(voice.syntax(), None)),
+        Some(voice.syntax()),
+        UnknownRootMusic::Defer,
+    )
+}
+
+/// The definitions written at a document's lexical root, before its piece or
+/// library. Templates are collected separately; these are the ordinary
+/// values and functions their bodies may read.
+fn root_preamble(root: &SyntaxNode) -> Vec<SurfaceDefinition> {
+    root.children()
+        .filter_map(|node| {
+            LetDecl::cast(node.clone())
+                .map(|declaration| SurfaceDefinition::Let {
+                    declaration,
+                    source: None,
+                })
+                .or_else(|| {
+                    FnDecl::cast(node).map(|declaration| SurfaceDefinition::Function {
+                        declaration,
+                        source: None,
+                    })
+                })
+        })
+        .collect()
 }
 
 /// Check and evaluate imported definitions followed by an opened library's.
@@ -190,6 +268,56 @@ enum SurfaceDefinition {
         material: crate::resolve::Material,
         source: Option<String>,
     },
+    /// A name a template body reads, and what stands for it — see
+    /// [`Binding`].
+    Bound(Binding),
+}
+
+/// One name bound into a checking pass from outside the source it checks.
+///
+/// This is how a template body is given its arguments: the parameter is an
+/// ordinary definition of the declared type, and the body that reads it is
+/// checked exactly as a written-out declaration would be. Nothing here is a
+/// substitution over syntax, so nothing can capture a name or move a span.
+#[derive(Clone)]
+pub(crate) struct Binding {
+    name: String,
+    name_span: SourceSpan,
+    span: SourceSpan,
+    ty: SyntaxNode,
+    stands_for: StandsFor,
+    hidden: bool,
+}
+
+#[derive(Clone)]
+enum StandsFor {
+    /// An expression written at the instance site, checked in the scope the
+    /// site stands in.
+    Argument(SyntaxNode),
+    /// What that expression already evaluated to, one pass earlier.
+    Value(Box<Value>),
+}
+
+impl Binding {
+    /// A name standing for an argument expression, checked where the
+    /// argument is written.
+    pub(crate) fn argument(
+        name: String,
+        name_span: SourceSpan,
+        span: SourceSpan,
+        ty: SyntaxNode,
+        argument: SyntaxNode,
+        hidden: bool,
+    ) -> Self {
+        Self {
+            name,
+            name_span,
+            span,
+            ty,
+            stands_for: StandsFor::Argument(argument),
+            hidden,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -293,6 +421,10 @@ struct RawDefinition {
     foreign: bool,
     source: Option<String>,
     role: Option<MusicRole>,
+    /// Whether the name is one the source wrote. A `make` site's arguments
+    /// are held under names no one can type, so they must not enter the
+    /// reference index and be offered for rename or completion.
+    hidden: bool,
 }
 
 enum RawDefinitionKind {
@@ -307,6 +439,10 @@ enum RawDefinitionKind {
         parameters: Vec<RawParameter>,
         body: SyntaxNode,
         callable: bool,
+    },
+    /// A value settled before this pass began.
+    Bound {
+        value: Box<Value>,
     },
 }
 
@@ -323,6 +459,7 @@ impl RawDefinition {
                 .role
                 .as_ref()
                 .map_or(NameKind::Function, |role| role.material.name_kind()),
+            RawDefinitionKind::Bound { .. } => NameKind::Value,
         }
     }
 }
@@ -863,6 +1000,11 @@ pub(crate) struct Music {
     pub(crate) uses: IndexMap<u64, Self>,
     pub(crate) pitches: Box<IndexMap<u64, PitchTerm>>,
     pub(crate) scales: Box<IndexMap<u64, crate::scale::Scale>>,
+    /// Keys named rather than written out: `key k;` in a template's body,
+    /// resolved once the instance's argument is known. Only a document's
+    /// root music carries any — a `music` value may not change the context
+    /// it is used in, so a key statement inside one is already an error.
+    pub(crate) keys: Box<IndexMap<u64, crate::Key>>,
     pub(crate) bindings: IndexMap<String, crate::resolve::BoundValue>,
     pub(crate) role: Option<MusicRole>,
     pub(crate) definition_span: SourceSpan,
@@ -1042,6 +1184,10 @@ impl Music {
     pub(crate) fn scale_at(&self, span: SourceSpan) -> Option<crate::scale::Scale> {
         self.scales.get(&span_key(span)).copied()
     }
+
+    pub(crate) fn key_at(&self, span: SourceSpan) -> Option<crate::Key> {
+        self.keys.get(&span_key(span)).copied()
+    }
 }
 
 /// Checked root `use` expressions. This is the only bridge from the total
@@ -1050,8 +1196,8 @@ pub(crate) struct Program {
     uses: IndexMap<u64, Music>,
     pitches: IndexMap<u64, PitchTerm>,
     scales: IndexMap<u64, crate::scale::Scale>,
+    keys: IndexMap<u64, crate::Key>,
     named_music: IndexMap<String, Music>,
-    #[cfg(test)]
     values: IndexMap<String, Value>,
 }
 
@@ -1062,11 +1208,44 @@ impl Program {
             uses: self.uses.clone(),
             pitches: Box::new(self.pitches.clone()),
             scales: Box::new(self.scales.clone()),
+            keys: Box::new(self.keys.clone()),
             bindings: IndexMap::new(),
             role: None,
             definition_span: SourceSpan::default(),
             operation: None,
         }
+    }
+
+    /// Rebind what a hidden argument holder evaluated to under the name the
+    /// template's body reads it by.
+    ///
+    /// This is the whole of "substitute the arguments": the value crosses
+    /// from the pass that evaluated it, in the site's scope, into the pass
+    /// that checks the body, under the parameter's own name. Absent when the
+    /// site's argument did not evaluate — the diagnostic for that was
+    /// reported where the argument is written.
+    pub(crate) fn rebind(
+        &self,
+        holder: &str,
+        name: String,
+        name_span: SourceSpan,
+        span: SourceSpan,
+        ty: SyntaxNode,
+    ) -> Option<Binding> {
+        let value = self.values.get(holder)?.clone();
+        Some(Binding {
+            name,
+            name_span,
+            span,
+            ty,
+            stands_for: StandsFor::Value(Box::new(value)),
+            hidden: false,
+        })
+    }
+
+    /// A key the header names rather than spells, at the statement's span.
+    pub(crate) fn key_at(&self, span: SourceSpan) -> Option<crate::Key> {
+        self.keys.get(&span_key(span)).copied()
     }
 
     pub(crate) fn named_music_values(&self) -> IndexMap<String, Music> {
@@ -1273,7 +1452,7 @@ fn check_and_evaluate(
                 }),
             },
         );
-        if !definition.foreign && definition.role.is_none() {
+        if !definition.foreign && !definition.hidden && definition.role.is_none() {
             resolver
                 .references
                 .declare(definition.name_kind(), &definition.name, definition.name_span);
@@ -1297,6 +1476,13 @@ fn check_and_evaluate(
             definition_span: definition.span,
         };
         let kind = match &definition.kind {
+            RawDefinitionKind::Bound { value } => Some(CheckedDefinitionKind::Let {
+                body: Expr {
+                    kind: ExprKind::Literal(value.as_ref().clone()),
+                    ty: definition.ty.clone(),
+                    span: definition.span,
+                },
+            }),
             RawDefinitionKind::Let { body } => checker
                 .check(body, Some(&definition.ty))
                 .map(|body| CheckedDefinitionKind::Let { body }),
@@ -1415,6 +1601,7 @@ fn check_and_evaluate(
                             uses: IndexMap::new(),
                             pitches: Box::default(),
                             scales: Box::default(),
+                            keys: Box::default(),
                             bindings: IndexMap::new(),
                             role: None,
                             definition_span: span,
@@ -1448,6 +1635,7 @@ fn check_and_evaluate(
     // than inside a definition. `music { ... }` collects its own; these are
     // what is left, and the elaborator reads both through the same root value.
     let mut scales = IndexMap::new();
+    let mut keys = IndexMap::new();
     let mut pitches = IndexMap::new();
     if let Some(root) = root {
         for statement in root_nodes(root, SyntaxKind::InScaleStmt) {
@@ -1461,6 +1649,21 @@ fn check_and_evaluate(
                 return None;
             };
             scales.insert(span_key(span), scale);
+        }
+        // `key k;` — a key the source names rather than spells. The written
+        // form has no expression child at all, so it never reaches here and
+        // the two spellings stay one statement.
+        for statement in root_nodes(root, SyntaxKind::KeyStmt) {
+            let Some(expression) = child_of(&statement, is_expr_node) else {
+                continue;
+            };
+            let span = crate::resolve::trimmed_span(&statement);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span);
+            let checked = checker.check(&expression, Some(&Type::Key))?;
+            let Value::Key(key) = eval(&checked, &values, &mut meter)? else {
+                return None;
+            };
+            keys.insert(span_key(span), key);
         }
         for statement in root_nodes(root, SyntaxKind::NoteStmt) {
             let Some(expression) =
@@ -1507,8 +1710,8 @@ fn check_and_evaluate(
         uses,
         pitches,
         scales,
+        keys,
         named_music,
-        #[cfg(test)]
         values,
     })
 }
@@ -1543,14 +1746,27 @@ enum UnknownRootMusic {
     Silent,
 }
 
-pub(crate) fn check_piece_for_kernel(
+/// Check and evaluate on the import-free interchange path (`piece_term`):
+/// the document's own preamble, whatever a template instance bound, and the
+/// items of `scope` when there is a declaration to read them from.
+///
+/// One function rather than one per caller because the interchange path has
+/// exactly one rule — no imports, and a `use` no local declaration supplies
+/// is silence rather than an error — and that rule is the same whether the
+/// scope is a piece, a template's voice, or nothing at all.
+pub(crate) fn check_for_kernel(
     resolver: &mut Resolver,
-    piece: &musa_language::ast::PieceDecl,
+    root: &SyntaxNode,
+    scope: Option<&SyntaxNode>,
+    bindings: Vec<Binding>,
 ) -> Option<Program> {
     check_and_evaluate(
         resolver,
-        declarations(piece.syntax(), None).into_iter(),
-        Some(piece.syntax()),
+        root_preamble(root)
+            .into_iter()
+            .chain(bindings.into_iter().map(SurfaceDefinition::Bound))
+            .chain(scope.map(|node| declarations(node, None)).unwrap_or_default()),
+        scope,
         UnknownRootMusic::Silent,
     )
 }
@@ -1564,6 +1780,9 @@ fn surface_identity(definition: &SurfaceDefinition) -> Option<(String, SourceSpa
         SurfaceDefinition::Legacy {
             name, syntax, source, ..
         } => (syntax, Some(name.clone()), source.clone()),
+        SurfaceDefinition::Bound(binding) => {
+            return Some((binding.name.clone(), binding.name_span, binding.span, None));
+        }
     };
     let name = name?;
     let name_span = crate::resolve::token_span(syntax, SyntaxKind::Identifier)?;
@@ -1593,6 +1812,7 @@ fn lower_signature(
                 foreign,
                 source,
                 role: None,
+                hidden: false,
             })
         }
         SurfaceDefinition::Function { declaration, .. } => {
@@ -1634,6 +1854,7 @@ fn lower_signature(
                 foreign,
                 source,
                 role: None,
+                hidden: false,
             })
         }
         SurfaceDefinition::Legacy {
@@ -1693,6 +1914,40 @@ fn lower_signature(
                     material,
                     foreign,
                 }),
+                hidden: false,
+            })
+        }
+        SurfaceDefinition::Bound(binding) => {
+            let ty = parse_type(resolver, &binding.ty)?;
+            let kind = match binding.stands_for {
+                StandsFor::Argument(argument) => RawDefinitionKind::Let { body: argument },
+                StandsFor::Value(value) => {
+                    // A value that reached here already type-checked once, at
+                    // the site that produced it. Restating the type is how
+                    // the second pass proves that, rather than assuming it.
+                    if value.ty() != ty {
+                        resolver.report(
+                            Diagnostic::error(
+                                Code::TypeMismatch,
+                                format!("`{name}` was given a {} where a {} was declared", value.ty(), ty),
+                            )
+                            .at(span, "this argument"),
+                        );
+                        return None;
+                    }
+                    RawDefinitionKind::Bound { value }
+                }
+            };
+            Some(RawDefinition {
+                name,
+                ty,
+                kind,
+                name_span,
+                span,
+                foreign: false,
+                source: None,
+                role: None,
+                hidden: binding.hidden,
             })
         }
     }
@@ -3403,6 +3658,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 uses,
                 pitches: Box::new(pitches),
                 scales: Box::new(scales),
+                keys: Box::default(),
                 bindings,
                 role: music.role.clone(),
                 definition_span: music.definition_span,
@@ -3582,6 +3838,7 @@ fn apply_builtin(builtin: &BuiltinValue, provided: Vec<Option<Value>>, span: Sou
         uses: IndexMap::new(),
         pitches: Box::default(),
         scales: Box::default(),
+        keys: Box::default(),
         bindings: IndexMap::new(),
         role: None,
         definition_span: span,
@@ -4303,6 +4560,16 @@ fn chord_type_list() -> String {
     let mut spellings: Vec<_> = crate::chord::ChordType::spellings().collect();
     spellings.sort_unstable();
     format!("`{}`", spellings.join("`, `"))
+}
+
+/// The type a declaration or parameter annotates, as a node.
+pub(crate) fn type_node_of(node: &SyntaxNode) -> Option<SyntaxNode> {
+    child_of(node, is_type_node)
+}
+
+/// The expression a wrapper node holds, as a node.
+pub(crate) fn expr_node_of(node: &SyntaxNode) -> Option<SyntaxNode> {
+    child_of(node, is_expr_node)
 }
 
 fn is_expr_node(kind: SyntaxKind) -> bool {

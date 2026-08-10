@@ -249,6 +249,12 @@ pub enum SyntaxKind {
     ChordKw,
     /// `stack`
     StackKw,
+    /// `template`
+    TemplateKw,
+    /// `make`
+    MakeKw,
+    /// `as`
+    AsKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -487,6 +493,12 @@ pub enum SyntaxKind {
     /// `stack c4 major7/2` — the close-position sugar, which is an event and
     /// not a value.
     StackStmt,
+    /// `template piece study(k: key) "Study" { ... }` — a parameterized
+    /// declaration. The declaration it parameterizes is its only child node,
+    /// so every accessor an ordinary `piece` or `voice` has still reads it.
+    TemplateDecl,
+    /// `make study(key g major) as study_in_g;` — one instance site.
+    MakeStmt,
 }
 
 impl SyntaxKind {

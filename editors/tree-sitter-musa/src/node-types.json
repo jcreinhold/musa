@@ -1102,9 +1102,19 @@
     "type": "key_statement",
     "named": true,
     "fields": {
+      "key": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "expression",
+            "named": true
+          }
+        ]
+      },
       "mode": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "identifier",
@@ -1114,7 +1124,7 @@
       },
       "pitch_class": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "pitch_class",
@@ -1251,6 +1261,42 @@
         },
         {
           "type": "rational",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "make_statement",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "template": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "expression_argument_list",
           "named": true
         }
       ]
@@ -1888,6 +1934,10 @@
           "named": true
         },
         {
+          "type": "make_statement",
+          "named": true
+        },
+        {
           "type": "meter_statement",
           "named": true
         },
@@ -2021,6 +2071,16 @@
             "named": true
           }
         ]
+      },
+      "template_name": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
       }
     },
     "children": {
@@ -2057,6 +2117,10 @@
         },
         {
           "type": "motif_declaration",
+          "named": true
+        },
+        {
+          "type": "parameter_list",
           "named": true
         },
         {
@@ -2637,15 +2701,35 @@
     "root": true,
     "fields": {},
     "children": {
-      "multiple": false,
+      "multiple": true,
       "required": true,
       "types": [
+        {
+          "type": "function_declaration",
+          "named": true
+        },
+        {
+          "type": "import_statement",
+          "named": true
+        },
+        {
+          "type": "let_declaration",
+          "named": true
+        },
         {
           "type": "library_declaration",
           "named": true
         },
         {
+          "type": "make_statement",
+          "named": true
+        },
+        {
           "type": "piece_declaration",
+          "named": true
+        },
+        {
+          "type": "template_declaration",
           "named": true
         }
       ]
@@ -2846,6 +2930,25 @@
         },
         {
           "type": "signal_binding",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "template_declaration",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "piece_declaration",
+          "named": true
+        },
+        {
+          "type": "voice_declaration",
           "named": true
         }
       ]
@@ -3179,6 +3282,10 @@
           "named": true
         },
         {
+          "type": "parameter_list",
+          "named": true
+        },
+        {
           "type": "phrase_statement",
           "named": true
         },
@@ -3313,6 +3420,10 @@
     "named": false
   },
   {
+    "type": "as",
+    "named": false
+  },
+  {
     "type": "assign",
     "named": false
   },
@@ -3438,6 +3549,10 @@
   },
   {
     "type": "list",
+    "named": false
+  },
+  {
+    "type": "make",
     "named": false
   },
   {
@@ -3594,6 +3709,10 @@
   },
   {
     "type": "subtitle",
+    "named": false
+  },
+  {
+    "type": "template",
     "named": false
   },
   {
