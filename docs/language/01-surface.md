@@ -257,7 +257,7 @@ make study(key g major, scale g mixolydian, theme()) as study_in_g;
 ```
 
 `template` and `make` are structural syntax, not expressions. The `as` name is mandatory and participates in stable
-generative identity. `piece`, `voice`, or `module` with parameters but without `template` is rejected.
+generative identity. `piece`, `voice`, or `structure` with parameters but without `template` is rejected.
 
 A file is still one piece or one library, so an instance is placed by the kind it makes: a `make` of a piece template
 stands at the file root and *is* that file's piece, and a `make` of a voice template stands among a part's voices.
@@ -265,10 +265,10 @@ Whatever precedes the file's piece or library — imports, bindings, functions, 
 template body reads that root and its own parameters and nothing from the site that instantiates it; the arguments at a
 site are evaluated in the site's own scope, which is why `subject` above can be passed on from `study` to `answer`.
 
-## 6.1 Signatures and static modules
+## 6.1 Signatures and structures
 
-A signature names what a bundle of values must provide; a module provides them; a `template module` is a functor from
-modules to a module.
+A signature names what a bundle of values must provide; a structure provides them; a `template structure` is a functor
+from structures to a structure.
 
 ```musa
 signature TonalContext {
@@ -277,13 +277,13 @@ signature TonalContext {
     let spell: degree -> option[pitch];
 }
 
-module CMajor: TonalContext {
+structure CMajor: TonalContext {
     let tonic: key = key c major;
     let collection: scale = scale c ionian;
     let spell: degree -> option[pitch] = degree_in_c;
 }
 
-template module Sequences(C: TonalContext, gap: duration): TonalContext {
+template structure Sequences(C: TonalContext, gap: duration): TonalContext {
     let tonic: key = C.tonic;
     let collection: scale = C.collection;
     let spell: degree -> option[pitch] = C.spell;
@@ -293,14 +293,14 @@ template module Sequences(C: TonalContext, gap: duration): TonalContext {
 make Sequences(CMajor, 1/2) as CSequences;
 ```
 
-A signature member is a `let` without its definition: a name and the type the module must give it. Matching is by name
-and exact type — a missing member and a member of the wrong type are both errors, each labelled at the signature and at
-the module. A member the signature does not mention stays private to the module: it is what the module's own definitions
-may use and what nothing outside may name.
+A signature member is a `let` without its definition: a name and the type the structure must give it. Matching is by
+name and exact type — a missing member and a member of the wrong type are both errors, each labelled at the signature
+and at the structure. A member the signature does not mention stays private to the structure: it is what the
+structure's own definitions may use and what nothing outside may name.
 
-Members are read as `Module.member`. Inside a module, a sibling member is read by its bare name. There is no module
-value, no module argument to a function, no unpacking, and no recursion: `module`, `signature`, and `template module`
-are structural syntax that has finished before any value exists.
+Members are read as `Structure.member`. Inside a structure, a sibling member is read by its bare name. There is no
+structure value, no structure argument to a function, no unpacking, and no recursion: `structure`, `signature`, and
+`template structure` are structural syntax that has finished before any value exists.
 
 ## 7. Kernel documents and quotation
 

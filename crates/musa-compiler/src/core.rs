@@ -3239,9 +3239,9 @@ impl Checker<'_> {
         if let Some((signature, ascription)) = reading.sealed_by {
             self.resolver.report(
                 Diagnostic::error(Code::UnknownName, format!("`{written}` is private"))
-                    .at(span, "named from outside the module that defines it")
+                    .at(span, "named from outside the structure that defines it")
                     .also(ascription, format!("`{signature}` does not export it"))
-                    .help("a module exports exactly what its signature lists; everything else is its own"),
+                    .help("a structure exports exactly what its signature lists; everything else is its own"),
             );
             self.failed = true;
             return None;

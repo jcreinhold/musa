@@ -261,7 +261,10 @@ pub enum SyntaxKind {
     AsKw,
     /// `signature`
     SignatureKw,
-    /// `module`
+    /// `structure`
+    StructureKw,
+    /// `module`, which no longer declares one. Lexed so the migration
+    /// diagnostic can point at the word and carry the word that replaces it.
     ModuleKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
@@ -515,7 +518,7 @@ pub enum SyntaxKind {
     SignatureMember,
     /// `module CMajor : TonalContext { ... }` — a static named collection of
     /// values. With a parameter list and `template` in front, a functor.
-    ModuleDecl,
+    StructureDecl,
     /// `mod tonal;` — one child of a package's module tree.
     ModDecl,
 }

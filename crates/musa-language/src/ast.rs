@@ -893,8 +893,8 @@ impl TemplateDecl {
         child(&self.0)
     }
 
-    /// The module this parameterizes, if it parameterizes a module.
-    pub fn module(&self) -> Option<ModuleDecl> {
+    /// The structure this parameterizes, if it parameterizes a structure.
+    pub fn structure(&self) -> Option<StructureDecl> {
         child(&self.0)
     }
 
@@ -903,7 +903,7 @@ impl TemplateDecl {
         self.piece()
             .and_then(|piece| piece.template_name())
             .or_else(|| self.voice().and_then(|voice| voice.name()))
-            .or_else(|| self.module().and_then(|module| module.name()))
+            .or_else(|| self.structure().and_then(|structure| structure.name()))
     }
 
     /// Its parameters, in source order.
@@ -911,7 +911,7 @@ impl TemplateDecl {
         self.piece().map_or_else(
             || {
                 self.voice().map_or_else(
-                    || self.module().map(|module| module.params()).unwrap_or_default(),
+                    || self.structure().map(|structure| structure.params()).unwrap_or_default(),
                     |voice| voice.params(),
                 )
             },
@@ -974,31 +974,31 @@ impl SignatureMember {
     }
 }
 
-/// `module CMajor : TonalContext { ... }` — a named group of declarations,
+/// `structure CMajor : TonalContext { ... }` — a named group of declarations,
 /// reached from outside as `CMajor.member`.
 ///
-/// A `template module` parameterizes one over other modules; the parameter
-/// list is the only difference in the node, and [`TemplateDecl`] is what says
-/// which of the two this is.
-pub struct ModuleDecl(SyntaxNode);
-wrapper!(ModuleDecl, SyntaxKind::ModuleDecl);
+/// A `template structure` parameterizes one over other structures; the
+/// parameter list is the only difference in the node, and [`TemplateDecl`] is
+/// what says which of the two this is.
+pub struct StructureDecl(SyntaxNode);
+wrapper!(StructureDecl, SyntaxKind::StructureDecl);
 
-impl ModuleDecl {
-    /// Every module declared directly at a document's lexical root, in
-    /// source order — not the ones a `template module` parameterizes.
+impl StructureDecl {
+    /// Every structure declared directly at a document's lexical root, in
+    /// source order — not the ones a `template structure` parameterizes.
     pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
         children(node)
     }
 
-    /// The module's name: the qualifier its members are reached through.
+    /// The structure's name: the qualifier its members are reached through.
     pub fn name(&self) -> Option<String> {
         token_text(&self.0, SyntaxKind::Identifier)
     }
 
     /// The name of the signature it claims to provide.
     ///
-    /// The second identifier, because `module M : S { ... }` writes the
-    /// module's own name first and the parameters, when there are any, live
+    /// The second identifier, because `structure M : S { ... }` writes the
+    /// structure's own name first and the parameters, when there are any, live
     /// inside a [`ParamList`] rather than among these tokens.
     pub fn signature(&self) -> Option<String> {
         self.0
@@ -1046,7 +1046,7 @@ impl MakeStmt {
     pub fn from_root(node: &SyntaxNode) -> Option<Self> {
         let modules: Vec<_> = TemplateDecl::all_at_root(node)
             .into_iter()
-            .filter(|template| template.module().is_some())
+            .filter(|template| template.structure().is_some())
             .filter_map(|template| template.name())
             .collect();
         Self::all_at_root(node).into_iter().find(|site| {

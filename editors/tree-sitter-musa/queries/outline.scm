@@ -13,7 +13,7 @@
 (signature_declaration
   name: (identifier) @name) @item
 
-(module_declaration
+(structure_declaration
   name: (identifier) @name) @item
 
 ; A module file has no piece to outline, so its children are the outline. The

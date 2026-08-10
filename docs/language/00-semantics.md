@@ -48,7 +48,7 @@ The value stage uses the ordinary static and evaluation judgments:
 ```
 
 `Σ` is the finite static environment of declarations and compiler primitives. `Γ` contains immutable value bindings.
-The declaration kinds are `library`, `piece`, `part`, `voice`, `performance`, `instrument`, `mix`, and `module`; they
+The declaration kinds are `library`, `piece`, `part`, `voice`, `performance`, `instrument`, `mix`, and `structure`; they
 are not value types.
 
 Compiler ownership is an information boundary, not a convenience category. An operation may be primitive only when it

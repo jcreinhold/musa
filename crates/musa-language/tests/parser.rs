@@ -638,6 +638,24 @@ fn the_old_bundled_import_spelling_is_a_migration_error() {
     insta::assert_snapshot!(print_errors(&doc));
 }
 
+/// `module` declared the static layer until prompt 111 gave that layer ML's
+/// own word. The old spelling is refused where it stood, with the fix, so
+/// that `module` can mean one thing: a node of a package's tree.
+#[test]
+fn the_old_static_layer_spelling_is_a_migration_error() {
+    let doc = parse("module CMajor : TonalContext { let tonic: key = key c major; }\npiece \"P\" { }");
+    insta::assert_snapshot!(print_errors(&doc));
+}
+
+/// The parameterized form is the same refusal at the same word: `template`
+/// did not move, so only the word after it is wrong.
+#[test]
+fn the_old_functor_spelling_is_a_migration_error() {
+    let doc =
+        parse("template module Shift(C: TonalContext) : TonalContext { let tonic: key = C.tonic; }\npiece \"P\" { }");
+    insta::assert_snapshot!(print_errors(&doc));
+}
+
 /// A hairpin is a block with a direction and a mark it arrives at, and the
 /// notes it covers are its items.
 #[test]
@@ -896,17 +914,17 @@ fn a_stray_semicolon_carries_the_edit_that_removes_it() {
 }
 
 #[test]
-fn a_signature_and_a_module_parse_into_their_own_nodes() {
+fn a_signature_and_a_structure_parse_into_their_own_nodes() {
     let source = "\
 signature TonalContext {
     let tonic: key;
 }
 
-module CMajor: TonalContext {
+structure CMajor: TonalContext {
     let tonic: key = key c major;
 }
 
-template module Shift(C: TonalContext, gap: duration): TonalContext {
+template structure Shift(C: TonalContext, gap: duration): TonalContext {
     let tonic: key = C.tonic;
 }
 
@@ -931,20 +949,23 @@ piece \"Study\" {
     assert_eq!(member.name().as_deref(), Some("tonic"));
     assert!(member.ty().is_some());
 
-    let modules = musa_language::ast::ModuleDecl::all_at_root(&root);
-    let [module] = modules.as_slice() else {
-        panic!("a `template module` is not a root module, found {}", modules.len());
+    let structures = musa_language::ast::StructureDecl::all_at_root(&root);
+    let [structure] = structures.as_slice() else {
+        panic!(
+            "a `template structure` is not a root structure, found {}",
+            structures.len()
+        );
     };
-    assert_eq!(module.name().as_deref(), Some("CMajor"));
-    assert_eq!(module.signature().as_deref(), Some("TonalContext"));
-    assert_eq!(module.lets().len(), 1);
-    assert!(module.params().is_empty());
+    assert_eq!(structure.name().as_deref(), Some("CMajor"));
+    assert_eq!(structure.signature().as_deref(), Some("TonalContext"));
+    assert_eq!(structure.lets().len(), 1);
+    assert!(structure.params().is_empty());
 
     let templates = musa_language::ast::TemplateDecl::all_at_root(&root);
     let [template] = templates.as_slice() else {
         panic!("one template, found {}", templates.len());
     };
-    let shift = template.module().expect("a template module");
+    let shift = template.structure().expect("a template structure");
     assert_eq!(template.name().as_deref(), Some("Shift"));
     assert_eq!(shift.signature().as_deref(), Some("TonalContext"));
     assert_eq!(template.params().len(), 2);
@@ -952,6 +973,6 @@ piece \"Study\" {
     assert_eq!(musa_language::ast::MakeStmt::all_at_root(&root).len(), 1);
     assert!(
         musa_language::ast::MakeStmt::from_root(&root).is_none(),
-        "a module instance is not the document's piece"
+        "a structure instance is not the document's piece"
     );
 }

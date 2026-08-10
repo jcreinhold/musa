@@ -177,12 +177,12 @@ pub fn standard_library_reference() -> String {
     for (module, source) in standard_library().modules() {
         let _ = write!(out, "\n## `std::{module}`\n\n");
         let mut comments = Vec::new();
-        // A signature's members are documented under it; a module's are not.
-        // What a reader may write is `M.x` for each `x` the signature lists,
-        // and everything else a module defines is private to it — so listing
-        // a module's own lines would document what nobody can name.
+        // A signature's members are documented under it; a structure's are
+        // not. What a reader may write is `M.x` for each `x` the signature
+        // lists, and everything else a structure defines is private to it — so
+        // listing a structure's own lines would document what nobody can name.
         let mut requires: Option<&str> = None;
-        let mut inside_module = false;
+        let mut inside_structure = false;
         for line in source.lines().map(str::trim) {
             if let Some(comment) = line.strip_prefix("// ") {
                 comments.push(comment);
@@ -195,20 +195,20 @@ pub fn standard_library_reference() -> String {
                 comments.clear();
                 continue;
             }
-            if let Some(rest) = line.strip_prefix("module ") {
+            if let Some(rest) = line.strip_prefix("structure ") {
                 let head = rest.split_once(" {").map_or(rest, |(head, _)| head);
-                let _ = writeln!(out, "- `module {head}` — {}", comments.join(" "));
-                inside_module = true;
+                let _ = writeln!(out, "- `structure {head}` — {}", comments.join(" "));
+                inside_structure = true;
                 comments.clear();
                 continue;
             }
             if line == "}" {
                 requires = None;
-                inside_module = false;
+                inside_structure = false;
                 comments.clear();
                 continue;
             }
-            if inside_module {
+            if inside_structure {
                 comments.clear();
                 continue;
             }

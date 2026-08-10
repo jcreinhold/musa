@@ -14,8 +14,8 @@ assumption. Core types are:
 τ ::= b | unit | bool | nat | ratio | τ × τ | option τ | list τ | τ → τ | music
 ```
 
-`declaration κ`, `module`, `piece`, `part`, `voice`, `Term[A]`, `Timeline[A]`, `Signal`, and DSP nodes are not value
-types. `music` is abstract: user code has constructors and controlled transforms but no representation eliminator.
+`declaration κ`, `structure`, `piece`, `part`, `voice`, `Term[A]`, `Timeline[A]`, `Signal`, and DSP nodes are not
+value types. `music` is abstract: user code has constructors and controlled transforms but no representation eliminator.
 
 Terms are variables, literals, products/projections, constructors, lambdas, application, non-recursive `let`,
 conditionals, finite primitive operations, and these eliminators:

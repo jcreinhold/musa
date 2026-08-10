@@ -4,8 +4,8 @@
 //! A module is a *name for a group of declarations*, not a thing. It holds no
 //! state, is never a value, never crosses a crate boundary, and has stopped
 //! existing by the time anything is evaluated: this stage turns
-//! `module M { let a … }` into an ordinary definition called `M.a` in the one
-//! flat namespace the core already has, and turns `make F(A) as G;` into the
+//! `structure M { let a … }` into an ordinary definition called `M.a` in the
+//! one flat namespace the core already has, and turns `make F(A) as G;` into the
 //! same definitions again, checked a second time in a scope where `F`'s
 //! parameters name `A`'s members.
 //!
@@ -23,7 +23,7 @@
 //! the *site*, so two instances with equal arguments are two modules, always.
 
 use indexmap::{IndexMap, IndexSet};
-use musa_language::ast::{AstNode as _, FnDecl, LetDecl, MakeStmt, ModuleDecl, SignatureDecl, TemplateDecl};
+use musa_language::ast::{AstNode as _, FnDecl, LetDecl, MakeStmt, SignatureDecl, StructureDecl, TemplateDecl};
 use musa_language::{SyntaxKind, SyntaxNode};
 
 use crate::core::Type;
@@ -145,7 +145,7 @@ struct Sealed {
     ascription: SourceSpan,
 }
 
-/// Everything a document's `signature`, `module`, `template module`, and
+/// Everything a document's `signature`, `structure`, `template structure`, and
 /// module-`make` declarations mean, once matching has been checked.
 ///
 /// Built once per checking pass and read from the checker. It answers exactly
@@ -303,7 +303,7 @@ impl Modules {
     }
 
     fn read_modules(&mut self, resolver: &mut Resolver, source: Option<&str>, owner: &SyntaxNode) {
-        for declaration in ModuleDecl::all_at_root(owner) {
+        for declaration in StructureDecl::all_at_root(owner) {
             let Some(name) = declaration.name() else { continue };
             let span = name_span(declaration.syntax());
             let scope = NameScope {
@@ -394,11 +394,11 @@ impl Modules {
                         resolver.report(
                             Diagnostic::error(
                                 Code::TypeMismatch,
-                                format!("`{parameter_name}` takes a module matching `{signature}`"),
+                                format!("`{parameter_name}` takes a structure matching `{signature}`"),
                             )
-                            .at(trimmed_span(&expression), "this is not a module's name")
+                            .at(trimmed_span(&expression), "this is not a structure's name")
                             .also(parameter_span, "declared here")
-                            .help("pass the name of a module written with `module`, or made with `make`"),
+                            .help("pass the name of a structure written with `structure`, or made with `make`"),
                         );
                         return None;
                     };
@@ -455,9 +455,9 @@ impl Modules {
         let span = trimmed_span(expression);
         let Some(sealed) = self.sealed.get(module) else {
             resolver.report(
-                Diagnostic::error(Code::UnknownName, format!("no module called `{module}`"))
-                    .at(span, "nothing declares this module")
-                    .help("modules are written with `module`, or made with `make`, before they are passed"),
+                Diagnostic::error(Code::UnknownName, format!("no structure called `{module}`"))
+                    .at(span, "nothing declares this structure")
+                    .help("structures are written with `structure`, or made with `make`, before they are passed"),
             );
             return None;
         };
@@ -478,7 +478,7 @@ impl Modules {
                     Diagnostic::error(Code::TypeMismatch, format!("`{module}` does not match `{signature}`"))
                         .at(span, format!("`{signature}` requires `{name}`: {}", required.ty))
                         .also(required.span, mismatch)
-                        .help("a module matches a signature when it defines every member with exactly that type"),
+                        .help("a structure matches a signature when it defines every member with exactly that type"),
                 );
                 return None;
             }
@@ -492,7 +492,7 @@ impl Modules {
         &mut self,
         resolver: &mut Resolver,
         qualifier: &str,
-        declaration: &ModuleDecl,
+        declaration: &StructureDecl,
         scope: &NameScope,
         source: Option<&str>,
     ) -> IndexMap<String, Required> {
@@ -554,7 +554,7 @@ impl Modules {
             resolver.report(
                 Diagnostic::error(Code::UnknownName, format!("no signature called `{signature}`"))
                     .at(ascription, "not a signature this file declares")
-                    .help("a module names the signature it provides, and that signature must be declared"),
+                    .help("a structure names the signature it provides, and that signature must be declared"),
             );
             return;
         };
@@ -589,9 +589,12 @@ impl Modules {
     ) {
         if self.sealed.contains_key(&name) {
             resolver.report(
-                Diagnostic::error(Code::DuplicateName, format!("`{name}` is declared twice as a module"))
-                    .at(span, "declared again here")
-                    .help("give one of them a different name"),
+                Diagnostic::error(
+                    Code::DuplicateName,
+                    format!("`{name}` is declared twice as a structure"),
+                )
+                .at(span, "declared again here")
+                .help("give one of them a different name"),
             );
             return;
         }
@@ -647,7 +650,7 @@ fn identity_key(functor: &str, alias: &str, arguments: &[String]) -> String {
 /// One functor instance site, with everything reading it needs.
 struct Site {
     stmt: MakeStmt,
-    functor: ModuleDecl,
+    functor: StructureDecl,
     functor_name: String,
     alias: String,
     alias_span: SourceSpan,
@@ -738,11 +741,11 @@ fn order(resolver: &mut Resolver, sites: Vec<Site>) -> Vec<Site> {
 }
 
 /// The template module a `make` site names, among the declarations beside it.
-fn functor_at(owner: &SyntaxNode, name: &str) -> Option<ModuleDecl> {
+fn functor_at(owner: &SyntaxNode, name: &str) -> Option<StructureDecl> {
     TemplateDecl::all_at_root(owner)
         .into_iter()
         .find(|template| template.name().as_deref() == Some(name))
-        .and_then(|template| template.module())
+        .and_then(|template| template.structure())
 }
 
 /// The module an argument expression names, when it is a bare name.

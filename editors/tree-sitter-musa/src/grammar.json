@@ -36,7 +36,7 @@
                   },
                   {
                     "type": "SYMBOL",
-                    "name": "module_declaration"
+                    "name": "structure_declaration"
                   },
                   {
                     "type": "SYMBOL",
@@ -114,7 +114,7 @@
             },
             {
               "type": "SYMBOL",
-              "name": "module_declaration"
+              "name": "structure_declaration"
             }
           ]
         }
@@ -185,12 +185,12 @@
         }
       ]
     },
-    "module_declaration": {
+    "structure_declaration": {
       "type": "SEQ",
       "members": [
         {
           "type": "STRING",
-          "value": "module"
+          "value": "structure"
         },
         {
           "type": "FIELD",
@@ -443,7 +443,7 @@
               },
               {
                 "type": "SYMBOL",
-                "name": "module_declaration"
+                "name": "structure_declaration"
               },
               {
                 "type": "SYMBOL",

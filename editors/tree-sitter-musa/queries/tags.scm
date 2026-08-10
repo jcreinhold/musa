@@ -31,10 +31,10 @@
 (signature_declaration
   name: (identifier) @name) @definition.type
 
-(module_declaration
+(structure_declaration
   name: (identifier) @name) @definition.type
 
-(module_declaration
+(structure_declaration
   signature: (identifier) @name) @reference.type
 
 (patch_declaration

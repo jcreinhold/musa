@@ -1,5 +1,6 @@
-// A signature names what a bundle of declarations must provide; a module
-// provides it; a `template module` is a functor from modules to a module.
+// A signature names what a bundle of declarations must provide; a structure
+// provides it; a `template structure` is a functor from structures to a
+// structure.
 // The one thing this adds over an ordinary typed parameter is that the facts
 // travel *together*: a key, its collection, and how the two spell a degree
 // are useless apart, and passing them one at a time is how they drift
@@ -20,9 +21,9 @@ signature CanonMaterial {
 // naming it here would be an error rather than a coincidence that works.
 //
 // Expansion is binding, not rewriting: this body is checked once per
-// instance with `C` naming the module the site passed, so no syntax is
+// instance with `C` naming the structure the site passed, so no syntax is
 // copied and every span an editor points at is the one written here.
-template module Canon(C: TonalContext, gap: duration): CanonMaterial {
+template structure Canon(C: TonalContext, gap: duration): CanonMaterial {
     // The subject steps through whatever collection the context named.
     let subject: music = music {
         in scale C.collection {
@@ -33,7 +34,7 @@ template module Canon(C: TonalContext, gap: duration): CanonMaterial {
         }
     };
 
-    // The answer, a fifth above. Ordinary music functions: a module exports
+    // The answer, a fifth above. Ordinary music functions: a structure exports
     // values, and a value of arrow type is a function.
     fn answer(line: music) -> music = transpose(P5, line);
 
@@ -42,11 +43,11 @@ template module Canon(C: TonalContext, gap: duration): CanonMaterial {
     let canon: music = overlay(subject, shift(gap, answer(subject)));
 
     // Private. `CanonMaterial` does not list it, so nothing outside this
-    // module may name `MajorCanon.stretto` — which is what sealing means.
+    // structure may name `MajorCanon.stretto` — which is what sealing means.
     let stretto: music = overlay(subject, shift(1/2, answer(subject)));
 }
 
-// Two instances, two modules. Identity is generative and comes from the
+// Two instances, two structures. Identity is generative and comes from the
 // *site*: making the same functor twice with equal arguments would still be
 // two declarations, and here the arguments differ as well.
 make Canon(CMajor, 1/1) as MajorCanon;
@@ -67,7 +68,7 @@ template piece study(material: music, home: key) "Canon Study" {
 }
 
 // Another reads two, which is the point of exporting ordinary music values
-// rather than a module object: what leaves a module is a value like any
+// rather than a structure object: what leaves a structure is a value like any
 // other, and the template that takes it never learns where it came from.
 template piece duet(major: music, minor: music, home: key) "Canon Duet" {
     meter 4/4;

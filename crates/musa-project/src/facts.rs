@@ -832,7 +832,7 @@ pub enum NameKind {
     Voice,
     /// A `patch` in the studio.
     Patch,
-    /// A `signature` or a `module`: static structure naming a group of
+    /// A `signature` or a `structure`: static structure naming a group of
     /// declarations, never a value.
     Module,
 }

@@ -28,7 +28,7 @@ library {
     }
 
     // C major, spelled from middle C.
-    module CMajor: TonalContext {
+    structure CMajor: TonalContext {
         let tonic: key = key c major;
         let collection: scale = scale c ionian;
 
@@ -46,9 +46,9 @@ library {
     }
 
     // A natural minor, spelled from the A below middle C. The same four
-    // members, answered differently — which is what makes the two modules
+    // members, answered differently — which is what makes the two structures
     // interchangeable everywhere `TonalContext` is asked for.
-    module ANaturalMinor: TonalContext {
+    structure ANaturalMinor: TonalContext {
         let tonic: key = key a minor;
         let collection: scale = scale a aeolian;
 

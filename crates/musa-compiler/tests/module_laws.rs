@@ -1,7 +1,7 @@
-//! What a signature, a module, and a functor promise (docs/prompts/104, and
+//! What a signature, a structure, and a functor promise (docs/prompts/104, and
 //! `docs/language/04-templates-and-modules.md` §4).
 //!
-//! A module is a name for a group of declarations, not a thing. Every law
+//! A structure is a name for a group of declarations, not a thing. Every law
 //! here is a consequence of that: matching is by name and exact type, what a
 //! signature does not list is private, applying a functor is a second
 //! *checking* of one body rather than a copy of it, and the result is
@@ -9,8 +9,8 @@
 //!
 //! Generativity is observed the way the rest of the compiler observes it —
 //! through the names a document ends up holding. Two instances of one functor
-//! are two sets of declarations under two addresses, never one shared module,
-//! because there is no module at run time to share. The digest behind those
+//! are two sets of declarations under two addresses, never one shared structure,
+//! because there is no structure at run time to share. The digest behind those
 //! addresses is checked where it is computed, in `crate::module`'s own unit
 //! tests; nothing outside the compiler can see it, and that is the point.
 
@@ -92,13 +92,13 @@ signature TonalContext {
     let collection: scale;
 }
 
-module CMajor: TonalContext {
+structure CMajor: TonalContext {
     let tonic: key = key c major;
     let collection: scale = scale c ionian;
     let bass: pitch = c3;
 }
 
-template module Shifted(C: TonalContext, lift: interval): TonalContext {
+template structure Shifted(C: TonalContext, lift: interval): TonalContext {
     let tonic: key = C.tonic;
     let collection: scale = C.collection;
     let lifted: interval = lift;
@@ -121,7 +121,7 @@ piece "Study" {
 }
 "#;
 
-/// The same music with the module written out as ordinary declarations.
+/// The same music with the structure written out as ordinary declarations.
 const HANDWRITTEN: &str = r#"
 piece "Study" {
     meter 4/4;
@@ -215,7 +215,7 @@ fn a_member_the_signature_does_not_list_is_private() {
     assert_eq!(
         labels_for(&outside, "private"),
         vec![
-            "named from outside the module that defines it",
+            "named from outside the structure that defines it",
             "`TonalContext` does not export it",
         ]
     );
@@ -231,8 +231,8 @@ fn a_member_the_signature_does_not_list_is_private() {
 #[test]
 fn a_functor_sees_its_parameters_signature_and_not_the_module_behind_it() {
     // `CMajor` defines `bass`; `TonalContext` does not list it. A functor
-    // over `TonalContext` may not reach it, however the site's module was
-    // written — that is what makes two modules interchangeable.
+    // over `TonalContext` may not reach it, however the site's structure was
+    // written — that is what makes two structures interchangeable.
     let peeking = MADE.replace(
         "    let lifted: interval = lift;",
         "    let lifted: interval = lift;\n    let root: pitch = C.bass;",
@@ -253,7 +253,7 @@ fn applying_a_functor_binds_rather_than_rewrites() {
     let two = MADE
         .replace(
             "make Shifted(CMajor, P5) as Away;",
-            "module AMinor: TonalContext {\n    let tonic: key = key a minor;\n    let collection: scale = scale a aeolian;\n    let bass: pitch = a2;\n}\n\nmake Shifted(CMajor, P5) as Away;\nmake Shifted(AMinor, P4) as Other;",
+            "structure AMinor: TonalContext {\n    let tonic: key = key a minor;\n    let collection: scale = scale a aeolian;\n    let bass: pitch = a2;\n}\n\nmake Shifted(CMajor, P5) as Away;\nmake Shifted(AMinor, P4) as Other;",
         )
         .replace("in scale Away.collection {", "in scale Other.collection {");
     assert!(errors_of(&two).is_empty(), "{:?}", errors_of(&two));
@@ -265,7 +265,7 @@ fn applying_a_functor_binds_rather_than_rewrites() {
 #[test]
 fn two_instances_with_equal_arguments_stay_two_modules() {
     // Generative, not applicative: nothing is shared, because there is no
-    // module at run time to share. Both addresses exist, separately, and
+    // structure at run time to share. Both addresses exist, separately, and
     // renaming one leaves the other alone.
     let twice = MADE.replace(
         "make Shifted(CMajor, P5) as Away;",
@@ -276,10 +276,10 @@ fn two_instances_with_equal_arguments_stay_two_modules() {
     for name in ["Away.tonic", "Away.lifted", "Same.tonic", "Same.lifted"] {
         assert!(held.contains(&name.to_owned()), "{name} is missing from {held:?}");
     }
-    let modules = names(&twice, NameKind::Module);
+    let structures = names(&twice, NameKind::Module);
     assert!(
-        modules.contains(&"Away".to_owned()) && modules.contains(&"Same".to_owned()),
-        "{modules:?}"
+        structures.contains(&"Away".to_owned()) && structures.contains(&"Same".to_owned()),
+        "{structures:?}"
     );
 }
 
@@ -320,10 +320,10 @@ fn a_functor_takes_a_module_where_its_signature_says_so() {
     let wrong = MADE.replace("make Shifted(CMajor, P5) as Away;", "make Shifted(P5, P5) as Away;");
     let (code, message) = errors_of(&wrong)
         .into_iter()
-        .find(|(_, message)| message.contains("takes a module"))
-        .expect("a value is not a module");
+        .find(|(_, message)| message.contains("takes a structure"))
+        .expect("a value is not a structure");
     assert_eq!(code, Code::TypeMismatch);
-    assert_eq!(message, "`C` takes a module matching `TonalContext`");
+    assert_eq!(message, "`C` takes a structure matching `TonalContext`");
 
     let unknown = MADE.replace(
         "make Shifted(CMajor, P5) as Away;",
@@ -332,7 +332,7 @@ fn a_functor_takes_a_module_where_its_signature_says_so() {
     assert!(
         errors_of(&unknown)
             .iter()
-            .any(|(code, message)| *code == Code::UnknownName && message == "no module called `Nowhere`"),
+            .any(|(code, message)| *code == Code::UnknownName && message == "no structure called `Nowhere`"),
         "{:?}",
         errors_of(&unknown)
     );
@@ -358,14 +358,14 @@ fn a_module_is_not_a_value() {
         errors_of(&as_value)
             .iter()
             .any(|(code, _)| *code == Code::UnknownName || *code == Code::TypeMismatch),
-        "a module cannot be written where a value belongs: {:?}",
+        "a structure cannot be written where a value belongs: {:?}",
         errors_of(&as_value)
     );
 }
 
 #[test]
 fn a_signature_a_module_names_must_exist() {
-    let unknown = MADE.replace("module CMajor: TonalContext {", "module CMajor: NoSuchThing {");
+    let unknown = MADE.replace("structure CMajor: TonalContext {", "structure CMajor: NoSuchThing {");
     assert!(
         errors_of(&unknown)
             .iter()

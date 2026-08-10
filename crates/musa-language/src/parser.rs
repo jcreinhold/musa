@@ -131,7 +131,7 @@ const ROOT_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::TemplateKw,
     SyntaxKind::MakeKw,
     SyntaxKind::SignatureKw,
-    SyntaxKind::ModuleKw,
+    SyntaxKind::StructureKw,
     SyntaxKind::PieceKw,
     SyntaxKind::LibraryKw,
 ];
@@ -583,8 +583,8 @@ impl<'a> Parser<'a> {
                 self.template_decl();
             } else if self.at(SyntaxKind::SignatureKw) {
                 self.signature_decl();
-            } else if self.at(SyntaxKind::ModuleKw) {
-                self.module_decl();
+            } else if self.at_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
+                self.structure_decl();
             } else if self.at(SyntaxKind::MakeKw) {
                 // Every `make` a file's root writes is read here, whether it
                 // makes a module or the piece itself. Which one is the piece
@@ -647,17 +647,20 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
-    /// `module CMajor : TonalContext { ... }`, or the same with a parameter
-    /// list for the module a `template` parameterizes.
-    fn module_decl(&mut self) {
-        self.start(SyntaxKind::ModuleDecl);
-        self.expect(SyntaxKind::ModuleKw, "`module`");
-        self.expect(SyntaxKind::Identifier, "a module name");
+    /// `structure CMajor : TonalContext { ... }`, or the same with a
+    /// parameter list for the structure a `template` parameterizes.
+    fn structure_decl(&mut self) {
+        self.start(SyntaxKind::StructureDecl);
+        if self.at(SyntaxKind::ModuleKw) {
+            self.moved_to_structure();
+        }
+        self.bump(); // `structure`, or the `module` that should have been one
+        self.expect(SyntaxKind::Identifier, "a structure name");
         if self.at(SyntaxKind::LParen) {
             self.param_list();
         }
         self.expect(SyntaxKind::Colon, "`:`");
-        self.expect(SyntaxKind::Identifier, "the signature this module provides");
+        self.expect(SyntaxKind::Identifier, "the signature this structure provides");
         self.expect(SyntaxKind::LBrace, "`{`");
         while !self.at(SyntaxKind::RBrace) && self.current().is_some() {
             if self.at(SyntaxKind::LetKw) {
@@ -688,11 +691,11 @@ impl<'a> Parser<'a> {
             self.piece_decl();
         } else if self.at(SyntaxKind::VoiceKw) {
             self.voice_decl();
-        } else if self.at(SyntaxKind::ModuleKw) {
-            self.module_decl();
+        } else if self.at_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
+            self.structure_decl();
         } else {
             self.expected_with_help(
-                "`piece`, `voice`, or `module`",
+                "`piece`, `voice`, or `structure`",
                 "a template parameterizes a declaration, and those are the three kinds it may parameterize",
             );
             self.recover(ROOT_RECOVERY);
@@ -864,9 +867,14 @@ impl<'a> Parser<'a> {
                 self.studio_decl();
             } else if self.at(SyntaxKind::SignatureKw) {
                 self.signature_decl();
-            } else if self.at(SyntaxKind::ModuleKw) {
-                self.module_decl();
-            } else if self.at(SyntaxKind::TemplateKw) && self.nth_significant(1) == Some(SyntaxKind::ModuleKw) {
+            } else if self.at_any(&[SyntaxKind::StructureKw, SyntaxKind::ModuleKw]) {
+                self.structure_decl();
+            } else if self.at(SyntaxKind::TemplateKw)
+                && matches!(
+                    self.nth_significant(1),
+                    Some(SyntaxKind::StructureKw | SyntaxKind::ModuleKw)
+                )
+            {
                 // A piece or a voice belongs to a piece, so the one template
                 // a library may hold is the one that makes a module.
                 self.template_decl();
@@ -952,6 +960,32 @@ impl<'a> Parser<'a> {
             )
             .with_help("`use` writes out a motif where it stands; `import` brings another file's names into this one")
             .with_fix("write `import`", "import"),
+        );
+    }
+
+    /// The one complaint a file written against the old spelling gets.
+    ///
+    /// Located at the word itself and carrying the word that replaces it, so
+    /// the migration is an accepted fix rather than a search. `module` is
+    /// still a word in this language — it names a node of a package's tree —
+    /// which is exactly why the thing it used to declare needed its own.
+    fn moved_to_structure(&mut self) {
+        if self.cascading() {
+            return;
+        }
+        let Some(token) = self.significant() else {
+            return;
+        };
+        self.errors.push(
+            SyntaxError::new(
+                token.range,
+                "`module` no longer declares one",
+                "this provides a signature, so it is a `structure`",
+            )
+            .with_help(
+                "a `module` is a node of a package's tree, declared with `mod`; a `structure` provides a `signature`",
+            )
+            .with_fix("write `structure`", "structure"),
         );
     }
 

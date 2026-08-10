@@ -7,7 +7,7 @@
   (library_declaration)
   (template_declaration)
   (signature_declaration)
-  (module_declaration)
+  (structure_declaration)
   (score_declaration)
   (part_declaration)
   (voice_declaration)

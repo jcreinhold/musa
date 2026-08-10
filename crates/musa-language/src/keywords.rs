@@ -645,14 +645,22 @@ static MOD: KeywordDoc = doc!(
      a `.musa` file no `mod` reaches is not part of the package, and saying so is an error rather than a silence.\n\n\
      ```musa\nmod core;\nmod tonal;\n```"
 );
+static STRUCTURE: KeywordDoc = doc!(
+    "structure",
+    "group declarations behind a signature",
+    "`structure CMajor : TonalContext { let key = key c major; ... }` names a group of `let` and `fn` declarations, \
+     reached from outside as `CMajor.key`. `template structure` parameterizes one over other structures, and `make` \
+     applies it. Structures are static: they hold no state, cross no boundary as values, and disappear into ordinary \
+     declarations once made.\n\n\
+     ```musa\nstructure CMajor : TonalContext {\n    let key = key c major;\n    let scale = scale c major;\n}\n```"
+);
 static MODULE: KeywordDoc = doc!(
     "module",
-    "group declarations behind a signature",
-    "`module CMajor : TonalContext { let key = key c major; ... }` names a group of `let` and `fn` declarations, \
-     reached from outside as `CMajor.key`. `template module` parameterizes one over other modules, and `make` \
-     applies it. Modules are static: they hold no state, cross no boundary as values, and disappear into ordinary \
-     declarations once made.\n\n\
-     ```musa\nmodule CMajor : TonalContext {\n    let key = key c major;\n    let scale = scale c major;\n}\n```"
+    "the old spelling of `structure`",
+    "`module` no longer declares anything. What it used to declare is a `structure` — the thing that provides a \
+     `signature` — and `module` now means only a node of a package's tree, which is declared with `mod`. The two \
+     were one letter apart and unrelated, so the rarer one took the name ML has used for it since 1984.\n\n\
+     ```musa\nstructure CMajor : TonalContext {\n    let key = key c major;\n}\n```"
 );
 static AS: KeywordDoc = doc!(
     "as",
@@ -680,6 +688,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::StackKw => &STACK,
         SyntaxKind::TemplateKw => &TEMPLATE,
         SyntaxKind::SignatureKw => &SIGNATURE,
+        SyntaxKind::StructureKw => &STRUCTURE,
         SyntaxKind::ModuleKw => &MODULE,
         SyntaxKind::ModKw => &MOD,
         SyntaxKind::MakeKw => &MAKE,
@@ -897,7 +906,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::MakeStmt
         | SyntaxKind::SignatureDecl
         | SyntaxKind::SignatureMember
-        | SyntaxKind::ModuleDecl
+        | SyntaxKind::StructureDecl
         | SyntaxKind::ModDecl => return None,
     };
     Some(doc)
@@ -935,6 +944,8 @@ mod tests {
             SyntaxKind::UseKw,
             SyntaxKind::ImportKw,
             SyntaxKind::ModKw,
+            SyntaxKind::StructureKw,
+            SyntaxKind::ModuleKw,
             SyntaxKind::TransposeKw,
             SyntaxKind::UpKw,
             SyntaxKind::DownKw,

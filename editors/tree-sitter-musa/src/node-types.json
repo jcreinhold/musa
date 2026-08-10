@@ -1217,10 +1217,6 @@
           "named": true
         },
         {
-          "type": "module_declaration",
-          "named": true
-        },
-        {
           "type": "motif_declaration",
           "named": true
         },
@@ -1230,6 +1226,10 @@
         },
         {
           "type": "signature_declaration",
+          "named": true
+        },
+        {
+          "type": "structure_declaration",
           "named": true
         },
         {
@@ -1555,50 +1555,6 @@
       "types": [
         {
           "type": "parameter_path",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "module_declaration",
-    "named": true,
-    "fields": {
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      },
-      "signature": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "identifier",
-            "named": true
-          }
-        ]
-      }
-    },
-    "children": {
-      "multiple": true,
-      "required": false,
-      "types": [
-        {
-          "type": "function_declaration",
-          "named": true
-        },
-        {
-          "type": "let_declaration",
-          "named": true
-        },
-        {
-          "type": "parameter_list",
           "named": true
         }
       ]
@@ -2906,15 +2862,15 @@
           "named": true
         },
         {
-          "type": "module_declaration",
-          "named": true
-        },
-        {
           "type": "piece_declaration",
           "named": true
         },
         {
           "type": "signature_declaration",
+          "named": true
+        },
+        {
+          "type": "structure_declaration",
           "named": true
         },
         {
@@ -3086,6 +3042,50 @@
     }
   },
   {
+    "type": "structure_declaration",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "signature": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "function_declaration",
+          "named": true
+        },
+        {
+          "type": "let_declaration",
+          "named": true
+        },
+        {
+          "type": "parameter_list",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "studio_declaration",
     "named": true,
     "fields": {},
@@ -3133,11 +3133,11 @@
       "required": true,
       "types": [
         {
-          "type": "module_declaration",
+          "type": "piece_declaration",
           "named": true
         },
         {
-          "type": "piece_declaration",
+          "type": "structure_declaration",
           "named": true
         },
         {
@@ -3781,10 +3781,6 @@
     "named": false
   },
   {
-    "type": "module",
-    "named": false
-  },
-  {
     "type": "motif",
     "named": false
   },
@@ -3911,6 +3907,10 @@
   {
     "type": "string",
     "named": true
+  },
+  {
+    "type": "structure",
+    "named": false
   },
   {
     "type": "studio",

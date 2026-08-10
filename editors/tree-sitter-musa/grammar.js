@@ -108,7 +108,7 @@ module.exports = grammar({
               $.function_declaration,
               $.template_declaration,
               $.signature_declaration,
-              $.module_declaration,
+              $.structure_declaration,
               $.make_statement,
             ),
           ),
@@ -126,9 +126,9 @@ module.exports = grammar({
     // The declaration it parameterizes is its only child, so every query
     // written for a piece or a voice still matches inside one.
     template_declaration: ($) =>
-      seq('template', choice($.piece_declaration, $.voice_declaration, $.module_declaration)),
+      seq('template', choice($.piece_declaration, $.voice_declaration, $.structure_declaration)),
 
-    // Parser::signature_decl — what a module must provide. A member is a
+    // Parser::signature_decl — what a structure must provide. A member is a
     // `let` with its definition left out, because a function is a value of
     // arrow type and one member form covers all of them.
     signature_declaration: ($) =>
@@ -136,12 +136,12 @@ module.exports = grammar({
 
     signature_member: ($) => seq('let', field('name', $.identifier), ':', field('type', $.type_expression), ';'),
 
-    // Parser::module_decl — a named group of declarations, reached from
-    // outside as `M.member`. The parameter list is what a `template module`
-    // adds, and nothing else about the node changes.
-    module_declaration: ($) =>
+    // Parser::structure_decl — a named group of declarations, reached from
+    // outside as `M.member`. The parameter list is what a
+    // `template structure` adds, and nothing else about the node changes.
+    structure_declaration: ($) =>
       seq(
-        'module',
+        'structure',
         field('name', $.identifier),
         optional($.parameter_list),
         ':',
@@ -206,7 +206,7 @@ module.exports = grammar({
             $.performance_declaration,
             $.studio_declaration,
             $.signature_declaration,
-            $.module_declaration,
+            $.structure_declaration,
             $.template_declaration,
             $.make_statement,
           ),

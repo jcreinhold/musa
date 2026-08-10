@@ -30,8 +30,8 @@ Musa definitions; importing a module is explicit and never searches the filesyst
   - `TonalContext.collection: scale` — The collection stepwise motion reads. A default, not a claim: a passage may still name another collection where it wants one.
   - `TonalContext.spell: nat -> option[pitch]` — The written pitch a numbered degree names, in this context's own register. Absent when the context has no register to spell in.
   - `TonalContext.voicing_for: chord_class -> option[voicing]` — How this context voices a chord class. Absent when the class cannot be voiced from the register it chose.
-- `module CMajor: TonalContext` — C major, spelled from middle C.
-- `module ANaturalMinor: TonalContext` — A natural minor, spelled from the A below middle C. The same four members, answered differently — which is what makes the two modules interchangeable everywhere `TonalContext` is asked for.
+- `structure CMajor: TonalContext` — C major, spelled from middle C.
+- `structure ANaturalMinor: TonalContext` — A natural minor, spelled from the A below middle C. The same four members, answered differently — which is what makes the two structures interchangeable everywhere `TonalContext` is asked for.
 
 ## `std::core`
 
