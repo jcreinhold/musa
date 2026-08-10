@@ -70,7 +70,7 @@ an **elaboration-time function over timelines or payloads** (course correction Â
 cargo nextest run -p musa-language -p musa-compiler -p musa-project
 cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/variation.musa
+cargo run -p musa -- check examples/variation.musa
 cd apps/musa-desktop && cargo tauri dev   # manual: specialize a motif occurrence from the score
 ```
 

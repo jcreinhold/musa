@@ -176,9 +176,9 @@ is now the narrower claim; widening the column is an interface change and is not
 cargo nextest run -p musa-language -p musa-compiler
 cargo clippy --all-targets -p musa-language -p musa-compiler -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/refrain.musa                   # a named bar, played three times
-cargo run -p musa-cli -- check examples/broken/bar-too-long.musa       # the diagnostic above
-cargo run -p musa-cli -- format examples/glass-mountain.musa --check
+cargo run -p musa -- check examples/refrain.musa                   # a named bar, played three times
+cargo run -p musa -- check examples/broken/bar-too-long.musa       # the diagnostic above
+cargo run -p musa -- format examples/glass-mountain.musa --check
 ```
 
 Semantic identity is the real check: barring an existing example must not change the timeline's shape, its times, or its

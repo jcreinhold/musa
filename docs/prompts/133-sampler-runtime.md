@@ -50,8 +50,8 @@ and denormal/NaN safety. Asset failure prevents plan installation rather than fa
 ## Check
 
 ```sh
-cargo nextest run -p musa-audio -p musa-engine -p musa-project -p musa-cli
-cargo clippy --all-targets -p musa-audio -p musa-engine -p musa-project -p musa-cli -- -D warnings
+cargo nextest run -p musa-audio -p musa-engine -p musa-project -p musa
+cargo clippy --all-targets -p musa-audio -p musa-engine -p musa-project -p musa -- -D warnings
 cargo fmt --check
 cargo deny check
 cargo bench -p musa-audio

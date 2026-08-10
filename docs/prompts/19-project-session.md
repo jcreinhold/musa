@@ -19,7 +19,7 @@ nor the desktop app ever chains compiler → render → engine calls themselves.
 - Roadmap §3 (this is the canonical deep module), §11 (the project source is canonical; one persistent truth),
   §14.6–§14.7 (command flow, invalid-edit behavior), §15.7 (ownership list and facade), §16 (one-file projects now,
   directory projects deferred).
-- The orchestration shim left in `musa-cli` by prompt 17/18 (to be deleted and moved here).
+- The orchestration shim left in `musa` by prompt 17/18 (to be deleted and moved here).
 
 ## Design
 
@@ -57,7 +57,7 @@ nor the desktop app ever chains compiler → render → engine calls themselves.
 - Move the prompt-12/13 orchestration here: `export(ExportRequest::{Wav, Mei, LilyPond, PerformanceDump})` and an
   internal `prepare_playback()` that rebuilds and reinstalls the engine plan after each valid compile (debouncing/engine
   ownership policy: session owns an optional `AudioEngine`; `play`/`stop`/`seek` commands pass through to it).
-- Rewrite `musa-cli` on top of `ProjectSession` — every subcommand becomes a few lines (§15.8). This is the proof the
+- Rewrite `musa` on top of `ProjectSession` — every subcommand becomes a few lines (§15.8). This is the proof the
   facade is deep: the CLI shrinks.
 - Debounced compilation (§10.7) is a caller concern (the GUI debounces keystrokes); the session compiles synchronously
   per `apply`. Note the decision; worker-thread compilation arrives only if profiling demands it.
@@ -66,19 +66,19 @@ nor the desktop app ever chains compiler → render → engine calls themselves.
 
 - `musa-project`: `ProjectSession` and the types above; revision/undo machinery; last-valid artifact retention; export +
   playback orchestration.
-- `musa-cli`: rewritten on `ProjectSession` with no behavior change.
+- `musa`: rewritten on `ProjectSession` with no behavior change.
 - Tests: open/create/apply/undo/redo round-trips; invalid source keeps last-valid snapshot and still plays; export
   equivalence with prompt-12 golden WAV (same bytes); concurrent-free single-threaded session semantics.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-project -p musa-cli
-cargo clippy --all-targets -p musa-project -p musa-cli -- -D warnings
+cargo nextest run -p musa-project -p musa
+cargo clippy --all-targets -p musa-project -p musa -- -D warnings
 cargo fmt --check
 # CLI behavior unchanged end-to-end:
-cargo run -p musa-cli -- check examples/glass-mountain.musa
-cargo run -p musa-cli -- render examples/glass-mountain.musa --to wav -o /tmp/gm3.wav
+cargo run -p musa -- check examples/glass-mountain.musa
+cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm3.wav
 cmp /tmp/gm3.wav /tmp/gm.wav   # same bytes as prompt 17's golden output
 ```
 

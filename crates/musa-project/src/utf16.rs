@@ -4,7 +4,7 @@
 //! and `text-size`, whose ranges are byte ranges; this crate passes that
 //! measure through, so a [`Span`](crate::Span) on a diagnostic, on a fact,
 //! and on a [`TextEdit`](crate::TextEdit) are all the same kind of thing, and
-//! so `musa-cli` can hand one to `miette` and have it point at the right
+//! so `musa` can hand one to `miette` and have it point at the right
 //! character. That stays true and is not what this module changes.
 //!
 //! A JavaScript frontend measures strings in **UTF-16 code units**, and so

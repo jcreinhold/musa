@@ -141,7 +141,7 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npm test
-for f in examples/*.musa; do cargo run -q -p musa-cli -- check "$f"; done
+for f in examples/*.musa; do cargo run -q -p musa -- check "$f"; done
 git diff --stat -- examples/ crates/*/tests/snapshots apps/musa-desktop/ui/fixtures   # empty
 grep -rn "measure_len" crates/musa-compiler crates/musa-project --include="*.rs" \
   | grep -v "score.rs\|bars.rs" | wc -l                                               # 0

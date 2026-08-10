@@ -8,11 +8,11 @@ fn glass_mountain() -> String {
 }
 
 fn musa(args: &[&str]) -> std::io::Result<std::process::Output> {
-    Command::new(env!("CARGO_BIN_EXE_musa-cli")).args(args).output()
+    Command::new(env!("CARGO_BIN_EXE_musa")).args(args).output()
 }
 
 fn temp_file(name: &str, contents: &str) -> std::io::Result<std::path::PathBuf> {
-    let path = std::env::temp_dir().join(format!("musa-cli-test-{}-{name}", std::process::id()));
+    let path = std::env::temp_dir().join(format!("musa-test-{}-{name}", std::process::id()));
     std::fs::write(&path, contents)?;
     Ok(path)
 }
@@ -122,8 +122,8 @@ fn wav_export_is_deterministic_for_all_examples() -> std::io::Result<()> {
         }
         count += 1;
         let source = entry.path();
-        let first = std::env::temp_dir().join(format!("musa-cli-test-{}-a.wav", std::process::id()));
-        let second = std::env::temp_dir().join(format!("musa-cli-test-{}-b.wav", std::process::id()));
+        let first = std::env::temp_dir().join(format!("musa-test-{}-a.wav", std::process::id()));
+        let second = std::env::temp_dir().join(format!("musa-test-{}-b.wav", std::process::id()));
         for target in [&first, &second] {
             let output = musa(&[
                 "render",
@@ -171,7 +171,7 @@ fn the_album_piece_renders_through_its_imports_at_the_tempos_it_writes() -> std:
         "{}/../../examples/album/pieces/01-opening.musa",
         env!("CARGO_MANIFEST_DIR")
     );
-    let wav = std::env::temp_dir().join(format!("musa-cli-album-{}.wav", std::process::id()));
+    let wav = std::env::temp_dir().join(format!("musa-album-{}.wav", std::process::id()));
     let output = musa(&["render", &source, "--to", "wav", "-o", &wav.to_string_lossy()])?;
     assert!(
         output.status.success(),
@@ -216,7 +216,7 @@ fn every_broken_fixture_renders_the_way_it_reads() -> std::io::Result<()> {
             .unwrap_or_default();
         // Run from the repository root so the header reads `examples/broken/…`
         // on every machine.
-        let output = std::process::Command::new(env!("CARGO_BIN_EXE_musa-cli"))
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_musa"))
             .current_dir(&root)
             .args(["check", &format!("examples/broken/{name}.musa")])
             .output()?;

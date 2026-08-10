@@ -49,7 +49,7 @@ shipping it. Do not perform best-effort file I/O in the callback.
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-audio -p musa-engine -p musa-project -p musa-cli
+cargo nextest run -p musa-compiler -p musa-audio -p musa-engine -p musa-project -p musa
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo deny check

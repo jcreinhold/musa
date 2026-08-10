@@ -196,7 +196,7 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject   # no golden may change
-for f in examples/*.musa; do cargo run -p musa-cli -- check "$f"; done
+for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
 grep -rn "struct Curve" crates/musa-compiler/src/ | wc -l   # 0
 grep -rn "Q4" docs/kernel/08-open-questions.md            # reads as resolved
 cargo bench -p musa-compiler

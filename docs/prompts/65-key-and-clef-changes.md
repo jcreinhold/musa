@@ -95,10 +95,10 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npm test
-cargo run -p musa-cli -- check examples/modulation.musa
-cargo run -p musa-cli -- check examples/clef-change.musa
-cargo run -p musa-cli -- render examples/modulation.musa --to lilypond -o - | grep -c '\\key'   # 3 or more
-cargo run -p musa-cli -- render examples/clef-change.musa --to musicxml -o - | grep -c '<clef'  # 2 or more
+cargo run -p musa -- check examples/modulation.musa
+cargo run -p musa -- check examples/clef-change.musa
+cargo run -p musa -- render examples/modulation.musa --to lilypond -o - | grep -c '\\key'   # 3 or more
+cargo run -p musa -- render examples/clef-change.musa --to musicxml -o - | grep -c '<clef'  # 2 or more
 ```
 
 Commit as `Let the key and the clef change mid-piece`.

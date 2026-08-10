@@ -47,10 +47,10 @@ prompt 123 measures that function as a bottleneck and proves equivalence.
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-project -p musa-cli -p musa-lsp
-cargo clippy --all-targets -p musa-compiler -p musa-project -p musa-cli -p musa-lsp -- -D warnings
+cargo nextest run -p musa-compiler -p musa-project -p musa -p musa-lsp
+cargo clippy --all-targets -p musa-compiler -p musa-project -p musa -p musa-lsp -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/stdlib-basics.musa
+cargo run -p musa -- check examples/stdlib-basics.musa
 cd apps/musa-desktop/ui && npm test
 ```
 

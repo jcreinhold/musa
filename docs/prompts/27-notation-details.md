@@ -101,8 +101,8 @@ travels the full pipeline in one prompt so no layer drifts ahead of another.
 cargo nextest run -p musa-language -p musa-compiler -p musa-render
 cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-render -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- render examples/tuplet-fixture.musa --to mei -o /tmp/t.mei
-cargo run -p musa-cli -- render examples/tuplet-fixture.musa --to lilypond -o /tmp/t.ly
+cargo run -p musa -- render examples/tuplet-fixture.musa --to mei -o /tmp/t.mei
+cargo run -p musa -- render examples/tuplet-fixture.musa --to lilypond -o /tmp/t.ly
 ```
 
 Commit as `Add ties, slurs, dynamics, articulations, and tuplets`.

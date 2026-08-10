@@ -62,7 +62,7 @@ cargo nextest run -p musa-compiler -p musa-audio -p musa-render -p musa-engine -
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-cargo run -p musa-cli -- render tests/fixtures/audio-bridge.musa --to wav -o /tmp/musa-expression.wav
+cargo run -p musa -- render tests/fixtures/audio-bridge.musa --to wav -o /tmp/musa-expression.wav
 ```
 
 Commit as `Bind musical controls to instrument sound`.

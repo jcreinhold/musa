@@ -94,7 +94,7 @@ No file-level waiver, no severity knobs, no configuration file.
 - `crates/musa-compiler`: `src/lint.rs` (the pass, the suppression helper, the deletion-fix builder); the four
   `Code` variants in `diagnose.rs`; the call in `elaborate.rs`.
 - `crates/musa-project`: explanations for the four codes (the exhaustive match requires them).
-- `crates/musa-cli`: `--fix` on `check`, one line of usage.
+- `crates/musa`: `--fix` on `check`, one line of usage.
 - `crates/musa-lsp`: one law test — a lint warning publishes with its quick fix.
 - Tests: `crates/musa-compiler/tests/lint_laws.rs` — one firing fixture per rule, the suppression law, the
   fix-application law (apply the fix, recompile, silence), and the corpus law: every valid file in `examples/`
@@ -104,8 +104,8 @@ No file-level waiver, no severity knobs, no configuration file.
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-project -p musa-cli -p musa-lsp
-cargo clippy --all-targets -p musa-compiler -p musa-project -p musa-cli -p musa-lsp -- -D warnings
+cargo nextest run -p musa-compiler -p musa-project -p musa -p musa-lsp
+cargo clippy --all-targets -p musa-compiler -p musa-project -p musa -p musa-lsp -- -D warnings
 cargo fmt --check
 musa check examples/*.musa examples/album/pieces/*.musa   # no warnings
 ```

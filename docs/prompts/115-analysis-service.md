@@ -52,10 +52,10 @@ tonal judgments. LSP and desktop plumbing wait until prompt 120/116.
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-project -p musa-cli
-cargo clippy --all-targets -p musa-compiler -p musa-project -p musa-cli -- -D warnings
+cargo nextest run -p musa-compiler -p musa-project -p musa
+cargo clippy --all-targets -p musa-compiler -p musa-project -p musa -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- analyze examples/annotated.musa --kind facts --format text
+cargo run -p musa -- analyze examples/annotated.musa --kind facts --format text
 bash .agents/skills/module-design/scripts/audit-module.sh crates/musa-compiler
 ```
 

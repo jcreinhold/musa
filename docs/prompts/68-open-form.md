@@ -158,10 +158,10 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-cargo run -p musa-cli -- check examples/in-c.musa
-diff <(cargo run -q -p musa-cli -- kernel examples/mobile.musa --seed 7) \
-     <(cargo run -q -p musa-cli -- kernel examples/mobile.musa --seed 7)     # stable
-cargo run -p musa-cli -- render examples/changes.musa --to musicxml 2>&1 | grep -i "improvis"  # the warning
+cargo run -p musa -- check examples/in-c.musa
+diff <(cargo run -q -p musa -- kernel examples/mobile.musa --seed 7) \
+     <(cargo run -q -p musa -- kernel examples/mobile.musa --seed 7)     # stable
+cargo run -p musa -- render examples/changes.musa --to musicxml 2>&1 | grep -i "improvis"  # the warning
 grep -L "Status: candidate" docs/kernel/11-realization.md
 ```
 

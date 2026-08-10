@@ -62,7 +62,7 @@ modulation-combination policies. After this prompt the `glass_pad` patch from §
 cargo nextest run -p musa-audio
 cargo clippy --all-targets -p musa-audio -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- render examples/glass-mountain.musa --to wav -o /tmp/gm6.wav
+cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm6.wav
 ```
 
 Commit as `Add envelopes, filters, and typed modulation`.

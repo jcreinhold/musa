@@ -80,9 +80,9 @@ and leaving it orphaned while adding the machinery that exists to catch orphans 
 cargo nextest run -p musa-compiler -p musa-project -p musa-lsp
 cargo clippy --all-targets -p musa-compiler -p musa-project -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/tonal-construction.musa
-cargo run -p musa-cli -- check examples/neo-riemannian.musa
-cargo run -p musa-cli -- render examples/tonal-construction.musa --to musicxml -o /tmp/tonal.musicxml
+cargo run -p musa -- check examples/tonal-construction.musa
+cargo run -p musa -- check examples/neo-riemannian.musa
+cargo run -p musa -- render examples/tonal-construction.musa --to musicxml -o /tmp/tonal.musicxml
 ```
 
 Commit as `Make the standard library a package with a module tree`.

@@ -1,8 +1,8 @@
 [package]
-description = "Thin CLI over musa-project"
+description = "The musa command line: a thin CLI over musa-project"
 edition.workspace = true
 license.workspace = true
-name = "musa-cli"
+name = "musa"
 repository.workspace = true
 version.workspace = true
 

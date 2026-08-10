@@ -60,8 +60,8 @@ field, placement, and realization; no field may be removed without a dependency-
 cargo nextest run -p musa-compiler -p musa-language -p musa-lsp
 cargo clippy --all-targets -p musa-compiler -p musa-language -p musa-lsp -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/canon-functions.musa
-cargo run -p musa-cli -- check examples/harmonize-function.musa
+cargo run -p musa -- check examples/canon-functions.musa
+cargo run -p musa -- check examples/harmonize-function.musa
 cargo bench -p musa-compiler
 ```
 

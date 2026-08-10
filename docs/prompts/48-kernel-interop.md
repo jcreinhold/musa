@@ -25,7 +25,7 @@ This graduates `docs/kernel/10-term-calculus.md` from candidate to governing.
   what today's goldens contain).
 - `docs/kernel/08-open-questions.md` Q6 — quote its condition in the prompt's commit message: the second
   producer/consumer now exists.
-- `crates/musa-cli/src/main.rs` (command dispatch and help text), `crates/musa-project/src/export.rs` (how exports are
+- `crates/musa/src/main.rs` (command dispatch and help text), `crates/musa-project/src/export.rs` (how exports are
   routed today — kernel text is an export, and should not grow a parallel path).
 - `crates/musa-language/src/lexer.rs` — read it before writing a lexer. Kernel text is *not* musa source and must not
   share its lexer; the question to answer explicitly is whether anything is genuinely shared (rational literal parsing,
@@ -107,7 +107,7 @@ what Q6 was waiting for.
   positions.
 - `crates/musa-compiler`: `ScoreFact`'s payload text form; the piece-to-term entry point (still `#[doc(hidden)]` until
   prompt 49 makes terms the elaboration output).
-- `crates/musa-project/src/export.rs`, `crates/musa-cli/src/main.rs`: the `kernel` target and help text.
+- `crates/musa-project/src/export.rs`, `crates/musa/src/main.rs`: the `kernel` target and help text.
 - `examples/kernel/*.kernel`: goldens for every `examples/*.musa`.
 - `docs/kernel/01-grammar.md`: the implemented grammar, candidate banner lifted from `10-term-calculus.md`;
   `08-open-questions.md`: **Q6 resolved**.
@@ -120,8 +120,8 @@ cargo nextest run -p musa-kernel -p musa-compiler -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-for f in examples/*.musa; do cargo run -p musa-cli -- kernel "$f" > /tmp/k.kernel && cargo run -p musa-cli -- kernel --check /tmp/k.kernel; done
-diff <(cargo run -p musa-cli -- kernel examples/canon.musa --normalized) examples/kernel/canon.normal.kernel
+for f in examples/*.musa; do cargo run -p musa -- kernel "$f" > /tmp/k.kernel && cargo run -p musa -- kernel --check /tmp/k.kernel; done
+diff <(cargo run -p musa -- kernel examples/canon.musa --normalized) examples/kernel/canon.normal.kernel
 grep -L "Status: candidate" docs/kernel/10-term-calculus.md
 ```
 

@@ -67,7 +67,7 @@ phase-2 constructs.
 shape. Check whether `CompileOptions` still earns its existence: it is currently empty of everything except the switch
 being deleted, and prompt 05's comment says defaults live inside. If nothing is left, delete the parameter too and let
 `compile(source)` be the signature — a parameter every caller passes the same value to is a parameter that belongs
-inside (PoSD ch. 4; the module-design rule "put defaults inside"). Update `musa-project`, `musa-cli`, and the tests
+inside (PoSD ch. 4; the module-design rule "put defaults inside"). Update `musa-project`, `musa`, and the tests
 accordingly. If prompt 36's work has put a real option in it, keep it and say so.
 
 ### What replaces the safety net
@@ -92,7 +92,7 @@ List them in "Repairs made while implementing".
 - `crates/musa-compiler/src/resolve.rs` (new, from `lower.rs`), `lower.rs` deleted entirely at step 2.
 - `crates/musa-compiler/src/compile.rs`: `Elaboration` gone; `CompileOptions` gone if empty.
 - `crates/musa-compiler/tests/elaboration.rs` deleted; `studio_laws.rs` updated; any coverage gap closed first.
-- `crates/musa-project`, `crates/musa-cli`: call-site updates.
+- `crates/musa-project`, `crates/musa`: call-site updates.
 - `docs/kernel/06-surface-elaboration.md`, `docs/prompts/README.md`, `musa-compiler` module docs.
 - `docs/kernel/09-performance.md`: this prompt's row.
 
@@ -103,7 +103,7 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject   # no golden changes
-for f in examples/*.musa; do cargo run -p musa-cli -- check "$f"; done
+for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
 grep -rn "Elaboration\|regression oracle\|lower_score\|lower_items" crates/ docs/kernel/ | wc -l   # 0
 cargo bench -p musa-compiler
 ```

@@ -125,10 +125,10 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-cargo run -p musa-cli -- check examples/graces.musa
+cargo run -p musa -- check examples/graces.musa
 # order matters — the two must differ:
-diff <(cargo run -q -p musa-cli -- kernel examples/graces.musa) \
-     <(cargo run -q -p musa-cli -- kernel examples/graces-reordered.musa) && exit 1
+diff <(cargo run -q -p musa -- kernel examples/graces.musa) \
+     <(cargo run -q -p musa -- kernel examples/graces-reordered.musa) && exit 1
 # notation is profile-independent, performance is not — the pair of tests
 # that say so, in the two crates that own the two halves:
 cargo nextest run -p musa-render --test graces -p musa-compiler --test graces

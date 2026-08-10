@@ -94,7 +94,7 @@ because a violation found by the gate is exactly the gate working.
 cargo nextest run -p musa-compiler
 cargo clippy --all-targets -p musa-compiler -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/tonal-construction.musa
+cargo run -p musa -- check examples/tonal-construction.musa
 ```
 
 Commit as `Prove the musical domains a conservative extension`.

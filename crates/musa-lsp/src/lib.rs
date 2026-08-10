@@ -3,7 +3,7 @@
 //! Owns: the LSP protocol over stdio, the document lifecycle (one
 //! [`ProjectSession`](musa_project::ProjectSession) per open URI), and the
 //! coordinate translation between the session's byte spans and LSP's UTF-16
-//! positions — and nothing else. It is a thin shell beside `musa-cli` and the
+//! positions — and nothing else. It is a thin shell beside `musa` and the
 //! desktop: every diagnostic, hover, definition, symbol, and fix is a
 //! restatement of the session's facts, and every rule of
 //! `docs/interface/03-interaction.md` §7 — the interface computes no musical

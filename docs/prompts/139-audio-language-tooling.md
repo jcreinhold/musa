@@ -62,7 +62,7 @@ cargo fmt --check
 cd editors/tree-sitter-musa && tree-sitter test
 git -C ../vscode-musa diff --check
 git -C ../zed-musa diff --check
-find examples -name '*.musa' -print0 | xargs -0 -n1 cargo run -q -p musa-cli -- check
+find examples -name '*.musa' -print0 | xargs -0 -n1 cargo run -q -p musa -- check
 ```
 
 Commit each affected repository intentionally and record cross-repository commit ids. Commit Musa as

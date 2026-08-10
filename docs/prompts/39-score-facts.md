@@ -134,7 +134,7 @@ cargo nextest run -p musa-compiler -p musa-render -p musa-project
 cargo clippy --all-targets -p musa-compiler -- -D warnings
 cargo fmt --check
 cargo insta test -p musa-compiler -p musa-render --unreferenced=reject   # no golden may change
-for f in examples/*.musa; do cargo run -p musa-cli -- check "$f"; done
+for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
 cargo bench -p musa-compiler   # append the row to docs/kernel/09-performance.md
 grep -rn "struct Marks\|fn retie" crates/ | wc -l   # 0
 ```

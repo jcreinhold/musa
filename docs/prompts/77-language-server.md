@@ -30,7 +30,7 @@ through provenance, outline symbols, certain fixes, semantic tokens, and complet
 
 ### A third shell
 
-`crates/musa-lsp`, a thin shell beside `musa-cli` and the desktop: the dependency direction becomes
+`crates/musa-lsp`, a thin shell beside `musa` and the desktop: the dependency direction becomes
 `project → {cli, desktop, lsp}`. Repair roadmap §15 with a §15.11 entry in the same commit, naming the crate and its
 dependency list: `musa-project`, `musa-language`, `lsp-server`, `lsp-types`.
 

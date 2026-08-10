@@ -2306,6 +2306,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "musa"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "miette",
+ "musa-project",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "musa-audio"
 version = "0.1.0"
 dependencies = [
@@ -2313,16 +2323,6 @@ dependencies = [
  "hound",
  "insta",
  "musa-compiler",
- "thiserror 2.0.20",
-]
-
-[[package]]
-name = "musa-cli"
-version = "0.1.0"
-dependencies = [
- "insta",
- "miette",
- "musa-project",
  "thiserror 2.0.20",
 ]
 

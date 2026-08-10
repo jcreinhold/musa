@@ -1,7 +1,7 @@
 # CLI
 
-`musa` is a thin command line over the project session. Build it with `cargo build -p musa-cli`, or run it as
-`cargo run -p musa-cli -- <command>`.
+`musa` is a thin command line over the project session. Build it with `cargo build -p musa`, or run it as
+`cargo run -p musa -- <command>`.
 
 ## Commands
 

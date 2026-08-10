@@ -56,7 +56,7 @@ surface library or plural declaration set.
 cargo nextest run -p musa-kernel -p musa-language -p musa-compiler -p musa-project -p musa-lsp
 cargo clippy --all-targets -p musa-kernel -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
-for f in examples/kernel/*.musa.kernel; do cargo run -q -p musa-cli -- check "$f"; done
+for f in examples/kernel/*.musa.kernel; do cargo run -q -p musa -- check "$f"; done
 cd editors/tree-sitter-musa && tree-sitter test
 cd apps/musa-desktop/ui && npm test
 ```

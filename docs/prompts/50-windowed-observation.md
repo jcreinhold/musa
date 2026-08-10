@@ -102,7 +102,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo bench -p musa-compiler
 cd apps/musa-desktop/ui && npm test          # B1/B2 assertions on both fixtures
-cargo run -p musa-cli -- render tests/fixtures/large-score.musa --to mei -o /tmp/large.mei
+cargo run -p musa -- render tests/fixtures/large-score.musa --to mei -o /tmp/large.mei
 ```
 
 Commit as `Add windowed observation` or `Record that windowed observation is not needed`, whichever the measurement

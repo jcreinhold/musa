@@ -51,7 +51,7 @@ Write the MEI backend: deterministic MEI XML generation from a `NotationPlan` wi
 ## Target
 
 - `musa-render`: MEI writer + `render_notation` facade with `NotationTarget::Mei`.
-- `musa-cli`: `render --to mei`.
+- `musa`: `render --to mei`.
 - Tests: insta snapshots for all three examples; a well-formedness check parsing the output back with quick-xml; a test
   asserting every note/layer id in the MEI resolves to an `EventId` present in the snapshot; MEI schema validation if a
   lightweight validator is practical (§17.4), otherwise a tracked note in the module docs.
@@ -61,10 +61,10 @@ Write the MEI backend: deterministic MEI XML generation from a `NotationPlan` wi
 ## Check
 
 ```sh
-cargo nextest run -p musa-render -p musa-cli
-cargo clippy --all-targets -p musa-render -p musa-cli -- -D warnings
+cargo nextest run -p musa-render -p musa
+cargo clippy --all-targets -p musa-render -p musa -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- render examples/glass-mountain.musa --to mei -o /tmp/gm.mei
+cargo run -p musa -- render examples/glass-mountain.musa --to mei -o /tmp/gm.mei
 grep -c 'xml:id="event-' /tmp/gm.mei   # non-zero, matches snapshot event count
 ```
 

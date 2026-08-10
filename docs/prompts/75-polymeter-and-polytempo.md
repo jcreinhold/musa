@@ -134,8 +134,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd apps/musa-desktop/ui && npx pnpm run test:unit
-cargo run -p musa-cli -- check examples/bulgarian.musa
-cargo run -p musa-cli -- render examples/bulgarian.musa --to musicxml -o /dev/stdout | grep -c '<time>'   # 2
+cargo run -p musa -- check examples/bulgarian.musa
+cargo run -p musa -- render examples/bulgarian.musa --to musicxml -o /dev/stdout | grep -c '<time>'   # 2
 cargo bench -p musa-compiler        # per-scope BarLines must not regress P1-P3
                                     # measured: P1 large 2.29 ms, P2 2.01 ms, P3 241 µs — `large-score.musa`
                                     # declares no part meter, so `part_meters` is empty and the checks take

@@ -183,7 +183,7 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 UPDATE_KERNEL_GOLDENS=1 cargo test -p musa-compiler
-for f in examples/*.musa examples/album/pieces/*.musa; do cargo run -p musa-cli -- check "$f"; done
+for f in examples/*.musa examples/album/pieces/*.musa; do cargo run -p musa -- check "$f"; done
 ```
 
 New laws: a `|`-bar's `BarStmt::name()` is `None` **by tree shape**, over generated sources; `| a | b` does not trip

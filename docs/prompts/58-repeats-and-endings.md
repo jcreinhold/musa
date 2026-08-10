@@ -154,8 +154,8 @@ container of bars, and the one-line rule is about bars.
 cargo nextest run -p musa-language -p musa-compiler -p musa-render
 cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-render -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- render examples/repeats.musa --to mei -o -    # one body, |: :|, two endings
-cargo run -p musa-cli -- render examples/repeats.musa --to midi        # every pass, as before
+cargo run -p musa -- render examples/repeats.musa --to mei -o -    # one body, |: :|, two endings
+cargo run -p musa -- render examples/repeats.musa --to midi        # every pass, as before
 ```
 
 The performance must be byte-identical to what it is today for every existing fixture. A repeat that sounds different

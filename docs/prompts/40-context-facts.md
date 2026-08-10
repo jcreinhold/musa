@@ -99,8 +99,8 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test -p musa-render --unreferenced=reject     # backend goldens unchanged
-for f in examples/*.musa; do cargo run -p musa-cli -- check "$f"; done
-cargo run -p musa-cli -- render examples/annotated.musa --to mei -o /tmp/a.mei
+for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
+cargo run -p musa -- render examples/annotated.musa --to mei -o /tmp/a.mei
 cargo bench -p musa-compiler
 grep -n "piece_extent" crates/musa-compiler/src/*.rs | wc -l   # 0
 ```

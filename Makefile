@@ -57,17 +57,17 @@ stop: ## Stop a running desktop app or UI dev server, however it was started
 
 .PHONY: check-file
 check-file: ## Compile one .musa file and print its diagnostics (FILE=...)
-	$(CARGO) run -q -p musa-cli -- check $(FILE)
+	$(CARGO) run -q -p musa -- check $(FILE)
 
 .PHONY: render
 render: ## Render FILE to TO (wav|midi|mei|lilypond|musicxml|performance|plan) at OUT
 	@mkdir -p $(dir $(OUT))
-	$(CARGO) run -q -p musa-cli -- render $(FILE) --to $(TO) -o $(OUT)
+	$(CARGO) run -q -p musa -- render $(FILE) --to $(TO) -o $(OUT)
 	@echo "wrote $(OUT)"
 
 .PHONY: play
 play: ## Play FILE through the audio engine
-	$(CARGO) run -q -p musa-cli -- play $(FILE)
+	$(CARGO) run -q -p musa -- play $(FILE)
 
 ## ---------------------------------------------------------------- building --
 

@@ -340,7 +340,7 @@ does. Step 3 asks which stage costs, and this prompt added the split that answer
 **The answer is engraving, and it is not close.** 191 of the 193 milliseconds that are not the debounce are Verovio
 laying out 100 bars and the browser painting it. The harness stubs the shell (`tests/screens/shell.ts`), so the compiler
 contributes *nothing* to that 373 ms — and its real contribution is known independently: P1 large is **1.87 ms**, and a
-full parse → compile → MEI export of the same fixture through `musa-cli` is ~10 ms wall including process start.
+full parse → compile → MEI export of the same fixture through `musa` is ~10 ms wall including process start.
 
 **Therefore no lazy evaluator.** A perfect one — evaluation reduced to zero — would take B2 from 373 ms to 371 ms. That
 is 0.5% of a budget that needs 7% to be comfortable, bought with a second evaluation path, a second projection path, and

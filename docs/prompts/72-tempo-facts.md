@@ -103,8 +103,8 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-cargo run -p musa-cli -- render examples/tempo-changes.musa --to midi -o /tmp/t.mid
-cargo run -p musa-cli -- render examples/tempo-changes.musa --to lilypond -o /tmp/t.ly
+cargo run -p musa -- render examples/tempo-changes.musa --to midi -o /tmp/t.mid
+cargo run -p musa -- render examples/tempo-changes.musa --to lilypond -o /tmp/t.ly
 grep -c '\\tempo' /tmp/t.ly                                                        # 3
 grep -rn "TempoMap" crates --include="*.rs" | grep -v IntegratedTempoMap | wc -l    # 0
 ```
@@ -155,7 +155,7 @@ Commit as `Make the tempo marking a fact`.
    as performance does, rather than the page's. A piece may now state no metronome mark at all, and the transport
    readout still has a speed to show. Where the markings fall is the notation plan's business.
 
-8. **The Check's `grep -c` needed a file.** `musa-cli render` writes to a path, not to stdout, so the line was
+8. **The Check's `grep -c` needed a file.** `musa render` writes to a path, not to stdout, so the line was
    repaired to render to `/tmp/t.ly` and grep that. It reports 3, as the prompt says.
 
 9. **`curve_laws.rs`'s out-of-range test is gone, and two laws replaced it.** With no coordinate to write, "the piece

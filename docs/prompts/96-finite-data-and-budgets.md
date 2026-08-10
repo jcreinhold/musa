@@ -52,7 +52,7 @@ cargo nextest run -p musa-compiler -p musa-project
 cargo clippy --all-targets -p musa-compiler -p musa-project -- -D warnings
 cargo fmt --check
 cargo bench -p musa-compiler
-for f in examples/*.musa; do cargo run -q -p musa-cli -- check "$f"; done
+for f in examples/*.musa; do cargo run -q -p musa -- check "$f"; done
 ```
 
 Commit as `Add finite folds and elaboration budgets`.

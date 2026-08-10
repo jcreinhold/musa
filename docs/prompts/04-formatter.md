@@ -38,7 +38,7 @@ preserves comments predictably.
   their line). Whatever rules you choose, encode them as insta snapshots so review is textual.
 - `TextEdit` is a simple `(TextRange, String)` replacement type; `apply_edits` is a small utility now, load-bearing for
   score-editing in prompt 16.
-- `musa-cli` gains real argument handling (hand-rolled or `clap` — if `clap`, add it and update `deny.toml` review in
+- `musa` gains real argument handling (hand-rolled or `clap` — if `clap`, add it and update `deny.toml` review in
   the same commit):
   - `musa format <file>` — rewrite in place, or `--check` to exit non-zero on diff.
   - `musa check <file>` — lex + parse, print diagnostics with `miette` (roadmap §10.4), exit non-zero on errors.
@@ -48,7 +48,7 @@ preserves comments predictably.
 ## Target
 
 - `musa-language`: `format`, `FormattedSource`, `apply_edits`, `TextEdit`.
-- `musa-cli`: `format` and `check` subcommands calling `musa_language` directly for now (the project-session indirection
+- `musa`: `format` and `check` subcommands calling `musa_language` directly for now (the project-session indirection
   arrives in prompt 14 — per roadmap §15.8 the CLI must not recreate orchestration, but at this stage there is no
   orchestration to reuse; keep the call sites one-liners so the swap is trivial).
 - Tests: idempotence `format(format(x)) == format(x)` and semantic preservation `parse(format(parse(x)))` equals
@@ -59,12 +59,12 @@ preserves comments predictably.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-cli
-cargo clippy --all-targets -p musa-language -p musa-cli -- -D warnings
+cargo nextest run -p musa-language -p musa
+cargo clippy --all-targets -p musa-language -p musa -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- format --check examples/glass-mountain.musa
-cargo run -p musa-cli -- format examples/invention.musa && git diff --exit-code examples/  # formats to itself
-printf 'piece "x" { score { part p { voice v { c5 1/4 } } } }' > /tmp/bad.musa && cargo run -p musa-cli -- check /tmp/bad.musa  # exits non-zero, diagnostic points at the missing ';'
+cargo run -p musa -- format --check examples/glass-mountain.musa
+cargo run -p musa -- format examples/invention.musa && git diff --exit-code examples/  # formats to itself
+printf 'piece "x" { score { part p { voice v { c5 1/4 } } } }' > /tmp/bad.musa && cargo run -p musa -- check /tmp/bad.musa  # exits non-zero, diagnostic points at the missing ';'
 ```
 
 Commit as `Add formatter and CLI format/check commands`.

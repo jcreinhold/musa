@@ -38,7 +38,7 @@ them drift silently.
 | `crates/musa-audio` | studio graph spec→render-plan compiler, processors, offline rendering |
 | `crates/musa-engine` | CPAL stream, transport, real-time queues, MIDI input |
 | `crates/musa-project` | ProjectSession facade: documents, revisions, commands, exports |
-| `crates/musa-cli` | thin CLI over musa-project |
+| `crates/musa` | thin CLI over musa-project, installed as the `musa` binary |
 | `crates/musa-lsp` | thin language server (LSP) over musa-project + musa-language |
 | `apps/musa-desktop` | thin Tauri shell + Svelte UI over musa-project |
 | `editors/tree-sitter-musa` | tree-sitter grammar + editor queries, held to the real lexer by the drift law |

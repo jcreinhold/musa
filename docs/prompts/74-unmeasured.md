@@ -107,10 +107,10 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npx pnpm run test:unit
-cargo run -p musa-cli -- check examples/cadenza.musa
-cargo run -p musa-cli -- render examples/chant.musa --to lilypond -o - | grep -c cadenzaOn   # 1
+cargo run -p musa -- check examples/cadenza.musa
+cargo run -p musa -- render examples/chant.musa --to lilypond -o - | grep -c cadenzaOn   # 1
 # the cadenza is measure 5, and the movement resumes at 6:
-cargo run -p musa-cli -- render examples/cadenza.musa --to musicxml -o - | grep -c 'number="6"'
+cargo run -p musa -- render examples/cadenza.musa --to musicxml -o - | grep -c 'number="6"'
 ```
 
 Commit as `Add unmeasured music`.

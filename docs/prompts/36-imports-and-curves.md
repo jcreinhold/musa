@@ -99,8 +99,8 @@ dynamic curves over time) flowing from source through the integrated tempo map t
 cargo nextest run -p musa-language -p musa-compiler -p musa-render -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/album/pieces/01-opening.musa
-cargo run -p musa-cli -- render examples/album/pieces/01-opening.musa --to wav -o /tmp/opening.wav
+cargo run -p musa -- check examples/album/pieces/01-opening.musa
+cargo run -p musa -- render examples/album/pieces/01-opening.musa --to wav -o /tmp/opening.wav
 ```
 
 Commit as `Add relative imports and tempo/expression curves`.

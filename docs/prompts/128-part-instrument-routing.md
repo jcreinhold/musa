@@ -50,7 +50,7 @@ cargo nextest run -p musa-compiler -p musa-audio -p musa-engine -p musa-project
 cargo clippy --all-targets -p musa-compiler -p musa-audio -p musa-engine -p musa-project -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-cargo run -p musa-cli -- render tests/fixtures/audio-bridge.musa --to wav -o /tmp/musa-routing.wav
+cargo run -p musa -- render tests/fixtures/audio-bridge.musa --to wav -o /tmp/musa-routing.wav
 ```
 
 Commit as `Route each part to its own instrument`.

@@ -69,8 +69,8 @@ chord class.
 cargo nextest run -p musa-compiler -p musa-render
 cargo clippy --all-targets -p musa-compiler -p musa-render -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/neo-riemannian.musa
-cargo run -p musa-cli -- render examples/neo-riemannian.musa --to mei -o /tmp/neo-riemannian.mei
+cargo run -p musa -- check examples/neo-riemannian.musa
+cargo run -p musa -- render examples/neo-riemannian.musa --to mei -o /tmp/neo-riemannian.mei
 ```
 
 Commit as `Add the transformational harmony library`.

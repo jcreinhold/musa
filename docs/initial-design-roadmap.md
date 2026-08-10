@@ -117,28 +117,28 @@ For example, a written A4 can be:
 Representing all of those as “MIDI note 69” would make the easy representation the central abstraction and discard the
 actual musical information.
 
-Position varies the same way. A repeated passage is written at one place and played at several, so measure 4 on the
-page and the fourth measure heard are different questions with different answers (§7.2). Every notated position musa
-computes — measure numbers, where a tempo mark or a barline goes — is counted on the page; every performed position is
-counted in the timeline; and the one place they meet is the fold in §12.1.
+Position varies the same way. A repeated passage is written at one place and played at several, so measure 4 on the page
+and the fourth measure heard are different questions with different answers (§7.2). Every notated position musa computes
+— measure numbers, where a tempo mark or a barline goes — is counted on the page; every performed position is counted in
+the timeline; and the one place they meet is the fold in §12.1.
 
 Duration varies the same way, and until prompt 69 nothing in musa used that row. A **groove** is its first
-implementation: a written pair of eighths that sounds long-short, a house bass a sixty-fourth ahead of the offbeat.
-The groove lives in the performance profile as a `Beat → Beat` warp composed *before* the tempo map — beats rather
-than seconds, so a shuffle does not straighten out when the band speeds up — and it never reaches notation, because
-there is no swung notation to draw. The asymmetry between `musa render --to midi --mode score` and `--mode
-performance` is this row working: the same plan, read once as a page and once as a performance.
+implementation: a written pair of eighths that sounds long-short, a house bass a sixty-fourth ahead of the offbeat. The
+groove lives in the performance profile as a `Beat → Beat` warp composed *before* the tempo map — beats rather than
+seconds, so a shuffle does not straighten out when the band speeds up — and it never reaches notation, because there is
+no swung notation to draw. The asymmetry between `musa render --to midi --mode score` and `--mode performance` is this
+row working: the same plan, read once as a page and once as a performance.
 
 The **grace note** (prompt 71) is where the row is not a refinement but the whole thing. A grace has *no* notated
 duration — it is a point in the timeline, start equal to end — so there is no written value for a performed value to
 differ from, and the performed one has to be taken out of a neighbour. Which neighbour is a question Baroque and
-Romantic practice answer differently: on the beat, delaying the principal, or ahead of it, leaving the principal
-where the bar puts it. Both are correct readings of one page.
+Romantic practice answer differently: on the beat, delaying the principal, or ahead of it, leaving the principal where
+the bar puts it. Both are correct readings of one page.
 
 `MusicXML` settles it in the file, with `steal-time-previous="50"` on the grace note. That is the collapse this table
 exists to prevent, and it is instructive because it looks so reasonable: the format needed *a* number, so the editor
-supplies one, and from then on every performer inherits one person's reading as though it were the composer's text.
-musa writes the grace note and nothing else, and puts `steal` and `from` in the interpretation profile — so the same
+supplies one, and from then on every performer inherits one person's reading as though it were the composer's text. musa
+writes the grace note and nothing else, and puts `steal` and `from` in the interpretation profile — so the same
 `examples/graces.musa` engraves byte-identically under two profiles and performs two different ways, which is exactly
 what "notated duration ≠ performed duration" asserts.
 
@@ -591,9 +591,9 @@ Likewise, `p` is a symbolic dynamic relationship. It is not globally equivalent 
 value.
 
 > **Candidate refinement:** the editable/interchange representation before physical scheduling is an exact
-> `GestureTimeline[InstrumentSignature]`, not the frame/`f32` event enum sketched above. A named profile interprets marks
-> into semantic controls such as expression, emphasis, separation, brightness, sustain, and phrase grouping. Tempo,
-> tuning, frame rounding, and instrument-private DSP conversion occur during one later preparation operation. See
+> `GestureTimeline[InstrumentSignature]`, not the frame/`f32` event enum sketched above. A named profile interprets
+> marks into semantic controls such as expression, emphasis, separation, brightness, sustain, and phrase grouping.
+> Tempo, tuning, frame rounding, and instrument-private DSP conversion occur during one later preparation operation. See
 > `docs/language/08-performance-and-sound.md`. Until implemented, the enum above describes the current boundary.
 
 ## 6.5 Studio representation
@@ -623,8 +623,8 @@ The studio does not inspect notes, measures, or slurs directly. It receives perf
 
 > **Candidate refinement:** the narrow bridge is typed instrument behavior, not `DynamicLane → ParameterId`. A stable
 > semantic `ControlKey` resolves privately to graph/sample-engine targets, every lane retains `PartId`, and a profile
-> never addresses a patch node. Instrument declarations expose signatures and hide native graphs or sample maps;
-> part signals alone enter the mix. The studio describes the instrument and room of the work, not recording edits or a
+> never addresses a patch node. Instrument declarations expose signatures and hide native graphs or sample maps; part
+> signals alone enter the mix. The studio describes the instrument and room of the work, not recording edits or a
 > mastering suite. This replaces the bridge sketch only if prompt 142 graduates the candidate.
 
 ---
@@ -743,8 +743,8 @@ Inside a `voice` or `motif`, items occur sequentially unless an explicit paralle
 
 ### Bars are written down, and checked
 
-A run of events may be enclosed in a bar, which asserts that it fills one measure of the prevailing meter. A `|`
-draws the barline the way notation draws it, and a bar that has earned a name says so with the keyword:
+A run of events may be enclosed in a bar, which asserts that it fills one measure of the prevailing meter. A `|` draws
+the barline the way notation draws it, and a bar that has earned a name says so with the keyword:
 
 ```text
 | c5/4 e5/4 g5/4 e5/4
@@ -781,25 +781,25 @@ bar quoting itself, and both are refused. Recursion stays impossible without a c
 the `at` form is a fixpoint. The composer is already writing at a place in the voice — say the thing where it happens.
 The `meter` in the header is the same statement, and means "from the beginning".
 
-A meter written in one voice is the *piece's* meter from that point. A voice that keeps its own is polymeter, which is
-a different feature with a different inheritance rule.
+A meter written in one voice is the *piece's* meter from that point. A voice that keeps its own is polymeter, which is a
+different feature with a different inheritance rule.
 
 Two rules keep the coordinate system well-formed, and both are refusals rather than repairs:
 
 - **A change must land on a barline.** Otherwise the measure it starts is neither length, `BarLines::at` and
   `BarLines::time_of` stop being inverses, and the engraver would have to invent a bar nobody wrote.
-- **A change may not be written inside material.** A motif body is elaborated once and can stand at several places, so
-  a meter written inside one would be in force at places that have nothing to do with each other (§2: motif definition
-  ≠ its expansions). This is the same reason a bar checks only its own total: inside a motif the absolute position is
+- **A change may not be written inside material.** A motif body is elaborated once and can stand at several places, so a
+  meter written inside one would be in force at places that have nothing to do with each other (§2: motif definition ≠
+  its expansions). This is the same reason a bar checks only its own total: inside a motif the absolute position is
   unknowable, and a meter change is nothing but an absolute position. An *unnamed* `bar { … }` written among a voice's
   own items is not material: it is played once, at one place, so a context change inside it is at that place. A named
   bar can be answered from another voice, which makes it material like a motif.
 
-Irregular bar lengths follow from this — `meter 5/4; bar { … } meter 4/4;` is a 5/4 bar — and the sugar
-`bar 5/4 { … }` is not accepted, because it would be sugar for the two statements above and nothing else. Pickups are
-still not accepted, and the reason is no longer the meter: a pickup is an **uncounted** measure, so it is a question
-about measure *numbering* — `\partial`, `<measure implicit="yes">`, `@metcon="false"` — and musa has no way to say a
-measure is not counted. Writing one as a short first bar would number it 1 and every measure after it one too high.
+Irregular bar lengths follow from this — `meter 5/4; bar { … } meter 4/4;` is a 5/4 bar — and the sugar `bar 5/4 { … }`
+is not accepted, because it would be sugar for the two statements above and nothing else. Pickups are still not
+accepted, and the reason is no longer the meter: a pickup is an **uncounted** measure, so it is a question about measure
+*numbering* — `\partial`, `<measure implicit="yes">`, `@metcon="false"` — and musa has no way to say a measure is not
+counted. Writing one as a short first bar would number it 1 and every measure after it one too high.
 
 ### The key and the clef change the same way, and only one of them at a barline
 
@@ -809,8 +809,8 @@ The two differ in every other respect, and the differences are the design:
 - **A key is the piece's.** A modulation written in one voice is the piece's modulation. Which key a *part* reads is
   then a question of inheritance — the latest fact wins, whatever scope wrote it — so a part that opened in its own key
   keeps it until the piece says otherwise and follows the piece from there.
-- **A clef is the part's.** No key or meter written elsewhere reaches it, because the reader whose hand changes staff
-  is one player.
+- **A clef is the part's.** No key or meter written elsewhere reaches it, because the reader whose hand changes staff is
+  one player.
 - **A key change must land on a barline; a clef change need not.** A key signature is printed at a barline, so a
   modulation a third of the way through a measure is a page nobody can engrave. A clef change mid-measure is ordinary
   notation and every backend writes one: the engraver draws a small clef before the note it affects. This is the only
@@ -836,15 +836,15 @@ repeat 2 {
 Pass *k* plays the body, then ending *k*. Endings come last, numbered from 1, and there may not be more of them than
 there are passes. Fewer is allowed: the last ending covers the rest, which is what `1.–3.` on a volta bracket means.
 
-The timeline holds every pass — nothing about playback, WAV export, or the semantic hash changes because a repeat is
-now engraved. Alongside the notes, the repeat states on the timeline that it is one, and §12.1 reads that statement to
-fold the page. Folding is where *notated position ≠ performed position* joins the layer table in §2: measure numbers,
-positioned marks, and barlines are all counted in the notated time the fold produces, and the fold is confined to
-§12.1 so that nothing downstream has two clocks to reconcile.
+The timeline holds every pass — nothing about playback, WAV export, or the semantic hash changes because a repeat is now
+engraved. Alongside the notes, the repeat states on the timeline that it is one, and §12.1 reads that statement to fold
+the page. Folding is where *notated position ≠ performed position* joins the layer table in §2: measure numbers,
+positioned marks, and barlines are all counted in the notated time the fold produces, and the fold is confined to §12.1
+so that nothing downstream has two clocks to reconcile.
 
-Repeat barlines cross the whole system, so a repeat only folds when every voice sounding under it writes the same one.
-A repeat one voice states and another does not is written out on the page — what musa did before repeats were
-notation — and the composer is told why.
+Repeat barlines cross the whole system, so a repeat only folds when every voice sounding under it writes the same one. A
+repeat one voice states and another does not is written out on the page — what musa did before repeats were notation —
+and the composer is told why.
 
 Nested repeats, and `D.C.`, `D.S.`, `Fine`, `Coda`, and segno, are not accepted. The jump-family is a table over the
 whole piece rather than a bracket over a passage, and it belongs with the form model.
@@ -1233,10 +1233,10 @@ pub fn compile(
 > projection of them. Where this roadmap and the course correction disagree on semantic architecture, the course
 > correction wins; everything else in this document stands.
 
-> **Language candidate (prompt 92):** prompts 93–123 refine the private elaboration/HIR stages to a total value calculus,
-> contextual `music`, structural declaration templates, and typed kernel quotation. They still terminate in one closed
-> `Term[ScoreFact]` before kernel evaluation. Prompts 124–141 refine the downstream path to exact gestures and typed
-> instrument preparation. No intermediate type named by that candidate is thereby a public crate API.
+> **Language candidate (prompt 92):** prompts 93–123 refine the private elaboration/HIR stages to a total value
+> calculus, contextual `music`, structural declaration templates, and typed kernel quotation. They still terminate in
+> one closed `Term[ScoreFact]` before kernel evaluation. Prompts 124–141 refine the downstream path to exact gestures
+> and typed instrument preparation. No intermediate type named by that candidate is thereby a public crate API.
 
 Intermediate pass types should remain private unless another crate has a real semantic need for them.
 
@@ -1490,9 +1490,8 @@ master output
 
 The candidate refines the two middle arrows as
 `Timeline[ScoreFact] → GestureTimeline[Signature] → ScheduledGestureLane → Signal`; score marks remain symbolic,
-profiles choose their reading, and instruments implement typed controls privately. Physical frames and DSP floats
-appear at one late preparation boundary. This is a candidate contract, not permission to put signals or seconds in the
-kernel.
+profiles choose their reading, and instruments implement typed controls privately. Physical frames and DSP floats appear
+at one late preparation boundary. This is a candidate contract, not permission to put signals or seconds in the kernel.
 
 Use CPAL for cross-platform audio-device and stream access. It exposes device enumeration, supported configurations, and
 audio streams without dictating the synthesis architecture. citeturn797105search0
@@ -1916,7 +1915,7 @@ musa/
 │   ├── musa-audio/
 │   ├── musa-engine/
 │   ├── musa-project/
-│   └── musa-cli/
+│   └── musa/
 ├── apps/
 │   └── musa-desktop/
 │       ├── src-tauri/
@@ -1959,8 +1958,8 @@ In particular:
 - audio does not depend on the GUI;
 - render does not know about source-editor widgets;
 - the frontend does not know about CPAL or FunDSP;
-- the language server is the one shell with a second edge, to `musa-language` (§15.11): highlighting and completion
-  must answer on half-typed source, which the session's facts — the last *valid* compile's — cannot describe.
+- the language server is the one shell with a second edge, to `musa-language` (§15.11): highlighting and completion must
+  answer on half-typed source, which the session's facts — the last *valid* compile's — cannot describe.
 
 ## 15.2 `musa-language`
 
@@ -2203,7 +2202,7 @@ impl ProjectSession {
 This interface hides the fact that one user command may trigger parsing, compilation, score rendering, and playback-plan
 rebuilding.
 
-## 15.8 `musa-cli`
+## 15.8 `musa`
 
 Commands:
 
@@ -2217,6 +2216,10 @@ musa play piece.musa
 ```
 
 The CLI must call `musa-project` or other public facades. It should not recreate compiler orchestration.
+
+The package is named `musa`, not `musa-cli`, because the package name is the binary name and the binary name is the word
+a person types. `cargo install musa` then `musa check piece.musa` — one word throughout. It is the one crate in the
+workspace whose name is not `musa-<layer>`, because it is the one crate whose name is a user interface.
 
 ## 15.9 `musa-desktop`
 
@@ -2249,9 +2252,9 @@ only wall time cannot see the thing most likely to regress.
 ## 15.11 `musa-lsp`
 
 A language server over stdio: the shell that makes the language usable in any LSP-speaking editor. Deliberately thin,
-exactly as `musa-cli` is — it owns the protocol and the coordinate translation (byte spans ↔ UTF-16 ranges, via
-`musa-project`'s `Utf16Offsets`), and no musical knowledge. Diagnostics, hover, definition, symbols, and quick fixes
-are restatements of the session's facts (prompts 39, 56); the server computes nothing the interface rules of
+exactly as `musa` is — it owns the protocol and the coordinate translation (byte spans ↔ UTF-16 ranges, via
+`musa-project`'s `Utf16Offsets`), and no musical knowledge. Diagnostics, hover, definition, symbols, and quick fixes are
+restatements of the session's facts (prompts 39, 56); the server computes nothing the interface rules of
 `docs/interface/03-interaction.md` §7 forbid a frontend to compute.
 
 Dependencies:
@@ -2274,11 +2277,11 @@ real lexer in-process and uses it. Formatting likewise calls `musa-language`'s f
 request never lands in the session's undo history.
 
 The protocol crates are `lsp-server` and `lsp-types`: synchronous, so one main loop owns the sessions, matching the
-session's single-threaded construction — no async runtime, and no `Send` requirement on a session type that holds a
-CPAL stream. `Connection::memory()` drives the whole server in-process in tests.
+session's single-threaded construction — no async runtime, and no `Send` requirement on a session type that holds a CPAL
+stream. `Connection::memory()` drives the whole server in-process in tests.
 
-The server never opens the audio device, never writes to disk, and never edits the source itself; every edit it
-proposes travels as a workspace edit for the client to apply.
+The server never opens the audio device, never writes to disk, and never edits the source itself; every edit it proposes
+travels as a workspace edit for the client to apply.
 
 
 ---

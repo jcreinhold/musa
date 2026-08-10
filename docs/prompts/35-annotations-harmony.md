@@ -61,8 +61,8 @@ nothing. Per roadmap §8.2, harmony is annotation, not ontology.
 cargo nextest run -p musa-compiler -p musa-render
 cargo clippy --all-targets -p musa-compiler -p musa-render -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- render examples/annotated.musa --to mei -o /tmp/a.mei
-cargo run -p musa-cli -- render examples/annotated.musa --to musicxml -o /tmp/a.musicxml
+cargo run -p musa -- render examples/annotated.musa --to mei -o /tmp/a.mei
+cargo run -p musa -- render examples/annotated.musa --to musicxml -o /tmp/a.musicxml
 ```
 
 Commit as `Add phrase, form, and harmony annotations`.

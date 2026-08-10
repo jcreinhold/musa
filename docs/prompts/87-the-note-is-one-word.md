@@ -128,7 +128,7 @@ composer typed, and `score.rs`'s doc comment saying otherwise is amended in this
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-for f in examples/*.musa examples/album/pieces/*.musa; do cargo run -p musa-cli -- check "$f"; done
+for f in examples/*.musa examples/album/pieces/*.musa; do cargo run -p musa -- check "$f"; done
 ```
 
 New laws: every maximal-munch claim above, one case each; `c4/4` and `c4 1/4` elaborate to the same fact; `/4.` is

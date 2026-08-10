@@ -52,7 +52,7 @@ an edge format: the `NotationPlan` drives it, and no MusicXML convention enters 
 cargo nextest run -p musa-render -p musa-project
 cargo clippy --all-targets -p musa-render -p musa-project -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- render examples/counterpoint.musa --to musicxml -o /tmp/cp.musicxml
+cargo run -p musa -- render examples/counterpoint.musa --to musicxml -o /tmp/cp.musicxml
 # manual: open /tmp/cp.musicxml in two consumers, note results
 ```
 

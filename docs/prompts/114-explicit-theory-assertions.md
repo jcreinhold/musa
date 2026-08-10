@@ -58,7 +58,7 @@ in prompt 119 intentionally does not inherit surface assertions unless the asser
 cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
 cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/theory-assertions.musa
+cargo run -p musa -- check examples/theory-assertions.musa
 cd editors/tree-sitter-musa && tree-sitter test
 ```
 

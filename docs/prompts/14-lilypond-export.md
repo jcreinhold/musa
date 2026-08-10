@@ -39,17 +39,17 @@ shared `NotationPlan`, exposed as `musa render --to lilypond`.
 ## Target
 
 - `musa-render`: private `ly` module (document model + printer), `NotationTarget::LilyPond`.
-- `musa-cli`: `render --to lilypond`.
+- `musa`: `render --to lilypond`.
 - Tests: insta snapshots for all three examples; determinism test (render twice, byte equality); unit tests for duration
   spelling (dotted vs tied vs triplet-free rational values) and escaping.
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-render -p musa-cli
-cargo clippy --all-targets -p musa-render -p musa-cli -- -D warnings
+cargo nextest run -p musa-render -p musa
+cargo clippy --all-targets -p musa-render -p musa -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- render examples/counterpoint.musa --to lilypond -o /tmp/cp.ly
+cargo run -p musa -- render examples/counterpoint.musa --to lilypond -o /tmp/cp.ly
 # manual smoke (only if lilypond is installed):
 command -v lilypond >/dev/null && lilypond -o /tmp/cp /tmp/cp.ly
 ```

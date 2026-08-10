@@ -174,7 +174,7 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npm test
-for f in examples/*.musa; do cargo run -q -p musa-cli -- check "$f"; done
+for f in examples/*.musa; do cargo run -q -p musa -- check "$f"; done
 grep -rn "KeyMap\|MeterMap" crates apps --include="*.rs" | wc -l    # 0
 git diff --stat -- crates/*/tests/snapshots apps/musa-desktop/ui/fixtures   # empty
 git diff --stat -- examples/kernel/                                  # only pieces declaring a clef

@@ -58,8 +58,8 @@ buses, sends, and levels are visible and adjustable — as structured editors of
 cargo nextest run -p musa-audio -p musa-project
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/glass-mountain.musa   # no placeholder warnings
-cargo run -p musa-cli -- render examples/glass-mountain.musa --to wav -o /tmp/gm7.wav
+cargo run -p musa -- check examples/glass-mountain.musa   # no placeholder warnings
+cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm7.wav
 cd apps/musa-desktop && cargo tauri dev   # manual: Sound and Mix workspaces edit the piece audibly
 ```
 

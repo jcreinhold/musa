@@ -13,7 +13,7 @@ phase: 5
 Make `@musa/web` consumable the two ways the ecosystem actually consumes such libraries — an npm
 dependency for bundled apps, and one `<script src>` tag for everyone else — and prove both with real,
 committed example pages. Also ship the third mode MathJax users rely on: typesetting at *build time* for
-static sites, using `musa-cli` and Node, with zero wasm on the client.
+static sites, using `musa` and Node, with zero wasm on the client.
 
 ## Read
 

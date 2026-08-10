@@ -63,8 +63,8 @@ into a `StudioGraphSpec`. The bridge stays narrow: parts are assigned to patches
 cargo nextest run -p musa-language -p musa-compiler -p musa-audio
 cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-audio -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/glass-mountain.musa
-cargo run -p musa-cli -- render examples/glass-mountain.musa --to wav -o /tmp/gm5.wav
+cargo run -p musa -- check examples/glass-mountain.musa
+cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm5.wav
 ```
 
 Commit as `Add studio language and StudioSpec`.

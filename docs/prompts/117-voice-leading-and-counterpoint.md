@@ -54,11 +54,11 @@ counterexample. The assertion form preserves music on success; analysis findings
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-project -p musa-cli
-cargo clippy --all-targets -p musa-compiler -p musa-project -p musa-cli -- -D warnings
+cargo nextest run -p musa-compiler -p musa-project -p musa
+cargo clippy --all-targets -p musa-compiler -p musa-project -p musa -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- analyze examples/analysis/species-4.musa --kind counterpoint --format text
-cargo run -p musa-cli -- analyze examples/analysis/jazz-voice-leading.musa --kind voice-leading --format text
+cargo run -p musa -- analyze examples/analysis/species-4.musa --kind counterpoint --format text
+cargo run -p musa -- analyze examples/analysis/jazz-voice-leading.musa --kind voice-leading --format text
 cargo bench -p musa-compiler
 ```
 

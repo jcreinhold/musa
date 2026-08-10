@@ -108,9 +108,9 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npm test
-cargo run -p musa-cli -- check examples/changing-meter.musa
-cargo run -p musa-cli -- render examples/changing-meter.musa --to lilypond -o - | grep -c '\\time'   # 2 or more
-cargo run -p musa-cli -- check examples/broken/meter-mid-bar.musa
+cargo run -p musa -- check examples/changing-meter.musa
+cargo run -p musa -- render examples/changing-meter.musa --to lilypond -o - | grep -c '\\time'   # 2 or more
+cargo run -p musa -- check examples/broken/meter-mid-bar.musa
 git diff --stat -- crates/*/tests/snapshots    # the plan debug snapshots, see the repairs
 ```
 

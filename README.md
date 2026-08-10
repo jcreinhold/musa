@@ -65,7 +65,7 @@ make setup && make desktop
 The CLI underneath is `musa`:
 
 ```bash
-cargo run -p musa-cli -- render examples/glass-mountain.musa --to lilypond -o mountain.ly
+cargo run -p musa -- render examples/glass-mountain.musa --to lilypond -o mountain.ly
 ```
 
 For editor integration there is a language server: build it once (`cargo build -p musa-lsp`) and point any
@@ -94,7 +94,7 @@ language → compiler → { render, audio } → engine → project → { cli, ls
 | `musa-audio` | the studio graph, DSP processors, offline rendering |
 | `musa-engine` | audio device, transport, real-time queues, MIDI input |
 | `musa-project` | the session facade: documents, revisions, commands, exports |
-| `musa-cli`, `apps/musa-desktop`, `musa-lsp` | thin shells over `musa-project` |
+| `musa`, `apps/musa-desktop`, `musa-lsp` | thin shells over `musa-project` |
 | `editors/tree-sitter-musa` | tree-sitter grammar and editor queries; a second reader held honest by the lexer |
 
 Dependencies point one way only, and the boundaries are load-bearing: written pitch is not a MIDI number, notated

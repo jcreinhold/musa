@@ -78,7 +78,7 @@ table and it cannot drift from itself.
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- format --check examples/bulgarian.musa
+cargo run -p musa -- format --check examples/bulgarian.musa
 ```
 
 The two existing laws stay: `format_is_idempotent`, and `format_preserves_semantics` over the non-whitespace token

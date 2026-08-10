@@ -57,7 +57,7 @@ non-commutation of chromatic interval motion with scale stepping.
 cargo nextest run -p musa-language -p musa-compiler -p musa-lsp
 cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-lsp -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/scale-context.musa
+cargo run -p musa -- check examples/scale-context.musa
 cd editors/tree-sitter-musa && tree-sitter test
 cargo bench -p musa-compiler
 ```

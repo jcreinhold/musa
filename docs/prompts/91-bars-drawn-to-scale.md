@@ -141,7 +141,7 @@ arithmetic on a URI — is being made separately. **This prompt depends on it an
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- format --check examples/album/pieces/01-opening.musa
+cargo run -p musa -- format --check examples/album/pieces/01-opening.musa
 ```
 
 New laws:

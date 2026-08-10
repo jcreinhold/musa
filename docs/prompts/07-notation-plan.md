@@ -64,7 +64,7 @@ one source of truth and no backend assumption enters the compiler.
 cargo nextest run -p musa-render
 cargo clippy --all-targets -p musa-render -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- render examples/counterpoint.musa --to plan
+cargo run -p musa -- render examples/counterpoint.musa --to plan
 ```
 
 Commit as `Add backend-neutral notation plan`.

@@ -64,8 +64,8 @@ performance MIDI (interpreted) via `midly`.
 cargo nextest run -p musa-compiler -p musa-render -p musa-project
 cargo clippy --all-targets -p musa-compiler -p musa-render -p musa-project -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- render examples/profile-fixture.musa --to midi --mode performance -o /tmp/p.mid
-cargo run -p musa-cli -- render examples/glass-mountain.musa --to wav -o /tmp/gm4.wav
+cargo run -p musa -- render examples/profile-fixture.musa --to midi --mode performance -o /tmp/p.mid
+cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm4.wav
 cmp /tmp/gm4.wav /tmp/gm.wav   # no profile ⇒ unchanged audio
 ```
 

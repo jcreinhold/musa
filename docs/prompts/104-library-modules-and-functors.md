@@ -56,7 +56,7 @@ demonstrates why a bundle helps without making the module system a language insi
 cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-lsp
 cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/module-functor-study.musa
+cargo run -p musa -- check examples/module-functor-study.musa
 cd editors/tree-sitter-musa && tree-sitter test
 cargo bench -p musa-compiler
 ```

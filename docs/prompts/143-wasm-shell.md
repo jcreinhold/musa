@@ -12,7 +12,7 @@ phase: 5
 
 Create `crates/musa-wasm`, the shell crate that carries the whole semantic pipeline — parse, compile,
 notation plan, MEI render — into the browser as one small WebAssembly module. It is a shell like
-`musa-cli` and `musa-lsp`: it depends on `musa-compiler` and `musa-render`, never the reverse, and it
+`musa` and `musa-lsp`: it depends on `musa-compiler` and `musa-render`, never the reverse, and it
 adds no semantics of its own. Its only new work is translating `Diagnostic`s into a wasm-crossing data
 type and packaging the artifact the way post-wasm-pack tooling prescribes.
 

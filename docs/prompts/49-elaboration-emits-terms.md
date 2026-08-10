@@ -99,8 +99,8 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject   # only examples/kernel/ goldens change
-for f in examples/*.musa; do cargo run -p musa-cli -- check "$f"; done
-cargo run -p musa-cli -- kernel examples/canon.musa   # a let and two shifts, not a thousand occurrences
+for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
+cargo run -p musa -- kernel examples/canon.musa   # a let and two shifts, not a thousand occurrences
 cargo bench -p musa-compiler
 ```
 

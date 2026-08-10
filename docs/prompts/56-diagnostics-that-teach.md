@@ -125,7 +125,7 @@ run: `3 problems (2 errors, 1 warning)`.
 - `crates/musa-compiler`: `Diagnostic` as above; `Code`; a private `nearest` name-suggester; every `Diagnostic::error`
   / `warning` call site given a code and a labelled span, and a help line where one exists.
 - `crates/musa-project`: the restated `Diagnostic` with `Position` on every label; `explain(code)`.
-- `crates/musa-cli`: labels, help, note, and fixes rendered; `musa explain <code>`; the summary line; a non-zero exit
+- `crates/musa`: labels, help, note, and fixes rendered; `musa explain <code>`; the summary line; a non-zero exit
   that still prints the count.
 - `apps/musa-desktop`: the problems list shows `line:column`, the primary label, and — when a diagnostic carries exactly
   one fix — a control that applies it. Byte offsets leave the interface.
@@ -136,11 +136,11 @@ run: `3 problems (2 errors, 1 warning)`.
 ## Check
 
 ```sh
-cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa-cli
-cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa-cli -- -D warnings
+cargo nextest run -p musa-language -p musa-compiler -p musa-project -p musa
+cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-project -p musa -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/broken/missing-semicolon.musa   # renders with a fix
-cargo run -p musa-cli -- explain unknown-name
+cargo run -p musa -- check examples/broken/missing-semicolon.musa   # renders with a fix
+cargo run -p musa -- explain unknown-name
 npm --prefix apps/musa-desktop/ui run check && npm --prefix apps/musa-desktop/ui run test
 ```
 

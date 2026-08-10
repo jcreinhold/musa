@@ -68,10 +68,10 @@ lowering of plain voices (notes, rests, chords — no motifs yet) into an immuta
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-cli
-cargo clippy --all-targets -p musa-compiler -p musa-cli -- -D warnings
+cargo nextest run -p musa-compiler -p musa
+cargo clippy --all-targets -p musa-compiler -p musa -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/glass-mountain.musa examples/invention.musa examples/counterpoint.musa
+cargo run -p musa -- check examples/glass-mountain.musa examples/invention.musa examples/counterpoint.musa
 ```
 
 Commit as `Add compiler core with score snapshot and provenance`.

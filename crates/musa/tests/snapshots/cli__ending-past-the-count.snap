@@ -1,5 +1,5 @@
 ---
-source: crates/musa-cli/tests/cli.rs
+source: crates/musa/tests/cli.rs
 expression: "String::from_utf8_lossy(&output.stderr)"
 ---
 misplaced

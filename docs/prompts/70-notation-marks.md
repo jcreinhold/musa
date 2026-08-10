@@ -111,9 +111,9 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-cargo run -p musa-cli -- check examples/ornaments.musa
-cargo run -p musa-cli -- render examples/ornaments.musa --to mei && grep -c "trill\|mordent" examples/ornaments.mei
-cargo run -p musa-cli -- check examples/broken/span-mark-without-block.musa
+cargo run -p musa -- check examples/ornaments.musa
+cargo run -p musa -- render examples/ornaments.musa --to mei && grep -c "trill\|mordent" examples/ornaments.mei
+cargo run -p musa -- check examples/broken/span-mark-without-block.musa
 ```
 
 Commit as `Add the notation marks`.

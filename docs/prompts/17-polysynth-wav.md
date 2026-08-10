@@ -41,10 +41,10 @@ deterministic WAV file offline.
     ) -> RenderedAudio;   // interleaved f32 + sample rate
     ```
 
-- Where does orchestration live? `musa-cli`'s `render --to wav` currently must chain compile → lower_performance →
+- Where does orchestration live? `musa`'s `render --to wav` currently must chain compile → lower_performance →
   compile_graph → render_offline. That chain is exactly what `musa-project` will own (prompt 19). Until then, put the
   chain in **one** function `musa_audio::render_piece_wav(...)` — no, do not: audio must not depend on language parsing.
-  Instead put a small `pub fn render_to_wav(source, options)` in `musa-cli` behind one `orchestrate` module with a `//
+  Instead put a small `pub fn render_to_wav(source, options)` in `musa` behind one `orchestrate` module with a `//
   TODO(prompt-14): move to musa-project` marker. Keep it under 50 lines so the migration is mechanical.
 - WAV: 32-bit float, stereo, 48 kHz default via `hound` (§13.8). Duration = piece span
   + release tail (fixed 1 s until envelopes exist).
@@ -53,7 +53,7 @@ deterministic WAV file offline.
 ## Target
 
 - `musa-audio`: voice allocator, sine polysynth default instrument, `render_offline`.
-- `musa-cli`: `render --to wav` with the marked orchestration shim.
+- `musa`: `render --to wav` with the marked orchestration shim.
 - Tests: allocator voice-stealing and note-off matching; click-free on/off ramps (max sample discontinuity bound);
   end-to-end WAV determinism for all examples; a golden-frequency test (render a single 440 Hz A4, verify dominant
   frequency within tolerance).
@@ -62,11 +62,11 @@ deterministic WAV file offline.
 ## Check
 
 ```sh
-cargo nextest run -p musa-audio -p musa-cli
-cargo clippy --all-targets -p musa-audio -p musa-cli -- -D warnings
+cargo nextest run -p musa-audio -p musa
+cargo clippy --all-targets -p musa-audio -p musa -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- render examples/glass-mountain.musa --to wav -o /tmp/gm.wav
-cargo run -p musa-cli -- render examples/glass-mountain.musa --to wav -o /tmp/gm2.wav
+cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm.wav
+cargo run -p musa -- render examples/glass-mountain.musa --to wav -o /tmp/gm2.wav
 cmp /tmp/gm.wav /tmp/gm2.wav   # deterministic
 afinfo /tmp/gm.wav 2>/dev/null || file /tmp/gm.wav
 ```

@@ -80,8 +80,8 @@ The migration is a hard error with an applicable fix, on prompt 109's precedent 
 cargo nextest run -p musa-language -p musa-compiler -p musa-lsp -p musa-project
 cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-lsp -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/module-functor-study.musa
-cargo run -p musa-cli -- check examples/tonal-construction.musa
+cargo run -p musa -- check examples/module-functor-study.musa
+cargo run -p musa -- check examples/tonal-construction.musa
 npm --prefix editors/tree-sitter-musa test
 ```
 

@@ -228,7 +228,7 @@ provenance. If one of those is needed and absent, the snapshot gains a field.
 
 A span is the one number the frontend and the core both index the *same* text with, so they have to agree on how that
 text is measured, and by default they do not. Rust measures a string in **bytes** — `musa-language` is built on Rowan
-and `text-size`, whose ranges are byte ranges, and `musa-compiler`, `musa-project`, and `musa-cli`'s `miette` labels all
+and `text-size`, whose ranges are byte ranges, and `musa-compiler`, `musa-project`, and `musa`'s `miette` labels all
 carry that measure through. JavaScript measures a string in **UTF-16 code units**, and so does CodeMirror: a document
 position, a decoration range, a lint range, and `selection.main.head` are all counted in them.
 

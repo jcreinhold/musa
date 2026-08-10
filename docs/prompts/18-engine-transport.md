@@ -63,18 +63,18 @@ the piece live. This completes the Phase 1 CLI slice.
 
 - `musa-engine`: `AudioEngine`, `EngineConfig`, `PreparedPlaybackPlan`, `TransportCommand`, RT queues, callback,
   instrumentation tests.
-- `musa-cli`: `play` subcommand.
+- `musa`: `play` subcommand.
 - Tests: command queue round-trips; seek/loop state machine; callback instrumentation; graceful behavior when no audio
   device exists (clear `EngineError`, not a panic — CI may have no device).
 
 ## Check
 
 ```sh
-cargo nextest run -p musa-engine -p musa-cli
-cargo clippy --all-targets -p musa-engine -p musa-cli -- -D warnings
+cargo nextest run -p musa-engine -p musa
+cargo clippy --all-targets -p musa-engine -p musa -- -D warnings
 cargo fmt --check
 # manual, on a machine with audio:
-cargo run -p musa-cli -- play examples/glass-mountain.musa
+cargo run -p musa -- play examples/glass-mountain.musa
 ```
 
 Commit as `Add audio engine with real-time-safe transport`.

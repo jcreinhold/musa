@@ -196,7 +196,7 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject   # no golden may change
-for f in examples/*.musa; do cargo run -p musa-cli -- check "$f"; done
+for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
 cargo bench -p musa-compiler                          # P3 must not regress; see the rule above
 grep -n "definition_span" crates/musa-compiler/src/project.rs | wc -l   # 0 in project_piece
 ```

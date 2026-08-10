@@ -57,7 +57,7 @@ against a deliberately small definition on generated well-typed terms, plus comp
 cargo nextest run -p musa-compiler -p musa-project -p musa-lsp
 cargo clippy --all-targets -p musa-compiler -p musa-project -p musa-lsp -- -D warnings
 cargo fmt --check
-for f in examples/*.musa; do cargo run -q -p musa-cli -- check "$f"; done
+for f in examples/*.musa; do cargo run -q -p musa -- check "$f"; done
 cargo bench -p musa-compiler
 ```
 

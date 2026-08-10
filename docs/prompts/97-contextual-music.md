@@ -63,7 +63,7 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-for f in examples/*.musa; do cargo run -q -p musa-cli -- check "$f"; done
+for f in examples/*.musa; do cargo run -q -p musa -- check "$f"; done
 cargo bench -p musa-compiler
 ```
 

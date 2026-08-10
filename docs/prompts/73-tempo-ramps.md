@@ -106,8 +106,8 @@ observation total, and this inherits it rather than adding a diagnostic.
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/rubato.musa
-cargo run -p musa-cli -- render examples/riser.musa --to midi -o /tmp/r.mid
+cargo run -p musa -- check examples/rubato.musa
+cargo run -p musa -- render examples/riser.musa --to midi -o /tmp/r.mid
 grep -rn "f64\|f32" crates/musa-compiler/src/performance.rs | grep -i tempo   # nothing new
 ```
 

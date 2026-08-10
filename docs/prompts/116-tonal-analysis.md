@@ -52,10 +52,10 @@ the only honest answer.
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-project -p musa-cli
-cargo clippy --all-targets -p musa-compiler -p musa-project -p musa-cli -- -D warnings
+cargo nextest run -p musa-compiler -p musa-project -p musa
+cargo clippy --all-targets -p musa-compiler -p musa-project -p musa -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- analyze examples/analysis/pivot-ambiguity.musa --kind tonal --format text
+cargo run -p musa -- analyze examples/analysis/pivot-ambiguity.musa --kind tonal --format text
 cargo bench -p musa-compiler
 ```
 

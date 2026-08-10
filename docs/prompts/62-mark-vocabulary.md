@@ -138,10 +138,10 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cd apps/musa-desktop/ui && npm test
-for f in examples/*.musa; do cargo run -q -p musa-cli -- check "$f"; done
+for f in examples/*.musa; do cargo run -q -p musa -- check "$f"; done
 grep -rn "ArticulationMark\b" crates --include="*.rs" | grep -v marks.rs | wc -l   # 0
 git diff --stat -- examples/ crates/*/tests/snapshots              # see the repair below
-cargo run -p musa-cli -- check examples/broken/unknown-mark.musa
+cargo run -p musa -- check examples/broken/unknown-mark.musa
 ```
 
 Commit as `Make the mark vocabulary a table`.
@@ -199,7 +199,7 @@ a name is refused — the profile rule and the mark attached to a note — becau
 and `sample` cannot call every row an articulation. `examples/broken/unknown-articulation.musa` is therefore
 `unknown-mark.musa`, and `PerformanceProfile::set_articulation` is `set_mark`. The profile's *settings* keep their
 names: `gate` and `attack` describe what an instrument does with a mark, and that is still articulation. The new
-fixture brings a new golden, `crates/musa-cli/tests/snapshots/cli__unknown-mark.snap`, which is the diagnostic in
+fixture brings a new golden, `crates/musa/tests/snapshots/cli__unknown-mark.snap`, which is the diagnostic in
 full — the refusal names the mark, points at it, and suggests `staccato`.
 
 ## Stop

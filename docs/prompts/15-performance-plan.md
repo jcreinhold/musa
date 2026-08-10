@@ -67,10 +67,10 @@ deliberately minimal — this prompt proves the scheduling pipeline that audio (
 ## Check
 
 ```sh
-cargo nextest run -p musa-compiler -p musa-cli
-cargo clippy --all-targets -p musa-compiler -p musa-cli -- -D warnings
+cargo nextest run -p musa-compiler -p musa
+cargo clippy --all-targets -p musa-compiler -p musa -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- render examples/counterpoint.musa --to performance
+cargo run -p musa -- render examples/counterpoint.musa --to performance
 ```
 
 Commit as `Add performance lowering with frame scheduling`.

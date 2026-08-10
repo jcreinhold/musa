@@ -58,8 +58,8 @@ primitive, stop and demonstrate what information source code cannot express befo
 cargo nextest run -p musa-compiler -p musa-render
 cargo clippy --all-targets -p musa-compiler -p musa-render -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/diatonic-sequences.musa
-cargo run -p musa-cli -- check examples/rule-of-the-octave.musa
+cargo run -p musa -- check examples/diatonic-sequences.musa
+cargo run -p musa -- check examples/rule-of-the-octave.musa
 cargo bench -p musa-compiler
 ```
 

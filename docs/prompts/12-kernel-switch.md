@@ -48,8 +48,8 @@ spec. After this prompt the temporal kernel — not the surface grammar — defi
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-for f in examples/*.musa; do cargo run -p musa-cli -- check "$f"; done
-cargo run -p musa-cli -- render examples/counterpoint.musa --to plan   # unchanged output
+for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
+cargo run -p musa -- render examples/counterpoint.musa --to plan   # unchanged output
 grep -L "Status: candidate" docs/kernel/*.md | wc -l   # 9: banners gone
 ```
 

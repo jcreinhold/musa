@@ -68,10 +68,10 @@ terminate.
 cargo nextest run -p musa-compiler
 cargo clippy --all-targets -p musa-compiler -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/glass-mountain.musa
+cargo run -p musa -- check examples/glass-mountain.musa
 # recursive motif is rejected:
 printf 'piece "x" { motif f() { use f(); } score { part p { voice v { use f(); } } } }' > /tmp/rec.musa
-! cargo run -p musa-cli -- check /tmp/rec.musa
+! cargo run -p musa -- check /tmp/rec.musa
 ```
 
 Commit as `Add motifs, repeat, and transpose with provenance`.

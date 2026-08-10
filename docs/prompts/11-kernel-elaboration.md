@@ -68,7 +68,7 @@ lowerer stays as the regression oracle; this prompt adds the new path **alongsid
 cargo nextest run -p musa-compiler
 cargo clippy --all-targets -p musa-compiler -- -D warnings
 cargo fmt --check
-for f in examples/*.musa; do cargo run -p musa-cli -- check "$f"; done   # all pass under the default path
+for f in examples/*.musa; do cargo run -p musa -- check "$f"; done   # all pass under the default path
 ```
 
 Commit as `Elaborate surface constructs through the temporal kernel`.

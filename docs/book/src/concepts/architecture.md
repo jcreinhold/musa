@@ -17,7 +17,7 @@ Dependencies point one way only. No dependency points upward.
 | `musa-audio` | The studio graph, DSP processors, offline rendering |
 | `musa-engine` | The audio device, transport, real-time queues, MIDI input |
 | `musa-project` | The session facade: documents, revisions, commands, exports |
-| `musa-cli`, `musa-lsp`, `apps/musa-desktop` | Thin shells over `musa-project` |
+| `musa`, `musa-lsp`, `apps/musa-desktop` | Thin shells over `musa-project` |
 | `editors/tree-sitter-musa` | A tree-sitter grammar held honest by the real lexer |
 
 ## Why the shells are thin

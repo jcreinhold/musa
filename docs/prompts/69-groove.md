@@ -114,8 +114,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 git diff --stat -- crates/musa-render/tests/snapshots    # empty: notation never swings
-cargo run -p musa-cli -- render examples/shuffle.musa --to midi -o /tmp/s.mid
-cargo run -p musa-cli -- check examples/house.musa
+cargo run -p musa -- render examples/shuffle.musa --to midi -o /tmp/s.mid
+cargo run -p musa -- check examples/house.musa
 ```
 
 The empty notation diff is the layer separation being proved, and it is the check that matters most.

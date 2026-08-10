@@ -136,7 +136,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd apps/musa-desktop/ui && npm test
-for f in examples/*.musa; do cargo run -p musa-cli -- check "$f"; done
+for f in examples/*.musa; do cargo run -p musa -- check "$f"; done
 cargo bench -p musa-compiler
 ```
 

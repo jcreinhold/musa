@@ -135,7 +135,7 @@ ever", and prompt 85 routes on exactly that.
   `contents` on `ProjectSnapshot` and its wire; `ProjectSession::release_audio`.
 - `crates/musa-compiler`: the `Library` root branch in `elaborate.rs`, and `Compilation` carrying which kind of
   document it compiled.
-- `crates/musa-cli`: `check` over a directory; one line of usage.
+- `crates/musa`: `check` over a directory; one line of usage.
 - `apps/musa-desktop/src-tauri`: `Project` in the session thread, `show_piece` and `save_all`, three registry commands.
 - `apps/musa-desktop/ui`: `kind` and `contents` on `ProjectSnapshot`, the bridge calls behind them, and the two new
   File commands in `commands/map.ts`. No screen: prompt 85 owns that.
@@ -148,9 +148,9 @@ ever", and prompt 85 routes on exactly that.
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/album
+cargo run -p musa -- check examples/album
 for f in examples/*.musa examples/album/pieces/*.musa examples/album/library/*.musa; do
-  cargo run -p musa-cli -- check "$f"
+  cargo run -p musa -- check "$f"
 done
 ```
 

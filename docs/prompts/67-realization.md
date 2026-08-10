@@ -129,7 +129,7 @@ and that is a test: run the whole `examples/` corpus under three seeds and diff.
 - `crates/musa-compiler/src/elaborate.rs`: the path is threaded through elaboration; the ranged repeat draws its
   count and records the decision.
 - `crates/musa-kernel/src/text.rs`: the realization header line, written and read.
-- `crates/musa-project`, `crates/musa-cli`: `--seed` on `check`, `render`, `kernel`.
+- `crates/musa-project`, `crates/musa`: `--seed` on `check`, `render`, `kernel`.
 - `examples/`: `loop-lengths.musa` — a four-bar house pattern whose fills repeat a variable number of times.
 - `crates/musa-compiler/tests/realize.rs`: same seed → same hash; different seed → different hash; determinate
   pieces are seed-invariant across the corpus; `ChoicePath::canonical` is injective; inserting a named bar above a
@@ -142,11 +142,11 @@ cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
-for s in 1 2 3; do for f in examples/*.musa; do cargo run -q -p musa-cli -- kernel "$f" --seed $s; done; done > /tmp/a
+for s in 1 2 3; do for f in examples/*.musa; do cargo run -q -p musa -- kernel "$f" --seed $s; done; done > /tmp/a
 # determinate pieces identical under every seed:
-diff <(cargo run -q -p musa-cli -- kernel examples/canon.musa --seed 1) \
-     <(cargo run -q -p musa-cli -- kernel examples/canon.musa --seed 999)
-cargo run -p musa-cli -- check examples/loop-lengths.musa --seed 42
+diff <(cargo run -q -p musa -- kernel examples/canon.musa --seed 1) \
+     <(cargo run -q -p musa -- kernel examples/canon.musa --seed 999)
+cargo run -p musa -- check examples/loop-lengths.musa --seed 42
 ```
 
 Commit as `Add realizations`.

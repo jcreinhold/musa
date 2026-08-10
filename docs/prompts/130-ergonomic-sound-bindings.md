@@ -55,7 +55,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo insta test --workspace --unreferenced=reject
 cd editors/tree-sitter-musa && tree-sitter test
-find examples -name '*.musa' -print0 | xargs -0 -n1 cargo run -q -p musa-cli -- check
+find examples -name '*.musa' -print0 | xargs -0 -n1 cargo run -q -p musa -- check
 ```
 
 Commit as `Make sound selection a musical action`.

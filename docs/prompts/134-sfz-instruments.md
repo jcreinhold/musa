@@ -53,8 +53,8 @@ imported signature exposes. Generate a readable imported signature/technique/sup
 ## Check
 
 ```sh
-cargo nextest run -p musa-audio -p musa-project -p musa-cli -p musa-lsp
-cargo clippy --all-targets -p musa-audio -p musa-project -p musa-cli -p musa-lsp -- -D warnings
+cargo nextest run -p musa-audio -p musa-project -p musa -p musa-lsp
+cargo clippy --all-targets -p musa-audio -p musa-project -p musa -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo deny check
 cargo insta test --workspace --unreferenced=reject

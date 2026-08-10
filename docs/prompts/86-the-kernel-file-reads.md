@@ -192,7 +192,7 @@ CLI verb, and `docs/kernel/`. None of those changes, and a blanket substitution 
   doc comment loses the apology.
 - `crates/musa-project/src/export.rs`: `ExportRequest::extension()` returns `musa.kernel` — the one authoritative
   spelling; the CLI's `write_artifact` derives every path from it.
-- `crates/musa-cli/src/main.rs`: the two usage lines naming `<file.kernel>`.
+- `crates/musa/src/main.rs`: the two usage lines naming `<file.kernel>`.
 - `examples/kernel/*.kernel` → `*.musa.kernel`, 24 files, regenerated content.
 - `crates/musa-compiler/tests/kernel_interop.rs`: the corpus path, the `format!` that builds a golden's name, the
   `canon.normal` literal, and the two assertions that pin a packed spelling.
@@ -208,7 +208,7 @@ CLI verb, and `docs/kernel/`. None of those changes, and a blanket substitution 
 cargo nextest run --workspace
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- kernel examples/invention.musa
+cargo run -p musa -- kernel examples/invention.musa
 ```
 
 The laws that must stay green, unchanged in meaning: `a_facts_text_form_round_trips` — keep its corpus and keep its

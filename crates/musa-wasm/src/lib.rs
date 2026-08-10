@@ -1,6 +1,6 @@
 //! The WebAssembly shell (prompt 138): one small module that carries the
 //! whole semantic pipeline — parse, compile, notation plan, MEI render — into
-//! the browser for `@musa/web`. A shell like `musa-cli` and `musa-lsp`: it
+//! the browser for `@musa/web`. A shell like `musa` and `musa-lsp`: it
 //! depends on `musa-compiler` and `musa-render`, never the reverse, and adds
 //! no semantics of its own.
 //!

@@ -74,8 +74,8 @@ queries, the LSP's completion and semantic tokens, the lexed fixtures, and every
 cargo nextest run -p musa-language -p musa-compiler -p musa-lsp -p musa-project
 cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-lsp -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/tonal-construction.musa
-cargo run -p musa-cli -- render examples/canon.musa --to musicxml -o /tmp/canon.musicxml
+cargo run -p musa -- check examples/tonal-construction.musa
+cargo run -p musa -- render examples/canon.musa --to musicxml -o /tmp/canon.musicxml
 npm --prefix editors/tree-sitter-musa test
 ```
 

@@ -56,7 +56,7 @@ name states the chosen zero convention rather than calling one universal.
 cargo nextest run -p musa-compiler
 cargo clippy --all-targets -p musa-compiler -- -D warnings
 cargo fmt --check
-cargo run -p musa-cli -- check examples/serial-forms.musa
+cargo run -p musa -- check examples/serial-forms.musa
 cargo bench -p musa-compiler
 ```
 
