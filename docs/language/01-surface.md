@@ -78,7 +78,7 @@ named functions because this candidate deliberately has no anonymous-lambda surf
 notation to learn and leaves `repeat n { body }` as the notation-facing fold over `music`.
 
 The primitive value types added here are `bool`, `nat`, `ratio`, `duration`, `pitch`, `interval`, `spelled_pc`, `pc12`,
-`scale`, `key`, `degree`, `chord_class`, `triad`, `voicing`, `row12`, `analysis[A]`, and `music`. Products, options,
+`scale`, `key`, `degree`, `chord_class`, `triad`, `roman`, `voicing`, `row12`, `analysis[A]`, and `music`. Products, options,
 lists, and arrows are the constructors described in `02-core-calculus.md`. Declaration kinds are not types.
 
 The core literals introduced here are `true`, `false`, nonnegative decimal naturals, exact rational literals,

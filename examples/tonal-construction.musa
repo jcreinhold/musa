@@ -1,0 +1,199 @@
+// Tonal harmony built rather than recognized.
+//
+// Every chord below is constructed from a collection and a numeral, or from a
+// collection and a named degree, and each one is voiced by a policy this piece
+// writes down. Nothing here reads notes and reports a Roman numeral, decides
+// that the passage has modulated, or picks a minor collection on the writer's
+// behalf: `harmonic` and `parallel_minor` are named because C minor is three
+// different collections and only the writer knows which one is meant.
+//
+// The `option` on every line is the load-bearing part. `numeral_chord` is
+// absent when a collection stacks to a sonority the chord vocabulary cannot
+// name, and `close_position` is absent when the bass is not a member of the
+// class *as spelled* — an F sharp bass under a German sixth exists and a G
+// flat bass under it does not, which is the whole difference between the
+// German sixth and the dominant seventh it sounds like.
+piece "Tonal construction" {
+    use std::harmony;
+    use std::scale;
+    use std::tonal_harmony;
+    use std::voicing;
+
+    // The three collections this piece names. C minor is not one collection,
+    // so the two it uses are both written out.
+    let home: scale = scale c major;
+    let parallel_minor: scale = scale c natural_minor;
+    let harmonic: scale = scale c harmonic_minor;
+
+    // The collection an applied chord is read in. `secondary` re-roots it onto
+    // the target degree, so its own tonic is never used — what it contributes
+    // is that a secondary dominant here is major, which is a decision and is
+    // written down as one.
+    let tonicizing_mode: scale = scale c major;
+
+    // The numerals, as values. A numeral is absent when it cannot be written:
+    // `triad_numeral(8)` has no answer, and neither does a triad in third
+    // inversion.
+    let one: option[roman] = triad_numeral(1);
+    let two: option[roman] = triad_numeral(2);
+    let four: option[roman] = triad_numeral(4);
+    let five: option[roman] = triad_numeral(5);
+    let five_seventh: option[roman] = seventh_numeral(5);
+    let six: option[roman] = triad_numeral(6);
+
+    // `V6`: the same numeral with the third in the bass. The figure is a
+    // position in the stack, and the register it lands in is chosen below.
+    let five_first_inversion: option[roman] = numeral(5, 3, 1);
+
+    // The diatonic harmonies of C major. `ii` is minor and `V` is major
+    // because those are the notes in the collection, not because either was
+    // asked for.
+    let tonic: option[chord_class] = in_major(one);
+    let supertonic: option[chord_class] = in_major(two);
+    let subdominant: option[chord_class] = in_major(four);
+    let dominant: option[chord_class] = in_major(five);
+    let dominant_sixth: option[chord_class] = in_major(five_first_inversion);
+
+    // The same numerals in the parallel minor, which answer differently
+    // without being asked differently. `V` is minor here; the major dominant
+    // of a minor key is the harmonic collection's, and that is `minor_dominant`
+    // and `harmonic_dominant` side by side rather than a silent choice.
+    let minor_tonic: option[chord_class] = in_minor(one);
+    let minor_dominant: option[chord_class] = in_minor(five);
+    let harmonic_dominant: option[chord_class] = in_harmonic_minor(five);
+
+    // A secondary dominant: `V/V`, read in G major. D major, not the D minor
+    // that C major stacks on its second degree.
+    let applied_dominant: option[chord_class] = tonicizing(degree_of(5), five);
+
+    // `V7/vi`, read in A major — the seventh chord that tonicizes the sixth
+    // degree.
+    let applied_seventh: option[chord_class] = tonicizing(degree_of(6), five_seventh);
+
+    // Mixture: `bVI` of C major is `VI` of C minor, borrowed whole. No degree
+    // is altered here, because borrowing is not alteration.
+    let borrowed_submediant: option[chord_class] = mixed(six);
+    let borrowed_subdominant: option[chord_class] = mixed(four);
+
+    // The Neapolitan, on the lowered second degree of C major. The alteration
+    // is written into the degree, where a reader can see it.
+    let naples: option[chord_class] = neapolitan(home, lower(degree_of(2)));
+
+    // The augmented sixths, on the lowered sixth degree. In C major that is a
+    // lowered degree; in C minor it would be the plain sixth, and the caller
+    // writing the degree is what keeps the two apart.
+    let italian: option[chord_class] = italian_sixth(home, lower(degree_of(6)));
+    let french: option[chord_class] = french_sixth(home, lower(degree_of(6)));
+    let german: option[chord_class] = german_sixth(home, lower(degree_of(6)));
+
+    // Two altered dominants, on the same degree, differing only in which
+    // members are present. Neither is the default.
+    let flat_nine: option[chord_class] = altered_dominant(home, chord c dom7b9);
+    let sharp_five: option[chord_class] = altered_dominant(home, chord c dom7s5);
+
+    // Reading a numeral in a named collection. Written three times rather than
+    // once with the collection as a parameter, because each one is a decision
+    // the piece is making and a reader should see it made.
+    fn in_major(written: option[roman]) -> option[chord_class] = match written {
+        none -> none,
+        some(numbered) -> numeral_chord(home, numbered),
+    };
+
+    fn in_minor(written: option[roman]) -> option[chord_class] = match written {
+        none -> none,
+        some(numbered) -> numeral_chord(parallel_minor, numbered),
+    };
+
+    fn in_harmonic_minor(written: option[roman]) -> option[chord_class] = match written {
+        none -> none,
+        some(numbered) -> numeral_chord(harmonic, numbered),
+    };
+
+    fn mixed(written: option[roman]) -> option[chord_class] = match written {
+        none -> none,
+        some(numbered) -> borrowed(home, parallel_minor, numbered),
+    };
+
+    fn tonicizing(target: degree, written: option[roman]) -> option[chord_class] = match written {
+        none -> none,
+        some(numbered) -> secondary(home, target, tonicizing_mode, numbered),
+    };
+
+    // The one voicing policy this piece uses: close position from a named
+    // bass. It is absent when the bass is not a member of the class as
+    // spelled, which is why every chord below names its own bass instead of
+    // sharing one.
+    fn stacked(bass: pitch, content: option[chord_class]) -> music = match content {
+        none -> music { rest/1 },
+        some(sounding) -> voiced(close_position(sounding, bass)),
+    };
+
+    fn voiced(chosen: option[voicing]) -> music = match chosen {
+        none -> music { rest/1 },
+        some(spread) -> sound_for(spread, 1),
+    };
+
+    // The diatonic progression, each chord over a bass that is one of its own
+    // members. `V6` takes B in the bass because the numeral put the third
+    // there, and this piece chooses which B.
+    let phrase_one: music = stacked(c3, tonic);
+    let phrase_two: music = stacked(d3, supertonic);
+    let phrase_three: music = stacked(g3, dominant);
+    let phrase_four: music = stacked(b2, dominant_sixth);
+    let phrase_five: music = stacked(c3, tonic);
+
+    // The same five bars in the parallel minor, plus the harmonic collection's
+    // dominant, so the two dominants are heard next to each other.
+    let minor_one: music = stacked(c3, minor_tonic);
+    let minor_two: music = stacked(g3, minor_dominant);
+    let minor_three: music = stacked(g3, harmonic_dominant);
+    let minor_four: music = stacked(c3, minor_tonic);
+
+    // The chromatic chords, each on a bass drawn from its own spelling.
+    let chromatic_one: music = stacked(d3, applied_dominant);
+    let chromatic_two: music = stacked(e3, applied_seventh);
+    let chromatic_three: music = stacked(ab3, borrowed_submediant);
+    let chromatic_four: music = stacked(f3, borrowed_subdominant);
+    let chromatic_five: music = stacked(db3, naples);
+    let chromatic_six: music = stacked(ab3, italian);
+    let chromatic_seven: music = stacked(ab3, french);
+    let chromatic_eight: music = stacked(ab3, german);
+    let chromatic_nine: music = stacked(g3, flat_nine);
+    let chromatic_ten: music = stacked(g3, sharp_five);
+
+    meter 4/4;
+
+    score {
+        part diatonic {
+            voice upper {
+                use phrase_one;
+                use phrase_two;
+                use phrase_three;
+                use phrase_four;
+                use phrase_five;
+            }
+        }
+        part borrowed_mode {
+            voice upper {
+                use minor_one;
+                use minor_two;
+                use minor_three;
+                use minor_four;
+            }
+        }
+        part chromatic {
+            voice upper {
+                use chromatic_one;
+                use chromatic_two;
+                use chromatic_three;
+                use chromatic_four;
+                use chromatic_five;
+                use chromatic_six;
+                use chromatic_seven;
+                use chromatic_eight;
+                use chromatic_nine;
+                use chromatic_ten;
+            }
+        }
+    }
+}

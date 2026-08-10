@@ -1,7 +1,7 @@
 ---
 id: 107
 slug: tonal-harmony-construction
-status: in-progress
+status: done
 depends_on: [99, 101, 102]
 phase: 3
 ---

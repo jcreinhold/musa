@@ -64,10 +64,13 @@ impl Roman {
     /// realization in source total once the chord itself is named: a third
     /// inversion of a triad is unsayable rather than merely unrealizable.
     pub(crate) fn new(ordinal: u64, members: u64, inversion: u64) -> Option<Self> {
-        ((FIRST..=LAST).contains(&ordinal)
-            && (SMALLEST..=LARGEST).contains(&members)
-            && inversion < members)
-            .then_some(Self { ordinal, members, inversion })
+        ((FIRST..=LAST).contains(&ordinal) && (SMALLEST..=LARGEST).contains(&members) && inversion < members).then_some(
+            Self {
+                ordinal,
+                members,
+                inversion,
+            },
+        )
     }
 
     /// The ordinal the numeral names, from one.
@@ -100,6 +103,8 @@ impl std::fmt::Display for Roman {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::expect_used)]
+
     use super::*;
 
     /// The three bounds, each violated on its own, so that a widened bound

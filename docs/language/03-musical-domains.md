@@ -78,7 +78,16 @@ in `019-inversion.md`. Spacing, doubling, and omission are voicing choices (`075
 
 A `ChordSymbol` is a notation annotation encoding a conventional root/quality/extensions/bass description. A
 `RomanNumeral` and figured bass are context-dependent analysis results, following `020-roman-numerals.md` and
-`021-figured-bass-and-roman-numerals-with-figures.md`. Chromatic chord vocabularies in OMT 061–071 and
+`021-figured-bass-and-roman-numerals-with-figures.md`. As a *constructive* value the surface writes `roman`, which is
+`(ordinal : 1..7, members : 3..7, inversion : < members)` and carries no quality and no collection.
+
+**Lemma (the quality is the collection's).** Let `S` be a scale with offsets `o_0, ..., o_{n-1}` and period `p`, and
+let `deg(k)` be the interval from the tonic to the `k`-th degree, counting periods. The diatonic stack of `m` members
+on ordinal `k` is `{ deg(k + 2j) - deg(k) : j < m }`. Nothing in that expression mentions a quality: two scales that
+agree on `deg` agree on every stack, and two that differ at one offset differ at every stack that crosses it. Hence
+`ii` is minor in major and `II` is major in Dorian as a consequence rather than a stipulation, and a `roman` that
+stored a quality could contradict the scale it is realized against. The map is partial in exactly one place — the
+resulting member set need not be a named chord type, and C harmonic minor's `III7` is the witness. Chromatic chord vocabularies in OMT 061–071 and
 Neo-Riemannian operations in `072-neo-riemannian-triadic-progressions.md` are library constructors/analyses over these
 types, not compiler ontology.
 
@@ -147,6 +156,7 @@ becoming type checking.
 | degree/register | ordinal plus explicit periodic lift | Musa definition and round-trip lemma | `degree(scale c major, 1)` cannot have type `pitch` without register | 101 |
 | chord class | rooted spelled membership, no register | OMT `017-triads.md`, `018-seventh-chords.md`, `075-chord-symbols.md` | a Cmaj7 symbol does not choose C3 or C4 bass | 102 |
 | triad | checked three-member tertian subtype | OMT `017-triads.md` | `{C,D,G}` is not a triad merely because it has three notes | 102 |
+| roman numeral | ordinal, member count, and bass position, against no collection | OMT `020-roman-numerals.md`, `021-figured-bass-and-roman-numerals-with-figures.md` | `V` alone names no pitch class, and a triad has no third inversion | 107 |
 | inversion/voicing | exact pitches plus bass/spacing/doubling choices | OMT `019-inversion.md`, `076-jazz-voicings.md`; forgetfulness lemma | drop-2 and close position cannot compare equal as voicings | 102 |
 | row12 | bijection `Fin 12 → pc12` | OMT `108-basics-of-twelve-tone-theory.md`; finite-closure lemma | a repeated pc rejects construction | 105 |
 | row convention | explicit naming policy | OMT `109-naming-conventions-for-rows.md` | bare `P7` in a convention-free API is ambiguous | 105 |

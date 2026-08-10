@@ -1,7 +1,7 @@
 ---
 id: 106
 slug: transformational-harmony-library
-status: in-progress
+status: done
 depends_on: [102, 105]
 phase: 3
 ---

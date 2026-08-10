@@ -103,6 +103,7 @@ const PCSET_URI: &str = "musa-stdlib:/std/pcset.musa";
 const PITCH_URI: &str = "musa-stdlib:/std/pitch.musa";
 const SCALE_URI: &str = "musa-stdlib:/std/scale.musa";
 const SERIAL_URI: &str = "musa-stdlib:/std/serial.musa";
+const TONAL_HARMONY_URI: &str = "musa-stdlib:/std/tonal_harmony.musa";
 const TRANSFORMATIONAL_URI: &str = "musa-stdlib:/std/transformational.musa";
 const VOICING_URI: &str = "musa-stdlib:/std/voicing.musa";
 const CONTEXT_URI: &str = "musa-stdlib:/std/context.musa";
@@ -116,6 +117,7 @@ const PCSET_SOURCE: &str = include_str!("../../../stdlib/pcset.musa");
 const PITCH_SOURCE: &str = include_str!("../../../stdlib/pitch.musa");
 const SCALE_SOURCE: &str = include_str!("../../../stdlib/scale.musa");
 const SERIAL_SOURCE: &str = include_str!("../../../stdlib/serial.musa");
+const TONAL_HARMONY_SOURCE: &str = include_str!("../../../stdlib/tonal_harmony.musa");
 const TRANSFORMATIONAL_SOURCE: &str = include_str!("../../../stdlib/transformational.musa");
 const VOICING_SOURCE: &str = include_str!("../../../stdlib/voicing.musa");
 #[cfg(test)]
@@ -135,6 +137,7 @@ pub fn standard_library_source(uri: &str) -> Option<&'static str> {
         PITCH_URI => Some(PITCH_SOURCE),
         SCALE_URI => Some(SCALE_SOURCE),
         SERIAL_URI => Some(SERIAL_SOURCE),
+        TONAL_HARMONY_URI => Some(TONAL_HARMONY_SOURCE),
         TRANSFORMATIONAL_URI => Some(TRANSFORMATIONAL_SOURCE),
         VOICING_URI => Some(VOICING_SOURCE),
         _ => None,
@@ -154,6 +157,7 @@ pub fn standard_library_modules() -> impl Iterator<Item = (&'static str, &'stati
         (PITCH_URI, PITCH_SOURCE),
         (SCALE_URI, SCALE_SOURCE),
         (SERIAL_URI, SERIAL_SOURCE),
+        (TONAL_HARMONY_URI, TONAL_HARMONY_SOURCE),
         (TRANSFORMATIONAL_URI, TRANSFORMATIONAL_SOURCE),
         (VOICING_URI, VOICING_SOURCE),
     ]
