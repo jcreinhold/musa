@@ -88,7 +88,9 @@ modulation remains a claim about a passage and belongs to analysis.
 - The three augmented sixths and the four altered dominant sevenths in the chord-type table, spelled by letter like
   every other entry, with the stacked-thirds invariant naming the augmented sixths as it already names the
   suspensions.
-- `stdlib/tonal-harmony.musa` and source docs for typed Roman values and constructors.
+- `stdlib/tonal_harmony.musa` and source docs for typed Roman values and constructors. The underscore is not a
+  style choice: a bundled module's virtual URI is its file name, so `use std::tonal_harmony` can only find a file
+  spelled that way, and every other bundled module already matches its own name.
 - Small core refinements only where invalid states cannot be represented in source; no public Rust theory surface.
   A `roman` is such a case: a bare product of degree, quality, and inversion is constructible with a degree of nine or
   an inversion of five, so the checked constructor and its `option` are what make the invalid states unsayable. Its
