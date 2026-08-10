@@ -8,6 +8,7 @@
 import { render } from "./api";
 import { getConfig } from "./configure";
 import { errorBox } from "./errors";
+import { attachInteraction, markEvents } from "./interaction";
 import { ensureDocumentStyles, shadowStyles } from "./styles";
 
 /** The built-in snippet forms; a configured selector adds to these. */
@@ -93,6 +94,8 @@ async function typesetOne(element: Element): Promise<void> {
   } else {
     const parsed = new DOMParser().parseFromString(result.svg, "image/svg+xml");
     target.replaceChildren(doc.importNode(parsed.documentElement, true));
+    markEvents(target);
+    attachInteraction(target, { element, source });
   }
   element.setAttribute(PROCESSED, "");
 }

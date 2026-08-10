@@ -46,8 +46,30 @@ configure({ wasmUrl: "https://example.invalid/assets/musa_wasm_bg.wasm" });
 
 Every note, chord, and rest in the SVG carries the `xml:id` the MEI carried — `event-<hex>` where the
 hex is the compiler's `EventId`, with tie pieces suffixed `-t2`, `-t3`, … Strip the suffix and you have
-the event. This is what makes the rendered page addressable; the interaction layer (prompt 142) is
-built on it and nothing else.
+the event. This is what makes the rendered page addressable.
+
+## Interaction
+
+```ts
+window.MusaWeb = {
+  onEventClick: (eventId, target, context) => {
+    // eventId: the compiler's EventId hex, tie-piece suffixes stripped
+    // target:  the SVGElement that was hit (the exact piece)
+    // context: { element, source } — which score, and its source text
+  },
+  onEventHover: (eventId, target) => { /* id or null on leave */ },
+};
+```
+
+Event-mapped elements get the class `musa-event`; `highlight(eventId)` marks every rendered piece of
+an event — all tie pieces at once — with `musa-event-active`, and `highlight(null)` clears it. The
+active colour is one custom property:
+
+```css
+musa-score { --musa-event-active: #c05621; }
+```
+
+Unmapped elements (barlines, staff lines, text) never fire: there is no "unidentified object" state.
 
 ## Node
 

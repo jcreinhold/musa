@@ -23,6 +23,21 @@ export interface WebConfig {
   onTypeset?: (elements: Element[]) => void;
   /** A snippet or the environment failed; the box is already shown. */
   onError?: (error: Error, element: Element | null) => void;
+  /**
+   * Fires for clicks on event-mapped notation. The id is the compiler's
+   * EventId hex — tie-piece suffixes already stripped.
+   */
+  onEventClick?: (eventId: string, target: SVGElement, context: MusaElementContext) => void;
+  /** Entering an event fires its id; leaving the last one fires null. */
+  onEventHover?: (eventId: string | null, target: SVGElement | null) => void;
+}
+
+/** The page-side context an event callback receives about its score. */
+export interface MusaElementContext {
+  /** The `<musa-score>` or container this event lives in. */
+  element: Element;
+  /** The snippet's source text. */
+  source: string;
 }
 
 let config: WebConfig = {};

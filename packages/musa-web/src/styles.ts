@@ -5,7 +5,15 @@
  * the engraver's layout, not the stylesheet's.
  */
 
-const ERROR_CSS = `
+const SHARED_CSS = `
+.musa-event {
+  cursor: pointer;
+}
+/* Classes, not inline styles — embedders re-ink by overriding one custom
+   property, exactly as theming re-inks the whole score (02-engraving §3). */
+.musa-event-active {
+  color: var(--musa-event-active, #2b6cb0);
+}
 .musa-error {
   border-left: 2px solid #b04040;
   padding: 0.25em 0.75em;
@@ -42,7 +50,7 @@ const DOCUMENT_CSS = `
   font-style: italic;
   opacity: 0.6;
 }
-${ERROR_CSS}
+${SHARED_CSS}
 `;
 
 /** Rules for a `<musa-score>` element and inside its shadow root. */
@@ -63,7 +71,7 @@ svg {
   font-style: italic;
   opacity: 0.6;
 }
-${ERROR_CSS}
+${SHARED_CSS}
 `;
 
 

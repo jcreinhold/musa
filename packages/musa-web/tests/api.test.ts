@@ -22,6 +22,18 @@ const BROKEN = readFileSync(
 const MATERIAL = "library {\n    motif rise(root: pitch = c5) {\n        root/4\n        d5/4\n    }\n}\n";
 
 describe("render", () => {
+  it("keeps the id contract on a tie-heavy fixture, pieces and all", async () => {
+    const tied = readFileSync(
+      fileURLToPath(new URL("../../../examples/tuplet-fixture.musa", import.meta.url)),
+      "utf8",
+    );
+    const result = await render(tied);
+    const meiIds = new Set([...result.mei.matchAll(/xml:id="([^"]+)"/g)].map((m) => m[1]));
+    const svgIds = [...result.svg.matchAll(/\bid="(event-[^"]+)"/g)].map((m) => m[1] ?? "");
+    expect(svgIds.some((id) => /-t\d+$/.test(id))).toBe(true);
+    for (const id of svgIds) expect(meiIds.has(id)).toBe(true);
+  }, 60_000);
+
   it("compiles and engraves a snippet, preserving the id contract", async () => {
     const result = await render(CANON);
     expect(result.mei).toContain("<mei");

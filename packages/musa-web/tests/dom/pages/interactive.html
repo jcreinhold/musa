@@ -1,0 +1,56 @@
+<!doctype html>
+<!-- Two scores with callbacks wired: every click/hover is recorded for the
+     spec, with the container each event came from. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>musa-web interaction</title>
+  <script>
+    window.clicks = [];
+    window.hovers = [];
+    window.MusaWeb = {
+      onEventClick: (id, target, context) => {
+        window.clicks.push({ id, container: context.element.id, target: target.getAttribute("id") });
+      },
+      onEventHover: (id, target) => {
+        window.hovers.push({ id, target: target?.getAttribute("id") ?? null });
+      },
+    };
+  </script>
+</head>
+<body>
+  <musa-score id="score-a">
+piece "tied" {
+    tempo 1/4 = 72;
+    meter 4/4;
+    score {
+        part violin {
+            voice line {
+                | a4/2 ~ a4/4 g4/4
+                | c5/1
+            }
+        }
+    }
+}
+  </musa-score>
+
+  <musa-score id="score-b">
+piece "cell" {
+    tempo 1/4 = 60;
+    meter 1/4;
+    score {
+        part cello {
+            voice line {
+                | c3/4
+            }
+        }
+    }
+}
+  </musa-score>
+
+  <script type="module">
+    import { typeset } from "/src/index.ts";
+    window.typesetDone = typeset();
+  </script>
+</body>
+</html>
