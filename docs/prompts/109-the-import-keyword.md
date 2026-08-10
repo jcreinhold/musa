@@ -1,7 +1,7 @@
 ---
 id: 109
 slug: the-import-keyword
-status: pending
+status: in-progress
 depends_on: [99, 108]
 phase: 3
 ---
@@ -42,8 +42,13 @@ located at the `use` token, names both meanings, and carries an applicable fix t
 prompt 56's machinery exists for and what makes a hard error affordable here.
 
 The `as` alias clause lands in this prompt even though its only caller is prompt 110, because it belongs to the same
-production and touching the import grammar twice would mean regenerating the editor grammars twice. It parses, binds
-the aliased module under the given name, and is otherwise inert until nesting makes collisions possible.
+production and touching the import grammar twice would mean regenerating the editor grammars twice. It parses,
+formats, highlights, and round-trips — and it binds nothing, because there is nothing yet to bind it into. Today an
+import is flat and total: the library's declarations are merged into the importing file's namespace and the module
+itself has no name in scope, so an alias has no referent to rename. §3's `as` qualifies *one* module's names to
+resolve a collision against another, which needs both the qualified namespace and the collision, and prompt 110 brings
+both. Adding a public `alias()` accessor here would be a reader with no reader — the CST is lossless, so the token is
+preserved for prompt 110 whether or not anything asks for it today.
 
 Everything downstream of the token is mechanical and must all move together, or the drift laws will say so: the lexer's
 keyword set, the CST node kind, the formatter's rendering, the tree-sitter grammar and its corpus, the highlight
@@ -53,7 +58,7 @@ queries, the LSP's completion and semantic tokens, the lexed fixtures, and every
 ## Target
 
 - The `import` keyword in the lexer, the repaired import production in the parser, and its CST node; `import` accepts a
-  quoted relative path or a module path, with an optional `as IDENT`.
+  quoted relative path or a module path, with an optional `as IDENT` that parses and round-trips and binds nothing.
 - The migration diagnostic for `use "…";` and `use std::…;`, with a located applicable fix, and a snapshot test for
   each of the two old shapes.
 - Every import site rewritten across `examples/`, `stdlib/`, and the test corpora.
@@ -81,5 +86,5 @@ Commit as `Separate the import keyword from the music splice`.
 - No change to what `use e;` means, to where it is legal, or to how it sequences.
 - Do not accept both spellings, and do not add a compatibility flag or edition mechanism to allow the old one.
 - No module nesting, no path segments beyond what exists today, and no collision-resolution behavior; prompt 110 owns
-  all three. The `as` clause parses and binds here and nothing more.
+  all three. The `as` clause parses here and nothing more — no accessor, no binding, no meaning.
 - No prelude, no implicit import, no re-export form.
