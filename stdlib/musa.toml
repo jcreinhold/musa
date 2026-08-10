@@ -1,0 +1,13 @@
+# The bundled standard library, as a package.
+#
+# `source` names the root the module tree is read from; the tree itself is
+# declared in `src/lib.musa` and in each directory's `mod.musa`, never by
+# scanning this directory. A `.musa` file no `mod` reaches is an error, which is
+# the whole reason the declarations exist.
+
+[package]
+name = "std"
+language_version = 1
+
+[build]
+source = "src"

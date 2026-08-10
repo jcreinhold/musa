@@ -1,7 +1,7 @@
 ---
 id: 110
 slug: packages-and-module-trees
-status: pending
+status: in-progress
 depends_on: [99, 109]
 phase: 3
 ---
@@ -45,7 +45,7 @@ beside it. Whether that generation is a build script or a checked-in generated f
 has exactly one hand-edited input is not, and a test that adds a file without a `mod` and expects rejection is what
 proves it.
 
-Nesting is why `std::tonal_harmony` exists: a bundled module's virtual URI is its file name, so the underscore is a
+Nesting is why `std::tonal::harmony` exists: a bundled module's virtual URI is its file name, so the underscore is a
 missing feature wearing the costume of a naming preference. With a module tree it becomes `std::tonal::harmony`, and
 the library gets the shape its contents already have — the tonal constructors, the diatonic sequences, and the schemas
 under `tonal/`; the pitch-class, set, and row work under `post_tonal/`.

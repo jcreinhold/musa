@@ -1,0 +1,57 @@
+================================================================================
+a module file declares a package's children and nothing else
+================================================================================
+
+// The standard library's module tree.
+mod core;
+mod list;
+mod tonal;
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (comment)
+  (mod_declaration
+    (identifier))
+  (mod_declaration)
+  (mod_declaration
+    (identifier)))
+
+================================================================================
+an import path nests as deep as the package does
+================================================================================
+
+piece "Nested" {
+  import std::tonal::harmony;
+  import std::post_tonal::pcset as sets;
+  score {
+    part p {
+      voice v {
+        c4/4
+      }
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (piece_declaration
+    (string)
+    (import_statement
+      (identifier)
+      (identifier))
+    (import_statement
+      (identifier)
+      (identifier)
+      (identifier)
+      (identifier))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (note_statement
+            (pitch_literal)
+            (duration
+              (integer))))))))

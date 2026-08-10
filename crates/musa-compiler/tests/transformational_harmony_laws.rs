@@ -38,7 +38,7 @@ const MAJOR: usize = 2;
 /// The counting apparatus, and the two triads every fixture starts from.
 const PRELUDE: &str = r"
     import std::harmony;
-    import std::pcset;
+    import std::post_tonal::pcset;
     import std::transformational;
     import std::voicing;
 

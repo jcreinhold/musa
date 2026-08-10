@@ -4,60 +4,93 @@
   "word": "identifier",
   "rules": {
     "source_file": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SEQ",
+          "members": [
+            {
+              "type": "REPEAT",
+              "content": {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "import_statement"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "let_declaration"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "function_declaration"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "template_declaration"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "signature_declaration"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "module_declaration"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "make_statement"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "piece_declaration"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "library_declaration"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "make_statement"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "REPEAT1",
+          "content": {
+            "type": "SYMBOL",
+            "name": "mod_declaration"
+          }
+        }
+      ]
+    },
+    "mod_declaration": {
       "type": "SEQ",
       "members": [
         {
-          "type": "REPEAT",
+          "type": "STRING",
+          "value": "mod"
+        },
+        {
+          "type": "FIELD",
+          "name": "name",
           "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "import_statement"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "let_declaration"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "function_declaration"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "template_declaration"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "signature_declaration"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "module_declaration"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "make_statement"
-              }
-            ]
+            "type": "SYMBOL",
+            "name": "_module_name"
           }
         },
         {
-          "type": "CHOICE",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "piece_declaration"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "library_declaration"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "make_statement"
-            }
-          ]
+          "type": "STRING",
+          "value": ";"
         }
       ]
     },
@@ -454,41 +487,24 @@
                     "name": "identifier"
                   },
                   {
-                    "type": "STRING",
-                    "value": ":"
-                  },
-                  {
-                    "type": "STRING",
-                    "value": ":"
-                  },
-                  {
-                    "type": "CHOICE",
-                    "members": [
-                      {
-                        "type": "SYMBOL",
-                        "name": "identifier"
-                      },
-                      {
-                        "type": "STRING",
-                        "value": "harmony"
-                      },
-                      {
-                        "type": "STRING",
-                        "value": "list"
-                      },
-                      {
-                        "type": "STRING",
-                        "value": "option"
-                      },
-                      {
-                        "type": "STRING",
-                        "value": "pitch"
-                      },
-                      {
-                        "type": "STRING",
-                        "value": "scale"
-                      }
-                    ]
+                    "type": "REPEAT1",
+                    "content": {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "STRING",
+                          "value": ":"
+                        },
+                        {
+                          "type": "STRING",
+                          "value": ":"
+                        },
+                        {
+                          "type": "SYMBOL",
+                          "name": "_module_name"
+                        }
+                      ]
+                    }
                   }
                 ]
               }
@@ -523,6 +539,35 @@
         {
           "type": "STRING",
           "value": ";"
+        }
+      ]
+    },
+    "_module_name": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "identifier"
+        },
+        {
+          "type": "STRING",
+          "value": "harmony"
+        },
+        {
+          "type": "STRING",
+          "value": "list"
+        },
+        {
+          "type": "STRING",
+          "value": "option"
+        },
+        {
+          "type": "STRING",
+          "value": "pitch"
+        },
+        {
+          "type": "STRING",
+          "value": "scale"
         }
       ]
     },

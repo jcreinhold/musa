@@ -43,7 +43,7 @@ name states the chosen zero convention rather than calling one universal.
 
 ## Target
 
-- Core/refined values and checked constructors needed by source; `std::pcset` and `std::serial` implemented in `.musa`.
+- Core/refined values and checked constructors needed by source; `std::post_tonal::pcset` and `std::post_tonal::serial` implemented in `.musa`.
 - Source syntax only where literals materially improve row readability; otherwise lists/functions suffice.
 - `examples/serial-forms.musa`: a generic row with 48 distinct forms, a symmetric counterexample, a matrix, and a
   spelling projection that must be explicit.

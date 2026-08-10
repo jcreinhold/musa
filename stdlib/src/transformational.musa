@@ -104,7 +104,7 @@ library {
 
     // Forget one spelling. Named for what it does to a pitch class rather
     // than for the domain it lands in, so that a piece may import this and
-    // `std::pcset` together.
+    // `std::post_tonal::pcset` together.
     fn unspelled(spelled: pitchclass) -> pc12 = pc12_forget(spelled);
 
     // The three tones of a triad, spelled, from the root upward.

@@ -1499,6 +1499,42 @@
     }
   },
   {
+    "type": "mod_declaration",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "harmony",
+            "named": false
+          },
+          {
+            "type": "identifier",
+            "named": true
+          },
+          {
+            "type": "list",
+            "named": false
+          },
+          {
+            "type": "option",
+            "named": false
+          },
+          {
+            "type": "pitch",
+            "named": false
+          },
+          {
+            "type": "scale",
+            "named": false
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "modulate_statement",
     "named": true,
     "fields": {
@@ -2866,6 +2902,10 @@
           "named": true
         },
         {
+          "type": "mod_declaration",
+          "named": true
+        },
+        {
           "type": "module_declaration",
           "named": true
         },
@@ -3730,6 +3770,10 @@
   },
   {
     "type": "mobile",
+    "named": false
+  },
+  {
+    "type": "mod",
     "named": false
   },
   {

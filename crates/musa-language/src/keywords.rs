@@ -637,6 +637,14 @@ static SIGNATURE: KeywordDoc = doc!(
      it.\n\n\
      ```musa\nsignature TonalContext {\n    let key: key;\n    let scale: scale;\n}\n```"
 );
+static MOD: KeywordDoc = doc!(
+    "mod",
+    "declare one child of a package's module tree",
+    "`mod tonal;` says this package has a module called `tonal` — a `tonal.musa` beside this file, or a \
+     `tonal/mod.musa` declaring children of its own. A package's tree is its `mod` declarations and nothing else: \
+     a `.musa` file no `mod` reaches is not part of the package, and saying so is an error rather than a silence.\n\n\
+     ```musa\nmod core;\nmod tonal;\n```"
+);
 static MODULE: KeywordDoc = doc!(
     "module",
     "group declarations behind a signature",
@@ -673,6 +681,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::TemplateKw => &TEMPLATE,
         SyntaxKind::SignatureKw => &SIGNATURE,
         SyntaxKind::ModuleKw => &MODULE,
+        SyntaxKind::ModKw => &MOD,
         SyntaxKind::MakeKw => &MAKE,
         SyntaxKind::AsKw => &AS,
         SyntaxKind::PieceKw => &PIECE,
@@ -888,7 +897,8 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::MakeStmt
         | SyntaxKind::SignatureDecl
         | SyntaxKind::SignatureMember
-        | SyntaxKind::ModuleDecl => return None,
+        | SyntaxKind::ModuleDecl
+        | SyntaxKind::ModDecl => return None,
     };
     Some(doc)
 }
@@ -924,6 +934,7 @@ mod tests {
             SyntaxKind::PerformanceKw,
             SyntaxKind::UseKw,
             SyntaxKind::ImportKw,
+            SyntaxKind::ModKw,
             SyntaxKind::TransposeKw,
             SyntaxKind::UpKw,
             SyntaxKind::DownKw,

@@ -480,6 +480,33 @@ impl LibraryDecl {
     }
 }
 
+/// `mod tonal;` — one child of a package's module tree.
+pub struct ModDecl(SyntaxNode);
+wrapper!(ModDecl, SyntaxKind::ModDecl);
+
+impl ModDecl {
+    /// The children a module file declares, in the order it declares them.
+    ///
+    /// A package's tree is exactly this and nothing else: what files exist
+    /// beside the declarations is a separate question, and the point of asking
+    /// them separately is that the answers can disagree.
+    pub fn all_at_root(node: &SyntaxNode) -> Vec<Self> {
+        children(node)
+    }
+
+    /// The name of the child.
+    ///
+    /// Read by position rather than by token kind: `mod list;` names a module,
+    /// and the lexer writes `list` as a type keyword wherever the word appears.
+    pub fn name(&self) -> Option<String> {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .find(|token| crate::parser::MODULE_NAME.contains(&token.kind()))
+            .map(|token| token.text().to_owned())
+    }
+}
+
 /// `import "../library/motifs.musa";` or `import std::core;`
 pub struct ImportStmt(SyntaxNode);
 wrapper!(ImportStmt, SyntaxKind::ImportStmt);
@@ -502,23 +529,15 @@ impl ImportStmt {
             .filter_map(SyntaxElement::into_token)
             // The alias is a name too, and it is not part of the path.
             .take_while(|token| token.kind() != SyntaxKind::AsKw)
-            .filter(|token| {
-                matches!(
-                    token.kind(),
-                    SyntaxKind::Identifier
-                        | SyntaxKind::HarmonyKw
-                        | SyntaxKind::ListKw
-                        | SyntaxKind::OptionKw
-                        | SyntaxKind::PitchKw
-                        | SyntaxKind::ScaleKw
-                )
-            })
+            .filter(|token| crate::parser::MODULE_NAME.contains(&token.kind()))
             .map(|token| token.text().to_owned())
             .collect::<Vec<_>>();
-        match names.as_slice() {
-            [namespace, module] => Some(format!("{namespace}::{module}")),
-            _ => None,
+        // A namespace and at least one module. How many segments follow is a
+        // fact about the package, so nothing here counts them.
+        if names.len() < 2 {
+            return None;
         }
+        Some(names.join("::"))
     }
 }
 

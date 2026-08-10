@@ -29,8 +29,8 @@ use musa_compiler::{Code, CompileOptions, ScoreEventKind, ScoreSnapshot, Severit
 /// member of a list, so a count that has no other way out of the compiler
 /// leaves as notes in a voice.
 const PRELUDE: &str = r"
-    import std::pcset;
-    import std::serial;
+    import std::post_tonal::pcset;
+    import std::post_tonal::serial;
 
     meter 4/4;
 
@@ -227,6 +227,6 @@ fn the_bundled_libraries_import_like_any_other() {
     let source = probe("", "beat()");
     assert!(
         errors_of(&source).is_empty(),
-        "`std::pcset` and `std::serial` must compile as bundled sources"
+        "`std::post_tonal::pcset` and `std::post_tonal::serial` must compile as bundled sources"
     );
 }

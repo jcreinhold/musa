@@ -387,6 +387,8 @@ enum RawToken {
     SignatureKw,
     #[token("module", priority = 3)]
     ModuleKw,
+    #[token("mod", priority = 3)]
+    ModKw,
 }
 
 impl RawToken {
@@ -511,7 +513,8 @@ impl RawToken {
             | Self::MakeKw
             | Self::AsKw
             | Self::SignatureKw
-            | Self::ModuleKw => None,
+            | Self::ModuleKw
+            | Self::ModKw => None,
         }
     }
 
@@ -634,6 +637,7 @@ impl RawToken {
             Self::AsKw => SyntaxKind::AsKw,
             Self::SignatureKw => SyntaxKind::SignatureKw,
             Self::ModuleKw => SyntaxKind::ModuleKw,
+            Self::ModKw => SyntaxKind::ModKw,
         }
     }
 }

@@ -17,6 +17,7 @@
   "template"
   "signature"
   "module"
+  "mod"
   "make"
   "as"
   "tempo"

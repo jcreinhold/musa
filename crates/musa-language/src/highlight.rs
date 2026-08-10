@@ -99,6 +99,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("template", SyntaxKind::TemplateKw),
     ("signature", SyntaxKind::SignatureKw),
     ("module", SyntaxKind::ModuleKw),
+    ("mod", SyntaxKind::ModKw),
     ("make", SyntaxKind::MakeKw),
     ("as", SyntaxKind::AsKw),
     ("Hz", SyntaxKind::UnitHz),
@@ -277,6 +278,7 @@ impl TokenClass {
             | SyntaxKind::AsKw
             | SyntaxKind::SignatureKw
             | SyntaxKind::ModuleKw
+            | SyntaxKind::ModKw
             | SyntaxKind::CrescendoKw
             | SyntaxKind::DiminuendoKw
             | SyntaxKind::ToKw
@@ -412,7 +414,8 @@ impl TokenClass {
             | SyntaxKind::MakeStmt
             | SyntaxKind::SignatureDecl
             | SyntaxKind::SignatureMember
-            | SyntaxKind::ModuleDecl => return None,
+            | SyntaxKind::ModuleDecl
+            | SyntaxKind::ModDecl => return None,
         };
         Some(class)
     }

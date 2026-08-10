@@ -133,9 +133,9 @@ library {
     // policy is a function because the library has no opinion: a stage that
     // cannot be voiced from the bass the caller named is silence here, and the
     // caller can see that it was.
-    fn stage_music(voice: chord_class -> music, content: option[chord_class]) -> music =
+    fn stage_music(policy: chord_class -> music, content: option[chord_class]) -> music =
         match content {
             none -> music { rest/1 },
-            some(sounding) -> voice(sounding),
+            some(sounding) -> policy(sounding),
         };
 }

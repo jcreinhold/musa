@@ -16,7 +16,7 @@
 piece "Tonal construction" {
     import std::harmony;
     import std::scale;
-    import std::tonal_harmony;
+    import std::tonal::harmony;
     import std::voicing;
 
     // The three collections this piece names. C minor is not one collection,

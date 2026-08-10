@@ -73,12 +73,37 @@ pub fn parse(source: &str) -> ParsedDocument {
     ParsedDocument { node: node.0, errors }
 }
 
+/// What a file's lexical root turned out to be, as far as the parser can tell.
+///
+/// Both flags answer the same question — whether the file still owes a piece.
+/// A `make` may *be* the piece, and a file that declares a module tree is a
+/// package's own bookkeeping and is not music at all.
+#[derive(Clone, Copy, Default)]
+struct RootShape {
+    made: bool,
+    declares_modules: bool,
+}
+
 /// One step of tree construction.
 enum Event<'a> {
     StartNode(SyntaxKind),
     Token(SyntaxKind, &'a str),
     FinishNode,
 }
+
+/// What may name a module inside an import path.
+///
+/// A module may be called after a type or a domain — `pitch`, `list`,
+/// `option`, `scale`, `harmony` — and the lexer writes the keyword token
+/// wherever the word appears. The path position is what makes the word a name.
+pub(crate) const MODULE_NAME: &[SyntaxKind] = &[
+    SyntaxKind::Identifier,
+    SyntaxKind::HarmonyKw,
+    SyntaxKind::ListKw,
+    SyntaxKind::OptionKw,
+    SyntaxKind::PitchKw,
+    SyntaxKind::ScaleKw,
+];
 
 /// Declaration keywords that bound error recovery at each level.
 const PIECE_RECOVERY: &[SyntaxKind] = &[
@@ -241,10 +266,10 @@ impl<'a> Parser<'a> {
         // they are instantiated by. A `make` of a piece template stands in
         // the piece's place and is that piece — one file is still one piece,
         // whether it is written out or made.
-        let made = self.root_preamble();
+        let shape = self.root_preamble();
         if self.at(SyntaxKind::LibraryKw) {
             self.library_decl();
-        } else if self.at(SyntaxKind::PieceKw) || !made {
+        } else if self.at(SyntaxKind::PieceKw) || !(shape.made || shape.declares_modules) {
             // A file that made nothing still owes a piece, and saying so here
             // is how `piece_decl` reports the one it cannot find.
             self.piece_decl();
@@ -542,11 +567,14 @@ impl<'a> Parser<'a> {
     /// These are the file's lexical root, and the only scope a template body
     /// reads besides its own parameters. Nothing here is the file's
     /// declaration — the piece or library that follows is.
-    fn root_preamble(&mut self) -> bool {
-        let mut made = false;
+    fn root_preamble(&mut self) -> RootShape {
+        let mut shape = RootShape::default();
         loop {
             if self.at_any(&[SyntaxKind::ImportKw, SyntaxKind::UseKw]) {
                 self.import_stmt();
+            } else if self.at(SyntaxKind::ModKw) {
+                self.mod_decl();
+                shape.declares_modules = true;
             } else if self.at(SyntaxKind::LetKw) {
                 self.let_decl();
             } else if self.at(SyntaxKind::FnKw) {
@@ -563,12 +591,30 @@ impl<'a> Parser<'a> {
                 // is a question about what the names mean, and the parser
                 // does not know what anything means.
                 self.make_stmt();
-                made = true;
+                shape.made = true;
             } else {
                 break;
             }
         }
-        made
+        shape
+    }
+
+    /// `mod tonal;` — one child of a package's module tree.
+    ///
+    /// A name and nothing else: what the name reaches is a question about the
+    /// package's files, which the parser has none of. The name is read from
+    /// [`MODULE_NAME`] for the same reason an import path is — `mod list;` is
+    /// the module namespace, where `list` is a name and not a type.
+    fn mod_decl(&mut self) {
+        self.start(SyntaxKind::ModDecl);
+        self.bump(); // `mod`
+        if self.at_any(MODULE_NAME) {
+            self.bump();
+        } else {
+            self.expected("a module name");
+        }
+        self.expect(SyntaxKind::Semicolon, "`;`");
+        self.finish();
     }
 
     /// `signature TonalContext { let tonic: key; }` — the members a module
@@ -857,22 +903,24 @@ impl<'a> Parser<'a> {
             self.bump();
         } else {
             self.expect(SyntaxKind::Identifier, "a relative path in quotes, or `std::module`");
-            self.expect(SyntaxKind::Colon, "`::`");
-            self.expect(SyntaxKind::Colon, "`::`");
-            // A module may be named after a type or a domain keyword:
-            // `pitch`, `list`, `option`, `scale`, `harmony`. The path
-            // position is what makes the word a module name.
-            if self.at_any(&[
-                SyntaxKind::Identifier,
-                SyntaxKind::HarmonyKw,
-                SyntaxKind::ListKw,
-                SyntaxKind::OptionKw,
-                SyntaxKind::PitchKw,
-                SyntaxKind::ScaleKw,
-            ]) {
-                self.bump();
-            } else {
-                self.expected("a standard-library module name");
+            // A path nests as far as the package's module tree does, and the
+            // parser counts no segments: how deep `std::tonal::harmony` is
+            // is a fact about `stdlib/`, not about the grammar.
+            loop {
+                self.expect(SyntaxKind::Colon, "`::`");
+                self.expect(SyntaxKind::Colon, "`::`");
+                // A module may be named after a type or a domain keyword:
+                // `pitch`, `list`, `option`, `scale`, `harmony`. The path
+                // position is what makes the word a module name.
+                if self.at_any(MODULE_NAME) {
+                    self.bump();
+                } else {
+                    self.expected("a module name");
+                    break;
+                }
+                if !self.at(SyntaxKind::Colon) {
+                    break;
+                }
             }
         }
         if self.at(SyntaxKind::AsKw) {

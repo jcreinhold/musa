@@ -29,6 +29,7 @@ use musa_language::ast::{AstNode as _, LibraryDecl};
 
 use crate::diagnose::{Code, Diagnostic};
 use crate::origin::SourceSpan;
+use crate::package::Package;
 use crate::resolve::Resolver;
 
 /// The text of every file a compilation may import, by resolved path.
@@ -69,7 +70,7 @@ impl ImportSources {
 #[must_use]
 pub fn resolve_import(importer: &str, written: &str) -> String {
     if let Some(module) = written.strip_prefix("std::") {
-        return format!("musa-stdlib:/std/{module}.musa");
+        return standard_library_uri(module);
     }
     if let Some((namespace, module)) = written.split_once("::") {
         return format!("musa-import:/{namespace}/{module}.musa");
@@ -94,74 +95,72 @@ pub fn resolve_import(importer: &str, written: &str) -> String {
 /// Version of the source language expected by the embedded standard library.
 pub const STANDARD_LIBRARY_LANGUAGE_VERSION: u32 = 1;
 
-const COLLECTIONS_URI: &str = "musa-stdlib:/std/collections.musa";
-const CORE_URI: &str = "musa-stdlib:/std/core.musa";
-const HARMONY_URI: &str = "musa-stdlib:/std/harmony.musa";
-const LIST_URI: &str = "musa-stdlib:/std/list.musa";
-const OPTION_URI: &str = "musa-stdlib:/std/option.musa";
-const PCSET_URI: &str = "musa-stdlib:/std/pcset.musa";
-const PITCH_URI: &str = "musa-stdlib:/std/pitch.musa";
-const SCALE_URI: &str = "musa-stdlib:/std/scale.musa";
-const SERIAL_URI: &str = "musa-stdlib:/std/serial.musa";
-const TONAL_HARMONY_URI: &str = "musa-stdlib:/std/tonal_harmony.musa";
-const TRANSFORMATIONAL_URI: &str = "musa-stdlib:/std/transformational.musa";
-const VOICING_URI: &str = "musa-stdlib:/std/voicing.musa";
-const CONTEXT_URI: &str = "musa-stdlib:/std/context.musa";
-const COLLECTIONS_SOURCE: &str = include_str!("../../../stdlib/collections.musa");
-const CONTEXT_SOURCE: &str = include_str!("../../../stdlib/context.musa");
-const CORE_SOURCE: &str = include_str!("../../../stdlib/core.musa");
-const HARMONY_SOURCE: &str = include_str!("../../../stdlib/harmony.musa");
-const LIST_SOURCE: &str = include_str!("../../../stdlib/list.musa");
-const OPTION_SOURCE: &str = include_str!("../../../stdlib/option.musa");
-const PCSET_SOURCE: &str = include_str!("../../../stdlib/pcset.musa");
-const PITCH_SOURCE: &str = include_str!("../../../stdlib/pitch.musa");
-const SCALE_SOURCE: &str = include_str!("../../../stdlib/scale.musa");
-const SERIAL_SOURCE: &str = include_str!("../../../stdlib/serial.musa");
-const TONAL_HARMONY_SOURCE: &str = include_str!("../../../stdlib/tonal_harmony.musa");
-const TRANSFORMATIONAL_SOURCE: &str = include_str!("../../../stdlib/transformational.musa");
-const VOICING_SOURCE: &str = include_str!("../../../stdlib/voicing.musa");
+/// Every `.musa` file under `stdlib/src`, embedded by the build script.
+///
+/// A flat listing and nothing more: which of these files are *modules* is
+/// [`crate::package`]'s answer, read from the `mod` declarations in the source
+/// itself. A file that appears here and in no declaration is a fault, not a
+/// module, which is the point of embedding the listing rather than a table.
+mod embedded {
+    include!(concat!(env!("OUT_DIR"), "/stdlib_files.rs"));
+}
+
 #[cfg(test)]
-const MANIFEST: &str = include_str!("../../../stdlib/manifest.toml");
+const MANIFEST: &str = include_str!("../../../stdlib/musa.toml");
+
+/// The bundled library's module tree, read once from its own declarations.
+fn standard_library() -> &'static Package<'static> {
+    static PACKAGE: std::sync::LazyLock<Package<'static>> =
+        std::sync::LazyLock::new(|| Package::read(embedded::STANDARD_LIBRARY_FILES));
+    &PACKAGE
+}
+
+/// The virtual URI a bundled module path is readable at.
+///
+/// `std::tonal::harmony` lives at `musa-stdlib:/std/tonal/harmony.musa` —
+/// the module path with its separators changed, so a reader who saw the import
+/// can find the file and a reader who saw the URI can write the import.
+fn standard_library_uri(path: &str) -> String {
+    format!("musa-stdlib:/std/{}.musa", path.replace("::", "/"))
+}
+
+/// The module path a bundled URI names, if it is one.
+fn standard_library_path(uri: &str) -> Option<String> {
+    Some(
+        uri.strip_prefix("musa-stdlib:/std/")?
+            .strip_suffix(".musa")?
+            .replace('/', "::"),
+    )
+}
 
 /// Source behind one readable virtual standard-library URI.
 #[must_use]
 pub fn standard_library_source(uri: &str) -> Option<&'static str> {
-    match uri {
-        COLLECTIONS_URI => Some(COLLECTIONS_SOURCE),
-        CONTEXT_URI => Some(CONTEXT_SOURCE),
-        CORE_URI => Some(CORE_SOURCE),
-        HARMONY_URI => Some(HARMONY_SOURCE),
-        LIST_URI => Some(LIST_SOURCE),
-        OPTION_URI => Some(OPTION_SOURCE),
-        PCSET_URI => Some(PCSET_SOURCE),
-        PITCH_URI => Some(PITCH_SOURCE),
-        SCALE_URI => Some(SCALE_SOURCE),
-        SERIAL_URI => Some(SERIAL_SOURCE),
-        TONAL_HARMONY_URI => Some(TONAL_HARMONY_SOURCE),
-        TRANSFORMATIONAL_URI => Some(TRANSFORMATIONAL_SOURCE),
-        VOICING_URI => Some(VOICING_SOURCE),
-        _ => None,
-    }
+    standard_library().module(&standard_library_path(uri)?)
 }
 
 /// Every bundled module, in stable documentation and packaging order.
-pub fn standard_library_modules() -> impl Iterator<Item = (&'static str, &'static str)> {
-    [
-        (COLLECTIONS_URI, COLLECTIONS_SOURCE),
-        (CONTEXT_URI, CONTEXT_SOURCE),
-        (CORE_URI, CORE_SOURCE),
-        (HARMONY_URI, HARMONY_SOURCE),
-        (LIST_URI, LIST_SOURCE),
-        (OPTION_URI, OPTION_SOURCE),
-        (PCSET_URI, PCSET_SOURCE),
-        (PITCH_URI, PITCH_SOURCE),
-        (SCALE_URI, SCALE_SOURCE),
-        (SERIAL_URI, SERIAL_SOURCE),
-        (TONAL_HARMONY_URI, TONAL_HARMONY_SOURCE),
-        (TRANSFORMATIONAL_URI, TRANSFORMATIONAL_SOURCE),
-        (VOICING_URI, VOICING_SOURCE),
-    ]
-    .into_iter()
+pub fn standard_library_modules() -> impl Iterator<Item = (String, &'static str)> {
+    standard_library()
+        .modules()
+        .map(|(path, source)| (standard_library_uri(path), source))
+}
+
+/// Everything wrong with the bundled library's own declarations.
+///
+/// Empty in any shipped build — its law test says so — but produced rather
+/// than asserted, because the same reading is what a fetched package will be
+/// held to and an assertion cannot be shown to a user.
+pub(crate) fn standard_library_faults() -> Vec<Diagnostic> {
+    standard_library()
+        .faults()
+        .iter()
+        .map(|fault| {
+            Diagnostic::error(Code::Import, fault.message())
+                .help(fault.help())
+                .note("a package's modules are its `mod` declarations; nothing is found by looking")
+        })
+        .collect()
 }
 
 /// Reference markdown derived from source comments.
@@ -173,11 +172,9 @@ pub fn standard_library_reference() -> String {
     let mut out = String::from(
         "# Musa standard library 1\n\nThis reference is generated from the source comments in the bundled `.musa` modules. Standard definitions are ordinary\nMusa definitions; importing a module is explicit and never searches the filesystem.\n",
     );
-    for (uri, source) in standard_library_modules() {
-        let module = uri
-            .strip_prefix("musa-stdlib:/std/")
-            .and_then(|name| name.strip_suffix(".musa"))
-            .unwrap_or("unknown");
+    // The module paths, not their URIs: a reader of this file writes
+    // `import std::tonal::harmony;`, and never sees where the file sits.
+    for (module, source) in standard_library().modules() {
         let _ = write!(out, "\n## `std::{module}`\n\n");
         let mut comments = Vec::new();
         // A signature's members are documented under it; a module's are not.
@@ -291,9 +288,20 @@ pub(crate) fn load(
         loaded: std::collections::HashSet::new(),
         stack: Vec::new(),
     };
+    let mut reported_package_faults = false;
     for import in imports {
         let span = crate::resolve::trimmed_span(import.syntax());
         let Some(written) = import.path() else { continue };
+        // A piece that reads the bundled library is told what is wrong with
+        // it, once. A package whose declarations and files disagree cannot
+        // answer honestly for any of its modules, so saying so at the first
+        // import beats letting each one fail separately with a smaller reason.
+        if written.starts_with("std::") && !reported_package_faults {
+            reported_package_faults = true;
+            for fault in standard_library_faults() {
+                resolver.report(fault.at(span, "the bundled library is imported here"));
+            }
+        }
         loader.load_one(resolver, importer, &written, span);
     }
     loader.libraries
@@ -392,11 +400,6 @@ mod tests {
             "the embedded source language and manifest must advance together"
         );
         for (uri, source) in standard_library_modules() {
-            let module = uri
-                .strip_prefix("musa-stdlib:/std/")
-                .and_then(|name| name.strip_suffix(".musa"))
-                .expect("standard URI shape");
-            assert!(MANIFEST.contains(&format!("{module} = \"{module}.musa\"")));
             let parsed = musa_language::parse(source);
             assert!(parsed.errors().is_empty(), "{uri}: {:?}", parsed.errors());
             assert!(
@@ -406,10 +409,35 @@ mod tests {
         }
     }
 
+    /// The law the four parallel lists could not state: every file in the
+    /// package is declared, and every declaration reaches a file.
+    #[test]
+    fn the_bundled_library_declares_exactly_the_files_it_has() {
+        let faults: Vec<String> = standard_library()
+            .faults()
+            .iter()
+            .map(super::super::package::Fault::message)
+            .collect();
+        assert!(faults.is_empty(), "{faults:?}");
+    }
+
+    #[test]
+    fn a_nested_module_path_reads_as_a_nested_file() {
+        assert_eq!(
+            resolve_import("p.musa", "std::tonal::harmony"),
+            "musa-stdlib:/std/tonal/harmony.musa"
+        );
+        assert!(
+            standard_library_source("musa-stdlib:/std/tonal/harmony.musa").is_some(),
+            "and the file is there to read"
+        );
+    }
+
     #[test]
     fn standard_imports_are_installation_independent() {
-        assert_eq!(resolve_import("/a/piece.musa", "std::list"), LIST_URI);
-        assert_eq!(resolve_import("elsewhere/piece.musa", "std::list"), LIST_URI);
+        let list = "musa-stdlib:/std/list.musa";
+        assert_eq!(resolve_import("/a/piece.musa", "std::list"), list);
+        assert_eq!(resolve_import("elsewhere/piece.musa", "std::list"), list);
         assert_eq!(resolve_import("album/piece.musa", "../shared.musa"), "shared.musa");
         assert_eq!(
             resolve_import("piece.musa", "vendor::list"),

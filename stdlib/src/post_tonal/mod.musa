@@ -1,0 +1,8 @@
+// Post-tonal theory: pitch classes, sets, and rows.
+//
+// Spelling is deliberately absent here. `pc12` forgets it, and a module that
+// quietly remembered it would be answering set-class questions with notation
+// answers.
+
+mod pcset;
+mod serial;

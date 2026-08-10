@@ -15,10 +15,10 @@ The modules:
 | `std::harmony` | Chord classes: roots, bass, members, inversions, slash basses, the triad refinement |
 | `std::list` | Finite lists and folds |
 | `std::option` | The `option` type and its fold |
-| `std::pcset` | Pitch-class sets |
+| `std::post_tonal::pcset` | Pitch-class sets |
 | `std::pitch` | Pitch and interval operations |
 | `std::scale` | Scales, degrees, stepwise spelling |
-| `std::serial` | Twelve-tone rows and their forms |
+| `std::post_tonal::serial` | Twelve-tone rows and their forms |
 | `std::transformational` | Neo-Riemannian transformations on triads |
 | `std::voicing` | Voicing policies: close and drop positions |
 

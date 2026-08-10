@@ -184,7 +184,7 @@ impl PcSet12 {
 
     /// `Tₙ` applied to every member.
     ///
-    /// Set transposition is written in `std::pcset` as `map_pc` over the
+    /// Set transposition is written in `std::post_tonal::pcset` as `map_pc` over the
     /// members, which is where an author can see what it does; this is the
     /// same map, kept for the laws below that need it in Rust.
     #[cfg(test)]
@@ -378,7 +378,7 @@ impl Row12 {
     ///
     /// The construction fixes no naming convention, because it does not need
     /// one: the rows are rows, not labels. Which transposition is called
-    /// `P0` is a separate question, and `std::serial` answers it with two
+    /// `P0` is a separate question, and `std::post_tonal::serial` answers it with two
     /// differently named functions rather than one that quietly picks.
     pub(crate) fn matrix(&self) -> Vec<Self> {
         let leftmost = self.inverted(u64::from(self.head().number()).saturating_mul(2));

@@ -31,7 +31,7 @@ individually small and collectively make the surface read as improvised. They we
    reviewed, and merged without ever being part of the standard library.
 
 3. **Modules cannot nest, so names carry the hierarchy.** A bundled module's virtual URI is its file name, so
-   `std::tonal::harmony` is unspellable and the module is called `std::tonal_harmony`. The underscore is not a naming
+   `std::tonal::harmony` is unspellable and the module is called `std::tonal::harmony`. The underscore is not a naming
    preference; it is a missing feature wearing one. The same limitation makes the flat value namespace a hard
    constraint rather than a default: two modules cannot export the same name, with no way to disambiguate.
 
@@ -181,7 +181,7 @@ decision for the prompt; that it has exactly one hand-edited input is not.
 ### B.4 Paths, and why binding stays flat
 
 Import paths are qualified to any depth: `import std::tonal::harmony;`. The `std::IDENT` production becomes
-`std::IDENT ("::" IDENT)*`, and `std::tonal_harmony` becomes `std::tonal::harmony`.
+`std::IDENT ("::" IDENT)*`, and `std::tonal::harmony` becomes `std::tonal::harmony`.
 
 Binding, however, stays **flat by default**. An import brings the module's public names into the current flat value
 namespace, so a score writes `numeral_chord(home, five)` rather than `harmony.numeral_chord(home, five)`. This is a

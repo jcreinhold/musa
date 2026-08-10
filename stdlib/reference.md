@@ -66,24 +66,6 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `pitch_or_else(fallback: pitch, present: pitch -> pitch, value: option[pitch]) -> pitch` — Read an optional pitch, using fallback when it is absent and present when it is available.
 - `nat_or_else(fallback: nat, present: nat -> nat, value: option[nat]) -> nat` — Read an optional natural number under the same explicit policy.
 
-## `std::pcset`
-
-- `pc(number: nat) -> pc12` — The pitch class a number names, reduced modulo twelve. `pc(13)` and `pc(1)` are one pitch class, because they are one residue.
-- `pcs(numbers: list[nat]) -> list[pc12]` — The pitch classes a list of numbers names, each reduced modulo twelve. A row or a set is written as its numbers, because that is what this domain has instead of letters.
-- `number_of(member: pc12) -> nat` — The canonical representative, zero through eleven.
-- `forget_spelling(spelled: pitchclass) -> pc12` — Forget a spelling. This is the only total map from the spelled domain into this one; it is not injective, and it has no inverse without a policy.
-- `spelled_in(member: pc12, collection: scale) -> option[pitchclass]` — Spell a pitch class inside one collection — the explicit policy that `forget_spelling` has no inverse without. Absent when the collection holds no note of this pitch class.
-- `transposed_by(index: nat, member: pc12) -> pc12` — T_n: transposition by n semitones, `x + n` modulo twelve. The index comes first so that `transposed_by(3)` is the transposition itself, a `pc12 -> pc12` that `map_pc` can carry across a list.
-- `inverted_about(index: nat, member: pc12) -> pc12` — I_n: inversion about n, `n - x` modulo twelve. I_0 is the plain mirror through zero. The twelve transpositions and the twelve inversions are together the whole 24-element affine group on `pc12` — and 24 is the number, whatever a row's four form labels might suggest.
-- `map_pc(function: pc12 -> pc12, members: list[pc12]) -> list[pc12]` — Apply one pitch-class function to every member of a finite list.
-- `pcset(members: list[pc12]) -> pcset12` — The set of everything listed, however often it was listed. A set cannot hold a duplicate, so this cannot fail: a repetition is a mistake only where order matters, which is `std::serial`.
-- `set_members(set: pcset12) -> list[pc12]` — The members, ascending from zero. This is the set's own order and not its normal order. Named for the set rather than `members_of`, because `std::harmony` already reads the members of a chord class and a piece that reasons about both must be able to import both.
-- `set_transposed(set: pcset12, index: nat) -> pcset12` — T_n applied to every member.
-- `set_inverted(set: pcset12, index: nat) -> pcset12` — I_n applied to every member.
-- `normal_order(set: pcset12) -> list[pc12]` — Normal order: the rotation of the ascending members packed most tightly to the left. Ties break inward — first to last, then first to the one before last, and so on — and finally by the lowest starting pitch class.
-- `prime_form(set: pcset12) -> pcset12` — Prime form: the set class this set belongs to. The normal orders of the set and of its inversion are each transposed to begin on zero, and whichever reads lower is the answer.
-- `interval_class_vector(set: pcset12) -> list[nat]` — The interval-class vector: six counts, for interval classes one through six. Six and not twelve, because interval class seven is interval class five heard the other way round.
-
 ## `std::pitch`
 
 - `unison: interval` — Open Music Theory `016-intervals.md` supplies the conventional generic/specific interval names; `005-half-steps-whole-steps-and-accidentals.md` supplies the spelling distinction retained by these values. The written unison has no staff displacement and no chromatic displacement.
@@ -95,6 +77,43 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `compose_intervals(first: interval, second: interval) -> interval` — Apply two spelling-preserving written intervals in sequence.
 - `inverse_interval(value: interval) -> interval` — Reverse the direction of a written interval.
 - `written_pitch_class(value: pitch) -> pitchclass` — Forget octave while retaining the written letter and accidental.
+
+## `std::post_tonal::pcset`
+
+- `pc(number: nat) -> pc12` — The pitch class a number names, reduced modulo twelve. `pc(13)` and `pc(1)` are one pitch class, because they are one residue.
+- `pcs(numbers: list[nat]) -> list[pc12]` — The pitch classes a list of numbers names, each reduced modulo twelve. A row or a set is written as its numbers, because that is what this domain has instead of letters.
+- `number_of(member: pc12) -> nat` — The canonical representative, zero through eleven.
+- `forget_spelling(spelled: pitchclass) -> pc12` — Forget a spelling. This is the only total map from the spelled domain into this one; it is not injective, and it has no inverse without a policy.
+- `spelled_in(member: pc12, collection: scale) -> option[pitchclass]` — Spell a pitch class inside one collection — the explicit policy that `forget_spelling` has no inverse without. Absent when the collection holds no note of this pitch class.
+- `transposed_by(index: nat, member: pc12) -> pc12` — T_n: transposition by n semitones, `x + n` modulo twelve. The index comes first so that `transposed_by(3)` is the transposition itself, a `pc12 -> pc12` that `map_pc` can carry across a list.
+- `inverted_about(index: nat, member: pc12) -> pc12` — I_n: inversion about n, `n - x` modulo twelve. I_0 is the plain mirror through zero. The twelve transpositions and the twelve inversions are together the whole 24-element affine group on `pc12` — and 24 is the number, whatever a row's four form labels might suggest.
+- `map_pc(function: pc12 -> pc12, members: list[pc12]) -> list[pc12]` — Apply one pitch-class function to every member of a finite list.
+- `pcset(members: list[pc12]) -> pcset12` — The set of everything listed, however often it was listed. A set cannot hold a duplicate, so this cannot fail: a repetition is a mistake only where order matters, which is `std::post_tonal::serial`.
+- `set_members(set: pcset12) -> list[pc12]` — The members, ascending from zero. This is the set's own order and not its normal order. Named for the set rather than `members_of`, because `std::harmony` already reads the members of a chord class and a piece that reasons about both must be able to import both.
+- `set_transposed(set: pcset12, index: nat) -> pcset12` — T_n applied to every member.
+- `set_inverted(set: pcset12, index: nat) -> pcset12` — I_n applied to every member.
+- `normal_order(set: pcset12) -> list[pc12]` — Normal order: the rotation of the ascending members packed most tightly to the left. Ties break inward — first to last, then first to the one before last, and so on — and finally by the lowest starting pitch class.
+- `prime_form(set: pcset12) -> pcset12` — Prime form: the set class this set belongs to. The normal orders of the set and of its inversion are each transposed to begin on zero, and whichever reads lower is the answer.
+- `interval_class_vector(set: pcset12) -> list[nat]` — The interval-class vector: six counts, for interval classes one through six. Six and not twelve, because interval class seven is interval class five heard the other way round.
+
+## `std::post_tonal::serial`
+
+- `row(pcs: list[pc12]) -> option[row12]` — The row a sequence spells, or nothing when the sequence is not one.
+- `repeated_positions(pcs: list[pc12]) -> list[nat]` — The order positions whose pitch class already appeared earlier — the exact reason a sequence failed to be a row. The first occurrence is not among them, because that is where the pitch class belongs.
+- `missing_classes(pcs: list[pc12]) -> list[pc12]` — The pitch classes a sequence never names, ascending — the other exact reason. A sequence of the right length has one of these lists empty exactly when it has the other empty.
+- `pcs_of(series: row12) -> list[pc12]` — The row's pitch classes, in order position order.
+- `transposed(series: row12, index: nat) -> row12` — P: transposition by n semitones, order positions untouched.
+- `inverted(series: row12, index: nat) -> row12` — I: inversion about n, order positions untouched.
+- `retrograde_of(series: row12) -> row12` — R: the order positions reversed, pitch classes untouched. An involution, and it commutes with P and I because it acts on the other side of the row.
+- `retrograde_inversion_of(series: row12, index: nat) -> row12` — RI: the retrograde of the inversion, which is also the inversion of the retrograde. Writing it both ways and getting one row is what "commutes" means here.
+- `matrix(series: row12) -> list[row12]` — The twelve-tone matrix, as twelve rows. Row zero is the row as written; row i is the transposition beginning on the ith pitch class of the inversion about the row's own head, so every column read downward is an inversion. The construction fixes no naming convention, because the rows are rows and not labels: which transposition is called P0 is the question the two functions below answer, differently and by name.
+- `fixed_zero_index(series: row12) -> nat` — The transposition index under the fixed-zero convention: P0 is the form beginning on pitch class zero, so a row's index is simply the number of the pitch class it begins on.
+- `moveable_zero_index(reference: row12, form: row12) -> nat` — The transposition index under the moveable-zero convention: P0 is the row as written, so an index is only meaningful relative to a stated reference row. `moveable_zero_index(reference, form)` is how far the form stands above the reference.
+- `distinct_forms(series: row12) -> nat` — How many *distinct* rows the 48 labelled forms produce. Forty-eight for a generic row; fewer for a row some labelled operation fixes.
+- `symmetries(series: row12) -> nat` — The order of the row's stabilizer: how many of the 48 labelled operations send the row to itself. This times `distinct_forms` is always 48, which is the orbit-stabilizer accounting the four labels are so often asked to do on their own.
+- `row_spelled_in(series: row12, collection: scale) -> list[option[pitchclass]]` — Spell one row inside a collection, position by position. A pitch class the collection cannot spell is absent, and the row keeps its length, so a projection that lost notes is visible as the gaps it left.
+- `spelling_in(collection: scale, member: pc12) -> option[pitchclass]` — The spelling policy of one collection, as a function a row can be carried across.
+- `first_pc(series: row12) -> pc12` — The pitch class a row begins on. Order position zero always exists, because a row has twelve of them.
 
 ## `std::scale`
 
@@ -118,26 +137,7 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `raise(from: degree) -> degree` — Raise a degree chromatically without moving its coordinate.
 - `lower(from: degree) -> degree` — Lower a degree chromatically without moving its coordinate.
 
-## `std::serial`
-
-- `row(pcs: list[pc12]) -> option[row12]` — The row a sequence spells, or nothing when the sequence is not one.
-- `repeated_positions(pcs: list[pc12]) -> list[nat]` — The order positions whose pitch class already appeared earlier — the exact reason a sequence failed to be a row. The first occurrence is not among them, because that is where the pitch class belongs.
-- `missing_classes(pcs: list[pc12]) -> list[pc12]` — The pitch classes a sequence never names, ascending — the other exact reason. A sequence of the right length has one of these lists empty exactly when it has the other empty.
-- `pcs_of(series: row12) -> list[pc12]` — The row's pitch classes, in order position order.
-- `transposed(series: row12, index: nat) -> row12` — P: transposition by n semitones, order positions untouched.
-- `inverted(series: row12, index: nat) -> row12` — I: inversion about n, order positions untouched.
-- `retrograde_of(series: row12) -> row12` — R: the order positions reversed, pitch classes untouched. An involution, and it commutes with P and I because it acts on the other side of the row.
-- `retrograde_inversion_of(series: row12, index: nat) -> row12` — RI: the retrograde of the inversion, which is also the inversion of the retrograde. Writing it both ways and getting one row is what "commutes" means here.
-- `matrix(series: row12) -> list[row12]` — The twelve-tone matrix, as twelve rows. Row zero is the row as written; row i is the transposition beginning on the ith pitch class of the inversion about the row's own head, so every column read downward is an inversion. The construction fixes no naming convention, because the rows are rows and not labels: which transposition is called P0 is the question the two functions below answer, differently and by name.
-- `fixed_zero_index(series: row12) -> nat` — The transposition index under the fixed-zero convention: P0 is the form beginning on pitch class zero, so a row's index is simply the number of the pitch class it begins on.
-- `moveable_zero_index(reference: row12, form: row12) -> nat` — The transposition index under the moveable-zero convention: P0 is the row as written, so an index is only meaningful relative to a stated reference row. `moveable_zero_index(reference, form)` is how far the form stands above the reference.
-- `distinct_forms(series: row12) -> nat` — How many *distinct* rows the 48 labelled forms produce. Forty-eight for a generic row; fewer for a row some labelled operation fixes.
-- `symmetries(series: row12) -> nat` — The order of the row's stabilizer: how many of the 48 labelled operations send the row to itself. This times `distinct_forms` is always 48, which is the orbit-stabilizer accounting the four labels are so often asked to do on their own.
-- `row_spelled_in(series: row12, collection: scale) -> list[option[pitchclass]]` — Spell one row inside a collection, position by position. A pitch class the collection cannot spell is absent, and the row keeps its length, so a projection that lost notes is visible as the gaps it left.
-- `spelling_in(collection: scale, member: pc12) -> option[pitchclass]` — The spelling policy of one collection, as a function a row can be carried across.
-- `first_pc(series: row12) -> pc12` — The pitch class a row begins on. Order position zero always exists, because a row has twelve of them.
-
-## `std::tonal_harmony`
+## `std::tonal::harmony`
 
 - `numeral(ordinal: nat, members: nat, position: nat) -> option[roman]` — The numeral three numbers describe, when they describe one. Absent when the ordinal is outside `I`–`vii`, when the stack is smaller than a triad or larger than a thirteenth, or when the bass position names a member the stack does not have — a third inversion of a triad is not a numeral that is hard to realize, it is not a numeral. OMT 020 and 021.
 - `triad_numeral(ordinal: nat) -> option[roman]` — The root-position triad on a degree, which is what OMT 020 writes with a bare numeral and no figures.
@@ -154,6 +154,30 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `french_sixth(collection: scale, lowered_sixth: degree) -> option[chord_class]` — The French sixth: the Italian sixth with the second degree added, which spells as an augmented fourth above the root. OMT 063.
 - `german_sixth(collection: scale, lowered_sixth: degree) -> option[chord_class]` — The German sixth: the Italian sixth with the lowered third added, which spells as a perfect fifth above the root. It sounds like a dominant seventh and is not one — the top note is an augmented sixth, written from a different letter, and re-rooting `dominant7` here would spell the wrong note. OMT 063.
 - `altered_dominant(collection: scale, quality: chord_class) -> option[chord_class]` — An altered or extended dominant: a named quality on the fifth degree. Which alteration is present is the caller's, written as the chord type — there is no universal set of alterations, and a function that picked one would be asserting a style rather than constructing a chord. `chord c dom7b9`, `chord c dom7s5`, and the plain extensions all pass here. OMT 071.
+
+## `std::tonal::sequences`
+
+- `rising_degree(start: degree, steps: nat, index: nat) -> degree` — The degree reached after `index` applications of a rise of `steps` scale steps. Index zero is the start, which is what makes a count of one mean "the pattern, stated once".
+- `risen_by(steps: nat, index: nat, from: degree) -> degree` — The rise itself, as the `nat_fold` step it is applied by. The index is ignored on purpose: a diatonic sequence moves by the same interval every time, and a pattern that did not would be a different pattern.
+- `falling_degree(start: degree, steps: nat, index: nat) -> degree` — The degree reached after `index` applications of a fall of `steps` scale steps. Falling is its own function rather than a negative rise, because a `nat` has no sign and a direction that could be forgotten is a direction that will be.
+- `fallen_by(steps: nat, index: nat, from: degree) -> degree` — The fall, as the `nat_fold` step it is applied by.
+- `rising_degrees(start: degree, steps: nat, count: nat) -> list[degree]` — The whole finite walk upward: `count` degrees, beginning at `start`. A count of zero is the empty walk and a count of one is the start alone, which are the ordinary meanings and are asserted as laws.
+- `falling_degrees(start: degree, steps: nat, count: nat) -> list[degree]` — The whole finite walk downward.
+- `stacked_on(collection: scale, members: nat, written: degree) -> option[chord_class]` — Harmonize one degree of a walk with the collection's own stack. Absent when the collection stacks to a sonority the chord vocabulary cannot name, which is how a pentatonic or whole-tone collection reports that it does not harmonize in thirds.
+- `harmonized(collection: scale, members: nat, walk: list[degree]) -> list[option[chord_class]]` — Harmonize a whole walk. The quality of each chord is the collection's, so a sequence in minor is a different succession of qualities from the same sequence in major without either being written twice.
+- `descending_fifths_degree(start: degree, index: nat) -> degree` — The descending-fifths sequence, one index at a time: roots fall four scale steps each time, which is a fifth down inside the collection. OMT 049.
+- `descending_fifths_chord(collection: scale, start: degree, members: nat, index: nat) -> option[chord_class]` — The chord the descending-fifths sequence reaches at one index.
+- `descending_fifths(collection: scale, start: degree, count: nat) -> list[option[chord_class]]` — The descending-fifths sequence as triads. In a major collection this is the succession OMT writes `I–IV–viiº–iii–vi–ii–V–I`, and the diminished triad in it is the collection's doing rather than an exception. OMT 049.
+- `descending_fifths_sevenths(collection: scale, start: degree, count: nat) -> list[option[chord_class]]` — The same sequence as seventh chords, which is how OMT 049 most often presents it because the sevenths chain the resolutions together.
+- `ascending_fifths_degree(start: degree, index: nat) -> degree` — The ascending-fifths sequence: roots rise four scale steps each time. A different pattern from the descending one and not its retrograde, because the collection is not symmetrical. OMT 049.
+- `ascending_fifths(collection: scale, start: degree, count: nat) -> list[option[chord_class]]` — The ascending-fifths sequence as triads.
+- `descending_thirds_degree(start: degree, index: nat) -> degree` — The descending-thirds sequence, the skeleton under the descending 5–6 pattern: roots fall two scale steps each time. OMT 049.
+- `descending_thirds(collection: scale, start: degree, count: nat) -> list[option[chord_class]]` — The descending-thirds sequence as triads.
+- `ascending_seconds_degree(start: degree, index: nat) -> degree` — The ascending-seconds sequence, the skeleton under the ascending 5–6 pattern and under parallel first-inversion chords: roots rise one scale step each time. OMT 049.
+- `ascending_seconds(collection: scale, start: degree, count: nat) -> list[option[chord_class]]` — The ascending-seconds sequence as triads, in root position.
+- `parallel_sixths(collection: scale, start: degree, count: nat) -> list[option[chord_class]]` — The same walk with every chord in first inversion: the parallel `6/3` passage OMT 049 describes. The inversion is a designation on the chord class and not yet a bass note — which note actually sounds lowest is still the voicing's decision.
+- `first_inversion(content: option[chord_class]) -> option[chord_class]` — Designate the third as bass, keeping absence absent. Written out because an `option` of an `option` is not a chord and this language composes the two by hand.
+- `stage_music(policy: chord_class -> music, content: option[chord_class]) -> music` — Sound one stage of a skeleton under a caller's voicing policy. The policy is a function because the library has no opinion: a stage that cannot be voiced from the bass the caller named is silence here, and the caller can see that it was.
 
 ## `std::transformational`
 
@@ -172,7 +196,7 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `then(first: triad -> triad, second: triad -> triad, refined: triad) -> triad` — Two transformations, applied in the order written.
 - `chain(steps: list[triad -> triad], start: triad) -> triad` — A chain of transformations, applied left to right from a starting triad. Composition is what a chain is — no transformation here is a keyword or a special form, so a list of them is ordinary data and this is an ordinary fold.
 - `applied(operation: triad -> triad, carried: triad) -> triad` — One step of `chain`.
-- `unspelled(spelled: pitchclass) -> pc12` — Forget one spelling. Named for what it does to a pitch class rather than for the domain it lands in, so that a piece may import this and `std::pcset` together.
+- `unspelled(spelled: pitchclass) -> pc12` — Forget one spelling. Named for what it does to a pitch class rather than for the domain it lands in, so that a piece may import this and `std::post_tonal::pcset` together.
 - `triad_tones(refined: triad) -> list[pitchclass]` — The three tones of a triad, spelled, from the root upward.
 - `triad_classes(refined: triad) -> pcset12` — The projection into the chromatic quotient: the triad as a set of three unspelled pitch classes. This is where a finite group claim becomes sayable. `dbb` major and `c` major are two triads and one set, so a cycle that fails to close in spelling closes here, and the failure and the closing are both facts an author can hold at once rather than one hiding the other.
 

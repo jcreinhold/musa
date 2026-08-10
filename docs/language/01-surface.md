@@ -104,7 +104,7 @@ one keyword until `docs/language-correction.md` §4 separated them. The former s
 carrying an applicable fix.
 
 Paths nest to any depth, so a bundled module is named by its position in the package's module tree —
-`std::tonal::harmony`, not `std::tonal_harmony`. `docs/language-correction.md` §3 fixes the package layout: a package
+`std::tonal::harmony`, not `std::tonal::harmony`. `docs/language-correction.md` §3 fixes the package layout: a package
 is a directory with `musa.toml` and a source root whose `lib.musa` declares its children with `mod`, a directory module
 declares its own in `mod.musa`, and a source file no `mod` reaches is rejected rather than silently unreachable.
 

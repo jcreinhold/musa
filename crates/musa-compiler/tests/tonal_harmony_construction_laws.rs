@@ -36,7 +36,7 @@ const TONAL_CONSTRUCTION: &str = include_str!("../../../examples/tonal-construct
 const PRELUDE: &str = r"
     import std::harmony;
     import std::scale;
-    import std::tonal_harmony;
+    import std::tonal::harmony;
     import std::voicing;
 
     meter 4/4;

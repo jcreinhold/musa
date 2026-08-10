@@ -1,0 +1,8 @@
+// Tonal theory: what a key and a collection make available.
+//
+// These modules construct — a numeral becomes a chord, a schema becomes a
+// sequence — and none of them analyze. What a passage *is* remains a claim
+// about the passage.
+
+mod harmony;
+mod sequences;

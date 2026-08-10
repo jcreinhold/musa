@@ -55,7 +55,7 @@ library {
 
     // The set of everything listed, however often it was listed. A set
     // cannot hold a duplicate, so this cannot fail: a repetition is a
-    // mistake only where order matters, which is `std::serial`.
+    // mistake only where order matters, which is `std::post_tonal::serial`.
     fn pcset(members: list[pc12]) -> pcset12 = pcset12_of(members);
 
     // The members, ascending from zero. This is the set's own order and not

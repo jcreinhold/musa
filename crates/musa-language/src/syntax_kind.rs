@@ -129,6 +129,8 @@ pub enum SyntaxKind {
     UseKw,
     /// `import`
     ImportKw,
+    /// `mod`
+    ModKw,
     /// `transpose`
     TransposeKw,
     /// `down`
@@ -514,6 +516,8 @@ pub enum SyntaxKind {
     /// `module CMajor : TonalContext { ... }` — a static named collection of
     /// values. With a parameter list and `template` in front, a functor.
     ModuleDecl,
+    /// `mod tonal;` — one child of a package's module tree.
+    ModDecl,
 }
 
 impl SyntaxKind {

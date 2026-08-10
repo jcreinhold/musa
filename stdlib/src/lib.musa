@@ -1,0 +1,18 @@
+// The standard library's module tree.
+//
+// Order is reading order, not dependency order: `core` first because
+// everything assumes it, then the finite-data modules, then pitch and the
+// collections built on it, then the two theory subtrees.
+
+mod core;
+mod list;
+mod option;
+mod pitch;
+mod scale;
+mod collections;
+mod harmony;
+mod voicing;
+mod context;
+mod transformational;
+mod tonal;
+mod post_tonal;

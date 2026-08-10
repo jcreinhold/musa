@@ -95,21 +95,32 @@ module.exports = grammar({
     // Parser::run — a file is a piece or a library, written at the top,
     // behind whatever its lexical root declares. A `make` of a piece
     // template stands where the piece would: one file is still one piece.
+    // A module file is the exception: `src/lib.musa` and a directory's
+    // `mod.musa` declare a package's children and nothing else, so they carry
+    // no piece and no library (Parser::root_preamble).
     source_file: ($) =>
-      seq(
-        repeat(
-          choice(
-            $.import_statement,
-            $.let_declaration,
-            $.function_declaration,
-            $.template_declaration,
-            $.signature_declaration,
-            $.module_declaration,
-            $.make_statement,
+      choice(
+        seq(
+          repeat(
+            choice(
+              $.import_statement,
+              $.let_declaration,
+              $.function_declaration,
+              $.template_declaration,
+              $.signature_declaration,
+              $.module_declaration,
+              $.make_statement,
+            ),
           ),
+          choice($.piece_declaration, $.library_declaration, $.make_statement),
         ),
-        choice($.piece_declaration, $.library_declaration, $.make_statement),
+        repeat1($.mod_declaration),
       ),
+
+    // Parser::mod_decl — one child of the package's module tree. A name and
+    // nothing else: what the name reaches is a fact about the package's
+    // files, which no parser has.
+    mod_declaration: ($) => seq('mod', field('name', $._module_name), ';'),
 
     // Parser::template_decl — the word that says a declaration is a pattern.
     // The declaration it parameterizes is its only child, so every query
@@ -203,24 +214,21 @@ module.exports = grammar({
         '}',
       ),
 
-    // Parser::import_stmt — `import "../library/motifs.musa";`
-    // A module may be named after a type or a domain keyword — `harmony`,
-    // `list`, `option`, `pitch`, `scale` — and the lexer writes the keyword
-    // token wherever the word appears. The path position is what makes the
-    // word a module name, exactly as in `Parser::import_stmt`.
+    // Parser::import_stmt — `import "../library/motifs.musa";` or
+    // `import std::tonal::harmony;`. How many segments a path has is a fact
+    // about the package it names, so nothing here counts them.
     import_statement: ($) =>
       seq(
         'import',
-        field(
-          'path',
-          choice(
-            $.string,
-            seq($.identifier, ':', ':', choice($.identifier, 'harmony', 'list', 'option', 'pitch', 'scale')),
-          ),
-        ),
+        field('path', choice($.string, seq($.identifier, repeat1(seq(':', ':', $._module_name))))),
         optional(seq('as', field('alias', $.identifier))),
         ';',
       ),
+
+    // A module may be named after a type or a domain keyword — `harmony`,
+    // `list`, `option`, `pitch`, `scale` — and the lexer writes the keyword
+    // token wherever the word appears (Parser::MODULE_NAME).
+    _module_name: ($) => choice($.identifier, 'harmony', 'list', 'option', 'pitch', 'scale'),
 
     // Parser::front_matter_stmt — one shape, four heads.
     front_matter_statement: ($) =>
