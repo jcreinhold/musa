@@ -126,6 +126,17 @@ fn the_scale_is_independent_of_the_rest_of_the_environment() {
 }
 
 #[test]
+fn a_numbered_degree_realizes_in_the_frame_that_registers_it() {
+    // Degrees are written from one: degree 1 of a C major frame rooted on c4
+    // is c4 itself, and 1/3/5 spell that frame's triad in its own register.
+    let source = piece_with(
+        "    use std::scale;\n\n    fn triad(register: frame) -> music = music {\n        (frame_degree(register, 1))/4\n        (frame_degree(register, 3))/4\n        (frame_degree(register, 5))/4\n    };\n\n    let anchored: music = option_fold(music { rest/4 }, triad, frame_on(scale c major, c4));",
+        "        use anchored;",
+    );
+    assert_eq!(pitches(&source), ["c4", "e4", "g4"]);
+}
+
+#[test]
 fn degrees_are_periodic_and_stepping_is_additive() {
     // A whole period up is the written period up, spelling included.
     assert_eq!(

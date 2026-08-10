@@ -3371,9 +3371,10 @@ fn eval_primitive(
             frame.pitch(*degree).map(Value::Pitch)
         }
         Primitive::DegreeOf => {
-            let ordinal = nat_value(values.first()?)?;
-            let ordinal = i64::try_from(ordinal).ok()?;
-            Some(Value::Degree(crate::scale::Degree::new(ordinal.checked_sub(1)?)))
+            // Degrees are written from one, as musicians write them, and
+            // `Degree` counts from one as well: no adjustment belongs here.
+            let ordinal = i64::try_from(nat_value(values.first()?)?).ok()?;
+            Some(Value::Degree(crate::scale::Degree::new(ordinal)))
         }
         Primitive::DegreeStepUp | Primitive::DegreeStepDown => {
             let Value::Degree(degree) = values.first()? else {
