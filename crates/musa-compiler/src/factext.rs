@@ -732,7 +732,7 @@ fn write_kind(words: &mut Words, kind: &FactKind) {
         }
         FactKind::Harmony { symbol } => {
             words.word("harmony");
-            words.text(&symbol.text);
+            words.text(symbol.text());
         }
         FactKind::Repeat { times, range } => {
             words.word("repeat");

@@ -868,6 +868,7 @@ fn item_syntax(item: &crate::ast::VoiceItem) -> &SyntaxNode {
         crate::ast::VoiceItem::Chord(ref it) => it.syntax(),
         crate::ast::VoiceItem::Use(ref it) => it.syntax(),
         crate::ast::VoiceItem::InScale(ref it) => it.syntax(),
+        crate::ast::VoiceItem::Stack(ref it) => it.syntax(),
         crate::ast::VoiceItem::Transpose(ref it) => it.syntax(),
         crate::ast::VoiceItem::Repeat(ref it) => it.syntax(),
         crate::ast::VoiceItem::Bar(ref it) => it.syntax(),

@@ -585,6 +585,23 @@ static STEP: KeywordDoc = doc!(
      ```musa\nin scale c major { (c5 step 2)/4 }\n```"
 );
 
+static CHORD: KeywordDoc = doc!(
+    "chord",
+    "rooted spelled content, with no register",
+    "`chord c major7` names a root and what is stacked on it, and nothing else: no octave, no spacing, no doubling, \
+     and no bass unless one is designated. It does not sound. Choosing the notes a player holds is a voicing policy, \
+     which can decline.\n\n\
+     ```musa\nlet harmony: chord_class = chord c major7;\n```"
+);
+static STACK: KeywordDoc = doc!(
+    "stack",
+    "sound a chord in close position",
+    "`stack c4 major7/2` is sugar for the close-position voicing of that chord rooted at that written pitch, held \
+     for that long. The pitch is what fixes the register, so `stack c major7/2` is refused: a pitch class chooses \
+     no octave.\n\n\
+     ```musa\nstack c4 major7/2\n```"
+);
+
 /// The keyword's documentation, or `None` for anything that is not a
 /// keyword.
 ///
@@ -599,6 +616,8 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::FrameKw => &FRAME,
         SyntaxKind::InKw => &IN,
         SyntaxKind::StepKw => &STEP,
+        SyntaxKind::ChordKw => &CHORD,
+        SyntaxKind::StackKw => &STACK,
         SyntaxKind::PieceKw => &PIECE,
         SyntaxKind::LibraryKw => &LIBRARY,
         SyntaxKind::TempoKw => &TEMPO,
@@ -804,7 +823,9 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::ScaleExpr
         | SyntaxKind::KeyExpr
         | SyntaxKind::StepExpr
-        | SyntaxKind::InScaleStmt => return None,
+        | SyntaxKind::InScaleStmt
+        | SyntaxKind::ChordExpr
+        | SyntaxKind::StackStmt => return None,
     };
     Some(doc)
 }
@@ -894,6 +915,8 @@ mod tests {
             SyntaxKind::FrameKw,
             SyntaxKind::InKw,
             SyntaxKind::StepKw,
+            SyntaxKind::ChordKw,
+            SyntaxKind::StackKw,
         ];
         for kind in kinds {
             let doc = keyword_doc(kind);

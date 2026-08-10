@@ -1139,6 +1139,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "chord_expression"
+        },
+        {
+          "type": "SYMBOL",
           "name": "key_expression"
         },
         {
@@ -1303,6 +1307,31 @@
         {
           "type": "FIELD",
           "name": "collection",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        }
+      ]
+    },
+    "chord_expression": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "chord"
+        },
+        {
+          "type": "FIELD",
+          "name": "root",
+          "content": {
+            "type": "SYMBOL",
+            "name": "pitch_class"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "chord_type",
           "content": {
             "type": "SYMBOL",
             "name": "identifier"
@@ -2024,6 +2053,10 @@
               {
                 "type": "SYMBOL",
                 "name": "in_scale_statement"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "stack_statement"
               }
             ]
           }
@@ -2293,6 +2326,10 @@
               {
                 "type": "SYMBOL",
                 "name": "in_scale_statement"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "stack_statement"
               }
             ]
           }
@@ -3256,6 +3293,10 @@
               {
                 "type": "SYMBOL",
                 "name": "in_scale_statement"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "stack_statement"
               }
             ]
           }
@@ -3438,6 +3479,68 @@
         {
           "type": "SYMBOL",
           "name": "duration"
+        }
+      ]
+    },
+    "stack_statement": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "stack"
+        },
+        {
+          "type": "FIELD",
+          "name": "root",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "pitch_literal"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "pitch_class"
+              }
+            ]
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "chord_type",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "SYMBOL",
+          "name": "duration"
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "articulation_list"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "STRING",
+              "value": "~"
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
         }
       ]
     },
@@ -4419,7 +4522,7 @@
     },
     "identifier": {
       "type": "PATTERN",
-      "value": "[a-zA-Z_]+"
+      "value": "[a-zA-Z_][a-zA-Z_0-9]*"
     },
     "string": {
       "type": "PATTERN",
@@ -4479,6 +4582,9 @@
     ],
     [
       "chord_statement"
+    ],
+    [
+      "stack_statement"
     ],
     [
       "grace_note"

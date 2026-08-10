@@ -1,0 +1,101 @@
+================================================================================
+chord classes, voicing policies, and the close-position sugar
+================================================================================
+
+piece "Chord Voicings" {
+  use std::harmony;
+  use std::voicing;
+  let sonority: chord_class = chord c major7;
+  let close: option[voicing] = close_position(sonority, c4);
+  fn held(chosen: voicing) -> music = play(chosen, 1/1);
+  score {
+    part p {
+      voice v {
+        stack c4 major7/1
+        stack eb3 half_diminished7/2 tenuto
+      }
+    }
+  }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (piece_declaration
+    (string)
+    (import_statement
+      (identifier)
+      (identifier))
+    (import_statement
+      (identifier)
+      (identifier))
+    (let_declaration
+      (identifier)
+      (type_expression
+        (type_name
+          (identifier)))
+      (expression
+        (chord_expression
+          (pitch_class
+            (identifier))
+          (identifier))))
+    (let_declaration
+      (identifier)
+      (type_expression
+        (option_type
+          (type_expression
+            (type_name
+              (identifier)))))
+      (expression
+        (application_expression
+          (name_expression
+            (identifier))
+          (expression_argument_list
+            (expression_argument
+              (expression
+                (name_expression
+                  (identifier))))
+            (expression_argument
+              (expression
+                (literal_expression
+                  (pitch_literal))))))))
+    (function_declaration
+      (identifier)
+      (parameter_list
+        (parameter
+          (identifier)
+          (type_expression
+            (type_name
+              (identifier)))))
+      (type_expression
+        (type_name))
+      (expression
+        (application_expression
+          (name_expression
+            (identifier))
+          (expression_argument_list
+            (expression_argument
+              (expression
+                (name_expression
+                  (identifier))))
+            (expression_argument
+              (expression
+                (literal_expression
+                  (rational))))))))
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (stack_statement
+            (pitch_literal)
+            (identifier)
+            (duration
+              (integer)))
+          (stack_statement
+            (pitch_literal)
+            (identifier)
+            (duration
+              (integer))
+            (articulation_list
+              (identifier))))))))

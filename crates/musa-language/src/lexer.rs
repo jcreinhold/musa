@@ -162,7 +162,12 @@ enum RawToken {
     Rational,
     #[regex(r"[0-9]+")]
     Integer,
-    #[regex(r"[a-zA-Z_]+")]
+    // A name may carry digits after its first letter, because musicians write
+    // words that do: `major7`, `sus4`, `drop2`. The literals above keep their
+    // spellings — `c4` is a pitch and `M3` an interval — because each matches
+    // the same text at a higher priority, so a name only wins where no
+    // literal reads the word at all.
+    #[regex(r"[a-zA-Z_][a-zA-Z_0-9]*")]
     Identifier,
 
     #[token("Hz", priority = 3)]
@@ -366,6 +371,10 @@ enum RawToken {
     InKw,
     #[token("step", priority = 3)]
     StepKw,
+    #[token("chord", priority = 3)]
+    ChordKw,
+    #[token("stack", priority = 3)]
+    StackKw,
 }
 
 impl RawToken {
@@ -482,7 +491,9 @@ impl RawToken {
             | Self::DegreeKw
             | Self::FrameKw
             | Self::InKw
-            | Self::StepKw => None,
+            | Self::StepKw
+            | Self::ChordKw
+            | Self::StackKw => None,
         }
     }
 
@@ -597,6 +608,8 @@ impl RawToken {
             Self::FrameKw => SyntaxKind::FrameKw,
             Self::InKw => SyntaxKind::InKw,
             Self::StepKw => SyntaxKind::StepKw,
+            Self::ChordKw => SyntaxKind::ChordKw,
+            Self::StackKw => SyntaxKind::StackKw,
         }
     }
 }

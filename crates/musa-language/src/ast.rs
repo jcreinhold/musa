@@ -460,6 +460,7 @@ impl ImportStmt {
                 matches!(
                     token.kind(),
                     SyntaxKind::Identifier
+                        | SyntaxKind::HarmonyKw
                         | SyntaxKind::ListKw
                         | SyntaxKind::OptionKw
                         | SyntaxKind::PitchKw
@@ -760,6 +761,8 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             UseStmt::cast(child).map(VoiceItem::Use)
         } else if kind == SyntaxKind::InScaleStmt {
             InScaleStmt::cast(child).map(VoiceItem::InScale)
+        } else if kind == SyntaxKind::StackStmt {
+            StackStmt::cast(child).map(VoiceItem::Stack)
         } else if kind == SyntaxKind::TransposeStmt {
             TransposeStmt::cast(child).map(VoiceItem::Transpose)
         } else if kind == SyntaxKind::RepeatStmt {
@@ -825,6 +828,8 @@ pub enum VoiceItem {
     Transpose(TransposeStmt),
     /// `in scale <expr> { ... }`
     InScale(InScaleStmt),
+    /// `stack c4 major7/2`
+    Stack(StackStmt),
     /// `repeat n { ... }`
     Repeat(RepeatStmt),
     /// `bar { ... }` / `bar head { ... }`
@@ -1304,6 +1309,38 @@ impl InScaleStmt {
     /// The items read in that scale.
     pub fn items(&self) -> Vec<VoiceItem> {
         voice_items(&self.0)
+    }
+}
+
+/// `stack <pitch> <type><duration>` — a chord sounded in close position.
+pub struct StackStmt(SyntaxNode);
+wrapper!(StackStmt, SyntaxKind::StackStmt);
+
+impl StackStmt {
+    /// The written root, when one was written. A pitch class parses here and
+    /// answers `None`, which is what the register diagnostic reads.
+    pub fn root(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::PitchLiteral)
+    }
+
+    /// The chord type, as written.
+    pub fn chord_type(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// Whether a pitch class was written where a pitch belongs.
+    pub fn root_is_class(&self) -> bool {
+        self.0.children().any(|child| child.kind() == SyntaxKind::PitchClass)
+    }
+
+    /// The articulation names trailing the duration.
+    pub fn articulations(&self) -> Vec<String> {
+        articulation_names(&self.0)
+    }
+
+    /// Whether the chord is tied into what follows.
+    pub fn tied(&self) -> bool {
+        has_tie(&self.0)
     }
 }
 

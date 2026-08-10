@@ -363,5 +363,15 @@
     "spelling": "step",
     "summary": "move by scale steps, not by an interval",
     "doc": "`p step n` moves `n` degrees up the scale in force, and `p step down n` moves down; the answer depends on where in the scale `p` sits, which is exactly how `up M2` differs from it. The note stepped from has to be in the scale, and there has to be a scale.\n\n```musa\nin scale c major { (c5 step 2)/4 }\n```"
+  },
+  {
+    "spelling": "chord",
+    "summary": "rooted spelled content, with no register",
+    "doc": "`chord c major7` names a root and what is stacked on it, and nothing else: no octave, no spacing, no doubling, and no bass unless one is designated. It does not sound. Choosing the notes a player holds is a voicing policy, which can decline.\n\n```musa\nlet harmony: chord_class = chord c major7;\n```"
+  },
+  {
+    "spelling": "stack",
+    "summary": "sound a chord in close position",
+    "doc": "`stack c4 major7/2` is sugar for the close-position voicing of that chord rooted at that written pitch, held for that long. The pitch is what fixes the register, so `stack c major7/2` is refused: a pitch class chooses no octave.\n\n```musa\nstack c4 major7/2\n```"
   }
 ]

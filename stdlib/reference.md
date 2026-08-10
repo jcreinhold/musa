@@ -30,6 +30,19 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `compose_music(first: music -> music, second: music -> music, value: music) -> music` — Apply the second musical transformation, then the first.
 - `compose_pitch(first: pitch -> pitch, second: pitch -> pitch, value: pitch) -> pitch` — Apply the second pitch function, then the first.
 
+## `std::harmony`
+
+- `chord_rooted_on(content: chord_class, root: pitchclass) -> chord_class` — Re-root a chord class, keeping its type. `chord c major7` on `eb` is an E-flat major seventh, spelled from E-flat.
+- `root_of(content: chord_class) -> pitchclass` — The pitch class a chord class is rooted on. This is the root, which is not the bass: a designated bass is asked for separately.
+- `bass_of(content: chord_class) -> option[pitchclass]` — The bass a chord class designates, when it designates one. Absent means no bass was chosen — it does not mean the root.
+- `members_of(content: chord_class) -> list[interval]` — The spelled intervals above the root, lowest first, beginning at the unison. Spelled: a major third is a third, never a diminished fourth.
+- `inversion(content: chord_class, position: nat) -> option[chord_class]` — A true inversion: the numbered member becomes the designated bass. Positions are counted from zero, so position one is first inversion. Absent when the class has no such member.
+- `slash_bass(content: chord_class, bass: pitchclass) -> chord_class` — A slash bass: a designated bass that need not be a member at all. `chord_over(chord c major, d)` is C over D, and the D is not a chord tone. This is a different construction from an inversion, and stays one.
+- `as_triad(content: chord_class) -> option[triad]` — The triad refinement, when the content really is a major or minor triad. This is the domain a neo-Riemannian transformation acts on, and the proof that it applies is this `option` being present.
+- `triad_content(refined: triad) -> chord_class` — Forget the refinement: every triad is a chord class.
+- `is_triad(content: chord_class) -> bool` — Whether a chord class is a major or minor triad.
+- `triad_is_present(refined: triad) -> bool` — The present case of `is_triad`: a refinement that exists is a triad, whichever of the two it turned out to be.
+
 ## `std::list`
 
 - `naturals(count: nat) -> list[nat]` — The natural numbers from zero up to, but not including, count.
@@ -70,3 +83,16 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `down_steps(from: degree, steps: nat) -> degree` — Move a degree down by a whole number of scale steps.
 - `raise(from: degree) -> degree` — Raise a degree chromatically without moving its coordinate.
 - `lower(from: degree) -> degree` — Lower a degree chromatically without moving its coordinate.
+
+## `std::voicing`
+
+- `close_position(content: chord_class, bass: pitch) -> option[voicing]` — Stack the class upward from an absolute bass, one member per octave position, taking each next member at the first pitch above the last. This is the one policy `stack c4 major7/2` desugars to.
+- `drop_position(content: chord_class, bass: pitch, from_top: nat) -> option[voicing]` — Close position with one upper note dropped an octave, counted from the top: `drop_position(content, bass, 2)` is the drop-2 voicing.
+- `voiced_as(content: chord_class, pitches: list[pitch]) -> option[voicing]` — The voicing an explicit list of written pitches spells, when those pitches really do voice the class: ascending, distinct, and every one a member. This is how a writer voices by hand.
+- `pitches_of(chosen: voicing) -> list[pitch]` — Every sounding pitch of a voicing, lowest first.
+- `lowest_of(chosen: voicing) -> pitch` — The lowest sounding pitch. A voicing always has one, which is why this is not an `option`.
+- `chord_of(chosen: voicing) -> chord_class` — The chord class this voicing voices.
+- `inversion_of(chosen: voicing) -> option[nat]` — Which member is in the bass, counted from zero, when the bass is a member at all. Absent for a slash bass, which is not an inversion.
+- `omitting(chosen: voicing, position: nat) -> option[voicing]` — Drop one numbered member from a voicing, keeping the class it voices. The chord class is unchanged: an omission is a choice about what sounds, not a claim that the chord is a different chord.
+- `rootless(chosen: voicing) -> option[voicing]` — The rootless voicing a pianist plays under a bass player: the root, in position zero, is the note removed, and it is named here rather than left implicit.
+- `sound_for(chosen: voicing, held: duration) -> music` — Sound a chosen voicing for a written length. This is the only way a chord class becomes notes.

@@ -30,6 +30,7 @@ mod bars;
 /// module docs (roadmap §17.7).
 #[doc(hidden)]
 pub mod bench;
+mod chord;
 mod compile;
 mod context;
 mod core;
@@ -57,6 +58,7 @@ mod studio;
 mod time;
 
 pub use crate::bars::{BarBeat, BarLines, Measure};
+pub use crate::chord::chord_types;
 pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile};
 pub use crate::context::ContextTrack;
 pub use crate::diagnose::{Code, Diagnostic, Fix, FixEdit, Label, Severity};

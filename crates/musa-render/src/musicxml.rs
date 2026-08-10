@@ -744,15 +744,15 @@ fn write_harmony(xml: &mut Xml, chord: &ChordSymbol, onset: Ratio<i64>, division
     xml.open("harmony", &[])?;
     xml.open("root", &[])?;
     xml.leaf("root-step", &[], chord_step(chord))?;
-    xml.leaf("root-alter", &[], &chord.accidental.0.to_string())?;
+    xml.leaf("root-alter", &[], &chord.root().accidental.0.to_string())?;
     xml.close("root")?;
-    xml.leaf("kind", &[("text", &chord.text)], chord_kind(chord))?;
+    xml.leaf("kind", &[("text", chord.text())], chord_kind(chord))?;
     write_offset(xml, onset, divisions)?;
     xml.close("harmony")
 }
 
 fn chord_step(chord: &ChordSymbol) -> &'static str {
-    match chord.letter {
+    match chord.root().letter {
         musa_compiler::Letter::C => "C",
         musa_compiler::Letter::D => "D",
         musa_compiler::Letter::E => "E",
@@ -771,7 +771,7 @@ fn chord_step(chord: &ChordSymbol) -> &'static str {
 /// the exact symbol. Nothing is invented: an unrepresentable shade is written
 /// as the triad it is built on, never as a different chord.
 fn chord_kind(chord: &ChordSymbol) -> &'static str {
-    let triad = match chord.quality {
+    let triad = match chord.quality() {
         ChordQuality::Major => "major",
         ChordQuality::Minor => "minor",
         ChordQuality::Diminished => "diminished",
@@ -779,14 +779,14 @@ fn chord_kind(chord: &ChordSymbol) -> &'static str {
         ChordQuality::Suspended2 => "suspended-second",
         ChordQuality::Suspended4 => "suspended-fourth",
     };
-    let Some(seventh) = chord.seventh else {
-        return match (chord.extension, chord.quality) {
+    let Some(seventh) = chord.seventh() else {
+        return match (chord.extension(), chord.quality()) {
             (Some(6), ChordQuality::Major) => "major-sixth",
             (Some(6), ChordQuality::Minor) => "minor-sixth",
             (Some(_) | None, _) => triad,
         };
     };
-    match (chord.quality, seventh, chord.extension) {
+    match (chord.quality(), seventh, chord.extension()) {
         (ChordQuality::Diminished, _, _) => "diminished-seventh",
         (ChordQuality::Major, Seventh::Major, None) => "major-seventh",
         (ChordQuality::Major, Seventh::Major, Some(9)) => "major-ninth",

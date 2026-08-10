@@ -892,7 +892,7 @@ fn write_positioned(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan, index: us
             .write_event(Event::Start(harm))
             .map_err(|error| RenderError::xml(&error))?;
         writer
-            .write_event(Event::Text(quick_xml::events::BytesText::new(&chord.what.text)))
+            .write_event(Event::Text(quick_xml::events::BytesText::new(chord.what.text())))
             .map_err(|error| RenderError::xml(&error))?;
         end(writer, "harm")?;
     }

@@ -143,7 +143,11 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
                 // lines — which is the layout every unbarred voice has now.
                 if matches!(
                     child.kind(),
-                    SyntaxKind::NoteStmt | SyntaxKind::RestStmt | SyntaxKind::ChordStmt | SyntaxKind::BarStmt
+                    SyntaxKind::NoteStmt
+                        | SyntaxKind::RestStmt
+                        | SyntaxKind::ChordStmt
+                        | SyntaxKind::StackStmt
+                        | SyntaxKind::BarStmt
                 ) {
                     writer.end_line();
                 }
@@ -615,14 +619,15 @@ fn measurable_items(bar: &SyntaxNode) -> Option<Vec<(SyntaxNode, Beat)>> {
         .filter(|item| item.kind() != SyntaxKind::Block)
         .map(|item| {
             let kind = item.kind();
-            // A note, a rest and a chord fill the time they write; a dynamic
+            // A note, a rest, a chord and a stacked chord fill the time they
+            // write; a dynamic
             // and a mark fill none. Everything else — a `use`, a tuplet, an
             // `improvise`, a construct added next year — has no length this
             // crate can read, and the whitelist is what makes that the
             // default rather than a case somebody has to remember.
             let length = if matches!(
                 kind,
-                SyntaxKind::NoteStmt | SyntaxKind::RestStmt | SyntaxKind::ChordStmt
+                SyntaxKind::NoteStmt | SyntaxKind::RestStmt | SyntaxKind::ChordStmt | SyntaxKind::StackStmt
             ) {
                 Beat::parse(&crate::ast::Duration::of(&item)?.value()?)?
             } else if matches!(kind, SyntaxKind::DynamicStmt | SyntaxKind::MarkStmt) {

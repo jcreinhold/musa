@@ -66,6 +66,7 @@ const VOICE_ITEMS = ($) => [
   $.hairpin_statement,
   $.senza_statement,
   $.in_scale_statement,
+  $.stack_statement,
 ];
 
 module.exports = grammar({
@@ -81,6 +82,7 @@ module.exports = grammar({
   conflicts: ($) => [
     [$.note_statement],
     [$.chord_statement],
+    [$.stack_statement],
     [$.grace_note],
     [$.articulation_list],
   ],
@@ -295,6 +297,7 @@ module.exports = grammar({
         $.pitch_expression,
         $.step_expression,
         $.scale_expression,
+        $.chord_expression,
         $.key_expression,
         $._primary_expression,
       ),
@@ -327,6 +330,12 @@ module.exports = grammar({
     // Parser::scale_expr — `scale c dorian`.
     scale_expression: ($) =>
       seq('scale', field('tonic', $.pitch_class), field('collection', $.identifier)),
+
+    // Parser::chord_expr — `chord c major7`. Rooted spelled content, with no
+    // register: the same shape as `scale c dorian`, because the words naming
+    // a chord type are a closed vocabulary rather than a value anyone writes.
+    chord_expression: ($) =>
+      seq('chord', field('root', $.pitch_class), field('chord_type', $.identifier)),
 
     // Parser::key_expr — `key c minor` where a value, not a statement, is
     // wanted.
@@ -594,6 +603,19 @@ module.exports = grammar({
 
     rest_statement: ($) => seq('rest', $.duration),
 
+    // Parser::stack_stmt — `stack c4 major7/2`, the close-position sugar. A
+    // pitch class parses here and the compiler refuses it, so the mistake is
+    // answered with a sentence about register rather than a parse error.
+    stack_statement: ($) =>
+      seq(
+        'stack',
+        field('root', choice($.pitch_literal, $.pitch_class)),
+        field('chord_type', $.identifier),
+        $.duration,
+        optional($.articulation_list),
+        optional('~'),
+      ),
+
     // Parser::chord_stmt — `[<pitch> ...]<duration>`. The bracket says chord,
     // so the keyword and the commas were both repeating it.
     chord_statement: ($) =>
@@ -735,7 +757,7 @@ module.exports = grammar({
     rational: ($) => /[0-9]+\/[0-9]+/,
     float: ($) => /[0-9]+\.[0-9]+/,
     integer: ($) => /[0-9]+/,
-    identifier: ($) => /[a-zA-Z_]+/,
+    identifier: ($) => /[a-zA-Z_][a-zA-Z_0-9]*/,
 
     // `"([^"\\\n]|\\[^\n])*"` — one quoted line. An unterminated quote is
     // error recovery's business, exactly as the hand lexer leaves it.

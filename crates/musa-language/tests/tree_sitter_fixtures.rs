@@ -188,6 +188,8 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::FrameKw => "frame",
         SyntaxKind::InKw => "in",
         SyntaxKind::StepKw => "step",
+        SyntaxKind::ChordKw => "chord",
+        SyntaxKind::StackKw => "stack",
         // Whitespace is not a token the grammar sees (`extras`), and the
         // kinds below never leave the lexer for a valid example: a `bpm` or
         // an error token here means the grammar is behind the language,
@@ -294,6 +296,8 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::KeyExpr
         | SyntaxKind::StepExpr
         | SyntaxKind::InScaleStmt
+        | SyntaxKind::ChordExpr
+        | SyntaxKind::StackStmt
         | SyntaxKind::PitchExpr => panic!("`{kind:?}` is a node, not a token"),
     }
 }

@@ -681,11 +681,12 @@ impl<'a> Parser<'a> {
             self.expect(SyntaxKind::Identifier, "a relative path in quotes, or `std::module`");
             self.expect(SyntaxKind::Colon, "`::`");
             self.expect(SyntaxKind::Colon, "`::`");
-            // A module may be named after a type or a domain keyword: `pitch`,
-            // `list`, `option`, `scale`. The path position is what makes the
-            // word a module name.
+            // A module may be named after a type or a domain keyword:
+            // `pitch`, `list`, `option`, `scale`, `harmony`. The path
+            // position is what makes the word a module name.
             if self.at_any(&[
                 SyntaxKind::Identifier,
+                SyntaxKind::HarmonyKw,
                 SyntaxKind::ListKw,
                 SyntaxKind::OptionKw,
                 SyntaxKind::PitchKw,
@@ -882,6 +883,20 @@ impl<'a> Parser<'a> {
         self.finish();
     }
 
+    /// `chord <root> <type>` — rooted spelled content.
+    ///
+    /// The same shape as `scale c dorian`, and for the same reason: the words
+    /// that name a chord type are a closed vocabulary the compiler owns, so
+    /// they are read here as one literal rather than as a call whose second
+    /// argument would have to be a value nobody can write.
+    fn chord_expr(&mut self) {
+        self.start(SyntaxKind::ChordExpr);
+        self.bump(); // chord
+        self.pitch_class();
+        self.expect(SyntaxKind::Identifier, "a chord type such as `major` or `major7`");
+        self.finish();
+    }
+
     fn expr_atom(&mut self) {
         match self.current() {
             Some(
@@ -915,6 +930,7 @@ impl<'a> Parser<'a> {
             Some(SyntaxKind::MusicKw) => self.music_expr(),
             Some(SyntaxKind::ScaleKw) => self.scale_expr(),
             Some(SyntaxKind::KeyKw) => self.key_expr(),
+            Some(SyntaxKind::ChordKw) => self.chord_expr(),
             _ => self.expected("an expression"),
         }
     }
@@ -1707,6 +1723,8 @@ impl<'a> Parser<'a> {
                 self.use_stmt();
             } else if self.at(SyntaxKind::InKw) {
                 self.in_scale_stmt();
+            } else if self.at(SyntaxKind::StackKw) {
+                self.stack_stmt();
             } else if self.at(SyntaxKind::TransposeKw) {
                 self.transpose_stmt();
             } else if self.at(SyntaxKind::RepeatKw) {
@@ -1913,6 +1931,30 @@ impl<'a> Parser<'a> {
             self.bump();
         }
         self.expect(SyntaxKind::RBracket, "`]`");
+        self.duration();
+        self.articulations();
+        self.tie();
+        self.finish();
+    }
+
+    /// `stack <pitch> <type><duration>` — a chord sounded in close position.
+    ///
+    /// The root is written as an absolute pitch because the register is the
+    /// whole of what a voicing adds to a chord class. A pitch class is
+    /// accepted by the grammar and refused by the compiler, so the mistake is
+    /// answered with a sentence about register rather than with `expected a
+    /// pitch`.
+    fn stack_stmt(&mut self) {
+        self.start(SyntaxKind::StackStmt);
+        self.bump(); // stack
+        if self.at(SyntaxKind::PitchLiteral) {
+            self.bump();
+        } else {
+            // A pitch class is parsed rather than rejected, so the compiler
+            // gets to answer with the sentence about register.
+            self.pitch_class();
+        }
+        self.expect(SyntaxKind::Identifier, "a chord type such as `major` or `major7`");
         self.duration();
         self.articulations();
         self.tie();

@@ -121,6 +121,21 @@ impl NotatedDuration {
         }
     }
 
+    /// A duration a computed value asked for, spelled the way a composer
+    /// writes one: `1/4`, `3/8`, `2`.
+    ///
+    /// A ratio that reached the score through a function has no written form
+    /// of its own, so one is derived here rather than at each caller — three
+    /// callers deriving it three ways is three spellings of one duration.
+    pub(crate) fn spelled(value: Ratio<i64>) -> Self {
+        let spelling = if *value.denom() == 1 {
+            value.numer().to_string()
+        } else {
+            format!("{}/{}", value.numer(), value.denom())
+        };
+        Self::single(MusicalDuration::new(value), spelling)
+    }
+
     /// The same duration sounding `factor` times as long — how a tuplet
     /// scales the values written inside it.
     pub(crate) fn scaled(&self, factor: Ratio<i64>) -> Self {

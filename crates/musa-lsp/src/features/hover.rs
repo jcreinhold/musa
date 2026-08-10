@@ -29,7 +29,7 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
     if let Some(found) = at_keyword(&snapshot, byte, lines) {
         return Some(found);
     }
-    if let Some(found) = at_collection(&snapshot, byte, lines) {
+    if let Some(found) = at_vocabulary(&snapshot, byte, lines) {
         return Some(found);
     }
     if let Some(found) = at_imported_name(&snapshot, byte, lines) {
@@ -114,27 +114,39 @@ fn at_keyword(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &L
     ))
 }
 
-/// The word after `scale` is a collection name, not a free identifier: it is
-/// answered from the compiler's own table, so the hover cannot describe a
-/// collection the language does not have.
-fn at_collection(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
+/// The word after `scale` or `chord` names something from a closed
+/// vocabulary, not a free identifier: it is answered from the compiler's own
+/// tables, so the hover cannot describe a collection or a chord type the
+/// language does not have.
+///
+/// One word may name both — `major` is a collection and a chord type — and
+/// both sentences are shown. Which one the writer meant is settled by the
+/// keyword before it, and saying both is more useful than guessing.
+fn at_vocabulary(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
     let parsed = musa_language::parse(snapshot.source());
     let token = parsed
         .syntax()
         .token_at_offset(byte.into())
         .find(|token| token.kind() == musa_language::SyntaxKind::Identifier)?;
     let word = token.text();
-    let (name, doc) = musa_project::scale_collections().find(|(spelling, _)| *spelling == word)?;
+    let mut said = Vec::new();
+    if let Some((name, doc)) = musa_project::scale_collections().find(|(spelling, _)| *spelling == word) {
+        said.push(format!(
+            "**{name}** — *scale collection*\n\n`scale c {name}` collects {doc}."
+        ));
+    }
+    if let Some((name, doc)) = musa_project::chord_types().find(|(spelling, _)| *spelling == word) {
+        said.push(format!("**{name}** — *chord type*\n\n`chord c {name}` stacks {doc}."));
+    }
+    if said.is_empty() {
+        return None;
+    }
     let range = token.text_range();
     let span = Span {
         start: u32::from(range.start()),
         end: u32::from(range.end()),
     };
-    Some(answer(
-        lines,
-        span,
-        format!("**{name}** — *scale collection*\n\n`scale c {name}` collects {doc}."),
-    ))
+    Some(answer(lines, span, said.join("\n\n---\n\n")))
 }
 
 /// Build the hover answer: markdown, ranged at the span that matched, so the

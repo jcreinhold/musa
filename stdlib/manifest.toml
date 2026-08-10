@@ -3,7 +3,9 @@ language_version = 1
 [modules]
 collections = "collections.musa"
 core = "core.musa"
+harmony = "harmony.musa"
 list = "list.musa"
 option = "option.musa"
 pitch = "pitch.musa"
 scale = "scale.musa"
+voicing = "voicing.musa"

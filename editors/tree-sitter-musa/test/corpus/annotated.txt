@@ -91,8 +91,7 @@ piece "Annotated" {
             (integer)
             (integer))
           (chord_symbol
-            (identifier)
-            (integer)))
+            (identifier)))
         (harmony_statement
           (position
             (integer)

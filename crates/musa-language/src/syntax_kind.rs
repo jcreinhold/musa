@@ -135,7 +135,6 @@ pub enum SyntaxKind {
     UpKw,
     /// `rest`
     RestKw,
-    /// `chord`
     /// `repeat`
     RepeatKw,
     /// `slur`
@@ -246,6 +245,10 @@ pub enum SyntaxKind {
     InKw,
     /// `step`
     StepKw,
+    /// `chord`
+    ChordKw,
+    /// `stack`
+    StackKw,
 
     /// A span the lexer could not recognize; emitted so the token stream
     /// stays lossless even for invalid input. Also used for parser error
@@ -479,6 +482,11 @@ pub enum SyntaxKind {
     StepExpr,
     /// `in scale <expr> { ... }` — the lexically scoped pitch context.
     InScaleStmt,
+    /// `chord c major7` — rooted spelled content, with no register.
+    ChordExpr,
+    /// `stack c4 major7/2` — the close-position sugar, which is an event and
+    /// not a value.
+    StackStmt,
 }
 
 impl SyntaxKind {

@@ -48,28 +48,55 @@ pub enum Seventh {
 
 /// A chord symbol as written above the staff.
 ///
-/// `text` is what the composer typed, kept verbatim: a renderer prints the
-/// symbol the way it was written, and only a consumer that wants the notes
-/// reads the parts.
+/// The written text is kept verbatim: a renderer prints the symbol the way it
+/// was written, and only a consumer that wants the parts asks for them. The
+/// parts are read through operations rather than fields, so a symbol is a
+/// thing that answers questions and not a record of how it happens to be
+/// stored — the letter and the accidental, in particular, are one root.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChordSymbol {
-    /// The root's letter.
-    pub letter: Letter,
-    /// The root's accidental.
-    pub accidental: Accidental,
-    /// The triad.
-    pub quality: ChordQuality,
-    /// The seventh, when the symbol names one.
-    pub seventh: Option<Seventh>,
-    /// The highest extension named (`9`, `11`, `13`), when there is one. An
-    /// extension implies the seventh below it, which is why `c9` parses with
-    /// a minor seventh.
-    pub extension: Option<u8>,
-    /// The symbol exactly as written (`fmaj7`).
-    pub text: String,
+    letter: Letter,
+    accidental: Accidental,
+    quality: ChordQuality,
+    seventh: Option<Seventh>,
+    extension: Option<u8>,
+    text: String,
 }
 
 impl ChordSymbol {
+    /// The root the symbol names, letter and accidental together.
+    ///
+    /// A pitch class and not a pitch: a symbol above the staff chooses no
+    /// register, and the notes under it are separately authored.
+    pub fn root(&self) -> crate::pitch::PitchClass {
+        crate::pitch::PitchClass {
+            letter: self.letter,
+            accidental: self.accidental,
+        }
+    }
+
+    /// The triad the symbol names.
+    pub fn quality(&self) -> ChordQuality {
+        self.quality
+    }
+
+    /// The seventh, when the symbol names one.
+    pub fn seventh(&self) -> Option<Seventh> {
+        self.seventh
+    }
+
+    /// The highest extension named (`9`, `11`, `13`), when there is one. An
+    /// extension implies the seventh below it, which is why `c9` parses with
+    /// a minor seventh.
+    pub fn extension(&self) -> Option<u8> {
+        self.extension
+    }
+
+    /// The symbol exactly as written (`fmaj7`).
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
     /// Read a chord symbol as the language spells it: a root (letter plus
     /// optional `s`/`ss`/`f`/`ff`), a quality, and an optional number.
     ///

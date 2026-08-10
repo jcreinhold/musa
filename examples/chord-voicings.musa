@@ -1,0 +1,74 @@
+// A chord class is content; a voicing is a realization of it. The two are
+// separate types on purpose: `chord c major7` spells four pitch classes and
+// chooses no register, no spacing, no doubling, and no bass. Nothing here
+// derives notes from a chord symbol written above the staff, and nothing
+// checks that separately authored notes agree with one.
+//
+// One class, read two ways and sounded four.
+piece "Chord Voicings" {
+    use std::harmony;
+    use std::voicing;
+
+    // The content. Root C, major seventh: c, e, g, b — spelled, so the third
+    // is a third and the seventh is a seventh.
+    let sonority: chord_class = chord c major7;
+
+    // Two inversions of that one class. An inversion designates a member as
+    // the bass; it does not re-root the chord, and `root_of` still answers
+    // `c` for both.
+    let first_inversion: option[chord_class] = inversion(sonority, 1);
+    let third_inversion: option[chord_class] = inversion(sonority, 3);
+
+    // Sounding an inversion still takes a policy and a register. Close
+    // position from the designated bass is the plainest one.
+    fn from_e(content: chord_class) -> option[voicing] = close_position(content, e4);
+    fn from_b(content: chord_class) -> option[voicing] = close_position(content, b3);
+
+    // Three voicings, each a policy applied to the same class.
+    //
+    // Close position stacks the members upward from an absolute bass.
+    let close: option[voicing] = close_position(sonority, c4);
+    // Drop 2 lowers the second note from the top by an octave. It is a
+    // different voicing of the same class, not a different chord.
+    let drop_two: option[voicing] = drop_position(sonority, c3, 2);
+    // The pitches written out by hand: the same four notes, spread wide, with
+    // the third on top.
+    let spread: option[voicing] = voiced_as(sonority, [c3, g3, b3, e4]);
+
+    // The jazz rootless voicing, with its omission named rather than left to
+    // be inferred: position zero is the root, and dropping it is what makes
+    // the voicing rootless. The class it voices is still C major seventh.
+    let rootless_close: option[voicing] = option_fold(none, rootless, close);
+
+    // A voicing sounds only through `play`. A policy whose preconditions fail
+    // sounds a rest, so an absent answer is silence rather than a guess.
+    fn held(chosen: voicing) -> music = play(chosen, 1/1);
+    fn sounded(chosen: option[voicing]) -> music = option_fold(music {
+        rest/1
+    }, held, chosen);
+
+    let first_bar: music = sounded(option_fold(none, from_e, first_inversion));
+    let third_bar: music = sounded(option_fold(none, from_b, third_inversion));
+    let close_bar: music = sounded(close);
+    let drop_bar: music = sounded(drop_two);
+    let spread_bar: music = sounded(spread);
+    let rootless_bar: music = sounded(rootless_close);
+
+    score {
+        part piano {
+            clef treble;
+
+            voice v {
+                // The sugar: close position with the written root fixing
+                // register, which is exactly what `close` names above.
+                stack c4 major7/1
+                | use close_bar;
+                | use first_bar;
+                | use third_bar;
+                | use drop_bar;
+                | use spread_bar;
+                | use rootless_bar;
+            }
+        }
+    }
+}

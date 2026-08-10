@@ -301,6 +301,10 @@
           "named": true
         },
         {
+          "type": "stack_statement",
+          "named": true
+        },
+        {
           "type": "stretch_statement",
           "named": true
         },
@@ -392,6 +396,32 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "chord_expression",
+    "named": true,
+    "fields": {
+      "chord_type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "root": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "pitch_class",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {
@@ -563,6 +593,10 @@
       "types": [
         {
           "type": "application_expression",
+          "named": true
+        },
+        {
+          "type": "chord_expression",
           "named": true
         },
         {
@@ -1584,6 +1618,10 @@
         },
         {
           "type": "slur_statement",
+          "named": true
+        },
+        {
+          "type": "stack_statement",
           "named": true
         },
         {
@@ -2614,6 +2652,50 @@
     }
   },
   {
+    "type": "stack_statement",
+    "named": true,
+    "fields": {
+      "chord_type": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "identifier",
+            "named": true
+          }
+        ]
+      },
+      "root": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "pitch_class",
+            "named": true
+          },
+          {
+            "type": "pitch_literal",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "articulation_list",
+          "named": true
+        },
+        {
+          "type": "duration",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "stage",
     "named": true,
     "fields": {},
@@ -3121,6 +3203,10 @@
           "named": true
         },
         {
+          "type": "stack_statement",
+          "named": true
+        },
+        {
           "type": "stretch_statement",
           "named": true
         },
@@ -3240,6 +3326,10 @@
   },
   {
     "type": "bus",
+    "named": false
+  },
+  {
+    "type": "chord",
     "named": false
   },
   {
@@ -3480,6 +3570,10 @@
   },
   {
     "type": "some",
+    "named": false
+  },
+  {
+    "type": "stack",
     "named": false
   },
   {

@@ -442,7 +442,7 @@ impl musa_kernel::Canonical for ScoreFact {
                 format!("tempo:{mark}:{}:{ramp}|", text.as_deref().unwrap_or_default())
             }
             FactKind::Section { name } => format!("section:{name}|"),
-            FactKind::Harmony { symbol } => format!("harmony:{}|", symbol.text),
+            FactKind::Harmony { symbol } => format!("harmony:{}|", symbol.text()),
             FactKind::Repeat { times, range } => match range {
                 Some((least, most)) => format!("repeat:{times}:{least}:{most}|"),
                 None => format!("repeat:{times}|"),
@@ -1783,6 +1783,120 @@ fn elaborate_in_scale(
     elaborate_place(resolver, share, &stmt.items(), &inner, scope, place)
 }
 
+/// `stack c4 major7/2` — a chord class sounded in close position.
+///
+/// The one place a chord type becomes notes without a policy being named,
+/// and it names one anyway: close position, rooted at the written pitch. The
+/// register is the composer's, which is why a pitch class is refused here
+/// rather than resolved to some default octave.
+fn elaborate_stack(
+    resolver: &mut Resolver,
+    stmt: &musa_language::ast::StackStmt,
+    cx: &ExpandCx,
+    scope: Scope,
+) -> Segment {
+    let node_span = resolve::trimmed_span(stmt.syntax());
+    let Some(duration) = resolve_scaled_duration(resolver, stmt.syntax(), cx) else {
+        return Segment::empty();
+    };
+    let Some(root) = stmt.root().as_deref().and_then(WrittenPitch::parse) else {
+        let (message, note) = if stmt.root_is_class() {
+            (
+                "a stacked chord needs a register",
+                "`stack c4 major7/2` sounds notes, and a pitch class chooses no octave",
+            )
+        } else {
+            (
+                "a stacked chord needs a written root",
+                "the root is a pitch: `c4`, `g#3`, `bb5`",
+            )
+        };
+        resolver.report(
+            Diagnostic::error(Code::NotAValue, message)
+                .at(node_span, "expected a written pitch here")
+                .note(note),
+        );
+        return Segment::empty();
+    };
+    let word = stmt.chord_type().unwrap_or_default();
+    let Some(kind) = crate::chord::ChordType::named(&word) else {
+        resolver.report(
+            Diagnostic::error(Code::UnknownName, format!("unknown chord type `{word}`"))
+                .at(node_span, "not a named chord type")
+                .note("the same words `chord c major7` uses; a chord symbol above the staff is a separate annotation"),
+        );
+        return Segment::empty();
+    };
+    let class = crate::chord::ChordClass::new(root.pitch_class(), kind);
+    let Ok(voicing) = crate::chord::Voicing::close_position(class, root) else {
+        resolver.report(
+            Diagnostic::error(Code::NotAValue, format!("`{class}` cannot be stacked on `{root}`"))
+                .at(node_span, "the close-position policy declined")
+                .note("stacking starts from the root; write the voicing out to choose another bass"),
+        );
+        return Segment::empty();
+    };
+    let articulations = articulations_of(resolver, &stmt.articulations(), node_span);
+    sounded_voicing(
+        resolver,
+        &voicing,
+        &duration,
+        &articulations,
+        stmt.tied(),
+        cx,
+        scope,
+        node_span,
+    )
+}
+
+/// The score facts one voicing sounds, as one simultaneous segment.
+///
+/// Shared by the `stack` sugar and by `play`, so the two cannot disagree
+/// about what a voicing sounds. The enclosing transposition applies to each
+/// pitch exactly as it does to a written chord: a voicing is notes, and notes
+/// move.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one sounded chord needs every one of these, and grouping them would name nothing"
+)]
+fn sounded_voicing(
+    resolver: &mut Resolver,
+    voicing: &crate::chord::Voicing,
+    duration: &NotatedDuration,
+    articulations: &[crate::Mark],
+    tied: bool,
+    cx: &ExpandCx,
+    scope: Scope,
+    node_span: SourceSpan,
+) -> Segment {
+    let mut facts = Vec::new();
+    for pitch in voicing.pitches() {
+        let Some(pitch) = apply_intervals(resolver, pitch, cx, node_span) else {
+            return Segment::empty();
+        };
+        let mut fact = ScoreFact::new(
+            scope,
+            FactKind::Note {
+                pitch,
+                duration: duration.clone(),
+                articulations: articulations.to_vec(),
+                free: None,
+            },
+            origin_of(cx, node_span),
+        );
+        fact.tied = tied;
+        facts.push(fact);
+    }
+    let span = span_of_duration(duration);
+    Segment::literal(
+        timeline(
+            span.end(),
+            facts.into_iter().map(|fact| Occurrence::new(span, fact)).collect(),
+        )
+        .unwrap_or_else(|_| musa_kernel::zero()),
+    )
+}
+
 /// Elaborate one item; malformed items elaborate to the empty segment
 /// `(0, ∅)` — the direct lowerer's `continue` (diagnostic already emitted).
 fn elaborate_item(
@@ -1799,6 +1913,7 @@ fn elaborate_item(
         VoiceItem::Senza(stmt) => elaborate_senza(resolver, share, stmt, cx, scope, place),
         VoiceItem::Key(stmt) => elaborate_key(resolver, stmt, cx, place),
         VoiceItem::InScale(stmt) => elaborate_in_scale(resolver, share, stmt, cx, scope, place),
+        VoiceItem::Stack(stmt) => elaborate_stack(resolver, stmt, cx, scope),
         VoiceItem::Clef(stmt) => elaborate_clef(resolver, stmt, cx, scope, place),
         VoiceItem::Mobile(stmt) => elaborate_mobile(resolver, share, stmt, cx, scope),
         VoiceItem::Improvise(stmt) => elaborate_improvise(resolver, stmt, cx, scope),
@@ -1873,7 +1988,7 @@ fn elaborate_item(
             let articulations = articulations_of(resolver, &chord.articulations(), node_span);
             let mut pitches = Vec::new();
             for text in chord.pitches() {
-                match WrittenPitch::parse(&text).map(|pitch| apply_intervals(resolver, pitch, cx, chord.syntax())) {
+                match WrittenPitch::parse(&text).map(|pitch| apply_intervals(resolver, pitch, cx, node_span)) {
                     Some(Some(pitch)) => {
                         let origin = origin_of(cx, node_span);
                         let mut fact = ScoreFact::new(
@@ -3198,6 +3313,9 @@ fn append_contextual_key(key: &mut String, music: &crate::core::Music) {
             append_contextual_key(key, source);
             key.push(']');
         }
+        Some(crate::core::MusicOperation::Play { voicing, held }) => {
+            let _ = write!(key, "|play:{voicing}:{held}");
+        }
     }
 }
 
@@ -3259,6 +3377,21 @@ fn elaborate_music_value(
             local.path.push(ExpansionStep::MapNotePitches);
             let segment = elaborate_music_value(resolver, share, source, &local, scope);
             map_note_pitches_segment(resolver, share, segment, mapper)
+        }
+        Some(crate::core::MusicOperation::Play { voicing, held }) => {
+            // `play` names no articulation and no tie: it is a chord sounding
+            // for a length, and anything further is written where it applies.
+            let duration = NotatedDuration::spelled(*held);
+            sounded_voicing(
+                resolver,
+                voicing,
+                &duration,
+                &[],
+                false,
+                &local,
+                scope,
+                music.definition_span,
+            )
         }
     }
 }
@@ -3636,11 +3769,15 @@ fn origin_of(cx: &ExpandCx, span: SourceSpan) -> Origin {
 }
 
 /// Apply the transposition stack (shared semantics with the direct lowerer).
+///
+/// The blame span is passed rather than a node, because a pitch that a
+/// function built has no node of its own to point at — only the site that
+/// asked for it.
 fn apply_intervals(
     resolver: &mut Resolver,
     pitch: WrittenPitch,
     cx: &ExpandCx,
-    node: &SyntaxNode,
+    blame: SourceSpan,
 ) -> Option<WrittenPitch> {
     let mut current = pitch;
     for interval in &cx.intervals {
@@ -3650,10 +3787,7 @@ fn apply_intervals(
                     Code::OutOfRange,
                     format!("`{current}` is outside Musa's stored coordinate range after this transposition"),
                 )
-                .at(
-                    resolve::trimmed_span(node),
-                    "the exact integer result exceeds the implementation range",
-                )
+                .at(blame, "the exact integer result exceeds the implementation range")
                 .help("use a smaller interval or reduce the register displacement"),
             );
             return None;

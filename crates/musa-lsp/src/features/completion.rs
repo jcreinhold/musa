@@ -52,6 +52,19 @@ pub(crate) fn completions(document: &Document) -> CompletionResponse {
             ..CompletionItem::default()
         });
     }
+    // The same, for the words that may follow `chord` and `stack`.
+    for (name, doc) in musa_project::chord_types() {
+        items.entry(name.to_owned()).or_insert_with(|| CompletionItem {
+            label: name.to_owned(),
+            kind: Some(CompletionItemKind::ENUM_MEMBER),
+            detail: Some("chord type".to_owned()),
+            documentation: Some(lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+                kind: lsp_types::MarkupKind::Markdown,
+                value: format!("**{name}** — *chord type*\n\n`chord c {name}` stacks {doc}."),
+            })),
+            ..CompletionItem::default()
+        });
+    }
     if let Some(score) = document.snapshot().score() {
         for part in &score.parts {
             offer(&mut items, &part.name, CompletionItemKind::MODULE, "part");

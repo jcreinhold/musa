@@ -206,6 +206,9 @@ enum Type {
     Key,
     Degree,
     Frame,
+    ChordClass,
+    Triad,
+    Voicing,
     Product(Vec<Self>),
     Option(Box<Self>),
     List(Box<Self>),
@@ -228,6 +231,9 @@ impl std::fmt::Display for Type {
             Self::Key => out.write_str("key"),
             Self::Degree => out.write_str("degree"),
             Self::Frame => out.write_str("frame"),
+            Self::ChordClass => out.write_str("chord_class"),
+            Self::Triad => out.write_str("triad"),
+            Self::Voicing => out.write_str("voicing"),
             Self::Product(members) => {
                 out.write_str("(")?;
                 for (index, member) in members.iter().enumerate() {
@@ -405,6 +411,22 @@ enum Primitive {
     DegreeStepDown,
     DegreeRaised,
     DegreeLowered,
+    ChordOn,
+    ChordRoot,
+    ChordBass,
+    ChordMembers,
+    ChordInversion,
+    ChordOver,
+    ChordTriad,
+    TriadChord,
+    VoicingOf,
+    VoicingPitches,
+    VoicingBass,
+    VoicingChord,
+    VoicingPosition,
+    CloseVoicing,
+    DropVoicing,
+    OmitVoicing,
 }
 
 #[derive(Clone, Copy)]
@@ -414,7 +436,7 @@ struct PrimitiveOwnership<T> {
     hidden_information: &'static str,
 }
 
-const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 24] = [
+const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 40] = [
     PrimitiveOwnership {
         operation: Primitive::NatFold,
         spelling: "nat_fold",
@@ -535,6 +557,86 @@ const PRIMITIVE_OWNERSHIP: [PrimitiveOwnership<Primitive>; 24] = [
         spelling: "degree_lowered",
         hidden_information: "the degree's private chromatic alteration and its machine-integer bound",
     },
+    PrimitiveOwnership {
+        operation: Primitive::ChordOn,
+        spelling: "chord_on",
+        hidden_information: "the compiler's table of chord types, re-rooted without being exposed",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ChordRoot,
+        spelling: "chord_root",
+        hidden_information: "the chord class's private root field",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ChordBass,
+        spelling: "chord_bass",
+        hidden_information: "the chord class's private bass designation, which is absent and not the root",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ChordMembers,
+        spelling: "chord_members",
+        hidden_information: "the private spelled member stack, which no source text can enumerate",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ChordInversion,
+        spelling: "chord_inversion",
+        hidden_information: "membership of the private member stack, which is what makes an inversion true",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ChordOver,
+        spelling: "chord_over",
+        hidden_information: "the chord class's private bass designation",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::ChordTriad,
+        spelling: "chord_triad",
+        hidden_information: "the triad refinement's representation invariant, which only the compiler can enforce",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::TriadChord,
+        spelling: "triad_chord",
+        hidden_information: "the triad refinement's private witness",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::VoicingOf,
+        spelling: "voicing_of",
+        hidden_information: "the voicing's representation invariant: ascending distinct pitches drawn from the class",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::VoicingPitches,
+        spelling: "voicing_pitches",
+        hidden_information: "the voicing's private ordered pitch sequence",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::VoicingBass,
+        spelling: "voicing_bass",
+        hidden_information: "the voicing's private lowest pitch, held apart from the rest",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::VoicingChord,
+        spelling: "voicing_chord",
+        hidden_information: "the voicing's private association to the class it voices",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::VoicingPosition,
+        spelling: "voicing_position",
+        hidden_information: "membership of the private member stack, which is what classifies an inversion",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::CloseVoicing,
+        spelling: "close_voicing",
+        hidden_information: "the private member stack walked upward, and the voicing invariant it must satisfy",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::DropVoicing,
+        spelling: "drop_voicing",
+        hidden_information: "the private member stack walked upward, and the voicing invariant it must satisfy",
+    },
+    PrimitiveOwnership {
+        operation: Primitive::OmitVoicing,
+        spelling: "omit_voicing",
+        hidden_information: "the private member stack, which is what says which pitch an omission removes",
+    },
 ];
 
 impl Primitive {
@@ -564,6 +666,22 @@ impl Primitive {
             Self::DegreeStepDown => "degree_step_down",
             Self::DegreeRaised => "degree_raised",
             Self::DegreeLowered => "degree_lowered",
+            Self::ChordOn => "chord_on",
+            Self::ChordRoot => "chord_root",
+            Self::ChordBass => "chord_bass",
+            Self::ChordMembers => "chord_members",
+            Self::ChordInversion => "chord_inversion",
+            Self::ChordOver => "chord_over",
+            Self::ChordTriad => "chord_triad",
+            Self::TriadChord => "triad_chord",
+            Self::VoicingOf => "voicing_of",
+            Self::VoicingPitches => "voicing_pitches",
+            Self::VoicingBass => "voicing_bass",
+            Self::VoicingChord => "voicing_chord",
+            Self::VoicingPosition => "voicing_position",
+            Self::CloseVoicing => "close_voicing",
+            Self::DropVoicing => "drop_voicing",
+            Self::OmitVoicing => "omit_voicing",
         }
     }
 }
@@ -643,6 +761,9 @@ enum Value {
     Key(crate::Key),
     Degree(crate::scale::Degree),
     Frame(crate::scale::Frame),
+    ChordClass(crate::chord::ChordClass),
+    Triad(crate::chord::Triad),
+    Voicing(crate::chord::Voicing),
     Product(Vec<Self>),
     Option { member: Type, value: Option<Box<Self>> },
     List { member: Type, values: Vec<Self> },
@@ -660,9 +781,10 @@ enum Builtin {
     Shift,
     Overlay,
     MapNotePitches,
+    Play,
 }
 
-const BUILTIN_OWNERSHIP: [PrimitiveOwnership<Builtin>; 7] = [
+const BUILTIN_OWNERSHIP: [PrimitiveOwnership<Builtin>; 8] = [
     PrimitiveOwnership {
         operation: Builtin::Transpose,
         spelling: "transpose",
@@ -698,6 +820,11 @@ const BUILTIN_OWNERSHIP: [PrimitiveOwnership<Builtin>; 7] = [
         spelling: "map_note_pitches",
         hidden_information: "controlled traversal of contextual notes while preserving non-note facts and provenance",
     },
+    PrimitiveOwnership {
+        operation: Builtin::Play,
+        spelling: "play",
+        hidden_information: "contextual music construction: the voicing's private pitches become sounded occurrences with provenance",
+    },
 ];
 
 #[derive(Clone)]
@@ -722,6 +849,7 @@ impl Builtin {
             Self::Shift => vec![Type::Duration, Type::Music],
             Self::Overlay => vec![Type::Music, Type::Music],
             Self::MapNotePitches => vec![Type::Function(vec![Type::Pitch], Box::new(Type::Pitch)), Type::Music],
+            Self::Play => vec![Type::Voicing, Type::Duration],
         }
     }
 }
@@ -830,13 +958,39 @@ impl std::fmt::Display for PitchTerm {
 /// supplies scope and onset; no kernel occurrence is exposed as a value.
 #[derive(Clone)]
 pub(crate) enum MusicOperation {
-    Transpose { interval: Interval, source: Music },
-    Stretch { factor: Ratio<i64>, source: Music },
-    Retrograde { source: Music },
-    Invert { axis: WrittenPitch, source: Music },
-    Shift { by: Ratio<i64>, source: Music },
-    Overlay { left: Music, right: Box<Music> },
-    MapNotePitches { mapper: PitchFunction, source: Music },
+    Transpose {
+        interval: Interval,
+        source: Music,
+    },
+    Stretch {
+        factor: Ratio<i64>,
+        source: Music,
+    },
+    Retrograde {
+        source: Music,
+    },
+    Invert {
+        axis: WrittenPitch,
+        source: Music,
+    },
+    Shift {
+        by: Ratio<i64>,
+        source: Music,
+    },
+    Overlay {
+        left: Music,
+        right: Box<Music>,
+    },
+    MapNotePitches {
+        mapper: PitchFunction,
+        source: Music,
+    },
+    /// The one music constructor with no music underneath it: a chosen
+    /// voicing, sounded for a written length.
+    Play {
+        voicing: crate::chord::Voicing,
+        held: Ratio<i64>,
+    },
 }
 
 /// A checked total `pitch -> pitch` closure. Its representation stays inside
@@ -942,6 +1096,9 @@ impl Value {
             Self::Key(_) => Type::Key,
             Self::Degree(_) => Type::Degree,
             Self::Frame(_) => Type::Frame,
+            Self::ChordClass(_) => Type::ChordClass,
+            Self::Triad(_) => Type::Triad,
+            Self::Voicing(_) => Type::Voicing,
             Self::Product(members) => Type::Product(members.iter().map(Self::ty).collect()),
             Self::Option { member, .. } => Type::Option(Box::new(member.clone())),
             Self::List { member, .. } => Type::List(Box::new(member.clone())),
@@ -999,6 +1156,11 @@ impl Value {
             Self::Frame(value) => {
                 scale_witness(value.scale()).rotate_left(5) ^ Self::Pitch(value.tonic()).normalization_witness()
             }
+            Self::ChordClass(value) => chord_witness(*value),
+            Self::Triad(value) => chord_witness(value.class()).rotate_left(1),
+            Self::Voicing(value) => value.pitches().fold(chord_witness(value.class()), |witness, pitch| {
+                witness.rotate_left(5) ^ Self::Pitch(pitch).normalization_witness()
+            }),
             Self::Product(members) => members.iter().fold(0u64, |witness, member| {
                 witness.rotate_left(5) ^ member.normalization_witness()
             }),
@@ -1019,6 +1181,22 @@ impl Value {
 }
 
 /// Read a scale into a witness the same way the other finite values are read.
+/// A chord class read into a witness the same way a scale is: the root, then
+/// the table row, so two classes that print differently traverse differently.
+fn chord_witness(chord: crate::chord::ChordClass) -> u64 {
+    let bass = chord
+        .bass()
+        .map_or(0, |bass| Value::PitchClass(bass).normalization_witness());
+    Value::PitchClass(chord.root()).normalization_witness().rotate_left(3)
+        ^ u64::try_from(chord.members().len()).unwrap_or(0)
+        ^ chord
+            .kind()
+            .name()
+            .bytes()
+            .fold(0u64, |witness, byte| witness.rotate_left(5) ^ u64::from(byte))
+        ^ bass.rotate_left(9)
+}
+
 fn scale_witness(scale: crate::scale::Scale) -> u64 {
     Value::PitchClass(scale.tonic()).normalization_witness().rotate_left(3)
         ^ u64::try_from(scale.collection() as usize).unwrap_or(0)
@@ -1037,6 +1215,10 @@ fn music_witness(music: &Music) -> u64 {
             | MusicOperation::MapNotePitches { source, .. },
         ) => music_witness(source),
         Some(MusicOperation::Overlay { left, right }) => music_witness(left).rotate_left(7) ^ music_witness(right),
+        Some(MusicOperation::Play { voicing, held }) => {
+            Value::Voicing(voicing.clone()).normalization_witness().rotate_left(11)
+                ^ Value::Duration(*held).normalization_witness()
+        }
     };
     base.rotate_left(3) ^ operation
 }
@@ -1311,6 +1493,9 @@ fn check_and_evaluate(
             | Value::Key(_)
             | Value::Degree(_)
             | Value::Frame(_)
+            | Value::ChordClass(_)
+            | Value::Triad(_)
+            | Value::Voicing(_)
             | Value::Product(_)
             | Value::Option { .. }
             | Value::List { .. }
@@ -1529,6 +1714,9 @@ fn legacy_default(ty: &Type, written: &str) -> Option<Value> {
         | Type::Key
         | Type::Degree
         | Type::Frame
+        | Type::ChordClass
+        | Type::Triad
+        | Type::Voicing
         | Type::Product(_)
         | Type::Option(_)
         | Type::List(_)
@@ -1552,6 +1740,9 @@ fn function_result(ty: &Type) -> Option<&Type> {
         | Type::Key
         | Type::Degree
         | Type::Frame
+        | Type::ChordClass
+        | Type::Triad
+        | Type::Voicing
         | Type::Music
         | Type::Product(_)
         | Type::Option(_)
@@ -1580,12 +1771,15 @@ fn parse_type(resolver: &mut Resolver, node: &SyntaxNode) -> Option<Type> {
             "key" => Some(Type::Key),
             "degree" => Some(Type::Degree),
             "frame" => Some(Type::Frame),
+            "chord_class" => Some(Type::ChordClass),
+            "triad" => Some(Type::Triad),
+            "voicing" => Some(Type::Voicing),
             "music" => Some(Type::Music),
             _ => {
                 resolver.report(
                     Diagnostic::error(Code::UnknownName, format!("unknown type `{text}`"))
                         .at(crate::resolve::trimmed_span(node), "not a value type")
-                        .help("use `bool`, `nat`, `ratio`, `duration`, `pitch`, `pitchclass`, `interval`, `scale`, `key`, `degree`, `frame`, a product, or a function type"),
+                        .help("use `bool`, `nat`, `ratio`, `duration`, `pitch`, `pitchclass`, `interval`, `scale`, `key`, `degree`, `frame`, `chord_class`, `triad`, `voicing`, a product, or a function type"),
                 );
                 None
             }
@@ -1666,6 +1860,8 @@ impl Checker<'_> {
             self.application(node, expected)
         } else if kind == SyntaxKind::PitchExpr {
             self.pitch_action(node)
+        } else if kind == SyntaxKind::ChordExpr {
+            self.chord_literal(node)
         } else if kind == SyntaxKind::ScaleExpr {
             self.scale_literal(node)
         } else if kind == SyntaxKind::KeyExpr {
@@ -1817,6 +2013,36 @@ impl Checker<'_> {
         Some(Expr {
             kind: ExprKind::Literal(Value::Scale(crate::scale::Scale::new(tonic, collection))),
             ty: Type::Scale,
+            span,
+        })
+    }
+
+    /// `chord c major7` — a root and the content stacked on it.
+    ///
+    /// A literal and not a call, for the reason `scale c dorian` is one: the
+    /// words that name a chord type are a closed table the compiler owns, and
+    /// a call would need each of them to be a value a musician could bind and
+    /// misuse.
+    fn chord_literal(&mut self, node: &SyntaxNode) -> Option<Expr> {
+        let span = crate::resolve::trimmed_span(node);
+        let root = self.written_pitch_class(node, span)?;
+        let word = significant_tokens(node)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .last();
+        let word = word.map(|token| token.text().to_owned()).unwrap_or_default();
+        let Some(kind) = crate::chord::ChordType::named(&word) else {
+            self.resolver.report(
+                Diagnostic::error(Code::UnknownName, format!("unknown chord type `{word}`"))
+                    .at(span, "not a named chord type")
+                    .help(format!("try one of: {}", chord_type_list()))
+                    .note("a chord type is the content; the symbol written above the staff is a separate annotation"),
+            );
+            self.failed = true;
+            return None;
+        };
+        Some(Expr {
+            kind: ExprKind::Literal(Value::ChordClass(crate::chord::ChordClass::new(root, kind))),
+            ty: Type::ChordClass,
             span,
         })
     }
@@ -2281,6 +2507,9 @@ impl Checker<'_> {
             | Value::Key(_)
             | Value::Degree(_)
             | Value::Frame(_)
+            | Value::ChordClass(_)
+            | Value::Triad(_)
+            | Value::Voicing(_)
             | Value::Product(_)
             | Value::Option { .. }
             | Value::List { .. }
@@ -2444,7 +2673,7 @@ impl Checker<'_> {
             return None;
         }
         let wanted = match primitive {
-            Primitive::NatFold | Primitive::ListFold | Primitive::OptionFold => 3,
+            Primitive::NatFold | Primitive::ListFold | Primitive::OptionFold | Primitive::DropVoicing => 3,
             Primitive::Map
             | Primitive::Filter
             | Primitive::Repeat
@@ -2454,7 +2683,13 @@ impl Checker<'_> {
             | Primitive::PitchFrame
             | Primitive::FramePitch
             | Primitive::DegreeStepUp
-            | Primitive::DegreeStepDown => 2,
+            | Primitive::DegreeStepDown
+            | Primitive::ChordOn
+            | Primitive::ChordInversion
+            | Primitive::ChordOver
+            | Primitive::VoicingOf
+            | Primitive::CloseVoicing
+            | Primitive::OmitVoicing => 2,
             Primitive::Range
             | Primitive::IntervalInverse
             | Primitive::PitchClassOf
@@ -2465,7 +2700,16 @@ impl Checker<'_> {
             | Primitive::FrameTonic
             | Primitive::DegreeOf
             | Primitive::DegreeRaised
-            | Primitive::DegreeLowered => 1,
+            | Primitive::DegreeLowered
+            | Primitive::ChordRoot
+            | Primitive::ChordBass
+            | Primitive::ChordMembers
+            | Primitive::ChordTriad
+            | Primitive::TriadChord
+            | Primitive::VoicingPitches
+            | Primitive::VoicingBass
+            | Primitive::VoicingChord
+            | Primitive::VoicingPosition => 1,
         };
         if raw.len() != wanted {
             self.resolver.report(
@@ -2552,6 +2796,78 @@ impl Checker<'_> {
             Primitive::DegreeRaised | Primitive::DegreeLowered => {
                 let degree = self.check(nodes.first()?, Some(&Type::Degree))?;
                 (vec![degree], Type::Degree)
+            }
+            Primitive::ChordOn => {
+                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
+                let root = self.check(nodes.get(1)?, Some(&Type::PitchClass))?;
+                (vec![class, root], Type::ChordClass)
+            }
+            Primitive::ChordRoot => {
+                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
+                (vec![class], Type::PitchClass)
+            }
+            Primitive::ChordBass => {
+                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
+                (vec![class], Type::Option(Box::new(Type::PitchClass)))
+            }
+            Primitive::ChordMembers => {
+                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
+                (vec![class], Type::List(Box::new(Type::Interval)))
+            }
+            Primitive::ChordInversion => {
+                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
+                let position = self.check(nodes.get(1)?, Some(&Type::Nat))?;
+                (vec![class, position], Type::Option(Box::new(Type::ChordClass)))
+            }
+            Primitive::ChordOver => {
+                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
+                let bass = self.check(nodes.get(1)?, Some(&Type::PitchClass))?;
+                (vec![class, bass], Type::ChordClass)
+            }
+            Primitive::ChordTriad => {
+                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
+                (vec![class], Type::Option(Box::new(Type::Triad)))
+            }
+            Primitive::TriadChord => {
+                let triad = self.check(nodes.first()?, Some(&Type::Triad))?;
+                (vec![triad], Type::ChordClass)
+            }
+            Primitive::VoicingOf => {
+                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
+                let pitches = self.check(nodes.get(1)?, Some(&Type::List(Box::new(Type::Pitch))))?;
+                (vec![class, pitches], Type::Option(Box::new(Type::Voicing)))
+            }
+            Primitive::VoicingPitches => {
+                let voicing = self.check(nodes.first()?, Some(&Type::Voicing))?;
+                (vec![voicing], Type::List(Box::new(Type::Pitch)))
+            }
+            Primitive::VoicingBass => {
+                let voicing = self.check(nodes.first()?, Some(&Type::Voicing))?;
+                (vec![voicing], Type::Pitch)
+            }
+            Primitive::VoicingChord => {
+                let voicing = self.check(nodes.first()?, Some(&Type::Voicing))?;
+                (vec![voicing], Type::ChordClass)
+            }
+            Primitive::VoicingPosition => {
+                let voicing = self.check(nodes.first()?, Some(&Type::Voicing))?;
+                (vec![voicing], Type::Option(Box::new(Type::Nat)))
+            }
+            Primitive::CloseVoicing => {
+                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
+                let bass = self.check(nodes.get(1)?, Some(&Type::Pitch))?;
+                (vec![class, bass], Type::Option(Box::new(Type::Voicing)))
+            }
+            Primitive::DropVoicing => {
+                let class = self.check(nodes.first()?, Some(&Type::ChordClass))?;
+                let bass = self.check(nodes.get(1)?, Some(&Type::Pitch))?;
+                let voice = self.check(nodes.get(2)?, Some(&Type::Nat))?;
+                (vec![class, bass, voice], Type::Option(Box::new(Type::Voicing)))
+            }
+            Primitive::OmitVoicing => {
+                let voicing = self.check(nodes.first()?, Some(&Type::Voicing))?;
+                let position = self.check(nodes.get(1)?, Some(&Type::Nat))?;
+                (vec![voicing, position], Type::Option(Box::new(Type::Voicing)))
             }
             Primitive::Range => {
                 let count = self.check(nodes.first()?, Some(&Type::Nat))?;
@@ -2736,6 +3052,9 @@ fn is_exhaustive(target: &Type, coverage: &IndexSet<Coverage>) -> bool {
             | Type::Key
             | Type::Degree
             | Type::Frame
+            | Type::ChordClass
+            | Type::Triad
+            | Type::Voicing
             | Type::Music
             | Type::Product(_)
             | Type::Function(_, _) => false,
@@ -2755,6 +3074,9 @@ fn literal_key(value: &Value) -> String {
         Value::Key(value) => format!("key:{}:{:?}", value.tonic(), value.mode()),
         Value::Degree(value) => format!("degree:{}:{}", value.ordinal(), value.alteration()),
         Value::Frame(value) => format!("frame:{}:{}", value.scale(), value.tonic()),
+        Value::ChordClass(value) => format!("chord_class:{value}"),
+        Value::Triad(value) => format!("triad:{value}"),
+        Value::Voicing(value) => format!("voicing:{value}"),
         Value::Product(_)
         | Value::Option { .. }
         | Value::List { .. }
@@ -2981,6 +3303,9 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 | Value::Key(_)
                 | Value::Degree(_)
                 | Value::Frame(_)
+                | Value::ChordClass(_)
+                | Value::Triad(_)
+                | Value::Voicing(_)
                 | Value::Product(_)
                 | Value::Option { .. }
                 | Value::List { .. }
@@ -3050,10 +3375,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 let bound = match environment.get(name)? {
                     Value::Pitch(pitch) => crate::resolve::BoundValue::Pitch(*pitch),
                     Value::Duration(duration) => {
-                        crate::resolve::BoundValue::Duration(crate::score::NotatedDuration::single(
-                            crate::MusicalDuration::new(*duration),
-                            ratio_text(duration),
-                        ))
+                        crate::resolve::BoundValue::Duration(crate::score::NotatedDuration::spelled(*duration))
                     }
                     Value::Bool(_)
                     | Value::Nat(_)
@@ -3064,6 +3386,9 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                     | Value::Key(_)
                     | Value::Degree(_)
                     | Value::Frame(_)
+                    | Value::ChordClass(_)
+                    | Value::Triad(_)
+                    | Value::Voicing(_)
                     | Value::Product(_)
                     | Value::Option { .. }
                     | Value::List { .. }
@@ -3241,6 +3566,16 @@ fn apply_builtin(builtin: &BuiltinValue, provided: Vec<Option<Value>>, span: Sou
                 source: music_value(arguments.next()?)?,
             }
         }
+        Builtin::Play => {
+            let Value::Voicing(voicing) = arguments.next()? else {
+                return None;
+            };
+            let held = duration_value(&arguments.next()?)?;
+            if held <= Ratio::ZERO {
+                return None;
+            }
+            MusicOperation::Play { voicing, held }
+        }
     };
     Some(Value::Music(Music {
         items: Vec::new(),
@@ -3393,6 +3728,160 @@ fn eval_primitive(
                 return None;
             };
             degree.raised().map(Value::Degree)
+        }
+        Primitive::ChordOn => {
+            let (Value::ChordClass(class), Value::PitchClass(root)) = (values.first()?, values.get(1)?) else {
+                return None;
+            };
+            Some(Value::ChordClass(class.rooted_at(*root)))
+        }
+        Primitive::ChordRoot => {
+            let Value::ChordClass(class) = values.first()? else {
+                return None;
+            };
+            Some(Value::PitchClass(class.root()))
+        }
+        Primitive::ChordBass => {
+            let Value::ChordClass(class) = values.first()? else {
+                return None;
+            };
+            Some(optional(Type::PitchClass, class.bass().map(Value::PitchClass)))
+        }
+        Primitive::ChordMembers => {
+            let Value::ChordClass(class) = values.first()? else {
+                return None;
+            };
+            Some(Value::List {
+                member: Type::Interval,
+                values: class.members().iter().copied().map(Value::Interval).collect(),
+            })
+        }
+        Primitive::ChordInversion => {
+            let Value::ChordClass(class) = values.first()? else {
+                return None;
+            };
+            let position = usize::try_from(nat_value(values.get(1)?)?).ok()?;
+            Some(optional(
+                Type::ChordClass,
+                class.inverted(position).ok().map(Value::ChordClass),
+            ))
+        }
+        Primitive::ChordOver => {
+            let (Value::ChordClass(class), Value::PitchClass(bass)) = (values.first()?, values.get(1)?) else {
+                return None;
+            };
+            Some(Value::ChordClass(class.over(*bass)))
+        }
+        Primitive::ChordTriad => {
+            let Value::ChordClass(class) = values.first()? else {
+                return None;
+            };
+            Some(optional(Type::Triad, crate::chord::Triad::of(*class).map(Value::Triad)))
+        }
+        Primitive::TriadChord => {
+            let Value::Triad(triad) = values.first()? else {
+                return None;
+            };
+            Some(Value::ChordClass(triad.class()))
+        }
+        Primitive::VoicingOf => {
+            let (Value::ChordClass(class), Value::List { values: pitches, .. }) = (values.first()?, values.get(1)?)
+            else {
+                return None;
+            };
+            let written: Option<Vec<WrittenPitch>> = pitches
+                .iter()
+                .map(|value| match *value {
+                    Value::Pitch(pitch) => Some(pitch),
+                    Value::Bool(_)
+                    | Value::Nat(_)
+                    | Value::Ratio(_)
+                    | Value::Duration(_)
+                    | Value::PitchClass(_)
+                    | Value::Interval(_)
+                    | Value::Scale(_)
+                    | Value::Key(_)
+                    | Value::Degree(_)
+                    | Value::Frame(_)
+                    | Value::ChordClass(_)
+                    | Value::Triad(_)
+                    | Value::Voicing(_)
+                    | Value::Product(_)
+                    | Value::Option { .. }
+                    | Value::List { .. }
+                    | Value::Music(_)
+                    | Value::Closure(_)
+                    | Value::Builtin(_) => None,
+                })
+                .collect();
+            Some(optional(
+                Type::Voicing,
+                crate::chord::Voicing::new(*class, written?).ok().map(Value::Voicing),
+            ))
+        }
+        Primitive::VoicingPitches => {
+            let Value::Voicing(voicing) = values.first()? else {
+                return None;
+            };
+            Some(Value::List {
+                member: Type::Pitch,
+                values: voicing.pitches().map(Value::Pitch).collect(),
+            })
+        }
+        Primitive::VoicingBass => {
+            let Value::Voicing(voicing) = values.first()? else {
+                return None;
+            };
+            Some(Value::Pitch(voicing.bass()))
+        }
+        Primitive::VoicingChord => {
+            let Value::Voicing(voicing) = values.first()? else {
+                return None;
+            };
+            Some(Value::ChordClass(voicing.class()))
+        }
+        Primitive::VoicingPosition => {
+            let Value::Voicing(voicing) = values.first()? else {
+                return None;
+            };
+            let position = voicing
+                .inversion()
+                .and_then(|position| u64::try_from(position).ok())
+                .map(Value::Nat);
+            Some(optional(Type::Nat, position))
+        }
+        Primitive::CloseVoicing => {
+            let (Value::ChordClass(class), Value::Pitch(bass)) = (values.first()?, values.get(1)?) else {
+                return None;
+            };
+            Some(optional(
+                Type::Voicing,
+                crate::chord::Voicing::close_position(*class, *bass)
+                    .ok()
+                    .map(Value::Voicing),
+            ))
+        }
+        Primitive::DropVoicing => {
+            let (Value::ChordClass(class), Value::Pitch(bass)) = (values.first()?, values.get(1)?) else {
+                return None;
+            };
+            let voice = usize::try_from(nat_value(values.get(2)?)?).ok()?;
+            Some(optional(
+                Type::Voicing,
+                crate::chord::Voicing::dropped(*class, *bass, voice)
+                    .ok()
+                    .map(Value::Voicing),
+            ))
+        }
+        Primitive::OmitVoicing => {
+            let Value::Voicing(voicing) = values.first()? else {
+                return None;
+            };
+            let position = usize::try_from(nat_value(values.get(1)?)?).ok()?;
+            Some(optional(
+                Type::Voicing,
+                voicing.omitting(position).ok().map(Value::Voicing),
+            ))
         }
         Primitive::DegreeLowered => {
             let Value::Degree(degree) = values.first()? else {
@@ -3567,14 +4056,6 @@ fn nat_value(value: &Value) -> Option<u64> {
     }
 }
 
-fn ratio_text(value: &Ratio<i64>) -> String {
-    if *value.denom() == 1 {
-        value.numer().to_string()
-    } else {
-        format!("{}/{}", value.numer(), value.denom())
-    }
-}
-
 const fn span_key(span: SourceSpan) -> u64 {
     (span.start as u64) << 32 | span.end as u64
 }
@@ -3662,6 +4143,8 @@ fn value_shape(value: &Value) -> (u64, u64) {
         Value::Pitch(_) | Value::PitchClass(_) | Value::Interval(_) | Value::Key(_) | Value::Degree(_) => (1, 12),
         Value::Scale(_) => (1, 24),
         Value::Frame(_) => (1, 36),
+        Value::ChordClass(_) | Value::Triad(_) => (1, 24),
+        Value::Voicing(value) => (1, u64::try_from(value.size()).unwrap_or(u64::MAX).saturating_mul(12)),
         Value::Product(members) => aggregate_shape(members.iter()),
         Value::Option { value, .. } => value.as_deref().map_or((1, 1), |value| {
             let (nodes, bytes) = value_shape(value);
@@ -3692,6 +4175,7 @@ fn music_shape(music: &Music) -> (u64, u64) {
             let right = music_shape(right);
             (left.0.saturating_add(right.0), left.1.saturating_add(right.1))
         }
+        Some(MusicOperation::Play { voicing, .. }) => value_shape(&Value::Voicing(voicing.clone())),
     };
     (base.0.saturating_add(child.0), base.1.saturating_add(child.1))
 }
@@ -3814,6 +4298,13 @@ fn collection_list() -> String {
     format!("`{}`", spellings.join("`, `"))
 }
 
+/// Every chord-type spelling, sorted, for the unknown-type diagnostic.
+fn chord_type_list() -> String {
+    let mut spellings: Vec<_> = crate::chord::ChordType::spellings().collect();
+    spellings.sort_unstable();
+    format!("`{}`", spellings.join("`, `"))
+}
+
 fn is_expr_node(kind: SyntaxKind) -> bool {
     matches!(
         kind,
@@ -3825,6 +4316,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::OptionExpr
             | SyntaxKind::ApplyExpr
             | SyntaxKind::PitchExpr
+            | SyntaxKind::ChordExpr
             | SyntaxKind::ScaleExpr
             | SyntaxKind::KeyExpr
             | SyntaxKind::StepExpr
@@ -3927,7 +4419,7 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(
             entries.len(),
-            31,
+            48,
             "new compiler operations must enter the ownership registry"
         );
         let unique = entries.iter().map(|(spelling, _)| *spelling).collect::<IndexSet<_>>();

@@ -105,7 +105,7 @@ fn a_position_is_measured_against_the_meter() {
         .annotations()
         .harmony()
         .iter()
-        .map(|mark| format!("{} {}", mark.at.as_ratio(), mark.symbol.text))
+        .map(|mark| format!("{} {}", mark.at.as_ratio(), mark.symbol.text()))
         .collect();
     assert_eq!(times, ["0 c", "1/2 f", "1 g"]);
 }
@@ -207,10 +207,10 @@ fn the_chord_grammar_reads_what_a_lead_sheet_writes() {
         let chord = ChordSymbol::parse(written).unwrap_or_else(|| panic!("`{written}` should parse"));
         let spelled = format!("{}{}", letter_of(&chord), accidental_of(&chord));
         assert_eq!(spelled, root, "root of `{written}`");
-        assert_eq!(chord.quality, quality, "quality of `{written}`");
-        assert_eq!(chord.seventh.map(seventh_name), seventh, "seventh of `{written}`");
-        assert_eq!(chord.extension, extension, "extension of `{written}`");
-        assert_eq!(chord.text, written, "`{written}` keeps what was written");
+        assert_eq!(chord.quality(), quality, "quality of `{written}`");
+        assert_eq!(chord.seventh().map(seventh_name), seventh, "seventh of `{written}`");
+        assert_eq!(chord.extension(), extension, "extension of `{written}`");
+        assert_eq!(chord.text(), written, "`{written}` keeps what was written");
     }
 }
 
@@ -220,8 +220,8 @@ fn the_chord_grammar_reads_what_a_lead_sheet_writes() {
 fn an_extension_implies_the_seventh_below_it() {
     for (written, extension) in [("c9", 9u8), ("c11", 11), ("c13", 13)] {
         let chord = ChordSymbol::parse(written).unwrap_or_else(|| panic!("`{written}` should parse"));
-        assert_eq!(chord.extension, Some(extension));
-        assert_eq!(chord.seventh.map(seventh_name), Some("minor"), "`{written}`");
+        assert_eq!(chord.extension(), Some(extension));
+        assert_eq!(chord.seventh().map(seventh_name), Some("minor"), "`{written}`");
     }
 }
 
@@ -254,7 +254,7 @@ fn the_annotated_fixture_records_every_annotation() {
         .annotations()
         .harmony()
         .iter()
-        .map(|mark| format!("{} {}", mark.at.as_ratio(), mark.symbol.text))
+        .map(|mark| format!("{} {}", mark.at.as_ratio(), mark.symbol.text()))
         .collect();
     assert_eq!(harmony, ["0 am", "1 fmaj7", "2 e7", "3 am"]);
 
@@ -283,7 +283,7 @@ fn a_form_marker_lands_at_a_time_the_performance_agrees_with() {
 }
 
 fn letter_of(chord: &ChordSymbol) -> &'static str {
-    match chord.letter {
+    match chord.root().letter {
         musa_compiler::Letter::C => "c",
         musa_compiler::Letter::D => "d",
         musa_compiler::Letter::E => "e",
@@ -295,7 +295,7 @@ fn letter_of(chord: &ChordSymbol) -> &'static str {
 }
 
 fn accidental_of(chord: &ChordSymbol) -> &'static str {
-    match chord.accidental.0 {
+    match chord.root().accidental.0 {
         -2 => "bb",
         -1 => "b",
         1 => "#",

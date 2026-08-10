@@ -580,9 +580,10 @@ fn chord_names(harmony: &[PositionedMark<ChordSymbol>], measures: &[num_rational
 
 /// The chord root in `LilyPond`'s english note names.
 fn chordmode_root(chord: &ChordSymbol) -> String {
+    let root = chord.root();
     pitch_name(WrittenPitch {
-        letter: chord.letter,
-        accidental: chord.accidental,
+        letter: root.letter,
+        accidental: root.accidental,
         octave: 3,
     })
 }
@@ -594,7 +595,7 @@ fn chordmode_root(chord: &ChordSymbol) -> String {
 /// join a step with a dot, while `m` and `maj` prefix it directly, because
 /// that is the spelling `LilyPond`'s own documentation uses.
 fn chordmode_modifier(chord: &ChordSymbol) -> String {
-    let base = match chord.quality {
+    let base = match chord.quality() {
         ChordQuality::Major => "",
         ChordQuality::Minor => "m",
         ChordQuality::Diminished => "dim",
@@ -602,8 +603,8 @@ fn chordmode_modifier(chord: &ChordSymbol) -> String {
         ChordQuality::Suspended2 => "sus2",
         ChordQuality::Suspended4 => "sus4",
     };
-    let Some(seventh) = chord.seventh else {
-        return match chord.extension {
+    let Some(seventh) = chord.seventh() else {
+        return match chord.extension() {
             Some(step) => {
                 if base.is_empty() {
                     format!(":{step}")
@@ -620,7 +621,7 @@ fn chordmode_modifier(chord: &ChordSymbol) -> String {
             }
         };
     };
-    let step = chord.extension.unwrap_or(7);
+    let step = chord.extension().unwrap_or(7);
     match (seventh, base) {
         (Seventh::Major, "") => format!(":maj{step}"),
         (Seventh::Major, base) => format!(":{base}{step}+"),
