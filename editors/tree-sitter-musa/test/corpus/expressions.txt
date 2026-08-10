@@ -4,14 +4,18 @@ expression and type grammar
 
 piece "Expressions" {
   let choices: list[(pitch, option[pitch])] = [(c4, some(e4)), (g4, none)];
-  fn choose(value: option[pitch], fallback: pitch = c4) -> pitch = match value {
-    none -> fallback,
-    some(found) -> found,
-  };
-  fn melody(root: pitch) -> music = music {
-    root/4
-    use answer(root);
-  };
+  fn choose(value: option[pitch], fallback: pitch = c4) -> pitch {
+    match value {
+      none -> fallback,
+      some(found) -> found,
+    }
+  }
+  fn melody(root: pitch) -> music {
+    music {
+      root/4
+      use answer(root);
+    }
+  }
   score { part piano { voice one { c4/1 } } }
 }
 
@@ -69,22 +73,23 @@ piece "Expressions" {
               (pitch_literal)))))
       (type_expression
         (type_name))
-      (expression
-        (match_expression
-          (expression
-            (name_expression
-              (identifier)))
-          (match_arm
-            (pattern)
+      (block_expression
+        (expression
+          (match_expression
             (expression
               (name_expression
-                (identifier))))
-          (match_arm
-            (pattern
-              (identifier))
-            (expression
-              (name_expression
-                (identifier)))))))
+                (identifier)))
+            (match_arm
+              (pattern)
+              (expression
+                (name_expression
+                  (identifier))))
+            (match_arm
+              (pattern
+                (identifier))
+              (expression
+                (name_expression
+                  (identifier))))))))
     (function_declaration
       (identifier)
       (parameter_list
@@ -94,22 +99,23 @@ piece "Expressions" {
             (type_name))))
       (type_expression
         (type_name))
-      (expression
-        (music_expression
-          (note_statement
-            (identifier)
-            (duration
-              (integer)))
-          (use_statement
-            (expression
-              (application_expression
-                (name_expression
-                  (identifier))
-                (expression_argument_list
-                  (expression_argument
-                    (expression
-                      (name_expression
-                        (identifier)))))))))))
+      (block_expression
+        (expression
+          (music_expression
+            (note_statement
+              (identifier)
+              (duration
+                (integer)))
+            (use_statement
+              (expression
+                (application_expression
+                  (name_expression
+                    (identifier))
+                  (expression_argument_list
+                    (expression_argument
+                      (expression
+                        (name_expression
+                          (identifier))))))))))))
     (score_declaration
       (part_declaration
         (identifier)

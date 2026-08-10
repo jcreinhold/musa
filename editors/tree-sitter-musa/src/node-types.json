@@ -8,6 +8,10 @@
       "required": true,
       "types": [
         {
+          "type": "block_expression",
+          "named": true
+        },
+        {
           "type": "expression",
           "named": true
         },
@@ -328,6 +332,21 @@
     }
   },
   {
+    "type": "block_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "expression",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "bus_declaration",
     "named": true,
     "fields": {
@@ -600,6 +619,10 @@
           "named": true
         },
         {
+          "type": "block_expression",
+          "named": true
+        },
+        {
           "type": "chord_expression",
           "named": true
         },
@@ -746,7 +769,7 @@
         "required": true,
         "types": [
           {
-            "type": "expression",
+            "type": "block_expression",
             "named": true
           }
         ]

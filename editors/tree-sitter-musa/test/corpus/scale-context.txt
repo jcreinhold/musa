@@ -6,11 +6,13 @@ piece "Scale Context" {
   import std::scale;
   let home: key = key c minor;
   let collection: scale = signature_scale(home);
-  fn figure() -> music = music {
-    c5/8
-    (c5 step 1)/8
-    (c5 step down 2)/4
-  };
+  fn figure() -> music {
+    music {
+      c5/8
+      (c5 step 1)/8
+      (c5 step down 2)/4
+    }
+  }
   score {
     part p {
       voice v {
@@ -59,26 +61,27 @@ piece "Scale Context" {
       (parameter_list)
       (type_expression
         (type_name))
-      (expression
-        (music_expression
-          (note_statement
-            (pitch_literal)
-            (duration
-              (integer)))
-          (note_statement
-            (expression
-              (step_expression
-                (pitch_literal)
+      (block_expression
+        (expression
+          (music_expression
+            (note_statement
+              (pitch_literal)
+              (duration
                 (integer)))
-            (duration
-              (integer)))
-          (note_statement
-            (expression
-              (step_expression
-                (pitch_literal)
+            (note_statement
+              (expression
+                (step_expression
+                  (pitch_literal)
+                  (integer)))
+              (duration
                 (integer)))
-            (duration
-              (integer))))))
+            (note_statement
+              (expression
+                (step_expression
+                  (pitch_literal)
+                  (integer)))
+              (duration
+                (integer)))))))
     (score_declaration
       (part_declaration
         (identifier)

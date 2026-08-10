@@ -7,7 +7,9 @@ piece "Chord Voicings" {
   import std::voicing;
   let sonority: chord_class = chord c major7;
   let close: option[voicing] = close_position(sonority, c4);
-  fn held(chosen: voicing) -> music = play(chosen, 1/1);
+  fn held(chosen: voicing) -> music {
+    play(chosen, 1/1)
+  }
   score {
     part p {
       voice v {
@@ -68,19 +70,20 @@ piece "Chord Voicings" {
               (identifier)))))
       (type_expression
         (type_name))
-      (expression
-        (application_expression
-          (name_expression
-            (identifier))
-          (expression_argument_list
-            (expression_argument
-              (expression
-                (name_expression
-                  (identifier))))
-            (expression_argument
-              (expression
-                (literal_expression
-                  (rational))))))))
+      (block_expression
+        (expression
+          (application_expression
+            (name_expression
+              (identifier))
+            (expression_argument_list
+              (expression_argument
+                (expression
+                  (name_expression
+                    (identifier))))
+              (expression_argument
+                (expression
+                  (literal_expression
+                    (rational)))))))))
     (score_declaration
       (part_declaration
         (identifier)

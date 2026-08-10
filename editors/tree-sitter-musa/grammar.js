@@ -331,6 +331,10 @@ module.exports = grammar({
     let_declaration: ($) =>
       seq('let', field('name', $.identifier), ':', field('type', $.type_expression), '=', field('value', $.expression), ';'),
 
+    // Parser::fn_decl — the body is a block, like every other body in the
+    // language (prompt 112): `fn f(x: nat) -> nat { g(x) }`. The old
+    // `= expression;` is a syntax error in the hand parser, so it is not a
+    // clean parse here either.
     function_declaration: ($) =>
       seq(
         'fn',
@@ -338,9 +342,7 @@ module.exports = grammar({
         $.parameter_list,
         '->',
         field('result', $.type_expression),
-        '=',
-        field('body', $.expression),
-        ';',
+        field('body', $.block_expression),
       ),
 
     parameter_list: ($) =>
@@ -453,8 +455,14 @@ module.exports = grammar({
         $.option_expression,
         $.list_expression,
         $.product_expression,
+        $.block_expression,
         seq('(', $.expression, ')'),
       ),
+
+    // Parser::block_expr — `{ expression }` (prompt 112). A block is a
+    // delimiter, not a sequence: it holds exactly one expression and means
+    // exactly that expression.
+    block_expression: ($) => seq('{', $.expression, '}'),
 
     // `repeat` is both the notation statement and the compiler-owned finite
     // value operation; expression position disambiguates it without making

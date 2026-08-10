@@ -40,7 +40,9 @@ template structure Canon(C: TonalContext, gap: duration): CanonMaterial {
 
     // The answer, a fifth above. Ordinary music functions: a structure exports
     // values, and a value of arrow type is a function.
-    fn answer(line: music) -> music = transpose(P5, line);
+    fn answer(line: music) -> music {
+      transpose(P5, line)
+    }
 
     // The canon itself: subject against its own answer, delayed by whatever
     // the site asked for.
@@ -185,18 +187,19 @@ make duet(MajorCanon.canon, MinorCanon.canon, CMajor.tonic) as canon_duet;
               (type_name))))
         (type_expression
           (type_name))
-        (expression
-          (application_expression
-            (name_expression)
-            (expression_argument_list
-              (expression_argument
-                (expression
-                  (literal_expression
-                    (interval_literal))))
-              (expression_argument
-                (expression
-                  (name_expression
-                    (identifier))))))))
+        (block_expression
+          (expression
+            (application_expression
+              (name_expression)
+              (expression_argument_list
+                (expression_argument
+                  (expression
+                    (literal_expression
+                      (interval_literal))))
+                (expression_argument
+                  (expression
+                    (name_expression
+                      (identifier)))))))))
       (comment)
       (comment)
       (let_declaration

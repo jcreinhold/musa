@@ -26,4 +26,5 @@
   (harmony_declaration)
   (music_expression)
   (match_expression)
+  (block_expression)
 ] @fold

@@ -1172,20 +1172,12 @@
           }
         },
         {
-          "type": "STRING",
-          "value": "="
-        },
-        {
           "type": "FIELD",
           "name": "body",
           "content": {
             "type": "SYMBOL",
-            "name": "expression"
+            "name": "block_expression"
           }
-        },
-        {
-          "type": "STRING",
-          "value": ";"
         }
       ]
     },
@@ -1885,6 +1877,10 @@
           "name": "product_expression"
         },
         {
+          "type": "SYMBOL",
+          "name": "block_expression"
+        },
+        {
           "type": "SEQ",
           "members": [
             {
@@ -1900,6 +1896,23 @@
               "value": ")"
             }
           ]
+        }
+      ]
+    },
+    "block_expression": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "{"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "expression"
+        },
+        {
+          "type": "STRING",
+          "value": "}"
         }
       ]
     },
