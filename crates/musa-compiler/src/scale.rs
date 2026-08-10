@@ -346,27 +346,34 @@ impl Scale {
         })
     }
 
-    /// The chord this collection stacks in thirds from an ordinal.
+    /// The chord this collection stacks in thirds from a degree.
     ///
     /// This is what makes a Roman numeral diatonic. The quality is not
     /// chosen and then transposed onto a degree — it *falls out* of the
     /// collection, which is why `ii` is minor in major and `II` is major in
     /// Dorian without either being stipulated anywhere. `members` counts the
     /// notes, so three is a triad and four a seventh chord, and the degrees
-    /// taken are the ordinal and every second one above it.
+    /// taken are this one and every second one above it.
     ///
-    /// The ordinal is unaltered on purpose, and that is why this takes one
-    /// rather than a [`Degree`]: a stack of the collection's own notes is
-    /// exactly what "diatonic" means, so there is no alteration for it to
-    /// carry and none to silently drop. A chromatic chord names its altered
-    /// degrees itself, through [`Scale::class`] and a re-rooted template.
+    /// A [`Degree`] and not a bare ordinal, because the degree is where this
+    /// language does ordinal arithmetic: a sequence walks by
+    /// [`Degree::step`], and there is no way back from a walked degree to a
+    /// number. Taking the degree is what lets a generated succession be
+    /// harmonized at all.
     ///
-    /// Absent when the ordinal is unwritable or when the collection stacks to
-    /// a sonority the chord vocabulary has no name for — a whole-tone
-    /// collection stacks to no triad, and saying so is better than inventing
-    /// a word for it.
-    pub(crate) fn stacked(self, ordinal: i64, members: usize) -> Option<ChordClass> {
-        let base = self.offset(Degree::new(ordinal))?;
+    /// Absent when the degree carries an alteration, because a stack of the
+    /// collection's own notes is exactly what "diatonic" means and a raised
+    /// fourth is not asking for one — a chromatic chord names its altered
+    /// degree itself, through [`Scale::class`] and a re-rooted template.
+    /// Absent, too, when the collection stacks to a sonority the chord
+    /// vocabulary has no name for: a whole-tone collection stacks to no
+    /// triad, and saying so is better than inventing a word for it.
+    pub(crate) fn stacked(self, degree: Degree, members: usize) -> Option<ChordClass> {
+        if degree.alteration() != 0 {
+            return None;
+        }
+        let ordinal = degree.ordinal();
+        let base = self.offset(degree)?;
         let mut intervals = Vec::with_capacity(members);
         for index in 0..members {
             let step = i64::try_from(index).ok()?.checked_mul(2)?;
@@ -750,7 +757,7 @@ mod tests {
             for (index, expected) in triads.into_iter().enumerate() {
                 let ordinal = i64::try_from(index).expect("a small index") + 1;
                 assert_eq!(
-                    scale.stacked(ordinal, 3).map(ChordClass::kind),
+                    scale.stacked(Degree::new(ordinal), 3).map(ChordClass::kind),
                     Some(expected),
                     "{collection:?} triad on {ordinal}"
                 );
@@ -758,7 +765,7 @@ mod tests {
             for (index, expected) in sevenths.into_iter().enumerate() {
                 let ordinal = i64::try_from(index).expect("a small index") + 1;
                 assert_eq!(
-                    scale.stacked(ordinal, 4).map(ChordClass::kind),
+                    scale.stacked(Degree::new(ordinal), 4).map(ChordClass::kind),
                     expected,
                     "{collection:?} seventh on {ordinal}"
                 );
@@ -774,7 +781,7 @@ mod tests {
             let scale = Scale::new(class("a"), collection);
             let size = i64::try_from(scale.size()).expect("a small collection");
             for ordinal in 1..=7 {
-                let Some(chord) = scale.stacked(ordinal, 3) else {
+                let Some(chord) = scale.stacked(Degree::new(ordinal), 3) else {
                     continue;
                 };
                 assert_eq!(
@@ -783,7 +790,7 @@ mod tests {
                     "{spellings:?} at {ordinal}"
                 );
                 assert_eq!(
-                    scale.stacked(ordinal + size, 3),
+                    scale.stacked(Degree::new(ordinal + size), 3),
                     Some(chord),
                     "{spellings:?} at {ordinal}"
                 );

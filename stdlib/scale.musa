@@ -61,22 +61,26 @@ library {
     fn altered_class(collection: scale, altered: degree) -> option[pitchclass] =
         scale_class(collection, altered);
 
-    // The chord the collection stacks in thirds from a numbered degree.
-    // `members` counts the notes, so three is a triad and four a seventh
-    // chord. The quality is the collection's and not the caller's: `ii` is
-    // minor in major and `II` is major in Dorian because those are the notes
-    // there, which is the whole content of the word "diatonic". Absent when
-    // the collection stacks to a sonority the chord vocabulary cannot name.
-    fn degree_chord(collection: scale, ordinal: nat, members: nat) -> option[chord_class] =
-        scale_chord(collection, ordinal, members);
+    // The chord the collection stacks in thirds from a degree. `members`
+    // counts the notes, so three is a triad and four a seventh chord. The
+    // quality is the collection's and not the caller's: `ii` is minor in major
+    // and `II` is major in Dorian because those are the notes there, which is
+    // the whole content of the word "diatonic". A degree rather than a number
+    // because the degree is where this language does ordinal arithmetic, so a
+    // succession walked by `up_steps` can be harmonized where a walked number
+    // could not. Absent for an altered degree, which is not asking for the
+    // collection's own chord, and absent when the collection stacks to a
+    // sonority the chord vocabulary cannot name.
+    fn degree_chord(collection: scale, written: degree, members: nat) -> option[chord_class] =
+        scale_chord(collection, written, members);
 
     // The diatonic triad on a degree.
-    fn degree_triad(collection: scale, ordinal: nat) -> option[chord_class] =
-        scale_chord(collection, ordinal, 3);
+    fn degree_triad(collection: scale, written: degree) -> option[chord_class] =
+        scale_chord(collection, written, 3);
 
     // The diatonic seventh chord on a degree.
-    fn degree_seventh(collection: scale, ordinal: nat) -> option[chord_class] =
-        scale_chord(collection, ordinal, 4);
+    fn degree_seventh(collection: scale, written: degree) -> option[chord_class] =
+        scale_chord(collection, written, 4);
 
     // Move a degree up by a whole number of scale steps.
     fn up_steps(from: degree, steps: nat) -> degree = degree_step_up(from, steps);

@@ -3592,9 +3592,9 @@ impl Checker<'_> {
             }
             Primitive::ScaleChord => {
                 let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
-                let ordinal = self.check(nodes.get(1)?, Some(&Type::Nat))?;
+                let degree = self.check(nodes.get(1)?, Some(&Type::Degree))?;
                 let members = self.check(nodes.get(2)?, Some(&Type::Nat))?;
-                (vec![scale, ordinal, members], Type::Option(Box::new(Type::ChordClass)))
+                (vec![scale, degree, members], Type::Option(Box::new(Type::ChordClass)))
             }
             Primitive::PitchFrame => {
                 let scale = self.check(nodes.first()?, Some(&Type::Scale))?;
@@ -4701,14 +4701,13 @@ fn eval_primitive(
             Some(optional(Type::PitchClass, scale.class(*degree).map(Value::PitchClass)))
         }
         Primitive::ScaleChord => {
-            let Value::Scale(scale) = values.first()? else {
+            let (Value::Scale(scale), Value::Degree(degree)) = (values.first()?, values.get(1)?) else {
                 return None;
             };
-            let ordinal = i64::try_from(nat_value(values.get(1)?)?).ok()?;
             let members = usize::try_from(nat_value(values.get(2)?)?).ok()?;
             Some(optional(
                 Type::ChordClass,
-                scale.stacked(ordinal, members).map(Value::ChordClass),
+                scale.stacked(*degree, members).map(Value::ChordClass),
             ))
         }
         Primitive::PitchFrame => {

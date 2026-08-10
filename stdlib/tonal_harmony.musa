@@ -47,7 +47,7 @@ library {
     // absence is more honest than rounding it to a chord with other notes in
     // it. OMT 020 and 021.
     fn numeral_chord(collection: scale, written: roman) -> option[chord_class] =
-        match degree_chord(collection, roman_ordinal(written), roman_size(written)) {
+        match degree_chord(collection, degree_of(roman_ordinal(written)), roman_size(written)) {
             none -> none,
             some(stacked) -> inversion(stacked, roman_inversion(written)),
         };
