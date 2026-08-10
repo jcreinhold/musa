@@ -2,16 +2,16 @@
 // after a half-note delay. P8 names the written perfect octave, preserving
 // both diatonic spelling and chromatic distance (Open Music Theory, Intervals).
 piece "Canon Functions" {
-    let subject: music = music {
+    let subject: Music = music {
         c4/4
         d4/4
     };
 
-    fn canon(subject: music, answer: music -> music, gap: duration) -> music {
+    fn canon(subject: Music, answer: Music -> Music, gap: Duration) -> Music {
         overlay(subject, shift(gap, answer(subject)))
     }
 
-    let octave_answer: music -> music = transpose(P8);
+    let octave_answer: Music -> Music = transpose(P8);
 
     score {
         part strings {

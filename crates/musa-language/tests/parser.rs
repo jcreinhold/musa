@@ -233,7 +233,7 @@ fn tuplet_fixture_parses_cleanly() {
 /// tree has to keep them apart without counting tokens.
 #[test]
 fn articulations_do_not_shadow_the_pitch_or_the_duration() {
-    let source = "piece \"x\" { motif m(root: pitch = c4, len: duration = 1/4) { root len accent staccato } \
+    let source = "piece \"x\" { motif m(root: Pitch = c4, len: Duration = 1/4) { root len accent staccato } \
                   score { part p { voice v { use m(); } } } }";
     let doc = parse(source);
     assert_eq!(print_errors(&doc), "");
@@ -643,7 +643,7 @@ fn the_old_bundled_import_spelling_is_a_migration_error() {
 /// that `module` can mean one thing: a node of a package's tree.
 #[test]
 fn the_old_static_layer_spelling_is_a_migration_error() {
-    let doc = parse("module CMajor : TonalContext { let tonic: key = key c major; }\npiece \"P\" { }");
+    let doc = parse("module CMajor : TonalContext { let tonic: Key = key c major; }\npiece \"P\" { }");
     insta::assert_snapshot!(print_errors(&doc));
 }
 
@@ -652,7 +652,7 @@ fn the_old_static_layer_spelling_is_a_migration_error() {
 #[test]
 fn the_old_functor_spelling_is_a_migration_error() {
     let doc =
-        parse("template module Shift(C: TonalContext) : TonalContext { let tonic: key = C.tonic; }\npiece \"P\" { }");
+        parse("template module Shift(C: TonalContext) : TonalContext { let tonic: Key = C.tonic; }\npiece \"P\" { }");
     insta::assert_snapshot!(print_errors(&doc));
 }
 
@@ -661,7 +661,34 @@ fn the_old_functor_spelling_is_a_migration_error() {
 /// the body written back between braces.
 #[test]
 fn the_old_function_body_spelling_is_a_migration_error() {
-    let doc = parse("piece \"Old\" { fn double(x: nat) -> nat = add(x, x); }");
+    let doc = parse("piece \"Old\" { fn double(x: Nat) -> Nat = add(x, x); }");
+    insta::assert_snapshot!(print_errors(&doc));
+}
+
+/// A type is spelled with a capital (prompt 113). Every lowercase spelling
+/// the language removed is refused at the word, with the capital it became
+/// as an applicable fix — including `pitchclass`, which did not merely change
+/// case: it is `NoteName`, because the thing it names is a spelling and a
+/// pitch class is precisely what forgets one.
+#[test]
+fn the_old_type_spellings_are_migration_errors() {
+    let doc = parse(
+        "piece \"Old\" { let subject: music = music { c4/4 }; let spelled: pitchclass = pc_of(c4); \
+         let held: option[voicing] = none; }",
+    );
+    insta::assert_snapshot!(print_errors(&doc));
+}
+
+/// `Some` and `None` move with `Option`, so the lowercase constructors are
+/// refused the same way — in expression position and in a pattern, each at
+/// its own word, so a `match` written the old way gets one complaint per
+/// spelling rather than one cascade.
+#[test]
+fn the_old_option_constructors_are_migration_errors() {
+    let doc = parse(
+        "piece \"Old\" { let held: Option[Pitch] = some(c4); \
+         let chosen: Pitch = match held { none -> c4, some(found) -> found }; }",
+    );
     insta::assert_snapshot!(print_errors(&doc));
 }
 
@@ -669,7 +696,7 @@ fn the_old_function_body_spelling_is_a_migration_error() {
 /// and saying so is how a statement language stays out of this one.
 #[test]
 fn a_block_holding_two_expressions_names_the_rule() {
-    let doc = parse("piece \"Two\" { fn double(x: nat) -> nat { add(x, x) add(x, x) } }");
+    let doc = parse("piece \"Two\" { fn double(x: Nat) -> Nat { add(x, x) add(x, x) } }");
     insta::assert_snapshot!(print_errors(&doc));
 }
 
@@ -677,7 +704,7 @@ fn a_block_holding_two_expressions_names_the_rule() {
 /// grammatical wherever an expression is, and it means what it holds.
 #[test]
 fn a_block_is_an_expression_anywhere_one_is() {
-    let source = "piece \"Block\" { let doubled: nat = { add(1, 1) }; }";
+    let source = "piece \"Block\" { let doubled: Nat = { add(1, 1) }; }";
     let doc = parse(source);
     assert_eq!(doc.errors(), &[], "errors: {}", print_errors(&doc));
     assert_round_trip(source);
@@ -944,15 +971,15 @@ fn a_stray_semicolon_carries_the_edit_that_removes_it() {
 fn a_signature_and_a_structure_parse_into_their_own_nodes() {
     let source = "\
 signature TonalContext {
-    let tonic: key;
+    let tonic: Key;
 }
 
 structure CMajor: TonalContext {
-    let tonic: key = key c major;
+    let tonic: Key = key c major;
 }
 
-template structure Shift(C: TonalContext, gap: duration): TonalContext {
-    let tonic: key = C.tonic;
+template structure Shift(C: TonalContext, gap: Duration): TonalContext {
+    let tonic: Key = C.tonic;
 }
 
 make Shift(CMajor, 1/4) as Shifted;

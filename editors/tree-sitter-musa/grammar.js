@@ -225,10 +225,11 @@ module.exports = grammar({
         ';',
       ),
 
-    // A module may be named after a type or a domain keyword — `harmony`,
-    // `list`, `option`, `pitch`, `scale` — and the lexer writes the keyword
-    // token wherever the word appears (Parser::MODULE_NAME).
-    _module_name: ($) => choice($.identifier, 'harmony', 'list', 'option', 'pitch', 'scale'),
+    // A module may be named after a domain keyword — `harmony`, `pitch`,
+    // `scale` — and the lexer writes the keyword token wherever the word
+    // appears (Parser::MODULE_NAME). `list` and `option` are ordinary
+    // identifiers now that the types are `List` and `Option`.
+    _module_name: ($) => choice($.identifier, 'harmony', 'pitch', 'scale'),
 
     // Parser::front_matter_stmt — one shape, four heads.
     front_matter_statement: ($) =>
@@ -266,8 +267,9 @@ module.exports = grammar({
     // Parser::meter_stmt — `meter 4/4;`, or `meter none;` for music with no
     // barlines from here (prompt 74). Any identifier parses; the compiler
     // checks the word, because there is nothing else `meter` can be
-    // followed by.
-    meter_statement: ($) => seq('meter', field('meter', choice($.rational, 'none', $.identifier)), ';'),
+    // followed by. `none` is an identifier here and not the absent case of
+    // an option, which is `None`.
+    meter_statement: ($) => seq('meter', field('meter', choice($.rational, $.identifier)), ';'),
 
     // Parser::key_stmt — `key a minor;`, or `key k;` when the key is
     // already a value. One name and nothing after it is the value form; a
@@ -319,7 +321,7 @@ module.exports = grammar({
       seq(
         field('name', $.identifier),
         ':',
-        field('type', choice('pitch', $.identifier)),
+        field('type', $.type_name),
         optional(seq('=', field('default', choice($.pitch_literal, $.rational, $.integer)))),
       ),
 
@@ -374,9 +376,12 @@ module.exports = grammar({
         $.product_type,
       ),
 
-    type_name: ($) => choice('pitch', 'music', 'scale', 'key', 'degree', 'frame', $.identifier),
-    option_type: ($) => seq('option', '[', $.type_expression, ']'),
-    list_type: ($) => seq('list', '[', $.type_expression, ']'),
+    // A type is spelled with a capital, so it is an identifier and no
+    // keyword stands here: `key` is a statement and `Key` is a type
+    // (Parser::type_atom).
+    type_name: ($) => $.identifier,
+    option_type: ($) => seq('Option', '[', $.type_expression, ']'),
+    list_type: ($) => seq('List', '[', $.type_expression, ']'),
     product_type: ($) =>
       seq('(', $.type_expression, ',', $.type_expression, repeat(seq(',', $.type_expression)), ')'),
 
@@ -479,7 +484,7 @@ module.exports = grammar({
         'invert',
       ),
     literal_expression: ($) => choice($.integer, $.rational, $.pitch_literal, $.interval_literal, 'true', 'false'),
-    option_expression: ($) => choice('none', seq('some', '(', $.expression, ')')),
+    option_expression: ($) => choice('None', seq('Some', '(', $.expression, ')')),
     list_expression: ($) => seq('[', optional(seq($.expression, repeat(seq(',', $.expression)))), ']'),
     product_expression: ($) =>
       seq('(', $.expression, ',', $.expression, repeat(seq(',', $.expression)), ')'),
@@ -506,8 +511,8 @@ module.exports = grammar({
         $.interval_literal,
         'true',
         'false',
-        'none',
-        seq('some', '(', $.identifier, ')'),
+        'None',
+        seq('Some', '(', $.identifier, ')'),
         seq('[', ']'),
         seq('[', $.identifier, ',', '.', '.', $.identifier, ']'),
         seq('(', $.identifier, ',', $.identifier, repeat(seq(',', $.identifier)), ')'),

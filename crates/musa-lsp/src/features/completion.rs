@@ -11,12 +11,14 @@
 //! rather than as text. The words that name a scale collection are neither:
 //! they are identifiers the lexer cannot tell from any other, so they come
 //! from the compiler's own collection table, which is the only place that
-//! knows which collections exist.
+//! knows which collections exist. Type names are the same case for the same
+//! reason — a type is spelled with a capital, which makes it an identifier —
+//! so they come from `PRIMITIVE_TYPES`.
 
 use std::collections::BTreeMap;
 
 use lsp_types::{CompletionItem, CompletionItemKind, CompletionResponse};
-use musa_language::{SPELLINGS, SyntaxKind, TokenClass};
+use musa_language::{PRIMITIVE_TYPES, SPELLINGS, SyntaxKind, TokenClass};
 
 use crate::workspace::Document;
 
@@ -36,6 +38,21 @@ pub(crate) fn completions(document: &Document) -> CompletionResponse {
         items
             .entry((*spelling).to_owned())
             .or_insert_with(|| keyword_item(spelling, *kind, item_kind, class));
+    }
+    // The type names. A type is spelled with a capital and is therefore an
+    // identifier, so it is not in `SPELLINGS` — the language's own type
+    // vocabulary is, and it is the same list the compiler reads a type from.
+    for (name, doc) in PRIMITIVE_TYPES {
+        items.entry((*name).to_owned()).or_insert_with(|| CompletionItem {
+            label: (*name).to_owned(),
+            kind: Some(CompletionItemKind::CLASS),
+            detail: Some("type".to_owned()),
+            documentation: Some(lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+                kind: lsp_types::MarkupKind::Markdown,
+                value: format!("**{name}** — *type*\n\n{doc}."),
+            })),
+            ..CompletionItem::default()
+        });
     }
     // The words that may follow `scale`. They are identifiers to the lexer,
     // so the vocabulary comes from the compiler's collection table rather

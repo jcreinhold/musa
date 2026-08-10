@@ -77,7 +77,7 @@
   {
     "spelling": "transpose",
     "summary": "the same music, moved in pitch",
-    "doc": "Transpose plays music moved by a written interval such as `P5` or `M3`; the block and function forms have the same musical meaning. Supplying only the interval makes a reusable answer function.\n\n```musa\nlet answer: music -> music = transpose(P5);\n```"
+    "doc": "Transpose plays music moved by a written interval such as `P5` or `M3`; the block and function forms have the same musical meaning. Supplying only the interval makes a reusable answer function.\n\n```musa\nlet answer: Music -> Music = transpose(P5);\n```"
   },
   {
     "spelling": "down",
@@ -237,12 +237,12 @@
   {
     "spelling": "retrograde",
     "summary": "the block, backwards",
-    "doc": "Retrograde plays its music backwards — the last event first. The block and `retrograde(subject)` function forms are the same classical transformation.\n\n```musa\nlet answer: music = retrograde(subject);\n```"
+    "doc": "Retrograde plays its music backwards — the last event first. The block and `retrograde(subject)` function forms are the same classical transformation.\n\n```musa\nlet answer: Music = retrograde(subject);\n```"
   },
   {
     "spelling": "invert",
     "summary": "the block, mirrored in pitch",
-    "doc": "Invert mirrors music around an axis pitch: what went up goes down by the same written interval. `invert(c5)` makes a reusable function; the block writes the axis with `around`.\n\n```musa\nlet mirror: music -> music = invert(c5);\n```"
+    "doc": "Invert mirrors music around an axis pitch: what went up goes down by the same written interval. `invert(c5)` makes a reusable function; the block writes the axis with `around`.\n\n```musa\nlet mirror: Music -> Music = invert(c5);\n```"
   },
   {
     "spelling": "around",
@@ -297,52 +297,52 @@
   {
     "spelling": "let",
     "summary": "give a typed value a name",
-    "doc": "A `let` declaration gives an elaboration value a name. The annotation keeps the musical domain visible at the declaration site.\n\n```musa\nlet answer: interval = P5;\n```"
+    "doc": "A `let` declaration gives an elaboration value a name. The annotation keeps the musical domain visible at the declaration site.\n\n```musa\nlet answer: Interval = P5;\n```"
   },
   {
     "spelling": "fn",
     "summary": "define a total named function",
-    "doc": "A function computes an elaboration value from typed parameters. Musa functions are total: they have no unrestricted recursion or effects.\n\n```musa\nfn identity(x: pitch) -> pitch { x }\n```"
+    "doc": "A function computes an elaboration value from typed parameters. Musa functions are total: they have no unrestricted recursion or effects.\n\n```musa\nfn identity(x: Pitch) -> Pitch { x }\n```"
   },
   {
     "spelling": "music",
     "summary": "a notation-first music value",
-    "doc": "A `music` block is an expression whose body reads like an ordinary voice: notes remain self-delimiting and reusable material is written with `use`.\n\n```musa\nlet call: music = music { c5/4 d5/4 };\n```"
+    "doc": "A `music` block is an expression whose body reads like an ordinary voice: notes remain self-delimiting and reusable material is written with `use`.\n\n```musa\nlet call: Music = music { c5/4 d5/4 };\n```"
   },
   {
-    "spelling": "option",
+    "spelling": "Option",
     "summary": "a type that may contain one value",
-    "doc": "`option[T]` represents an honest partial musical result: either `some(value)` or `none`, with both cases handled explicitly.\n\n```musa\nlet found: option[pitch] = none;\n```"
+    "doc": "`Option[T]` represents an honest partial musical result: either `Some(value)` or `None`, with both cases handled explicitly.\n\n```musa\nlet found: Option[Pitch] = None;\n```"
   },
   {
-    "spelling": "list",
+    "spelling": "List",
     "summary": "a finite ordered collection type",
-    "doc": "`list[T]` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n```musa\nlet tones: list[pitch] = [c4, e4, g4];\n```"
+    "doc": "`List[T]` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n```musa\nlet tones: List[Pitch] = [c4, e4, g4];\n```"
   },
   {
     "spelling": "match",
     "summary": "handle every form of a finite value",
-    "doc": "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n```musa\nfn keep(x: option[pitch]) -> option[pitch] { match x { none -> none, some(p) -> some(p), } }\n```"
+    "doc": "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n```musa\nfn keep(x: Option[Pitch]) -> Option[Pitch] { match x { None -> None, Some(p) -> Some(p), } }\n```"
   },
   {
-    "spelling": "some",
+    "spelling": "Some",
     "summary": "an option containing a value",
-    "doc": "`some(value)` constructs the present case of an `option`; a `match` can bind the contained value.\n\n```musa\nlet tonic: option[pitch] = some(c4);\n```"
+    "doc": "`Some(value)` constructs the present case of an `Option`; a `match` can bind the contained value. It carries its type's capital because it is one of that type's two constructors.\n\n```musa\nlet tonic: Option[Pitch] = Some(c4);\n```"
   },
   {
-    "spelling": "none",
+    "spelling": "None",
     "summary": "an option containing no value",
-    "doc": "`none` is the absent case of an `option`. It makes partial musical operations explicit instead of hiding failure.\n\n```musa\nlet absent: option[pitch] = none;\n```"
+    "doc": "`None` is the absent case of an `Option`. It makes partial musical operations explicit instead of hiding failure. `meter none;` is a different word: a meter that says there are no barlines.\n\n```musa\nlet absent: Option[Pitch] = None;\n```"
   },
   {
     "spelling": "true",
     "summary": "the affirmative boolean value",
-    "doc": "`true` is one of the two `bool` values and can be handled by `match`.\n\n```musa\nlet enabled: bool = true;\n```"
+    "doc": "`true` is one of the two `bool` values and can be handled by `match`.\n\n```musa\nlet enabled: Bool = true;\n```"
   },
   {
     "spelling": "false",
     "summary": "the negative boolean value",
-    "doc": "`false` is one of the two `bool` values and can be handled by `match`.\n\n```musa\nlet muted: bool = false;\n```"
+    "doc": "`false` is one of the two `bool` values and can be handled by `match`.\n\n```musa\nlet muted: Bool = false;\n```"
   },
   {
     "spelling": "scale",
@@ -352,12 +352,12 @@
   {
     "spelling": "degree",
     "summary": "a scale ordinal, with no scale in it",
-    "doc": "A degree is a numbered position — 1 is the tonic, 8 the tonic a period higher — plus any chromatic alteration, and it belongs to no particular scale until one is supplied. Turning a degree into a note also needs a register, which is what a `frame` carries.\n\n```musa\nlet dominant: degree = scale_degree(5);\n```"
+    "doc": "A degree is a numbered position — 1 is the tonic, 8 the tonic a period higher — plus any chromatic alteration, and it belongs to no particular scale until one is supplied. Turning a degree into a note also needs a register, which is what a `frame` carries.\n\n```musa\nlet dominant: Degree = scale_degree(5);\n```"
   },
   {
     "spelling": "frame",
     "summary": "a scale that knows which octave",
-    "doc": "A frame is a scale plus the written pitch its first degree sounds, and it is the only thing that can turn a degree into a note. Building one fails unless the tonic pitch spells the scale's own tonic.\n\n```musa\nfn dominant_of(home: frame) -> pitch { frame_pitch(home, scale_degree(5)) }\n```"
+    "doc": "A frame is a scale plus the written pitch its first degree sounds, and it is the only thing that can turn a degree into a note. Building one fails unless the tonic pitch spells the scale's own tonic.\n\n```musa\nfn dominant_of(home: Frame) -> Pitch { frame_pitch(home, scale_degree(5)) }\n```"
   },
   {
     "spelling": "in",

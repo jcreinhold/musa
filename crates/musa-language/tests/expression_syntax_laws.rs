@@ -1,17 +1,17 @@
 use musa_language::{BarSpacing, SyntaxElement, SyntaxKind, format, parse};
 
 const EXPRESSIONS: &str = r#"piece "Expressions" {
-    let fifth: interval = P5;
-    let paths: list[(pitch, option[pitch])] = [(c4, some(e4)), (g4, none)];
+    let fifth: Interval = P5;
+    let paths: List[(Pitch, Option[Pitch])] = [(c4, Some(e4)), (g4, None)];
 
-    fn choose(value: option[pitch], fallback: pitch = c4) -> pitch { match value {
-        none -> fallback,
-        some(found) -> found,
+    fn choose(value: Option[Pitch], fallback: Pitch = c4) -> Pitch { match value {
+        None -> fallback,
+        Some(found) -> found,
     } }
 
-    fn transform(f: pitch -> pitch, root: pitch) -> pitch { f(root) }
+    fn transform(f: Pitch -> Pitch, root: Pitch) -> Pitch { f(root) }
 
-    fn melody(root: pitch) -> music { music {
+    fn melody(root: Pitch) -> Music { music {
         root/4
         use answer(root);
     } }
@@ -101,11 +101,11 @@ fn formatting_round_trips_is_idempotent_and_keeps_comments() {
 #[test]
 fn incomplete_expressions_recover_without_losing_source() {
     for broken in [
-        "piece \"x\" { fn f(x: nat) -> { x } }",
-        "piece \"x\" { let x: nat = f(1; }",
-        "piece \"x\" { let x: nat -> = 1; }",
-        "piece \"x\" { let x: option[nat] = match x { none -> }; }",
-        "piece \"x\" { let x: nat = match x {}; }",
+        "piece \"x\" { fn f(x: Nat) -> { x } }",
+        "piece \"x\" { let x: Nat = f(1; }",
+        "piece \"x\" { let x: Nat -> = 1; }",
+        "piece \"x\" { let x: Option[Nat] = match x { None -> }; }",
+        "piece \"x\" { let x: Nat = match x {}; }",
     ] {
         let document = parse(broken);
         assert!(!document.errors().is_empty(), "accepted: {broken}");
@@ -115,7 +115,7 @@ fn incomplete_expressions_recover_without_losing_source() {
 
 #[test]
 fn a_note_line_and_a_general_expression_are_unambiguous_in_music() {
-    let source = "piece \"x\" { fn p() -> music { music { c4/4 use answer(c4); } } }";
+    let source = "piece \"x\" { fn p() -> Music { music { c4/4 use answer(c4); } } }";
     let document = parse(source);
     assert!(document.errors().is_empty(), "{:?}", document.errors());
     let root = document.syntax();
@@ -136,7 +136,7 @@ fn a_note_line_and_a_general_expression_are_unambiguous_in_music() {
 #[test]
 fn pitch_translation_is_a_single_non_associative_expression_layer() {
     let source = r#"piece "pitch" {
-        fn turn(root: pitch, by: interval) -> music { music {
+        fn turn(root: Pitch, by: Interval) -> Music { music {
             (root up M2)/4
             ((root up by) down m2)/4
         } }
@@ -155,7 +155,7 @@ fn pitch_translation_is_a_single_non_associative_expression_layer() {
     let reparsed = parse(&formatted);
     assert!(reparsed.errors().is_empty(), "{:?}\n{formatted}", reparsed.errors());
 
-    let chained = parse("piece \"pitch\" { let x: pitch = c4 up M2 down m2; }");
+    let chained = parse("piece \"pitch\" { let x: Pitch = c4 up M2 down m2; }");
     assert!(
         !chained.errors().is_empty(),
         "unparenthesized pitch operators must not associate"
@@ -164,7 +164,7 @@ fn pitch_translation_is_a_single_non_associative_expression_layer() {
 
 #[test]
 fn diminished_interval_spelling_does_not_steal_the_note_d4() {
-    let parsed = parse("piece \"pitch\" { let sounded: pitch = d4; let distance: interval = dim4; }");
+    let parsed = parse("piece \"pitch\" { let sounded: Pitch = d4; let distance: Interval = dim4; }");
     assert!(parsed.errors().is_empty(), "{:?}", parsed.errors());
     let tokens = parsed
         .syntax()
@@ -185,7 +185,7 @@ fn diminished_interval_spelling_does_not_steal_the_note_d4() {
 #[test]
 fn repeat_is_a_statement_keyword_and_a_finite_value_operation() {
     let source =
-        "piece \"x\" { let copies: list[nat] = repeat(1, 4); score { part p { voice v { repeat 2 { c4/4 } } } } }";
+        "piece \"x\" { let copies: List[Nat] = repeat(1, 4); score { part p { voice v { repeat 2 { c4/4 } } } } }";
     let document = parse(source);
     assert!(document.errors().is_empty(), "{:?}", document.errors());
     let root = document.syntax();

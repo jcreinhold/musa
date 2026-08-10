@@ -147,8 +147,8 @@ fn finite_core_fold(bencher: divan::Bencher<'_, '_>, count: u64) {
     let source = SourceDocument::new(
         format!(
             "piece \"Finite core bench\" {{ \
-             fn keep(index: nat, accumulator: nat) -> nat {{ accumulator }} \
-             let value: nat = nat_fold(0, keep, {count}); \
+             fn keep(index: Nat, accumulator: Nat) -> Nat {{ accumulator }} \
+             let value: Nat = nat_fold(0, keep, {count}); \
              score {{ part p {{ voice v {{ c4/1 }} }} }} \
              }}"
         ),
@@ -164,8 +164,8 @@ fn finite_core_fold(bencher: divan::Bencher<'_, '_>, count: u64) {
 fn finite_core_rejection(bencher: divan::Bencher<'_, '_>) {
     let source = SourceDocument::new(
         "piece \"Finite core rejection\" { \
-         fn keep(index: nat, accumulator: nat) -> nat { accumulator } \
-         let value: nat = nat_fold(0, keep, 200000); \
+         fn keep(index: Nat, accumulator: Nat) -> Nat { accumulator } \
+         let value: Nat = nat_fold(0, keep, 200000); \
          score { part p { voice v { c4/1 } } } \
          }",
         "benches/finite-core-rejection.musa",

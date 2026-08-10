@@ -121,14 +121,18 @@ fn module_names_are_names_not_keywords() {
 
 /// The same words in keyword positions keep the keyword class — the
 /// reclassification may not leak out of module-name positions.
+///
+/// A type name is here too, travelling the other way: `Pitch` is an
+/// identifier to the lexer, and the `TypeName` position is what makes it
+/// vocabulary rather than something the composer named.
 #[test]
 fn the_borrowed_words_stay_keywords_in_keyword_positions() {
     let cases: &[(&str, &str)] = &[
         ("piece \"P\" { harmony { at 1:1 C; } }", "harmony"),
-        ("piece \"P\" { let xs: list[pitch] = []; }", "list"),
-        ("piece \"P\" { let x: option[pitch] = none; }", "option"),
-        ("piece \"P\" { let p: pitch = c4; }", "pitch"),
-        ("piece \"P\" { let s: scale = scale c dorian; }", "scale"),
+        ("piece \"P\" { let xs: List[Pitch] = []; }", "List"),
+        ("piece \"P\" { let x: Option[Pitch] = None; }", "Option"),
+        ("piece \"P\" { let p: Pitch = c4; }", "Pitch"),
+        ("piece \"P\" { let s: Scale = scale c dorian; }", "scale"),
     ];
     for &(source, word) in cases {
         let classified = musa_language::classify(source);

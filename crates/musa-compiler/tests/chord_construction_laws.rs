@@ -83,10 +83,10 @@ const PRELUDE: &str = "\
     import std::scale;
     import std::voicing;
 
-    fn held(chosen: voicing) -> music { play(chosen, 1/1) }
-    fn sounded(chosen: option[voicing]) -> music { option_fold(music { rest/1 }, held, chosen) }
-    fn tonic_of(register: frame) -> music { music { (frame_degree(register, 1))/1 } }
-    fn named(root: pitchclass) -> music { option_fold(music { rest/1 }, tonic_of, frame_on(major_on(root), c4)) }
+    fn held(chosen: Voicing) -> Music { play(chosen, 1/1) }
+    fn sounded(chosen: Option[Voicing]) -> Music { option_fold(music { rest/1 }, held, chosen) }
+    fn tonic_of(register: Frame) -> Music { music { (frame_degree(register, 1))/1 } }
+    fn named(root: NoteName) -> Music { option_fold(music { rest/1 }, tonic_of, frame_on(major_on(root), c4)) }
 ";
 
 // --- The reference spelling formula -----------------------------------------
@@ -200,13 +200,13 @@ fn the_triad_refinement_admits_major_and_minor_and_refuses_the_rest() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    fn refined(content: chord_class) -> music {{ option_fold(music {{ rest/1 }}, voiced, as_triad(content)) }}
-    fn voiced(shape: triad) -> music {{ sounded(close_position(triad_content(shape), c4)) }}
+    fn refined(content: ChordClass) -> Music {{ option_fold(music {{ rest/1 }}, voiced, as_triad(content)) }}
+    fn voiced(shape: Triad) -> Music {{ sounded(close_position(triad_content(shape), c4)) }}
 
-    let major: music = refined(chord c major);
-    let minor: music = refined(chord c minor);
-    let diminished: music = refined(chord c diminished);
-    let seventh: music = refined(chord c major7);"
+    let major: Music = refined(chord c major);
+    let minor: Music = refined(chord c minor);
+    let diminished: Music = refined(chord c diminished);
+    let seventh: Music = refined(chord c major7);"
         ),
         "        use major;\n        use minor;\n        use diminished;\n        use seventh;",
     );
@@ -220,12 +220,12 @@ fn an_inversion_designates_a_bass_and_leaves_the_root_alone() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    fn from_e(content: chord_class) -> option[voicing] {{ close_position(content, e4) }}
+    fn from_e(content: ChordClass) -> Option[Voicing] {{ close_position(content, e4) }}
 
-    let content: chord_class = chord c major;
-    let first: option[chord_class] = inversion(content, 1);
-    let voiced: music = sounded(option_fold(none, from_e, first));
-    let root_after: music = named(option_fold(root_of(content), root_of, first));"
+    let content: ChordClass = chord c major;
+    let first: Option[ChordClass] = inversion(content, 1);
+    let voiced: Music = sounded(option_fold(None, from_e, first));
+    let root_after: Music = named(option_fold(root_of(content), root_of, first));"
         ),
         "        use voiced;\n        use root_after;",
     );
@@ -242,14 +242,14 @@ fn a_slash_bass_is_not_an_inversion() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    fn from_d(content: chord_class) -> option[voicing] {{ close_position(content, d3) }}
+    fn from_d(content: ChordClass) -> Option[Voicing] {{ close_position(content, d3) }}
 
-    let slash: chord_class = slash_bass(chord c major, pitchclass_of(d3));
-    let under_d: music = sounded(close_position(slash, d3));
-    let absent: music = sounded(option_fold(none, from_d, inversion(chord c major, 7)));
-    let slash_bass_class: music = named(option_fold(c_root, root_of, some_slash));
-    let some_slash: option[chord_class] = some(slash);
-    let c_root: pitchclass = root_of(chord c major);"
+    let slash: ChordClass = slash_bass(chord c major, pitchclass_of(d3));
+    let under_d: Music = sounded(close_position(slash, d3));
+    let absent: Music = sounded(option_fold(None, from_d, inversion(chord c major, 7)));
+    let slash_bass_class: Music = named(option_fold(c_root, root_of, some_slash));
+    let some_slash: Option[ChordClass] = Some(slash);
+    let c_root: NoteName = root_of(chord c major);"
         ),
         "        use under_d;\n        use absent;\n        use slash_bass_class;",
     );
@@ -265,10 +265,10 @@ fn a_voicing_policy_says_no_rather_than_nearly() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    let content: chord_class = chord c major;
-    let good: music = sounded(voiced_as(content, [c3, g3, e4]));
-    let descending: music = sounded(voiced_as(content, [g3, c3, e4]));
-    let foreign: music = sounded(voiced_as(content, [c3, d3, e4]));"
+    let content: ChordClass = chord c major;
+    let good: Music = sounded(voiced_as(content, [c3, g3, e4]));
+    let descending: Music = sounded(voiced_as(content, [g3, c3, e4]));
+    let foreign: Music = sounded(voiced_as(content, [c3, d3, e4]));"
         ),
         "        use good;\n        use descending;\n        use foreign;",
     );
@@ -282,9 +282,9 @@ fn a_drop_voicing_is_not_its_close_position() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    let content: chord_class = chord c major7;
-    let close: music = sounded(close_position(content, c3));
-    let dropped: music = sounded(drop_position(content, c3, 2));"
+    let content: ChordClass = chord c major7;
+    let close: Music = sounded(close_position(content, c3));
+    let dropped: Music = sounded(drop_position(content, c3, 2));"
         ),
         "        use close;\n        use dropped;",
     );
@@ -298,13 +298,13 @@ fn an_omission_keeps_the_class_it_omits_from() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    fn class_root(chosen: voicing) -> pitchclass {{ root_of(chord_of(chosen)) }}
+    fn class_root(chosen: Voicing) -> NoteName {{ root_of(chord_of(chosen)) }}
 
-    let content: chord_class = chord c major7;
-    let close: option[voicing] = close_position(content, c4);
-    let without_root: option[voicing] = option_fold(none, rootless, close);
-    let voiced: music = sounded(without_root);
-    let still_c: music = named(option_fold(root_of(content), class_root, without_root));"
+    let content: ChordClass = chord c major7;
+    let close: Option[Voicing] = close_position(content, c4);
+    let without_root: Option[Voicing] = option_fold(None, rootless, close);
+    let voiced: Music = sounded(without_root);
+    let still_c: Music = named(option_fold(root_of(content), class_root, without_root));"
         ),
         "        use voiced;\n        use still_c;",
     );

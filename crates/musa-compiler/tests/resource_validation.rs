@@ -28,14 +28,14 @@ fn alphabetic_name(mut index: usize) -> String {
 #[test]
 fn finite_large_work_is_accepted_but_the_deterministic_boundary_is_not() {
     let accepted = compile_declarations(
-        "fn keep(index: nat, accumulator: nat) -> nat { accumulator } \
-         let value: nat = nat_fold(0, keep, 50000);",
+        "fn keep(index: Nat, accumulator: Nat) -> Nat { accumulator } \
+         let value: Nat = nat_fold(0, keep, 50000);",
     );
     assert!(!accepted.has_errors(), "{:?}", accepted.diagnostics());
 
     let rejected = compile_declarations(
-        "fn keep(index: nat, accumulator: nat) -> nat { accumulator } \
-         let value: nat = nat_fold(0, keep, 200000);",
+        "fn keep(index: Nat, accumulator: Nat) -> Nat { accumulator } \
+         let value: Nat = nat_fold(0, keep, 200000);",
     );
     let diagnostic = rejected
         .diagnostics()
@@ -47,7 +47,7 @@ fn finite_large_work_is_accepted_but_the_deterministic_boundary_is_not() {
 
 #[test]
 fn aggregate_allocation_is_rejected_before_it_is_built() {
-    let compilation = compile_declarations("let values: list[nat] = range(100001);");
+    let compilation = compile_declarations("let values: List[Nat] = range(100001);");
     let diagnostic = compilation
         .diagnostics()
         .iter()
@@ -61,7 +61,7 @@ fn aggregate_allocation_is_rejected_before_it_is_built() {
 
 #[test]
 fn logical_value_bytes_have_a_limit_distinct_from_node_count() {
-    let compilation = compile_declarations("let values: list[ratio] = repeat(1/2, 65536);");
+    let compilation = compile_declarations("let values: List[Ratio] = repeat(1/2, 65536);");
     let diagnostic = compilation
         .diagnostics()
         .iter()
@@ -76,7 +76,7 @@ fn logical_value_bytes_have_a_limit_distinct_from_node_count() {
 fn monomorphization_has_its_own_finite_limit() {
     let mut declarations = String::new();
     for index in 0..2049 {
-        let _ = write!(declarations, "let {}: list[nat] = range(0);", alphabetic_name(index));
+        let _ = write!(declarations, "let {}: List[Nat] = range(0);", alphabetic_name(index));
     }
     let compilation = compile_declarations(&declarations);
     let diagnostic = compilation
@@ -94,7 +94,7 @@ fn monomorphization_has_its_own_finite_limit() {
 
 #[test]
 fn matches_reject_missing_and_unreachable_cases_separately() {
-    let missing = compile_declarations("fn choose(value: option[nat]) -> nat { match value { none -> 0 } }");
+    let missing = compile_declarations("fn choose(value: Option[Nat]) -> Nat { match value { None -> 0 } }");
     assert!(
         missing
             .diagnostics()
@@ -102,7 +102,7 @@ fn matches_reject_missing_and_unreachable_cases_separately() {
             .any(|diagnostic| diagnostic.code == Code::NonExhaustiveMatch)
     );
 
-    let unreachable = compile_declarations("fn choose(value: bool) -> nat { match value { _ -> 0, true -> 1 } }");
+    let unreachable = compile_declarations("fn choose(value: Bool) -> Nat { match value { _ -> 0, true -> 1 } }");
     assert!(
         unreachable
             .diagnostics()

@@ -39,7 +39,7 @@ const ANNOTATED: &str = include_str!("../../../examples/annotated.musa");
 const MISSING_SEMICOLON: &str = include_str!("../../../examples/broken/missing-semicolon.musa");
 const STDLIB_PIECE: &str = "piece \"Standard library\" {
     import std::core;
-    let answer: nat = identity_nat(42);
+    let answer: Nat = identity_nat(42);
     tempo 1/4 = 60;
     meter 4/4;
     key c major;
@@ -704,7 +704,7 @@ fn semantic_tokens_cover_a_broken_document() {
     // A document mid-edit: an unrecognized span, an unterminated string. The
     // lexer is total, so the tokens are too.
     let broken =
-        "piece \"x\" {\n    fn choose(x: option[nat]) -> nat = match x { none ->\n    @@ mid-edit \"unterminated\n}\n";
+        "piece \"x\" {\n    fn choose(x: Option[Nat]) -> Nat = match x { None ->\n    @@ mid-edit \"unterminated\n}\n";
     let mut server = Server::start();
     let (uri, _) = server.open("broken", broken);
     let tokens = server
@@ -725,7 +725,7 @@ fn semantic_tokens_cover_a_broken_document() {
     assert_eq!(first.token_type, 1, "keyword is legend index 1");
     assert!(
         tokens.data.iter().filter(|token| token.token_type == 1).count() >= 5,
-        "fn, option, match, and none stay keywords even in incomplete source"
+        "fn, Option, match, and None stay keywords even in incomplete source"
     );
     for token in &tokens.data {
         assert!(token.token_type < 9, "token type within the legend");
@@ -1002,9 +1002,9 @@ fn hover_on_a_keyword_reports_its_documentation() {
 #[test]
 fn hover_on_a_controlled_music_function_explains_its_boundary() {
     let source = "piece \"hover builtin\" {
-        let subject: music = music { c4/1 };
-        fn same(p: pitch) -> pitch { p }
-        let transformed: music = map_note_pitches(same, subject);
+        let subject: Music = music { c4/1 };
+        fn same(p: Pitch) -> Pitch { p }
+        let transformed: Music = map_note_pitches(same, subject);
         score { part p { voice v { use transformed; } } }
     }";
     let mut server = Server::start();

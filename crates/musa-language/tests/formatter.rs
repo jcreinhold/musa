@@ -471,14 +471,14 @@ fn the_same_beat_lands_in_the_same_column() {
 /// rather than by what the body happens to be.
 #[test]
 fn a_function_body_keeps_its_line_until_it_cannot() {
-    let source = "piece \"P\" {\nfn near(x: nat) -> nat { add(x, x) }\nfn far(x: nat) -> nat { add(add(add(x, x), add(x, x)), add(add(x, x), add(add(x, x), add(x, x)))) }\n}\n";
+    let source = "piece \"P\" {\nfn near(x: Nat) -> Nat { add(x, x) }\nfn far(x: Nat) -> Nat { add(add(add(x, x), add(x, x)), add(add(x, x), add(add(x, x), add(x, x)))) }\n}\n";
     let formatted = fmt(source);
     assert!(
-        formatted.contains("    fn near(x: nat) -> nat { add(x, x) }\n"),
+        formatted.contains("    fn near(x: Nat) -> Nat { add(x, x) }\n"),
         "a short body keeps its line:\n{formatted}"
     );
     assert!(
-        formatted.contains("    fn far(x: nat) -> nat {\n        add("),
+        formatted.contains("    fn far(x: Nat) -> Nat {\n        add("),
         "a long body stacks and indents:\n{formatted}"
     );
     assert!(
@@ -492,10 +492,10 @@ fn a_function_body_keeps_its_line_until_it_cannot() {
 /// statements, and this language writes only a *bar* horizontally.
 #[test]
 fn a_music_body_stacks_however_short_it_is() {
-    let source = "piece \"P\" {\nfn figure() -> music { music { c5/4 } }\n}\n";
+    let source = "piece \"P\" {\nfn figure() -> Music { music { c5/4 } }\n}\n";
     let formatted = fmt(source);
     assert!(
-        formatted.contains("    fn figure() -> music {\n        music {\n            c5/4\n        }\n    }\n"),
+        formatted.contains("    fn figure() -> Music {\n        music {\n            c5/4\n        }\n    }\n"),
         "{formatted}"
     );
     assert_eq!(fmt(&formatted), formatted, "idempotent");

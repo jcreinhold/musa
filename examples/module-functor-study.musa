@@ -11,9 +11,9 @@ import std::context;
 // definition — a function is a value of arrow type, so one member form
 // covers values, functions, and music alike.
 signature CanonMaterial {
-    let subject: music;
-    let answer: music -> music;
-    let canon: music;
+    let subject: Music;
+    let answer: Music -> Music;
+    let canon: Music;
 }
 
 // The functor. It reads a tonal context through `TonalContext` and nothing
@@ -23,9 +23,9 @@ signature CanonMaterial {
 // Expansion is binding, not rewriting: this body is checked once per
 // instance with `C` naming the structure the site passed, so no syntax is
 // copied and every span an editor points at is the one written here.
-template structure Canon(C: TonalContext, gap: duration): CanonMaterial {
+template structure Canon(C: TonalContext, gap: Duration): CanonMaterial {
     // The subject steps through whatever collection the context named.
-    let subject: music = music {
+    let subject: Music = music {
         in scale C.collection {
             c5/4
             d5/4
@@ -36,15 +36,15 @@ template structure Canon(C: TonalContext, gap: duration): CanonMaterial {
 
     // The answer, a fifth above. Ordinary music functions: a structure exports
     // values, and a value of arrow type is a function.
-    fn answer(line: music) -> music { transpose(P5, line) }
+    fn answer(line: Music) -> Music { transpose(P5, line) }
 
     // The canon itself: subject against its own answer, delayed by whatever
     // the site asked for.
-    let canon: music = overlay(subject, shift(gap, answer(subject)));
+    let canon: Music = overlay(subject, shift(gap, answer(subject)));
 
     // Private. `CanonMaterial` does not list it, so nothing outside this
     // structure may name `MajorCanon.stretto` — which is what sealing means.
-    let stretto: music = overlay(subject, shift(1/2, answer(subject)));
+    let stretto: Music = overlay(subject, shift(1/2, answer(subject)));
 }
 
 // Two instances, two structures. Identity is generative and comes from the
@@ -54,7 +54,7 @@ make Canon(CMajor, 1/1) as MajorCanon;
 make Canon(ANaturalMinor, 2/1) as MinorCanon;
 
 // One piece template reads a single canon.
-template piece study(material: music, home: key) "Canon Study" {
+template piece study(material: Music, home: Key) "Canon Study" {
     meter 4/4;
     key home;
 
@@ -70,7 +70,7 @@ template piece study(material: music, home: key) "Canon Study" {
 // Another reads two, which is the point of exporting ordinary music values
 // rather than a structure object: what leaves a structure is a value like any
 // other, and the template that takes it never learns where it came from.
-template piece duet(major: music, minor: music, home: key) "Canon Duet" {
+template piece duet(major: Music, minor: Music, home: Key) "Canon Duet" {
     meter 4/4;
     key home;
 

@@ -110,7 +110,7 @@
     "end": 692
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 693,
     "end": 698
   },
@@ -135,7 +135,7 @@
     "end": 715
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 716,
     "end": 721
   },
@@ -145,7 +145,7 @@
     "end": 724
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 725,
     "end": 730
   },
@@ -170,7 +170,7 @@
     "end": 746
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 747,
     "end": 752
   },
@@ -315,7 +315,7 @@
     "end": 1365
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 1366,
     "end": 1371
   },
@@ -475,7 +475,7 @@
     "end": 1655
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 1656,
     "end": 1661
   },
@@ -490,7 +490,7 @@
     "end": 1665
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 1666,
     "end": 1671
   },
@@ -560,7 +560,7 @@
     "end": 1815
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 1816,
     "end": 1821
   },
@@ -670,7 +670,7 @@
     "end": 2040
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2041,
     "end": 2046
   },
@@ -910,7 +910,7 @@
     "end": 2472
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2473,
     "end": 2478
   },
@@ -930,7 +930,7 @@
     "end": 2485
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2486,
     "end": 2489
   },
@@ -1100,7 +1100,7 @@
     "end": 2914
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2915,
     "end": 2920
   },
@@ -1120,7 +1120,7 @@
     "end": 2928
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2929,
     "end": 2934
   },
@@ -1140,7 +1140,7 @@
     "end": 2941
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2942,
     "end": 2945
   },

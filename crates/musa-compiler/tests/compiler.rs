@@ -195,8 +195,8 @@ fn motifs_only_see_earlier_motifs() {
 #[test]
 fn nested_motifs_and_duration_parameters_expand() {
     let source = "piece \"x\" {
-        motif cell(d: duration = 1/4) { c4 d d4 d }
-        motif pair(d: duration = 1/8) { use cell(d); use cell(d); }
+        motif cell(d: Duration = 1/4) { c4 d d4 d }
+        motif pair(d: Duration = 1/8) { use cell(d); use cell(d); }
         score { part p { voice v { use pair(1/16); use pair(); } } }
     }";
     let compilation = compile_source(source);
@@ -293,7 +293,7 @@ fn a_dot_on_the_long_form_is_refused() {
 fn missing_argument_without_default_is_an_error() {
     let compilation = compile_source(
         "piece \"x\" {
-            motif m(root: pitch) { root 1/4 }
+            motif m(root: Pitch) { root 1/4 }
             score { part p { voice v { use m(); } } }
         }",
     );

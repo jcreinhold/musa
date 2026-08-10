@@ -1,0 +1,24 @@
+---
+source: crates/musa-language/tests/parser.rs
+expression: print_errors(&doc)
+---
+27..32: a type is spelled with a capital
+  label: this is `Music`
+  help: every type the compiler owns is spelled with a capital, so `music` is `Music`
+  fix: write `Music` -> "Music"
+64..74: a type is spelled with a capital
+  label: this is `NoteName`
+  help: `pitchclass` is `NoteName`: a pitch class forgets spelling, and this is the type that keeps it, so C♯ and D♭ are two things here and one `Pc12`
+  fix: write `NoteName` -> "NoteName"
+98..104: a type is spelled with a capital
+  label: this is `Option`
+  help: every type the compiler owns is spelled with a capital, so `option` is `Option`
+  fix: write `Option` -> "Option"
+105..112: a type is spelled with a capital
+  label: this is `Voicing`
+  help: every type the compiler owns is spelled with a capital, so `voicing` is `Voicing`
+  fix: write `Voicing` -> "Voicing"
+116..120: a constructor is spelled with a capital
+  label: this is `None`
+  help: `Some` and `None` are the two constructors of `Option`, and they are spelled the way it is
+  fix: write `None` -> "None"

@@ -26,7 +26,8 @@ piece "U" {
     (string)
     (meter_statement
       (rational))
-    (meter_statement)
+    (meter_statement
+      (identifier))
     (score_declaration
       (part_declaration
         (identifier)

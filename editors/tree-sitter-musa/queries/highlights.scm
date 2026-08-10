@@ -95,16 +95,15 @@
 
 ; --- Keywords whose class depends on where they stand -----------------------
 ;
-; `harmony`, `option`, `list`, `pitch`, `scale` are also module names —
-; `parser.rs`'s MODULE_NAME lets a module be named after a type or a domain
-; (`import std::harmony;`, `mod list;`). They are captured by parent here,
-; never by bare text: a flat list cannot tell `harmony { ... }` from
-; `std::harmony`, and guessing from text is exactly the bug this section
-; exists to prevent.
+; `harmony`, `pitch`, `scale` are also module names — `parser.rs`'s
+; MODULE_NAME lets a module be named after a domain (`import std::harmony;`,
+; `mod pitch;`). They are captured by parent here, never by bare text: a flat
+; list cannot tell `harmony { ... }` from `std::harmony`, and guessing from
+; text is exactly the bug this section exists to prevent.
 
 (harmony_declaration "harmony" @keyword)
-(option_type "option" @keyword)
-(list_type "list" @keyword)
+(option_type "Option" @keyword)
+(list_type "List" @keyword)
 (scale_expression "scale" @keyword)
 (in_scale_statement "scale" @keyword)
 
@@ -116,8 +115,8 @@
 ] @boolean
 
 [
-  "some"
-  "none"
+  "Some"
+  "None"
 ] @constant.builtin
 
 ; --- The music itself ------------------------------------------------------
@@ -196,15 +195,11 @@
 
 (import_statement (identifier) @variable)
 (import_statement "harmony" @variable)
-(import_statement "option" @variable)
-(import_statement "list" @variable)
 (import_statement "pitch" @variable)
 (import_statement "scale" @variable)
 
 (mod_declaration (identifier) @variable)
 (mod_declaration "harmony" @variable)
-(mod_declaration "option" @variable)
-(mod_declaration "list" @variable)
 (mod_declaration "pitch" @variable)
 (mod_declaration "scale" @variable)
 
@@ -214,12 +209,8 @@
 ; structure — parts, patches, buses, signatures, structures — is a type in
 ; the editor's vocabulary.
 
-(type_name "pitch" @type.builtin)
-(type_name "music" @type.builtin)
-(type_name "scale" @type.builtin)
-(type_name "key" @type.builtin)
-(type_name "degree" @type.builtin)
-(type_name "frame" @type.builtin)
+; A type is an identifier — a capital is what makes it one — so there is no
+; keyword to capture here and the position does all the work.
 (type_name (identifier) @type)
 
 (part_declaration name: (identifier) @type)

@@ -419,25 +419,25 @@ pub(crate) enum Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Unit => out.write_str("unit"),
-            Self::Bool => out.write_str("bool"),
-            Self::Nat => out.write_str("nat"),
-            Self::Ratio => out.write_str("ratio"),
-            Self::Duration => out.write_str("duration"),
-            Self::Pitch => out.write_str("pitch"),
-            Self::PitchClass => out.write_str("pitchclass"),
-            Self::Interval => out.write_str("interval"),
-            Self::Scale => out.write_str("scale"),
-            Self::Key => out.write_str("key"),
-            Self::Degree => out.write_str("degree"),
-            Self::Frame => out.write_str("frame"),
-            Self::ChordClass => out.write_str("chord_class"),
-            Self::Triad => out.write_str("triad"),
-            Self::Roman => out.write_str("roman"),
-            Self::Voicing => out.write_str("voicing"),
-            Self::Pc12 => out.write_str("pc12"),
-            Self::PcSet12 => out.write_str("pcset12"),
-            Self::Row12 => out.write_str("row12"),
+            Self::Unit => out.write_str("Unit"),
+            Self::Bool => out.write_str("Bool"),
+            Self::Nat => out.write_str("Nat"),
+            Self::Ratio => out.write_str("Ratio"),
+            Self::Duration => out.write_str("Duration"),
+            Self::Pitch => out.write_str("Pitch"),
+            Self::PitchClass => out.write_str("NoteName"),
+            Self::Interval => out.write_str("Interval"),
+            Self::Scale => out.write_str("Scale"),
+            Self::Key => out.write_str("Key"),
+            Self::Degree => out.write_str("Degree"),
+            Self::Frame => out.write_str("Frame"),
+            Self::ChordClass => out.write_str("ChordClass"),
+            Self::Triad => out.write_str("Triad"),
+            Self::Roman => out.write_str("Roman"),
+            Self::Voicing => out.write_str("Voicing"),
+            Self::Pc12 => out.write_str("Pc12"),
+            Self::PcSet12 => out.write_str("PcSet12"),
+            Self::Row12 => out.write_str("Row12"),
             Self::Product(members) => {
                 out.write_str("(")?;
                 for (index, member) in members.iter().enumerate() {
@@ -448,9 +448,9 @@ impl std::fmt::Display for Type {
                 }
                 out.write_str(")")
             }
-            Self::Option(member) => write!(out, "option[{member}]"),
-            Self::List(member) => write!(out, "list[{member}]"),
-            Self::Music => out.write_str("music"),
+            Self::Option(member) => write!(out, "Option[{member}]"),
+            Self::List(member) => write!(out, "List[{member}]"),
+            Self::Music => out.write_str("Music"),
             Self::Function(parameters, result) => {
                 if parameters.len() == 1 {
                     let parameter = parameters.first().unwrap_or(&Self::Unit);
@@ -2506,8 +2506,8 @@ fn lower_signature(
             let mut raw_parameters = Vec::with_capacity(parameters.len());
             for parameter in parameters {
                 let ty = match parameter.kind.as_str() {
-                    "pitch" => Type::Pitch,
-                    "duration" => Type::Duration,
+                    "Pitch" => Type::Pitch,
+                    "Duration" => Type::Duration,
                     other => {
                         resolver.report(
                             Diagnostic::error(Code::UnknownName, format!("unknown type `{other}`"))
@@ -2718,6 +2718,37 @@ pub(crate) fn function_type(declaration: &FnDecl) -> Option<Type> {
     Some(Type::Function(parameters, Box::new(declared_type(&result)?)))
 }
 
+/// The type a written name denotes, for the names the compiler owns.
+///
+/// The spellings are `musa-language`'s `PRIMITIVE_TYPES`, which is where the
+/// language server and the parser read them too; this is the one place that
+/// says which [`Type`] each of them is.
+fn named_type(text: &str) -> Option<Type> {
+    match text {
+        "Unit" => Some(Type::Unit),
+        "Bool" => Some(Type::Bool),
+        "Nat" => Some(Type::Nat),
+        "Ratio" => Some(Type::Ratio),
+        "Duration" => Some(Type::Duration),
+        "Pitch" => Some(Type::Pitch),
+        "NoteName" => Some(Type::PitchClass),
+        "Interval" => Some(Type::Interval),
+        "Scale" => Some(Type::Scale),
+        "Key" => Some(Type::Key),
+        "Degree" => Some(Type::Degree),
+        "Frame" => Some(Type::Frame),
+        "ChordClass" => Some(Type::ChordClass),
+        "Triad" => Some(Type::Triad),
+        "Roman" => Some(Type::Roman),
+        "Voicing" => Some(Type::Voicing),
+        "Pc12" => Some(Type::Pc12),
+        "PcSet12" => Some(Type::PcSet12),
+        "Row12" => Some(Type::Row12),
+        "Music" => Some(Type::Music),
+        _ => None,
+    }
+}
+
 fn lower_type(mut resolver: Option<&mut Resolver>, node: &SyntaxNode) -> Option<Type> {
     let kind = node.kind();
     if kind == SyntaxKind::TypeExpr {
@@ -2726,38 +2757,31 @@ fn lower_type(mut resolver: Option<&mut Resolver>, node: &SyntaxNode) -> Option<
     if kind == SyntaxKind::TypeName {
         let text = node.to_string();
         let text = text.trim();
-        return match text {
-            "unit" => Some(Type::Unit),
-            "bool" => Some(Type::Bool),
-            "nat" => Some(Type::Nat),
-            "ratio" => Some(Type::Ratio),
-            "duration" => Some(Type::Duration),
-            "pitch" => Some(Type::Pitch),
-            "pitchclass" => Some(Type::PitchClass),
-            "interval" => Some(Type::Interval),
-            "scale" => Some(Type::Scale),
-            "key" => Some(Type::Key),
-            "degree" => Some(Type::Degree),
-            "frame" => Some(Type::Frame),
-            "chord_class" => Some(Type::ChordClass),
-            "triad" => Some(Type::Triad),
-            "roman" => Some(Type::Roman),
-            "voicing" => Some(Type::Voicing),
-            "pc12" => Some(Type::Pc12),
-            "pcset12" => Some(Type::PcSet12),
-            "row12" => Some(Type::Row12),
-            "music" => Some(Type::Music),
-            _ => {
-                if let Some(resolver) = resolver.as_deref_mut() {
-                    resolver.report(
-                        Diagnostic::error(Code::UnknownName, format!("unknown type `{text}`"))
-                            .at(crate::resolve::trimmed_span(node), "not a value type")
-                            .help("use `bool`, `nat`, `ratio`, `duration`, `pitch`, `pitchclass`, `interval`, `scale`, `key`, `degree`, `frame`, `chord_class`, `triad`, `voicing`, `pc12`, `pcset12`, `row12`, a product, or a function type"),
-                    );
-                }
-                None
-            }
-        };
+        if let Some(named) = named_type(text) {
+            return Some(named);
+        }
+        // A removed spelling has already been reported at the word, with the
+        // capital that replaces it, by the parser. Reading it as the type it
+        // named leaves the rest of the declaration checked and keeps the
+        // file's one complaint one complaint.
+        if let Some(now) = musa_language::respelled_type(text) {
+            return named_type(now);
+        }
+        if let Some(resolver) = resolver.as_deref_mut() {
+            let vocabulary = musa_language::PRIMITIVE_TYPES
+                .iter()
+                .map(|(name, _)| format!("`{name}`"))
+                .collect::<Vec<_>>()
+                .join(", ");
+            resolver.report(
+                Diagnostic::error(Code::UnknownName, format!("unknown type `{text}`"))
+                    .at(crate::resolve::trimmed_span(node), "not a value type")
+                    .help(format!(
+                        "use {vocabulary}, `Option[τ]`, `List[τ]`, a product, or a function type"
+                    )),
+            );
+        }
+        return None;
     }
     if kind == SyntaxKind::ProductType {
         let members: Option<Vec<_>> = node
@@ -5526,6 +5550,37 @@ fn token_span(token: &SyntaxToken) -> SourceSpan {
 mod tests {
     use super::*;
 
+    /// The vocabulary the language offers, the types this module reads, and
+    /// the spellings it writes back are one vocabulary or they are three.
+    #[test]
+    fn every_offered_type_name_is_read_and_written_the_same_way() {
+        for (name, _) in musa_language::PRIMITIVE_TYPES {
+            let read = named_type(name);
+            assert!(read.is_some(), "`{name}` is offered to the composer but is not a type");
+            assert_eq!(
+                read.map(|ty| ty.to_string()).as_deref(),
+                Some(*name),
+                "`{name}` is read as a type that prints under another name"
+            );
+        }
+    }
+
+    /// Every spelling the language removed still reaches the type it named,
+    /// so a file written against the old vocabulary gets the parser's one
+    /// complaint and not a second one from here.
+    #[test]
+    fn every_removed_type_name_still_reaches_its_type() {
+        for (was, now) in musa_language::RESPELLED_TYPES {
+            if matches!(*now, "Option" | "List") {
+                continue; // Parameterized: a node kind, not a name.
+            }
+            assert!(
+                named_type(now).is_some(),
+                "`{was}` was respelled to a name that is not a type"
+            );
+        }
+    }
+
     enum ReferenceTerm {
         Nat(u64),
         Identity(Box<Self>),
@@ -5669,17 +5724,17 @@ mod tests {
     /// needing a separate constructor for each domain.
     fn sample_seeds() -> Vec<Value> {
         let source = "piece \"law\" { \
-             let a_pitch: pitch = c4; \
-             let b_pitch: pitch = eb3; \
-             let c_pitch: pitch = f5; \
-             let an_interval: interval = P5; \
-             let b_interval: interval = m3; \
-             let a_scale: scale = scale c major; \
-             let b_scale: scale = scale eb harmonic_minor; \
-             let a_key: key = key c major; \
-             let b_key: key = key f# minor; \
-             let a_chord: chord_class = chord c major; \
-             let b_chord: chord_class = chord ab dominant7; \
+             let a_pitch: Pitch = c4; \
+             let b_pitch: Pitch = eb3; \
+             let c_pitch: Pitch = f5; \
+             let an_interval: Interval = P5; \
+             let b_interval: Interval = m3; \
+             let a_scale: Scale = scale c major; \
+             let b_scale: Scale = scale eb harmonic_minor; \
+             let a_key: Key = key c major; \
+             let b_key: Key = key f# minor; \
+             let a_chord: ChordClass = chord c major; \
+             let b_chord: ChordClass = chord ab dominant7; \
          }";
         let mut pool: Vec<Value> = (0..SAMPLED_NATS).map(Value::Nat).collect();
         pool.push(Value::Bool(true));
@@ -5891,16 +5946,16 @@ mod tests {
         // D1: a musical base value is an opaque constant. Nothing takes it apart, which is what
         // lets its reducibility candidate be the plain `SN` clause every base type already has.
         for (ty, literal) in [
-            ("scale", "scale c major"),
-            ("key", "key c major"),
-            ("chord_class", "chord c major"),
-            ("pitch", "c4"),
-            ("interval", "P5"),
+            ("Scale", "scale c major"),
+            ("Key", "key c major"),
+            ("ChordClass", "chord c major"),
+            ("Pitch", "c4"),
+            ("Interval", "P5"),
         ] {
-            for pattern in ["some(inner)", "[]", "[head, ..others]", "(left, right)"] {
+            for pattern in ["Some(inner)", "[]", "[head, ..others]", "(left, right)"] {
                 let source = format!(
                     "piece \"law\" {{ let subject: {ty} = {literal}; \
-                     let result: nat = match subject {{ {pattern} -> 0, _ -> 1 }}; }}"
+                     let result: Nat = match subject {{ {pattern} -> 0, _ -> 1 }}; }}"
                 );
                 let refusals = refusals(&source);
                 // Not merely "it failed": a parse error would satisfy that vacuously, and a
@@ -5996,7 +6051,7 @@ mod tests {
                     reference = ReferenceTerm::Identity(Box::new(reference));
                 }
                 let applied = reference.source();
-                let source = format!("piece \"law\" {{ fn id(x: nat) -> nat {{ x }} let result: nat = {applied}; }}");
+                let source = format!("piece \"law\" {{ fn id(x: Nat) -> Nat {{ x }} let result: Nat = {applied}; }}");
                 let actual = values(&source);
                 assert!(actual.is_some(), "generated well-typed source was rejected: {source}");
                 assert!(matches!(
@@ -6009,7 +6064,7 @@ mod tests {
 
     #[test]
     fn every_evaluated_binding_has_its_checked_type() {
-        let source = "piece \"law\" { let pair: (nat, bool) = (3, true); fn keep(x: (nat, bool)) -> (nat, bool) { x } let result: (nat, bool) = keep(pair); }";
+        let source = "piece \"law\" { let pair: (Nat, Bool) = (3, true); fn keep(x: (Nat, Bool)) -> (Nat, Bool) { x } let result: (Nat, Bool) = keep(pair); }";
         let actual = values(source);
         assert!(actual.is_some(), "well-typed source was rejected");
         assert!(matches!(
@@ -6024,17 +6079,17 @@ mod tests {
         for count in 0..16u64 {
             let source = format!(
                 "piece \"law\" {{ \
-                 fn latest(index: nat, accumulator: nat) -> nat {{ index }} \
-                 fn item(value: nat, accumulator: nat) -> nat {{ value }} \
-                 fn id(value: nat) -> nat {{ value }} \
-                 fn reject(value: nat) -> bool {{ false }} \
-                 fn from_option(value: option[nat]) -> nat {{ match value {{ none -> 0, some(found) -> found }} }} \
-                 let by_nat: nat = nat_fold(0, latest, {count}); \
-                 let values: list[nat] = range({count}); \
-                 let mapped: list[nat] = map(id, values); \
-                 let filtered: list[nat] = filter(reject, mapped); \
-                 let by_list: nat = list_fold(0, item, mapped); \
-                 let selected: nat = from_option(some(by_list)); \
+                 fn latest(index: Nat, accumulator: Nat) -> Nat {{ index }} \
+                 fn item(value: Nat, accumulator: Nat) -> Nat {{ value }} \
+                 fn id(value: Nat) -> Nat {{ value }} \
+                 fn reject(value: Nat) -> Bool {{ false }} \
+                 fn from_option(value: Option[Nat]) -> Nat {{ match value {{ None -> 0, Some(found) -> found }} }} \
+                 let by_nat: Nat = nat_fold(0, latest, {count}); \
+                 let values: List[Nat] = range({count}); \
+                 let mapped: List[Nat] = map(id, values); \
+                 let filtered: List[Nat] = filter(reject, mapped); \
+                 let by_list: Nat = list_fold(0, item, mapped); \
+                 let selected: Nat = from_option(Some(by_list)); \
                  }}"
             );
             let actual = values(&source);

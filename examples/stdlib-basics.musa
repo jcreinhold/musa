@@ -5,16 +5,16 @@ piece "Standard Library Basics" {
     import std::list;
     import std::option;
 
-    let subject: music = music {
+    let subject: Music = music {
         c4/4
         d4/4
     };
 
-    fn same_pitch(p: pitch) -> pitch { p }
+    fn same_pitch(p: Pitch) -> Pitch { p }
 
-    let answer: music = compose_music(transpose(P8), retrograde, subject);
-    let chosen: pitch = pitch_or_else(c4, same_pitch, some(e4));
-    let counting: list[nat] = naturals(4);
+    let answer: Music = compose_music(transpose(P8), retrograde, subject);
+    let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));
+    let counting: List[Nat] = naturals(4);
 
     score {
         part strings {

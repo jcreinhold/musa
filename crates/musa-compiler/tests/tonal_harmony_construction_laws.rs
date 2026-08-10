@@ -41,23 +41,23 @@ const PRELUDE: &str = r"
 
     meter 4/4;
 
-    fn spelled(bass: pitch, content: option[chord_class]) -> music { match content {
-        none -> music { rest/1 },
-        some(sounding) -> stacked(close_position(sounding, bass)),
+    fn spelled(bass: Pitch, content: Option[ChordClass]) -> Music { match content {
+        None -> music { rest/1 },
+        Some(sounding) -> stacked(close_position(sounding, bass)),
     } }
 
-    fn stacked(chosen: option[voicing]) -> music { match chosen {
-        none -> music { rest/1 },
-        some(spread) -> sound_for(spread, 1),
+    fn stacked(chosen: Option[Voicing]) -> Music { match chosen {
+        None -> music { rest/1 },
+        Some(spread) -> sound_for(spread, 1),
     } }
 
-    fn tick(one: music, carried: music) -> music { overlay(one, carried) }
-    fn beat() -> music { music { c4/1 } }
-    fn tally(count: nat) -> music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
+    fn tick(one: Music, carried: Music) -> Music { overlay(one, carried) }
+    fn beat() -> Music { music { c4/1 } }
+    fn tally(count: Nat) -> Music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
 
-    fn numeral_in(collection: scale, written: option[roman]) -> option[chord_class] { match written {
-            none -> none,
-            some(numbered) -> numeral_chord(collection, numbered),
+    fn numeral_in(collection: Scale, written: Option[Roman]) -> Option[ChordClass] { match written {
+            None -> None,
+            Some(numbered) -> numeral_chord(collection, numbered),
         } }
 ";
 
@@ -110,7 +110,7 @@ fn sounded(bindings: &str, expression: &str) -> Vec<WrittenPitch> {
 /// the collection itself computed, which is what every caller below does.
 fn spelling(bindings: &str, bass: &str, content: &str) -> Vec<String> {
     let sounded = sounded(
-        &format!("{bindings}\n    let probed: music = spelled({bass}, {content});"),
+        &format!("{bindings}\n    let probed: Music = spelled({bass}, {content});"),
         "probed",
     );
     sounded
@@ -122,11 +122,11 @@ fn spelling(bindings: &str, bass: &str, content: &str) -> Vec<String> {
 /// A frame on `tonic` in `collection`, and the numerals the tables use.
 fn keyed(collection: &str, tonic: &str) -> String {
     format!(
-        "    let collection: scale = {collection};
-    let register: option[frame] = frame_on(collection, {tonic});
-    fn root_of_degree(written: degree) -> pitch {{ match register {{
-        none -> c0,
-        some(placed) -> frame_pitch(placed, written),
+        "    let collection: Scale = {collection};
+    let register: Option[Frame] = frame_on(collection, {tonic});
+    fn root_of_degree(written: Degree) -> Pitch {{ match register {{
+        None -> c0,
+        Some(placed) -> frame_pitch(placed, written),
     }} }}"
     )
 }
@@ -327,12 +327,12 @@ fn a_stack_with_no_name_is_no_chord() {
 #[test]
 fn an_applied_chord_is_read_in_the_collection_it_tonicizes() {
     let bindings = format!(
-        "{}\n    let major_mode: scale = scale c major;",
+        "{}\n    let major_mode: Scale = scale c major;",
         keyed("scale c major", "c4")
     );
     let applied = |target: u32, numeral: &str| {
         format!(
-            "match {numeral} {{ none -> none, some(numbered) -> secondary(collection, degree_of({target}), major_mode, numbered) }}"
+            "match {numeral} {{ None -> None, Some(numbered) -> secondary(collection, degree_of({target}), major_mode, numbered) }}"
         )
     };
 
@@ -376,12 +376,12 @@ fn an_applied_chord_is_read_in_the_collection_it_tonicizes() {
 #[test]
 fn mixture_is_the_same_numeral_in_the_borrowed_collection() {
     let bindings = format!(
-        "{}\n    let borrowed_mode: scale = scale c natural_minor;",
+        "{}\n    let borrowed_mode: Scale = scale c natural_minor;",
         keyed("scale c major", "c4")
     );
     let mixed = |ordinal: u32| {
         format!(
-            "match triad_numeral({ordinal}) {{ none -> none, some(numbered) -> borrowed(collection, borrowed_mode, numbered) }}"
+            "match triad_numeral({ordinal}) {{ None -> None, Some(numbered) -> borrowed(collection, borrowed_mode, numbered) }}"
         )
     };
 
@@ -481,7 +481,7 @@ fn the_augmented_sixths_spell_their_sixth_as_a_sixth() {
 /// law that the letters cannot state.
 fn sounded_semitones(bindings: &str, bass: &str, content: &str) -> Vec<i64> {
     sounded(
-        &format!("{bindings}\n    let probed: music = spelled({bass}, {content});"),
+        &format!("{bindings}\n    let probed: Music = spelled({bass}, {content});"),
         "probed",
     )
     .into_iter()
@@ -553,11 +553,11 @@ fn a_numeral_that_cannot_be_written_is_not_a_numeral() {
 fn a_numerals_parts_are_what_it_was_built_from() {
     let reader = |accessor: &str| {
         format!(
-            "    fn read(written: option[roman]) -> nat {{ match written {{
-        none -> 0,
-        some(numbered) -> {accessor}(numbered),
+            "    fn read(written: Option[Roman]) -> Nat {{ match written {{
+        None -> 0,
+        Some(numbered) -> {accessor}(numbered),
     }} }}
-    let counted: music = tally(read(numeral(6, 4, 2)));"
+    let counted: Music = tally(read(numeral(6, 4, 2)));"
         )
     };
     assert_eq!(sounded(&reader("numeral_step"), "counted").len(), 6, "the degree");

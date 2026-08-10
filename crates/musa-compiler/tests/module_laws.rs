@@ -88,20 +88,20 @@ fn names(source: &str, kind: NameKind) -> Vec<String> {
 /// varies.
 const MADE: &str = r#"
 signature TonalContext {
-    let tonic: key;
-    let collection: scale;
+    let tonic: Key;
+    let collection: Scale;
 }
 
 structure CMajor: TonalContext {
-    let tonic: key = key c major;
-    let collection: scale = scale c ionian;
-    let bass: pitch = c3;
+    let tonic: Key = key c major;
+    let collection: Scale = scale c ionian;
+    let bass: Pitch = c3;
 }
 
-template structure Shifted(C: TonalContext, lift: interval): TonalContext {
-    let tonic: key = C.tonic;
-    let collection: scale = C.collection;
-    let lifted: interval = lift;
+template structure Shifted(C: TonalContext, lift: Interval): TonalContext {
+    let tonic: Key = C.tonic;
+    let collection: Scale = C.collection;
+    let lifted: Interval = lift;
 }
 
 make Shifted(CMajor, P5) as Away;
@@ -160,7 +160,7 @@ fn a_module_is_equivalent_to_the_declarations_it_names() {
 
 #[test]
 fn matching_is_by_name_and_exact_type() {
-    let missing = MADE.replace("    let collection: scale = scale c ionian;\n", "");
+    let missing = MADE.replace("    let collection: Scale = scale c ionian;\n", "");
     let (code, message) = errors_of(&missing)
         .into_iter()
         .find(|(_, message)| message.contains("does not define"))
@@ -169,8 +169,8 @@ fn matching_is_by_name_and_exact_type() {
     assert_eq!(message, "`CMajor` does not define `collection`");
 
     let mistyped = MADE.replace(
-        "    let collection: scale = scale c ionian;",
-        "    let collection: nat = 4;",
+        "    let collection: Scale = scale c ionian;",
+        "    let collection: Nat = 4;",
     );
     let (code, message) = errors_of(&mistyped)
         .into_iter()
@@ -182,20 +182,20 @@ fn matching_is_by_name_and_exact_type() {
 
 #[test]
 fn a_mismatch_is_labelled_at_the_signature_and_at_the_module() {
-    let missing = MADE.replace("    let collection: scale = scale c ionian;\n", "");
+    let missing = MADE.replace("    let collection: Scale = scale c ionian;\n", "");
     let labels = labels_for(&missing, "does not define");
     assert_eq!(
         labels,
-        vec!["`TonalContext` is not satisfied here", "required as a scale"],
+        vec!["`TonalContext` is not satisfied here", "required as a Scale"],
         "reading one label alone never says what to change"
     );
 
     let mistyped = MADE.replace(
-        "    let collection: scale = scale c ionian;",
-        "    let collection: nat = 4;",
+        "    let collection: Scale = scale c ionian;",
+        "    let collection: Nat = 4;",
     );
     let labels = labels_for(&mistyped, "wrong type");
-    assert_eq!(labels, vec!["this is a nat", "`TonalContext` requires a scale"]);
+    assert_eq!(labels, vec!["this is a Nat", "`TonalContext` requires a Scale"]);
 }
 
 #[test]
@@ -204,7 +204,7 @@ fn a_member_the_signature_does_not_list_is_private() {
     // `CMajor`'s own definitions and for no one else.
     let outside = MADE.replace(
         "piece \"Study\" {",
-        "let root: pitch = CMajor.bass;\n\npiece \"Study\" {",
+        "let root: Pitch = CMajor.bass;\n\npiece \"Study\" {",
     );
     let (code, message) = errors_of(&outside)
         .into_iter()
@@ -222,8 +222,8 @@ fn a_member_the_signature_does_not_list_is_private() {
 
     // Inside, it is an ordinary name.
     let inside = MADE.replace(
-        "    let bass: pitch = c3;",
-        "    let bass: pitch = c3;\n    let lowest: pitch = bass;",
+        "    let bass: Pitch = c3;",
+        "    let bass: Pitch = c3;\n    let lowest: Pitch = bass;",
     );
     assert!(errors_of(&inside).is_empty(), "{:?}", errors_of(&inside));
 }
@@ -234,8 +234,8 @@ fn a_functor_sees_its_parameters_signature_and_not_the_module_behind_it() {
     // over `TonalContext` may not reach it, however the site's structure was
     // written — that is what makes two structures interchangeable.
     let peeking = MADE.replace(
-        "    let lifted: interval = lift;",
-        "    let lifted: interval = lift;\n    let root: pitch = C.bass;",
+        "    let lifted: Interval = lift;",
+        "    let lifted: Interval = lift;\n    let root: Pitch = C.bass;",
     );
     let (code, message) = errors_of(&peeking)
         .into_iter()
@@ -253,7 +253,7 @@ fn applying_a_functor_binds_rather_than_rewrites() {
     let two = MADE
         .replace(
             "make Shifted(CMajor, P5) as Away;",
-            "structure AMinor: TonalContext {\n    let tonic: key = key a minor;\n    let collection: scale = scale a aeolian;\n    let bass: pitch = a2;\n}\n\nmake Shifted(CMajor, P5) as Away;\nmake Shifted(AMinor, P4) as Other;",
+            "structure AMinor: TonalContext {\n    let tonic: Key = key a minor;\n    let collection: Scale = scale a aeolian;\n    let bass: Pitch = a2;\n}\n\nmake Shifted(CMajor, P5) as Away;\nmake Shifted(AMinor, P4) as Other;",
         )
         .replace("in scale Away.collection {", "in scale Other.collection {");
     assert!(errors_of(&two).is_empty(), "{:?}", errors_of(&two));
@@ -345,7 +345,7 @@ fn a_functors_value_arguments_are_evaluated_where_the_site_stands() {
     // heard of `rise`.
     let from_site = MADE.replace(
         "make Shifted(CMajor, P5) as Away;",
-        "let rise: interval = P5;\n\nmake Shifted(CMajor, rise) as Away;",
+        "let rise: Interval = P5;\n\nmake Shifted(CMajor, rise) as Away;",
     );
     assert!(errors_of(&from_site).is_empty(), "{:?}", errors_of(&from_site));
     assert_eq!(music(&snapshot_of(&from_site)), music(&snapshot_of(HANDWRITTEN)));
@@ -353,7 +353,7 @@ fn a_functors_value_arguments_are_evaluated_where_the_site_stands() {
 
 #[test]
 fn a_module_is_not_a_value() {
-    let as_value = MADE.replace("piece \"Study\" {", "let held: key = CMajor;\n\npiece \"Study\" {");
+    let as_value = MADE.replace("piece \"Study\" {", "let held: Key = CMajor;\n\npiece \"Study\" {");
     assert!(
         errors_of(&as_value)
             .iter()
@@ -400,7 +400,7 @@ piece "Study" {
     // Sealing crosses the import boundary too: `home` is `CMajor`'s own.
     let peeking = importing.replace(
         "piece \"Study\" {",
-        "let register: option[frame] = CMajor.home;\n\npiece \"Study\" {",
+        "let register: Option[Frame] = CMajor.home;\n\npiece \"Study\" {",
     );
     assert!(
         errors_of(&peeking)

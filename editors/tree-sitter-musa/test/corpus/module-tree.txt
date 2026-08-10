@@ -7,13 +7,14 @@ mod core;
 mod list;
 mod tonal;
 
---------------------------------------------------------------------------------
+---
 
 (source_file
   (comment)
   (mod_declaration
     (identifier))
-  (mod_declaration)
+  (mod_declaration
+    (identifier))
   (mod_declaration
     (identifier)))
 
@@ -33,7 +34,7 @@ piece "Nested" {
   }
 }
 
---------------------------------------------------------------------------------
+---
 
 (source_file
   (piece_declaration

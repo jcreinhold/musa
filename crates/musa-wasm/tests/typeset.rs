@@ -53,7 +53,7 @@ fn broken_source_yields_diagnostics_and_no_mei() {
 
 #[test]
 fn material_document_is_not_an_error() {
-    let source = "library {\n    motif rise(root: pitch = c5) {\n        root/4\n        d5/4\n    }\n}\n";
+    let source = "library {\n    motif rise(root: Pitch = c5) {\n        root/4\n        d5/4\n    }\n}\n";
     let result = typeset_impl(source);
     assert_eq!(result.mei, None, "a library declares; it does not sound");
     assert!(

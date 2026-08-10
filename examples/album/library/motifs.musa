@@ -3,14 +3,14 @@
 // `library`, so "a piece inside an import" is a parse error rather than a
 // rule somebody has to remember.
 library {
-    motif rise(root: pitch = c5) {
+    motif rise(root: Pitch = c5) {
         root/4
         d5/4
         e5/4
         g5/4
     }
 
-    motif fall(root: pitch = g5) {
+    motif fall(root: Pitch = g5) {
         root/4
         e5/4
         d5/4

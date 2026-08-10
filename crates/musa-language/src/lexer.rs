@@ -349,15 +349,15 @@ enum RawToken {
     FnKw,
     #[token("music", priority = 3)]
     MusicKw,
-    #[token("option", priority = 3)]
+    #[token("Option", priority = 3)]
     OptionKw,
-    #[token("list", priority = 3)]
+    #[token("List", priority = 3)]
     ListKw,
     #[token("match", priority = 3)]
     MatchKw,
-    #[token("some", priority = 3)]
+    #[token("Some", priority = 3)]
     SomeKw,
-    #[token("none", priority = 3)]
+    #[token("None", priority = 3)]
     NoneKw,
     #[token("true", priority = 3)]
     TrueKw,

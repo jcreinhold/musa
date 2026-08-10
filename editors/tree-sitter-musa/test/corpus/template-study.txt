@@ -7,7 +7,7 @@ template-study: a piece template made at the root, and voice templates in it
 // body may read is its own parameters and the file's lexical root — never
 // the site that makes it — so an instance means the same thing wherever it
 // stands (docs/language/04-templates-and-modules.md §3).
-fn theme() -> music {
+fn theme() -> Music {
     music {
         c4/4
         d4/4
@@ -18,13 +18,13 @@ fn theme() -> music {
 
 // A voice that answers a subject through whatever transformation it is
 // handed. Twice below: the same body, two instances, two identities.
-template voice answer(subject: music, transform: music -> music) {
+template voice answer(subject: Music, transform: Music -> Music) {
     use transform(subject);
 }
 
 // The piece itself is the template. Its key and scale arrive as arguments,
 // so the study exists in whatever key it is made in.
-template piece study(k: key, mode: scale, subject: music) "Study" {
+template piece study(k: Key, mode: Scale, subject: Music) "Study" {
     meter 4/4;
     key k;
 
@@ -57,7 +57,8 @@ make study(key g major, scale g mixolydian, theme()) as study_in_g;
     (identifier)
     (parameter_list)
     (type_expression
-      (type_name))
+      (type_name
+        (identifier)))
     (block_expression
       (expression
         (music_expression
@@ -86,13 +87,16 @@ make study(key g major, scale g mixolydian, theme()) as study_in_g;
         (parameter
           (identifier)
           (type_expression
-            (type_name)))
+            (type_name
+              (identifier))))
         (parameter
           (identifier)
           (type_expression
-            (type_name)
+            (type_name
+              (identifier))
             (type_expression
-              (type_name)))))
+              (type_name
+                (identifier))))))
       (use_statement
         (expression
           (application_expression
@@ -112,15 +116,18 @@ make study(key g major, scale g mixolydian, theme()) as study_in_g;
         (parameter
           (identifier)
           (type_expression
-            (type_name)))
+            (type_name
+              (identifier))))
         (parameter
           (identifier)
           (type_expression
-            (type_name)))
+            (type_name
+              (identifier))))
         (parameter
           (identifier)
           (type_expression
-            (type_name))))
+            (type_name
+              (identifier)))))
       (string)
       (meter_statement
         (rational))

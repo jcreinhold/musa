@@ -45,7 +45,7 @@ static LIBRARY: KeywordDoc = doc!(
     "declarations other pieces can import",
     "A library is a file of declarations — motifs, fragments, studio patches — meant to be used by other files \
      rather than played itself. A piece brings one in with `import \"path\";` and then speaks its names as its own.\n\n\
-     ```musa\nlibrary { motif sigh(root: pitch) { … } }\n```"
+     ```musa\nlibrary { motif sigh(root: Pitch) { … } }\n```"
 );
 static TEMPO: KeywordDoc = doc!(
     "tempo",
@@ -101,7 +101,7 @@ static MOTIF: KeywordDoc = doc!(
     "A motif is a musical idea said once and given a name: a phrase, a figure, a rhythm, with parameters for \
      what changes between uses. Write it out where it is wanted with `use name(args);` — an edit to the motif \
      then reaches every occurrence.\n\n\
-     ```musa\nmotif sigh(root: pitch) { root/8 root/8 }\n```"
+     ```musa\nmotif sigh(root: Pitch) { root/8 root/8 }\n```"
 );
 static FRAGMENT: KeywordDoc = doc!(
     "fragment",
@@ -176,7 +176,7 @@ static TRANSPOSE: KeywordDoc = doc!(
     "the same music, moved in pitch",
     "Transpose plays music moved by a written interval such as `P5` or `M3`; the block and function forms have \
      the same musical meaning. Supplying only the interval makes a reusable answer function.\n\n\
-     ```musa\nlet answer: music -> music = transpose(P5);\n```"
+     ```musa\nlet answer: Music -> Music = transpose(P5);\n```"
 );
 static UP: KeywordDoc = doc!(
     "up",
@@ -206,7 +206,7 @@ static REPEAT: KeywordDoc = doc!(
      written once. With `ending` blocks inside, the passes differ where the endings say they do. In expression \
      position, `repeat(value, count)` is the finite value operation and returns a list of exactly `count` copies; \
      it never creates an infinite stream.\n\n\
-     ```musa\nrepeat 2 { use verse(); }\nlet pedals: list[bool] = repeat(true, 4);\n```"
+     ```musa\nrepeat 2 { use verse(); }\nlet pedals: List[Bool] = repeat(true, 4);\n```"
 );
 static BAR: KeywordDoc = doc!(
     "bar",
@@ -278,28 +278,28 @@ static STRETCH: KeywordDoc = doc!(
     "the same music, at a different speed ratio",
     "Stretch plays music scaled in written time by an exact factor: `stretch 3/2 { … }` takes half again as \
      long. `stretch(3/2)` is the reusable function form with the same meaning.\n\n\
-     ```musa\nlet broaden: music -> music = stretch(3/2);\n```"
+     ```musa\nlet broaden: Music -> Music = stretch(3/2);\n```"
 );
 static RETROGRADE: KeywordDoc = doc!(
     "retrograde",
     "the block, backwards",
     "Retrograde plays its music backwards — the last event first. The block and `retrograde(subject)` function \
      forms are the same classical transformation.\n\n\
-     ```musa\nlet answer: music = retrograde(subject);\n```"
+     ```musa\nlet answer: Music = retrograde(subject);\n```"
 );
 static INVERT: KeywordDoc = doc!(
     "invert",
     "the block, mirrored in pitch",
     "Invert mirrors music around an axis pitch: what went up goes down by the same written interval. \
      `invert(c5)` makes a reusable function; the block writes the axis with `around`.\n\n\
-     ```musa\nlet mirror: music -> music = invert(c5);\n```"
+     ```musa\nlet mirror: Music -> Music = invert(c5);\n```"
 );
 
 static SHIFT_FUNCTION: KeywordDoc = doc!(
     "shift",
     "the same music, entering later",
     "`shift` delays music by an exact written duration without adding a rest event. Supply only the delay to make \
-     a reusable entrance function.\n\n```musa\nlet later: music -> music = shift(1/2);\n```"
+     a reusable entrance function.\n\n```musa\nlet later: Music -> Music = shift(1/2);\n```"
 );
 static OVERLAY_FUNCTION: KeywordDoc = doc!(
     "overlay",
@@ -488,70 +488,71 @@ static OUTPUT: KeywordDoc = doc!(
 );
 static PITCH_KW: KeywordDoc = doc!(
     "pitch",
-    "the pitch parameter type",
-    "`pitch` is the type of a pitch parameter in a motif declaration: `motif sigh(root: pitch)` takes a written \
-     pitch like `e5` at each `use`. It is one of the small set of types parameters can have.\n\n\
-     ```musa\nmotif call(root: pitch = c5) { root/4 }\n```"
+    "the standard library's pitch module",
+    "`pitch` names a module of the standard library — `import std::pitch;` brings its written-pitch and interval \
+     operations into scope. It is no longer the type: a type is spelled with a capital, so a motif parameter is \
+     written `root: Pitch`.\n\n\
+     ```musa\nimport std::pitch;\n\nmotif call(root: Pitch = c5) { root/4 }\n```"
 );
 static LET: KeywordDoc = doc!(
     "let",
     "give a typed value a name",
     "A `let` declaration gives an elaboration value a name. The annotation keeps the musical domain visible at the declaration site.\n\n\
-     ```musa\nlet answer: interval = P5;\n```"
+     ```musa\nlet answer: Interval = P5;\n```"
 );
 static FN: KeywordDoc = doc!(
     "fn",
     "define a total named function",
     "A function computes an elaboration value from typed parameters. Musa functions are total: they have no unrestricted recursion or effects.\n\n\
-     ```musa\nfn identity(x: pitch) -> pitch { x }\n```"
+     ```musa\nfn identity(x: Pitch) -> Pitch { x }\n```"
 );
 static MUSIC: KeywordDoc = doc!(
     "music",
     "a notation-first music value",
     "A `music` block is an expression whose body reads like an ordinary voice: notes remain self-delimiting and reusable material is written with `use`.\n\n\
-     ```musa\nlet call: music = music { c5/4 d5/4 };\n```"
+     ```musa\nlet call: Music = music { c5/4 d5/4 };\n```"
 );
 static OPTION: KeywordDoc = doc!(
-    "option",
+    "Option",
     "a type that may contain one value",
-    "`option[T]` represents an honest partial musical result: either `some(value)` or `none`, with both cases handled explicitly.\n\n\
-     ```musa\nlet found: option[pitch] = none;\n```"
+    "`Option[T]` represents an honest partial musical result: either `Some(value)` or `None`, with both cases handled explicitly.\n\n\
+     ```musa\nlet found: Option[Pitch] = None;\n```"
 );
 static LIST: KeywordDoc = doc!(
-    "list",
+    "List",
     "a finite ordered collection type",
-    "`list[T]` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n\
-     ```musa\nlet tones: list[pitch] = [c4, e4, g4];\n```"
+    "`List[T]` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n\
+     ```musa\nlet tones: List[Pitch] = [c4, e4, g4];\n```"
 );
 static MATCH: KeywordDoc = doc!(
     "match",
     "handle every form of a finite value",
     "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n\
-     ```musa\nfn keep(x: option[pitch]) -> option[pitch] { match x { none -> none, some(p) -> some(p), } }\n```"
+     ```musa\nfn keep(x: Option[Pitch]) -> Option[Pitch] { match x { None -> None, Some(p) -> Some(p), } }\n```"
 );
 static SOME: KeywordDoc = doc!(
-    "some",
+    "Some",
     "an option containing a value",
-    "`some(value)` constructs the present case of an `option`; a `match` can bind the contained value.\n\n\
-     ```musa\nlet tonic: option[pitch] = some(c4);\n```"
+    "`Some(value)` constructs the present case of an `Option`; a `match` can bind the contained value. It carries its type's capital because it is one of that type's two constructors.\n\n\
+     ```musa\nlet tonic: Option[Pitch] = Some(c4);\n```"
 );
 static NONE: KeywordDoc = doc!(
-    "none",
+    "None",
     "an option containing no value",
-    "`none` is the absent case of an `option`. It makes partial musical operations explicit instead of hiding failure.\n\n\
-     ```musa\nlet absent: option[pitch] = none;\n```"
+    "`None` is the absent case of an `Option`. It makes partial musical operations explicit instead of hiding failure. `meter none;` is a different word: a meter that says there are no barlines.\n\n\
+     ```musa\nlet absent: Option[Pitch] = None;\n```"
 );
 static TRUE: KeywordDoc = doc!(
     "true",
     "the affirmative boolean value",
-    "`true` is one of the two `bool` values and can be handled by `match`.\n\n\
-     ```musa\nlet enabled: bool = true;\n```"
+    "`true` is one of the two `Bool` values and can be handled by `match`.\n\n\
+     ```musa\nlet enabled: Bool = true;\n```"
 );
 static FALSE: KeywordDoc = doc!(
     "false",
     "the negative boolean value",
-    "`false` is one of the two `bool` values and can be handled by `match`.\n\n\
-     ```musa\nlet muted: bool = false;\n```"
+    "`false` is one of the two `Bool` values and can be handled by `match`.\n\n\
+     ```musa\nlet muted: Bool = false;\n```"
 );
 
 static SCALE: KeywordDoc = doc!(
@@ -560,22 +561,24 @@ static SCALE: KeywordDoc = doc!(
     "A scale is an ordered collection of notes rooted on a spelled tonic — `scale c dorian` — and it is a set of \
      pitch coordinates, not a key signature and not a register. `in scale s { … }` reads the music inside it \
      against `s` without writing a key change.\n\n\
-     ```musa\nlet home: scale = scale c major;\nin scale c dorian { use subject; }\n```"
+     ```musa\nlet home: Scale = scale c major;\nin scale c dorian { use subject; }\n```"
 );
 static DEGREE: KeywordDoc = doc!(
     "degree",
     "a scale ordinal, with no scale in it",
     "A degree is a numbered position — 1 is the tonic, 8 the tonic a period higher — plus any chromatic \
      alteration, and it belongs to no particular scale until one is supplied. Turning a degree into a note also \
-     needs a register, which is what a `frame` carries.\n\n\
-     ```musa\nlet dominant: degree = scale_degree(5);\n```"
+     needs a register, which is what a `Frame` carries. The word is reserved only so that the old spelling of the \
+     type gets one complaint carrying `Degree`.\n\n\
+     ```musa\nlet dominant: Degree = scale_degree(5);\n```"
 );
 static FRAME: KeywordDoc = doc!(
     "frame",
     "a scale that knows which octave",
     "A frame is a scale plus the written pitch its first degree sounds, and it is the only thing that can turn a \
-     degree into a note. Building one fails unless the tonic pitch spells the scale's own tonic.\n\n\
-     ```musa\nfn dominant_of(home: frame) -> pitch { frame_pitch(home, scale_degree(5)) }\n```"
+     degree into a note. Building one fails unless the tonic pitch spells the scale's own tonic. The word is \
+     reserved only so that the old spelling of the type gets one complaint carrying `Frame`.\n\n\
+     ```musa\nfn dominant_of(home: Frame) -> Pitch { frame_pitch(home, scale_degree(5)) }\n```"
 );
 static IN: KeywordDoc = doc!(
     "in",
@@ -613,11 +616,11 @@ static STACK: KeywordDoc = doc!(
 static TEMPLATE: KeywordDoc = doc!(
     "template",
     "parameterize a piece or a voice",
-    "`template piece study(k: key) \"Study\" { ... }` writes a family of pieces rather than a piece. Parameters are \
-     ordinary typed values — a key, a scale, a `music`, or a `music -> music` — and a template body reads them and \
+    "`template piece study(k: Key) \"Study\" { ... }` writes a family of pieces rather than a piece. Parameters are \
+     ordinary typed values — a `Key`, a `Scale`, a `Music`, or a `Music -> Music` — and a template body reads them and \
      the file's root, never the site that makes it. A template is not a value: nothing can pass one, return one, or \
      ask what is inside it.\n\n\
-     ```musa\ntemplate voice answer(subject: music, transform: music -> music) {\n    use transform(subject);\n}\n```"
+     ```musa\ntemplate voice answer(subject: Music, transform: Music -> Music) {\n    use transform(subject);\n}\n```"
 );
 static MAKE: KeywordDoc = doc!(
     "make",
@@ -635,7 +638,7 @@ static SIGNATURE: KeywordDoc = doc!(
      their types. Matching is by name and exact type: a module that satisfies it may define more, and everything \
      unlisted is private to that module. A signature is not a value — nothing can pass one or ask what is inside \
      it.\n\n\
-     ```musa\nsignature TonalContext {\n    let key: key;\n    let scale: scale;\n}\n```"
+     ```musa\nsignature TonalContext {\n    let key: Key;\n    let scale: Scale;\n}\n```"
 );
 static MOD: KeywordDoc = doc!(
     "mod",

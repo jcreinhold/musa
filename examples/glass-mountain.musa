@@ -7,7 +7,7 @@ piece "Glass Mountain" {
     meter 4/4;
     key a minor;
 
-    motif sigh(root: pitch = e5) {
+    motif sigh(root: Pitch = e5) {
         root/2
         rest/4
         c5/2

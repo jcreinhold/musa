@@ -1,8 +1,8 @@
 # Surface language candidate
 
-This file settles the punctuation and spellings introduced by the candidate. Existing syntax remains unless a rule
-below explicitly desugars it. Braces delimit blocks. Added bindings, calls-as-statements, and declarations end in `;`;
-commas separate arguments; `=` introduces an expression body or binding. Existing note, rest, and chord events remain
+This file settles the punctuation and spellings introduced by the candidate. Existing syntax remains unless a rule below
+explicitly desugars it. Braces delimit blocks. Added bindings, calls-as-statements, and declarations end in `;`; commas
+separate arguments; `=` introduces an expression body or binding. Existing note, rest, and chord events remain
 self-delimiting and do not take `;`. No added production is newline-sensitive.
 
 ## 1. Added grammar
@@ -10,7 +10,7 @@ self-delimiting and do not take `;`. No added production is newline-sensitive.
 The normative schematic grammar is:
 
 ```ebnf
-type         := primitive | "option" "[" type "]" | "list" "[" type "]"
+type         := primitive | "Option" "[" type "]" | "List" "[" type "]"
               | "(" type ")" | "(" type "," type ("," type)* ")" | type "->" type
 binding      := "let" IDENT ":" type "=" expr ";"
 function     := "fn" IDENT "(" params? ")" "->" type block
@@ -21,10 +21,10 @@ expr         := literal | IDENT | path | "(" expr ")" | block | product | list |
 block        := "{" expr "}"
 product      := "(" expr "," expr ("," expr)* ")"
 list         := "[" (expr ("," expr)*)? "]"
-option       := "none" | "some" "(" expr ")"
+option       := "None" | "Some" "(" expr ")"
 match        := "match" expr "{" match-arm ("," match-arm)* ","? "}"
 match-arm    := pattern "->" expr
-pattern      := "_" | literal | IDENT | "none" | "some" "(" IDENT ")"
+pattern      := "_" | literal | IDENT | "None" | "Some" "(" IDENT ")"
               | "[" "]" | "[" IDENT "," ".." IDENT "]"
               | "(" IDENT "," IDENT ("," IDENT)* ")"
 music-expr   := "music" "{" music-statement* "}"
@@ -62,41 +62,45 @@ module-file  := mod-decl*
 
 Function arrows associate right; call binds tighter than pitch operators; pitch operators bind as follows, tightest
 first: parentheses, `step`, `up`/`down`. `root up M2 down m2` is rejected as ambiguous; write parentheses. `up` and
-`down` take a `pitch` or a `pitchclass` and return whichever they were given, so `c4 up M3` is a pitch and
-`chord_root(triad) up M3` is a pitch class: the operand's own type decides, and no register is invented for a value
-that never had one. Every `fn` has an expression body, written in braces: `{ e }` is a block, it holds exactly one
+`down` take a `Pitch` or a `NoteName` and return whichever they were given, so `c4 up M3` is a pitch and
+`chord_root(triad) up M3` is a pitch class: the operand's own type decides, and no register is invented for a value that
+never had one. Every `fn` has an expression body, written in braces: `{ e }` is a block, it holds exactly one
 expression, and it means that expression — `⟦{ e }⟧ = ⟦e⟧` (`02-core-calculus.md` §5). A block is an expression form
 wherever an expression is admitted, not a special case of `fn`. There is no statement language inside it: no `let`, no
 `return`, no `;`-separated sequence, and a second expression in a block is a static error naming the rule. A
 multi-statement musical body is explicitly `music { ... }`, which is a different construct that happens to abut the
 body's brace.
 
-Named intervals use conventional `P`, `M`, `m`, and repeated `A`/`d` qualities. Because lowercase `d4` already means
-the written pitch D4, a singly diminished fourth is written `dim4`; `dd4` and `ddd4` remain the compact multiply
-diminished spellings.
+Named intervals use conventional `P`, `M`, `m`, and repeated `A`/`d` qualities. Because lowercase `d4` already means the
+written pitch D4, a singly diminished fourth is written `dim4`; `dd4` and `ddd4` remain the compact multiply diminished
+spellings.
 
 `match` is the sole added case-analysis spelling. Arms are comma-separated and a final comma is accepted; braces and
-arrows keep the alternatives legible when an arm's expression spans lines. The initial patterns cover booleans,
-naturals and other literal domains, options, empty/cons lists, and products. A bare identifier binds the whole value;
-`_` discards it. Prompt 96 defines exhaustiveness and rejects duplicate or unreachable arms. It also owns the
-constructor meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general range operator.
+arrows keep the alternatives legible when an arm's expression spans lines. The initial patterns cover booleans, naturals
+and other literal domains, options, empty/cons lists, and products. A bare identifier binds the whole value; `_`
+discards it. Prompt 96 defines exhaustiveness and rejects duplicate or unreachable arms. It also owns the constructor
+meaning of `[head, ..tail]`; `..` is two adjacent `.` tokens, not a new general range operator.
 
 Structural folds do not add syntax. `nat_fold(zero, step, count)`, `list_fold(zero, step, values)`, and
 `option_fold(zero, some_case, value)` are ordinary calls to compiler-owned total primitives. Their step arguments are
 named functions because this candidate deliberately has no anonymous-lambda surface. This gives musicians one call
-notation to learn and leaves `repeat n { body }` as the notation-facing fold over `music`.
+notation to learn and leaves `repeat n { body }` as the notation-facing fold over `Music`.
 
-The primitive value types added here are `bool`, `nat`, `ratio`, `duration`, `pitch`, `interval`, `spelled_pc`, `pc12`,
-`scale`, `key`, `degree`, `chord_class`, `triad`, `roman`, `voicing`, `row12`, `analysis[A]`, and `music`. Products, options,
-lists, and arrows are the constructors described in `02-core-calculus.md`. Declaration kinds are not types.
+The primitive value types added here are `Bool`, `Nat`, `Ratio`, `Duration`, `Pitch`, `Interval`, `NoteName`, `Pc12`,
+`Scale`, `Key`, `Degree`, `ChordClass`, `Triad`, `Roman`, `Voicing`, `Row12`, `Analysis[A]`, and `Music`. Products,
+options, lists, and arrows are the constructors described in `02-core-calculus.md`. Declaration kinds are not types.
+Every type is spelled with a capital and every music statement keyword is not, which is what lets `key c major;` set a
+key and `Key` name the type of what it set without either word looking the other up (prompt 113). `NoteName` is the
+letter and accidental as written, with no octave: a pitch class is octave *and* enharmonic equivalence (Open Music
+Theory 99), so a type in which C♯ and D♭ differ is a name rather than a class, and `Pc12` is the class it names.
 
-The core literals introduced here are `true`, `false`, nonnegative decimal naturals, exact rational literals,
-products, finite lists, and `some`/`none`. Existing pitch and interval literals are also expression atoms. Strings and
+The core literals introduced here are `true`, `false`, nonnegative decimal naturals, exact rational literals, products,
+finite lists, and `Some`/`None`. Existing pitch and interval literals are also expression atoms. Strings and
 floating-point values remain syntax of their owning declaration domains rather than core values.
 
-A pitch-name literal is checked in its expected domain: `chord c# minor` supplies `spelled_pc`, while an argument to
-`row12` supplies `pc12`. Outside such an expected constructor position, write a type annotation. Converting an existing
-`spelled_pc` value to `pc12` requires `forget_spelling`; there is no implicit value coercion in the opposite direction.
+A pitch-name literal is checked in its expected domain: `chord c# minor` supplies `NoteName`, while an argument to
+`Row12` supplies `Pc12`. Outside such an expected constructor position, write a type annotation. Converting an existing
+`NoteName` value to `Pc12` requires `forget_spelling`; there is no implicit value coercion in the opposite direction.
 
 `control-domain`, `quantity`, and `range` use the exact unit grammar shared with studio values. `path` is a qualified
 identifier such as `std.sound.basic_sine` or `bow.pressure`. `notation-selector` is one documented dynamic,
@@ -104,10 +108,10 @@ articulation, span/grouping mark, pedal, or technique pattern; it is not an arbi
 staged and desugared by `08-performance-and-sound.md`, not values in the core calculus.
 
 Imports are explicit and are spelled `import`. A quoted path is resolved lexically relative to the importing file; a
-`module-path` names a module of a package. `std` is reserved, is never searched in the working directory or
-environment, and has no implicit prelude. `use` is not an import: it is the score's splice statement, and the two were
-one keyword until `docs/language-correction.md` §4 separated them. The former spelling `use std::…;` is a hard error
-carrying an applicable fix.
+`module-path` names a module of a package. `std` is reserved, is never searched in the working directory or environment,
+and has no implicit prelude. `use` is not an import: it is the score's splice statement, and the two were one keyword
+until `docs/language-correction.md` §4 separated them. The former spelling `use std::…;` is a hard error carrying an
+applicable fix.
 
 Paths nest to any depth, so a bundled module is named by its position in the package's module tree —
 `std::tonal::harmony`, not `std::tonal::harmony`. `docs/language-correction.md` §3 fixes the package layout: a package
@@ -120,20 +124,20 @@ the reason is the reader: qualification is information to someone building an ab
 reading a score. Importing two modules that export the same name is an error naming both; `import p::q as alias;`
 resolves it by qualifying that one, so an alias is required exactly at a real conflict and absent otherwise.
 
-Bundled source remains available at stable `musa-stdlib:/std/…` URIs for hover and go-to-definition, but is read-only;
-a musician customizes one by writing a local wrapper. The authoritative signatures and prose are generated from source
+Bundled source remains available at stable `musa-stdlib:/std/…` URIs for hover and go-to-definition, but is read-only; a
+musician customizes one by writing a local wrapper. The authoritative signatures and prose are generated from source
 comments in `stdlib/reference.md`.
 
 ## 2. Functions and music
 
 ```musa
-let fifth: interval = P5;
+let fifth: Interval = P5;
 
-fn third(root: pitch) -> pitch { root up M3 }
+fn third(root: Pitch) -> Pitch { root up M3 }
 
-fn transpose_answer(subject: music, by: interval) -> music { transpose(by, subject) }
+fn transpose_answer(subject: Music, by: Interval) -> Music { transpose(by, subject) }
 
-motif turn(root: pitch = c5) {
+motif turn(root: Pitch = c5) {
     root/8
     (root up M2)/8
     ((root up M2) down m2)/8
@@ -146,16 +150,16 @@ for lints, extraction, editing, and Origin. `fragment name { body }` desugars to
 with a `Fragment` role. `use e;` checks `e : music`, instantiates it at the current cursor, and sequences it. Existing
 `use name(args);` is the same rule, not a second invocation mechanism.
 
-`music` values are contextual rather than captured timelines:
+`Music` values are contextual rather than captured timelines:
 
 ```musa
-fn figure() -> music { music {
+fn figure() -> Music { music {
     c5/8
     (c5 step 1)/8
     (c5 step 2)/4
 } }
 
-let subject: music = figure();
+let subject: Music = figure();
 in scale c major { use subject; }
 in scale c dorian { use subject; }
 ```
@@ -166,18 +170,18 @@ fact. An absent scale makes `step` a type-context diagnostic, not an implicit C-
 ## 3. Higher-order construction with controlled traversal
 
 ```musa
-fn canon(subject: music, answer: music -> music, gap: duration) -> music { music {
+fn canon(subject: Music, answer: Music -> Music, gap: Duration) -> Music { music {
     use overlay(subject, shift(gap, answer(subject)));
 } }
 
-fn harmonize(subject: music, answer_pitch: pitch -> pitch) -> music { music {
+fn harmonize(subject: Music, answer_pitch: Pitch -> Pitch) -> Music { music {
     use overlay(subject, map_note_pitches(answer_pitch, subject));
 } }
 
 use canon(theme(), transpose(P5), 1/2);
 ```
 
-`map_note_pitches` is the sole initial user-facing traversal of `music`. It changes pitches in note and sounded-chord
+`map_note_pitches` is the sole initial user-facing traversal of `Music`. It changes pitches in note and sounded-chord
 events; it preserves time, annotations, marks, scope, and Origin; it does not traverse key signatures or chord-symbol
 analysis. No iterator exposes a `ScoreFact` or kernel occurrence.
 
@@ -194,9 +198,8 @@ assert fits_scale(scale c major) {
 ```
 
 The first succeeds and returns the body as music. The second is a compile error at `fs5`, with the predicate's witness
-and the enclosing assertion in the diagnostic. `assert p(args) { body }` desugars to
-`checked(p(args), music { body })`; `p` must be a constructor invariant or decidable assertion returning a structured
-witness, not an interpretive analysis.
+and the enclosing assertion in the diagnostic. `assert p(args) { body }` desugars to `checked(p(args), music { body })`;
+`p` must be a constructor invariant or decidable assertion returning a structured witness, not an interpretive analysis.
 
 Interpretation is named and non-blocking:
 
@@ -204,51 +207,52 @@ Interpretation is named and non-blocking:
 analysis harmony = roman_numerals(chorale(), in: key c major);
 ```
 
-This produces `analysis[roman_numeral]`; it neither changes nor validates the score unless an explicit assertion reads
-a decidable property of the result.
+This produces `Analysis[roman_numeral]`; it neither changes nor validates the score unless an explicit assertion reads a
+decidable property of the result.
 
 ## 5. Chords, rows, and explicit register
 
 ```musa
-let sonority: chord_class = chord c major7;
-let close: option[voicing] = close_position(sonority, c4);
-let open: option[voicing] = drop_position(sonority, c3, 2);
+let sonority: ChordClass = chord c major7;
+let close: Option[Voicing] = close_position(sonority, c4);
+let open: Option[Voicing] = drop_position(sonority, c3, 2);
 
-fn sound(chosen: voicing) -> music { play(chosen, 1/2) }
-fn sounded(chosen: option[voicing]) -> music { option_fold(music { rest/2 }, sound, chosen) }
-let close_bar: music = sounded(close);
-let open_bar: music = sounded(open);
+fn sound(chosen: Voicing) -> Music { play(chosen, 1/2) }
+fn sounded(chosen: Option[Voicing]) -> Music { option_fold(music { rest/2 }, sound, chosen) }
+let close_bar: Music = sounded(close);
+let open_bar: Music = sounded(open);
 
 use close_bar;
 use open_bar;
 
 stack c4 major7/2
 
-let row: row12 = row12(c, cs, e, d, fs, f, as, g, gs, b, a, ds);
-let symmetric: row12 = row12(c, fs, d, gs, e, as, f, b, g, cs, a, ds);
-let matrix: list[list[pc12]] = row_matrix(symmetric, convention: zero_based);
+let row: Row12 = row12(c, cs, e, d, fs, f, as, g, gs, b, a, ds);
+let symmetric: Row12 = row12(c, fs, d, gs, e, as, f, b, g, cs, a, ds);
+let matrix: List[List[Pc12]] = row_matrix(symmetric, convention: zero_based);
 ```
 
-`chord` does not sound: a chord class is rooted spelled content with no register, spacing, doubling, or bass. A
-voicing policy is an ordinary named function that selects those and returns `option[voicing]`, absent when its
-preconditions do not hold — a bass the class does not contain, or a register the written range cannot reach. `play`
-alone creates sounded music. `stack <pitch> <quality>/<duration>` is sugar for the close-position policy with the
-absolute root fixing register; `stack c major7/2` is rejected, because a pitch class chooses no register. `row12` statically requires each `pc12` exactly once; symmetry may make fewer than
-48 distinct `P`/`I`/`R`/`RI` forms, which is a result, not an error. Row-form naming always states a convention.
+`chord` does not sound: a chord class is rooted spelled content with no register, spacing, doubling, or bass. A voicing
+policy is an ordinary named function that selects those and returns `Option[Voicing]`, absent when its preconditions do
+not hold — a bass the class does not contain, or a register the written range cannot reach. `play` alone creates sounded
+music. `stack <pitch> <quality>/<duration>` is sugar for the close-position policy with the absolute root fixing
+register; `stack c major7/2` is rejected, because a pitch class chooses no register. `Row12` statically requires each
+`Pc12` exactly once; symmetry may make fewer than 48 distinct `P`/`I`/`R`/`RI` forms, which is a result, not an error.
+Row-form naming always states a convention.
 
 ## 6. Declaration templates
 
 ```musa
-fn theme() -> music { music {
+fn theme() -> Music { music {
     c4/4
     d4/4
 } }
 
-template voice answer(subject: music, transform: music -> music) {
+template voice answer(subject: Music, transform: Music -> Music) {
     use transform(subject);
 }
 
-template piece study(k: key, mode: scale, subject: music) "Study" {
+template piece study(k: Key, mode: Scale, subject: Music) "Study" {
     key k;
     score {
         part piano {
@@ -277,22 +281,22 @@ from structures to a structure.
 
 ```musa
 signature TonalContext {
-    let tonic: key;
-    let collection: scale;
-    let spell: degree -> option[pitch];
+    let tonic: Key;
+    let collection: Scale;
+    let spell: Degree -> Option[Pitch];
 }
 
 structure CMajor: TonalContext {
-    let tonic: key = key c major;
-    let collection: scale = scale c ionian;
-    let spell: degree -> option[pitch] = degree_in_c;
+    let tonic: Key = key c major;
+    let collection: Scale = scale c ionian;
+    let spell: Degree -> Option[Pitch] = degree_in_c;
 }
 
-template structure Sequences(C: TonalContext, gap: duration): TonalContext {
-    let tonic: key = C.tonic;
-    let collection: scale = C.collection;
-    let spell: degree -> option[pitch] = C.spell;
-    let delay: duration = gap;
+template structure Sequences(C: TonalContext, gap: Duration): TonalContext {
+    let tonic: Key = C.tonic;
+    let collection: Scale = C.collection;
+    let spell: Degree -> Option[Pitch] = C.spell;
+    let delay: Duration = gap;
 }
 
 make Sequences(CMajor, 1/2) as CSequences;
@@ -300,8 +304,8 @@ make Sequences(CMajor, 1/2) as CSequences;
 
 A signature member is a `let` without its definition: a name and the type the structure must give it. Matching is by
 name and exact type — a missing member and a member of the wrong type are both errors, each labelled at the signature
-and at the structure. A member the signature does not mention stays private to the structure: it is what the
-structure's own definitions may use and what nothing outside may name.
+and at the structure. A member the signature does not mention stays private to the structure: it is what the structure's
+own definitions may use and what nothing outside may name.
 
 Members are read as `Structure.member`. Inside a structure, a sibling member is read by its bare name. There is no
 structure value, no structure argument to a function, no unpacking, and no recursion: `structure`, `signature`, and
@@ -321,21 +325,20 @@ kernel "example" {
 }
 ```
 
-It has no imports, functions, surface pitch operations, or free variables. Its payload text must decode as
-`ScoreFact`.
+It has no imports, functions, surface pitch operations, or free variables. Its payload text must decode as `ScoreFact`.
 
 A local quote is host syntax containing kernel syntax and typed antiquotation:
 
 ```musa
-fn delayed_double(subject: music) -> music { kernel Timeline[ScoreFact] {
+fn delayed_double(subject: Music) -> Music { kernel Timeline[ScoreFact] {
         let s = ${subject} in
         overlay { s; shift by 1/2 s; }
     } }
 ```
 
-`${subject}` is one `music` antiquotation. It is instantiated in the quote's host environment and inserted as a typed
+`${subject}` is one `Music` antiquotation. It is instantiated in the quote's host environment and inserted as a typed
 kernel-term hole. Kernel identifiers never capture host identifiers; alpha-renaming prevents capture among inserted
-terms. The completed quote must close and type-check before it becomes `music`. No raw payload escape exists.
+terms. The completed quote must close and type-check before it becomes `Music`. No raw payload escape exists.
 
 ## 8. Sound corpus
 
@@ -378,9 +381,9 @@ score {
 }
 ```
 
-Within a part, `sound instrument using profile;` is the ordinary one-action form. It desugars to the independent
-profile selection, part-to-instrument assignment, and part-output-to-master route below. The expert surface may spell
-those facts separately and add sends:
+Within a part, `sound instrument using profile;` is the ordinary one-action form. It desugars to the independent profile
+selection, part-to-instrument assignment, and part-output-to-master route below. The expert surface may spell those
+facts separately and add sends:
 
 ```musa
 part violin {

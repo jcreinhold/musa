@@ -82,11 +82,11 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("let", SyntaxKind::LetKw),
     ("fn", SyntaxKind::FnKw),
     ("music", SyntaxKind::MusicKw),
-    ("option", SyntaxKind::OptionKw),
-    ("list", SyntaxKind::ListKw),
+    ("Option", SyntaxKind::OptionKw),
+    ("List", SyntaxKind::ListKw),
     ("match", SyntaxKind::MatchKw),
-    ("some", SyntaxKind::SomeKw),
-    ("none", SyntaxKind::NoneKw),
+    ("Some", SyntaxKind::SomeKw),
+    ("None", SyntaxKind::NoneKw),
     ("true", SyntaxKind::TrueKw),
     ("false", SyntaxKind::FalseKw),
     ("scale", SyntaxKind::ScaleKw),
@@ -424,8 +424,8 @@ impl TokenClass {
     }
 }
 
-/// The keywords a module name may borrow: `harmony`, `list`, `option`,
-/// `pitch`, `scale` — the parser's `MODULE_NAME` minus `Identifier`.
+/// The keywords a module name may borrow: `harmony`, `pitch`, `scale` — the
+/// parser's `MODULE_NAME` minus `Identifier`.
 ///
 /// The lexer writes the keyword token wherever the word appears, and the
 /// path position is what makes the word a name. So the class is decided
@@ -434,13 +434,11 @@ impl TokenClass {
 /// highlighter the project ships — the LSP's semantic tokens, the desktop
 /// editor's generated tables, the VS Code grammar's generator — works from
 /// the one vocabulary instead of carrying its own copy.
-pub const MODULE_NAME_KEYWORDS: &[SyntaxKind] = &[
-    SyntaxKind::HarmonyKw,
-    SyntaxKind::ListKw,
-    SyntaxKind::OptionKw,
-    SyntaxKind::PitchKw,
-    SyntaxKind::ScaleKw,
-];
+///
+/// `stdlib/src/list.musa` and `stdlib/src/option.musa` are no longer here
+/// because their names are no longer keywords: the types they hold are
+/// `List` and `Option`, and a file name is written the way a file name is.
+pub const MODULE_NAME_KEYWORDS: &[SyntaxKind] = &[SyntaxKind::HarmonyKw, SyntaxKind::PitchKw, SyntaxKind::ScaleKw];
 
 /// Every token of the source with its class, *where it stands* accounted
 /// for.
@@ -454,6 +452,12 @@ pub const MODULE_NAME_KEYWORDS: &[SyntaxKind] = &[
 /// collects the tokens those statements read as names, and reclassifies
 /// them `Keyword → Name`. Everything else is exactly `TokenClass::of`.
 ///
+/// A type name travels the other way. `Pitch` is an identifier to the lexer,
+/// because a type is spelled with a capital and the language owns no other
+/// mechanism for saying so; but the composer did not name it, and in
+/// `let root: Pitch` the word is vocabulary. So a `TypeName` reclassifies
+/// `Name → Keyword`, by the same rule and for the same reason.
+///
 /// The pair with the token keeps the answer honest on half-typed source:
 /// the lexer is total and the parse recovers, so this is total too — the
 /// LSP's semantic tokens depend on that.
@@ -461,16 +465,19 @@ pub fn classify(source: &str) -> Vec<(crate::Token, Option<TokenClass>)> {
     let parsed = crate::parse(source);
     let root = parsed.syntax();
     let mut names = std::collections::HashSet::new();
+    let mut vocabulary = std::collections::HashSet::new();
     for node in root.descendants() {
-        if !matches!(node.kind(), SyntaxKind::ImportStmt | SyntaxKind::ModDecl) {
+        let type_name = node.kind() == SyntaxKind::TypeName;
+        if !type_name && !matches!(node.kind(), SyntaxKind::ImportStmt | SyntaxKind::ModDecl) {
             continue;
         }
+        let borrowed = if type_name { &mut vocabulary } else { &mut names };
         for element in node.children_with_tokens() {
             let Some(token) = element.into_token() else {
                 continue;
             };
-            if MODULE_NAME_KEYWORDS.contains(&token.kind()) {
-                names.insert(token.text_range());
+            if node.kind() == SyntaxKind::TypeName || MODULE_NAME_KEYWORDS.contains(&token.kind()) {
+                borrowed.insert(token.text_range());
             }
         }
     }
@@ -481,6 +488,8 @@ pub fn classify(source: &str) -> Vec<(crate::Token, Option<TokenClass>)> {
             let class = TokenClass::of(token.kind).map(|class| {
                 if class == TokenClass::Keyword && names.contains(&token.range) {
                     TokenClass::Name
+                } else if class == TokenClass::Name && vocabulary.contains(&token.range) {
+                    TokenClass::Keyword
                 } else {
                     class
                 }

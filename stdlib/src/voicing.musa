@@ -9,50 +9,50 @@ library {
     // Stack the class upward from an absolute bass, one member per octave
     // position, taking each next member at the first pitch above the last.
     // This is the one policy `stack c4 major7/2` desugars to.
-    fn close_position(content: chord_class, bass: pitch) -> option[voicing] {
+    fn close_position(content: ChordClass, bass: Pitch) -> Option[Voicing] {
         close_voicing(content, bass)
     }
 
     // Close position with one upper note dropped an octave, counted from the
     // top: `drop_position(content, bass, 2)` is the drop-2 voicing.
-    fn drop_position(content: chord_class, bass: pitch, from_top: nat) -> option[voicing] {
+    fn drop_position(content: ChordClass, bass: Pitch, from_top: Nat) -> Option[Voicing] {
         drop_voicing(content, bass, from_top)
     }
 
     // The voicing an explicit list of written pitches spells, when those
     // pitches really do voice the class: ascending, distinct, and every one a
     // member. This is how a writer voices by hand.
-    fn voiced_as(content: chord_class, pitches: list[pitch]) -> option[voicing] {
+    fn voiced_as(content: ChordClass, pitches: List[Pitch]) -> Option[Voicing] {
         voicing_of(content, pitches)
     }
 
     // Every sounding pitch of a voicing, lowest first.
-    fn pitches_of(chosen: voicing) -> list[pitch] { voicing_pitches(chosen) }
+    fn pitches_of(chosen: Voicing) -> List[Pitch] { voicing_pitches(chosen) }
 
     // The lowest sounding pitch. A voicing always has one, which is why this
     // is not an `option`.
-    fn lowest_of(chosen: voicing) -> pitch { voicing_bass(chosen) }
+    fn lowest_of(chosen: Voicing) -> Pitch { voicing_bass(chosen) }
 
     // The chord class this voicing voices.
-    fn chord_of(chosen: voicing) -> chord_class { voicing_chord(chosen) }
+    fn chord_of(chosen: Voicing) -> ChordClass { voicing_chord(chosen) }
 
     // Which member is in the bass, counted from zero, when the bass is a
     // member at all. Absent for a slash bass, which is not an inversion.
-    fn inversion_of(chosen: voicing) -> option[nat] { voicing_position(chosen) }
+    fn inversion_of(chosen: Voicing) -> Option[Nat] { voicing_position(chosen) }
 
     // Drop one numbered member from a voicing, keeping the class it voices.
     // The chord class is unchanged: an omission is a choice about what sounds,
     // not a claim that the chord is a different chord.
-    fn omitting(chosen: voicing, position: nat) -> option[voicing] {
+    fn omitting(chosen: Voicing, position: Nat) -> Option[Voicing] {
         omit_voicing(chosen, position)
     }
 
     // The rootless voicing a pianist plays under a bass player: the root, in
     // position zero, is the note removed, and it is named here rather than
     // left implicit.
-    fn rootless(chosen: voicing) -> option[voicing] { omit_voicing(chosen, 0) }
+    fn rootless(chosen: Voicing) -> Option[Voicing] { omit_voicing(chosen, 0) }
 
     // Sound a chosen voicing for a written length. This is the only way a
     // chord class becomes notes.
-    fn sound_for(chosen: voicing, held: duration) -> music { play(chosen, held) }
+    fn sound_for(chosen: Voicing, held: Duration) -> Music { play(chosen, held) }
 }

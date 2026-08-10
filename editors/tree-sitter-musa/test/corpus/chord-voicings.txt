@@ -5,9 +5,9 @@ chord classes, voicing policies, and the close-position sugar
 piece "Chord Voicings" {
   import std::harmony;
   import std::voicing;
-  let sonority: chord_class = chord c major7;
-  let close: option[voicing] = close_position(sonority, c4);
-  fn held(chosen: voicing) -> music {
+  let sonority: ChordClass = chord c major7;
+  let close: Option[Voicing] = close_position(sonority, c4);
+  fn held(chosen: Voicing) -> Music {
     play(chosen, 1/1)
   }
   score {
@@ -20,7 +20,7 @@ piece "Chord Voicings" {
   }
 }
 
---------------------------------------------------------------------------------
+---
 
 (source_file
   (piece_declaration
@@ -69,7 +69,8 @@ piece "Chord Voicings" {
             (type_name
               (identifier)))))
       (type_expression
-        (type_name))
+        (type_name
+          (identifier)))
       (block_expression
         (expression
           (application_expression

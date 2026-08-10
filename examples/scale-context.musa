@@ -10,7 +10,7 @@ piece "Scale Context" {
     // score fact; the scale statements below never touch it.
     key c minor;
 
-    fn figure() -> music {
+    fn figure() -> Music {
         music {
             c5/8
             (c5 step 1)/8
@@ -18,14 +18,14 @@ piece "Scale Context" {
         }
     }
 
-    let subject: music = figure();
+    let subject: Music = figure();
 
     // Read as values, the domains stay separate: a key is a signature and a
     // mode, and the collection it suggests is a default a passage may refuse.
-    let home: key = key c minor;
-    let default_collection: scale = key_scale(home);
-    let raised_seventh: scale = harmonic_minor_on(scale_root(default_collection));
-    let anchored: option[frame] = frame_on(default_collection, c5);
+    let home: Key = key c minor;
+    let default_collection: Scale = key_scale(home);
+    let raised_seventh: Scale = harmonic_minor_on(scale_root(default_collection));
+    let anchored: Option[Frame] = frame_on(default_collection, c5);
 
     score {
         part keyboard {

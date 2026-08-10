@@ -71,11 +71,11 @@ result, not identity.
 The exact surface forms are those in `01-surface.md`:
 
 ```musa
-template voice answer(subject: music, transform: music -> music) {
+template voice answer(subject: Music, transform: Music -> Music) {
     use transform(subject);
 }
 
-template piece study(k: key, subject: music) "Study" {
+template piece study(k: Key, subject: Music) "Study" {
     key k;
     score {
         part piano {
@@ -105,18 +105,18 @@ provides it; a `template structure` is a functor from structures to a structure.
 
 ```musa
 signature CanonMaterial {
-    let subject: music;
-    let answer: music -> music;
+    let subject: Music;
+    let answer: Music -> Music;
 }
 
 structure FifthMaterial: CanonMaterial {
-    let subject: music = theme();
-    let answer: music -> music = transpose(P5);
+    let subject: Music = theme();
+    let answer: Music -> Music = transpose(P5);
 }
 
-template structure DelayedCanon(C: CanonMaterial, gap: duration): CanonMaterial {
-    let subject: music = canon(C.subject, C.answer, gap);
-    let answer: music -> music = C.answer;
+template structure DelayedCanon(C: CanonMaterial, gap: Duration): CanonMaterial {
+    let subject: Music = canon(C.subject, C.answer, gap);
+    let answer: Music -> Music = C.answer;
 }
 
 make DelayedCanon(FifthMaterial, 1/2) as FifthCanon;

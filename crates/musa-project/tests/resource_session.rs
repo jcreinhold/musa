@@ -1,8 +1,8 @@
 use musa_project::{ProjectCommand, ProjectSession, Validity};
 
-const GOOD: &str = "piece \"Budget\" { let values: list[nat] = range(8); score { part p { voice v { c4/1 } } } }";
+const GOOD: &str = "piece \"Budget\" { let values: List[Nat] = range(8); score { part p { voice v { c4/1 } } } }";
 const TOO_LARGE: &str =
-    "piece \"Budget\" { let values: list[nat] = range(100001); score { part p { voice v { c4/1 } } } }";
+    "piece \"Budget\" { let values: List[Nat] = range(100001); score { part p { voice v { c4/1 } } } }";
 
 #[test]
 fn resource_rejection_keeps_the_last_valid_artifacts() {

@@ -4,9 +4,9 @@ scale, key, degree, and lexical pitch context
 
 piece "Scale Context" {
   import std::scale;
-  let home: key = key c minor;
-  let collection: scale = signature_scale(home);
-  fn figure() -> music {
+  let home: Key = key c minor;
+  let collection: Scale = signature_scale(home);
+  fn figure() -> Music {
     music {
       c5/8
       (c5 step 1)/8
@@ -27,7 +27,7 @@ piece "Scale Context" {
   }
 }
 
---------------------------------------------------------------------------------
+---
 
 (source_file
   (piece_declaration
@@ -37,7 +37,8 @@ piece "Scale Context" {
     (let_declaration
       (identifier)
       (type_expression
-        (type_name))
+        (type_name
+          (identifier)))
       (expression
         (key_expression
           (pitch_class
@@ -46,7 +47,8 @@ piece "Scale Context" {
     (let_declaration
       (identifier)
       (type_expression
-        (type_name))
+        (type_name
+          (identifier)))
       (expression
         (application_expression
           (name_expression
@@ -60,7 +62,8 @@ piece "Scale Context" {
       (identifier)
       (parameter_list)
       (type_expression
-        (type_name))
+        (type_name
+          (identifier)))
       (block_expression
         (expression
           (music_expression

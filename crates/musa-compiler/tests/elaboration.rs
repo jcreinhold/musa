@@ -346,7 +346,7 @@ fn source_strategy() -> impl Strategy<Value = (String, GeneratedVoice, Generated
 fn motif_source_strategy() -> impl Strategy<Value = (String, GeneratedVoice)> {
     (pitch_strategy(), pitch_strategy(), duration_strategy()).prop_map(|(root, other, (text, value))| {
         let source = format!(
-            "piece \"gen\" {{ meter 4/4; motif m(root: pitch = c4) {{ root {text} {other} {text} }} score {{ part p {{ voice v {{ use m({root}); repeat 2 {{ transpose down P5 {{ use m(); }} }} }} }} }} }}"
+            "piece \"gen\" {{ meter 4/4; motif m(root: Pitch = c4) {{ root {text} {other} {text} }} score {{ part p {{ voice v {{ use m({root}); repeat 2 {{ transpose down P5 {{ use m(); }} }} }} }} }} }}"
         );
         let expected = GeneratedVoice {
             body: String::new(),

@@ -592,8 +592,12 @@ impl MeterStmt {
     }
 
     /// Whether this is `meter none;`: music with no barlines from here.
+    ///
+    /// The word is an identifier, not the absent case of an option: a meter
+    /// that says there are no barlines is a meter, and `None` belongs to
+    /// `Option`.
     pub fn is_unmeasured(&self) -> bool {
-        find_token(&self.0, SyntaxKind::NoneKw).is_some()
+        token_text(&self.0, SyntaxKind::Identifier).is_some_and(|text| text == "none")
     }
 }
 
@@ -686,9 +690,12 @@ impl MotifDecl {
     /// The declared parameters, in order.
     pub fn params(&self) -> Vec<Param> {
         let mut params = Vec::new();
+        // Descendants, not children: a parameter's type is a `TypeName` node,
+        // the same one every other written type is, so the token is one level
+        // down while the reading order is unchanged.
         let mut tokens = self
             .0
-            .children_with_tokens()
+            .descendants_with_tokens()
             .filter_map(SyntaxElement::into_token)
             .filter(|token| !token.kind().is_trivia())
             .peekable();

@@ -984,14 +984,6 @@
             "named": true
           },
           {
-            "type": "list",
-            "named": false
-          },
-          {
-            "type": "option",
-            "named": false
-          },
-          {
             "type": "pitch",
             "named": false
           },
@@ -1494,10 +1486,6 @@
             "named": true
           },
           {
-            "type": "none",
-            "named": false
-          },
-          {
             "type": "rational",
             "named": true
           }
@@ -1536,14 +1524,6 @@
           {
             "type": "identifier",
             "named": true
-          },
-          {
-            "type": "list",
-            "named": false
-          },
-          {
-            "type": "option",
-            "named": false
           },
           {
             "type": "pitch",
@@ -1656,12 +1636,8 @@
         "required": true,
         "types": [
           {
-            "type": "identifier",
+            "type": "type_name",
             "named": true
-          },
-          {
-            "type": "pitch",
-            "named": false
           }
         ]
       }
@@ -3349,7 +3325,7 @@
     "fields": {},
     "children": {
       "multiple": false,
-      "required": false,
+      "required": true,
       "types": [
         {
           "type": "identifier",
@@ -3616,6 +3592,22 @@
     "named": false
   },
   {
+    "type": "List",
+    "named": false
+  },
+  {
+    "type": "None",
+    "named": false
+  },
+  {
+    "type": "Option",
+    "named": false
+  },
+  {
+    "type": "Some",
+    "named": false
+  },
+  {
     "type": "[",
     "named": false
   },
@@ -3676,10 +3668,6 @@
     "named": false
   },
   {
-    "type": "degree",
-    "named": false
-  },
-  {
     "type": "diminuendo",
     "named": false
   },
@@ -3709,10 +3697,6 @@
   },
   {
     "type": "fragment",
-    "named": false
-  },
-  {
-    "type": "frame",
     "named": false
   },
   {
@@ -3768,10 +3752,6 @@
     "named": false
   },
   {
-    "type": "list",
-    "named": false
-  },
-  {
     "type": "make",
     "named": false
   },
@@ -3812,15 +3792,7 @@
     "named": false
   },
   {
-    "type": "none",
-    "named": false
-  },
-  {
     "type": "note",
-    "named": false
-  },
-  {
-    "type": "option",
     "named": false
   },
   {
@@ -3909,10 +3881,6 @@
   },
   {
     "type": "slur",
-    "named": false
-  },
-  {
-    "type": "some",
     "named": false
   },
   {

@@ -93,16 +93,30 @@ enum Event<'a> {
 
 /// What may name a module inside an import path.
 ///
-/// A module may be called after a type or a domain — `pitch`, `list`,
-/// `option`, `scale`, `harmony` — and the lexer writes the keyword token
-/// wherever the word appears. The path position is what makes the word a name.
+/// A module may be called after a type or a domain — `pitch`, `scale`,
+/// `harmony` — and the lexer writes the keyword token wherever the word
+/// appears. The path position is what makes the word a name. `list` and
+/// `option` left this list when they stopped being keywords: the types are
+/// `List` and `Option`, and the files that hold them are ordinary names.
 pub(crate) const MODULE_NAME: &[SyntaxKind] = &[
     SyntaxKind::Identifier,
     SyntaxKind::HarmonyKw,
-    SyntaxKind::ListKw,
-    SyntaxKind::OptionKw,
     SyntaxKind::PitchKw,
     SyntaxKind::ScaleKw,
+];
+
+/// The music statement keywords a type name used to be allowed to be.
+///
+/// Each of these words is still a keyword and still means what it meant;
+/// `key c major;` is untouched. They are read in type position only so that
+/// `let tonic: key` gets the one complaint that carries `Key`.
+const MOVED_TYPE_KEYWORDS: &[SyntaxKind] = &[
+    SyntaxKind::PitchKw,
+    SyntaxKind::MusicKw,
+    SyntaxKind::ScaleKw,
+    SyntaxKind::KeyKw,
+    SyntaxKind::DegreeKw,
+    SyntaxKind::FrameKw,
 ];
 
 /// Declaration keywords that bound error recovery at each level.
@@ -518,6 +532,27 @@ impl<'a> Parser<'a> {
             .get(self.pos..)?
             .iter()
             .find(|token| !token.kind.is_trivia())
+    }
+
+    /// The text of the token at the cursor.
+    ///
+    /// The parser reads a spelling here only where a spelling is the whole
+    /// question: which removed word this is, so the reader can be told what
+    /// replaced it. Nothing the language still accepts is decided this way.
+    fn word(&self) -> Option<&'a str> {
+        let token = self.significant()?;
+        self.source
+            .get(usize::from(token.range.start())..usize::from(token.range.end()))
+    }
+
+    fn at_word(&self, word: &str) -> bool {
+        self.at(SyntaxKind::Identifier) && self.word() == Some(word)
+    }
+
+    /// Whether the cursor is on `some` or `none` — the constructors as they
+    /// were spelled before they took their type's capital.
+    fn at_constructor(&self) -> bool {
+        self.at_word("some") || self.at_word("none")
     }
 
     fn end_size(&self) -> TextSize {
@@ -997,7 +1032,7 @@ impl<'a> Parser<'a> {
         // with no barlines is music whose meter says there are none. It is
         // spelled with the identifier rather than a keyword because there is
         // nothing else `meter` can be followed by.
-        if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::NoneKw]) {
+        if self.at(SyntaxKind::Identifier) {
             self.bump();
         } else {
             self.expect(SyntaxKind::Rational, "a meter such as `4/4`, or `none`");
@@ -1069,7 +1104,7 @@ impl<'a> Parser<'a> {
                 "a function body is written in braces",
                 "this body is `= expression;`",
             )
-            .with_help("`fn f(x: nat) -> nat { g(x) }` — the braces are the body, and they hold one expression")
+            .with_help("`fn f(x: Nat) -> Nat { g(x) }` — the braces are the body, and they hold one expression")
             .with_fix("write the body in braces", format!("{{ {body} }}")),
         );
     }
@@ -1108,14 +1143,25 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// A type is an identifier, a parenthesized or product type, or one of the
+    /// two the compiler parameterizes.
+    ///
+    /// No keyword stands here. `key` is a statement and `Key` is a type, and
+    /// the capital is what tells them apart — which is why this reads a plain
+    /// [`SyntaxKind::Identifier`] rather than a list of the keywords a type
+    /// was allowed to also be. The removed spellings are read only to be
+    /// reported.
     fn type_atom(&mut self) {
-        if self.at_any(&[SyntaxKind::OptionKw, SyntaxKind::ListKw]) {
-            let kind = if self.at(SyntaxKind::OptionKw) {
-                SyntaxKind::OptionType
-            } else {
-                SyntaxKind::ListType
-            };
+        let parameterized = match self.current() {
+            Some(SyntaxKind::OptionKw) => Some(SyntaxKind::OptionType),
+            Some(SyntaxKind::ListKw) => Some(SyntaxKind::ListType),
+            Some(SyntaxKind::Identifier) if self.at_word("option") => Some(SyntaxKind::OptionType),
+            Some(SyntaxKind::Identifier) if self.at_word("list") => Some(SyntaxKind::ListType),
+            _ => None,
+        };
+        if let Some(kind) = parameterized {
             self.start(kind);
+            self.respelled_type();
             self.bump();
             self.expect(SyntaxKind::LBracket, "`[`");
             self.type_expr();
@@ -1140,21 +1186,80 @@ impl<'a> Parser<'a> {
             self.finish();
             return;
         }
+        self.eat_trivia();
         self.start(SyntaxKind::TypeName);
-        if self.at_any(&[
-            SyntaxKind::Identifier,
-            SyntaxKind::PitchKw,
-            SyntaxKind::MusicKw,
-            SyntaxKind::ScaleKw,
-            SyntaxKind::KeyKw,
-            SyntaxKind::DegreeKw,
-            SyntaxKind::FrameKw,
-        ]) {
+        if self.at(SyntaxKind::Identifier) || self.at_any(MOVED_TYPE_KEYWORDS) {
+            self.respelled_type();
             self.bump();
         } else {
             self.expected("a type");
         }
         self.finish();
+    }
+
+    /// The one complaint a type written in the old vocabulary gets.
+    ///
+    /// Located at the word and carrying the word that replaces it, so the
+    /// migration is an accepted fix rather than a search. The old spelling is
+    /// then read as the type it named, so the rest of the declaration is
+    /// checked rather than buried under a cascade.
+    fn respelled_type(&mut self) {
+        let Some(was) = self.word() else {
+            return;
+        };
+        let Some(now) = crate::respelled_type(was) else {
+            return;
+        };
+        if self.cascading() {
+            return;
+        }
+        let Some(token) = self.significant() else {
+            return;
+        };
+        let help = if was == "pitchclass" {
+            "`pitchclass` is `NoteName`: a pitch class forgets spelling, and this is the type that keeps it, so C♯ and \
+             D♭ are two things here and one `Pc12`"
+                .to_owned()
+        } else {
+            format!("every type the compiler owns is spelled with a capital, so `{was}` is `{now}`")
+        };
+        self.errors.push(
+            SyntaxError::new(
+                token.range,
+                "a type is spelled with a capital",
+                format!("this is `{now}`"),
+            )
+            .with_help(help)
+            .with_fix(format!("write `{now}`"), now),
+        );
+    }
+
+    /// The one complaint `some` or `none` gets.
+    ///
+    /// They move with their type: a constructor of `Option` carries `Option`'s
+    /// capital, so that a reader holds one rule about spelling rather than
+    /// two.
+    fn respelled_constructor(&mut self) {
+        let now = match self.word() {
+            Some("some") => "Some",
+            Some("none") => "None",
+            _ => return,
+        };
+        if self.cascading() {
+            return;
+        }
+        let Some(token) = self.significant() else {
+            return;
+        };
+        self.errors.push(
+            SyntaxError::new(
+                token.range,
+                "a constructor is spelled with a capital",
+                format!("this is `{now}`"),
+            )
+            .with_help("`Some` and `None` are the two constructors of `Option`, and they are spelled the way it is")
+            .with_fix(format!("write `{now}`"), now),
+        );
     }
 
     /// An ordinary expression. Calls bind tighter than the written-pitch
@@ -1228,6 +1333,7 @@ impl<'a> Parser<'a> {
 
     fn expr_atom(&mut self) {
         match self.current() {
+            Some(SyntaxKind::Identifier) if self.at_constructor() => self.option_expr(),
             Some(
                 SyntaxKind::Identifier
                 | SyntaxKind::RepeatKw
@@ -1367,7 +1473,8 @@ impl<'a> Parser<'a> {
 
     fn option_expr(&mut self) {
         self.start(SyntaxKind::OptionExpr);
-        let some = self.at(SyntaxKind::SomeKw);
+        let some = self.at(SyntaxKind::SomeKw) || self.at_word("some");
+        self.respelled_constructor();
         self.bump();
         if some {
             self.expect(SyntaxKind::LParen, "`(`");
@@ -1403,6 +1510,17 @@ impl<'a> Parser<'a> {
     fn pattern(&mut self) {
         self.start(SyntaxKind::Pattern);
         match self.current() {
+            Some(SyntaxKind::Identifier) if self.at_word("none") => {
+                self.respelled_constructor();
+                self.bump();
+            }
+            Some(SyntaxKind::Identifier) if self.at_word("some") => {
+                self.respelled_constructor();
+                self.bump();
+                self.expect(SyntaxKind::LParen, "`(`");
+                self.expect(SyntaxKind::Identifier, "a binding name");
+                self.expect(SyntaxKind::RParen, "`)`");
+            }
             Some(
                 SyntaxKind::Identifier
                 | SyntaxKind::Integer
@@ -1495,11 +1613,18 @@ impl<'a> Parser<'a> {
         while self.at(SyntaxKind::Identifier) {
             self.bump(); // parameter name
             self.expect(SyntaxKind::Colon, "`:`");
-            if self.at_any(&[SyntaxKind::PitchKw, SyntaxKind::Identifier]) {
-                self.bump(); // parameter type (`pitch`)
+            // A motif parameter is `Pitch` or `Duration` — the same two types
+            // the rest of the language names, so they are written and read
+            // the same way here.
+            self.eat_trivia();
+            self.start(SyntaxKind::TypeName);
+            if self.at(SyntaxKind::Identifier) || self.at_any(MOVED_TYPE_KEYWORDS) {
+                self.respelled_type();
+                self.bump();
             } else {
-                self.expected("a parameter type (`pitch`)");
+                self.expected("a parameter type (`Pitch` or `Duration`)");
             }
+            self.finish();
             if self.at(SyntaxKind::Equals) {
                 self.bump();
                 if self.at_any(&[SyntaxKind::PitchLiteral, SyntaxKind::Rational, SyntaxKind::Integer]) {

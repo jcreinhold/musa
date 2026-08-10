@@ -85,7 +85,7 @@ from 1. A repeat folds on the page only when every voice sounding under it write
 ## Material and transforms
 
 ```musa
-motif sigh(root: pitch = e5) {
+motif sigh(root: Pitch = e5) {
     root/2
     rest/4
     c5/2
@@ -131,11 +131,11 @@ score {
 Bindings and functions are typed, and live at the file's root or inside blocks:
 
 ```musa
-let fifth: interval = P5;
+let fifth: Interval = P5;
 
-fn third(root: pitch) -> pitch { root up M3 }
+fn third(root: Pitch) -> Pitch { root up M3 }
 
-fn transpose_answer(subject: music, by: interval) -> music {
+fn transpose_answer(subject: Music, by: Interval) -> Music {
     transpose(by, subject)
 }
 ```
@@ -150,8 +150,8 @@ value at the current cursor.
 A chord class is content; a voicing is a realization of it. The two are separate types on purpose.
 
 ```musa
-let sonority: chord_class = chord c major7;   // spells pitch classes; does not sound
-let close: option[voicing] = close_position(sonority, c4);
+let sonority: ChordClass = chord c major7;   // spells pitch classes; does not sound
+let close: Option[Voicing] = close_position(sonority, c4);
 
 stack c4 major7/2    // sugar: close position, sounded, register fixed by the written root
 ```

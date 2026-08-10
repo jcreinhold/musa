@@ -36,6 +36,7 @@ mod lexer;
 mod meter;
 mod parser;
 mod syntax_kind;
+mod types;
 
 pub use crate::edits::{
     Anchor, EditError, EditIntent, HeaderField, Statement, TextEdit, apply_edits, compute_edits, read_header,
@@ -50,3 +51,4 @@ pub use crate::lexer::{LexError, LexErrorKind, Lexed, Token, lex};
 pub use crate::meter::beat_groups;
 pub use crate::parser::{ParsedDocument, parse};
 pub use crate::syntax_kind::SyntaxKind;
+pub use crate::types::{PRIMITIVE_TYPES, RESPELLED_TYPES, respelled_type};

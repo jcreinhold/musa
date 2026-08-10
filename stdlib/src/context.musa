@@ -12,57 +12,57 @@ library {
     signature TonalContext {
         // The key the passage is written in. A key is a signature and a
         // tonic, never a scale.
-        let tonic: key;
+        let tonic: Key;
 
         // The collection stepwise motion reads. A default, not a claim: a
         // passage may still name another collection where it wants one.
-        let collection: scale;
+        let collection: Scale;
 
         // The written pitch a numbered degree names, in this context's own
         // register. Absent when the context has no register to spell in.
-        let spell: nat -> option[pitch];
+        let spell: Nat -> Option[Pitch];
 
         // How this context voices a chord class. Absent when the class
         // cannot be voiced from the register it chose.
-        let voicing_for: chord_class -> option[voicing];
+        let voicing_for: ChordClass -> Option[Voicing];
     }
 
     // C major, spelled from middle C.
     structure CMajor: TonalContext {
-        let tonic: key = key c major;
-        let collection: scale = scale c ionian;
+        let tonic: Key = key c major;
+        let collection: Scale = scale c ionian;
 
         // The register degrees are spelled in. Private: a context promises
         // spelled pitches, not the frame it spells them from, so changing
         // where this one sits changes nothing anyone outside can name.
-        let home: option[frame] = frame_on(collection, c4);
+        let home: Option[Frame] = frame_on(collection, c4);
 
-        fn spell(ordinal: nat) -> option[pitch] {
+        fn spell(ordinal: Nat) -> Option[Pitch] {
             match home {
-                none -> none,
-                some(register) -> some(frame_degree(register, ordinal)),
+                None -> None,
+                Some(register) -> Some(frame_degree(register, ordinal)),
             }
         }
 
-        fn voicing_for(content: chord_class) -> option[voicing] { close_position(content, c4) }
+        fn voicing_for(content: ChordClass) -> Option[Voicing] { close_position(content, c4) }
     }
 
     // A natural minor, spelled from the A below middle C. The same four
     // members, answered differently — which is what makes the two structures
     // interchangeable everywhere `TonalContext` is asked for.
     structure ANaturalMinor: TonalContext {
-        let tonic: key = key a minor;
-        let collection: scale = scale a aeolian;
+        let tonic: Key = key a minor;
+        let collection: Scale = scale a aeolian;
 
-        let home: option[frame] = frame_on(collection, a3);
+        let home: Option[Frame] = frame_on(collection, a3);
 
-        fn spell(ordinal: nat) -> option[pitch] {
+        fn spell(ordinal: Nat) -> Option[Pitch] {
             match home {
-                none -> none,
-                some(register) -> some(frame_degree(register, ordinal)),
+                None -> None,
+                Some(register) -> Some(frame_degree(register, ordinal)),
             }
         }
 
-        fn voicing_for(content: chord_class) -> option[voicing] { close_position(content, a3) }
+        fn voicing_for(content: ChordClass) -> Option[Voicing] { close_position(content, a3) }
     }
 }

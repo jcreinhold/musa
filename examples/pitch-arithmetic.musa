@@ -5,9 +5,9 @@
 piece "Pitch Arithmetic" {
     import std::pitch;
 
-    let two_octaves: interval = compose_intervals(octave, octave);
+    let two_octaves: Interval = compose_intervals(octave, octave);
 
-    fn turn(root: pitch) -> music {
+    fn turn(root: Pitch) -> Music {
         music {
             root/4
             (root up M2)/4
@@ -16,7 +16,7 @@ piece "Pitch Arithmetic" {
         }
     }
 
-    fn echo_above(root: pitch) -> music {
+    fn echo_above(root: Pitch) -> Music {
         music {
             root/2
             (root up two_octaves)/2

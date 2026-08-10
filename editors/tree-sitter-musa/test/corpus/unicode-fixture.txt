@@ -21,7 +21,7 @@ piece "Étude en sol — 𝄞" {
     meter 3/4;
     key g major;
 
-    motif sigh(root: pitch = d5) {
+    motif sigh(root: Pitch = d5) {
         root/4
         c5/4
         b4/4
@@ -84,6 +84,8 @@ piece "Étude en sol — 𝄞" {
       (identifier)
       (motif_parameter
         (identifier)
+        (type_name
+          (identifier))
         (pitch_literal))
       (block
         (note_statement

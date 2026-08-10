@@ -1050,7 +1050,7 @@
     "end": 2180
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2181,
     "end": 2186
   },
@@ -1120,7 +1120,7 @@
     "end": 2234
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2235,
     "end": 2240
   },
@@ -1155,7 +1155,7 @@
     "end": 2260
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2261,
     "end": 2266
   },
@@ -1300,7 +1300,7 @@
     "end": 2407
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2408,
     "end": 2413
   },
@@ -1335,7 +1335,7 @@
     "end": 2433
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2434,
     "end": 2439
   },
@@ -1495,7 +1495,7 @@
     "end": 2810
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2811,
     "end": 2816
   },
@@ -1605,7 +1605,7 @@
     "end": 2901
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 2902,
     "end": 2907
   },
@@ -1725,7 +1725,7 @@
     "end": 3005
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 3006,
     "end": 3011
   },
@@ -1845,7 +1845,7 @@
     "end": 3110
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 3111,
     "end": 3116
   },
@@ -1965,7 +1965,7 @@
     "end": 3216
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 3217,
     "end": 3222
   },
@@ -2085,7 +2085,7 @@
     "end": 3322
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 3323,
     "end": 3328
   },
@@ -2215,7 +2215,7 @@
     "end": 3574
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 3575,
     "end": 3580
   },
@@ -2325,7 +2325,7 @@
     "end": 3663
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 3664,
     "end": 3669
   },
@@ -2445,7 +2445,7 @@
     "end": 3765
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 3766,
     "end": 3771
   },
@@ -2565,7 +2565,7 @@
     "end": 3868
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 3869,
     "end": 3874
   },
@@ -2685,7 +2685,7 @@
     "end": 3972
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 3973,
     "end": 3978
   },
@@ -2805,7 +2805,7 @@
     "end": 4076
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 4077,
     "end": 4082
   },
@@ -2945,7 +2945,7 @@
     "end": 4345
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 4346,
     "end": 4351
   },
@@ -3010,7 +3010,7 @@
     "end": 4392
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 4393,
     "end": 4398
   },
@@ -3095,7 +3095,7 @@
     "end": 4469
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 4470,
     "end": 4475
   },
@@ -3160,7 +3160,7 @@
     "end": 4516
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 4517,
     "end": 4522
   },

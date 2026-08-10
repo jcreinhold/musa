@@ -88,13 +88,13 @@ fn instances(snapshot: &ScoreSnapshot) -> Vec<String> {
 
 /// The bundled example, which is the shape every law here varies.
 const MADE: &str = r#"
-fn theme() -> music { music { c4/4 d4/4 } }
+fn theme() -> Music { music { c4/4 d4/4 } }
 
-template voice answer(subject: music, transform: music -> music) {
+template voice answer(subject: Music, transform: Music -> Music) {
     use transform(subject);
 }
 
-template piece study(k: key, mode: scale, subject: music) "Study" {
+template piece study(k: Key, mode: Scale, subject: Music) "Study" {
     meter 4/4;
     key k;
     score {
@@ -203,8 +203,8 @@ fn identity_survives_an_unrelated_edit() {
 fn renaming_a_parameter_changes_nothing() {
     let renamed = MADE
         .replace(
-            "study(k: key, mode: scale, subject: music)",
-            "study(tonality: key, sc: scale, tune: music)",
+            "study(k: Key, mode: Scale, subject: Music)",
+            "study(tonality: Key, sc: Scale, tune: Music)",
         )
         .replace("key k;", "key tonality;")
         .replace("in scale mode", "in scale sc")
@@ -370,8 +370,8 @@ piece "P" { meter 4/4; score { part p { make a() as v; } } }
 /// a name, not a silent success.
 #[test]
 fn parameters_without_the_word_template_are_refused() {
-    let piece = "piece study(k: key) \"S\" { meter 4/4; score { part p { voice v { c4/4 } } } }";
-    let voice = "piece \"P\" { meter 4/4; score { part p { voice v(k: key) { c4/4 } } } }";
+    let piece = "piece study(k: Key) \"S\" { meter 4/4; score { part p { voice v { c4/4 } } } }";
+    let voice = "piece \"P\" { meter 4/4; score { part p { voice v(k: Key) { c4/4 } } } }";
     assert!(refuses(piece, Code::Misplaced).contains("needs `template`"));
     assert!(refuses(voice, Code::Misplaced).contains("needs `template`"));
 }
@@ -386,7 +386,7 @@ template voice answer() {
 }
 piece "P" {
     meter 4/4;
-    let local: music = music { c4/4 };
+    let local: Music = music { c4/4 };
     score { part p { make answer() as v; } }
 }
 "#;

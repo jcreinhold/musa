@@ -34,13 +34,13 @@ const PRELUDE: &str = r"
 
     meter 4/4;
 
-    fn tick(one: music, carried: music) -> music { overlay(one, carried) }
-    fn beat() -> music { music { c4/1 } }
-    fn tally(count: nat) -> music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
-    fn beat_for_pc(member: pc12) -> music { beat() }
-    fn beat_for_nat(count: nat) -> music { beat() }
-    fn beat_for_spelling(spelled: pitchclass) -> music { beat() }
-    fn chorus(voices: list[music]) -> music { list_fold(music { rest/1 }, tick, voices) }
+    fn tick(one: Music, carried: Music) -> Music { overlay(one, carried) }
+    fn beat() -> Music { music { c4/1 } }
+    fn tally(count: Nat) -> Music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
+    fn beat_for_pc(member: Pc12) -> Music { beat() }
+    fn beat_for_nat(count: Nat) -> Music { beat() }
+    fn beat_for_spelling(spelled: NoteName) -> Music { beat() }
+    fn chorus(voices: List[Music]) -> Music { list_fold(music { rest/1 }, tick, voices) }
 ";
 
 /// A piece whose one voice sounds `expression`.
@@ -90,14 +90,14 @@ fn counted(bindings: &str, expression: &str) -> usize {
 
 #[test]
 fn a_spelled_pitch_class_is_not_an_unspelled_one() {
-    let spelled_where_unspelled_belongs = probe("    let wrong: pc12 = pitchclass_of(c4);", "beat()");
+    let spelled_where_unspelled_belongs = probe("    let wrong: Pc12 = pitchclass_of(c4);", "beat()");
     let errors = errors_of(&spelled_where_unspelled_belongs);
     assert!(
         errors.iter().any(|(code, _)| *code == Code::TypeMismatch),
         "a `pitchclass` must not stand where a `pc12` belongs: {errors:?}"
     );
 
-    let unspelled_where_spelled_belongs = probe("    let wrong: pitchclass = pc(0);", "beat()");
+    let unspelled_where_spelled_belongs = probe("    let wrong: NoteName = pc(0);", "beat()");
     let errors = errors_of(&unspelled_where_spelled_belongs);
     assert!(
         errors.iter().any(|(code, _)| *code == Code::TypeMismatch),
@@ -107,7 +107,7 @@ fn a_spelled_pitch_class_is_not_an_unspelled_one() {
 
 #[test]
 fn a_pitch_class_is_not_the_number_that_names_it() {
-    let errors = errors_of(&probe("    let wrong: nat = pc(3);", "beat()"));
+    let errors = errors_of(&probe("    let wrong: Nat = pc(3);", "beat()"));
     assert!(
         errors.iter().any(|(code, _)| *code == Code::TypeMismatch),
         "reading a residue as a number must be asked for: {errors:?}"
@@ -144,9 +144,9 @@ fn forgetting_a_spelling_is_total_and_not_injective() {
 #[test]
 fn a_spelling_needs_a_collection_and_may_not_exist_in_it() {
     let bindings = "
-    fn present(spelled: pitchclass) -> music { beat() }
-    let in_c: music = option_fold(music { rest/1 }, present, spelled_in(pc(1), scale c major));
-    let in_d: music = option_fold(music { rest/1 }, present, spelled_in(pc(1), scale d major));
+    fn present(spelled: NoteName) -> Music { beat() }
+    let in_c: Music = option_fold(music { rest/1 }, present, spelled_in(pc(1), scale c major));
+    let in_d: Music = option_fold(music { rest/1 }, present, spelled_in(pc(1), scale d major));
 ";
     assert_eq!(
         counted(bindings, "in_c"),
@@ -160,7 +160,7 @@ fn a_spelling_needs_a_collection_and_may_not_exist_in_it() {
 fn a_set_holds_a_repeated_member_once() {
     assert_eq!(
         counted(
-            "    let triad: pcset12 = pcset(pcs([0, 0, 4, 7, 7]));",
+            "    let triad: PcSet12 = pcset(pcs([0, 0, 4, 7, 7]));",
             "chorus(map(beat_for_pc, set_members(triad)))"
         ),
         3,
@@ -171,9 +171,9 @@ fn a_set_holds_a_repeated_member_once() {
 #[test]
 fn a_set_reads_out_ascending_and_normal_order_need_not() {
     let bindings = "
-    let set: pcset12 = pcset(pcs([0, 5, 8]));
-    let ascending: music = chorus(map(tally, map(number_of, set_members(set))));
-    let normal: music = chorus(map(tally, map(number_of, normal_order(set))));
+    let set: PcSet12 = pcset(pcs([0, 5, 8]));
+    let ascending: Music = chorus(map(tally, map(number_of, set_members(set))));
+    let normal: Music = chorus(map(tally, map(number_of, normal_order(set))));
 ";
     assert_eq!(counted(bindings, "ascending"), 13, "0 + 5 + 8 read ascending");
     assert_eq!(
@@ -185,7 +185,7 @@ fn a_set_reads_out_ascending_and_normal_order_need_not() {
 
 #[test]
 fn the_interval_class_vector_has_six_entries_and_counts_every_pair() {
-    let bindings = "    let triad: pcset12 = pcset(pcs([0, 4, 7]));";
+    let bindings = "    let triad: PcSet12 = pcset(pcs([0, 4, 7]));";
     assert_eq!(
         counted(bindings, "chorus(map(beat_for_nat, interval_class_vector(triad)))"),
         6,
@@ -201,9 +201,9 @@ fn the_interval_class_vector_has_six_entries_and_counts_every_pair() {
 #[test]
 fn a_set_class_survives_transposition_and_inversion() {
     let bindings = "
-    let triad: pcset12 = pcset(pcs([0, 4, 7]));
-    let moved: pcset12 = set_transposed(triad, 3);
-    let mirrored: pcset12 = set_inverted(triad, 0);
+    let triad: PcSet12 = pcset(pcs([0, 4, 7]));
+    let moved: PcSet12 = set_transposed(triad, 3);
+    let mirrored: PcSet12 = set_inverted(triad, 0);
 ";
     let upright = counted(
         bindings,

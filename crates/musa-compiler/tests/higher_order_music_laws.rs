@@ -65,9 +65,9 @@ fn a_delayed_canon_accepts_a_partially_applied_answer_and_has_maximum_extent() {
 fn function_identity_and_composition_hold_for_contextual_music() {
     let score = snapshot(
         "piece \"identity\" {
-            let subject: music = music { c4/4 d4/4 };
-            fn identity(value: music) -> music { value }
-            fn compose(f: music -> music, g: music -> music, value: music) -> music { f(g(value)) }
+            let subject: Music = music { c4/4 d4/4 };
+            fn identity(value: Music) -> Music { value }
+            fn compose(f: Music -> Music, g: Music -> Music, value: Music) -> Music { f(g(value)) }
             score { part p {
                 voice direct { use subject; }
                 voice identity { use identity(subject); }
@@ -84,13 +84,13 @@ fn function_identity_and_composition_hold_for_contextual_music() {
 fn pitch_mapping_preserves_support_and_non_pitch_fields() {
     let score = snapshot(
         "piece \"mapping\" {
-            let subject: music = music {
+            let subject: Music = music {
                 grace { d5 e5 }
                 c4/4 staccato
                 rest/4
             };
-            fn identity(p: pitch) -> pitch { p }
-            fn pedal(_: pitch) -> pitch { g3 }
+            fn identity(p: Pitch) -> Pitch { p }
+            fn pedal(_: Pitch) -> Pitch { g3 }
             score { part p {
                 voice original { use subject; }
                 voice same { use map_note_pitches(identity, subject); }
@@ -135,10 +135,10 @@ fn pitch_mapping_preserves_support_and_non_pitch_fields() {
 fn mapping_composition_agrees_with_nested_mapping() {
     let score = snapshot(
         "piece \"composition\" {
-            let subject: music = music { c4/2 };
-            fn pedal(_: pitch) -> pitch { e3 }
-            fn twice(f: pitch -> pitch, p: pitch) -> pitch { f(f(p)) }
-            fn pedal_twice(p: pitch) -> pitch { twice(pedal, p) }
+            let subject: Music = music { c4/2 };
+            fn pedal(_: Pitch) -> Pitch { e3 }
+            fn twice(f: Pitch -> Pitch, p: Pitch) -> Pitch { f(f(p)) }
+            fn pedal_twice(p: Pitch) -> Pitch { twice(pedal, p) }
             score { part p {
                 voice nested { use map_note_pitches(pedal, map_note_pitches(pedal, subject)); }
                 voice composed { use map_note_pitches(pedal_twice, subject); }
@@ -153,7 +153,7 @@ fn mapping_composition_agrees_with_nested_mapping() {
 fn block_and_function_transpose_agree_musically_but_keep_provenance() {
     let score = snapshot(
         "piece \"agreement\" {
-            let subject: music = music { c4/4 e4/4 };
+            let subject: Music = music { c4/4 e4/4 };
             score { part p {
                 voice block { transpose up P8 { use subject; } }
                 voice function { use transpose(P8, subject); }
@@ -183,10 +183,10 @@ fn block_and_function_transpose_agree_musically_but_keep_provenance() {
 fn every_existing_transform_has_one_block_and_function_meaning() {
     let score = snapshot(
         "piece \"transform functions\" {
-            let subject: music = music { c4/4 e4/4 };
-            let broader: music -> music = stretch(2);
-            let backwards: music -> music = retrograde;
-            let mirror: music -> music = invert(c4);
+            let subject: Music = music { c4/4 e4/4 };
+            let broader: Music -> Music = stretch(2);
+            let backwards: Music -> Music = retrograde;
+            let mirror: Music -> Music = invert(c4);
             score { part p {
                 voice stretch_block { stretch 2 { use subject; } }
                 voice stretch_function { use broader(subject); }
@@ -206,8 +206,8 @@ fn every_existing_transform_has_one_block_and_function_meaning() {
 #[test]
 fn wrong_higher_order_arguments_are_rejected_statically() {
     for declaration in [
-        "fn wrong(n: nat) -> nat { n } let bad: music = map_note_pitches(wrong, music { c4/1 });",
-        "fn answer_pitch(p: pitch) -> pitch { p } let bad: music = map_note_pitches(answer_pitch, 1);",
+        "fn wrong(n: Nat) -> Nat { n } let bad: Music = map_note_pitches(wrong, music { c4/1 });",
+        "fn answer_pitch(p: Pitch) -> Pitch { p } let bad: Music = map_note_pitches(answer_pitch, 1);",
     ] {
         let source = format!("piece \"wrong\" {{ {declaration} score {{ part p {{ voice v {{ c4/1 }} }} }} }}");
         let compilation = compile_text(&source);
@@ -227,9 +227,9 @@ fn wrong_higher_order_arguments_are_rejected_statically() {
 fn distinct_mappers_and_call_sites_do_not_alias_shared_instantiations() {
     let score = snapshot(
         "piece \"cache separation\" {
-            let subject: music = music { c4/4 };
-            fn low(_: pitch) -> pitch { c3 }
-            fn high(_: pitch) -> pitch { c5 }
+            let subject: Music = music { c4/4 };
+            fn low(_: Pitch) -> Pitch { c3 }
+            fn high(_: Pitch) -> Pitch { c5 }
             score { part p { voice v {
                 use map_note_pitches(low, subject);
                 use map_note_pitches(high, subject);

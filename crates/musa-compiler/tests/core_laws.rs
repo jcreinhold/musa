@@ -11,12 +11,12 @@ fn compile_core(declarations: &str) -> musa_compiler::Compilation {
 #[test]
 fn scalar_functions_capture_lexical_values_and_accept_higher_order_arguments() {
     let compilation = compile_core(
-        "let saved: nat = 7; \
-         fn keep(discard: bool) -> nat { saved } \
-         fn id(x: nat) -> nat { x } \
-         fn apply(f: nat -> nat, x: nat) -> nat { f(x) } \
-         let captured: nat = keep(false); \
-         let applied: nat = apply(id, captured);",
+        "let saved: Nat = 7; \
+         fn keep(discard: Bool) -> Nat { saved } \
+         fn id(x: Nat) -> Nat { x } \
+         fn apply(f: Nat -> Nat, x: Nat) -> Nat { f(x) } \
+         let captured: Nat = keep(false); \
+         let applied: Nat = apply(id, captured);",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
     assert!(compilation.snapshot().is_some());
@@ -25,10 +25,10 @@ fn scalar_functions_capture_lexical_values_and_accept_higher_order_arguments() {
 #[test]
 fn products_defaults_and_named_arguments_are_checked_and_evaluated() {
     let compilation = compile_core(
-        "let pair: (nat, bool) = (3, true); \
-         fn keep(value: (nat, bool), ornament: interval = P5) -> (nat, bool) { value } \
-         let first: (nat, bool) = keep(pair); \
-         let second: (nat, bool) = keep(ornament: M3, value: pair);",
+        "let pair: (Nat, Bool) = (3, true); \
+         fn keep(value: (Nat, Bool), ornament: Interval = P5) -> (Nat, Bool) { value } \
+         let first: (Nat, Bool) = keep(pair); \
+         let second: (Nat, Bool) = keep(ornament: M3, value: pair);",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
 }
@@ -36,16 +36,16 @@ fn products_defaults_and_named_arguments_are_checked_and_evaluated() {
 #[test]
 fn forward_dependencies_are_acyclic_not_source_ordered() {
     let compilation = compile_core(
-        "fn first(x: nat) -> nat { second(x) } \
-         fn second(x: nat) -> nat { x } \
-         let answer: nat = first(4);",
+        "fn first(x: Nat) -> Nat { second(x) } \
+         fn second(x: Nat) -> Nat { x } \
+         let answer: Nat = first(4);",
     );
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
 }
 
 #[test]
 fn definition_and_use_spans_reach_the_existing_reference_index() {
-    let compilation = compile_core("let seed: nat = 3; fn keep(x: nat) -> nat { seed } let answer: nat = keep(seed);");
+    let compilation = compile_core("let seed: Nat = 3; fn keep(x: Nat) -> Nat { seed } let answer: Nat = keep(seed);");
     assert!(!compilation.has_errors(), "{:?}", compilation.diagnostics());
     let seed = compilation
         .references()
@@ -64,10 +64,10 @@ fn imported_values_are_lexical_dependencies_not_a_second_evaluator() {
     let mut imports = ImportSources::default();
     imports.insert(
         "theory.musa",
-        "library { let basis: nat = 5; fn preserve(x: nat) -> nat { x } }",
+        "library { let basis: Nat = 5; fn preserve(x: Nat) -> Nat { x } }",
     );
     let source = SourceDocument::new(
-        "piece \"Imported core\" { import \"theory.musa\"; let answer: nat = preserve(basis); score { part p { voice v { c4/1 } } } }",
+        "piece \"Imported core\" { import \"theory.musa\"; let answer: Nat = preserve(basis); score { part p { voice v { c4/1 } } } }",
         "piece.musa",
     );
     let compilation = compile(

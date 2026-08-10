@@ -77,7 +77,7 @@ fn one_bound_phrase_elaborates_differently_under_two_scales() {
     // the scale in force where it is written. Saving a phrase does not freeze
     // its coordinates.
     let source = piece_with(
-        "    fn figure() -> music { music {\n        c5/8\n        (c5 step 1)/8\n        (c5 step 2)/4\n    } }\n\n    let subject: music = figure();",
+        "    fn figure() -> Music { music {\n        c5/8\n        (c5 step 1)/8\n        (c5 step 2)/4\n    } }\n\n    let subject: Music = figure();",
         "        in scale c major { use subject; }\n        in scale c dorian { use subject; }",
     );
     assert_eq!(
@@ -106,7 +106,7 @@ fn the_scale_distributes_over_sequence_and_overlay() {
     assert_eq!(sequenced, ["eb4", "bb4", "eb4"]);
     // Overlaid: a `use` inside the context reads it too, in both branches.
     let overlaid = pitches(&piece_with(
-        "    let low: music = music { (c4 step 2)/2 };\n    let high: music = music { (c5 step 2)/2 };",
+        "    let low: Music = music { (c4 step 2)/2 };\n    let high: Music = music { (c5 step 2)/2 };",
         "        in scale c dorian { use overlay(low, high); }",
     ));
     assert_eq!(overlaid, ["eb4", "eb5"]);
@@ -130,7 +130,7 @@ fn a_numbered_degree_realizes_in_the_frame_that_registers_it() {
     // Degrees are written from one: degree 1 of a C major frame rooted on c4
     // is c4 itself, and 1/3/5 spell that frame's triad in its own register.
     let source = piece_with(
-        "    import std::scale;\n\n    fn triad(register: frame) -> music { music {\n        (frame_degree(register, 1))/4\n        (frame_degree(register, 3))/4\n        (frame_degree(register, 5))/4\n    } }\n\n    let anchored: music = option_fold(music { rest/4 }, triad, frame_on(scale c major, c4));",
+        "    import std::scale;\n\n    fn triad(register: Frame) -> Music { music {\n        (frame_degree(register, 1))/4\n        (frame_degree(register, 3))/4\n        (frame_degree(register, 5))/4\n    } }\n\n    let anchored: Music = option_fold(music { rest/4 }, triad, frame_on(scale c major, c4));",
         "        use anchored;",
     );
     assert_eq!(pitches(&source), ["c4", "e4", "g4"]);

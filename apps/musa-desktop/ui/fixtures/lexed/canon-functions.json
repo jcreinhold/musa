@@ -45,7 +45,7 @@
     "end": 275
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 276,
     "end": 281
   },
@@ -130,7 +130,7 @@
     "end": 347
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 348,
     "end": 353
   },
@@ -150,7 +150,7 @@
     "end": 362
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 363,
     "end": 368
   },
@@ -160,7 +160,7 @@
     "end": 371
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 372,
     "end": 377
   },
@@ -195,7 +195,7 @@
     "end": 396
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 397,
     "end": 402
   },
@@ -295,7 +295,7 @@
     "end": 488
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 489,
     "end": 494
   },
@@ -305,7 +305,7 @@
     "end": 497
   },
   {
-    "class": "keyword",
+    "class": "name",
     "start": 498,
     "end": 503
   },

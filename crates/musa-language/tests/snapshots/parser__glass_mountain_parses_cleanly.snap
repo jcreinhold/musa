@@ -61,7 +61,8 @@ Root@0..2172
       Identifier@207..211 "root"
       Colon@211..212 ":"
       Whitespace@212..213 " "
-      PitchKw@213..218 "pitch"
+      TypeName@213..218
+        Identifier@213..218 "Pitch"
       Whitespace@218..219 " "
       Equals@219..220 "="
       Whitespace@220..221 " "

@@ -555,14 +555,6 @@
         },
         {
           "type": "STRING",
-          "value": "list"
-        },
-        {
-          "type": "STRING",
-          "value": "option"
-        },
-        {
-          "type": "STRING",
           "value": "pitch"
         },
         {
@@ -780,10 +772,6 @@
               {
                 "type": "SYMBOL",
                 "name": "rational"
-              },
-              {
-                "type": "STRING",
-                "value": "none"
               },
               {
                 "type": "SYMBOL",
@@ -1017,17 +1005,8 @@
           "type": "FIELD",
           "name": "type",
           "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "STRING",
-                "value": "pitch"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "identifier"
-              }
-            ]
+            "type": "SYMBOL",
+            "name": "type_name"
           }
         },
         {
@@ -1358,44 +1337,15 @@
       ]
     },
     "type_name": {
-      "type": "CHOICE",
-      "members": [
-        {
-          "type": "STRING",
-          "value": "pitch"
-        },
-        {
-          "type": "STRING",
-          "value": "music"
-        },
-        {
-          "type": "STRING",
-          "value": "scale"
-        },
-        {
-          "type": "STRING",
-          "value": "key"
-        },
-        {
-          "type": "STRING",
-          "value": "degree"
-        },
-        {
-          "type": "STRING",
-          "value": "frame"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "identifier"
-        }
-      ]
+      "type": "SYMBOL",
+      "name": "identifier"
     },
     "option_type": {
       "type": "SEQ",
       "members": [
         {
           "type": "STRING",
-          "value": "option"
+          "value": "Option"
         },
         {
           "type": "STRING",
@@ -1416,7 +1366,7 @@
       "members": [
         {
           "type": "STRING",
-          "value": "list"
+          "value": "List"
         },
         {
           "type": "STRING",
@@ -2009,14 +1959,14 @@
       "members": [
         {
           "type": "STRING",
-          "value": "none"
+          "value": "None"
         },
         {
           "type": "SEQ",
           "members": [
             {
               "type": "STRING",
-              "value": "some"
+              "value": "Some"
             },
             {
               "type": "STRING",
@@ -2236,14 +2186,14 @@
         },
         {
           "type": "STRING",
-          "value": "none"
+          "value": "None"
         },
         {
           "type": "SEQ",
           "members": [
             {
               "type": "STRING",
-              "value": "some"
+              "value": "Some"
             },
             {
               "type": "STRING",
