@@ -137,6 +137,16 @@ verify: ## Everything CI would check, in the order that fails fastest
 	$(MAKE) test-ui
 	$(MAKE) deny
 
+## ------------------------------------------------------------------ docs --
+
+.PHONY: docs
+docs: ## Build the documentation book into target/mdbook
+	mdbook build docs/book
+
+.PHONY: docs-serve
+docs-serve: ## Serve the documentation book locally, with live reload
+	mdbook serve docs/book
+
 ## ----------------------------------------------------------- housekeeping --
 
 .PHONY: snapshots

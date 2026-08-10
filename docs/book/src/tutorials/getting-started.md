@@ -1,0 +1,72 @@
+# Getting started
+
+This lesson takes you from a fresh checkout to a rendered score and a played piece. It assumes a
+[Rust](https://rustup.rs) toolchain and [Node](https://nodejs.org) 20 or later.
+
+## Install
+
+```bash
+git clone https://github.com/jcreinhold/musa.git
+cd musa
+make setup
+```
+
+`make setup` installs everything the repository needs. `make` on its own lists every task.
+
+## Write a first piece
+
+Create `first.musa`:
+
+```musa
+piece "first" {
+    tempo 1/4 = 104;
+    meter 4/4;
+    key c major;
+
+    score {
+        part piano {
+            voice melody {
+                c4/4 c4/4 g4/4 g4/4 a4/4 a4/4 g4/2
+                rest/1
+            }
+        }
+    }
+}
+```
+
+Read the notes aloud: `c4/4` is middle C for a quarter note, `g4/2` the G above it for a half, `rest/1` a whole
+measure of rest. Durations are exact fractions of a whole note.
+
+## Check it
+
+```bash
+make check-file FILE=first.musa
+```
+
+A clean compile prints nothing. A mistake prints a diagnostic with its place in the source; try deleting a `/4` and
+running the check again.
+
+## Render it
+
+```bash
+make render FILE=first.musa TO=lilypond OUT=first.ly
+```
+
+The targets are `mei`, `lilypond`, `musicxml`, `midi`, and `wav`. The same piece renders to all of them because the
+backends share one semantic core.
+
+## Hear it
+
+```bash
+make play FILE=first.musa
+```
+
+Playback runs through the built-in audio engine. Without a `studio` block the parts sound with a default instrument;
+[Write for the studio](../how-to/studio.md) shows how to give a piece its own sound.
+
+## Where to go next
+
+- [The language](../reference/language.md) — the full surface syntax.
+- `examples/` in the repository — pieces the test suite compiles on every run. `glass-mountain.musa` exercises
+  motifs, transposition, and the studio; `annotated.musa` shows phrases, sections, and chord symbols.
+- [The temporal kernel](../concepts/temporal-kernel.md) — what your piece means once it compiles.

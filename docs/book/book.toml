@@ -1,0 +1,21 @@
+[book]
+authors = ["Jacob Reinhold"]
+description = "A notation-first music language and workbench."
+language = "en"
+src = "src"
+title = "musa"
+
+[build]
+build-dir = "../../target/mdbook"
+create-missing = false
+
+[output.html]
+default-theme = "rust"
+edit-url-template = "https://github.com/jcreinhold/musa/edit/main/docs/book/{path}"
+git-repository-url = "https://github.com/jcreinhold/musa"
+preferred-dark-theme = "ayu"
+
+[output.html.search]
+enable = true
+limit-results = 25
+use-boolean-and = true

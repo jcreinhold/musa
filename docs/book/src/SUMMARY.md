@@ -1,0 +1,36 @@
+# Summary
+
+[Introduction](introduction.md)
+
+# Tutorials
+
+- [Getting started](tutorials/getting-started.md)
+
+# How-to guides
+
+- [Check and fix a piece](how-to/check.md)
+- [Format source](how-to/format.md)
+- [Export scores and audio](how-to/export.md)
+- [Play a piece](how-to/play.md)
+- [Set up an editor](how-to/editor-setup.md)
+- [Run the desktop app](how-to/desktop.md)
+- [Write for the studio](how-to/studio.md)
+- [Work with kernel files](how-to/kernel-files.md)
+
+# Explanation
+
+- [Architecture](concepts/architecture.md)
+- [The temporal kernel](concepts/temporal-kernel.md)
+- [Exact time](concepts/exact-time.md)
+- [Layer separation](concepts/layer-separation.md)
+- [Source and provenance](concepts/provenance.md)
+- [The desktop interface](concepts/interface.md)
+- [The style guide](concepts/style-guide.md)
+
+# Reference
+
+- [The language](reference/language.md)
+- [Standard library](reference/stdlib.md)
+- [CLI](reference/cli.md)
+- [Lint codes](reference/lints.md)
+- [Kernel interchange format](reference/kernel-format.md)

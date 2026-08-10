@@ -103,6 +103,9 @@ exact rational arithmetic everywhere except the audio edge, and the audio callba
 
 ## Where the design lives
 
+The user-facing documentation is an mdbook in [`docs/book/`](docs/book/) — tutorials, how-to guides, explanation, and
+reference. `make docs` builds it; `make docs-serve` reads it live.
+
 Three documents govern this repository, and the code is expected to agree with them:
 
 - [`docs/initial-design-roadmap.md`](docs/initial-design-roadmap.md) — the architecture: layers, crate ownership,
