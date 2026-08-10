@@ -1,7 +1,7 @@
 ---
 id: 113
 slug: capitalized-type-names
-status: pending
+status: in-progress
 depends_on: [110, 112]
 phase: 3
 ---
@@ -12,14 +12,17 @@ phase: 3
 
 Give every type name and every constructor of one an `UpperCamelCase` spelling — `Pitch`, `Music`, `Triad`, `Pc12`,
 `Option`, `List`, `Some`, `None` — so that the type layer has a spelling of its own and stops sharing six words with the
-music statement grammar. `pitchclass` becomes `SpelledPc`, settling a name the compiler and the specification disagree
-about. No type is added, none is removed, and none changes meaning.
+music statement grammar. `pitchclass` becomes `NoteName`, settling a name the compiler and the specification disagree
+about — and that neither of them had right. No type is added, none is removed, and none changes meaning.
 
 ## Read
 
 - `docs/language-correction.md` §7, which governs this prompt, and §10's last two bullets for what it does not touch.
 - `docs/language/01-surface.md` §3, which lists the primitive value types and spells the pitch-class type `spelled_pc`
   where `crates/musa-compiler/src/core.rs` spells it `pitchclass`.
+- Open Music Theory `099-pitch-and-pitch-class.md` and `003-reading-clefs.md`, which decide what this type is called:
+  the first defines a pitch class as octave *and enharmonic* equivalence, the second calls the octave-free spelled
+  thing a letter name.
 - `crates/musa-language/src/parser.rs`, `type_atom` — the whitelist of six keywords a type name is allowed to be is the
   evidence for this prompt, not an incidental detail.
 - Prompt 109 for the migration-diagnostic shape a spelling change takes here, including its applicable fix.
@@ -37,14 +40,16 @@ and no lookahead is needed to tell them apart.
 The full vocabulary after this prompt:
 
 ```text
-Unit  Bool  Nat  Ratio  Duration  Pitch  SpelledPc  Interval
+Unit  Bool  Nat  Ratio  Duration  Pitch  NoteName  Interval
 Scale  Key  Degree  Frame  ChordClass  Triad  Roman  Voicing
 Pc12  PcSet12  Row12  Music  Option  List        None  Some
 ```
 
-`pitchclass` becomes `SpelledPc` rather than `PitchClass`. `01-surface.md` §3 already calls it `spelled_pc`, and that
-name carries the distinction that matters: in a `SpelledPc`, C♯ and D♭ differ; in a `Pc12` they do not. A reader who
-sees `PitchClass` beside `Pc12` has to be told which is which.
+`pitchclass` becomes `NoteName`, and neither `PitchClass` nor `SpelledPc` is the answer. OMT 99 defines a pitch class
+as a group of pitches related by octave *and enharmonic* equivalence, so a type in which C♯ and D♭ differ is not a
+pitch class — `Pc12` is. What this type holds is a letter and an accidental with the octave dropped, which OMT 3 calls
+a letter name. `NoteName` is that in a word every musician already has, and it carries the distinction without
+explaining it: a name is a spelling, so of course two names spell two things.
 
 `Some` and `None` move with their type, as in Rust, because they are constructors of `Option` and not free words. The
 alternative — capitals for types, lowercase for their constructors — asks a reader to hold two rules where one will do.
@@ -60,7 +65,7 @@ point at it, exactly as `module` does in prompt 111.
 
 - The capitalized vocabulary in the lexer, `type_atom`, the CST node kinds, the compiler's type table (`core.rs`'s name
   → `Type` mapping and its `Display`), and the formatter.
-- `pitchclass` renamed to `SpelledPc` in the compiler and in `docs/language/01-surface.md` §3, with the two documents
+- `pitchclass` renamed to `NoteName` in the compiler and in `docs/language/01-surface.md` §3, with the two documents
   agreeing afterwards.
 - The migration diagnostic for every lowercase type name and for `some`/`none`, each located at the word, carrying an
   applicable fix, with snapshot tests.

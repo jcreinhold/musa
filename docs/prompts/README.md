@@ -442,7 +442,8 @@ of the language. **113** gives every type a capital. Six words — `pitch`, `mus
 were a type name *and* a music statement keyword, which the parser survived by keeping a whitelist of the keywords a
 type is allowed to be; a capital settles it in the lexer instead, where `key c major;` and `Key` are simply different
 words. It also settles `pitchclass` versus `spelled_pc`, which the compiler and the specification had been spelling
-differently, in favour of `SpelledPc`. **114** moves a type parameter into angle brackets, so `[` means a list and
+differently, in favour of `NoteName` — because Open Music Theory reserves "pitch class" for the reading that forgets
+spelling, which is `Pc12`. **114** moves a type parameter into angle brackets, so `[` means a list and
 nothing else. That is cheap here and nowhere else: `Option` and `List` are the only parameterized types, both are
 keyword-headed, and no user-written type application exists — so the `a < b > (c)` reading that forces a turbofish
 elsewhere has no term that could produce it. Neither prompt adds a type, removes one, or changes what any of them mean.

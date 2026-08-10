@@ -300,9 +300,9 @@ the language already sits.
 Every type name is `UpperCamelCase`, and so is every constructor of one:
 
 ```text
-Unit  Bool  Nat  Ratio  Duration  Pitch  SpelledPc  Interval
+Unit  Bool  Nat  Ratio  Duration  Pitch  NoteName  Interval
 Scale  Key  Degree  Frame  ChordClass  Triad  Roman  Voicing
-Pc12  PcSet12  Row12  Music  Option  List        None  Some
+Pc12  PcSet12  Row12  Music  Option  List       None  Some
 ```
 
 The reason is not familiarity. Six of these words are *also* music statement keywords — `pitch`, `music`, `scale`,
@@ -311,9 +311,12 @@ One word doing two jobs in two grammars is a collision the parser papers over; a
 `key c major;` and `Key` are simply different words. `music { … }` and `Music`, the expression form and the type of what
 it produces, stop being homographs.
 
-`pitchclass` becomes `SpelledPc`. The compiler's type table spells it `pitchclass` and `01-surface.md` §3 spells it
-`spelled_pc`; capitalizing forces the question, and the spec's name is the one that says the thing that matters — this
-is a *spelled* pitch class, in which C♯ and D♭ differ, as distinct from `Pc12`, in which they do not.
+`pitchclass` becomes `NoteName`. The compiler's type table spells it `pitchclass` and `01-surface.md` §3 spells it
+`spelled_pc`; capitalizing forces the question, and the answer is that neither name was right. Open Music Theory 99
+defines a pitch class as a group of pitches related by octave *and enharmonic* equivalence — A♭₄, A♭₃, and G♯₂ are one
+pitch class — so `Pc12` is what a theorist means by the term, and a type that keeps C♯ apart from D♭ is not a pitch
+class at all. What it is is the letter and accidental as written, without an octave, which OMT 3 calls a letter name.
+`NoteName` says that in words a musician already owns, and says the distinction for free: a name is a spelling.
 
 The lowercase spellings become **hard errors with applicable fixes**, on correction C's precedent and for its reason.
 
