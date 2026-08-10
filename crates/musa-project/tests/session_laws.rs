@@ -219,9 +219,19 @@ fn digest(bytes: &[u8]) -> u64 {
 /// records it is a file that clips on anything that plays it. What the digest
 /// still guards is unchanged: nothing here asks for a profile, and nothing in
 /// the performance layer may act as though it did.
+///
+/// The third re-pin is the loudness repair: the voice pool now sums with a
+/// fixed `1/√voices` headroom (musa-audio `voice.rs`), and the limiter grew a
+/// 5 ms lookahead with a smoothed attack (`effects.rs`), because per-sample
+/// gain on a continuously over-ceiling mix waveshaped it into audible static.
+/// Verified against the previous build: this fixture now peaks at 0.47 — the
+/// release/attack overlap of the two notes that used to peak at 1.86 and be
+/// limited — and the limiter never engages; its only effect here is 240
+/// frames of master latency. Again the instrument changed, not
+/// interpretation.
 #[test]
 fn an_unprofiled_piece_renders_the_golden_audio() -> Result {
-    const GOLDEN: u64 = 0x1426_af4f_74c0_0489;
+    const GOLDEN: u64 = 0x891a_11e0_0dd6_bdb9;
     let bytes = session().export(ExportRequest::Wav)?;
     assert_eq!(
         digest(bytes.as_bytes()),

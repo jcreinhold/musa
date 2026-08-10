@@ -1175,12 +1175,12 @@ fn process(
                     let right_index = block.saturating_add(i);
                     let left = input(0, i);
                     let right = channel(0).and_then(|b| b.get(right_index)).copied().unwrap_or(0.0);
-                    let gain = limiter.gain_for(left.abs().max(right.abs()), *ceiling);
+                    let (limited_left, limited_right) = limiter.process(left, right, *ceiling);
                     if let Some(slot) = out.get_mut(i) {
-                        *slot = left * gain;
+                        *slot = limited_left;
                     }
                     if let Some(slot) = out.get_mut(right_index) {
-                        *slot = right * gain;
+                        *slot = limited_right;
                     }
                 }
             }

@@ -4,7 +4,9 @@
 //! The per-voice chain is §13.5's: allocator → pitch-to-frequency (done by
 //! the scheduler, which hands over Hz) → oscillator → amplitude ADSR →
 //! per-voice gain, where the gain is the interpreted loudness prompt 28's
-//! profiles produce. The envelope is a real ADSR ([`crate::envelope`]) whose
+//! profiles produce. The pool's sum carries a fixed headroom
+//! ([`VoiceAllocator::scale`]) so ordinary polyphony reaches the master
+//! limiter under its ceiling, not over it. The envelope is a real ADSR ([`crate::envelope`]) whose
 //! default shape is the ramp that preceded it, so a piece that asks for no
 //! envelope still gets the same short, uninterpretive fade in and out.
 //!
@@ -33,7 +35,8 @@ struct Voice {
     /// Whether the note is still held (a released voice is stealable first).
     held: bool,
     /// The interpreted loudness the note-on asked for; `1.0` is neutral, so
-    /// an unprofiled piece renders exactly the samples it always did.
+    /// a profile's reading is applied to the voice exactly as stated. (The
+    /// pool's own headroom is separate — see [`VoiceAllocator::scale`].)
     amplitude: f32,
     /// Frames since (re)trigger — the steal-oldest criterion.
     age: u64,
@@ -68,6 +71,15 @@ pub struct VoiceAllocator {
     ratio: f64,
     /// How much of that partial is mixed in; `0` is one sine per voice.
     blend: f32,
+    /// Fixed headroom applied to the pool sum: `1/√voices`, so the typical
+    /// (incoherent-phase) sum of a full pool lands near full scale instead
+    /// of `voices` times over it. Per-voice `amplitude` stays neutral — the
+    /// profile's interpretation is not rescaled — but the *sum* of sixteen
+    /// full-scale sines is 24 dB over 0 dBFS, and leaving that for the
+    /// master limiter made the limiter the mix bus: engaged continuously,
+    /// its per-sample gain was audible as scratchy distortion. The limiter
+    /// is for the rare coherent peak, not for every chord.
+    scale: f32,
 }
 
 impl VoiceAllocator {
@@ -83,6 +95,8 @@ impl VoiceAllocator {
             sample_rate,
             ratio: 2.0,
             blend: 0.0,
+            // `max(1)`: an empty pool renders silence whatever the scale is.
+            scale: f64::from(voices.max(1)).sqrt().recip() as f32,
         }
     }
 
@@ -166,7 +180,8 @@ impl VoiceAllocator {
 
     /// Render `count` samples of the whole pool summed, mono into `output`
     /// (the oscillator bank of §13.5; the poly synth processor mixes the
-    /// result to stereo).
+    /// result to stereo). The sum carries the pool's fixed headroom — see
+    /// [`Self::scale`].
     pub fn render(&mut self, output: &mut [f32], count: usize, sample_rate: f64) {
         for i in 0..count {
             let mut mix = 0.0f32;
@@ -199,7 +214,7 @@ impl VoiceAllocator {
                 mix = (sample * level).mul_add(voice.amplitude, mix);
             }
             if let Some(slot) = output.get_mut(i) {
-                *slot = mix;
+                *slot = mix * self.scale;
             }
         }
     }

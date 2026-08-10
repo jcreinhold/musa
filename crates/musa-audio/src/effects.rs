@@ -239,52 +239,110 @@ impl Reverb {
     }
 }
 
-/// A peak limiter: the last thing on master, and a guarantee rather than a
-/// preference (§13.6).
+/// A lookahead peak limiter: the last thing on master, and a guarantee
+/// rather than a preference (§13.6).
 ///
-/// Attack is instantaneous and there is no lookahead, so the ceiling holds
-/// exactly, sample for sample, and the master bus adds no latency. The price
-/// is a little distortion when it engages hard — which is the right trade for
-/// a bus that must be sample-aligned between the offline render and the live
-/// stream (§13.8). Recovery is a one-pole so a loud passage does not leave
-/// the following bars ducked.
-#[derive(Clone, Copy, Debug)]
+/// The gain computer scans a short lookahead window, so the gain is already
+/// on its way down *before* a peak leaves the delay line: attack is smoothed
+/// over the window instead of stepping per sample, which is what made hard
+/// engagement audible as scratchy, waveshaper-like distortion (and whose
+/// sidebands aliased). A hard clamp on the outgoing frame keeps the ceiling
+/// exact even for a step that arrives with no warning, so the guarantee is
+/// unchanged: nothing leaves above the ceiling, sample for sample.
+///
+/// The price is [`Self::LOOKAHEAD`] of latency on the master bus — identical
+/// in the offline render and the live stream because both run the same
+/// `RenderPlan::render` (§13.8) — and three delay lines sized once in the
+/// constructor, never at render time (§13.2). Recovery is a slow one-pole so
+/// a loud passage does not leave the following bars ducked. Stereo is limited
+/// as one signal: two independent limiters would move the image whenever one
+/// channel was louder than the other.
+#[derive(Clone, Debug)]
 pub(crate) struct Limiter {
-    /// The gain in force, never above one.
+    /// Delayed signal, one line per channel (planar, like the buffers it
+    /// processes). Mono signals use the left line only.
+    left: Box<[f32]>,
+    right: Box<[f32]>,
+    /// Per-frame peak history the gain computer scans.
+    peaks: Box<[f32]>,
+    /// Ring position: the slot holding the oldest frame, which is the one
+    /// the next [`Self::process`] returns and overwrites.
+    index: usize,
+    /// The smoothed gain in force, never above one.
     gain: f32,
-    /// How far the gain closes on unity per sample once the peak has passed.
+    /// One-pole coefficient when the target is below the current gain.
+    attack: f32,
+    /// One-pole coefficient when the target is above it.
     release: f32,
 }
 
 impl Limiter {
+    /// How far ahead the gain computer looks, in seconds.
+    const LOOKAHEAD: f32 = 0.005;
+    /// How quickly the gain closes on a louder target, in seconds — short
+    /// enough to have converged well inside the lookahead window.
+    const ATTACK: f32 = 0.001;
     /// How long the gain takes to recover, in seconds.
     const RELEASE: f32 = 0.100;
 
-    /// A limiter that is not yet limiting.
+    /// A limiter that is not yet limiting, its lines silent.
     pub(crate) fn new(sample_rate: f32) -> Self {
+        let frames = (Self::LOOKAHEAD * sample_rate).round().max(1.0) as usize;
         Self {
+            left: vec![0.0; frames].into_boxed_slice(),
+            right: vec![0.0; frames].into_boxed_slice(),
+            peaks: vec![0.0; frames].into_boxed_slice(),
+            index: 0,
             gain: 1.0,
+            attack: crate::filter::OnePole::time_coefficient(Self::ATTACK, sample_rate),
             release: crate::filter::OnePole::time_coefficient(Self::RELEASE, sample_rate),
         }
     }
 
-    /// The gain to apply to this frame, given the loudest of its channels.
-    ///
-    /// Stereo is limited as one signal: two independent limiters would move
-    /// the image whenever one channel was louder than the other.
-    pub(crate) fn gain_for(&mut self, peak: f32, ceiling: f32) -> f32 {
+    /// The lookahead delay, in frames (the render introduces no other).
+    #[cfg(test)]
+    pub(crate) fn latency(&self) -> usize {
+        self.peaks.len()
+    }
+
+    /// Limit one stereo frame; mono callers pass the same sample twice or a
+    /// silent right — the returned gain is shared either way.
+    pub(crate) fn process(&mut self, left: f32, right: f32, ceiling: f32) -> (f32, f32) {
         let ceiling = ceiling.clamp(0.0, 1.0);
-        let recovered = self.release.mul_add(1.0 - self.gain, self.gain);
-        // Whatever the recovery would have allowed, the ceiling wins: this
-        // `min` is the guarantee, and it is why the bound holds for every
-        // sample rather than on average.
-        let allowed = if peak > ceiling && peak > 0.0 {
-            ceiling / peak
+        // `index` stays below the line length by the modulo below; the
+        // total indexing is the house style, and a missed slot costs a
+        // silent frame, not a panic in the callback.
+        let delayed_left = self.left.get(self.index).copied().unwrap_or(0.0);
+        let delayed_right = self.right.get(self.index).copied().unwrap_or(0.0);
+        let delayed_peak = self.peaks.get(self.index).copied().unwrap_or(0.0);
+        if let Some(slot) = self.left.get_mut(self.index) {
+            *slot = left;
+        }
+        if let Some(slot) = self.right.get_mut(self.index) {
+            *slot = right;
+        }
+        if let Some(slot) = self.peaks.get_mut(self.index) {
+            *slot = left.abs().max(right.abs());
+        }
+        self.index = (self.index + 1) % self.peaks.len().max(1);
+
+        // The smoothed gain does the work: the target answers the loudest
+        // frame still in the window, and the one-pole walks to it — fast
+        // toward quieter, slow toward louder.
+        let window = self.peaks.iter().copied().fold(0.0f32, f32::max);
+        let target = if window > ceiling { ceiling / window } else { 1.0 };
+        let coefficient = if target < self.gain { self.attack } else { self.release };
+        self.gain = coefficient.mul_add(target - self.gain, self.gain);
+        // The clamp is the guarantee: whatever the smoothing has not reached
+        // yet still cannot leave above the ceiling. With the lookahead doing
+        // its job this `min` is almost always the smoothed gain, which is
+        // exactly the point — the clamp fires on transients, not on music.
+        let applied = if delayed_peak > ceiling && delayed_peak > 0.0 {
+            self.gain.min(ceiling / delayed_peak)
         } else {
-            1.0
+            self.gain
         };
-        self.gain = recovered.min(allowed);
-        self.gain
+        (delayed_left * applied, delayed_right * applied)
     }
 }
 
@@ -350,7 +408,8 @@ mod tests {
         assert!(large > small * 2.0, "small {small}, large {large}");
     }
 
-    /// The ceiling is a guarantee: no input reaches the output above it.
+    /// The ceiling is a guarantee: no input reaches the output above it,
+    /// not even a step that arrives with no warning.
     #[test]
     fn no_signal_passes_the_ceiling() {
         let mut limiter = Limiter::new(RATE);
@@ -362,19 +421,56 @@ mod tests {
             let sample = phase
                 .sin()
                 .mul_add(i as f32 / RATE * 8.0, if i == 12_000 { 40.0 } else { 0.0 });
-            worst = worst.max((sample * limiter.gain_for(sample.abs(), 1.0)).abs());
+            let (left, right) = limiter.process(sample, sample, 1.0);
+            worst = worst.max(left.abs()).max(right.abs());
         }
         assert!(worst <= 1.0, "peak {worst}");
     }
 
-    /// A signal below the ceiling is not touched at all.
+    /// A loud sustained tone must not be waveshaped. The old per-sample
+    /// gain turned an 8× sine into a square wave at the ceiling — a 2.0
+    /// step at every zero crossing, which is the scratchy distortion the
+    /// lookahead exists to remove. Settled on a steady tone, the gain is
+    /// nearly constant, so the output's slope is the tone's own.
+    #[test]
+    fn a_loud_sustained_tone_is_limited_not_waveshaped() {
+        let mut limiter = Limiter::new(RATE);
+        let mut previous = 0.0f32;
+        let mut worst_step = 0.0f32;
+        let mut peak = 0.0f32;
+        for i in 0..RATE as usize {
+            let sample = (i as f32 * 440.0 * std::f32::consts::TAU / RATE).sin() * 8.0;
+            let (left, _) = limiter.process(sample, sample, 1.0);
+            // Skip the attack: the first few windows are the gain finding
+            // the steady value.
+            if i > 4_800 {
+                worst_step = worst_step.max((left - previous).abs());
+                peak = peak.max(left.abs());
+            }
+            previous = left;
+        }
+        // A sine at 440 Hz at full scale moves 2π·440/48000 ≈ 0.058 per
+        // sample; waveshaping would show steps near 2.0.
+        assert!(worst_step < 0.1, "max sample-to-sample step {worst_step}");
+        assert!(peak > 0.5, "a limiter is not a mute: peak {peak}");
+    }
+
+    /// A signal below the ceiling is delayed but otherwise untouched, and
+    /// the delay is exactly the lookahead.
     #[test]
     fn a_quiet_signal_is_left_exactly_alone() {
         let mut limiter = Limiter::new(RATE);
-        for i in 0..1_000 {
+        let latency = limiter.latency();
+        assert!(latency > 0, "the lookahead is the delay");
+        for i in 0..1_000 + latency {
             let sample = (i as f32 / 64.0).sin() * 0.5;
-            let passed = sample * limiter.gain_for(sample.abs(), 1.0);
-            assert!((passed - sample).abs() < f32::EPSILON, "{passed} is not {sample}");
+            let (passed, _) = limiter.process(sample, sample, 1.0);
+            if i >= latency {
+                let expected = ((i - latency) as f32 / 64.0).sin() * 0.5;
+                assert!((passed - expected).abs() < f32::EPSILON, "{passed} is not {expected}");
+            } else {
+                assert!(passed.abs() < f32::MIN_POSITIVE, "the line starts silent, got {passed}");
+            }
         }
     }
 }

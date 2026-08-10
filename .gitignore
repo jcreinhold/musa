@@ -10,3 +10,5 @@
 *.performance
 
 .vscode/settings.json
+
+*.wav

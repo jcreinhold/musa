@@ -10,8 +10,10 @@ use crate::spec::{ProcessorSpec, StudioGraphSpec};
 /// The limiter is here for the same reason it is on every master (§13.6):
 /// twenty voices at once is louder than one, and the difference should be a
 /// balance the composer hears rather than a clipped file they discover later.
-/// It is transparent — exactly unity gain — until the mix actually reaches
-/// full scale.
+/// The voice pool's own headroom (see `voice.rs`) keeps ordinary polyphony
+/// under the ceiling, so the limiter sits at unity gain — transparent, aside
+/// from its fixed lookahead latency — until a genuinely hot mix reaches full
+/// scale.
 pub fn poly_sine_spec(voices: u8) -> StudioGraphSpec {
     let mut spec = StudioGraphSpec::new();
     let synth = spec.add_node(ProcessorSpec::PolySine { voices });

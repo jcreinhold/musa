@@ -6,6 +6,8 @@
 // the test itself, and panicking is the correct behavior there.
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
+// Test buffers are sized to the slices they hand the renderer.
+#![allow(clippy::indexing_slicing)]
 // Sample arithmetic in tests is small and total.
 #![allow(clippy::arithmetic_side_effects)]
 
@@ -75,6 +77,46 @@ fn allocator_reuses_fully_released_voices() {
     assert_eq!(allocator.sounding(), 0);
     allocator.note_on(VoiceInstanceId(1), 440.0, 1.0, 0.0);
     assert_eq!(allocator.gated(), 1, "released voice is reusable");
+}
+
+// --- Headroom -----------------------------------------------------------------
+
+/// The pool sum is scaled by `1/√voices`: one voice in a 16-voice pool peaks
+/// at 0.25, not at full scale. Without that, sixteen full-scale sines sum to
+/// 24 dB over 0 dBFS and the master limiter becomes the mix bus.
+#[test]
+fn the_pool_sum_carries_fixed_headroom() {
+    let mut allocator = VoiceAllocator::new(16, RATE);
+    allocator.note_on(VoiceInstanceId(0), 440.0, 1.0, 0.0);
+    let mut buffer = vec![0.0f32; RATE as usize / 2];
+    let count = buffer.len();
+    allocator.render(&mut buffer, count, f64::from(RATE));
+    let peak = buffer.iter().fold(0.0f32, |worst, sample| worst.max(sample.abs()));
+    assert!((peak - 0.25).abs() < 0.01, "one voice peaks at 1/√16, got {peak}");
+}
+
+/// A full pool of spread-phase voices stays near full scale: 12 dB under the
+/// raw `voices`-times-full-scale the sum used to reach, and never quieter
+/// than a single voice. Note-ons are staggered the way real polyphony is;
+/// sample-aligned onsets are phase-coherent by construction (`note_on`
+/// resets phase), peak at exactly `voices·scale = 4.0`, and are the
+/// transient the master's lookahead limiter exists to absorb.
+#[test]
+fn a_full_pool_stays_near_full_scale() {
+    let mut allocator = VoiceAllocator::new(16, RATE);
+    let mut buffer = vec![0.0f32; RATE as usize];
+    for i in 0..16u32 {
+        allocator.note_on(VoiceInstanceId(i), 37.0f32.mul_add(i as f32, 200.0), 1.0, 0.0);
+        let start = i as usize * 100;
+        allocator.render(&mut buffer[start..start + 100], 100, f64::from(RATE));
+    }
+    allocator.render(&mut buffer[1600..], RATE as usize - 1600, f64::from(RATE));
+    let peak = buffer.iter().fold(0.0f32, |worst, sample| worst.max(sample.abs()));
+    assert!(
+        peak < 2.0,
+        "sixteen voices without headroom peaked near 16.0, got {peak}"
+    );
+    assert!(peak > 0.25, "a full pool is not quieter than one voice: {peak}");
 }
 
 // --- Synthesis ------------------------------------------------------------------
