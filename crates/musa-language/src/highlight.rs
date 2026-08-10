@@ -423,3 +423,69 @@ impl TokenClass {
         Some(class)
     }
 }
+
+/// The keywords a module name may borrow: `harmony`, `list`, `option`,
+/// `pitch`, `scale` — the parser's `MODULE_NAME` minus `Identifier`.
+///
+/// The lexer writes the keyword token wherever the word appears, and the
+/// path position is what makes the word a name. So the class is decided
+/// twice: once by kind (above, in [`TokenClass::of`]) and once by where the
+/// token stands (below, in [`classify`]). The list is public so that every
+/// highlighter the project ships — the LSP's semantic tokens, the desktop
+/// editor's generated tables, the VS Code grammar's generator — works from
+/// the one vocabulary instead of carrying its own copy.
+pub const MODULE_NAME_KEYWORDS: &[SyntaxKind] = &[
+    SyntaxKind::HarmonyKw,
+    SyntaxKind::ListKw,
+    SyntaxKind::OptionKw,
+    SyntaxKind::PitchKw,
+    SyntaxKind::ScaleKw,
+];
+
+/// Every token of the source with its class, *where it stands* accounted
+/// for.
+///
+/// [`TokenClass::of`] answers by kind alone, which is right for everything
+/// but the module-name positions: in `import std::harmony;` the word
+/// `harmony` is a name the composer is reaching for, and in `mod list;` the
+/// word `list` names a child of the package — the parser's `MODULE_NAME`
+/// says so, and an editor that colors them as keywords is telling a lie the
+/// language never told. So this walks the (total, error-tolerant) parse,
+/// collects the tokens those statements read as names, and reclassifies
+/// them `Keyword → Name`. Everything else is exactly `TokenClass::of`.
+///
+/// The pair with the token keeps the answer honest on half-typed source:
+/// the lexer is total and the parse recovers, so this is total too — the
+/// LSP's semantic tokens depend on that.
+pub fn classify(source: &str) -> Vec<(crate::Token, Option<TokenClass>)> {
+    let parsed = crate::parse(source);
+    let root = parsed.syntax();
+    let mut names = std::collections::HashSet::new();
+    for node in root.descendants() {
+        if !matches!(node.kind(), SyntaxKind::ImportStmt | SyntaxKind::ModDecl) {
+            continue;
+        }
+        for element in node.children_with_tokens() {
+            let Some(token) = element.into_token() else {
+                continue;
+            };
+            if MODULE_NAME_KEYWORDS.contains(&token.kind()) {
+                names.insert(token.text_range());
+            }
+        }
+    }
+    crate::lex(source)
+        .tokens()
+        .iter()
+        .map(|&token| {
+            let class = TokenClass::of(token.kind).map(|class| {
+                if class == TokenClass::Keyword && names.contains(&token.range) {
+                    TokenClass::Name
+                } else {
+                    class
+                }
+            });
+            (token, class)
+        })
+        .collect()
+}

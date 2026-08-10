@@ -78,3 +78,90 @@ fn every_token_kind_has_a_class() {
     // Node kinds are not tokens and must say so.
     assert_eq!(TokenClass::of(SyntaxKind::VoiceDecl), None);
 }
+
+/// The class of a module-name word is decided where the word stands.
+///
+/// `MODULE_NAME` (parser.rs) lets a module be named after a type or a domain
+/// keyword, so `harmony` in `import std::harmony;` is a name and `harmony`
+/// opening a harmony lane is a keyword — the same spelling, two classes,
+/// distinguished by position. These laws pin the distinction in both
+/// directions for every keyword the module namespace may borrow.
+#[test]
+fn module_names_are_names_not_keywords() {
+    let cases: &[(&str, &str)] = &[
+        ("import std::harmony;", "harmony"),
+        ("import std::list;", "list"),
+        ("import std::option;", "option"),
+        ("import std::pitch;", "pitch"),
+        ("import std::scale;", "scale"),
+        ("import std::tonal::harmony;", "harmony"),
+        ("mod harmony;", "harmony"),
+        ("mod list;", "list"),
+        ("mod option;", "option"),
+        ("mod pitch;", "pitch"),
+        ("mod scale;", "scale"),
+    ];
+    for &(source, word) in cases {
+        let classified = musa_language::classify(source);
+        let hits: Vec<_> = classified
+            .iter()
+            .filter(|(token, _)| &source[usize::from(token.range.start())..usize::from(token.range.end())] == word)
+            .collect();
+        let Some(first) = hits.first() else {
+            panic!("`{source}`: `{word}` is not one token");
+        };
+        assert_eq!(hits.len(), 1, "`{source}`: `{word}` is not one token");
+        assert_eq!(
+            first.1,
+            Some(TokenClass::Name),
+            "`{source}`: `{word}` is a module name here, not a keyword"
+        );
+    }
+}
+
+/// The same words in keyword positions keep the keyword class — the
+/// reclassification may not leak out of module-name positions.
+#[test]
+fn the_borrowed_words_stay_keywords_in_keyword_positions() {
+    let cases: &[(&str, &str)] = &[
+        ("piece \"P\" { harmony { at 1:1 C; } }", "harmony"),
+        ("piece \"P\" { let xs: list[pitch] = []; }", "list"),
+        ("piece \"P\" { let x: option[pitch] = none; }", "option"),
+        ("piece \"P\" { let p: pitch = c4; }", "pitch"),
+        ("piece \"P\" { let s: scale = scale c dorian; }", "scale"),
+    ];
+    for &(source, word) in cases {
+        let classified = musa_language::classify(source);
+        let hits: Vec<_> = classified
+            .iter()
+            .filter(|(token, _)| &source[usize::from(token.range.start())..usize::from(token.range.end())] == word)
+            .collect();
+        assert!(!hits.is_empty(), "`{source}`: `{word}` never lexed");
+        for (_, class) in &hits {
+            assert_eq!(
+                *class,
+                Some(TokenClass::Keyword),
+                "`{source}`: `{word}` is a keyword here"
+            );
+        }
+    }
+}
+
+/// A half-typed import still classifies: the LSP answers on broken source,
+/// so `classify` must be total where the parse recovers.
+#[test]
+fn classify_is_total_on_recovering_source() {
+    let source = "import std::harmony\nmod";
+    let classified = musa_language::classify(source);
+    // Every produced token has a verdict — totality means no gaps, and the
+    // recovered import path still reads as a name.
+    assert!(classified.iter().all(|(_, class)| class.is_some()));
+    let harmony = classified
+        .iter()
+        .find(|(token, _)| &source[usize::from(token.range.start())..usize::from(token.range.end())] == "harmony");
+    assert_eq!(
+        harmony.map(|(_, class)| *class),
+        Some(Some(TokenClass::Name)),
+        "a recovered import path still classifies its module names"
+    );
+}

@@ -56,7 +56,6 @@
   "master"
   "at"
   "output"
-  "pitch"
   "stretch"
   "retrograde"
   "invert"
@@ -65,7 +64,6 @@
   "note"
   "phrase"
   "section"
-  "harmony"
   "crescendo"
   "diminuendo"
   "to"
@@ -79,8 +77,6 @@
   "fn"
   "music"
   "import"
-  "option"
-  "list"
   "match"
   "some"
   "none"
@@ -92,6 +88,43 @@
 ; `import` is a structural keyword and belongs with the list above: it brings
 ; in names, not material.
 "use" @keyword.import
+
+; --- Keywords whose class depends on where they stand -----------------------
+;
+; `harmony`, `option`, `list`, `pitch`, `scale` are also module names —
+; `parser.rs`'s MODULE_NAME lets a module be named after a type or a domain
+; (`import std::harmony;`, `mod list;`). They are captured by parent here,
+; never by bare text: a flat list cannot tell `harmony { ... }` from
+; `std::harmony`, and guessing from text is exactly the bug this section
+; exists to prevent.
+
+(harmony_declaration "harmony" @keyword)
+(option_type "option" @keyword)
+(list_type "list" @keyword)
+(type_name "pitch" @keyword)
+(type_name "scale" @keyword)
+(scale_expression "scale" @keyword)
+(in_scale_statement "scale" @keyword)
+
+; --- Modules: the name positions --------------------------------------------
+;
+; Every segment of an import path, a `mod` child's name, and an import's
+; alias name a module. `_module_name` is hidden, so the borrowed keyword
+; tokens are direct children of the statement — these patterns are exact.
+
+(import_statement (identifier) @module)
+(import_statement "harmony" @module)
+(import_statement "option" @module)
+(import_statement "list" @module)
+(import_statement "pitch" @module)
+(import_statement "scale" @module)
+
+(mod_declaration (identifier) @module)
+(mod_declaration "harmony" @module)
+(mod_declaration "option" @module)
+(mod_declaration "list" @module)
+(mod_declaration "pitch" @module)
+(mod_declaration "scale" @module)
 
 ; --- The music itself ------------------------------------------------------
 

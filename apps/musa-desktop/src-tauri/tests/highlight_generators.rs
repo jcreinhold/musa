@@ -6,6 +6,11 @@
 //!
 //! - `token-classes.json`, every class [`TokenClass`] can produce, which the
 //!   editor's style table must cover;
+//! - `spellings.json`, every word and mark with its class, so no editor
+//!   carries its own keyword list;
+//! - `module-names.json`, the keywords a module name may borrow
+//!   ([`MODULE_NAME_KEYWORDS`]), so an editor that scopes import paths can
+//!   tell `std::harmony` from `harmony { ... }` without owning the list;
 //! - `fixtures/lexed/<example>.json`, every token of every example as the
 //!   real lexer read it, which the editor's own tokenizer is tested against.
 //!
@@ -13,7 +18,7 @@
 
 use std::path::{Path, PathBuf};
 
-use musa_language::{SPELLINGS, SyntaxKind, TokenClass, keyword_doc, lex};
+use musa_language::{MODULE_NAME_KEYWORDS, SPELLINGS, SyntaxKind, TokenClass, keyword_doc, lex};
 
 type Result = std::result::Result<(), Box<dyn std::error::Error>>;
 
@@ -91,6 +96,26 @@ fn spellings_are_current() -> Result {
     let mut json = serde_json::to_string_pretty(&table)?;
     json.push('\n');
     generated(&ui("src/lib/session/generated/spellings.json"), &json)
+}
+
+/// The keywords a module name may borrow, spelled out, so an editor that
+/// scopes import paths (`import std::harmony;`, `mod list;`) paints those
+/// words as names without carrying its own copy of the list.
+#[test]
+fn module_names_are_current() -> Result {
+    let mut table: Vec<&str> = Vec::new();
+    for kind in MODULE_NAME_KEYWORDS {
+        let Some(spelling) = SPELLINGS
+            .iter()
+            .find_map(|&(text, spelled)| (spelled == *kind).then_some(text))
+        else {
+            return Err(format!("{kind:?} has no spelling in SPELLINGS").into());
+        };
+        table.push(spelling);
+    }
+    let mut json = serde_json::to_string_pretty(&table)?;
+    json.push('\n');
+    generated(&ui("src/lib/session/generated/module-names.json"), &json)
 }
 
 /// Every keyword's own documentation (prompt 84), so the source editor's

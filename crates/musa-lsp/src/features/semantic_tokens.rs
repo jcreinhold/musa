@@ -1,14 +1,17 @@
-//! Semantic tokens: the lexer's own classification, delta-encoded.
+//! Semantic tokens: the language's own classification, delta-encoded.
 //!
 //! Highlighting must answer on half-typed source, which the session's facts
-//! cannot describe — so this handler reads the token stream, which is total
-//! (an unrecognized span is still a token), never the facts. The classes are
+//! cannot describe — so this handler reads `musa-language`'s [`classify`],
+//! which is total (the lexer is total and the parse recovers, so an
+//! unrecognized span is still a token), never the facts. `classify` also
+//! knows *where* a token stands: `harmony` in `import std::harmony;` is a
+//! module name, and only a parse-informed pass can say so. The classes are
 //! `musa-language`'s [`TokenClass`]: adding a token kind without classifying
 //! it does not compile there, so this legend cannot learn a word the lexer
 //! does not know.
 
 use lsp_types::{SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensResult};
-use musa_language::{SyntaxKind, TokenClass, lex};
+use musa_language::{SyntaxKind, TokenClass, classify};
 use musa_project::Span;
 
 use crate::workspace::Document;
@@ -62,11 +65,11 @@ pub(crate) fn full(document: &Document) -> SemanticTokensResult {
     let mut data = Vec::new();
     let mut previous_line = 0_u32;
     let mut previous_start = 0_u32;
-    for token in lex(source).tokens() {
+    for (token, class) in classify(source) {
         if token.kind == SyntaxKind::Whitespace {
             continue;
         }
-        let Some(token_type) = TokenClass::of(token.kind).and_then(type_index) else {
+        let Some(token_type) = class.and_then(type_index) else {
             continue;
         };
         let span = Span {

@@ -280,6 +280,14 @@ design:
 - **Node names mirror `syntax_kind.rs`, snake_cased** — query files (`highlights.scm`, `outline.scm`, `indents.scm`,
     `folds.scm`, `locals.scm`, `tags.scm`) should read in the language's own vocabulary. `outline.scm` also feeds
     zed-musa's outline panel; keep its captures in Zed's taxonomy.
+- **Capture keywords by parent node, never by bare text.** Any keyword that can appear in a name position — the
+    members of `parser.rs`'s `MODULE_NAME` (`harmony`, `list`, `option`, `pitch`, `scale`), or the statement keywords
+    `name_expression` borrows — must never sit in a flat `[ ... ] @keyword` list: the list fires on token text and
+    paints `std::harmony` as a keyword. Scope the keyword positions (`(harmony_declaration "harmony" @keyword)`) and
+    capture the name positions positively (`(import_statement "harmony" @module)`). The authoritative contextual
+    classification is `musa_language::classify` (highlight.rs); the VS Code TextMate grammar gets the same words from
+    the generated `module-names.json` fixture. Never `alias` a keyword token to `identifier` to fix this — the drift
+    law compares leaf names with the real lexer and will fail.
 - **After grammar changes:** `npm test` (generate + corpus + drift law), commit all three generated files, then update
     zed-musa's `extension.toml` rev to the new commit SHA (see the zed-extension skill).
 
