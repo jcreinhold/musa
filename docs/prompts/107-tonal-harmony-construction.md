@@ -1,7 +1,7 @@
 ---
 id: 107
 slug: tonal-harmony-construction
-status: pending
+status: in-progress
 depends_on: [99, 101, 102]
 phase: 3
 ---
@@ -31,6 +31,18 @@ applies explicit alterations. Secondary dominants/leading-tone chords carry thei
 borrowed parallel collection. Neapolitan and augmented-sixth constructors name their altered degrees and context;
 dominant extensions/alterations name which members are present rather than assuming a universal jazz/classical set.
 
+Writing those constructors needs one operation the scale domain does not have yet: the pitch class a scale degree
+names, without a register. A Roman numeral is register-free by definition, and the members it stacks are spelled from
+the collection rather than from a fixed interval pattern — `vii°` in C major is `b–d–f` because those are the seventh,
+second, and fourth degrees, not because a diminished triad was transposed there. Today every route from a degree to a
+sounding name goes through a `frame`, which is built by `pitch_frame(scale, pitch)` and so demands an absolute tonic
+pitch; and no primitive turns a `pitchclass` back into a `pitch`, so a library function could only supply that pitch as
+a hardcoded octave literal. That literal would be wrong for a scale rooted on `eb` and would be exactly the implicit
+register the Stop list forbids. `scale_class(scale, ordinal) -> option[pitchclass]` therefore joins the scale
+primitives beside `scale_pitch`: the same ordered-offset table answering the register-free question, absent when the
+ordinal is outside the collection's period. It reads private scale state, which is why it is a primitive and not
+`.musa`.
+
 Every constructor cites the OMT chapter/table it implements and has a formula test over several keys, including minor.
 Where OMT presents stylistic tendencies or multiple spellings rather than a definition, expose a named policy or return
 several candidates—never bake one interpretation into `chord_class`. Tonicization is a local harmonic relationship;
@@ -38,8 +50,11 @@ modulation remains a claim about a passage and belongs to analysis.
 
 ## Target
 
+- The register-free degree lookup `scale_class`, checked and evaluated beside `scale_pitch`, and read by `std::scale`.
 - `stdlib/tonal-harmony.musa` and source docs for typed Roman values and constructors.
 - Small core refinements only where invalid states cannot be represented in source; no public Rust theory surface.
+  A `roman` is such a case: a bare product of degree, quality, and inversion is constructible with a degree of nine or
+  an inversion of five, so the checked constructor and its `option` are what make the invalid states unsayable.
 - `examples/tonal-construction.musa`: major/minor diatonic harmonies, secondary dominant, mixture, Neapolitan,
   augmented sixth, and altered dominant, each voiced by an explicit policy.
 - `crates/musa-compiler/tests/tonal_harmony_construction_laws.rs`: OMT formula tables across keys, inversion spelling,
