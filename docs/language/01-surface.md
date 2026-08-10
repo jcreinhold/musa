@@ -207,7 +207,7 @@ template piece study(k: key, s: scale, subject: music) "Study" {
     }
 }
 
-make study(g major, scale g mixolydian, theme()) as study_in_g;
+make study(key g major, scale g mixolydian, theme()) as study_in_g;
 
 template voice answer(subject: music, transform: music -> music) {
     use transform(subject);
