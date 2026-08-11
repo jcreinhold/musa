@@ -67,6 +67,11 @@ const NEUTRAL_VELOCITY: u8 = 80;
 /// [`RenderError::Unsupported`] when a written pitch falls outside MIDI's
 /// 0–127 range, which no other backend cares about.
 pub fn render_midi(performance: &PerformancePlan, options: &MidiOptions) -> Result<Vec<u8>, RenderError> {
+    // One track per lane plus the tempo track, and the lane count is the
+    // channel-assignment story: past fifteen lanes, parts start sharing a
+    // channel, and that is invisible in the file.
+    let span = tracing::info_span!("render_midi", lanes = performance.lanes().len());
+    let _entered = span.enter();
     let ticks = Ticks::new(performance, options.ticks_per_quarter);
     let mut smf = Smf::new(Header::new(
         Format::Parallel,
@@ -83,6 +88,11 @@ pub fn render_midi(performance: &PerformancePlan, options: &MidiOptions) -> Resu
     let mut bytes = Vec::new();
     smf.write(&mut bytes)
         .map_err(|error| RenderError::Xml(error.to_string()))?;
+    tracing::debug!(
+        bytes = bytes.len(),
+        tracks = smf.tracks.len(),
+        "wrote a standard MIDI file"
+    );
     Ok(bytes)
 }
 

@@ -166,6 +166,8 @@ pub fn render_notation(
     target: NotationTarget,
     options: &NotationOptions,
 ) -> Result<RenderedNotation, RenderError> {
+    let span = tracing::info_span!("render_notation", target = ?target);
+    let _entered = span.enter();
     let plan = plan_notation(score, options)?;
     let text = match target {
         NotationTarget::Mei => crate::mei::render_mei(&plan)?,
@@ -173,5 +175,9 @@ pub fn render_notation(
         NotationTarget::MusicXml => crate::musicxml::render_musicxml(&plan)?,
     };
     let warnings = losses(&plan, target);
+    // A backend that cannot say something the plan holds drops it silently
+    // into `warnings`, which a caller may or may not print. The count is the
+    // one number that says a rendering was lossy at all.
+    tracing::debug!(bytes = text.len(), warnings = warnings.len(), "rendered");
     Ok(RenderedNotation { target, text, warnings })
 }

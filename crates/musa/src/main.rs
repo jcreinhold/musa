@@ -10,13 +10,19 @@ mod ignore;
 use std::process::ExitCode;
 
 use musa_project::{
-    AnalysisKind, AnalysisRequest, AnalysisScope, ExportArtifact, ExportRequest, MidiMode, MusicalTime, ProjectCommand,
-    ProjectSession, Realization, TransportRequest,
+    AnalysisKind, AnalysisRequest, AnalysisScope, ExportArtifact, ExportRequest, Logging, MidiMode, MusicalTime,
+    ProjectCommand, ProjectSession, Realization, TransportRequest,
 };
 
 fn main() -> ExitCode {
     install_renderer();
     let args: Vec<String> = std::env::args().skip(1).collect();
+    let args = install_logging(args);
+    // One span for the whole invocation, named by the subcommand, so every
+    // compile, render, and device negotiation below it is filed under the
+    // thing that was typed.
+    let span = tracing::info_span!("musa", command = args.first().map(String::as_str).unwrap_or("<none>"));
+    let _entered = span.enter();
     match args.first().map(String::as_str) {
         Some("format") => cmd_format(args.get(1..).unwrap_or_default()),
         Some("check") => with_seed(args.get(1..).unwrap_or_default(), cmd_check),
@@ -93,6 +99,52 @@ fn print_usage() {
     println!("      --segmentation attacks | beats | harmony-lane    what sounds together");
     println!("      --key \"<tonic> <mode>\"               read it in the key you hear");
     println!("  --seed <n>  on check, render and kernel: which performance to compile");
+    println!();
+    println!("Everywhere:");
+    println!("  -v, -vv, -vvv   say more about what musa is doing, on stderr");
+    println!("  -q              say only what failed");
+    println!("  MUSA_LOG        a filter, in place of the dial: `MUSA_LOG=musa_compiler=debug`");
+}
+
+/// Turn musa's logs on, and leave the subcommand its own arguments.
+///
+/// The verbosity flags are taken out before dispatch, exactly as `--seed` is
+/// and for the same reason: every subcommand accepts them, and none of them
+/// should have to know that. They are read from the whole command line rather
+/// than from a fixed position, so `musa -v check x.musa` and `musa check
+/// x.musa -v` both work — a person reaching for more detail reaches for it
+/// wherever the cursor is.
+///
+/// Logs go to stderr. `musa render -o -` and `musa kernel` write to stdout,
+/// so a log line on that stream would corrupt a score.
+fn install_logging(args: Vec<String>) -> Vec<String> {
+    let mut verbosity: u8 = 0;
+    let mut quiet = false;
+    let mut rest = Vec::with_capacity(args.len());
+    for arg in args {
+        match arg.as_str() {
+            "-q" | "--quiet" => quiet = true,
+            "--verbose" => verbosity = verbosity.saturating_add(1),
+            // `-vvv` is three of the same flag written once, which is the
+            // convention everywhere else and is what a person types.
+            other if repeated_v(other) > 0 => verbosity = verbosity.saturating_add(repeated_v(other)),
+            _ => rest.push(arg),
+        }
+    }
+    let _installed = Logging::new().verbosity(verbosity).quiet(quiet).install();
+    rest
+}
+
+/// How many `v`s `arg` is, as in `-vv`; zero if it is anything else.
+///
+/// A separate question from "is this a flag" because `-v` and `--seed` and a
+/// file called `-vx` all start with a dash, and only the first is a dial.
+fn repeated_v(arg: &str) -> u8 {
+    let Some(letters) = arg.strip_prefix('-') else { return 0 };
+    if letters.is_empty() || !letters.bytes().all(|byte| byte == b'v') {
+        return 0;
+    }
+    u8::try_from(letters.len()).unwrap_or(u8::MAX)
 }
 
 /// Run a subcommand that compiles, with `--seed` already read.

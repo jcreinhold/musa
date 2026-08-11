@@ -2018,6 +2018,7 @@ slotmap
 indexmap
 serde
 thiserror
+tracing
 ```
 
 `slotmap` is suitable for efficient transient arena keys and secondary maps, but those keys should not be serialized as
@@ -2054,6 +2055,7 @@ quick-xml
 midly
 serde
 thiserror
+tracing
 ```
 
 Public interface:
@@ -2101,6 +2103,7 @@ fundsp
 hound
 rtrb
 thiserror
+tracing
 ```
 
 The public API must expose the project’s own graph and processor concepts—not FunDSP’s generic types.
@@ -2175,7 +2178,13 @@ serde
 serde_json
 toml
 tracing
+tracing-subscriber
 ```
+
+`tracing-subscriber` is here, in a library, because the *policy* for what musa says about itself is one decision and the
+shells are thin. `musa-project` builds the filter — `MUSA_LOG`, or a level chosen by a verbosity dial — and each `main`
+calls `Logging::install` to make it the process's. A library that installed a subscriber on its own would decide for an
+embedder that never asked; a library that only knows *how* leaves that call where it belongs.
 
 Public interface:
 
@@ -2217,6 +2226,10 @@ musa play piece.musa
 ```
 
 The CLI must call `musa-project` or other public facades. It should not recreate compiler orchestration.
+
+It is also where musa's logs are turned on. `musa -v check …` raises the level for this invocation; `MUSA_LOG` — the
+same syntax as `RUST_LOG`, but naming only this program — replaces the filter outright. Both write to stderr, always,
+because `musa render -o -` and `musa kernel` write their payloads to stdout and a log line there is a corrupted file.
 
 The package is named `musa`, not `musa-cli`, because the package name is the binary name and the binary name is the word
 a person types. `cargo install musa` then `musa check piece.musa` — one word throughout. It is the one crate in the
@@ -2266,6 +2279,7 @@ musa-language
 lsp-server
 lsp-types
 serde_json
+tracing
 ```
 
 (`serde_json` is how the protocol's values are spoken — capabilities, params, and results are `Value`s at the
@@ -2283,6 +2297,10 @@ stream. `Connection::memory()` drives the whole server in-process in tests.
 
 The server never opens the audio device, never writes to disk, and never edits the source itself; every edit it proposes
 travels as a workspace edit for the client to apply.
+
+It installs the same subscriber the CLI does, on stderr, because a language server is launched by an editor and cannot
+be run under a debugger — a span per request, carrying the method and the document, is the only account of what it did.
+Its stdout is the JSON-RPC transport and carries nothing else.
 
 
 ---

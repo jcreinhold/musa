@@ -66,6 +66,11 @@ const INVALID_PARAMS: i32 = -32602;
 /// Returns the process's exit code rather than exiting, so the decision to
 /// end the process stays with the process.
 pub fn serve() -> ExitCode {
+    // An editor launches this binary; nobody attaches a debugger to it, and
+    // its stdout is the transport. A span per request on stderr is the only
+    // account of what the server did, and `MUSA_LOG` is how a person asks for
+    // one (roadmap §15.11).
+    let _installed = musa_project::Logging::new().install();
     let (connection, io_threads) = Connection::stdio();
     let outcome = run(&connection);
     // Drop the connection — and with it every sender — before joining: the
@@ -242,6 +247,13 @@ fn send(connection: &Connection, message: Message) -> Result<(), ServerError> {
 fn dispatch(workspace: &Workspace, request: Request) -> Response {
     let id = request.id.clone();
     let method = request.method.clone();
+    // The method and the request id, which is what a client's own log records
+    // too — so a slow completion in an editor can be matched to the request
+    // that served it. The document is not a field here: it lives inside the
+    // params, differently shaped per method, and digging it out would be work
+    // done for the log.
+    let span = tracing::debug_span!("request", method = %method, id = %id);
+    let _entered = span.enter();
     match method.as_str() {
         HoverRequest::METHOD => answer::<HoverRequest>(request, |params| {
             let at = params.text_document_position_params;
@@ -436,6 +448,8 @@ fn on_notification(
     workspace: &mut Workspace,
     notification: lsp_server::Notification,
 ) -> Result<Flow, ServerError> {
+    let span = tracing::debug_span!("notification", method = %notification.method);
+    let _entered = span.enter();
     match notification.method.as_str() {
         DidOpenTextDocument::METHOD => {
             let Some(params) = params::<DidOpenTextDocument>(notification) else {

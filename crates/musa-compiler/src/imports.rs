@@ -380,6 +380,15 @@ pub(crate) fn load(
         }
         loader.load_one(resolver, importer, &written, span, import.alias());
     }
+    // "Cannot find `x`" is nearly always a question about which files were
+    // read, and the closure is transitive, so the written paths a reader can
+    // see are not the whole answer. `order` is already built.
+    tracing::debug!(
+        phase = "imports",
+        written = imports.len(),
+        loaded = loader.libraries.order.len(),
+        "loaded the import closure"
+    );
     loader.libraries
 }
 
@@ -451,6 +460,10 @@ impl Loader<'_> {
             );
             return;
         }
+        // Import resolution turns a written path into a real one against the
+        // importing file, and that mapping is the whole of what a reader
+        // cannot see from the source.
+        tracing::trace!(written, importer, resolved = %path, "resolved an import");
         self.loaded.insert(path.clone());
         // Depth first: a library's own imports are registered before it, so
         // whatever it builds on already exists by the time it is read.

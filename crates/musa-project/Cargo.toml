@@ -28,6 +28,10 @@ text-size = "1"
 thiserror = "2"
 toml = "1"
 tracing = "0.1"
+# The policy for what musa says about itself is one decision; the shells that
+# install it are thin (roadmap §15.7). `env-filter` is the `MUSA_LOG` syntax;
+# `fmt` is the stderr writer. No other feature is wanted.
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "std"] }
 
 [dev-dependencies]
 tempfile = "3"

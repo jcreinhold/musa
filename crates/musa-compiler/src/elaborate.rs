@@ -481,6 +481,10 @@ impl musa_kernel::Canonical for ScoreFact {
 /// a `ScoreSnapshot` (docs/kernel/06).
 pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions) -> Compilation {
     let document = musa_language::parse(source.text());
+    // Parsing is the one phase with its own timing question — a large file
+    // that is slow to *parse* and a large file that is slow to *elaborate*
+    // are different bugs — and the boundary between them is this line.
+    tracing::debug!(phase = "parse", "parsed");
     let mut resolver = Resolver::new();
     elaborate_parsed(&document, source.name(), options, &mut resolver)
 }
@@ -516,6 +520,11 @@ pub(crate) fn elaborate_parsed(
         .iter()
         .any(|d| d.severity == crate::diagnose::Severity::Error)
     {
+        tracing::debug!(
+            phase = "syntax",
+            errors = resolver.diagnostics.len(),
+            "stopped at syntax"
+        );
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     }
     let root = document.syntax();
@@ -577,8 +586,14 @@ pub(crate) fn elaborate_parsed(
     }
     bindings.extend(sites.values().flat_map(crate::template::Instance::holders));
     let Some(core) = crate::core::check_piece(resolver, &libraries, &root, &piece, bindings) else {
+        tracing::debug!(
+            phase = "check",
+            diagnostics = resolver.diagnostics.len(),
+            "stopped at the core"
+        );
         return Compilation::new(None, std::mem::take(&mut resolver.diagnostics));
     };
+    tracing::debug!(phase = "check", diagnostics = resolver.diagnostics.len(), "checked");
     let expansion = Expansion {
         root: root.clone(),
         libraries: Some(&libraries),
@@ -590,6 +605,9 @@ pub(crate) fn elaborate_parsed(
     let identity = piece.score().map_or_else(musa_kernel::SemanticHash::default, |score| {
         elaborate_score(resolver, &piece, &score, &mut snapshot, &core, &expansion)
     });
+    // The identity hash is the one fact that says *which* piece was produced,
+    // and it is what two runs that should agree are compared on.
+    tracing::debug!(phase = "elaborate", %identity, "elaborated");
     snapshot.set_annotations(std::mem::take(&mut resolver.annotations));
     // Advice about a piece that does not compile is advice about a piece that
     // does not exist. A bar reported as a quarter too long already makes every

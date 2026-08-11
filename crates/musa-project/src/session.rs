@@ -142,6 +142,8 @@ impl ProjectSession {
     /// [`ProjectError::Io`] if the file cannot be read as UTF-8.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, ProjectError> {
         let path = path.as_ref();
+        let span = tracing::info_span!("open", path = %path.display());
+        let _entered = span.enter();
         let source = std::fs::read_to_string(path).map_err(|error| ProjectError::io(path.display(), error))?;
         let mut session = Self::from_source(source.clone(), path.to_string_lossy().into_owned());
         session.path = Some(path.to_path_buf());
@@ -157,6 +159,15 @@ impl ProjectSession {
             first.realization = session.realization.clone();
         }
         session.recompile();
+        // A project file changes where imports resolve from and a recovery
+        // copy changes what the composer is looking at, and neither is
+        // visible from the path that was asked for.
+        tracing::debug!(
+            bytes = session.source.len(),
+            project = session.project.is_some(),
+            recovery = session.recovery.is_some(),
+            "opened"
+        );
         Ok(session)
     }
 
@@ -240,6 +251,20 @@ impl ProjectSession {
     /// [`ProjectError::Engine`] / [`ProjectError::Performance`] when a
     /// transport request cannot be honoured.
     pub fn apply(&mut self, command: ProjectCommand) -> Result<ProjectUpdate, ProjectError> {
+        // One span per command, so every compile, engrave, and plan rebuild
+        // the command sets off is filed under the thing the user did.
+        let span = tracing::info_span!("apply", command = command.name(), from = self.revision.0);
+        let _entered = span.enter();
+        let result = self.dispatch(command);
+        match &result {
+            Ok(update) => tracing::debug!(to = update.revision.0, validity = ?update.validity, "applied"),
+            Err(error) => tracing::debug!(%error, "refused"),
+        }
+        result
+    }
+
+    /// [`Self::apply`] without the span, so the span is entered exactly once.
+    fn dispatch(&mut self, command: ProjectCommand) -> Result<ProjectUpdate, ProjectError> {
         match command {
             ProjectCommand::SetSource(text) => Ok(self.set_source(text)),
             ProjectCommand::EditScore(edit) => self.edit_score(&edit),
@@ -405,6 +430,11 @@ impl ProjectSession {
     /// [`ProjectError::Notation`] / [`ProjectError::Performance`] if the
     /// backend fails.
     pub fn export(&self, request: ExportRequest) -> Result<ExportArtifact, ProjectError> {
+        // The export is of the last score that *compiled*, which may be older
+        // than the source on screen. Which revision it came from is the
+        // difference between a stale artifact and a mystery.
+        let span = tracing::info_span!("export", request = ?request, revision = self.revision.0);
+        let _entered = span.enter();
         let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
         let score = &valid.score;
         match request {
@@ -455,9 +485,15 @@ impl ProjectSession {
     /// [`ProjectError::Analysis`] when the request names a part or voice this
     /// score does not have, or a window with no music in it.
     pub fn analyze(&self, request: &musa_compiler::AnalysisRequest) -> Result<crate::AnalysisFacts, ProjectError> {
+        let span = tracing::info_span!("analyze");
+        let _entered = span.enter();
         let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
         let report =
             musa_compiler::analyze(&valid.score, request).map_err(|error| ProjectError::Analysis(error.to_string()))?;
+        // The kind is read off the report rather than the request: the report
+        // already answers it, and adding an accessor to `AnalysisRequest` for
+        // a log line would be a public item with one caller.
+        tracing::debug!(kind = ?report.kind(), findings = report.findings().len(), "analyzed");
         Ok(crate::AnalysisFacts::derive(&report, &valid.score, &valid.source))
     }
 
@@ -648,6 +684,10 @@ impl ProjectSession {
         if realization == self.realization {
             return ProjectUpdate::unchanged(self.revision, self.validity());
         }
+        // Which performance is on screen. A piece that leaves something open
+        // compiles to different music under different seeds, and every later
+        // "why does this sound different" question starts here.
+        tracing::debug!(seed = realization.seed(), "realizing");
         // A new performance after an undo abandons the redo branch, as every
         // other state change does.
         self.history.truncate(self.cursor.saturating_add(1));

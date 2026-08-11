@@ -135,6 +135,31 @@ pub enum ProjectCommand {
     Transport(TransportRequest),
 }
 
+impl ProjectCommand {
+    /// The command's own name, for a log line.
+    ///
+    /// Not `Debug`: `SetSource` carries a whole document, and a span field
+    /// that printed one would put a piece of music into every log line that
+    /// mentions an edit. A discriminant is what a reader of that log wants
+    /// and is the only part that is free to read.
+    pub(crate) fn name(&self) -> &'static str {
+        match self {
+            Self::EditScore(_) => "edit-score",
+            Self::EditStudio(_) => "edit-studio",
+            Self::SetSource(_) => "set-source",
+            Self::ApplyEdits(_) => "apply-edits",
+            Self::Format => "format",
+            Self::Save => "save",
+            Self::RestoreRecovery => "restore-recovery",
+            Self::DiscardRecovery => "discard-recovery",
+            Self::NewPerformance { .. } => "new-performance",
+            Self::Pin(_) => "pin",
+            Self::Unpin(_) => "unpin",
+            Self::Transport(_) => "transport",
+        }
+    }
+}
+
 /// Transport requests, in the session's own vocabulary. The engine's own
 /// command type never leaves `musa-engine`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

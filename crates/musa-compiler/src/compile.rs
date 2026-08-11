@@ -243,10 +243,27 @@ impl Compilation {
 /// and every backend after it are shared. Which alternative a text is, is a
 /// question about its first line and is asked by `musa-language`.
 pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation {
-    match musa_language::alternative(source.text()) {
+    // One span for the whole compilation, named by the document. Everything
+    // the pipeline says about a piece hangs under it, so two compilations
+    // interleaved in a session's log are still two readable accounts. The
+    // fields are the caller's own arguments: nothing is computed to fill them.
+    let span = tracing::info_span!("compile", document = source.name(), bytes = source.text().len());
+    let _entered = span.enter();
+    let alternative = musa_language::alternative(source.text());
+    let compilation = match alternative {
         musa_language::DocumentAlternative::Kernel => crate::kernel_text::compile_kernel(source),
         musa_language::DocumentAlternative::Surface => crate::elaborate::elaborate(source, options),
-    }
+    };
+    // Which alternative a text was read as is decided from its first line and
+    // is invisible afterwards, so a piece that is silently treated as kernel
+    // interchange has no other way of saying so.
+    tracing::debug!(
+        alternative = ?alternative,
+        diagnostics = compilation.diagnostics().len(),
+        compiled = compilation.snapshot().is_some(),
+        "compiled"
+    );
+    compilation
 }
 
 /// Lay `text` out canonically, whichever alternative it is written in.
@@ -261,6 +278,8 @@ pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation
 /// the text cannot be read at all, and an unreadable document is left exactly
 /// as its author has it.
 pub fn format_document(text: &str, spacing: musa_language::BarSpacing) -> Option<String> {
+    let span = tracing::debug_span!("format", bytes = text.len());
+    let _entered = span.enter();
     match musa_language::alternative(text) {
         musa_language::DocumentAlternative::Kernel => crate::kernel_text::format_kernel(text),
         musa_language::DocumentAlternative::Surface => {

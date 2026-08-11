@@ -1,7 +1,7 @@
 ---
 id: 123
 slug: observable-pipeline
-status: pending
+status: in-progress
 depends_on: [56, 77, 99, 122]
 phase: 3
 ---

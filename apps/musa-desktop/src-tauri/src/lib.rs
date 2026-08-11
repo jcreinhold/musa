@@ -20,6 +20,11 @@ use crate::session::SessionHandle;
 /// If the webview or the window cannot be created, in which case there is no
 /// interface to degrade to and the caller reports it on the terminal.
 pub fn run() -> tauri::Result<()> {
+    // The same subscriber the CLI and the language server install, on stderr,
+    // asked for the same way: `MUSA_LOG=musa_project=debug` on the app's
+    // environment. The desktop has no verbosity flag to pass, so it takes the
+    // default — musa's own warnings — and the variable raises it.
+    let _installed = musa_project::Logging::new().install();
     #[expect(clippy::exit, reason = "`generate_context!` expands to an exit on a missing asset")]
     let context = tauri::generate_context!();
     tauri::Builder::default()

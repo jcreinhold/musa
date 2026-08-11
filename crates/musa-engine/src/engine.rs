@@ -74,9 +74,26 @@ impl AudioEngine {
     /// [`EngineError::UnsupportedStreamConfig`] when the requested shape is
     /// unsupported, [`EngineError::Stream`] on stream failures.
     pub fn open(config: EngineConfig) -> Result<Self, EngineError> {
+        let span = tracing::info_span!("engine_open", requested_rate = config.sample_rate);
+        let _entered = span.enter();
         let host = cpal::default_host();
         let device = host.default_output_device().ok_or(EngineError::NoOutputDevice)?;
         let stream_config = negotiate(&device, config.sample_rate)?;
+        // The device musa actually got and the shape CPAL actually agreed to.
+        // A person reporting "no sound" cannot see either, and every other
+        // question about playback is downstream of these two.
+        //
+        // The name is the one field here that is not already to hand — CPAL
+        // builds the string on demand — so it is asked for only when something
+        // is listening. The stream configuration is free.
+        if tracing::enabled!(tracing::Level::INFO) {
+            tracing::info!(
+                device = %device,
+                rate = stream_config.sample_rate,
+                channels = stream_config.channels,
+                "opened the output device"
+            );
+        }
 
         let (command_producer, command_consumer) = rtrb::RingBuffer::<Message>::new(COMMAND_CAPACITY);
         let (retired_producer, retired_consumer) = rtrb::RingBuffer::<Box<PreparedPlaybackPlan>>::new(COMMAND_CAPACITY);
@@ -121,6 +138,10 @@ impl AudioEngine {
     /// # Errors
     /// [`EngineError::QueueFull`] if the command queue is full.
     pub fn install(&self, plan: PreparedPlaybackPlan) -> Result<(), EngineError> {
+        // The control side of the boundary, and the last place anything may
+        // be said: past the queue the callback runs under the real-time rules
+        // and logs nothing at any level (roadmap §13).
+        tracing::debug!(frames = plan.total_frames(), "installing a playback plan");
         let mut channels = self.lock()?;
         channels.drain_retired();
         channels
@@ -134,6 +155,7 @@ impl AudioEngine {
     /// # Errors
     /// [`EngineError::QueueFull`] if the command queue is full.
     pub fn command(&self, command: TransportCommand) -> Result<(), EngineError> {
+        tracing::debug!(?command, "transport");
         self.lock()?
             .commands
             .push(Message::Transport(command))

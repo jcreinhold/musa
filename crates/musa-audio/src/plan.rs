@@ -380,6 +380,13 @@ fn set(slot: &mut f32, name: &str, expected: &str, value: f32) {
 /// [`GraphError`] for unknown nodes/ports, kind or channel mismatches,
 /// duplicate inputs, cycles, or a missing output designation.
 pub fn compile_graph(spec: &StudioGraphSpec, options: &GraphOptions) -> Result<RenderPlan, GraphError> {
+    let span = tracing::info_span!(
+        "compile_graph",
+        nodes = spec.nodes().len(),
+        connections = spec.connections().len(),
+        sample_rate = options.sample_rate
+    );
+    let _entered = span.enter();
     validate(spec)?;
 
     let order = schedule_order(spec)?;
@@ -484,6 +491,15 @@ pub fn compile_graph(spec: &StudioGraphSpec, options: &GraphOptions) -> Result<R
         .processor_of(output)
         .and_then(|p| p.output_ports().first().copied())
         .map_or(1, channels_of);
+    // Scheduled nodes are the reachable ones, so a schedule shorter than the
+    // graph is dead weight the compiler dropped — which is correct, and which
+    // is also what a patch that makes no sound looks like from here.
+    tracing::debug!(
+        scheduled = schedule.len(),
+        buffers = buffers.len(),
+        master_channels,
+        "compiled a render plan"
+    );
     Ok(RenderPlan {
         options: *options,
         schedule,

@@ -42,6 +42,7 @@ mod error;
 mod export;
 mod facts;
 mod imports;
+mod logging;
 mod midi;
 mod playback;
 mod position;
@@ -64,6 +65,7 @@ pub use crate::facts::{
     DecisionFact, EventFacts, EventKind, Fraction, HeaderFact, ItemFact, NameFact, NameKind, OccurrenceFacts,
     OriginFacts, OutlineFacts, OutlineKind, ParameterFact, PartFacts, ScoreFacts, SourceLocation, TypeFact, VoiceFacts,
 };
+pub use crate::logging::{FILTER_VARIABLE, Logging};
 pub use crate::midi::MidiEntry;
 pub use crate::position::Position;
 pub use crate::project::{Project, ProjectMeta};

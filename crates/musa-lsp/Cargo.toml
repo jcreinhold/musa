@@ -25,3 +25,4 @@ lsp-types = "0.97"
 musa-language = { workspace = true }
 musa-project = { workspace = true }
 serde_json = "1"
+tracing = "0.1"
