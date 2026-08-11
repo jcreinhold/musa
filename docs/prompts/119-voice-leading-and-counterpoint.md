@@ -46,7 +46,10 @@ counterexample. The assertion form preserves music on success; analysis findings
 
 - Analysis profiles/findings and assertion adapters through prompt 117/109 boundaries.
 - `examples/analysis/{satb,species-1,species-2,species-3,species-4,species-5,jazz-voice-leading}.musa` with paired
-  passing/failing regions and explicit profile requests.
+  passing/failing regions, each file naming in its header comment the profile it is meant to be read under. The profile
+  is named by the request and never by the source: a profile is the analyst's question, and a document that answered it
+  in advance would be asserting a style it merely happens to be written in. `profile` is also already the performance
+  keyword, so a second sense of the word in the surface language would be a collision as well as a category error.
 - `crates/musa-compiler/tests/voice_leading_validation.rs`: one invariant, boundary, and counterexample per rule id;
   tie/span normalization; fourth-above-bass context; analysis/assertion separation.
 - `docs/language/07-analysis.md`: rule table with OMT file/section, strength, assumptions, and known limits.
@@ -57,8 +60,10 @@ counterexample. The assertion form preserves music on success; analysis findings
 cargo nextest run -p musa-compiler -p musa-project -p musa
 cargo clippy --all-targets -p musa-compiler -p musa-project -p musa -- -D warnings
 cargo fmt --check
-cargo run -p musa -- analyze examples/analysis/species-4.musa --kind counterpoint --format text
-cargo run -p musa -- analyze examples/analysis/jazz-voice-leading.musa --kind voice-leading --format text
+cargo run -p musa -- analyze examples/analysis/species-4.musa --kind counterpoint --profile species_4 \
+    --cantus cantus --format text
+cargo run -p musa -- analyze examples/analysis/jazz-voice-leading.musa --kind voice-leading \
+    --profile jazz_voice_leading --format text
 cargo bench -p musa-compiler
 ```
 
