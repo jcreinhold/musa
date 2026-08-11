@@ -19,7 +19,7 @@ source, while external bytes are named, typed, verified, and loaded only on the 
 
 ## Read
 
-- `docs/language/09-assets-and-packages.md`; roadmap §§10.6, 13.2, 16, 18 Phase 4; prompt 84 project ownership.
+- `docs/language/09-assets-and-packages.md`; roadmap §§10.6, 13.2, 16, 18 Phase 4; prompt 84a project ownership.
 - Current `Project`, import closure, `Compilation`/`ValidArtifacts`, semantic hash, export cache, CLI/project error
   model, and every path-opening call.
 - Repository dependency policy before selecting an audio metadata/decoder crate. A new dependency requires a deliberate

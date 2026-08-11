@@ -2,7 +2,7 @@
 id: 85
 slug: the-contents-page
 status: done
-depends_on: [84, 59, 76]
+depends_on: [84a, 59, 76]
 phase: 2
 ---
 
@@ -71,7 +71,7 @@ are `Outline.svelte`'s rows, with the position numeral in the slot where the out
 on it. A loose `.musa` file must be indistinguishable from what it is today, and that is the restraint this prompt
 spends its budget on.
 
-### Two rules that fall out of prompt 84's `DocumentKind`
+### Two rules that fall out of prompt 84a's `DocumentKind`
 
 - **Material opens in the text.** Choosing a library shows the Source workspace, because material has no page.
 - **A file with no score is not a blank window.** `Compose.svelte` guards its entire template on `{#if snapshot &&

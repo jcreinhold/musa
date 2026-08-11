@@ -18,7 +18,7 @@ without turning a piece, part, voice, context track, studio graph, or source AST
 
 - `docs/language/04-templates-and-modules.md` and the staging diagram in `00-semantics.md`.
 - Current piece/score/part/voice parsing and identity allocation; prompt 63's authority rules for key/meter/tempo/clef;
-  prompt 67 realization identity; prompt 84/the-project-is-the-unit.
+  prompt 67 realization identity; prompt 84a/the-project-is-the-unit.
 - The key-parameterized `study` and transformed-voice examples in `docs/language/01-surface.md`.
 
 ## Design

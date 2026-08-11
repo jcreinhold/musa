@@ -23,7 +23,10 @@ authoritative where the candidate differs.
 
 ## Prompt anatomy
 
-Each prompt is a markdown file `NN-<slug>.md` with YAML frontmatter:
+Each prompt is a markdown file `NN[suffix]-<slug>.md` with YAML frontmatter. The number is an execution rank, not an
+identity. A lowercase suffix (`129a`) inserts a prompt between two existing ranks without renumbering anything after it,
+and is the right insertion when the ranks that would move include finished work; `scripts/renumber-prompts.py make-room
+--at N` is the right insertion otherwise. `id` carries the suffix, and so does every `depends_on` that names the prompt.
 
 ```yaml
 ---
@@ -187,7 +190,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 82 | zed-extension | 3 | zed-musa: WASM extension, grammar queries, server wiring |
 | 83 | lint-pass | 3 | Style-guide warnings as ordinary diagnostics; suppression lives in the source |
 | 84 | keyword-documentation | 3 | Every keyword's plain-English doc, exhaustive by construction, over hover |
-| 84 | the-project-is-the-unit | 3 | `Project` above `ProjectSession`: a running order, a piece each, material that opens |
+| 84a | the-project-is-the-unit | 3 | `Project` above `ProjectSession`: a running order, a piece each, material that opens |
 | 85 | the-contents-page | 2 | The volume's front matter on the leaf, and the running order in the margin |
 | 86 | the-kernel-file-reads | 3 | The interchange payload as named, quoted words; the corpus becomes `.musa.kernel` |
 | 87 | the-note-is-one-word | 2 | `c4/4` and the augmentation dot; the `Duration` node the shorthand needs |

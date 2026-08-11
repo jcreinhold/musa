@@ -2,7 +2,7 @@
 id: 91
 slug: bars-drawn-to-scale
 status: done
-depends_on: [90, 84]
+depends_on: [90, 84a]
 phase: 2
 ---
 

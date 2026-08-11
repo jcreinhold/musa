@@ -19,7 +19,7 @@ lockfile and work offline.
 
 ## Read
 
-- `docs/language/04-templates-and-modules.md` and `09-assets-and-packages.md`; prompt 36 import rules, prompt 84
+- `docs/language/04-templates-and-modules.md` and `09-assets-and-packages.md`; prompt 36 import rules, prompt 84a
   project, prompt 99 bundled library, prompt 104 namespaces/signatures, prompt 135 assets.
 - Roadmap §16's “relative imports are sufficient” and §19's registry/solver rejection. Repair the first deliberately
   while retaining the second; explain why exact fetching is a different capability from version solving.

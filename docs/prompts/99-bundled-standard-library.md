@@ -19,7 +19,7 @@ installation-independent spelling and preserve source locations into bundled fil
 
 - `docs/language/04-templates-and-modules.md` and the primitive-versus-library admission rule in
   `docs/language/00-semantics.md`.
-- Prompt 36 import resolution, prompt 84/the-project-is-the-unit, project manifests, packaging, and CLI install paths.
+- Prompt 36 import resolution, prompt 84a/the-project-is-the-unit, project manifests, packaging, and CLI install paths.
 - Every current compiler primitive/keyword table; classify it by information ownership before moving or adding it.
 
 ## Design
