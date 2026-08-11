@@ -61,8 +61,8 @@ fn listening_to<T>(work: impl FnOnce() -> T) -> Vec<Opened> {
     let listener = Listener::default();
     let subscriber = tracing_subscriber::registry().with(listener.clone());
     tracing::subscriber::with_default(subscriber, work);
-    let opened = listener.opened.lock().unwrap().clone();
-    opened
+    let opened = listener.opened.lock().unwrap();
+    opened.clone()
 }
 
 /// What a span recorded for `field`, if it recorded one.
@@ -93,7 +93,8 @@ fn a_compilation_opens_one_compile_span_naming_its_document() {
     });
     let compiles: Vec<&Opened> = opened.iter().filter(|span| span.name == "compile").collect();
     assert_eq!(compiles.len(), 1, "one compilation, one span: {opened:#?}");
-    assert_eq!(field(compiles[0], "document"), Some("listening.musa"));
+    let compile = compiles.first().expect("just counted one");
+    assert_eq!(field(compile, "document"), Some("listening.musa"));
 }
 
 /// Every session command runs inside an `apply` span that names the command.
@@ -109,8 +110,9 @@ fn a_session_command_opens_an_apply_span_naming_the_command_and_not_the_document
     });
     let applies: Vec<&Opened> = opened.iter().filter(|span| span.name == "apply").collect();
     assert_eq!(applies.len(), 1, "one command, one span: {opened:#?}");
-    assert_eq!(field(applies[0], "command"), Some("set-source"));
-    for (_, value) in &applies[0].fields {
+    let apply = applies.first().expect("just counted one");
+    assert_eq!(field(apply, "command"), Some("set-source"));
+    for (_, value) in &apply.fields {
         assert!(
             !value.contains("piece"),
             "the source itself must not be in the span: {value}"

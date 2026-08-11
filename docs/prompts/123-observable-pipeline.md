@@ -1,7 +1,7 @@
 ---
 id: 123
 slug: observable-pipeline
-status: in-progress
+status: done
 depends_on: [56, 77, 99, 122]
 phase: 3
 ---
@@ -105,32 +105,49 @@ each session command produced.
 ### The callback stays silent
 
 `musa-engine`'s control side is instrumented; its callback is not, and cannot become so by accident. Device negotiation
-in `open` — the chosen device's name, the sample rate, the buffer size — is precisely what a bug report needs and
-precisely what no user can otherwise see. Everything downstream of the `rtrb` boundary logs nothing.
+in `open` — the chosen device's name and the stream configuration CPAL agreed to — is precisely what a bug report needs
+and precisely what no user can otherwise see. The name is the one field that is not already to hand, so it goes behind
+`tracing::enabled!`; the configuration is free. Everything downstream of the `rtrb` boundary logs nothing.
 
 ## Target
 
 - Roadmap repair: add `tracing` to the dependency lists of §15.3 `musa-compiler`, §15.4 `musa-render`, §15.5
   `musa-audio`, and §15.11 `musa-lsp`; add `tracing-subscriber` to §15.7 `musa-project`; state in §15.8 that the CLI
   installs the subscriber and reads `MUSA_LOG`. The lists are closed, so this is the prompt that opens them.
-- `musa-project`: a new `logging` module exposing `Logging` on the facade, and spans on `ProjectSession::open`, `apply`,
-  `export`, `analyze`, `realize`, plus the autosave and realization paths that already warn.
+- `musa-project`: a new `logging` module exposing `Logging` and `FILTER_VARIABLE` on the facade, and spans on
+  `ProjectSession::open`, `apply`, `export`, and `analyze`, with the realization's seed recorded where it changes. The
+  autosave, MIDI, realization, and `musa.toml` warnings already exist and become audible without being touched.
 - `musa-compiler`: spans on `compile` and `format_document`; events at the parse / check / elaborate / adapt boundaries
   and in `imports::load`.
 - `musa-render`, `musa-audio`: a span per public entry, recording the plan or graph size the caller already knows.
 - `musa-engine`: spans on `open`, `install`, and `command`, recording the negotiated device and stream configuration.
   Nothing below the queue boundary.
-- `musa-lsp`: a span per request carrying the method and document, and `Logging::new().install()` in `serve`.
+- `musa-lsp`: a span per request carrying the method and the request id — the same id the client's own log records, so a
+  slow completion in an editor can be matched to the request that served it — a span per notification, and
+  `Logging::new().install()` in `serve`. Not the document: it lives inside the params, differently shaped per method,
+  and digging it out would be work done for the log.
 - `musa` CLI: `-v`/`-vv`/`-vvv` and `-q` accepted before or after the subcommand, a top-level span naming the
   subcommand, `Logging` installed in `main`, and both flags plus `MUSA_LOG` documented in the usage text.
 - `apps/musa-desktop/src-tauri`: `Logging` installed in `run`.
-- Laws in `crates/musa-project/tests/`: the default filter admits `warn` from a musa crate and rejects `info`; `-v`
-  admits `info`; `-q` rejects `warn`; `MUSA_LOG` replaces the dial and a per-target filter admits one crate and not
-  another; a second `install` returns `false` rather than panicking.
+- Filter laws as unit tests in `logging.rs`, over a pure `filter_from(Option<&str>)` seam: the dial climbs and stops at
+  trace, `quiet` beats `verbosity`, a set `MUSA_LOG` replaces the dial and an empty one does not, and every filter musa
+  writes is one `EnvFilter` accepts.
+
+  Written against the *filter musa asks for* rather than against an event arriving under it. What `musa=warn` admits is
+  `EnvFilter`'s documented contract; what musa decides is which string to hand it. Asking the other question would mean
+  installing a subscriber, and the subscriber is a process-wide global that every other test in the binary shares —
+  a law that has to win a race is not a law. Reading `MUSA_LOG` is likewise a parameter rather than an environment read,
+  because `set_var` mutates the same shared process.
+- Laws in `crates/musa-project/tests/logging_laws.rs`, over a collecting layer under `with_default` — thread-local, so
+  no global is claimed: a compilation opens exactly one `compile` span naming its document; a session command opens one
+  `apply` span naming the command and *not* carrying the source; a second `install` returns `false` rather than
+  panicking.
 - A law that no logging macro appears below `musa-engine`'s queue boundary, held the way the tree-sitter drift law is
-  held: over the source of the callback path, with the real-time rule named in its failure message.
-- A law that a compilation emits exactly one `compile` span naming its document, recorded through a collecting layer
-  rather than by reading text off a terminal.
+  held: over the source of `core.rs`, with the real-time rule named in its failure message. Held rather than measured
+  because the allocation test beside it catches a logging macro only when it happens to allocate, and a fieldless
+  `trace!` does not.
+- A law in `crates/musa/tests/cli.rs` that `-vvv` and `MUSA_LOG=trace` together leave stdout pure LilyPond — and that
+  stderr did receive the logs, so the law is about a stream that had something to lose.
 
 ## Check
 

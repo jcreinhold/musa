@@ -593,3 +593,40 @@ fn analyze_refuses_a_bad_request_and_accepts_an_empty_one() -> std::io::Result<(
     );
     Ok(())
 }
+
+/// Logs never touch stdout, however loud they are asked to be.
+///
+/// `musa render -o -` writes a score to stdout for a pipe to read, and
+/// `musa kernel` writes interchange text there. A single log line on that
+/// stream is a corrupted file that nothing downstream can diagnose — so the
+/// destination is stderr, with no flag to change it, and this is the law that
+/// says so. `-vvv` and `MUSA_LOG=trace` are asked for together deliberately:
+/// each is a separate way to raise the volume and both must miss stdout.
+#[test]
+fn logging_never_writes_to_the_stream_a_score_is_piped_on() -> std::io::Result<()> {
+    let output = Command::new(env!("CARGO_BIN_EXE_musa"))
+        .args(["-vvv", "render", &glass_mountain(), "--to", "lilypond", "-o", "-"])
+        .env("MUSA_LOG", "trace")
+        .output()?;
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.starts_with(r"\version"),
+        "stdout must be LilyPond and nothing else"
+    );
+    for line in stdout.lines() {
+        assert!(
+            !line.contains("musa_compiler") && !line.contains("musa_project") && !line.contains("musa_render"),
+            "a log line reached stdout: {line}"
+        );
+    }
+    // The volume was genuinely turned up, so the law above is about a stream
+    // that had something to lose rather than about a silent run.
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("musa_compiler"), "nothing was logged at all: {stderr}");
+    Ok(())
+}

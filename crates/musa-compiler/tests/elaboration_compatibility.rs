@@ -291,8 +291,8 @@ fn existing_language_behavior_matches_the_migration_oracle() -> Result {
 fn every_expected_change_names_one_repairing_prompt() -> Result {
     const LEDGER: &str = include_str!("../../../tests/fixtures/elaboration-expected-changes.json");
     for (defect, prompt) in [
-        ("shared-note-stream-warning", "123"),
-        ("ignored-parameter-event", "124"),
+        ("shared-note-stream-warning", "124"),
+        ("ignored-parameter-event", "125"),
         ("processor-hover-gap", "119"),
         ("graph-topology-modulation-address", "122"),
         ("eager-studio-f64-conversion", "120"),

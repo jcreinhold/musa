@@ -21,7 +21,7 @@ fn main() -> ExitCode {
     // One span for the whole invocation, named by the subcommand, so every
     // compile, render, and device negotiation below it is filed under the
     // thing that was typed.
-    let span = tracing::info_span!("musa", command = args.first().map(String::as_str).unwrap_or("<none>"));
+    let span = tracing::info_span!("musa", command = args.first().map_or("<none>", String::as_str));
     let _entered = span.enter();
     match args.first().map(String::as_str) {
         Some("format") => cmd_format(args.get(1..).unwrap_or_default()),
