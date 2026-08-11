@@ -142,6 +142,15 @@ impl Realization {
         }
     }
 
+    /// What it asks of the passage, in one sentence.
+    pub(crate) const fn asks(self) -> &'static str {
+        match self {
+            Self::Exactly => "the classes sounded are exactly the chord's members: nothing omitted, nothing added",
+            Self::MayOmit => "every class sounded is a member, and a member may be missing",
+            Self::MayAdd => "every member sounds, and other notes may sound too",
+        }
+    }
+
     /// Read one of the three words, or `None` for anything else.
     pub(crate) fn named(word: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|policy| policy.as_str() == word)
@@ -314,6 +323,53 @@ pub(crate) const CLAIMS: [Predicate; 6] = [
         checks: "no two sonorities of the passage depart from the named voice-leading rule",
     },
 ];
+
+/// One claim, as an editor offers it.
+///
+/// A restatement of [`Predicate`] with the registry's own types spelled out,
+/// because the registry is the authority on what a claim takes and an editor
+/// that kept its own list would drift from it the first time a claim gained
+/// an argument.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ClaimDoc {
+    /// How the claim is written: `pitches_in`.
+    pub name: &'static str,
+    /// Each argument, in order, as the type it must be — which for a policy
+    /// is the three words themselves, since a policy is a word rather than a
+    /// value in the elaboration language.
+    pub parameters: Vec<&'static str>,
+    /// The whole call, for a signature line: `realizes(ChordClass, exactly|may_omit|may_add)`.
+    pub signature: String,
+    /// What it checks, as one sentence.
+    pub checks: &'static str,
+}
+
+/// Every claim a composer may write inside `assert`, in registry order.
+///
+/// The family is closed: there is no registration and no user predicate, so
+/// this list is complete by construction rather than by convention.
+pub fn assertion_claims() -> impl Iterator<Item = ClaimDoc> {
+    CLAIMS.iter().map(|claim| {
+        let parameters: Vec<&'static str> = claim.parameters.iter().map(|kind| kind.as_str()).collect();
+        ClaimDoc {
+            name: claim.name,
+            signature: format!("{}({})", claim.name, parameters.join(", ")),
+            parameters,
+            checks: claim.checks,
+        }
+    })
+}
+
+/// The three realization policies, each with what it asks of the passage.
+///
+/// Words rather than values, so an editor offering them is offering
+/// vocabulary and not names: `realizes(chord c major, may_add)` reads a word
+/// the registry knows, and nothing in the elaboration language has that type.
+pub fn realization_policies() -> impl Iterator<Item = (&'static str, &'static str)> {
+    Realization::ALL
+        .into_iter()
+        .map(|policy| (policy.as_str(), policy.asks()))
+}
 
 /// The claim written under `name`, or `None` if nothing is.
 pub(crate) fn predicate(name: &str) -> Option<&'static Predicate> {

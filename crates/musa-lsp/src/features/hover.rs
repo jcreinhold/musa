@@ -30,13 +30,13 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
             return Some(found);
         }
     }
+    if let Some(found) = at_item(&snapshot, byte, lines) {
+        return Some(found);
+    }
     if let Some(found) = at_keyword(&snapshot, byte, lines) {
         return Some(found);
     }
     if let Some(found) = at_vocabulary(&snapshot, byte, lines) {
-        return Some(found);
-    }
-    if let Some(found) = at_imported_name(&snapshot, byte, lines) {
         return Some(found);
     }
     if let Some(found) = at_builtin(&snapshot, byte, lines) {
@@ -45,38 +45,17 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
     at_studio(document, byte, lines)
 }
 
-fn at_imported_name(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
-    let name = snapshot
-        .names()
-        .iter()
-        .find(|name| name.external_declaration.is_some() && name.uses.iter().any(|span| covers(*span, byte)))?;
-    let source = musa_project::standard_library_source(&name.external_declaration.as_ref()?.uri)?;
-    let (signature, docs) = source_item(source, &name.name)?;
-    let span = *name.uses.iter().find(|span| covers(**span, byte))?;
-    Some(answer(
-        lines,
-        span,
-        format!("```musa\n{signature}\n```\n\n{docs}\n\n*Bundled Musa source · read-only*"),
-    ))
-}
-
-fn source_item(source: &str, name: &str) -> Option<(String, String)> {
-    let mut comments = Vec::new();
-    for line in source.lines().map(str::trim) {
-        if let Some(comment) = line.strip_prefix("// ") {
-            comments.push(comment);
-            continue;
-        }
-        if let Some(signature) = line.strip_prefix("fn ") {
-            let declaration_name = signature.split(['(', ' ']).next()?;
-            if declaration_name == name {
-                let signature = signature.split(" =").next().unwrap_or(signature).trim_end_matches(';');
-                return Some((format!("fn {signature}"), comments.join(" ")));
-            }
-        }
-        comments.clear();
-    }
-    None
+/// A declared name — here or in an imported library: its signature, its
+/// summary, what its type is not to be confused with, and where it is
+/// written.
+///
+/// The one hover that answers for the whole elaboration language, because the
+/// session already knows all of it. Before the caret reaches an event or a
+/// keyword there is nothing to prefer: `perfect_fifth` is a name, and what a
+/// reader wants to know about a name is what it is.
+fn at_item(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
+    let (item, span) = super::items::at(snapshot, byte)?;
+    Some(answer(lines, span, super::items::markdown(item)))
 }
 
 fn at_builtin(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {

@@ -1,7 +1,7 @@
 ---
 id: 122
 slug: elaboration-language-tooling
-status: in-progress
+status: done
 depends_on: [104, 118, 119, 121]
 phase: 3
 ---

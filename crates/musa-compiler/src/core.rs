@@ -479,6 +479,11 @@ struct RawParameter {
     name: String,
     ty: Type,
     default: Option<RawDefault>,
+    /// The default as the source spells it, kept for the signature an editor
+    /// shows. The lowered `default` is what the checker applies; this is what
+    /// the writer wrote, and rendering one from the other would be a second
+    /// opinion about their own text.
+    written_default: Option<String>,
     span: SourceSpan,
 }
 
@@ -504,6 +509,8 @@ struct RawDefinition {
     /// How names read inside it. Empty for everything but a module's members
     /// — see [`crate::module::NameScope`].
     scope: crate::module::NameScope,
+    /// The comment block written above it, for [`crate::docs`].
+    summary: Option<String>,
 }
 
 enum RawDefinitionKind {
@@ -2126,6 +2133,9 @@ fn check_and_evaluate(
                 .references
                 .declare(definition.name_kind(), &definition.name, definition.name_span);
         }
+        if !definition.hidden {
+            resolver.references.document(document(definition));
+        }
     }
 
     let mut checked = Vec::with_capacity(raw.len());
@@ -2523,6 +2533,97 @@ fn surface_identity(definition: &SurfaceDefinition) -> Option<(String, SourceSpa
     Some((name, name_span, crate::resolve::trimmed_span(syntax), source))
 }
 
+/// What an editor is told about one checked declaration (`crate::docs`).
+///
+/// Read off the lowered definition rather than off the text: the signature is
+/// the type the checker settled on, so an editor cannot show a reader a
+/// signature the compiler disagrees with. The declaring word is chosen from
+/// the kind, so a motif reads as a motif and a `let` as a `let`.
+fn document(definition: &RawDefinition) -> crate::docs::ItemDoc {
+    let kind = definition.name_kind();
+    let parameters = match &definition.kind {
+        RawDefinitionKind::Function { parameters, .. } | RawDefinitionKind::Music { parameters, .. } => parameters
+            .iter()
+            .map(|parameter| {
+                let ty = crate::docs::TypeNote::new(parameter.ty.to_string());
+                let label = match &parameter.written_default {
+                    Some(default) => format!("{}: {} = {default}", parameter.name, ty.name),
+                    None => format!("{}: {}", parameter.name, ty.name),
+                };
+                crate::docs::ParameterDoc {
+                    name: parameter.name.clone(),
+                    label,
+                    ty,
+                    default: parameter.written_default.clone(),
+                }
+            })
+            .collect(),
+        RawDefinitionKind::Let { .. } | RawDefinitionKind::Bound { .. } => Vec::new(),
+    };
+    // A callable evaluates to its result; everything else evaluates to itself.
+    let result = crate::docs::TypeNote::new(if let Type::Function(_, result) = &definition.ty {
+        result.to_string()
+    } else {
+        definition.ty.to_string()
+    });
+    // Every declaration the core lowers names a value; static structure is
+    // documented where it is declared, in `crate::module`.
+    let result = Some(result);
+    let word = match kind {
+        NameKind::Value | NameKind::Function => {
+            if parameters.is_empty() {
+                "let"
+            } else {
+                "fn"
+            }
+        }
+        NameKind::Motif => "motif",
+        NameKind::Bar => "bar",
+        NameKind::Fragment => "fragment",
+        NameKind::Part => "part",
+        NameKind::Voice => "voice",
+        NameKind::Patch => "patch",
+        NameKind::Module => "signature",
+        NameKind::Template => "template",
+    };
+    let mut signature = format!("{word} {}", definition.name);
+    if !parameters.is_empty() {
+        signature.push('(');
+        for (index, parameter) in parameters.iter().enumerate() {
+            if index > 0 {
+                signature.push_str(", ");
+            }
+            signature.push_str(&parameter.label);
+        }
+        signature.push(')');
+    }
+    // A motif's result is `Music` by construction, and saying so adds a word
+    // to every line without adding a fact. Everything else states it.
+    if !matches!(kind, NameKind::Motif | NameKind::Fragment | NameKind::Bar) {
+        signature.push_str(if parameters.is_empty() { ": " } else { " -> " });
+        if let Some(result) = &result {
+            signature.push_str(&result.name);
+        }
+    }
+    crate::docs::ItemDoc {
+        name: definition.name.clone(),
+        kind,
+        source: crate::docs::ItemSource {
+            uri: definition.source.clone(),
+            span: definition.name_span,
+            read_only: definition
+                .source
+                .as_deref()
+                .is_some_and(|uri| crate::imports::standard_library_source(uri).is_some()),
+        },
+        deprecation: definition.summary.as_deref().and_then(crate::docs::deprecation_in),
+        summary: definition.summary.clone(),
+        signature,
+        result,
+        parameters,
+    }
+}
+
 fn lower_signature(
     resolver: &mut Resolver,
     definition: SurfaceDefinition,
@@ -2537,6 +2638,7 @@ fn lower_signature(
             let ty_node = child_of(declaration.syntax(), is_type_node)?;
             let body = child_of(declaration.syntax(), is_expr_node)?;
             let ty = parse_type(resolver, &ty_node)?;
+            let summary = crate::docs::summary_above(declaration.syntax());
             Some(RawDefinition {
                 name,
                 ty,
@@ -2548,6 +2650,7 @@ fn lower_signature(
                 role: None,
                 hidden: false,
                 scope: crate::module::NameScope::default(),
+                summary,
             })
         }
         SurfaceDefinition::Function { declaration, .. } => {
@@ -2562,10 +2665,12 @@ fn lower_signature(
                 let parameter_name = parameter.name().unwrap_or_default();
                 let parameter_span = crate::resolve::token_span(parameter.syntax(), SyntaxKind::Identifier)
                     .unwrap_or_else(|| crate::resolve::trimmed_span(parameter.syntax()));
+                let written = child_of(parameter.syntax(), is_expr_node);
                 parameters.push(RawParameter {
                     name: parameter_name,
                     ty: parameter_ty,
-                    default: child_of(parameter.syntax(), is_expr_node).map(RawDefault::Expression),
+                    written_default: written.as_ref().map(|node| node.text().to_string().trim().to_owned()),
+                    default: written.map(RawDefault::Expression),
                     span: parameter_span,
                 });
             }
@@ -2580,6 +2685,7 @@ fn lower_signature(
                 parameters.iter().map(|parameter| parameter.ty.clone()).collect(),
                 Box::new(result),
             );
+            let summary = crate::docs::summary_above(declaration.syntax());
             Some(RawDefinition {
                 name,
                 ty,
@@ -2591,6 +2697,7 @@ fn lower_signature(
                 role: None,
                 hidden: false,
                 scope: crate::module::NameScope::default(),
+                summary,
             })
         }
         SurfaceDefinition::Legacy {
@@ -2620,6 +2727,7 @@ fn lower_signature(
                 raw_parameters.push(RawParameter {
                     name: parameter.name,
                     ty,
+                    written_default: parameter.default,
                     default,
                     span,
                 });
@@ -2633,6 +2741,7 @@ fn lower_signature(
             } else {
                 Type::Music
             };
+            let summary = crate::docs::summary_above(&syntax);
             Some(RawDefinition {
                 name: name.clone(),
                 ty,
@@ -2652,6 +2761,7 @@ fn lower_signature(
                 }),
                 hidden: false,
                 scope: crate::module::NameScope::default(),
+                summary,
             })
         }
         SurfaceDefinition::Member {
@@ -2710,6 +2820,9 @@ fn lower_signature(
                 role: None,
                 hidden: binding.hidden,
                 scope: crate::module::NameScope::default(),
+                // A template's argument is documented at the template, not at
+                // the binding a `make` site produced for it.
+                summary: None,
             })
         }
     }

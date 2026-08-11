@@ -840,6 +840,9 @@ pub enum NameKind {
     /// A `signature` or a `structure`: static structure naming a group of
     /// declarations, never a value.
     Module,
+    /// A `template`: named like a module, applied like a function by a `make`
+    /// site.
+    Template,
 }
 
 /// One named thing and everywhere it is spoken, for an editor's references
@@ -875,20 +878,28 @@ pub struct SourceLocation {
     pub span: crate::diagnostic::Span,
 }
 
+impl NameKind {
+    /// Restate one compiler kind in this crate's own vocabulary.
+    pub(crate) fn from_compiler(kind: musa_compiler::NameKind) -> Self {
+        match kind {
+            musa_compiler::NameKind::Value => Self::Value,
+            musa_compiler::NameKind::Function => Self::Function,
+            musa_compiler::NameKind::Motif => Self::Motif,
+            musa_compiler::NameKind::Bar => Self::Bar,
+            musa_compiler::NameKind::Fragment => Self::Fragment,
+            musa_compiler::NameKind::Part => Self::Part,
+            musa_compiler::NameKind::Voice => Self::Voice,
+            musa_compiler::NameKind::Patch => Self::Patch,
+            musa_compiler::NameKind::Module => Self::Module,
+            musa_compiler::NameKind::Template => Self::Template,
+        }
+    }
+}
+
 impl NameFact {
     /// Restate one compiler reference in this crate's own vocabulary.
     pub(crate) fn from_compiler(reference: &musa_compiler::NameReference) -> Self {
-        let kind = match reference.kind {
-            musa_compiler::NameKind::Value => NameKind::Value,
-            musa_compiler::NameKind::Function => NameKind::Function,
-            musa_compiler::NameKind::Motif => NameKind::Motif,
-            musa_compiler::NameKind::Bar => NameKind::Bar,
-            musa_compiler::NameKind::Fragment => NameKind::Fragment,
-            musa_compiler::NameKind::Part => NameKind::Part,
-            musa_compiler::NameKind::Voice => NameKind::Voice,
-            musa_compiler::NameKind::Patch => NameKind::Patch,
-            musa_compiler::NameKind::Module => NameKind::Module,
-        };
+        let kind = NameKind::from_compiler(reference.kind);
         let span = |span: musa_compiler::SourceSpan| crate::diagnostic::Span {
             start: span.start,
             end: span.end,
@@ -902,6 +913,118 @@ impl NameFact {
                 span: span(location.span),
             }),
             uses: reference.uses.iter().map(|use_span| span(*use_span)).collect(),
+        }
+    }
+}
+
+/// A type as a reader meets it, with the line that tells it from its
+/// look-alike.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TypeFact {
+    /// As it is spelled in source: `NoteName`, `List<Pitch>`.
+    pub name: String,
+    /// The one line distinguishing this type from the one it is confused
+    /// with — spelled `NoteName` against modulo-twelve `Pc12`, `Key` against
+    /// `Scale`, `ChordClass` against `Voicing`. Absent for a compound type,
+    /// which is distinguished by its shape.
+    pub distinction: Option<String>,
+}
+
+/// One parameter of a callable declaration.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ParameterFact {
+    /// The name it is called by, which is also the name it is passed by.
+    pub name: String,
+    /// The substring of [`ItemFact::signature`] this parameter occupies —
+    /// what an editor highlights while the caller is writing it.
+    pub label: String,
+    /// Its type.
+    pub ty: TypeFact,
+    /// The default as written, when the caller may omit it.
+    pub default: Option<String>,
+}
+
+/// What an editor says about one declaration.
+///
+/// A deliberate restatement of the compiler's `ItemDoc`, for the same reason
+/// [`NameFact`] restates `NameReference`. The record answers the questions a
+/// reader asks about a name — what is it, what does it take, what does it
+/// mean, where is it written, may I edit it — and nothing else: no body, no
+/// environment, no module table.
+///
+/// # Invariants
+///
+/// - `uri` is `None` exactly when `span` indexes the open document. A
+///   consumer must never resolve a `Some(uri)` record's span against the
+///   text it has open.
+/// - `read_only` implies `uri` is `Some`: the open document is never
+///   read-only. Bundled standard-library modules are read-only, and their
+///   text is reached through
+///   [`standard_library_source`](crate::standard_library_source).
+/// - `result` is `Some` exactly when the declaration names a value; a
+///   `signature` or `structure` names static structure and has none.
+/// - `parameters` is empty exactly when the declaration is not callable, and
+///   every `label` appears verbatim in `signature`.
+/// - Records are unique by `(name, kind)`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ItemFact {
+    /// The name as it is reached: `perfect_fifth`, or `Harmony.triad` when
+    /// an import was qualified.
+    pub name: String,
+    /// What it names.
+    pub kind: NameKind,
+    /// The document it is declared in, when that is not the open one.
+    pub uri: Option<String>,
+    /// Its own name token, in that document.
+    pub span: crate::diagnostic::Span,
+    /// Whether an editor may write to it.
+    pub read_only: bool,
+    /// The comment block written directly above it, as one paragraph.
+    pub summary: Option<String>,
+    /// The declaration line without its body:
+    /// `fn triad(root: NoteName) -> ChordClass`.
+    pub signature: String,
+    /// What it evaluates to.
+    pub result: Option<TypeFact>,
+    /// Its parameters, in order.
+    pub parameters: Vec<ParameterFact>,
+    /// What to write instead, when the declaration says it is deprecated.
+    pub deprecation: Option<String>,
+}
+
+impl ItemFact {
+    /// Restate one compiler record in this crate's own vocabulary.
+    pub(crate) fn from_compiler(item: &musa_compiler::ItemDoc) -> Self {
+        let ty = |note: &musa_compiler::TypeNote| TypeFact {
+            name: note.name.clone(),
+            distinction: note.distinction.map(str::to_owned),
+        };
+        Self {
+            name: item.name.clone(),
+            kind: NameKind::from_compiler(item.kind),
+            uri: item.source.uri.clone(),
+            span: crate::diagnostic::Span {
+                start: item.source.span.start,
+                end: item.source.span.end,
+            },
+            read_only: item.source.read_only,
+            summary: item.summary.clone(),
+            signature: item.signature.clone(),
+            result: item.result.as_ref().map(&ty),
+            parameters: item
+                .parameters
+                .iter()
+                .map(|parameter| ParameterFact {
+                    name: parameter.name.clone(),
+                    label: parameter.label.clone(),
+                    ty: ty(&parameter.ty),
+                    default: parameter.default.clone(),
+                })
+                .collect(),
+            deprecation: item.deprecation.clone(),
         }
     }
 }

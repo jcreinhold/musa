@@ -49,6 +49,13 @@ impl Document {
         &self.lines
     }
 
+    /// The session itself, for the one operation that is a question rather
+    /// than a fact: an analysis is run on request and is not part of any
+    /// snapshot ([`features::analysis`](crate::features::analysis)).
+    pub(crate) fn session(&self) -> &ProjectSession {
+        &self.session
+    }
+
     /// The canonical layout of this document's text.
     ///
     /// Asked of the session rather than of the formatter, because the layout

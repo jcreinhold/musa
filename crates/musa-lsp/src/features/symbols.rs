@@ -5,9 +5,9 @@
 //! symbols. Parts and voices carry no source spans in the facts, and a symbol
 //! without a location is a guess — they are left out rather than invented.
 
-use lsp_types::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKind, Uri};
+use lsp_types::{DocumentSymbolResponse, Location, SymbolInformation, SymbolKind, SymbolTag, Uri};
 use musa_language::DocumentAlternative;
-use musa_project::{OutlineKind, Span, kernel_bindings};
+use musa_project::{NameKind, OutlineKind, Span, kernel_bindings};
 
 use crate::workspace::Document;
 
@@ -19,7 +19,7 @@ pub(crate) fn symbols(document: &Document, uri: &Uri) -> Option<DocumentSymbolRe
     let snapshot = document.snapshot();
     let score = snapshot.score()?;
     let lines = document.lines();
-    let symbols = score
+    let mut symbols: Vec<SymbolInformation> = score
         .outline
         .iter()
         .map(|entry| {
@@ -41,6 +41,27 @@ pub(crate) fn symbols(document: &Document, uri: &Uri) -> Option<DocumentSymbolRe
             }
         })
         .collect();
+    // The declarations, beside the music. An outline is what a reader jumps
+    // by, and a piece assembled from functions, modules, signatures, and
+    // templates is navigated by those as much as by its sections. Only the
+    // ones written *here*: an imported declaration has a record whose span
+    // indexes another document, and an outline entry pointing into it would
+    // send every jump to an offset in the wrong file.
+    symbols.extend(snapshot.items().iter().filter(|item| item.uri.is_none()).map(|item| {
+        #[allow(deprecated)] // `deprecated` is a field the protocol still carries.
+        SymbolInformation {
+            name: item.signature.clone(),
+            kind: symbol_kind(item.kind),
+            tags: item.deprecation.as_ref().map(|_| vec![SymbolTag::DEPRECATED]),
+            deprecated: None,
+            location: Location {
+                uri: uri.clone(),
+                range: lines.range(item.span),
+            },
+            container_name: None,
+        }
+    }));
+    symbols.sort_by_key(|symbol| (symbol.location.range.start.line, symbol.location.range.start.character));
     Some(DocumentSymbolResponse::Flat(symbols))
 }
 
@@ -77,4 +98,21 @@ fn kernel_symbols(document: &Document, uri: &Uri) -> Option<DocumentSymbolRespon
         })
         .collect();
     Some(DocumentSymbolResponse::Flat(symbols))
+}
+
+/// How the protocol names each kind of declaration.
+///
+/// A motif and a fragment are `SymbolKind::FUNCTION` because that is what a
+/// reader does with them — they are called — and a value is a `CONSTANT`
+/// because Musa has no other kind of binding.
+fn symbol_kind(kind: NameKind) -> SymbolKind {
+    match kind {
+        NameKind::Value => SymbolKind::CONSTANT,
+        NameKind::Function | NameKind::Motif | NameKind::Fragment => SymbolKind::FUNCTION,
+        NameKind::Bar => SymbolKind::EVENT,
+        NameKind::Part | NameKind::Module => SymbolKind::NAMESPACE,
+        NameKind::Voice => SymbolKind::VARIABLE,
+        NameKind::Patch => SymbolKind::CLASS,
+        NameKind::Template => SymbolKind::INTERFACE,
+    }
 }

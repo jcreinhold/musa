@@ -181,6 +181,9 @@ impl Modules {
             modules.read_signatures(resolver, *source, owner);
         }
         for (source, owner) in &owners {
+            Self::read_templates(resolver, *source, owner);
+        }
+        for (source, owner) in &owners {
             modules.read_modules(resolver, *source, owner);
         }
         let mut sites = Vec::new();
@@ -298,7 +301,51 @@ impl Modules {
             if source.is_none() {
                 resolver.references.declare(NameKind::Module, &name, span);
             }
+            resolver.references.document(document(
+                &name,
+                NameKind::Module,
+                format!("signature {name}"),
+                span,
+                source,
+                declaration.syntax(),
+            ));
             self.signatures.insert(name, Signature { span, members });
+        }
+    }
+
+    /// Record the templates written here: what a `make` site names.
+    ///
+    /// Reading, not checking — a template is checked where it is applied,
+    /// because until then there is nothing to check it against. What this
+    /// pass owes an editor is the declaration a `make` site jumps to and the
+    /// signature it is applied against, and both are written here.
+    fn read_templates(resolver: &mut Resolver, source: Option<&str>, owner: &SyntaxNode) {
+        for declaration in TemplateDecl::all_at_root(owner) {
+            let Some(name) = declaration.name() else { continue };
+            // The name is written on what the template parameterizes, not on
+            // the `template` word: a span taken from the outer node would be
+            // the whole declaration, and a jump to it would select the body.
+            let span = declaration
+                .piece()
+                .map(|piece| name_span(piece.syntax()))
+                .or_else(|| declaration.voice().map(|voice| name_span(voice.syntax())))
+                .or_else(|| declaration.structure().map(|structure| name_span(structure.syntax())))
+                .unwrap_or_else(|| name_span(declaration.syntax()));
+            if source.is_none() {
+                resolver.references.declare(NameKind::Template, &name, span);
+            }
+            let ascribed = declaration
+                .structure()
+                .and_then(|structure| structure.signature())
+                .map_or_else(String::new, |signature| format!(": {signature}"));
+            resolver.references.document(document(
+                &name,
+                NameKind::Template,
+                format!("template {name}{ascribed}"),
+                span,
+                source,
+                declaration.syntax(),
+            ));
         }
     }
 
@@ -320,6 +367,14 @@ impl Modules {
                 resolver.references.declare(NameKind::Module, &name, span);
                 resolver.references.record_use(NameKind::Module, &signature, ascription);
             }
+            resolver.references.document(document(
+                &name,
+                NameKind::Module,
+                format!("structure {name}: {signature}"),
+                span,
+                source,
+                declaration.syntax(),
+            ));
             self.declare(resolver, name.clone(), signature, ascription, span);
             self.identities.insert(name.clone(), format!("module {name}"));
         }
@@ -342,8 +397,16 @@ impl Modules {
                 .declare(NameKind::Module, &site.alias, site.alias_span);
             resolver
                 .references
-                .record_use(NameKind::Module, &site.functor_name, name_span(site.stmt.syntax()));
+                .record_use(NameKind::Template, &site.functor_name, name_span(site.stmt.syntax()));
         }
+        resolver.references.document(document(
+            &site.alias,
+            NameKind::Module,
+            format!("structure {} = {}: {signature}", site.alias, site.functor_name),
+            site.alias_span,
+            site.source.as_deref(),
+            site.stmt.syntax(),
+        ));
         self.declare(resolver, site.alias.clone(), signature, ascription, site.alias_span);
     }
 
@@ -630,6 +693,37 @@ impl Modules {
         }
         self.assigned.insert(digest, key);
         Some(digest)
+    }
+}
+
+/// What an editor is told about one module declaration (`crate::docs`).
+///
+/// Static structure: it names a group of declarations and never a value, so
+/// it has no result type and no parameters. Its members are documented
+/// separately, under the qualified names they are reached by, which is what a
+/// reader completing `Harmony.` is actually asking for.
+fn document(
+    name: &str,
+    kind: NameKind,
+    signature: String,
+    span: SourceSpan,
+    source: Option<&str>,
+    declaration: &SyntaxNode,
+) -> crate::docs::ItemDoc {
+    let summary = crate::docs::summary_above(declaration);
+    crate::docs::ItemDoc {
+        name: name.to_owned(),
+        kind,
+        source: crate::docs::ItemSource {
+            uri: source.map(str::to_owned),
+            span,
+            read_only: source.is_some_and(|uri| crate::imports::standard_library_source(uri).is_some()),
+        },
+        deprecation: summary.as_deref().and_then(crate::docs::deprecation_in),
+        summary,
+        signature,
+        result: None,
+        parameters: Vec::new(),
     }
 }
 

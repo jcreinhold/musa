@@ -9,6 +9,15 @@ version.workspace = true
 [lints]
 workspace = true
 
+# The binary is one call into the library (`src/main.rs`), so it declares no
+# test harness: cargo would otherwise build and link a second copy of the
+# whole crate to run zero tests. Everything the server does is tested through
+# the library and `tests/`.
+[[bin]]
+name = "musa-lsp"
+path = "src/main.rs"
+test = false
+
 [dependencies]
 fluent-uri = "0.1"
 lsp-server = "0.10"

@@ -36,6 +36,7 @@ mod context;
 mod core;
 mod core_budget;
 mod diagnose;
+mod docs;
 mod elaborate;
 mod factext;
 mod groove;
@@ -67,11 +68,13 @@ pub use crate::analysis::{
     Approach, Cadence, ChordName, Evidence, Fit, Ground, NoteRef, Observation, RuleName, Segmentation, Standing,
     Strength, analyze, rule_names,
 };
+pub use crate::assert::{ClaimDoc, assertion_claims, realization_policies};
 pub use crate::bars::{BarBeat, BarLines, Measure};
 pub use crate::chord::chord_types;
 pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile, format_document};
 pub use crate::context::ContextTrack;
 pub use crate::diagnose::{Code, Diagnostic, Fix, FixEdit, Label, Severity};
+pub use crate::docs::{ItemDoc, ItemSource, ParameterDoc, TypeNote};
 #[doc(hidden)]
 pub use crate::elaborate::kernel_normal_form;
 pub use crate::groove::Groove;

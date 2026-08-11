@@ -61,8 +61,8 @@ pub use crate::edit::{CandidateEdit, EditCommand, EditImpact, GeneratedEditMode,
 pub use crate::error::ProjectError;
 pub use crate::export::{ExportArtifact, ExportRequest, KernelReport, check_kernel};
 pub use crate::facts::{
-    DecisionFact, EventFacts, EventKind, Fraction, HeaderFact, NameFact, NameKind, OccurrenceFacts, OriginFacts,
-    OutlineFacts, OutlineKind, PartFacts, ScoreFacts, SourceLocation, VoiceFacts,
+    DecisionFact, EventFacts, EventKind, Fraction, HeaderFact, ItemFact, NameFact, NameKind, OccurrenceFacts,
+    OriginFacts, OutlineFacts, OutlineKind, ParameterFact, PartFacts, ScoreFacts, SourceLocation, TypeFact, VoiceFacts,
 };
 pub use crate::midi::MidiEntry;
 pub use crate::position::Position;
@@ -80,6 +80,7 @@ pub use musa_compiler::{
     AnalysisKind, AnalysisProfile, AnalysisRequest, AnalysisScope, Key, Mode, MusicalTime, Segmentation,
 };
 pub use musa_compiler::{ChoicePath, ChoiceStep, Decision, DecisionRecord, DocumentKind, Realization};
+pub use musa_compiler::{ClaimDoc, assertion_claims, realization_policies, rule_names};
 pub use musa_compiler::{KernelTokenClass, kernel_bindings, kernel_classify, kernel_keyword_doc};
 pub use musa_compiler::{chord_types, scale_collections};
 pub use musa_language::{BarSpacing, HeaderField, KeywordDoc, keyword_doc};

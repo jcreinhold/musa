@@ -69,6 +69,9 @@ pub(crate) struct ValidArtifacts {
     /// Every name the resolver resolved, for an editor's references and
     /// rename.
     pub(crate) names: Vec<crate::facts::NameFact>,
+    /// What each declaration says about itself, for an editor's hover,
+    /// completion, signature help, and outline.
+    pub(crate) items: Vec<crate::facts::ItemFact>,
     pub(crate) revision: Revision,
     /// What this score *means* (docs/kernel/05 N6), so a consumer can ask
     /// whether an edit changed the music rather than only the text.
@@ -156,6 +159,18 @@ impl<'session> ProjectSnapshot<'session> {
     /// [`Self::score_revision`] says.
     pub fn names(&self) -> &'session [crate::facts::NameFact] {
         self.valid.as_ref().map_or(&[], |valid| valid.names.as_slice())
+    }
+
+    /// What each declaration of the last valid compile says about itself:
+    /// kind, signature, summary, parameters, and where it is written.
+    ///
+    /// Declarations, not names — an imported declaration has a record whether
+    /// or not this document happens to speak its name, and a name used but
+    /// never declared has a [`NameFact`](crate::NameFact) and no record. Find
+    /// one by the `(name, kind)` a reference carries. From the same revision
+    /// as [`Self::mei`].
+    pub fn items(&self) -> &'session [crate::facts::ItemFact] {
+        self.valid.as_ref().map_or(&[], |valid| valid.items.as_slice())
     }
 
     /// The revision the engraved score and playback plan came from.

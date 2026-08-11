@@ -1,0 +1,42 @@
+// What a piece needs to know about where it lives.
+signature Centred {
+    let tonic: NoteName;
+}
+
+// The home this study is written from.
+structure Home: Centred {
+    // The note name the piece is centred on.
+    let tonic: NoteName = chord_root(chord c major);
+}
+
+piece "Tooling" {
+    meter 4/4;
+    key c major;
+
+    // The subject, stated once and read everywhere.
+    let subject: Music = music { c4/4 e4/4 g4/4 e4/4 };
+
+    // Raise a passage, by a fifth unless told otherwise.
+    fn lifted(what: Music, by: Interval = P5) -> Music {
+        transpose(by, what)
+    }
+
+    // deprecated: write `subject` instead.
+    let theme: Music = music { c4/1 };
+
+    let centre: NoteName = Home.tonic;
+    let raised: Music = lifted(subject, P4);
+
+    score {
+        part piano {
+            voice melody {
+                assert realizes(chord c major, may_add) {
+                    use subject;
+                }
+            }
+            voice answer {
+                use raised;
+            }
+        }
+    }
+}

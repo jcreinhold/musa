@@ -17,18 +17,24 @@
 
 use std::collections::BTreeMap;
 
-use lsp_types::{CompletionItem, CompletionItemKind, CompletionResponse};
+use lsp_types::{CompletionItem, CompletionItemKind, CompletionItemTag, CompletionResponse, Position};
 use musa_language::{PRIMITIVE_TYPES, SPELLINGS, SyntaxKind, TokenClass};
+use musa_project::NameKind;
 
 use crate::workspace::Document;
 
-/// The completion menu for the document.
+/// The completion menu for the caret's position.
 ///
-/// Not position-aware: what is on offer does not depend on where the caret
-/// sits, and the client filters by prefix. Context-aware completion is
-/// future work, not a guess made here.
-pub(crate) fn completions(document: &Document) -> CompletionResponse {
+/// Two layers. The document's whole vocabulary is always on offer, because
+/// the client filters by prefix and a menu that guessed wrong would hide the
+/// word the writer is typing. On top of it sits whatever the *site* knows:
+/// the parameter names of the call being written, the three realization
+/// policies where a policy is the argument, the voice-leading rule ids where
+/// a rule is, and the music-typed names a kernel hole may splice. Site items
+/// sort first, and nothing is taken away.
+pub(crate) fn completions(document: &Document, position: Position) -> CompletionResponse {
     let mut items: BTreeMap<String, CompletionItem> = BTreeMap::new();
+    at_site(document, position, &mut items);
     for (spelling, kind) in SPELLINGS {
         let (item_kind, class) = match TokenClass::of(*kind) {
             Some(TokenClass::Keyword | TokenClass::Use) => (CompletionItemKind::KEYWORD, "keyword"),
@@ -82,6 +88,32 @@ pub(crate) fn completions(document: &Document) -> CompletionResponse {
             ..CompletionItem::default()
         });
     }
+    // Every declaration the last valid compile knows: values, functions,
+    // motifs, and the modules and templates a piece is assembled from, each
+    // offered with the signature the checker settled on rather than with a
+    // guess about what it is.
+    for item in document.snapshot().items() {
+        let kind = match item.kind {
+            NameKind::Value => CompletionItemKind::CONSTANT,
+            NameKind::Function => CompletionItemKind::FUNCTION,
+            NameKind::Motif | NameKind::Fragment | NameKind::Bar => CompletionItemKind::SNIPPET,
+            NameKind::Part => CompletionItemKind::MODULE,
+            NameKind::Voice => CompletionItemKind::VARIABLE,
+            NameKind::Patch => CompletionItemKind::CLASS,
+            NameKind::Module | NameKind::Template => CompletionItemKind::MODULE,
+        };
+        items.entry(item.name.clone()).or_insert_with(|| CompletionItem {
+            label: item.name.clone(),
+            kind: Some(kind),
+            detail: Some(item.signature.clone()),
+            documentation: Some(lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
+                kind: lsp_types::MarkupKind::Markdown,
+                value: super::items::markdown(item),
+            })),
+            tags: item.deprecation.as_ref().map(|_| vec![CompletionItemTag::DEPRECATED]),
+            ..CompletionItem::default()
+        });
+    }
     if let Some(score) = document.snapshot().score() {
         for part in &score.parts {
             offer(&mut items, &part.name, CompletionItemKind::MODULE, "part");
@@ -107,6 +139,99 @@ pub(crate) fn completions(document: &Document) -> CompletionResponse {
         }
     }
     CompletionResponse::Array(items.into_values().collect())
+}
+
+/// What the caret's own position knows, offered ahead of the vocabulary.
+///
+/// The site is read from the lossless tree, because completion is asked for
+/// while the text does not compile; what each site *offers* comes from the
+/// session's facts and the compiler's own registries, because the shell knows
+/// no music. Sorting: `0` puts these above every general word without
+/// removing any of them.
+fn at_site(document: &Document, position: Position, items: &mut BTreeMap<String, CompletionItem>) {
+    let byte = document.lines().byte(position);
+    let snapshot = document.snapshot();
+    let parsed = musa_language::parse(snapshot.source());
+    if in_kernel_hole(&parsed.syntax(), byte) {
+        // A hole splices music and nothing else, so the names that fit are
+        // exactly the ones whose declared result is `Music`.
+        for item in snapshot
+            .items()
+            .iter()
+            .filter(|item| item.result.as_ref().is_some_and(|result| result.name == "Music"))
+        {
+            site(items, &item.name, CompletionItemKind::VALUE, item.signature.clone());
+        }
+        return;
+    }
+    let Some(call) = super::call::at(&parsed.syntax(), byte) else {
+        return;
+    };
+    // A claim's arguments are words the registry reads, not values: where one
+    // is expected, the words themselves are the vocabulary.
+    if let Some(claim) = musa_project::assertion_claims().find(|claim| claim.name == call.name) {
+        match claim.parameters.get(call.argument).copied() {
+            Some("exactly|may_omit|may_add") => {
+                for (policy, asks) in musa_project::realization_policies() {
+                    site(items, policy, CompletionItemKind::ENUM_MEMBER, asks.to_owned());
+                }
+            }
+            Some("rule id") => {
+                for rule in musa_project::rule_names() {
+                    site(
+                        items,
+                        rule.id(),
+                        CompletionItemKind::ENUM_MEMBER,
+                        format!("{} — {}", rule.states(), rule.cites()),
+                    );
+                }
+            }
+            _ => {}
+        }
+        return;
+    }
+    // An ordinary call: the parameters it has left to be given, offered as
+    // the named arguments they are written as. A default is shown, because
+    // "may be omitted" is the reason to know the name at all.
+    let Some(item) = super::items::named(&snapshot, &call.name) else {
+        return;
+    };
+    for parameter in &item.parameters {
+        let detail = match &parameter.default {
+            Some(default) => format!("{} = {default}", parameter.ty.name),
+            None => parameter.ty.name.clone(),
+        };
+        site(
+            items,
+            &format!("{}:", parameter.name),
+            CompletionItemKind::FIELD,
+            detail,
+        );
+    }
+}
+
+/// Whether the caret sits inside a `${ … }` kernel hole.
+fn in_kernel_hole(tree: &musa_language::SyntaxNode, byte: u32) -> bool {
+    tree.descendants().any(|node| {
+        node.kind() == SyntaxKind::KernelHole && {
+            let range = node.text_range();
+            byte > u32::from(range.start()) && byte <= u32::from(range.end())
+        }
+    })
+}
+
+/// One item the site itself supplied, sorted above the general vocabulary.
+fn site(items: &mut BTreeMap<String, CompletionItem>, label: &str, kind: CompletionItemKind, detail: String) {
+    items.insert(
+        label.to_owned(),
+        CompletionItem {
+            label: label.to_owned(),
+            kind: Some(kind),
+            detail: Some(detail),
+            sort_text: Some(format!("0{label}")),
+            ..CompletionItem::default()
+        },
+    );
 }
 
 /// One vocabulary item — a keyword with its own documentation when it has

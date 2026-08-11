@@ -1,8 +1,8 @@
 [package]
-name = "musa-desktop"
 description = "Tauri shell over musa-project"
 edition.workspace = true
 license.workspace = true
+name = "musa-desktop"
 repository.workspace = true
 version.workspace = true
 
@@ -10,9 +10,13 @@ version.workspace = true
 name = "musa_desktop"
 path = "src/lib.rs"
 
+# The binary is one call into the library, so it declares no test harness:
+# cargo would otherwise build and link a second copy of the whole crate to run
+# zero tests. What the app does is tested through `musa_desktop`.
 [[bin]]
 name = "musa-desktop"
 path = "src/main.rs"
+test = false
 
 [lints]
 workspace = true

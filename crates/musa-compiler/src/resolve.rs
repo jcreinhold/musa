@@ -108,6 +108,10 @@ pub enum NameKind {
     /// declarations, never a value, and stops existing once the group has
     /// been checked.
     Module,
+    /// A `template`. Named like a module and used like a function: a `make`
+    /// site applies it, and what the site names is this declaration rather
+    /// than the module the application produces.
+    Template,
 }
 
 /// One named thing and everywhere it is spoken in the compiled document.
@@ -143,25 +147,33 @@ pub struct SourceLocation {
     pub span: SourceSpan,
 }
 
-/// The reference record the resolver accumulates.
+/// What the resolver knows about names, for an editor to restate.
 ///
-/// The resolver already knows every use's declaration at the moment it
-/// resolves the name; this is that knowledge kept, not a second pass
-/// re-derived afterwards. Entries are few — a piece names dozens of things —
-/// so a `Vec` scanned linearly beats an index that has to be kept true.
+/// Two things, kept together because they are learned together and asked
+/// together: where each name is spoken, and what each declaration says. The
+/// resolver already knows every use's declaration at the moment it resolves
+/// the name; this is that knowledge kept, not a second pass re-derived
+/// afterwards. Entries are few — a piece names dozens of things — so a `Vec`
+/// scanned linearly beats an index that has to be kept true.
+#[derive(Default)]
 pub(crate) struct ReferenceIndex {
     entries: Vec<NameReference>,
-}
-
-impl Default for ReferenceIndex {
-    fn default() -> Self {
-        Self::new()
-    }
+    docs: crate::docs::DocIndex,
 }
 
 impl ReferenceIndex {
     pub(crate) fn new() -> Self {
-        Self { entries: Vec::new() }
+        Self::default()
+    }
+
+    /// Record what one checked declaration says about itself.
+    pub(crate) fn document(&mut self, item: crate::docs::ItemDoc) {
+        self.docs.document(item);
+    }
+
+    /// Every documented declaration, in checking order.
+    pub(crate) fn items(&self) -> &[crate::docs::ItemDoc] {
+        self.docs.items()
     }
 
     /// Record a declaration in the compiled document.
@@ -200,6 +212,13 @@ impl ReferenceIndex {
     }
 
     /// Record one resolved use, retaining an imported declaration's source.
+    ///
+    /// A use is a span, so a span already held is the same use and is not
+    /// recorded twice. Checking is not one pass: a document that makes a
+    /// piece at its root reads its modules once for the arguments and again
+    /// for the piece, and both readings see the same `make` site. Without
+    /// this, a rename would emit the same text edit twice and a reference
+    /// list would show one occurrence as two.
     pub(crate) fn record_use_from(
         &mut self,
         kind: NameKind,
@@ -213,7 +232,9 @@ impl ReferenceIndex {
             .find(|entry| entry.kind == kind && entry.name == name)
         {
             Some(entry) => {
-                entry.uses.push(span);
+                if !entry.uses.contains(&span) {
+                    entry.uses.push(span);
+                }
                 if entry.external_declaration.is_none() {
                     entry.external_declaration = external_declaration;
                 }

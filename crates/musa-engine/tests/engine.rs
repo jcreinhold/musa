@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use musa_engine::testing::{CallbackCore, Message};
-use musa_engine::{AudioEngine, EngineConfig, PreparedPlaybackPlan, TransportCommand};
+use musa_engine::{AudioEngine, EngineConfig, EngineError, PreparedPlaybackPlan, TransportCommand};
 
 /// A plan with a real render graph but no events, `total_frames` long.
 fn silent_plan(total_frames: u64) -> PreparedPlaybackPlan {
@@ -135,8 +135,54 @@ fn replaced_plans_retire_to_the_control_side() {
     assert_eq!(retired.total_frames(), 1000, "the FIRST plan came back");
 }
 
+/// Every `EngineError` a caller can be handed says what went wrong without
+/// naming CPAL.
+///
+/// The fast half of the contract below: an error crossing this crate's
+/// boundary is one of four typed things, and each renders a sentence a person
+/// can act on. No device is touched, so it runs in microseconds and holds on
+/// a headless machine.
 #[test]
-fn engine_open_fails_cleanly_or_works() {
+fn every_engine_error_says_what_went_wrong() {
+    for (error, expected) in [
+        (EngineError::NoOutputDevice, "no audio output device available"),
+        (
+            EngineError::UnsupportedStreamConfig { rate: 44_100 },
+            "the output device does not support 44100 Hz stereo f32 output",
+        ),
+        (
+            EngineError::Stream("the device went away".to_owned()),
+            "audio stream failure: the device went away",
+        ),
+        (EngineError::QueueFull, "engine command queue is full"),
+    ] {
+        assert_eq!(error.to_string(), expected);
+    }
+}
+
+/// Opening the engine either works or fails with a typed error — never a
+/// panic, and never a CPAL type reaching the caller.
+///
+/// **Ignored because it is slow, and slow for a reason no code here owns:**
+/// `AudioEngine::open` asks `CoreAudio` for a real output device, and on macOS
+/// that call takes upwards of fifteen seconds on a cold audio subsystem. It
+/// is the only test in the workspace that touches hardware, and leaving it in
+/// the default suite put a sixteen-second floor under every routine run of
+/// twelve hundred tests that otherwise finish in three.
+///
+/// What still holds in the fast suite: the six `EngineCore` tests above run
+/// the whole real-time contract — install, play, seek, loop, underrun, plan
+/// retirement — against the callback directly, with no device;
+/// `every_engine_error_says_what_went_wrong` holds the typed-error half of
+/// *this* test in microseconds.
+///
+/// What is deferred: that the device-opening path is reachable at all, and
+/// that a machine which *has* a device gets a stopped engine at position
+/// zero. That is worth having on demand and is not worth sixteen seconds of
+/// every run.
+#[test]
+#[ignore = "slow: opens a real audio device; run with --run-ignored all"]
+fn slow_engine_open_fails_cleanly_or_works() {
     // CI may have no audio device; either a typed EngineError or a working
     // engine is correct — a panic is not.
     match AudioEngine::open(EngineConfig::default()) {

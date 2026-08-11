@@ -36,20 +36,22 @@ mod features;
 mod workspace;
 
 use std::process::ExitCode;
+use std::str::FromStr as _;
 
 use lsp_server::{Connection, Message, ProtocolError, Request, Response};
 use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Exit, Notification as _, PublishDiagnostics,
 };
 use lsp_types::request::{
-    CodeActionRequest, Completion, DocumentSymbolRequest, FoldingRangeRequest, Formatting, GotoDefinition,
-    HoverRequest, PrepareRenameRequest, References, Rename, Request as _, SemanticTokensFullRequest,
+    CodeActionRequest, CodeLensRequest, Completion, DocumentSymbolRequest, ExecuteCommand, FoldingRangeRequest,
+    Formatting, GotoDefinition, HoverRequest, PrepareRenameRequest, References, Rename, Request as _,
+    SemanticTokensFullRequest, SignatureHelpRequest,
 };
 use lsp_types::{
-    CodeActionProviderCapability, CompletionOptions, HoverProviderCapability, OneOf, PositionEncodingKind,
-    PublishDiagnosticsParams, RenameOptions, SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
-    SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
-    WorkDoneProgressOptions,
+    CodeActionProviderCapability, CodeLensOptions, CompletionOptions, ExecuteCommandOptions, HoverProviderCapability,
+    OneOf, PositionEncodingKind, PublishDiagnosticsParams, RenameOptions, SemanticTokensFullOptions,
+    SemanticTokensLegend, SemanticTokensOptions, SemanticTokensServerCapabilities, ServerCapabilities,
+    SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind, Uri, WorkDoneProgressOptions,
 };
 use workspace::{Document, Workspace};
 
@@ -162,8 +164,25 @@ fn server_capabilities() -> ServerCapabilities {
         })),
         completion_provider: Some(CompletionOptions {
             resolve_provider: Some(false),
-            trigger_characters: None,
+            // A dot reaches into a module and an open paren begins an
+            // argument, and both are positions where the menu knows something
+            // the prefix does not.
+            trigger_characters: Some(vec![".".to_owned(), "(".to_owned()]),
             ..CompletionOptions::default()
+        }),
+        signature_help_provider: Some(SignatureHelpOptions {
+            trigger_characters: Some(vec!["(".to_owned()]),
+            retrigger_characters: Some(vec![",".to_owned()]),
+            work_done_progress_options: WorkDoneProgressOptions::default(),
+        }),
+        // Analysis is asked for, never volunteered: the lens is the asking,
+        // and the command is the answer (`features::analysis`).
+        code_lens_provider: Some(CodeLensOptions {
+            resolve_provider: Some(false),
+        }),
+        execute_command_provider: Some(ExecuteCommandOptions {
+            commands: commands(),
+            work_done_progress_options: WorkDoneProgressOptions::default(),
         }),
         semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
             SemanticTokensOptions {
@@ -288,13 +307,79 @@ fn dispatch(workspace: &Workspace, request: Request) -> Response {
                 .map(features::semantic_tokens::full)
         }),
         Completion::METHOD => answer::<Completion>(request, |params| {
+            let at = params.text_document_position;
             workspace
-                .document(&params.text_document_position.text_document.uri)
+                .document(&at.text_document.uri)
                 .and_then(surface_only)
-                .map(features::completion::completions)
+                .map(|document| features::completion::completions(document, at.position))
         }),
+        SignatureHelpRequest::METHOD => answer::<SignatureHelpRequest>(request, |params| {
+            let at = params.text_document_position_params;
+            workspace
+                .document(&at.text_document.uri)
+                .and_then(surface_only)
+                .and_then(|document| features::signature_help::signature_help(document, at.position))
+        }),
+        CodeLensRequest::METHOD => answer::<CodeLensRequest>(request, |params| {
+            workspace
+                .document(&params.text_document.uri)
+                .and_then(surface_only)
+                .and_then(|document| features::analysis::code_lenses(document, &params.text_document.uri))
+        }),
+        ExecuteCommand::METHOD => {
+            answer_fallible::<ExecuteCommand>(request, |params| execute_command(workspace, &params).map(Some))
+        }
         _ => Response::new_err(id, METHOD_NOT_FOUND, format!("musa-lsp does not answer `{method}`")),
     }
+}
+
+/// Every command this server executes, for the handshake.
+///
+/// Two, and both are questions a client cannot answer for itself: what an
+/// analysis saw, and what a bundled module says. Neither is an edit — a
+/// command that changed a document would be a command the client could not
+/// undo.
+fn commands() -> Vec<String> {
+    vec![
+        features::analysis::ANALYZE.to_owned(),
+        features::bundled::BUNDLED_SOURCE.to_owned(),
+    ]
+}
+
+/// Run one workspace command.
+///
+/// The arguments are the command's own, positionally, and a client sending a
+/// command sends what the lens or the link that offered it carried. A missing
+/// or malformed argument is the client's protocol bug and is answered as one,
+/// not as an empty result.
+fn execute_command(
+    workspace: &Workspace,
+    params: &lsp_types::ExecuteCommandParams,
+) -> Result<serde_json::Value, String> {
+    if params.command == features::bundled::BUNDLED_SOURCE {
+        let [uri] = params.arguments.as_slice() else {
+            return Err(format!("`{}` takes one bundled module URI", params.command));
+        };
+        let uri = uri.as_str().ok_or_else(|| "the argument is a URI string".to_owned())?;
+        return features::bundled::execute(uri);
+    }
+    if params.command != features::analysis::ANALYZE {
+        return Err(format!("musa-lsp does not run `{}`", params.command));
+    }
+    let [uri, kind] = params.arguments.as_slice() else {
+        return Err(format!(
+            "`{}` takes a document URI and an analysis kind",
+            params.command
+        ));
+    };
+    let (Some(uri), Some(kind)) = (uri.as_str(), kind.as_str()) else {
+        return Err("both arguments are strings: a document URI and an analysis kind".to_owned());
+    };
+    let uri = Uri::from_str(uri).map_err(|_| format!("`{uri}` is not a URI"))?;
+    let document = workspace
+        .document(&uri)
+        .ok_or_else(|| "that document is not open here".to_owned())?;
+    features::analysis::execute(document, kind)
 }
 
 /// The document, if it is written in the surface language.

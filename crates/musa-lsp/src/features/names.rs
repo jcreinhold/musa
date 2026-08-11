@@ -134,7 +134,8 @@ fn check_new_name(document: &Document, entry: &NameFact, new_name: &str) -> Resu
         kind @ (musa_project::NameKind::Part
         | musa_project::NameKind::Voice
         | musa_project::NameKind::Patch
-        | musa_project::NameKind::Module) => collides(kind),
+        | musa_project::NameKind::Module
+        | musa_project::NameKind::Template) => collides(kind),
     };
     if collision {
         return Err(format!("`{new_name}` already names something here"));

@@ -796,6 +796,11 @@ impl ProjectSession {
         } else {
             compilation.references().to_vec()
         };
+        let items: Vec<musa_compiler::ItemDoc> = if compilation.has_errors() {
+            Vec::new()
+        } else {
+            compilation.items().to_vec()
+        };
         let decisions: Vec<musa_compiler::DecisionRecord> = if compilation.has_errors() {
             Vec::new()
         } else {
@@ -834,6 +839,7 @@ impl ProjectSession {
                     let parts: Vec<String> = facts.parts.iter().map(|part| part.name.clone()).collect();
                     let studio_facts = crate::studio::StudioFacts::derive(&studio, &parts);
                     let names = names.iter().map(crate::facts::NameFact::from_compiler).collect();
+                    let items = items.iter().map(crate::facts::ItemFact::from_compiler).collect();
                     self.valid = Some(ValidArtifacts {
                         decisions,
                         mei,
@@ -844,6 +850,7 @@ impl ProjectSession {
                         facts,
                         studio_facts,
                         names,
+                        items,
                         revision,
                         identity,
                     });

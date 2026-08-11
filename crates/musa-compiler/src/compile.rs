@@ -154,6 +154,18 @@ impl Compilation {
         self.references.entries()
     }
 
+    /// What each checked declaration says about itself, for an editor to
+    /// restate (`crate::docs`).
+    ///
+    /// Declarations, not names: a name used but never declared has a
+    /// reference and no record, and an imported declaration has a record
+    /// whether or not this document happens to speak its name. Unique by name
+    /// and kind, so a consumer may look one up by the name a reference
+    /// carries.
+    pub fn items(&self) -> &[crate::docs::ItemDoc] {
+        self.references.items()
+    }
+
     /// Every decision this compilation took, in the order the sites were
     /// reached (`docs/kernel/11-realization.md`).
     ///

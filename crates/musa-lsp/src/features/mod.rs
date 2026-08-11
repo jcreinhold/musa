@@ -11,6 +11,9 @@
 //! treat a match as best-effort — the same bargain every client makes with
 //! its own debounce — and never as a reason to panic.
 
+pub(crate) mod analysis;
+pub(crate) mod bundled;
+pub(crate) mod call;
 pub(crate) mod code_action;
 pub(crate) mod completion;
 pub(crate) mod definition;
@@ -18,8 +21,10 @@ pub(crate) mod diagnostics;
 pub(crate) mod folding;
 pub(crate) mod formatting;
 pub(crate) mod hover;
+pub(crate) mod items;
 pub(crate) mod names;
 pub(crate) mod semantic_tokens;
+pub(crate) mod signature_help;
 pub(crate) mod symbols;
 
 use musa_project::Fraction;

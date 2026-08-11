@@ -21,17 +21,19 @@ use std::thread::JoinHandle;
 use lsp_server::{Connection, Message, RequestId};
 use lsp_types::notification::{DidChangeTextDocument, DidOpenTextDocument, Exit, Initialized, PublishDiagnostics};
 use lsp_types::request::{
-    CodeActionRequest, Completion, DocumentSymbolRequest, FoldingRangeRequest, Formatting, GotoDefinition,
-    HoverRequest, Initialize, PrepareRenameRequest, References, Rename, SemanticTokensFullRequest, Shutdown,
+    CodeActionRequest, CodeLensRequest, Completion, DocumentSymbolRequest, ExecuteCommand, FoldingRangeRequest,
+    Formatting, GotoDefinition, HoverRequest, Initialize, PrepareRenameRequest, References, Rename,
+    SemanticTokensFullRequest, Shutdown, SignatureHelpRequest,
 };
 use lsp_types::{
-    CodeActionKind, CodeActionOrCommand, CodeActionParams, CodeActionResponse, CompletionParams, CompletionResponse,
-    DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentSymbolParams, DocumentSymbolResponse, FoldingRange,
-    FoldingRangeKind, FoldingRangeParams, GotoDefinitionResponse, Hover, HoverContents, HoverParams, InitializedParams,
-    Location, PartialResultParams, Position, PrepareRenameResponse, PublishDiagnosticsParams, ReferenceContext,
-    ReferenceParams, RenameParams, SemanticTokensParams, SemanticTokensResult, SymbolKind,
-    TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem, TextDocumentPositionParams, Uri,
-    VersionedTextDocumentIdentifier, WorkDoneProgressParams,
+    CodeActionKind, CodeActionOrCommand, CodeActionParams, CodeActionResponse, CodeLens, CodeLensParams,
+    CompletionParams, CompletionResponse, DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentSymbolParams,
+    DocumentSymbolResponse, ExecuteCommandParams, FoldingRange, FoldingRangeKind, FoldingRangeParams,
+    GotoDefinitionResponse, Hover, HoverContents, HoverParams, InitializedParams, Location, PartialResultParams,
+    Position, PrepareRenameResponse, PublishDiagnosticsParams, ReferenceContext, ReferenceParams, RenameParams,
+    SemanticTokensParams, SemanticTokensResult, SignatureHelp, SymbolKind, SymbolTag, TextDocumentContentChangeEvent,
+    TextDocumentIdentifier, TextDocumentItem, TextDocumentPositionParams, Uri, VersionedTextDocumentIdentifier,
+    WorkDoneProgressParams,
 };
 
 const GLASS_MOUNTAIN: &str = include_str!("../../../examples/glass-mountain.musa");
@@ -46,6 +48,16 @@ const STDLIB_PIECE: &str = "piece \"Standard library\" {
     score { part piano { voice melody { c4/1 } } }
 }
 ";
+
+/// The elaboration language, in the smallest piece that writes all of it: a
+/// signature and a structure at the document root, a function with a default
+/// parameter, a deprecated binding, a spelled pitch class, and a claim with a
+/// realization policy. Every prompt-122 law about *declarations* reads this.
+const TOOLING: &str = include_str!("tooling.musa");
+
+/// A kernel quote with holes in it — the one site whose completion is
+/// narrower than the document's whole vocabulary.
+const KERNEL_SPLICE: &str = include_str!("../../../examples/kernel-splice.musa");
 
 /// A small valid piece whose every position the tests can count by hand —
 /// one full bar of 4/4.
@@ -432,6 +444,13 @@ fn bundled_names_keep_source_maps_docs_and_read_only_identity() {
     };
     assert!(content.value.contains("fn identity_nat"), "{}", content.value);
     assert!(content.value.contains("read-only"), "{}", content.value);
+    // A link into the bundled source, at the line the declaration is on: the
+    // text is compiled into the binary, so the link is the only way there.
+    assert!(
+        content.value.contains("(musa-stdlib:/std/core.musa#L"),
+        "{}",
+        content.value
+    );
 
     let prepared = server
         .client
@@ -539,6 +558,16 @@ fn handshake_advertises_the_feature_set() {
     assert!(capabilities.document_formatting_provider.is_some());
     assert!(capabilities.completion_provider.is_some());
     assert!(capabilities.semantic_tokens_provider.is_some());
+    assert!(capabilities.signature_help_provider.is_some());
+    assert!(capabilities.code_lens_provider.is_some());
+    let commands = capabilities
+        .execute_command_provider
+        .expect("the analysis command is executable");
+    assert!(commands.commands.contains(&"musa.analyze".to_owned()), "{commands:?}");
+    assert!(
+        commands.commands.contains(&"musa.bundledSource".to_owned()),
+        "{commands:?}"
+    );
     server.stop();
 }
 
@@ -1020,6 +1049,425 @@ fn hover_on_a_controlled_music_function_explains_its_boundary() {
     assert!(content.value.contains("**map_note_pitches**"), "{}", content.value);
     assert!(content.value.contains("Key signatures"), "{}", content.value);
     server.stop();
+}
+
+#[test]
+fn hover_on_a_declaration_reports_the_checked_signature_and_its_summary() {
+    let mut server = Server::start();
+    let (uri, published) = server.open("tooling", TOOLING);
+    assert!(published.diagnostics.is_empty(), "{published:?}");
+    let content = hover_markdown(&mut server, &uri, at(TOOLING, "lifted(what"));
+    // The signature the checker settled on, defaults and all — not the text.
+    assert!(
+        content.contains("fn lifted(what: Music, by: Interval = P5) -> Music"),
+        "{content}"
+    );
+    // The comment block above the declaration, as prose.
+    assert!(content.contains("Raise a passage"), "{content}");
+    server.stop();
+}
+
+#[test]
+fn hover_draws_the_distinction_between_a_domain_and_the_one_it_is_confused_with() {
+    // `NoteName` and `Pc12` are both "a pitch class" in ordinary speech and
+    // are different objects here. A hover that named only the type would let
+    // a reader carry the confusion; the sentence is the compiler's own.
+    let mut server = Server::start();
+    let (uri, _) = server.open("tooling", TOOLING);
+    let content = hover_markdown(&mut server, &uri, at(TOOLING, "centre: NoteName"));
+    assert!(content.contains("let centre: NoteName"), "{content}");
+    assert!(
+        content.contains("C\u{266f} and D\u{266d} are two"),
+        "the spelled/modulo-twelve distinction: {content}"
+    );
+    server.stop();
+}
+
+#[test]
+fn hover_marks_a_deprecated_binding_with_what_to_write_instead() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("tooling", TOOLING);
+    let content = hover_markdown(&mut server, &uri, at(TOOLING, "theme: Music"));
+    assert!(content.contains("**Deprecated**"), "{content}");
+    assert!(content.contains("write `subject` instead"), "{content}");
+    server.stop();
+}
+
+#[test]
+fn signature_help_names_the_parameter_the_caret_is_on() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("tooling", TOOLING);
+    let call = at(TOOLING, "lifted(subject");
+    // Inside the first argument.
+    let help = signature_help(&mut server, &uri, shifted(call, 7));
+    let signature = help.signatures.first().expect("one signature");
+    assert_eq!(signature.label, "fn lifted(what: Music, by: Interval = P5) -> Music");
+    let parameters = signature.parameters.as_ref().expect("parameters");
+    let labels: Vec<&str> = parameters
+        .iter()
+        .map(|parameter| match &parameter.label {
+            lsp_types::ParameterLabel::Simple(label) => label.as_str(),
+            lsp_types::ParameterLabel::LabelOffsets(_) => panic!("expected simple labels"),
+        })
+        .collect();
+    assert_eq!(labels, ["what: Music", "by: Interval = P5"], "{parameters:?}");
+    assert_eq!(help.active_parameter, Some(0));
+    // Past the comma, the second.
+    let help = signature_help(&mut server, &uri, shifted(call, 16));
+    assert_eq!(help.active_parameter, Some(1));
+    server.stop();
+}
+
+#[test]
+fn signature_help_answers_for_a_claim_from_the_compilers_own_registry() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("tooling", TOOLING);
+    let claim = at(TOOLING, "realizes(chord");
+    let help = signature_help(&mut server, &uri, shifted(claim, 9));
+    let signature = help.signatures.first().expect("one signature");
+    assert!(signature.label.starts_with("realizes("), "{}", signature.label);
+    let parameters = signature.parameters.as_ref().expect("parameters");
+    assert_eq!(parameters.len(), 2, "{parameters:?}");
+    // The policy argument, past the comma.
+    let help = signature_help(&mut server, &uri, shifted(claim, 24));
+    assert_eq!(help.active_parameter, Some(1));
+    server.stop();
+}
+
+#[test]
+fn completion_offers_a_calls_parameter_names_with_their_defaults() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("tooling", TOOLING);
+    let items = completions(&mut server, &uri, shifted(at(TOOLING, "lifted(subject"), 7));
+    let named = items.iter().find(|item| item.label == "by:").expect("`by:` offered");
+    assert_eq!(named.detail.as_deref(), Some("Interval = P5"));
+    assert_eq!(named.kind, Some(lsp_types::CompletionItemKind::FIELD));
+    assert!(
+        named.sort_text.as_deref().is_some_and(|sort| sort.starts_with('0')),
+        "the site sorts above the vocabulary: {named:?}"
+    );
+    // Nothing is taken away: the language's own words are still on offer.
+    assert!(items.iter().any(|item| item.label == "meter"), "the vocabulary stays");
+    server.stop();
+}
+
+#[test]
+fn completion_in_a_policy_position_offers_the_three_policies() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("tooling", TOOLING);
+    let items = completions(&mut server, &uri, shifted(at(TOOLING, "realizes(chord"), 24));
+    for policy in ["exactly", "may_omit", "may_add"] {
+        let offered = items
+            .iter()
+            .find(|item| item.label == policy)
+            .unwrap_or_else(|| panic!("`{policy}` missing: {items:?}"));
+        assert_eq!(offered.kind, Some(lsp_types::CompletionItemKind::ENUM_MEMBER));
+        assert!(
+            offered.sort_text.as_deref().is_some_and(|sort| sort.starts_with('0')),
+            "{offered:?}"
+        );
+    }
+    server.stop();
+}
+
+#[test]
+fn completion_in_a_kernel_hole_offers_only_what_a_hole_may_splice() {
+    let mut server = Server::start();
+    let (uri, published) = server.open("kernel-splice", KERNEL_SPLICE);
+    assert!(published.diagnostics.is_empty(), "{published:?}");
+    let items = completions(&mut server, &uri, at(KERNEL_SPLICE, "subject} in"));
+    let spliced = items
+        .iter()
+        .find(|item| item.label == "subject")
+        .expect("the music-typed binding");
+    assert!(
+        spliced.sort_text.as_deref().is_some_and(|sort| sort.starts_with('0')),
+        "{spliced:?}"
+    );
+    // A hole splices music and nothing else, so every name the site itself
+    // offered is music. The rest of the vocabulary is still there, unsorted.
+    for item in items.iter().filter(|item| item.sort_text.is_some()) {
+        assert!(
+            item.detail.as_deref().is_some_and(|detail| detail.contains("Music")),
+            "a hole may splice only music: {item:?}"
+        );
+    }
+    server.stop();
+}
+
+#[test]
+fn symbols_list_the_declarations_written_here_and_no_others() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("tooling", TOOLING);
+    let symbols = flat_symbols(&mut server, &uri);
+    let names: Vec<&str> = symbols.iter().map(|symbol| symbol.name.as_str()).collect();
+    for expected in [
+        "signature Centred",
+        "structure Home: Centred",
+        "fn lifted(what: Music, by: Interval = P5) -> Music",
+        "let subject: Music",
+    ] {
+        assert!(names.contains(&expected), "`{expected}` missing: {names:?}");
+    }
+    let deprecated = symbols
+        .iter()
+        .find(|symbol| symbol.name.starts_with("let theme"))
+        .expect("the deprecated binding");
+    assert_eq!(deprecated.tags.as_deref(), Some([SymbolTag::DEPRECATED].as_slice()));
+    // Sorted by where they are written, because that is how an outline reads.
+    let mut positions: Vec<_> = symbols.iter().map(|symbol| symbol.location.range.start).collect();
+    let ordered = positions.clone();
+    positions.sort_by_key(|position| (position.line, position.character));
+    assert_eq!(positions, ordered);
+
+    // An imported declaration has a span in another document; an outline
+    // entry for it would send every jump to an offset in the wrong file.
+    let (uri, _) = server.open("stdlib", STDLIB_PIECE);
+    let names: Vec<String> = flat_symbols(&mut server, &uri)
+        .into_iter()
+        .map(|symbol| symbol.name)
+        .collect();
+    assert!(names.iter().any(|name| name == "let answer: Nat"), "{names:?}");
+    assert!(
+        !names.iter().any(|name| name.contains("identity_nat")),
+        "the bundled declaration is not written here: {names:?}"
+    );
+    server.stop();
+}
+
+#[test]
+fn navigation_crosses_a_template_and_the_structures_it_makes() {
+    // A functor's name at a `make` site is the template's, not the module's:
+    // the bug this pins recorded it as a module, so a jump from `Canon(…)`
+    // landed on the instance it produced rather than on the template that
+    // produced it.
+    let study = std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/module-functor-study.musa"),
+    )
+    .expect("the functor study");
+    let mut server = Server::start();
+    let (uri, published) = server.open("module-functor-study", &study);
+    assert!(published.diagnostics.is_empty(), "{published:?}");
+
+    let definition = server
+        .client
+        .request::<GotoDefinition>(lsp_types::GotoDefinitionParams {
+            text_document_position_params: position_params(&uri, at(&study, "Canon(CMajor")),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+            partial_result_params: PartialResultParams::default(),
+        });
+    let definition: GotoDefinitionResponse = serde_json::from_value(definition).expect("a definition");
+    let GotoDefinitionResponse::Scalar(location) = definition else {
+        panic!("expected one location: {definition:?}");
+    };
+    assert_eq!(location.range.start.line, at(&study, "template structure Canon").line);
+
+    // Both `make` sites use the one template.
+    let references = server
+        .client
+        .request::<References>(reference_params(&uri, at(&study, "Canon(CMajor"), true));
+    let references: Vec<Location> = serde_json::from_value(references).expect("references");
+    assert_eq!(references.len(), 3, "declaration and two makes: {references:?}");
+
+    let symbols: Vec<String> = flat_symbols(&mut server, &uri)
+        .into_iter()
+        .map(|symbol| symbol.name)
+        .collect();
+    assert!(
+        symbols.iter().any(|name| name.starts_with("template Canon")),
+        "{symbols:?}"
+    );
+    assert!(
+        symbols.iter().any(|name| name == "signature CanonMaterial"),
+        "{symbols:?}"
+    );
+    server.stop();
+}
+
+#[test]
+fn a_missing_register_offers_no_quick_fix_because_the_octave_is_a_choice() {
+    // The rule the prompt fixes: a code action appears only where the
+    // diagnostic carries a certain fix. A stacked chord with no register is
+    // an error the compiler will not guess at — which octave the composer
+    // meant is composition — so it arrives with no fix and the editor offers
+    // nothing rather than something plausible.
+    let source = "piece \"register\" {
+    meter 4/4;
+    key c major;
+    score { part piano { voice melody { stack c major /1 } } }
+}
+";
+    let mut server = Server::start();
+    let (uri, published) = server.open("register", source);
+    let diagnostic = published.diagnostics.first().expect("a diagnostic");
+    assert!(diagnostic.message.contains("register"), "{}", diagnostic.message);
+    let actions = server.client.request::<CodeActionRequest>(CodeActionParams {
+        text_document: TextDocumentIdentifier { uri },
+        range: diagnostic.range,
+        context: lsp_types::CodeActionContext {
+            diagnostics: vec![diagnostic.clone()],
+            only: Some(vec![CodeActionKind::QUICKFIX]),
+            trigger_kind: None,
+        },
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    });
+    let actions: Option<CodeActionResponse> = serde_json::from_value(actions).expect("code actions");
+    assert!(
+        actions.is_none_or(|actions| actions.is_empty()),
+        "an uncertain fix must not be offered"
+    );
+    server.stop();
+}
+
+#[test]
+fn analysis_answers_a_command_and_publishes_no_diagnostics() {
+    let mut server = Server::start();
+    let (uri, published) = server.open("glass-mountain", GLASS_MOUNTAIN);
+    assert!(published.diagnostics.is_empty(), "{published:?}");
+    let lenses = server.client.request::<CodeLensRequest>(CodeLensParams {
+        text_document: TextDocumentIdentifier { uri },
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    });
+    let lenses: Vec<CodeLens> = serde_json::from_value(lenses).expect("code lenses");
+    assert!(!lenses.is_empty(), "a compiled piece can be analyzed");
+    let lens = lenses
+        .iter()
+        .find(|lens| {
+            lens.command
+                .as_ref()
+                .is_some_and(|command| command.title == "Analyze: chords")
+        })
+        .expect("a lens for the chord reading");
+    let command = lens.command.as_ref().expect("a command");
+    assert_eq!(command.command, "musa.analyze");
+    let arguments = command.arguments.clone().expect("the lens's own arguments");
+
+    let answer = server.client.request::<ExecuteCommand>(ExecuteCommandParams {
+        command: command.command.clone(),
+        arguments,
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    assert_eq!(answer.get("kind").and_then(serde_json::Value::as_str), Some("chords"));
+    assert!(answer.get("findings").is_some(), "typed findings, not prose: {answer}");
+    // The assumptions travel with the findings: an analysis that stated none
+    // would be claiming rather than observing.
+    assert!(
+        answer
+            .get("assumptions")
+            .and_then(serde_json::Value::as_array)
+            .is_some_and(|assumptions| !assumptions.is_empty()),
+        "{answer}"
+    );
+
+    // The whole point: an observation is not a mistake, so nothing about it
+    // reaches the problems pane.
+    assert!(
+        !server
+            .client
+            .notifications
+            .iter()
+            .any(|notification| notification.method == "textDocument/publishDiagnostics"),
+        "analysis must not publish diagnostics"
+    );
+    server.stop();
+}
+
+#[test]
+fn a_bundled_module_can_be_read_but_not_written() {
+    // The other half of the read-only identity: the definition link points at
+    // a document that exists nowhere on disk, so the client has to be able to
+    // ask for its text — otherwise the link the server produced goes nowhere.
+    let mut server = Server::start();
+    let (_, _) = server.open("stdlib", STDLIB_PIECE);
+    let answer = server.client.request::<ExecuteCommand>(ExecuteCommandParams {
+        command: "musa.bundledSource".to_owned(),
+        arguments: vec![serde_json::Value::String("musa-stdlib:/std/core.musa".to_owned())],
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    let source = answer.as_str().expect("the module's own text");
+    assert!(source.contains("identity_nat"), "{source}");
+
+    let response = server.client.response::<ExecuteCommand>(ExecuteCommandParams {
+        command: "musa.bundledSource".to_owned(),
+        arguments: vec![serde_json::Value::String("musa-stdlib:/std/invented.musa".to_owned())],
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    let error = response.response_result.expect_err("no such bundled module");
+    assert!(error.message.contains("not a bundled Musa module"), "{}", error.message);
+    server.stop();
+}
+
+#[test]
+fn an_unknown_analysis_is_refused_rather_than_reported_as_clean() {
+    let mut server = Server::start();
+    let (uri, _) = server.open("glass-mountain", GLASS_MOUNTAIN);
+    let response = server.client.response::<ExecuteCommand>(ExecuteCommandParams {
+        command: "musa.analyze".to_owned(),
+        arguments: vec![
+            serde_json::Value::String(uri.to_string()),
+            serde_json::Value::String("counterpoint-in-reverse".to_owned()),
+        ],
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    let error = response.response_result.expect_err("an unknown analysis is refused");
+    assert!(error.message.contains("not an analysis"), "{}", error.message);
+    server.stop();
+}
+
+/// The markdown of a hover, or a panic naming the position that had none.
+fn hover_markdown(server: &mut Server, uri: &Uri, position: Position) -> String {
+    let hover = server.client.request::<HoverRequest>(HoverParams {
+        text_document_position_params: position_params(uri, position),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+    });
+    let hover: Hover = serde_json::from_value(hover).unwrap_or_else(|_| panic!("no hover at {position:?}"));
+    let HoverContents::Markup(content) = hover.contents else {
+        panic!("expected markdown hover");
+    };
+    content.value
+}
+
+/// The signature help at one position, or a panic.
+fn signature_help(server: &mut Server, uri: &Uri, position: Position) -> SignatureHelp {
+    let answer = server
+        .client
+        .request::<SignatureHelpRequest>(lsp_types::SignatureHelpParams {
+            text_document_position_params: position_params(uri, position),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+            context: None,
+        });
+    serde_json::from_value(answer).unwrap_or_else(|_| panic!("no signature help at {position:?}"))
+}
+
+/// The completion menu at one position, as a list.
+fn completions(server: &mut Server, uri: &Uri, position: Position) -> Vec<lsp_types::CompletionItem> {
+    let answer = server.client.request::<Completion>(CompletionParams {
+        text_document_position: position_params(uri, position),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        context: None,
+        partial_result_params: PartialResultParams::default(),
+    });
+    let completions: CompletionResponse = serde_json::from_value(answer).expect("completions");
+    let CompletionResponse::Array(items) = completions else {
+        panic!("expected a completion list");
+    };
+    items
+}
+
+/// The document's symbols, flat.
+fn flat_symbols(server: &mut Server, uri: &Uri) -> Vec<lsp_types::SymbolInformation> {
+    let symbols = server.client.request::<DocumentSymbolRequest>(DocumentSymbolParams {
+        text_document: TextDocumentIdentifier { uri: uri.clone() },
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    });
+    let symbols: DocumentSymbolResponse = serde_json::from_value(symbols).expect("symbols");
+    let DocumentSymbolResponse::Flat(symbols) = symbols else {
+        panic!("expected flat symbols");
+    };
+    symbols
 }
 
 #[test]

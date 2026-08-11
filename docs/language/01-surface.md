@@ -128,6 +128,26 @@ Bundled source remains available at stable `musa-stdlib:/std/…` URIs for hover
 musician customizes one by writing a local wrapper. The authoritative signatures and prose are generated from source
 comments in `stdlib/reference.md`.
 
+### 1.1 Documentation comments
+
+A declaration's documentation is the run of `//` lines written directly above it, with no blank line between. That is
+the whole convention: no doc-comment sigil, no attribute, no second comment syntax. A blank line ends a thought, so a
+comment separated by one is about the section rather than about the name, and a comment inside a brace or at the end of
+a line is not documentation at all.
+
+Deprecation is written the same way, because a deprecation is documentation. A first line reading `deprecated: <what to
+write instead>` marks the declaration; the replacement is the rest of that line, and the line stays in the prose so a
+reader meets it in place as well as in the editor's strike-through.
+
+```musa
+// deprecated: write `subject` instead.
+let theme: Music = music { c4/1 };
+```
+
+Nothing about this changes what compiles. A deprecated name resolves, elaborates, and sounds exactly as it did; what
+changes is what an editor says about it. The alternative — a keyword or an attribute — would make a note to a reader
+into a fact about the language, and the compiler has nothing to do with it.
+
 ## 2. Functions and music
 
 ```musa
