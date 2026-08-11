@@ -22,6 +22,10 @@ publishing compiler passes or raw fact traversal.
 - Current compiler/project/CLI/LSP facades and all callers of `ScoreSnapshot` facts.
 - OMT `104-analyzing-with-set-theory-or-not.md` and `107-analyzing-with-modes-scales-and-collections.md`: analysis
   choices and musical meaning are contextual, not merely a computation over labels.
+- Peyton Jones (1987) Chapter 22, *Strictness Analysis*, for the shape a program analysis should have: §22.1's abstract
+  interpretation — an abstract domain, an abstract version of each operation, and a stated relationship to the concrete
+  semantics — and §22.3 on why the obvious treatments of recursion are wrong. Musa needs no strictness analysis; it
+  needs the discipline.
 
 ## Design
 
@@ -30,6 +34,14 @@ subsystem reached through one stable request/report operation. Choose the latter
 needs to own the algorithms. The likely public surface is one immutable `AnalysisRequest`/`AnalysisReport` pair and
 `analyze`, with project as the normal facade for CLI/LSP/desktop; internal segmenters, candidate graphs, indexes, and
 theory values stay private.
+
+**State every analysis as an abstract interpretation, not as a traversal.** Each analysis kind declares: the abstract
+domain its findings live in, the abstraction map from the concrete `Timeline<ScoreFact>` projection to that domain, and
+the soundness claim relating them — what a finding does and does not license a caller to conclude. An analysis whose
+soundness claim cannot be written is an analysis that must not ship, because a finding with no stated relationship to
+the score is exactly the false claim `docs/language/03-musical-domains.md` §5 forbids. This is what makes the
+fact/candidate/conflict classification below mean something precise — candidates are concrete interpretations the
+abstraction cannot separate — rather than being severity labels chosen by feel, and it is what prompt 118 inherits.
 
 A request names an analysis kind, score scope/voices, exact time window, and explicit assumptions/policies. A finding
 has a stable code, typed summary data, severity/classification (fact, candidate, conflict), evidence spans/fact ids, and
@@ -48,6 +60,8 @@ tonal judgments. LSP and desktop plumbing wait until prompt 122/116.
 - Tests for scope/window selection, evidence/source mapping, invalid request diagnostics, deterministic rendering,
   analysis not changing semantic hash/snapshot, and public-surface audit.
 - `docs/language/07-analysis.md`: boundary, finding/evidence semantics, algorithm admission rules, and extension guide.
+  Its admission rules must require an abstract domain, an abstraction map, and a soundness claim per analysis kind, and
+  must cite the source of that discipline.
 
 ## Check
 

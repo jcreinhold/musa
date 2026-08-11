@@ -23,6 +23,9 @@ boundaries. Preserve the audio-bridge baseline unchanged except for explicitly c
 - `docs/interface/06-performance.md` and all existing B-budget definitions.
 - `docs/language/02-core.md`, `03-music.md`, `04-templates-and-modules.md`, `06-kernel-escape.md`, and `07-analysis.md`.
 - Cache, semantic-hash, last-valid-artifact, realization, and provenance invariants from prompts 43, 50, 67, and 77.
+- `docs/kernel/10-term-calculus.md` §"Provenance of the sharing discipline", and Peyton Jones (1987) Chapters 14.7.2,
+  15, and 23. Chapter 15 defines the technique this prompt must measure; Chapter 23 is why it must be measured rather
+  than assumed.
 
 ## Design
 
@@ -43,6 +46,29 @@ Any cache introduced or changed here is correct only if its key includes semanti
 the relevant elaboration/context environment, source/instance identity required by provenance, realization parameters,
 and compiler/stdlib format version. Prove cached and uncached results equal in kernel normal form, ordered diagnostics,
 provenance, analyses, and resource failures. Eviction may change time and memory, never semantics or diagnostic order.
+
+**Measure the sharing gap explicitly, and decide it with the measurement.** The `Share` type in
+`crates/musa-compiler/src/elaborate.rs` shares a motif body keyed on everything its payloads depend on, so two calls
+with *different* arguments share nothing — common-subexpression elimination on the call, not full laziness. A body's
+argument-independent subexpressions are therefore re-elaborated once per distinct argument;
+`examples/tuplet-fixture.musa`'s `motif turn(root)` is the shape, with its second note independent of `root`. Add a
+workload that scales this deliberately — a large motif body whose majority is argument-independent, called with many
+distinct arguments — and report elaboration time, allocations, and occurrence count against a hand-hoisted equivalent.
+That difference is the whole prize; if it is immaterial at realistic sizes, record the number and close the question.
+
+If it is material, implement hoisting of argument-independent subexpressions to piece-level bindings, under three
+conditions and no others:
+
+- **Semantics unchanged.** Kernel normal form, ordered diagnostics, provenance, and semantic hash identical before and
+  after, proved by differential test on the compatibility corpus. The hoisted binding is a `let`, so this is T2.
+- **Visible, not magic.** The hoist appears as an Origin step. Peyton Jones (1987) §23.2.1's point transfers even though
+  its laziness caveats do not: whether the sharing is found depends on how the source was written, and a performance
+  property that turns on syntactic accident must be inspectable rather than silent.
+- **Not a cache.** It is a transformation of the term, not a memo table, so the cache-key obligations above do not apply
+  and no new invalidation surface is created.
+
+Chapter 23's warnings about space leaks and the delicacy of full laziness are about *lazy* evaluation and do not
+transfer to a strict, total, finite calculus. Say so in the report rather than inheriting the caution unexamined.
 
 Optimize only profiles that identify a material regression or an existing budget miss. Prefer compact internal
 representations, sharing, interning with explicit ownership, and avoiding repeated resolution/evaluation. Do not expose

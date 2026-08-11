@@ -43,6 +43,26 @@ where possible; review every manual bridge. At minimum it must cover:
 - parser recovery, formatting idempotence, tree-sitter drift, LSP facts, editor extension assets, desktop navigation,
   all exports, playback scheduling, last-valid-artifact behavior, and prompt 125/135 budgets.
 
+Three rows exist because a boundary is cheap to hold and expensive to recover once crossed. Each is a check that
+something is still *absent*:
+
+- **Patterns are still depth one.** `docs/language/02-core-calculus.md` §6.2 fixes the invariant that every sub-position
+  of a pattern is a binder and never another pattern, with no repeated variables, guards, or patterns on the left of a
+  definition. This is mechanically checkable and should be checked that way: `Pattern` in
+  `crates/musa-compiler/src/core.rs` must remain non-recursive, and the surface grammar must not admit a pattern inside
+  a pattern. Nesting would require a pattern-match compiler and a failure mechanism between equations, a subsystem whose
+  only purpose is compiling a convenience into eliminators the language already writes directly. If a prompt between 92
+  and 143 added nesting, it took on that subsystem; the row fails unless that prompt says so and cites it.
+- **The two stages are still two.** `docs/language/02-core-calculus.md` §6.1 states that this calculus and the temporal
+  kernel are staged, not layered: no simplifying transformation connects them, and `Term[ScoreFact]` is a stage
+  boundary. Check the direction mechanically — no kernel term mentions a closure or a core `Value`, and no core term
+  observes a `Timeline` — and check that both totality proofs are still independent.
+- **Every normative refusal has provenance.** `docs/language/02-core-calculus.md` §7 and
+  `docs/kernel/10-term-calculus.md` §"Provenance of the sharing discipline" cite the literature the design's refusals
+  are priced against. Audit that every "deliberately absent" item across `docs/language/` and `docs/kernel/` either
+  carries a citation or a musical falsifier. The project cites Open Music Theory by filename for every claim about
+  music; a claim about programming languages is held to the same standard or it is an opinion.
+
 Run the representative corpus through source parse/format/reparse, elaboration, kernel normalization/round-trip, every
 applicable render/export backend, audio preparation/offline/live-plan paths, project facts, offline package resolution,
 and editor protocol fixtures. Compare results at the strongest lawful level: byte identity where promised, otherwise
