@@ -5,6 +5,12 @@ prompt 146 completes its conformance audit, `docs/course-correction.md`, `docs/k
 of `docs/initial-design-roadmap.md` take precedence. A contradiction is a prompt defect to repair, not permission to
 implement whichever text is convenient.
 
+**`docs/core-boundary.md` also governs over this directory.** Prompt 126 decided what the core is a calculus of —
+occurrences of any canonical payload over exact rational time — settled that signals stay outside it, and listed what
+that forbids. Where a section here differs, it wins. The concrete consequence for these documents is that
+`GestureTimeline` (00-semantics §2, 08-performance-and-sound) means the kernel at a gesture payload, not a structure of
+its own.
+
 **`docs/language-correction.md` governs over this directory.** It corrects four faults these documents accumulated
 through prompt 107 — an unproved musical-domain extension, a decorative standard-library manifest, a module system that
 cannot nest, and `use` spelled for two unrelated statements. Where it and a section here disagree, it wins, and the

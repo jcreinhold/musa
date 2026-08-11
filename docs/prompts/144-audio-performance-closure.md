@@ -8,8 +8,8 @@ phase: 4
 
 # Close Audio Preparation and Rendering Against Measurement
 
-> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
-> replace it. Read `docs/core-boundary.md` first.
+> **Governed by `docs/core-boundary.md`.** Prompt 126 decided that the core is a calculus of occurrences of any
+> canonical payload, that signals stay outside it, and what that forbids. Read it before this prompt's Design.
 
 ## Task
 
@@ -20,6 +20,8 @@ no-allocation/no-lock/no-I/O contract.
 
 ## Read
 
+- `docs/core-boundary.md` §5, whose deferral of the signal question names *this prompt's measurement* as one of the two
+  events that reopens it. `R1` in `docs/kernel/07-backend-contract.md`.
 - Prompt 93 baseline/expected-change ledger, prompt 127 score-elaboration report, `docs/interface/06-performance.md`,
   roadmap §§13.2/17.5, and all completion notes from prompts 130–143.
 - Audio/compiler/project benchmarks, callback instrumentation, offline/live render code, prepared-plan queues and
@@ -42,10 +44,21 @@ memory, prepared-plan size, callback max/p95 time and deadline misses, voices pr
 offline throughput, UI response, and cache behavior. Record machine/toolchain, sample rate, block size, corpus digests,
 method, uncertainty, and raw results.
 
+**Measure `R1`, and report the result whether or not it is convenient.** `docs/core-boundary.md` §5 deferred the signal
+question on the strength of one law: semantically equal gesture timelines prepare identically and render frame for frame
+identically under the same instrument bindings and realization seed. The measurement is a differential one and belongs
+with the workloads above — construct pairs of gesture timelines that differ only in what normalization forgets (N7:
+declaration order where order does not matter, an inlined name, sharing structure) and compare prepared plans byte for
+byte and rendered output frame for frame. A failure is not a bug to patch downstream: it means something the kernel
+forgets is load-bearing for sound, and it reopens `docs/core-boundary.md` §5, whose §5 "what reopens this" clause says
+the report belongs there. Record the finding in the comparison report either way.
+
 Rendering must be independent of host block partition wherever the specification promises it. Caches key on exact
 source/studio semantics, instrument signature/body, locked asset/package digests, realization seed, sample rate, and
-render options. Eviction changes cost only. Streaming is admitted only if measured preloading misses a stated workload;
-its control-side producer, bounded queue, underrun semantics, and offline determinism must then be specified and tested.
+render options. A cache keyed on the gesture timeline's semantic hash is correct exactly because R1 holds, so the R1
+measurement is a precondition for the cache rather than a nicety alongside it. Eviction changes cost only. Streaming is
+admitted only if measured preloading misses a stated workload; its control-side producer, bounded queue, underrun
+semantics, and offline determinism must then be specified and tested.
 
 ## Target
 
@@ -53,6 +66,7 @@ its control-side producer, bounded queue, underrun semantics, and offline determ
 - Measured budgets and scale variables added to language/interface performance documentation.
 - Focused fixes tied to observed profiles, with cached/uncached and block-partition differential laws.
 - RT instrumentation proving callback and destruction constraints across native/sample/media plans.
+- The R1 differential result, in the comparison report, with the pairs used and the outcome stated plainly.
 - Public-surface/dependency audit after optimization.
 
 ## Check

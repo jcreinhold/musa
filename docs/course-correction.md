@@ -1557,3 +1557,32 @@ Do not continue treating the present surface grammar as if it defines Musa's ont
 The surface language should be designed for composers.
 
 The temporal kernel should be designed for semantics.
+
+# 36. Amendment (prompt 126): what the core is a calculus of
+
+Added after the fact, and the only amendment this memo has taken. `docs/core-boundary.md` holds the evidence, the
+candidates, the tests, and the ledger; this section states what the memo now says, so that reading the memo alone does
+not leave the question open.
+
+The memo said the kernel is a calculus of *typed occurrences* and left the type parameter unexamined, because there was
+one payload and no reason to look. §12 already said payloads are typed and musically opaque; §13 already said payload
+mapping is functorial and not a temporal primitive. Those two sections were the answer, and the code agreed with them
+before anybody checked: `Term<A>`, `Timeline<A>`, and `Occurrence<A>` are generic in `A`, the whole payload contract is
+`Canonical::canonical_key`, and the law suite proves L1–L24 at payload `u8` rather than at `ScoreFact`.
+
+**The amendment.** The core is a calculus of occurrences of *any* canonical payload over exact rational time.
+`ScoreFact` is one payload, not the payload. The instrument-independent performance object — gestures and control curves
+on exact rational time, which §23 left as "a separate semantic layer" without saying what kind of object it is — is the
+same calculus at a second payload, not a new structure with its own ordering and its own equality. No kernel form,
+operation, or law changes; what changes is that a second instantiation is now expected rather than novel, and that a
+payload must be admitted against a stated rule before it is used.
+
+**What the amendment does not do.** It does not put audio in the kernel. §23 stands, and `docs/core-boundary.md` §5
+states the reason in the terms the memo would want: a signal is coinductive and a timeline is inductive and finite, and
+a signal graph has no extent, so it is not a carrier the kernel can be a calculus of. The object that crosses is the
+prepared render plan, and the law relating a score term to its rendering is `R1` in
+`docs/kernel/07-backend-contract.md`. Q1 (infinite/live patterns) stays open and is the question that would reopen this.
+
+It also does not admit dependent types. `docs/kernel/10-term-calculus.md`'s scope rule rejects them: a form belongs only
+if it serves sharing, deferred observation, or interchange *and* denotes a timeline `03-denotational-semantics.md`
+already defines, and type-level forms do neither. §34's governing design rule is unchanged.

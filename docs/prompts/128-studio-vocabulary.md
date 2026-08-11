@@ -8,8 +8,8 @@ phase: 3
 
 # One Discoverable Studio Vocabulary
 
-> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
-> replace it. Read `docs/core-boundary.md` first.
+> **Governed by `docs/core-boundary.md`.** Prompt 126 decided that the core is a calculus of occurrences of any
+> canonical payload, that signals stay outside it, and what that forbids. Read it before this prompt's Design.
 
 ## Task
 

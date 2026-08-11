@@ -236,6 +236,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 127 | elaboration-performance-closure | 3 | Profiled latency, allocation, memory, caching, and budget closure |
 | 128 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
 | 129 | exact-studio-values | 3 | Exact written quantities through audio preparation |
+| 129a | payload-admission-rule | 3 | What a kernel payload owes, and the rendering law, before the first second payload |
 | 130 | performance-gestures | 3 | Instrument-independent note gestures and musical control curves |
 | 131 | instrument-contracts | 3 | Typed exposed controls over private native/sample implementations |
 | 132 | part-instrument-routing | 3 | Per-part instrument instances and routing isolation |
@@ -472,16 +473,20 @@ documentation paths — one by musical task and one by language implementation �
 from source. 126 stops before the sound block and answers the question nineteen prompts were about to assume: what the
 core is a calculus of. It takes a census of every surface construct against the kernel term it elaborates to, costs
 three answers against that census, settles whether signals join an inductive calculus at all, and is allowed to repair,
-delete, and create prompts — the sound block is contingent on it. 127 compares score elaboration to 93's baseline and
-permits caching or incrementality only when semantic keys and measured need are demonstrated. Audio retains its frozen
-baseline and receives its own measured closure at 142.
+delete, and create prompts — the sound block is contingent on it. Its answer, `docs/core-boundary.md`: the core is a
+calculus of occurrences of any canonical payload, which is what `musa-kernel` was always generic over; signals stay
+outside it because a signal is coinductive and a signal graph has no extent; and the prepared render plan is what
+crosses. 127 compares score elaboration to 93's baseline and permits caching or incrementality only when semantic keys
+and measured need are demonstrated. Audio retains its frozen baseline and receives its own measured closure at 142.
 
 **128–134 replace the accidental score↔DSP wire with a typed instrument boundary.** 128 makes the studio vocabulary
-discoverable from one catalogue; 129 restores exact written quantities; 130 names the missing object, an exact
-instrument-independent gesture/control timeline; 131 makes an instrument a deep contract over a private implementation;
-132 preserves part identity through prepared routing; and 133 binds musical controls to private parameters only at audio
-preparation. 134 then spends that simplicity at the surface: choosing a sound/profile is one musical action, while
-expert graph and mix declarations remain available and source-compatible.
+discoverable from one catalogue; 129 restores exact written quantities; 129a states what a kernel payload owes before
+any second payload exists, so the rule cannot be fitted to the payload it will admit; 130 names the missing object — an
+exact instrument-independent gesture/control timeline, which after 126 is `Timeline<Gesture>` rather than a new
+structure; 131 makes an instrument a deep contract over a private implementation; 132 preserves part identity through
+prepared routing; and 133 binds musical controls to private parameters only at audio preparation. 134 then spends that
+simplicity at the surface: choosing a sound/profile is one musical action, while expert graph and mix declarations
+remain available and source-compatible.
 
 **135–141 add external sound without making builds or time semantics implicit.** 135 defines verified content-addressed
 assets before a decoder exists. 136 adds exact-pinned fetch/lock/offline packages while retaining the roadmap's

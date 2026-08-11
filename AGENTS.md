@@ -11,18 +11,23 @@ the semantic core is Rust, the UI is a replaceable projection.
 2. **`docs/course-correction.md`** — the semantic course correction: a small temporal kernel (ambient exact rational
    time, typed occurrences, `timeline`/`sequence`/`overlay`) is the ontology; the surface language elaborates into it.
    Where it and the roadmap disagree, the course correction wins. Its authoritative elaboration is **`docs/kernel/`**,
-   the governing kernel specification.
-3. **`docs/interface/`** — the desktop interface specification: visual language, engraving quality bar, interaction and
+   the governing kernel specification. §36 is its one amendment, made at prompt 126.
+3. **`docs/core-boundary.md`** — what the core is a calculus *of*: occurrences of any canonical payload over exact
+   rational time, `ScoreFact` being one payload and the performance gesture another. Signals stay outside the core
+   because a signal is coinductive and a signal graph has no extent; the prepared render plan is what crosses, under the
+   law `R1`. It sits under the course correction and governs over `docs/language/`. Its §"What this forbids" is
+   deliberately hard to re-open: doing so means amending it and course correction §36 together.
+4. **`docs/interface/`** — the desktop interface specification: visual language, engraving quality bar, interaction and
    selection model, Origin view, states and voice, performance budgets. Roadmap §14 fixes the app's *architecture*;
    `docs/interface/` fixes everything §14 leaves open, and §14's wireframe is not a visual spec. Governing since prompt
    26.
-4. **`docs/language-correction.md`** — the language correction: the musical domains are a *proved* conservative
+5. **`docs/language-correction.md`** — the language correction: the musical domains are a *proved* conservative
    extension rather than an accumulating fragment, the standard library is a package with a real module tree, and
    `import` and `use` are two words because they were always two statements. It governs over **`docs/language/`** (the
    elaboration-language specification; candidate until prompt 146 graduates it) the way the course correction governs
    over the roadmap.
-5. **`docs/prompts/`** — the numbered work plan, currently through prompt 153, with its README defining prompt anatomy
-   and execution rules. Implementation happens in dependency order (see the `prompt-stack` skill).
+6. **`docs/prompts/`** — the numbered work plan, currently 155 prompts through rank 153, with its README defining prompt
+   anatomy and execution rules. Implementation happens in dependency order (see the `prompt-stack` skill).
 
 If code and these documents disagree, either the code is wrong or the document needs a deliberate repair — never let
 them drift silently.
@@ -48,6 +53,7 @@ them drift silently.
 | `stdlib/` | the standard library as a real package (`musa.toml` + `src/`) |
 | `examples/` | `.musa` fixtures — executable specifications, not demos |
 | `docs/kernel/` | the temporal-kernel specification (governing) |
+| `docs/core-boundary.md` | what the core is a calculus of, and what that forbids (governing) |
 | `docs/interface/` | the desktop interface specification (governing) |
 | `docs/language/` | the elaboration-language specification (candidate until prompt 146) |
 | `docs/prompts/` | numbered implementation prompts + README |

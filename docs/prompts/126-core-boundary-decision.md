@@ -1,7 +1,7 @@
 ---
 id: 126
 slug: core-boundary-decision
-status: pending
+status: done
 depends_on: [92, 108, 119, 125]
 phase: 3
 ---

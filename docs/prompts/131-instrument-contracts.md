@@ -8,8 +8,8 @@ phase: 3
 
 # Instruments Expose Contracts and Hide Implementations
 
-> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
-> replace it. Read `docs/core-boundary.md` first.
+> **Governed by `docs/core-boundary.md`.** Prompt 126 decided that the core is a calculus of occurrences of any
+> canonical payload, that signals stay outside it, and what that forbids. Read it before this prompt's Design.
 
 ## Task
 
@@ -20,6 +20,8 @@ into an opaque prepared plan.
 
 ## Read
 
+- `docs/core-boundary.md` §5 — the signal question, and why the prepared plan is the object that crosses. `R1` in
+  `docs/kernel/07-backend-contract.md`, which this prompt's preparation operation must satisfy.
 - `docs/language/08-performance-and-sound.md`; roadmap §§2, 6.5, 10.6, 13, 15.
 - Current `StudioSpec`, `StudioGraphSpec`, `RenderPlan`, project/CLI/offline/engine callers, and prompts 29–31 repairs.
 - Module-design audit of `musa-compiler`, `musa-audio`, and `musa-engine`; compare recent history for their facades.
@@ -45,6 +47,22 @@ Choose the second unless caller inspection proves otherwise. Graph compiler, nod
 buffers, sample voices, and DSP processor instances remain private to `musa-audio`. The engine receives only a prepared,
 RT-safe plan and transport commands.
 
+**The prepared plan is the object that crosses the signal boundary.** `docs/core-boundary.md` §5 settled that signals
+stay outside the core: a signal is coinductive where a timeline is inductive and finite, and a signal graph has no
+extent. The consequence for this prompt is precise, and it is the reason preparation is one operation rather than
+several:
+
+- `prepare` takes an exact, finite, normalized `Timeline<Gesture>`, the instrument bindings, and the realization seed,
+  and returns the opaque plan. It is **the one place a rational becomes a float**; nothing upstream of it holds seconds,
+  frames, or samples, and nothing downstream of it holds a `Beat`.
+- It must satisfy **`R1`** (`docs/kernel/07-backend-contract.md`, written at prompt 129a): semantically equal gesture
+  timelines prepare identically and render frame-for-frame identically under the same bindings and seed. Preparation may
+  therefore observe nothing that normalization forgets (N7). Prompt 144 measures this; a measured failure reopens
+  `docs/core-boundary.md` §5 rather than being patched here.
+- R1 is also what makes a preparation cache keyed on `semantic_hash(M) ⊕ bindings ⊕ seed` correct. Whether to build one
+  is prompt 144's question, not this prompt's; keeping preparation a pure function of those three inputs is what leaves
+  the option open.
+
 ## Target
 
 - Instrument/signature declarations in language/compiler and migration of patches as specified.
@@ -53,6 +71,8 @@ RT-safe plan and transport commands.
   channel shape.
 - Instrument replacement law: two implementations of one signature accept the same gesture/control lanes without
   changing their schedule.
+- One preparation operation, pure in `(Timeline<Gesture>, bindings, seed)`, with a test for R1's equal-in-meaning case:
+  two gesture timelines that differ only in what normalization forgets prepare to the same plan.
 - Module-design audit and caller comparison; delete pass-through surface made obsolete by the deep boundary.
 
 ## Check
@@ -74,3 +94,5 @@ Commit as `Give instruments typed sound contracts`.
   native graph as the one current case and add sample bodies at prompt 137.
 - No part routing yet, no sample decoding, and no GUI graph canvas.
 - No score, context, measure, or notation type crosses into `musa-audio`.
+- No signal, stream, or other coinductive value in a kernel payload, and no `Beat` past the preparation boundary. The
+  boundary is one function in one direction (`docs/core-boundary.md` §6 rule 4).
