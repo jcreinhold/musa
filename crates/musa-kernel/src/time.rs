@@ -36,6 +36,21 @@ impl Beat {
     pub fn is_zero(self) -> bool {
         self.0 == Ratio::ZERO
     }
+
+    /// This position moved forward by `other`.
+    ///
+    /// Exact and total: musa's magnitudes are far from `i64`'s edges, which
+    /// is why this module — and only this module — carries the arithmetic
+    /// lint allowance. Callers elsewhere go through here rather than
+    /// repeating the allowance.
+    pub(crate) fn plus(self, other: Self) -> Self {
+        Self(self.0 + other.0)
+    }
+
+    /// This position with its distance from the origin multiplied.
+    pub(crate) fn times(self, factor: Ratio<i64>) -> Self {
+        Self(self.0 * factor)
+    }
 }
 
 impl std::fmt::Display for Beat {

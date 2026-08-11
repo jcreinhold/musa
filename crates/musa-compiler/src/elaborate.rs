@@ -1334,11 +1334,11 @@ struct Share {
 /// is exactly what cannot be baked into a shared body. They carry this
 /// instead, and each reference's mark says what to put there. No document is
 /// four gigabytes, so it cannot collide with a real span.
-const SHARED_ORIGIN: SourceSpan = SourceSpan::new(u32::MAX, u32::MAX);
+pub(crate) const SHARED_ORIGIN: SourceSpan = SourceSpan::new(u32::MAX, u32::MAX);
 
 /// The placeholder a shared body carries where the voice would be, for the
 /// same reason: the same motif called from two voices is one body.
-const SHARED_SCOPE: Scope = Scope::Voice {
+pub(crate) const SHARED_SCOPE: Scope = Scope::Voice {
     part: u32::MAX,
     voice: u32::MAX,
 };
@@ -3553,6 +3553,19 @@ fn append_contextual_key(key: &mut String, music: &crate::core::Music) {
         Some(crate::core::MusicOperation::Play { voicing, held }) => {
             let _ = write!(key, "|play:{voicing}:{held}");
         }
+        Some(crate::core::MusicOperation::KernelQuote { term, holes }) => {
+            // The term is already assembled and cannot read context, so the
+            // definition span this key already carries identifies it: one
+            // span in one document is one quote. Only the holes can mean
+            // different things in different places, so only they are walked.
+            let _ = write!(key, "|quote:{}[", term.occurrence_bound());
+            for (name, locus, music) in holes {
+                let _ = write!(key, "{name}@{locus}(");
+                append_contextual_key(key, music);
+                key.push(')');
+            }
+            key.push(']');
+        }
     }
 }
 
@@ -3630,6 +3643,77 @@ fn elaborate_music_value(
                 music.definition_span,
             )
         }
+        Some(crate::core::MusicOperation::KernelQuote { term, holes }) => {
+            kernel_quote_segment(resolver, share, term, holes, &local, scope, music.definition_span)
+        }
+    }
+}
+
+/// Assemble a checked kernel quote: bind each hole to the material the host
+/// spliced there, and hand back the closed term.
+///
+/// The quote is *already* a composition, so nothing here builds one. What is
+/// left is provenance and accounting: every fact that leaves gains a
+/// [`ExpansionStep::KernelSplice`] naming the locus it was assembled at — `0`
+/// for material written raw in the quote, and the hole's own locus for
+/// material spliced through one — so the Origin view can say "this note is
+/// here because a quote put it here" about facts the surface never wrote.
+///
+/// Holes are instantiated **once**, here, and the facts are frozen from then
+/// on: a raw `shift`, `scale` or `restrict` around a reference moves the facts
+/// it already made, it does not re-elaborate the hole under a new context.
+/// That is what makes an outer raw transform able to invalidate a
+/// placement-sensitive assertion that passed inside the hole
+/// (`docs/language/05-verification.md`).
+fn kernel_quote_segment(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    term: &Term<ScoreFact>,
+    holes: &[(String, Ratio<i64>, crate::core::Music)],
+    cx: &ExpandCx,
+    scope: Scope,
+    span: SourceSpan,
+) -> Segment {
+    let mut assembled = term.clone();
+    let mut occurrences = term.occurrence_bound();
+    // The raw payloads are the quote's own writing, at the quote's own zero.
+    // Scope and origin are supplied here rather than read: the checker made
+    // the quote leave both blank, because material does not choose the voice
+    // it is used in.
+    let mut path = cx.path.clone();
+    path.push(ExpansionStep::KernelSplice { at: Ratio::new(0, 1) });
+    assembled.map_payloads(&mut |fact| {
+        fact.scope = scope;
+        fact.origin.source_span = cx.origin_span.unwrap_or(span);
+        fact.origin.definition_span = span;
+        fact.origin.declaration = cx.declaration;
+        fact.origin.expansion_path.clone_from(&path);
+    });
+    // Reverse, so the first hole's binding ends up outermost and a later
+    // hole's material may not shadow an earlier one's name — the fresh names
+    // make that impossible anyway, and the order keeps the printed term
+    // reading in the order the quote's holes do.
+    for (name, locus, music) in holes.iter().rev() {
+        let mut inner = cx.clone();
+        inner.path.push(ExpansionStep::KernelSplice { at: *locus });
+        let segment = elaborate_music_value(resolver, share, music, &inner, scope);
+        occurrences = occurrences.saturating_add(segment.occurrences);
+        assembled = Term::bind(name.clone(), segment.term, assembled);
+    }
+    let extent = match assembled.extent() {
+        Ok(extent) => extent,
+        Err(error) => {
+            resolver.report(
+                Diagnostic::error(Code::UnknownName, "this kernel quote has no extent").at(span, error.to_string()),
+            );
+            return Segment::literal(empty_segment());
+        }
+    };
+    Segment {
+        term: assembled,
+        extent,
+        occurrences,
+        tied: false,
     }
 }
 

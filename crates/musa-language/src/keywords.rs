@@ -523,6 +523,12 @@ static MUSIC: KeywordDoc = doc!(
     "A `music` block is an expression whose body reads like an ordinary voice: notes remain self-delimiting and reusable material is written with `use`.\n\n\
      ```musa\nlet call: Music = music { c5/4 d5/4 };\n```"
 );
+static KERNEL: KeywordDoc = doc!(
+    "kernel",
+    "a quoted kernel composition expression",
+    "A `kernel` quote writes a composition term directly, with `${...}` splicing typed `Music` into it. What the quote guarantees is exact extent, closure, and payload typing; what it does not guarantee is that a surface claim made inside a hole still holds after the quote's own `shift`, `scale`, or `restrict` moved it.\n\n\
+     ```musa\nlet doubled: Music = kernel Timeline[ScoreFact] {\n    let s = ${subject} in overlay { s; shift by 1/2 s; }\n};\n```"
+);
 static OPTION: KeywordDoc = doc!(
     "Option",
     "a type that may contain one value",
@@ -770,6 +776,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::LetKw => &LET,
         SyntaxKind::FnKw => &FN,
         SyntaxKind::MusicKw => &MUSIC,
+        SyntaxKind::KernelKw => &KERNEL,
         SyntaxKind::OptionKw => &OPTION,
         SyntaxKind::ListKw => &LIST,
         SyntaxKind::MatchKw => &MATCH,
@@ -816,6 +823,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::Less
         | SyntaxKind::Caret
         | SyntaxKind::Hash
+        | SyntaxKind::Dollar
         | SyntaxKind::Error
         | SyntaxKind::Root
         | SyntaxKind::PieceDecl
@@ -914,6 +922,8 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::MatchArm
         | SyntaxKind::Pattern
         | SyntaxKind::MusicExpr
+        | SyntaxKind::KernelQuote
+        | SyntaxKind::KernelHole
         | SyntaxKind::ScaleExpr
         | SyntaxKind::KeyExpr
         | SyntaxKind::StepExpr

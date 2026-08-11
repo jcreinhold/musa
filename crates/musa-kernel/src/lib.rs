@@ -37,6 +37,8 @@ pub use crate::hash::{SemanticHash, stable_digest};
 pub use crate::occurrence::{Canonical, Occurrence};
 pub use crate::progress::Progress;
 pub use crate::term::{Term, evaluate, evaluate_marked};
-pub use crate::text::{Document, FORMAT_VERSION, Opaque, PayloadText, TextPayload, notes, parse, print, read};
+pub use crate::text::{
+    Document, FORMAT_VERSION, Opaque, PayloadText, TextPayload, notes, parse, parse_expression, print, read,
+};
 pub use crate::time::{Beat, Span};
 pub use crate::timeline::{Observation, Timeline, overlay, sequence, timeline, zero};

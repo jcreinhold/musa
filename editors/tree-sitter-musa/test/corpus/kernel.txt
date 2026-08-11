@@ -46,3 +46,56 @@ piece "P" {
     (string)
     (tempo_statement
       (integer))))
+
+======================================================================================================================================================
+a kernel quote is an expression, and `${...}` is the way back out
+================================================================================
+
+piece "q" {
+    let a: Music = kernel Timeline[ScoreFact] {
+        let x = ${subject} in
+        overlay {
+            x;
+            shift by 1/2 x;
+            timeline 1 {
+                occurrence "note c4 1/4" from 0 to 1/4;
+            };
+        }
+    };
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (piece_declaration
+    name: (string)
+    (let_declaration
+      name: (identifier)
+      type: (type_expression
+        (type_name
+          (identifier)))
+      value: (expression
+        (kernel_quote
+          constructor: (identifier)
+          payload: (identifier)
+          (kernel_quote_body
+            (identifier)
+            (kernel_hole
+              (expression
+                (name_expression
+                  (identifier))))
+            (identifier)
+            (kernel_quote_body
+              (identifier)
+              (identifier)
+              (identifier)
+              (rational)
+              (identifier)
+              (identifier)
+              (integer)
+              (kernel_quote_body
+                (identifier)
+                (string)
+                (identifier)
+                (integer)
+                (rational)))))))))

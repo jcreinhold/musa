@@ -1,0 +1,25 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unknown-name
+
+  × this kernel quote does not stand on its own
+    ╭─[examples/broken/quote-shadows-a-name.musa:11:28]
+ 10 │     
+ 11 │ ╭─▶     let assembled: Music = kernel Timeline[ScoreFact] {
+ 12 │ │           let material = ${theme} in
+ 13 │ │           let material = timeline 1/2 {
+ 14 │ │               occurrence "note g4 1/2" from 0 to 1/2;
+ 15 │ │           } in
+ 16 │ │           overlay {
+ 17 │ │               material;
+ 18 │ │           }
+ 19 │ ├─▶     };
+    · ╰──── `material` is already bound; shadowing is rejected so substitution stays textual
+ 20 │     
+    ╰────
+
+  note: a quote is closed: every name it uses is one it binds, and `${…}` is how the outside gets in
+
+1 problem (1 error)

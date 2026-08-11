@@ -1,0 +1,22 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+misplaced
+
+  × a quote cannot carry a voice of its own
+    ╭─[examples/broken/quote-claims-a-voice.musa:6:28]
+  5 │     piece "Quote Claims A Voice" {
+  6 │ ╭─▶     let assembled: Music = kernel Timeline[ScoreFact] {
+  7 │ │           timeline 1 {
+  8 │ │               occurrence "voice 0 0 note c4 1 [0:0]" from 0 to 1;
+  9 │ │           }
+ 10 │ ├─▶     };
+    · ╰──── this material would settle what its use is entitled to settle
+ 11 │     
+    ╰────
+  help: write what the material *is*; the use supplies where it goes and where it came from
+
+  note: reusable music may read the context supplied at each use, but it cannot change it
+
+1 problem (1 error)

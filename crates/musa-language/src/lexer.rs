@@ -228,6 +228,11 @@ enum RawToken {
     Caret,
     #[token("#")]
     Hash,
+    // Only ever the head of `${…}`, an antiquotation inside a kernel quote.
+    // It is its own token because the brace after it is the host's, and a
+    // two-character token would have to be un-lexed to find that out.
+    #[token("$")]
+    Dollar,
 
     #[token("piece", priority = 3)]
     PieceKw,
@@ -355,6 +360,12 @@ enum RawToken {
     FnKw,
     #[token("music", priority = 3)]
     MusicKw,
+    // The word that opens a quotation. A keyword rather than a contextual
+    // name because `kernel Timeline[ScoreFact] { … }` is an expression form,
+    // and an expression that started with an ordinary identifier would be a
+    // call until proven otherwise.
+    #[token("kernel", priority = 3)]
+    KernelKw,
     #[token("Option", priority = 3)]
     OptionKw,
     #[token("List", priority = 3)]
@@ -442,6 +453,7 @@ impl RawToken {
             | Self::Less
             | Self::Caret
             | Self::Hash
+            | Self::Dollar
             | Self::PieceKw
             | Self::TempoKw
             | Self::MeterKw
@@ -505,6 +517,7 @@ impl RawToken {
             | Self::LetKw
             | Self::FnKw
             | Self::MusicKw
+            | Self::KernelKw
             | Self::OptionKw
             | Self::ListKw
             | Self::MatchKw
@@ -568,6 +581,7 @@ impl RawToken {
             Self::Less => SyntaxKind::Less,
             Self::Caret => SyntaxKind::Caret,
             Self::Hash => SyntaxKind::Hash,
+            Self::Dollar => SyntaxKind::Dollar,
             Self::PieceKw => SyntaxKind::PieceKw,
             Self::TempoKw => SyntaxKind::TempoKw,
             Self::MeterKw => SyntaxKind::MeterKw,
@@ -631,6 +645,7 @@ impl RawToken {
             Self::LetKw => SyntaxKind::LetKw,
             Self::FnKw => SyntaxKind::FnKw,
             Self::MusicKw => SyntaxKind::MusicKw,
+            Self::KernelKw => SyntaxKind::KernelKw,
             Self::OptionKw => SyntaxKind::OptionKw,
             Self::ListKw => SyntaxKind::ListKw,
             Self::MatchKw => SyntaxKind::MatchKw,

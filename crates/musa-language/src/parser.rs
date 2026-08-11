@@ -1420,6 +1420,7 @@ impl<'a> Parser<'a> {
             Some(SyntaxKind::LParen) => self.paren_or_product_expr(),
             Some(SyntaxKind::MatchKw) => self.match_expr(),
             Some(SyntaxKind::MusicKw) => self.music_expr(),
+            Some(SyntaxKind::KernelKw) => self.kernel_quote(),
             Some(SyntaxKind::ScaleKw) => self.scale_expr(),
             Some(SyntaxKind::KeyKw) => self.key_expr(),
             Some(SyntaxKind::ChordKw) => self.chord_expr(),
@@ -1618,6 +1619,64 @@ impl<'a> Parser<'a> {
         self.bump();
         self.expect(SyntaxKind::LBrace, "`{`");
         self.voice_items();
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `kernel Timeline[ScoreFact] { … }` — a quoted composition expression
+    /// (`docs/language/01-surface.md` §7).
+    ///
+    /// **Recognized, not read.** The tokens between the braces spell the
+    /// kernel's own grammar, and `musa-kernel` owns that grammar: a second
+    /// reading of it here would be a second thing to keep in step with the
+    /// first. What this crate must find is the shape — where the quote ends,
+    /// and where the holes are — because those are the two questions a
+    /// lossless tree and an editor ask. The words in between are handed
+    /// along as source text.
+    ///
+    /// The braces are counted rather than matched against a production, so a
+    /// `timeline … { … }` inside the quote does not end it, and a quote that
+    /// is never closed ends at the end of the file rather than eating the
+    /// declaration after it.
+    fn kernel_quote(&mut self) {
+        self.start(SyntaxKind::KernelQuote);
+        self.bump(); // kernel
+        self.expect(SyntaxKind::Identifier, "`Timeline`");
+        self.expect(SyntaxKind::LBracket, "`[`");
+        self.expect(SyntaxKind::Identifier, "a payload type");
+        self.expect(SyntaxKind::RBracket, "`]`");
+        self.expect(SyntaxKind::LBrace, "`{`");
+        let mut depth = 0_usize;
+        loop {
+            match self.current() {
+                None => break,
+                Some(SyntaxKind::RBrace) if depth == 0 => break,
+                Some(SyntaxKind::RBrace) => {
+                    depth = depth.saturating_sub(1);
+                    self.bump();
+                }
+                Some(SyntaxKind::LBrace) => {
+                    depth = depth.saturating_add(1);
+                    self.bump();
+                }
+                // Every `$` in a quote is a hole attempted: the kernel's
+                // grammar has no other use for the character, so reading it
+                // as one and complaining about what follows says more than
+                // "unexpected token" would.
+                Some(SyntaxKind::Dollar) => self.kernel_hole(),
+                Some(_) => self.bump(),
+            }
+        }
+        self.expect(SyntaxKind::RBrace, "`}`");
+        self.finish();
+    }
+
+    /// `${ expr }` — one typed antiquotation, whose interior is host syntax.
+    fn kernel_hole(&mut self) {
+        self.start(SyntaxKind::KernelHole);
+        self.bump(); // $
+        self.expect(SyntaxKind::LBrace, "`{`");
+        self.expr();
         self.expect(SyntaxKind::RBrace, "`}`");
         self.finish();
     }

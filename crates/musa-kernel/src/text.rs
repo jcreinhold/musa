@@ -226,6 +226,31 @@ pub fn parse<A: TextPayload>(text: &str) -> Result<Document<A>, KernelError> {
     read_as::<A>(text, Some(A::type_name()))
 }
 
+/// Parse one composition expression: the right-hand side of a
+/// `composition … =` and nothing around it.
+///
+/// The reader a *quotation* needs. A quote in a `.musa` file is one
+/// composition expression — no version header, no `kernel "name" {`, no
+/// declaration — and the host language must not grow a second reading of the
+/// term grammar to accept it (`docs/language/01-surface.md` §7). So the host
+/// hands the raw text here and gets back the same `Term<A>` a file would have
+/// produced, with parse offsets counted from the start of `text`: the caller
+/// knows where in its own document that was, and this does not.
+///
+/// The term is *not* checked, exactly as in [`parse`]: closure and shadowing
+/// are the caller's next question, and a caller that binds holes around the
+/// term must ask it *after* binding them, not before.
+///
+/// # Errors
+///
+/// [`KernelError::Parse`], naming the byte offset and what was expected.
+pub fn parse_expression<A: TextPayload>(text: &str) -> Result<Term<A>, KernelError> {
+    let mut cursor = Cursor::new(text);
+    let term = cursor.term::<A>()?;
+    cursor.end()?;
+    Ok(term)
+}
+
 /// Read a kernel file without decoding its payloads.
 ///
 /// Accepts every file [`parse`] accepts and more: a file whose payload type

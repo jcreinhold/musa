@@ -95,6 +95,222 @@ impl<A> Term<A> {
         }
     }
 
+    /// The ambient extent this term denotes, read off its syntax.
+    ///
+    /// The extent is compositional (`03-denotational-semantics.md`): a
+    /// literal carries its own, `seq` adds, `over` takes the maximum, `shift`
+    /// translates, `scale` scales, `restrict` keeps the body's — observation
+    /// never shortens the work it looks at — and `let` is the extent of its
+    /// body under the binding.
+    ///
+    /// Reading it rather than evaluating is what an *assembler* needs: a
+    /// caller building a piece one statement at a time asks where the next
+    /// one starts, and evaluating to find out would evaluate the whole term
+    /// once per statement. Marks cannot make it wrong: instantiation may
+    /// rewrite payloads but never times (`11-realization.md`).
+    ///
+    /// # Errors
+    ///
+    /// [`KernelError::FreeName`] for a reference nothing binds — an extent
+    /// needs the binding, and the same rule [`Term::check`] states.
+    pub fn extent(&self) -> Result<Beat, KernelError> {
+        let mut environment: Vec<(&str, Beat)> = Vec::new();
+        self.extent_in(&mut environment)
+    }
+
+    fn extent_in<'a>(&'a self, environment: &mut Vec<(&'a str, Beat)>) -> Result<Beat, KernelError> {
+        let extent = match &self.form {
+            Form::Literal(value) => value.extent(),
+            Form::Seq(parts) => {
+                let mut total = Beat::ZERO;
+                for part in parts {
+                    total = total.plus(part.extent_in(environment)?);
+                }
+                total
+            }
+            Form::Over(parts) => {
+                let mut longest = Beat::ZERO;
+                for part in parts {
+                    longest = longest.max(part.extent_in(environment)?);
+                }
+                longest
+            }
+            Form::Shift { by, body } => by.plus(body.extent_in(environment)?),
+            Form::Scale { by, body } => body.extent_in(environment)?.times(*by),
+            Form::Restrict { body, .. } => body.extent_in(environment)?,
+            Form::Let { name, value, body } => {
+                let bound = value.extent_in(environment)?;
+                environment.push((name, bound));
+                let extent = body.extent_in(environment);
+                environment.pop();
+                extent?
+            }
+            Form::Var { name, .. } => environment
+                .iter()
+                .rev()
+                .find_map(|(bound, extent)| (bound == name).then_some(*extent))
+                .ok_or_else(|| KernelError::FreeName { name: name.clone() })?,
+        };
+        Ok(extent)
+    }
+
+    /// How many occurrences this term evaluates to, at most.
+    ///
+    /// A host that shares material has to decide whether evaluating a term is
+    /// affordable *before* evaluating it, and the answer is structural: `seq`
+    /// and `over` add, the moving forms pass through, and a name contributes
+    /// the count of what binds it — so material named once and referenced
+    /// four times is counted four times, which is what evaluating it costs.
+    ///
+    /// An upper bound rather than a count because [`Term::restrict`] can only
+    /// remove: a window is not read here, since reading one means comparing
+    /// spans, and a bound that has to evaluate the term is not a bound.
+    ///
+    /// Saturating: a term whose count would not fit reports [`u64::MAX`],
+    /// which every caller of a bound already treats as "too much".
+    pub fn occurrence_bound(&self) -> u64 {
+        let mut environment: Vec<(&str, u64)> = Vec::new();
+        self.bound_in(&mut environment)
+    }
+
+    fn bound_in<'a>(&'a self, environment: &mut Vec<(&'a str, u64)>) -> u64 {
+        match &self.form {
+            Form::Literal(value) => u64::try_from(value.occurrences().len()).unwrap_or(u64::MAX),
+            Form::Seq(parts) | Form::Over(parts) => parts
+                .iter()
+                .fold(0, |total, part| total.saturating_add(part.bound_in(environment))),
+            Form::Shift { body, .. } | Form::Scale { body, .. } | Form::Restrict { body, .. } => {
+                body.bound_in(environment)
+            }
+            Form::Let { name, value, body } => {
+                let bound = value.bound_in(environment);
+                environment.push((name, bound));
+                let count = body.bound_in(environment);
+                environment.pop();
+                count
+            }
+            // A free name binds nothing, so it contributes nothing. Rejecting
+            // one is `check`'s job; a bound is total on purpose.
+            Form::Var { name, .. } => environment
+                .iter()
+                .rev()
+                .find_map(|(bound, count)| (bound == name).then_some(*count))
+                .unwrap_or(0),
+        }
+    }
+
+    /// Where `name` is referenced, in this term's own time.
+    ///
+    /// The *quotation locus* of `docs/language/01-surface.md` §7: the position
+    /// a hole sits at, which is what a host must know to instantiate the
+    /// material it splices in at the right place. It follows the same
+    /// compositional reading as [`Term::extent`] — `seq` adds the exact
+    /// extents of everything before it, `over` leaves it alone, `shift`
+    /// translates it, a positive `scale` scales the relative offset,
+    /// `restrict` relocates nothing, and a `let` value begins where its `let`
+    /// does.
+    ///
+    /// `None` when nothing references `name`. The *first* reference wins:
+    /// a caller that needs one answer per site gives each site its own name,
+    /// which is what hole hygiene does anyway.
+    pub fn locus(&self, name: &str) -> Option<Beat> {
+        self.locus_in(name, Beat::ZERO)
+    }
+
+    fn locus_in(&self, name: &str, base: Beat) -> Option<Beat> {
+        match &self.form {
+            Form::Literal(_) => None,
+            Form::Seq(parts) => {
+                let mut at = base;
+                for part in parts {
+                    if let Some(found) = part.locus_in(name, at) {
+                        return Some(found);
+                    }
+                    at = at.plus(part.extent().ok()?);
+                }
+                None
+            }
+            Form::Over(parts) => parts.iter().find_map(|part| part.locus_in(name, base)),
+            Form::Shift { by, body } => body.locus_in(name, base.plus(*by)),
+            // The body's own time is scaled, so a locus inside it is a
+            // *relative* offset scaled and then placed.
+            Form::Scale { by, body } => body.locus_in(name, Beat::ZERO).map(|inner| base.plus(inner.times(*by))),
+            Form::Restrict { body, .. } => body.locus_in(name, base),
+            Form::Let {
+                name: bound,
+                value,
+                body,
+            } => {
+                if let Some(found) = value.locus_in(name, base) {
+                    return Some(found);
+                }
+                // A shadowed name is not this one any more.
+                (bound != name).then(|| body.locus_in(name, base)).flatten()
+            }
+            Form::Var { name: found, .. } => (found == name).then_some(base),
+        }
+    }
+
+    /// Visit every payload written literally in this term, in source order.
+    ///
+    /// A term's payloads are opaque to the kernel (§12) but not to whoever
+    /// wrote them: a host that *quotes* a term has to read them back to say
+    /// whether they mean anything in the position the quote sits in. Nothing
+    /// here interprets one — the visitor does, which is the whole point of
+    /// handing them over rather than judging them.
+    pub fn for_each_payload(&self, visit: &mut impl FnMut(&A)) {
+        match &self.form {
+            Form::Literal(value) => {
+                for occurrence in value.occurrences() {
+                    visit(occurrence.payload());
+                }
+            }
+            Form::Seq(parts) | Form::Over(parts) => {
+                for part in parts {
+                    part.for_each_payload(visit);
+                }
+            }
+            Form::Shift { body, .. } | Form::Scale { body, .. } | Form::Restrict { body, .. } => {
+                body.for_each_payload(visit);
+            }
+            Form::Let { value, body, .. } => {
+                value.for_each_payload(visit);
+                body.for_each_payload(visit);
+            }
+            Form::Var { .. } => {}
+        }
+    }
+
+    /// Rewrite every payload written literally in this term.
+    ///
+    /// The provenance half of [`Term::for_each_payload`]: a host that splices
+    /// a term into a larger one records that fact *in the payloads*, because
+    /// provenance rides inside payloads and nowhere else (§20). Times,
+    /// counts, and order are untouched — this is a map over payloads, not
+    /// over occurrences.
+    pub fn map_payloads(&mut self, rewrite: &mut impl FnMut(&mut A)) {
+        match &mut self.form {
+            Form::Literal(value) => {
+                for payload in value.payloads_mut() {
+                    rewrite(payload);
+                }
+            }
+            Form::Seq(parts) | Form::Over(parts) => {
+                for part in parts {
+                    part.map_payloads(rewrite);
+                }
+            }
+            Form::Shift { body, .. } | Form::Scale { body, .. } | Form::Restrict { body, .. } => {
+                body.map_payloads(rewrite);
+            }
+            Form::Let { value, body, .. } => {
+                value.map_payloads(rewrite);
+                body.map_payloads(rewrite);
+            }
+            Form::Var { .. } => {}
+        }
+    }
+
     /// Whether any reference in this term names `name`.
     ///
     /// For a producer that binds speculatively — elaboration binds a motif

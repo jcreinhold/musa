@@ -181,10 +181,7 @@ fn a_whole_score_document_projects_a_whole_score() {
     let scope = musa_compiler::Scope::Part { part: part_id.0 };
     assert!(score.tempo_at(scope, start).is_some(), "the tempo fact was lost");
     assert!(score.key_at(scope, start).is_some(), "the key fact was lost");
-    assert!(
-        score.meter_at(scope, start).is_measured(),
-        "the meter fact was lost",
-    );
+    assert!(score.meter_at(scope, start).is_measured(), "the meter fact was lost");
 }
 
 /// A kernel document formats to itself: the corpus is canonical, and the

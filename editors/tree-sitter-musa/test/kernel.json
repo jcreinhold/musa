@@ -48,6 +48,7 @@
     { "file": "house.musa", "kernel": false },
     { "file": "in-c.musa", "kernel": false },
     { "file": "invention.musa", "kernel": false },
+    { "file": "kernel-splice.musa", "kernel": false },
     { "file": "loop-lengths.musa", "kernel": false },
     { "file": "mobile.musa", "kernel": false },
     { "file": "modulation.musa", "kernel": false },

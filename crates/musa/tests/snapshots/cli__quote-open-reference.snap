@@ -1,0 +1,22 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unknown-name
+
+  × this kernel quote does not stand on its own
+    ╭─[examples/broken/quote-open-reference.musa:11:28]
+ 10 │     
+ 11 │ ╭─▶     let assembled: Music = kernel Timeline[ScoreFact] {
+ 12 │ │           overlay {
+ 13 │ │               theme;
+ 14 │ │               shift by 1/2 theme;
+ 15 │ │           }
+ 16 │ ├─▶     };
+    · ╰──── `theme` is not bound by any enclosing `let`
+ 17 │     
+    ╰────
+
+  note: a quote is closed: every name it uses is one it binds, and `${…}` is how the outside gets in
+
+1 problem (1 error)

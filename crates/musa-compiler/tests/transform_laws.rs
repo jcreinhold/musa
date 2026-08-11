@@ -282,6 +282,7 @@ fn the_variation_fixture_says_where_every_note_came_from() {
                         ExpansionStep::Assertion { claim } => format!("assert {claim}"),
                         ExpansionStep::Specialization { .. } => "specialized".to_owned(),
                         ExpansionStep::TemplateInstance { alias, .. } => format!("make {alias}"),
+                        ExpansionStep::KernelSplice { at } => format!("splice at {at}"),
                     })
                     .collect();
                 let line = format!(

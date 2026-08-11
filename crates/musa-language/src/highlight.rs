@@ -83,6 +83,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("let", SyntaxKind::LetKw),
     ("fn", SyntaxKind::FnKw),
     ("music", SyntaxKind::MusicKw),
+    ("kernel", SyntaxKind::KernelKw),
     ("Option", SyntaxKind::OptionKw),
     ("List", SyntaxKind::ListKw),
     ("match", SyntaxKind::MatchKw),
@@ -130,6 +131,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("<", SyntaxKind::Less),
     ("^", SyntaxKind::Caret),
     ("#", SyntaxKind::Hash),
+    ("$", SyntaxKind::Dollar),
 ];
 
 /// What a token is, for setting purposes.
@@ -225,7 +227,8 @@ impl TokenClass {
             | SyntaxKind::Greater
             | SyntaxKind::Less
             | SyntaxKind::Caret
-            | SyntaxKind::Hash => Self::Punctuation,
+            | SyntaxKind::Hash
+            | SyntaxKind::Dollar => Self::Punctuation,
 
             SyntaxKind::UseKw => Self::Use,
 
@@ -298,6 +301,7 @@ impl TokenClass {
             | SyntaxKind::LetKw
             | SyntaxKind::FnKw
             | SyntaxKind::MusicKw
+            | SyntaxKind::KernelKw
             | SyntaxKind::OptionKw
             | SyntaxKind::ListKw
             | SyntaxKind::MatchKw
@@ -412,6 +416,8 @@ impl TokenClass {
             | SyntaxKind::MatchArm
             | SyntaxKind::Pattern
             | SyntaxKind::MusicExpr
+            | SyntaxKind::KernelQuote
+            | SyntaxKind::KernelHole
             | SyntaxKind::ScaleExpr
             | SyntaxKind::KeyExpr
             | SyntaxKind::StepExpr

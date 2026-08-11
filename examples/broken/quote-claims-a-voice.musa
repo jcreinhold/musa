@@ -1,0 +1,19 @@
+// A payload says what the material is. Where it goes is the use's answer, not
+// the material's — the same rule that lets one `music` value be used in two
+// voices. A quote that spells a scope has answered a question it was not asked,
+// and a printed fact pasted in unedited is how it usually happens.
+piece "Quote Claims A Voice" {
+    let assembled: Music = kernel Timeline[ScoreFact] {
+        timeline 1 {
+            occurrence "voice 0 0 note c4 1 [0:0]" from 0 to 1;
+        }
+    };
+
+    score {
+        part solo {
+            voice line {
+                use assembled;
+            }
+        }
+    }
+}

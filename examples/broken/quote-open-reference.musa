@@ -1,0 +1,25 @@
+// A quote is closed: the names it uses are the names it binds, and `${...}` is
+// the one way material from outside gets in. Writing the host's binding by name
+// reads as a kernel reference nothing bound, which is a free name — the piece's
+// `theme` is not in scope inside the term, and never was.
+piece "Quote Open Reference" {
+    let theme: Music = music {
+        c4/4
+        d4/4
+    };
+
+    let assembled: Music = kernel Timeline[ScoreFact] {
+        overlay {
+            theme;
+            shift by 1/2 theme;
+        }
+    };
+
+    score {
+        part solo {
+            voice line {
+                use assembled;
+            }
+        }
+    }
+}

@@ -87,6 +87,7 @@
   "let"
   "fn"
   "music"
+  "kernel"
   "import"
   "match"
   ; `use` alone, as TokenClass::Use says: it is where material comes from.
@@ -284,3 +285,14 @@
 
 ; A bar's name is a target, not a value.
 (bar_statement name: (identifier) @label)
+
+; --- A kernel quote ---------------------------------------------------------
+;
+; `Timeline` and its payload are types, the same two words `musa-kernel`'s own
+; classifier calls types (`crates/musa-kernel/src/editor.rs`). Inside the body
+; the words belong to the kernel's grammar, and an editor colouring them from
+; here would be a second copy of that lexis; what is marked instead is the
+; seam — the quote's head, and the `${` that lets the host back in.
+(kernel_quote constructor: (identifier) @type)
+(kernel_quote payload: (identifier) @type)
+(kernel_hole "$" @punctuation.special)

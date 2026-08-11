@@ -99,6 +99,8 @@ pub enum SyntaxKind {
     Caret,
     /// `#` — the sharp.
     Hash,
+    /// `$` — the head of `${…}`, an antiquotation inside a kernel quote.
+    Dollar,
 
     // --- Structural keywords. Processor names (`oscillator`, `lowpass`, …)
     /// are deliberately *not* keywords: they lex as identifiers so the
@@ -231,6 +233,8 @@ pub enum SyntaxKind {
     FnKw,
     /// `music`
     MusicKw,
+    /// `kernel`
+    KernelKw,
     /// `option`
     OptionKw,
     /// `list`
@@ -504,6 +508,17 @@ pub enum SyntaxKind {
     Pattern,
     /// `music { ... }`, a notation-first contextual music value.
     MusicExpr,
+    /// `kernel Timeline[ScoreFact] { ... }` — a quoted kernel composition
+    /// expression, with `${…}` holes.
+    ///
+    /// Its interior is *recognized, not read*: the tokens between the braces
+    /// are the kernel's grammar, which `musa-kernel` owns
+    /// (`docs/language/01-surface.md` §7). This crate finds the holes and the
+    /// closing brace and hands the rest along as text.
+    KernelQuote,
+    /// `${ expr }` — one typed antiquotation. Its child expression is
+    /// ordinary host syntax.
+    KernelHole,
     /// `scale c dorian` — a collection rooted on a spelled tonic class.
     ScaleExpr,
     /// `key c minor` in a value position, which is the tonal fact and not a

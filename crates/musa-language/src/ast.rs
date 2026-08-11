@@ -2206,6 +2206,78 @@ impl MusicExpr {
     }
 }
 
+/// `kernel Timeline[ScoreFact] { ... }` — a quoted composition expression.
+///
+/// The interior is the kernel's grammar and this crate does not read it
+/// (`docs/language/01-surface.md` §7). What it offers is what a *host* needs:
+/// which payload type the quote claims, where its body is, and where the
+/// holes are — so the compiler can cut the body into text and typed
+/// antiquotations and hand the text to the one crate that owns the grammar.
+pub struct KernelQuote(SyntaxNode);
+wrapper!(KernelQuote, SyntaxKind::KernelQuote);
+
+impl KernelQuote {
+    /// The type constructor as written, with its span. `Timeline`, or the
+    /// mistake in its place.
+    pub fn constructor(&self) -> Option<(String, (u32, u32))> {
+        self.identifiers().next()
+    }
+
+    /// The payload type as written, with its span.
+    pub fn payload_type(&self) -> Option<(String, (u32, u32))> {
+        self.identifiers().nth(1)
+    }
+
+    /// The body's byte range: everything strictly inside the braces.
+    ///
+    /// `None` for a quote whose braces the parser never found, which is a
+    /// quote that has already been reported as a syntax error.
+    pub fn body_span(&self) -> Option<(u32, u32)> {
+        let open = self
+            .0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .find(|token| token.kind() == SyntaxKind::LBrace)?;
+        let close = self
+            .0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| token.kind() == SyntaxKind::RBrace)
+            .last()?;
+        Some((span_of(&open).1, span_of(&close).0))
+    }
+
+    /// The antiquotations, in source order.
+    pub fn holes(&self) -> Vec<KernelHole> {
+        self.0.children().filter_map(KernelHole::cast).collect()
+    }
+
+    fn identifiers(&self) -> impl Iterator<Item = (String, (u32, u32))> + '_ {
+        self.0
+            .children_with_tokens()
+            .filter_map(SyntaxElement::into_token)
+            .filter(|token| token.kind() == SyntaxKind::Identifier)
+            .map(|token| (token.text().to_string(), span_of(&token)))
+    }
+}
+
+/// `${ expr }` — one typed antiquotation.
+pub struct KernelHole(SyntaxNode);
+wrapper!(KernelHole, SyntaxKind::KernelHole);
+
+impl KernelHole {
+    /// The host expression spliced here.
+    pub fn expr(&self) -> Option<SyntaxNode> {
+        self.0.children().find(|child| child.kind() != SyntaxKind::KernelHole)
+    }
+
+    /// The hole's own byte range, `$` through `}`.
+    pub fn span(&self) -> (u32, u32) {
+        let range = self.0.text_range();
+        (u32::from(range.start()), u32::from(range.end()))
+    }
+}
+
 // --- Studio (roadmap §7.1) --------------------------------------------------
 
 /// One item of a `studio` block. The variants are the block's whole

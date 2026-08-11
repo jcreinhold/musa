@@ -99,6 +99,21 @@ pub enum ExpansionStep {
         /// The claim's name, as the source spells it.
         claim: String,
     },
+    /// This fact entered through a kernel quotation
+    /// (`docs/language/01-surface.md` §7), at this position in the quote's
+    /// own time.
+    ///
+    /// What the step records is the *quotation locus*: where the material
+    /// stood inside the term, computed from the term's structure rather than
+    /// from where it ended up. It is the one thing an outer raw operator
+    /// cannot take back — `shift`, `scale` and `restrict` may move the
+    /// occurrences afterwards, and the step still says where the splice was
+    /// made, which is what a reader needs in order to know that a surface
+    /// claim made inside the hole was checked *there* and not here.
+    KernelSplice {
+        /// The locus, in whole notes, exactly.
+        at: Ratio<i64>,
+    },
     /// One note of a motif occurrence was respelled by a `with` clause.
     Specialization {
         /// The span of the override that respelled it.

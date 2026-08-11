@@ -599,7 +599,8 @@ fn occurrence_facts(
         | ExpansionStep::ScaleContext { .. }
         | ExpansionStep::TemplateInstance { .. }
         | ExpansionStep::Assertion { .. }
-        | ExpansionStep::Specialization { .. } => None,
+        | ExpansionStep::Specialization { .. }
+        | ExpansionStep::KernelSplice { .. } => None,
     });
     let motif = call_site.map(|span| motif_name(source, span.start, span.end));
     let declaration = motif.as_ref().and_then(|name| {
@@ -769,6 +770,9 @@ fn step(step: &ExpansionStep, source: &str) -> String {
         // The instance, not the template: two instances of one template are
         // two places, and Origin's job is to say which one this is.
         ExpansionStep::TemplateInstance { ref alias, .. } => format!("make {alias}"),
+        // The locus, not the quote: a reader following a spliced note back
+        // wants to know where in the assembled term it was put.
+        ExpansionStep::KernelSplice { at } => format!("splice at {}/{}", at.numer(), at.denom()),
     }
 }
 

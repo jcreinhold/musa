@@ -120,6 +120,18 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
         match element {
             SyntaxElement::Node(child) => {
                 writer.blank_line_if_pending();
+                // A quote is written as it stands. Its interior is the
+                // kernel's grammar, whose layout the kernel's own printer
+                // owns (`docs/language/01-surface.md` §7), and a formatter
+                // that re-broke those lines by the host's rules would be a
+                // second opinion about a shape this crate has no reading of.
+                // Only the anchoring is this crate's: the block moves to the
+                // indent the host puts it at, keeping its lines' relative
+                // depth.
+                if child.kind() == SyntaxKind::KernelQuote {
+                    write_quote(&child.text().to_string(), writer);
+                    continue;
+                }
                 if writer.starts_a_beat_group(&child) {
                     writer.widen_next_gap();
                 }
@@ -190,6 +202,46 @@ fn format_node(node: &SyntaxNode, writer: &mut Writer, layout: &Layout) {
             }
         }
     }
+}
+
+/// Write a quotation verbatim, re-anchored at the writer's indent.
+///
+/// The first line joins the line in progress — `let doubled: Music = kernel
+/// Timeline[ScoreFact] {` — and the rest keep their depth relative to the
+/// shallowest of them, which is what makes reformatting a file that only
+/// moved sideways leave the quote's shape alone.
+fn write_quote(text: &str, writer: &mut Writer) {
+    // The node owns the trivia in front of its first token, and that trivia
+    // is the host's business, not the quote's.
+    let mut lines = text.trim_start().lines();
+    let Some(first) = lines.next() else {
+        return;
+    };
+    let rest: Vec<&str> = lines.collect();
+    let base = rest
+        .iter()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| line.len().saturating_sub(line.trim_start().len()))
+        .min()
+        .unwrap_or_default();
+    writer.prep_line();
+    if writer.needs_word_space() {
+        writer.space();
+    }
+    writer.write(first.trim_end());
+    for line in rest {
+        writer.end_line();
+        writer.prep_line();
+        if line.trim().is_empty() {
+            continue;
+        }
+        let depth = line.len().saturating_sub(line.trim_start().len());
+        let relative = " ".repeat(depth.saturating_sub(base));
+        writer.write(&format!("{relative}{}", line.trim()));
+    }
+    // No `end_line`: what follows the quote decides. A `;` joins the closing
+    // brace, and a block that ends here breaks the line itself.
+    writer.after_significant(SyntaxKind::RBrace);
 }
 
 fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut Writer) {

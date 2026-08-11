@@ -1,0 +1,27 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+misplaced
+
+  × a quote cannot carry a key
+    ╭─[examples/broken/quote-context-fact.musa:6:28]
+  5 │     piece "Quote Context Fact" {
+  6 │ ╭─▶     let assembled: Music = kernel Timeline[ScoreFact] {
+  7 │ │           overlay {
+  8 │ │               timeline 1 {
+  9 │ │                   occurrence "key c major" from 0 to 1;
+ 10 │ │               };
+ 11 │ │               timeline 1 {
+ 12 │ │                   occurrence "note c4 1" from 0 to 1;
+ 13 │ │               };
+ 14 │ │           }
+ 15 │ ├─▶     };
+    · ╰──── this material would settle what its use is entitled to settle
+ 16 │     
+    ╰────
+  help: write what the material *is*; the use supplies where it goes and where it came from
+
+  note: reusable music may read the context supplied at each use, but it cannot change it
+
+1 problem (1 error)

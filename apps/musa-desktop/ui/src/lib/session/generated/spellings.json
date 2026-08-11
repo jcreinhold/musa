@@ -252,6 +252,10 @@
     "keyword"
   ],
   [
+    "kernel",
+    "keyword"
+  ],
+  [
     "Option",
     "keyword"
   ],
@@ -437,6 +441,10 @@
   ],
   [
     "#",
+    "punctuation"
+  ],
+  [
+    "$",
     "punctuation"
   ]
 ]

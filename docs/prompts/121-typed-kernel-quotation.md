@@ -1,7 +1,7 @@
 ---
 id: 121
 slug: typed-kernel-quotation
-status: pending
+status: done
 depends_on: [97, 116, 120]
 phase: 3
 ---

@@ -344,6 +344,23 @@ fn delayed_double(subject: Music) -> Music { kernel Timeline[ScoreFact] {
 kernel-term hole. Kernel identifiers never capture host identifiers; alpha-renaming prevents capture among inserted
 terms. The completed quote must close and type-check before it becomes `Music`. No raw payload escape exists.
 
+Four rules a writer of quotes needs, and each one is the same rule the rest of the language already keeps:
+
+- **A quote is commented the way the file around it is.** `//` and `/* */` are trivia inside a quote, and `%` is not:
+  the quote is Musa source, so the host's comment syntax is the one that applies. The kernel's `%` lines belong to
+  `.musa.kernel` documents, which are not written inside a piece.
+- **A raw payload says what the material is, and nothing about where it goes.** It states no scope and no origin; both
+  are supplied by the use, exactly as they are for any shared body, and a quote that spells either is refused. A
+  key, meter, clef or tempo payload is refused for the same reason at one remove — a `music` value may read the
+  context supplied at each use and may not settle it.
+- **The quotation locus is where a hole is *instantiated*, not where its facts land.** The two differ under `let`: a
+  hole in a `let` value is instantiated once, at the `let`'s own locus, and each reference then places the finished
+  facts wherever the term writes it. Every fact leaving a quote records that locus.
+- **Raw `shift`, `scale` and `restrict` are operations on time.** They move occurrences; they do not rewrite payloads,
+  because payloads are opaque to the kernel and arrive already transformed (`docs/kernel/01-grammar.md`). Augmentation
+  therefore belongs in the host — `${stretch(1/2, subject)}` — and raw `scale` belongs to material whose written values
+  already say what was meant.
+
 ## 8. Sound corpus
 
 The following is the settled musician-facing shape; `08-performance-and-sound.md` defines it.

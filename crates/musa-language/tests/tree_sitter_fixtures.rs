@@ -117,6 +117,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::Less => "<",
         SyntaxKind::Caret => "^",
         SyntaxKind::Hash => "#",
+        SyntaxKind::Dollar => "$",
         SyntaxKind::TemplateKw => "template",
         SyntaxKind::SignatureKw => "signature",
         SyntaxKind::StructureKw => "structure",
@@ -187,6 +188,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::LetKw => "let",
         SyntaxKind::FnKw => "fn",
         SyntaxKind::MusicKw => "music",
+        SyntaxKind::KernelKw => "kernel",
         SyntaxKind::OptionKw => "Option",
         SyntaxKind::ListKw => "List",
         SyntaxKind::MatchKw => "match",
@@ -317,7 +319,9 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         | SyntaxKind::StructureDecl
         | SyntaxKind::BlockExpr
         | SyntaxKind::ModDecl
-        | SyntaxKind::PitchExpr => panic!("`{kind:?}` is a node, not a token"),
+        | SyntaxKind::PitchExpr
+        | SyntaxKind::KernelQuote
+        | SyntaxKind::KernelHole => panic!("`{kind:?}` is a node, not a token"),
     }
 }
 

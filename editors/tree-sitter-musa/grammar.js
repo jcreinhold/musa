@@ -408,6 +408,7 @@ module.exports = grammar({
       choice(
         $.match_expression,
         $.music_expression,
+        $.kernel_quote,
         $.application_expression,
         $.pitch_expression,
         $.step_expression,
@@ -536,6 +537,68 @@ module.exports = grammar({
       ),
 
     music_expression: ($) => seq('music', '{', repeat(choice(...VOICE_ITEMS($))), '}'),
+
+    // Parser::kernel_quote — `kernel Timeline[ScoreFact] { <kernel term> }`.
+    //
+    // The body is the *kernel's* grammar, and the kernel owns it: musa-language
+    // recognises the shape (matched braces, and `${...}` holes) and hands the
+    // text to musa-kernel's reader. This rule says the same thing, for the same
+    // reason — a second term grammar here would be a second thing to keep in
+    // step with the one in `crates/musa-kernel`.
+    //
+    // What it does have to agree with is the *lexer*, token for token: the
+    // drift law compares these leaves against musa-language's token stream, and
+    // a body scanned as one opaque blob would fail it. So the body is a run of
+    // the same tokens the rest of the file is made of.
+    kernel_quote: ($) =>
+      seq(
+        'kernel',
+        field('constructor', $.identifier),
+        '[',
+        field('payload', $.identifier),
+        ']',
+        $.kernel_quote_body,
+      ),
+
+    kernel_quote_body: ($) =>
+      seq('{', repeat(choice($.kernel_hole, $.kernel_quote_body, $._kernel_token)), '}'),
+
+    // A typed hole: the one place a host expression may stand inside the raw
+    // grammar.
+    kernel_hole: ($) => seq('$', '{', $.expression, '}'),
+
+    _kernel_token: ($) =>
+      choice(
+        $.identifier,
+        $.string,
+        $.rational,
+        $.integer,
+        $.float,
+        $.unit,
+        $.pitch_literal,
+        $.interval_literal,
+        'let',
+        'in',
+        'scale',
+        'to',
+        'key',
+        'part',
+        'voice',
+        'rest',
+        'repeat',
+        '=',
+        ';',
+        ',',
+        ':',
+        '@',
+        '(',
+        ')',
+        '[',
+        ']',
+        '-',
+        '/',
+        '%',
+      ),
 
     // --- Score level (Parser::score_decl and below) ---------------------
 

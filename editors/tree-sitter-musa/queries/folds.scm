@@ -23,6 +23,7 @@
   (mobile_statement)
   (harmony_declaration)
   (music_expression)
+  (kernel_quote)
   (match_expression)
   (block_expression)
 ] @fold

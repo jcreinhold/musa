@@ -8,6 +8,7 @@
 (block) @local.scope
 (function_declaration) @local.scope
 (music_expression) @local.scope
+(kernel_quote) @local.scope
 (match_expression) @local.scope
 
 (motif_declaration name: (identifier) @local.definition)

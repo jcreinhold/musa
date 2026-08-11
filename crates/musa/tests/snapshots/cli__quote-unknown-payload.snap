@@ -1,0 +1,19 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unsupported-payload
+
+  × this build has no meaning for `Sample` payloads
+   ╭─[examples/broken/quote-unknown-payload.musa:6:44]
+ 5 │ piece "Quote Unknown Payload" {
+ 6 │     let assembled: Music = kernel Timeline[Sample] {
+   ·                                            ───┬──
+   ·                                               ╰── no payload type by this name
+ 7 │         timeline 1 {
+   ╰────
+  help: write `ScoreFact`, the payload a musa score is made of
+
+  note: the kernel is parametric in its payload; this compiler implements one
+
+1 problem (1 error)

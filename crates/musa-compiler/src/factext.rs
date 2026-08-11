@@ -70,9 +70,29 @@ impl PayloadText for ScoreFact {
 
     fn from_text(text: &str) -> Option<Self> {
         let mut words = Words::split(text)?;
-        let scope = take_scope(&mut words)?;
+        // Both ends are optional on the way in and never on the way out. A
+        // *printed* fact always states its scope and its origin, because a
+        // file that describes one score has one answer for each. A fact
+        // *quoted* into a piece has neither: the material does not choose the
+        // voice it is used in or the place it came from, the use does — so a
+        // quote writes what the material is and leaves those to be supplied,
+        // exactly as sharing already leaves them (`elaborate::instantiate`).
+        let scope = if words.peek().is_some_and(is_scope_word) {
+            take_scope(&mut words)?
+        } else {
+            crate::elaborate::SHARED_SCOPE
+        };
         let kind = take_kind(&mut words)?;
-        let origin = take_origin(&mut words)?;
+        let origin = if words.peek() == Some("[") {
+            take_origin(&mut words)?
+        } else {
+            Origin {
+                source_span: crate::elaborate::SHARED_ORIGIN,
+                definition_span: crate::elaborate::SHARED_ORIGIN,
+                declaration: DeclarationId(0),
+                expansion_path: Vec::new(),
+            }
+        };
         words.end().then_some(Self {
             scope,
             kind,
@@ -398,6 +418,14 @@ fn write_scope(words: &mut Words, scope: Scope) {
     }
 }
 
+/// Whether a word opens a scope rather than a fact kind.
+///
+/// No fact kind spells any of these, which is what lets the scope be omitted
+/// without the reader having to guess.
+fn is_scope_word(word: &str) -> bool {
+    matches!(word, "piece" | "part" | "voice")
+}
+
 fn take_scope(words: &mut Words) -> Option<Scope> {
     match words.bare()?.as_str() {
         "piece" => Some(Scope::Piece),
@@ -459,7 +487,8 @@ fn take_origin(words: &mut Words) -> Option<Origin> {
 /// The words an expansion step can begin with, and so the words that continue
 /// a `via` run. A run ends at the first word that is not one of these — `]`
 /// in a label, and the end of the stream in a reference mark.
-const STEP_TAGS: [&str; 11] = [
+const STEP_TAGS: [&str; 12] = [
+    "splice",
     "template",
     "motif",
     "scale",
@@ -522,6 +551,10 @@ fn write_step(words: &mut Words, step: &ExpansionStep) {
             words.word("special");
             words.word(span_word(*override_site));
         }
+        ExpansionStep::KernelSplice { at } => {
+            words.word("splice");
+            words.word(ratio_text(*at));
+        }
     }
 }
 
@@ -558,6 +591,7 @@ fn take_step(words: &mut Words) -> Option<ExpansionStep> {
         "special" => Some(ExpansionStep::Specialization {
             override_site: words.span()?,
         }),
+        "splice" => Some(ExpansionStep::KernelSplice { at: words.ratio()? }),
         _ => None,
     }
 }

@@ -588,6 +588,32 @@ enum ExprKind {
         down: bool,
     },
     Music(CheckedMusic),
+    KernelQuote(CheckedQuote),
+}
+
+/// A quotation, read once at its definition.
+///
+/// The term is parsed *here* rather than at each use, because the quoted text
+/// does not depend on the environment: what depends on the environment is
+/// what each hole evaluates to, and a hole is a name in the term by the time
+/// this exists. So a malformed quote is one diagnostic at the quote, not one
+/// per placement.
+#[derive(Clone)]
+struct CheckedQuote {
+    /// The quoted term, with a fresh name standing where each hole was
+    /// written.
+    term: musa_kernel::Term<crate::elaborate::ScoreFact>,
+    /// Each hole: the fresh name that stands for it, where it sits in the
+    /// quote's own time, and the expression spliced there.
+    holes: Vec<CheckedHole>,
+    definition_span: SourceSpan,
+}
+
+#[derive(Clone)]
+struct CheckedHole {
+    name: String,
+    locus: Ratio<i64>,
+    value: Expr,
 }
 
 #[derive(Clone)]
@@ -1691,6 +1717,19 @@ pub(crate) enum MusicOperation {
         mapper: PitchFunction,
         source: Music,
     },
+    /// A checked kernel quote: a closed term over the fresh names its holes
+    /// bind, and the host music each name stands for, with the locus the
+    /// quote's own structure puts that name at.
+    ///
+    /// Unlike every other operation here, the material is already assembled —
+    /// the term *is* the composition. Elaboration binds the holes and reads
+    /// the extent off the structure; it never rebuilds the term.
+    KernelQuote {
+        /// The quoted term, over the hole names.
+        term: musa_kernel::Term<crate::elaborate::ScoreFact>,
+        /// Each hole: its fresh name, its locus in the quote, and its music.
+        holes: Vec<(String, Ratio<i64>, Music)>,
+    },
     /// The one music constructor with no music underneath it: a chosen
     /// voicing, sounded for a written length.
     Play {
@@ -1983,6 +2022,13 @@ fn music_witness(music: &Music) -> u64 {
         Some(MusicOperation::Play { voicing, held }) => {
             Value::Voicing(voicing.clone()).normalization_witness().rotate_left(11)
                 ^ Value::Duration(*held).normalization_witness()
+        }
+        Some(MusicOperation::KernelQuote { term, holes }) => {
+            holes
+                .iter()
+                .fold(term.occurrence_bound().rotate_left(13), |witness, (_, locus, music)| {
+                    witness.rotate_left(5) ^ Value::Ratio(*locus).normalization_witness() ^ music_witness(music)
+                })
         }
     };
     base.rotate_left(3) ^ operation
@@ -2928,6 +2974,8 @@ impl Checker<'_> {
             self.match_expression(node, expected)
         } else if kind == SyntaxKind::MusicExpr {
             self.music_expression(node)
+        } else if kind == SyntaxKind::KernelQuote {
+            self.kernel_quote(node)
         } else {
             None
         }?;
@@ -2945,6 +2993,164 @@ impl Checker<'_> {
             return None;
         }
         Some(checked)
+    }
+
+    /// Check `kernel Timeline[ScoreFact] { … }` — a quotation.
+    ///
+    /// The quote is read here, once, in four steps that are deliberately
+    /// separate: the type constructor and payload name are *this* language's
+    /// words and are checked against what this build can mean; the body text
+    /// with its holes replaced by fresh names is handed to `musa-kernel`,
+    /// which owns the term grammar and is the only thing that reads it; the
+    /// payloads that came back are checked for context authority, because a
+    /// reusable value may read the context it is used in but never change it;
+    /// and the holes are checked as ordinary `Music` expressions.
+    ///
+    /// Closure and shadowing are asked of the term with the holes bound to
+    /// empty material — the shape elaboration will build — so that a free
+    /// name in a quote is a complaint about the quote rather than about the
+    /// use that first reached it.
+    fn kernel_quote(&mut self, node: &SyntaxNode) -> Option<Expr> {
+        let span = crate::resolve::trimmed_span(node);
+        let quote = musa_language::ast::KernelQuote::cast(node.clone())?;
+        let base = u32::from(node.text_range().start());
+        let text = quote_text(node);
+
+        if let Some((constructor, at)) = quote.constructor()
+            && constructor != "Timeline"
+        {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::UnknownName,
+                    format!("`{constructor}` is not a kernel type constructor"),
+                )
+                .at(SourceSpan::new(at.0, at.1), "expected `Timeline`")
+                .note("a quote writes one composition expression, and a composition is a timeline"),
+            );
+            self.failed = true;
+            return None;
+        }
+        let (payload, payload_at) = quote.payload_type()?;
+        if payload != "ScoreFact" {
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::UnsupportedPayload,
+                    format!("this build has no meaning for `{payload}` payloads"),
+                )
+                .at(
+                    SourceSpan::new(payload_at.0, payload_at.1),
+                    "no payload type by this name",
+                )
+                .help("write `ScoreFact`, the payload a musa score is made of")
+                .note("the kernel is parametric in its payload; this compiler implements one"),
+            );
+            self.failed = true;
+            return None;
+        }
+
+        let (body_start, body_end) = quote.body_span()?;
+        let holes = quote.holes();
+        // Fresh names, chosen so that nothing in the quoted text can be one:
+        // capture is prevented by construction rather than diagnosed after
+        // the fact.
+        let mut stem = "splice".to_owned();
+        while text.contains(&stem) {
+            stem.push('_');
+        }
+        let (source, spans) = substitute_holes(&text, base, body_start, body_end, &stem, &holes);
+        let term = match musa_kernel::parse_expression::<crate::elaborate::ScoreFact>(&source) {
+            Ok(term) => term,
+            Err(error) => {
+                self.resolver.report(
+                    Diagnostic::error(Code::Syntax, "this kernel quote is not well formed").at(
+                        quote_error_span(&spans, &error, body_start, body_end),
+                        error.to_string(),
+                    ),
+                );
+                self.failed = true;
+                return None;
+            }
+        };
+
+        let mut authority = Vec::new();
+        term.for_each_payload(&mut |fact| {
+            if let Some(what) = context_authority(&fact.kind) {
+                authority.push(what);
+            }
+            if fact.scope != crate::elaborate::SHARED_SCOPE {
+                authority.push("a voice of its own");
+            }
+            if fact.origin.source_span != crate::elaborate::SHARED_ORIGIN {
+                authority.push("an origin of its own");
+            }
+        });
+        if let Some(what) = authority.first() {
+            self.resolver.report(
+                Diagnostic::error(Code::Misplaced, format!("a quote cannot carry {what}"))
+                    .at(span, "this material would settle what its use is entitled to settle")
+                    .help("write what the material *is*; the use supplies where it goes and where it came from")
+                    .note("reusable music may read the context supplied at each use, but it cannot change it"),
+            );
+            self.failed = true;
+            return None;
+        }
+
+        let mut checked = Vec::new();
+        for (index, hole) in holes.iter().enumerate() {
+            let name = format!("{stem}{index}");
+            let (start, end) = hole.span();
+            let Some(locus) = term.locus(&name) else {
+                self.resolver.report(
+                    Diagnostic::error(Code::Misplaced, "nothing is spliced here")
+                        .at(
+                            SourceSpan::new(start, end),
+                            "this hole is not in a position that names material",
+                        )
+                        .help("write `${…}` where the term expects a composition")
+                        .note("a hole stands for material, so it stands where material does"),
+                );
+                self.failed = true;
+                return None;
+            };
+            let expression = hole.expr()?;
+            let value = self.check(&expression, Some(&Type::Music))?;
+            checked.push(CheckedHole {
+                name,
+                locus: locus.as_ratio(),
+                value,
+            });
+        }
+
+        // Closure, with the holes standing where elaboration will put them.
+        let mut closed = term.clone();
+        for hole in checked.iter().rev() {
+            closed = musa_kernel::Term::bind(
+                hole.name.clone(),
+                musa_kernel::Term::literal(musa_kernel::zero()),
+                closed,
+            );
+        }
+        if let Err(error) = closed.check() {
+            self.resolver.report(
+                Diagnostic::error(Code::UnknownName, "this kernel quote does not stand on its own")
+                    .at(span, error.to_string())
+                    .note(
+                        "a quote is closed: every name it uses is one it binds, and `${…}` is how the outside gets in",
+                    ),
+            );
+            self.failed = true;
+            return None;
+        }
+
+        Some(Expr {
+            kind: ExprKind::KernelQuote(CheckedQuote {
+                term,
+                holes: checked,
+                definition_span: self.definition_span,
+            }),
+            ty: Type::Music,
+            span,
+        })
     }
 
     fn music_expression(&mut self, node: &SyntaxNode) -> Option<Expr> {
@@ -4547,6 +4753,30 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 operation: None,
             }))
         }
+        ExprKind::KernelQuote(quote) => {
+            let mut holes = Vec::with_capacity(quote.holes.len());
+            for hole in &quote.holes {
+                let Value::Music(value) = eval(&hole.value, environment, meter)? else {
+                    return None;
+                };
+                holes.push((hole.name.clone(), hole.locus, value));
+            }
+            Some(Value::Music(Music {
+                items: Vec::new(),
+                uses: IndexMap::new(),
+                pitches: Box::default(),
+                scales: Box::default(),
+                claims: Box::default(),
+                keys: Box::default(),
+                bindings: IndexMap::new(),
+                role: None,
+                definition_span: quote.definition_span,
+                operation: Some(Box::new(MusicOperation::KernelQuote {
+                    term: quote.term.clone(),
+                    holes,
+                })),
+            }))
+        }
     }?;
     let (nodes, bytes) = value_shape(&value);
     if value.ty() != expression.ty || !meter.construct("expression value", nodes, bytes, expression.span) {
@@ -4594,7 +4824,8 @@ fn pitch_term(expression: &Expr, environment: &IndexMap<String, Value>, meter: &
         | ExprKind::Apply { .. }
         | ExprKind::Primitive { .. }
         | ExprKind::Match { .. }
-        | ExprKind::Music(_) => {
+        | ExprKind::Music(_)
+        | ExprKind::KernelQuote(_) => {
             let Value::Pitch(pitch) = eval(expression, environment, meter)? else {
                 return None;
             };
@@ -5535,6 +5766,15 @@ fn music_shape(music: &Music) -> (u64, u64) {
             (left.0.saturating_add(right.0), left.1.saturating_add(right.1))
         }
         Some(MusicOperation::Play { voicing, .. }) => value_shape(&Value::Voicing(voicing.clone())),
+        Some(MusicOperation::KernelQuote { term, holes }) => {
+            let payloads = term.occurrence_bound();
+            holes
+                .iter()
+                .fold((payloads, payloads.saturating_mul(64)), |shape, (_, _, music)| {
+                    let hole = music_shape(music);
+                    (shape.0.saturating_add(hole.0), shape.1.saturating_add(hole.1))
+                })
+        }
     };
     (base.0.saturating_add(child.0), base.1.saturating_add(child.1))
 }
@@ -5604,6 +5844,133 @@ fn parse_ratio(resolver: &mut Resolver, token: &SyntaxToken) -> Option<Ratio<i64
         return None;
     }
     Some(Ratio::new(numerator, denominator))
+}
+
+/// The quote's own text with its comments blanked out, byte for byte.
+///
+/// A quote is written in a `.musa` file, so it is commented the way the rest
+/// of the file is — `//` and `/* */`, which the lexer already reads as trivia
+/// here. The kernel's alphabet has no `//` and Musa's has no `%`, so there is
+/// exactly one comment syntax inside a quote and it is the host's.
+///
+/// Blanked rather than removed: every offset in what comes back is still the
+/// offset it has in the document, which is what lets a complaint from the
+/// kernel's reader point at the character it stopped on. Newlines survive so
+/// the line a complaint lands on is the line it was written on.
+fn quote_text(node: &SyntaxNode) -> String {
+    let mut text = node.text().to_string();
+    let base = usize::from(node.text_range().start());
+    for token in node.descendants_with_tokens().filter_map(SyntaxElement::into_token) {
+        if !matches!(token.kind(), SyntaxKind::LineComment | SyntaxKind::BlockComment) {
+            continue;
+        }
+        let start = usize::from(token.text_range().start()).saturating_sub(base);
+        let end = usize::from(token.text_range().end()).saturating_sub(base);
+        // Byte-wise, and only ASCII bytes are written: a newline is never
+        // part of a multi-byte sequence, so the string stays valid UTF-8 and
+        // stays exactly as long as it was.
+        // SAFETY-BY-CONSTRUCTION: `blanked` is the same length as the range
+        // it replaces, so no later token's offsets move.
+        let Some(comment) = text.get(start..end) else {
+            continue;
+        };
+        let blanked: String = comment
+            .bytes()
+            .map(|byte| if byte == b'\n' { '\n' } else { ' ' })
+            .collect();
+        text.replace_range(start..end, &blanked);
+    }
+    text
+}
+
+/// The quoted body with each hole replaced by its fresh name, and the map
+/// back.
+///
+/// The map is a list of `(offset in the substituted text, offset in the
+/// document)` at each seam, which is what turns a kernel parse error into a
+/// place in the composer's file. Without it every complaint about a quote
+/// would point at the whole quote.
+fn substitute_holes(
+    text: &str,
+    base: u32,
+    body_start: u32,
+    body_end: u32,
+    stem: &str,
+    holes: &[musa_language::ast::KernelHole],
+) -> (String, Vec<(usize, u32)>) {
+    let relative = |absolute: u32| usize::try_from(absolute.saturating_sub(base)).unwrap_or_default();
+    let mut source = String::with_capacity(text.len());
+    let mut spans = Vec::new();
+    let mut at = relative(body_start);
+    for (index, hole) in holes.iter().enumerate() {
+        let (start, end) = hole.span();
+        let (start, end) = (relative(start), relative(end));
+        let Some(before) = text.get(at..start) else {
+            continue;
+        };
+        spans.push((
+            source.len(),
+            body_start.saturating_add(u32::try_from(at).unwrap_or_default()),
+        ));
+        source.push_str(before);
+        source.push(' ');
+        source.push_str(stem);
+        source.push_str(&index.to_string());
+        source.push(' ');
+        at = end;
+    }
+    if let Some(rest) = text.get(at..relative(body_end)) {
+        spans.push((source.len(), base.saturating_add(u32::try_from(at).unwrap_or_default())));
+        source.push_str(rest);
+    }
+    (source, spans)
+}
+
+/// Where a kernel parse error lands in the document.
+fn quote_error_span(
+    spans: &[(usize, u32)],
+    error: &musa_kernel::KernelError,
+    body_start: u32,
+    body_end: u32,
+) -> SourceSpan {
+    let musa_kernel::KernelError::Parse { offset, .. } = error else {
+        return SourceSpan::new(body_start, body_end);
+    };
+    let Some((seam, document)) = spans.iter().rev().find(|(seam, _)| seam <= offset) else {
+        return SourceSpan::new(body_start, body_end);
+    };
+    let at = document.saturating_add(u32::try_from(offset.saturating_sub(*seam)).unwrap_or_default());
+    SourceSpan::new(at, at.saturating_add(1).min(body_end))
+}
+
+/// What a fact would take authority over, if it is one of the four that can.
+///
+/// Key, meter, tempo and clef are *context*: they hold from where they are
+/// written until they are written again, so a value carrying one would change
+/// its caller's context from inside — the very thing a reusable `music` value
+/// must not do (`docs/language/00-semantics.md`, contextual closure).
+fn context_authority(kind: &crate::elaborate::FactKind) -> Option<&'static str> {
+    match kind {
+        crate::elaborate::FactKind::Key { .. } => Some("a key"),
+        crate::elaborate::FactKind::Meter { .. } => Some("a meter"),
+        crate::elaborate::FactKind::Tempo { .. } => Some("a tempo"),
+        crate::elaborate::FactKind::Clef { .. } => Some("a clef"),
+        crate::elaborate::FactKind::Note { .. }
+        | crate::elaborate::FactKind::Rest { .. }
+        | crate::elaborate::FactKind::Mark { .. }
+        | crate::elaborate::FactKind::Grace { .. }
+        | crate::elaborate::FactKind::Slur
+        | crate::elaborate::FactKind::Phrase { .. }
+        | crate::elaborate::FactKind::Tuplet { .. }
+        | crate::elaborate::FactKind::Dynamic { .. }
+        | crate::elaborate::FactKind::Hairpin { .. }
+        | crate::elaborate::FactKind::Section { .. }
+        | crate::elaborate::FactKind::Harmony { .. }
+        | crate::elaborate::FactKind::Repeat { .. }
+        | crate::elaborate::FactKind::Mobile { .. }
+        | crate::elaborate::FactKind::Improvise { .. }
+        | crate::elaborate::FactKind::Ending { .. } => None,
+    }
 }
 
 fn music_items(node: &SyntaxNode) -> Vec<VoiceItem> {
@@ -5769,6 +6136,7 @@ fn is_expr_node(kind: SyntaxKind) -> bool {
             | SyntaxKind::StepExpr
             | SyntaxKind::MatchExpr
             | SyntaxKind::MusicExpr
+            | SyntaxKind::KernelQuote
     )
 }
 
