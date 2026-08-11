@@ -1,0 +1,14 @@
+// Two seconds stacked below middle C. OMT 076 says a voicing turns muddy
+// there, and unlike the spacing rule for four-part writing this one measures
+// the bass along with everything else.
+piece "Muddy Voicing" {
+    score {
+        part combo {
+            voice v {
+                assert follows(jazz_spacing) {
+                    [c3 d3 e3 f3]/1
+                }
+            }
+        }
+    }
+}

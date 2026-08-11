@@ -1,0 +1,15 @@
+// The top voice leaps a seventh between voicings. The bass leaps a fifth in
+// the same place and is not reported: OMT 076's guideline is about the
+// voicing, and a rule that scolded a walking bass would fire on every ii-V.
+piece "Leaping Voicing" {
+    score {
+        part combo {
+            voice v {
+                assert follows(jazz_small_motion) {
+                    [d3 f3 c4 e4]/1
+                    [g2 f3 b3 d5]/1
+                }
+            }
+        }
+    }
+}

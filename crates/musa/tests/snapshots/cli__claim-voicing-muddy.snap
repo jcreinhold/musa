@@ -1,0 +1,21 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unmet-claim
+
+  × `c3` and `d3` sound M2 below middle C
+    ╭─[examples/broken/claim-voicing-muddy.musa:8:17]
+  7 │                 voice v {
+  8 │ ╭─▶                 assert follows(jazz_spacing) {
+  9 │ │                       [c3 d3 e3 f3]/1
+    · │                       ───────┬───────
+    · │                              ╰── a second this low turns the voicing muddy
+ 10 │ ├─▶                 }
+    · ╰──── `follows(jazz_spacing)` is the claim
+ 11 │                 }
+    ╰────
+
+  note: OMT 076 §Spacing: no interval within the voicing exceeds an octave, and no second sounds below the tenor register
+
+1 problem (1 error)

@@ -227,6 +227,100 @@ evaded gesture, and the report says which criteria held so a reader can tell the
 A progression that is none of the four is **not reported at all**. There is no weak cadence and no confidence number:
 the absence is the answer.
 
+### `voice-leading` and `counterpoint`
+
+These two kinds share a domain and differ in what α reads it from, so they are stated together. Both take a **profile**
+— a named style — and neither has a default. There is no unnamed "good voice leading" to fall back on: OMT `022` and OMT
+`076` disagree about parallel fifths because they are describing different music, and a reading that averaged them would
+describe none.
+
+**Abstract domain.** For the profile the request named: the set of pairs *(rule, place)* where the music departs from
+that rule, together with the list of rules the profile looked at. A place is a span, the voices involved, the interval
+at issue where the rule is about one, and — where a rule has several criteria — a verdict on each. The list of rules
+looked at is part of the domain and not a courtesy: a report that named only departures could not distinguish "this
+passage has no parallel fifths" from "nobody looked".
+
+**Abstraction map.** For `voice-leading`, α cuts the requested lanes at every attack, reads each instant as a column of
+sounding pitches ordered from the bottom, and evaluates each rule over the columns and over the motion between adjacent
+ones. For `counterpoint`, α designates one voice as the cantus firmus — the request says which, because a first-species
+cantus and a first-species counterpoint are both one note per measure and nothing in the notation tells them apart —
+takes the cantus's notes as the measures, and reads the other voice against them. Every interval is measured from the
+lower sounding pitch upward, and asked about with a bass present, because in a two-voice texture the lower voice *is*
+the bass and OMT `023` makes the perfect fourth's consonance depend on exactly that.
+
+**Soundness.** Every departure is decidable from the notated score: two voices either move in parallel fifths or they do
+not. So a departure is a `fact` **about the motion**, and it is not a fact about the music being wrong. That separation
+is the whole design: the finding states the motion, and the rule's *strength* states what one historical pedagogy makes
+of it.
+
+| Strength | What the style makes of a departure | Standing of the finding |
+| --- | --- | --- |
+| `definitional` | the passage is not the thing the profile is about | `conflict` — the request and the music disagree |
+| `hard in this exercise` | the exercise forbids it | `fact` |
+| `guideline` | the tradition advises against it | `fact` |
+
+A definitional departure is a conflict rather than a fact because it is not an observation about the music at all: a
+three-voice passage read as SATB, or a two-note-against-one exercise read as first species, is a request that does not
+fit its subject. The music is intact; the lens is the wrong one.
+
+The two rules that read a key are the other exception. Under a key the source wrote, their departures are facts; under a
+key the request assumed with `--key`, they are candidates, because the reading that produced them is one the request
+chose.
+
+γ of a report is every score that departs from those rules in those places. It is **not** "every score in this style".
+Nothing here decides whether a passage is in a style, and a profile is a lens the request picked up.
+
+**The profiles** are `satb_common_practice` (OMT `022`), `species_1` through `species_5` (OMT `023`–`028`), and
+`jazz_voice_leading` (OMT `076`). The fifth species' rule list is computed as the union of the other four rather than
+written out, because "florid counterpoint mixes the species" is a statement about those four lists and a fifth list
+written by hand would drift away from what it claims to combine.
+
+**The rules.** The registry in `crates/musa-compiler/src/analysis/rules.rs` is the table below, and a rule that is not
+in it cannot be checked by anything — an assertion resolves its rule word there, and a report prints from the same rows.
+Every row has a citation, because a rule whose citation is "everyone knows" is what the registry exists to refuse.
+
+| Rule id | Profile | States | Strength | Cites |
+| --- | --- | --- | --- | --- |
+| `satb_four_voices` | SATB | four voices sound, each sounding one note at a time | definitional | OMT 022 §Voices |
+| `satb_ranges` | SATB | each voice stays within the range its part is written for | exercise | OMT 022 §Ranges |
+| `satb_spacing` | SATB | adjacent upper voices lie within an octave of each other | exercise | OMT 022 §Spacing |
+| `satb_crossing` | SATB | a voice does not sound below the voice beneath it | exercise | OMT 022 §Crossing |
+| `satb_overlap` | SATB | a voice does not move past the note its neighbour has just left | exercise | OMT 022 §Overlap |
+| `satb_parallel_perfects` | SATB | no two voices move in parallel fifths, octaves, or unisons | exercise | OMT 022 §Parallels |
+| `satb_direct_perfects` | SATB | the outer voices do not arrive at a perfect fifth or octave in similar motion with a leap on top | guideline | OMT 022 §Direct fifths and octaves |
+| `satb_doubling` | SATB | the leading tone of the key in force is not doubled | guideline | OMT 022 §Doubling |
+| `satb_tendency_resolution` | SATB | the leading tone of the key in force rises to the tonic when it moves | guideline | OMT 022 §Tendency tones |
+| `species_rhythm` | species 1–5 | the counterpoint stands in this species' rhythmic relation to the cantus firmus | definitional | OMT 023 §The species |
+| `species_begin` | species 1–5 | the exercise begins on a perfect consonance | exercise | OMT 024 §Beginning |
+| `species_end` | species 1–5 | the exercise ends on a unison or octave, approached by step | exercise | OMT 024 §Ending |
+| `species_consonance` | species 1–5 | the interval on each strong beat is a consonance | exercise | OMT 023 §Consonance and dissonance |
+| `species_dissonance_passing` | species 2, 3, 5 | a dissonance on a weak beat is approached and left by step in one direction | exercise | OMT 025 §Dissonance |
+| `species_suspension` | species 4, 5 | a dissonance on a strong beat is prepared as a consonance, held over, and resolved down by step | exercise | OMT 027 §Suspensions |
+| `species_parallel_perfects` | species 1–5 | consecutive strong beats do not repeat a perfect consonance of the same size | exercise | OMT 023 §Motion |
+| `species_direct_perfects` | species 1–5 | a perfect consonance is not approached by similar motion | guideline | OMT 023 §Motion |
+| `species_leap_recovery` | species 1–5 | a leap of a fourth or more is followed by motion in the other direction | guideline | OMT 023 §Melodic shape |
+| `jazz_guide_tones` | jazz | the third and the seventh of the written symbol sound in the voicing | guideline | OMT 076 §Guide tones |
+| `jazz_guide_tone_motion` | jazz | a guide tone is held or moves by step into the next voicing | guideline | OMT 076 §Guide tones |
+| `jazz_common_tone` | jazz | a pitch class both voicings contain is kept in one voice | guideline | OMT 076 §Voice leading |
+| `jazz_small_motion` | jazz | no upper voice moves by more than a third between voicings | guideline | OMT 076 §Voice leading |
+| `jazz_spacing` | jazz | no interval within the voicing exceeds an octave, and no second sounds below the tenor register | guideline | OMT 076 §Spacing |
+| `jazz_omission` | jazz | the voicing sounds the root or the fifth of the written symbol | guideline | OMT 076 §Rootless voicings |
+
+**Assumptions each profile carries.** SATB reads a key for its two tendency rules and says whether it read the source's
+or the request's. The jazz profile reads the harmony lane, so a passage with no written symbols is a passage it can say
+nothing about. Species reads the designated cantus and nothing else about the request.
+
+**What an author may assert.** Five of the twenty-four are assertable with `assert follows(…)`:
+`satb_parallel_perfects`, `satb_spacing`, `satb_overlap`, `jazz_small_motion`, and `jazz_spacing`. The criterion is not
+importance — it is locality. An assertion sees the passage inside its own braces and nothing else, so the rules it can
+name are the ones decidable from that passage's own sonorities: no key in force, no cantus designated, no harmony lane,
+no neighbouring music. The rest are readings of a score, and a score is not what an assertion is looking at.
+`examples/analysis/asserted-voicings.musa` asserts all five, and `examples/broken/claim-*.musa` fails all five.
+
+Both sides check the same rule through the same predicates in `analysis::motion`, so an assertion and an analysis cannot
+come to different answers about the same two chords. That is a structural guarantee rather than a discipline: there is
+one statement of each rule and two traversals over it.
+
 ## 8. Known limits, and the false positives they produce
 
 Stated here rather than discovered by a user. Each is a consequence of a decision made elsewhere in this document, not a
@@ -240,9 +334,10 @@ defect to be patched quietly.
 | Regions are cut where **no key survives** | A single chromatic chord in an otherwise stable passage can open a spurious region. | The alternative is a threshold on how much chromaticism a key tolerates, which is a number with no source. |
 | `beats` reads the meter, not the harmonic rhythm | A piece whose chords change every half-note gets one slice per quarter and reports the same chord twice. | Harmonic rhythm is what the analysis is *for*; deriving the segmentation from it would be circular. |
 | A cadence needs the two slices adjacent to the point | A cadential ⁶₄ before the dominant is invisible: the reading sees V–I and not I⁶₄–V–I. | Widening the window is a design change with its own soundness claim, not a parameter. |
+| A jazz voicing is read as a **chord in one lane** | A four-note voicing written as four lanes and one written as one chord are the same music, and only the second has "voices" the jazz rules can count. | A jazz voicing's voices are positions in a sonority, not lines the source named; asking which line a note belongs to would be a reading of a *part* nobody wrote. |
+| In an asserted passage a "voice" is a **position from the bottom** | A crossing inside an asserted chord is invisible: the sonority re-sorts and the assertion sees the same set of pitches. | An assertion sees sonorities and not lanes (§7). The rules that need lanes are the ones §7 does not admit into `assert follows(…)`, which is the same boundary stated from the other side. |
+| A style profile is **named, never inferred** | A passage in one style read under another profile reports departures throughout, and the report is correct. | Deciding a passage's style is a claim about a corpus nobody named — §3's refusal again. The profile is on the request so the reader can see which lens produced the reading. |
 
 The fixtures in `examples/analysis/` are the corpus these are measured against, and each one's header states the
 candidate set the reading is expected to produce. A change that alters those sets is a change to the analysis, and the
 header is where it must be argued.
-
-Voice-leading analysis arrives in prompt 119, under §2's rule like everything else.

@@ -1,0 +1,21 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unmet-claim
+
+  × `c4` and `d5` are M9 apart
+    ╭─[examples/broken/claim-spacing-too-wide.musa:8:17]
+  7 │                 voice v {
+  8 │ ╭─▶                 assert follows(satb_spacing) {
+  9 │ │                       [c2 g3 c4 d5]/1
+    · │                       ───────┬───────
+    · │                              ╰── this is the fourth voice
+ 10 │ ├─▶                 }
+    · ╰──── `follows(satb_spacing)` is the claim
+ 11 │                 }
+    ╰────
+
+  note: OMT 022 §Spacing: adjacent upper voices lie within an octave of each other
+
+1 problem (1 error)

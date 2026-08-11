@@ -1,0 +1,14 @@
+// A ninth between the alto and the soprano. OMT 022 allows an octave between
+// adjacent upper voices, and the bass -- which here lies a twelfth below the
+// tenor -- is not measured at all.
+piece "Too Far Apart" {
+    score {
+        part choir {
+            voice v {
+                assert follows(satb_spacing) {
+                    [c2 g3 c4 d5]/1
+                }
+            }
+        }
+    }
+}

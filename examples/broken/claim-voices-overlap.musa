@@ -1,0 +1,15 @@
+// The top two voices both drop below the `c4` the third voice has just left.
+// Arriving exactly on that note would have been the boundary and not a
+// crossing of it; this goes past it.
+piece "Overlapping Voices" {
+    score {
+        part choir {
+            voice v {
+                assert follows(satb_overlap) {
+                    [c3 g3 c4 f4]/1
+                    [c3 g3 a3 b3]/1
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,15 @@
+// Both lower voices rise a step together, from a fifth to a fifth. The claim
+// is about the two voices and not about either one of them, which is why an
+// assertion around a single line could never have caught it.
+piece "Parallel Fifths" {
+    score {
+        part choir {
+            voice v {
+                assert follows(satb_parallel_perfects) {
+                    [c3 g3 c4 e4]/1
+                    [d3 a3 d4 f4]/1
+                }
+            }
+        }
+    }
+}

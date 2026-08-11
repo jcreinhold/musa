@@ -1,0 +1,22 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unmet-claim
+
+  × the fourth voice moves from `e4` to `d5`
+    ╭─[examples/broken/claim-voicing-leaps.musa:8:17]
+  7 │                 voice v {
+  8 │ ╭─▶                 assert follows(jazz_small_motion) {
+  9 │ │                       [d3 f3 c4 e4]/1
+ 10 │ │                       [g2 f3 b3 d5]/1
+    · │                       ───────┬───────
+    · │                              ╰── this is further than a third
+ 11 │ ├─▶                 }
+    · ╰──── `follows(jazz_small_motion)` is the claim
+ 12 │                 }
+    ╰────
+
+  note: OMT 076 §Voice leading: no upper voice moves by more than a third between voicings
+
+1 problem (1 error)

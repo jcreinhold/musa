@@ -1,0 +1,82 @@
+// The five rules a composer may assert, asserted (OMT `022` and `076`).
+//
+// Every other fixture in this directory is read by `musa analyze`, which
+// answers a question the reader asked. This one is different: what is written
+// here stops the build if it stops being true.
+//
+// The rules below are the whole assertable set, and it is short for a reason.
+// An `assert` sees the passage inside its own braces and nothing else, which
+// is what makes the claim local — a reader of the assertion can see everything
+// it is about, without holding the rest of the score in their head. So the
+// only style rules an assertion can name are the ones decidable from that
+// passage's own sonorities, which means the passage has to *have* sonorities.
+// Four voices written as four voices are four passages, each with one note
+// sounding at a time; a `follows(satb_parallel_perfects)` written around one
+// of them would be true because there is nothing in it that could be false.
+//
+// Voicings written as chords do have sonorities, and that is what is here. The
+// five failing counterparts live in `examples/broken/claim-*.musa`, because a
+// fixture that demonstrated a failing assertion could not compile.
+piece "Asserted Voicings" {
+    composer "musa";
+
+    tempo 1/4 = 60;
+    meter 4/4;
+    key c major;
+
+    score {
+        part keys {
+            clef treble;
+
+            // I - V6 - I, in close position. The tenor holds `g3` through the
+            // first change and the alto and soprano step down, so no two
+            // voices arrive at a perfect consonance together.
+            voice parallels {
+                assert follows(satb_parallel_perfects) {
+                    | [c3 g3 c4 e4]/1
+                    | [g2 g3 b3 d4]/1
+                    | [c3 g3 c4 e4]/1
+                }
+            }
+
+            // The upper three voices inside an octave of each other. The bass
+            // is not measured: a bass a twelfth below its tenor is ordinary
+            // writing, and OMT 022 asks about the upper voices.
+            voice spacing {
+                assert follows(satb_spacing) {
+                    | [c2 c4 e4 g4]/1
+                    | [g1 b3 d4 g4]/1
+                }
+            }
+
+            // No voice arrives past the note its neighbour has just left. The
+            // soprano lands exactly on the `f4` the alto vacates, which is the
+            // boundary the rule draws and not a crossing of it.
+            voice overlap {
+                assert follows(satb_overlap) {
+                    | [c3 g3 c4 f4]/1
+                    | [c3 a3 f4 a4]/1
+                }
+            }
+
+            // A ii-V voicing: the guide tones move by step or hold, and the
+            // bass walks a fifth, which the rule exempts because the guideline
+            // is about the voicing and not about the bass player.
+            voice motion {
+                assert follows(jazz_small_motion) {
+                    | [d3 f3 c4 e4]/1
+                    | [g2 f3 b3 d4]/1
+                }
+            }
+
+            // Nothing wider than an octave anywhere in the voicing, and no
+            // second below middle C, where OMT 076 says a voicing turns muddy.
+            voice muddiness {
+                assert follows(jazz_spacing) {
+                    | [d3 a3 c4 f4]/1
+                    | [g3 b3 f4 a4]/1
+                }
+            }
+        }
+    }
+}

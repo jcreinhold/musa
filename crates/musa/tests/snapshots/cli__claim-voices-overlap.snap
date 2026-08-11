@@ -1,0 +1,22 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unmet-claim
+
+  × the third and fourth voices overlap here
+    ╭─[examples/broken/claim-voices-overlap.musa:8:17]
+  7 │                 voice v {
+  8 │ ╭─▶                 assert follows(satb_overlap) {
+  9 │ │                       [c3 g3 c4 f4]/1
+ 10 │ │                       [c3 g3 a3 b3]/1
+    · │                       ───────┬───────
+    · │                              ╰── this passes `c4`, which its neighbour has just left
+ 11 │ ├─▶                 }
+    · ╰──── `follows(satb_overlap)` is the claim
+ 12 │                 }
+    ╰────
+
+  note: OMT 022 §Overlap: a voice does not move past the note its neighbour has just left
+
+1 problem (1 error)

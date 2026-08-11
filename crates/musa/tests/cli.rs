@@ -291,7 +291,7 @@ fn format_leaves_a_file_that_does_not_parse_alone() -> std::io::Result<()> {
     std::fs::remove_file(&path)
 }
 
-// --- WAV export (prompt 17) -----------------------------------------------------
+// --- WAV export ------------------------------------------------------------
 
 /// Every shipped example renders to WAV deterministically (same source →
 /// byte-identical bytes, §17.5) with the expected header.
@@ -552,11 +552,20 @@ fn analyze_refuses_a_bad_request_and_accepts_an_empty_one() -> std::io::Result<(
         "the error did not say what there is: {stderr}"
     );
 
-    let unknown = musa(&["analyze", &annotated, "--kind", "voice-leading"])?;
+    let unknown = musa(&["analyze", &annotated, "--kind", "vibes"])?;
     assert!(!unknown.status.success());
     assert!(
         String::from_utf8_lossy(&unknown.stderr).contains("is not an analysis"),
         "an unadmitted kind was accepted"
+    );
+
+    // A kind that reads against a style says which style it wanted, because
+    // "voice leading" alone does not name a tradition to read against.
+    let unprofiled = musa(&["analyze", &annotated, "--kind", "voice-leading"])?;
+    assert!(!unprofiled.status.success());
+    assert!(
+        String::from_utf8_lossy(&unprofiled.stderr).contains("reads against a style profile"),
+        "a style reading was accepted without a style"
     );
 
     let empty = musa(&["analyze", &annotated, "--kind", "facts", "--from", "90", "--to", "99"])?;

@@ -1,4 +1,4 @@
-//! What an analysis is and is not (docs/prompts/117).
+//! What an analysis is and is not.
 //!
 //! `docs/language/05-verification.md` §3 puts analyses in the third of three
 //! strengths: named services that observe, may be ambiguous, and never make
@@ -417,9 +417,5 @@ fn every_kind_owes_a_method_and_assumptions() {
         );
         assert_eq!(AnalysisKind::named(kind.as_str()), Some(kind));
     }
-    assert_eq!(
-        AnalysisKind::named("voice-leading"),
-        None,
-        "an unadmitted kind was accepted"
-    );
+    assert_eq!(AnalysisKind::named("form"), None, "an unadmitted kind was accepted");
 }
