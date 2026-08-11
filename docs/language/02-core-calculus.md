@@ -374,7 +374,7 @@ formed. Sequence has extent `Σᵢdᵢ` and count `Σᵢnᵢ`; overlay has exten
 *Proof.* The kernel constructors validate nonempty finite operands and preserve literal well-formedness. Musa's shared
 binding table interns equal contextual instances by a conservative key. A new binding is appended only after every
 binding its body references has completed; a reused binding names that same completed body. Thus union is compatible,
-finite, and acyclic. Sequence shifts the `i`th operand by `Σ_{j<i}dⱼ`, while overlay shifts none, giving the stated
+finite, and acyclic. Sequence shifts the `i`-th operand by `Σ_{j<i}dⱼ`, while overlay shifts none, giving the stated
 extent equations. Neither operation deletes or duplicates an occurrence, giving the count equation. ∎
 
 **Lemma 2 — marked reference.** Replacing a well-formed fragment by a reference to its completed binding, marked with a
@@ -479,3 +479,68 @@ rules out.
 `Type`, `Value`, `Closure`, `Music`, evaluator environments, theory representations, monomorphization tables, and
 resource proofs remain private to `musa-compiler`. Passes may expose narrow internal queries, but no single-implementor
 public trait or pass-through facade is added. The stable public result remains the compilation/snapshot contract.
+
+### 6.1 This calculus and the temporal kernel are two stages, not two cores
+
+Musa has two calculi, and until now no document said so, which has made the boundary between them read as an accident.
+It is not. The relationship is **staging**, and naming it fixes what may cross.
+
+The classical arrangement for a functional compiler is surface → *enriched* calculus → *ordinary* calculus, where the
+enriched layer is the ordinary one plus constructs whose semantics *is* their transformation away, and everything hard
+happens in transformations that never leave the enriched language (Peyton Jones 1987, §3.1). Musa is deliberately not
+that arrangement, and the difference is worth stating because a reader who assumes the classical one will look for a
+transformation that does not exist:
+
+- This calculus has lambdas, higher-order functions, products, and the three folds. `docs/kernel/10-term-calculus.md`
+  has none of them — six forms, a reference, and no abstraction at all.
+- So the kernel is not this calculus with the sugar removed. There is no simplifying transformation between them.
+
+What actually connects them is **evaluation, applied twice**:
+
+```text
+source ──elaborate──▶ core term ──evaluate (this document)──▶ Term[ScoreFact] ──evaluate (kernel)──▶ Timeline[ScoreFact]
+                       functions          eliminates functions      let + constructors     eliminates sharing
+```
+
+Three consequences, all of which the project already relies on without having written them down:
+
+1. **`Term[ScoreFact]` is a stage boundary, not an internal representation.** It is the reason `.musa.kernel` can be an
+   interchange format at all: a residual program in a language with no functions is checkable, normalizable, and
+   hashable by a consumer that knows nothing about this calculus.
+2. **Totality is proved twice, separately.** §5.5's strong normalization is about *this* calculus; the kernel's T4 is
+   about the kernel's. Neither implies the other, and a change to either one leaves the other's proof intact.
+3. **Nothing may leak backwards.** A kernel term cannot mention a closure, and this calculus cannot observe a
+   `Timeline`. Where that discipline is enforced is §5.7 and the kernel's payload-opacity rule; this section is the
+   statement of *why* both exist.
+
+### 6.2 Patterns stay flat, on purpose
+
+Patterns are a wildcard, a variable binding, a literal, `None`, `Some(x)`, the empty list, a cons of two binders, and a
+product of binders. The invariant is not the size of that list — it is that **every sub-position of a pattern is a
+binder, never another pattern**. A pattern therefore has depth one, and the type that represents it is non-recursive.
+There is also no repeated variable, no guard or conditional equation, and no pattern on the left of a definition.
+
+This is a deliberate boundary, not an unfinished one. Nested patterns require a pattern-match compiler — the `match`
+algorithm with its variable, constructor, empty, and mixture rules, plus a `FAIL`/fat-bar mechanism to express failure
+between equations (Peyton Jones 1987, Chapters 4–6). That machinery is a substantial subsystem whose entire purpose is
+to compile a surface convenience into the eliminators musa already writes directly. Under the §34 rule it does not earn
+its place: removing nested patterns makes no musical meaning unrepresentable.
+
+**The invariant to hold:** if a later prompt adds nesting, repeated variables, or guards to patterns, it has taken on
+that subsystem and must say so and cite it. Prompt 144 checks this row.
+
+## 7. Provenance
+
+This calculus is ordinary, and its ordinariness is a feature: every property claimed in §5 is a standard property of a
+standard system, and the design's decisions are mostly *refusals* that the literature has already priced.
+
+- **Peyton Jones, S. L. (1987), *The Implementation of Functional Programming Languages*, Prentice Hall.** The reference
+  for the compilation architecture. §3.1 on translation-versus-transformation and the enriched calculus is what §6.1
+  above positions musa against. Chapters 4–6 (Peyton Jones and Wadler) are the pattern-matching semantics and compiler
+  that §6.2 declines. Chapters 8–9 (Hancock) are polymorphic type-checking and unification: **if local type inference is
+  ever added to musa it belongs here, on the intermediate language, not on the CST**, and it is four rules —
+  application, abstraction, `let`, `letrec`. Musa's monomorphic, non-generalizing discipline (§1) means the hard part of
+  that chapter, polymorphic `let` and its cautionary cases, does not arise.
+- **Chapter 2.4** is the provenance for `Y` and the fixed-point combinator that §1's "there is no `fix`" refuses.
+  Refusing it is what buys §5.5.
+- **Chapters 10, 12, and 15** are the provenance for the sharing discipline in `docs/kernel/10-term-calculus.md` §7.

@@ -301,6 +301,33 @@ Recorded with reasons, so that each stays absent for a reason rather than by omi
   `03` does not define was not needed, because `03` was extended with a value instead of the calculus with a form.
 - **No binary format, no versioning, no schema negotiation.** One text form, prompt 48.
 
+## Provenance of the sharing discipline
+
+`let` is here for one reason — a motif used many times should be stated once — and that is the oldest problem in the
+implementation of functional languages. Recording where it comes from matters because the *shape* of the solution is
+borrowed, and a future prompt that changes it should know what it is changing.
+
+- **Graph, not tree.** A `let` and its references denote one value reached by several pointers, so evaluation produces a
+  graph. This is exactly the representation choice in Peyton Jones (1987) Chapters 10 and 12: sharing is achieved by
+  pointing at one instance rather than by copying, and copying is the thing to avoid. Prompt 49's measured −36%
+  elaboration time and −60% allocations are that choice paying out.
+- **Sharing is structural, not semantic.** T2 says `let` is transparent: it changes no meaning. That is the property
+  that makes the graph an *implementation* of the tree rather than a second semantics, and it is why T5 (observation
+  commutes with sharing) is provable rather than assumed.
+- **What musa does not have, stated so it stays a choice.** Chapter 15's *full laziness* shares subexpressions of a body
+  that do not depend on the parameter — its maximal free expressions — so that they survive across instantiations with
+  *different* arguments. Musa's elaborator shares whole bodies keyed on their arguments, which is the weaker
+  common-subexpression form of Chapter 14.7.2. The gap is real and visible in `examples/tuplet-fixture.musa`, where
+  `motif turn(root)` has an argument-independent second note that is elaborated once per distinct call argument. Prompt
+  125 measures it and decides; this document records only that the two are different techniques and that musa currently
+  has the weaker one.
+- **Why musa is unusually free to take the stronger one.** Chapter 23 is a sustained warning about full laziness:
+  laziness is a delicate property that parameter order can silently change (§23.2), and hoisting maximal free
+  expressions causes space leaks and graph dragging (§23.3), with no good automatic remedy. Nearly all of that is about
+  *lazy* evaluation. The kernel is strict, total, and finite, so those costs do not transfer. What does transfer is
+  §23.2.1's real point: whether the sharing is found depends on how the source happened to be written, which is an
+  argument for making the analysis *visible* — an Origin fact — rather than silent.
+
 ## Relationship to the other documents
 
 | Document | Relationship |

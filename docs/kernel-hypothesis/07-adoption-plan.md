@@ -125,6 +125,33 @@ Nothing yet. Concretely:
 
 ---
 
+## 4a. What the implementation literature changed (added after reading Peyton Jones 1987)
+
+Reading *The Implementation of Functional Programming Languages* produced four items. None of them changes an atom;
+three landed as edits elsewhere and are recorded here so the plan stays the single index of outstanding work.
+
+1. **The two calculi are staged, and now say so.** `docs/language/02-core-calculus.md` §6.1. The classical surface →
+   enriched → ordinary arrangement (§3.1 of the book) is *not* musa's: the core calculus has functions and the kernel
+   has none, so no simplifying transformation connects them and the relationship is evaluation applied twice. This
+   retires the "two cores no document names" problem noted earlier in this project without changing any code. **Done.**
+2. **Full laziness is a real, measured-later gap.** `docs/kernel/10-term-calculus.md` §"Provenance of the sharing
+   discipline" and prompt 125's Design. Musa shares whole motif bodies keyed on arguments; Chapter 15 shares a body's
+   argument-independent subexpressions across *different* arguments. Chapter 23's warnings against the technique are
+   about lazy evaluation and do not transfer to a strict total calculus, so musa is unusually free to take the win — but
+   the rule of §1 applies and prompt 125 measures before anything is built. **Delegated to prompt 125.**
+3. **Analyses should be abstract interpretations.** Prompt 117's Design now requires each analysis kind to declare an
+   abstract domain, an abstraction map, and a soundness claim. This is a better frame than the one
+   `03-claims-and-styles.md` proposed for Tier 2: "evidence-carrying finding" says what a finding *contains*, while an
+   abstraction map says what it *means*, and only the second makes the fact/candidate/conflict classification precise.
+   **Amendment VI is improved by this and should be restated in its terms if it is ever promoted.**
+4. **Flat patterns are a boundary, not an omission.** `docs/language/02-core-calculus.md` §6.2, checked by prompt 144.
+   **Done.**
+
+The general lesson is the one Gate 0 taught in a different form: musa has been re-deriving a literature it does not
+cite, and mostly getting it right. Citing it is cheap and makes the refusals arguable. Prompt 144 now audits that every
+"deliberately absent" item carries either a citation or a musical falsifier — the same standard the music-theory claims
+have always been held to.
+
 ## 5. The optional formal track
 
 The metatheory here is small, finite, and unusually formalizable: Theorem R, T1–T7, the torsor laws, and the
@@ -145,6 +172,8 @@ will be relied on by library code that other code depends on, and because a mist
 
 In order, smallest first:
 
+0. Nothing from §4a. Items 1 and 4 are done; items 2 and 3 are prompt repairs already applied and will be discharged by
+   prompts 125 and 117 when the stack reaches them.
 1. Run Track A step 1 — the quotient audit. It is half a day and it either produces Atom 6's demand or removes it.
 2. Write the explicit-polymeter fixture (Track B step 2). It is an hour and it is a permanent regression test either
    way.
