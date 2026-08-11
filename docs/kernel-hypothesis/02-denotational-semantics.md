@@ -202,6 +202,11 @@ differ in structure as well as multiplicity.
 
 ### 5.2 L18 fails, and its failure is the point
 
+> **Corrected by Gate 0 (`06-evidence-log.md` G0.2).** This holds of the kernel with payload-blind values. It does not
+> hold of the pipeline: voice tags travel in the payload and move with the notes, so both sides of L18 agree and no
+> voice exchange is erased. The two tests named in §5.3 are not asserting anything false today. §5.3's migration claim
+> is therefore about a change that has no current motivation.
+
 `docs/kernel/04-algebraic-laws.md` L18 — synchronized interchange — says that for equal durations,
 
 ```text

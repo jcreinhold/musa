@@ -1,5 +1,10 @@
 # The kernel hypothesis
 
+> **Read [06-evidence-log.md](06-evidence-log.md) first.** Gate 0 has been run and it refuted Atom 3 and materially
+> weakened Atom 2 — the two atoms `01`–`02` lead with. Those documents are left as written, with corrections marked in
+> place, because the log is only evidence if the claims it corrects are still visible.
+> [07-adoption-plan.md](07-adoption-plan.md) is the resulting plan.
+
 **Status: research. Governs nothing.** `docs/kernel/` remains the governing temporal-kernel specification and
 `docs/course-correction.md` remains the governing ontology. Nothing here changes what the compiler must do. This
 directory exists to state a hypothesis precisely enough that it can be *refuted*, and to record the evidence for and
@@ -39,6 +44,8 @@ It is also not a proposal to encode musical taste in a type system. `03-claims-a
 | [03-claims-and-styles.md](03-claims-and-styles.md) | Why "prevent bad music" is wrong, and what dependent types are actually for here. |
 | [04-operational-semantics.md](04-operational-semantics.md) | The term calculus, its reduction, and why it stays total. |
 | [05-open-questions.md](05-open-questions.md) | What is deliberately undecided, and what evidence would settle it. |
+| [06-evidence-log.md](06-evidence-log.md) | What has been run and what it did to the claims above. Append-only. |
+| [07-adoption-plan.md](07-adoption-plan.md) | The path to implementation: gates, kill criteria, and where prompts go. |
 
 Read `00` and `01` first. If `01`'s falsifiers do not convince you, nothing downstream will.
 
