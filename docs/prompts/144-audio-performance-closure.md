@@ -1,14 +1,14 @@
 ---
-id: 143
+id: 144
 slug: audio-performance-closure
 status: pending
-depends_on: [93, 126, 131, 132, 136, 137, 138, 140, 141, 142]
+depends_on: [93, 127, 132, 133, 137, 138, 139, 141, 142, 143]
 phase: 4
 ---
 
 # Close Audio Preparation and Rendering Against Measurement
 
-> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into another, or
+> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
 > replace it. Read `docs/core-boundary.md` first.
 
 ## Task
@@ -20,8 +20,8 @@ no-allocation/no-lock/no-I/O contract.
 
 ## Read
 
-- Prompt 93 baseline/expected-change ledger, prompt 126 score-elaboration report, `docs/interface/06-performance.md`,
-  roadmap §§13.2/17.5, and all completion notes from prompts 129–142.
+- Prompt 93 baseline/expected-change ledger, prompt 127 score-elaboration report, `docs/interface/06-performance.md`,
+  roadmap §§13.2/17.5, and all completion notes from prompts 130–143.
 - Audio/compiler/project benchmarks, callback instrumentation, offline/live render code, prepared-plan queues and
   retirement, decoded-asset store, sampler/media voices, UI Sound/Mix performance tests.
 

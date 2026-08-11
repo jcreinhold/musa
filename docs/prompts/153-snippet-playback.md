@@ -1,8 +1,8 @@
 ---
-id: 152
+id: 153
 slug: snippet-playback
 status: pending
-depends_on: [151, 140]
+depends_on: [152, 141]
 phase: 5
 ---
 
@@ -10,16 +10,16 @@ phase: 5
 
 ## Task
 
-**Deferred — do not start until prompts 148–151 are done and a real user need is demonstrated.** Give `<musa-score>` an
+**Deferred — do not start until prompts 149–152 are done and a real user need is demonstrated.** Give `<musa-score>` an
 opt-in play button: the snippet's score is offline-rendered to PCM in the browser and played through an AudioWorklet,
 with the playhead's position mapped back onto the engraved score via the provenance contract.
 
 ## Read
 
-- Prompt 146 (the wasm shell this extends — the audio pipeline must join it without CPAL or `musa-engine`, which are
-  native-only) and prompts 15–17 (performance plan, offline audio core), 137–138 (clip/cue semantics the playback must
+- Prompt 147 (the wasm shell this extends — the audio pipeline must join it without CPAL or `musa-engine`, which are
+  native-only) and prompts 15–17 (performance plan, offline audio core), 138–139 (clip/cue semantics the playback must
   respect).
-- Prompt 150's provenance interaction — playhead highlighting is `highlight(eventId)` driven by a clock, not a new
+- Prompt 151's provenance interaction — playhead highlighting is `highlight(eventId)` driven by a clock, not a new
   mechanism.
 
 ## Design
@@ -39,6 +39,6 @@ gains `playback?: boolean` per score; playback state (playhead time → covering
 
 ## Stop
 
-- Everything, until scheduled. In particular: do not let prompts 148–151 bake in assumptions that make this hard (a
+- Everything, until scheduled. In particular: do not let prompts 149–152 bake in assumptions that make this hard (a
   `typeset` result that discards the `PerformancePlan`, an engraver option that loses event ids) — that is the only
   obligation this prompt places on them today.

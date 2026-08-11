@@ -1,5 +1,5 @@
 ---
-id: 146
+id: 147
 slug: wasm-shell
 status: done
 depends_on: [13]
@@ -43,7 +43,7 @@ pub struct TypesetResult {
 
 /// A diagnostic that can cross the wasm boundary: severity, stable code,
 /// message, byte-span labels, help/note. Fixes are not serialized yet —
-/// no web caller can apply them (prompt 149 renders, it does not edit).
+/// no web caller can apply them (prompt 150 renders, it does not edit).
 #[derive(serde::Serialize)]
 pub struct WebDiagnostic {
     pub severity: String,        // "error" | "warning"
@@ -68,7 +68,7 @@ fn validate_impl(source: &str) -> Vec<WebDiagnostic>;
 Semantics: compile with `CompileOptions::default()` (deterministic realization — a snippet with open form typesets its
 deterministic default), document name `"snippet.musa"`. `mei` is `Some` exactly when `Compilation::snapshot()` is `Some`
 **and** `!has_errors()`; warnings pass through alongside the MEI. `DocumentKind::Material` yields `mei: None` with no
-diagnostic — "no score ever" is not an error (prompt 149 shows an empty-state, not an error box). `render_notation`
+diagnostic — "no score ever" is not an error (prompt 150 shows an empty-state, not an error box). `render_notation`
 failures become a single error-severity `WebDiagnostic`, never a panic across the boundary; install
 `console_error_panic_hook` so anything else is at least legible.
 
@@ -88,12 +88,12 @@ emitting a broken glue.
 - `crates/musa-wasm/` with the facade above, `serde_wasm_bindgen` for the crossing, and doc comments stating the
   `mei`-present invariant before implementation.
 - Workspace `Cargo.toml`: the crate, the `[profile.wasm]` profile, the lint inheritance.
-- `scripts/build-wasm.sh` + `mise.toml` pins; artifact written to `packages/musa-web/wasm/` (created by prompt 148; the
+- `scripts/build-wasm.sh` + `mise.toml` pins; artifact written to `packages/musa-web/wasm/` (created by prompt 149; the
   script creates the directory so it can run first).
 - Native tests: `examples/canon.musa` (and one snippet with warnings) typeset to MEI containing `event-` ids; a broken
   snippet from `examples/broken/` yields error diagnostics with correct byte spans; a material-only document yields
   `mei: None` and no errors; MEI output is byte-identical to `render_notation` called directly (the shell adds nothing).
-- No wasm-bindgen-test harness: the boundary carries plain data, and the DOM behavior is Playwright's job (prompt 149).
+- No wasm-bindgen-test harness: the boundary carries plain data, and the DOM behavior is Playwright's job (prompt 150).
   Revisit only if a bug is found that native + Playwright tests cannot see.
 
 ## Check
@@ -109,7 +109,7 @@ Commit as `Add the WebAssembly shell for web typesetting`.
 
 ## Stop
 
-- No DOM, no worker, no Verovio, no npm packaging — that is prompts 149–149.
+- No DOM, no worker, no Verovio, no npm packaging — that is prompts 150–150.
 - No audio, no engine, no `musa-project`: the web shell compiles one self-contained snippet; imports beyond the bundled
   stdlib are out of scope until a web project model exists.
 - No streaming compilation API, no incremental recompile, no shared `Compilation` cache — one snippet, one call,

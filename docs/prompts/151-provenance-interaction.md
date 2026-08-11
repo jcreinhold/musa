@@ -1,8 +1,8 @@
 ---
-id: 150
+id: 151
 slug: provenance-interaction
 status: done
-depends_on: [149]
+depends_on: [150]
 phase: 5
 ---
 
@@ -19,7 +19,7 @@ the same provenance the desktop app's origin view is built on, delivered as a DO
 
 - `crates/musa-render/src/mei.rs` header — the `xml:id` contract: `event-<hex>`, tie pieces as `event-<hex>-t2`, `-t3`,
   …; stripping the suffix yields the `EventId`. Layers are `layer-<s>-<l>` and are not event-mapped.
-- Prompt 149 — where the SVG lands (shadow roots and sibling containers); interaction must cross that boundary
+- Prompt 150 — where the SVG lands (shadow roots and sibling containers); interaction must cross that boundary
   deliberately.
 - `docs/interface/` (origin view, linked reading) for the semantics; the web analog is a callback, not a port of the
   desktop UI.
@@ -30,7 +30,7 @@ the same provenance the desktop app's origin view is built on, delivered as a DO
 // Added to MusaWebConfig and exported helpers.
 
 export interface MusaWebConfig {
-  // … prompt 149 fields …
+  // … prompt 150 fields …
   /** Fires for clicks on event-mapped notation. The id is the compiler's
       EventId hex — tie-piece suffixes already stripped. */
   onEventClick?: (eventId: string, target: SVGElement, source: MusaElementContext) => void;
@@ -87,5 +87,5 @@ Commit as `Add provenance interaction to @musa/web`.
 
 - No `EventId → source span` API, no wasm-shell change (named above as later work, with a caller).
 - No selection model, caret, keyboard navigation, or editing: this is a callback surface, not an editor.
-- No playback-cursor or playhead highlighting (arrives with prompt 152, if it arrives).
+- No playback-cursor or playhead highlighting (arrives with prompt 153, if it arrives).
 - No tooltip/popover built-ins: embedders compose their own from the callbacks.

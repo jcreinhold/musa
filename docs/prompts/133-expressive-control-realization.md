@@ -1,14 +1,14 @@
 ---
-id: 132
+id: 133
 slug: expressive-control-realization
 status: pending
-depends_on: [129, 130, 131]
+depends_on: [130, 131, 132]
 phase: 3
 ---
 
 # A Mark Moves a Musical Control
 
-> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into another, or
+> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
 > replace it. Read `docs/core-boundary.md` first.
 
 ## Task
@@ -20,7 +20,7 @@ making any notation fact denote a DSP operation.
 
 ## Read
 
-- `docs/language/08-performance-and-sound.md`; prompt 129 gesture laws, prompt 130 signatures/mappings, prompt 131
+- `docs/language/08-performance-and-sound.md`; prompt 130 gesture laws, prompt 131 signatures/mappings, prompt 132
   routing.
 - Kernel `Progress`; current profile hairpin interpretation; `PerformanceEvent::Parameter`; audio modulation
   combination/smoothing; MIDI control export/loss reporting.

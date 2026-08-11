@@ -1,14 +1,14 @@
 ---
-id: 133
+id: 134
 slug: ergonomic-sound-bindings
 status: pending
-depends_on: [124, 130, 131, 132]
+depends_on: [125, 131, 132, 133]
 phase: 3
 ---
 
 # Choosing a Sound Is One Musical Action
 
-> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into another, or
+> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
 > replace it. Read `docs/core-boundary.md` first.
 
 ## Task
@@ -23,7 +23,7 @@ learning graph topology first.
 - `docs/language/01-surface.md` and `08-performance-and-sound.md` spellings/desugarings; roadmap §2's Warm Pad example
   and §14.4 progressive disclosure.
 - Current `profile` binding, `assign`/`route`/`send` syntax, default studio, structured studio edits, examples, style
-  guide, and prompts 129–132.
+  guide, and prompts 130–133.
 
 ## Design
 

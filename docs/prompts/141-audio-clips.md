@@ -1,14 +1,14 @@
 ---
-id: 140
+id: 141
 slug: audio-clips
 status: pending
-depends_on: [131, 134, 136, 139]
+depends_on: [132, 135, 137, 140]
 phase: 4
 ---
 
 # Recorded Media Reaches the Mix
 
-> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into another, or
+> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
 > replace it. Read `docs/core-boundary.md` first.
 
 ## Task
@@ -20,8 +20,8 @@ behavior.
 
 ## Read
 
-- Prompt 139's normative semantics; prompt 134 asset store; prompt 136 prepared sample playback and resampling; prompt
-  129 part isolation; existing offline/live render path, transport seek/loop, and release-tail calculation.
+- Prompt 140's normative semantics; prompt 135 asset store; prompt 137 prepared sample playback and resampling; prompt
+  130 part isolation; existing offline/live render path, transport seek/loop, and release-tail calculation.
 - Roadmap §§13.2, 13.8, 18 Phase 4. Audio recording and waveform editing remain explicitly outside Musa.
 
 ## Design

@@ -1,14 +1,14 @@
 ---
-id: 136
+id: 137
 slug: sampler-runtime
 status: pending
-depends_on: [129, 130, 131, 132, 134]
+depends_on: [130, 131, 132, 133, 135]
 phase: 4
 ---
 
 # A Sample Map Is an Instrument Implementation
 
-> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into another, or
+> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
 > replace it. Read `docs/core-boundary.md` first.
 
 ## Task
@@ -21,8 +21,8 @@ choice on the audio thread.
 ## Read
 
 - `docs/language/08-performance-and-sound.md` and `09-assets-and-packages.md`; roadmap §§13.2, 13.5, 17.5, 18 Phase 4.
-- Prompt 129 gestures, prompt 130 instrument implementation family, prompt 131 instance routing, prompt 132 controls,
-  prompt 134 asset store; current voice allocator, oscillator instrument, render plan, and engine retirement path.
+- Prompt 130 gestures, prompt 131 instrument implementation family, prompt 132 instance routing, prompt 133 controls,
+  prompt 135 asset store; current voice allocator, oscillator instrument, render plan, and engine retirement path.
 - Existing allowed dependency lists and decoder/resampler implementations. Measure before adding a large dependency;
   keep its types private if one is justified.
 

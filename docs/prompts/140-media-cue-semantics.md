@@ -1,14 +1,14 @@
 ---
-id: 139
+id: 140
 slug: media-cue-semantics
 status: pending
-depends_on: [92, 129, 134]
+depends_on: [92, 130, 135]
 phase: 4
 ---
 
 # A Recording Has Either Musical Extent or Physical Duration
 
-> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into another, or
+> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
 > replace it. Read `docs/core-boundary.md` first.
 
 ## Task
@@ -21,7 +21,7 @@ before any clip player is written.
 ## Read
 
 - `docs/language/08-performance-and-sound.md` and `09-assets-and-packages.md`; kernel occurrence/transform laws; backend
-  contract's Beat→Second realization; prompt 70's printed `sample`/`cue` marks; prompt 134 assets.
+  contract's Beat→Second realization; prompt 70's printed `sample`/`cue` marks; prompt 135 assets.
 - OMT `098-twentieth-century-rhythmic-techniques.md` on timeline notation using seconds. Cite it for the musical
   distinction; state the exact Musa behavior as local definitions and laws.
 - Existing `FactKind`, point occurrences, `Progress`, realization/provenance, notation loss reporting, and audio export
@@ -31,7 +31,7 @@ before any clip player is written.
 
 Define three disjoint constructs:
 
-1. A **sample instrument** is triggered by note gestures and is not a media occurrence (prompts 138–138).
+1. A **sample instrument** is triggered by note gestures and is not a media occurrence (prompts 139–139).
 2. A **musical clip** is an interval occurrence `[s,e]` in beats with an explicit fit policy. Initial policies are
    `crop`, `loop`, and honest playback `rate`; rate changes both duration and pitch unless a later pitch-preserving warp
    feature says otherwise.
@@ -71,4 +71,4 @@ Commit as `Define musical clips and fixed media cues`.
 - No seconds-long kernel occurrence, automatic inference from `mark sample`, waveform editing, recording, or hidden
   tempo stretching.
 - No pitch-preserving time-warp promise; it needs a separate quality/performance design if requested later.
-- No playback or DSP implementation — prompt 140.
+- No playback or DSP implementation — prompt 141.

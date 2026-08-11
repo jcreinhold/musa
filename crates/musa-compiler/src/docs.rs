@@ -20,7 +20,7 @@
 //!
 //! The record is shaped for the declaration kinds the language grows into.
 //! [`NameKind`] is the one vocabulary for what a name names — extending it is
-//! how prompt 142's instruments, controls, processors, assets, and packages
+//! how prompt 143's instruments, controls, processors, assets, and packages
 //! arrive, and every consumer's match is exhaustive, so they arrive loudly.
 
 use musa_language::SyntaxNode;

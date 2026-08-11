@@ -1,8 +1,8 @@
 ---
-id: 124
+id: 125
 slug: language-and-theory-handbook
 status: pending
-depends_on: [104, 106, 115, 118, 119, 121, 123]
+depends_on: [104, 106, 115, 118, 119, 121, 124]
 phase: 3
 ---
 
@@ -14,13 +14,13 @@ Turn the implemented score language and bundled theory library into one tested r
 musicians can learn by musical task and language developers can recover the grammar, typing, elaboration, laws,
 ownership, and performance model precisely. Replace the proposal's provisional examples with compiling Musa source and
 make every public standard-library operation discoverable from source, editor hover, and the handbook without
-duplicating its definition. This is not the final whole-language handbook: prompt 142 adds performance, instruments,
-studio, assets, packages, samples, and clips before prompt 145 graduates the complete specification.
+duplicating its definition. This is not the final whole-language handbook: prompt 143 adds performance, instruments,
+studio, assets, packages, samples, and clips before prompt 146 graduates the complete specification.
 
 ## Read
 
 - `docs/elaboration-language.md`, `docs/language/`, `docs/kernel/`, the roadmap language sections, and the style guide.
-- Prompts 92–123 and every bundled `.musa` source file introduced by them.
+- Prompts 92–124 and every bundled `.musa` source file introduced by them.
 - The relevant Open Music Theory chapters under `~/Code/papers/music-theory/open-music-theory/` cited by prompts
   100–119. In particular, use `013-major-scales-scale-degrees-and-key-signatures.md`, `016-intervals.md`,
   `017-triads.md`, `018-seventh-chords.md`, `020-roman-numerals.md`, `022-chords-in-satb-style.md`, the `023`–`030`
@@ -63,7 +63,7 @@ errors and snapshot their plain-language diagnostic and repair. Test all interna
 - Compiling positive examples and diagnostic goldens for negative examples in `examples/` or focused doc-test fixtures.
 - Reconciliation of `docs/elaboration-language.md`: mark resolved choices as implemented, link to governing candidate
   `docs/language/`, and retain rejected alternatives and rationale as design history. Do not call the candidate
-  governing before prompt 145.
+  governing before prompt 146.
 
 ## Check
 
@@ -85,5 +85,5 @@ implementor guide. Commit as `Publish the Musa language and theory handbook`.
 - No exhaustive music-theory textbook and no claim that the bundled conventions cover every musical culture or style.
 - No copied OMT chapter text; cite and explain only the concepts Musa actually implements.
 - No separate hand-maintained LSP documentation table or public exposure of compiler pass types.
-- No placeholder prose for audio features that prompts 129–141 have not implemented; leave stable anchors for the later
+- No placeholder prose for audio features that prompts 130–142 have not implemented; leave stable anchors for the later
   generated sound-language reference instead.

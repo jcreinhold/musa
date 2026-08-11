@@ -1,14 +1,14 @@
 ---
-id: 141
+id: 142
 slug: sound-mix-workbench
 status: pending
-depends_on: [123, 133, 135, 137, 138, 140]
+depends_on: [124, 134, 136, 138, 139, 141]
 phase: 4
 ---
 
 # Sound and Mix Show Musical Objects First
 
-> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into another, or
+> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
 > replace it. Read `docs/core-boundary.md` first.
 
 ## Task
@@ -22,7 +22,7 @@ source and consumes immutable project/compiler facts.
 
 - Governing `docs/interface/`, especially source authority, selection, state/voice, Origin, accessibility, and budgets;
   roadmap §14.4; prompts 31 and 119.
-- Prompts 127, 131–138 facts/edit commands; current Sound/Mix Svelte components, Tauri/project boundary, screenshots,
+- Prompts 128, 132–139 facts/edit commands; current Sound/Mix Svelte components, Tauri/project boundary, screenshots,
   and Playwright fixtures.
 
 ## Design
@@ -37,10 +37,10 @@ Write the interaction/spec repair before UI code. Progressive disclosure has thr
 
 Imported/built-in instruments navigate to read-only source/support facts. Asset failures and offline packages have
 loading/error/remediation states. Parameter/control gestures replace source tokens and commit once; playback may use a
-separate prepared-plan update only if source has already become authoritative and prompt 143 measurement requires it.
+separate prepared-plan update only if source has already become authoritative and prompt 144 measurement requires it.
 Private graph topology is not editable from a generic property grid or free-form canvas.
 
-All terms use prompt 127's authoritative catalogue and the compiler/project facts from prompts 135–140; prompt 142
+All terms use prompt 128's authoritative catalogue and the compiler/project facts from prompts 136–141; prompt 143
 carries those same facts into editors and the handbook. Include keyboard navigation, screen-reader grouping, focus
 preservation on recompile, narrow layouts, stale/last-valid plan indication, and reduced-motion behavior.
 

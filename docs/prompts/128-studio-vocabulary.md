@@ -1,14 +1,14 @@
 ---
-id: 127
+id: 128
 slug: studio-vocabulary
 status: pending
-depends_on: [92, 122, 125]
+depends_on: [92, 122, 126]
 phase: 3
 ---
 
 # One Discoverable Studio Vocabulary
 
-> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into another, or
+> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
 > replace it. Read `docs/core-boundary.md` first.
 
 ## Task
@@ -66,4 +66,4 @@ Commit as `Make the studio vocabulary discoverable`.
 
 - No new processor merely to make the catalogue look complete.
 - No public DSP registry, dynamic processor plug-in API, or public compiler HIR.
-- No change to score-driven controls or routing; prompts 131–132 own those semantics.
+- No change to score-driven controls or routing; prompts 132–133 own those semantics.

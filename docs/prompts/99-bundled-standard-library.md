@@ -33,7 +33,7 @@ The first library is intentionally small: exact rational helpers, list/option co
 named wrappers over already-existing primitives. Its purpose is to prove the boundary and source maps, not to preempt
 prompts 100–115. A test enumerates registered primitives and requires each to cite which hidden information justifies
 compiler ownership. There is no `musa-theory` crate and no Rust reimplementation of a source function for speed until
-prompt 126 measures that function as a bottleneck and proves equivalence.
+prompt 127 measures that function as a bottleneck and proves equivalence.
 
 ## Target
 

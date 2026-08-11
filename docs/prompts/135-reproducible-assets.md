@@ -1,14 +1,14 @@
 ---
-id: 134
+id: 135
 slug: reproducible-assets
 status: pending
-depends_on: [85, 92, 128, 130]
+depends_on: [85, 92, 129, 131]
 phase: 4
 ---
 
 # Assets Are Immutable Build Inputs
 
-> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into another, or
+> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
 > replace it. Read `docs/core-boundary.md` first.
 
 ## Task

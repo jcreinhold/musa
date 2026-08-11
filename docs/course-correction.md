@@ -935,7 +935,7 @@ output
 
 This keeps score semantics and signal-processing semantics independently coherent.
 
-> **Candidate refinement (prompt 92; not governing until prompt 140):** `docs/language/08-performance-and-sound.md`
+> **Candidate refinement (prompt 92; not governing until prompt 141):** `docs/language/08-performance-and-sound.md`
 > makes the realization/instrument boundary typed and explicit:
 > `Timeline[ScoreFact] → GestureTimeline[InstrumentSignature] → ScheduledGestureLane → Signal → stereo mix`. Profiles
 > interpret notation into exact musical gestures and semantic `ControlKey`s; instrument implementations map those
@@ -1319,7 +1319,7 @@ Only after differential parity should the new elaboration path replace direct se
 Do **not** mistake this memo for a final surface syntax specification. Prompt 92 now supplies the precise candidate at
 `docs/language/`, including settled punctuation, a total higher-order value calculus, contextual and context-neutral
 `music`, declaration templates, static modules, and typed kernel quotation. It is the implementation contract for
-prompts 93–139 but remains lower precedence than this memo until prompt 140 audits and graduates it.
+prompts 93–140 but remains lower precedence than this memo until prompt 141 audits and graduates it.
 
 The user-facing language should remain free to be substantially richer and more musician-oriented than the kernel.
 

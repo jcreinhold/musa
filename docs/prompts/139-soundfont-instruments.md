@@ -1,14 +1,14 @@
 ---
-id: 138
+id: 139
 slug: soundfont-instruments
 status: pending
-depends_on: [134, 136]
+depends_on: [135, 137]
 phase: 4
 ---
 
 # SoundFont Banks Are Another Instrument Adapter
 
-> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into another, or
+> **Contingent on prompt 126.** The core-boundary decision may repair this prompt's Design, fold it into another, or
 > replace it. Read `docs/core-boundary.md` first.
 
 ## Task
@@ -19,7 +19,7 @@ score part with one another.
 
 ## Read
 
-- `docs/language/09-assets-and-packages.md`; prompts 134 and 132; prompt 137's adapter boundary.
+- `docs/language/09-assets-and-packages.md`; prompts 135 and 133; prompt 138's adapter boundary.
 - Creative/E-mu SoundFont 2.04 Technical Specification (preserved at
   `https://musescore.org/sites/musescore.org/files/2023-01/sfspec24.pdf`) in full: RIFF structure, presets,
   instruments/zones, generators, modulators, sample headers, stereo links, loops, and 24-bit extension.
@@ -37,7 +37,7 @@ Publish a generator/modulator support matrix. Unsupported sound-changing behavio
 full support and yields a diagnostic; do not silently play a materially different instrument. A deliberate restricted
 mode may accept a documented subset only when the user opts in and the loss report is attached to the instrument facts.
 
-Embedded samples enter prompt 134's verified prepared-asset path under the bank digest. Decode/normalize off-thread;
+Embedded samples enter prompt 135's verified prepared-asset path under the bank digest. Decode/normalize off-thread;
 bound chunks, zones, samples, names, and memory. The imported instrument exposes Musa standard controls and documented
 custom controls; raw MIDI controller numbers and generator ids remain adapter-private.
 

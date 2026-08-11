@@ -19,12 +19,12 @@
     {
       "defect": "shared-note-stream-warning",
       "observation": "two assigned patches both consume the merged note stream and therefore sound both parts",
-      "repair_prompt": 123
+      "repair_prompt": 124
     },
     {
       "defect": "ignored-parameter-event",
       "observation": "PerformanceEvent::Parameter is sorted and delivered but ignored by the render plan",
-      "repair_prompt": 124
+      "repair_prompt": 125
     }
   ]
 }

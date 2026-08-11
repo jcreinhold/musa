@@ -1,8 +1,8 @@
 ---
-id: 151
+id: 152
 slug: web-distribution-and-examples
 status: done
-depends_on: [149, 150]
+depends_on: [150, 151]
 phase: 5
 ---
 
@@ -17,7 +17,7 @@ the client.
 
 ## Read
 
-- Prompts 150–150 — the package being distributed; its asset-resolution rules (`configure`, `import.meta.url`
+- Prompts 151–151 — the package being distributed; its asset-resolution rules (`configure`, `import.meta.url`
   derivation) are what the CDN build must make work from a plain script tag.
 - MathJax's CDN model (combined component + config-before-load) and mermaid's (`mermaid@11/dist/…` on a CDN,
   `initialize` in the page).
@@ -63,7 +63,7 @@ also a Playwright smoke test so the examples can never silently rot):
   bundler.
 
 **Static-site recipe** (package README + `examples/build-time/`): a small Node script using `@musa/web` in Node (prompt
-148's worker-less path) that typesets every `text/musa` block in a glob of HTML files and writes the SVG in, ahead of
+149's worker-less path) that typesets every `text/musa` block in a glob of HTML files and writes the SVG in, ahead of
 time. For sites that want no client wasm at all. One page of docs, one script, one test proving the emitted page needs
 no JS.
 
@@ -97,4 +97,4 @@ Commit as `Add CDN distribution and examples to @musa/web`.
   real user asks.
 - No source-maps/debug builds beyond vite defaults; no minification forks.
 - No service-worker caching, no prefetch machinery: static assets on a CDN are already the answer.
-- No playback button on the examples (prompt 152, deferred).
+- No playback button on the examples (prompt 153, deferred).
