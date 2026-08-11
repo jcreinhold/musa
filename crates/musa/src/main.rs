@@ -71,6 +71,7 @@ fn print_usage() {
     println!("  musa explain <code>                    the rule behind a diagnostic code");
     println!("  musa format [<file|folder>…] [--check] format in place; no path means here");
     println!("      --diff                               print the diff instead of writing");
+    println!("      -f                                   format even what `.musaignore` excludes");
     println!("  musa render <file.musa> --to <target>  mei | lilypond | musicxml | midi | wav");
     println!("      --to plan | performance              the debug dumps, to stdout");
     println!("      --mode score | performance           for --to midi (default: score)");
@@ -393,7 +394,7 @@ enum Formatted {
     Failed,
 }
 
-/// `musa format [<file|folder>…] [--check | --diff]`
+/// `musa format [<file|folder>…] [--check | --diff] [-f]`
 ///
 /// A folder is formatted whole and no argument means this one, the way `ruff
 /// format`, `black` and `cargo fmt` work: the file worth formatting is rarely
@@ -407,9 +408,10 @@ fn cmd_format(args: &[String]) -> ExitCode {
     } else {
         Formatting::Write
     };
+    let forced = args.iter().any(|arg| arg == "-f" || arg == "--force");
     let mut arguments: Vec<&str> = args
         .iter()
-        .filter(|arg| !arg.starts_with("--"))
+        .filter(|arg| !arg.starts_with("--") && *arg != "-f")
         .map(String::as_str)
         .collect();
     if arguments.is_empty() {
@@ -417,7 +419,7 @@ fn cmd_format(args: &[String]) -> ExitCode {
     }
     let mut walked = Walked::default();
     for argument in arguments {
-        if let Err(error) = walked.extend(argument) {
+        if let Err(error) = walked.extend(argument, forced) {
             eprintln!("error: {error}");
             return ExitCode::FAILURE;
         }
@@ -562,11 +564,28 @@ impl Walked {
     /// formatter that writes through a link edits a file nobody named — and so
     /// is whatever the nearest [`ignore::Ignore`] excludes.
     ///
-    /// A file named directly is formatted whatever the list says, which is why
-    /// the list is consulted here and not in [`format_one`].
-    fn extend(&mut self, argument: &str) -> Result<(), String> {
+    /// A file named directly is checked against the list too, and `forced`
+    /// (`-f`) is the only way past it. An excluded file is excluded because its
+    /// shape is a specification — a generator compares it byte for byte, or a
+    /// diagnostic's snapshot pins its byte positions — and that is as true of
+    /// the file a script names as of the file a walk finds. The list is still
+    /// consulted here rather than in [`format_one`], so that what it passed
+    /// over is counted once, in the run's summary.
+    fn extend(&mut self, argument: &str, forced: bool) -> Result<(), String> {
         let root = std::path::Path::new(argument);
         if !root.is_dir() {
+            // A bare `piece.musa` has an empty parent, and `.` is where it
+            // sits. Probing `./piece.musa` keeps the lexical strip in
+            // `excludes` working, which is why the folder is joined back on
+            // rather than passed alongside.
+            let named = root.parent().is_some_and(|parent| !parent.as_os_str().is_empty());
+            let folder = if named { root.parent() } else { None };
+            let folder = folder.unwrap_or_else(|| std::path::Path::new("."));
+            let probe = if named { root.to_path_buf() } else { folder.join(root) };
+            if !forced && ignore::Ignore::found_at(folder).excludes(&probe) {
+                self.ignored = self.ignored.saturating_add(1);
+                return Ok(());
+            }
             self.paths.push(argument.to_owned());
             return Ok(());
         }

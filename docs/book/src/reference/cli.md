@@ -49,8 +49,10 @@ build                   with no `/`, a name matched at any depth
 Two stated departures from `.gitignore`: a trailing `/` reads as documentation and is not a folders-only assertion, and
 there is no negation. What matches a folder matches everything in it.
 
-The list governs what a walk *finds*, which is where a file gets rewritten by accident. A file named on the command line
-is formatted whatever the list says.
+The list governs every path `musa format` reaches, whether a walk found it or you named it. An excluded file is excluded
+because its shape is a specification, and a script that names it one file at a time would otherwise walk straight past
+the reason it is on the list. `-f` (or `--force`) formats it anyway, the way `git add -f` stages an ignored path: the
+override exists, and using it is a thing you did on purpose.
 - `--seed` selects a performance reading when a piece carries more than one. It applies to `check`, `render`, and
   `kernel` — the three commands that compile.
 - Exit codes follow the convention: success is silent, failure prints diagnostics to stderr.

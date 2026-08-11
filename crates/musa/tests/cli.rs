@@ -192,32 +192,63 @@ fn format_passes_over_what_the_ignore_file_names() -> std::io::Result<()> {
     std::fs::remove_dir_all(&root)
 }
 
-/// A file named on the command line is formatted whatever the list says.
+/// The list governs a file named on the command line too, and `-f` is the way
+/// past it.
 ///
-/// The list governs what a walk *finds*, which is where a file gets rewritten
-/// by accident. Naming one is not an accident.
+/// An excluded file is excluded because its shape is a specification, and that
+/// is as true of the file a script names as of the file a walk finds. The
+/// override is spelled the way `git add -f` spells it: available, and never
+/// taken by accident.
 #[test]
-fn format_still_formats_an_ignored_file_that_is_named() -> std::io::Result<()> {
+fn format_passes_over_an_ignored_file_that_is_named() -> std::io::Result<()> {
     let root = temp_dir("named")?;
     std::fs::write(root.join(".musaignore"), "*.musa\n")?;
     let path = root.join("pinned.musa");
     std::fs::write(&path, MESSY)?;
 
+    // Named, and left alone: every file found is excluded, so there is nothing
+    // to format and the run says which list said so.
     let output = musa(&["format", &path.to_string_lossy()])?;
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("excluded by `.musaignore`"), "stderr: {stderr}");
+    assert_eq!(std::fs::read_to_string(&path)?, MESSY);
+
+    // The same file, reached by walking, is left alone the same way.
+    let output = musa(&["format", &root.to_string_lossy()])?;
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("excluded by `.musaignore`"), "stderr: {stderr}");
+    assert_eq!(std::fs::read_to_string(&path)?, MESSY);
+
+    // `-f` formats it anyway.
+    let output = musa(&["format", "-f", &path.to_string_lossy()])?;
     assert!(
         output.status.success(),
         "stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     assert_eq!(std::fs::read_to_string(&path)?, TIDY);
+    std::fs::remove_dir_all(&root)
+}
 
-    // And the same file, reached by walking, is not.
+/// `-f` reaches into an ignored folder that a walk would pass over, so the
+/// override is a fact about the list rather than about how the path was typed.
+#[test]
+fn forcing_a_walk_formats_what_the_list_names() -> std::io::Result<()> {
+    let root = temp_dir("forced")?;
+    std::fs::create_dir_all(root.join("fixtures"))?;
+    std::fs::write(root.join(".musaignore"), "fixtures/\n")?;
+    let path = root.join("fixtures/generated.musa");
     std::fs::write(&path, MESSY)?;
-    let output = musa(&["format", &root.to_string_lossy()])?;
-    assert!(!output.status.success());
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("excluded by `.musaignore`"), "stderr: {stderr}");
-    assert_eq!(std::fs::read_to_string(&path)?, MESSY);
+
+    let output = musa(&["format", "-f", &path.to_string_lossy()])?;
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(std::fs::read_to_string(&path)?, TIDY);
     std::fs::remove_dir_all(&root)
 }
 
