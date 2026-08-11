@@ -8,7 +8,8 @@
 //! and studio values last because their spans never overlap the score's.
 
 use lsp_types::{Hover, HoverContents, MarkupContent, MarkupKind, Position};
-use musa_project::{EventFacts, EventKind, ScoreFacts, Span};
+use musa_language::DocumentAlternative;
+use musa_project::{EventFacts, EventKind, KernelTokenClass, ScoreFacts, Span, kernel_classify, kernel_keyword_doc};
 
 use crate::convert::{LineIndex, covers};
 use crate::workspace::Document;
@@ -18,6 +19,9 @@ pub(crate) fn hover(document: &Document, position: Position) -> Option<Hover> {
     let byte = document.lines().byte(position);
     let snapshot = document.snapshot();
     let lines = document.lines();
+    if document.alternative() == DocumentAlternative::Kernel {
+        return at_kernel_word(&snapshot, byte, lines);
+    }
     if let Some(score) = snapshot.score() {
         if let Some(found) = at_use_site(score, byte, lines) {
             return Some(found);
@@ -249,4 +253,29 @@ fn at_studio(document: &Document, byte: u32, lines: &LineIndex) -> Option<Hover>
         .find_map(|send| send.span.filter(|span| covers(*span, byte)).map(|span| (send, span)))?;
     let text = format!("**send** {} → {} · {} dB", send.source, send.bus, send.decibels);
     Some(answer(lines, span, text))
+}
+
+/// What a kernel construct denotes, under the caret.
+///
+/// Only the grammar's own words answer here, and the score's facts answer not
+/// at all — a kernel document's occurrences carry provenance into the file
+/// that produced them, so "the note at this offset" is a question about a
+/// different document. What is left is the language itself, which is exactly
+/// what a reader of unfamiliar interchange text is asking about.
+fn at_kernel_word(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {
+    let source = snapshot.source();
+    let at = usize::try_from(byte).unwrap_or(usize::MAX);
+    let (range, class) = kernel_classify(source)
+        .into_iter()
+        .find(|(range, _)| range.contains(&at))?;
+    if !matches!(class, KernelTokenClass::Keyword | KernelTokenClass::Type) {
+        return None;
+    }
+    let word = source.get(range.clone())?;
+    let doc = kernel_keyword_doc(word)?;
+    let span = Span {
+        start: u32::try_from(range.start).unwrap_or(u32::MAX),
+        end: u32::try_from(range.end).unwrap_or(u32::MAX),
+    };
+    Some(answer(lines, span, format!("```text\n{word}\n```\n\n{doc}")))
 }

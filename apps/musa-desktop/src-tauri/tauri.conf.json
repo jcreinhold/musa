@@ -37,6 +37,20 @@
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": ["musa"],
+        "name": "musa-piece",
+        "description": "Musa score",
+        "role": "Editor"
+      },
+      {
+        "ext": ["musa.kernel"],
+        "name": "musa-kernel-document",
+        "description": "Musa kernel interchange document",
+        "role": "Editor"
+      }
+    ]
   }
 }

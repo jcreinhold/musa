@@ -25,6 +25,7 @@
 //! (`semantic(parse(format(parse(s)))) == semantic(parse(s))`).
 
 pub mod ast;
+mod document;
 mod edits;
 mod error;
 mod formatter;
@@ -37,6 +38,7 @@ mod parser;
 mod syntax_kind;
 mod types;
 
+pub use crate::document::{DocumentAlternative, KERNEL_MARKER, alternative};
 pub use crate::edits::{
     Anchor, EditError, EditIntent, HeaderField, Statement, TextEdit, apply_edits, compute_edits, read_header,
     spell_duration,

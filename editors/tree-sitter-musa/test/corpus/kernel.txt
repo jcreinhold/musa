@@ -1,0 +1,48 @@
+================================================================================
+kernel: the marker makes the file the other alternative
+================================================================================
+
+% musa-kernel-1
+kernel "twinkle" {
+  composition main : Timeline[ScoreFact] =
+    timeline 1/4 {
+      occurrence "voice 0 0 note c4 1/4 [0:0 #4]" from 0 to 1/4;
+    };
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (kernel_document
+    (kernel_marker)
+    (kernel_body)))
+
+================================================================================
+kernel: the marker is the whole document
+================================================================================
+
+% musa-kernel-1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (kernel_document
+    (kernel_marker)))
+
+================================================================================
+kernel: the marker is a first line, not a word
+================================================================================
+
+// % musa-kernel-1 names the other alternative only as the whole first line
+piece "P" {
+    tempo = 60;
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (comment)
+  (piece_declaration
+    (string)
+    (tempo_statement
+      (integer))))

@@ -1,7 +1,7 @@
 ---
 id: 120
 slug: kernel-source-inclusion
-status: pending
+status: done
 depends_on: [86, 92, 94]
 phase: 3
 ---

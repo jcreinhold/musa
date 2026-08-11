@@ -101,6 +101,7 @@ module.exports = grammar({
     // no piece and no library (Parser::root_preamble).
     source_file: ($) =>
       choice(
+        $.kernel_document,
         seq(
           repeat(
             choice(
@@ -117,6 +118,24 @@ module.exports = grammar({
         ),
         repeat1($.mod_declaration),
       ),
+
+    // The kernel alternative (`docs/language/01-surface.md` §7): a file whose
+    // first line is the interchange version marker.
+    //
+    // **Recognized, not parsed.** `musa-kernel` owns the term grammar, and a
+    // second copy of it here would be exactly the drifting duplicate this
+    // grammar's own README says it must not become — with the added problem
+    // that no lexer exists to hold it to, since the kernel's reader is a
+    // hand-written cursor rather than a token stream. So the marker is a node
+    // an editor can query and the rest is one opaque span. What colours inside
+    // it is `musa-kernel`'s own classification, delivered as LSP semantic
+    // tokens; what this rule buys is that a `.musa.kernel` file opened in a
+    // tree-sitter editor is a document rather than a page of red.
+    kernel_document: ($) => seq($.kernel_marker, optional($.kernel_body)),
+
+    kernel_marker: (_) => token(prec(2, seq('%', /[ \t]*/, 'musa-kernel-1', /[ \t]*/, /\r?\n/))),
+
+    kernel_body: (_) => token(prec(-1, /[\s\S]+/)),
 
     // Parser::mod_decl — one child of the package's module tree. A name and
     // nothing else: what the name reaches is a fact about the package's

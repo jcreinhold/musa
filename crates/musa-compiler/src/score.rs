@@ -317,6 +317,17 @@ impl Part {
             voice_names,
         }
     }
+
+    /// Add one named voice lane, for a caller that discovers its voices one
+    /// at a time rather than reading them off a `part` block.
+    ///
+    /// The two maps are written together because they are one fact: a lane
+    /// with no name would be a lane nothing can address, and the assembly
+    /// order is the order the voices appear in the score.
+    pub(crate) fn add_voice(&mut self, id: VoiceId, name: String, voice: Voice) {
+        self.voices.insert(id, voice);
+        self.voice_names.insert(id, name);
+    }
 }
 
 /// The score's parts, in source order.

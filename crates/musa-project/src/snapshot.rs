@@ -244,6 +244,7 @@ impl ProjectSnapshot<'_> {
             kind: match self.kind {
                 musa_compiler::DocumentKind::Piece => "piece",
                 musa_compiler::DocumentKind::Material => "material",
+                musa_compiler::DocumentKind::Kernel => "kernel",
             },
             source: self.source,
             revision: self.revision.0,

@@ -363,6 +363,23 @@ pub fn explain(code: &str) -> Option<&'static str> {
              `does-not-add-up` instead, because a bar too long is that same \
              mistake and has said so since bars existed."
         }
+        musa_compiler::Code::UnsupportedPayload => {
+            "A kernel interchange file is well formed, and its occurrences \
+             carry a payload type this build has no reader for.\n\n\
+             The file is not wrong. `% musa-kernel-1` fixes the grammar of \
+             terms — `let`, `sequence`, `overlay`, `shift`, `scale`, \
+             `restrict` — and leaves what an occurrence *is* to the producer, \
+             which is what lets one format carry a score, a sketch, and \
+             whatever a later tool invents. This build knows `ScoreFact`.\n\n\
+             What still works is everything that does not need the payload: \
+             the file opens, `musa format` lays it out canonically, and its \
+             term structure is checked for free names and empty compositions. \
+             What does not work is meaning — no score, no render, no export — \
+             because a timeline whose occurrences cannot be decoded is a shape \
+             without content. Nothing is silently converted: reading the \
+             payloads as something else would be inventing music the file does \
+             not contain."
+        }
     })
 }
 

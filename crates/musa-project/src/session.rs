@@ -308,10 +308,12 @@ impl ProjectSession {
     /// A question, like [`Self::is_formatted`]: `musa format --diff` promises
     /// to show rather than edit, and an edit would be autosaved, so the
     /// preview leaves no `.recovery` copy behind.
+    /// A document too broken to read is returned unchanged, which is the same
+    /// promise the surface formatter makes: formatting never guesses at what
+    /// an author meant to write.
     #[must_use]
     pub fn formatted_source(&self) -> String {
-        let document = musa_language::parse(&self.source);
-        musa_language::format(&document, self.bar_spacing()).text().to_owned()
+        musa_compiler::format_document(&self.source, self.bar_spacing()).unwrap_or_else(|| self.source.clone())
     }
 
     /// How this piece's project wants its bars laid out.
@@ -809,7 +811,10 @@ impl ProjectSession {
         // does not sound, so it has no score, and the absence of one is not a
         // failure — which is the whole reason `kind` exists.
         self.compiles = match kind {
-            musa_compiler::DocumentKind::Piece => score.is_some(),
+            // A kernel document has a score for the same reason a piece does,
+            // and its emptiness is as legitimate: `kernel "x" { … timeline 0
+            // {} }` is a well-formed file that denotes silence.
+            musa_compiler::DocumentKind::Piece | musa_compiler::DocumentKind::Kernel => score.is_some(),
             musa_compiler::DocumentKind::Material => !had_errors,
         };
         let mut score_changed = false;

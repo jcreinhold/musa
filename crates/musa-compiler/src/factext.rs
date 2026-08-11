@@ -47,7 +47,7 @@
 //! one — and never a float, because a consumer that reads a hairpin's shape
 //! and rounds it produces different sound from the same file.
 
-use musa_kernel::{Canonical as _, TextPayload};
+use musa_kernel::{Canonical as _, PayloadText, TextPayload};
 use num_rational::Ratio;
 
 use crate::elaborate::{FactKind, ScoreFact};
@@ -59,7 +59,7 @@ use crate::scope::Scope;
 use crate::score::{DynamicMark, FreeDuration, Metronome, Mode, NotatedDuration, Ramp};
 use crate::time::MusicalDuration;
 
-impl TextPayload for ScoreFact {
+impl PayloadText for ScoreFact {
     fn to_text(&self) -> String {
         let mut words = Words::default();
         write_scope(&mut words, self.scope);
@@ -80,7 +80,9 @@ impl TextPayload for ScoreFact {
             tied: false,
         })
     }
+}
 
+impl TextPayload for ScoreFact {
     fn type_name() -> &'static str {
         "ScoreFact"
     }
@@ -1230,7 +1232,9 @@ mod tests {
             let span = Span::new(Beat::from_integer(0), extent).expect("0 to 1/4 is a span");
             let body = timeline(extent, vec![Occurrence::new(span, fact.clone())]).expect("one occurrence");
             let printed = musa_kernel::print("round-trip", &Term::literal(body), &[]);
-            let (_, parsed) = musa_kernel::parse::<ScoreFact>(&printed).expect("what we printed parses");
+            let parsed = musa_kernel::parse::<ScoreFact>(&printed)
+                .expect("what we printed parses")
+                .into_term();
             let read = parsed
                 .into_literal()
                 .ok()

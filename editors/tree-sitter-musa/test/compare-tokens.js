@@ -61,7 +61,7 @@ function parse(path) {
  * where depth is the indent before the node, a field prefix may precede the
  * kind, and a node is a leaf when the next line does not indent past it.
  */
-function leaves(cst, source) {
+function nodes(cst) {
   const pattern = /^((\d+):(\d+)\s+-\s+(\d+):(\d+))(\s+)(\S.*)$/;
   const rows = [];
   for (const line of cst.split('\n')) {
@@ -74,6 +74,8 @@ function leaves(cst, source) {
       // of the language's keywords or punctuation contains a quote.
       kind = rest.slice(1, rest.lastIndexOf('"'));
     } else {
+      // A row of nothing but backticked text — the dump gives a token's text
+      // its own row when it will not fit beside the node — names nothing.
       kind = rest.replace(/^(\w+):\s+/, '').split(/\s|`/)[0];
     }
     rows.push({
@@ -85,14 +87,25 @@ function leaves(cst, source) {
       kind,
     });
   }
+  return rows;
+}
+
+/** Slice a node's span back out of `source`, counting bytes as tree-sitter does. */
+function sliceText(source) {
   const lines = source.split('\n').map((line) => Buffer.from(line, 'utf8'));
-  const textAt = ({ start, end }) => {
+  return ({ start, end }) => {
     if (start[0] === end[0]) return lines[start[0]].subarray(start[1], end[1]).toString('utf8');
     const parts = [lines[start[0]].subarray(start[1]).toString('utf8')];
     for (let row = start[0] + 1; row < end[0]; row += 1) parts.push(lines[row].toString('utf8'));
     parts.push(lines[end[0]].subarray(0, end[1]).toString('utf8'));
     return parts.join('\n');
   };
+}
+
+/** The leaf tokens of a CST dump, with their text. */
+function leaves(cst, source) {
+  const rows = nodes(cst);
+  const textAt = sliceText(source);
   const out = [];
   for (let index = 0; index < rows.length; index += 1) {
     const row = rows[index];
@@ -103,17 +116,21 @@ function leaves(cst, source) {
   return out;
 }
 
-/** Compare one fixture's leaves against its committed lexer stream. */
+/**
+ * Compare one fixture's leaves against its committed lexer stream. Returns
+ * the fixture path it covered, so the kernel law below knows what the token
+ * law already holds.
+ */
 function checkTokens(manifestPath) {
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   const name = basename(manifestPath, '.json');
   const sourcePath = join(EXAMPLES, manifest.file);
   const source = readFileSync(sourcePath, 'utf8');
   const parsed = parse(sourcePath);
-  if (!parsed) return;
+  if (!parsed) return manifest.file;
   if (parsed.hadErrors) {
     fail(`${name}: a compilable fixture parsed with errors — the grammar is behind the language`);
-    return;
+    return manifest.file;
   }
   const actual = leaves(parsed.cst, source);
   const expected = manifest.tokens;
@@ -128,7 +145,55 @@ function checkTokens(manifestPath) {
         `${name}: token ${index} is (${got.kind}, ${JSON.stringify(got.text)}) ` +
           `where the lexer wrote (${want.kind}, ${JSON.stringify(want.text)})`,
       );
-      return; // one disagreement is enough to read; the rest is noise
+      return manifest.file; // one disagreement is enough to read; the rest is noise
+    }
+  }
+  return manifest.file;
+}
+
+/**
+ * Hold the grammar to `musa-language` on the top-level alternative: which
+ * files are kernel documents, and by what marker.
+ *
+ * `docs/language/01-surface.md` §7 gives one language two surfaces, and the
+ * one way for two readers of it to disagree is the one way that matters — a
+ * file read as kernel by the grammar and surface by the compiler opens as a
+ * page of red in an editor and checks clean on the command line. So both the
+ * verdict and the marker text are held: the marker in `grammar.js` is a
+ * literal, and a literal drifts.
+ *
+ * The negative half rides on the token law rather than reparsing every
+ * surface fixture: a `.musa` file misread as a kernel document has two
+ * opaque leaves where the lexer wrote hundreds of tokens, which
+ * `checkTokens` reports first and loudest. What that argument needs is
+ * coverage, so coverage is what is checked here.
+ */
+function checkKernel(covered) {
+  const manifest = JSON.parse(readFileSync(join(GRAMMAR, 'test', 'kernel.json'), 'utf8'));
+  for (const entry of manifest.files) {
+    if (!entry.kernel) {
+      if (!covered.has(entry.file)) {
+        fail(`${entry.file}: a surface fixture no token manifest covers — nothing holds it to the surface grammar`);
+      }
+      continue;
+    }
+    const path = join(EXAMPLES, entry.file);
+    const parsed = parse(path);
+    if (!parsed) continue;
+    if (parsed.hadErrors) {
+      fail(`${entry.file}: a kernel document parsed with errors — the grammar is behind the interchange format`);
+      continue;
+    }
+    const found = nodes(parsed.cst);
+    const marker = found.find((node) => node.kind === 'kernel_marker');
+    if (!marker) {
+      const kinds = found.map((node) => node.kind).filter(Boolean).slice(0, 8).join(', ');
+      fail(`${entry.file}: the grammar read [${kinds}] where musa-language read a kernel document`);
+      continue;
+    }
+    const text = sliceText(readFileSync(path, 'utf8'))(marker).trim();
+    if (text !== manifest.marker) {
+      fail(`${entry.file}: the grammar's marker is ${JSON.stringify(text)}, not ${JSON.stringify(manifest.marker)}`);
     }
   }
 }
@@ -149,13 +214,16 @@ function checkBroken() {
   }
 }
 
+const covered = new Set();
 for (const file of readdirSync(TOKENS).filter((file) => file.endsWith('.json')).sort()) {
-  checkTokens(join(TOKENS, file));
+  const fixture = checkTokens(join(TOKENS, file));
+  if (fixture) covered.add(fixture);
 }
+checkKernel(covered);
 checkBroken();
 
 if (failures > 0) {
   console.error(`\n${failures} drift-law failure(s)`);
   process.exit(1);
 }
-console.log('drift law holds: every token and every verdict agrees with musa-language');
+console.log('drift law holds: every token, alternative, and verdict agrees with musa-language');

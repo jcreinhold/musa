@@ -1146,6 +1146,25 @@
     }
   },
   {
+    "type": "kernel_document",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "kernel_body",
+          "named": true
+        },
+        {
+          "type": "kernel_marker",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "key_expression",
     "named": true,
     "fields": {
@@ -2889,6 +2908,10 @@
           "named": true
         },
         {
+          "type": "kernel_document",
+          "named": true
+        },
+        {
           "type": "let_declaration",
           "named": true
         },
@@ -3794,6 +3817,14 @@
   {
     "type": "invert",
     "named": false
+  },
+  {
+    "type": "kernel_body",
+    "named": true
+  },
+  {
+    "type": "kernel_marker",
+    "named": true
   },
   {
     "type": "key",

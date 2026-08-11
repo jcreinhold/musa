@@ -27,22 +27,127 @@ use crate::term::{Form, Term};
 use crate::time::{Beat, Span};
 use crate::timeline::timeline;
 
-/// A payload that can cross the interchange boundary.
+/// How a payload is spelled in a file.
 ///
 /// The two directions are one trait because they are one decision: a payload
 /// text form that cannot be read back is not a text form, and N3 already
 /// requires the writer to be injective, which is exactly the round-trip
 /// property. Implementations live with the payload — `ScoreFact`'s is in
 /// `musa-compiler` — and the kernel never looks inside the string.
-pub trait TextPayload: Sized {
+pub trait PayloadText: Sized {
     /// The payload's text form. Must be injective on values (N3).
     fn to_text(&self) -> String;
 
     /// The inverse of [`Self::to_text`], or `None` if `text` is not one.
     fn from_text(text: &str) -> Option<Self>;
+}
 
+/// A payload that also *names* itself at the interchange boundary.
+///
+/// Spelling and naming are separate traits because a reader needs them at
+/// separate times: a file announces its payload type in the header and only
+/// then can anyone decide whether they know how to decode it. [`read`] accepts
+/// a file knowing only [`PayloadText`]-worth about it — nothing — and the name
+/// it recovers is what a caller matches against its own [`Self::type_name`].
+/// Folding the two together would mean a file could not be read until it was
+/// already understood, which is exactly backwards for an interchange format.
+pub trait TextPayload: PayloadText {
     /// The payload type's name, as the file's `Timeline[…]` annotation.
     fn type_name() -> &'static str;
+}
+
+/// A payload carried verbatim, never decoded.
+///
+/// This is what a reader holds when it has parsed a file whose payload type it
+/// does not implement: the syntax is known to be well-formed, the term
+/// structure is known exactly, and the payload is a string the kernel has
+/// (as always) not looked inside. A tool can format such a file, count its
+/// occurrences, and check that it binds no free variable — everything except
+/// say what it *means*, which is the one thing that needs the payload type.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Opaque(String);
+
+impl Opaque {
+    /// The payload's text, exactly as the file spelled it.
+    pub fn text(&self) -> &str {
+        &self.0
+    }
+}
+
+impl PayloadText for Opaque {
+    fn to_text(&self) -> String {
+        self.0.clone()
+    }
+
+    fn from_text(text: &str) -> Option<Self> {
+        Some(Self(text.to_owned()))
+    }
+}
+
+/// A kernel file, read.
+///
+/// One type for both readers, because a file is the same file either way: what
+/// differs is only whether its payloads were decoded. [`parse`] fixes `A` to a
+/// payload type the caller implements; [`read`] leaves it [`Opaque`], which is
+/// what the toolchain needs to accept a `.musa.kernel` file as a document —
+/// open it, format it, report its syntax errors — before it can know whether
+/// the payload type is one this build supports.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Document<A> {
+    name: String,
+    payload_type: String,
+    notes: Vec<String>,
+    term: Term<A>,
+}
+
+impl<A> Document<A> {
+    /// The name the file's `kernel "…"` header declares.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// The payload type the composition is annotated with.
+    ///
+    /// A string rather than an enumeration: the set of payload types is open,
+    /// and a kernel that enumerated them would be a kernel that knows what
+    /// music is (§12). A caller compares this with its own
+    /// [`TextPayload::type_name`] and decides.
+    pub fn payload_type(&self) -> &str {
+        &self.payload_type
+    }
+
+    /// The `%` note lines, in the order they were written, without the `%`.
+    ///
+    /// The kernel does not know what any of them mean — a note is where a
+    /// producer records the reading of the work a file projects
+    /// (`docs/kernel/11-realization.md`), and carrying the sentence is the
+    /// whole of the kernel's involvement.
+    pub fn notes(&self) -> &[String] {
+        &self.notes
+    }
+
+    /// The term, as written: `let`, `sequence`, `overlay`, `shift`, `scale`
+    /// and `restrict` structure survives reading.
+    pub fn term(&self) -> &Term<A> {
+        &self.term
+    }
+
+    /// The term, taken, when the caller wants it and not the file around it.
+    pub fn into_term(self) -> Term<A> {
+        self.term
+    }
+}
+
+impl<A: PayloadText> Document<A> {
+    /// The file, printed canonically.
+    ///
+    /// The same writer [`print`] uses, so a formatted file and a generated one
+    /// are byte-identical when they say the same thing — which is what makes
+    /// "format" a well-defined operation on a document whose payloads this
+    /// build cannot read.
+    pub fn to_text(&self) -> String {
+        write_document(&self.name, &self.payload_type, &self.term, &self.notes)
+    }
 }
 
 /// The format version written into every file's header.
@@ -66,6 +171,15 @@ pub const FORMAT_VERSION: &str = "musa-kernel-1";
 /// [`notes`]. Newlines are stripped, since a note that spanned two lines would
 /// read back as two.
 pub fn print<A: TextPayload>(name: &str, term: &Term<A>, notes: &[String]) -> String {
+    write_document(name, A::type_name(), term, notes)
+}
+
+/// The one writer, with the payload type supplied rather than looked up.
+///
+/// [`print`] takes it from the type and [`Document::to_text`] takes it from
+/// the file. There is deliberately no third source: a formatter that invented
+/// an annotation would be rewriting the document it was asked to tidy.
+fn write_document<A: PayloadText>(name: &str, payload_type: &str, term: &Term<A>, notes: &[String]) -> String {
     let mut out = String::with_capacity(256);
     let _ = writeln!(out, "% {FORMAT_VERSION}");
     for note in notes {
@@ -74,7 +188,7 @@ pub fn print<A: TextPayload>(name: &str, term: &Term<A>, notes: &[String]) -> St
     let _ = write!(out, "kernel ");
     write_string(&mut out, name);
     let _ = writeln!(out, " {{");
-    let _ = write!(out, "  composition main : Timeline[{}] =\n    ", A::type_name());
+    let _ = write!(out, "  composition main : Timeline[{payload_type}] =\n    ");
     write_term(&mut out, term, 2);
     let _ = writeln!(out, ";");
     let _ = writeln!(out, "}}");
@@ -94,7 +208,12 @@ pub fn notes(text: &str) -> impl Iterator<Item = &str> {
         .map(|note| note.trim())
 }
 
-/// Parse a kernel file, returning its name and its term.
+/// Parse a kernel file whose payloads are `A`.
+///
+/// Refuses a file annotated with any other payload type, which is what makes
+/// this the *typed* reader: a caller that names `A` is saying it knows what
+/// the occurrences mean, and a file that carries something else does not mean
+/// it. Use [`read`] to accept the file first and decide afterwards.
 ///
 /// The term is *not* checked: [`Term::check`] is the caller's next call, and
 /// keeping the two apart means a parse error and a well-formedness error stay
@@ -103,7 +222,29 @@ pub fn notes(text: &str) -> impl Iterator<Item = &str> {
 /// # Errors
 ///
 /// [`KernelError::Parse`], naming the byte offset and what was expected.
-pub fn parse<A: TextPayload>(text: &str) -> Result<(String, Term<A>), KernelError> {
+pub fn parse<A: TextPayload>(text: &str) -> Result<Document<A>, KernelError> {
+    read_as::<A>(text, Some(A::type_name()))
+}
+
+/// Read a kernel file without decoding its payloads.
+///
+/// Accepts every file [`parse`] accepts and more: a file whose payload type
+/// this build has no implementation for is still a well-formed kernel file,
+/// and refusing to read it would mean refusing to *show* it. What the caller
+/// gets back names the payload type, so the decision about whether the file
+/// can be evaluated is made where the payload types are known rather than
+/// here.
+///
+/// # Errors
+///
+/// [`KernelError::Parse`], exactly as [`parse`] — same cursor, same offsets.
+pub fn read(text: &str) -> Result<Document<Opaque>, KernelError> {
+    read_as::<Opaque>(text, None)
+}
+
+/// The one reader. `expect` is the payload type the caller requires, or
+/// `None` to accept whatever the file declares.
+fn read_as<A: PayloadText>(text: &str, expect: Option<&str>) -> Result<Document<A>, KernelError> {
     // The version line is checked before trivia, because `%` also starts a
     // comment: a file without a header would otherwise parse as a file with
     // one missing, and a consumer would have no way to refuse a format it
@@ -127,11 +268,10 @@ pub fn parse<A: TextPayload>(text: &str) -> Result<(String, Term<A>), KernelErro
     cursor.keyword("Timeline")?;
     cursor.symbol("[")?;
     let payload_type = cursor.name()?;
-    if payload_type != A::type_name() {
-        return Err(cursor.error(format!(
-            "this file carries `{payload_type}` payloads, not `{}`",
-            A::type_name()
-        )));
+    if let Some(expected) = expect
+        && payload_type != expected
+    {
+        return Err(cursor.error(format!("this file carries `{payload_type}` payloads, not `{expected}`")));
     }
     cursor.symbol("]")?;
     cursor.symbol("=")?;
@@ -139,10 +279,15 @@ pub fn parse<A: TextPayload>(text: &str) -> Result<(String, Term<A>), KernelErro
     cursor.symbol(";")?;
     cursor.symbol("}")?;
     cursor.end()?;
-    Ok((name, term))
+    Ok(Document {
+        name,
+        payload_type,
+        notes: notes(text).map(str::to_owned).collect(),
+        term,
+    })
 }
 
-fn write_term<A: TextPayload>(out: &mut String, term: &Term<A>, depth: usize) {
+fn write_term<A: PayloadText>(out: &mut String, term: &Term<A>, depth: usize) {
     let pad = "  ".repeat(depth);
     let inner = "  ".repeat(depth + 1);
     match term.form() {
@@ -192,7 +337,7 @@ fn write_term<A: TextPayload>(out: &mut String, term: &Term<A>, depth: usize) {
     }
 }
 
-fn write_block<A: TextPayload>(out: &mut String, keyword: &str, parts: &[Term<A>], depth: usize) {
+fn write_block<A: PayloadText>(out: &mut String, keyword: &str, parts: &[Term<A>], depth: usize) {
     let pad = "  ".repeat(depth);
     let inner = "  ".repeat(depth + 1);
     let _ = write!(out, "{keyword} {{");
@@ -377,7 +522,7 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    fn term<A: TextPayload>(&mut self) -> Result<Term<A>, KernelError> {
+    fn term<A: PayloadText>(&mut self) -> Result<Term<A>, KernelError> {
         self.trivia();
         if self.peek_symbol("(") {
             self.symbol("(")?;
@@ -439,7 +584,7 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    fn block<A: TextPayload>(&mut self) -> Result<Vec<Term<A>>, KernelError> {
+    fn block<A: PayloadText>(&mut self) -> Result<Vec<Term<A>>, KernelError> {
         let _ = self.word()?;
         self.symbol("{")?;
         let mut parts = Vec::new();
@@ -455,7 +600,7 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    fn literal<A: TextPayload>(&mut self) -> Result<Term<A>, KernelError> {
+    fn literal<A: PayloadText>(&mut self) -> Result<Term<A>, KernelError> {
         self.keyword("timeline")?;
         let extent = self.beat()?;
         self.symbol("{")?;

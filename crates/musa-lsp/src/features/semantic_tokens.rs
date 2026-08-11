@@ -11,8 +11,8 @@
 //! does not know.
 
 use lsp_types::{SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensResult};
-use musa_language::{SyntaxKind, TokenClass, classify};
-use musa_project::Span;
+use musa_language::{DocumentAlternative, SyntaxKind, TokenClass, classify};
+use musa_project::{KernelTokenClass, Span, kernel_classify};
 
 use crate::workspace::Document;
 
@@ -34,6 +34,7 @@ pub(crate) fn legend() -> Vec<SemanticTokenType> {
         SemanticTokenType::VARIABLE,
         SemanticTokenType::OPERATOR,
         SemanticTokenType::new("unit"),
+        SemanticTokenType::TYPE,
     ]
 }
 
@@ -56,8 +57,26 @@ fn type_index(class: TokenClass) -> Option<u32> {
     Some(index)
 }
 
+/// The legend index of a kernel token class.
+///
+/// A separate map rather than a conversion into [`TokenClass`], because the
+/// two languages classify different things and a lossy translation between
+/// them would colour kernel text as an approximation of musa text. They meet
+/// at the legend, which is where they should: `Comment` is a comment in both.
+fn kernel_type_index(class: KernelTokenClass) -> u32 {
+    match class {
+        KernelTokenClass::Comment => 0,
+        KernelTokenClass::Keyword => 1,
+        KernelTokenClass::Number => 4,
+        KernelTokenClass::Text => 5,
+        KernelTokenClass::Name => 6,
+        KernelTokenClass::Punctuation => 7,
+        KernelTokenClass::Type => 9,
+    }
+}
+
 /// Every classified token of the document, delta-encoded as the protocol
-/// prescribes. Valid source or not — the lexer is total, so this is total.
+/// prescribes. Valid source or not — both lexers are total, so this is total.
 pub(crate) fn full(document: &Document) -> SemanticTokensResult {
     let snapshot = document.snapshot();
     let source = snapshot.source();
@@ -65,6 +84,26 @@ pub(crate) fn full(document: &Document) -> SemanticTokensResult {
     let mut data = Vec::new();
     let mut previous_line = 0_u32;
     let mut previous_start = 0_u32;
+    if document.alternative() == DocumentAlternative::Kernel {
+        for (range, class) in kernel_classify(source) {
+            let span = Span {
+                start: u32::try_from(range.start).unwrap_or(u32::MAX),
+                end: u32::try_from(range.end).unwrap_or(u32::MAX),
+            };
+            for (line, start, length) in lines.lines_of(span) {
+                push(
+                    &mut data,
+                    line,
+                    start,
+                    length,
+                    kernel_type_index(class),
+                    &mut previous_line,
+                    &mut previous_start,
+                );
+            }
+        }
+        return SemanticTokensResult::Tokens(SemanticTokens { result_id: None, data });
+    }
     for (token, class) in classify(source) {
         if token.kind == SyntaxKind::Whitespace {
             continue;

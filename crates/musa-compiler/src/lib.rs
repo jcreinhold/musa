@@ -69,7 +69,7 @@ pub use crate::analysis::{
 };
 pub use crate::bars::{BarBeat, BarLines, Measure};
 pub use crate::chord::chord_types;
-pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile};
+pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile, format_document};
 pub use crate::context::ContextTrack;
 pub use crate::diagnose::{Code, Diagnostic, Fix, FixEdit, Label, Severity};
 #[doc(hidden)]
@@ -84,6 +84,17 @@ pub use crate::imports::{
 pub use crate::kernel_text::{
     KernelCheck, check_kernel_text, kernel_normalized_text, kernel_text, kernel_text_meaning,
 };
+/// Kernel text as an editor sees it, re-exported so a language server can
+/// colour and outline a kernel document without a second copy of the grammar
+/// and without depending on `musa-kernel` itself. Renamed on the way through
+/// because a shell holds this beside `musa-language`'s classification of
+/// surface text, and two things called `TokenClass` in one file is one too
+/// many.
+pub use musa_kernel::{
+    TokenClass as KernelTokenClass, bindings as kernel_bindings, classify as kernel_classify,
+    keyword_doc as kernel_keyword_doc,
+};
+
 pub use crate::marks::{Anchor, Argument, Mark, MarkArgument, MarkDef, Slot, VOCABULARY, lookup_mark};
 pub use crate::origin::{ChoicePath, ChoiceStep, DeclarationId, ExpansionStep, Interval, Origin, SourceSpan};
 pub use crate::performance::{

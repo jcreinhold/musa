@@ -51,7 +51,7 @@ use lsp_types::{
     SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
     WorkDoneProgressOptions,
 };
-use workspace::Workspace;
+use workspace::{Document, Workspace};
 
 /// The JSON-RPC error codes this server can raise. `lsp-types` defines only
 /// the LSP-specific ones; these two are the specification's.
@@ -234,6 +234,7 @@ fn dispatch(workspace: &Workspace, request: Request) -> Response {
             let at = params.text_document_position_params;
             workspace
                 .document(&at.text_document.uri)
+                .and_then(surface_only)
                 .and_then(|document| features::definition::definition(document, &at.text_document.uri, at.position))
         }),
         DocumentSymbolRequest::METHOD => answer::<DocumentSymbolRequest>(request, |params| {
@@ -244,6 +245,7 @@ fn dispatch(workspace: &Workspace, request: Request) -> Response {
         References::METHOD => answer::<References>(request, |params| {
             workspace
                 .document(&params.text_document_position.text_document.uri)
+                .and_then(surface_only)
                 .and_then(|document| {
                     features::names::references(document, &params.text_document_position.text_document.uri, &params)
                 })
@@ -251,19 +253,22 @@ fn dispatch(workspace: &Workspace, request: Request) -> Response {
         PrepareRenameRequest::METHOD => answer::<PrepareRenameRequest>(request, |params| {
             workspace
                 .document(&params.text_document.uri)
+                .and_then(surface_only)
                 .and_then(|document| features::names::prepare_rename(document, params.position))
         }),
         Rename::METHOD => answer_fallible::<Rename>(request, |params| {
             workspace
                 .document(&params.text_document_position.text_document.uri)
+                .and_then(surface_only)
                 .map_or_else(
-                    || Err("the document is not open".to_owned()),
+                    || Err("this document has no names to rename".to_owned()),
                     |document| features::names::rename(document, &params),
                 )
         }),
         CodeActionRequest::METHOD => answer::<CodeActionRequest>(request, |params| {
             workspace
                 .document(&params.text_document.uri)
+                .and_then(surface_only)
                 .and_then(|document| features::code_action::code_actions(document, &params.text_document.uri, &params))
         }),
         Formatting::METHOD => answer::<Formatting>(request, |params| {
@@ -274,6 +279,7 @@ fn dispatch(workspace: &Workspace, request: Request) -> Response {
         FoldingRangeRequest::METHOD => answer::<FoldingRangeRequest>(request, |params| {
             workspace
                 .document(&params.text_document.uri)
+                .and_then(surface_only)
                 .and_then(features::folding::folding_ranges)
         }),
         SemanticTokensFullRequest::METHOD => answer::<SemanticTokensFullRequest>(request, |params| {
@@ -284,10 +290,29 @@ fn dispatch(workspace: &Workspace, request: Request) -> Response {
         Completion::METHOD => answer::<Completion>(request, |params| {
             workspace
                 .document(&params.text_document_position.text_document.uri)
+                .and_then(surface_only)
                 .map(features::completion::completions)
         }),
         _ => Response::new_err(id, METHOD_NOT_FOUND, format!("musa-lsp does not answer `{method}`")),
     }
+}
+
+/// The document, if it is written in the surface language.
+///
+/// The gate on every feature that reads a surface syntax tree or resolves a
+/// name a `.musa` file declares: completion, go-to-definition, references,
+/// rename, code actions, and folding all answer from structure a kernel
+/// document does not have. Answering them anyway would not be empty — it
+/// would be *wrong*, because a kernel document's compiled facts carry the
+/// source spans of the piece that produced them, and every one of those
+/// offsets is a position in a different file.
+///
+/// The features that do answer for both alternatives — diagnostics,
+/// formatting, semantic tokens, symbols, hover — dispatch inside themselves,
+/// because for them the kernel case is a different answer rather than no
+/// answer.
+fn surface_only(document: &Document) -> Option<&Document> {
+    (document.alternative() == musa_language::DocumentAlternative::Surface).then_some(document)
 }
 
 /// Extract the params, compute the answer, serialize it. A method that

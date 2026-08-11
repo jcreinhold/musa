@@ -294,7 +294,7 @@ impl musa_kernel::Canonical for Awkward {
     }
 }
 
-impl musa_kernel::TextPayload for Awkward {
+impl musa_kernel::PayloadText for Awkward {
     fn to_text(&self) -> String {
         self.0.clone()
     }
@@ -302,7 +302,9 @@ impl musa_kernel::TextPayload for Awkward {
     fn from_text(text: &str) -> Option<Self> {
         Some(Self(text.to_owned()))
     }
+}
 
+impl musa_kernel::TextPayload for Awkward {
     fn type_name() -> &'static str {
         "Awkward"
     }
@@ -347,8 +349,9 @@ fn awkward_term() -> Term<Awkward> {
 fn printing_and_parsing_a_term_preserves_its_meaning() {
     let term = awkward_term();
     let text = musa_kernel::print("awkward", &term, &[]);
-    let (name, parsed) = musa_kernel::parse::<Awkward>(&text).expect("its own output parses");
-    assert_eq!(name, "awkward");
+    let document = musa_kernel::parse::<Awkward>(&text).expect("its own output parses");
+    assert_eq!(document.name(), "awkward");
+    let parsed = document.into_term();
     assert!(parsed.check().is_ok(), "its own output is well formed");
     let (before, after) = (evaluate(term.clone()), evaluate(parsed.clone()));
     assert!(before.semantic_eq(&after), "the round trip preserves meaning");
@@ -490,7 +493,7 @@ fn a_mark_round_trips_through_kernel_text() {
         .expect("non-empty"),
     );
     let text = musa_kernel::print("marked", &term, &[]);
-    let (name, read) = musa_kernel::parse::<Awkward>(&text).expect("parses");
-    assert_eq!(name, "marked");
-    assert_eq!(read, term, "the marks did not survive the round trip");
+    let document = musa_kernel::parse::<Awkward>(&text).expect("parses");
+    assert_eq!(document.name(), "marked");
+    assert_eq!(*document.term(), term, "the marks did not survive the round trip");
 }

@@ -10,6 +10,7 @@
 use std::collections::HashMap;
 
 use lsp_types::Uri;
+use musa_language::DocumentAlternative;
 use musa_project::{ProjectCommand, ProjectSession, ProjectSnapshot};
 
 use crate::convert::LineIndex;
@@ -63,6 +64,20 @@ impl Document {
     /// The client's version counter at the last change.
     pub(crate) fn version(&self) -> i32 {
         self.version
+    }
+
+    /// Which language this document is written in
+    /// (`docs/language/01-surface.md` §7).
+    ///
+    /// Asked of the text rather than of the URI, because a client may open an
+    /// unsaved buffer, a renamed file, or a scratch pane, and what a document
+    /// *is* has to survive all three. Every feature that reads a surface
+    /// syntax tree or maps a compiled fact back to a span in *this* file has
+    /// to ask: a kernel document's facts carry provenance into the source that
+    /// produced them, which is a different file, so a hover or a definition
+    /// resolved that way would point somewhere the user is not.
+    pub(crate) fn alternative(&self) -> DocumentAlternative {
+        musa_language::alternative(self.session.snapshot().source())
     }
 }
 

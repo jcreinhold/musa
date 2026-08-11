@@ -21,6 +21,7 @@
 //! represents silence (§2); semantic equality is equality of canonical forms,
 //! never of construction history (§25).
 
+mod editor;
 mod error;
 mod hash;
 mod occurrence;
@@ -30,11 +31,12 @@ mod text;
 mod time;
 mod timeline;
 
+pub use crate::editor::{TokenClass, bindings, classify, keyword_doc};
 pub use crate::error::KernelError;
 pub use crate::hash::{SemanticHash, stable_digest};
 pub use crate::occurrence::{Canonical, Occurrence};
 pub use crate::progress::Progress;
 pub use crate::term::{Term, evaluate, evaluate_marked};
-pub use crate::text::{FORMAT_VERSION, TextPayload, notes, parse, print};
+pub use crate::text::{Document, FORMAT_VERSION, Opaque, PayloadText, TextPayload, notes, parse, print, read};
 pub use crate::time::{Beat, Span};
 pub use crate::timeline::{Observation, Timeline, overlay, sequence, timeline, zero};

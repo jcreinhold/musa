@@ -69,6 +69,15 @@ pub enum DocumentKind {
     Piece,
     /// `library { … }` — declarations for other files to import.
     Material,
+    /// `% musa-kernel-1` — a kernel interchange file, read as itself
+    /// (`docs/language/01-surface.md` §7).
+    ///
+    /// A third kind rather than a second flavour of `Piece`, because the two
+    /// differ in what a caller may *do*: a kernel document has no surface
+    /// syntax tree, so nothing that edits structure, completes a name, or
+    /// renames a motif applies to it. It has a score, which is why it is not
+    /// `Material` either.
+    Kernel,
 }
 
 /// The result of compiling a document: diagnostics always, a snapshot and a
@@ -98,6 +107,11 @@ impl Compilation {
 
     pub(crate) fn into_material(mut self) -> Self {
         self.kind = DocumentKind::Material;
+        self
+    }
+
+    pub(crate) fn into_kernel(mut self) -> Self {
+        self.kind = DocumentKind::Kernel;
         self
     }
 
@@ -209,6 +223,37 @@ impl Compilation {
 ///
 /// Pipeline: parse → expansion-aware elaboration (motifs, repeat, transpose)
 /// → temporal kernel → `ScoreSnapshot` adapter. There is one semantic path.
+///
+/// A document written in the *kernel* alternative
+/// (`docs/language/01-surface.md` §7) joins that path later rather than
+/// running beside it: it has no surface syntax to elaborate, so reading and
+/// checking the term replaces everything up to the kernel, and the projection
+/// and every backend after it are shared. Which alternative a text is, is a
+/// question about its first line and is asked by `musa-language`.
 pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation {
-    crate::elaborate::elaborate(source, options)
+    match musa_language::alternative(source.text()) {
+        musa_language::DocumentAlternative::Kernel => crate::kernel_text::compile_kernel(source),
+        musa_language::DocumentAlternative::Surface => crate::elaborate::elaborate(source, options),
+    }
+}
+
+/// Lay `text` out canonically, whichever alternative it is written in.
+///
+/// One entry because there is one question — "how should this document be
+/// written down" — and two answers only because there are two languages. A
+/// caller that dispatched itself would be a caller that could get the
+/// dispatch wrong, and the whole toolchain formats through here.
+///
+/// Kernel text is laid out by the kernel's own printer, which is what makes
+/// `musa format` idempotent on a file `musa kernel` produced. `None` means
+/// the text cannot be read at all, and an unreadable document is left exactly
+/// as its author has it.
+pub fn format_document(text: &str, spacing: musa_language::BarSpacing) -> Option<String> {
+    match musa_language::alternative(text) {
+        musa_language::DocumentAlternative::Kernel => crate::kernel_text::format_kernel(text),
+        musa_language::DocumentAlternative::Surface => {
+            let document = musa_language::parse(text);
+            Some(musa_language::format(&document, spacing).text().to_owned())
+        }
+    }
 }

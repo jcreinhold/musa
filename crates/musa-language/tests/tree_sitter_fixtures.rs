@@ -8,7 +8,8 @@
 //! both, token for token. A grammar that disagrees with the lexer about one
 //! token fails loudly here, not in a composer's editor.
 //!
-//! Run `UPDATE_FIXTURES=1 cargo test -p musa-language tree_sitter` to refresh.
+//! Run `UPDATE_FIXTURES=1 cargo test -p musa-language --test
+//! tree_sitter_fixtures` to refresh.
 
 // Fixture generation writes files and panics on a stale copy by design: a
 // generator that shrugs is a generator that drifts.
@@ -353,6 +354,51 @@ fn token_manifest(relative: &Path, source: &str) -> String {
     json
 }
 
+/// Which files are the *kernel* alternative, by `musa-language`'s reckoning.
+///
+/// The drift law for `docs/language/01-surface.md` §7. The grammar has its own
+/// rule for the top-level alternative and this crate has [`alternative`], and
+/// the one way they can disagree is the one way that matters: a file read as
+/// kernel by one and surface by the other opens as a page of red in an editor
+/// and compiles fine on the command line.
+///
+/// Both verdicts are committed, not just the positive one. A rule that
+/// recognized *too much* — every file starting with `%`, say — would pass a
+/// one-sided law and break every `.musa` file in the repository.
+fn kernel_manifest(files: &[(String, String)]) -> String {
+    let mut json = format!(
+        "{{\n  \"marker\": \"{}\",\n  \"files\": [\n",
+        escape(musa_language::KERNEL_MARKER)
+    );
+    for (index, (relative, source)) in files.iter().enumerate() {
+        let kernel = musa_language::alternative(source) == musa_language::DocumentAlternative::Kernel;
+        let comma = if index.saturating_add(1) == files.len() {
+            ""
+        } else {
+            ","
+        };
+        writeln!(
+            json,
+            "    {{ \"file\": \"{}\", \"kernel\": {kernel} }}{comma}",
+            escape(relative),
+        )
+        .expect("write to a string");
+    }
+    json.push_str("  ]\n}\n");
+    json
+}
+
+/// Every `.musa.kernel` directly under `dir`, sorted.
+fn kernel_files(dir: &Path) -> Vec<PathBuf> {
+    let mut files: Vec<PathBuf> = std::fs::read_dir(dir)
+        .unwrap_or_else(|_| panic!("read {}", dir.display()))
+        .map(|entry| entry.expect("directory entry").path())
+        .filter(|path| path.to_string_lossy().ends_with(".musa.kernel"))
+        .collect();
+    files.sort();
+    files
+}
+
 /// The parser's verdict on the broken fixtures: which of them are *syntact*
 /// broken. Most of `examples/broken/` is semantically broken and
 /// syntactically fine — the grammar must agree, fixture by fixture.
@@ -421,4 +467,26 @@ fn the_lexers_tokens_are_the_grammars_test_data() {
         })
         .collect();
     write_or_compare(&data.join("broken.json"), &broken_manifest(&broken));
+
+    // The two alternatives, from this crate's side: every kernel file is one,
+    // and every surface file is not.
+    let mut alternatives: Vec<(String, String)> = kernel_files(&examples.join("kernel"))
+        .into_iter()
+        .map(|path| {
+            (
+                path.strip_prefix(&examples)
+                    .expect("under examples")
+                    .to_string_lossy()
+                    .into_owned(),
+                std::fs::read_to_string(&path).expect("fixture text"),
+            )
+        })
+        .collect();
+    alternatives.extend(valid.iter().map(|(relative, path)| {
+        (
+            relative.to_string_lossy().into_owned(),
+            std::fs::read_to_string(path).expect("fixture text"),
+        )
+    }));
+    write_or_compare(&data.join("kernel.json"), &kernel_manifest(&alternatives));
 }

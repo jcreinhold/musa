@@ -81,6 +81,8 @@ fn print_usage() {
     println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
     println!("  musa kernel <file.musa> [--normalized] print the piece as kernel interchange text");
     println!("  musa kernel --check <file.musa.kernel> parse, check, and evaluate kernel text");
+    println!("      a file whose first line is `% musa-kernel-1` is Musa too: check, format");
+    println!("      and render read one wherever they read a piece");
     println!("  musa analyze <file.musa> --kind <kind> observe a score without changing it");
     println!("      --kind facts | chords | tonal | cadences | voice-leading | counterpoint");
     println!("      --profile <profile>   which style's rules to read by, for the last two kinds");
@@ -838,7 +840,7 @@ impl Walked {
                 continue;
             }
             let kind = entry.file_type()?;
-            let source = kind.is_file() && path.extension().is_some_and(|extension| extension == "musa");
+            let source = kind.is_file() && is_document(&name);
             if !kind.is_dir() && !source {
                 continue;
             }
@@ -858,6 +860,21 @@ impl Walked {
         }
         Ok(())
     }
+}
+
+/// Whether a walk should treat this file name as a musa document.
+///
+/// Both alternatives (`docs/language/01-surface.md` §7), because both are
+/// documents a bulk `musa format` is responsible for: a `.musa.kernel` file
+/// left out of the walk is a file `--check` calls clean and a later edit makes
+/// dirty without anything noticing.
+///
+/// Matched on the whole name rather than on `Path::extension`, which reads
+/// `twinkle.musa.kernel` as a `kernel` file and would need the double
+/// extension taken apart by hand to say otherwise.
+fn is_document(name: &std::ffi::OsStr) -> bool {
+    let name = name.to_string_lossy();
+    name.ends_with(".musa") || name.ends_with(".musa.kernel")
 }
 
 /// A diagnostic rendered with source context by miette.

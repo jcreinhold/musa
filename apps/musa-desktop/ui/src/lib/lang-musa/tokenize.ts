@@ -60,6 +60,7 @@ export interface Read {
 }
 
 const WORD = /[A-Za-z_]/;
+const WORD_TAIL = /[A-Za-z_0-9]/;
 const DIGIT = /[0-9]/;
 
 const OPEN: ReaderState = { inComment: false };
@@ -101,7 +102,13 @@ function word(source: string, from: number): Token {
   if (size && /^[PMm]$/.test(letters)) {
     return { class: "pitch", start: from, end: end + size[0].length };
   }
-  return { class: SPELLED.get(letters) ?? "name", start: from, end };
+  // No literal read the word, so it is a name — and a name may carry digits
+  // after its first letter, because musicians write words that do: `fmaj7`,
+  // `sus4`, `drop2`. The digits are taken only here, after the literals have
+  // had their turn, because `c4` is a pitch and taking them earlier would
+  // spell it as a chord symbol.
+  while (end < source.length && WORD_TAIL.test(at(source, end))) end += 1;
+  return { class: SPELLED.get(source.slice(from, end)) ?? "name", start: from, end };
 }
 
 /** A number: a rational, a float, or an integer, in the lexer's order. */

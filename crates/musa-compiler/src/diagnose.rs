@@ -85,6 +85,9 @@ pub enum Code {
     /// own: something has to have been claimed, in writing, for the compiler
     /// to have anything to disprove.
     UnmetClaim,
+    /// A well-formed kernel document whose payload type this build has no
+    /// implementation for. The file is right; the reader is short.
+    UnsupportedPayload,
 }
 
 impl Code {
@@ -114,12 +117,13 @@ impl Code {
             Self::RedundantMarking => "redundant-marking",
             Self::CopiedBars => "copied-bars",
             Self::UnmetClaim => "unmet-claim",
+            Self::UnsupportedPayload => "unsupported-payload",
         }
     }
 
     /// Every code, for `musa explain` with no argument and for the tests that
     /// keep the explanation table honest.
-    pub const ALL: [Self; 23] = [
+    pub const ALL: [Self; 24] = [
         Self::Syntax,
         Self::UnknownName,
         Self::DuplicateName,
@@ -143,6 +147,7 @@ impl Code {
         Self::RedundantMarking,
         Self::CopiedBars,
         Self::UnmetClaim,
+        Self::UnsupportedPayload,
     ];
 
     /// Parse a code back from its written form.
