@@ -1,0 +1,19 @@
+---
+source: crates/musa/tests/cli.rs
+expression: text
+---
+cadences — looks at each potential cadence point for the harmonic, melodic, and formal evidence OMT 036 requires, and says which of it is missing
+  assuming a cadence needs harmony, melody, and a phrase ending to agree; each is reported separately (OMT 036)
+  assuming phrase endings come from what the source marks — a `phrase`, a rest, or the end of the piece — never from a guess about form
+  assuming a subverted cadence looks exactly like a cadence to a reader of pitch alone, so a candidate here is not a decision
+
+      3:1  candidate cadence          perfect authentic cadence in C major         8 notes from line 57
+             but not: the music stops or rests here (OMT 036)
+      6:1  candidate cadence          imperfect authentic cadence in C major       8 notes from line 60
+             but not: the tonic is in the top voice (OMT 036)
+             but not: the music stops or rests here (OMT 036)
+      9:1  candidate cadence          half cadence in C major                      8 notes from line 63
+             but not: the music stops or rests here (OMT 036)
+     12:1  candidate cadence          deceptive cadence in C major                 8 notes from line 66
+
+4 findings

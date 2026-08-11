@@ -53,7 +53,7 @@ mod studio;
 mod template;
 mod utf16;
 
-pub use crate::analysis::{AnalysisFacts, EvidenceFacts, FindingFacts};
+pub use crate::analysis::{AnalysisFacts, EvidenceFacts, FindingFacts, GroundFacts, NoteFacts};
 pub use crate::command::{DocumentId, ProjectCommand, ProjectUpdate, Revision, TextEdit, TransportRequest, Validity};
 pub use crate::contents::{ContentsFacts, EntryFacts};
 pub use crate::diagnostic::{Diagnostic, Fix, FixEdit, Label, Severity, Span, codes, explain};
@@ -76,7 +76,7 @@ pub use crate::studio::{
 pub use crate::template::Template;
 pub use crate::utf16::Utf16Offsets;
 pub use musa_compiler::standard_library_source;
-pub use musa_compiler::{AnalysisKind, AnalysisRequest, AnalysisScope, MusicalTime};
+pub use musa_compiler::{AnalysisKind, AnalysisRequest, AnalysisScope, Key, Mode, MusicalTime, Segmentation};
 pub use musa_compiler::{ChoicePath, ChoiceStep, Decision, DecisionRecord, DocumentKind, Realization};
 pub use musa_compiler::{chord_types, scale_collections};
 pub use musa_language::{BarSpacing, HeaderField, KeywordDoc, keyword_doc};

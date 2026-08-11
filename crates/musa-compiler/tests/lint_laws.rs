@@ -279,7 +279,7 @@ fn a_waiver_lives_next_to_the_sin() {
 #[test]
 fn the_examples_are_lint_clean() {
     let mut checked = 0_u32;
-    for directory in ["examples", "examples/album/pieces"] {
+    for directory in ["examples", "examples/album/pieces", "examples/analysis"] {
         let mut paths: Vec<_> = std::fs::read_dir(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../..")

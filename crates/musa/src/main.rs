@@ -81,10 +81,13 @@ fn print_usage() {
     println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
     println!("  musa kernel <file.musa> [--normalized] print the piece as kernel interchange text");
     println!("  musa kernel --check <file.musa.kernel> parse, check, and evaluate kernel text");
-    println!("  musa analyze <file.musa> --kind facts  observe a score without changing it");
+    println!("  musa analyze <file.musa> --kind <kind> observe a score without changing it");
+    println!("      --kind facts | chords | tonal | cadences         (default: facts)");
     println!("      --format text | json                 how to print the report (default: text)");
     println!("      --part <name> [--voice <name>]       read one part, or one of its voices");
     println!("      --from <n> --to <n>                  read only [from, to), in whole notes");
+    println!("      --segmentation attacks | beats | harmony-lane    what sounds together");
+    println!("      --key \"<tonic> <mode>\"               read it in the key you hear");
     println!("  --seed <n>  on check, render and kernel: which performance to compile");
 }
 
@@ -238,6 +241,8 @@ fn cmd_analyze(args: &[String], realization: &Realization) -> ExitCode {
     let mut format = "text";
     let mut part: Option<&str> = None;
     let mut voice: Option<&str> = None;
+    let mut segmentation = "attacks";
+    let mut key: Option<&str> = None;
     let mut from: Option<&str> = None;
     let mut to: Option<&str> = None;
     let mut index = 0;
@@ -262,6 +267,14 @@ fn cmd_analyze(args: &[String], realization: &Realization) -> ExitCode {
                 voice = args.get(index.saturating_add(1)).map(String::as_str);
                 index = index.saturating_add(2);
             }
+            "--segmentation" => {
+                segmentation = args.get(index.saturating_add(1)).map_or("attacks", String::as_str);
+                index = index.saturating_add(2);
+            }
+            "--key" => {
+                key = args.get(index.saturating_add(1)).map(String::as_str);
+                index = index.saturating_add(2);
+            }
             "--from" => {
                 from = args.get(index.saturating_add(1)).map(String::as_str);
                 index = index.saturating_add(2);
@@ -281,10 +294,21 @@ fn cmd_analyze(args: &[String], realization: &Realization) -> ExitCode {
         return ExitCode::FAILURE;
     };
     let Some(kind) = AnalysisKind::named(kind) else {
-        eprintln!("error: `{kind}` is not an analysis (facts)");
+        eprintln!("error: `{kind}` is not an analysis (facts | chords | tonal | cadences)");
         return ExitCode::FAILURE;
     };
-    let mut request = AnalysisRequest::new(kind);
+    let Some(segmentation) = musa_project::Segmentation::named(segmentation) else {
+        eprintln!("error: `{segmentation}` is not a segmentation (attacks | beats | harmony-lane)");
+        return ExitCode::FAILURE;
+    };
+    let mut request = AnalysisRequest::new(kind).segmenting(segmentation);
+    if let Some(written) = key {
+        let Some(parsed) = musa_project::Key::parse(written) else {
+            eprintln!("error: `{written}` is not a key: write `c major` or `a minor`");
+            return ExitCode::FAILURE;
+        };
+        request = request.in_key(parsed);
+    }
     request = match (part, voice) {
         (None, None) => request,
         (Some(part), None) => request.scoped(AnalysisScope::Part(part.to_owned())),
@@ -345,20 +369,27 @@ fn print_analysis(facts: &musa_project::AnalysisFacts) {
     for finding in &facts.findings {
         let place = format!("{}:{}", finding.bar, fraction(finding.beat));
         let where_seen = match finding.evidence {
-            musa_project::EvidenceFacts::Event {
-                ref part,
-                ref voice,
-                line,
-                ..
-            } => format!("{part}/{voice}, line {line}"),
+            musa_project::EvidenceFacts::Event(ref note) => {
+                format!("{}/{}, line {}", note.part, note.voice, note.line)
+            }
+            musa_project::EvidenceFacts::Passage { ref notes, .. } => match notes.first() {
+                Some(note) => format!("{} notes from line {}", notes.len(), note.line),
+                None => String::new(),
+            },
             musa_project::EvidenceFacts::Annotation { line, .. } => format!("line {line}"),
             musa_project::EvidenceFacts::InForce => String::new(),
         };
         let row = format!(
-            "  {place:>7}  {:<9} {:<16} {:<38} {where_seen}",
+            "  {place:>7}  {:<9} {:<16} {:<44} {where_seen}",
             finding.standing, finding.code, finding.summary,
         );
         println!("{}", row.trim_end());
+        // Only the criteria that failed. A reading is argued with where it is
+        // weak, and printing the satisfied ones too would bury that under the
+        // ones nobody disputes.
+        for ground in finding.grounds.iter().filter(|ground| !ground.satisfied) {
+            println!("             but not: {} ({})", ground.criterion, ground.cites);
+        }
     }
     println!();
     let count = u32::try_from(facts.findings.len()).unwrap_or(u32::MAX);

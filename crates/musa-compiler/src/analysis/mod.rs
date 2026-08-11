@@ -47,9 +47,10 @@
 //! will change. The boundary here is one request, one report, and one
 //! function; everything that computes a finding stays private.
 
+use crate::chord::ChordClass;
 use crate::harmony::ChordSymbol;
 use crate::origin::SourceSpan;
-use crate::pitch::WrittenPitch;
+use crate::pitch::{PitchClass, WrittenPitch};
 use crate::scope::Scope;
 use crate::score::{EventId, Key, Meter, PartId, ScoreSnapshot, VoiceId};
 use crate::time::{MusicalDuration, MusicalTime};
@@ -63,16 +64,25 @@ use crate::time::{MusicalDuration, MusicalTime};
 pub enum AnalysisKind {
     /// The score's own statements, and nothing read into them.
     Facts,
+    /// Simultaneities, and which chords their pitch content fits.
+    Chords,
+    /// Roman numerals, key regions, tonicization, and modulation.
+    Tonal,
+    /// Cadences, with the evidence each one does and does not have.
+    Cadences,
 }
 
 impl AnalysisKind {
     /// Every kind, in the order a listing prints them.
-    pub const ALL: [Self; 1] = [Self::Facts];
+    pub const ALL: [Self; 4] = [Self::Facts, Self::Chords, Self::Tonal, Self::Cadences];
 
     /// How the kind is written on a command line.
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Facts => "facts",
+            Self::Chords => "chords",
+            Self::Tonal => "tonal",
+            Self::Cadences => "cadences",
         }
     }
 
@@ -88,6 +98,15 @@ impl AnalysisKind {
             Self::Facts => {
                 "reads the score's own statements: what sounds, what rests, what is written above the staff, and what is in force"
             }
+            Self::Chords => {
+                "segments the music into simultaneities and reports every chord class whose members stand in a stated relation to each one (OMT 017-019)"
+            }
+            Self::Tonal => {
+                "reads each simultaneity as a Roman numeral against every key the passage supports, and reports tonicization and modulation candidates with the OMT 050-051 criteria each satisfies"
+            }
+            Self::Cadences => {
+                "looks at each potential cadence point for the harmonic, melodic, and formal evidence OMT 036 requires, and says which of it is missing"
+            }
         }
     }
 
@@ -102,6 +121,21 @@ impl AnalysisKind {
                 "the score compiled: an analysis reads a finished snapshot, never half-resolved source",
                 "written spelling is kept: `d#4` is reported as D-sharp and never as E-flat",
                 "nothing outside the requested scope and window was read, and nothing about it is claimed",
+            ],
+            Self::Chords => &[
+                "the requested segmentation is the right one: which notes sound together is a reading, and the request chose it",
+                "a chord is its set of pitch classes; voicing, doubling, and octave are not part of the fit (OMT 019)",
+                "nothing here decides which notes are embellishing tones — a fit that needs one is reported as needing one (OMT 039)",
+            ],
+            Self::Tonal => &[
+                "common-practice Western tonality: these numerals describe that repertoire and nothing beyond it",
+                "a key written in the source is strong evidence about the key and not a proof of it (OMT 051)",
+                "tonicization and modulation lie on a continuum; where the criteria underdetermine it, both readings are reported (OMT 051)",
+            ],
+            Self::Cadences => &[
+                "a cadence needs harmony, melody, and a phrase ending to agree; each is reported separately (OMT 036)",
+                "phrase endings come from what the source marks — a `phrase`, a rest, or the end of the piece — never from a guess about form",
+                "a subverted cadence looks exactly like a cadence to a reader of pitch alone, so a candidate here is not a decision",
             ],
         }
     }
@@ -139,6 +173,50 @@ pub struct AnalysisRequest {
     kind: AnalysisKind,
     scope: AnalysisScope,
     window: Option<(MusicalTime, MusicalTime)>,
+    segmentation: Segmentation,
+    key: Option<Key>,
+}
+
+/// How to decide which notes count as sounding together.
+///
+/// A policy and not a discovery. Which notes form a chord is the first
+/// interpretive choice in any harmonic analysis, and the three answers below
+/// genuinely disagree on real music — a passing tone is inside the sonority
+/// under [`Self::Attacks`] and outside it under [`Self::Sustained`]. So the
+/// caller states it, the report carries it in its assumptions, and no
+/// algorithm here pretends the question was settled for it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Segmentation {
+    /// A new simultaneity begins at every attack, and holds until the next
+    /// one. The plainest reading, and the one that keeps every note.
+    #[default]
+    Attacks,
+    /// One simultaneity per notated beat, holding what sounds when the beat
+    /// arrives. The metric reading: it hides offbeat passing motion, and it
+    /// loses a genuine chord change that arrives between beats.
+    Beats,
+    /// One window per written chord symbol, running to the next one. The
+    /// source's own segmentation, available only where the source wrote a
+    /// harmony lane.
+    HarmonyLane,
+}
+
+impl Segmentation {
+    /// How the policy is written on a command line.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Attacks => "attacks",
+            Self::Beats => "beats",
+            Self::HarmonyLane => "harmony-lane",
+        }
+    }
+
+    /// The policy written as `name`, or `None` if none is.
+    pub fn named(name: &str) -> Option<Self> {
+        [Self::Attacks, Self::Beats, Self::HarmonyLane]
+            .into_iter()
+            .find(|policy| policy.as_str() == name)
+    }
 }
 
 impl AnalysisRequest {
@@ -153,6 +231,8 @@ impl AnalysisRequest {
             kind,
             scope: AnalysisScope::Score,
             window: None,
+            segmentation: Segmentation::Attacks,
+            key: None,
         }
     }
 
@@ -167,6 +247,29 @@ impl AnalysisRequest {
     #[must_use]
     pub fn within(mut self, from: MusicalTime, to: MusicalTime) -> Self {
         self.window = Some((from, to));
+        self
+    }
+
+    /// Decide which notes sound together this way.
+    ///
+    /// Ignored by kinds that read no simultaneities, which is why it is a
+    /// builder rather than an argument: a `facts` request has no segmentation
+    /// to state and should not have to say so.
+    #[must_use]
+    pub fn segmenting(mut self, how: Segmentation) -> Self {
+        self.segmentation = how;
+        self
+    }
+
+    /// Analyze against this key rather than against the keys the passage
+    /// supports.
+    ///
+    /// The honest use is "read this the way I hear it". It narrows the
+    /// reading; it does not make it true, and a numeral produced under an
+    /// assumed key is still a candidate whenever the fit underneath it is.
+    #[must_use]
+    pub fn in_key(mut self, key: Key) -> Self {
+        self.key = Some(key);
         self
     }
 }
@@ -305,6 +408,238 @@ pub enum Observation {
         /// Where it takes force.
         from: MusicalTime,
     },
+    /// A simultaneity: what sounds together over an exact span, under the
+    /// request's segmentation policy.
+    Sonority {
+        /// The sounding pitches, lowest first.
+        pitches: Vec<WrittenPitch>,
+        /// Where the slice begins.
+        onset: MusicalTime,
+        /// How long it lasts.
+        extent: MusicalDuration,
+    },
+    /// A chord class the simultaneity's pitch content fits, and how.
+    ChordFit {
+        /// The chord, spelled.
+        chord: ChordName,
+        /// The relation between the sounding classes and the chord's members.
+        fit: Fit,
+        /// Where the simultaneity begins.
+        onset: MusicalTime,
+        /// How long it lasts.
+        extent: MusicalDuration,
+    },
+    /// What a written chord symbol and the notes under it say about each
+    /// other. Reported only when a symbol is written: the compiler still
+    /// derives nothing from one, and this is a reader comparing two things the
+    /// source already said.
+    SymbolReading {
+        /// The symbol, as the source spells it.
+        symbol: ChordSymbol,
+        /// The chord the notes fit, when they fit one.
+        sounding: Option<ChordName>,
+        /// Where the symbol is written.
+        at: MusicalTime,
+    },
+    /// A Roman numeral for a simultaneity, against a key.
+    Numeral {
+        /// The numeral as it is written: `V7`, `viio6`, `V7/V`.
+        numeral: String,
+        /// The key it is a numeral in.
+        key: Key,
+        /// How well the notes fit the chord the numeral names.
+        fit: Fit,
+        /// Where the simultaneity begins.
+        onset: MusicalTime,
+        /// How long it lasts.
+        extent: MusicalDuration,
+    },
+    /// A stretch of music a key would account for.
+    KeyRegion {
+        /// The key.
+        key: Key,
+        /// Where the stretch begins.
+        from: MusicalTime,
+        /// Where it ends.
+        to: MusicalTime,
+    },
+    /// A cadence reading at a potential cadence point.
+    Cadence {
+        /// Which cadence, at the strength its evidence supports.
+        cadence: Cadence,
+        /// The key it cadences in.
+        key: Key,
+        /// Where the final chord of the cadence begins.
+        at: MusicalTime,
+    },
+    /// A non-tonic chord made to sound like a temporary tonic (OMT 050).
+    Tonicization {
+        /// The numeral being tonicized, in the home key: `V`, `ii`.
+        target: String,
+        /// The home key.
+        key: Key,
+        /// Where the tonicizing chord begins.
+        from: MusicalTime,
+        /// Where the tonicized chord ends.
+        to: MusicalTime,
+    },
+    /// A longer-term change of tonic (OMT 051).
+    Modulation {
+        /// The key being left.
+        from_key: Key,
+        /// The key being reached.
+        to_key: Key,
+        /// How the new key is introduced.
+        how: Approach,
+        /// Where the change is heard.
+        at: MusicalTime,
+    },
+}
+
+/// A chord an analysis names: a spelled root, the vocabulary word for what is
+/// stacked on it, and the class in the bass when the bass is not the root.
+///
+/// This is the analysis's own name for a chord and not the compiler's chord
+/// algebra. Publishing `crate::chord::ChordClass` was the alternative, and it
+/// would have exported a construction API — inversion, re-rooting, slash
+/// basses, the spelled member table — so that a reader could print four words.
+/// A caller of [`analyze`] never builds a chord; it reads one. So the boundary
+/// owns a value that answers exactly the three questions a reader asks, and
+/// the algebra stays where the chords are built.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ChordName {
+    root: PitchClass,
+    quality: &'static str,
+    bass: Option<PitchClass>,
+}
+
+impl ChordName {
+    /// The spelled root class. Spelling is kept: an F-sharp chord is not a
+    /// G-flat chord.
+    pub fn root(self) -> PitchClass {
+        self.root
+    }
+
+    /// The vocabulary word for what is stacked on the root: `major`,
+    /// `dominant7`, `half_diminished7`. The same words `chord` takes in
+    /// source, so a reading can be written back as a chord if an author wants
+    /// it in the score.
+    pub fn quality(self) -> &'static str {
+        self.quality
+    }
+
+    /// The class in the bass, when the sonority does not put the root there.
+    pub fn bass(self) -> Option<PitchClass> {
+        self.bass
+    }
+
+    /// The name of a chord the theory layer built.
+    fn of(class: ChordClass) -> Self {
+        Self {
+            root: class.root(),
+            quality: class.kind().name(),
+            bass: class.bass().filter(|bass| *bass != class.root()),
+        }
+    }
+}
+
+impl std::fmt::Display for ChordName {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(out, "{} {}", self.root, self.quality)?;
+        match self.bass {
+            Some(bass) => write!(out, "/{bass}"),
+            None => Ok(()),
+        }
+    }
+}
+
+/// How the sounding pitch classes stand to a chord's members.
+///
+/// Four relations rather than a score, because they are what a reader has to
+/// argue about. "This is a C major triad" and "this is a C major triad with a
+/// passing D in it" are different claims about the same notes, and flattening
+/// them into one number with a threshold would hide exactly the disagreement.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Fit {
+    /// The sounding classes are exactly the chord's members.
+    Exact,
+    /// Every sounding class is a member, and at least one member is absent —
+    /// most often the fifth, which OMT 020 notes is routinely omitted.
+    Incomplete,
+    /// Every member sounds, and something else sounds too: the extra notes are
+    /// candidates for embellishing tones (OMT 039), which this does not decide.
+    WithExtraTones,
+    /// Some members are absent *and* something else sounds. The weakest
+    /// relation that is still worth reporting, and never a `Fact`.
+    Partial,
+}
+
+impl Fit {
+    /// The word a report prints.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Exact => "exact",
+            Self::Incomplete => "incomplete",
+            Self::WithExtraTones => "with extra tones",
+            Self::Partial => "partial",
+        }
+    }
+}
+
+/// Which cadence a potential cadence point is, at the strength its evidence
+/// supports (OMT 036).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Cadence {
+    /// V–I with *do* in the top voice over a root-position tonic and a
+    /// root-position dominant. The strongest cadence available.
+    PerfectAuthentic,
+    /// V–I with either of those two conditions unmet.
+    ImperfectAuthentic,
+    /// A phrase ending on V, whatever precedes it.
+    Half,
+    /// V–vi (or V–VI): the dominant resolves somewhere other than tonic.
+    Deceptive,
+}
+
+impl Cadence {
+    /// The abbreviation a reader writes on a score.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::PerfectAuthentic => "PAC",
+            Self::ImperfectAuthentic => "IAC",
+            Self::Half => "HC",
+            Self::Deceptive => "DC",
+        }
+    }
+
+    /// The name spelled out.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::PerfectAuthentic => "perfect authentic cadence",
+            Self::ImperfectAuthentic => "imperfect authentic cadence",
+            Self::Half => "half cadence",
+            Self::Deceptive => "deceptive cadence",
+        }
+    }
+}
+
+/// How a new key arrives (OMT 051).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Approach {
+    /// Straight into the new key, with nothing preparing it.
+    Direct,
+    /// Through a chord diatonic in both keys.
+    Pivot,
+}
+
+impl Approach {
+    /// The word a report prints.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Direct => "direct",
+            Self::Pivot => "pivot",
+        }
+    }
 }
 
 impl Observation {
@@ -312,9 +647,17 @@ impl Observation {
     /// report is ordered by.
     pub fn at(&self) -> MusicalTime {
         match *self {
-            Self::Sounding { onset, .. } | Self::Silence { onset, .. } => onset,
-            Self::Written { at, .. } => at,
-            Self::KeyInForce { from, .. } | Self::MeterInForce { from, .. } => from,
+            Self::Sounding { onset, .. }
+            | Self::Silence { onset, .. }
+            | Self::Sonority { onset, .. }
+            | Self::ChordFit { onset, .. }
+            | Self::Numeral { onset, .. } => onset,
+            Self::Written { at, .. } | Self::SymbolReading { at, .. } => at,
+            Self::Cadence { at, .. } | Self::Modulation { at, .. } => at,
+            Self::KeyInForce { from, .. }
+            | Self::MeterInForce { from, .. }
+            | Self::KeyRegion { from, .. }
+            | Self::Tonicization { from, .. } => from,
         }
     }
 
@@ -324,9 +667,17 @@ impl Observation {
         match *self {
             Self::MeterInForce { .. } => 0,
             Self::KeyInForce { .. } => 1,
-            Self::Written { .. } => 2,
-            Self::Sounding { .. } => 3,
-            Self::Silence { .. } => 4,
+            Self::KeyRegion { .. } => 2,
+            Self::Modulation { .. } => 3,
+            Self::Tonicization { .. } => 4,
+            Self::Written { .. } => 5,
+            Self::SymbolReading { .. } => 6,
+            Self::Sonority { .. } => 7,
+            Self::ChordFit { .. } => 8,
+            Self::Numeral { .. } => 9,
+            Self::Cadence { .. } => 10,
+            Self::Sounding { .. } => 11,
+            Self::Silence { .. } => 12,
         }
     }
 }
@@ -342,17 +693,19 @@ impl Observation {
 /// case it was looking at.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Evidence {
-    /// A score event, and the source that spells it.
-    Event {
-        /// Which part it is in.
-        part: PartId,
-        /// Which voice of that part.
-        voice: VoiceId,
-        /// The event's snapshot-local identity.
-        id: EventId,
-        /// The statement that spells it — the note inside the motif when the
-        /// event came from one, so the reference points at editable text.
-        span: SourceSpan,
+    /// One score event, and the source that spells it.
+    Event(NoteRef),
+    /// A stretch of music and the notes in it — a simultaneity, a cadence's
+    /// two chords, a key region. Every note is named rather than a hull span
+    /// being invented, because two notes of one chord can come from two
+    /// different motifs and no single source range covers them.
+    Passage {
+        /// Where the stretch begins.
+        from: MusicalTime,
+        /// Where it ends.
+        to: MusicalTime,
+        /// The notes in it, in the report's own order.
+        notes: Vec<NoteRef>,
     },
     /// Something written above the staff, and its source.
     Annotation {
@@ -369,6 +722,40 @@ pub enum Evidence {
     },
 }
 
+/// One note, by every coordinate a caller can act on.
+///
+/// Public fields: this is a coordinate record, and an accessor per field would
+/// be four functions that hide nothing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NoteRef {
+    /// Which part it is in.
+    pub part: PartId,
+    /// Which voice of that part.
+    pub voice: VoiceId,
+    /// The event's snapshot-local identity.
+    pub id: EventId,
+    /// The statement that spells it — the note inside the motif when the event
+    /// came from one, so the reference points at editable text.
+    pub span: SourceSpan,
+}
+
+/// One criterion a finding was judged against, and whether it held.
+///
+/// This is the part of a finding that makes it arguable. "Perfect authentic
+/// cadence" is an assertion; "authentic cadence, root position yes, *do* in
+/// the top voice no, phrase ending unknown" is a reading a musician can
+/// disagree with in a specific place. Every kind that classifies states its
+/// criteria this way, with the source that defines each one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Ground {
+    /// What was checked, in a few words.
+    pub criterion: &'static str,
+    /// Whether the music satisfies it.
+    pub satisfied: bool,
+    /// Where the criterion comes from: `OMT 036`.
+    pub cites: &'static str,
+}
+
 /// One thing an analysis saw.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AnalysisFinding {
@@ -376,6 +763,7 @@ pub struct AnalysisFinding {
     standing: Standing,
     observation: Observation,
     evidence: Evidence,
+    grounds: Vec<Ground>,
 }
 
 impl AnalysisFinding {
@@ -398,6 +786,43 @@ impl AnalysisFinding {
     /// Where it can be seen in the score.
     pub fn evidence(&self) -> &Evidence {
         &self.evidence
+    }
+
+    /// A finding with no criteria behind it: an observation, not a judgement.
+    fn stated(code: &'static str, observation: Observation, evidence: Evidence) -> Self {
+        Self {
+            code,
+            standing: Standing::Fact,
+            observation,
+            evidence,
+            grounds: Vec::new(),
+        }
+    }
+
+    /// A finding a kind reached by checking criteria, with those criteria and
+    /// their verdicts attached.
+    fn judged(
+        code: &'static str,
+        standing: Standing,
+        observation: Observation,
+        evidence: Evidence,
+        grounds: Vec<Ground>,
+    ) -> Self {
+        Self {
+            code,
+            standing,
+            observation,
+            evidence,
+            grounds,
+        }
+    }
+
+    /// What it was judged against, and what held.
+    ///
+    /// Empty for a kind that classifies nothing — a `facts` finding is not a
+    /// judgement and has no criteria to show.
+    pub fn grounds(&self) -> &[Ground] {
+        &self.grounds
     }
 }
 
@@ -471,6 +896,18 @@ pub fn analyze(snapshot: &ScoreSnapshot, request: &AnalysisRequest) -> Result<An
     let window = window_of(request)?;
     let findings = match request.kind {
         AnalysisKind::Facts => facts::observe(snapshot, &lanes, &request.scope, window),
+        AnalysisKind::Chords => {
+            let slices = segment::slices(snapshot, &lanes, request.segmentation, window);
+            chords::observe(snapshot, &slices, &request.scope, window)
+        }
+        AnalysisKind::Tonal => {
+            let slices = segment::slices(snapshot, &lanes, request.segmentation, window);
+            tonal::observe(snapshot, &lanes, &slices, request.key)
+        }
+        AnalysisKind::Cadences => {
+            let slices = segment::slices(snapshot, &lanes, request.segmentation, window);
+            cadence::observe(snapshot, &lanes, &slices, request.key)
+        }
     };
     Ok(AnalysisReport {
         kind: request.kind,
@@ -569,7 +1006,10 @@ fn inside(window: Option<(MusicalTime, MusicalTime)>, at: MusicalTime) -> bool {
 /// The total order every report is in.
 fn order(finding: &AnalysisFinding) -> (MusicalTime, u8, u32, u32, u64, u32) {
     let (part, voice, id, span) = match finding.evidence {
-        Evidence::Event { part, voice, id, span } => (part.0, voice.0, id.0, span.start),
+        Evidence::Event(note) => (note.part.0, note.voice.0, note.id.0, note.span.start),
+        Evidence::Passage { ref notes, .. } => notes.first().map_or((u32::MAX, u32::MAX, u64::MAX, u32::MAX), |note| {
+            (note.part.0, note.voice.0, note.id.0, note.span.start)
+        }),
         Evidence::Annotation { span } => (u32::MAX, u32::MAX, u64::MAX, span.start),
         Evidence::InForce { .. } => (u32::MAX, u32::MAX, u64::MAX, u32::MAX),
     };
@@ -583,148 +1023,8 @@ fn order(finding: &AnalysisFinding) -> (MusicalTime, u8, u32, u32, u64, u32) {
     )
 }
 
-/// The `facts` kind.
-///
-/// **Abstract domain.** The finite set of *pointed statements* of a score: a
-/// sounding written pitch with its exact span, a silence with its exact span,
-/// a chord symbol at an instant, and a key or meter in force from an instant —
-/// each paired with where in the score it can be seen.
-///
-/// **Abstraction map.** α restricts the snapshot to the requested lanes and
-/// window and reads every surviving score event, harmony annotation, and key
-/// and meter stretch into exactly one element of that set. A chord event
-/// becomes one `Sounding` per tone, because a chord at this layer is
-/// simultaneous notes and nothing more.
-///
-/// **Soundness.** α is *exact on what it reports*: for every finding there is
-/// a statement of the score with precisely those coordinates, and every
-/// statement of the score inside the scope and window has a finding.
-/// Therefore every finding is a [`Standing::Fact`] — the abstraction separates
-/// every pair of concrete scores differing on anything it reports, so no two
-/// readings survive it and there is nothing to be a candidate about.
-///
-/// What a finding licenses is exactly "the score states this here". What it
-/// does *not* license is any claim about material the request excluded: γ of a
-/// report is every score agreeing with it inside the scope and window, and
-/// that set is not a singleton. A reader concluding "the piece is in C major"
-/// from one `KeyInForce` finding over one bar has read something the map does
-/// not say.
-mod facts {
-    use super::{AnalysisFinding, AnalysisScope, Evidence, Lane, Observation, Standing, inside};
-    use crate::score::{ScoreEventKind, ScoreSnapshot};
-    use crate::time::MusicalTime;
-
-    pub(super) fn observe(
-        snapshot: &ScoreSnapshot,
-        lanes: &[Lane],
-        scope: &AnalysisScope,
-        window: Option<(MusicalTime, MusicalTime)>,
-    ) -> Vec<AnalysisFinding> {
-        let mut found = Vec::new();
-        for lane in lanes {
-            let Some(voice) = snapshot.parts().get(lane.part).and_then(|part| part.voice(lane.voice)) else {
-                continue;
-            };
-            for event in voice.events() {
-                if !inside(window, event.onset) {
-                    continue;
-                }
-                let evidence = Evidence::Event {
-                    part: lane.part,
-                    voice: lane.voice,
-                    id: event.id,
-                    span: event.origin.definition_span,
-                };
-                let extent = event.notated_duration.value;
-                match event.kind {
-                    ScoreEventKind::Note { pitch } => found.push(AnalysisFinding {
-                        code: "sounding-pitch",
-                        standing: Standing::Fact,
-                        observation: Observation::Sounding {
-                            pitch,
-                            onset: event.onset,
-                            extent,
-                        },
-                        evidence,
-                    }),
-                    // A chord is simultaneous notes at this layer, so it is
-                    // that many findings and not one with a list inside: the
-                    // next analysis asks about pitches, not about noteheads.
-                    ScoreEventKind::Chord { ref pitches } => {
-                        found.extend(pitches.iter().map(|pitch| AnalysisFinding {
-                            code: "sounding-pitch",
-                            standing: Standing::Fact,
-                            observation: Observation::Sounding {
-                                pitch: *pitch,
-                                onset: event.onset,
-                                extent,
-                            },
-                            evidence: evidence.clone(),
-                        }));
-                    }
-                    ScoreEventKind::Rest => found.push(AnalysisFinding {
-                        code: "silence",
-                        standing: Standing::Fact,
-                        observation: Observation::Silence {
-                            onset: event.onset,
-                            extent,
-                        },
-                        evidence,
-                    }),
-                }
-            }
-            for (from, key) in snapshot.keys().changes(lane.scope()) {
-                if inside(window, from) {
-                    found.push(AnalysisFinding {
-                        code: "key-in-force",
-                        standing: Standing::Fact,
-                        observation: Observation::KeyInForce { key: *key, from },
-                        evidence: Evidence::InForce {
-                            scope: lane.scope(),
-                            from,
-                        },
-                    });
-                }
-            }
-            for (from, meter) in snapshot.meters().changes(lane.scope()) {
-                if inside(window, from) {
-                    found.push(AnalysisFinding {
-                        code: "meter-in-force",
-                        standing: Standing::Fact,
-                        observation: Observation::MeterInForce { meter: *meter, from },
-                        evidence: Evidence::InForce {
-                            scope: lane.scope(),
-                            from,
-                        },
-                    });
-                }
-            }
-        }
-        // A chord symbol belongs to the piece, not to a staff: it says what
-        // the whole texture is doing there. So it is read when the request is
-        // about the piece, and left out when the request narrowed to one part
-        // or voice — reporting it there would attribute a piece-wide statement
-        // to music that did not make it.
-        if matches!(*scope, AnalysisScope::Score) {
-            found.extend(
-                snapshot
-                    .annotations()
-                    .harmony()
-                    .iter()
-                    .filter(|mark| inside(window, mark.at))
-                    .map(|mark| AnalysisFinding {
-                        code: "written-harmony",
-                        standing: Standing::Fact,
-                        observation: Observation::Written {
-                            symbol: mark.symbol.clone(),
-                            at: mark.at,
-                        },
-                        evidence: Evidence::Annotation {
-                            span: mark.origin.source_span,
-                        },
-                    }),
-            );
-        }
-        found
-    }
-}
+mod cadence;
+mod chords;
+mod facts;
+mod segment;
+mod tonal;

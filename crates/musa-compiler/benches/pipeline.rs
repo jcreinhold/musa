@@ -1,6 +1,6 @@
 //! The semantic pipeline's baseline (docs/prompts/38; roadmap §17.7).
 //!
-//! Six measurements on seven reference workloads: the historical small,
+//! Seven measurements on seven reference workloads: the historical small,
 //! large, and shared columns plus prompt 93's migration-pressure scenarios.
 //!
 //! | id | what | why it is the right thing to watch |
@@ -11,6 +11,7 @@
 //! | P3 | the snapshot projection | the stage prompt 39 creates, most likely to regress |
 //! | P4 | canonical form of the whole piece | what prompt 43 pays on every edit |
 //! | P5 | the semantic hash of the whole piece | what prompt 43 actually asks for |
+//! | P6 | the tonal analysis of the whole piece | what prompt 118 adds, and the one stage that grows with the chord vocabulary |
 //!
 //! P2–P4 report allocation counts as well as time, because the migration's
 //! risk is allocation and hashing rather than arithmetic: replacing one
@@ -27,7 +28,7 @@
 // fixtures: a failure is a bug in the benchmark, and panicking is correct.
 #![allow(clippy::expect_used)]
 
-use musa_compiler::{CompileOptions, SourceDocument, bench, compile};
+use musa_compiler::{AnalysisKind, AnalysisRequest, CompileOptions, SourceDocument, analyze, bench, compile};
 
 /// Divan's allocation profiler; the counts are the point of choosing it.
 #[global_allocator]
@@ -138,6 +139,25 @@ fn p4_canonical(bencher: divan::Bencher<'_, '_>, workload: &str) {
 fn p5_hash(bencher: divan::Bencher<'_, '_>, workload: &str) {
     let timelines = bench::timelines(&bench::parse(&source(workload)), &options(workload));
     bencher.bench_local(|| divan::black_box(&timelines).hash());
+}
+
+/// P6 — the tonal reading of a whole piece: segmentation, chord fitting,
+/// key regions, numerals, and the boundary readings, with compilation hoisted
+/// out of the measured region.
+///
+/// Watched separately from P0–P5 because it is the one stage whose cost is
+/// quadratic in nothing obvious: every slice is fitted against every chord in
+/// the vocabulary rooted on every sounding class, and then against every
+/// degree of every surviving key. A vocabulary or key-set that grows shows up
+/// here and nowhere else.
+#[divan::bench(args = WORKLOADS)]
+fn p6_analyze(bencher: divan::Bencher<'_, '_>, workload: &str) {
+    let compilation = compile(&source(workload), &options(workload));
+    let Some(score) = compilation.snapshot() else {
+        return;
+    };
+    let request = AnalysisRequest::new(AnalysisKind::Tonal);
+    bencher.bench_local(|| analyze(divan::black_box(score), &request));
 }
 
 /// The prompt-96 evaluator curve. Source construction stays outside the

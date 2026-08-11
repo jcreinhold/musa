@@ -11,7 +11,9 @@
 //! typed form would be reaching past the facade for something the interface has
 //! no use for.
 
-use musa_compiler::{AnalysisFinding, AnalysisReport, Evidence, Observation, PartId, Scope, ScoreSnapshot, VoiceId};
+use musa_compiler::{
+    AnalysisFinding, AnalysisReport, Evidence, NoteRef, Observation, PartId, Scope, ScoreSnapshot, VoiceId,
+};
 use serde::Serialize;
 
 use crate::diagnostic::Span;
@@ -53,6 +55,42 @@ pub struct FindingFacts {
     pub beat: Fraction,
     /// Where in the score it can be seen.
     pub evidence: EvidenceFacts,
+    /// What the finding was judged against, and what held. Empty for a finding
+    /// that judged nothing.
+    pub grounds: Vec<GroundFacts>,
+}
+
+/// One criterion a finding was judged against.
+///
+/// Carried through rather than folded into the sentence, because this is what
+/// makes a reading arguable: a reader disagreeing with "imperfect authentic
+/// cadence" is disagreeing with one of these lines, and an interface that only
+/// had the sentence could not show them which.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroundFacts {
+    /// What was checked.
+    pub criterion: String,
+    /// Whether the music satisfies it.
+    pub satisfied: bool,
+    /// Where the criterion comes from: `OMT 036`.
+    pub cites: String,
+}
+
+/// One note a finding points at.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NoteFacts {
+    /// The part's name.
+    pub part: String,
+    /// The voice's name.
+    pub voice: String,
+    /// The event id — `event-1f`, the MEI `xml:id`.
+    pub event: String,
+    /// The statement that spells it, as a byte range in the source.
+    pub span: Span,
+    /// 1-based line of that statement.
+    pub line: u32,
 }
 
 /// Where a finding can be seen.
@@ -66,17 +104,18 @@ pub struct FindingFacts {
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum EvidenceFacts {
     /// A score event, by the same identity the engraved page carries.
-    Event {
-        /// The part's name.
-        part: String,
-        /// The voice's name.
-        voice: String,
-        /// The event id — `event-1f`, the MEI `xml:id`.
-        event: String,
-        /// The statement that spells it, as a byte range in the source.
-        span: Span,
-        /// 1-based line of that statement.
-        line: u32,
+    Event(NoteFacts),
+    /// A stretch of music and every note in it: a simultaneity, a cadence's
+    /// two chords, a key region. The notes are named one by one rather than
+    /// hulled into a span, because two notes of one chord can come from two
+    /// different motifs and no single source range covers them.
+    Passage {
+        /// Where the stretch begins, in whole notes from the piece start.
+        from: Fraction,
+        /// Where it ends.
+        to: Fraction,
+        /// The notes in it, in the report's own order.
+        notes: Vec<NoteFacts>,
     },
     /// Something written above the staff.
     Annotation {
@@ -113,6 +152,15 @@ impl AnalysisFacts {
                         bar: place.measure,
                         beat: Fraction::from_ratio(place.beat),
                         evidence: evidence(finding, score, &lines),
+                        grounds: finding
+                            .grounds()
+                            .iter()
+                            .map(|ground| GroundFacts {
+                                criterion: ground.criterion.to_owned(),
+                                satisfied: ground.satisfied,
+                                cites: ground.cites.to_owned(),
+                            })
+                            .collect(),
                     }
                 })
                 .collect(),
@@ -148,21 +196,75 @@ fn summarize(observation: &Observation) -> String {
         Observation::MeterInForce { meter, .. } => {
             format!("{}/{} is in force", meter.numerator(), meter.denominator())
         }
+        Observation::Sonority {
+            ref pitches, extent, ..
+        } => format!(
+            "{} sound together for {}",
+            pitches
+                .iter()
+                .map(|pitch| crate::facts::written(*pitch))
+                .collect::<Vec<_>>()
+                .join(", "),
+            extent.as_ratio()
+        ),
+        Observation::ChordFit { chord, fit, .. } => {
+            format!("the notes fit {} — {}", name(chord), fit.as_str())
+        }
+        Observation::SymbolReading {
+            ref symbol, sounding, ..
+        } => match sounding {
+            Some(chord) => format!("`{}` is written; the notes spell {}", symbol.text(), name(chord)),
+            None => format!("`{}` is written; the notes spell no chord", symbol.text()),
+        },
+        Observation::Numeral {
+            ref numeral, key, fit, ..
+        } => format!("{numeral} in {} — {} fit", key_name(key), fit.as_str()),
+        Observation::KeyRegion { key, to, .. } => {
+            format!("{} accounts for the music up to {}", key_name(key), to.as_ratio())
+        }
+        Observation::Cadence { cadence, key, .. } => {
+            format!("{} in {}", cadence.name(), key_name(key))
+        }
+        Observation::Tonicization { ref target, key, .. } => {
+            format!("{target} of {} is tonicized", key_name(key))
+        }
+        Observation::Modulation {
+            from_key, to_key, how, ..
+        } => format!(
+            "{} gives way to {} — {} approach",
+            key_name(from_key),
+            key_name(to_key),
+            how.as_str()
+        ),
     }
+}
+
+/// A chord as a reader writes it: `C major`, `F♯ dominant7/A♯`.
+fn name(chord: musa_compiler::ChordName) -> String {
+    let base = format!("{} {}", crate::facts::pitch_class(chord.root()), chord.quality());
+    match chord.bass() {
+        Some(bass) => format!("{base}/{}", crate::facts::pitch_class(bass)),
+        None => base,
+    }
+}
+
+/// A key as a reader writes it: `C major`.
+fn key_name(key: musa_compiler::Key) -> String {
+    format!(
+        "{} {}",
+        crate::facts::pitch_class(key.tonic()),
+        crate::facts::mode(key.mode())
+    )
 }
 
 /// Resolve a finding's evidence into names, spans, and lines.
 fn evidence(finding: &AnalysisFinding, score: &ScoreSnapshot, lines: &Lines<'_>) -> EvidenceFacts {
     match *finding.evidence() {
-        Evidence::Event { part, voice, id, span } => EvidenceFacts::Event {
-            part: part_name(score, part),
-            voice: voice_name(score, part, voice),
-            event: format!("event-{:x}", id.0),
-            span: Span {
-                start: span.start,
-                end: span.end,
-            },
-            line: lines.at(span.start).line,
+        Evidence::Event(note) => EvidenceFacts::Event(note_facts(note, score, lines)),
+        Evidence::Passage { from, to, ref notes } => EvidenceFacts::Passage {
+            from: Fraction::from_ratio(from.as_ratio()),
+            to: Fraction::from_ratio(to.as_ratio()),
+            notes: notes.iter().map(|note| note_facts(*note, score, lines)).collect(),
         },
         Evidence::Annotation { span } => EvidenceFacts::Annotation {
             span: Span {
@@ -172,6 +274,20 @@ fn evidence(finding: &AnalysisFinding, score: &ScoreSnapshot, lines: &Lines<'_>)
             line: lines.at(span.start).line,
         },
         Evidence::InForce { .. } => EvidenceFacts::InForce,
+    }
+}
+
+/// One note, resolved into names, a span, and a line.
+fn note_facts(note: NoteRef, score: &ScoreSnapshot, lines: &Lines<'_>) -> NoteFacts {
+    NoteFacts {
+        part: part_name(score, note.part),
+        voice: voice_name(score, note.part, note.voice),
+        event: format!("event-{:x}", note.id.0),
+        span: Span {
+            start: note.span.start,
+            end: note.span.end,
+        },
+        line: lines.at(note.span.start).line,
     }
 }
 

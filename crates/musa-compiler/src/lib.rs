@@ -65,8 +65,8 @@ mod template;
 mod time;
 
 pub use crate::analysis::{
-    AnalysisError, AnalysisFinding, AnalysisKind, AnalysisReport, AnalysisRequest, AnalysisScope, Evidence,
-    Observation, Standing, analyze,
+    AnalysisError, AnalysisFinding, AnalysisKind, AnalysisReport, AnalysisRequest, AnalysisScope, Approach, Cadence,
+    ChordName, Evidence, Fit, Ground, NoteRef, Observation, Segmentation, Standing, analyze,
 };
 pub use crate::bars::{BarBeat, BarLines, Measure};
 pub use crate::chord::chord_types;

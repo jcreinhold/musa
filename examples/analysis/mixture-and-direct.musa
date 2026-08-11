@@ -1,0 +1,51 @@
+// Two things a key-region reading has to survive: a borrowed chord, and a
+// modulation with nothing preparing it.
+//
+// Bars 1–4 are in C major with a borrowed `iv` in bar 3 — F minor, which is
+// the parallel minor's subdominant (OMT `061-modal-mixture.md`). Mixture is
+// not modulation: the A-flat is outside every C major collection, so this
+// reading closes a region there rather than pretending not to have seen it,
+// and the report carries C minor as a candidate for the borrowed stretch. The
+// honest reading of mixture needs the parallel-key relation, which this
+// analysis does not yet claim — `docs/language/07-analysis.md` §8 lists it as
+// a limit, and this fixture is where it is visible.
+//
+// Bars 5–8 are in E major, arrived at with no chord diatonic in both keys.
+// That is a direct modulation (OMT `051`): the report's `how` is `direct`
+// rather than `pivot`, and the pivot criterion is the one it says it does not
+// satisfy.
+piece "Mixture and Direct" {
+    composer "musa";
+
+    tempo 1/4 = 76;
+    meter 4/4;
+    key c major;
+
+    score {
+        part piano {
+            clef treble;
+
+            voice upper {
+                | [e4 g4 c5]/1
+                | [d4 g4 b4]/1
+                | [f4 ab4 c5]/1
+                | [e4 g4 c5]/1
+                | [g#4 b4 e5]/1
+                | [f#4 b4 d#5]/1
+                | [b4 e5 g#5]/1
+                | [g#4 b4 e5]/1
+            }
+
+            voice lower {
+                | c3/1
+                | g3/1
+                | f3/1
+                | c3/1
+                | e3/1
+                | b3/1
+                | e2/1
+                | e3/1
+            }
+        }
+    }
+}

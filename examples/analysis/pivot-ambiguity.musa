@@ -1,0 +1,77 @@
+// A modulation nobody can date to one chord.
+//
+// Two phrases. The first is unambiguously in C major. The second arrives in G
+// major. Between them stands an A minor triad, which is `vi` in C and `ii` in
+// G — a pivot chord (OMT `051-modulation.md`), and the reason the boundary is
+// a reading rather than a measurement: the change of key has already happened
+// by the D major chord that follows, and has not yet happened at the C major
+// chord before.
+//
+// What `musa analyze --kind tonal` should say about it:
+//
+//   - Two key regions. The first is C major; the second is G major, because
+//     the F-sharp in bar 4 is outside every C collection. Both are candidates,
+//     never facts, because more than one region survives.
+//   - At the boundary, *both* a modulation candidate and a tonicization
+//     candidate, with the OMT 051 criteria attached to each: the pivot
+//     criterion is satisfied, the "holds to the end of the passage" criterion
+//     is satisfied, and the "a cadence confirms it" criterion is not answered
+//     by pitch alone. Duration decides nothing.
+//   - Bar 3 read as `vi` in C major *and* as `ii` in G major, both candidates,
+//     in the same report. That is the pivot, stated rather than resolved.
+//   - Bar 4 read as `V/V` in C major as well as `V` in G major (OMT
+//     `050-tonicization.md`), which is the same ambiguity one chord later.
+//
+// The cadence at the end is a perfect authentic cadence in G major on the
+// evidence of pitch: root position, tonic on top. It is still a candidate,
+// because a phrase ending is a formal fact and this reading sees only notes.
+piece "Pivot Ambiguity" {
+    composer "musa";
+
+    tempo 1/4 = 72;
+    meter 4/4;
+    key c major;
+
+    score {
+        harmony {
+            at 1:1 c;
+            at 2:1 f;
+            at 3:1 am;
+            at 4:1 d;
+            at 5:1 g;
+            at 6:1 am;
+            at 7:1 d7;
+            at 8:1 g;
+        }
+
+        part piano {
+            clef treble;
+
+            voice upper {
+                phrase "antecedent" {
+                    | [e4 g4 c5]/1
+                    | [f4 a4 c5]/1
+                    | [e4 a4 c5]/1
+                }
+                phrase "consequent" {
+                    | [f#4 a4 d5]/1
+                    | [g4 b4 d5]/1
+                    | [e4 a4 c5]/1
+                    | [f#4 a4 c5]/1
+                    | [b4 d5 g5]/1
+                }
+            }
+
+            voice lower {
+                | c3/1
+                | f3/1
+                | a3/1
+                | d3/1
+                | g3/1
+                | a3/1
+                | d3/1
+                | g3/1
+            }
+        }
+    }
+}

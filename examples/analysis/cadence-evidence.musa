@@ -1,0 +1,71 @@
+// Four phrase endings, and the evidence each one has (OMT `036-cadences.md`).
+//
+// A cadence is a *formal* event: it is where a phrase ends. Pitch and rhythm
+// cannot see form, so `musa analyze --kind cadences` never reports a cadence as
+// a fact. What it reports is which of the criteria hold, one line per criterion
+// that does not — which is how a reader tells a real cadence from a subverted
+// one that looks identical on the page.
+//
+// Phrase 1 ends V–I, both chords in root position, with *do* in the top voice:
+// every criterion holds, and it is still a candidate. That is a perfect
+// authentic cadence on the evidence available.
+//
+// Phrase 2 ends V–I with the third in the top voice. The harmonic criterion
+// holds and the melodic one does not, so the reading weakens to an imperfect
+// authentic cadence and says why.
+//
+// Phrase 3 ends on V. That is a half cadence, whatever came before it.
+//
+// Phrase 4 ends V–vi: the dominant resolves somewhere other than tonic, which
+// is a deceptive cadence.
+piece "Cadence Evidence" {
+    composer "musa";
+
+    tempo 1/4 = 80;
+    meter 4/4;
+    key c major;
+
+    score {
+        part piano {
+            clef treble;
+
+            voice upper {
+                phrase "perfect" {
+                    | [e4 g4 c5]/1
+                    | [d4 g4 b4]/1
+                    | [e4 g4 c5]/1
+                }
+                phrase "imperfect" {
+                    | [f4 a4 c5]/1
+                    | [g4 b4 d5]/1
+                    | [c4 g4 e5]/1
+                }
+                phrase "half" {
+                    | [e4 a4 c5]/1
+                    | [f4 a4 c5]/1
+                    | [b4 d5 g5]/1
+                }
+                phrase "deceptive" {
+                    | [g4 c5 e5]/1
+                    | [d4 b4 g5]/1
+                    | [e4 a4 c5]/1
+                }
+            }
+
+            voice lower {
+                | c3/1
+                | g2/1
+                | c3/1
+                | f3/1
+                | g3/1
+                | c2/1
+                | a3/1
+                | f3/1
+                | g2/1
+                | c2/1
+                | g3/1
+                | a3/1
+            }
+        }
+    }
+}

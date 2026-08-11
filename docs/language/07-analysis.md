@@ -138,4 +138,111 @@ concludes "the piece is in C major" from one `key-in-force` finding over one bar
 because `crates/musa-compiler/src/harmony.rs` opens by saying a symbol is recorded and never interpreted. Spelling
 survives: `d#4` is reported as D-sharp and never as E-flat.
 
-Later kinds — tonal function, cadence, modulation, voice leading — arrive in prompts 118 and 119, each under §2's rule.
+### Segmentation, which the other three kinds all rest on
+
+Which notes count as sounding together is the first interpretive act of any harmonic reading, and it is a **policy the
+request states**, never a discovery. `AnalysisRequest::segmenting` chooses one and the report carries it in its
+assumptions:
+
+| Policy | The slice | What it is good for, and what it loses |
+| --- | --- | --- |
+| `attacks` | begins at every attack and holds to the next | keeps every note; a passing tone is inside the sonority |
+| `beats` | one per notated beat, holding what sounds when the beat arrives | hides offbeat passing motion; loses a chord change between beats |
+| `harmony-lane` | one per written chord symbol, running to the next | the source's own reading; absent where the source wrote no harmony lane |
+
+A note belongs to a slice when it has begun by the slice's start and has not stopped by then. Slices with nothing
+sounding are dropped — a rest is a `facts` observation, not a chord with no notes in it.
+
+### `chords`
+
+**Abstract domain.** Per slice: its set of spelled classes and its bass, paired with every *(chord class, relation)*
+where the relation is one of `exact`, `incomplete`, `with extra tones`, `partial`.
+
+**Abstraction map.** α reduces each slice to its spelled classes — losing register, doubling, and voicing, which is what
+"chord" means at all (OMT `019-inversion.md`) — and pairs it with every chord in the analysis vocabulary, rooted on
+every sounding class, standing in one of the four relations. Only the strongest relation any chord achieves is reported,
+with every chord that achieves it. The bounds are stated policy: at most one member absent, at most one class extra.
+
+**Soundness.** α is exact on the slice, so the `sonority` finding is a fact. It is *not* exact on the naming: a class
+set is generally the content of several chords. A fit is a fact exactly when one chord stands in the strongest achieved
+relation **and** that relation is exact; everything else is a candidate.
+
+**The vocabulary** is triads and sevenths (OMT `017-triads.md`, `018-seventh-chords.md`), the added-sixth chords, the
+suspensions, and the three augmented sixths. It is the analysis's policy about what it is willing to name, not the
+language's list of chords — `crate::chord` knows more, and offering all of them for every slice would bury the two or
+three a musician would argue about.
+
+**A symbol reading** compares a written symbol against the notes under it. Agreement is a `fact`, disagreement a
+`conflict`, and neither is a diagnostic: the compiler still derives nothing from a symbol, and this is a reader holding
+two things the source already said next to each other.
+
+### `tonal`
+
+**Abstract domain.** Key regions (a stretch of slices with the set of keys accounting for every class in it), numerals
+(a key, a slice, a Roman numeral, a fit), and changes of tonic (a boundary between two regions, read both ways).
+
+**Abstraction map.** α scans the slice sequence left to right accumulating classes and closes a region when no key
+accounts for the accumulation. Inside a region it stacks the collection's own thirds on each degree — so a numeral
+carries no quality of its own, the collection supplies it (`crates/musa-compiler/src/roman.rs`) — and adds the applied
+dominant and applied leading-tone chords of each tonicizable degree (OMT `050-tonicization.md`). Minor keys are read
+through the natural *and* harmonic collections, because a minor key sounds its raised seventh at every cadence (OMT
+`014`).
+
+At each region boundary the two adjacent chords are read in **both** keys: the last chord of the old region under the
+new key, which is what makes it a pivot at all, and the first chord of the new region under the old key, which is where
+an applied chord shows up as `V/V` rather than as `V`.
+
+**Soundness.** α does not determine a key. A key region is a fact only when one key survives and the passage is one
+region. A numeral is a fact only when its region's key is a fact, its fit is exact, and it is the only numeral the key
+offers — three conditions that fail constantly, which is the honest result.
+
+**Tonicization versus modulation.** Every boundary produces *both* candidates, with the OMT `051` criteria attached as
+grounds: a pivot chord prepares the change; the new key holds to the end of the passage; a cadence confirms it. **No
+criterion is about duration**, and nothing in the implementation compares a region's length to a threshold. Where the
+criteria underdetermine the reading — which is the normal case — both readings stay in the report and the musician
+decides.
+
+**Recursion.** There is none, deliberately. The region scan is a single left-to-right pass over a finite slice sequence
+with a monotonically shrinking key set, so it needs no fixed point. §2's warning from Peyton Jones §22.3 applies to any
+future reading that iterates — keys informing segmentation informing keys — and such a reading would owe a fixed-point
+argument before it could ship.
+
+### `cadences`
+
+**Abstract domain.** Potential cadence points — the instants the source marks as phrase endings, the instants a rest
+begins, and the end of the piece — each paired with the two slices arriving there, a key, a cadence name, and a verdict
+on each criterion in OMT `036-cadences.md`.
+
+**Abstraction map.** α locates the points, takes the last slice ending at or before each and the slice before that,
+reads both as numerals in each key `tonal` proposes, and checks the harmonic criterion (which numerals the two chords
+are), the melodic criterion (the tonic in the top voice), and the positional criterion (both chords in root position).
+V–I is perfect authentic only when the melodic and positional criteria both hold; otherwise imperfect. A phrase ending
+on V is a half cadence; V–vi is deceptive.
+
+**Soundness.** **No cadence finding is ever a fact.** A cadence is a formal event, and a phrase ending is not
+recoverable from pitch and rhythm — a subverted cadence has every harmonic and melodic feature of a real one and does
+not end the phrase. So γ of a cadence finding contains scores where the place is a cadence and scores where it is an
+evaded gesture, and the report says which criteria held so a reader can tell them apart.
+
+A progression that is none of the four is **not reported at all**. There is no weak cadence and no confidence number:
+the absence is the answer.
+
+## 8. Known limits, and the false positives they produce
+
+Stated here rather than discovered by a user. Each is a consequence of a decision made elsewhere in this document, not a
+defect to be patched quietly.
+
+| Limit | What it produces | Why it stands |
+| --- | --- | --- |
+| Chord membership is by **spelling** | A fully diminished seventh spelled B–D–F–A♭ reports *one* rooting, not the four a listener hears. `examples/analysis/equivocal-sonority.musa` bar 4. | Re-spelling the score to find more readings would be constructing music, which §1 forbids. |
+| Embellishing tones are not identified | A passing tone inside a slice makes the fit `with extra tones` and adds candidates that are not chords anyone hears. | Deciding a note is embellishing is a reading of a *line* (OMT `039`); a slice-wise abstraction cannot make it, and pretending otherwise would be a false claim. |
+| Key candidates come from **collection membership** | A short diatonic passage returns three or four key candidates, most of which no listener entertains. `examples/analysis/pivot-ambiguity.musa` bar 1 returns four. | The ranking is stated and deterministic (written key, then nearest on the circle of fifths); narrowing it further would need a corpus prior nobody named — exactly what §3 refuses. |
+| Regions are cut where **no key survives** | A single chromatic chord in an otherwise stable passage can open a spurious region. | The alternative is a threshold on how much chromaticism a key tolerates, which is a number with no source. |
+| `beats` reads the meter, not the harmonic rhythm | A piece whose chords change every half-note gets one slice per quarter and reports the same chord twice. | Harmonic rhythm is what the analysis is *for*; deriving the segmentation from it would be circular. |
+| A cadence needs the two slices adjacent to the point | A cadential ⁶₄ before the dominant is invisible: the reading sees V–I and not I⁶₄–V–I. | Widening the window is a design change with its own soundness claim, not a parameter. |
+
+The fixtures in `examples/analysis/` are the corpus these are measured against, and each one's header states the
+candidate set the reading is expected to produce. A change that alters those sets is a change to the analysis, and the
+header is where it must be argued.
+
+Voice-leading analysis arrives in prompt 119, under §2's rule like everything else.

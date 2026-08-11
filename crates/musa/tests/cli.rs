@@ -46,21 +46,23 @@ fn check_rejects_a_broken_piece_with_diagnostics() -> std::io::Result<()> {
 /// rewrite teaches the wrong shape.
 #[test]
 fn format_check_passes_on_canonical_examples() -> std::io::Result<()> {
-    let examples = format!("{}/../../examples", env!("CARGO_MANIFEST_DIR"));
+    let root = format!("{}/../..", env!("CARGO_MANIFEST_DIR"));
     let mut count = 0usize;
-    for entry in std::fs::read_dir(&examples)? {
-        let path = entry?.path();
-        if path.extension().is_none_or(|extension| extension != "musa") {
-            continue;
+    for directory in ["examples", "examples/analysis"] {
+        for entry in std::fs::read_dir(format!("{root}/{directory}"))? {
+            let path = entry?.path();
+            if path.extension().is_none_or(|extension| extension != "musa") {
+                continue;
+            }
+            let output = musa(&["format", "--check", &path.to_string_lossy()])?;
+            assert!(
+                output.status.success(),
+                "{} is not formatted: {}",
+                path.display(),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            count = count.saturating_add(1);
         }
-        let output = musa(&["format", "--check", &path.to_string_lossy()])?;
-        assert!(
-            output.status.success(),
-            "{} is not formatted: {}",
-            path.display(),
-            String::from_utf8_lossy(&output.stderr)
-        );
-        count = count.saturating_add(1);
     }
     assert!(count >= 3, "expected at least 3 examples, found {count}");
     Ok(())
@@ -469,6 +471,73 @@ fn analyze_honours_scope_window_and_format() -> std::io::Result<()> {
     Ok(())
 }
 
+/// The tonal reading prints its candidates and the criteria they failed, and
+/// prints the same bytes twice.
+///
+/// The fixture is the one whose header states the candidate set it should
+/// produce (`examples/analysis/pivot-ambiguity.musa`), so the snapshot and the
+/// fixture's own comment are two statements of one expectation and a change to
+/// either has to answer the other.
+#[test]
+fn analyze_reads_a_modulation_as_two_candidates() -> std::io::Result<()> {
+    let pivot = format!(
+        "{}/../../examples/analysis/pivot-ambiguity.musa",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let output = musa(&["analyze", &pivot, "--kind", "tonal", "--format", "text"])?;
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    let text = String::from_utf8_lossy(&output.stdout).into_owned();
+    let again = musa(&["analyze", &pivot, "--kind", "tonal", "--format", "text"])?;
+    assert_eq!(
+        text,
+        String::from_utf8_lossy(&again.stdout),
+        "two runs printed different readings"
+    );
+    insta::assert_snapshot!("analyze_tonal", text);
+    Ok(())
+}
+
+/// A cadence reading names what it could not see, one line per criterion.
+#[test]
+fn analyze_says_which_cadence_evidence_is_missing() -> std::io::Result<()> {
+    let cadences = format!(
+        "{}/../../examples/analysis/cadence-evidence.musa",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let output = musa(&["analyze", &cadences, "--kind", "cadences"])?;
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    let text = String::from_utf8_lossy(&output.stdout).into_owned();
+    assert!(
+        text.contains("but not: the tonic is in the top voice"),
+        "the imperfect cadence did not say what it lacked: {text}"
+    );
+    insta::assert_snapshot!("analyze_cadences", text);
+    Ok(())
+}
+
+/// A segmentation the analysis does not have is refused by name, and an
+/// unreadable key is refused rather than guessed at.
+#[test]
+fn analyze_refuses_a_policy_it_does_not_have() -> std::io::Result<()> {
+    let pivot = format!(
+        "{}/../../examples/analysis/pivot-ambiguity.musa",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let bad = musa(&["analyze", &pivot, "--kind", "chords", "--segmentation", "salami"])?;
+    assert!(!bad.status.success());
+    assert!(
+        String::from_utf8_lossy(&bad.stderr).contains("is not a segmentation"),
+        "an unknown segmentation was accepted"
+    );
+    let key = musa(&["analyze", &pivot, "--kind", "tonal", "--key", "h major"])?;
+    assert!(!key.status.success());
+    assert!(
+        String::from_utf8_lossy(&key.stderr).contains("is not a key"),
+        "an unreadable key was accepted"
+    );
+    Ok(())
+}
+
 /// A request the score cannot answer fails; a request with nothing in it does
 /// not. An analysis is not a check.
 #[test]
@@ -483,7 +552,7 @@ fn analyze_refuses_a_bad_request_and_accepts_an_empty_one() -> std::io::Result<(
         "the error did not say what there is: {stderr}"
     );
 
-    let unknown = musa(&["analyze", &annotated, "--kind", "tonal"])?;
+    let unknown = musa(&["analyze", &annotated, "--kind", "voice-leading"])?;
     assert!(!unknown.status.success());
     assert!(
         String::from_utf8_lossy(&unknown.stderr).contains("is not an analysis"),

@@ -215,8 +215,8 @@ fn a_generated_note_cites_the_statement_that_spells_it() {
         .findings()
         .iter()
         .filter_map(|finding| match (finding.observation(), finding.evidence()) {
-            (&Observation::Sounding { pitch, .. }, &Evidence::Event { span, .. }) if format!("{pitch}") == "e5" => {
-                Some((span.start, span.end))
+            (&Observation::Sounding { pitch, .. }, &Evidence::Event(note)) if format!("{pitch}") == "e5" => {
+                Some((note.span.start, note.span.end))
             }
             _ => None,
         })
@@ -417,5 +417,9 @@ fn every_kind_owes_a_method_and_assumptions() {
         );
         assert_eq!(AnalysisKind::named(kind.as_str()), Some(kind));
     }
-    assert_eq!(AnalysisKind::named("tonal"), None, "an unadmitted kind was accepted");
+    assert_eq!(
+        AnalysisKind::named("voice-leading"),
+        None,
+        "an unadmitted kind was accepted"
+    );
 }

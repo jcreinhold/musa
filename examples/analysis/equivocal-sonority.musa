@@ -1,0 +1,47 @@
+// Four sonorities, and what a reading can and cannot settle about them.
+//
+// The point of this fixture is that `musa analyze --kind chords` argues rather
+// than picking, and that where it *can* settle something it says so.
+//
+// Bar 1 — C, E, G, A. Two chords fit it exactly: a C major triad with an added
+// sixth, and an A minor seventh in first inversion (OMT `018-seventh-chords.md`,
+// `019-inversion.md`). Which one it is depends on what the passage is doing,
+// which a single slice does not know. Both are candidates, in one report.
+//
+// Bar 2 — C and G alone. Every chord those two notes are two-thirds of is a
+// candidate at an `incomplete` fit: C major, C minor, C sus2, C sus4, and
+// G sus4 over C. An omitted third is common (OMT `020-voicing.md`) and it
+// takes the quality with it.
+//
+// Bar 3 — a triad with a fourth note sounding through it. The fit is `with
+// extra tones`. Nothing here decides that the extra note is embellishing
+// (OMT `039-embellishing-tones.md`): that is a reading of a *line*, and this
+// analysis reads a slice.
+//
+// Bar 4 — a fully diminished seventh, spelled B, D, F, A-flat. A listener
+// hears four possible roots here; this reading reports one, because chord
+// membership is by *spelling* and the other three rootings are spelled with
+// notes this bar does not contain. That is a stated limit of the analysis
+// (`docs/language/07-analysis.md` §7), not an oversight: re-spelling the score
+// to find more readings would be constructing music, which an analysis may
+// never do.
+piece "Equivocal Sonority" {
+    composer "musa";
+
+    tempo 1/4 = 60;
+    meter 4/4;
+    key c major;
+
+    score {
+        part piano {
+            clef treble;
+
+            voice upper {
+                | [c4 e4 g4 a4]/1
+                | [c4 g4]/1
+                | [c4 e4 g4 d5]/1
+                | [b3 d4 f4 ab4]/1
+            }
+        }
+    }
+}

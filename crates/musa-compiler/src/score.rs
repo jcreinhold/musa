@@ -519,6 +519,22 @@ impl Key {
         Self { tonic, mode }
     }
 
+    /// The key written the way the language writes one: a pitch class, a
+    /// space, and `major` or `minor`.
+    ///
+    /// The same spelling `key c major` uses in source, so a reader who wants
+    /// an analysis read against a key they hear types what they would write.
+    /// Absent for anything outside that grammar.
+    pub fn parse(text: &str) -> Option<Self> {
+        let (tonic, mode) = text.split_once(char::is_whitespace)?;
+        let mode = match mode.trim() {
+            "major" => Mode::Major,
+            "minor" => Mode::Minor,
+            _ => return None,
+        };
+        Some(Self::new(PitchClass::parse(tonic.trim())?, mode))
+    }
+
     /// Where the key sits on the circle of fifths: positive counts sharps in
     /// the signature, negative counts flats.
     ///

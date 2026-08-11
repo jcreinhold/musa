@@ -1,7 +1,7 @@
 ---
 id: 118
 slug: tonal-analysis
-status: pending
+status: done
 depends_on: [107, 117]
 phase: 3
 ---

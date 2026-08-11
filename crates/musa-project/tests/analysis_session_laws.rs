@@ -103,14 +103,9 @@ fn findings_arrive_resolved_rather_than_as_ids() -> Result {
         sounding.summary
     );
     match sounding.evidence {
-        EvidenceFacts::Event {
-            ref part,
-            ref voice,
-            line,
-            ..
-        } => {
-            assert_eq!((part.as_str(), voice.as_str()), ("piano", "upper"));
-            assert!(line > 0, "an event with no line");
+        EvidenceFacts::Event(ref note) => {
+            assert_eq!((note.part.as_str(), note.voice.as_str()), ("piano", "upper"));
+            assert!(note.line > 0, "an event with no line");
         }
         ref other => panic!("a note without event evidence: {other:?}"),
     }
@@ -130,8 +125,8 @@ fn a_generated_note_cites_the_line_it_is_written_on() -> Result {
         .position(|line| line.contains("motif figure()"))
         .map_or(0, |index| u32::try_from(index).unwrap_or(0) + 1);
     match generated.evidence {
-        EvidenceFacts::Event { line, .. } => assert_eq!(
-            line, motif_line,
+        EvidenceFacts::Event(ref note) => assert_eq!(
+            note.line, motif_line,
             "a generated note cited the use site instead of the motif"
         ),
         ref other => panic!("a note without event evidence: {other:?}"),
