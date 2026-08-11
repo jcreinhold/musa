@@ -1,23 +1,26 @@
 ---
-id: 143
+id: 144
 slug: audio-conformance
 status: pending
-depends_on: [126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142]
+depends_on: [127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143]
 phase: 4
 ---
 
 # Audit the Performance and Sound Language
 
+> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into
+> another, or replace it. Read `docs/core-boundary.md` first.
+
 ## Task
 
-Audit prompts 128–142 as one coherent performance/sound implementation. Trace every rule and compatibility claim in
+Audit prompts 129–143 as one coherent performance/sound implementation. Trace every rule and compatibility claim in
 `docs/language/08-performance-and-sound.md` and `09-assets-and-packages.md` to an owner and executable evidence; close
 every routing, exactness, control, instrument, asset, package, sample-format, media, UI, tooling, determinism, and
 real-time row before the whole-language graduation prompt may run. This prompt adds no feature.
 
 ## Read
 
-- Prompt 93 baseline and expected-change ledger; all prompt 126–140 completion/repair notes and benchmark artifacts.
+- Prompt 93 baseline and expected-change ledger; all prompt 127–141 completion/repair notes and benchmark artifacts.
 - The candidate sound/assets specs, roadmap/course-correction/kernel boundaries, interface specification, handbook, SFZ
   support matrix, SoundFont support matrix, package/asset schemas, and public crate facades.
 - Every audio preparation/offline/live/project/CLI/LSP/desktop caller and every unsafe/RT-sensitive block.
@@ -35,7 +38,7 @@ and observed result. At minimum cover:
 - native sample maps, deterministic selection, SFZ and SoundFont claimed support/loss matrices;
 - musical clips versus fixed cues, transform/tempo/seek/tail behavior;
 - source-edit authority, Origin/navigation, generated docs, editor drift, accessibility, stale/error states;
-- offline/live equality, deterministic outputs, NaN/silence laws, callback/retirement instrumentation, and prompt 142
+- offline/live equality, deterministic outputs, NaN/silence laws, callback/retirement instrumentation, and prompt 143
   budgets.
 
 The prompt 93 expected-change ledger must be empty. Test unsupported SFZ/SoundFont behavior rather than counting rows in
@@ -44,7 +47,7 @@ failure, reinstall, and callback underrun if streaming was admitted. Audit depen
 remove dead compatibility internals but retain accepted source aliases according to their deprecation policy.
 
 If any row is red or unowned, repair the smallest responsible prompt/design and stop this prompt. Do not weaken a law,
-support claim, golden, or budget to make the matrix green. This audit does not yet graduate `docs/language/`; prompt 144
+support claim, golden, or budget to make the matrix green. This audit does not yet graduate `docs/language/`; prompt 145
 does so only after combining it with the score/elaboration audit.
 
 ## Target
@@ -53,7 +56,7 @@ does so only after combining it with the score/elaboration audit.
 - End-to-end fixture project using functions/templates/theory, two profiles/instruments, controls, room/send, native
   sampler, SFZ, SoundFont, locked package asset, musical clip, and fixed cue.
 - Repairs required solely for specified behavior, with rationale linked to the owning prompt.
-- Public API/dependency/RT audit and final prompt 142 comparison attached.
+- Public API/dependency/RT audit and final prompt 143 comparison attached.
 
 ## Check
 

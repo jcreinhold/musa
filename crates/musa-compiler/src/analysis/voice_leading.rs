@@ -47,7 +47,7 @@ use crate::time::MusicalTime;
 /// these are the ranges as the source prints them, and a reader checking this
 /// table against the page should be able to read the same words.
 const SATB_RANGES: [(&str, &str, &str); 4] = [
-    ("bass", "e2", "c4"),
+    ("bass", "f2", "d4"),
     ("tenor", "c3", "g4"),
     ("alto", "g3", "d5"),
     ("soprano", "c4", "g5"),
@@ -493,10 +493,20 @@ fn jazz(snapshot: &ScoreSnapshot, lanes: &[Lane], window: Option<(MusicalTime, M
     }
     for pair in slices.windows(2) {
         let [now, next] = pair else { continue };
-        departures.extend(jazz_motion(now, next, symbol_at(snapshot, now)));
+        departures.extend(jazz_motion(snapshot, now, next, symbol_at(snapshot, now)));
     }
     found.extend(departures.into_iter().map(Departure::finding));
     found
+}
+
+/// What to call the voice a note belongs to, in a finding.
+fn named(snapshot: &ScoreSnapshot, note: NoteRef) -> String {
+    snapshot
+        .parts()
+        .get(note.part)
+        .and_then(|part| part.voice_name(note.voice))
+        .unwrap_or("voice")
+        .to_owned()
 }
 
 /// The chord written over a slice, when one is written there.
@@ -575,7 +585,12 @@ fn jazz_spacing(slice: &Slice) -> Vec<Departure> {
 
 /// What happens between two voicings: guide tones, common tones, and how far
 /// any voice travels.
-fn jazz_motion(now: &Slice, next: &Slice, chord: Option<ChordClass>) -> Vec<Departure> {
+fn jazz_motion(
+    snapshot: &ScoreSnapshot,
+    now: &Slice,
+    next: &Slice,
+    chord: Option<ChordClass>,
+) -> Vec<Departure> {
     let mut departures = Vec::new();
     let span = (now.onset, next.onset + next.extent);
     let guides: Vec<PitchClass> = chord
@@ -596,7 +611,7 @@ fn jazz_motion(now: &Slice, next: &Slice, chord: Option<ChordClass>) -> Vec<Depa
             departures.push(Departure {
                 rule: &rules::JAZZ_GUIDE_TONE_MOTION,
                 standing: Standing::Fact,
-                voices: vec![format!("voice {}", position.saturating_add(1))],
+                voices: vec![named(snapshot, below.note)],
                 interval: motion::between(below.pitch, above.pitch),
                 from: span.0,
                 to: span.1,
@@ -604,11 +619,14 @@ fn jazz_motion(now: &Slice, next: &Slice, chord: Option<ChordClass>) -> Vec<Depa
                 also: Vec::new(),
             });
         }
-        if motion::far(below.pitch, above.pitch) {
+        // The bass is exempt: OMT 076's motion guideline is about the voicing,
+        // and a bass that walks a fifth to the next root has done its job. A
+        // rule that reported it would fire on every ii-V ever written.
+        if position > 0 && motion::far(below.pitch, above.pitch) {
             departures.push(Departure {
                 rule: &rules::JAZZ_SMALL_MOTION,
                 standing: Standing::Fact,
-                voices: vec![format!("voice {}", position.saturating_add(1))],
+                voices: vec![named(snapshot, below.note)],
                 interval: motion::between(below.pitch, above.pitch),
                 from: span.0,
                 to: span.1,

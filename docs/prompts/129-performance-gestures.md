@@ -1,12 +1,15 @@
 ---
-id: 128
+id: 129
 slug: performance-gestures
 status: pending
-depends_on: [93, 119, 127]
+depends_on: [93, 119, 128]
 phase: 3
 ---
 
 # Performance Produces Gestures, Not Knob Addresses
+
+> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into
+> another, or replace it. Read `docs/core-boundary.md` first.
 
 ## Task
 
@@ -29,7 +32,7 @@ Define exact internal `GestureTimeline`/`GestureLane` values. A note gesture car
 pitch until tuning, onset/extent, separation/hold/emphasis intent, symbolic technique tags, legato/phrase grouping, and
 per-note controls. A lane also carries piecewise exact `ControlCurve`s keyed by semantic `ControlKey` and typed by a
 small control value family. Standard keys include expression, emphasis, separation, brightness, sustain, and legato;
-namespaced custom keys are admitted only with a declaration in prompt 129.
+namespaced custom keys are admitted only with a declaration in prompt 130.
 
 For a hairpin on `[s,e]`, specify and test `E(b) = d0 + (d1-d0) * p((b-s)/(e-s))`, with exact profile endpoints and
 kernel `Progress p`. Curve construction is normative; frame/control-rate sampling is downstream. Preserve symbolic

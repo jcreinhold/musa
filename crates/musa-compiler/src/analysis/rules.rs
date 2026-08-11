@@ -215,7 +215,7 @@ pub(super) const JAZZ_COMMON_TONE: Rule = Rule {
 
 pub(super) const JAZZ_SMALL_MOTION: Rule = Rule {
     id: "jazz_small_motion",
-    states: "no voice moves by more than a third between voicings",
+    states: "no upper voice moves by more than a third between voicings",
     strength: Strength::Guideline,
     cites: "OMT 076 §Voice leading",
 };

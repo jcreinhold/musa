@@ -1,22 +1,25 @@
 ---
-id: 136
+id: 137
 slug: sfz-instruments
 status: pending
-depends_on: [133, 135]
+depends_on: [134, 136]
 phase: 4
 ---
 
 # SFZ Instruments Enter Through a Checked Adapter
 
+> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into
+> another, or replace it. Read `docs/core-boundary.md` first.
+
 ## Task
 
 Import a documented SFZ v1-compatible core into Musa's native sample-map representation. SFZ is an interchange adapter,
 not Musa's instrument semantics: every accepted opcode has one explicit translation, every unsupported or dialect opcode
-is diagnosed by name, and the runtime remains the deterministic sampler built by prompt 135.
+is diagnosed by name, and the runtime remains the deterministic sampler built by prompt 136.
 
 ## Read
 
-- `docs/language/09-assets-and-packages.md`; prompts 133 and 131.
+- `docs/language/09-assets-and-packages.md`; prompts 134 and 132.
 - SFZ format overview, headers, regions, samples, and opcode/version table: `https://sfzformat.com/`,
   `https://sfzformat.com/headers/`, `https://sfzformat.com/headers/region/`, `https://sfzformat.com/opcodes/sample/`,
   and `https://sfzformat.com/opcodes/`. The catalogue mixes SFZ v1/v2, ARIA, and LinuxSampler extensions; never describe
@@ -32,7 +35,7 @@ offset/end; loop points/modes; amplitude envelope; trigger/release behavior; exc
 and the standard sustain-pedal conditions needed by the native map. Map MIDI-shaped SFZ selectors into Musa gesture and
 control semantics only at this adapter; MIDI controller numbers do not become the instrument contract.
 
-Resolve samples and any supported includes within the SFZ asset/package root with prompt 133's traversal/digest rules.
+Resolve samples and any supported includes within the SFZ asset/package root with prompt 134's traversal/digest rules.
 If includes/macros cannot be implemented without weakening the resolver, reject them in this version and say so. Parse
 off-thread with bounded file/region/opcode/string counts. Duplicate/contradictory regions and unknown values get spans
 and useful diagnostics. Unsupported sound-changing opcodes are errors by default; explicitly harmless metadata may be

@@ -116,8 +116,8 @@ Nothing yet. Concretely:
 - **Only Track C would touch `docs/course-correction.md` and `docs/kernel/`**, and only after prompt 119 supplies
   evidence. A kernel-shape change is the one irreversible-feeling move here and it should be the last one made.
 - **Renumbering.** Per the standing convention, new work becomes numbered prompts with the rest renumbered. Track A and
-  B prompts belong in the phase-3 block (115–125). A Track C prompt belongs *after*
-  [144](../prompts/144-language-conformance.md), the whole-language conformance and graduation prompt, because changing
+  B prompts belong in the phase-3 block (115–126). A Track C prompt belongs *after*
+  [145](../prompts/145-language-conformance.md), the whole-language conformance and graduation prompt, because changing
   the kernel denotation before the language is graduated against it would invalidate the graduation.
 - **This directory's status.** It stays research. If Tracks A and B land, `00-constitution.md`'s Amendments III, V, and
   VI get folded into `docs/course-correction.md` as amendments to it, and Amendments II and IV are either withdrawn or
@@ -135,20 +135,20 @@ three landed as edits elsewhere and are recorded here so the plan stays the sing
    has none, so no simplifying transformation connects them and the relationship is evaluation applied twice. This
    retires the "two cores no document names" problem noted earlier in this project without changing any code. **Done.**
 2. **Full laziness is a real, measured-later gap.** `docs/kernel/10-term-calculus.md` §"Provenance of the sharing
-   discipline" and prompt 125's Design. Musa shares whole motif bodies keyed on arguments; Chapter 15 shares a body's
+   discipline" and prompt 126's Design. Musa shares whole motif bodies keyed on arguments; Chapter 15 shares a body's
    argument-independent subexpressions across *different* arguments. Chapter 23's warnings against the technique are
    about lazy evaluation and do not transfer to a strict total calculus, so musa is unusually free to take the win — but
-   the rule of §1 applies and prompt 125 measures before anything is built. **Delegated to prompt 125.**
+   the rule of §1 applies and prompt 126 measures before anything is built. **Delegated to prompt 126.**
 3. **Analyses should be abstract interpretations.** Prompt 117's Design now requires each analysis kind to declare an
    abstract domain, an abstraction map, and a soundness claim. This is a better frame than the one
    `03-claims-and-styles.md` proposed for Tier 2: "evidence-carrying finding" says what a finding *contains*, while an
    abstraction map says what it *means*, and only the second makes the fact/candidate/conflict classification precise.
    **Amendment VI is improved by this and should be restated in its terms if it is ever promoted.**
-4. **Flat patterns are a boundary, not an omission.** `docs/language/02-core-calculus.md` §6.2, checked by prompt 144.
+4. **Flat patterns are a boundary, not an omission.** `docs/language/02-core-calculus.md` §6.2, checked by prompt 145.
    **Done.**
 
 The general lesson is the one Gate 0 taught in a different form: musa has been re-deriving a literature it does not
-cite, and mostly getting it right. Citing it is cheap and makes the refusals arguable. Prompt 144 now audits that every
+cite, and mostly getting it right. Citing it is cheap and makes the refusals arguable. Prompt 145 now audits that every
 "deliberately absent" item carries either a citation or a musical falsifier — the same standard the music-theory claims
 have always been held to.
 
@@ -173,7 +173,7 @@ will be relied on by library code that other code depends on, and because a mist
 In order, smallest first:
 
 0. Nothing from §4a. Items 1 and 4 are done; items 2 and 3 are prompt repairs already applied and will be discharged by
-   prompts 125 and 117 when the stack reaches them.
+   prompts 126 and 117 when the stack reaches them.
 1. Run Track A step 1 — the quotient audit. It is half a day and it either produces Atom 6's demand or removes it.
 2. Write the explicit-polymeter fixture (Track B step 2). It is an hour and it is a permanent regression test either
    way.

@@ -14,7 +14,7 @@
 #   2. target/ holds cargo build output.
 #   3. node_modules/ holds vendored npm dependencies.
 #   4. packages/musa-web/dist-cdn/ and examples/build-time/out/ are vite
-#      build output (prompts 147, 150).
+#      build output (prompts 148, 151).
 set -euo pipefail
 
 command -v jq >/dev/null 2>&1 || exit 0
@@ -37,7 +37,7 @@ case "$file" in
 	exit 2
 	;;
 */packages/musa-web/dist-cdn/* | */packages/musa-web/examples/build-time/out/*)
-	echo "Refusing to edit '$file': vite build output (prompts 147, 150). Rebuild with the packages/musa-web build." >&2
+	echo "Refusing to edit '$file': vite build output (prompts 148, 151). Rebuild with the packages/musa-web build." >&2
 	exit 2
 	;;
 esac

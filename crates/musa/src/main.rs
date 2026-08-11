@@ -82,7 +82,9 @@ fn print_usage() {
     println!("  musa kernel <file.musa> [--normalized] print the piece as kernel interchange text");
     println!("  musa kernel --check <file.musa.kernel> parse, check, and evaluate kernel text");
     println!("  musa analyze <file.musa> --kind <kind> observe a score without changing it");
-    println!("      --kind facts | chords | tonal | cadences         (default: facts)");
+    println!("      --kind facts | chords | tonal | cadences | voice-leading | counterpoint");
+    println!("      --profile <profile>   which style's rules to read by, for the last two kinds");
+    println!("      --cantus <voice>      which voice is the cantus firmus, for a species profile");
     println!("      --format text | json                 how to print the report (default: text)");
     println!("      --part <name> [--voice <name>]       read one part, or one of its voices");
     println!("      --from <n> --to <n>                  read only [from, to), in whole notes");
@@ -243,6 +245,8 @@ fn cmd_analyze(args: &[String], realization: &Realization) -> ExitCode {
     let mut voice: Option<&str> = None;
     let mut segmentation = "attacks";
     let mut key: Option<&str> = None;
+    let mut profile: Option<&str> = None;
+    let mut cantus: Option<&str> = None;
     let mut from: Option<&str> = None;
     let mut to: Option<&str> = None;
     let mut index = 0;
@@ -275,6 +279,14 @@ fn cmd_analyze(args: &[String], realization: &Realization) -> ExitCode {
                 key = args.get(index.saturating_add(1)).map(String::as_str);
                 index = index.saturating_add(2);
             }
+            "--profile" => {
+                profile = args.get(index.saturating_add(1)).map(String::as_str);
+                index = index.saturating_add(2);
+            }
+            "--cantus" => {
+                cantus = args.get(index.saturating_add(1)).map(String::as_str);
+                index = index.saturating_add(2);
+            }
             "--from" => {
                 from = args.get(index.saturating_add(1)).map(String::as_str);
                 index = index.saturating_add(2);
@@ -294,7 +306,14 @@ fn cmd_analyze(args: &[String], realization: &Realization) -> ExitCode {
         return ExitCode::FAILURE;
     };
     let Some(kind) = AnalysisKind::named(kind) else {
-        eprintln!("error: `{kind}` is not an analysis (facts | chords | tonal | cadences)");
+        eprintln!(
+            "error: `{kind}` is not an analysis ({})",
+            AnalysisKind::ALL
+                .iter()
+                .map(|kind| kind.as_str())
+                .collect::<Vec<&str>>()
+                .join(" | ")
+        );
         return ExitCode::FAILURE;
     };
     let Some(segmentation) = musa_project::Segmentation::named(segmentation) else {
@@ -302,6 +321,23 @@ fn cmd_analyze(args: &[String], realization: &Realization) -> ExitCode {
         return ExitCode::FAILURE;
     };
     let mut request = AnalysisRequest::new(kind).segmenting(segmentation);
+    if let Some(written) = profile {
+        let Some(parsed) = musa_project::AnalysisProfile::named(written) else {
+            eprintln!(
+                "error: `{written}` is not a profile ({})",
+                musa_project::AnalysisProfile::ALL
+                    .iter()
+                    .map(|profile| profile.as_str())
+                    .collect::<Vec<&str>>()
+                    .join(" | ")
+            );
+            return ExitCode::FAILURE;
+        };
+        request = request.under(parsed);
+    }
+    if let Some(name) = cantus {
+        request = request.designating(name.to_owned());
+    }
     if let Some(written) = key {
         let Some(parsed) = musa_project::Key::parse(written) else {
             eprintln!("error: `{written}` is not a key: write `c major` or `a minor`");
@@ -362,6 +398,9 @@ fn cmd_analyze(args: &[String], realization: &Realization) -> ExitCode {
 /// one line per finding in the report's own order.
 fn print_analysis(facts: &musa_project::AnalysisFacts) {
     println!("{} — {}", facts.kind, facts.method);
+    if let Some(ref profile) = facts.profile {
+        println!("  reading by {profile}");
+    }
     for assumption in &facts.assumptions {
         println!("  assuming {assumption}");
     }
@@ -389,6 +428,12 @@ fn print_analysis(facts: &musa_project::AnalysisFacts) {
         // ones nobody disputes.
         for ground in finding.grounds.iter().filter(|ground| !ground.satisfied) {
             println!("             but not: {} ({})", ground.criterion, ground.cites);
+        }
+        // The strength, always, and separately from the departure: the motion
+        // is a fact about the notes, and how firmly a style holds it is the
+        // style's claim rather than the music's.
+        if let Some(ref rule) = finding.rule {
+            println!("             {} — {} ({})", rule.strength, rule.states, rule.cites);
         }
     }
     println!();

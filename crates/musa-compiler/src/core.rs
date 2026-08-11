@@ -1356,9 +1356,10 @@ struct CheckedClaim {
 
 /// One argument of a claim, in the shape the registry declared.
 ///
-/// A policy is not an expression: its three inhabitants are words, read
-/// straight off the source, because a type in the value language that no
-/// function can take or return would be surface with no caller.
+/// A policy is not an expression, and neither is a rule id: their inhabitants
+/// are words, read straight off the source, because a type in the value
+/// language that no function can take or return would be surface with no
+/// caller.
 #[derive(Clone)]
 enum CheckedArgument {
     Scale(Expr),
@@ -1366,6 +1367,7 @@ enum CheckedArgument {
     Count(Expr),
     Ranges(Expr),
     Policy(crate::assert::Realization),
+    Rule(crate::analysis::RuleName),
 }
 
 #[derive(Clone)]
@@ -3130,6 +3132,34 @@ impl Checker<'_> {
                     checked.push(CheckedArgument::Policy(policy));
                     continue;
                 }
+                crate::assert::ParamType::Rule => {
+                    let word: String = significant_tokens(node).map(|token| token.text().to_owned()).collect();
+                    let Some(rule) = crate::analysis::assertable().find(|rule| rule.id() == word)
+                    else {
+                        let assertable: Vec<&str> =
+                            crate::analysis::assertable().map(|rule| rule.id()).collect();
+                        self.resolver.report(
+                            Diagnostic::error(Code::UnknownWord, format!("`{word}` is not a rule this claim can check"))
+                                .at(span, "expected the id of a voice-leading rule")
+                                .maybe_help(
+                                    crate::diagnose::nearest(&word, assertable.iter().copied())
+                                        .map(|near| format!("did you mean `{near}`?")),
+                                )
+                                .help(format!(
+                                    "the rules a source may assert are: {}",
+                                    assertable.join(", ")
+                                ))
+                                .note(
+                                    "every other rule is reported by `musa analyze --kind voice-leading`, \
+                                     which says how strongly a style holds it rather than failing the build",
+                                ),
+                        );
+                        self.failed = true;
+                        return None;
+                    };
+                    checked.push(CheckedArgument::Rule(rule));
+                    continue;
+                }
                 crate::assert::ParamType::Scale => Type::Scale,
                 crate::assert::ParamType::Chord => Type::ChordClass,
                 crate::assert::ParamType::Count => Type::Nat,
@@ -3142,7 +3172,7 @@ impl Checker<'_> {
                 crate::assert::ParamType::Chord => CheckedArgument::Chord(value),
                 crate::assert::ParamType::Count => CheckedArgument::Count(value),
                 crate::assert::ParamType::Ranges => CheckedArgument::Ranges(value),
-                crate::assert::ParamType::Policy => continue,
+                crate::assert::ParamType::Policy | crate::assert::ParamType::Rule => continue,
             });
         }
         Some(CheckedClaim {
@@ -5608,6 +5638,7 @@ fn eval_claim(
     for argument in &claim.arguments {
         arguments.push(match argument {
             CheckedArgument::Policy(policy) => crate::assert::Argument::Policy(*policy),
+            CheckedArgument::Rule(rule) => crate::assert::Argument::Rule(*rule),
             CheckedArgument::Scale(expression) => {
                 let Value::Scale(scale) = eval(expression, environment, meter)? else {
                     return None;

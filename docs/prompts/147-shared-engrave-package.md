@@ -1,5 +1,5 @@
 ---
-id: 146
+id: 147
 slug: shared-engrave-package
 status: done
 depends_on: [20, 22]
@@ -11,7 +11,7 @@ phase: 5
 ## Task
 
 Move `apps/musa-desktop/ui/src/lib/engrave/` into `packages/musa-engrave`, a workspace package both the desktop UI and
-the web package (prompt 147) depend on. The engraver is provenance-critical — it owns the `Engraver` interface, the
+the web package (prompt 148) depend on. The engraver is provenance-critical — it owns the `Engraver` interface, the
 worker protocol, the rastral-size derivation, and SVG sanitization — and two copies of it would drift. This prompt
 changes *where the code lives and how it is built*, not what it does: the desktop app's behavior and goldens must not
 move.
@@ -29,7 +29,7 @@ move.
 
 `packages/musa-engrave` is an **internal** package: `"name": "musa-engrave"`, `"private": true`, `"type": "module"`, no
 build step — its `exports` map points at the TypeScript source and dependents bundle it through their own vite builds
-(the standard pnpm-workspace pattern; publishing is prompt 150's concern, and only for `@musa/web`, not this package).
+(the standard pnpm-workspace pattern; publishing is prompt 151's concern, and only for `@musa/web`, not this package).
 Its public surface is exactly the current module surface, no wider:
 
 ```ts

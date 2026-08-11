@@ -1384,7 +1384,7 @@ mod cadence;
 mod chords;
 mod counterpoint;
 mod facts;
-mod motion;
+pub(crate) mod motion;
 mod rules;
 mod segment;
 mod tonal;

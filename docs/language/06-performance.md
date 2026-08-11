@@ -1,6 +1,6 @@
 # 06 — Elaboration Performance and Compatibility Baseline
 
-Status: **governing for the prompt 93–142 migration**.
+Status: **governing for the prompt 93–143 migration**.
 
 This is the before-picture for `docs/elaboration-language.md`. It measures the compiler that accepts only the old
 surface language and fixes what that language means before its evaluator, type checker, and parser change. It is not a
@@ -101,7 +101,7 @@ owner. Update requires `UPDATE_ELABORATION_BASELINE=1`; an update is never a rou
 the prompt that authorizes the semantic change.
 
 `tests/fixtures/elaboration-expected-changes.json` is the only exception list. Each defect belongs to exactly one of
-prompts 124–129. The repairing prompt removes the entry and replaces the negative observation with a positive law; no
+prompts 124–130. The repairing prompt removes the entry and replaces the negative observation with a positive law; no
 later prompt may preserve wrong sound by copying the old digest.
 
 ## Gates and budgets

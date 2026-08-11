@@ -1,12 +1,15 @@
 ---
-id: 141
+id: 142
 slug: audio-language-tooling
 status: pending
-depends_on: [124, 126, 132, 134, 136, 137, 138, 140]
+depends_on: [124, 127, 133, 135, 137, 138, 139, 141]
 phase: 4
 ---
 
 # The Sound Language Explains Itself
+
+> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into
+> another, or replace it. Read `docs/core-boundary.md` first.
 
 ## Task
 
@@ -18,8 +21,8 @@ boundaries from generated facts and tested examples.
 ## Read
 
 - Prompts 122 and 122 seams; all of `docs/language/08-performance-and-sound.md` and `09-assets-and-packages.md`; prompts
-  128–140 completion/repair notes.
-- OMT chapters cited by prompt 92/133; SFZ sources cited by prompt 136; SoundFont 2.04 source cited by prompt 137.
+  129–141 completion/repair notes.
+- OMT chapters cited by prompt 92/134; SFZ sources cited by prompt 137; SoundFont 2.04 source cited by prompt 138.
 - Current LSP, VS Code, Zed, desktop virtual documents, keyword docs, generated stdlib docs, and handbook checker.
 
 ## Design

@@ -2,8 +2,8 @@
 
 **Status: non-governing design input.** This document evaluates and replaces the earlier proposal of the same name.
 Prompt 92 has split its accepted decisions into the precise candidate specification at `docs/language/README.md`. That
-candidate is the implementation contract for prompts 93–138, but `docs/course-correction.md` and `docs/kernel/` continue
-to govern until prompt 139's conformance audit graduates it. Where this essay and the split candidate differ, the split
+candidate is the implementation contract for prompts 93–139, but `docs/course-correction.md` and `docs/kernel/` continue
+to govern until prompt 140's conformance audit graduates it. Where this essay and the split candidate differ, the split
 candidate is the proposal to implement.
 
 The proposal is grounded in the design conversation that produced the first draft, the current compiler, the kernel

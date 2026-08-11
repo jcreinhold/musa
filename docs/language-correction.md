@@ -215,7 +215,7 @@ import std::jazz::harmony as jazz;
 Importing two modules that export the same name is an error naming both, and an `as` alias on either resolves it by
 qualifying that one. Aliasing is therefore required exactly at a real conflict and absent otherwise.
 
-### B.5 Relation to prompt 134
+### B.5 Relation to prompt 135
 
 The remote-package prompt (pinned imports, lockfile, offline builds, no version solver) inherits this shape rather than
 inventing a second one. A remote package is the same directory layout fetched by exact pin; the roadmap's rejection of a

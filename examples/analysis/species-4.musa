@@ -1,0 +1,51 @@
+// Fourth species: the suspension (OMT `027-fourth-species.md`).
+//
+//     musa analyze examples/analysis/species-4.musa --kind counterpoint \
+//         --profile species_4 --cantus cantus
+//
+// Every counterpoint note begins on the half beat and is tied across the
+// barline, and that tie is what makes the downbeat a suspension rather than a
+// chord tone. This is the file that proves spans are notated and already
+// joined: `crate::elaborate` merges each tied pair into one occurrence before
+// the analysis exists, so a suspension here is one note held over a barline
+// and not two notes that happen to touch. Nothing below reads performed time.
+//
+// Most of the chain suspends and resolves correctly -- a ninth over the cantus
+// falling by step to an octave. One note does not: the d4 that begins on the
+// second half of bar 4 is a seventh over the cantus when bar 5 arrives, and it
+// is quitted upward, which OMT 027 does not allow a suspension to do. The
+// finding is anchored where that note begins rather than where it turns
+// dissonant, because the note is the thing a reader has to change.
+piece "Fourth Species" {
+    composer "musa";
+
+    tempo 1/4 = 60;
+    meter 4/4;
+    key c major;
+
+    score {
+        part exercise {
+            clef treble;
+
+            voice counter {
+                | rest/2 g4/2 ~
+                | g4/2 f4/2 ~
+                | f4/2 e4/2 ~
+                | e4/2 d4/2 ~
+                | d4/2 e4/2 ~
+                | e4/2 d4/2 ~
+                | d4/2 c4/2
+            }
+
+            voice cantus {
+                | g3/1
+                | f3/1
+                | e3/1
+                | d3/1
+                | e3/1
+                | d3/1
+                | c3/1
+            }
+        }
+    }
+}

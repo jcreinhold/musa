@@ -1,5 +1,5 @@
 ---
-id: 125
+id: 126
 slug: elaboration-performance-closure
 status: pending
 depends_on: [93, 98, 104, 115, 118, 119, 121, 122, 123]
@@ -15,7 +15,7 @@ worst-plausible musical workloads, explain every material regression, and optimi
 the language block with budgets that cover compiler latency, memory and allocation growth, editor queries, analysis,
 template expansion, and kernel quotation without weakening determinism, totality, provenance, diagnostics, or module
 boundaries. Preserve the audio-bridge baseline unchanged except for explicitly completed expected-change entries; prompt
-142 performs the audio preparation/render/asset closure after those features exist.
+143 performs the audio preparation/render/asset closure after those features exist.
 
 ## Read
 
@@ -111,4 +111,4 @@ regression with a musical workload, an owner, and a reason; an unexplained regre
 - No float musical time, erased pitch spelling, nondeterministic parallel result order, or unbounded cache.
 - No incremental compiler unless a measured interactive miss and sound invalidation design require it.
 - No declaration that the block is fast because a microbenchmark passed; combined real-piece workloads are mandatory.
-- No audio optimization or revised audio budget here; prompt 142 owns measurement-driven audio closure.
+- No audio optimization or revised audio budget here; prompt 143 owns measurement-driven audio closure.

@@ -1,16 +1,19 @@
 ---
-id: 144
+id: 145
 slug: language-conformance
 status: pending
-depends_on: [120, 121, 122, 123, 124, 125, 143]
+depends_on: [120, 121, 122, 123, 124, 126, 144]
 phase: 4
 ---
 
 # Whole-Language Conformance and Graduation
 
+> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into
+> another, or replace it. Read `docs/core-boundary.md` first.
+
 ## Task
 
-Audit prompts 92–143 as one language release, close every compatibility, law, theory, provenance, tooling,
+Audit prompts 92–144 as one language release, close every compatibility, law, theory, provenance, tooling,
 documentation, performance, sound, asset, package, and real-time obligation, and graduate `docs/language/` from
 candidate to governing. This prompt adds no feature. It demonstrates that one well-typed source semantics reaches the
 kernel, renderers, performance gestures, instruments, audio, project, editors, and desktop without a competing evaluator
@@ -18,12 +21,12 @@ or undocumented exception.
 
 ## Read
 
-- Prompt 92's acceptance matrix and all completion/repair notes from prompts 93–143.
+- Prompt 92's acceptance matrix and all completion/repair notes from prompts 93–144.
 - `docs/elaboration-language.md`, all of `docs/language/`, `docs/kernel/`, `docs/interface/`, the roadmap, course
   correction, AGENTS.md, and prompt README.
-- Prompt 93's compatibility baseline, prompt 125's score-elaboration report, prompt 142's audio performance report, and
-  prompt 143's audio conformance matrix.
-- The OMT/source citation map and local proof obligations delivered by prompts 124 and 137.
+- Prompt 93's compatibility baseline, prompt 126's score-elaboration report, prompt 143's audio performance report, and
+  prompt 144's audio conformance matrix.
+- The OMT/source citation map and local proof obligations delivered by prompts 124 and 138.
 
 ## Design
 
@@ -39,9 +42,9 @@ where possible; review every manual bridge. At minimum it must cover:
 - `.musa.kernel` document inclusion and local typed quote/antiquote, including hygiene, unknown payloads, source maps,
   and the context-neutral boundary;
 - exact performance gestures/control curves, tempo/tuning realization, typed instrument contracts, private sound
-  implementations, part routing, mix, assets/packages, sampler adapters, media cues/clips, and every prompt 143 row;
+  implementations, part routing, mix, assets/packages, sampler adapters, media cues/clips, and every prompt 144 row;
 - parser recovery, formatting idempotence, tree-sitter drift, LSP facts, editor extension assets, desktop navigation,
-  all exports, playback scheduling, last-valid-artifact behavior, and prompt 125/135 budgets.
+  all exports, playback scheduling, last-valid-artifact behavior, and prompt 126/136 budgets.
 
 Three rows exist because a boundary is cheap to hold and expensive to recover once crossed. Each is a check that
 something is still *absent*:
@@ -52,7 +55,7 @@ something is still *absent*:
   `crates/musa-compiler/src/core.rs` must remain non-recursive, and the surface grammar must not admit a pattern inside
   a pattern. Nesting would require a pattern-match compiler and a failure mechanism between equations, a subsystem whose
   only purpose is compiling a convenience into eliminators the language already writes directly. If a prompt between 92
-  and 143 added nesting, it took on that subsystem; the row fails unless that prompt says so and cites it.
+  and 144 added nesting, it took on that subsystem; the row fails unless that prompt says so and cites it.
 - **The two stages are still two.** `docs/language/02-core-calculus.md` §6.1 states that this calculus and the temporal
   kernel are staged, not layered: no simplifying transformation connects them, and `Term[ScoreFact]` is a stage
   boundary. Check the direction mechanically — no kernel term mentions a closure or a core `Value`, and no core term
@@ -112,7 +115,7 @@ git -C ../vscode-musa diff --check
 git -C ../zed-musa diff --check
 ```
 
-Repeat prompts 125 and 138 release comparisons on their recorded benchmark hosts and attach the results. Record manual
+Repeat prompts 126 and 139 release comparisons on their recorded benchmark hosts and attach the results. Record manual
 smoke tests for VS Code, Zed, and the desktop workbench. Commit each affected repository intentionally, record
 cross-repository commit ids, and commit Musa as `Graduate the Musa language`.
 
@@ -120,6 +123,6 @@ cross-repository commit ids, and commit Musa as `Graduate the Musa language`.
 
 - No new surface construct, theory/audio feature, backend, syntax alias, or opportunistic refactor.
 - No weakened golden, deleted failing test, hidden compatibility delta, or undocumented conformance exception.
-- No graduation with a red or unowned matrix row or a red prompt 143 audit.
+- No graduation with a red or unowned matrix row or a red prompt 144 audit.
 - No claim that passing tests proves a theoretical convention or audio-format interpretation universal beyond its
   documented domain.

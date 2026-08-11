@@ -1,12 +1,15 @@
 ---
-id: 127
+id: 128
 slug: exact-studio-values
 status: pending
-depends_on: [93, 126]
+depends_on: [93, 127]
 phase: 3
 ---
 
 # Written Sound Values Stay Exact
+
+> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into
+> another, or replace it. Read `docs/core-boundary.md` first.
 
 ## Task
 

@@ -1,8 +1,8 @@
 ---
-id: 147
+id: 148
 slug: web-package-scaffold
 status: done
-depends_on: [145, 146]
+depends_on: [146, 147]
 phase: 5
 ---
 
@@ -12,12 +12,12 @@ phase: 5
 
 Create `packages/musa-web`, published as `@musa/web`: the ESM-only npm package that compiles musa source to engraved SVG
 in a browser or Node. This prompt delivers the package scaffold and the low-level API only — `parse` and `render`, the
-mermaid.parse/mermaid.render analogs — with no DOM scanning. The MathJax-style layer is prompt 148; the low-level API
-must be complete enough that 141 is a thin layer over it, not a second implementation.
+mermaid.parse/mermaid.render analogs — with no DOM scanning. The MathJax-style layer is prompt 149; the low-level API
+must be complete enough that 149 is a thin layer over it, not a second implementation.
 
 ## Read
 
-- Prompts 145 (the wasm artifact this package loads) and 139 (`musa-engrave`, the engraver it drives).
+- Prompts 146 (the wasm artifact this package loads) and 147 (`musa-engrave`, the engraver it drives).
 - mermaid's core API shape (`parse`, `render`, `run`): three layers, each a client of the one below.
 - `packages/musa-web/wasm/` (built by `scripts/build-wasm.sh`) — the `--target web` artifact with its explicit `init()`.
 - The 2025 packaging baseline: ESM-only, `"type": "module"`, an `exports` map with `types`/`import` conditions, vite 6
@@ -63,7 +63,7 @@ only validates never downloads Verovio (~25 MB unpacked — laziness is a requir
 **Asset loading.** Two resolution rules, in order: an explicit `configure({ wasmUrl, verovioUrl? })` call wins;
 otherwise the package derives URLs from its own module URL (`new URL("musa.wasm", import.meta.url)`) — bundlers rewrite
 this correctly and CDN serving needs no configuration. `configure` is the whole configuration surface of this prompt;
-DOM-level options arrive with prompt 148.
+DOM-level options arrive with prompt 149.
 
 **Errors.** A source with error diagnostics resolves with `svg: ""`, `mei: ""`, and the diagnostics — an invalid score
 is a result, not an exception. Exceptions are reserved for the environment failing (wasm fetch fails, worker cannot
@@ -71,7 +71,7 @@ start) and carry the URL that failed.
 
 **Node.** `render` works in Node (Verovio runs there; the worker module degrades to in-process when `Worker` is
 undefined — `musa-engrave` gains this fallback here, with tests, because the desktop app never needed it). This is what
-makes vitest meaningful without a browser and what prompt 150's build-time recipe uses.
+makes vitest meaningful without a browser and what prompt 151's build-time recipe uses.
 
 The MEI and SVG are passed through verbatim. This package never edits either string: Rust owns MEI; the strings are
 projections, not models.
@@ -96,16 +96,16 @@ projections, not models.
 bash scripts/build-wasm.sh
 pnpm install && pnpm --filter @musa/web test
 pnpm --filter @musa/web build
-cd apps/musa-desktop/ui && pnpm test        # 139's extraction is undisturbed
+cd apps/musa-desktop/ui && pnpm test        # 147's extraction is undisturbed
 ```
 
 Commit as `Scaffold @musa/web with the low-level parse/render API`.
 
 ## Stop
 
-- No DOM scanning, custom elements, `window.MusaWeb`, MutationObserver, or error boxes (prompt 148).
-- No provenance callbacks or highlighting (prompt 149).
-- No CDN/iife build, no examples, no publish workflow (prompt 150).
+- No DOM scanning, custom elements, `window.MusaWeb`, MutationObserver, or error boxes (prompt 149).
+- No provenance callbacks or highlighting (prompt 150).
+- No CDN/iife build, no examples, no publish workflow (prompt 151).
 - No playback, no audio of any kind.
 - No pagination in `RenderOptions`: snippets engrave as one continuous system (`modeOptions` already encodes this);
   page-mode web engraving is a measured need, not a speculation.

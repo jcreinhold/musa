@@ -1,0 +1,77 @@
+// First species: note against note (OMT `024-first-species.md`).
+//
+//     musa analyze examples/analysis/species-1.musa --kind counterpoint \
+//         --profile species_1 --cantus cantus
+//
+// Bars 1-9 are a correct exercise. Bars 10-14 depart, and every departure has
+// its own cause: parallel fifths, a diminished fifth on a downbeat, a leap of a
+// fifth that is never recovered, an octave arrived at in similar motion, and a
+// final octave approached by leap rather than by step.
+//
+// The cantus firmus repeats its pitches, because that is what a cantus firmus
+// does; `musa:allow(copied-bars)` says so rather than pretending a scale degree
+// used three times is an unnamed motif.
+piece "First Species" {
+    composer "musa";
+
+    tempo 1/4 = 60;
+    meter 4/4;
+    key c major;
+
+    score {
+        part exercise {
+            clef treble;
+
+            voice counter {
+                phrase "correct" {
+                    // musa:allow(copied-bars)
+                    | c4/1
+                    | a3/1
+                    | a3/1
+                    | g3/1
+                    | b3/1
+                    | d4/1
+                    // musa:allow(copied-bars)
+                    | c4/1
+                    | b3/1
+                    // musa:allow(copied-bars)
+                    | c4/1
+                }
+
+                phrase "flawed" {
+                    | d4/1
+                    | e4/1
+                    | f4/1
+                    | a3/1
+                    // musa:allow(copied-bars)
+                    | c4/1
+                }
+            }
+
+            voice cantus {
+                phrase "correct" {
+                    // musa:allow(copied-bars)
+                    | c3/1
+                    | d3/1
+                    | f3/1
+                    | e3/1
+                    | g3/1
+                    | f3/1
+                    | e3/1
+                    | d3/1
+                    // musa:allow(copied-bars)
+                    | c3/1
+                }
+
+                phrase "flawed" {
+                    | g3/1
+                    | a3/1
+                    | b3/1
+                    | d3/1
+                    // musa:allow(copied-bars)
+                    | c3/1
+                }
+            }
+        }
+    }
+}

@@ -28,6 +28,10 @@ pub struct AnalysisFacts {
     pub kind: String,
     /// One line saying what it does.
     pub method: String,
+    /// The style whose rules it read by, for an analysis that needs one named.
+    /// Absent for the kinds that read the notation alone.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile: Option<String>,
     /// What it took for granted, one sentence each. Never empty: an analysis
     /// that assumed nothing would be claiming something.
     pub assumptions: Vec<String>,
@@ -58,6 +62,30 @@ pub struct FindingFacts {
     /// What the finding was judged against, and what held. Empty for a finding
     /// that judged nothing.
     pub grounds: Vec<GroundFacts>,
+    /// The style rule the finding is about, for a profile reading. Absent for
+    /// every other kind, because a cadence is not a rule and a reader filtering
+    /// on strength must not be handed one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rule: Option<RuleFacts>,
+}
+
+/// One rule of a named profile, as a reader needs to see it.
+///
+/// `strength` is here and not folded into the sentence because it is the whole
+/// of what a style adds: the motion is a fact about the notes either way, and
+/// what changes between SATB, species counterpoint, and jazz is only how
+/// firmly each holds the same rule.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RuleFacts {
+    /// Its id, the word a source writes in `assert follows(...)`.
+    pub id: String,
+    /// What it says, in one line.
+    pub states: String,
+    /// `definitional`, `hard in this exercise`, or `guideline`.
+    pub strength: String,
+    /// Where it is written down.
+    pub cites: String,
 }
 
 /// One criterion a finding was judged against.
@@ -137,6 +165,7 @@ impl AnalysisFacts {
         Self {
             kind: report.kind().as_str().to_owned(),
             method: report.method().to_owned(),
+            profile: report.profile().map(|profile| profile.as_str().to_owned()),
             assumptions: report.assumptions().iter().map(|line| (*line).to_owned()).collect(),
             findings: report
                 .findings()
@@ -161,6 +190,7 @@ impl AnalysisFacts {
                                 cites: ground.cites.to_owned(),
                             })
                             .collect(),
+                        rule: rule_of(finding.observation()),
                     }
                 })
                 .collect(),
@@ -228,6 +258,22 @@ fn summarize(observation: &Observation) -> String {
         Observation::Tonicization { ref target, key, .. } => {
             format!("{target} of {} is tonicized", key_name(key))
         }
+        Observation::RuleInForce { rule, .. } => format!("{} is in force: {}", rule.id(), rule.states()),
+        Observation::Departure {
+            rule, ref voices, interval, ..
+        } => {
+            let who = match voices.split_last() {
+                None => "the voicing".to_owned(),
+                Some((last, [])) => last.clone(),
+                Some((last, rest)) => format!("{} and {last}", rest.join(", ")),
+            };
+            let verb = if voices.len() == 1 { "departs" } else { "depart" };
+            let verb = if voices.is_empty() { "departs" } else { verb };
+            match interval {
+                Some(interval) => format!("{who} {verb} from {} — {interval}", rule.id()),
+                None => format!("{who} {verb} from {}", rule.id()),
+            }
+        }
         Observation::Modulation {
             from_key, to_key, how, ..
         } => format!(
@@ -237,6 +283,19 @@ fn summarize(observation: &Observation) -> String {
             how.as_str()
         ),
     }
+}
+
+/// The rule a finding is about, for the two observations that have one.
+fn rule_of(observation: &Observation) -> Option<RuleFacts> {
+    let (Observation::RuleInForce { rule, .. } | Observation::Departure { rule, .. }) = *observation else {
+        return None;
+    };
+    Some(RuleFacts {
+        id: rule.id().to_owned(),
+        states: rule.states().to_owned(),
+        strength: rule.strength().as_str().to_owned(),
+        cites: rule.cites().to_owned(),
+    })
 }
 
 /// A chord as a reader writes it: `C major`, `F♯ dominant7/A♯`.

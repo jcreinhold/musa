@@ -91,7 +91,7 @@ operation, metric, attempted amount, and limit. The prompt-96 defaults are 200,0
 value nodes, 1,048,576 logical value bytes, 2,048 monomorphized prelude instances, and 1,000,000 estimated music
 occurrences. The scalar fragment charges zero output occurrences; prompt 97 connects music constructors to the already
 present output counter. These are language-version constants, not timeouts or machine-memory observations. Interactive
-cancellation remains an external compiler operation, not a language effect. Prompts 123 and 140 benchmark and may
+cancellation remains an external compiler operation, not a language effect. Prompts 123 and 141 benchmark and may
 tighten the accepted envelope deliberately.
 
 ## 5. Prompt-95 fragment and metatheory
@@ -527,7 +527,7 @@ to compile a surface convenience into the eliminators musa already writes direct
 its place: removing nested patterns makes no musical meaning unrepresentable.
 
 **The invariant to hold:** if a later prompt adds nesting, repeated variables, or guards to patterns, it has taken on
-that subsystem and must say so and cite it. Prompt 144 checks this row.
+that subsystem and must say so and cite it. Prompt 145 checks this row.
 
 ## 7. Provenance
 

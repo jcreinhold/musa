@@ -39,7 +39,7 @@
 // (see `time.rs`); the workspace lint is allowed at module scope for that.
 #![allow(clippy::arithmetic_side_effects)]
 
-use crate::analysis::RuleName;
+use crate::analysis::{RuleName, motion};
 use crate::chord::ChordClass;
 use crate::diagnose::{Code, Diagnostic};
 use crate::origin::SourceSpan;
@@ -669,6 +669,135 @@ fn within_ranges(passage: &Passage, ranges: &[(WrittenPitch, WrittenPitch)]) -> 
         }
     }
     None
+}
+
+/// No two sonorities of the passage depart from the named voice-leading rule.
+///
+/// The rule is checked by the same predicates `crate::analysis::motion` gives
+/// the analysis service, so `assert follows(satb_parallel_perfects)` and
+/// `musa analyze --kind voice-leading` cannot come to different answers about
+/// the same two chords. What differs is the consequence, not the reading: an
+/// analysis reports a departure and says how strongly its style holds the rule,
+/// while a claim written in the source is the composer asking to be stopped, so
+/// a guideline is an error here and nowhere else.
+///
+/// Voices are paired positionally from the bottom up, exactly as
+/// [`within_ranges`] pairs them against ranges. Two consecutive sonorities with
+/// different numbers of notes are not compared: a voice resting changes which
+/// position is which, and a passage cannot say which voice the rest belongs to.
+fn follows(passage: &Passage, rule: RuleName) -> Option<Diagnostic> {
+    let found = sonorities(passage);
+    let departure = |note: &Sounded, said: String, why: String| {
+        Diagnostic::error(Code::UnmetClaim, said)
+            .at(note.at, why)
+            .also(passage.span, format!("`follows({rule})` is the claim"))
+            .note(format!("{}: {}", rule.cites(), rule.states()))
+    };
+    match rule.id() {
+        // SATB measures spacing between the upper three voices only: the bass
+        // is free to lie an octave and more below the tenor. A jazz voicing is
+        // measured throughout, and adds the muddy-register test.
+        id @ ("satb_spacing" | "jazz_spacing") => {
+            let jazz = id == "jazz_spacing";
+            for (_, sounding) in &found {
+                for (position, pair) in sounding.windows(2).enumerate().skip(usize::from(!jazz)) {
+                    let (Some(below), Some(above)) = (pair.first(), pair.get(1)) else {
+                        continue;
+                    };
+                    if let Some(interval) = motion::wide(below.pitch, above.pitch) {
+                        return Some(departure(
+                            above,
+                            format!("`{}` and `{}` are {interval} apart", below.pitch, above.pitch),
+                            format!("this is the {} voice", nth(position + 1)),
+                        ));
+                    }
+                    let muddy = jazz
+                        .then(|| motion::crowded(below.pitch, above.pitch))
+                        .flatten();
+                    if let Some(interval) = muddy {
+                        return Some(departure(
+                            above,
+                            format!("`{}` and `{}` sound {interval} below middle C", below.pitch, above.pitch),
+                            "a second this low turns the voicing muddy".to_owned(),
+                        ));
+                    }
+                }
+            }
+            None
+        }
+        id @ ("satb_parallel_perfects" | "satb_overlap" | "jazz_small_motion") => {
+            for step in found.windows(2) {
+                let (Some((_, was)), Some((_, is))) = (step.first(), step.get(1)) else {
+                    continue;
+                };
+                if was.len() != is.len() {
+                    continue;
+                }
+                if let Some(diagnostic) = moves(id, was, is, &departure) {
+                    return Some(diagnostic);
+                }
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
+/// One rule about motion, read over one pair of consecutive sonorities.
+///
+/// Split out because the pairing differs by rule and the traversal does not:
+/// parallels are between any two voices, overlap is between neighbours, and
+/// motion size is within one voice.
+fn moves(
+    id: &str,
+    was: &[&Sounded],
+    is: &[&Sounded],
+    departure: &impl Fn(&Sounded, String, String) -> Diagnostic,
+) -> Option<Diagnostic> {
+    match id {
+        "jazz_small_motion" => was.iter().zip(is.iter()).enumerate().find_map(|(position, (before, after))| {
+            motion::far(before.pitch, after.pitch).then(|| {
+                departure(
+                    after,
+                    format!(
+                        "the {} voice moves from `{}` to `{}`",
+                        nth(position),
+                        before.pitch,
+                        after.pitch
+                    ),
+                    "this is further than a third".to_owned(),
+                )
+            })
+        }),
+        "satb_overlap" => (1..was.len()).find_map(|upper| {
+            let lower = upper.checked_sub(1)?;
+            let (before, after) = (pair_at(was, lower, upper)?, pair_at(is, lower, upper)?);
+            if !motion::overlaps(before, after) {
+                return None;
+            }
+            Some(departure(
+                is.get(upper).copied()?,
+                format!("the {} and {} voices overlap here", nth(lower), nth(upper)),
+                format!("this passes `{}`, which its neighbour has just left", before.1),
+            ))
+        }),
+        _ => (0..was.len()).find_map(|lower| {
+            ((lower + 1)..was.len()).find_map(|upper| {
+                let (before, after) = (pair_at(was, lower, upper)?, pair_at(is, lower, upper)?);
+                let interval = motion::parallel_perfect(before, after)?;
+                Some(departure(
+                    is.get(upper).copied()?,
+                    format!("the {} and {} voices move in parallel {interval}s", nth(lower), nth(upper)),
+                    format!("both voices move, from `{}` and `{}`", before.0, before.1),
+                ))
+            })
+        }),
+    }
+}
+
+/// Two of a sonority's voices, by position from the bottom.
+fn pair_at(sounding: &[&Sounded], lower: usize, upper: usize) -> Option<(WrittenPitch, WrittenPitch)> {
+    Some((sounding.get(lower)?.pitch, sounding.get(upper)?.pitch))
 }
 
 /// The passage's sonorities: each stretch over which the same notes sound,

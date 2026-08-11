@@ -1,5 +1,5 @@
 /**
- * The shared worker engraver (prompt 146): the render layer's entire surface
+ * The shared worker engraver (prompt 147): the render layer's entire surface
  * to the desktop UI and to `@musa/web` (docs/interface/02-engraving.md §1).
  *
  * No component outside this package touches a Verovio toolkit, an MEI string,

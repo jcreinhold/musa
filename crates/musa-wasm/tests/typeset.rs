@@ -1,6 +1,6 @@
-//! Native tests for the wasm shell's core (prompt 145). The boundary carries
+//! Native tests for the wasm shell's core (prompt 146). The boundary carries
 //! plain data, so the interesting behavior is all testable without a browser;
-//! DOM behavior is Playwright's job (prompt 148).
+//! DOM behavior is Playwright's job (prompt 149).
 //!
 //! Test helpers use `expect()` on corpus fixtures: a failure is a bug in the
 //! test or the pipeline, not a case to handle.

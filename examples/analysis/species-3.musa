@@ -1,0 +1,40 @@
+// Third species: four notes against one (OMT `026-third-species.md`).
+//
+//     musa analyze examples/analysis/species-3.musa --kind counterpoint \
+//         --profile species_3 --cantus cantus
+//
+// Bars 1-4 run in stepwise quarters, and every dissonance among them passes
+// between two consonances in one direction. Bar 5 departs three ways at once:
+// a ninth on the downbeat, a dissonance quitted by a leap, and an octave
+// arrived at in similar motion.
+piece "Third Species" {
+    composer "musa";
+
+    tempo 1/4 = 60;
+    meter 4/4;
+    key c major;
+
+    score {
+        part exercise {
+            clef treble;
+
+            voice counter {
+                | c4/4 b3/4 a3/4 g3/4
+                | f3/4 g3/4 a3/4 b3/4
+                | c4/4 b3/4 a3/4 g3/4
+                | a3/4 b3/4 c4/4 d4/4
+                | e4/4 c4/4 a3/4 b3/4
+                | c4/1
+            }
+
+            voice cantus {
+                | c3/1
+                | d3/1
+                | e3/1
+                | f3/1
+                | d3/1
+                | c3/1
+            }
+        }
+    }
+}

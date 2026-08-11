@@ -1,12 +1,15 @@
 ---
-id: 129
+id: 130
 slug: instrument-contracts
 status: pending
-depends_on: [126, 127, 128]
+depends_on: [127, 128, 129]
 phase: 3
 ---
 
 # Instruments Expose Contracts and Hide Implementations
+
+> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into
+> another, or replace it. Read `docs/core-boundary.md` first.
 
 ## Task
 
@@ -68,6 +71,6 @@ Commit as `Give instruments typed sound contracts`.
 ## Stop
 
 - No trait or plug-in registry for hypothetical implementations; use the concrete closed implementation family with
-  native graph as the one current case and add sample bodies at prompt 135.
+  native graph as the one current case and add sample bodies at prompt 136.
 - No part routing yet, no sample decoding, and no GUI graph canvas.
 - No score, context, measure, or notation type crosses into `musa-audio`.

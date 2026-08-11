@@ -1,8 +1,8 @@
 ---
-id: 148
+id: 149
 slug: dom-typesetting
 status: done
-depends_on: [147]
+depends_on: [148]
 phase: 5
 ---
 
@@ -17,7 +17,7 @@ script, markup, done.
 
 ## Read
 
-- Prompt 147's low-level `parse`/`render`; this prompt is a client of it, nothing reimplemented.
+- Prompt 148's low-level `parse`/`render`; this prompt is a client of it, nothing reimplemented.
 - MathJax's web model: `window.MathJax = {...}` before the script loads, `typesetPromise()`, error boxes inline where
   the math was. Mermaid's model: `mermaid.run({querySelector})`, `data-processed` marking, `initialize()`.
 - `docs/interface/02-engraving.md` for the engraving defaults the output inherits; error-box styling is new web
@@ -94,8 +94,8 @@ Commit as `Add DOM typesetting and the musa-score element to @musa/web`.
 
 ## Stop
 
-- No provenance interaction (clicks, highlight, locate) — prompt 149.
-- No CDN/iife build or examples — prompt 150; Playwright fixtures here are tests, not demos.
+- No provenance interaction (clicks, highlight, locate) — prompt 150.
+- No CDN/iife build or examples — prompt 151; Playwright fixtures here are tests, not demos.
 - No editing of the source in the page, no CodeMirror, no live re-typeset on typing: the web package renders; it does
   not author.
 - No sanitization beyond what `musa-engrave` already does; no new SVG transforms.

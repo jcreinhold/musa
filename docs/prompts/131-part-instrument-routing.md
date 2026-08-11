@@ -1,12 +1,15 @@
 ---
-id: 130
+id: 131
 slug: part-instrument-routing
 status: pending
-depends_on: [31, 93, 128, 129]
+depends_on: [31, 93, 129, 130]
 phase: 3
 ---
 
 # A Part Sounds Only Through Its Instrument Instance
+
+> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into
+> another, or replace it. Read `docs/core-boundary.md` first.
 
 ## Task
 
@@ -57,7 +60,7 @@ Commit as `Route each part to its own instrument`.
 
 ## Stop
 
-- No score-driven controls (prompt 131), samples, multitimbral plug-ins, or cross-part voice sharing.
+- No score-driven controls (prompt 132), samples, multitimbral plug-ins, or cross-part voice sharing.
 - Do not place `PartId` on every public DSP node; resolve it at the preparation boundary and keep compact indices
   private.
 - No mixer-track identity masquerading as part identity.

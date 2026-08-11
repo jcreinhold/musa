@@ -1,12 +1,15 @@
 ---
-id: 134
+id: 135
 slug: pinned-package-imports
 status: pending
-depends_on: [99, 104, 110, 133]
+depends_on: [99, 104, 110, 134]
 phase: 4
 ---
 
 # A Library May Live Elsewhere Without Making Builds Implicit
+
+> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into
+> another, or replace it. Read `docs/core-boundary.md` first.
 
 ## Task
 
@@ -17,7 +20,7 @@ lockfile and work offline.
 ## Read
 
 - `docs/language/04-templates-and-modules.md` and `09-assets-and-packages.md`; prompt 36 import rules, prompt 84
-  project, prompt 99 bundled library, prompt 104 namespaces/signatures, prompt 133 assets.
+  project, prompt 99 bundled library, prompt 104 namespaces/signatures, prompt 134 assets.
 - Roadmap §16's “relative imports are sufficient” and §19's registry/solver rejection. Repair the first deliberately
   while retaining the second; explain why exact fetching is a different capability from version solving.
 - Git invocation/security, cache, lockfile, offline, and diagnostic code in `musa-project`/CLI. Prefer a narrow library

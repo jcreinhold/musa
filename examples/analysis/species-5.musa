@@ -1,0 +1,47 @@
+// Fifth species: florid counterpoint (OMT `028-fifth-species.md`).
+//
+//     musa analyze examples/analysis/species-5.musa --kind counterpoint \
+//         --profile species_5 --cantus cantus
+//
+// The fifth species is not a new set of rules. It is the other four, each bar
+// standing in whichever of their rhythmic relations it chooses, and the
+// implementation says exactly that: the rule list for `species_5` is computed
+// as the union of the other four rather than written out again, and the rhythm
+// test accepts any of their shapes. Bars here run 1:1, 2:1, 4:1, 2:1, and
+// syncopated in turn, and none of them is a departure.
+//
+// Bar 6 is the departure, and it is rhythmic: an eighth-note pair after the
+// tie leaves the bar in none of the four relations.
+piece "Fifth Species" {
+    composer "musa";
+
+    tempo 1/4 = 60;
+    meter 4/4;
+    key c major;
+
+    score {
+        part exercise {
+            clef treble;
+
+            voice counter {
+                | c4/1
+                | a3/2 b3/2
+                | c4/4 b3/4 a3/4 g3/4
+                | a3/2 c4/2
+                | rest/2 c4/2 ~
+                | c4/4 b3/4 d4/2
+                | c4/1
+            }
+
+            voice cantus {
+                | c3/1
+                | d3/1
+                | e3/1
+                | f3/1
+                | e3/1
+                | d3/1
+                | c3/1
+            }
+        }
+    }
+}

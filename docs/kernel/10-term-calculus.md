@@ -319,7 +319,7 @@ borrowed, and a future prompt that changes it should know what it is changing.
   *different* arguments. Musa's elaborator shares whole bodies keyed on their arguments, which is the weaker
   common-subexpression form of Chapter 14.7.2. The gap is real and visible in `examples/tuplet-fixture.musa`, where
   `motif turn(root)` has an argument-independent second note that is elaborated once per distinct call argument. Prompt
-  125 measures it and decides; this document records only that the two are different techniques and that musa currently
+  126 measures it and decides; this document records only that the two are different techniques and that musa currently
   has the weaker one.
 - **Why musa is unusually free to take the stronger one.** Chapter 23 is a sustained warning about full laziness:
   laziness is a delicate property that parameter order can silently change (§23.2), and hoisting maximal free

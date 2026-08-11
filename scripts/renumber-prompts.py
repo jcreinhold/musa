@@ -281,14 +281,17 @@ def apply(root: Path, stack: list[Prompt], moves: dict[int, int], bare_in: Itera
         print("\ndry run; pass --apply to write")
         return 0
 
-    # Rename through a scratch label first: shifting up rewrites 125 onto 126
-    # while 126 still exists, and git mv will not clobber.
-    for old, new in pairs:
-        subprocess.run(["git", "mv", str(old), str(new.with_suffix(".renaming"))], check=True, cwd=root)
-    for _, new in pairs:
-        subprocess.run(["git", "mv", str(new.with_suffix(".renaming")), str(new)], check=True, cwd=root)
+    # Content first, under the names the rewrite pass read. Renaming first and
+    # writing afterwards would recreate every file at its old name.
     for path, after in touched:
         path.write_text(after, encoding="utf-8")
+    # Then rename through a scratch label: shifting up moves 125 onto 126 while
+    # 126 still exists, and git mv will not clobber.
+    scratch = [(old, new, new.with_suffix(".renaming")) for old, new in pairs]
+    for old, _, temporary in scratch:
+        subprocess.run(["git", "mv", str(old), str(temporary)], check=True, cwd=root)
+    for _, new, temporary in scratch:
+        subprocess.run(["git", "mv", str(temporary), str(new)], check=True, cwd=root)
     print("\napplied")
     return 0
 

@@ -1,5 +1,5 @@
 /**
- * The `<musa-score>` element (prompt 148). Deliberately dumb: it carries the
+ * The `<musa-score>` element (prompt 149). Deliberately dumb: it carries the
  * source and hosts the shadow root, and `typeset()` does the work — batching
  * and idempotence are the scanner's job, not each element's.
  */

@@ -76,7 +76,9 @@ pub use crate::studio::{
 pub use crate::template::Template;
 pub use crate::utf16::Utf16Offsets;
 pub use musa_compiler::standard_library_source;
-pub use musa_compiler::{AnalysisKind, AnalysisRequest, AnalysisScope, Key, Mode, MusicalTime, Segmentation};
+pub use musa_compiler::{
+    AnalysisKind, AnalysisProfile, AnalysisRequest, AnalysisScope, Key, Mode, MusicalTime, Segmentation,
+};
 pub use musa_compiler::{ChoicePath, ChoiceStep, Decision, DecisionRecord, DocumentKind, Realization};
 pub use musa_compiler::{chord_types, scale_collections};
 pub use musa_language::{BarSpacing, HeaderField, KeywordDoc, keyword_doc};

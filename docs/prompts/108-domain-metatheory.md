@@ -106,4 +106,4 @@ Commit as `Prove the musical domains a conservative extension`.
 - Do not claim the theorem says anything about musical correctness. It is about type safety; whether a German sixth
   spells its top note correctly is a separate law suite and stays one.
 - Do not convert a δ-primitive's `option` result into a diagnostic to make a signature tidier; that inverts D2.
-- No performance work. Prompt 125 owns the evaluator's measured envelope.
+- No performance work. Prompt 126 owns the evaluator's measured envelope.
