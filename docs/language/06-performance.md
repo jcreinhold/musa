@@ -100,9 +100,11 @@ the prepared graph digest, lowering notes, scheduled events, block sizes, and fl
 owner. Update requires `UPDATE_ELABORATION_BASELINE=1`; an update is never a routine test repair and its diff must name
 the prompt that authorizes the semantic change.
 
-`tests/fixtures/elaboration-expected-changes.json` is the only exception list. Each defect belongs to exactly one of
-prompts 125–131. The repairing prompt removes the entry and replaces the negative observation with a positive law; no
-later prompt may preserve wrong sound by copying the old digest.
+`tests/fixtures/elaboration-expected-changes.json` is the only exception list. Each defect names the one prompt that
+repairs it, by slug rather than by rank — the ledger pointed at the wrong prompts for three insertions before that was
+fixed, because a rank is a schedule and an identity must not be spelled as one. The repairing prompt removes the entry
+and replaces the negative observation with a positive law; no later prompt may preserve wrong sound by copying the old
+digest.
 
 ## Gates and budgets
 

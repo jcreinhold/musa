@@ -56,7 +56,8 @@ allowed only after binding.
   grouping, sustain, and one explicitly physical custom control.
 - Positive/negative fixtures, MIDI mapping/loss tests, exact-curve laws, block-size differential tests, and audible WAV
   assertions.
-- Remove prompt 93's ignored-parameter and graph-address ledger entries.
+- Remove prompt 93's `ignored-parameter-event` and `graph-topology-modulation-address` ledger entries, which name this
+  prompt by slug.
 
 ## Check
 

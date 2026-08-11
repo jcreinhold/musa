@@ -53,7 +53,8 @@ MEI/LilyPond/MusicXML/MIDI/WAV goldens. It is a test oracle, not a new serializa
 
 Keep a machine-readable expected-change ledger beside the manifest. It records, rather than blesses, the current shared
 note-stream warning, ignored `Parameter` event, processor-hover gap, graph-topology modulation address, and eager studio
-`f64` conversion. Each entry names exactly one repairing prompt (125–131); any other change is a compatibility failure.
+`f64` conversion. Each entry names exactly one repairing prompt, **by slug**: a rank is an execution position and moves
+whenever a prompt is inserted, so an identity must not be spelled as one. Any other change is a compatibility failure.
 When its prompt lands, replace the defect observation with the positive law and remove the ledger entry. Never preserve
 known-wrong audio merely because it was baselined.
 
