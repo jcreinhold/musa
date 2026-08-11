@@ -400,7 +400,7 @@ piece "Study" {
     // Sealing crosses the import boundary too: `home` is `CMajor`'s own.
     let peeking = importing.replace(
         "piece \"Study\" {",
-        "let register: Option[Frame] = CMajor.home;\n\npiece \"Study\" {",
+        "let register: Option<Frame> = CMajor.home;\n\npiece \"Study\" {",
     );
     assert!(
         errors_of(&peeking)

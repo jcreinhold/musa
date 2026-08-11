@@ -151,7 +151,7 @@ A chord class is content; a voicing is a realization of it. The two are separate
 
 ```musa
 let sonority: ChordClass = chord c major7;   // spells pitch classes; does not sound
-let close: Option[Voicing] = close_position(sonority, c4);
+let close: Option<Voicing> = close_position(sonority, c4);
 
 stack c4 major7/2    // sugar: close position, sounded, register fixed by the written root
 ```

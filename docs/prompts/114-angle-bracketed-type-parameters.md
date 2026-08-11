@@ -1,7 +1,7 @@
 ---
 id: 114
 slug: angle-bracketed-type-parameters
-status: in-progress
+status: done
 depends_on: [113]
 phase: 3
 ---

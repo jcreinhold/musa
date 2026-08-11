@@ -161,6 +161,12 @@
 ; punctuation for the same reason `/` is: the real highlighter files all three
 ; under `TokenClass::Punctuation`, and a second reader owns no vocabulary.
 ;
+; `<` and `>` are also the two halves of a type parameter, and they take no
+; second entry for it. `>` reads one way — accent in a bar, closing half in a
+; type — because the real lexer has one token for it, and `<` joins the same
+; list rather than the bracket list above: brackets are the list literal, and
+; that is the whole point of the character having moved.
+;
 ; `#` is here rather than with the pitches because that is where the real
 ; highlighter puts it: a sharp inside `g#4` never reaches this list — the
 ; whole literal is one token — and the one that stands alone, in `key g#
@@ -173,6 +179,7 @@
   "/"
   "#"
   "|"
+  "<"
   ">"
   "^"
 ] @punctuation.delimiter

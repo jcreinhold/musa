@@ -47,7 +47,7 @@ const PRELUDE: &str = r"
     fn tick(one: Music, carried: Music) -> Music { overlay(one, carried) }
     fn beat() -> Music { music { c4/1 } }
     fn tally(count: Nat) -> Music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
-    fn chorus(voices: List[Music]) -> Music { list_fold(music { rest/1 }, tick, voices) }
+    fn chorus(voices: List<Music>) -> Music { list_fold(music { rest/1 }, tick, voices) }
     fn beat_for_pc(member: Pc12) -> Music { beat() }
     fn beat_for_voicing(chosen: Voicing) -> Music { beat() }
     fn beat_for_triad(refined: Triad) -> Music { beat() }
@@ -57,9 +57,9 @@ const PRELUDE: &str = r"
         false -> tally(1),
     } }
 
-    let c_major: Option[Triad] = as_triad(chord c major);
-    let c_minor: Option[Triad] = as_triad(chord c minor);
-    let no_steps: List[Triad -> Triad] = [];
+    let c_major: Option<Triad> = as_triad(chord c major);
+    let c_minor: Option<Triad> = as_triad(chord c minor);
+    let no_steps: List<Triad -> Triad> = [];
 ";
 
 /// A piece whose one voice sounds `expression`.

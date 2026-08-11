@@ -448,8 +448,8 @@ impl std::fmt::Display for Type {
                 }
                 out.write_str(")")
             }
-            Self::Option(member) => write!(out, "Option[{member}]"),
-            Self::List(member) => write!(out, "List[{member}]"),
+            Self::Option(member) => write!(out, "Option<{member}>"),
+            Self::List(member) => write!(out, "List<{member}>"),
             Self::Music => out.write_str("Music"),
             Self::Function(parameters, result) => {
                 if parameters.len() == 1 {
@@ -2777,7 +2777,7 @@ fn lower_type(mut resolver: Option<&mut Resolver>, node: &SyntaxNode) -> Option<
                 Diagnostic::error(Code::UnknownName, format!("unknown type `{text}`"))
                     .at(crate::resolve::trimmed_span(node), "not a value type")
                     .help(format!(
-                        "use {vocabulary}, `Option[τ]`, `List[τ]`, a product, or a function type"
+                        "use {vocabulary}, `Option<τ>`, `List<τ>`, a product, or a function type"
                     )),
             );
         }
@@ -6083,11 +6083,11 @@ mod tests {
                  fn item(value: Nat, accumulator: Nat) -> Nat {{ value }} \
                  fn id(value: Nat) -> Nat {{ value }} \
                  fn reject(value: Nat) -> Bool {{ false }} \
-                 fn from_option(value: Option[Nat]) -> Nat {{ match value {{ None -> 0, Some(found) -> found }} }} \
+                 fn from_option(value: Option<Nat>) -> Nat {{ match value {{ None -> 0, Some(found) -> found }} }} \
                  let by_nat: Nat = nat_fold(0, latest, {count}); \
-                 let values: List[Nat] = range({count}); \
-                 let mapped: List[Nat] = map(id, values); \
-                 let filtered: List[Nat] = filter(reject, mapped); \
+                 let values: List<Nat> = range({count}); \
+                 let mapped: List<Nat> = map(id, values); \
+                 let filtered: List<Nat> = filter(reject, mapped); \
                  let by_list: Nat = list_fold(0, item, mapped); \
                  let selected: Nat = from_option(Some(by_list)); \
                  }}"

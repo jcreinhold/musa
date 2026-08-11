@@ -111,6 +111,20 @@ fn a_short_duration_closes_up_to_its_note() {
     assert_semantics_preserved(source, &formatted);
 }
 
+/// A type parameter closes up to its type on both sides, however loosely it
+/// was written and however deep it nests. `Option<Pitch>` is one word the way
+/// `c5/4.` is one note — a gap after `<` reads as a comparison, which is the
+/// one thing the character never means here.
+#[test]
+fn a_type_parameter_closes_up_to_its_type() {
+    let source = "piece \"T\" { let held: Option < Pitch > = None;\nlet many: List < Option < Pitch > > = []; }";
+    let formatted = fmt(source);
+    assert!(formatted.contains("Option<Pitch>"), "got:\n{formatted}");
+    assert!(formatted.contains("List<Option<Pitch>>"), "got:\n{formatted}");
+    assert_eq!(fmt(&formatted), formatted, "idempotence");
+    assert_semantics_preserved(source, &formatted);
+}
+
 #[test]
 fn comments_keep_their_attachment() {
     let source = "piece \"C\" {\n    // header comment\n    meter 4/4; // trailing\n    score {\n        part p {\n            voice v {\n                c5/4 /* inline block */\n                // detached comment\n                d5/4\n            }\n        }\n    }\n}\n";

@@ -22,7 +22,7 @@ library {
     // The pitch classes a list of numbers names, each reduced modulo twelve.
     // A row or a set is written as its numbers, because that is what this
     // domain has instead of letters.
-    fn pcs(numbers: List[Nat]) -> List[Pc12] { map(pc, numbers) }
+    fn pcs(numbers: List<Nat>) -> List<Pc12> { map(pc, numbers) }
 
     // The canonical representative, zero through eleven.
     fn number_of(member: Pc12) -> Nat { pc12_number(member) }
@@ -35,7 +35,7 @@ library {
     // Spell a pitch class inside one collection — the explicit policy that
     // `forget_spelling` has no inverse without. Absent when the collection
     // holds no note of this pitch class.
-    fn spelled_in(member: Pc12, collection: Scale) -> Option[NoteName] {
+    fn spelled_in(member: Pc12, collection: Scale) -> Option<NoteName> {
         pc12_spelled(member, collection)
     }
 
@@ -51,20 +51,20 @@ library {
     fn inverted_about(index: Nat, member: Pc12) -> Pc12 { pc12_inverted(member, index) }
 
     // Apply one pitch-class function to every member of a finite list.
-    fn map_pc(function: Pc12 -> Pc12, members: List[Pc12]) -> List[Pc12] {
+    fn map_pc(function: Pc12 -> Pc12, members: List<Pc12>) -> List<Pc12> {
         map(function, members)
     }
 
     // The set of everything listed, however often it was listed. A set
     // cannot hold a duplicate, so this cannot fail: a repetition is a
     // mistake only where order matters, which is `std::post_tonal::serial`.
-    fn pcset(members: List[Pc12]) -> PcSet12 { pcset12_of(members) }
+    fn pcset(members: List<Pc12>) -> PcSet12 { pcset12_of(members) }
 
     // The members, ascending from zero. This is the set's own order and not
     // its normal order. Named for the set rather than `members_of`, because
     // `std::harmony` already reads the members of a chord class and a piece
     // that reasons about both must be able to import both.
-    fn set_members(set: PcSet12) -> List[Pc12] { pcset12_members(set) }
+    fn set_members(set: PcSet12) -> List<Pc12> { pcset12_members(set) }
 
     // T_n applied to every member.
     fn set_transposed(set: PcSet12, index: Nat) -> PcSet12 {
@@ -80,7 +80,7 @@ library {
     // tightly to the left. Ties break inward — first to last, then first to
     // the one before last, and so on — and finally by the lowest starting
     // pitch class.
-    fn normal_order(set: PcSet12) -> List[Pc12] { pcset12_normal(set) }
+    fn normal_order(set: PcSet12) -> List<Pc12> { pcset12_normal(set) }
 
     // Prime form: the set class this set belongs to. The normal orders of
     // the set and of its inversion are each transposed to begin on zero, and
@@ -90,5 +90,5 @@ library {
     // The interval-class vector: six counts, for interval classes one
     // through six. Six and not twelve, because interval class seven is
     // interval class five heard the other way round.
-    fn interval_class_vector(set: PcSet12) -> List[Nat] { pcset12_vector(set) }
+    fn interval_class_vector(set: PcSet12) -> List<Nat> { pcset12_vector(set) }
 }

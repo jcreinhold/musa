@@ -25,7 +25,7 @@ piece "Scale Context" {
     let home: Key = key c minor;
     let default_collection: Scale = key_scale(home);
     let raised_seventh: Scale = harmonic_minor_on(scale_root(default_collection));
-    let anchored: Option[Frame] = frame_on(default_collection, c5);
+    let anchored: Option<Frame> = frame_on(default_collection, c5);
 
     score {
         part keyboard {

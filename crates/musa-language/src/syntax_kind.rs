@@ -89,8 +89,12 @@ pub enum SyntaxKind {
     Slash,
     /// `|` — the barline.
     Pipe,
-    /// `>` — the accent mark.
+    /// `>` — the accent mark inside a bar, and the closing half of a type
+    /// parameter (`Option<Pitch>`). The two never meet: a type position is
+    /// never inside a bar.
     Greater,
+    /// `<` — the opening half of a type parameter. It has no musical reading.
+    Less,
     /// `^` — the marcato mark.
     Caret,
     /// `#` — the sharp.

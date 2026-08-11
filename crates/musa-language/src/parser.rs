@@ -1163,9 +1163,13 @@ impl<'a> Parser<'a> {
             self.start(kind);
             self.respelled_type();
             self.bump();
-            self.expect(SyntaxKind::LBracket, "`[`");
-            self.type_expr();
-            self.expect(SyntaxKind::RBracket, "`]`");
+            if self.at(SyntaxKind::LBracket) {
+                self.bracketed_parameter();
+            } else {
+                self.expect(SyntaxKind::Less, "`<`");
+                self.type_expr();
+                self.expect(SyntaxKind::Greater, "`>`");
+            }
             self.finish();
             return;
         }
@@ -1195,6 +1199,50 @@ impl<'a> Parser<'a> {
             self.expected("a type");
         }
         self.finish();
+    }
+
+    /// The one complaint `Option[τ]` gets, and the tree it still produces.
+    ///
+    /// Located at the whole bracketed parameter rather than at either bracket,
+    /// because the fix rewrites a *pair* and an edit offered on one half alone
+    /// would leave the other behind. The inner type is parsed into the node it
+    /// belongs to, so a file with one old parameter gets one complaint and the
+    /// declaration around it is still checked.
+    ///
+    /// In doubly-obsolete source — `option[voicing]`, written before prompt 113
+    /// capitalized the words — this range contains the inner type's own
+    /// respelling fix, and the replacement carries the inner text over
+    /// unrespelled. That is deliberate: the bracket complaint fixes brackets and
+    /// the word complaint fixes the word, and nothing here applies both at once.
+    /// `musa check --fix` rewrites warnings only (prompt 56), and an editor
+    /// applies one code action, reparses, and finds the other complaint waiting
+    /// at its new place. Respelling inside this fix would make one offer quietly
+    /// do two jobs.
+    fn bracketed_parameter(&mut self) {
+        let open = self.significant().map(|token| token.range);
+        self.bump();
+        self.type_expr();
+        let close = self.significant().filter(|token| token.kind == SyntaxKind::RBracket);
+        let Some((open, close)) = open.zip(close.map(|token| token.range)) else {
+            // No closing `]`: the ordinary missing-token complaint says more
+            // than a migration note about a parameter that was never finished.
+            self.expect(SyntaxKind::RBracket, "`]`");
+            return;
+        };
+        self.bump();
+        if self.cascading() {
+            return;
+        }
+        let range = TextRange::new(open.start(), close.end());
+        let inner = &self.source[usize::from(open.end())..usize::from(close.start())];
+        self.errors.push(
+            SyntaxError::new(range, "a type parameter is angle-bracketed", "this is `<…>`")
+                .with_help(
+                    "`[` means a list here — the literal `[c4, d4]` and the pattern `[x, ..xs]` — so the type layer \
+                     takes `<` and `>` and the character reads one way",
+                )
+                .with_fix("write `<…>`", format!("<{inner}>")),
+        );
     }
 
     /// The one complaint a type written in the old vocabulary gets.

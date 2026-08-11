@@ -126,6 +126,7 @@ pub const SPELLINGS: &[(&str, SyntaxKind)] = &[
     ("/", SyntaxKind::Slash),
     ("|", SyntaxKind::Pipe),
     (">", SyntaxKind::Greater),
+    ("<", SyntaxKind::Less),
     ("^", SyntaxKind::Caret),
     ("#", SyntaxKind::Hash),
 ];
@@ -221,6 +222,7 @@ impl TokenClass {
             | SyntaxKind::Slash
             | SyntaxKind::Pipe
             | SyntaxKind::Greater
+            | SyntaxKind::Less
             | SyntaxKind::Caret
             | SyntaxKind::Hash => Self::Punctuation,
 

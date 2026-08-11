@@ -21,7 +21,7 @@ piece "Neo-Riemannian" {
     // The triad refinement is the domain, and this `option` is the proof of
     // membership. A seventh chord or a suspension has no answer here, which
     // is why the transformations never have to check.
-    let tonic: Option[Triad] = as_triad(chord c major);
+    let tonic: Option<Triad> = as_triad(chord c major);
 
     // The six waypoints. Each is written as the chain that reaches it, so
     // the path is in the source rather than in a comment.
@@ -111,26 +111,26 @@ piece "Neo-Riemannian" {
     // The first is a spelling question: a voicing from `c4` exists only if
     // `c` is a member of the class as written, and after six steps it is
     // not. The second is a pitch-class question, and there the cycle closed.
-    fn voiced_from_c4(refined: Triad) -> Option[Voicing] {
+    fn voiced_from_c4(refined: Triad) -> Option<Voicing> {
         close_position(triad_content(refined), c4)
     }
-    fn returned(start: Triad) -> Option[Voicing] { voiced_from_c4(at_plplpl(start)) }
+    fn returned(start: Triad) -> Option<Voicing> { voiced_from_c4(at_plplpl(start)) }
 
-    let returned_is_c_major: Option[Voicing] = option_fold(None, returned, tonic);
-    let tonic_classes: Option[PcSet12] = option_fold(None, classes, tonic);
-    let returned_classes: Option[PcSet12] = option_fold(None, classes_after, tonic);
+    let returned_is_c_major: Option<Voicing> = option_fold(None, returned, tonic);
+    let tonic_classes: Option<PcSet12> = option_fold(None, classes, tonic);
+    let returned_classes: Option<PcSet12> = option_fold(None, classes_after, tonic);
 
-    fn classes(refined: Triad) -> Option[PcSet12] { Some(triad_classes(refined)) }
-    fn classes_after(start: Triad) -> Option[PcSet12] { Some(triad_classes(at_plplpl(start))) }
+    fn classes(refined: Triad) -> Option<PcSet12> { Some(triad_classes(refined)) }
+    fn classes_after(start: Triad) -> Option<PcSet12> { Some(triad_classes(at_plplpl(start))) }
 
     // The named compositions, on the triad OMT names them from.
-    let slid: Option[Triad] = option_fold(None, slid_from, tonic);
-    let neighboured: Option[Triad] = option_fold(None, neighboured_from, tonic);
-    let polar: Option[Triad] = option_fold(None, polar_from, tonic);
+    let slid: Option<Triad> = option_fold(None, slid_from, tonic);
+    let neighboured: Option<Triad> = option_fold(None, neighboured_from, tonic);
+    let polar: Option<Triad> = option_fold(None, polar_from, tonic);
 
-    fn slid_from(refined: Triad) -> Option[Triad] { Some(slide(refined)) }
-    fn neighboured_from(refined: Triad) -> Option[Triad] { Some(nebenverwandt(refined)) }
-    fn polar_from(refined: Triad) -> Option[Triad] { Some(hexatonic_pole(refined)) }
+    fn slid_from(refined: Triad) -> Option<Triad> { Some(slide(refined)) }
+    fn neighboured_from(refined: Triad) -> Option<Triad> { Some(nebenverwandt(refined)) }
+    fn polar_from(refined: Triad) -> Option<Triad> { Some(hexatonic_pole(refined)) }
 
     meter 4/4;
 

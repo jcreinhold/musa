@@ -41,12 +41,12 @@ const PRELUDE: &str = r"
 
     meter 4/4;
 
-    fn spelled(bass: Pitch, content: Option[ChordClass]) -> Music { match content {
+    fn spelled(bass: Pitch, content: Option<ChordClass>) -> Music { match content {
         None -> music { rest/1 },
         Some(sounding) -> stacked(close_position(sounding, bass)),
     } }
 
-    fn stacked(chosen: Option[Voicing]) -> Music { match chosen {
+    fn stacked(chosen: Option<Voicing>) -> Music { match chosen {
         None -> music { rest/1 },
         Some(spread) -> sound_for(spread, 1),
     } }
@@ -55,7 +55,7 @@ const PRELUDE: &str = r"
     fn beat() -> Music { music { c4/1 } }
     fn tally(count: Nat) -> Music { list_fold(music { rest/1 }, tick, repeat(beat(), count)) }
 
-    fn numeral_in(collection: Scale, written: Option[Roman]) -> Option[ChordClass] { match written {
+    fn numeral_in(collection: Scale, written: Option<Roman>) -> Option<ChordClass> { match written {
             None -> None,
             Some(numbered) -> numeral_chord(collection, numbered),
         } }
@@ -123,7 +123,7 @@ fn spelling(bindings: &str, bass: &str, content: &str) -> Vec<String> {
 fn keyed(collection: &str, tonic: &str) -> String {
     format!(
         "    let collection: Scale = {collection};
-    let register: Option[Frame] = frame_on(collection, {tonic});
+    let register: Option<Frame> = frame_on(collection, {tonic});
     fn root_of_degree(written: Degree) -> Pitch {{ match register {{
         None -> c0,
         Some(placed) -> frame_pitch(placed, written),
@@ -553,7 +553,7 @@ fn a_numeral_that_cannot_be_written_is_not_a_numeral() {
 fn a_numerals_parts_are_what_it_was_built_from() {
     let reader = |accessor: &str| {
         format!(
-            "    fn read(written: Option[Roman]) -> Nat {{ match written {{
+            "    fn read(written: Option<Roman>) -> Nat {{ match written {{
         None -> 0,
         Some(numbered) -> {accessor}(numbered),
     }} }}

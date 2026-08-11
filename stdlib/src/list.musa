@@ -1,17 +1,17 @@
 library {
     // The natural numbers from zero up to, but not including, count.
-    fn naturals(count: Nat) -> List[Nat] { range(count) }
+    fn naturals(count: Nat) -> List<Nat> { range(count) }
 
     // Apply one pitch function to every member of a finite pitch list.
-    fn map_pitches(function: Pitch -> Pitch, values: List[Pitch]) -> List[Pitch] {
+    fn map_pitches(function: Pitch -> Pitch, values: List<Pitch>) -> List<Pitch> {
         map(function, values)
     }
 
     // Keep the pitches for which predicate returns true.
-    fn filter_pitches(predicate: Pitch -> Bool, values: List[Pitch]) -> List[Pitch] {
+    fn filter_pitches(predicate: Pitch -> Bool, values: List<Pitch>) -> List<Pitch> {
         filter(predicate, values)
     }
 
     // Repeat one contextual music value count times as finite data.
-    fn repeat_music(value: Music, count: Nat) -> List[Music] { repeat(value, count) }
+    fn repeat_music(value: Music, count: Nat) -> List<Music> { repeat(value, count) }
 }

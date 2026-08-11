@@ -44,15 +44,15 @@ const PRELUDE: &str = r"
     fn beat_for_nat(count: Nat) -> Music { beat() }
     fn beat_for_row(series: Row12) -> Music { beat() }
     fn beat_for_spelling(spelled: NoteName) -> Music { beat() }
-    fn chorus(voices: List[Music]) -> Music { list_fold(music { rest/1 }, tick, voices) }
-    fn sounded(cell: Option[NoteName]) -> Music { option_fold(music { rest/1 }, beat_for_spelling, cell) }
+    fn chorus(voices: List<Music>) -> Music { list_fold(music { rest/1 }, tick, voices) }
+    fn sounded(cell: Option<NoteName>) -> Music { option_fold(music { rest/1 }, beat_for_spelling, cell) }
 
-    let generic_pcs: List[Pc12] = pcs([0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7]);
-    let chromatic_pcs: List[Pc12] = pcs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-    let flawed_pcs: List[Pc12] = pcs([0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3]);
+    let generic_pcs: List<Pc12> = pcs([0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7]);
+    let chromatic_pcs: List<Pc12> = pcs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    let flawed_pcs: List<Pc12> = pcs([0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3]);
 
-    let generic: Option[Row12] = row(generic_pcs);
-    let chromatic: Option[Row12] = row(chromatic_pcs);
+    let generic: Option<Row12> = row(generic_pcs);
+    let chromatic: Option<Row12> = row(chromatic_pcs);
 ";
 
 /// A piece whose one voice sounds `expression`.
@@ -132,8 +132,8 @@ fn only_a_bijection_is_a_row() {
 #[test]
 fn a_refusal_says_which_position_repeated_and_which_class_never_came() {
     let bindings = "
-    let repeats: List[Nat] = repeated_positions(flawed_pcs);
-    let missing: List[Pc12] = missing_classes(flawed_pcs);
+    let repeats: List<Nat> = repeated_positions(flawed_pcs);
+    let missing: List<Pc12> = missing_classes(flawed_pcs);
 ";
     assert_eq!(
         counted(bindings, "chorus(map(beat_for_nat, repeats))"),
@@ -215,16 +215,16 @@ fn the_forty_eight_labels_are_not_forty_eight_rows() {
 #[test]
 fn every_row_stands_in_a_twelve_by_twelve_matrix() {
     let bindings = "
-    fn matrix_of(series: Row12) -> List[Row12] { matrix(series) }
-    let rows: List[Row12] = option_fold([], matrix_of, generic);
+    fn matrix_of(series: Row12) -> List<Row12> { matrix(series) }
+    let rows: List<Row12> = option_fold([], matrix_of, generic);
 ";
     assert_eq!(counted(bindings, "chorus(map(beat_for_row, rows))"), 12, "twelve rows");
     assert_eq!(
         counted(
             "
-    fn matrix_of(series: Row12) -> List[Row12] { matrix(series) }
+    fn matrix_of(series: Row12) -> List<Row12> { matrix(series) }
     fn spread(series: Row12) -> Music { chorus(map(beat_for_pc, pcs_of(series))) }
-    let rows: List[Row12] = option_fold([], matrix_of, generic);
+    let rows: List<Row12> = option_fold([], matrix_of, generic);
 ",
             "chorus(map(spread, rows))"
         ),
@@ -267,10 +267,10 @@ fn a_form_is_numbered_only_once_a_convention_is_named() {
 #[test]
 fn spelling_a_row_loses_the_notes_the_collection_cannot_write() {
     let bindings = "
-    fn in_c_major(series: Row12) -> List[Option[NoteName]] { row_spelled_in(series, scale c major) }
-    fn in_octatonic(series: Row12) -> List[Option[NoteName]] { row_spelled_in(series, scale c octatonic_half_whole) }
-    let spelled_in_c: List[Option[NoteName]] = option_fold([], in_c_major, generic);
-    let spelled_octatonically: List[Option[NoteName]] = option_fold([], in_octatonic, generic);
+    fn in_c_major(series: Row12) -> List<Option<NoteName>> { row_spelled_in(series, scale c major) }
+    fn in_octatonic(series: Row12) -> List<Option<NoteName>> { row_spelled_in(series, scale c octatonic_half_whole) }
+    let spelled_in_c: List<Option<NoteName>> = option_fold([], in_c_major, generic);
+    let spelled_octatonically: List<Option<NoteName>> = option_fold([], in_octatonic, generic);
 ";
     assert_eq!(
         counted(bindings, "chorus(map(sounded, spelled_in_c))"),

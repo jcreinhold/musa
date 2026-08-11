@@ -1,5 +1,6 @@
 ---
 source: crates/musa-language/tests/parser.rs
+assertion_line: 679
 expression: print_errors(&doc)
 ---
 27..32: a type is spelled with a capital
@@ -18,6 +19,10 @@ expression: print_errors(&doc)
   label: this is `Voicing`
   help: every type the compiler owns is spelled with a capital, so `voicing` is `Voicing`
   fix: write `Voicing` -> "Voicing"
+104..113: a type parameter is angle-bracketed
+  label: this is `<…>`
+  help: `[` means a list here — the literal `[c4, d4]` and the pattern `[x, ..xs]` — so the type layer takes `<` and `>` and the character reads one way
+  fix: write `<…>` -> "<voicing>"
 116..120: a constructor is spelled with a capital
   label: this is `None`
   help: `Some` and `None` are the two constructors of `Option`, and they are spelled the way it is

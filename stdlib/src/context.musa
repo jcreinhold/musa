@@ -20,11 +20,11 @@ library {
 
         // The written pitch a numbered degree names, in this context's own
         // register. Absent when the context has no register to spell in.
-        let spell: Nat -> Option[Pitch];
+        let spell: Nat -> Option<Pitch>;
 
         // How this context voices a chord class. Absent when the class
         // cannot be voiced from the register it chose.
-        let voicing_for: ChordClass -> Option[Voicing];
+        let voicing_for: ChordClass -> Option<Voicing>;
     }
 
     // C major, spelled from middle C.
@@ -35,16 +35,16 @@ library {
         // The register degrees are spelled in. Private: a context promises
         // spelled pitches, not the frame it spells them from, so changing
         // where this one sits changes nothing anyone outside can name.
-        let home: Option[Frame] = frame_on(collection, c4);
+        let home: Option<Frame> = frame_on(collection, c4);
 
-        fn spell(ordinal: Nat) -> Option[Pitch] {
+        fn spell(ordinal: Nat) -> Option<Pitch> {
             match home {
                 None -> None,
                 Some(register) -> Some(frame_degree(register, ordinal)),
             }
         }
 
-        fn voicing_for(content: ChordClass) -> Option[Voicing] { close_position(content, c4) }
+        fn voicing_for(content: ChordClass) -> Option<Voicing> { close_position(content, c4) }
     }
 
     // A natural minor, spelled from the A below middle C. The same four
@@ -54,15 +54,15 @@ library {
         let tonic: Key = key a minor;
         let collection: Scale = scale a aeolian;
 
-        let home: Option[Frame] = frame_on(collection, a3);
+        let home: Option<Frame> = frame_on(collection, a3);
 
-        fn spell(ordinal: Nat) -> Option[Pitch] {
+        fn spell(ordinal: Nat) -> Option<Pitch> {
             match home {
                 None -> None,
                 Some(register) -> Some(frame_degree(register, ordinal)),
             }
         }
 
-        fn voicing_for(content: ChordClass) -> Option[Voicing] { close_position(content, a3) }
+        fn voicing_for(content: ChordClass) -> Option<Voicing> { close_position(content, a3) }
     }
 }

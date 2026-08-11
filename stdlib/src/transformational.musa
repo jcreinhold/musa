@@ -109,7 +109,7 @@ library {
     // triad. Composition is what a chain is — no transformation here is a
     // keyword or a special form, so a list of them is ordinary data and this
     // is an ordinary fold.
-    fn chain(steps: List[Triad -> Triad], start: Triad) -> Triad {
+    fn chain(steps: List<Triad -> Triad>, start: Triad) -> Triad {
         list_fold(start, applied, steps)
     }
 
@@ -122,7 +122,7 @@ library {
     fn unspelled(spelled: NoteName) -> Pc12 { pc12_forget(spelled) }
 
     // The three tones of a triad, spelled, from the root upward.
-    fn triad_tones(refined: Triad) -> List[NoteName] {
+    fn triad_tones(refined: Triad) -> List<NoteName> {
         [triad_root(refined), triad_third(refined), triad_fifth(refined)]
     }
 

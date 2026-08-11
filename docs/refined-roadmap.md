@@ -413,7 +413,7 @@ The primitive carrier types are:
 \end{aligned}
 ]
 
-`List[A]` denotes finite lists of values of (A).
+`List<A>` denotes finite lists of values of (A).
 
 A record denotes a Cartesian product.
 

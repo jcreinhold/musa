@@ -220,6 +220,10 @@ enum RawToken {
     Pipe,
     #[token(">")]
     Greater,
+    // The opening half of a type parameter (prompt 114). It has no musical
+    // reading: no music expression produces `a < b`, so the character is free.
+    #[token("<")]
+    Less,
     #[token("^")]
     Caret,
     #[token("#")]
@@ -433,6 +437,7 @@ impl RawToken {
             | Self::Slash
             | Self::Pipe
             | Self::Greater
+            | Self::Less
             | Self::Caret
             | Self::Hash
             | Self::PieceKw
@@ -557,6 +562,7 @@ impl RawToken {
             Self::Slash => SyntaxKind::Slash,
             Self::Pipe => SyntaxKind::Pipe,
             Self::Greater => SyntaxKind::Greater,
+            Self::Less => SyntaxKind::Less,
             Self::Caret => SyntaxKind::Caret,
             Self::Hash => SyntaxKind::Hash,
             Self::PieceKw => SyntaxKind::PieceKw,

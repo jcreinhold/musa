@@ -679,6 +679,20 @@ fn the_old_type_spellings_are_migration_errors() {
     insta::assert_snapshot!(print_errors(&doc));
 }
 
+/// A type parameter is angle-bracketed (prompt 114). Prompt 113 ran first, so
+/// the source that meets this refusal in practice is already capitalized: the
+/// brackets are the only thing left wrong. One complaint per parameter, at the
+/// pair, with the pair rewritten as the fix — nested and stacked parameters
+/// included, so `List[Option[Pitch]]` says it twice and means it twice.
+#[test]
+fn the_old_type_parameter_brackets_are_migration_errors() {
+    let doc = parse(
+        "piece \"Old\" { let held: Option[Pitch] = None; \
+         let many: List[Option[Pitch]] = []; }",
+    );
+    insta::assert_snapshot!(print_errors(&doc));
+}
+
 /// `Some` and `None` move with `Option`, so the lowercase constructors are
 /// refused the same way — in expression position and in a pattern, each at
 /// its own word, so a `match` written the old way gets one complaint per
@@ -686,7 +700,7 @@ fn the_old_type_spellings_are_migration_errors() {
 #[test]
 fn the_old_option_constructors_are_migration_errors() {
     let doc = parse(
-        "piece \"Old\" { let held: Option[Pitch] = some(c4); \
+        "piece \"Old\" { let held: Option<Pitch> = some(c4); \
          let chosen: Pitch = match held { none -> c4, some(found) -> found }; }",
     );
     insta::assert_snapshot!(print_errors(&doc));

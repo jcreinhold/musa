@@ -3,8 +3,8 @@ expression and type grammar
 ==================
 
 piece "Expressions" {
-  let choices: List[(Pitch, Option[Pitch])] = [(c4, Some(e4)), (g4, None)];
-  fn choose(value: Option[Pitch], fallback: Pitch = c4) -> Pitch {
+  let choices: List<(Pitch, Option<Pitch>)> = [(c4, Some(e4)), (g4, None)];
+  fn choose(value: Option<Pitch>, fallback: Pitch = c4) -> Pitch {
     match value {
       None -> fallback,
       Some(found) -> found,
@@ -138,7 +138,7 @@ incomplete match arm recovers
 ==================
 
 piece "Recovery" {
-  let value: Option[Nat] = match value {
+  let value: Option<Nat> = match value {
     None ->
   };
 }

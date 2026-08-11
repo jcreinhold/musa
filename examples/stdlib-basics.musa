@@ -14,7 +14,7 @@ piece "Standard Library Basics" {
 
     let answer: Music = compose_music(transpose(P8), retrograde, subject);
     let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));
-    let counting: List[Nat] = naturals(4);
+    let counting: List<Nat> = naturals(4);
 
     score {
         part strings {

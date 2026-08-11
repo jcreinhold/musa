@@ -113,6 +113,7 @@ fn tree_sitter_name(kind: SyntaxKind) -> &'static str {
         SyntaxKind::Slash => "/",
         SyntaxKind::Pipe => "|",
         SyntaxKind::Greater => ">",
+        SyntaxKind::Less => "<",
         SyntaxKind::Caret => "^",
         SyntaxKind::Hash => "#",
         SyntaxKind::TemplateKw => "template",

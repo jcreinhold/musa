@@ -380,8 +380,8 @@ module.exports = grammar({
     // keyword stands here: `key` is a statement and `Key` is a type
     // (Parser::type_atom).
     type_name: ($) => $.identifier,
-    option_type: ($) => seq('Option', '[', $.type_expression, ']'),
-    list_type: ($) => seq('List', '[', $.type_expression, ']'),
+    option_type: ($) => seq('Option', '<', $.type_expression, '>'),
+    list_type: ($) => seq('List', '<', $.type_expression, '>'),
     product_type: ($) =>
       seq('(', $.type_expression, ',', $.type_expression, repeat(seq(',', $.type_expression)), ')'),
 

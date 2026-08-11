@@ -14,25 +14,25 @@ piece "Serial Forms" {
 
     // A row is written as twelve numbers because a row has no spelling to
     // write. `pc` reduces modulo twelve, so this list is twelve residues.
-    let generic_pcs: List[Pc12] = pcs([0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7]);
+    let generic_pcs: List<Pc12> = pcs([0, 1, 4, 9, 5, 8, 3, 10, 2, 11, 6, 7]);
 
     // The only way into `row12`, and it can fail: twelve entries, each pitch
     // class once. Absence is the whole answer here, so the exact reason is
     // asked for separately, below.
-    let generic: Option[Row12] = row(generic_pcs);
+    let generic: Option<Row12> = row(generic_pcs);
 
     // The ascending chromatic row, which is a row and is also symmetric: the
     // retrograde inversion about eleven sends it to itself.
-    let chromatic_pcs: List[Pc12] = pcs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-    let chromatic: Option[Row12] = row(chromatic_pcs);
+    let chromatic_pcs: List<Pc12> = pcs([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    let chromatic: Option<Row12> = row(chromatic_pcs);
 
     // Not a row, and the constructor says only that. Which position repeated
     // and which pitch class never arrived are exact questions with exact
     // answers, and they are these — `[3]` and `[11]`.
-    let flawed_pcs: List[Pc12] = pcs([0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3]);
-    let flawed: Option[Row12] = row(flawed_pcs);
-    let flawed_repeats: List[Nat] = repeated_positions(flawed_pcs);
-    let flawed_missing: List[Pc12] = missing_classes(flawed_pcs);
+    let flawed_pcs: List<Pc12> = pcs([0, 1, 2, 0, 4, 5, 6, 7, 8, 9, 10, 3]);
+    let flawed: Option<Row12> = row(flawed_pcs);
+    let flawed_repeats: List<Nat> = repeated_positions(flawed_pcs);
+    let flawed_missing: List<Pc12> = missing_classes(flawed_pcs);
 
     // How many distinct rows the 48 labels produce, and how many of the 48
     // fix the row. The product is 48 in both cases; the factors are not the
@@ -48,8 +48,8 @@ piece "Serial Forms" {
     // The matrix: twelve rows, row zero the row as written, each column read
     // downward an inversion. The construction names no convention, so the
     // index a form is *called* is asked for separately and by name.
-    fn matrix_of(series: Row12) -> List[Row12] { matrix(series) }
-    let generic_matrix: List[Row12] = option_fold([], matrix_of, generic);
+    fn matrix_of(series: Row12) -> List<Row12> { matrix(series) }
+    let generic_matrix: List<Row12> = option_fold([], matrix_of, generic);
 
     fn fixed_zero(series: Row12) -> Nat { fixed_zero_index(series) }
     let generic_fixed_zero: Nat = option_fold(0, fixed_zero, generic);
@@ -57,18 +57,18 @@ piece "Serial Forms" {
     // The spelling projection, and it is not a coercion. C major spells seven
     // of the twelve classes and nothing else, so five positions come back
     // absent — the loss is in the value, where it can be seen.
-    fn in_c_major(series: Row12) -> List[Option[NoteName]] {
+    fn in_c_major(series: Row12) -> List<Option<NoteName>> {
         row_spelled_in(series, scale c major)
     }
-    let generic_in_c_major: List[Option[NoteName]] = option_fold([], in_c_major, generic);
+    let generic_in_c_major: List<Option<NoteName>> = option_fold([], in_c_major, generic);
 
     // Sets forget order as well as spelling. This is the row's first
     // tetrachord as a set: its normal order, its prime form, and its
     // interval-class vector are facts about the set class, not the ordering.
     let head_set: PcSet12 = pcset(pcs([0, 1, 4, 9]));
-    let head_normal: List[Pc12] = normal_order(head_set);
+    let head_normal: List<Pc12> = normal_order(head_set);
     let head_prime: PcSet12 = prime_form(head_set);
-    let head_vector: List[Nat] = interval_class_vector(head_set);
+    let head_vector: List<Nat> = interval_class_vector(head_set);
 
     // Transposition and inversion act on the set as they act on its members,
     // and a set class is what survives both.

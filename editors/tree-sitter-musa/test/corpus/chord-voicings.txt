@@ -6,7 +6,7 @@ piece "Chord Voicings" {
   import std::harmony;
   import std::voicing;
   let sonority: ChordClass = chord c major7;
-  let close: Option[Voicing] = close_position(sonority, c4);
+  let close: Option<Voicing> = close_position(sonority, c4);
   fn held(chosen: Voicing) -> Music {
     play(chosen, 1/1)
   }

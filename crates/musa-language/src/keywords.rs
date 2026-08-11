@@ -206,7 +206,7 @@ static REPEAT: KeywordDoc = doc!(
      written once. With `ending` blocks inside, the passes differ where the endings say they do. In expression \
      position, `repeat(value, count)` is the finite value operation and returns a list of exactly `count` copies; \
      it never creates an infinite stream.\n\n\
-     ```musa\nrepeat 2 { use verse(); }\nlet pedals: List[Bool] = repeat(true, 4);\n```"
+     ```musa\nrepeat 2 { use verse(); }\nlet pedals: List<Bool> = repeat(true, 4);\n```"
 );
 static BAR: KeywordDoc = doc!(
     "bar",
@@ -515,32 +515,32 @@ static MUSIC: KeywordDoc = doc!(
 static OPTION: KeywordDoc = doc!(
     "Option",
     "a type that may contain one value",
-    "`Option[T]` represents an honest partial musical result: either `Some(value)` or `None`, with both cases handled explicitly.\n\n\
-     ```musa\nlet found: Option[Pitch] = None;\n```"
+    "`Option<T>` represents an honest partial musical result: either `Some(value)` or `None`, with both cases handled explicitly.\n\n\
+     ```musa\nlet found: Option<Pitch> = None;\n```"
 );
 static LIST: KeywordDoc = doc!(
     "List",
     "a finite ordered collection type",
-    "`List[T]` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n\
-     ```musa\nlet tones: List[Pitch] = [c4, e4, g4];\n```"
+    "`List<T>` is a finite ordered collection used by total folds and music-theory libraries. Square brackets construct its values.\n\n\
+     ```musa\nlet tones: List<Pitch> = [c4, e4, g4];\n```"
 );
 static MATCH: KeywordDoc = doc!(
     "match",
     "handle every form of a finite value",
     "A `match` expression names each possible case of an option, list, product, boolean, or other finite value. The checker requires complete, non-overlapping arms.\n\n\
-     ```musa\nfn keep(x: Option[Pitch]) -> Option[Pitch] { match x { None -> None, Some(p) -> Some(p), } }\n```"
+     ```musa\nfn keep(x: Option<Pitch>) -> Option<Pitch> { match x { None -> None, Some(p) -> Some(p), } }\n```"
 );
 static SOME: KeywordDoc = doc!(
     "Some",
     "an option containing a value",
     "`Some(value)` constructs the present case of an `Option`; a `match` can bind the contained value. It carries its type's capital because it is one of that type's two constructors.\n\n\
-     ```musa\nlet tonic: Option[Pitch] = Some(c4);\n```"
+     ```musa\nlet tonic: Option<Pitch> = Some(c4);\n```"
 );
 static NONE: KeywordDoc = doc!(
     "None",
     "an option containing no value",
     "`None` is the absent case of an `Option`. It makes partial musical operations explicit instead of hiding failure. `meter none;` is a different word: a meter that says there are no barlines.\n\n\
-     ```musa\nlet absent: Option[Pitch] = None;\n```"
+     ```musa\nlet absent: Option<Pitch> = None;\n```"
 );
 static TRUE: KeywordDoc = doc!(
     "true",
@@ -801,6 +801,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::Slash
         | SyntaxKind::Pipe
         | SyntaxKind::Greater
+        | SyntaxKind::Less
         | SyntaxKind::Caret
         | SyntaxKind::Hash
         | SyntaxKind::Error

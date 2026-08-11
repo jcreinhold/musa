@@ -20,20 +20,20 @@ library {
     // `distinct_forms` counts rather than assumes.
 
     // The row a sequence spells, or nothing when the sequence is not one.
-    fn row(pcs: List[Pc12]) -> Option[Row12] { row12_of(pcs) }
+    fn row(pcs: List<Pc12>) -> Option<Row12> { row12_of(pcs) }
 
     // The order positions whose pitch class already appeared earlier — the
     // exact reason a sequence failed to be a row. The first occurrence is
     // not among them, because that is where the pitch class belongs.
-    fn repeated_positions(pcs: List[Pc12]) -> List[Nat] { row12_repeats(pcs) }
+    fn repeated_positions(pcs: List<Pc12>) -> List<Nat> { row12_repeats(pcs) }
 
     // The pitch classes a sequence never names, ascending — the other exact
     // reason. A sequence of the right length has one of these lists empty
     // exactly when it has the other empty.
-    fn missing_classes(pcs: List[Pc12]) -> List[Pc12] { row12_missing(pcs) }
+    fn missing_classes(pcs: List<Pc12>) -> List<Pc12> { row12_missing(pcs) }
 
     // The row's pitch classes, in order position order.
-    fn pcs_of(series: Row12) -> List[Pc12] { row12_pcs(series) }
+    fn pcs_of(series: Row12) -> List<Pc12> { row12_pcs(series) }
 
     // P: transposition by n semitones, order positions untouched.
     fn transposed(series: Row12, index: Nat) -> Row12 { row12_transposed(series, index) }
@@ -60,7 +60,7 @@ library {
     // because the rows are rows and not labels: which transposition is
     // called P0 is the question the two functions below answer, differently
     // and by name.
-    fn matrix(series: Row12) -> List[Row12] { row12_matrix(series) }
+    fn matrix(series: Row12) -> List<Row12> { row12_matrix(series) }
 
     // The transposition index under the fixed-zero convention: P0 is the
     // form beginning on pitch class zero, so a row's index is simply the
@@ -88,13 +88,13 @@ library {
     // Spell one row inside a collection, position by position. A pitch class
     // the collection cannot spell is absent, and the row keeps its length,
     // so a projection that lost notes is visible as the gaps it left.
-    fn row_spelled_in(series: Row12, collection: Scale) -> List[Option[NoteName]] {
+    fn row_spelled_in(series: Row12, collection: Scale) -> List<Option<NoteName>> {
         map(spelling_in(collection), row12_pcs(series))
     }
 
     // The spelling policy of one collection, as a function a row can be
     // carried across.
-    fn spelling_in(collection: Scale, member: Pc12) -> Option[NoteName] {
+    fn spelling_in(collection: Scale, member: Pc12) -> Option<NoteName> {
         pc12_spelled(member, collection)
     }
 

@@ -84,7 +84,7 @@ const PRELUDE: &str = "\
     import std::voicing;
 
     fn held(chosen: Voicing) -> Music { play(chosen, 1/1) }
-    fn sounded(chosen: Option[Voicing]) -> Music { option_fold(music { rest/1 }, held, chosen) }
+    fn sounded(chosen: Option<Voicing>) -> Music { option_fold(music { rest/1 }, held, chosen) }
     fn tonic_of(register: Frame) -> Music { music { (frame_degree(register, 1))/1 } }
     fn named(root: NoteName) -> Music { option_fold(music { rest/1 }, tonic_of, frame_on(major_on(root), c4)) }
 ";
@@ -220,10 +220,10 @@ fn an_inversion_designates_a_bass_and_leaves_the_root_alone() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    fn from_e(content: ChordClass) -> Option[Voicing] {{ close_position(content, e4) }}
+    fn from_e(content: ChordClass) -> Option<Voicing> {{ close_position(content, e4) }}
 
     let content: ChordClass = chord c major;
-    let first: Option[ChordClass] = inversion(content, 1);
+    let first: Option<ChordClass> = inversion(content, 1);
     let voiced: Music = sounded(option_fold(None, from_e, first));
     let root_after: Music = named(option_fold(root_of(content), root_of, first));"
         ),
@@ -242,13 +242,13 @@ fn a_slash_bass_is_not_an_inversion() {
     let source = piece_with(
         &format!(
             "{PRELUDE}
-    fn from_d(content: ChordClass) -> Option[Voicing] {{ close_position(content, d3) }}
+    fn from_d(content: ChordClass) -> Option<Voicing> {{ close_position(content, d3) }}
 
     let slash: ChordClass = slash_bass(chord c major, pitchclass_of(d3));
     let under_d: Music = sounded(close_position(slash, d3));
     let absent: Music = sounded(option_fold(None, from_d, inversion(chord c major, 7)));
     let slash_bass_class: Music = named(option_fold(c_root, root_of, some_slash));
-    let some_slash: Option[ChordClass] = Some(slash);
+    let some_slash: Option<ChordClass> = Some(slash);
     let c_root: NoteName = root_of(chord c major);"
         ),
         "        use under_d;\n        use absent;\n        use slash_bass_class;",
@@ -301,8 +301,8 @@ fn an_omission_keeps_the_class_it_omits_from() {
     fn class_root(chosen: Voicing) -> NoteName {{ root_of(chord_of(chosen)) }}
 
     let content: ChordClass = chord c major7;
-    let close: Option[Voicing] = close_position(content, c4);
-    let without_root: Option[Voicing] = option_fold(None, rootless, close);
+    let close: Option<Voicing> = close_position(content, c4);
+    let without_root: Option<Voicing> = option_fold(None, rootless, close);
     let voiced: Music = sounded(without_root);
     let still_c: Music = named(option_fold(root_of(content), class_root, without_root));"
         ),

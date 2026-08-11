@@ -252,8 +252,10 @@ fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut W
         writer.write(text);
         writer.space();
     } else if kind == SyntaxKind::LBracket {
-        // `chord [` takes a space; `use sigh(` does not.
-        if writer.needs_word_space() && !matches!(writer.prev, Some(SyntaxKind::OptionKw | SyntaxKind::ListKw)) {
+        // `chord [` takes a space; `use sigh(` does not. A type parameter no
+        // longer reaches here at all — it is written `Option<Pitch>` since
+        // prompt 114, and `[` means a list.
+        if writer.needs_word_space() {
             writer.space();
         }
         writer.write(text);
@@ -261,12 +263,13 @@ fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut W
         writer.write(text);
     } else if matches!(
         kind,
-        SyntaxKind::Slash | SyntaxKind::Dot | SyntaxKind::Greater | SyntaxKind::Caret
+        SyntaxKind::Slash | SyntaxKind::Dot | SyntaxKind::Greater | SyntaxKind::Caret | SyntaxKind::Less
     ) {
         // A short-form duration is part of the note's word: `c4/4.` is one
         // note written one way, not a pitch beside a fraction beside a dot.
         // An accent or a marcato is drawn on its notehead, so it is written
-        // on its note: `c4/4>`, never `c4/4 >`.
+        // on its note: `c4/4>`, never `c4/4 >`. A type parameter binds to its
+        // type the same way: `Option<Pitch>`, never `Option <Pitch>`.
         writer.write(text);
     } else {
         if writer.needs_word_space() {
@@ -967,6 +970,12 @@ impl Writer {
     }
 
     /// Whether the next word-like token needs a space before it.
+    ///
+    /// The listed kinds are the ones nothing follows with a gap: an opener
+    /// (`(`, `[`, `<`), a separator that already wrote its own space, or a
+    /// sign that belongs to the number after it. `<` earns its place the way
+    /// `[` does — it opens a parameter, and `Option<Pitch>` is one word for
+    /// the same reason `[c4, d4]` starts tight.
     fn needs_word_space(&self) -> bool {
         let Some(prev) = self.prev else {
             return false;
@@ -985,6 +994,7 @@ impl Writer {
                 | SyntaxKind::Arrow
                 | SyntaxKind::PipeForward
                 | SyntaxKind::Slash
+                | SyntaxKind::Less
         )
     }
 

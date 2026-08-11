@@ -40,7 +40,7 @@ const PRELUDE: &str = r"
     fn beat_for_pc(member: Pc12) -> Music { beat() }
     fn beat_for_nat(count: Nat) -> Music { beat() }
     fn beat_for_spelling(spelled: NoteName) -> Music { beat() }
-    fn chorus(voices: List[Music]) -> Music { list_fold(music { rest/1 }, tick, voices) }
+    fn chorus(voices: List<Music>) -> Music { list_fold(music { rest/1 }, tick, voices) }
 ";
 
 /// A piece whose one voice sounds `expression`.

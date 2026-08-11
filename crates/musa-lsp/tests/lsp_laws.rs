@@ -704,7 +704,7 @@ fn semantic_tokens_cover_a_broken_document() {
     // A document mid-edit: an unrecognized span, an unterminated string. The
     // lexer is total, so the tokens are too.
     let broken =
-        "piece \"x\" {\n    fn choose(x: Option[Nat]) -> Nat = match x { None ->\n    @@ mid-edit \"unterminated\n}\n";
+        "piece \"x\" {\n    fn choose(x: Option<Nat>) -> Nat = match x { None ->\n    @@ mid-edit \"unterminated\n}\n";
     let mut server = Server::start();
     let (uri, _) = server.open("broken", broken);
     let tokens = server

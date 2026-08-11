@@ -2,9 +2,9 @@ use musa_language::{BarSpacing, SyntaxElement, SyntaxKind, format, parse};
 
 const EXPRESSIONS: &str = r#"piece "Expressions" {
     let fifth: Interval = P5;
-    let paths: List[(Pitch, Option[Pitch])] = [(c4, Some(e4)), (g4, None)];
+    let paths: List<(Pitch, Option<Pitch>)> = [(c4, Some(e4)), (g4, None)];
 
-    fn choose(value: Option[Pitch], fallback: Pitch = c4) -> Pitch { match value {
+    fn choose(value: Option<Pitch>, fallback: Pitch = c4) -> Pitch { match value {
         None -> fallback,
         Some(found) -> found,
     } }
@@ -104,7 +104,7 @@ fn incomplete_expressions_recover_without_losing_source() {
         "piece \"x\" { fn f(x: Nat) -> { x } }",
         "piece \"x\" { let x: Nat = f(1; }",
         "piece \"x\" { let x: Nat -> = 1; }",
-        "piece \"x\" { let x: Option[Nat] = match x { None -> }; }",
+        "piece \"x\" { let x: Option<Nat> = match x { None -> }; }",
         "piece \"x\" { let x: Nat = match x {}; }",
     ] {
         let document = parse(broken);
@@ -185,7 +185,7 @@ fn diminished_interval_spelling_does_not_steal_the_note_d4() {
 #[test]
 fn repeat_is_a_statement_keyword_and_a_finite_value_operation() {
     let source =
-        "piece \"x\" { let copies: List[Nat] = repeat(1, 4); score { part p { voice v { repeat 2 { c4/4 } } } } }";
+        "piece \"x\" { let copies: List<Nat> = repeat(1, 4); score { part p { voice v { repeat 2 { c4/4 } } } } }";
     let document = parse(source);
     assert!(document.errors().is_empty(), "{:?}", document.errors());
     let root = document.syntax();

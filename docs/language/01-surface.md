@@ -214,11 +214,11 @@ decidable property of the result.
 
 ```musa
 let sonority: ChordClass = chord c major7;
-let close: Option[Voicing] = close_position(sonority, c4);
-let open: Option[Voicing] = drop_position(sonority, c3, 2);
+let close: Option<Voicing> = close_position(sonority, c4);
+let open: Option<Voicing> = drop_position(sonority, c3, 2);
 
 fn sound(chosen: Voicing) -> Music { play(chosen, 1/2) }
-fn sounded(chosen: Option[Voicing]) -> Music { option_fold(music { rest/2 }, sound, chosen) }
+fn sounded(chosen: Option<Voicing>) -> Music { option_fold(music { rest/2 }, sound, chosen) }
 let close_bar: Music = sounded(close);
 let open_bar: Music = sounded(open);
 
@@ -229,11 +229,11 @@ stack c4 major7/2
 
 let row: Row12 = row12(c, cs, e, d, fs, f, as, g, gs, b, a, ds);
 let symmetric: Row12 = row12(c, fs, d, gs, e, as, f, b, g, cs, a, ds);
-let matrix: List[List[Pc12]] = row_matrix(symmetric, convention: zero_based);
+let matrix: List<List<Pc12>> = row_matrix(symmetric, convention: zero_based);
 ```
 
 `chord` does not sound: a chord class is rooted spelled content with no register, spacing, doubling, or bass. A voicing
-policy is an ordinary named function that selects those and returns `Option[Voicing]`, absent when its preconditions do
+policy is an ordinary named function that selects those and returns `Option<Voicing>`, absent when its preconditions do
 not hold — a bass the class does not contain, or a register the written range cannot reach. `play` alone creates sounded
 music. `stack <pitch> <quality>/<duration>` is sugar for the close-position policy with the absolute root fixing
 register; `stack c major7/2` is rejected, because a pitch class chooses no register. `Row12` statically requires each
@@ -283,19 +283,19 @@ from structures to a structure.
 signature TonalContext {
     let tonic: Key;
     let collection: Scale;
-    let spell: Degree -> Option[Pitch];
+    let spell: Degree -> Option<Pitch>;
 }
 
 structure CMajor: TonalContext {
     let tonic: Key = key c major;
     let collection: Scale = scale c ionian;
-    let spell: Degree -> Option[Pitch] = degree_in_c;
+    let spell: Degree -> Option<Pitch> = degree_in_c;
 }
 
 template structure Sequences(C: TonalContext, gap: Duration): TonalContext {
     let tonic: Key = C.tonic;
     let collection: Scale = C.collection;
-    let spell: Degree -> Option[Pitch] = C.spell;
+    let spell: Degree -> Option<Pitch> = C.spell;
     let delay: Duration = gap;
 }
 
