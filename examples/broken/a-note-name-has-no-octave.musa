@@ -1,0 +1,18 @@
+// A note name is a written pitch with the octave forgotten and the spelling
+// kept, so degree 1 of C major is C — but which C? A pitch needs a register
+// somebody chose. Write one (`c4`), or frame the collection with
+// `frame_on(home, c4)` and read the pitch back with `frame_degree`.
+piece "A Note Name Has No Octave" {
+    import std::scale;
+
+    let home: Scale = scale c major;
+    let tonic: Option<Pitch> = degree_class(home, 1);
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

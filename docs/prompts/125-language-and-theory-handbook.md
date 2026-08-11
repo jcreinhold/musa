@@ -1,7 +1,7 @@
 ---
 id: 125
 slug: language-and-theory-handbook
-status: pending
+status: done
 depends_on: [104, 106, 115, 118, 119, 121, 124]
 phase: 3
 ---

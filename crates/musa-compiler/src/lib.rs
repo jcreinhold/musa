@@ -54,6 +54,7 @@ mod pitch;
 mod profile;
 mod project;
 mod realize;
+mod reference;
 mod resolve;
 mod roman;
 mod scale;
@@ -81,7 +82,7 @@ pub use crate::groove::Groove;
 pub use crate::harmony::{ChordQuality, ChordSymbol, Seventh};
 pub use crate::imports::{
     ImportSources, STANDARD_LIBRARY_LANGUAGE_VERSION, resolve_import, standard_library_module,
-    standard_library_modules, standard_library_reference, standard_library_source,
+    standard_library_modules, standard_library_source,
 };
 #[doc(hidden)]
 pub use crate::kernel_text::{
@@ -107,6 +108,7 @@ pub use crate::performance::{
 pub use crate::pitch::{Accidental, Letter, PitchClass, WrittenPitch};
 pub use crate::profile::{ArticulationRealization, GracePolicy, PerformanceProfile, ProfileSet, StealFrom};
 pub use crate::realize::{Decision, DecisionRecord, Realization};
+pub use crate::reference::standard_library_reference;
 pub use crate::resolve::{NameKind, NameReference, SourceLocation};
 pub use crate::scale::scale_collections;
 pub use crate::scope::{ContextKind, Scope};

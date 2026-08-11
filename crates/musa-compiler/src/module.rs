@@ -284,6 +284,19 @@ impl Modules {
                     );
                     continue;
                 }
+                // The member is a name a reader may write — `M.tonic`, for a
+                // template parameter `M: TonalContext` — so it owes the same
+                // record every other reachable name has. It is a *required*
+                // type and not a definition, which is why the signature reads
+                // `let TonalContext.spell: Nat -> Option<Pitch>`: no parameter
+                // is named here because a signature names none.
+                resolver.references.document(member_document(
+                    &format!("{name}.{member_name}"),
+                    &ty,
+                    member_span,
+                    source,
+                    member.syntax(),
+                ));
                 members.insert(member_name, Required { ty, span: member_span });
             }
             if let Some(first) = self.signatures.get(&name) {
@@ -723,6 +736,37 @@ fn document(
         summary,
         signature,
         result: None,
+        parameters: Vec::new(),
+    }
+}
+
+/// What an editor is told about one signature member (`crate::docs`).
+///
+/// A required value: it names a type and no definition, so there is a result
+/// and there are no parameters even when the type is a function. Reached as
+/// `Signature.member`, which is how a template body writes it, and how the
+/// generated reference lists the contract a structure must meet.
+fn member_document(
+    name: &str,
+    ty: &crate::core::Type,
+    span: SourceSpan,
+    source: Option<&str>,
+    declaration: &SyntaxNode,
+) -> crate::docs::ItemDoc {
+    let summary = crate::docs::summary_above(declaration);
+    let result = crate::docs::TypeNote::new(ty.to_string());
+    crate::docs::ItemDoc {
+        name: name.to_owned(),
+        kind: NameKind::Value,
+        source: crate::docs::ItemSource {
+            uri: source.map(str::to_owned),
+            span,
+            read_only: source.is_some_and(|uri| crate::imports::standard_library_source(uri).is_some()),
+        },
+        deprecation: summary.as_deref().and_then(crate::docs::deprecation_in),
+        summary,
+        signature: format!("let {name}: {}", result.name),
+        result: Some(result),
         parameters: Vec::new(),
     }
 }

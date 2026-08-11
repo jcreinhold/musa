@@ -100,8 +100,9 @@ pub struct ParameterDoc {
 /// - `signature` begins with the word a reader would write to declare this
 ///   thing (`let`, `fn`, `motif`, …) and mentions `name` exactly once, as the
 ///   declared name.
-/// - `parameters` is empty exactly when the declaration is not callable, and
-///   each `label` appears verbatim in `signature`.
+/// - each `label` in `parameters` appears verbatim in `signature`. The list is
+///   empty for a value *and* for a nullary callable, which the signature tells
+///   apart by writing the empty parameter list a caller must also write.
 /// - `result` is `Some` exactly when the declaration names a value.
 /// - `source.uri` is `None` exactly when `source.span` indexes the compiled
 ///   document, so a consumer never mistakes one document's offsets for

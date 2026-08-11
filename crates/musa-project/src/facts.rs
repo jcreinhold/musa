@@ -1067,8 +1067,9 @@ pub struct ParameterFact {
 ///   [`standard_library_source`](crate::standard_library_source).
 /// - `result` is `Some` exactly when the declaration names a value; a
 ///   `signature` or `structure` names static structure and has none.
-/// - `parameters` is empty exactly when the declaration is not callable, and
-///   every `label` appears verbatim in `signature`.
+/// - every `label` in `parameters` appears verbatim in `signature`. The list
+///   is empty for a value *and* for a nullary callable, which the signature
+///   tells apart by writing the empty parameter list a caller must also write.
 /// - Records are unique by `(name, kind)`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

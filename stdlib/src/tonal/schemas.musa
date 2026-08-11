@@ -100,6 +100,8 @@ library {
     // *ti* on *sol*.
     fn do_re_mi_roots() -> List<Degree> { degrees_of([1, 5, 1]) }
 
+    // The Do-Re-Mi's metrical shape, strong-weak-strong: the shortest of the
+    // openings leans on its outer stages.
     fn do_re_mi_strong() -> List<Bool> { [true, false, true] }
 
     // ---- Answer, process, transition ---------------------------------------
@@ -110,6 +112,8 @@ library {
     // IV-I-vii-I.
     fn prinner_bass() -> List<Degree> { degrees_of([4, 3, 2, 1]) }
 
+    // The Prinner melody, *la-sol-fa-mi*. It falls a tenth above the falling
+    // bass at every stage, which is the parallel motion the schema is heard by.
     fn prinner_melody() -> List<Degree> { degrees_of([6, 5, 4, 3]) }
 
     // The Prinner's roots. Stage two's 6 roots the chord over *mi* on *do*,
@@ -117,6 +121,7 @@ library {
     // roots are not the bass.
     fn prinner_roots() -> List<Degree> { degrees_of([4, 1, 7, 1]) }
 
+    // The Prinner's metrical shape, strong-weak-strong-weak.
     fn prinner_strong() -> List<Bool> { [true, false, true, false] }
 
     // The five-stage Prinner OMT 34 gives as "a slight variant on this": a
@@ -126,10 +131,16 @@ library {
     // parallel should not have one of them silently change length.
     fn prinner_with_dominant_bass() -> List<Degree> { degrees_of([4, 3, 2, 5, 1]) }
 
+    // The five-stage Prinner's melody: the four-stage line with *fa* held
+    // across the inserted dominant rather than falling through it.
     fn prinner_with_dominant_melody() -> List<Degree> { degrees_of([6, 5, 4, 4, 3]) }
 
+    // The five-stage Prinner's roots. The four-stage roots with the inserted
+    // stage rooted on the fifth degree, which is what makes it a dominant.
     fn prinner_with_dominant_roots() -> List<Degree> { degrees_of([4, 1, 7, 5, 1]) }
 
+    // The five-stage Prinner's metrical shape. One stage longer than the
+    // four-stage Prinner's, and strong at the end rather than weak.
     fn prinner_with_dominant_strong() -> List<Bool> { [true, false, true, false, true] }
 
     // Fonte, OMT 34 §Fonte. Two tonicizations a step apart, and the first of
@@ -141,6 +152,9 @@ library {
         [raise(degree_of(1)), degree_of(2), degree_of(7), degree_of(1)]
     }
 
+    // The Fonte melody, *sol-fa-fa-mi*: the fourth degree is held across the
+    // step down, so only the bass and the harmony move between the two
+    // tonicizations.
     fn fonte_melody() -> List<Degree> { degrees_of([5, 4, 4, 3]) }
 
     // The Fonte's roots: V/ii-ii-V-I. The applied dominant is rooted on the
@@ -150,6 +164,8 @@ library {
         [raise(degree_of(1)), degree_of(2), degree_of(5), degree_of(1)]
     }
 
+    // The Fonte's metrical shape, weak-strong-weak-strong: each of the two
+    // tonicizations leans on its second stage.
     fn fonte_strong() -> List<Bool> { [false, true, false, true] }
 
     // Monte, OMT 34 §Monte. The Fonte's counterpart, rising rather than
@@ -160,12 +176,19 @@ library {
         [degree_of(3), degree_of(4), raise(degree_of(4)), degree_of(5)]
     }
 
+    // The Monte melody, *ti-la-do-ti*, rising to the octave over the second
+    // tonicization where the Fonte's line fell.
     fn monte_melody() -> List<Degree> { degrees_of([7, 6, 1, 7]) }
 
+    // The Monte's roots, the numerals above read as degrees. The third stage
+    // is rooted on a raised degree because its chord is an applied dominant,
+    // and the raising travels with the root as it does in the Fonte.
     fn monte_roots() -> List<Degree> {
         [degree_of(1), degree_of(5), raise(degree_of(2)), degree_of(5)]
     }
 
+    // The Monte's metrical shape, weak-strong-weak-strong: the same lean as
+    // the Fonte's, which is what makes the two a rising and a falling pair.
     fn monte_strong() -> List<Bool> { [false, true, false, true] }
 
     // ---- Pre-cadential ------------------------------------------------------
@@ -175,12 +198,15 @@ library {
     // the falling ones: a schema is not its intervals reversed.
     fn fenaroli_bass() -> List<Degree> { degrees_of([7, 1, 2, 3]) }
 
+    // The Fenaroli melody, *fa-mi-ti-do*: a falling step, and then the leading
+    // tone resolving upward to the tonic.
     fn fenaroli_melody() -> List<Degree> { degrees_of([4, 3, 7, 1]) }
 
     // The Fenaroli's roots: V-I-V-I, with the 6 on the last stage rooting the
     // chord over *mi* on *do*.
     fn fenaroli_roots() -> List<Degree> { degrees_of([5, 1, 5, 1]) }
 
+    // The Fenaroli's metrical shape, strong-weak-strong-weak.
     fn fenaroli_strong() -> List<Bool> { [true, false, true, false] }
 
     // ---- Cadence and post-cadential ----------------------------------------
@@ -189,10 +215,17 @@ library {
     // *mi-fa-sol-do*, figures 6-6/5-5-5, numerals I-ii-V-I.
     fn cadenza_semplice_bass() -> List<Degree> { degrees_of([3, 4, 5, 1]) }
 
+    // The plain cadence's melody, *do-re-re-do*: the second degree held across
+    // the pre-dominant and the dominant, and falling to the tonic at the end.
     fn cadenza_semplice_melody() -> List<Degree> { degrees_of([1, 2, 2, 1]) }
 
+    // The plain cadence's roots, I-ii-V-I. The 6 on stage one roots the chord
+    // over *mi* on *do*, and the 6/5 on stage two roots the chord over *fa*
+    // on *re*, so neither of the first two roots is its bass.
     fn cadenza_semplice_roots() -> List<Degree> { degrees_of([1, 2, 5, 1]) }
 
+    // The plain cadence's metrical shape, weak-strong-weak-strong, so the
+    // cadence itself lands on a strong stage.
     fn cadenza_semplice_strong() -> List<Bool> { [false, true, false, true] }
 
     // Quiescenza, OMT 34 §Quiescenza. Post-cadential, and the one schema here
@@ -201,12 +234,18 @@ library {
     // first chord a dominant of the subdominant over a tonic pedal.
     fn quiescenza_bass() -> List<Degree> { degrees_of([1, 1, 1, 1]) }
 
+    // The Quiescenza melody, *te-la-ti-do*. The lowered seventh is what makes
+    // the first chord a dominant of the subdominant; the rest is the ordinary
+    // ascent to the tonic over the held bass.
     fn quiescenza_melody() -> List<Degree> {
         [lower(degree_of(7)), degree_of(6), degree_of(7), degree_of(1)]
     }
 
+    // The Quiescenza's roots, I-V-V-I, sounding above the tonic its bass holds
+    // through all four stages.
     fn quiescenza_roots() -> List<Degree> { degrees_of([1, 5, 5, 1]) }
 
+    // The Quiescenza's metrical shape, weak-strong-weak-strong.
     fn quiescenza_strong() -> List<Bool> { [false, true, false, true] }
 
     // ---- Harmonizing a schema ----------------------------------------------
@@ -233,6 +272,7 @@ library {
         map(schema_seventh(collection), roots)
     }
 
+    // One root, harmonized as the collection's seventh chord.
     fn schema_seventh(collection: Scale, root: Degree) -> Option<ChordClass> {
         degree_chord(collection, root, 4)
     }

@@ -211,7 +211,7 @@ argument before it could ship.
 
 **Abstract domain.** Potential cadence points — the instants the source marks as phrase endings, the instants a rest
 begins, and the end of the piece — each paired with the two slices arriving there, a key, a cadence name, and a verdict
-on each criterion in OMT `036-cadences.md`.
+on each criterion in OMT `036-introduction-to-harmony-cadences-and-phrase-endings.md`.
 
 **Abstraction map.** α locates the points, takes the last slice ending at or before each and the slice before that,
 reads both as numerals in each key `tonal` proposes, and checks the harmonic criterion (which numerals the two chords

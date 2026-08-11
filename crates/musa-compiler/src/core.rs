@@ -474,6 +474,78 @@ impl std::fmt::Display for Type {
     }
 }
 
+/// The sentence that crosses a distinction the language keeps on purpose.
+///
+/// Most type mismatches are slips, and a slip needs no advice: the two type
+/// names already say what went wrong. A few are *category* errors — a chord
+/// class written where music was wanted, a degree where a pitch was, a key
+/// where a collection was — and those are not slips at all. They are a reader
+/// meeting a separation this language makes and ordinary musical talk does
+/// not (`docs/language/handbook/06-distinctions.md`), and the useful thing to
+/// say is not "these differ" but *which operation crosses the gap, and what it
+/// needs from you that the value on its own does not carry*.
+///
+/// The table is deliberately one-directional per entry. Going from a voicing
+/// to its chord class is total and going back is a choice, so the two
+/// directions do not get one symmetric sentence; each says its own thing.
+/// Every named operation lives in `stdlib/src/`, so a rename that orphans one
+/// of these strings shows up in `stdlib/reference.md` in the same commit.
+fn crossing_help(expected: &Type, found: &Type) -> Option<&'static str> {
+    Some(match (expected, found) {
+        // A container of the wrong element is the same confusion one layer
+        // out. `Option<Roman>` where `Option<ChordClass>` was wanted is a
+        // numeral that has not met a collection, and the sentence about that
+        // is the sentence about numerals — the `Option` is not the problem
+        // and mentioning it would bury the one that is.
+        (Type::Option(expected), Type::Option(found)) | (Type::List(expected), Type::List(found)) => {
+            return crossing_help(expected, found);
+        }
+        (Type::Music, Type::ChordClass) => {
+            "a chord class has no register: `close_position` or `voiced_as` chooses the pitches, \
+             and `sound_for` gives the result a duration"
+        }
+        (Type::Music, Type::Voicing) => "a voicing is pitches with no duration: `sound_for(chosen, held)` sounds it",
+        (Type::Music, Type::Pitch | Type::PitchClass) => {
+            "a pitch is not music until it lasts: write the duration, as in `c4/4`"
+        }
+        (Type::Pitch, Type::Degree) => {
+            "a degree is an ordinal with no octave: `frame_on` registers the collection, and \
+             `frame_degree` reads a pitch out of the frame"
+        }
+        (Type::Pitch, Type::PitchClass) => {
+            "a note name has no octave: write one (`c4`), or realize the class against a frame"
+        }
+        (Type::Degree, Type::Pitch) => {
+            "`degree_in(collection, written)` locates a pitch in a collection, and is absent when \
+             it is not a member"
+        }
+        (Type::PitchClass, Type::Pc12) => {
+            "a `Pc12` has forgotten its spelling: `spelled_in` chooses one back, against the \
+             collection that decides it"
+        }
+        (Type::Pc12, Type::PitchClass) => "`forget_spelling` is the map into `Pc12`, and it is total",
+        (Type::Scale, Type::Key) => {
+            "a key is not a collection — C minor is three of them: `key_scale` takes the \
+             signature's own collection, or name the one you mean"
+        }
+        (Type::ChordClass, Type::Roman) => {
+            "a numeral carries no collection: `numeral_chord(collection, written)` reads it in one"
+        }
+        (Type::ChordClass, Type::Voicing) => "`chord_of(chosen)` forgets a voicing down to its class",
+        (Type::Voicing, Type::ChordClass) => {
+            "`close_position(content, bass)` chooses the pitches, and the bass is yours to name"
+        }
+        (_, Type::Function(parameters, result)) if **result == *expected => {
+            if parameters.is_empty() {
+                "this is a function, not its result: call it, as in `name()`"
+            } else {
+                "this is a function, not its result: apply it to its arguments"
+            }
+        }
+        _ => return None,
+    })
+}
+
 #[derive(Clone)]
 struct RawParameter {
     name: String,
@@ -2569,12 +2641,20 @@ fn document(definition: &RawDefinition) -> crate::docs::ItemDoc {
     // Every declaration the core lowers names a value; static structure is
     // documented where it is declared, in `crate::module`.
     let result = Some(result);
+    // Whether the reader wrote `fn`, which is not the same question as whether
+    // the declaration took arguments. A nullary `fn` is written with an empty
+    // parameter list and called with one — `do_re_mi_strong()` — and reading
+    // the word off the parameter *count* spelled it `let do_re_mi_strong:
+    // List<Bool>`, which is wrong twice over: a reader who believed the record
+    // would write the name bare and be told it has type `() -> List<Bool>`.
+    // A motif is callable however it is written, so its own word still stands.
+    let written_fn = matches!(definition.kind, RawDefinitionKind::Function { .. });
     let word = match kind {
         NameKind::Value | NameKind::Function => {
-            if parameters.is_empty() {
-                "let"
-            } else {
+            if written_fn {
                 "fn"
+            } else {
+                "let"
             }
         }
         NameKind::Motif => "motif",
@@ -2587,7 +2667,7 @@ fn document(definition: &RawDefinition) -> crate::docs::ItemDoc {
         NameKind::Template => "template",
     };
     let mut signature = format!("{word} {}", definition.name);
-    if !parameters.is_empty() {
+    if written_fn || !parameters.is_empty() {
         signature.push('(');
         for (index, parameter) in parameters.iter().enumerate() {
             if index > 0 {
@@ -2600,7 +2680,11 @@ fn document(definition: &RawDefinition) -> crate::docs::ItemDoc {
     // A motif's result is `Music` by construction, and saying so adds a word
     // to every line without adding a fact. Everything else states it.
     if !matches!(kind, NameKind::Motif | NameKind::Fragment | NameKind::Bar) {
-        signature.push_str(if parameters.is_empty() { ": " } else { " -> " });
+        signature.push_str(if written_fn || !parameters.is_empty() {
+            " -> "
+        } else {
+            ": "
+        });
         if let Some(result) = &result {
             signature.push_str(&result.name);
         }
@@ -3100,7 +3184,8 @@ impl Checker<'_> {
                     Code::TypeMismatch,
                     format!("expected `{expected}`, found `{}`", checked.ty),
                 )
-                .at(span, format!("this has type `{}`", checked.ty)),
+                .at(span, format!("this has type `{}`", checked.ty))
+                .maybe_help(crossing_help(expected, &checked.ty)),
             );
             self.failed = true;
             return None;
@@ -6316,6 +6401,30 @@ mod tests {
                 "`{name}` is read as a type that prints under another name"
             );
         }
+    }
+
+    /// Advice is for crossing a distinction, not for every mismatch. A slip
+    /// between two unrelated types has nothing to say beyond the two names,
+    /// and a help line there would be noise on the common case; a category
+    /// error names the operation that crosses, one layer of container deep.
+    #[test]
+    fn only_a_kept_distinction_earns_a_help_line() {
+        assert_eq!(crossing_help(&Type::Nat, &Type::Duration), None);
+        assert_eq!(crossing_help(&Type::Music, &Type::Music), None);
+        assert!(crossing_help(&Type::Scale, &Type::Key).is_some());
+        assert!(crossing_help(&Type::Pitch, &Type::Degree).is_some());
+        assert_eq!(
+            crossing_help(
+                &Type::Option(Box::new(Type::ChordClass)),
+                &Type::Option(Box::new(Type::Roman)),
+            ),
+            crossing_help(&Type::ChordClass, &Type::Roman),
+            "a numeral inside an `Option` is the same confusion as a numeral"
+        );
+        assert!(
+            crossing_help(&Type::Nat, &Type::Function(Vec::new(), Box::new(Type::Nat))).is_some(),
+            "a nullary function written bare is the commonest category error of all"
+        );
     }
 
     /// Every spelling the language removed still reaches the type it named,

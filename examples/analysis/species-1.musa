@@ -1,4 +1,4 @@
-// First species: note against note (OMT `024-first-species.md`).
+// First species: note against note (OMT `024-first-species-counterpoint.md`).
 //
 //     musa analyze examples/analysis/species-1.musa --kind counterpoint \
 //         --profile species_1 --cantus cantus

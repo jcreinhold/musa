@@ -1,0 +1,21 @@
+// A key is a notational context — a spelled tonic, a mode family, a signature
+// — and C minor is three collections under one of them. `in scale` walks a
+// collection, so it needs the writer to say which: `scale c natural_minor`,
+// `scale c harmonic_minor`, or `key_scale(key c minor)` for the signature's
+// own. Choosing on the writer's behalf would be wrong somewhere in every
+// minor-key piece.
+piece "A Key Is Not A Scale" {
+    let home: Scale = key c minor;
+
+    score {
+        part solo {
+            voice line {
+                in scale home {
+                    c4/4
+                    (c4 step 1)/4
+                    (c4 step 2)/2
+                }
+            }
+        }
+    }
+}

@@ -7,44 +7,44 @@ tonal — reads each simultaneity as a Roman numeral against every key the passa
   assuming a key written in the source is strong evidence about the key and not a proof of it (OMT 051)
   assuming tonicization and modulation lie on a continuum; where the criteria underdetermine it, both readings are reported (OMT 051)
 
-      1:1  candidate key-region       C major accounts for the music up to 3       12 notes from line 66
-      1:1  candidate key-region       A minor accounts for the music up to 3       12 notes from line 66
+      1:1  candidate key-region       C major accounts for the music up to 3       12 notes from line 67
+      1:1  candidate key-region       A minor accounts for the music up to 3       12 notes from line 67
              but not: the key is the one the source writes (OMT 051)
-      1:1  candidate key-region       F major accounts for the music up to 3       12 notes from line 66
+      1:1  candidate key-region       F major accounts for the music up to 3       12 notes from line 67
              but not: the key is the one the source writes (OMT 051)
-      1:1  candidate key-region       D minor accounts for the music up to 3       12 notes from line 66
+      1:1  candidate key-region       D minor accounts for the music up to 3       12 notes from line 67
              but not: the key is the one the source writes (OMT 051)
-      1:1  candidate numeral          I in C major — exact fit                     4 notes from line 66
-      1:1  candidate numeral          III in A minor — exact fit                   4 notes from line 66
-      1:1  candidate numeral          V in F major — exact fit                     4 notes from line 66
-      1:1  candidate numeral          VII in D minor — exact fit                   4 notes from line 66
-      2:1  candidate numeral          IV in C major — exact fit                    4 notes from line 67
-      2:1  candidate numeral          VI in A minor — exact fit                    4 notes from line 67
-      2:1  candidate numeral          I in F major — exact fit                     4 notes from line 67
-      2:1  candidate numeral          III in D minor — exact fit                   4 notes from line 67
-      3:1  candidate numeral          vi in C major — exact fit                    4 notes from line 68
-      3:1  candidate numeral          i in A minor — exact fit                     4 notes from line 68
-      3:1  candidate numeral          iii in F major — exact fit                   4 notes from line 68
-      3:1  candidate numeral          v in D minor — exact fit                     4 notes from line 68
-      3:1  candidate numeral          ii in G major — exact fit                    4 notes from line 68
-      4:1  candidate key-region       G major accounts for the music up to 8       20 notes from line 69
+      1:1  candidate numeral          I in C major — exact fit                     4 notes from line 67
+      1:1  candidate numeral          III in A minor — exact fit                   4 notes from line 67
+      1:1  candidate numeral          V in F major — exact fit                     4 notes from line 67
+      1:1  candidate numeral          VII in D minor — exact fit                   4 notes from line 67
+      2:1  candidate numeral          IV in C major — exact fit                    4 notes from line 68
+      2:1  candidate numeral          VI in A minor — exact fit                    4 notes from line 68
+      2:1  candidate numeral          I in F major — exact fit                     4 notes from line 68
+      2:1  candidate numeral          III in D minor — exact fit                   4 notes from line 68
+      3:1  candidate numeral          vi in C major — exact fit                    4 notes from line 69
+      3:1  candidate numeral          i in A minor — exact fit                     4 notes from line 69
+      3:1  candidate numeral          iii in F major — exact fit                   4 notes from line 69
+      3:1  candidate numeral          v in D minor — exact fit                     4 notes from line 69
+      3:1  candidate numeral          ii in G major — exact fit                    4 notes from line 69
+      4:1  candidate key-region       G major accounts for the music up to 8       20 notes from line 70
              but not: the key is the one the source writes (OMT 051)
-      4:1  candidate key-region       E minor accounts for the music up to 8       20 notes from line 69
+      4:1  candidate key-region       E minor accounts for the music up to 8       20 notes from line 70
              but not: the key is the one the source writes (OMT 051)
-      4:1  candidate modulation       C major gives way to G major — pivot approach 24 notes from line 68
+      4:1  candidate modulation       C major gives way to G major — pivot approach 24 notes from line 69
              but not: a cadence in the new key confirms it (OMT 051)
-      4:1  candidate tonicization     V of C major is tonicized                    24 notes from line 68
+      4:1  candidate tonicization     V of C major is tonicized                    24 notes from line 69
              but not: a cadence in the new key confirms it (OMT 051)
-      4:1  candidate numeral          V in G major — exact fit                     4 notes from line 69
-      4:1  candidate numeral          VII in E minor — exact fit                   4 notes from line 69
-      4:1  candidate numeral          V/V in C major — exact fit                   4 notes from line 69
-      5:1  candidate numeral          I in G major — exact fit                     4 notes from line 70
-      5:1  candidate numeral          III in E minor — exact fit                   4 notes from line 70
-      6:1  candidate numeral          ii in G major — exact fit                    4 notes from line 71
-      6:1  candidate numeral          iv in E minor — exact fit                    4 notes from line 71
-      7:1  candidate numeral          V7 in G major — exact fit                    4 notes from line 72
-      7:1  candidate numeral          VII7 in E minor — exact fit                  4 notes from line 72
-      8:1  candidate numeral          I in G major — exact fit                     4 notes from line 73
-      8:1  candidate numeral          III in E minor — exact fit                   4 notes from line 73
+      4:1  candidate numeral          V in G major — exact fit                     4 notes from line 70
+      4:1  candidate numeral          VII in E minor — exact fit                   4 notes from line 70
+      4:1  candidate numeral          V/V in C major — exact fit                   4 notes from line 70
+      5:1  candidate numeral          I in G major — exact fit                     4 notes from line 71
+      5:1  candidate numeral          III in E minor — exact fit                   4 notes from line 71
+      6:1  candidate numeral          ii in G major — exact fit                    4 notes from line 72
+      6:1  candidate numeral          iv in E minor — exact fit                    4 notes from line 72
+      7:1  candidate numeral          V7 in G major — exact fit                    4 notes from line 73
+      7:1  candidate numeral          VII7 in E minor — exact fit                  4 notes from line 73
+      8:1  candidate numeral          I in G major — exact fit                     4 notes from line 74
+      8:1  candidate numeral          III in E minor — exact fit                   4 notes from line 74
 
 32 findings

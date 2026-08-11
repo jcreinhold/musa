@@ -2,10 +2,11 @@
 //
 // Two phrases. The first is unambiguously in C major. The second arrives in G
 // major. Between them stands an A minor triad, which is `vi` in C and `ii` in
-// G — a pivot chord (OMT `051-modulation.md`), and the reason the boundary is
-// a reading rather than a measurement: the change of key has already happened
-// by the D major chord that follows, and has not yet happened at the C major
-// chord before.
+// G — a pivot chord (OMT
+// `051-extended-tonicization-and-modulation-to-closely-related-keys.md`), and
+// the reason the boundary is a reading rather than a measurement: the change
+// of key has already happened by the D major chord that follows, and has not
+// yet happened at the C major chord before.
 //
 // What `musa analyze --kind tonal` should say about it:
 //

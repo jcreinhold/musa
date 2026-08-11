@@ -7,7 +7,7 @@ library {
     // how a numbered degree is spelled in register, and how a chord class is
     // voiced. Passing them one at a time is how they drift apart, which is
     // the whole reason a signature exists — Open Music Theory
-    // `020-diatonic-modes.md` names the collection, `026-triads.md` the
+    // `105-diatonic-modes.md` names the collection, `017-triads.md` the
     // chords, and neither is meaningful without the other.
     signature TonalContext {
         // The key the passage is written in. A key is a signature and a

@@ -1,0 +1,18 @@
+// A chord class is a root and its spelled members, and nothing about where
+// those members sit. `use` wants music, so it wants pitches in a register and
+// a duration for them to last — two decisions a class does not carry and
+// cannot be guessed into. `close_position(tonic, c3)` makes one of them and
+// `sound_for(chosen, 1/1)` the other.
+piece "Chord Class Is Not Music" {
+    import std::harmony;
+
+    let tonic: ChordClass = chord c major;
+
+    score {
+        part solo {
+            voice line {
+                use tonic;
+            }
+        }
+    }
+}

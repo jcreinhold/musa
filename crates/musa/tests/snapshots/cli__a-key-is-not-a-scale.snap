@@ -1,0 +1,18 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+type-mismatch
+
+  × expected `Scale`, found `Key`
+   ╭─[examples/broken/a-key-is-not-a-scale.musa:8:23]
+ 7 │ piece "A Key Is Not A Scale" {
+ 8 │     let home: Scale = key c minor;
+   ·                       ─────┬─────
+   ·                            ╰── this has type `Key`
+ 9 │ 
+   ╰────
+  help: a key is not a collection — C minor is three of them: `key_scale` takes the
+        signature's own collection, or name the one you mean
+
+1 problem (1 error)

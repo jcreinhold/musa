@@ -1,0 +1,18 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+type-mismatch
+
+  × expected `NoteName`, found `Pc12`
+    ╭─[examples/broken/pc12-has-forgotten-the-spelling.musa:12:29]
+ 11 │     let sounding: Pc12 = forget_spelling(scale_root(home));
+ 12 │     let written: NoteName = sounding;
+    ·                             ────┬───
+    ·                                 ╰── this has type `Pc12`
+ 13 │ 
+    ╰────
+  help: a `Pc12` has forgotten its spelling: `spelled_in` chooses one back, against the
+        collection that decides it
+
+1 problem (1 error)

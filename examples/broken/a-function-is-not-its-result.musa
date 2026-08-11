@@ -1,0 +1,19 @@
+// `beats()` takes no arguments, and taking none is not the same as being a
+// value. Its type is `() -> Nat`, which is what the editor's record says, and
+// the empty parameter list a reader writes at the call site is the one the
+// declaration wrote. Music is the single exception: a bare nullary `Music`
+// function is applied where music is wanted, which is what makes `use sigh;`
+// read like music.
+piece "A Function Is Not Its Result" {
+    fn beats() -> Nat { 4 }
+
+    let count: Nat = beats;
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

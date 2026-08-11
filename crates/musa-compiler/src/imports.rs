@@ -23,7 +23,6 @@
 //! instead maps to embedded, version-matched source under stable virtual URIs.
 
 use std::collections::HashMap;
-use std::fmt::Write as _;
 
 use musa_language::ast::{AstNode as _, LibraryDecl};
 
@@ -174,77 +173,6 @@ pub(crate) fn standard_library_faults() -> Vec<Diagnostic> {
                 .note("a package's modules are its `mod` declarations; nothing is found by looking")
         })
         .collect()
-}
-
-/// Reference markdown derived from source comments.
-///
-/// The checked-in copy makes the library readable outside tooling; its law
-/// test prevents prose and executable source from drifting.
-#[must_use]
-pub fn standard_library_reference() -> String {
-    let mut out = String::from(
-        "# Musa standard library 1\n\nThis reference is generated from the source comments in the bundled `.musa` modules. Standard definitions are ordinary\nMusa definitions; importing a module is explicit and never searches the filesystem.\n",
-    );
-    // The module paths, not their URIs: a reader of this file writes
-    // `import std::tonal::harmony;`, and never sees where the file sits.
-    for (module, source) in standard_library().modules() {
-        let _ = write!(out, "\n## `std::{module}`\n\n");
-        let mut comments = Vec::new();
-        // A signature's members are documented under it; a structure's are
-        // not. What a reader may write is `M.x` for each `x` the signature
-        // lists, and everything else a structure defines is private to it — so
-        // listing a structure's own lines would document what nobody can name.
-        let mut requires: Option<&str> = None;
-        let mut inside_structure = false;
-        for line in source.lines().map(str::trim) {
-            if let Some(comment) = line.strip_prefix("// ") {
-                comments.push(comment);
-                continue;
-            }
-            if let Some(rest) = line.strip_prefix("signature ") {
-                let name = rest.split([':', '(', ' ']).next().unwrap_or(rest);
-                let _ = writeln!(out, "- `signature {name}` — {}", comments.join(" "));
-                requires = Some(name);
-                comments.clear();
-                continue;
-            }
-            if let Some(rest) = line.strip_prefix("structure ") {
-                let head = rest.split_once(" {").map_or(rest, |(head, _)| head);
-                let _ = writeln!(out, "- `structure {head}` — {}", comments.join(" "));
-                inside_structure = true;
-                comments.clear();
-                continue;
-            }
-            if line == "}" {
-                requires = None;
-                inside_structure = false;
-                comments.clear();
-                continue;
-            }
-            if inside_structure {
-                comments.clear();
-                continue;
-            }
-            if let Some(signature) = line.strip_prefix("fn ").or_else(|| line.strip_prefix("let ")) {
-                let signature = signature
-                    .split('=')
-                    .next()
-                    .unwrap_or(signature)
-                    .trim()
-                    .trim_end_matches(';');
-                match requires {
-                    Some(named) => {
-                        let _ = writeln!(out, "  - `{named}.{signature}` — {}", comments.join(" "));
-                    }
-                    None => {
-                        let _ = writeln!(out, "- `{signature}` — {}", comments.join(" "));
-                    }
-                }
-            }
-            comments.clear();
-        }
-    }
-    out
 }
 
 /// Every library a piece imports, transitively, in the order a reader would
@@ -562,22 +490,6 @@ mod tests {
         assert_eq!(
             resolve_import("piece.musa", "vendor::list"),
             "musa-import:/vendor/list.musa"
-        );
-    }
-
-    #[test]
-    fn checked_in_reference_is_derived_from_executable_source() {
-        if std::env::var_os("UPDATE_FIXTURES").is_some() {
-            std::fs::write(
-                concat!(env!("CARGO_MANIFEST_DIR"), "/../../stdlib/reference.md"),
-                standard_library_reference(),
-            )
-            .expect("write the reference");
-        }
-        assert_eq!(
-            standard_library_reference(),
-            include_str!("../../../stdlib/reference.md"),
-            "run the source-derived reference generator logic when comments or signatures change"
         );
     }
 }

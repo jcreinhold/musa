@@ -1,0 +1,19 @@
+// A Roman numeral is an ordinal, a member count, and an inversion. It carries
+// no quality, because the quality is the collection's: `ii` is minor in major
+// and `II` is major in Dorian, as a consequence of the notes. So a numeral
+// alone names no pitch class, and turning one into a chord takes the
+// collection to read it in — `numeral_chord(home, written)`.
+piece "A Numeral Has No Collection" {
+    import std::tonal::harmony;
+
+    let five: Option<Roman> = triad_numeral(5);
+    let dominant: Option<ChordClass> = five;
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

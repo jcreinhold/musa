@@ -1,6 +1,6 @@
 # 06 — Elaboration Performance and Compatibility Baseline
 
-Status: **governing for the prompt 93–144 migration**.
+Status: **governing for the prompt 93–145 migration**.
 
 This is the before-picture for `docs/elaboration-language.md`. It measures the compiler that accepts only the old
 surface language and fixes what that language means before its evaluator, type checker, and parser change. It is not a

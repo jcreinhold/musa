@@ -1,4 +1,4 @@
-// Fifth species: florid counterpoint (OMT `028-fifth-species.md`).
+// Fifth species: florid counterpoint (OMT `028-fifth-species-counterpoint.md`).
 //
 //     musa analyze examples/analysis/species-5.musa --kind counterpoint \
 //         --profile species_5 --cantus cantus

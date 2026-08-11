@@ -1,0 +1,19 @@
+// `degree_in` locates a pitch in a collection and answers with a degree,
+// because locating an ordinal keeps it an ordinal. A degree has no octave and
+// no absolute pitch, and the step that crosses the gap is the frame:
+// `frame_on(home, c4)` registers the collection and `frame_degree(register, 1)`
+// reads a pitch out of it. Neither is chosen here.
+piece "A Degree Is Not A Pitch" {
+    import std::scale;
+
+    let home: Scale = scale c major;
+    let start: Option<Pitch> = degree_in(home, c4);
+
+    score {
+        part solo {
+            voice line {
+                c4/1
+            }
+        }
+    }
+}

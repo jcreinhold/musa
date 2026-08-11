@@ -1,10 +1,14 @@
 # The elaboration language — contextual music, total functions, and a typed kernel escape
 
-**Status: non-governing design input.** This document evaluates and replaces the earlier proposal of the same name.
-Prompt 92 has split its accepted decisions into the precise candidate specification at `docs/language/README.md`. That
-candidate is the implementation contract for prompts 93–140, but `docs/course-correction.md` and `docs/kernel/` continue
-to govern until prompt 141's conformance audit graduates it. Where this essay and the split candidate differ, the split
-candidate is the proposal to implement.
+**Status: design history. Non-governing, and no longer an input.** This document evaluates and replaces the earlier
+proposal of the same name. Prompt 92 split its accepted decisions into the precise candidate specification at
+[`docs/language/`](language/README.md), which is the implementation contract for prompts 93–145;
+`docs/course-correction.md` and `docs/kernel/` continue to govern until prompt 146's conformance audit graduates it.
+Where this essay and the candidate differ, **the candidate is right** — it was written to be implemented, this was
+written to decide what to implement, and §18 below records what became of each decision.
+
+Read this for *why*. Read [`docs/language/`](language/README.md) for what the language is, and
+[`docs/language/handbook/`](language/handbook/README.md) for how to use it.
 
 The proposal is grounded in the design conversation that produced the first draft, the current compiler, the kernel
 specification, the interface's Origin view, and the *Open Music Theory* corpus at
@@ -947,3 +951,52 @@ before code, and no prompt is allowed to introduce a second public compiler faca
 None of these changes the semantic center. The load-bearing decisions are settled here: total higher-order functions,
 finite folds, contextual `music`, explicit scale/register, typed kernel quotation, provenance-aware equality, and a
 separate structural-template stage behind a private deep compiler boundary.
+
+## 18. What became of this document
+
+Written after prompts 93–125 implemented it. Each row names where the decision now lives and where to read the code that
+keeps it. Nothing above has been edited to match: an essay that quietly agrees with its own outcome is worth nothing as
+a record.
+
+| Section | Decision | Now specified in | Built by |
+| --- | --- | --- | --- |
+| §1, §4 | total higher-order calculus with finite folds, no general recursion | `docs/language/02-core-calculus.md` | 93–99 |
+| §3 | the semantic layers and what each may know | `docs/language/00-semantics.md` | 93 |
+| §5 | contextual `music`, distinct from a closed kernel term | `docs/language/00-semantics.md` §3 | 96, 104 |
+| §6 | pitch, key, scale, degree, and register as separate types | `docs/language/03-musical-domains.md` §§1–2 | 100–101 |
+| §7 | chord class and voicing separated, with no universal chord blob | `docs/language/03-musical-domains.md` §3 | 102 |
+| §8 | theory operations are library code, not compiler primitives | `stdlib/src/`, `docs/language/06-standard-library` boundary | 105–113 |
+| §9 | typed kernel quotation with holes, and the `splice` provenance step | `docs/language/01-surface.md` | 114 |
+| §10 | provenance-aware equality, names retained, one erasing projection | `docs/kernel/05-normalization.md`, `docs/interface/04-provenance.md` | 97, 124 |
+| §11 | the surface desugarings | `docs/language/01-surface.md` | 103 |
+| §12 | declaration templates and real module functors | `docs/language/04-templates-and-modules.md` | 108–113 |
+| §13 | crate boundaries and what stays private | root `AGENTS.md`, `docs/language/handbook/07-implementor.md` §1 | throughout |
+| §14, §15 | acceptance rules, laws, and verification obligations | `docs/language/05-verification.md`, `07-analysis.md` | 116–121 |
+| §16 | the migration shape and its baseline measurements | `docs/language/06-performance.md` | 94 |
+
+### The open choices, resolved
+
+§17 left six things open on purpose. All six have been decided by implementation, and the decision is the code:
+
+- **Expression punctuation and anonymous lambdas.** Named functions only. A transformation passed to another function is
+  written as a named `let` of function type (`examples/canon-functions.musa`), which keeps every function a hover target
+  with a record of its own.
+- **Polymorphic folds.** Displayed with their type variables. `std::list` publishes `fold` as it is, and the
+  musician-facing wrappers are the domain modules that call it rather than a second spelling of it.
+- **Altered degrees and register.** An explicit `Frame` — a collection plus the absolute pitch that registers it. `near`
+  was not adopted; the round-trip lemma is stated over exactly the frame pair, which is what made it provable.
+- **Voicing policies.** Close position, drop-*n*, explicit pitch lists, omission, and rootless
+  (`examples/chord-voicings.musa`). Each is a policy that may decline, returning `Option<Voicing>`.
+- **Template spelling.** `template piece`/`template voice`/`template structure`, instantiated with `make … as …`
+  (`examples/template-study.musa`, `examples/module-functor-study.musa`).
+- **The first signature worth adding.** `TonalContext` in `std::context`, which bundles the key, the collection, the
+  spelling policy, and the voicing policy — the four facts that go wrong when they travel separately.
+
+### What was rejected, and stayed rejected
+
+The seven claims §1 refuses are still refused, and each is now load-bearing rather than rhetorical: `Timeline` did not
+become the currency of elaboration, open music did not become a closed timeline, the calculus is not bare STLC, a key
+still does not embed into absolute pitches, kernel equality still does not erase provenance, an unparseable kernel
+payload is still an error rather than a warning, and no theory name has become a compiler primitive. The falsifier for
+each is in `docs/language/03-musical-domains.md` §6 and in
+[`docs/language/handbook/06-distinctions.md`](language/handbook/06-distinctions.md).

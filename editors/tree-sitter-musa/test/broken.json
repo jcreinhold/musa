@@ -1,7 +1,13 @@
 {
   "fixtures": [
+    { "name": "a-degree-is-not-a-pitch", "syntax_errors": false },
+    { "name": "a-function-is-not-its-result", "syntax_errors": false },
+    { "name": "a-key-is-not-a-scale", "syntax_errors": false },
+    { "name": "a-note-name-has-no-octave", "syntax_errors": false },
+    { "name": "a-numeral-has-no-collection", "syntax_errors": false },
     { "name": "bar-too-long", "syntax_errors": false },
     { "name": "bar-too-short", "syntax_errors": false },
+    { "name": "chord-class-is-not-music", "syntax_errors": false },
     { "name": "claim-exactly-adds-a-note", "syntax_errors": false },
     { "name": "claim-may-add-omits-a-member", "syntax_errors": false },
     { "name": "claim-may-omit-adds-a-note", "syntax_errors": false },
@@ -24,6 +30,7 @@
     { "name": "missing-unit", "syntax_errors": false },
     { "name": "no-scale-in-force", "syntax_errors": false },
     { "name": "not-in-the-scale", "syntax_errors": false },
+    { "name": "pc12-has-forgotten-the-spelling", "syntax_errors": false },
     { "name": "quote-claims-a-voice", "syntax_errors": false },
     { "name": "quote-context-fact", "syntax_errors": false },
     { "name": "quote-open-reference", "syntax_errors": false },

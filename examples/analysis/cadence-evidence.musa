@@ -1,4 +1,5 @@
-// Four phrase endings, and the evidence each one has (OMT `036-cadences.md`).
+// Four phrase endings, and the evidence each one has (OMT
+// `036-introduction-to-harmony-cadences-and-phrase-endings.md`).
 //
 // A cadence is a *formal* event: it is where a phrase ends. Pitch and rhythm
 // cannot see form, so `musa analyze --kind cadences` never reports a cadence as

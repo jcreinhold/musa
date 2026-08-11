@@ -10,8 +10,9 @@
 //
 // Bar 2 — C and G alone. Every chord those two notes are two-thirds of is a
 // candidate at an `incomplete` fit: C major, C minor, C sus2, C sus4, and
-// G sus4 over C. An omitted third is common (OMT `020-voicing.md`) and it
-// takes the quality with it.
+// G sus4 over C. A voicing may leave a chord member out (OMT
+// `076-jazz-voicings.md` §Omitting Notes), and a third left out takes the
+// quality with it.
 //
 // Bar 3 — a triad with a fourth note sounding through it. The fit is `with
 // extra tones`. Nothing here decides that the extra note is embellishing

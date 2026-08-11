@@ -87,8 +87,9 @@ end-of-line = "lf"
 # Formatter-specific exclude globs, independent of `[lint] exclude`.
 #
 # `stdlib/reference.md` is generated: `standard_library_reference()` in
-# crates/musa-compiler/src/imports.rs derives it from the source comments in
-# the bundled `.musa` modules, and a test compares the checked-in file to that
+# crates/musa-compiler/src/reference.rs projects it from the compiler's own
+# `ItemDoc` records for the bundled `.musa` modules — the same records the
+# editor shows on hover — and a test compares the checked-in file to that
 # output byte for byte. The generator emits one unwrapped line per definition,
 # so wrapping it here makes the test red until somebody regenerates it, and
 # regenerating unwraps it again. The file is written the way it is on purpose,
