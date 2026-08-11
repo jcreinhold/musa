@@ -34,11 +34,13 @@ the performance edge today; whether that is right is `05-open-questions.md` Q-A.
 
 ## 2. Occurrence (retained) and **succession** (new)
 
-> **Weakened by Gate 0 (`06-evidence-log.md` G0.2).** Proposition A below is true of `musa-kernel` in isolation and was
-> verified against it. It does not hold of the pipeline: `elaborate.rs:885` puts a `VoiceId` in the payload, so the two
-> readings differ downstream. What survives is narrower — partial ordering and divisi remain inexpressible, and the tag
-> is a convention every consumer must share. Atom 2 now rests on those three, not on Proposition A, and is gated on
-> prompt 119 (`07-adoption-plan.md` §2).
+> **Withdrawn by Gate 2 (`06-evidence-log.md`).** Gate 0 already weakened it: Proposition A below is true of
+> `musa-kernel` in isolation and was verified against it, but it does not hold of the pipeline, because
+> `elaborate.rs:885` puts a `VoiceId` in the payload and the two readings differ downstream. What survived was narrower
+> — partial ordering and divisi remain inexpressible, and the tag is a convention every consumer must share — and it was
+> gated on prompt 119. Prompt 119 landed on the tag with no shadow line structure, so the narrower case has no consumer
+> either, and the atom is withdrawn. The section is left as written; §2.3's partial-order argument is the one part still
+> live, and it is live as a *question awaiting a consumer* (`07-adoption-plan.md` Track C), not as a proposal.
 
 **What it is.** An occurrence is an event `e` labelled with a start and an extent in ambient time and a payload. The new
 part is a partial order `≤` on events: `e ≤ e′` means `e′` continues `e` — same line, same thread, same voice.

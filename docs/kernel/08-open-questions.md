@@ -37,13 +37,30 @@ sees a term in which every choice is already made.
 The conceded cost is stated in `11-realization.md` and is real: the score view is a function of the source *and the
 realization*, so fixtures pin a seed and the interface must be able to show which decisions produced the page.
 
-## Q3 — Voice identity
+## Q3 — Voice identity — **RESOLVED (prompt 119)**
 
-Candidates (§32): payload metadata; a separate temporal relation; HIR structure plus provenance; or a combination.
-Working stance (adopted by `06-surface-elaboration.md`): **payload metadata + HIR structure** — `NotePayload.voice`
-carries (part, voice) identity; the kernel stays identity-free; `ScoreSnapshot`'s lanes are an adapter projection.
-*Settle when:* prompt 11's differential parity and prompt 25's score-editing show whether any consumer needs voice-level
-temporal queries the payload projection can't answer cleanly (e.g. cross-voice alignment constraints).
+Candidates (§32): payload metadata; a separate temporal relation; HIR structure plus provenance; or a combination. The
+working stance (adopted by `06-surface-elaboration.md`) was **payload metadata + HIR structure** — voice identity
+carries (part, voice) on the fact, the kernel stays identity-free, and `ScoreSnapshot`'s lanes are an adapter
+projection. It was to be settled by a consumer that needed voice-level temporal queries the projection could not answer.
+
+**Answer: the working stance holds, and the kernel gains no succession relation.** The deciding consumer is
+voice-leading and counterpoint analysis, which is the one part of the system whose entire subject matter is *lines*:
+seven style profiles and twenty-four rules, nine of them species rules about what a single line does from note to note.
+`crates/musa-compiler/src/analysis/motion.rs` serves all of them from a `Strand` that is the lane's own
+`(PartId, VoiceId)` plus its tones sorted by onset — succession is "the next tone in that vector," and line order is the
+strand's mean diatonic height. No relation, no threading pass, no predecessor field, no second identity.
+
+The one place a line genuinely is not available is honest about it rather than papered over: a jazz voicing written as a
+chord in a single lane has no lines inside it, so the analysis reads a *position from the bottom* and says so
+(`docs/language/07-analysis.md` §8). Where a line exists the tag names it; where none exists the analysis does not
+invent one. A kernel-level partial order would have had nothing to do in either case.
+
+Two things this deliberately does not settle, both recorded rather than closed. A **partially ordered** succession (OMT
+`110-row-properties.md` §"Partially ordered sets" — segments fixed, internal order free) and **divisi** (one line
+splitting and rejoining) are still inexpressible with per-note tags. Neither has a consumer, and under the standing rule
+demand precedes design; the analysis is in `docs/kernel-hypothesis/06-evidence-log.md` Gate 2, which is what a future
+proposal has to beat.
 
 ## Q4 — Time-varying continuous controls — **RESOLVED (prompt 45)**
 
@@ -279,3 +296,13 @@ Anything discovered while implementing prompts 09–12 is appended here with its
   that an interchange file can say "this section is that section" but not "…transposed", and if that is ever wanted the
   answer is a payload-level interval, not a term-level function. Prompt 45's `Progress` arrived one prompt earlier and
   needed **no** curve form, which is the scope rule paying off on the first construct that tested it.
+- **Prompt 119 (voice-leading and counterpoint profiles):** **Q3 resolved**, by the consumer that was always going to
+  decide it. Prompt 39 could only say Q3 was "answered as far as evidence can answer it," because nothing yet *asked*
+  about lines; twenty-four counterpoint rules ask about nothing else. They are served by the existing per-note tag plus
+  time ordering, and the kernel gained nothing — the fourth piece of §34 evidence after prompts 39, 44, and 45, and the
+  only one where the missing construct had a worked-out design waiting for it. Two findings are worth keeping. First,
+  the analysis needs lines to be *ordered*, not merely distinguished, and mean diatonic height orders them without any
+  declaration — "soprano" is a name, not a rank, and a rank read off the music survives a piece that names its voices
+  badly. Second, the interesting case is the one with no lines at all: a jazz voicing in one lane is a chord, and the
+  right move was to read vertical position and document the limit rather than synthesize lines the source did not write.
+  A kernel succession relation would have had to answer the same question and would have had to answer it the same way.

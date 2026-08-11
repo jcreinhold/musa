@@ -41,7 +41,7 @@ VI almost word for word — profiles "state their style," rules are marked "defi
 guideline" (the three tiers of `03-claims-and-styles.md`), and findings "never present one historical pedagogy as a
 universal law of music." **Amendment VI needs no new prompt. It needs prompt 119 executed as written.**
 
-### The kill criterion for Atom 2
+### The kill criterion for Atom 2 — **fired; Atom 2 withdrawn (`06-evidence-log.md` Gate 2)**
 
 Implement prompt 119 against the *existing* per-note `VoiceId`. Then answer, with the code in front of you:
 
@@ -56,6 +56,11 @@ question with evidence instead of leaving it open forever.
 
 **If prompt 119 builds a shadow line structure**, that structure is the demand, the falsifier, and the design, all
 three, discovered by a consumer rather than proposed by a document.
+
+**It landed cleanly.** Prompt 119 shipped in commit `90db0b1` with seven profiles and twenty-four rules over a `Strand`
+that is nothing but the lane's own `(PartId, VoiceId)` and its tones in time order. No relation was added, and neither a
+partial order nor a splitting line appeared. Gate 2 records the reading in full; Q3 is closed in
+`docs/kernel/08-open-questions.md`; Track C below is closed with it.
 
 ---
 
@@ -93,9 +98,17 @@ narrow reading: **the notated meter is a layer, not a region; heard hypermeter i
 3. If it fails, the prompt is narrow: *meter is a layer*, changing `elaborate.rs:980`'s region model and nothing in
    `musa-kernel`. This does not require touching `docs/course-correction.md`.
 
-### Track C — Atom 2, gated on prompt 119 (third, maybe never)
+### Track C — Atom 2 — **closed, not started**
 
-Do not touch it before 119. See §2's kill criterion.
+The gate fired against it. Prompt 119 was the consumer that most wanted lines and it did not want a kernel relation, so
+under §1's rule there is no demand and there is no track. What remains true from Gate 0 — partial ordering (OMT `110`)
+and divisi are inexpressible, and the voice tag is a convention no kernel law states — is preserved in
+`06-evidence-log.md` and costs nothing to leave preserved.
+
+Reviving Track C requires a *named consumer* for one of those two, not a better argument for the atom. The two that
+could plausibly supply it: a serial analysis that must hold a partially ordered row (OMT `110` §"Partially ordered
+sets"), and a divisi engraving feature where one written line splits and rejoins. If either arrives, this section is the
+starting point and Gate 2 is the thing it has to beat.
 
 ### Track D — Atom 3, parked
 
@@ -177,8 +190,9 @@ In order, smallest first:
 1. Run Track A step 1 — the quotient audit. It is half a day and it either produces Atom 6's demand or removes it.
 2. Write the explicit-polymeter fixture (Track B step 2). It is an hour and it is a permanent regression test either
    way.
-3. Resume the prompt stack at [114](../prompts/114-angle-bracketed-type-parameters.md) and run through 119 as written,
-   reading 116–119 as the gates in §2 rather than as ordinary features.
-4. Return here after 119 with the evidence, and decide Atom 2 then.
+3. ~~Resume the prompt stack at [114](../prompts/114-angle-bracketed-type-parameters.md) and run through 119 as written,
+   reading 116–119 as the gates in §2 rather than as ordinary features.~~ **Done**; 114–119 are all `done`.
+4. ~~Return here after 119 with the evidence, and decide Atom 2 then.~~ **Done**; see Gate 2. Atom 2 is withdrawn and
+   Track C is closed, which leaves Track A (items 1 and 2 above) as the whole of the outstanding work here.
 
 Nothing in this list is speculative work, and nothing in it is unwound if the hypothesis is wrong.

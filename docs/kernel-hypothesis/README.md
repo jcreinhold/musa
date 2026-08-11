@@ -1,9 +1,11 @@
 # The kernel hypothesis
 
-> **Read [06-evidence-log.md](06-evidence-log.md) first.** Gate 0 has been run and it refuted Atom 3 and materially
-> weakened Atom 2 — the two atoms `01`–`02` lead with. Those documents are left as written, with corrections marked in
-> place, because the log is only evidence if the claims it corrects are still visible.
-> [07-adoption-plan.md](07-adoption-plan.md) is the resulting plan.
+> **Read [06-evidence-log.md](06-evidence-log.md) first.** Two gates have been run. Gate 0 refuted Atom 3 and materially
+> weakened Atom 2 — the two atoms `01`–`02` lead with. Gate 2 then withdrew Atom 2 outright: prompt 119 built seven
+> voice-leading profiles on the existing per-note voice tag without adding a line relation, which closes
+> `docs/kernel/08-open-questions.md` Q3. Those documents are left as written, with corrections marked in place, because
+> the log is only evidence if the claims it corrects are still visible. [07-adoption-plan.md](07-adoption-plan.md) is
+> the resulting plan; what remains live there is Track A (Atoms 5 and 6) and Track B (Atom 4).
 
 **Status: research. Governs nothing.** `docs/kernel/` remains the governing temporal-kernel specification and
 `docs/course-correction.md` remains the governing ontology. Nothing here changes what the compiler must do. This

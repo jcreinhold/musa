@@ -73,16 +73,59 @@ established that anyone wants them.
 
 ---
 
+## Gate 2 — did the voice-leading consumer want lines? (run)
+
+`07-adoption-plan.md` §2's kill criterion, answered by prompt 119 as landed in commit `90db0b1`. **Atom 2 is
+withdrawn.**
+
+The criterion was stated in advance and had two questions. Both are answered against the atom.
+
+### G2.1 — did any profile need a line relation the tag could not give? ❌ no
+
+Seven profiles — `satb_common_practice`, `species_1` through `species_5`, `jazz_voice_leading` — over twenty-four rules,
+nine of them species rules that are entirely about what one line does. Every one of them is served by
+`crates/musa-compiler/src/analysis/motion.rs`'s `strands`, and a `Strand` is three fields: a display label, the lane's
+*existing* `(PartId, VoiceId)`, and the lane's tones sorted by `(onset, diatonic_height, note_id)`. Succession within a
+line is "the next tone in that vector." Ordering *between* lines is the mean diatonic height of the strand, compared by
+cross-multiplication so no division is needed.
+
+That is tag plus time ordering, and nothing else. **No shadow line structure was built** — no relation, no threading
+pass, no per-note predecessor field, no second identity. The species rules that most wanted a line
+(`species_dissonance_passing` must say "this dissonance is quitted by leap," which is a claim about the note *after*
+this one in the same line) read it off the sorted vector directly.
+
+### G2.2 — did anything need a partial order or a splitting line? ❌ no
+
+Neither appeared, in any of the twenty-four rules or the eleven example fixtures. The place that came closest is
+instructive and is recorded as a limit in `docs/language/07-analysis.md` §8: a jazz voicing written as a chord in one
+lane puts every pitch of the chord into a *single* strand, so within that lane a "voice" is not a line at all but a
+position from the bottom. The implementation does not paper over this — it reads vertical position and says so. That is
+the honest shape of the answer: **where a line exists, the tag names it; where no line exists, the analysis does not
+invent one.** A kernel partial order would have had nothing to do in either case.
+
+### What this does and does not settle
+
+It closes Q3 (`docs/kernel/08-open-questions.md`), which is the outcome §2 named as good: an open question closed by a
+consumer's evidence rather than left open forever.
+
+It does *not* refute the two things G0.2 left standing — partial ordering (OMT `110`) and divisi are still
+inexpressible, and the tag is still a convention no kernel law states. What it establishes is that **neither has a
+consumer**, and §1's rule is that demand comes before design. Atom 2 is withdrawn, not disproved. Reviving it requires a
+named consumer that wants one of those two things, which serial partial-order analysis or a divisi engraving feature
+could someday supply.
+
+---
+
 ## Revised atom status
 
-| Atom | Before Gate 0 | After Gate 0 |
-| --- | --- | --- |
-| 1. Ambient exact time | Retained | Retained, untouched |
-| 2. Occurrence + **succession** | Strong: the kernel loses voices | **Weakened.** Voices are carried by payload convention. The case is now leakage plus two specific inexpressible things (partial order, divisi). Needs a consumer to want it — see `07-adoption-plan.md` G2. |
-| 3. **Conflict** | Strong: endings and aleatory | **Refuted as proposed.** Prompt 66's reasons 1 and 2 stand; the endings falsifier was wrong. Survives only as a narrow question about notated bounded alternatives. |
-| 4. **Pulse layers** | Strong | **Unchanged and now the strongest structural claim.** `elaborate.rs:980` still says meter is a region; OMT `098` §Polymeter is still a counterexample; nothing in Gate 0 touched it. |
-| 5. **Payload torsors and group actions** | Strong | **Unchanged.** Independent of the kernel-shape question; largely library work. |
-| 6. **Orbit identification** | Strong | **Unchanged, and cheapest to test.** Independent of everything else here. |
+| Atom | Before Gate 0 | After Gate 0 | After Gate 2 |
+| --- | --- | --- | --- |
+| 1. Ambient exact time | Retained | Retained, untouched | Untouched |
+| 2. Occurrence + **succession** | Strong: the kernel loses voices | **Weakened.** Voices are carried by payload convention. The case is now leakage plus two specific inexpressible things (partial order, divisi). Needs a consumer to want it — see `07-adoption-plan.md` G2. | **Withdrawn.** The decisive consumer landed on tags with no shadow structure. Partial order and divisi remain inexpressible and remain without demand. |
+| 3. **Conflict** | Strong: endings and aleatory | **Refuted as proposed.** Prompt 66's reasons 1 and 2 stand; the endings falsifier was wrong. Survives only as a narrow question about notated bounded alternatives. | Untouched; still parked (Track D). |
+| 4. **Pulse layers** | Strong | **Unchanged and now the strongest structural claim.** `elaborate.rs:980` still says meter is a region; OMT `098` §Polymeter is still a counterexample; nothing in Gate 0 touched it. | Untouched, and now the only structural claim left standing. |
+| 5. **Payload torsors and group actions** | Strong | **Unchanged.** Independent of the kernel-shape question; largely library work. | Untouched. |
+| 6. **Orbit identification** | Strong | **Unchanged, and cheapest to test.** Independent of everything else here. | Untouched. |
 
 The ranking has inverted. The two atoms the first write-up led with are the two that Gate 0 damaged, and the three that
 survive intact are the three that need the least change to the kernel — 5 and 6 need none at all.
