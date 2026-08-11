@@ -295,7 +295,24 @@ fn format_leaves_a_file_that_does_not_parse_alone() -> std::io::Result<()> {
 
 /// Every shipped example renders to WAV deterministically (same source →
 /// byte-identical bytes, §17.5) with the expected header.
+///
+/// Ignored by default because it costs about five minutes: it renders all
+/// forty-eight examples twice through the binary, and one of them —
+/// `glass-mountain.musa`, whose studio graph has a reverb bus and a modulated
+/// filter — takes over a minute a pass in an unoptimized build. Run it with
+/// `cargo nextest run -p musa --run-ignored all`, or `cargo test -p musa --
+/// --include-ignored`.
+///
+/// What is *not* lost by ignoring it: the determinism contract itself is held
+/// in-process and in milliseconds by
+/// `musa-project`'s `session_laws::wav_export_is_deterministic`, and the exact
+/// bytes are pinned by its
+/// `elaboration_backend_compatibility::every_existing_backend_matches_the_migration_oracle`.
+/// What this one adds is corpus breadth — that the audio pipeline still runs
+/// over every shipped example — which is worth having and is not worth five
+/// minutes of every routine run.
 #[test]
+#[ignore = "slow: renders every example twice; run with --run-ignored all"]
 fn wav_export_is_deterministic_for_all_examples() -> std::io::Result<()> {
     let examples = format!("{}/../../examples", env!("CARGO_MANIFEST_DIR"));
     let mut count = 0usize;

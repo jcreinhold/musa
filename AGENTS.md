@@ -57,6 +57,7 @@ describe — roadmap §15.11). No dependency points upward.
 ```sh
 cargo build --workspace
 cargo nextest run [-p <crate>]            # fall back to cargo test if nextest missing
+cargo nextest run --run-ignored all       # adds the slow tests; minutes, not seconds
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
 cargo deny check                          # if cargo-deny installed
@@ -64,6 +65,11 @@ cargo deny check                          # if cargo-deny installed
 
 All four must be green before committing. The workspace lints in `Cargo.toml` are strict on purpose: fix the code, do
 not allow-list lints.
+
+**Slow tests are `#[ignore]`d and named as such.** A test that costs minutes rather than seconds is one nobody runs, so
+the default suite excludes it and asks for it by name. Marking one is a decision that has to be argued in its doc
+comment: what the test protects, what still covers that contract in the fast suite, and what breadth is being deferred
+to the explicit run. A slow test with no such note is a slow test that should have been made fast.
 
 ## Standards
 
