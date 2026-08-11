@@ -1,0 +1,125 @@
+// The Rule of the Octave: one chord for each degree of the bass scale.
+//
+// OMT `035-galant-schemas-the-rule-of-the-octave-and-harmonizing-the-scale-
+// with-sequences.md` states the Rule as a recipe — parallel 6/3 chords, then
+// 5/3 on the tonic, then 5/3 on the dominant, then a seventh before each of
+// those — and `std::tonal::schemas` is that recipe written as functions. This
+// piece asks the library for the chords and decides, itself, how they sound.
+//
+// The same eight chords are played twice, under two policies that share no
+// decision: close position from a low bass in quarter notes, and drop-2 from a
+// higher bass in halves. Nothing in the library chose either. That is the
+// point of the file: a harmonic skeleton is not music until somebody voices it,
+// and the library never does.
+
+piece "The Rule of the Octave" {
+    import std::tonal::schemas;
+    import std::tonal::sequences;
+    import std::scale;
+    import std::voicing;
+
+    tempo 1/4 = 92;
+    meter 4/4;
+    key c major;
+
+    let major: Scale = scale c major;
+
+    // The first policy: the chord stacked upward from C3, a quarter note long.
+    // Absent when the class cannot be voiced from that bass — which happens,
+    // and is silence here rather than a substitute.
+    fn low_close(sounding: ChordClass) -> Music {
+        match close_position(sounding, c3) {
+            None -> music {
+                rest/4
+            },
+            Some(chosen) -> sound_for(chosen, 1/4),
+        }
+    }
+
+    // The second policy: drop-2 from C4, twice as long. A different bass, a
+    // different spacing, a different rhythm. The chords are the same chords.
+    fn high_drop_two(sounding: ChordClass) -> Music {
+        match drop_position(sounding, c4, 2) {
+            None -> music {
+                rest/2
+            },
+            Some(chosen) -> sound_for(chosen, 1/2),
+        }
+    }
+
+    // One stage under one policy. `stage_music` is `std::tonal::sequences`'
+    // own: a skeleton is a list of options, and an absent stage is silence the
+    // caller can see.
+    fn low(bass: Nat) -> Music { stage_music(low_close, rule_ascending_chord(major, bass)) }
+
+    fn high(bass: Nat) -> Music { stage_music(high_drop_two, rule_ascending_chord(major, bass)) }
+
+    fn low_down(bass: Nat) -> Music {
+        stage_music(low_close, rule_descending_chord(major, bass))
+    }
+
+    fn high_down(bass: Nat) -> Music {
+        stage_music(high_drop_two, rule_descending_chord(major, bass))
+    }
+
+    score {
+        // The ascent, close position. Eight `use` statements and not a fold:
+        // `use` sequences at the cursor, and writing the eight degrees out is
+        // what makes the bass scale legible as a bass scale.
+        part ascent_close {
+            voice v {
+                use low(1);
+                use low(2);
+                use low(3);
+                use low(4);
+                use low(5);
+                use low(6);
+                use low(7);
+                use low(8);
+            }
+        }
+
+        // The same ascent, drop-2 and half notes.
+        part ascent_drop {
+            voice v {
+                use high(1);
+                use high(2);
+                use high(3);
+                use high(4);
+                use high(5);
+                use high(6);
+                use high(7);
+                use high(8);
+            }
+        }
+
+        // The descent. The tonic and dominant 5/3s stand where they stood; the
+        // sevenths moved, because what precedes a dominant coming down is the
+        // sixth degree and not the fourth.
+        part descent_close {
+            voice v {
+                use low_down(8);
+                use low_down(7);
+                use low_down(6);
+                use low_down(5);
+                use low_down(4);
+                use low_down(3);
+                use low_down(2);
+                use low_down(1);
+            }
+        }
+
+        part descent_drop {
+            voice v {
+                use high_down(8);
+                use high_down(7);
+                use high_down(6);
+                use high_down(5);
+                use high_down(4);
+                use high_down(3);
+                use high_down(2);
+                use high_down(1);
+            }
+        }
+    }
+}

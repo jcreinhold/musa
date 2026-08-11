@@ -1,7 +1,7 @@
 ---
 id: 115
 slug: schemas-and-harmonization
-status: pending
+status: done
 depends_on: [98, 107, 110, 114]
 phase: 3
 ---

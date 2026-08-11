@@ -157,6 +157,61 @@ Musa definitions; importing a module is explicit and never searches the filesyst
 - `german_sixth(collection: Scale, lowered_sixth: Degree) -> Option<ChordClass> {` — The German sixth: the Italian sixth with the lowered third added, which spells as a perfect fifth above the root. It sounds like a dominant seventh and is not one — the top note is an augmented sixth, written from a different letter, and re-rooting `dominant7` here would spell the wrong note. OMT 063.
 - `altered_dominant(collection: Scale, quality: ChordClass) -> Option<ChordClass> {` — An altered or extended dominant: a named quality on the fifth degree. Which alteration is present is the caller's, written as the chord type — there is no universal set of alterations, and a function that picked one would be asserting a style rather than constructing a chord. `chord c dom7b9`, `chord c dom7s5`, and the plain extensions all pass here. OMT 071.
 
+## `std::tonal::schemas`
+
+- `degrees_of(ordinals: List<Nat>) -> List<Degree> { map(as_degree, ordinals) }` — The degrees of a written line, from the ordinals OMT prints. Written out rather than folded because a schema *is* its table: a reader should see the same numbers here that they see in OMT's row.
+- `as_degree(ordinal: Nat) -> Degree { degree_of(ordinal) }` — One ordinal as a degree. Written out because `degree_of` is a compiler-owned operation and only a source function can be passed to a fold.
+- `romanesca_bass() -> List<Degree> { degrees_of([1, 7, 6, 3]) }` — Direction: descending, then a leap down to the third.
+- `romanesca_melody() -> List<Degree> { degrees_of([1, 5, 1, 1]) }` — The Romanesca melody, *do-sol-do-do*.
+- `romanesca_roots() -> List<Degree> { degrees_of([1, 5, 6, 1]) }` — The roots the Romanesca's figures name: I-V-vi-I. The 6 on stage two means the chord over *ti* is rooted on *sol*, and the 6 on stage four means the chord over *mi* is rooted on *do*. The figure is read here so that a caller reads roots, and the bass is kept separately so that the caller can still voice from it.
+- `romanesca_strong() -> List<Bool> { [true, false, true, false] }` — The Romanesca's metrical shape. True is OMT's S.
+- `do_re_mi_bass() -> List<Degree> { degrees_of([1, 7, 1]) }` — Do-Re-Mi, OMT 34 §Do–Re–Mi. Three stages, the shortest opening in the summary table, and the one whose two halves OMT itself calls schemas: the Do-Re question and the Re-Mi answer. Figures 5-6-5, numerals I-V-I.
+- `do_re_mi_melody() -> List<Degree> { degrees_of([1, 2, 3]) }` — The Do-Re-Mi melody, which is the stepwise ascent the schema is named for.
+- `do_re_mi_roots() -> List<Degree> { degrees_of([1, 5, 1]) }` — The Do-Re-Mi roots: I-V-I, the 6 on stage two rooting the chord over *ti* on *sol*.
+- `do_re_mi_strong() -> List<Bool> { [true, false, true] }` — 
+- `prinner_bass() -> List<Degree> { degrees_of([4, 3, 2, 1]) }` — Prinner, OMT 34 §Prinner. Four stages with a stepwise falling bass *fa-mi-re-do* under a falling *la-sol-fa-mi*: parallel tenths, which is why it answers an opening so readily. Figures 5-6-7-6-5, numerals IV-I-vii-I.
+- `prinner_melody() -> List<Degree> { degrees_of([6, 5, 4, 3]) }` — 
+- `prinner_roots() -> List<Degree> { degrees_of([4, 1, 7, 1]) }` — The Prinner's roots. Stage two's 6 roots the chord over *mi* on *do*, and stage four's 6 does the same over *do*, which is why the last two roots are not the bass.
+- `prinner_strong() -> List<Bool> { [true, false, true, false] }` — 
+- `prinner_with_dominant_bass() -> List<Degree> { degrees_of([4, 3, 2, 5, 1]) }` — The five-stage Prinner OMT 34 gives as "a slight variant on this": a root-position dominant is inserted before the final stage. A separate function rather than a flag, because a variant with a different number of stages is a different table and a caller reading four lists in parallel should not have one of them silently change length.
+- `prinner_with_dominant_melody() -> List<Degree> { degrees_of([6, 5, 4, 4, 3]) }` — 
+- `prinner_with_dominant_roots() -> List<Degree> { degrees_of([4, 1, 7, 5, 1]) }` — 
+- `prinner_with_dominant_strong() -> List<Bool> { [true, false, true, false, true] }` — 
+- `fonte_bass() -> List<Degree> {` — Fonte, OMT 34 §Fonte. Two tonicizations a step apart, and the first of them needs a bass note the collection does not contain: OMT writes it *di*, a raised *do*. This is the schema that proves an alteration has to be carried explicitly — `raise` moves the spelling without moving the coordinate, so the degree is still the first and is still spelled sharp.
+- `fonte_melody() -> List<Degree> { degrees_of([5, 4, 4, 3]) }` — 
+- `fonte_roots() -> List<Degree> {` — The Fonte's roots: V/ii-ii-V-I. The applied dominant is rooted on the raised first degree because that is the note OMT's figure sits over, and the raising travels with the root.
+- `fonte_strong() -> List<Bool> { [false, true, false, true] }` — 
+- `monte_bass() -> List<Degree> {` — Monte, OMT 34 §Monte. The Fonte's counterpart, rising rather than falling, and altered in the other direction: OMT writes *fi*, a raised *fa*, tonicizing the dominant. Figures 6/5-5-6/5-5, numerals V/IV-V-V/V-V.
+- `monte_melody() -> List<Degree> { degrees_of([7, 6, 1, 7]) }` — 
+- `monte_roots() -> List<Degree> {` — 
+- `monte_strong() -> List<Bool> { [false, true, false, true] }` — 
+- `fenaroli_bass() -> List<Degree> { degrees_of([7, 1, 2, 3]) }` — Fenaroli, OMT 34 §Fenaroli. The one representative here whose bass *rises* stepwise, *ti-do-re-mi*, which is why it is in this file beside the falling ones: a schema is not its intervals reversed.
+- `fenaroli_melody() -> List<Degree> { degrees_of([4, 3, 7, 1]) }` — 
+- `fenaroli_roots() -> List<Degree> { degrees_of([5, 1, 5, 1]) }` — The Fenaroli's roots: V-I-V-I, with the 6 on the last stage rooting the chord over *mi* on *do*.
+- `fenaroli_strong() -> List<Bool> { [true, false, true, false] }` — 
+- `cadenza_semplice_bass() -> List<Degree> { degrees_of([3, 4, 5, 1]) }` — Cadenza semplice, OMT 34 §Cadenza Semplice. The plain cadence: bass *mi-fa-sol-do*, figures 6-6/5-5-5, numerals I-ii-V-I.
+- `cadenza_semplice_melody() -> List<Degree> { degrees_of([1, 2, 2, 1]) }` — 
+- `cadenza_semplice_roots() -> List<Degree> { degrees_of([1, 2, 5, 1]) }` — 
+- `cadenza_semplice_strong() -> List<Bool> { [false, true, false, true] }` — 
+- `quiescenza_bass() -> List<Degree> { degrees_of([1, 1, 1, 1]) }` — Quiescenza, OMT 34 §Quiescenza. Post-cadential, and the one schema here whose bass does not move at all: four stages on *do*. Its melody needs the other alteration — OMT writes *te*, a lowered *ti* — which makes the first chord a dominant of the subdominant over a tonic pedal.
+- `quiescenza_melody() -> List<Degree> {` — 
+- `quiescenza_roots() -> List<Degree> { degrees_of([1, 5, 5, 1]) }` — 
+- `quiescenza_strong() -> List<Bool> { [false, true, false, true] }` — 
+- `schema_triads(collection: Scale, roots: List<Degree>) -> List<Option<ChordClass>> {` — The chord classes a schema's roots name in one collection, as triads. Absent where the collection does not stack to a nameable sonority, and absent on an altered root, because an applied dominant is not the collection's own chord and this function only knows the collection's. That absence is the honest answer: `fonte_roots` and `monte_roots` carry raised degrees on purpose, and a caller who wants those chords supplies them, from `std::tonal::harmony`, where applied chords live.
+- `schema_triad(collection: Scale, root: Degree) -> Option<ChordClass> {` — One root, harmonized as the collection's triad.
+- `schema_sevenths(collection: Scale, roots: List<Degree>) -> List<Option<ChordClass>> {` — The same as seventh chords, for the figures OMT prints with a 7 or a 6/5 in them.
+- `schema_seventh(collection: Scale, root: Degree) -> Option<ChordClass> {` — 
+- `sixth_over(collection: Scale, bass: Degree) -> Option<ChordClass> {` — Step 1. A 6/3 over a bass degree is the triad a third below it, in first inversion. This is the whole of the parallel-sixths harmonization, and it is the same function `std::tonal::sequences` uses for the parallel 6/3 passage, seen from the bass rather than from the root.
+- `fifth_over(collection: Scale, bass: Degree) -> Option<ChordClass> {` — Step 2 and step 3 share a shape: a 5/3 is the triad rooted on the bass itself, root position, no designation.
+- `six_five_over(collection: Scale, bass: Degree) -> Option<ChordClass> {` — Step 4. A seventh chord over a bass degree, rooted a third below it so that the bass is still the third — OMT's 6/5 — which is the figure the recipe's seventh chords carry.
+- `inverted_first(content: Option<ChordClass>) -> Option<ChordClass> {` — Designate the third as bass, keeping absence absent.
+- `rule_ascending_chord(collection: Scale, bass: Nat) -> Option<ChordClass> {` — The chromatic alteration OMT mentions once — "In one case, this also involves a chromatic alteration for a stronger sense of tonicizing the dominant" — is *not* applied here, and its absence is the point: OMT names it without printing which chord takes it, and a library that guessed would be asserting a version rather than following one. A caller who wants it writes it, and `raise` is how.
+- `rule_descending_chord(collection: Scale, bass: Nat) -> Option<ChordClass> {` — The Rule descending, one bass degree at a time. The 5/3s stand where they stood — a tonic is a tonic whichever way the bass is walking — and the sevenths move, because 6 is what precedes the dominant coming down and 2 is what precedes the tonic.
+- `rule_ascending_basses() -> List<Nat> { [1, 2, 3, 4, 5, 6, 7, 8] }` — The bass scale the Rule is harmonized over, ascending. Eight ordinals and not seven: OMT prints the octave, so the last chord is a tonic again, and the closing 5/3 has somewhere to stand. Written as a literal because the Rule of the Octave is over the octave — there is no count here to vary, which is exactly what distinguishes it from the sequences in `std::tonal::sequences`, where the count is the whole point.
+- `rule_descending_basses() -> List<Nat> { [8, 7, 6, 5, 4, 3, 2, 1] }` — The same descending. Written out rather than reversed, because a descent is its own line and OMT gives it as one.
+- `rule_of_the_octave_ascending(collection: Scale) -> List<Option<ChordClass>> {` — The whole ascending Rule: eight chords over the ascending bass scale.
+- `rule_of_the_octave_descending(collection: Scale) -> List<Option<ChordClass>> {` — The whole descending Rule.
+
 ## `std::tonal::sequences`
 
 - `rising_degree(start: Degree, steps: Nat, index: Nat) -> Degree {` — The degree reached after `index` applications of a rise of `steps` scale steps. Index zero is the start, which is what makes a count of one mean "the pattern, stated once".
