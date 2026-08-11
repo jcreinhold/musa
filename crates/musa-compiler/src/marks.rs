@@ -1,7 +1,7 @@
 //! The notation vocabulary, as a table.
 //!
 //! Musa has no fermata. The reason was never that a fermata is hard — the
-//! parser has accepted `g4/4 fermata` since prompt 27 and validates
+//! parser has accepted `g4/4 fermata` and validates
 //! nothing — but that the compiler's `ArticulationMark` was a closed enum of
 //! five, so a sixth mark meant editing four files: the enum, its name list,
 //! its parser and its printer in `score.rs`, plus one `match` arm in each of
@@ -113,9 +113,9 @@ pub struct MarkDef {
 
 /// Every mark musa reads.
 ///
-/// Rows are added by the prompt that has a piece needing them, never in
-/// advance. The five articulations are prompt 62's; everything below them
-/// arrived with prompt 70 and has a piece in `examples/` that writes it.
+/// Rows are added by the change that has a piece needing them, never in
+/// advance. Every row below the five articulations
+/// has a piece in `examples/` that writes it.
 pub const VOCABULARY: &[MarkDef] = &[
     MarkDef {
         name: "staccato",

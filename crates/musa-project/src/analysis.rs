@@ -260,7 +260,10 @@ fn summarize(observation: &Observation) -> String {
         }
         Observation::RuleInForce { rule, .. } => format!("{} is in force: {}", rule.id(), rule.states()),
         Observation::Departure {
-            rule, ref voices, interval, ..
+            rule,
+            ref voices,
+            interval,
+            ..
         } => {
             let who = match voices.split_last() {
                 None => "the voicing".to_owned(),

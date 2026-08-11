@@ -4,7 +4,7 @@
 //! part — for one question: *what is in force here*. None of them could say
 //! "here", because none of them had a location. This module is the shape they
 //! share: a value, a scope, and the instant it starts at, projected out of
-//! the timeline that already stated all three as occurrences (prompt 40).
+//! the timeline that already stated all three as occurrences.
 //!
 //! Consumers need **boundaries**, not points. "Where does the meter change"
 //! is what every exporter asks, and neither `covering` (D10) nor `prevailing`
@@ -23,7 +23,7 @@
 //!   (`musa-render`'s `Fold`); performance does not. A track read on the
 //!   wrong side of that fold answers about the wrong measure. Nothing can
 //!   violate either rule yet — there is one stretch per kind — and they are
-//!   written down so the prompt that makes context positional has something
+//!   written down so the change that makes context positional has something
 //!   to enforce rather than something to discover.
 
 use serde::{Deserialize, Serialize};

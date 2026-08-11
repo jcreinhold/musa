@@ -411,7 +411,7 @@ export class Session {
   }
 
   /**
-   * Read the open work again (prompt 76).
+   * Read the open work again.
    *
    * The piece does not change — a performance is a parameter the compiler
    * takes, not a line in the file — so this rewrites nothing and the draft

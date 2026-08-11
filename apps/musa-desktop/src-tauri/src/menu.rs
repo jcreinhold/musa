@@ -7,7 +7,7 @@
 //!
 //! What the menu *does* own is shape. The registry says which section a
 //! command belongs to, which submenu it sits in, and where the groups break;
-//! this reads those three facts and nothing else (prompt 59).
+//! this reads those three facts and nothing else.
 
 use tauri::menu::{Menu, MenuBuilder, MenuItem, MenuItemBuilder, Submenu, SubmenuBuilder};
 use tauri::{AppHandle, Emitter, Runtime};

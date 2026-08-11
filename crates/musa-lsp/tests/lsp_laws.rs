@@ -48,7 +48,7 @@ const STDLIB_PIECE: &str = "piece \"Standard library\" {
 ";
 
 /// A small valid piece whose every position the tests can count by hand —
-/// one full bar of 4/4, because a bar is written down and checked (prompt 57).
+/// one full bar of 4/4.
 const HOVER_PIECE: &str = "piece \"Hover\" {
     tempo 1/4 = 96;
     meter 4/4;
@@ -754,8 +754,8 @@ fn completion_offers_the_vocabulary_and_the_names() {
     for expected in ["sigh", "violin", "strings"] {
         assert!(labels.contains(&expected), "name `{expected}` missing");
     }
-    // A keyword teaches from the menu: its own documentation rides the item
-    // (prompt 84), while a unit has only its class.
+    // A keyword teaches from the menu: its own documentation rides the item,
+    // while a unit has only its class.
     let tempo = items.iter().find(|item| item.label == "tempo").expect("tempo item");
     assert_eq!(tempo.detail.as_deref(), Some("how fast, written where it changes"));
     let Some(lsp_types::Documentation::MarkupContent(content)) = &tempo.documentation else {
@@ -913,9 +913,8 @@ fn an_unclosed_block_offers_no_fold() {
 }
 
 /// A piece with one name nobody speaks: the lint warning is a diagnostic
-/// like any other, and its certain fix is a quick fix like any other
-/// (prompt 83 — the server carries it with no new plumbing, which is the
-/// point this test pins).
+/// like any other, and its certain fix is a quick fix like any other — the
+/// server carries it with no new plumbing, which is the point this test pins.
 const UNUSED_MOTIF_PIECE: &str = "piece \"Lint\" {
     tempo 1/4 = 96;
     meter 4/4;

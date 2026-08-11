@@ -1,5 +1,5 @@
 /**
- * Linked reading (prompt 52): the two views share one focus.
+ * Linked reading: the two views share one focus.
  *
  * The question this answers is the one a musa score asks and a normal score
  * does not — *which line wrote this note, and which notes did this line

@@ -1,4 +1,4 @@
-//! The expressive notation layer's contracts (docs/prompts/27).
+//! The expressive notation layer's contracts.
 //!
 //! Two laws carry the semantics, and both are properties rather than
 //! examples because both are claims about *every* ratio and *every* pair of

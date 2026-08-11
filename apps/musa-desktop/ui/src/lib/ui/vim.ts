@@ -1,6 +1,6 @@
 /**
  * Vim mode for the source column, and the three things it must not own
- * (prompt 55).
+ *.
  *
  * The keymap lives inside the one CodeMirror instance and nowhere else:
  * nothing about the language, the score, the command model, or the document

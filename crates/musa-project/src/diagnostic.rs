@@ -307,8 +307,8 @@ pub fn explain(code: &str) -> Option<&'static str> {
              installed yet. This is deliberately different from `syntax`: the editor, \
              formatter, and parser already understand the construct, but compilation \
              cannot assign it meaning without silently guessing.\n\n\
-             Finish or upgrade to the prompt named by the diagnostic's help text; do \
-             not rewrite the expression as notation merely to make the message vanish."
+             Do not rewrite the expression as notation merely to make the \
+             message vanish."
         }
         musa_compiler::Code::UnusedMaterial => {
             "A `motif` or `fragment` is declared and never used (style \

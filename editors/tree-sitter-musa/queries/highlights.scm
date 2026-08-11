@@ -1,4 +1,4 @@
-; Highlighting, in the language's own vocabulary (prompt 80).
+; Highlighting, in the language's own vocabulary.
 ;
 ; The colors are the theme's business; the captures are ours. Zed's default
 ; themes paint the standard captures the way Rust readers expect: @function

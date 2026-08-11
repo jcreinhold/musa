@@ -4,9 +4,7 @@
 //! This is *the* semantic path: name resolution, motif registration and unit
 //! checks come from `resolve.rs`, voice content elaborates into
 //! `Timeline<ScoreFact>` values built from kernel `sequence`/`overlay`, and
-//! `project.rs` reads a `ScoreSnapshot` back out of the result (§27). It was
-//! the second path until prompt 41 deleted the direct lowerer it was
-//! validated against.
+//! `project.rs` reads a `ScoreSnapshot` back out of the result (§27).
 //!
 //! Design decisions recorded in docs/kernel/06 and 08:
 //! - a `rest` statement elaborates to a `Rest` payload occurrence — notation
@@ -14,7 +12,7 @@
 //! - transposition applies eagerly during elaboration via the shared
 //!   interval stack (§19 evaluation strategy); semantically it is a payload
 //!   map (§13) and composition is commutative, so eager application is
-//!   observably equal (prompt 06's composition law);
+//!   observably equal by the composition law);
 //! - voice/part identity rides in the payload (§32 Q3 working stance);
 //! - provenance (`Origin`) rides in the payload, above the kernel (§20).
 //!
@@ -120,7 +118,7 @@ pub(crate) enum FactKind {
         shape: musa_kernel::Progress,
     },
     /// The key signature, over the region it governs — the whole piece
-    /// while the grammar has no `modulate` (prompt 40).
+    /// while the grammar has no `modulate`.
     Key { tonic: PitchClass, mode: Mode },
     /// The meter, over the region it governs — likewise the whole piece.
     Meter { numerator: u32, denominator: u32 },
@@ -164,7 +162,7 @@ pub(crate) enum FactKind {
     /// A mobile over the region it plays: the fragments as written, and the
     /// order this performance chose. The realized music is the fragments'
     /// own occurrences; this is the instruction the page prints over them
-    /// (prompt 58's rule).
+    /// (the rule the mobile and open-form facts share).
     Mobile { fragments: Vec<String>, order: Vec<u32> },
     /// An improvised frame over the region it occupies. It sounds as silence,
     /// because musa does not improvise.
@@ -480,7 +478,7 @@ impl musa_kernel::Canonical for ScoreFact {
 }
 
 /// Elaborate `source` through the temporal kernel and adapt the result into
-/// a `ScoreSnapshot` (docs/kernel/06, prompt 11).
+/// a `ScoreSnapshot` (docs/kernel/06).
 pub(crate) fn elaborate(source: &SourceDocument, options: &crate::CompileOptions) -> Compilation {
     let document = musa_language::parse(source.text());
     let mut resolver = Resolver::new();
@@ -625,7 +623,7 @@ pub(crate) fn elaborate_parsed(
     // A piece that asked nothing was not realized, it was compiled, and the
     // score says so by having no performance at all. Everything downstream —
     // the seed field, the Origin step, the export note — appears and vanishes
-    // on this one value (prompt 76).
+    // on this one value.
     let mut snapshot = snapshot;
     if !resolver.decisions.is_empty() {
         snapshot.set_performance(resolver.realization.seed());
@@ -942,7 +940,7 @@ fn elaborate_score(
     }
     // One close and one evaluation for the whole piece: closing wraps the live
     // bindings, and doing it per voice would clone every shared body once per
-    // voice — which is the cost this prompt exists to remove.
+    // voice — the cost this structure exists to remove.
     let parts: Vec<_> = lanes
         .into_iter()
         .map(|lane| lane.term)
@@ -986,7 +984,7 @@ fn elaborate_score(
 /// Key and meter are *regions*. Today they cover `[0, d]`, because the
 /// grammar has no `modulate` and no mid-piece `meter`; when it grows one the
 /// change is more occurrences, not a second representation of the same
-/// question (prompt 40). A region that happens to cover everything is not a
+/// question. A region that happens to cover everything is not a
 /// special case; a piece-wide scalar is.
 ///
 /// Sections and chord symbols are *points*, resolved here because a position
@@ -1171,7 +1169,6 @@ fn point_at(at: MusicalTime, fact: ScoreFact) -> Occurrence<ScoreFact> {
 /// Register everything the imported libraries declare, before the piece's
 /// own declarations, so a collision is reported against the library that
 /// caused it (roadmap §16).
-/// Check a `library { … }` opened on its own (prompt 84).
 ///
 /// A library declares and does not sound, so there is no score to build and
 /// the absence of one is not a failure — that is the whole difference between
@@ -1239,8 +1236,8 @@ fn elaborate_libraries(resolver: &mut Resolver, libraries: &crate::imports::Libr
 /// nobody will ever reach is a mistake, not a comment.
 ///
 /// `bars` are folded from the meter *occurrences* and `extent` is the
-/// timeline's own extent — neither is recomputed from the snapshot, which is
-/// the point of prompt 40. The extent is exact rather than a maximum over event ends,
+/// timeline's own extent — neither is recomputed from the snapshot. The
+/// extent is exact rather than a maximum over event ends,
 /// and a piece that ends in a rest still ends where the rest ends, because a
 /// rest is an occurrence.
 fn resolve_position(
@@ -2455,7 +2452,7 @@ fn held(
 
 /// `mobile { a; b; c; }` — its fragments in an order the performance chose.
 ///
-/// Prompt 58's rule, applied a third time: the timeline holds the fragments in
+/// The mobile rule, applied a third time: the timeline holds the fragments in
 /// the order they are played, and one region fact carries the instruction the
 /// page prints over them.
 fn elaborate_mobile(
@@ -2564,7 +2561,7 @@ fn elaborate_improvise(
 /// The range is returned because the page has to print it. `repeat 4 to 16`
 /// means *play this between four and sixteen times*, and a page that printed
 /// only the count this performance drew would have replaced the composer's
-/// instruction with one reading of it. Prompt 58's rule again: the timeline
+/// instruction with one reading of it. The rule again: the timeline
 /// holds every pass, the page prints the instruction once.
 ///
 /// `None` is a refusal, not a count of zero: a backwards range is a mistake
@@ -2894,8 +2891,8 @@ fn elaborate_bar(
 /// The music is what was written. An assertion adds no occurrence, no payload,
 /// and no time — the only trace it leaves in the result is one
 /// [`ExpansionStep::Assertion`] on the facts underneath it, which is provenance
-/// and therefore invisible to `≈facts` (law 13). That is the identity prompt
-/// 116 asks for: a claim that holds gives back exactly the passage it was
+/// and therefore invisible to `≈facts` (law 13). That is the identity an
+/// assertion asks for: a claim that holds gives back exactly the passage it was
 /// written on.
 ///
 /// The body is evaluated here, once, and the evaluation is thrown away after
@@ -2974,7 +2971,7 @@ fn elaborate_assert(
 ///
 /// It contributes a point occurrence to the piece — `Scope::Piece`, because a
 /// meter written in one voice is the piece's meter from there (per-voice
-/// meter is polymeter, and has its own prompt) — and nothing else. Where the
+/// meter is polymeter, a separate construct) — and nothing else. Where the
 /// barlines then fall is [`crate::BarLines`]'s answer, computed once every
 /// voice has been read, because whether *this* change lands on a barline
 /// depends on the changes before it.
@@ -3096,7 +3093,7 @@ fn elaborate_tempo(
 /// something the piece does. Which key a *part* reads is then the `Latest`
 /// rule's answer (`context.rs`), so a part that opened in its own key keeps
 /// it until the piece says otherwise and follows the piece from there — the
-/// viola case prompt 63 wrote the rule for.
+/// viola case the `Latest` rule was written for.
 fn elaborate_key(resolver: &mut Resolver, stmt: &musa_language::ast::KeyStmt, cx: &ExpandCx, place: Place) -> Segment {
     let span = resolve::trimmed_span(stmt.syntax());
     if place == Place::Material {
@@ -3196,7 +3193,7 @@ fn reported_an_error(resolver: &Resolver) -> bool {
 /// A claim the compiler has taken on and not yet discharged.
 ///
 /// Two constructs raise these and there is exactly one kind, on purpose. A
-/// `bar { … }` has claimed "this is one measure" since prompt 57; an `assert`
+/// `bar { … }` claims "this is one measure"; an `assert`
 /// claims whatever it says. Both are a proposition about a passage that can
 /// only be settled once the whole piece has been read — the meter in force at
 /// a bar is decided by every `meter` in every voice, and a `meter` in the
@@ -3835,7 +3832,7 @@ fn specialize(
     timeline_or_empty(elaborated.extent(), occurrences)
 }
 
-/// The derived time reversal (roadmap §5.4, prompt 34): `(d, E)` becomes
+/// The derived time reversal (roadmap §5.4): `(d, E)` becomes
 /// `(d, {(d−e, d−s, a)})`.
 ///
 /// A plain function over an elaborated timeline, deliberately: the kernel
@@ -4244,7 +4241,7 @@ fn check_tuplets(resolver: &mut Resolver, snapshot: &ScoreSnapshot) {
 /// snapshots and semantic hashing (docs/kernel/05 N5–N6). `None` when the
 /// source does not elaborate cleanly.
 ///
-/// One timeline, not one per part: after prompt 40 a compilation has exactly
+/// One timeline, not one per part: a compilation has exactly
 /// one temporal object, and the normal form is the text of that object —
 /// key, meter, form markers and chord symbols included.
 #[doc(hidden)]

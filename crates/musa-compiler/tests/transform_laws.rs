@@ -1,4 +1,4 @@
-//! The variation transformations' contracts (docs/prompts/34).
+//! The variation transformations' contracts.
 //!
 //! `stretch`, `retrograde`, and `invert` are elaboration-time functions over
 //! an already-elaborated timeline, not kernel constructors (course correction

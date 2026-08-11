@@ -1,5 +1,5 @@
 //! Regressions for the two callback-core contracts that the transport tests
-//! did not pin down (roadmap §13.2):
+//! did not pin down:
 //!
 //! 1. **Progress.** `CallbackCore::process` returns after a bounded amount of
 //!    work for *every* transport state. A degenerate loop region must not
@@ -109,7 +109,7 @@ fn regression_loop_beyond_the_piece_stops_instead_of_spinning() {
     });
 }
 
-/// §13.2: the callback must never destroy a large object. With the retirement
+/// The callback must never destroy a large object. With the retirement
 /// queue saturated the core applies back-pressure — commands stay queued — and
 /// every replaced plan still reaches the control side once it drains.
 #[test]

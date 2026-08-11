@@ -1,4 +1,4 @@
-//! MIDI backend tests (docs/prompts/28).
+//! MIDI backend tests.
 //!
 //! The suite reads its own output back with `midly` rather than snapshotting
 //! bytes: bytes prove the encoder is stable, but only a parse proves the file
@@ -194,7 +194,7 @@ fn output_is_deterministic() {
 }
 
 /// A MIDI file is a performance, so it swings; a score-mode file is a
-/// notation program's input, so it does not (prompt 69).
+/// notation program's input, so it does not.
 ///
 /// Both facts come out of the same plan, which is why `PerformedNote` carries
 /// the written on-frame beside the scheduled one — the same shape

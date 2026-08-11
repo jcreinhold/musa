@@ -1,7 +1,7 @@
 //! Code actions: the certain fixes the diagnostics already carry.
 //!
 //! The session offers a fix only when it resolves the diagnostic without
-//! guesswork (prompt 56); this handler offers exactly those, no more. A fix
+//! guesswork; this handler offers exactly those, no more. A fix
 //! menu that ranks guesses is an editor feature the session deliberately does
 //! not have, so the server does not have one either.
 

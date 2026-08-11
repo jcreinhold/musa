@@ -1,4 +1,4 @@
-//! Grace notes on the page (prompt 71).
+//! Grace notes on the page.
 //!
 //! The law this file exists for is one line long: **the engraving does not
 //! depend on the profile.** A grace note is where that is hardest to keep,

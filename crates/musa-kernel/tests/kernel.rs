@@ -1,5 +1,5 @@
 //! Unit tests for the kernel constructors and operations. The algebraic law
-//! suite lives in `tests/laws.rs` (prompt 10).
+//! suite lives in `tests/laws.rs`.
 
 // Rational test arithmetic is exact and total (musa-compiler/src/time.rs).
 #![allow(clippy::arithmetic_side_effects)]

@@ -16,7 +16,7 @@ import type { EventFacts, PlaybackState } from "../../src/lib/state/snapshot";
 
 const RATE = 48_000;
 
-/** How often the engine reports, in milliseconds (prompt 18's cadence). */
+/** How often the engine reports, in milliseconds. */
 const INTERVAL_MS = 50;
 
 /** One display frame at 60 Hz, which is the unit B5 is stated in. */

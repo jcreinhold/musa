@@ -92,7 +92,7 @@ fn at_builtin(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &L
     ))
 }
 
-/// A keyword: its own documentation (prompt 84). After the score's facts —
+/// A keyword: its own documentation. After the score's facts —
 /// a `use` keyword *is* its use site, and the expansion is the better answer
 /// there — and before the studio's, whose spans never overlap a keyword.
 fn at_keyword(snapshot: &musa_project::ProjectSnapshot<'_>, byte: u32, lines: &LineIndex) -> Option<Hover> {

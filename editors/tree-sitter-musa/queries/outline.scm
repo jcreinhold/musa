@@ -1,4 +1,4 @@
-; Outline (prompt 80): the shape of the piece, in the editor's symbol pane.
+; The shape of the piece, in the editor's symbol pane.
 
 (piece_declaration
   name: (string) @name) @item

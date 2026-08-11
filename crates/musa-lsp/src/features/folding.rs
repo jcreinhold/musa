@@ -1,4 +1,4 @@
-//! Folding ranges from the concrete syntax tree (prompt 79).
+//! Folding ranges from the concrete syntax tree.
 //!
 //! Braces are the language's explicit structure, so a fold is a matched
 //! `{ … }` pair on different lines — `piece`, `score`, `part`, `voice`,

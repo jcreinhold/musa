@@ -2,8 +2,8 @@
 //!
 //! These are language acceptance limits, not wall-clock timeouts. The same
 //! source and compiler version therefore fail at the same operation on every
-//! machine. Prompt 120 may tune the constants from a wider corpus, but may not
-//! change this accounting into an interrupt or a partial-result mechanism.
+//! machine. The constants may be tuned from a wider corpus, but this accounting
+//! must not become an interrupt or a partial-result mechanism.
 
 use crate::origin::SourceSpan;
 
@@ -106,8 +106,7 @@ impl WorkMeter {
     }
 
     /// Reserve the number of eventual music occurrences. The finite scalar
-    /// fragment reserves zero; prompt 97 charges this same meter when `music`
-    /// constructors arrive.
+    /// fragment reserves zero.
     pub(crate) fn output(&mut self, operation: &'static str, amount: u64, span: SourceSpan) -> bool {
         Self::charge(
             &mut self.output,

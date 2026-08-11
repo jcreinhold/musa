@@ -771,7 +771,7 @@ enum Family {
     /// Takes a function argument or carries a rank-1 scheme. Covered by §5.6, and checked by hand
     /// because its type depends on its arguments' types.
     Eliminator(Eliminator),
-    /// Constructs or transforms `music`. Covered by §5.7 and constrained by prompt 98.
+    /// Constructs or transforms `music`. Covered by §5.7.
     Music,
 }
 
@@ -1880,7 +1880,7 @@ impl Value {
     /// Read the whole finite value into a deterministic witness.  The result
     /// is not a semantic hash or cache key; it makes the executable
     /// normalization check traverse, rather than merely construct, the value
-    /// before the private environment is discarded by this prompt's caller.
+    /// before the private environment is discarded by the caller.
     fn normalization_witness(&self) -> u64 {
         match self {
             Self::Bool(value) => u64::from(*value),
@@ -3134,25 +3134,23 @@ impl Checker<'_> {
                 }
                 crate::assert::ParamType::Rule => {
                     let word: String = significant_tokens(node).map(|token| token.text().to_owned()).collect();
-                    let Some(rule) = crate::analysis::assertable().find(|rule| rule.id() == word)
-                    else {
-                        let assertable: Vec<&str> =
-                            crate::analysis::assertable().map(|rule| rule.id()).collect();
+                    let Some(rule) = crate::analysis::assertable().find(|rule| rule.id() == word) else {
+                        let assertable: Vec<&str> = crate::analysis::assertable().map(|rule| rule.id()).collect();
                         self.resolver.report(
-                            Diagnostic::error(Code::UnknownWord, format!("`{word}` is not a rule this claim can check"))
-                                .at(span, "expected the id of a voice-leading rule")
-                                .maybe_help(
-                                    crate::diagnose::nearest(&word, assertable.iter().copied())
-                                        .map(|near| format!("did you mean `{near}`?")),
-                                )
-                                .help(format!(
-                                    "the rules a source may assert are: {}",
-                                    assertable.join(", ")
-                                ))
-                                .note(
-                                    "every other rule is reported by `musa analyze --kind voice-leading`, \
+                            Diagnostic::error(
+                                Code::UnknownWord,
+                                format!("`{word}` is not a rule this claim can check"),
+                            )
+                            .at(span, "expected the id of a voice-leading rule")
+                            .maybe_help(
+                                crate::diagnose::nearest(&word, assertable.iter().copied())
+                                    .map(|near| format!("did you mean `{near}`?")),
+                            )
+                            .help(format!("the rules a source may assert are: {}", assertable.join(", ")))
+                            .note(
+                                "every other rule is reported by `musa analyze --kind voice-leading`, \
                                      which says how strongly a style holds it rather than failing the build",
-                                ),
+                            ),
                         );
                         self.failed = true;
                         return None;

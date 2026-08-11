@@ -1,4 +1,4 @@
-//! Backend bytes frozen before the elaboration-language migration (prompt 93).
+//! Backend bytes frozen before the elaboration-language migration.
 
 #![allow(clippy::expect_used)]
 

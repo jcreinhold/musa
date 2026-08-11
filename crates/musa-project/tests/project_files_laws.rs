@@ -183,7 +183,7 @@ fn a_piece_with_no_file_autosaves_nothing() {
     assert!(!session.snapshot().autosaved());
 }
 
-// --- Directory projects (docs/prompts/36; roadmap §16) --------------------
+// --- Directory projects (roadmap §16) -------------------------------
 
 /// The album fixture, as a session opened from its real path.
 fn album_piece() -> std::path::PathBuf {
@@ -323,7 +323,7 @@ const PIECE: &str = "piece \"Alone\" {
 }
 ";
 
-// --- The one thing a project may say about layout (prompt 91) -------------
+// --- The one thing a project may say about layout -------------------------
 
 /// A bar in a project that asks for `proportional` is drawn to scale, and the
 /// same bar in a project that says nothing is not.

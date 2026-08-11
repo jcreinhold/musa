@@ -46,7 +46,7 @@ describe("the map and the registry", () => {
    * The palette groups by the frontend's `Group` and the menu by the
    * registry's `Section`, so a command filed under one and shown under the
    * other is a command in two places at once — which is how `view.vim` came
-   * to sit in a View menu it was not in (prompt 59).
+   * to sit in a View menu it was not in.
    */
   it("groups every registered command where the registry sections it", () => {
     for (const entry of REGISTERED) {
@@ -100,9 +100,8 @@ describe("matching a keystroke", () => {
 
 /**
  * WCAG 2.5.7: nothing a drag does may be reachable only by dragging
- * (`03-interaction.md` §2). Every pointer gesture prompt 53 adds is listed
- * here with the key that does the same thing, and the test is that the key is
- * really in the map.
+ * (`03-interaction.md` §2). Every pointer gesture is listed here with the key
+ * that does the same thing, and the test is that the key is really in the map.
  */
 describe("the pointer gestures have keys", () => {
   const GESTURES = [

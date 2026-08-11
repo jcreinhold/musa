@@ -1,4 +1,4 @@
-//! The real-time contract enforced (roadmap §13.2, §17.5): the callback
+//! The real-time contract enforced: the callback
 //! path (`CallbackCore::process` with install/transport churn) must not
 //! allocate. Own test binary so no other test's allocations pollute the
 //! measurement window.

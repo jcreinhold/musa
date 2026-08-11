@@ -1,4 +1,4 @@
-//! Where a reading of an open work is kept between sessions (prompt 76).
+//! Where a reading of an open work is kept between sessions.
 //!
 //! **In the project, never in the source.** A `.musa` file is the work; a
 //! realization is one reading of it. Putting a seed in the source would make
@@ -6,8 +6,8 @@
 //! performance, which is the opposite of what open form is for
 //! (`docs/kernel/11-realization.md`).
 //!
-//! So it lives beside the piece, in the place prompt 19 already keeps a
-//! session's state on disk: a sibling file, in a directory the composer can
+//! So it lives beside the piece, where a session's state is already kept on
+//! disk: a sibling file, in a directory the composer can
 //! find, written the way the recovery copy is written. `sonata.musa` gets
 //! `sonata.musa.performance`.
 //!

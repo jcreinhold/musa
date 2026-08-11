@@ -1,4 +1,4 @@
-//! What each backend does with the annotation layer (docs/prompts/35).
+//! What each backend does with the annotation layer.
 //!
 //! The snapshots in `mei.rs`, `musicxml.rs`, and `lilypond.rs` pin the exact
 //! bytes; this suite pins the facts a reader would notice if a backend

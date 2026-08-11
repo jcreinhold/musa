@@ -1,4 +1,4 @@
-//! The lint pass's laws (docs/prompts/83, `docs/style-guide.md`).
+//! The lint pass's laws (`docs/style-guide.md`).
 //!
 //! Each rule fires on a minimal fixture and stays silent where the guide
 //! says the spelling is honest; each waiver works where it is written and
@@ -135,8 +135,8 @@ fn an_assigned_patch_is_silent() {
 #[test]
 fn an_aimless_ramp_is_an_error_not_a_lint() {
     // Style guide §3's dishonest middle — a metronome'd ramp with no
-    // arrival — is the compiler's own error (prompt 73), which is why the
-    // lint pass has no rule for it: lints warn on what compiles.
+    // arrival — is the compiler's own error, which is why the lint pass has
+    // no rule for it: lints warn on what compiles.
     let source = piece("", "                tempo 1/4 = 72 over 2/1;");
     let compilation = compile(&SourceDocument::new(source, "lint.musa"), &CompileOptions::default());
     assert!(

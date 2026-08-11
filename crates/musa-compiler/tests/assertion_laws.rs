@@ -1,4 +1,4 @@
-//! What an `assert` is and is not (docs/prompts/116).
+//! What an `assert` is and is not.
 //!
 //! `docs/language/05-verification.md` puts explicit assertions in the middle
 //! of three strengths: decidable, composer-requested, blocking. Everything
@@ -21,8 +21,8 @@
 //!   between them left to see.
 //! - **Nothing becomes a style rule.** Notes outside the scale, chords that
 //!   realize nothing, and five-note sonorities are all silent unless someone
-//!   wrote an assertion about them. This is the boundary prompt 83 drew
-//!   between an error and a lint, and assertions do not move it.
+//!   wrote an assertion about them. Assertions do not move the boundary
+//!   between an error and a lint.
 
 // Test helpers use expect() on statically-valid inputs: a failure is a bug in
 // the test itself, and panicking is the correct behavior there.
@@ -252,8 +252,7 @@ fn the_first_stray_pitch_is_the_only_one_reported() {
 
 #[test]
 fn a_short_passage_says_how_short_in_the_bars_own_words() {
-    // Prompt 57's sentence, with the noun the page justifies: this is not a
-    // bar, so it does not call itself one.
+    // Not a bar, so the message does not call itself one.
     let diagnostic = only_error("assert fills_meter() { c5/4 e5/4 }");
     assert_eq!(diagnostic.message, "this passage is 1/2 short");
     let bar = only_error("bar { c5/4 e5/4 }");

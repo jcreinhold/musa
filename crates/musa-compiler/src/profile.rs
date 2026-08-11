@@ -50,7 +50,7 @@ pub struct ArticulationRealization {
     ///
     /// It lengthens the *note*, not the bar: the music that follows still
     /// starts where the page says it does. A fermata that stops the clock is a
-    /// tempo fact, and musa has no way to state one until prompt 72 — so this
+    /// tempo fact, and musa has no way to state one — so this
     /// is the honest half of a fermata rather than a whole one, and the
     /// difference is written down here rather than discovered in the sound.
     pub hold: Ratio<i64>,
@@ -58,7 +58,7 @@ pub struct ArticulationRealization {
 
 impl ArticulationRealization {
     /// Full gate, instant attack, written length: what an unprofiled note
-    /// gets, and what prompts 15–17 produced before profiles existed.
+    /// gets.
     pub const NEUTRAL: Self = Self {
         gate: Ratio::new_raw(1, 1),
         attack: Ratio::new_raw(0, 1),

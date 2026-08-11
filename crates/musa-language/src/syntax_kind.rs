@@ -1,9 +1,9 @@
 //! Token and syntax-node kinds for the `.musa` language.
 //!
-//! `SyntaxKind` serves double duty (rust-analyzer style): it classifies the
-//! tokens produced by the lexer now, and it will classify the nodes of the
-//! lossless concrete syntax tree built by the parser (prompt 03). The numeric
-//! representation is stable because the Rowan tree stores kinds as `u16`.
+//! `SyntaxKind` serves double duty (rust-analyzer style): it classifies both
+//! the tokens produced by the lexer and the nodes of the lossless concrete
+//! syntax tree. The numeric representation is stable because the Rowan tree
+//! stores kinds as `u16`.
 
 /// The kind of a lexical token or syntax node.
 #[repr(u16)]
@@ -102,7 +102,7 @@ pub enum SyntaxKind {
 
     // --- Structural keywords. Processor names (`oscillator`, `lowpass`, …)
     /// are deliberately *not* keywords: they lex as identifiers so the
-    /// studio vocabulary can grow without lexer changes (prompt 19).
+    /// studio vocabulary can grow without lexer changes.
     /// `piece`
     PieceKw,
     /// `tempo`

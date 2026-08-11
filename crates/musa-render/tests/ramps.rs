@@ -1,4 +1,4 @@
-//! What each backend does with a gradual tempo change (docs/prompts/73).
+//! What each backend does with a gradual tempo change.
 //!
 //! None of the four can draw a *rit.* as a function — MEI, `MusicXML`,
 //! `LilyPond` and SMF all state tempo at instants — so the loss is real and the

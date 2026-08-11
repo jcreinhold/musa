@@ -1,10 +1,10 @@
-//! The notation vocabulary (docs/prompts/62).
+//! The notation vocabulary.
 //!
 //! One claim, in three parts: the table is the only place a mark is defined,
 //! so every row is reachable by the name it declares, no two rows answer to
 //! the same name, and a name that is not in the table is refused at the one
-//! place a name enters — with prompt 56's suggestion, so the refusal is
-//! useful rather than merely correct.
+//! place a name enters — with a suggestion, so the refusal is useful rather
+//! than merely correct.
 
 // Test helpers use expect() on statically-valid inputs: a failure is a bug in
 // the test itself, and panicking is the correct behavior there.
@@ -43,9 +43,7 @@ fn no_two_rows_answer_to_one_name() {
 
 #[test]
 fn a_name_outside_the_table_is_not_a_mark() {
-    // A real word of notation that musa has no row for. `fermata` used to be
-    // the example here and became a row in prompt 70, which is the table
-    // working rather than the test aging.
+    // A real word of notation that musa has no row for.
     assert!(lookup_mark("sforzando").is_none());
     assert!(lookup_mark("").is_none());
     assert!(Mark::parse("Staccato").is_none(), "names are not case-folded");
@@ -64,9 +62,9 @@ fn an_unknown_mark_is_refused_with_a_suggestion() {
 
 /// Every row that a note may carry is accepted on a note.
 ///
-/// Prompt 70 added rows that a note may *not* carry — a pedal covers music and
-/// a rehearsal letter stands between notes — so the anchor decides, and the
-/// full statement of that is
+/// Some rows a note may *not* carry — a pedal covers music and a rehearsal
+/// letter stands between notes — so the anchor decides, and the full
+/// statement of that is
 /// `notation_marks::the_anchor_decides_where_a_mark_is_written`. What is left
 /// here is the half of the table this file was written about.
 #[test]

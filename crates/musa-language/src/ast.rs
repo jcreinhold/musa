@@ -78,7 +78,7 @@ pub(crate) fn unquote(literal: &str) -> String {
 /// `text` as a string literal the lexer will read back as `text`.
 ///
 /// The inverse of [`unquote`], and the only correct way to write a value a
-/// composer typed into the source (prompt 54).
+/// composer typed into the source.
 #[must_use]
 pub fn quote(text: &str) -> String {
     let mut out = String::with_capacity(text.len().saturating_add(2));
@@ -806,7 +806,7 @@ impl PartDecl {
     /// The part's own meter, if it declares one — polymeter.
     ///
     /// Only a `meter` written directly in the part block: a `meter` inside a
-    /// voice is the *piece's* meter from there (prompt 63), and `child`
+    /// voice is the *piece's* meter from there, and `child`
     /// reads children rather than descendants precisely so the two do not
     /// blur into each other.
     pub fn meter(&self) -> Option<MeterStmt> {

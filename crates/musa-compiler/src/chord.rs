@@ -9,7 +9,7 @@
 //!   spelled members, and an optional designated bass class. It has no
 //!   register, spacing, doubling, or omission;
 //! - a **triad** is the checked refinement whose content is a major or minor
-//!   triad, which is the domain the transformational operations of prompt 106
+//!   triad, which is the domain the transformational operations
 //!   are defined over;
 //! - a **voicing** is exact written pitches, which is the only thing that can
 //!   sound.
@@ -489,7 +489,7 @@ impl std::fmt::Display for ChordClass {
 /// A chord class whose content is a major or minor triad.
 ///
 /// The refinement carries no data of its own: it is the evidence that the
-/// content passed the check, which is what lets prompt 106's transformations
+/// content passed the check, which is what lets the transformations
 /// be total on their domain instead of returning an option at every step.
 /// Three members is not enough — a suspended chord has three and no third —
 /// and neither is a triadic quality with a seventh stacked on top.

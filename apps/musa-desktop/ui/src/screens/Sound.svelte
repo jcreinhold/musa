@@ -5,7 +5,7 @@
    * A patch is a chain, and it is drawn as one — top to bottom, in the order
    * the `|>` operator runs it. Not a node canvas: the source has no canvas,
    * and a view that invented one would have to invent positions to remember,
-   * which is a second document (prompt 31's Stop list, §11).
+   * which is a second document (roadmap §11).
    *
    * Every control here writes source. There is no local model of a patch: the
    * values come from the compiled studio and go back as text edits, so what

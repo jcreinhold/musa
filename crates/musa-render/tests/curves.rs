@@ -1,4 +1,4 @@
-//! What each backend does with tempo marks and hairpins (docs/prompts/36).
+//! What each backend does with tempo marks and hairpins.
 //!
 //! Same contract as the annotation suite: the snapshots pin the exact bytes,
 //! and this pins the facts a reader would notice if a backend dropped one.

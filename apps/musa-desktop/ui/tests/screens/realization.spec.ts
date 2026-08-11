@@ -1,10 +1,9 @@
 /**
- * The realization, in the page (prompt 76).
+ * The realization, in the page.
  *
  * An open work is one the composer cannot read off the source alone: the
  * source says `repeat 2 to 6`, and how many times it actually ran is a fact
- * about *this reading*. Prompt 66 shipped the reading and conceded that the
- * interface said nothing about it. These are the three things it now says —
+ * about *this reading*. These are the three things the interface says —
  * what is free, what was chosen, and how to change it — and the one thing it
  * must not say, which is anything at all about a determinate piece.
  *

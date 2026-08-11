@@ -1,7 +1,6 @@
 //! Provenance (roadmap §9): why an expanded event exists. Every
 //! `ScoreEvent` traces to a source span and a declaration, plus the path of
-//! expansion steps that produced it (empty for directly authored notes until
-//! prompt 06).
+//! expansion steps that produced it (empty for directly authored notes).
 
 use num_rational::Ratio;
 use serde::{Deserialize, Serialize};
@@ -273,13 +272,13 @@ impl std::fmt::Display for Interval {
 /// below are unchanged, because names do not shift.
 ///
 /// A site written among a voice's own items has **no name above it** — its
-/// path is just its ordinal. That is not an omission: prompt 57's rule is that
-/// a repeat barline crosses the system, so a repeat the page can draw is one
+/// path is just its ordinal. That is not an omission: a repeat barline
+/// crosses the system, so a repeat the page can draw is one
 /// repeat of the whole piece, written once in each voice that sounds under it.
 /// Giving it a per-voice path would decide it several times over and the
-/// voices would come apart. The same argument prompt 64 made for `meter`,
+/// voices would come apart. The same argument holds for `meter`,
 /// arriving at the same answer. A freedom that really is one player's — *In
-/// C*'s — is a different construct and belongs to prompt 68.
+/// C*'s — is a different construct.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ChoicePath(Vec<ChoiceStep>);
 
@@ -345,7 +344,7 @@ impl ChoicePath {
     /// a path.
     ///
     /// A pin is stored as its path, so a realization that survives a session
-    /// (prompt 76) is a set of these strings. Parsing the injective encoding
+    /// is a set of these strings. Parsing the injective encoding
     /// rather than adding a second one is what makes "the file says what the
     /// digest hashed" true by construction.
     #[must_use]

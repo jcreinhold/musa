@@ -1,9 +1,8 @@
-//! What the tonal, chord, and cadence readings may and may not say
-//! (docs/prompts/118).
+//! What the tonal, chord, and cadence readings may and may not say.
 //!
 //! `docs/language/07-analysis.md` §2 admits a kind only with an abstract
 //! domain, an abstraction map, and a soundness claim. These are the soundness
-//! claims of prompt 118's three kinds, written as tests:
+//! claims of those three kinds, written as tests:
 //!
 //! - **Evidence, not assertion.** Every classified finding cites the notes it
 //!   read and carries the criteria it was judged against, including the ones
@@ -36,8 +35,9 @@
 #![allow(clippy::wildcard_enum_match_arm)]
 
 use musa_compiler::{
-    AnalysisKind, AnalysisReport, AnalysisRequest, Approach, Cadence, CompileOptions, Evidence, Fit, Key, Mode,
-    Observation, PitchClass, ScoreSnapshot, Segmentation, Severity, SourceDocument, Standing, analyze, compile,
+    AnalysisKind, AnalysisProfile, AnalysisReport, AnalysisRequest, Approach, Cadence, CompileOptions, Evidence, Fit,
+    Key, Mode, Observation, PitchClass, ScoreSnapshot, Segmentation, Severity, SourceDocument, Standing, analyze,
+    compile,
 };
 
 const PIVOT: &str = include_str!("../../../examples/analysis/pivot-ambiguity.musa");
@@ -443,11 +443,19 @@ fn two_segmentations_read_the_same_music_differently() {
 
 /// Reading a score twice gives the same report, byte for byte, and leaves the
 /// snapshot's identity where it was.
+///
+/// The kinds that read against a style are left to
+/// `voice_leading_validation.rs`, which has the fixtures they need: a profile
+/// is required, and a counterpoint profile also needs a two-voice score with a
+/// designated cantus, which this key-and-cadence fixture is not. Which kinds
+/// those are is derived from the profiles rather than listed, so a new profile
+/// for a new kind moves the boundary here without anyone remembering to.
 #[test]
 fn a_reading_changes_nothing_and_repeats_exactly() {
     let snapshot = score(PIVOT, "pivot.musa");
     let copy = snapshot.clone();
-    for kind in AnalysisKind::ALL {
+    let styled: Vec<AnalysisKind> = AnalysisProfile::ALL.iter().map(|profile| profile.kind()).collect();
+    for kind in AnalysisKind::ALL.into_iter().filter(|kind| !styled.contains(kind)) {
         let request = AnalysisRequest::new(kind);
         let first = analyze(&snapshot, &request).expect("a request");
         let second = analyze(&snapshot, &request).expect("a request");

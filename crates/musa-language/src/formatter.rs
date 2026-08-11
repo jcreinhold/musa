@@ -241,8 +241,8 @@ fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut W
             writer.space();
         }
     } else if kind == SyntaxKind::PipeForward && writer.in_wrapped_chain() {
-        // A long chain reads as a stack of stages, which is how the roadmap
-        // writes it and how a patch is actually thought about.
+        // A long chain reads as a stack of stages, which is how a patch is
+        // actually thought about.
         writer.indent_continuations();
         writer.newline();
         writer.write("|>");
@@ -252,9 +252,9 @@ fn format_token(parent: SyntaxKind, kind: SyntaxKind, text: &str, writer: &mut W
         writer.write(text);
         writer.space();
     } else if kind == SyntaxKind::LBracket {
-        // `chord [` takes a space; `use sigh(` does not. A type parameter no
-        // longer reaches here at all — it is written `Option<Pitch>` since
-        // prompt 114, and `[` means a list.
+        // `chord [` takes a space; `use sigh(` does not. A type parameter
+        // never reaches here — it is written `Option<Pitch>`, and `[` means a
+        // list.
         if writer.needs_word_space() {
             writer.space();
         }

@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * The piece's structure, under the parts list: form markers and named
-   * phrases, in the order they are played (`docs/prompts/35`).
+   * phrases, in the order they are played.
    *
    * It is a table of contents, not an editor. Annotations are written in the
    * source — there is no way to add a section from here, deliberately — so

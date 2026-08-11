@@ -1,5 +1,5 @@
 /**
- * The laziness guarantee (prompt 148): `parse` must never initialize the
+ * The laziness guarantee: `parse` must never initialize the
  * engraver — a page that only validates never downloads Verovio's 25 MB.
  * The mock makes an engraver construction a loud failure; if `parse` ever
  * reaches for one, this suite fails.

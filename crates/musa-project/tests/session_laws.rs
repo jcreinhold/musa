@@ -195,7 +195,7 @@ fn digest(bytes: &[u8]) -> u64 {
     hash
 }
 
-/// The golden-audio guard for prompt 28's neutrality claim.
+/// The golden-audio guard for interpretive neutrality.
 ///
 /// A piece that declares no profile must render the audio it rendered before
 /// interpretation existed. Determinism alone cannot catch that: a gate applied
@@ -207,12 +207,12 @@ fn digest(bytes: &[u8]) -> u64 {
 /// rather than to interpretation, and both times verified against the
 /// previous build first.
 ///
-/// Prompt 30 replaced the placeholder ramp with a real ADSR: the old ramp
+/// A real ADSR replaced the placeholder ramp: the old ramp
 /// compared an accumulated float against 1.0 and so spent 241 frames on a
 /// 240-frame attack. 26 samples out of 576,000 changed, none by more than one
 /// ulp.
 ///
-/// Prompt 31 put the master limiter on the default instrument. This fixture
+/// The master limiter sits on the default instrument. This fixture
 /// peaked at 3.80 — 190,000 of its samples were above full scale — so the
 /// limiter engages, and most samples move. That is the point of it: sixteen
 /// voices summing past 0 dBFS is a mix decision nobody made, and a file that

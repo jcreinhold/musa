@@ -73,8 +73,7 @@ pub struct OriginFacts {
     /// an edit-definition edit rewrites (`04-provenance.md` §4).
     pub definition_span: crate::diagnostic::Span,
     /// The decision this event was played under, as an index into
-    /// [`ScoreFacts::decisions`] — the fourth step of the Origin chain
-    /// (prompt 76).
+    /// [`ScoreFacts::decisions`] — the fourth step of the Origin chain.
     ///
     /// Absent for the overwhelming majority of notes, because the
     /// overwhelming majority of pieces decide nothing. Resolved here rather
@@ -118,7 +117,7 @@ pub struct OccurrenceFacts {
 #[serde(rename_all = "camelCase")]
 pub struct EventFacts {
     /// The MEI `xml:id` — the same identity the engraved SVG carries
-    /// (prompt 13's contract), so a click on the page finds this row.
+    /// so a click on the page finds this row.
     pub id: String,
     /// The part's name.
     pub part: String,
@@ -220,14 +219,14 @@ pub struct ScoreFacts {
     /// pane navigates by.
     pub outline: Vec<OutlineFacts>,
     /// Every statement the piece can make about itself, whether or not it
-    /// makes it (prompt 54).
+    /// makes it.
     pub header: Vec<HeaderFact>,
     /// Which performance this reading is, when the piece left anything to
     /// one.
     ///
     /// `None` is the determinate case, and it is what makes the interface's
     /// seed field appear and vanish rather than sit there in every piece
-    /// that cannot use it (prompt 76).
+    /// that cannot use it.
     pub performance: Option<u64>,
     /// Every question the piece asked and the answer this performance gave,
     /// in the order the sites were reached. Empty for a determinate piece.
@@ -809,7 +808,7 @@ fn interval_name(interval: Interval) -> String {
     format!("{direction} {quality}")
 }
 
-/// What kind of thing a recorded name names (prompt 78).
+/// What kind of thing a recorded name names.
 ///
 /// A deliberate restatement of the compiler's `NameKind`, for the same
 /// reason [`Severity`](crate::Severity) is one: the compiler's types stop
@@ -840,7 +839,7 @@ pub enum NameKind {
 }
 
 /// One named thing and everywhere it is spoken, for an editor's references
-/// and rename (prompt 78).
+/// and rename.
 ///
 /// Spans are the *name tokens'* spans: a rename rewrites exactly these
 /// ranges, never a textual match. A name declared in an imported library has

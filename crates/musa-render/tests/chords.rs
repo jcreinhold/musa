@@ -1,4 +1,4 @@
-//! Chord symbols and sounded voicings, across every backend (docs/prompts/102).
+//! Chord symbols and sounded voicings, across every backend.
 //!
 //! A chord symbol above the staff and the notes below it are two different
 //! facts. The suite proves that by writing a piece where they disagree: the

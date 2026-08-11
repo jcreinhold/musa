@@ -42,7 +42,7 @@
      * changed my mind". One of the piece's own statements can: clearing the
      * composer row takes the composer off the page. Adding and removing a
      * line of front matter are then the same gesture, and neither needs a
-     * button (prompt 54).
+     * button.
      */
     allowEmpty?: boolean;
     /** What stands in the field's place while it is empty. */

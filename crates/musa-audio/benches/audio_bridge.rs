@@ -1,4 +1,4 @@
-//! Prompt 93's score → performance → graph → audio benchmark.
+//! The score → performance → graph → audio benchmark.
 //!
 //! `with_inputs` prepares a fresh render plan outside the timed region, so
 //! the measurement is render time and allocation rather than fixture setup.

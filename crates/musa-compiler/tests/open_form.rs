@@ -1,10 +1,10 @@
 //! Written freedom that is not a count: mobile form, free duration, and an
-//! improvised frame (prompt 68, `docs/kernel/11-realization.md`).
+//! improvised frame (`docs/kernel/11-realization.md`).
 //!
 //! Each of the three is checked twice — once for what it *sounds*, because a
 //! freedom that produces no music is a comment, and once for what it *says*,
 //! because a freedom the page cannot print is a freedom the performer never
-//! learns about. Prompt 58's rule, three times over.
+//! learns about.
 
 // A failure of these is a bug in the fixture, not in a caller's input.
 #![allow(clippy::unwrap_used)]
@@ -227,7 +227,7 @@ fn an_improvised_frame_takes_its_time_and_plays_no_notes() {
 ///
 /// A site inside a fragment is named by the fragment, so rewriting the notes of
 /// the fortieth figure leaves the other fifty-two decisions exactly as they
-/// were. This is the test prompt 68 said *In C* had to be written for.
+/// were. *In C* is the case this property was written for.
 #[test]
 fn editing_one_figure_leaves_the_other_fifty_two_decisions_alone() {
     let before = under(IN_C, 42);

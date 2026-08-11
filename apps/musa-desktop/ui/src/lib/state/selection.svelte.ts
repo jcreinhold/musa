@@ -6,7 +6,7 @@
  * survives re-engraving (`02-engraving.md` §6). Everything this module knows
  * about the music it read from the snapshot; it computes nothing musical
  * (§7). The caret is declared here because it is a first-class state of the
- * model, and is constructed from prompt 25 onward when entry exists.
+ * model, constructed alongside note entry.
  */
 
 import type { EventFacts, OccurrenceFacts, ProjectSnapshot, Span } from "./snapshot";
@@ -90,7 +90,7 @@ export class Workspace {
    * answer; this answers "what is selected" and is allowed not to. The
    * inspector reads this one, because describing a note nobody picked is how
    * an interface comes to have no empty state at all — and the empty state is
-   * where the piece's own facts live (prompt 54).
+   * where the piece's own facts live.
    */
   get chosen(): EventFacts | undefined {
     return this.selected.length > 0 ? this.focused : undefined;
@@ -308,8 +308,8 @@ export class Workspace {
 
   /**
    * Select everything one expansion produced (`04-provenance.md` §2): the unit
-   * a composer wants to operate on, and the one prompt 25's edit-definition
-   * path acts through. Reports whether there was an occurrence to select.
+   * a composer wants to operate on, and the one the edit-definition path acts
+   * through. Reports whether there was an occurrence to select.
    */
   selectOccurrence(id: string | null): boolean {
     const occurrence = this.occurrence(id);

@@ -1,4 +1,4 @@
-//! Compatibility oracle for the elaboration-language migration (prompt 93).
+//! Compatibility oracle for the elaboration-language migration.
 //!
 //! Refresh intentionally with
 //! `UPDATE_ELABORATION_BASELINE=1 cargo test -p musa-compiler

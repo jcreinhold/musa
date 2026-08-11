@@ -1210,12 +1210,12 @@ impl<'a> Parser<'a> {
     /// belongs to, so a file with one old parameter gets one complaint and the
     /// declaration around it is still checked.
     ///
-    /// In doubly-obsolete source — `option[voicing]`, written before prompt 113
-    /// capitalized the words — this range contains the inner type's own
+    /// In doubly-obsolete source — `option[voicing]`, with both an old word
+    /// and old brackets — this range contains the inner type's own
     /// respelling fix, and the replacement carries the inner text over
     /// unrespelled. That is deliberate: the bracket complaint fixes brackets and
     /// the word complaint fixes the word, and nothing here applies both at once.
-    /// `musa check --fix` rewrites warnings only (prompt 56), and an editor
+    /// `musa check --fix` rewrites warnings only, and an editor
     /// applies one code action, reparses, and finds the other complaint waiting
     /// at its new place. Respelling inside this fix would make one offer quietly
     /// do two jobs.
@@ -1698,7 +1698,7 @@ impl<'a> Parser<'a> {
     /// A motif without parameters, tagged differently: a motif is material a
     /// *composer* reuses, a fragment is material a *performance* arranges. The
     /// namespace is one namespace, so `use` reaches both and a name collision
-    /// is the diagnostic prompt 57 already writes.
+    /// is the diagnostic the resolver already writes.
     fn fragment_decl(&mut self) {
         self.start(SyntaxKind::FragmentDecl);
         self.bump(); // fragment
@@ -2110,7 +2110,7 @@ impl<'a> Parser<'a> {
             self.finish();
         // `scale` is a processor here and a musical collection everywhere
         // else. The studio vocabulary is deliberately made of identifiers so
-        // it can grow without the lexer (prompt 19), and this is the one word
+        // it can grow without the lexer, and this is the one word
         // the score side also needed; the stage accepts the keyword token so
         // that a signal can still be scaled.
         } else if self.at_any(&[SyntaxKind::Identifier, SyntaxKind::ScaleKw]) {

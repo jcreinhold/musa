@@ -10,8 +10,8 @@
  * These are string transforms rather than DOM surgery so the worker can run
  * them before it ever builds a tree, and so they are testable without a
  * browser. Each one targets an attribute Verovio itself writes, and none of
- * them can touch an `xml:id` — the id map is prompt 13's contract with the
- * editor and must survive verbatim.
+ * them can touch an `xml:id` — the id map is the engraver's contract with
+ * the editor and must survive verbatim.
  */
 
 /** ` color="black"` inside the `<svg class="definition-scale">` open tag. */

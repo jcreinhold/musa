@@ -1,5 +1,5 @@
-//! What a declaration template promises (docs/prompts/103, and
-//! `docs/language/04-templates-and-modules.md` §1–§3).
+//! What a declaration template promises
+//! (`docs/language/04-templates-and-modules.md` §1–§3).
 //!
 //! A template is a declaration with parameters, and the whole claim of this
 //! file is that making one is *binding*, not rewriting: the instance means
@@ -160,8 +160,8 @@ fn a_higher_order_argument_transforms_the_body() {
     assert_ne!(music(&snapshot_of(&plain)), music(&snapshot_of(MADE)));
 }
 
-/// Context authority (prompt 63): a template's `key k;` is the piece's key,
-/// and which key it is comes from the site.
+/// Context authority: a template's `key k;` is the piece's key, and which
+/// key it is comes from the site.
 #[test]
 fn a_context_statement_in_a_template_is_the_instances_context() {
     let in_g = snapshot_of(MADE);
@@ -170,8 +170,8 @@ fn a_context_statement_in_a_template_is_the_instances_context() {
 }
 
 /// Two documents, one template text, two sets of arguments: the key/scale
-/// study made twice. Prompt 103's Target puts this here rather than in the
-/// example because one document is one piece.
+/// study made twice. This lives here rather than in the example because one
+/// document is one piece.
 #[test]
 fn one_template_makes_a_family() {
     let in_g = snapshot_of(MADE);

@@ -1,6 +1,6 @@
 //! Go to definition: from a use to the thing used.
 //!
-//! Two jumps, both provenance read inward (prompt 24's vocabulary): a `use`
+//! Two jumps, both provenance read inward: a `use`
 //! statement goes to the motif it expands, and a generated note's statement
 //! in the source goes to the statement inside the motif body that spells it —
 //! the edit-definition edit's target, so "go to definition" and "edit the

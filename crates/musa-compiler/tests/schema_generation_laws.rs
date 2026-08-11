@@ -1,4 +1,4 @@
-//! What a schema and a harmonization promise (docs/prompts/115, and OMT
+//! What a schema and a harmonization promise (OMT
 //! `033`, `034`, `035`, `049`).
 //!
 //! Two families live here and they are proved differently.
@@ -436,17 +436,17 @@ fn the_plural_form_agrees_with_the_singular_at_every_index() {
     }
 }
 
-// ---- What this prompt did not add --------------------------------------
+// ---- What this layer does not add --------------------------------------
 
-/// This prompt adds no compiler primitive.
+/// No compiler primitive.
 ///
-/// Prompt 108's registry in `crates/musa-compiler/src/core.rs` is the only
+/// The primitive registry in `crates/musa-compiler/src/core.rs` is the only
 /// route by which a primitive enters, and the check here is behavioral rather
 /// than a read of that list: a compiler-owned operation resolves with no
-/// import, and a library function does not. So every name this prompt added is
-/// asked for *without* its module, and every one must fail to resolve. The
-/// moment a schema is implemented by widening the compiler instead of by
-/// writing a function, one of these starts compiling and this test says so.
+/// import, and a library function does not. So every name added here is asked
+/// for *without* its module, and every one must fail to resolve. The moment a
+/// schema is implemented by widening the compiler instead of by writing a
+/// function, one of these starts compiling and this test says so.
 #[test]
 fn the_schema_libraries_add_no_compiler_primitive() {
     for call in [

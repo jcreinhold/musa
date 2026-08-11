@@ -127,7 +127,7 @@ fn a_pinned_site_ignores_the_seed() {
         assert_eq!(decided.path(), &site, "seed {seed} beat the pin");
         assert_eq!(decided.decision(), &Decision::Count(5), "seed {seed} beat the pin");
         // And the record says the answer was kept rather than drawn, which is
-        // the difference the Origin view prints (prompt 76).
+        // the difference the Origin view prints.
         assert!(decided.pinned(), "seed {seed}: a pinned site read as drawn");
     }
 }
@@ -178,10 +178,10 @@ fn inserting_a_bar_above_a_site_leaves_its_decision_alone() {
 
 /// One site, one decision, however many voices reach it.
 ///
-/// Prompt 57's rule is that a repeat barline crosses the system, so a repeat
-/// the page can draw takes one count for the whole piece. Three voices each
-/// writing the same ranged repeat therefore stay together — which is checked
-/// here by the *absence* of the disagreement warning as much as by the count.
+/// A repeat barline crosses the system, so a repeat the page can draw takes
+/// one count for the whole piece. Three voices each writing the same ranged
+/// repeat therefore stay together — which is checked here by the *absence*
+/// of the disagreement warning as much as by the count.
 #[test]
 fn voices_that_write_the_same_ranged_repeat_agree_on_it() {
     for seed in 0..32u64 {

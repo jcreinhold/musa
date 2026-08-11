@@ -289,7 +289,7 @@ pub(super) fn leap(from: WrittenPitch, to: WrittenPitch) -> i64 {
         .abs()
 }
 
-// The four predicates below are `pub(crate)` because they are the rules
+// The five predicates below are `pub(crate)` because they are the rules
 // themselves, and `crate::assert` checks the same rules over a passage a
 // composer wrote `assert follows(…)` on. Two traversals — one over a
 // snapshot's voices, one over a passage's sonorities — and one statement of

@@ -1,7 +1,7 @@
 //! Syntax-level errors: plain data with spans. Rich rendering (`miette`)
 //! happens at the CLI boundary, not here.
 //!
-//! A syntax error carries the same four parts a semantic one does (prompt 56)
+//! A syntax error carries the same four parts a semantic one does
 //! — the claim, what is wrong at the place, what to do, and the edit that does
 //! it — because the reader cannot tell which pass produced their problem and
 //! should not have to.

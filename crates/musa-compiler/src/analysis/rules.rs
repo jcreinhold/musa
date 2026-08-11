@@ -4,7 +4,7 @@
 //! report and an assertion can both name, the strength its own tradition gives
 //! it, the sentence it states, and the page that states it. The last two are
 //! the reason this is a table rather than a set of function names — a rule
-//! whose citation is "everyone knows" is the thing prompt 119 exists to
+//! whose citation is "everyone knows" is the one this table exists to
 //! refuse.
 //!
 //! # Strength is about a pedagogy, not about the music

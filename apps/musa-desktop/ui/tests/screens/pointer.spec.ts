@@ -1,5 +1,5 @@
 /**
- * Pointer editing (prompt 53): a drag on a note is an edit to one token.
+ * Pointer editing: a drag on a note is an edit to one token.
  *
  * The rule every test here holds to is `03-interaction.md` §2's: a gesture
  * replaces one token with one value, and it is measured from the note it

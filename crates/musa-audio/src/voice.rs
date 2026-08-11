@@ -3,8 +3,8 @@
 //!
 //! The per-voice chain is §13.5's: allocator → pitch-to-frequency (done by
 //! the scheduler, which hands over Hz) → oscillator → amplitude ADSR →
-//! per-voice gain, where the gain is the interpreted loudness prompt 28's
-//! profiles produce. The pool's sum carries a fixed headroom
+//! per-voice gain, where the gain is the interpreted loudness the
+//! performance profiles produce. The pool's sum carries a fixed headroom
 //! ([`VoiceAllocator::scale`]) so ordinary polyphony reaches the master
 //! limiter under its ceiling, not over it. The envelope is a real ADSR ([`crate::envelope`]) whose
 //! default shape is the ramp that preceded it, so a piece that asks for no

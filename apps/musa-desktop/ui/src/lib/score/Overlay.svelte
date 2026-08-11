@@ -35,9 +35,9 @@
     staffSpace: number;
     selection: Rect[];
     hover: Rect[];
-    /** The noteheads the focus marks (prompt 52), as heads, not event boxes. */
+    /** The noteheads the focus marks, as heads, not event boxes. */
     focus?: Rect[];
-    /** What a live pointer gesture would write (prompt 53). */
+    /** What a live pointer gesture would write. */
     candidate?: Ghost | null;
     /** The notes sounding right now. */
     playing?: Rect[];
@@ -67,7 +67,7 @@
   /** The bracket label, set in the score's own unit rather than in pixels. */
   const LABEL_SIZE = $derived(staffSpace * 1.3);
 
-  /** How wide the focus hairline is, in staff spaces (prompt 52). */
+  /** How wide the focus hairline is, in staff spaces. */
   const FOCUS_SPACES = 1;
 
   /** How far it clears the head, in staff spaces: enough to not be a stem. */
@@ -110,8 +110,7 @@
   {/each}
 
   <!--
-    The focus: a hairline directly under the notehead, one staff space wide
-    (prompt 52). A shape, not a hue — the halo says *selected*, the re-inked
+    The focus: a hairline directly under the notehead, one staff space wide. A shape, not a hue — the halo says *selected*, the re-inked
     staff says *generated*, and this says *this one, and its siblings*. All
     three can be true of one note at once, so no two of them may be the same
     mark.
@@ -129,7 +128,7 @@
   {/each}
 
   <!--
-    A live gesture, before anything is written (prompt 53). A respelling draws
+    A live gesture, before anything is written. A respelling draws
     the head where it would land; a renotation draws the span the note would
     take. Both in `--plate`, which already means *derived, or live*, and both
     over the engraving rather than in it: the page does not move while a

@@ -2,7 +2,7 @@
 //!
 //! Nothing here decides anything musical: each command translates a DTO into
 //! a `musa-project` request, hands it to the session thread, and returns what
-//! came back. Roadmap §15.9 — the shell does command adaptation, window
+//! came back. The shell does command adaptation, window
 //! lifecycle, file dialogs, and event delivery, and nothing else.
 
 // Tauri's `#[command]` macro resolves `State` by value; a reference is not a

@@ -443,7 +443,7 @@ fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
     );
 }
 
-// --- Phase 3: imports and curves (docs/prompts/36) ------------------------
+// --- Imports and curves -------------------------------------------------
 
 const OPENING: &str = include_str!("../../../examples/album/pieces/01-opening.musa");
 const LIBRARY: &str = include_str!("../../../examples/album/library/motifs.musa");
@@ -480,7 +480,7 @@ fn a_library_is_a_different_root_than_a_piece() {
 
 /// The header holds the tempo a piece starts in and nothing else; a tempo it
 /// changes to is written in the voice that reaches it, like the meter and the
-/// key. One statement, two places (prompt 72).
+/// key. One statement, two places.
 #[test]
 fn the_header_holds_one_tempo_and_a_change_is_written_in_the_voice() {
     let doc = parse(OPENING);
@@ -505,7 +505,7 @@ fn the_header_holds_one_tempo_and_a_change_is_written_in_the_voice() {
 }
 
 /// A part may state its own meter and its own tempo, and a `meter` written
-/// inside a voice is still the *piece's* (prompt 63).
+/// inside a voice is still the *piece's*.
 ///
 /// The distinction is the grammar's, which is why it is tested here: `meter`
 /// is one keyword in two places, and the place is what says whose meter it
@@ -531,7 +531,7 @@ fn a_part_may_state_its_own_meter_and_tempo() {
 }
 
 /// The three forms of a tempo marking, and the one that shapes the grammar:
-/// a word with no number prints and changes no clock (prompt 72).
+/// a word with no number prints and changes no clock.
 #[test]
 fn a_tempo_marking_may_be_a_number_a_word_or_both() {
     let doc = parse(
@@ -609,8 +609,8 @@ fn standard_imports_preserve_their_reserved_namespace() {
 }
 
 /// An alias parses and round-trips. It binds nothing yet — there is no
-/// qualified namespace for it to bind into until prompt 110 nests the module
-/// tree — so what this fixes is that the word survives the parser and does not
+/// qualified namespace for it to bind into, because the module tree is flat —
+/// so what this fixes is that the word survives the parser and does not
 /// leak into the path.
 #[test]
 fn an_import_may_be_renamed_without_changing_its_path() {
@@ -641,8 +641,8 @@ fn the_old_bundled_import_spelling_is_a_migration_error() {
     insta::assert_snapshot!(print_errors(&doc));
 }
 
-/// `module` declared the static layer until prompt 111 gave that layer ML's
-/// own word. The old spelling is refused where it stood, with the fix, so
+/// The static layer was once spelled `module`. The old spelling is refused
+/// where it stood, with the fix, so
 /// that `module` can mean one thing: a node of a package's tree.
 #[test]
 fn the_old_static_layer_spelling_is_a_migration_error() {
@@ -659,8 +659,8 @@ fn the_old_functor_spelling_is_a_migration_error() {
     insta::assert_snapshot!(print_errors(&doc));
 }
 
-/// `fn f() -> τ = e;` was the only unbraced body in the language until
-/// prompt 112. The old spelling is refused where it stood, and the fix is
+/// `fn f() -> τ = e;` was the old unbraced function body. The old spelling
+/// is refused where it stood, and the fix is
 /// the body written back between braces.
 #[test]
 fn the_old_function_body_spelling_is_a_migration_error() {
@@ -668,7 +668,7 @@ fn the_old_function_body_spelling_is_a_migration_error() {
     insta::assert_snapshot!(print_errors(&doc));
 }
 
-/// A type is spelled with a capital (prompt 113). Every lowercase spelling
+/// A type is spelled with a capital. Every lowercase spelling
 /// the language removed is refused at the word, with the capital it became
 /// as an applicable fix — including `pitchclass`, which did not merely change
 /// case: it is `NoteName`, because the thing it names is a spelling and a
@@ -682,7 +682,7 @@ fn the_old_type_spellings_are_migration_errors() {
     insta::assert_snapshot!(print_errors(&doc));
 }
 
-/// A type parameter is angle-bracketed (prompt 114). Prompt 113 ran first, so
+/// A type parameter is angle-bracketed. The word respelling runs first, so
 /// the source that meets this refusal in practice is already capitalized: the
 /// brackets are the only thing left wrong. One complaint per parameter, at the
 /// pair, with the pair rewritten as the fix — nested and stacked parameters
@@ -709,7 +709,7 @@ fn the_old_option_constructors_are_migration_errors() {
     insta::assert_snapshot!(print_errors(&doc));
 }
 
-/// `assert` became a statement keyword (prompt 116), so it is no longer a
+/// `assert` became a statement keyword, so it is no longer a
 /// name. The refusal is the ordinary one every keyword gives — there is no
 /// bespoke migration sentence, because there is no old *meaning* to translate:
 /// a piece that called something `assert` was naming it, and the fix is to

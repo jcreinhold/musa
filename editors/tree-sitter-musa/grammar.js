@@ -15,8 +15,8 @@
  */
 
 /// <summary>
-/// The mirror image of `Parser::voice_items`: one statement per first token,
-/// as the hand parser dispatches.
+/// The statements a drawn bar (`|`) accepts: the subset of VOICE_ITEMS that
+/// runs to the next `|`.
 /// </summary>
 const BAR_ITEMS = ($) => [
   $.note_statement,
@@ -237,8 +237,7 @@ module.exports = grammar({
       seq(choice('subtitle', 'composer', 'arranger', 'copyright'), field('value', $.string), ';'),
 
     // Parser::tempo_stmt — a metronome mark, a tempo word, or both; a
-    // gradual change adds where it arrives and how far it takes to get
-    // there (prompt 73).
+    // gradual change adds where it arrives and how far it takes to get there.
     tempo_statement: ($) =>
       seq(
         'tempo',
@@ -266,7 +265,7 @@ module.exports = grammar({
     tempo_span: ($) => seq('over', field('span', $.rational)),
 
     // Parser::meter_stmt — `meter 4/4;`, or `meter none;` for music with no
-    // barlines from here (prompt 74). Any identifier parses; the compiler
+    // barlines from here. Any identifier parses; the compiler
     // checks the word, because there is nothing else `meter` can be
     // followed by. `none` is an identifier here and not the absent case of
     // an option, which is `None`.
@@ -335,9 +334,8 @@ module.exports = grammar({
       seq('let', field('name', $.identifier), ':', field('type', $.type_expression), '=', field('value', $.expression), ';'),
 
     // Parser::fn_decl — the body is a block, like every other body in the
-    // language (prompt 112): `fn f(x: nat) -> nat { g(x) }`. The old
-    // `= expression;` is a syntax error in the hand parser, so it is not a
-    // clean parse here either.
+    // language: `fn f(x: nat) -> nat { g(x) }`. The `= expression;` form is
+    // a syntax error in the hand parser, so not a clean parse here either.
     function_declaration: ($) =>
       seq(
         'fn',
@@ -360,8 +358,7 @@ module.exports = grammar({
       ),
 
     // Function arrows associate right. Parentheses group a single type and
-    // a comma makes a product; option/list are the only type constructors in
-    // this prompt.
+    // a comma makes a product; option/list are the only type constructors.
     type_expression: ($) =>
       choice(
         prec.right(1, seq($._type_atom, '->', $.type_expression)),
@@ -387,7 +384,7 @@ module.exports = grammar({
       seq('(', $.type_expression, ',', $.type_expression, repeat(seq(',', $.type_expression)), ')'),
 
     // One ordinary call notation for values, folds, and music-producing
-    // functions. Application is the highest precedence in this prompt.
+    // functions. Application binds tightest.
     expression: ($) =>
       choice(
         $.match_expression,
@@ -465,7 +462,7 @@ module.exports = grammar({
         seq('(', $.expression, ')'),
       ),
 
-    // Parser::block_expr — `{ expression }` (prompt 112). A block is a
+    // Parser::block_expr — `{ expression }`. A block is a
     // delimiter, not a sequence: it holds exactly one expression and means
     // exactly that expression.
     block_expression: ($) => seq('{', $.expression, '}'),
@@ -532,7 +529,7 @@ module.exports = grammar({
       ),
 
     // Parser::part_decl — a part carries its own clef, and may carry its
-    // own meter and tempo: polymeter and polytempo (prompt 75).
+    // own meter and tempo: polymeter and polytempo.
     part_declaration: ($) =>
       seq(
         'part',
@@ -842,7 +839,7 @@ module.exports = grammar({
     dynamic_statement: ($) => seq('dynamic', field('mark', $.identifier), ';'),
 
     // Parser::senza_stmt — `senza { ... }`: the barlines stop for exactly as
-    // long as the block, then the meter returns (prompt 74). It is the two
+    // long as the block, then the meter returns. It is the two
     // meter changes a composer could write by hand, with the second one
     // impossible to forget.
     senza_statement: ($) => seq('senza', field('body', $.block)),

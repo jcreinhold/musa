@@ -1,4 +1,4 @@
-//! What a neo-Riemannian transformation promises (docs/prompts/106, and OMT
+//! What a neo-Riemannian transformation promises (OMT
 //! `072-neo-riemannian-triadic-progressions.md`).
 //!
 //! P, L, and R are defined by which two tones they keep and where the third

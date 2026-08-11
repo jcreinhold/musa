@@ -65,7 +65,7 @@ pub struct ProjectSession {
     realization: musa_compiler::Realization,
     /// Diagnostics for the *current* source.
     diagnostics: Vec<Diagnostic>,
-    /// Which of the two things this document is (prompt 84). Material has no
+    /// Which of the two things this document is. Material has no
     /// score and never will, which is a different fact from "no score yet".
     kind: musa_compiler::DocumentKind,
     /// Whether the current source is well-formed as what it is.
@@ -125,7 +125,7 @@ struct InstalledPlan {
 /// The realization is part of the state, not a setting beside it. A composer
 /// who draws a performance and dislikes it reaches for undo, and undo has to
 /// have somewhere to go back to — so a pin lands in the history exactly as an
-/// edit does, and there is one undo stack rather than two (prompt 76).
+/// edit does, and there is one undo stack rather than two.
 struct HistoryEntry {
     source: String,
     realization: musa_compiler::Realization,
@@ -150,8 +150,8 @@ impl ProjectSession {
         session.on_disk = Some(source);
         // Before the first compile, because a realization is an *input* to
         // one: opening a piece and seeing a different page than the one it
-        // was left showing is exactly the unreliability prompt 76 exists to
-        // remove.
+        // was left showing is exactly the unreliability a saved realization
+        // removes.
         session.realization = crate::realization::read(path);
         if let Some(first) = session.history.first_mut() {
             first.realization = session.realization.clone();
@@ -344,7 +344,7 @@ impl ProjectSession {
     ///
     /// This is the source of the counts in `04-provenance.md` §4's inline
     /// choice and of the events it haloes, and of the token a live pointer
-    /// gesture marks in the source before it commits (prompt 53). It is a
+    /// gesture marks in the source before it commits. It is a
     /// query: nothing is applied, and asking twice is free.
     ///
     /// The text it would write is computed by the same code that would write
@@ -443,10 +443,10 @@ impl ProjectSession {
 
     /// Observe the last score that compiled, without changing it.
     ///
-    /// The one caller-facing analysis operation (prompt 117). It reads: no
+    /// The one caller-facing analysis operation. It reads: no
     /// revision is minted, no diagnostic is raised, and the source is
     /// untouched — an analysis that could report *into* the session would be
-    /// a lint with extra steps, and prompt 83 drew that line.
+    /// a lint with extra steps.
     ///
     /// # Errors
     /// [`ProjectError::NoValidScore`] if the piece has never compiled, or
@@ -688,7 +688,7 @@ impl ProjectSession {
         &self.import_paths
     }
 
-    /// Stop, and give the audio device back (prompt 84).
+    /// Stop, and give the audio device back.
     ///
     /// Only the piece in hand may sound, so turning to another one releases
     /// this one's stream. A session that never played never opened a device,
@@ -807,7 +807,7 @@ impl ProjectSession {
         self.kind = kind;
         // `compiles` means well-formed as *what it is*. Material declares and
         // does not sound, so it has no score, and the absence of one is not a
-        // failure — which is the whole reason `kind` exists (prompt 84).
+        // failure — which is the whole reason `kind` exists.
         self.compiles = match kind {
             musa_compiler::DocumentKind::Piece => score.is_some(),
             musa_compiler::DocumentKind::Material => !had_errors,
@@ -1123,7 +1123,7 @@ mod playback_identity_laws {
         );
     }
 
-    /// The bug prompt 72 fixes. The tempo map was a scalar beside the timeline,
+    /// The tempo map used to be a scalar beside the timeline,
     /// so changing only the tempo left the semantic hash where it was,
     /// `install_current_plan` decided the engine was already up to date, and
     /// playback stayed at the old speed until some *other* edit dislodged it.

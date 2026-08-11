@@ -1,5 +1,5 @@
-//! What a twelve-tone row promises (docs/prompts/105, and
-//! `docs/language/03-musical-domains.md` §5).
+//! What a twelve-tone row promises
+//! (`docs/language/03-musical-domains.md` §5).
 //!
 //! A row is a bijection from twelve order positions onto twelve pitch
 //! classes, and `row` is the only way in. Because that invariant is checked

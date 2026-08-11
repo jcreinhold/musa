@@ -1,5 +1,5 @@
 //! The `AudioEngine` facade: device negotiation, stream lifecycle, and the
-//! control-side ends of the real-time queues (roadmap §13.2, §14.8, §15.6).
+//! control-side ends of the real-time queues.
 
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -11,7 +11,7 @@ use crate::error::EngineError;
 
 /// Engine configuration.
 ///
-/// Device selection follows §14.8's zero-setup rule: the default output
+/// Device selection follows the zero-setup rule: the default output
 /// device, negotiated for stereo f32 at `sample_rate`. There is no
 /// resampler yet — if the device cannot run the requested rate, `open`
 /// fails with [`EngineError::UnsupportedStreamConfig`] rather than silently
@@ -31,7 +31,7 @@ impl Default for EngineConfig {
 /// Capacity of both real-time queues.
 ///
 /// Sizing them equally is what makes the callback's no-drop guarantee
-/// (§13.2) structural. Only an `Install` retires a plan, [`AudioEngine::install`]
+/// structural. Only an `Install` retires a plan, [`AudioEngine::install`]
 /// drains the retirement queue before it enqueues one, and the command queue
 /// holds at most `COMMAND_CAPACITY` messages — so at most `COMMAND_CAPACITY`
 /// retirements can be outstanding, and the retirement queue cannot fill. The
@@ -40,14 +40,14 @@ impl Default for EngineConfig {
 /// into a `RenderPlan` being destroyed on the audio thread.
 const COMMAND_CAPACITY: usize = 64;
 
-/// The audio engine (§15.6). Owns the stream and queue ends; the rest of
+/// The audio engine. Owns the stream and queue ends; the rest of
 /// the application never sees CPAL types.
 pub struct AudioEngine {
     /// Kept alive for the stream's lifetime; dropping stops the stream.
     _stream: cpal::Stream,
     /// Both control-side queue ends under one lock, so an install drains and
     /// enqueues atomically. Taken only on the control thread — never in the
-    /// callback (§13.2).
+    /// callback.
     channels: Mutex<Channels>,
     position: Arc<AtomicU64>,
     playing: Arc<AtomicBool>,
@@ -112,7 +112,7 @@ impl AudioEngine {
     /// Install a prepared plan, replacing the current one.
     ///
     /// The replaced plan returns on the retirement queue and is destroyed
-    /// here on the control thread, never in the callback (§13.2). Draining
+    /// here on the control thread, never in the callback. Draining
     /// before enqueuing is what keeps that queue from ever filling — see
     /// [`COMMAND_CAPACITY`] — and it frees the previous plan's graph promptly
     /// rather than at engine shutdown, which matters once the GUI reinstalls
@@ -168,8 +168,8 @@ impl Drop for AudioEngine {
     }
 }
 
-/// Find a stereo f32 stream config at `rate` on `device` (§14.8 fallback
-/// order: exact match only; mismatches are explicit errors).
+/// Find a stereo f32 stream config at `rate` on `device` (exact match
+/// only; mismatches are explicit errors).
 fn negotiate(device: &cpal::Device, rate: u32) -> Result<cpal::StreamConfig, EngineError> {
     let mut configs = device
         .supported_output_configs()

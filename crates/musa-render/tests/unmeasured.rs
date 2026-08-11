@@ -1,4 +1,4 @@
-//! What each backend does with music that has no barlines (docs/prompts/74).
+//! What each backend does with music that has no barlines.
 //!
 //! Three of the four formats have a way to say it and say it differently:
 //! MEI marks the measure as not controlled by the meter, `MusicXML` gives the

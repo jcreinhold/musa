@@ -1,5 +1,5 @@
 /**
- * The pointer-gesture state machine (prompt 53): idle → pressed → one axis.
+ * The pointer-gesture state machine: idle → pressed → one axis.
  *
  * A press on a note is not yet a gesture. What it becomes is decided once,
  * when the pointer has moved far enough to mean something, and by two facts

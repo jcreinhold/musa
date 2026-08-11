@@ -1,4 +1,4 @@
-//! Interpretation profiles (docs/prompts/28).
+//! Interpretation profiles.
 //!
 //! The contract this file protects is the separation the roadmap's §2 table
 //! states: a written mark is not a number until a profile says so. Three

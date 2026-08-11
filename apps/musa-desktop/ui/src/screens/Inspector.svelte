@@ -55,8 +55,8 @@
      */
     onorigin?: (depth: number) => void;
     /**
-     * The decision this event was played under, when one was made (prompt
-     * 76). Null in a determinate piece and for a note no open construct
+     * The decision this event was played under, when one was made.
+     * Null in a determinate piece and for a note no open construct
      * covers, and the row is then not there: a piece that asked nothing has
      * nothing to answer for.
      */
@@ -68,7 +68,7 @@
     onkeep?: (path: string, keep: boolean) => void;
     /**
      * How many notes the statement that spells this one spelled in all
-     * (prompt 52). One is the ordinary case and says nothing; more is the fact
+     *. One is the ordinary case and says nothing; more is the fact
      * an editing choice will later have to state, so the origin says it first.
      */
     siblings?: number;
@@ -320,8 +320,7 @@
 
     <!--
       The last step of the origin, and the only one that is not about where
-      the note is written: it is about why there are this many of them
-      (prompt 76). The source says what the piece allows; this row says what
+      the note is written: it is about why there are this many of them. The source says what the piece allows; this row says what
       this reading decided, and offers the one control that makes a decision
       stop moving.
 
@@ -359,7 +358,7 @@
     the piece: every statement its header can carry, including the ones it
     does not carry yet. One move answers what can be changed here, what this
     piece has already said, and where to click to say something it has not —
-    which is why there is no help bar (prompt 54).
+    which is why there is no help bar.
 
     The values are the source's own spellings: `quarter = 72`, `a minor`,
     `4/4`. The band may go on printing `♩ = 72` at rest, but what a composer

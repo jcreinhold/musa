@@ -1,4 +1,4 @@
-; Indentation (prompt 80): every braced body indents; closers end it.
+; Every braced body indents; closers end it.
 [
   (piece_declaration)
   (library_declaration)

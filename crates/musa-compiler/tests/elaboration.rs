@@ -1,10 +1,7 @@
 //! What elaboration through the temporal kernel guarantees, stated without an
-//! oracle to compare against.
-//!
-//! Through prompt 40 this file was the *differential* suite: the kernel path
-//! had to reproduce the frozen direct lowerer's snapshots exactly, on fixtures
-//! and on a generated corpus. Prompt 41 deleted the lowerer, so the questions
-//! it answered by comparison are answered here directly:
+//! oracle to compare against. The direct lowerer no longer exists, so the
+//! questions a differential suite once answered by comparison are answered
+//! here directly:
 //!
 //! - **fixtures** — positions, durations, spelling, identity, multiplicity,
 //!   ordering and provenance are pinned absolutely by the backend goldens
@@ -118,7 +115,7 @@ fn a_named_bar_plays_the_same_music_it_declared() {
 }
 
 /// The key and the meter are occurrences, and the snapshot's context maps are
-/// a reading of them (prompt 40).
+/// a reading of them.
 #[test]
 fn the_key_and_the_meter_are_facts_of_the_timeline() {
     let source = "piece \"x\" { meter 3/4; key bb major; score { part p { voice v { c4/4 } } } }";
@@ -140,10 +137,10 @@ fn the_key_and_the_meter_are_facts_of_the_timeline() {
 
 /// A repeat sounds its unrolling, note for note.
 ///
-/// It is not *equal* to its unrolling and no longer claims to be: since prompt
-/// 58 a repeat also states that it is one, so the page can print the body once
-/// where the unrolling has to print it three times. That statement is the one
-/// extra occurrence, and dropping it is what this test does — everything that
+/// It is not *equal* to its unrolling and no longer claims to be: a repeat
+/// also states that it is one, so the page can print the body once where the
+/// unrolling has to print it three times. That statement is the one extra
+/// occurrence, and dropping it is what this test does — everything that
 /// sounds has to agree.
 #[test]
 fn repeat_sounds_the_same_as_its_unrolling() {

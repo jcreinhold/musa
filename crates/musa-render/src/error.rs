@@ -6,7 +6,7 @@ use musa_compiler::EventId;
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum NotationError {
     /// A duration cannot be spelled with standard note values and ties
-    /// inside one measure; tuplets arrive in prompt 22.
+    /// inside one measure; tuplets are not yet supported.
     #[error("event {event:?}: duration {duration} cannot be notated without tuplets")]
     UnspellableDuration {
         /// The score event carrying the duration.

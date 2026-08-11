@@ -1,7 +1,5 @@
-; Folding (prompt 80): braces are the language's explicit structure, the
-; same law prompt 79's `textDocument/foldingRange` answers from the hand
-; parser's tree. Comment runs fold in the editor, not the query — a run is
-; not a node.
+; Braces are the language's explicit structure, so every braced body folds.
+; Comment runs fold in the editor, not the query — a run is not a node.
 [
   (piece_declaration)
   (library_declaration)

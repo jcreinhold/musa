@@ -1,6 +1,6 @@
 /**
  * The shared focus: what the reader is looking at, marked in both views at
- * once (prompt 52).
+ * once.
  *
  * Selection is a committed act and Origin view is a held one; this is neither.
  * It is attention — where the pointer is, or where the arrow keys just landed

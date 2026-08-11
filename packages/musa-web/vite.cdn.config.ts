@@ -6,7 +6,7 @@ const WORKER_STUB = fileURLToPath(new URL("./src/cdn-worker-default-stub.ts", im
 const CORE_STUB = fileURLToPath(new URL("./src/cdn-core-stub.ts", import.meta.url));
 
 /**
- * Two aliasing rules keep the main file lean (prompt 151):
+ * Two aliasing rules keep the main file lean:
  * - the default worker URL would emit a worker asset nobody fetches — the
  *   Blob-inlined worker replaces it (see cdn-entry.ts);
  * - the in-process engraver path would pull Verovio into the main thread —
@@ -29,7 +29,7 @@ function cdnAliases(): Plugin {
 }
 
 /**
- * The CDN build (prompt 151): one classic script, one file — the worker
+ * The CDN build: one classic script, one file — the worker
  * (with Verovio inside) arrives as an inlined Blob, so there is no worker
  * URL to configure. The only external asset is the musa compiler wasm,
  * copied beside `musa-web.js` by `scripts/prepare-cdn.mjs`:

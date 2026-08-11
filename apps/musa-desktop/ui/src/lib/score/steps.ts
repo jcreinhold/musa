@@ -1,7 +1,7 @@
 /**
  * What a pointer gesture on the page means, in the score's own units.
  *
- * The one piece of geometry prompt 53 adds, and it is deliberately *relative*:
+ * This geometry is deliberately *relative*:
  * every gesture is measured from the note it started on, whose spelling and
  * duration the core already published. A diatonic step is half a staff space
  * on every clef and in every key, so a drag needs no clef, no staff-line

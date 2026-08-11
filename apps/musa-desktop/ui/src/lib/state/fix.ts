@@ -2,7 +2,7 @@
  * Applying a diagnostic's fix to the source.
  *
  * A fix arrives as data — a title and a list of replacements — so the terminal
- * and the app spend the same object (prompt 56). Applying one here rather than
+ * and the app spend the same object. Applying one here rather than
  * asking the core to is not the frontend inventing anything: the spans were
  * computed in Rust, and what happens next is the same `setSource` any keystroke
  * takes. The source stays canonical (AGENTS.md); this produces new text for it.

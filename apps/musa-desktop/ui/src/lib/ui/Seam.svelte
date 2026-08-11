@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * The seam between the source column and the page, as a control (prompt 60).
+   * The seam between the source column and the page, as a control.
    *
    * `01-visual-language.md` §7 gives the two halves one `--rule` hairline
    * between them, and that hairline is the most splitter-looking thing in the

@@ -1,5 +1,5 @@
 /**
- * The piece's own facts, edited where they are printed (prompt 54).
+ * The piece's own facts, edited where they are printed.
  *
  * Three places print the same eight statements — the inspector when nothing
  * is selected, the top band's tempo, key and meter, and five lines on the

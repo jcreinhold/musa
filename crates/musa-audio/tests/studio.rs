@@ -1,10 +1,10 @@
-//! Studio spec → graph lowering (docs/prompts/29).
+//! Studio spec → graph lowering.
 //!
 //! The contract is that the graph has the shape the patch describes. Not the
-//! sound yet — most stages are pass-through until prompts 30–31 — but the
-//! topology, because that is what later prompts fill in rather than replace.
-//! The lowering must also leave an unpatched piece exactly where it was:
-//! prompt 17's audio is golden, and a studio nobody wrote must not touch it.
+//! sound yet — most stages are pass-through — but the topology, because that
+//! is what the real processors fill in rather than replace. The lowering must
+//! also leave an unpatched piece exactly where it was: the default render is
+//! golden, and a studio nobody wrote must not touch it.
 
 // Test helpers use expect() on statically-valid inputs: a failure is a bug in
 // the test itself, and panicking is the correct behavior there.
@@ -37,7 +37,7 @@ fn piece(studio: &str) -> String {
 #[test]
 fn an_empty_studio_is_the_default_instrument_graph() {
     // §14.8's zero-setup guarantee, stated as an identity rather than a
-    // resemblance: this is what keeps prompt 17's golden audio golden.
+    // resemblance: this is what keeps the default render's audio golden.
     let (graph, lowering) = lower_studio(&StudioSpec::default(), &OPTIONS);
     assert_eq!(format!("{graph:#?}"), format!("{:#?}", poly_sine_spec(16)));
     assert!(lowering.notes.is_empty());

@@ -1,4 +1,4 @@
-//! What a diagnostic is made of (prompt 56).
+//! What a diagnostic is made of.
 //!
 //! A musa diagnostic is a small document, not a sentence: a stable name, a
 //! claim, the place, the other places that explain the place, one line of
@@ -66,8 +66,8 @@ pub enum Code {
     NonExhaustiveMatch,
     /// A match arm can never be selected because an earlier arm covers it.
     UnreachablePattern,
-    /// Valid language syntax belongs to a compiler stage delivered by a
-    /// later prompt, rather than being mistaken for a parse error.
+    /// Valid language syntax belonging to a compiler stage that is not
+    /// implemented yet, rather than being mistaken for a parse error.
     UnsupportedLanguageStage,
     /// A `motif` or `fragment` that nothing uses (style guide §1). A named
     /// `bar` is not checked: it plays where it stands, so its name is an

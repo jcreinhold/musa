@@ -85,7 +85,7 @@ export interface OriginFacts {
   /**
    * The decision this event was played under, as an index into
    * {@link ScoreFacts.decisions}. Null in a determinate piece, and null for
-   * an event that no open construct covers (prompt 76).
+   * an event that no open construct covers.
    */
   decision: number | null;
 }
@@ -115,7 +115,7 @@ export interface EditImpact {
   /**
    * The text the edit would write, and where — one entry per replacement.
    * This is what a live pointer gesture marks in the source before it commits
-   * (prompt 53), and it is the same edit the command would apply.
+   *, and it is the same edit the command would apply.
    */
   writes: CandidateEdit[];
 }
@@ -228,7 +228,7 @@ export interface ScoreFacts {
   outline: OutlineFacts[];
   /**
    * Every statement the piece can make about itself, in the order they are
-   * written, whether or not it makes them (prompt 54). A field the piece is
+   * written, whether or not it makes them. A field the piece is
    * silent about is present with a null value — the inspector shows those
    * rows too, and that list is where a composer finds out a piece can name an
    * arranger at all.
@@ -236,7 +236,7 @@ export interface ScoreFacts {
   header: HeaderFact[];
   /**
    * Which performance this reading is, or null when the piece asked nothing
-   * (prompt 76). A determinate piece has no performance number, and every
+   *. A determinate piece has no performance number, and every
    * part of the interface that speaks about realization is silent when this
    * is null.
    */
@@ -353,7 +353,7 @@ export interface MidiEntry {
   pitches: string[];
 }
 
-/** A project's running order and its shared material (prompt 84). */
+/** A project's running order and its shared material. */
 export interface ContentsFacts {
   /** What to call the project: the manifest's name, else the folder's. */
   name: string;

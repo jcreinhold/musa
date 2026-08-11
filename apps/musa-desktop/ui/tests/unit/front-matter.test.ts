@@ -1,6 +1,6 @@
 /**
  * The printed page's front matter, read the way the pointer reads it
- * (prompt 54).
+ *.
  *
  * The MEI backend writes the page head itself so that every printed line
  * carries an `xml:id`, which is what makes clicking the title the same

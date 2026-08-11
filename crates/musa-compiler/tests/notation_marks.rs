@@ -1,10 +1,10 @@
-//! The `mark` statement and the vocabulary behind it (prompt 70).
+//! The `mark` statement and the vocabulary behind it.
 //!
-//! Prompt 62 replaced a closed enum of five articulations with a table, and
-//! measured the claim: adding a sixth mark should cost one row. These tests
-//! are what makes the claim keep holding — every check here is written against
-//! the table rather than against a list of mark names, so a row added later
-//! is covered by them without any of them being edited.
+//! A closed enum of articulations became a table, with a measured claim:
+//! adding a new mark should cost one row. These tests keep that claim
+//! holding — every check here is written against the table rather than
+//! against a list of mark names, so a row added later is covered by them
+//! without any of them being edited.
 //!
 //! The one that matters most is `the_anchor_decides_where_a_mark_is_written`.
 //! A vocabulary that accepted `mark staccato;` or `g4 1/4 pedal;` would be a
@@ -144,8 +144,8 @@ fn an_ottava_may_go_down() {
     compiles("mark ottava -1 { c5/4 d5/4 } e5/4 f5/4");
 }
 
-/// The measured claim of prompt 62, re-checked: a mark reaches the exporters
-/// through the table, so the whole cost of a new one is the row.
+/// The claim, re-checked: a mark reaches the exporters through the table,
+/// so the whole cost of a new one is the row.
 ///
 /// The check is that no production code *selects* a mark by name — no
 /// `Mark::parse("staccato")`, no `lookup_mark("pedal")`. Code that did would

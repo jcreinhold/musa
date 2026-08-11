@@ -4,7 +4,7 @@
  * (`worker.ts`) and the in-process fallback (`engraver.ts`'s
  * `LocalEngraver`). One toolkit, one `newest` generation, one id index —
  * the rules are the same on both sides of the boundary, so they live here
- * once (prompt 148).
+ * once.
  */
 
 import createVerovioModule from "verovio/wasm";

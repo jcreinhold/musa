@@ -6,7 +6,7 @@
 //! topological scheduling, buffer allocation, the processor set, and
 //! deterministic offline rendering. Must never contain: musical semantics
 //! (it consumes scheduled `PerformanceEvent`s, never scores), CPAL or
-//! threads (prompt 18), or real-time violations — `RenderPlan::render`
+//! threads (those belong to `musa-engine`), or real-time violations — `RenderPlan::render`
 //! allocates nothing and takes no locks (§13.2).
 //!
 //! Facade (roadmap §15.5): [`compile_graph`], [`RenderPlan::render`]. The

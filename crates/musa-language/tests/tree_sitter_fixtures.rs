@@ -1,4 +1,4 @@
-//! The tree-sitter drift law (prompt 80).
+//! The tree-sitter drift law.
 //!
 //! `editors/tree-sitter-musa` is a second reader of this language, and a
 //! second reader owns no vocabulary: this test writes the *real* lexer's

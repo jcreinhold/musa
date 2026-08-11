@@ -1,8 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 /**
- * The design's regression net for the rest of the sequence
- * (`docs/prompts/20-interface-prototype.md`). Screens are compared as images
+ * The design's regression net. Screens are compared as images
  * because that is the only thing that catches a design regression: a token
  * that drifted, a sanitizer that stopped re-inking, an engraving that lost
  * its spacing.

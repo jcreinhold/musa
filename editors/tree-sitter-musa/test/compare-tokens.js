@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The corpus side of the drift law (prompt 80).
+ * The corpus side of the drift law.
  *
  * `crates/musa-language/tests/tree_sitter_fixtures.rs` commits the *real*
  * lexer's token stream for every compilable fixture, and the *real*

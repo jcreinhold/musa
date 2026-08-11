@@ -1,6 +1,6 @@
 //! Generates the interface's fixtures from the real types.
 //!
-//! The desktop prototype (prompt 20) is driven by committed fixtures rather
+//! The desktop prototype is driven by committed fixtures rather
 //! than hand-written mocks, so that the shape the UI codes against is the
 //! shape the facade actually produces. This test writes them; it fails when
 //! the committed copy is stale, so a change to `ProjectSnapshot` shows up as
@@ -114,7 +114,7 @@ fn mei_fixtures_are_current() -> Result {
     Ok(())
 }
 
-/// The open work, at two performances (prompt 76).
+/// The open work, at two performances.
 ///
 /// Two, because one proves nothing: the interface has to show that a
 /// performance is a *reading* — that the same source, drawn again, says

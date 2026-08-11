@@ -75,7 +75,7 @@
     /** Spans to mark: the provenance of what is on the page. */
     highlight?: Span[];
     /**
-     * The focus, in the text (prompt 52): the line that placed the music, and
+     * The focus, in the text: the line that placed the music, and
      * — when it is elsewhere — the statement that spells it.
      */
     focus?: { definition: Span | null; place: Span | null } | null;
@@ -87,13 +87,13 @@
     sounding?: Span[];
     /**
      * The token a live pointer gesture would replace, and what it would put
-     * there (prompt 53). Shown in the text, in the file it will be written
+     * there. Shown in the text, in the file it will be written
      * into, before anything is committed.
      */
     candidate?: { start: number; end: number; text: string } | null;
     /** A place to put the caret, once, when it changes. */
     reveal?: Reveal | null;
-    /** Vim mode: the composer's preference, not the document's (prompt 55). */
+    /** Vim mode: the composer's preference, not the document's. */
     modal?: boolean;
     onedit?: (source: string) => void;
     /** Where the caret is now, so the score can follow it. */
@@ -135,7 +135,7 @@
   });
 
   /**
-   * The focus, carried in the editor's own state (prompt 52).
+   * The focus, carried in the editor's own state.
    *
    * One effect for all three marks, because they are one answer: the statement
    * that spells the focused music, the line that placed it, and the lines that
@@ -166,7 +166,7 @@
   });
 
   /**
-   * The candidate a live gesture would write (prompt 53).
+   * The candidate a live gesture would write.
    *
    * Drawn as a replacement over the token, not as an edit to the document:
    * the text is untouched until the pointer comes up, so `Esc` costs nothing
@@ -294,7 +294,7 @@
     ".cm-activeLine": { backgroundColor: "transparent" },
     ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--ink)" },
     /*
-     * The focus (prompt 52). Three marks can now be true of one line at once —
+     * The focus. Three marks can now be true of one line at once —
      * selected, provenance, focused — so each is a different *shape*: the
      * selection is a wash, provenance is a wash, and the focus is a number in
      * `--plate` and a hairline under the text. Nothing here moves; a focus
@@ -303,7 +303,7 @@
     ".cm-musa-focus-line": { color: "var(--plate)" },
     ".cm-musa-focus": { borderBottom: "1px solid var(--plate)" },
     /*
-     * The candidate a live gesture would write (prompt 53), standing where
+     * The candidate a live gesture would write, standing where
      * the token it would replace stands. `--plate` because it is not in the
      * file yet: the hue that already means *derived, or live*.
      */
@@ -391,7 +391,7 @@
       fontSize: "var(--t-small-size)",
     },
     /*
-     * The keyword's own documentation, hovered (prompt 84). A tooltip is a
+     * The keyword's own documentation, hovered. A tooltip is a
      * leaf the size of a thought: prose in the interface's face, the example
      * in the editor's, and one hairline between what is said and what is
      * shown — the same rule the prose column uses for a footnote.
@@ -498,7 +498,7 @@
   }
 
   /*
-   * The keyword under the pointer teaches (prompt 84). The words are the
+   * The keyword under the pointer teaches. The words are the
    * language's own — generated out of `keywords.rs`, so the tooltip cannot
    * drift from what the lexer and the language server say — and this file
    * only sets them: prose in the interface's face, the example in the

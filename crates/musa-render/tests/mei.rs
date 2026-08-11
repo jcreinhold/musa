@@ -156,7 +156,7 @@ fn tie_pieces_share_the_event_id() {
     );
 }
 
-// --- The printed front matter (prompt 54) ---
+// --- The printed front matter ---
 
 /// The five printed lines carry the ids the interface hit-tests, and each one
 /// wraps the words the piece actually said. This is the same contract

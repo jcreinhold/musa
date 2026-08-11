@@ -1,4 +1,4 @@
-//! Audio-side compatibility oracle for prompt 93's migration fixture.
+//! Audio-side compatibility oracle for the elaboration migration fixture.
 //!
 //! Refresh intentionally with `UPDATE_ELABORATION_BASELINE=1 cargo test
 //! -p musa-audio --test elaboration_compatibility` in a clean worktree.

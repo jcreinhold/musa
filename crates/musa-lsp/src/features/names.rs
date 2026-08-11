@@ -1,4 +1,4 @@
-//! References and rename over the session's name facts (prompt 78).
+//! References and rename over the session's name facts.
 //!
 //! No scanning of our own: the resolver's record *is* the references, and a
 //! rename rewrites exactly the spans it recorded. Two callers share the

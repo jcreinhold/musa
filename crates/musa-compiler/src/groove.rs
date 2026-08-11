@@ -53,7 +53,7 @@ use crate::time::MusicalTime;
 /// One entry in the groove vocabulary: what it is called and what it takes.
 ///
 /// The same shape as `marks.rs`, for the same reason — a vocabulary is a
-/// table, and a row is added by the prompt that has a piece needing it.
+/// table, and a row is added by the change that has a piece needing it.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct GrooveDef {
     /// The name the composer writes.

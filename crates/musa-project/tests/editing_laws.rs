@@ -91,7 +91,7 @@ fn an_impact_carries_the_text_the_edit_would_write() {
         .expect("the event exists");
 
     // One token, named exactly, so a live gesture can mark the text it is
-    // about to replace rather than the statement around it (prompt 53).
+    // about to replace rather than the statement around it.
     let [write] = impact.writes.as_slice() else {
         panic!("one replacement, not {}", impact.writes.len());
     };
@@ -152,7 +152,7 @@ fn a_generated_note_states_its_consequence_in_counts() {
     assert_eq!(impact.occurrence.as_deref(), Some("sigh()"));
     // `sigh()` is used twice, so one statement of its body spells two notes.
     // Two, not ten: the count is what changes, not the size of the
-    // expansions (`04-provenance.md` §4, as repaired by this prompt).
+    // expansions (`04-provenance.md` §4).
     assert_eq!(impact.occurrences, 2);
     assert_eq!(impact.events.len(), 2, "one note per occurrence");
     assert!(impact.events.contains(&id));
@@ -475,7 +475,7 @@ fn a_duration_change_is_the_same_transaction_as_a_pitch_change() {
     assert!(source(&session).contains("        rest/8"));
 }
 
-// --- The piece's own facts (prompt 54) -------------------------------------
+// --- The piece's own facts -------------------------------------------------
 
 /// Setting a statement the piece already has rewrites its value and nothing
 /// else on the line.

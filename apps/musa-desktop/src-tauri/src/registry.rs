@@ -3,8 +3,6 @@
 //! `03-interaction.md` §6: the menu, the keyboard sheet, and the command
 //! palette are all rendered from this list, so documentation cannot drift
 //! from bindings and a command cannot exist in one surface and not another.
-//! The palette itself is prompt 23; the list starts here because the native
-//! menu already needs it.
 //!
 //! Commands are named as they resolve — verbs, sentence case, matching the
 //! result they report (`05-states.md` §1).
@@ -22,7 +20,7 @@ pub enum Section {
     View,
     /// The app's own preferences. The only section with no menu of its own:
     /// its representative is one `Settings…` item, and the sheet behind it is
-    /// where the commands are reached by pointer (prompt 59).
+    /// where the commands are reached by pointer.
     Settings,
     Help,
 }
@@ -160,7 +158,7 @@ pub const COMMANDS: &[CommandDescriptor] = &[
     )),
     // The volume, before the piece: a contents page is what a bound book puts
     // in front of its first movement, and `⌘0` is the number before the four
-    // workspaces for the same reason (prompt 85).
+    // workspaces for the same reason.
     command(
         "view.workspace.contents",
         "Contents",
@@ -235,7 +233,7 @@ pub const COMMANDS: &[CommandDescriptor] = &[
     // and the rest of the section is what the sheet contains.
     SETTINGS,
     // The frame's text, not the score's — deliberately not `⌘=`/`⌘-`, which
-    // are zoom and must stay zoom (prompt 55).
+    // are zoom and must stay zoom.
     command(
         "settings.text.larger",
         "Larger text",

@@ -1,4 +1,4 @@
-//! What an import is, and what it is not (docs/prompts/36; roadmap §16).
+//! What an import is, and what it is not (roadmap §16).
 //!
 //! Imports are the one place a musa compilation reads something the author of
 //! the piece did not write, so the rules are worth pinning: paths join

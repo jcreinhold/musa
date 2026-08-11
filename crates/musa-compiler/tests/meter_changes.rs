@@ -100,7 +100,7 @@ fn a_change_inside_material_is_refused() {
     );
     // An *unnamed* bar is not material — it is played once, at one place —
     // so a meter inside one is refused by the barline rule instead, which is
-    // the rule that actually applies to it (prompt 65 drew the line).
+    // the rule that actually applies to it.
     let mid_bar = "piece \"p\" { meter 4/4; score { part a { voice b { \
                    bar { c4/2 meter 3/4; d4/2 } } } } }";
     assert_eq!(

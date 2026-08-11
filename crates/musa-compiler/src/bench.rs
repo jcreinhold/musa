@@ -76,8 +76,8 @@ impl Timelines {
             .sum()
     }
 
-    /// The semantic hash of the whole piece (P5): the digest prompt 43 makes
-    /// the session ask for on every recompile. It canonicalizes exactly as
+    /// The semantic hash of the whole piece (P5): the digest the session
+    /// asks for on every recompile. It canonicalizes exactly as
     /// P4 does and then absorbs the bytes, so P5 − P4 is the price of the
     /// identity itself.
     pub fn hash(&self) -> u128 {
@@ -109,7 +109,7 @@ impl Timelines {
 
     /// Canonical form of the whole piece (P4): every voice overlaid into one
     /// timeline and normalized — the sort and the `Canonical` keys that
-    /// prompt 43's semantic identity will pay on every edit.
+    /// semantic identity pays on every edit.
     pub fn canonical(&self) -> usize {
         self.piece().normalize().occurrences().len()
     }

@@ -4,8 +4,8 @@
 //! segments and a state variable; adopting a DSP framework to avoid writing
 //! sixty total lines would add a dependency whose types must then be kept
 //! private for no gain in correctness or speed. The decision is per-processor
-//! and is revisited where the arithmetic stops being trivial — prompt 31's
-//! reverb is the first place that is plausibly true.
+//! and is revisited where the arithmetic stops being trivial — the reverb
+//! is the first place that is plausibly true.
 //!
 //! **Segment timing is frame-exact by construction.** Each segment's
 //! per-frame step is `distance / frames`, so a segment declared as `n` frames
@@ -14,7 +14,7 @@
 //!
 //! **The default is the old ramp, made exact.** With no envelope written the
 //! settings are a 5 ms attack, no decay, full sustain, and a 50 ms release —
-//! the shape of the placeholder ramp prompt 12 shipped. It is not quite the
+//! the shape of the ramp that preceded it. It is not quite the
 //! same samples: the ramp compared an accumulated float against 1.0 and so
 //! took 241 frames to finish a 240-frame attack, and this one takes 240.
 #![allow(clippy::arithmetic_side_effects)]
@@ -252,8 +252,8 @@ mod tests {
         assert_eq!(AdsrSteps::new(settings, 44_100).attack_frames, 441);
     }
 
-    /// The default is the ramp prompt 12 shipped, which is what keeps an
-    /// unprofiled render byte-identical to the one prompt 28 pinned.
+    /// The default matches the ramp it replaced, keeping an unprofiled
+    /// render byte-identical to the established golden.
     #[test]
     fn the_default_shape_is_the_ramp_it_replaced() {
         let steps = AdsrSteps::new(AdsrSettings::default(), RATE);

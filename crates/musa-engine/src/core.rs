@@ -1,9 +1,9 @@
 //! The real-time callback core: command consumption, plan installation,
 //! transport state, and the render loop — everything that runs inside the
 //! CPAL callback, factored so tests can drive it against a fake output
-//! without a device (roadmap §17.5).
+//! without a device.
 //!
-//! Real-time rules (§13.2): `CallbackCore::process` never allocates, locks,
+//! Real-time rules: `CallbackCore::process` never allocates, locks,
 //! does I/O, logs, or destroys large objects. Retired plans cross to the
 //! control thread on an `rtrb` queue and are dropped there; if the queue is
 //! full the plan waits in `pending_retire` and the core stops consuming
@@ -79,7 +79,7 @@ pub struct CallbackCore {
     commands: rtrb::Consumer<Message>,
     retired: rtrb::Producer<Box<PreparedPlaybackPlan>>,
     /// A retired plan that did not fit the queue last block; retried each
-    /// block (dropping it here would violate §13.2). While it is occupied
+    /// block (dropping it here would violate the real-time rules). While it is occupied
     /// the core stops consuming commands, so at most one plan is ever held
     /// back and none is ever destroyed on the audio thread.
     pending_retire: Option<Box<PreparedPlaybackPlan>>,
@@ -130,7 +130,7 @@ impl CallbackCore {
     /// retire a second plan simply stays queued until the control thread
     /// drains the retirement queue. Transport commands behind it are delayed
     /// by a block or two, which is inaudible; destroying a `RenderPlan` in
-    /// the callback would not be (§13.2).
+    /// the callback would not be.
     fn consume_commands(&mut self) {
         if let Some(pending) = self.pending_retire.take() {
             match self.retired.push(pending) {
@@ -186,7 +186,7 @@ impl CallbackCore {
     }
 
     /// One callback invocation: fill `output` (interleaved stereo).
-    /// Underruns emit silence — never panic, never block (§13.2).
+    /// Underruns emit silence — never panic, never block.
     pub fn process(&mut self, output: &mut [f32]) {
         self.consume_commands();
         let frames = output.len().saturating_div(2);

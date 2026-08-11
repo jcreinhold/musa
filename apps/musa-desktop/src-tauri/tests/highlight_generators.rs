@@ -1,6 +1,6 @@
 //! Generates what the source editor sets its text by.
 //!
-//! Prompt 26's rule: the highlighting is derived from the real token list, not
+//! The highlighting is derived from the real token list, not
 //! from a pattern set in the interface that drifts the first time a keyword is
 //! added. Two artefacts come out of the lexer itself:
 //!
@@ -118,7 +118,7 @@ fn module_names_are_current() -> Result {
     generated(&ui("src/lib/session/generated/module-names.json"), &json)
 }
 
-/// Every keyword's own documentation (prompt 84), so the source editor's
+/// Every keyword's own documentation, so the source editor's
 /// hover teaches the same words the language server serves — written out of
 /// the one table, because a tooltip the editor authored itself would drift
 /// the first time a keyword's doc changed.

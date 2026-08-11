@@ -24,10 +24,9 @@ use crate::voice::VoiceAllocator;
 
 /// A slice of scheduled performance events for one render call.
 ///
-/// Nothing consumes events yet — note-event → oscillator routing arrives in
-/// prompt 17; the type is part of the render signature now (§13.8: offline
-/// and live rendering execute the same `render`) so prompt 17 adds routing
-/// without breaking the facade.
+/// The type is fixed in the render signature (§13.8: offline and live
+/// rendering execute the same `render`), so note-event routing did not
+/// break the facade.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct EventSlice<'a> {
     events: &'a [PerformanceEvent],

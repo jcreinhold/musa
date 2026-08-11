@@ -8,7 +8,7 @@
    * `--plate` while it has focus — and that is the entire affordance. It is
    * there at rest on purpose: an affordance that appears only on hover can be
    * found only by someone who already suspected it was there, which is not
-   * discovery (prompt 54). A row that only reports a value gets no underline,
+   * discovery. A row that only reports a value gets no underline,
    * and the difference between the two kinds of row is then readable without
    * touching either.
    */

@@ -25,7 +25,7 @@ pub enum ProjectError {
     },
 
     /// A command produced source text that does not parse or compile, and the
-    /// command was specified to be transactional (score edits, prompt 25).
+    /// command was specified to be transactional (score edits).
     /// The session is unchanged.
     #[error("{intent} would break the source: {reason}")]
     RejectedEdit {
@@ -65,7 +65,7 @@ pub enum ProjectError {
 
     /// A directory was opened as a project and holds no `.musa` file.
     ///
-    /// A project always has a piece in hand (prompt 84), so an empty folder is
+    /// A project always has a piece in hand, so an empty folder is
     /// refused at the door rather than opened into a screen with nothing on
     /// it.
     #[error("no piece in {root}")]

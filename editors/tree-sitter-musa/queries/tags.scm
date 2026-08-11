@@ -1,5 +1,5 @@
-; Tags (prompt 80): definitions and the references that find them, for
-; code navigation that works without the language server.
+; Definitions and the references that find them, for code navigation that
+; works without the language server.
 
 (motif_declaration
   name: (identifier) @name) @definition.function

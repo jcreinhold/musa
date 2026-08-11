@@ -1,5 +1,5 @@
 /**
- * The byte↔character conversion and the error excerpt (prompt 149).
+ * The byte↔character conversion and the error excerpt.
  * Compiler spans are UTF-8 byte offsets; JS strings are UTF-16. The
  * conversion lives here — once, explicitly, and tested against multi-byte
  * source — and nowhere else in the package.

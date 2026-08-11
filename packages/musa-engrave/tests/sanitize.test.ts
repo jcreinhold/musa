@@ -53,7 +53,7 @@ describe.each(FIXTURES)("%s", (name) => {
     expect(sanitize(raw[name])).not.toContain("Times");
   });
 
-  it("preserves every id verbatim — the id map is prompt 13's contract", () => {
+  it("preserves every id verbatim — the id map is the engraver's contract", () => {
     expect(identifiers(sanitize(raw[name]))).toStrictEqual(identifiers(raw[name]));
   });
 

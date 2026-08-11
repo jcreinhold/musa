@@ -190,9 +190,9 @@ proptest! {
 ///
 /// A repeat prints its body once and plays it twice, so a meter change written
 /// after one sits at measure 3 on the page and measure 5 in the performance.
-/// Prompt 61 built the two `BarLines` instances and could not tell them apart,
-/// because until the meter could change there was nothing for them to disagree
-/// about. This is that disagreement, asserted from both sides.
+/// The two `BarLines` instances — page position and performed position — only
+/// disagree when a meter change can follow a repeat. This is that
+/// disagreement, asserted from both sides.
 #[test]
 #[expect(clippy::expect_used, reason = "a fixture that does not compile is a failed test")]
 fn a_meter_change_after_a_repeat_is_numbered_twice() {

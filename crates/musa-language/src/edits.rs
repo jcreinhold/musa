@@ -1,5 +1,5 @@
 //! Syntax-aware text edits (roadmap §11): the project's canonical mutation
-//! mechanism. Score-editing commands (prompt 25) resolve to these.
+//! mechanism. Score-editing commands resolve to these.
 //!
 //! There is one entry point, [`compute_edits`]. A caller says what it wants
 //! done to the music in [`EditIntent`] terms and gets back the text edits
@@ -174,7 +174,7 @@ pub enum Anchor {
     },
 }
 
-/// One of the piece's own header statements (prompt 54).
+/// One of the piece's own header statements.
 ///
 /// These are the facts a piece states about itself rather than about its
 /// music, and they are the ones the interface prints in places a composer can
@@ -577,7 +577,7 @@ fn token_of(node: &SyntaxNode, kinds: &[SyntaxKind]) -> Option<TextRange> {
         .map(|token| token.text_range())
 }
 
-/// Set, add, or remove one header statement (prompt 54).
+/// Set, add, or remove one header statement.
 ///
 /// Three cases, and which one applies is a fact about the source rather than
 /// something the caller has to know: a statement the piece has is rewritten

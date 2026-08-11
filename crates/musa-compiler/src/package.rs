@@ -15,8 +15,8 @@
 //! - a `mod` naming no file is **missing**, because a declaration that reaches
 //!   nothing is a claim the package cannot keep.
 //!
-//! Discovery would have made both of them silent. The one that motivated this
-//! module was silent for two prompts: `stdlib/sequences.musa` was committed,
+//! Discovery would have made both of them silent. The case that motivated this
+//! module was silent at first: `stdlib/sequences.musa` was committed,
 //! reachable from no import, and the workspace built green.
 
 use std::collections::{BTreeMap, BTreeSet};

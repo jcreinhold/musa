@@ -1,5 +1,5 @@
 /**
- * The budgets this prompt owns, asserted as measurements
+ * The performance budgets, asserted as measurements
  * (`06-performance.md` §1–§2): B1, B2, B6, B7, B8, B10, B11, B12.
  *
  * The harness drives the Vite dev server with the stubbed shell, which §2
@@ -28,7 +28,7 @@ const TRIALS = 20;
  * An assertion message is only printed when the assertion fails, which makes
  * a green suite say "within budget" and nothing else. §2 asks for
  * measurements rather than verdicts — "a regression that misses B2 by 40 ms
- * says so" — and the same is true of headroom: a prompt deciding whether to
+ * says so" — and the same is true of headroom: deciding whether to
  * build a faster path needs to know it is at 30% of the budget or at 95%, and
  * should not have to break a test to find out. One line per budget, on
  * stdout, which every reporter carries.
@@ -300,9 +300,8 @@ test.describe("the large score", () => {
 
     const samples: number[] = [];
     // B2 split where a fix would have to land: what the round trip costs, and
-    // what the engraver costs. Prompt 50 needed this to decide whether a
-    // faster semantic core could move B2 at all — it cannot, and a number is
-    // the only way to know that without guessing.
+    // what the engraver costs. A faster semantic core cannot move B2, and a
+    // number is the only way to know that without guessing.
     const round: number[] = [];
     const engrave: number[] = [];
     for (let trial = 0; trial < TRIALS; trial += 1) {
@@ -435,7 +434,7 @@ test("B10: nothing is scheduled while the transport is stopped", async ({ page }
 });
 
 /**
- * Reading an open work again, measured on its own (prompt 76).
+ * Reading an open work again, measured on its own.
  *
  * Deliberately not folded into B2. B2 is what an *edit* costs, and its
  * 400 ms includes the 180 ms the interface spends waiting for typing to
@@ -482,7 +481,7 @@ test("B11: a new reading is on the leaf within 250 ms of the snapshot", async ({
 });
 
 /**
- * Turning to another piece of the volume (prompt 85).
+ * Turning to another piece of the volume.
  *
  * Measured apart from B11 because that is a *re-reading of one score* and this
  * is a different score: a new title, a new part list, a new outline, a whole

@@ -1,5 +1,4 @@
-//! What each backend does with staves counted and paced differently
-//! (docs/prompts/75).
+//! What each backend does with staves counted and paced differently.
 //!
 //! The four formats do not agree, and the differences are the point.
 //! `MusicXML` has a measure list per part, so it says polymeter exactly.

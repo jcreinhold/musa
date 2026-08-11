@@ -49,7 +49,7 @@ export class ThemeChoice {
    *
    * The third state was always here and was reachable by nothing: `toggle`
    * only ever moves between light and dark, so a composer who overrode the
-   * theme once could not get back to following the system (prompt 59).
+   * theme once could not get back to following the system.
    */
   choose(theme: Theme | null): void {
     if (theme === null) return this.follow();

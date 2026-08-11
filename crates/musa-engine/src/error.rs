@@ -1,4 +1,4 @@
-//! Engine errors: explicit, never silent (roadmap §7.2).
+//! Engine errors: explicit, never silent.
 
 /// A failure to open or command the engine.
 #[derive(Debug, thiserror::Error)]

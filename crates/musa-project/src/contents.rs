@@ -1,4 +1,4 @@
-//! What a project holds, as its contents page prints it (prompt 84).
+//! What a project holds, as its contents page prints it.
 //!
 //! Roadmap §16 fixes the shape of a directory project — a `musa.toml` beside
 //! `pieces/` and `library/` — and that shape is why this module lists rather
@@ -37,7 +37,7 @@ impl ContentsFacts {
     ///
     /// A project of one is a loose `.musa` file, and the interface shows it
     /// nothing: no contents, no running order, no menu item leading to a page
-    /// with one line on it (prompt 85).
+    /// with one line on it.
     #[must_use]
     pub fn is_a_volume(&self) -> bool {
         self.pieces.len().saturating_add(self.material.len()) > 1

@@ -1,7 +1,7 @@
 //! Document symbols: the piece's structure as the outline pane knows it.
 //!
-//! A section and a phrase are the two things a composer navigates by (prompt
-//! 39 reads roadmap §8.2's annotations as navigation), so they are the
+//! A section and a phrase are the two things a composer navigates by
+//! (roadmap §8.2's annotations read as navigation), so they are the
 //! symbols. Parts and voices carry no source spans in the facts, and a symbol
 //! without a location is a guess — they are left out rather than invented.
 

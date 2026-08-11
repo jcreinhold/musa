@@ -1,5 +1,5 @@
 /**
- * The provenance contract (prompt 150): clicks carry the compiler's
+ * The provenance contract: clicks carry the compiler's
  * EventId, tie pieces are one event, unmapped elements never fire, and
  * `highlight` marks every piece of an event.
  */

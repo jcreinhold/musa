@@ -1,5 +1,5 @@
 /**
- * How the composer reads and types (prompt 55).
+ * How the composer reads and types.
  *
  * Both preferences are state of the *app*: they outlive the session, they
  * never reach the document, and a stored value that is not one of the four
@@ -106,7 +106,7 @@ describe("vim mode", () => {
 });
 
 /**
- * The source column's width (prompt 60).
+ * The source column's width.
  *
  * It joins the other three because it is the same kind of thing — the app's,
  * not the document's — and because a column a composer widens once and has to

@@ -1,4 +1,4 @@
-//! `ScoreFact`'s interchange text form (docs/kernel/01, prompts 48 and 86).
+//! `ScoreFact`'s interchange text form (docs/kernel/01).
 //!
 //! The kernel carries payloads as opaque quoted strings (§12); this module is
 //! the other half — the one place that says what a musical fact looks like in
@@ -1020,8 +1020,8 @@ mod tests {
 
     /// A hairpin shape that is multi-segment *and* non-dyadic. `1/3` has no
     /// exact binary expansion, so a text form that went through `f64` would
-    /// write `0.3333…` and read back something else — the failure prompt 45
-    /// exists to make impossible, made visible here.
+    /// write `0.3333…` and read back something else — the failure this test
+    /// makes visible.
     fn awkward_shape() -> musa_kernel::Progress {
         musa_kernel::Progress::piecewise(vec![
             (Ratio::new(0, 1), Ratio::new(0, 1)),

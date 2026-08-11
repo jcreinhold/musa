@@ -3,7 +3,7 @@
 //! Two sources, and each is the honest one for its kind. Keywords and unit
 //! suffixes come from `SPELLINGS` — the list the lexer itself is checked
 //! against, so the server can neither offer a word the lexer does not know
-//! nor miss one it does. A keyword carries its own documentation (prompt 84):
+//! nor miss one it does. A keyword carries its own documentation:
 //! the summary is the menu's detail line and the whole doc is the item's
 //! markdown, so the menu itself teaches. Names come from the last valid
 //! compile's facts: motifs, parts, voices, and the studio's containers —
@@ -25,8 +25,8 @@ use crate::workspace::Document;
 /// The completion menu for the document.
 ///
 /// Not position-aware: what is on offer does not depend on where the caret
-/// sits, and the client filters by prefix. Context-aware completion is a
-/// later prompt's work, not a guess made here.
+/// sits, and the client filters by prefix. Context-aware completion is
+/// future work, not a guess made here.
 pub(crate) fn completions(document: &Document) -> CompletionResponse {
     let mut items: BTreeMap<String, CompletionItem> = BTreeMap::new();
     for (spelling, kind) in SPELLINGS {
@@ -110,7 +110,7 @@ pub(crate) fn completions(document: &Document) -> CompletionResponse {
 }
 
 /// One vocabulary item — a keyword with its own documentation when it has
-/// one (prompt 84), a unit with only its class.
+/// one, a unit with only its class.
 fn keyword_item(
     spelling: &str,
     kind: SyntaxKind,

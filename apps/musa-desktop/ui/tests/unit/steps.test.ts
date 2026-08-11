@@ -1,5 +1,5 @@
 /**
- * What a pointer gesture means, in the score's own units (prompt 53).
+ * What a pointer gesture means, in the score's own units.
  *
  * The rules under test are the ones a composer would state: a step is half a
  * staff space wherever the note is, an accidental is carried rather than

@@ -1,7 +1,7 @@
-//! What the session promises about a reading of an open work (prompt 76).
+//! What the session promises about a reading of an open work.
 //!
-//! Prompt 66 made a realization a compile parameter and prompt 67 gave the
-//! language things to leave open. What was missing was everything a composer
+//! A realization is a compile parameter, and the language has things to
+//! leave open. What the session adds is everything a composer
 //! could *do* about it: which performance is in force, what it decided, how
 //! to draw another one, and how to keep the one thing you liked. Those are
 //! session facts, so they are asserted here rather than in the interface —
@@ -71,8 +71,8 @@ fn an_open_work_says_which_reading_this_is() -> Result {
 
     let facts = score(&session);
     assert_eq!(facts.performance, Some(4));
-    // One question, though three voices write it: prompt 67's rule is that a
-    // repeat the page can draw is one repeat of the piece.
+    // One question, though three voices write it: a repeat the page can
+    // draw is one repeat of the piece.
     assert_eq!(facts.decisions.len(), 1);
     let decision = facts.decisions.first().expect("the piece asked something");
     assert_eq!(decision.answered, "2 passes");

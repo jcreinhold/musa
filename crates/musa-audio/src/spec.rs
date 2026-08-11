@@ -38,7 +38,7 @@ impl std::fmt::Display for PortKind {
 ///
 /// Re-exported from `musa-compiler` rather than declared again: the language
 /// checks `1400 Hz` against the same `Hz` the DSP descriptor names, so the
-/// two cannot drift apart (prompt 29).
+/// two cannot drift apart.
 pub use musa_compiler::Unit;
 
 /// Parameter smoothing applied to value changes (§13.7).
@@ -50,8 +50,7 @@ pub enum Smoothing {
     BlockRamp,
 }
 
-/// How a modulation signal combines with the base value (§13.7; sources
-/// arrive in prompt 25).
+/// How a modulation signal combines with the base value (§13.7).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Combination {
     /// Replace the base value.
@@ -142,7 +141,7 @@ pub enum ProcessorSpec {
     /// Identity: input copied to output, `channels` wide.
     ///
     /// This is what a studio stage whose DSP has not been written yet lowers
-    /// to (prompts 30–31). The graph keeps its real shape — the node is
+    /// to. The graph keeps its real shape — the node is
     /// there, connected where the patch says — so replacing it later changes
     /// one match arm and no topology.
     Passthrough {
@@ -290,8 +289,8 @@ impl ProcessorSpec {
             smoothing: Smoothing::BlockRamp,
             combination: Combination::Replace,
         };
-        // The names and units here are the ones the language writes (prompt
-        // 29's `Processor::params`): `cutoff` is `Hz` on both sides, so a
+        // The names and units here are the ones the language writes
+        // (`Processor::params`): `cutoff` is `Hz` on both sides, so a
         // written `1400 Hz` needs no translation to reach this descriptor.
         // `gain` is the one deliberate exception — written in dB, held here
         // as the linear multiplier the DSP applies (§2: a marking is not a

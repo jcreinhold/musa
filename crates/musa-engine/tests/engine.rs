@@ -1,4 +1,4 @@
-//! Engine tests (roadmap §17.5): command-queue round-trips, the seek/loop
+//! Engine tests: command-queue round-trips, the seek/loop
 //! transport state machine, underrun silence, retired-plan return, and
 //! graceful no-device behavior.
 

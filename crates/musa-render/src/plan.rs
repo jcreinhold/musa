@@ -39,7 +39,7 @@ pub struct NotationPlan {
 ///
 /// It carries the instruction as text because that is the only thing every
 /// backend can print. What is *under* it is the reading this compilation
-/// took, which is already in the staves — prompt 58's rule, a third time.
+/// took, which is already in the staves.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OpenMark {
     /// The 1-based measure it opens in.
@@ -1283,7 +1283,7 @@ fn plan_staff(
         .unwrap_or(MusicalDuration::ZERO);
     // Point marks are placed by time, so they go through the fold like clef
     // changes do: a mark inside a repeated passage stands in the measure the
-    // page prints, not the one the timeline plays it in (prompt 58).
+    // page prints, not the one the timeline plays it in.
     let points: Vec<(VoiceId, MusicalTime, &musa_compiler::PointMark)> = score
         .annotations()
         .points()

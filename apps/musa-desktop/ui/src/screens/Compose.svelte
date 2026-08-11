@@ -81,7 +81,7 @@
     bring,
   }: {
     session: Session;
-    /** Text size and vim mode, for the source column (prompt 55). */
+    /** Text size and vim mode, for the source column. */
     preferences: Preferences;
     workspace: Workspace;
     zoom: number;
@@ -93,7 +93,7 @@
     follow: "off" | "page" | "continuous";
     /** Origin view, held or pinned (`04-provenance.md` §2). */
     origin: boolean;
-    /** The shared focus, marked in both columns at once (prompt 52). */
+    /** The shared focus, marked in both columns at once. */
     focus: Focus;
     /** Where the music on the visible pages was written, as source spans. */
     sounding: Span[];
@@ -124,7 +124,7 @@
     oncancel: () => void;
     onname: (name: string) => void;
     oncancelname: () => void;
-    /** What a pointer gesture in flight would write, drawn in the source (prompt 53). */
+    /** What a pointer gesture in flight would write, drawn in the source. */
     candidate: { start: number; end: number; text: string } | null;
     /** A gesture came up: write it. */
     onedit: (candidate: Candidate) => void;
@@ -134,7 +134,7 @@
     oninsert: (pitch: string) => void;
     onpitch: (event: string, pitch: string) => void;
     onduration: (event: string, duration: string) => void;
-    /** Rewrite one of the piece's own statements (prompt 54). */
+    /** Rewrite one of the piece's own statements. */
     onheader: (field: HeaderFieldDto, value: string) => void;
     /** Keep a decision as it came out, or let it go back to being drawn. */
     onkeep: (path: string, keep: boolean) => void;
@@ -161,7 +161,7 @@
   const contents = $derived(volumeOf(snapshot));
   const focused = $derived(workspace.focused);
   // What the inspector describes is what the composer picked, not where work
-  // is happening: with nothing picked it shows the piece instead (prompt 54).
+  // is happening: with nothing picked it shows the piece instead.
   const chosen = $derived(workspace.chosen);
   // Which decision the picked note was played under. The core resolved that;
   // this is the lookup it hands over, and it is null in every determinate
@@ -176,7 +176,7 @@
   /**
    * The narrowest a leaf is still a page. Below this the staves are a ribbon
    * and the composer has stopped looking at music, so it is where the source
-   * column stops taking room (prompt 60).
+   * column stops taking room.
    */
   const STAGE_MIN = 320;
 
@@ -729,7 +729,7 @@
     --source-cap: max(300px, calc(100vw - 440px - var(--stage-floor)));
     /* What a *deliberate* ask may take: the same arithmetic against the floor
        below which a leaf stops being a page, rather than the roomier one the
-       automatic width is held to (prompt 60). */
+       automatic width is held to. */
     --source-room: max(300px, calc(100vw - 440px - 320px));
     --stage-floor: 420px;
 

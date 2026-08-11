@@ -1,5 +1,5 @@
 /**
- * Writing music, from the keyboard (`03-interaction.md` §3, prompt 25).
+ * Writing music, from the keyboard (`03-interaction.md` §3).
  *
  * The score the composer edits here is Glass Mountain, where ten of the
  * violin's notes come from two occurrences of one motif — so the same

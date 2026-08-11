@@ -1,4 +1,4 @@
-//! Laws for higher-order contextual music (prompt 98).
+//! Laws for higher-order contextual music.
 
 #![allow(clippy::expect_used)]
 #![allow(clippy::indexing_slicing)]

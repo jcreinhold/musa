@@ -10,7 +10,7 @@
    * engine reported (`03-interaction.md` §7).
    *
    * Tempo, key, and meter are the piece's own statements, and here they are
-   * fields (prompt 54). A composer looking at the band is looking at the
+   * fields. A composer looking at the band is looking at the
    * piece's tempo; making them find the inspector to change it is the app
    * knowing something it will not act on. They are the same three fields the
    * inspector shows, in a second place, with the same commit rule.

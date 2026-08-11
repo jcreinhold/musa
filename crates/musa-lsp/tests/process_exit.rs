@@ -3,9 +3,8 @@
 //! The library's own tests drive `run` over an in-memory pair, where there
 //! are no IO threads to strand. Over stdio there are, and joining them
 //! while the connection — and its senders — are still alive deadlocked the
-//! shutdown the protocol had just agreed to (found by prompt 81, where the
-//! client is real). This test launches the binary itself and requires it to
-//! exit cleanly after a proper shutdown.
+//! shutdown the protocol had just agreed to. This test launches the binary
+//! itself and requires it to exit cleanly after a proper shutdown.
 
 // A subprocess test waits and kills on statically-valid input: a failure is
 // a bug in the server, and panicking is the correct behavior there.

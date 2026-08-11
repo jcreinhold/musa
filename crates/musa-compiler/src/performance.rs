@@ -113,7 +113,7 @@ impl TempoPoint {
     /// one it arrived at, which is what "the tempo after a *rit.* is the
     /// tempo the *rit.* reached" means arithmetically. A ramp cut short by
     /// the next marking is never asked past the cut, so intersection clamps
-    /// it with no rule of its own (prompt 37).
+    /// it with no rule of its own.
     fn elapsed(&self, whole_notes: Ratio<i64>) -> Ratio<i64> {
         let Some(ramp) = self.ramp.as_ref() else {
             return whole_notes * self.seconds_per_whole;
@@ -340,8 +340,8 @@ fn ratio_to_f64(value: Ratio<i64>) -> f64 {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VoiceInstanceId(pub u32);
 
-/// A parameter target for `Parameter` events (nothing produces them until
-/// prompts 24–26; the type exists now so the event enum is stable).
+/// A parameter target for `Parameter` events (nothing produces them yet;
+/// the type exists now so the event enum is stable).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ParameterId(pub u32);
 
@@ -366,8 +366,8 @@ pub struct PerformedNote {
     /// Abstract, not decibels and not a MIDI velocity (§2); `1.0` is neutral.
     pub amplitude: f32,
     /// The attack time in seconds the profile asks for. A request carried to
-    /// the instrument, not an envelope: prompt 30's parameter system decides
-    /// what an instrument does with it.
+    /// the instrument, not an envelope: the instrument's parameter system
+    /// decides what an instrument does with it.
     pub attack: f32,
     /// The frame the *written* value ends at, before the profile's gate.
     /// Notated duration ≠ performed duration (§2) and both are facts: score
@@ -376,7 +376,7 @@ pub struct PerformedNote {
     /// The frame the note starts at *on the page*, before the part's groove.
     /// The same fact as `notated_off` in the other direction: a swung file is
     /// a performance, and a notation program reading a score-mode export must
-    /// not be handed an interpretation to draw (prompt 69).
+    /// not be handed an interpretation to draw.
     pub notated_on: u64,
 }
 
@@ -399,7 +399,7 @@ pub enum PerformanceEvent {
         /// The instance ending.
         instance: VoiceInstanceId,
     },
-    /// A parameter change (unused until prompts 24–26; present for enum
+    /// A parameter change (unused for now; present for enum
     /// stability).
     Parameter {
         /// Absolute frame.

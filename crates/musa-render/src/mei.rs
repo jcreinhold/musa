@@ -1,7 +1,7 @@
 //! The MEI backend (roadmap §12.2): deterministic MEI 5 XML from a
 //! `NotationPlan`, built through quick-xml's writer — never string assembly.
 //!
-//! **`xml:id` contract (load-bearing for the GUI, prompts 20/21):** every
+//! **`xml:id` contract (load-bearing for the GUI):** every
 //! note/chord/rest element carries `xml:id="event-<hex>"` where `<hex>` is the
 //! lowercase hex of the score `EventId`. Tied pieces of one event share the
 //! base id: the first piece is `event-<hex>`, later pieces are
@@ -253,8 +253,8 @@ fn write_score_def(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<
 
 /// `<pgHead>` and `<pgHead2>`: the front matter as printed, with ids.
 ///
-/// Verovio will draw a head of its own from `<meiHead>` — and did, until this
-/// prompt — but an automatic head is anonymous: every id in it is generated
+/// Verovio would draw a head of its own from `<meiHead>`, but an automatic
+/// head is anonymous: every id in it is generated
 /// per-render, so nothing on the page can be traced back to the statement that
 /// put it there. Writing the head here means the title carries
 /// [`FRONT_TITLE`] the way a notehead carries `event-<hex>`, and clicking the
@@ -324,10 +324,8 @@ fn write_page_head(writer: &mut Writer<Vec<u8>>, plan: &NotationPlan) -> Result<
         &[("halign", "center"), ("valign", "top"), ("fontsize", "small")],
     )?;
     // `#` is the placeholder Verovio substitutes the page number for; a `<num>`
-    // with any other content, or none, is printed literally. The dashes around
-    // it are the running head Verovio drew automatically before this prompt
-    // encoded the one on page 1, and losing them would be a regression nobody
-    // asked for.
+    // with any other content, or none, is printed literally. The dashes match
+    // the running head Verovio draws automatically when no `<pgHead>` is given.
     text(writer, "– ")?;
     text_element(writer, "num", "#", &[("label", "page")])?;
     text(writer, " –")?;

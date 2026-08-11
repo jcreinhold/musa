@@ -292,8 +292,7 @@ impl BarLines {
 
     /// The one measure an unmeasured stretch is, reaching as far as it does.
     ///
-    /// Plan A of the two in prompt 74: the stretch is one measure with no
-    /// end until the next meter, so everything that walks measures keeps
+    /// The stretch is one measure with no end until the next meter, so everything that walks measures keeps
     /// working and the measure number does not advance across a cadenza —
     /// which is correct, because a cadenza inside measure 42 is measure 42.
     fn unmeasured(&self, stretch: Stretch, bound: MusicalTime) -> Measure {

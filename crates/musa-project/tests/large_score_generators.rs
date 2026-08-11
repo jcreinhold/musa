@@ -3,8 +3,8 @@
 //! The fixture ends with a short **coda** that every part plays: ties, slurs,
 //! tuplets, dynamics, and articulations, four bars of them. The 100 bars
 //! before it are plain notes at four densities, which measures throughput but
-//! would let a change to the expressive-notation path regress unmeasured
-//! (docs/prompts/38) — the coda is there so the benchmark and the engraver
+//! would let a change to the expressive-notation path regress unmeasured —
+//! the coda is there so the benchmark and the engraver
 //! both see the constructs a real piece has.
 //!
 //! `docs/interface/06-performance.md` §1 measures the engraver and the frame
@@ -197,14 +197,14 @@ const SHARED_ITERATIONS: usize = BARS;
 ///
 /// `large-score.musa` is 1500 notes typed out, which measures throughput but
 /// has no reuse at all — no `repeat`, no `use`. That made it the wrong
-/// fixture for prompt 49, whose whole claim is that a body written once is
+/// fixture for the claim that a body written once is
 /// elaborated once: a change that shares perfectly cannot show anything on
 /// material that shares nothing.
 ///
 /// So this is a second fixture rather than an edit to the first. Growing
 /// `large-score.musa` would move every P1–P5 number and make the forty rows
 /// already in `docs/kernel/09-performance.md` non-comparable — the tension
-/// prompt 45 recorded and deliberately left alone. Two fixtures, both
+/// recorded there and deliberately left alone. Two fixtures, both
 /// measured, and the pair is the evidence: the difference between them is the
 /// difference sharing makes.
 ///
@@ -383,7 +383,7 @@ fn large_score_is_the_size_the_budgets_assume() {
 
 /// The coda is there for the constructs, so assert them by name: a fixture
 /// that lost its ties would still compile, still be 100 bars, and quietly
-/// stop measuring the path prompts 39–41 rewrite.
+/// stop measuring the path it exists to measure.
 #[test]
 fn large_score_exercises_the_expressive_notation_path() {
     let source = large_score();

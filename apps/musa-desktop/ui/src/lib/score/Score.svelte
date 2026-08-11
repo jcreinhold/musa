@@ -81,14 +81,14 @@
     /** Absent for a fixture shown purely as engraving. */
     workspace?: Workspace;
     /**
-     * The shared focus (prompt 52). The pane reports what the pointer is over
+     * The shared focus. The pane reports what the pointer is over
      * and marks what the focus resolves to; it decides neither.
      */
     focus?: Focus;
     /**
      * Note entry, for the one gesture that writes rather than rewrites: a
      * click on an empty staff step, which only means anything while entry is
-     * armed (prompt 53).
+     * armed.
      */
     entry?: NoteEntry;
     /**
@@ -130,14 +130,14 @@
     flash?: string[];
     /**
      * A note to bring into view, once, when it changes — how the outline
-     * takes you to a section (`docs/prompts/35`). Unlike following the
+     * takes you to a section. Unlike following the
      * playhead, this is asked for, so it scrolls even when the note is
      * already on screen but off to one side.
      */
     bring?: { id: string } | null;
     /**
      * What the piece says about itself, as the source spells it — the value a
-     * front-matter field starts from when it is opened (prompt 54). Empty for
+     * front-matter field starts from when it is opened. Empty for
      * a fixture shown purely as engraving, which is also what makes the page
      * read-only there.
      */
@@ -150,7 +150,7 @@
   const HALO_SPACES = 0.6;
 
   /**
-   * The live pointer gesture (prompt 53). It owns what the drag means; this
+   * The live pointer gesture. It owns what the drag means; this
    * pane owns the geometry that feeds it and the ink that shows it.
    */
   const drag = new Gesture();
@@ -409,7 +409,7 @@
   });
 
   /**
-   * What is engraved on the pages in view (prompt 52).
+   * What is engraved on the pages in view.
    *
    * Reported on a page swap and on a scroll, never on a pointer move: the
    * source column's gutter ticks the lines that made the music currently on
@@ -540,7 +540,7 @@
   }
 
   /**
-   * The line of front matter being typed over, if one is (prompt 54).
+   * The line of front matter being typed over, if one is.
    *
    * It is a real input laid over the printed text, in the page's own face and
    * at its own size, rather than a field in a panel somewhere else — the whole
@@ -609,7 +609,7 @@
   });
 
   /**
-   * The line under the pointer, if it is one of the five (prompt 54).
+   * The line under the pointer, if it is one of the five.
    *
    * Drawn rather than declared: `text-decoration` on SVG text is painted with
    * the glyph's own fill in Blink, so a transparent rest state is not
@@ -792,7 +792,7 @@
     const id = eventIdOf(event.target as Element);
     // The focus is reported whether or not there is a note under the pointer:
     // blank paper marks nothing, which is a different answer from "the
-    // pointer is elsewhere" (prompt 52).
+    // pointer is elsewhere".
     focus?.point(id);
     // The one cursor change on the page: the handle says, before the press,
     // that a drag here asks about the duration (`03-interaction.md` §2).
@@ -983,7 +983,7 @@
    * say so with the same hairline the inspector's rows use.
    *
    * Only on hover, and this is the one place the rest-state underline of
-   * prompt 54 §1 does not apply. The chrome is an interface and can afford to
+   * the rest-state underline does not apply. The chrome is an interface and can afford to
    * advertise; the page is the artifact, and a title permanently underlined
    * is a page that looks like a web form rather than like an edition — which
    * is the opposite of what the page apparatus was added for. Discovery does

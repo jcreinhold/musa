@@ -1,6 +1,6 @@
 /**
- * The low-level API of `@musa/web` (prompt 148): `parse` and `render`, the
- * mermaid.parse/mermaid.render analogs. The DOM layer of prompt 149 is a
+ * The low-level API of `@musa/web`: `parse` and `render`, the
+ * mermaid.parse/mermaid.render analogs. The DOM layer is a
  * client of this — nothing here knows what a document is.
  */
 
@@ -17,8 +17,7 @@ import { compileSnippet, validateSnippet } from "./wasm";
 
 /**
  * A snippet engraves as one system: a continuous layout trimmed to its
- * content, not an A4 leaf (prompt 148's Stop: page-mode web engraving is a
- * measured need, not a speculation).
+ * content, not an A4 leaf.
  */
 const SNIPPET_LAYOUT: Partial<LayoutOptions> = {
   pageWidth: CONTINUOUS_WIDTH,

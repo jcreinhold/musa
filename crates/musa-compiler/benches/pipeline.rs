@@ -1,17 +1,17 @@
-//! The semantic pipeline's baseline (docs/prompts/38; roadmap §17.7).
+//! The semantic pipeline's baseline (roadmap §17.7).
 //!
-//! Seven measurements on seven reference workloads: the historical small,
-//! large, and shared columns plus prompt 93's migration-pressure scenarios.
+//! Seven measurements on seven reference workloads: the small,
+//! large, and shared columns plus the migration-pressure scenarios.
 //!
 //! | id | what | why it is the right thing to watch |
 //! | --- | --- | --- |
 //! | P0 | parse only | separates syntax cost from elaboration |
 //! | P1 | `compile` end to end | B1's server-side share: a keystroke costs a compile |
-//! | P2 | elaboration only, parse excluded | what prompts 39–41 change |
-//! | P3 | the snapshot projection | the stage prompt 39 creates, most likely to regress |
-//! | P4 | canonical form of the whole piece | what prompt 43 pays on every edit |
-//! | P5 | the semantic hash of the whole piece | what prompt 43 actually asks for |
-//! | P6 | the tonal analysis of the whole piece | what prompt 118 adds, and the one stage that grows with the chord vocabulary |
+//! | P2 | elaboration only, parse excluded | the stage the kernel migration rewrote |
+//! | P3 | the snapshot projection | the stage the migration created, most likely to regress |
+//! | P4 | canonical form of the whole piece | what semantic identity pays on every edit |
+//! | P5 | the semantic hash of the whole piece | what the session actually asks for |
+//! | P6 | the tonal analysis of the whole piece | the one stage that grows with the chord vocabulary |
 //!
 //! P2–P4 report allocation counts as well as time, because the migration's
 //! risk is allocation and hashing rather than arithmetic: replacing one
@@ -51,8 +51,8 @@ const DECLARATION_LIBRARIES: [&str; 4] = [
 /// The reference workloads, named once.
 ///
 /// `small` and `large` are `docs/interface/06-performance.md`'s two; `shared`
-/// is prompt 49's, added because neither of the other two contains a `repeat`
-/// or a `use` and a prompt whose claim is sharing cannot be measured on
+/// exists because neither of the other two contains a `repeat`
+/// or a `use`, and a claim about sharing cannot be measured on
 /// material that shares nothing. It denotes the same 1500 notes as `large`
 /// minus the coda, written as four motifs repeated 100 times — so `shared`
 /// against `large` is the same music at two levels of reuse, and the
@@ -108,7 +108,7 @@ fn p1_compile(bencher: divan::Bencher<'_, '_>, workload: &str) {
 }
 
 /// P2 — everything after parsing: elaboration through the kernel and the
-/// snapshot adapter. This is the stage prompts 39–41 rewrite.
+/// snapshot adapter. This is the stage the kernel migration rewrote.
 #[divan::bench(args = WORKLOADS)]
 fn p2_elaborate(bencher: divan::Bencher<'_, '_>, workload: &str) {
     let parsed = bench::parse(&source(workload));
@@ -125,7 +125,7 @@ fn p3_project(bencher: divan::Bencher<'_, '_>, workload: &str) {
 }
 
 /// P4 — canonical form of the whole piece: every voice overlaid into one
-/// timeline and normalized. Prompt 43's semantic identity pays this per edit.
+/// timeline and normalized. Semantic identity pays this per edit.
 #[divan::bench(args = WORKLOADS)]
 fn p4_canonical(bencher: divan::Bencher<'_, '_>, workload: &str) {
     let timelines = bench::timelines(&bench::parse(&source(workload)), &options(workload));
@@ -133,7 +133,7 @@ fn p4_canonical(bencher: divan::Bencher<'_, '_>, workload: &str) {
 }
 
 /// P5 — the semantic hash of the whole piece: P4's canonical order plus the
-/// digest of its bytes. Prompt 43's session asks for this on every recompile,
+/// digest of its bytes. The session asks for this on every recompile,
 /// so the difference between this row and P4's is what identity costs.
 #[divan::bench(args = WORKLOADS)]
 fn p5_hash(bencher: divan::Bencher<'_, '_>, workload: &str) {
@@ -160,7 +160,7 @@ fn p6_analyze(bencher: divan::Bencher<'_, '_>, workload: &str) {
     bencher.bench_local(|| analyze(divan::black_box(score), &request));
 }
 
-/// The prompt-96 evaluator curve. Source construction stays outside the
+/// The private evaluator's cost curve. Source construction stays outside the
 /// timed closure; the count is the exact number of structural fold steps.
 #[divan::bench(args = [0u64, 1_000, 10_000, 50_000])]
 fn finite_core_fold(bencher: divan::Bencher<'_, '_>, count: u64) {

@@ -260,7 +260,7 @@ fn lane_track<'a>(
             what: format!("written pitch {} is outside MIDI's range", note.pitch),
         })?;
         // Score mode reads the *written* on-frame, not the scheduled one.
-        // The part's groove is in the scheduled frame (prompt 69), and a
+        // The part's groove is in the scheduled frame, and a
         // notation program handed a swung onset would draw triplets — which
         // is an engraver printing an interpretation, the thing the groove
         // module exists not to do.

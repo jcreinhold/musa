@@ -1,4 +1,4 @@
-//! Deterministic sources for prompt 93's elaboration migration workloads.
+//! Deterministic sources for the elaboration migration workloads.
 //!
 //! Run `UPDATE_ELABORATION_BASELINE=1 cargo test -p musa-compiler
 //! --test elaboration_fixture_generators` to refresh the committed fixtures.

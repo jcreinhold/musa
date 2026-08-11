@@ -1,4 +1,4 @@
-//! Explicit musical assertions (prompt 116): claims a composer writes down
+//! Explicit musical assertions: claims a composer writes down
 //! and the compiler proves.
 //!
 //! Three things are kept apart here, and `docs/language/05-verification.md` is
@@ -28,7 +28,7 @@
 //!   music."
 //!
 //! The one claim that predates this module is the bar's. `bar { … }` has
-//! asserted "this is one measure" since prompt 57, and [`Claim::FillsMeter`]
+//! asserted "this is one measure" all along, and [`Claim::FillsMeter`]
 //! is that same check with the same sentences — the noun changes, because a
 //! passage is not a bar, and nothing else does. A bar and an assertion are two
 //! spellings of one obligation, and they are checked by one function so they
@@ -251,11 +251,7 @@ impl Argument {
     }
 
     fn rule(self) -> Option<RuleName> {
-        if let Self::Rule(rule) = self {
-            Some(rule)
-        } else {
-            None
-        }
+        if let Self::Rule(rule) = self { Some(rule) } else { None }
     }
 
     fn policy(self) -> Option<Realization> {
@@ -412,12 +408,12 @@ pub(crate) fn check(claim: &Claim, passage: &Passage, settled: &Settled<'_>) -> 
     }
 }
 
-/// The measure claim, which `bar { … }` has been making since prompt 57.
+/// The measure claim, which `bar { … }` makes as well.
 ///
 /// OMT `010`, on simple meter and time signatures: a measure holds what the
 /// signature says it holds, no more and no less.
 ///
-/// Its sentences are prompt 57's, unchanged, because a composer who has read
+/// Its sentences are the bar's, unchanged, because a composer who has read
 /// one of these has read all of them. The single difference is the noun: a
 /// `bar` says "this bar", and an `assert fills_meter()` says "this passage",
 /// because it is not a bar and calling it one would be the diagnostic lying
@@ -477,7 +473,7 @@ fn fills_meter(passage: &Passage, settled: &Settled<'_>) -> Option<Diagnostic> {
     });
     Some(if long {
         // Which note to remove is the composer's decision, and a fix that
-        // guesses is worse than a help line that does not (prompt 56).
+        // guesses is worse than a help line that does not.
         diagnostic.help("shorten a duration, or move the last of these into the next bar")
     } else {
         let rest = format!("rest{}", musa_language::spell_duration(&fraction(difference)));
@@ -494,8 +490,8 @@ fn fills_meter(passage: &Passage, settled: &Settled<'_>) -> Option<Diagnostic> {
 /// *Spelled* is the whole content of the claim. `fs5` in C major fails, and it
 /// fails as F-sharp: the diagnostic does not read it as G-flat, does not read
 /// it as a raised fourth degree, and does not offer to make it an F. OMT `013`
-/// gives a scale as a definite collection of spelled classes, and prompt 116's
-/// rule is that a chromatic alteration is reported rather than respelled —
+/// gives a scale as a definite collection of spelled classes, and the rule
+/// is that a chromatic alteration is reported rather than respelled —
 /// which is the same rule as `AGENTS.md`'s "written pitch is not a MIDI
 /// number", said about a diagnostic.
 fn pitches_in(passage: &Passage, scale: Scale) -> Option<Diagnostic> {
@@ -711,13 +707,14 @@ fn follows(passage: &Passage, rule: RuleName) -> Option<Diagnostic> {
                             format!("this is the {} voice", nth(position + 1)),
                         ));
                     }
-                    let muddy = jazz
-                        .then(|| motion::crowded(below.pitch, above.pitch))
-                        .flatten();
+                    let muddy = jazz.then(|| motion::crowded(below.pitch, above.pitch)).flatten();
                     if let Some(interval) = muddy {
                         return Some(departure(
                             above,
-                            format!("`{}` and `{}` sound {interval} below middle C", below.pitch, above.pitch),
+                            format!(
+                                "`{}` and `{}` sound {interval} below middle C",
+                                below.pitch, above.pitch
+                            ),
                             "a second this low turns the voicing muddy".to_owned(),
                         ));
                     }
@@ -755,30 +752,48 @@ fn moves(
     departure: &impl Fn(&Sounded, String, String) -> Diagnostic,
 ) -> Option<Diagnostic> {
     match id {
-        "jazz_small_motion" => was.iter().zip(is.iter()).enumerate().find_map(|(position, (before, after))| {
-            motion::far(before.pitch, after.pitch).then(|| {
-                departure(
-                    after,
-                    format!(
-                        "the {} voice moves from `{}` to `{}`",
-                        nth(position),
-                        before.pitch,
-                        after.pitch
-                    ),
-                    "this is further than a third".to_owned(),
-                )
-            })
-        }),
+        // The bass is exempt here as it is in the analysis: OMT 076's motion
+        // guideline is about the voicing, and a bass that walks a fifth to the
+        // next root has done its job. A rule id names one rule, so the
+        // assertion and the report must agree about what it is.
+        "jazz_small_motion" => was
+            .iter()
+            .zip(is.iter())
+            .enumerate()
+            .skip(1)
+            .find_map(|(position, (before, after))| {
+                motion::far(before.pitch, after.pitch).then(|| {
+                    departure(
+                        after,
+                        format!(
+                            "the {} voice moves from `{}` to `{}`",
+                            nth(position),
+                            before.pitch,
+                            after.pitch
+                        ),
+                        "this is further than a third".to_owned(),
+                    )
+                })
+            }),
         "satb_overlap" => (1..was.len()).find_map(|upper| {
             let lower = upper.checked_sub(1)?;
             let (before, after) = (pair_at(was, lower, upper)?, pair_at(is, lower, upper)?);
             if !motion::overlaps(before, after) {
                 return None;
             }
+            // Which note was passed depends on which way the overlap went: an
+            // upper voice can fall below where its neighbour was, or a lower
+            // one can rise above where *its* neighbour was. Naming the wrong
+            // one sends the composer to a note that is not the problem.
+            let passed = if after.1.chromatic_height() < before.0.chromatic_height() {
+                before.0
+            } else {
+                before.1
+            };
             Some(departure(
                 is.get(upper).copied()?,
                 format!("the {} and {} voices overlap here", nth(lower), nth(upper)),
-                format!("this passes `{}`, which its neighbour has just left", before.1),
+                format!("this passes `{passed}`, which its neighbour has just left"),
             ))
         }),
         _ => (0..was.len()).find_map(|lower| {
@@ -787,7 +802,11 @@ fn moves(
                 let interval = motion::parallel_perfect(before, after)?;
                 Some(departure(
                     is.get(upper).copied()?,
-                    format!("the {} and {} voices move in parallel {interval}s", nth(lower), nth(upper)),
+                    format!(
+                        "the {} and {} voices move in parallel {interval}s",
+                        nth(lower),
+                        nth(upper)
+                    ),
                     format!("both voices move, from `{}` and `{}`", before.0, before.1),
                 ))
             })

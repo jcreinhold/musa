@@ -585,12 +585,7 @@ fn jazz_spacing(slice: &Slice) -> Vec<Departure> {
 
 /// What happens between two voicings: guide tones, common tones, and how far
 /// any voice travels.
-fn jazz_motion(
-    snapshot: &ScoreSnapshot,
-    now: &Slice,
-    next: &Slice,
-    chord: Option<ChordClass>,
-) -> Vec<Departure> {
+fn jazz_motion(snapshot: &ScoreSnapshot, now: &Slice, next: &Slice, chord: Option<ChordClass>) -> Vec<Departure> {
     let mut departures = Vec::new();
     let span = (now.onset, next.onset + next.extent);
     let guides: Vec<PitchClass> = chord

@@ -1,4 +1,4 @@
-//! Groove: the beat moves, the page does not (prompt 69).
+//! Groove: the beat moves, the page does not.
 //!
 //! Roadmap §2 says notated duration ≠ performed duration. Until a groove
 //! existed nothing in musa used that row — the notated duration *was* the
@@ -7,9 +7,9 @@
 //!
 //! Two of them matter more than the rest. `a_groove_never_reaches_the_page`
 //! is the layer separation itself: swing the whole band and the engraver's
-//! answer must not move by one byte. `a_groove_follows_a_meter_change` is the
-//! payoff of prompt 63 — a swing asks what a pair is per instant, so it
-//! follows a meter change without knowing there was one.
+//! answer must not move by one byte. `a_groove_follows_a_meter_change` shows
+//! a swing asks what a pair is per instant, so it follows a meter change
+//! without knowing there was one.
 
 // A failure of these is a bug in the fixture, not in a caller's input.
 #![allow(clippy::unwrap_used)]
@@ -106,7 +106,7 @@ fn a_groove_never_reaches_the_page() {
 }
 
 /// A swing asks what a "pair" is at each instant, so a meter change carries
-/// it without either side knowing about the other (prompt 63).
+/// it without either side knowing about the other.
 #[test]
 fn a_groove_follows_a_meter_change() {
     let source = "piece \"Turn\" { tempo 1/4 = 60; meter 4/4; key c major;

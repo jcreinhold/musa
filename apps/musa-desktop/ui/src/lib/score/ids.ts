@@ -1,5 +1,5 @@
 /**
- * Prompt 13's `xml:id` contract, read from the frontend's side.
+ * The engraved `xml:id` contract, read from the frontend's side.
  *
  * Every note, chord, and rest is engraved as `event-<hex>`; a tie
  * continuation repeats its event with a `-tN` suffix, because one event can

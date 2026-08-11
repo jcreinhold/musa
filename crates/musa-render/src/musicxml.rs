@@ -968,8 +968,7 @@ fn write_item(
 /// `steal-time-following` are `MusicXML` asking the *editor* to settle how the
 /// grace is played, and that is the question roadmap §2 keeps out of the
 /// notation: musa answers it per part, in the profile, from the same page. A
-/// file without them says what was written and leaves the reading open, which
-/// is the whole difference this prompt exists to make visible.
+/// file without them says what was written and leaves the reading open.
 ///
 /// `slash="yes"` is the one choice that has to be made, because `MusicXML` has
 /// no way to decline it. It is the right one: the *unslashed* grace is the

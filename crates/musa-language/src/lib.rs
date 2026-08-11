@@ -10,8 +10,7 @@
 //! pitches, expanded motifs, or audio objects (those belong to
 //! `musa-compiler`).
 //!
-//! Intended facade (roadmap §15.2). `lex` is implemented (prompt 02);
-//! `parse`, `format`, and `apply_edits` arrive with prompts 03–04:
+//! Public facade (roadmap §15.2):
 //!
 //! ```text
 //! pub fn lex(source: &str) -> Lexed;

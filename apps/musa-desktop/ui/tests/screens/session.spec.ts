@@ -120,7 +120,7 @@ test("breaking the source keeps the score and says how far behind it is", async 
 
 /**
  * A diagnostic that knows its repair offers it, and applying it is an ordinary
- * edit — the source compiles again and the problem is gone (prompt 56).
+ * edit — the source compiles again and the problem is gone.
  */
 test("a diagnostic with one certain fix offers it, and applying it works", async ({ page }) => {
   await page.goto("/");

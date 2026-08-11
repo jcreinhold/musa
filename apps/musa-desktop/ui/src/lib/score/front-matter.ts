@@ -1,5 +1,5 @@
 /**
- * The printed front matter, read from the frontend's side (prompt 54).
+ * The printed front matter, read from the frontend's side.
  *
  * The MEI backend writes the page's head and foot itself rather than letting
  * Verovio invent one, and every line it writes carries an `xml:id` — so the
@@ -8,8 +8,8 @@
  * half of that contract: the ids here and the `FRONT_*` constants in
  * `musa-render`'s `mei.rs` are one list, and they change together.
  *
- * Only these five lines are editable on the page. Notes are prompt 53, and
- * part names, dynamics, and tempo marks are neither.
+ * Only these five lines are editable on the page; part names, dynamics, and
+ * tempo marks are not.
  */
 
 import type { HeaderFieldDto } from "../session/generated/HeaderFieldDto";

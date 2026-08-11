@@ -1,10 +1,10 @@
-//! Live MIDI input (roadmap §12.5, §15.6): a keyboard's note-ons and
-//! note-offs, delivered to the control side over an `rtrb` queue.
+//! Live MIDI input: a keyboard's note-ons and note-offs, delivered to the
+//! control side over an `rtrb` queue.
 //!
 //! **The MIDI thread is a real-time thread.** midir hands us a callback on a
-//! thread it owns, and §13.2's rules apply to it exactly as they apply to the
-//! audio callback: no allocation, no locks, no I/O, no logging. All it does
-//! is decode three bytes and push a `Copy` event into a preallocated ring.
+//! thread it owns, and the real-time rules apply to it exactly as they apply
+//! to the audio callback: no allocation, no locks, no I/O, no logging. All it
+//! does is decode three bytes and push a `Copy` event into a preallocated ring.
 //! Everything musical — spelling a note number as a written pitch, deciding
 //! whether two keys are a chord — happens on the control side, where it can
 //! see the score.
@@ -14,8 +14,8 @@
 //! therefore always succeeds and reports [`MidiInput::port`] as `None`. A
 //! session with no keyboard polls an empty queue, which costs one atomic load.
 //!
-//! This is input only. Recording a performance is rejected (§4) and MIDI
-//! output to external devices is not part of the workbench.
+//! This is input only. Recording a performance and MIDI output to external
+//! devices are not part of the workbench.
 
 /// How many events the ring holds between polls.
 ///
@@ -114,7 +114,7 @@ impl MidiInput {
 }
 
 /// The port to listen to: `preferred` by name, else the first one listed
-/// (§14.8's zero-setup rule, applied to the keyboard).
+/// (the zero-setup rule, applied to the keyboard).
 fn choose(preferred: Option<&str>) -> Option<(midir::MidiInput, midir::MidiInputPort, String)> {
     let mut input = midir::MidiInput::new(CLIENT).ok()?;
     // Musa reads note-ons and note-offs; clock, active sensing, and sysex are

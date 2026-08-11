@@ -1,4 +1,4 @@
-//! Tempo and expression curves (docs/prompts/36; roadmap §6.3, §6.4).
+//! Tempo and expression curves (roadmap §6.3, §6.4).
 //!
 //! Two things change over a piece's length and neither of them changes a
 //! note: how fast it goes, and how loud. This suite pins what that means.
@@ -204,9 +204,8 @@ fn a_hairpin_leaves_its_mark_in_force_after_it() {
 }
 
 /// A hairpin over notes a profile says nothing about changes nothing: with
-/// no profile, everything is neutral, and prompt 28's guarantee — a piece
-/// that declares none sounds exactly as it did before profiles existed —
-/// survives the arrival of hairpins.
+/// no profile, everything is neutral, and a piece that declares none sounds
+/// exactly as it did before profiles existed — even with hairpins.
 #[test]
 fn a_hairpin_without_a_profile_is_neutral() {
     let source = "piece \"P\" { tempo 1/4 = 60; meter 4/4; key c major;

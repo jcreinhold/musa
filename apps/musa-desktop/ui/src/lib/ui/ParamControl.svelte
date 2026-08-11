@@ -10,7 +10,7 @@
    * edit and therefore one revision, which is what keeps a slider from filling
    * the undo history with a hundred intermediate positions — and what lets the
    * source stay the single authority without a second real-time channel
-   * (prompt 31's Design note).
+   *.
    *
    * A parameter the patch never wrote is drawn muted: it is the declared
    * default, not a choice, and moving the control is what makes it one.

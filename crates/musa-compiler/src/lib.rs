@@ -1,9 +1,8 @@
 //! Semantic core: from parsed source to immutable musical snapshots.
 //!
-//! Pipeline (course correction §26, prompt 12): CST → expansion-aware
+//! Pipeline (course correction §26): CST → expansion-aware
 //! elaboration → temporal kernel (`musa-kernel`) → `ScoreSnapshot` adapter.
-//! One semantic path: the direct lowerer of prompts 05–06 was the migration's
-//! regression oracle and was deleted at prompt 41. The kernel — not the
+//! One semantic path: the kernel — not the
 //! surface grammar — defines the ontology.
 //!
 //! Owns: name resolution, unit checking, semantic diagnostics, the high-level
@@ -17,8 +16,7 @@
 //! contain: notation planning, DSP, MIDI numbers in the score, or floating-
 //! point musical time.
 //!
-//! Facade (roadmap §15.3): [`compile`] (prompt 05) and `lower_performance`
-//! (prompt 10).
+//! Facade (roadmap §15.3): [`compile`] and `lower_performance`.
 //!
 //! Invariants: a `ScoreSnapshot` is finite, sorted by onset, immutable, and
 //! keeps written pitch spelling (D♯ ≠ E♭); every expanded event carries the

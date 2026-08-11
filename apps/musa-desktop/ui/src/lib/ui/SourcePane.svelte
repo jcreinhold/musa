@@ -53,21 +53,21 @@
     highlight?: Span[];
     /** The focus, in the text: what spells the music and what placed it. */
     focus?: { definition: Span | null; place: Span | null } | null;
-    /** The statements that made the music on the page in view (prompt 52). */
+    /** The statements that made the music on the page in view. */
     sounding?: Span[];
     /** The token a live pointer gesture would replace, and what it would write. */
     candidate?: { start: number; end: number; text: string } | null;
     /** A place to put the caret, once, when it changes. */
     reveal?: Reveal | null;
-    /** Vim mode in the editor — the composer's preference (prompt 55). */
+    /** Vim mode in the editor — the composer's preference. */
     modal?: boolean;
     /**
      * What the composer asked this column to be, in pixels. `null` is the
-     * source measure, which is what it opens at (prompt 60). The ask is not
+     * source measure, which is what it opens at. The ask is not
      * the answer: a window with no room for it renders the cap instead.
      */
     width?: number | null;
-    /** The narrowest the seam may drag this column (prompt 60). */
+    /** The narrowest the seam may drag this column. */
     floor?: number;
     /** How much more room the column may take right now, measured on demand. */
     spare?: () => number;
@@ -79,7 +79,7 @@
     onwiden?: (width: number) => void;
     onreset?: () => void;
     onedit?: (source: string) => void;
-    /** Where the caret is now, so the score can follow it (prompt 26). */
+    /** Where the caret is now, so the score can follow it. */
     oncaret?: (offset: number) => void;
     /** Where the pointer is in the text, so the page can mark what it wrote. */
     onpoint?: (line: { from: number; to: number } | null) => void;
@@ -101,7 +101,7 @@
   /**
    * What this column actually measures, for the seam to speak and to drag
    * from — which is not the same as `width`, the ask: the layout may hold the
-   * column narrower than what was asked for (prompt 60).
+   * column narrower than what was asked for.
    */
   let measured = $state(0);
 
@@ -193,7 +193,7 @@
           <!--
             One fix, or none. A control that applies "the fix" when there are
             two is how an editor applies the wrong one, so `onlyFix` refuses
-            to choose (prompt 56).
+            to choose.
           -->
           {#if only && editable}
             <button type="button" class="fix" onclick={() => fix(diagnostic)}><Ticked text={asControl(only.title)} /></button>
@@ -205,7 +205,7 @@
 
   <!--
     The seam, last so it is over everything, and inside the column so it is
-    inside the column's landmark (prompt 60).
+    inside the column's landmark.
   -->
   {#if onwiden && onreset}
     <Seam label="Source" width={measured} {floor} spare={spare ?? (() => 0)} {onwiden} {onreset} />
@@ -232,7 +232,7 @@
    * 42 % of the window, which is the Source workspace, where the page has the
    * whole of the rest.
    *
-   * `--asked` is the width the composer dragged the seam to (prompt 60), and
+   * `--asked` is the width the composer dragged the seam to, and
    * it replaces the whole expression rather than sitting inside it. `--source-cap`
    * keeps the *default* from crushing a small window — there the column is
    * asking for room nobody granted it — and a composer who drags the seam has
@@ -241,7 +241,7 @@
    * width chosen on a large display narrows on a laptop and comes back whole.
    */
   .source-pane {
-    /* The seam is positioned against this edge (prompt 60). */
+    /* The seam is positioned against this edge. */
     position: relative;
     font-family: var(--f-mono);
     font-size: var(--t-value-size);

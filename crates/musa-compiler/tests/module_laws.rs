@@ -1,5 +1,5 @@
-//! What a signature, a structure, and a functor promise (docs/prompts/104, and
-//! `docs/language/04-templates-and-modules.md` §4).
+//! What a signature, a structure, and a functor promise
+//! (`docs/language/04-templates-and-modules.md` §4).
 //!
 //! A structure is a name for a group of declarations, not a thing. Every law
 //! here is a consequence of that: matching is by name and exact type, what a

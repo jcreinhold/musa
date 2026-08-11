@@ -69,7 +69,7 @@ impl std::fmt::Display for Decision {
 impl Decision {
     /// Read back what [`Display`](std::fmt::Display) wrote.
     ///
-    /// A realization has to survive the session that made it (prompt 76), and
+    /// A realization has to survive the session that made it, and
     /// the thing it is written into is a line of text. Parsing the printed
     /// form rather than inventing a second encoding is what keeps the file a
     /// composer can read the same file a composer can edit.
@@ -142,7 +142,7 @@ impl Realization {
     /// Whether this site's answer was fixed by hand rather than drawn.
     ///
     /// The difference the Origin view prints: "kept" against the performance
-    /// a decision came from (prompt 76).
+    /// a decision came from.
     #[must_use]
     pub fn is_pinned(&self, path: &ChoicePath) -> bool {
         self.overrides.contains_key(path)
@@ -250,7 +250,7 @@ impl Realization {
 /// duration, `4–16×` over a repeat sign — because the instruction is a fact
 /// like any other fact and reaches the timeline as one. This is the other
 /// half: what was decided, where it was asked, and whether the answer was
-/// drawn or kept. It is the fourth step of the Origin chain (prompt 76), and
+/// drawn or kept. It is the fourth step of the Origin chain, and
 /// it is the reason a composer who opens an open-form piece twice can tell
 /// *why* the two pages differ.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -280,7 +280,7 @@ impl DecisionRecord {
     /// event's own span is compared against to find the decision it was
     /// produced under.
     ///
-    /// Plural because prompt 67's rule is that a repeat the page can draw is
+    /// Plural because a repeat the page can draw is
     /// one repeat of the whole piece, *written once in each voice that sounds
     /// under it*. One question, one answer, and as many places as the piece
     /// spells it in.
@@ -410,7 +410,7 @@ mod tests {
 
     /// Every decision a pin can hold survives being written down and read
     /// back: a realization that could not be persisted would not survive the
-    /// session that made it, and prompt 76 requires that it does.
+    /// session that made it, and so this round-trip is required.
     #[test]
     fn a_decision_reads_back_as_it_was_written() {
         for decision in [

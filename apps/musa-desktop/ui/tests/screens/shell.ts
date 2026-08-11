@@ -53,7 +53,7 @@ export async function stubShell(
     other: { ...(JSON.parse(readFileSync(snapshotOf(opens), "utf8")) as object), document: 2 },
     // The second reading of the open work, always loaded: it is what "read
     // it again" answers with, and the stub has no other way to produce one.
-    // For a determinate piece nothing ever asks for it (prompt 76).
+    // For a determinate piece nothing ever asks for it.
     again: { ...(JSON.parse(readFileSync(snapshotOf("open-form-again"), "utf8")) as object), document: 1 },
     volume,
   };
@@ -81,7 +81,7 @@ export async function stubShell(
           [FILES[0]]: { ...seed, unsaved: false },
           [FILES[1]]: { ...both.other, unsaved: false },
           // Material: no score, and none coming. The interface routes on
-          // `kind`, which is the whole reason prompt 84 put it on the wire.
+          // `kind`, which is the whole reason it is on the wire.
           [FILES[2]]: {
             ...both.other,
             document: 3,
@@ -154,7 +154,7 @@ export async function stubShell(
         // A real diagnostic points at a place, and the interface's whole
         // answer to one is to go there — so the stub points at the end of the
         // text, where the missing brace goes, rather than at nothing. It
-        // carries the rest of the shape too (prompt 56): the label, the
+        // carries the rest of the shape too: the label, the
         // location the core computed, and the one certain fix, because the
         // control that applies a fix is only reachable through a diagnostic
         // that has one.
@@ -300,7 +300,7 @@ export async function stubShell(
       return current;
     }
 
-    /** The part of a score this stub has anything to say about (prompt 76). */
+    /** The part of a score this stub has anything to say about. */
     interface Decision {
       path: string;
       pinned: boolean;
@@ -451,7 +451,7 @@ export async function stubShell(
           if (previous) current = previous;
           return answer();
         }
-        // Reading an open work again (prompt 76). The stub cannot compile, so
+        // Reading an open work again. The stub cannot compile, so
         // it does the one honest thing open to it: it swaps between the two
         // committed readings of the same source, which is what those two
         // fixtures are for.
@@ -491,8 +491,8 @@ export async function stubShell(
           end?: number;
         };
         const playback = { ...(current.playback as Record<string, unknown>) };
-        // Every transport command the facade offers, answered in the shape
-        // prompt 18 guarantees. Anything less and a test would prove the
+        // Every transport command the facade offers, answered in the shape the
+        // engine guarantees. Anything less and a test would prove the
         // interface works against a stub that ignores what it asked for.
         if (command.kind === "play") playback.playing = true;
         if (command.kind === "pause" || command.kind === "stop") playback.playing = false;

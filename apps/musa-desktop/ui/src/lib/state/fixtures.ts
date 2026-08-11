@@ -49,7 +49,7 @@ export const FIXTURES: readonly Fixture[] = [
   },
   // The open work, twice. The same source read under two performances: the
   // interface's only proof that a realization is a reading and not a
-  // property of the file (prompt 76).
+  // property of the file.
   {
     key: "open-form",
     title: "Loop Lengths",

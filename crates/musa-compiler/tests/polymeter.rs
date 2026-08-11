@@ -1,4 +1,4 @@
-//! Parts in their own meter and at their own tempo (docs/prompts/75).
+//! Parts in their own meter and at their own tempo.
 //!
 //! One claim, twice: **polymeter and polytempo are a scope argument, not a
 //! mechanism.** `Meter` and `Tempo` already inherited by `Override`

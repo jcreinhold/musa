@@ -1,4 +1,4 @@
-//! What `ProjectSession::analyze` promises its callers (docs/prompts/117).
+//! What `ProjectSession::analyze` promises its callers.
 //!
 //! Two things, and they are the whole reason the operation exists at this
 //! level rather than as a compiler pass. It **reads**: no revision, no

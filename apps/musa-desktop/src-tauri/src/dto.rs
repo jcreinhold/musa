@@ -92,7 +92,7 @@ pub enum CommandDto {
     DiscardRecovery,
     Undo,
     Redo,
-    /// Read the open work again (prompt 76).
+    /// Read the open work again.
     ///
     /// The number is the webview's because a performance is a *label*, not a
     /// musical fact: the composer picks it, types it, and comes back to it.
@@ -120,7 +120,7 @@ pub enum CommandDto {
 pub enum GeneratedEditModeDto {
     /// Rewrite the motif; every occurrence changes.
     EditDefinition,
-    /// Give this occurrence its own copy — prompt 34.
+    /// Give this occurrence its own copy.
     Specialize,
 }
 

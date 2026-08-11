@@ -570,7 +570,7 @@ impl Key {
 }
 
 /// A dynamic marking as written (roadmap §2: a marking is not a decibel
-/// value — what it does to a note is prompt 28's business, not this one's).
+/// value — what it does to a note is the performance layer's business).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum DynamicMark {
     /// `ppp`
@@ -1174,7 +1174,7 @@ impl ScoreSnapshot {
     ///
     /// `None` is the determinate case and it is the common one: a piece that
     /// asks no questions was not realized, it was simply compiled, and every
-    /// consumer that would otherwise show a seed shows nothing (prompt 76).
+    /// consumer that would otherwise show a seed shows nothing.
     /// `Some(seed)` says this page is *one reading* — which is exactly the
     /// guarantee `docs/kernel/11-realization.md` weakened, said out loud where
     /// a reader of the score can see it.
@@ -1240,7 +1240,7 @@ impl ScoreSnapshot {
     /// inherits by `Override` (`scope.rs`), so a part with its own meter
     /// reads its own stretches and every other scope reads the piece's. The
     /// algorithm below did not change when polymeter arrived, which is the
-    /// property prompt 61 built `at`/`time_of` on an arbitrary meter sequence
+    /// property `at`/`time_of` were built on an arbitrary meter sequence
     /// to get.
     ///
     /// Built over *unfolded* time: measures as they are played. Notation

@@ -1,5 +1,4 @@
-//! Time effects, feedback, and the mix (docs/prompts/31, §13.3, §13.6,
-//! §17.5).
+//! Time effects, feedback, and the mix (§13.3, §13.6, §17.5).
 //!
 //! The processors' own arithmetic is tested beside them, in `effects.rs`,
 //! where a delay line is a delay line. What only this level can state is what

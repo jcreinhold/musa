@@ -1,4 +1,4 @@
-//! Music with no barlines (docs/prompts/74).
+//! Music with no barlines.
 //!
 //! One claim: unmeasured is a **value of the meter**, not a mechanism beside
 //! it. Everything here is a consequence of that — the barlines stop, the

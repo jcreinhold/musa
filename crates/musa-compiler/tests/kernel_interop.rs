@@ -1,4 +1,4 @@
-//! The round-trip law of the interchange format (prompt 48, docs/kernel/01).
+//! The round-trip law of the interchange format (docs/kernel/01).
 //!
 //! ```text
 //! for every fixture:  parse(print(t)) evaluates to a timeline with

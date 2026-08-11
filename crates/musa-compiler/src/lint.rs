@@ -1,4 +1,4 @@
-//! The lint pass (prompt 83): warnings for notation that is spelled
+//! The lint pass: warnings for notation that is spelled
 //! correctly and still misleads.
 //!
 //! The rules are the machine-checkable subset of `docs/style-guide.md`, and

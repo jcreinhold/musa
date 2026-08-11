@@ -1,5 +1,5 @@
 /**
- * How the composer reads and types (prompt 55).
+ * How the composer reads and types.
  *
  * Two preferences, and the two boundaries that make them safe: the text size
  * is the *frame's* and never the score's, and vim mode is the source column's
@@ -177,7 +177,7 @@ test("vim mode changes the keys and nothing about the document", async ({ page }
 });
 
 /**
- * The settings sheet (prompt 59).
+ * The settings sheet.
  *
  * The preferences above are reached by key and by palette; this is the third
  * way in, and the only one that shows all of them at once and says which
@@ -297,7 +297,7 @@ test("the frame at Larger, in the dark", async ({ page }) => {
 });
 
 /**
- * The seam (prompt 60).
+ * The seam.
  *
  * `01-visual-language.md` §7 puts one hairline between the source column and
  * the page, and it looks exactly like a splitter. These tests are that it is

@@ -1,4 +1,4 @@
-//! The studio language (docs/prompts/29).
+//! The studio language.
 //!
 //! Three contracts, in the order they matter:
 //!
@@ -176,9 +176,9 @@ fn the_roadmap_example_compiles_and_resolves() {
     insta::assert_snapshot!("glass_mountain_studio", format!("{studio:#?}"));
 }
 
-/// Every processor the language names has DSP behind it (prompt 31 removed
-/// the last placeholder), so a patch that uses one is not merely accepted —
-/// it is accepted without a word of apology.
+/// Every processor the language names has DSP behind it, so a patch that
+/// uses one is not merely accepted — it is accepted without a word of
+/// apology.
 #[test]
 fn a_written_effect_compiles_without_a_warning() {
     let compilation = compile_text(&piece(

@@ -1,4 +1,4 @@
-//! Grace notes: the page writes them, the profile plays them (prompt 71).
+//! Grace notes: the page writes them, the profile plays them.
 //!
 //! A grace note is the sharpest case roadmap §2 has. It has *no* written
 //! duration — it is a point occurrence, start equal to end — so performance

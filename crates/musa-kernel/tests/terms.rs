@@ -162,7 +162,7 @@ proptest! {
 
     /// T5 — observation commutes with sharing: a restriction may be pushed
     /// through a binding without changing the answer. This is what makes
-    /// deferred observation sound, and prompt 50 depends on it.
+    /// deferred observation sound.
     #[test]
     fn restriction_commutes_with_sharing(
         value in arb_term(2),

@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * Settings (prompt 59): the three decisions the application makes about
+   * Settings: the three decisions the application makes about
    * itself, in one place.
    *
    * Every row is a *set of choices* rather than a switch, because a control
@@ -10,7 +10,7 @@
    * one in force is marked.
    *
    * Nothing here is the document's. Tempo, key, and title are the piece's and
-   * are edited where they are printed (prompt 54).
+   * are edited where they are printed.
    */
   import type { Preferences, TextSize } from "../lib/session/preferences.svelte";
   import { TEXT_SIZES } from "../lib/session/preferences.svelte";
@@ -28,7 +28,7 @@
     theme: ThemeChoice;
     /**
      * Which reading of an open work is in force, or null when the piece
-     * asked nothing (prompt 76). A determinate piece has no performance, and
+     * asked nothing. A determinate piece has no performance, and
      * this row is not there to be found — the setting appears when the piece
      * makes it mean something.
      */
@@ -112,7 +112,7 @@
 
         <!--
           The one setting here that belongs to the piece in front of you, and
-          the reason it is here and not with the header (prompt 54): a
+          the reason it is here and not with the header: a
           performance is not something the piece says about itself. It is how
           this project read it. It appears only for a piece that left
           something open; a determinate score shows nothing, because it has

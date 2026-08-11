@@ -1,5 +1,5 @@
 /**
- * The example smokes (prompt 151): every committed example page typesets
+ * The example smokes: every committed example page typesets
  * without console errors, the CDN page does it with no module scripts, and
  * the build-time page needs no JavaScript at all. The examples cannot rot
  * silently.

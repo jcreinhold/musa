@@ -8,11 +8,6 @@
 //! sink those readings report into. Private to the crate (roadmap §10.6:
 //! pass types never cross the boundary).
 //!
-//! It was carved out of `lower.rs` at prompt 41, which had become two modules
-//! wearing one name: this vocabulary, and one of the two implementations that
-//! spoke it (`PoSD` ch. 16's *conjoined methods*). Separating them first is
-//! what let the frozen lowerer be deleted as a deletion.
-//!
 //! Time accumulation here uses the `MusicalTime`/`MusicalDuration` operators,
 //! which are total for musa's magnitudes (see `time.rs`); the workspace
 //! arithmetic lint is allowed at module scope for that reason.
@@ -84,7 +79,7 @@ impl Material {
     }
 }
 
-/// What kind of thing a recorded name names (prompt 78).
+/// What kind of thing a recorded name names.
 ///
 /// Values and functions share the elaboration-value namespace. Motifs, bars,
 /// and fragments share the material namespace (see [`Material`]); parts,
@@ -115,8 +110,7 @@ pub enum NameKind {
     Module,
 }
 
-/// One named thing and everywhere it is spoken in the compiled document
-/// (prompt 78).
+/// One named thing and everywhere it is spoken in the compiled document.
 ///
 /// Spans are the *name tokens'* spans, not the statements': a rename rewrites
 /// exactly these ranges and nothing around them. A name declared in an
@@ -149,7 +143,7 @@ pub struct SourceLocation {
     pub span: SourceSpan,
 }
 
-/// The reference record the resolver accumulates (prompt 78).
+/// The reference record the resolver accumulates.
 ///
 /// The resolver already knows every use's declaration at the moment it
 /// resolves the name; this is that knowledge kept, not a second pass
@@ -288,7 +282,7 @@ pub(crate) struct ExpandCx {
     /// Whether the text being read belongs to an imported library rather
     /// than the compiled document.
     ///
-    /// The reference record (prompt 78) records spans in the document's own
+    /// The reference record records spans in the document's own
     /// text only, so a `use` read under a foreign context is resolved but
     /// never recorded. Set by `expand_material` when the body being expanded
     /// came from an import; the piece's own root context is never foreign.
@@ -392,7 +386,7 @@ pub(crate) struct Resolver {
     /// the elaboration and projection stages separable to measure them apart
     /// (roadmap §17.7). One `Option` check per voice is the whole cost.
     pub(crate) timeline_sink: Option<Vec<crate::elaborate::VoiceTimeline>>,
-    /// Every name reference resolved, kept for editors (prompt 78).
+    /// Every name reference resolved, kept for editors.
     pub(crate) references: ReferenceIndex,
     /// Which performance is being compiled (`docs/kernel/11-realization.md`).
     ///
@@ -632,7 +626,7 @@ pub(crate) fn lower_studio(
 }
 
 /// Tempo, meter, key — plus registration of motif declarations (expansion
-/// is prompt 06).
+/// is `expand.rs`'s).
 pub(crate) fn lower_header(
     resolver: &mut Resolver,
     piece: &PieceDecl,
@@ -1736,7 +1730,7 @@ pub(crate) fn check_measure_sanity(resolver: &mut Resolver, snapshot: &ScoreSnap
     for (id, part) in snapshot.parts().iter() {
         // Whose barlines: a part in 7/8 stops short of *its* barline, and
         // measuring it against the piece's 4/4 would complain about music
-        // that is right (polymeter, prompt 75).
+        // that is right (polymeter).
         let bars = snapshot.bars(crate::Scope::Part { part: id.0 });
         for (voice_id, voice) in part.voices() {
             // A voice that holds a note as long as it likes is not measured

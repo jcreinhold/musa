@@ -1,4 +1,4 @@
-//! Every keyword's own plain-English documentation (prompt 84).
+//! Every keyword's own plain-English documentation.
 //!
 //! The lexer owns the spellings; this table owns what they mean, so the two
 //! cannot drift apart silently: [`keyword_doc`] is a wildcard-free match over

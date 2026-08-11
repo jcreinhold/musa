@@ -63,11 +63,11 @@ pub(crate) struct ValidArtifacts {
     /// Everything the Sound and Mix workspaces display about that studio.
     pub(crate) studio_facts: crate::studio::StudioFacts,
     /// Every decision this compile took, for the pin command and for the
-    /// Origin view's fourth step (prompt 76). Empty for a determinate piece,
+    /// Origin view's fourth step. Empty for a determinate piece,
     /// which is nearly every piece.
     pub(crate) decisions: Vec<musa_compiler::DecisionRecord>,
     /// Every name the resolver resolved, for an editor's references and
-    /// rename (prompt 78).
+    /// rename.
     pub(crate) names: Vec<crate::facts::NameFact>,
     pub(crate) revision: Revision,
     /// What this score *means* (docs/kernel/05 N6), so a consumer can ask
@@ -86,7 +86,7 @@ impl<'session> ProjectSnapshot<'session> {
         self.name
     }
 
-    /// Which of the two things this document is (roadmap §16, prompt 84).
+    /// Which of the two things this document is (roadmap §16).
     ///
     /// Material has no score and never will; a piece that has not compiled
     /// yet has none either. Those are different screens, which is why this is
@@ -150,7 +150,7 @@ impl<'session> ProjectSnapshot<'session> {
     }
 
     /// Every name the resolver resolved, with its declaration and use spans
-    /// — what an editor's references and rename are built from (prompt 78).
+    /// — what an editor's references and rename are built from.
     /// From the same revision as [`Self::mei`]: while the source is
     /// mid-edit, these describe the last text that compiled, which
     /// [`Self::score_revision`] says.
@@ -200,7 +200,7 @@ impl<'session> ProjectSnapshot<'session> {
 ///
 /// Serialization lives here rather than in the frontend because the shape of
 /// this object is part of the facade: a fixture generated from this type
-/// cannot drift from it (prompt 20).
+/// cannot drift from it.
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SnapshotWire<'a> {

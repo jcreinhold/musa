@@ -701,7 +701,7 @@ mod tests {
     /// notes stack up to, which is why `ii` is minor in major and `II` is
     /// major in Dorian without either being a special case. The one absence
     /// is the point of the `Option`: harmonic minor stacks an augmented major
-    /// seventh on `III`, and the chord vocabulary of prompt 102 has no name
+    /// seventh on `III`, and the chord vocabulary has no name
     /// for it, so the stack reports that it cannot be named rather than
     /// rounding to a type that would spell different notes.
     #[test]

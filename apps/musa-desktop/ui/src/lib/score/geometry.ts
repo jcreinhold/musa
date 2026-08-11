@@ -90,7 +90,7 @@ export interface PagePoint {
  * Everything a gesture measures — the note it started on, the staff space it
  * snaps to, how far the pointer went — is in page units, so the pointer is
  * converted once on the way in rather than the geometry being converted back
- * out at every step (prompt 53).
+ * out at every step.
  */
 export function pointIn(container: ParentNode, x: number, y: number): PagePoint | null {
   const root = pageRoot(container);
@@ -254,7 +254,7 @@ export function bracketNear(brackets: Bracket[], id: string, rect: Rect): Bracke
 
 /**
  * What a live pointer gesture would write, drawn over the unmoved engraving
- * (prompt 53).
+ *.
  *
  * A candidate is never a change to the engraving: the page keeps its ink and
  * its layout, and this is drawn on top in `--plate` until the release turns it
@@ -281,12 +281,12 @@ export interface Marks {
   selection: Rect[];
   hover: Rect[];
   /**
-   * The focus (prompt 52): a hairline under every notehead the focused
+   * The focus: a hairline under every notehead the focused
    * statement spelled. Measured on the heads rather than on the event boxes,
    * and never grown — a halo says *chosen*, a hairline says *this one*.
    */
   focus: Rect[];
-  /** What a live pointer gesture would write (prompt 53). */
+  /** What a live pointer gesture would write. */
   candidate: Ghost | null;
   playing: Rect[];
   caret: Rect | null;

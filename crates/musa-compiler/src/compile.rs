@@ -40,8 +40,7 @@ impl SourceDocument {
     }
 }
 
-/// Options controlling compilation. Currently empty: defaults live inside
-/// (12-TET tuning arrives with prompt 15's performance options).
+/// Options controlling compilation. Currently empty: defaults live inside.
 #[derive(Clone, Debug, Default)]
 pub struct CompileOptions {
     /// The text of every file this compilation may `use` (roadmap §16),
@@ -131,8 +130,7 @@ impl Compilation {
         self
     }
 
-    /// Every name the resolver resolved, and everywhere it is spoken
-    /// (prompt 78).
+    /// Every name the resolver resolved, and everywhere it is spoken.
     ///
     /// This is the resolver's own knowledge kept, not a re-scan of the text:
     /// a name that did not resolve has no entry, and a name declared in an
@@ -147,7 +145,7 @@ impl Compilation {
     ///
     /// The realization holds only what a composer *pinned*; this is what the
     /// piece actually asked and what it was answered, which is what a header
-    /// line records and what prompt 76 shows on the page. A determinate piece
+    /// line records and what the Origin view shows. A determinate piece
     /// returns nothing, under every seed.
     pub fn decisions(&self) -> &[crate::DecisionRecord] {
         &self.decisions
@@ -210,9 +208,7 @@ impl Compilation {
 /// correction §26).
 ///
 /// Pipeline: parse → expansion-aware elaboration (motifs, repeat, transpose)
-/// → temporal kernel → `ScoreSnapshot` adapter. There is one semantic path;
-/// the direct lowerer that shadowed it through the kernel migration was
-/// deleted at prompt 41.
+/// → temporal kernel → `ScoreSnapshot` adapter. There is one semantic path.
 pub fn compile(source: &SourceDocument, options: &CompileOptions) -> Compilation {
     crate::elaborate::elaborate(source, options)
 }

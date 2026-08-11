@@ -1,5 +1,5 @@
 /**
- * The DOM typesetting contract (prompt 149): scanning, shadow-root
+ * The DOM typesetting contract: scanning, shadow-root
  * placement, idempotence, error boxes, per-snippet isolation, the watcher,
  * and auto-start.
  */

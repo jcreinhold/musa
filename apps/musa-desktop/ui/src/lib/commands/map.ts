@@ -40,7 +40,7 @@ export type Group = "File" | "Edit" | "Score" | "Transport" | "View" | "Settings
 export interface Surface {
   session: Session;
   theme: ThemeChoice;
-  /** Text size and vim mode — app state, never the document's (prompt 55). */
+  /** Text size and vim mode — app state, never the document's. */
   preferences: Preferences;
   /** Absent on the launch screen, where there is no score to navigate. */
   workspace?: Workspace;
@@ -52,24 +52,23 @@ export interface Surface {
   loop(): void;
   /** Pin Origin view, for anyone who cannot hold a key while pointing. */
   origin(): void;
-  /** Turn note entry on or off (prompt 25). */
+  /** Turn note entry on or off. */
   entry(): void;
-  /** Lift the selected notes into a motif, naming it inline (prompt 25). */
+  /** Lift the selected notes into a motif, naming it inline. */
   extract(): void;
   /**
    * Respell the selected note by a diatonic step, and by the accidental
    * ladder when the step is held with `⇧`.
    *
-   * The keyboard half of prompt 53's vertical drag. It exists so the drag adds
-   * a second way to reach a capability rather than a capability only a pointer
-   * has (WCAG 2.5.7).
+   * The keyboard half of the vertical drag, so the drag adds a second way to
+   * reach a capability rather than a capability only a pointer has (WCAG 2.5.7).
    */
   respell(steps: number, accidental: boolean): void;
   /** Open a workspace (roadmap §14.4). */
   show(which: Screen): void;
   palette(open: boolean): void;
   keys(open: boolean): void;
-  /** Open the settings sheet (prompt 59). */
+  /** Open the settings sheet. */
   settings(open: boolean): void;
   /** Clear the selection, or — with nothing selected — put the source column away. */
   escape(): void;
@@ -252,10 +251,10 @@ export const COMMANDS: readonly Command[] = [
   command("view.palette", "View", (surface) => surface.palette(true)),
 
   // Preferences: the app's own state, never the document's, and gathered
-  // behind `⌘,` rather than scattered down View (prompt 59).
+  // behind `⌘,` rather than scattered down View.
   command("settings.open", "Settings", (surface) => surface.settings(true)),
   // The frame's text, which is a different question from the score's size
-  // (prompt 55). `⌘⌥=` rather than `⌘=` for exactly that reason.
+  //. `⌘⌥=` rather than `⌘=` for exactly that reason.
   command("settings.text.larger", "Settings", ({ preferences }) => preferences.stepText(1)),
   command("settings.text.smaller", "Settings", ({ preferences }) => preferences.stepText(-1)),
   command("settings.text.reset", "Settings", ({ preferences }) => preferences.resetText()),

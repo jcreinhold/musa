@@ -143,7 +143,7 @@ pub enum EditCommand {
         mode: GeneratedEditMode,
     },
     /// Set, add, or remove one of the piece's own header statements — its
-    /// title, its front matter, its tempo, meter, or key (prompt 54).
+    /// title, its front matter, its tempo, meter, or key.
     ///
     /// Unlike every other variant here this one carries no event and consults
     /// no provenance: a piece's own facts are stated once, in one place, and
@@ -168,8 +168,8 @@ pub enum EditCommand {
 /// One replacement a pending edit would make, in the source it would make it in.
 ///
 /// This is what lets a live gesture show the composer the text it is about to
-/// write, in the file it will be written into, before anything is committed
-/// (prompt 53). It is the same edit the command would apply — computed by the
+/// write, in the file it will be written into, before anything is committed.
+/// It is the same edit the command would apply — computed by the
 /// same code, not a second guess at it.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]

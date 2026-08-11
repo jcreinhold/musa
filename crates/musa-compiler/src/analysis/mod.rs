@@ -35,7 +35,7 @@
 //! value; there is no path from here back into the resolver. That is the
 //! reason the boundary is one function rather than a compiler pass: an
 //! analysis that could report *into* the compilation would be a lint with
-//! extra steps, and prompt 83 already drew that line.
+//! extra steps, and the lint pass already drew that line.
 //!
 //! # Why one function and not a crate
 //!
@@ -43,8 +43,8 @@
 //! It is rejected for the reason a public elaboration API is rejected: its
 //! only caller would be this crate — every consumer reaches analysis through
 //! `musa-project` — while its public surface would be segmenters, candidate
-//! graphs, and theory indexes, which are pass details that prompt 118 and 119
-//! will change. The boundary here is one request, one report, and one
+//! graphs, and theory indexes, which are pass details that future analysis
+//! work will change. The boundary here is one request, one report, and one
 //! function; everything that computes a finding stays private.
 
 use crate::chord::ChordClass;

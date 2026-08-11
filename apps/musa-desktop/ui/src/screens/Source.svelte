@@ -48,7 +48,7 @@
     onshow,
   }: {
     session: Session;
-    /** Text size and vim mode, for the source column (prompt 55). */
+    /** Text size and vim mode, for the source column. */
     preferences: Preferences;
     workspace: Workspace;
     zoom: number;
@@ -56,13 +56,13 @@
     /** A place to put the caret, once, when it changes. */
     reveal?: Reveal | null;
     origin?: boolean;
-    /** The shared focus, marked in both panes at once (prompt 52). */
+    /** The shared focus, marked in both panes at once. */
     focus: Focus;
     /** Where the music on the visible pages was written, as source spans. */
     sounding?: Span[];
     /** The score reports what it has engraved on screen. */
     onvisible?: (ids: string[]) => void;
-    /** What a pointer gesture in flight would write, drawn in the text (prompt 53). */
+    /** What a pointer gesture in flight would write, drawn in the text. */
     candidate?: { start: number; end: number; text: string } | null;
     /** A gesture came up on the preview: write it. */
     onedit?: (candidate: Candidate) => void;
@@ -81,7 +81,7 @@
   const highlight = $derived(workspace.sourceSpans(origin));
   const diagnostics = $derived(snapshot?.diagnostics ?? []);
 
-  /** The narrowest a leaf is still a page, as in Compose (prompt 60). */
+  /** The narrowest a leaf is still a page, as in Compose. */
   const STAGE_MIN = 320;
 
   /** The stage, so the seam can ask how much of it is still spare. */
@@ -172,7 +172,7 @@
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     min-height: 0;
-    /* What a deliberate ask may take here: everything but a page (prompt 60).
+    /* What a deliberate ask may take here: everything but a page.
        There are no margins in this workspace to protect. */
     --source-room: max(300px, calc(100vw - 320px));
   }

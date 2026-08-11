@@ -2,7 +2,7 @@
  * The Compose workspace, photographed.
  *
  * These four images are what "the design is settled" means for the rest of
- * the sequence: if a later prompt makes the chrome louder, the leaf duller,
+ * the sequence: if a later change makes the chrome louder, the leaf duller,
  * or the engraving looser, the diff says so before anyone has to notice it.
  */
 

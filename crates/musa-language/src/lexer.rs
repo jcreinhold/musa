@@ -220,7 +220,7 @@ enum RawToken {
     Pipe,
     #[token(">")]
     Greater,
-    // The opening half of a type parameter (prompt 114). It has no musical
+    // The opening half of a type parameter. It has no musical
     // reading: no music expression produces `a < b`, so the character is free.
     #[token("<")]
     Less,

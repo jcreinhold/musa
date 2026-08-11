@@ -61,8 +61,8 @@ struct LyDocument {
 ///
 /// # Errors
 /// [`RenderError::Unsupported`] when a piece's duration cannot be spelled as
-/// a plain or dotted `LilyPond` duration (cannot happen after prompt 07's
-/// decomposition; the error exists per §7.2, not for control flow).
+/// a plain or dotted `LilyPond` duration (the planner already decomposes
+/// durations, so this exists per §7.2, not for control flow).
 pub(crate) fn render_lilypond(plan: &NotationPlan) -> Result<String, RenderError> {
     let mut variables = Vec::new();
     let mut score_children = Vec::new();

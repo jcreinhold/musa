@@ -1,4 +1,4 @@
-//! The compiler's side of the interchange format (prompt 48): a piece printed
+//! The compiler's side of the interchange format: a piece printed
 //! as kernel text, and kernel text read back and checked.
 //!
 //! Both directions live here rather than in `musa-project` because the payload
@@ -72,8 +72,7 @@ fn notes(realization: &crate::Realization, decisions: &[crate::DecisionRecord]) 
 /// printed as a single literal.
 ///
 /// This is the *interchange* spelling of the normal form, not N5's bytes.
-/// They are different serializations with different jobs, and prompt 48
-/// assumed they would coincide — see "Repairs" in the prompt. N5
+/// They are different serializations with different jobs. N5
 /// ([`crate::kernel_normal_form`]) is the **equality** serialization: its
 /// payload text is the canonical key, which deliberately omits the definition
 /// span and the declaration id because two facts differing only in those are

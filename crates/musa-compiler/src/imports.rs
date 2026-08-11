@@ -348,8 +348,7 @@ impl Entry {
 /// another document would point at the wrong bytes of this one.
 ///
 /// Takes the statements rather than the piece because a library opened on its
-/// own imports too, and checking one means reading what it builds on
-/// (prompt 84).
+/// own imports too, and checking one means reading what it builds on.
 pub(crate) fn load(
     resolver: &mut Resolver,
     importer: &str,

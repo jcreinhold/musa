@@ -7,7 +7,7 @@ use musa_compiler::ScoreSnapshot;
 use crate::RenderError;
 use crate::plan::{NotationOptions, plan_notation};
 
-/// The notation output formats (extended at prompts 14, 27, 32).
+/// The notation output formats.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NotationTarget {
     /// MEI 5 XML (Verovio-compatible, `xml:id` event mapping).

@@ -29,8 +29,8 @@ pub(crate) type Voices = IndexMap<(u32, u32), Voice>;
 
 /// Everything the snapshot reads off one piece timeline.
 ///
-/// The context maps are *here*, not in the header resolver, because after
-/// prompt 40 the key and the meter are occurrences: the timeline states them
+/// The context maps are *here*, not in the header resolver, because
+/// the key and the meter are occurrences: the timeline states them
 /// and this is the reading of it. A piece with no key written has none, which
 /// is why `key` is an `Option` and `meter` is not — 4/4 governs a piece that
 /// never says so.
@@ -87,8 +87,7 @@ pub(crate) fn project(resolver: &mut Resolver, timeline: &Timeline<ScoreFact>) -
 /// whole system repeats: one voice writing `repeat 2 { … }` while another
 /// writes the passage out means the page would have to show one voice folded
 /// and the other flat, which is not a page. Those repeats are written out
-/// instead — which is what happened before this prompt, so nothing gets worse —
-/// and the composer is told why rather than left to notice.
+/// instead, and the composer is told why rather than left to notice.
 ///
 /// A voice that is silent under the repeat agrees with it by not disagreeing.
 fn agreed_repeats(
@@ -155,8 +154,8 @@ fn agreed_repeats(
 /// the prevailing rule of `docs/kernel/03` D11 applied in bulk: the last fact
 /// starting at or before the piece's start is the one in force, and when
 /// `modulate` arrives this sweep already answers correctly for a key that
-/// changes at bar 40. Sorting on the fact's *source* position — which this did until
-/// prompt 44 — was only ever right while every context fact spanned the whole
+/// changes at bar 40. Sorting on the fact's *source* position
+/// was only ever right while every context fact spanned the whole
 /// piece. For the markers it preserves the order the outline has always had:
 /// a form marker's place is where the composer wrote it, and two markers at
 /// one instant cannot swap on a re-elaboration.
@@ -558,8 +557,8 @@ fn project_regions(
 ) {
     // Time order, outermost first: a bracket that opens earlier is written
     // first, and of two brackets opening together the wider one encloses the
-    // narrower. Until prompt 44 this sorted on the bracket's source position, which
-    // agreed only because nothing yet moves a region away from where it was
+    // narrower. Sorting on the bracket's source position would agree
+    // only because nothing yet moves a region away from where it was
     // written.
     regions.sort_by_key(|occurrence| {
         let span = occurrence.span();

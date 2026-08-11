@@ -1,5 +1,5 @@
-//! What a Roman numeral promises (docs/prompts/107, and OMT `020`, `021`,
-//! `050`, `061`, `062`, `063`, `071`).
+//! What a Roman numeral promises (OMT `020`, `021`, `050`, `061`, `062`,
+//! `063`, `071`).
 //!
 //! A numeral is a coordinate: a degree, a member count, and a bass position.
 //! It becomes a chord only against a collection, and the collection is what

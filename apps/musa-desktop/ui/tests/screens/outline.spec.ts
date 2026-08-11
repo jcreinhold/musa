@@ -1,5 +1,5 @@
 /**
- * The structural outline (`docs/prompts/35`).
+ * The structural outline.
  *
  * `annotated.musa` is the piece that has structure to navigate: two form
  * markers, two named phrases, and a harmony lane above the staff. The outline

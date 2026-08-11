@@ -1,6 +1,6 @@
 /**
  * Note entry: the state behind the keyboard's writing half
- * (`03-interaction.md` §3, specified by prompt 25).
+ * (`03-interaction.md` §3).
  *
  * Entry is a mode, and deliberately so. The navigation map already owns the
  * unmodified letters — `F` follows, `L` loops, `O` is the lens — so a bare

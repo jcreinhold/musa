@@ -1,8 +1,8 @@
 /**
- * How the composer reads and types (prompt 55).
+ * How the composer reads and types.
  *
- * Two decisions the app used to make on the composer's behalf: how large its
- * text is, and whether its editor is modal. Both are state of the *app* and
+ * Two decisions the app leaves to the composer: how large its text is, and
+ * whether its editor is modal. Both are state of the *app* and
  * never of the document — they do not appear in the file, in a revision, or in
  * the undo history (`05-states.md`).
  *
@@ -58,7 +58,7 @@ export class Preferences {
    *
    * Stored as *nothing* rather than as the measure's pixel value, so a column
    * at the default follows the measure when the type size changes instead of
-   * freezing at the pixels the measure happened to be (prompt 60).
+   * freezing at the pixels the measure happened to be.
    */
   sourceWidth = $state<number | null>(null);
 

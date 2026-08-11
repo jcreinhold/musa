@@ -69,7 +69,7 @@
   const playhead = new Playhead();
 
   /**
-   * Reading is linked (prompt 52): one focus, marked in the score and in the
+   * Reading is linked: one focus, marked in the score and in the
    * source at once. It lives here because both views hold it, and because the
    * keyboard's half of it is the selection — which is also owned here.
    */
@@ -100,7 +100,7 @@
   });
 
   /**
-   * What a pointer gesture in flight would write (prompt 53).
+   * What a pointer gesture in flight would write.
    *
    * The core answers this — the same query that decides whether an edit needs
    * the §4 choice also returns the text edits it would make — so the token the
@@ -153,7 +153,7 @@
   let screen = $state<Screen>("compose");
 
   /**
-   * Whether there is more than one file to choose between (prompt 84).
+   * Whether there is more than one file to choose between.
    *
    * A project of one is a loose `.musa` file, and it is shown nothing: no
    * contents page, no running order, no way to reach a page with one line on
@@ -186,7 +186,7 @@
 
   let paletteOpen = $state(false);
   let keysOpen = $state(false);
-  /** The settings sheet (prompt 59), which is modal for the same reason the
+  /** The settings sheet, which is modal for the same reason the
       others are: it is a thing you go to, finish, and leave. */
   let settingsOpen = $state(false);
 
@@ -200,7 +200,7 @@
   let pinned = $state(false);
 
   /**
-   * Note entry (prompt 25). A mode, and never a hidden one: the duration
+   * Note entry. A mode, and never a hidden one: the duration
    * glyph sits in the top margin the whole time it is on, and the caret is
    * placed the moment it opens so there is always somewhere for a note to go.
    */

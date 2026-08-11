@@ -1,4 +1,4 @@
-//! Gradual tempo change (docs/prompts/73).
+//! Gradual tempo change.
 //!
 //! One claim, in three pieces. A *rit.* written in the score is a **shape**,
 //! not a series of speeds: what is stored is where it arrives and how far it
@@ -103,7 +103,7 @@ fn a_ramp_that_goes_nowhere_is_the_tempo_it_started_at() {
 
 /// A ramp cut short by the next marking is clamped by intersection rather
 /// than by a rule of its own: nothing ever asks it past the cut, because the
-/// next marking answers from there (prompt 37's totality, inherited).
+/// next marking answers from there.
 #[test]
 fn the_next_marking_ends_a_ramp_early() {
     let source = piece(
@@ -119,9 +119,9 @@ fn the_next_marking_ends_a_ramp_early() {
     assert_eq!(frames_at(&score, 4), u64::from(RATE) * 17);
 }
 
-/// A ramp that says only a word prints and moves nothing — the same law
-/// prompt 72's text-only marking states, which is what says the two halves
-/// really are separate rather than separate-looking.
+/// A ramp that says only a word prints and moves nothing — the same law a
+/// text-only marking states, which says the two halves really are separate
+/// rather than separate-looking.
 #[test]
 fn a_worded_ramp_moves_no_clock() {
     let worded = score_of(&piece(
@@ -197,9 +197,9 @@ fn a_ramp_needs_both_a_destination_and_a_reach() {
 }
 
 proptest! {
-    /// The cross-check the prompt asks for, over every speed and every reach
-    /// rather than the tidy ones: a ramp whose destination is where it
-    /// started is the constant path, exactly.
+    /// The cross-check, over every speed and every reach rather than the
+    /// tidy ones: a ramp whose destination is where it started is the
+    /// constant path, exactly.
     ///
     /// Two implementations checking each other. The constant path is the one
     /// every existing test already pins, so a ramp that agrees with it

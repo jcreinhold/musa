@@ -1,5 +1,4 @@
-//! Modulation and the shared parameter system (docs/prompts/30, §13.7,
-//! §17.5).
+//! Modulation and the shared parameter system (§13.7, §17.5).
 //!
 //! The unit-level DSP laws — segment timing, filter response, impulse
 //! response — live beside their modules, where the arithmetic is. What is
@@ -301,7 +300,7 @@ fn a_swept_cutoff_does_not_step() {
 /// because of its partial, and it keeps sounding after the notes stop
 /// because of its release. A pad, not a plink.
 ///
-/// It is deliberately *not* "darker than the prompt-12 render". A 1400 Hz
+/// It is deliberately *not* "darker than the unfiltered default render". A 1400 Hz
 /// low-pass over material whose highest partial is 1320 Hz is very nearly
 /// transparent, and a test that claimed otherwise would be measuring its own
 /// tolerance. What the filter does to signal that reaches it is measured in

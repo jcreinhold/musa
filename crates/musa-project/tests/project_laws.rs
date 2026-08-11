@@ -1,5 +1,5 @@
 //! Contracts about the volume: what a project holds, which piece is in hand,
-//! and what happens to the ones that are not (prompt 84).
+//! and what happens to the ones that are not.
 //!
 //! `ProjectSession` is one piece, open; `Project` is the set of them. The laws
 //! below are about the set — its running order, its listing, and the promise

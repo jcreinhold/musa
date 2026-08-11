@@ -695,7 +695,7 @@ fn format_one(path: &str, formatting: Formatting) -> Formatted {
     // A file that does not parse is not formatted. The tree is lossless, so
     // the formatter could produce *something* — but the something is a guess
     // at what half-written text meant, written over the text its author was
-    // in the middle of. Prompt 56's rule for fixes is the rule here: a file
+    // in the middle of. The rule for fixes is the rule here: a file
     // that does not compile is a conversation, not a draft. It matters more
     // now that one command formats a whole folder at once.
     if session.snapshot().diagnostics().iter().any(unparsed) {
@@ -1108,8 +1108,8 @@ fn cmd_check_one(path: &str, realization: &Realization, tally: &mut Tally, fix: 
 
 /// Every warning's certain fix, as session edits.
 ///
-/// Warnings only, and each fix is offered only because it is certain (prompt
-/// 56): a file that does not compile is a conversation, not a draft, so
+/// Warnings only, and each fix is offered only because it is certain:
+/// a file that does not compile is a conversation, not a draft, so
 /// errors are reported and never rewritten.
 fn warning_fix_edits(snapshot: &musa_project::ProjectSnapshot<'_>) -> Vec<musa_project::TextEdit> {
     snapshot

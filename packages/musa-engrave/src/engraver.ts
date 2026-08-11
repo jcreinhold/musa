@@ -103,7 +103,7 @@ class WorkerEngraver implements Engraver {
 }
 
 /**
- * The same engraver without a worker (prompt 148): Node has no `Worker`, and
+ * The same engraver without a worker: Node has no `Worker`, and
  * the build-time recipe and the unit tests run there. The lifecycle and the
  * supersede rules are `core.ts`'s, unchanged; only the transport differs.
  * Errors reject rather than arriving as error messages, which is the same

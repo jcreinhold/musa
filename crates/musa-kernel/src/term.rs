@@ -24,10 +24,9 @@ use crate::timeline::{Timeline, overlay, sequence, timeline, zero};
 
 /// A term of the kernel calculus.
 ///
-/// Opaque on purpose: a public enum is a public layout, and the two callers
-/// this exists for — prompt 48's text form and prompt 49's elaboration —
-/// need to *build* terms, not to match on them. Accessors arrive with the
-/// consumer that needs them.
+/// Opaque on purpose: a public enum is a public layout, and callers need to
+/// *build* terms, not to match on them. Accessors arrive with the consumer
+/// that needs them.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Term<A> {
     form: Form<A>,
@@ -188,8 +187,7 @@ impl<A> Term<A> {
     /// `body` observed through `window` (D6).
     ///
     /// No error case: `Span` is ordered by construction, and a window past the
-    /// extent observes nothing rather than failing — observation is total
-    /// (L17), and prompt 37 made it so deliberately.
+    /// extent observes nothing rather than failing — observation is total (L17).
     pub fn restrict(window: Span, body: Self) -> Self {
         Self {
             form: Form::Restrict {
@@ -325,8 +323,8 @@ impl<A> Term<A> {
 /// `let` binds an **evaluated value**, evaluated once (E-Let is call-by-value).
 /// That is the whole point of sharing: a subject used four times is evaluated
 /// once. References currently *clone* the bound value rather than sharing it
-/// behind an `Rc`; prompt 49 is the measurement that would justify changing
-/// that, since it is the first caller to produce terms with heavy reuse.
+/// behind an `Rc`; only a caller producing terms with heavy reuse would
+/// justify changing that.
 pub fn evaluate<A: Clone>(term: Term<A>) -> Timeline<A> {
     evaluate_marked(term, |_, _| {})
 }

@@ -325,7 +325,7 @@ fn an_over_wide_bar_wraps_at_its_beat_groups() {
     assert_semantics_preserved(&source, &formatted);
 }
 
-// --- Bars drawn to scale (prompt 91) --------------------------------------
+// --- Bars drawn to scale ---------------------------------------------
 
 /// The column an event beginning at bar-relative time `t` may not begin
 /// before: 64 columns to the whole note, so 16 to the quarter.
