@@ -204,6 +204,7 @@ const VOICE_RECOVERY: &[SyntaxKind] = &[
     SyntaxKind::TransposeKw,
     SyntaxKind::RepeatKw,
     SyntaxKind::BarKw,
+    SyntaxKind::AssertKw,
     SyntaxKind::SenzaKw,
     SyntaxKind::TempoKw,
     SyntaxKind::MeterKw,
@@ -2302,6 +2303,8 @@ impl<'a> Parser<'a> {
                 self.repeat_stmt();
             } else if self.at(SyntaxKind::BarKw) {
                 self.bar_stmt();
+            } else if self.at(SyntaxKind::AssertKw) {
+                self.assert_stmt();
             } else if self.at(SyntaxKind::SenzaKw) {
                 self.senza_stmt();
             } else if self.at(SyntaxKind::GraceKw) {
@@ -2676,6 +2679,30 @@ impl<'a> Parser<'a> {
         self.bar_depth = self.bar_depth.saturating_add(1);
         self.block();
         self.bar_depth = self.bar_depth.saturating_sub(1);
+        self.finish();
+    }
+
+    /// `assert pitches_in(scale c major) { ... }`
+    ///
+    /// The parentheses are written even when the claim takes no arguments, so
+    /// that `assert fills_meter()` and a name the composer misremembered are
+    /// told apart by the grammar rather than by a guess. Which names exist,
+    /// and what each one's arguments are, is the compiler's registry and not
+    /// the parser's business — a claim nobody has heard of parses, and then
+    /// gets a sentence naming the ones that do.
+    ///
+    /// Assertions nest: two claims about one passage are two assertions, and
+    /// writing them one inside the other is how a composer says both.
+    fn assert_stmt(&mut self) {
+        self.start(SyntaxKind::AssertStmt);
+        self.bump(); // assert
+        self.expect(SyntaxKind::Identifier, "what is being claimed");
+        if self.at(SyntaxKind::LParen) {
+            self.expr_arg_list();
+        } else {
+            self.expected("`(` — a claim is written with its arguments, and one with none is written `()`");
+        }
+        self.block();
         self.finish();
     }
 

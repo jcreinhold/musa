@@ -364,13 +364,15 @@ pub(crate) struct Resolver {
     /// barlines — which the meters decide — and therefore cannot be checked
     /// where it is written either.
     pub(crate) key_changes: Vec<(crate::MusicalTime, Key, SourceSpan)>,
-    /// Bars whose length is still to be checked.
+    /// Claims taken on and not yet proved: every `bar`'s measure claim, and
+    /// every `assert`'s.
     ///
-    /// A bar is checked against the meter in force where it sits, and where
-    /// the meters change is not known until every voice has been read — so
-    /// the check waits, and `elaborate_score` runs it once the barlines are
-    /// known.
-    pub(crate) pending_bars: Vec<crate::elaborate::PendingBar>,
+    /// A claim is proved against the piece as it turned out, and a bar's is
+    /// checked against the meter in force where it sits — which is not known
+    /// until every voice has been read, since a `meter` in one voice governs
+    /// another's bars. So the proofs wait, and `elaborate_score` discharges
+    /// them all once the barlines are known.
+    pub(crate) obligations: Vec<crate::elaborate::PendingClaim>,
     /// How many decision sites have been seen inside each named place, so the
     /// next one there knows its ordinal.
     pub(crate) sites: std::collections::BTreeMap<crate::ChoicePath, u32>,
@@ -416,7 +418,7 @@ impl Resolver {
             part_meters: std::collections::BTreeMap::new(),
             groove_rules: Vec::new(),
             key_changes: Vec::new(),
-            pending_bars: Vec::new(),
+            obligations: Vec::new(),
             sites: std::collections::BTreeMap::new(),
             references: ReferenceIndex::new(),
             decisions: Vec::new(),

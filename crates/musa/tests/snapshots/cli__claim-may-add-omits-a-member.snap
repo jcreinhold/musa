@@ -1,0 +1,20 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unmet-claim
+
+  × `chord c major` is missing its `e`
+    ╭─[examples/broken/claim-may-add-omits-a-member.musa:7:17]
+  6 │                 voice v {
+  7 │ ╭─▶                 assert realizes(chord c major, may_add) {
+  8 │ │                       [c3 d3 g3]/1
+  9 │ ├─▶                 }
+    · ╰──── nothing here sounds that member
+ 10 │                 }
+    ╰────
+  help: `chord c major` is c e g
+
+  note: `may_add` requires every member to sound; `may_omit` is the policy that lets one go
+
+1 problem (1 error)

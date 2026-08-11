@@ -1,0 +1,13 @@
+// `may_add` lets other notes sound; it still wants every member to sound.
+// The third is missing, and no added note stands in for it.
+piece "Added But Missing" {
+    score {
+        part piano {
+            voice v {
+                assert realizes(chord c major, may_add) {
+                    [c3 d3 g3]/1
+                }
+            }
+        }
+    }
+}

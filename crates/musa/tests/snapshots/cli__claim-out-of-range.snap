@@ -1,0 +1,21 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unmet-claim
+
+  × `c6` is above the range for the fourth voice
+    ╭─[examples/broken/claim-out-of-range.musa:7:17]
+  6 │                 voice v {
+  7 │ ╭─▶                 assert within_ranges([(f2, d4), (c3, g4), (g3, d5), (c4, g5)]) {
+  8 │ │                       [c3 g3 c4 c6]/1
+    · │                       ───────┬───────
+    · │                              ╰── this voice may lie from `c4` to `g5`
+  9 │ ├─▶                 }
+    · ╰──── the ranges are given lowest voice first
+ 10 │                 }
+    ╰────
+
+  note: OMT 022 gives the SATB ranges as bass f2-d4, tenor c3-g4, alto g3-d5, soprano c4-g5
+
+1 problem (1 error)

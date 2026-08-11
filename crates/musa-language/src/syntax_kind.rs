@@ -211,6 +211,8 @@ pub enum SyntaxKind {
     ToKw,
     /// `bar`
     BarKw,
+    /// `assert`
+    AssertKw,
     /// `senza`
     SenzaKw,
     /// `ending`
@@ -433,6 +435,9 @@ pub enum SyntaxKind {
     Block,
     /// `bar { ... }` / `bar head { ... }` — one measure, written down.
     BarStmt,
+    /// `assert pitches_in(scale c major) { ... }` — a claim about the
+    /// passage inside it, which the compiler either proves or complains at.
+    AssertStmt,
     /// `senza { ... }` — a stretch with no barlines, and the meter back after.
     SenzaStmt,
     /// `ending 1 { ... }` — what a repeat plays on one of its passes.

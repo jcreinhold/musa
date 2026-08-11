@@ -1,0 +1,22 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unmet-claim
+
+  × `a4` is not a member of `chord g dominant7`
+    ╭─[examples/broken/claim-may-omit-adds-a-note.musa:7:17]
+  6 │                 voice v {
+  7 │ ╭─▶                 assert realizes(chord g dominant7, may_omit) {
+  8 │ │                       [g3 b3 a4 f4]/1
+    · │                       ───────┬───────
+    · │                              ╰── this note is not in the chord
+  9 │ ├─▶                 }
+    · ╰──── the passage claims to realize it
+ 10 │                 }
+    ╰────
+  help: `chord g dominant7` is g b d f
+
+  note: `may_omit` permits no added tones; `may_add` is the policy that does
+
+1 problem (1 error)

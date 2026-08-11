@@ -105,6 +105,11 @@
     "doc": "A bar is one measure of music: what a player reads between two barlines, and the unit that must add up to the meter. Write it with `|`, the way notation draws it. The keyword is for the bar that earns a name — `bar head { … }` — which makes it an address an edit or a reader can point at.\n\n```musa\nbar head { c4/4 d4/4 e4/4 f4/4 }\n```"
   },
   {
+    "spelling": "assert",
+    "summary": "a claim the compiler proves",
+    "doc": "An assertion states something objective about the music inside it and makes the compiler check it: `assert pitches_in(scale c major) { … }` says every note sounded there is spelled in C major, and a note that is not stops the compilation with the note named. It changes nothing — a claim that holds returns exactly what was written — and it is per-passage, never a rule about the piece.\n\nThe claims are `fills_meter()`, `pitches_in(scale)`, `realizes(chord, policy)`, `voices(count)`, and `within_ranges(ranges)`.\n\n```musa\nassert voices(4) { [c3 g3 e4 c5]/1 }\n```"
+  },
+  {
     "spelling": "senza",
     "summary": "an unmeasured stretch with a scope",
     "doc": "A senza block is unmeasured music with braces around it: the barlines stop for exactly its contents and the meter returns after, without the `meter none;` … `meter 4/4;` pair you could otherwise forget the second half of. Cadenzas and chant are written this way.\n\n```musa\nsenza { c4/1 g4/1 }\n```"

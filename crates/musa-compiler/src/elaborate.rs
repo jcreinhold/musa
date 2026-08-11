@@ -910,9 +910,15 @@ fn elaborate_score(
     // and where the barlines fall is what the meters decide.
     let bars = resolve_meters(resolver);
     check_keys(resolver, &bars);
-    for bar in std::mem::take(&mut resolver.pending_bars) {
-        let here = part_bars(resolver, bar.scope);
-        check_bar_length(resolver, &bar, here.as_ref().unwrap_or(&bars));
+    for obligation in std::mem::take(&mut resolver.obligations) {
+        let here = part_bars(resolver, obligation.scope);
+        let settled = crate::assert::Settled {
+            bars: here.as_ref().unwrap_or(&bars),
+            meter_written: resolver.meter_written,
+        };
+        if let Some(diagnostic) = crate::assert::check(&obligation.claim, &obligation.passage, &settled) {
+            resolver.report(diagnostic);
+        }
     }
     let context = context_facts(resolver, piece, score, &declared, &bars, extent);
     let lane_occurrences = lanes
@@ -2126,6 +2132,7 @@ fn elaborate_item(
         VoiceItem::Mobile(stmt) => elaborate_mobile(resolver, share, stmt, cx, scope),
         VoiceItem::Improvise(stmt) => elaborate_improvise(resolver, stmt, cx, scope),
         VoiceItem::Grace(grace) => elaborate_grace(resolver, grace, cx, scope),
+        VoiceItem::Assert(stmt) => elaborate_assert(resolver, share, stmt, cx, scope, place),
         VoiceItem::Note(note) => {
             let Some(duration) = resolve_scaled_duration(resolver, note.syntax(), cx) else {
                 return Segment::empty();
@@ -2863,14 +2870,103 @@ fn elaborate_bar(
     // "this bar is 1/4 short" underneath "`sigb` is not a pitch" is the second
     // sentence of a two-sentence complaint about one mistake.
     if errors_so_far(resolver) == before {
-        resolver.pending_bars.push(PendingBar {
-            at,
-            extent: body.extent,
-            span: resolve::trimmed_span(bar.syntax()),
-            content_end: bar.content_end(),
+        resolver.obligations.push(PendingClaim {
+            claim: crate::assert::Claim::FillsMeter,
+            passage: crate::assert::Passage {
+                span: resolve::trimmed_span(bar.syntax()),
+                at,
+                extent: crate::MusicalDuration::new(body.extent.as_ratio()),
+                content_end: bar.content_end(),
+                // A bar's claim is about how long its contents are, and
+                // nothing else, so the notes are never gathered for one: the
+                // evaluation an assertion pays for buys a bar nothing.
+                notes: Vec::new(),
+                noun: "bar",
+            },
             scope,
         });
     }
+    body
+}
+
+/// An assertion: its body, unchanged, and a claim recorded about it.
+///
+/// The music is what was written. An assertion adds no occurrence, no payload,
+/// and no time — the only trace it leaves in the result is one
+/// [`ExpansionStep::Assertion`] on the facts underneath it, which is provenance
+/// and therefore invisible to `≈facts` (law 13). That is the identity prompt
+/// 116 asks for: a claim that holds gives back exactly the passage it was
+/// written on.
+///
+/// The body is evaluated here, once, and the evaluation is thrown away after
+/// the notes are read out of it. It is worth saying why, since evaluating
+/// costs the sharing this compiler works to keep: a claim about *which notes
+/// sound* cannot be answered from a term that has not been instantiated, and
+/// the alternative — a structural approximation over the term — would be a
+/// second, weaker semantics that could disagree with the piece the composer
+/// gets. An assertion body is a passage a person wrote out, so the cost is
+/// bounded by what they were willing to type.
+fn elaborate_assert(
+    resolver: &mut Resolver,
+    share: &mut Share,
+    assertion: &musa_language::ast::AssertStmt,
+    cx: &ExpandCx,
+    scope: Scope,
+    place: Place,
+) -> Segment {
+    let at = resolver.cursor;
+    let span = resolve::trimmed_span(assertion.syntax());
+    let before = errors_so_far(resolver);
+    let claim = cx.music.claim_at(span).cloned();
+    let mut inner = cx.clone();
+    // The step goes on before the body is elaborated, exactly as `in scale`
+    // puts its own on: a fact carries the steps that were in force when it was
+    // made, and an assertion is in force over everything inside its braces.
+    inner.path.push(ExpansionStep::Assertion {
+        // The checked claim when there is one, so the step reads back with its
+        // arguments; the bare name when the claim did not survive checking, so
+        // that a fact under a misspelled assertion still says what was written
+        // over it.
+        claim: claim
+            .as_ref()
+            .map_or_else(|| assertion.claim().unwrap_or_default(), crate::assert::Claim::describe),
+    });
+    let body = elaborate_place(resolver, share, &assertion.items(), &inner, scope, place);
+    // A passage whose notes did not resolve has no claim worth testing:
+    // "`fs5` is not in scale c major" underneath "`sigb` is not a pitch" is
+    // the second sentence of a two-sentence complaint about one mistake. The
+    // same rule a bar follows, for the same reason.
+    let Some(claim) = claim.filter(|_| errors_so_far(resolver) == before) else {
+        return body;
+    };
+    let sounded = share.evaluate(body.term.clone());
+    let notes = sounded
+        .occurrences()
+        .iter()
+        .filter_map(|occurrence| {
+            Some(crate::assert::Sounded {
+                pitch: occurrence.payload().pitch_of()?,
+                start: crate::MusicalTime::new(occurrence.span().start().as_ratio()),
+                end: crate::MusicalTime::new(occurrence.span().end().as_ratio()),
+                // The span of the note itself and not of whatever played it.
+                // A note generated from a motif is written in the motif, and
+                // that is where a composer goes to change its pitch.
+                at: occurrence.payload().origin.definition_span,
+            })
+        })
+        .collect();
+    resolver.obligations.push(PendingClaim {
+        claim,
+        passage: crate::assert::Passage {
+            span,
+            at,
+            extent: crate::MusicalDuration::new(body.extent.as_ratio()),
+            content_end: assertion.content_end(),
+            notes,
+            noun: "passage",
+        },
+        scope,
+    });
     body
 }
 
@@ -3097,28 +3193,25 @@ fn reported_an_error(resolver: &Resolver) -> bool {
         .any(|diagnostic| diagnostic.severity == crate::diagnose::Severity::Error)
 }
 
-/// The diagnostic bars exist for.
+/// A claim the compiler has taken on and not yet discharged.
 ///
-/// A voice is a flat stream of durations, so a dropped `1/4` in the fourth bar
-/// does not produce an error — it produces every later bar being wrong,
-/// silently, and a page the composer has to proofread against their own
-/// intentions. Writing the bar down turns that into this.
-/// A bar that has been elaborated and not yet measured.
+/// Two constructs raise these and there is exactly one kind, on purpose. A
+/// `bar { … }` has claimed "this is one measure" since prompt 57; an `assert`
+/// claims whatever it says. Both are a proposition about a passage that can
+/// only be settled once the whole piece has been read — the meter in force at
+/// a bar is decided by every `meter` in every voice, and a `meter` in the
+/// second voice governs the first voice's bars — so both are recorded here
+/// during elaboration and proved afterwards, by [`crate::assert::check`].
 ///
-/// Held rather than checked on the spot because the meter in force at `at` is
-/// not known until every voice has been read: a `meter` written in the second
-/// voice governs the first voice's bars too.
-pub(crate) struct PendingBar {
-    /// Where the bar begins, in the piece's own time.
-    at: MusicalTime,
-    /// How long its contents came to.
-    extent: Beat,
-    /// The whole statement, for the diagnostic to point at.
-    span: SourceSpan,
-    /// Where a filling rest would go, if there is a place for one.
-    content_end: Option<u32>,
-    /// Where the bar was written, so a polymetric piece checks it against
-    /// its own part's barlines rather than the piece's.
+/// Holding them in one list is what keeps the bar's diagnostic and the
+/// assertion's from drifting into two answers to one question.
+pub(crate) struct PendingClaim {
+    /// What is claimed.
+    claim: crate::assert::Claim,
+    /// What it is claimed about.
+    passage: crate::assert::Passage,
+    /// Where it was written, so a polymetric piece checks it against its own
+    /// part's barlines rather than the piece's.
     scope: Scope,
 }
 
@@ -3222,69 +3315,6 @@ fn two_at_once(what: &str, span: SourceSpan, first: SourceSpan) -> Diagnostic {
     Diagnostic::error(Code::Misplaced, format!("two {what} at the same place"))
         .at(span, "the second of two")
         .also(first, "the first is here")
-}
-
-fn check_bar_length(resolver: &mut Resolver, bar: &PendingBar, bars: &crate::BarLines) {
-    let here = bars.measure_at(bar.at);
-    // A `bar` asserts "this is one measure", and inside an unmeasured stretch
-    // there is no measure for it to be one of. Refused rather than ignored:
-    // the assertion cannot be checked, and an assertion nobody checks is the
-    // thing prompt 56 exists to prevent.
-    if !here.meter.is_measured() {
-        resolver.report(
-            Diagnostic::error(Code::DoesNotAddUp, "a `bar` here has no measure to be one of")
-                .at(bar.span, "this is inside unmeasured music")
-                .help("delete the `bar`, or close the unmeasured stretch before it")
-                .note("`senza { ... }` and `meter none;` say the barlines stop; a `bar` says where one falls"),
-        );
-        return;
-    }
-    let measure = here.length().as_ratio();
-    let written = bar.extent.as_ratio();
-    if written == measure {
-        return;
-    }
-    let long = written > measure;
-    let difference = if long { written - measure } else { measure - written };
-    // The rule goes in the note rather than in a second label on the `meter`
-    // statement: the meter is usually pages away, and miette draws a distant
-    // span as its own framed snippet — which doubles the size of every one of
-    // these to restate a fact the note states in six words.
-    let mut diagnostic = Diagnostic::error(
-        Code::DoesNotAddUp,
-        format!(
-            "this bar is {} {}",
-            fraction(difference),
-            if long { "too long" } else { "short" }
-        ),
-    )
-    .at(bar.span, format!("these add up to {}", fraction(written)))
-    .note(if resolver.meter_written {
-        format!(
-            "`meter {}/{}` makes a bar {}",
-            here.meter.numerator(),
-            here.meter.denominator(),
-            fraction(measure)
-        )
-    } else {
-        format!(
-            "a piece that writes no `meter` is in 4/4, so a bar is {}",
-            fraction(measure)
-        )
-    });
-    diagnostic = if long {
-        // Which note to remove is the composer's decision, and a fix that
-        // guesses is worse than a help line that does not (prompt 56).
-        diagnostic.help("shorten a duration, or move the last of these into the next bar")
-    } else {
-        let rest = format!("rest{}", musa_language::spell_duration(&fraction(difference)));
-        let filled = diagnostic.help(format!("add `{rest}`, or lengthen one of the durations"));
-        match bar.content_end {
-            Some(at) => filled.fix(format!("add `{rest}`"), SourceSpan::new(at, at), format!(" {rest}")),
-            None => filled,
-        }
-    };
-    resolver.report(diagnostic);
 }
 
 /// A musical amount, spelled the way the language spells it.

@@ -89,6 +89,17 @@ pub enum ExpansionStep {
         /// The generated declaration's stable identity, as hex.
         identity: String,
     },
+    /// An `assert` was in force here, and the claim it made held.
+    ///
+    /// Provenance and nothing more: an assertion adds no occurrence, no
+    /// payload, and no time, so this step is the whole of what it leaves
+    /// behind. It is what lets Origin answer "what did this passage promise",
+    /// and — because changing only Origin cannot change `≈facts` — it is also
+    /// the proof that a claim which holds changed nothing.
+    Assertion {
+        /// The claim's name, as the source spells it.
+        claim: String,
+    },
     /// One note of a motif occurrence was respelled by a `with` clause.
     Specialization {
         /// The span of the override that respelled it.

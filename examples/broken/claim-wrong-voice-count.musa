@@ -1,0 +1,14 @@
+// Four voices means four, at every chord. The second sonority has three: a
+// voice that drops out for half a bar is not resting, it is gone.
+piece "Three Where Four Was Claimed" {
+    score {
+        part choir {
+            voice v {
+                assert voices(4) {
+                    [c3 g3 c4 e4]/2
+                    [c3 g3 c4]/2
+                }
+            }
+        }
+    }
+}

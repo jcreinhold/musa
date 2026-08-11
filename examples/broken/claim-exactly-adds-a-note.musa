@@ -1,0 +1,14 @@
+// `exactly` is set equality on pitch classes. The D sounds, is not a member
+// of C major, and so the passage does not realize the chord under the policy
+// the composer chose — `may_add` is the policy that permits it.
+piece "Exactly, Plus One" {
+    score {
+        part piano {
+            voice v {
+                assert realizes(chord c major, exactly) {
+                    [c3 d3 e3 g3]/1
+                }
+            }
+        }
+    }
+}

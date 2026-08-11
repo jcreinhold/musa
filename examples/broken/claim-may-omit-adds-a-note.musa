@@ -1,0 +1,13 @@
+// `may_omit` lets a member go missing; it does not let a stranger in. The
+// fifth is absent, which is fine, and the A is not, which is not.
+piece "Omitted And Added" {
+    score {
+        part piano {
+            voice v {
+                assert realizes(chord g dominant7, may_omit) {
+                    [g3 b3 a4 f4]/1
+                }
+            }
+        }
+    }
+}

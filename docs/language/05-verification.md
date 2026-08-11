@@ -26,8 +26,32 @@ finite typed value or the controlled view of a finite `music` value and returns 
 successful result is the unchanged body; assertions never repair or respell music.
 
 Predicate names carry practice and assumptions: `species.first_above(cantus)` is honest; `valid_counterpoint(cantus)` is
-not. Scale membership, range, spacing, row property, and user-declared finite predicates fit this layer. Diagnostics
-include predicate, assumptions, witness locations, and a counterexample; they do not merely say “false.”
+not. Scale membership, range, spacing, and row property fit this layer. Diagnostics include predicate, assumptions,
+witness locations, and a counterexample; they do not merely say “false.”
+
+The predicate is drawn from a **fixed family the compiler owns**, not from the composer's own functions (prompt 116). An
+arbitrary predicate would need the music handed to it, and the only thing there is to hand over is the elaborated score
+— which would make every payload field a public interface, and would make what a claim *can* read a moving target. What
+a claim reads instead is a controlled view: the sounded written pitches of the passage, with their exact spans, and
+nothing else. The family is:
+
+| Claim | Checks | Cites |
+| --- | --- | --- |
+| `fills_meter()` | the passage is exactly one measure of the meter in force where it is written | OMT `010` |
+| `pitches_in(Scale)` | every sounded note is spelled as a member of the collection | OMT `013` |
+| `realizes(ChordClass, policy)` | the sounded classes stand in the policy's relation to the chord's members, and the designated bass, if there is one, is the lowest note | OMT `017`–`019` |
+| `voices(Nat)` | wherever anything sounds, exactly that many notes sound at once | OMT `022` |
+| `within_ranges(List<(Pitch, Pitch)>)` | each voice of each sonority, counted from the bottom, lies in the range given for it | OMT `022` §Range |
+
+The realization policy is one of three words — `exactly`, `may_omit`, `may_add` — and not a value of an
+elaboration-language type: three inhabitants no function can take or return would be language surface with no caller.
+`exactly` is set equality on pitch classes, `may_omit` lets a member be absent, and `may_add` lets other notes sound.
+Doubling is invisible to all three, because which member is doubled is a fact about the voicing rather than about the
+chord (OMT `019`).
+
+`fills_meter()` is the claim `bar { … }` has been making since prompt 57. They are one obligation with two spellings,
+recorded during elaboration and discharged once the barlines are settled — because a `meter` written in one voice
+governs another voice's bars, so no claim about a measure can be answered where it is written.
 
 ## 3. Interpretive analyses
 

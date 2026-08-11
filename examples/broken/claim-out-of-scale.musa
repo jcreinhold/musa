@@ -1,0 +1,13 @@
+// Membership is spelled. `f#4` fails this claim as F-sharp: it is not read as
+// G-flat, not read as a raised fourth degree, and not repaired into `f4`.
+piece "Out Of The Collection" {
+    score {
+        part solo {
+            voice line {
+                assert pitches_in(scale c major) {
+                    c4/4 d4/4 f#4/4 g4/4
+                }
+            }
+        }
+    }
+}

@@ -208,6 +208,17 @@ static REPEAT: KeywordDoc = doc!(
      it never creates an infinite stream.\n\n\
      ```musa\nrepeat 2 { use verse(); }\nlet pedals: List<Bool> = repeat(true, 4);\n```"
 );
+static ASSERT: KeywordDoc = doc!(
+    "assert",
+    "a claim the compiler proves",
+    "An assertion states something objective about the music inside it and makes the compiler check it: \
+     `assert pitches_in(scale c major) { … }` says every note sounded there is spelled in C major, and a note \
+     that is not stops the compilation with the note named. It changes nothing — a claim that holds returns \
+     exactly what was written — and it is per-passage, never a rule about the piece.\n\n\
+     The claims are `fills_meter()`, `pitches_in(scale)`, `realizes(chord, policy)`, `voices(count)`, and \
+     `within_ranges(ranges)`.\n\n\
+     ```musa\nassert voices(4) { [c3 g3 e4 c5]/1 }\n```"
+);
 static BAR: KeywordDoc = doc!(
     "bar",
     "one measure, named",
@@ -721,6 +732,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         SyntaxKind::RestKw => &REST,
         SyntaxKind::RepeatKw => &REPEAT,
         SyntaxKind::BarKw => &BAR,
+        SyntaxKind::AssertKw => &ASSERT,
         SyntaxKind::EndingKw => &ENDING,
         SyntaxKind::SlurKw => &SLUR,
         SyntaxKind::PhraseKw => &PHRASE,
@@ -871,6 +883,7 @@ pub fn keyword_doc(kind: SyntaxKind) -> Option<&'static KeywordDoc> {
         | SyntaxKind::SendStmt
         | SyntaxKind::Block
         | SyntaxKind::BarStmt
+        | SyntaxKind::AssertStmt
         | SyntaxKind::SenzaStmt
         | SyntaxKind::EndingStmt
         | SyntaxKind::FragmentDecl
@@ -957,6 +970,7 @@ mod tests {
             SyntaxKind::RestKw,
             SyntaxKind::RepeatKw,
             SyntaxKind::BarKw,
+            SyntaxKind::AssertKw,
             SyntaxKind::EndingKw,
             SyntaxKind::SlurKw,
             SyntaxKind::PhraseKw,

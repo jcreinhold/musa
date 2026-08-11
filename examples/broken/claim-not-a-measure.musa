@@ -1,0 +1,16 @@
+// `fills_meter()` is the bar's own claim written out, and it fails the same
+// way a bar does: this passage is a quarter short of the 3/4 measure it says
+// it is one of.
+piece "Short Claim" {
+    meter 3/4;
+
+    score {
+        part piano {
+            voice right {
+                assert fills_meter() {
+                    c4/4 d4/4
+                }
+            }
+        }
+    }
+}

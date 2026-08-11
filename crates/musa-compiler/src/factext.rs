@@ -457,10 +457,11 @@ fn take_origin(words: &mut Words) -> Option<Origin> {
 /// The words an expansion step can begin with, and so the words that continue
 /// a `via` run. A run ends at the first word that is not one of these — `]`
 /// in a label, and the end of the stream in a reference mark.
-const STEP_TAGS: [&str; 10] = [
+const STEP_TAGS: [&str; 11] = [
     "template",
     "motif",
     "scale",
+    "assert",
     "repeat",
     "transpose",
     "stretch",
@@ -511,6 +512,10 @@ fn write_step(words: &mut Words, step: &ExpansionStep) {
             words.word("scale");
             words.text(scale);
         }
+        ExpansionStep::Assertion { claim } => {
+            words.word("assert");
+            words.text(claim);
+        }
         ExpansionStep::Specialization { override_site } => {
             words.word("special");
             words.word(span_word(*override_site));
@@ -547,6 +552,7 @@ fn take_step(words: &mut Words) -> Option<ExpansionStep> {
         "invert" => Some(ExpansionStep::Inversion { axis: words.quoted()? }),
         "map-pitches" => Some(ExpansionStep::MapNotePitches),
         "scale" => Some(ExpansionStep::ScaleContext { scale: words.quoted()? }),
+        "assert" => Some(ExpansionStep::Assertion { claim: words.quoted()? }),
         "special" => Some(ExpansionStep::Specialization {
             override_site: words.span()?,
         }),

@@ -1,0 +1,153 @@
+================================================================================
+assertions: the five claims and the three realization policies
+================================================================================
+
+piece "Claims" {
+  score {
+    part p {
+      voice v {
+        assert fills_meter() {
+          c4/4 d4/4 e4/4 f4/4
+        }
+        assert pitches_in(scale c major) {
+          g4/4
+        }
+        assert realizes(chord c major, exactly) {
+          [c3 e3 g3]/1
+        }
+        assert voices(4) {
+          [c3 g3 c4 e4]/1
+        }
+        assert within_ranges([(f2, d4), (c3, g4), (g3, d5), (c4, g5)]) {
+          [c3 g3 c4 e4]/1
+        }
+      }
+    }
+  }
+}
+
+---
+
+(source_file
+  (piece_declaration
+    (string)
+    (score_declaration
+      (part_declaration
+        (identifier)
+        (voice_declaration
+          (identifier)
+          (assert_statement
+            (identifier)
+            (expression_argument_list)
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (integer)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (integer)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (integer)))
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (integer)))))
+          (assert_statement
+            (identifier)
+            (expression_argument_list
+              (expression_argument
+                (expression
+                  (scale_expression
+                    (pitch_class
+                      (identifier))
+                    (identifier)))))
+            (block
+              (note_statement
+                (pitch_literal)
+                (duration
+                  (integer)))))
+          (assert_statement
+            (identifier)
+            (expression_argument_list
+              (expression_argument
+                (expression
+                  (chord_expression
+                    (pitch_class
+                      (identifier))
+                    (identifier))))
+              (expression_argument
+                (expression
+                  (name_expression
+                    (identifier)))))
+            (block
+              (chord_statement
+                (pitch_literal)
+                (pitch_literal)
+                (pitch_literal)
+                (duration
+                  (integer)))))
+          (assert_statement
+            (identifier)
+            (expression_argument_list
+              (expression_argument
+                (expression
+                  (literal_expression
+                    (integer)))))
+            (block
+              (chord_statement
+                (pitch_literal)
+                (pitch_literal)
+                (pitch_literal)
+                (pitch_literal)
+                (duration
+                  (integer)))))
+          (assert_statement
+            (identifier)
+            (expression_argument_list
+              (expression_argument
+                (expression
+                  (list_expression
+                    (expression
+                      (product_expression
+                        (expression
+                          (literal_expression
+                            (pitch_literal)))
+                        (expression
+                          (literal_expression
+                            (pitch_literal)))))
+                    (expression
+                      (product_expression
+                        (expression
+                          (literal_expression
+                            (pitch_literal)))
+                        (expression
+                          (literal_expression
+                            (pitch_literal)))))
+                    (expression
+                      (product_expression
+                        (expression
+                          (literal_expression
+                            (pitch_literal)))
+                        (expression
+                          (literal_expression
+                            (pitch_literal)))))
+                    (expression
+                      (product_expression
+                        (expression
+                          (literal_expression
+                            (pitch_literal)))
+                        (expression
+                          (literal_expression
+                            (pitch_literal)))))))))
+            (block
+              (chord_statement
+                (pitch_literal)
+                (pitch_literal)
+                (pitch_literal)
+                (pitch_literal)
+                (duration
+                  (integer))))))))))

@@ -81,6 +81,10 @@ pub enum Code {
     /// A bar written out identically three or more times in one voice, where
     /// a `motif` would say it once (style guide §4).
     CopiedBars,
+    /// An `assert` whose claim the music does not meet. Never raised on its
+    /// own: something has to have been claimed, in writing, for the compiler
+    /// to have anything to disprove.
+    UnmetClaim,
 }
 
 impl Code {
@@ -109,12 +113,13 @@ impl Code {
             Self::UnassignedPatch => "unassigned-patch",
             Self::RedundantMarking => "redundant-marking",
             Self::CopiedBars => "copied-bars",
+            Self::UnmetClaim => "unmet-claim",
         }
     }
 
     /// Every code, for `musa explain` with no argument and for the tests that
     /// keep the explanation table honest.
-    pub const ALL: [Self; 22] = [
+    pub const ALL: [Self; 23] = [
         Self::Syntax,
         Self::UnknownName,
         Self::DuplicateName,
@@ -137,6 +142,7 @@ impl Code {
         Self::UnassignedPatch,
         Self::RedundantMarking,
         Self::CopiedBars,
+        Self::UnmetClaim,
     ];
 
     /// Parse a code back from its written form.
@@ -310,6 +316,20 @@ impl Diagnostic {
     pub(crate) fn help(mut self, help: impl Into<String>) -> Self {
         self.help = Some(help.into());
         self
+    }
+
+    /// Say what to do about it, when there is something to say.
+    ///
+    /// The `Option` is here for the same reason as [`Self::maybe_also`]: the
+    /// advice usually comes from a near-miss search that may have found
+    /// nothing, and a diagnostic with no suggestion is better than one that
+    /// suggests the wrong word.
+    #[must_use]
+    pub(crate) fn maybe_help(self, help: Option<impl Into<String>>) -> Self {
+        match help {
+            Some(help) => self.help(help),
+            None => self,
+        }
     }
 
     /// State the rule.

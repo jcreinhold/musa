@@ -1118,6 +1118,8 @@ fn voice_items(node: &SyntaxNode) -> Vec<VoiceItem> {
             RepeatStmt::cast(child).map(VoiceItem::Repeat)
         } else if kind == SyntaxKind::BarStmt {
             BarStmt::cast(child).map(VoiceItem::Bar)
+        } else if kind == SyntaxKind::AssertStmt {
+            AssertStmt::cast(child).map(VoiceItem::Assert)
         } else if kind == SyntaxKind::SenzaStmt {
             SenzaStmt::cast(child).map(VoiceItem::Senza)
         } else if kind == SyntaxKind::EndingStmt {
@@ -1183,6 +1185,8 @@ pub enum VoiceItem {
     Repeat(RepeatStmt),
     /// `bar { ... }` / `bar head { ... }`
     Bar(BarStmt),
+    /// `assert pitches_in(scale c major) { ... }`
+    Assert(AssertStmt),
     /// `senza { ... }` — unmeasured, and measured again after.
     Senza(SenzaStmt),
     /// `ending 1 { ... }`
@@ -1984,15 +1988,62 @@ impl BarStmt {
     /// which is a different-looking edit on a one-line bar and a
     /// wrong-looking one on a bar that broke.
     pub fn content_end(&self) -> Option<u32> {
-        let mut end = None;
-        for element in self.0.descendants_with_tokens() {
-            let SyntaxElement::Token(token) = element else { continue };
-            if token.kind().is_trivia() || token.kind() == SyntaxKind::RBrace {
-                continue;
-            }
-            end = Some(u32::from(token.text_range().end()));
+        content_end(&self.0)
+    }
+}
+
+/// Where a braced body's contents end: after the last thing written in it and
+/// before the whitespace in front of the closing `}`.
+fn content_end(node: &SyntaxNode) -> Option<u32> {
+    let mut end = None;
+    for element in node.descendants_with_tokens() {
+        let SyntaxElement::Token(token) = element else { continue };
+        if token.kind().is_trivia() || token.kind() == SyntaxKind::RBrace {
+            continue;
         }
-        end
+        end = Some(u32::from(token.text_range().end()));
+    }
+    end
+}
+
+/// `assert pitches_in(scale c major) { c5/4 e5/4 g5/2 }`
+///
+/// A claim about the passage inside it. The braces hold ordinary music and
+/// contribute nothing to it: an assertion that holds returns exactly what was
+/// written, and one that does not is a diagnostic. Which claims exist is the
+/// compiler's registry, so everything here is shape — a name, its arguments,
+/// and a body.
+pub struct AssertStmt(SyntaxNode);
+wrapper!(AssertStmt, SyntaxKind::AssertStmt);
+
+impl AssertStmt {
+    /// The claim's name, as written.
+    pub fn claim(&self) -> Option<String> {
+        token_text(&self.0, SyntaxKind::Identifier)
+    }
+
+    /// Where the claim's name is written, as start and end byte offsets.
+    pub fn claim_span(&self) -> Option<(u32, u32)> {
+        find_token(&self.0, SyntaxKind::Identifier).map(|token| span_of(&token))
+    }
+
+    /// The claim's arguments, in source order.
+    pub fn args(&self) -> Vec<ExprArg> {
+        self.0
+            .children()
+            .find_map(ExprArgList::cast)
+            .map_or_else(Vec::new, |list| children(&list.0))
+    }
+
+    /// The asserted music, in source order.
+    pub fn items(&self) -> Vec<VoiceItem> {
+        voice_items(&self.0)
+    }
+
+    /// Where the asserted music ends, for a fix that adds to it. The same
+    /// place a bar's is, because the edit is the same edit.
+    pub fn content_end(&self) -> Option<u32> {
+        content_end(&self.0)
     }
 }
 

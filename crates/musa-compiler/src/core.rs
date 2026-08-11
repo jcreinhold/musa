@@ -596,6 +596,7 @@ struct CheckedMusic {
     uses: Vec<(SourceSpan, Expr)>,
     pitches: Vec<(SourceSpan, Expr)>,
     scales: Vec<(SourceSpan, Expr)>,
+    claims: Vec<(SourceSpan, CheckedClaim)>,
     bindings: Vec<String>,
     role: Option<MusicRole>,
     definition_span: SourceSpan,
@@ -1340,6 +1341,33 @@ impl Primitive {
     }
 }
 
+/// One `assert` statement's claim, checked and waiting to be evaluated.
+///
+/// The predicate is the registry's, not a name in scope: which claims exist is
+/// `crate::assert::CLAIMS`, and this is a pointer into it. What varies is the
+/// arguments, and each carries the shape the registry declared for it, so
+/// evaluation reads a `Scale` where a scale was asked for and cannot be handed
+/// something else by an expression that happened to check.
+#[derive(Clone)]
+struct CheckedClaim {
+    predicate: &'static crate::assert::Predicate,
+    arguments: Vec<CheckedArgument>,
+}
+
+/// One argument of a claim, in the shape the registry declared.
+///
+/// A policy is not an expression: its three inhabitants are words, read
+/// straight off the source, because a type in the value language that no
+/// function can take or return would be surface with no caller.
+#[derive(Clone)]
+enum CheckedArgument {
+    Scale(Expr),
+    Chord(Expr),
+    Count(Expr),
+    Ranges(Expr),
+    Policy(crate::assert::Realization),
+}
+
 #[derive(Clone)]
 struct CheckedArm {
     pattern: Pattern,
@@ -1529,6 +1557,11 @@ pub(crate) struct Music {
     pub(crate) uses: IndexMap<u64, Self>,
     pub(crate) pitches: Box<IndexMap<u64, PitchTerm>>,
     pub(crate) scales: Box<IndexMap<u64, crate::scale::Scale>>,
+    /// The claim each `assert` statement makes, keyed by the statement's own
+    /// span. Evaluated here because a claim's arguments are ordinary values —
+    /// `scale c major`, `chord c major7`, a list of pitch pairs — and the
+    /// value language is what evaluates values.
+    pub(crate) claims: Box<IndexMap<u64, crate::assert::Claim>>,
     /// Keys named rather than written out: `key k;` in a template's body,
     /// resolved once the instance's argument is known. Only a document's
     /// root music carries any — a `music` value may not change the context
@@ -1717,6 +1750,10 @@ impl Music {
     pub(crate) fn key_at(&self, span: SourceSpan) -> Option<crate::Key> {
         self.keys.get(&span_key(span)).copied()
     }
+
+    pub(crate) fn claim_at(&self, span: SourceSpan) -> Option<&crate::assert::Claim> {
+        self.claims.get(&span_key(span))
+    }
 }
 
 /// Checked root `use` expressions. This is the only bridge from the total
@@ -1725,6 +1762,7 @@ pub(crate) struct Program {
     uses: IndexMap<u64, Music>,
     pitches: IndexMap<u64, PitchTerm>,
     scales: IndexMap<u64, crate::scale::Scale>,
+    claims: IndexMap<u64, crate::assert::Claim>,
     keys: IndexMap<u64, crate::Key>,
     named_music: IndexMap<String, Music>,
     values: IndexMap<String, Value>,
@@ -1737,6 +1775,7 @@ impl Program {
             uses: self.uses.clone(),
             pitches: Box::new(self.pitches.clone()),
             scales: Box::new(self.scales.clone()),
+            claims: Box::new(self.claims.clone()),
             keys: Box::new(self.keys.clone()),
             bindings: IndexMap::new(),
             role: None,
@@ -2185,6 +2224,7 @@ fn check_and_evaluate(
                             uses: IndexMap::new(),
                             pitches: Box::default(),
                             scales: Box::default(),
+                            claims: Box::default(),
                             keys: Box::default(),
                             bindings: IndexMap::new(),
                             role: None,
@@ -2221,6 +2261,7 @@ fn check_and_evaluate(
     // than inside a definition. `music { ... }` collects its own; these are
     // what is left, and the elaborator reads both through the same root value.
     let mut scales = IndexMap::new();
+    let mut claims = IndexMap::new();
     let mut keys = IndexMap::new();
     let mut pitches = IndexMap::new();
     if let Some(root) = root {
@@ -2250,6 +2291,12 @@ fn check_and_evaluate(
                 return None;
             };
             keys.insert(span_key(span), key);
+        }
+        for statement in root_nodes(root, SyntaxKind::AssertStmt) {
+            let span = crate::resolve::trimmed_span(&statement);
+            let mut checker = root_checker(resolver, &raw, &symbols, &mut meter, span, modules);
+            let checked = checker.claim(&statement)?;
+            claims.insert(span_key(span), eval_claim(&checked, &values, &mut meter)?);
         }
         for statement in root_nodes(root, SyntaxKind::NoteStmt) {
             let Some(expression) =
@@ -2300,6 +2347,7 @@ fn check_and_evaluate(
         uses,
         pitches,
         scales,
+        claims,
         keys,
         named_music,
         values,
@@ -2917,6 +2965,12 @@ impl Checker<'_> {
             scales.push((crate::resolve::trimmed_span(&statement), checked));
         }
 
+        let mut claims = Vec::new();
+        for statement in owned_descendants(node, SyntaxKind::AssertStmt) {
+            let checked = self.claim(&statement)?;
+            claims.push((crate::resolve::trimmed_span(&statement), checked));
+        }
+
         if self.music_role.is_none() {
             for statement in owned_descendants(node, SyntaxKind::TempoStmt)
                 .into_iter()
@@ -2981,12 +3035,119 @@ impl Checker<'_> {
                 uses,
                 pitches,
                 scales,
+                claims,
                 bindings: bindings.into_iter().collect(),
                 role: self.music_role.clone(),
                 definition_span: self.definition_span,
             }),
             ty: Type::Music,
             span,
+        })
+    }
+
+    /// Check one `assert` statement: its name against the registry, and its
+    /// arguments against the shapes that name declares.
+    ///
+    /// Returns `None` on any complaint, having reported it, so a claim never
+    /// reaches elaboration half-understood. A claim nobody could check is
+    /// worse than no claim at all — the composer would read the `assert` and
+    /// believe it.
+    fn claim(&mut self, statement: &SyntaxNode) -> Option<CheckedClaim> {
+        let assertion = musa_language::ast::AssertStmt::cast(statement.clone())?;
+        let statement_span = crate::resolve::trimmed_span(statement);
+        let name = assertion.claim().unwrap_or_default();
+        let name_span = assertion
+            .claim_span()
+            .map_or(statement_span, |(start, end)| SourceSpan::new(start, end));
+        let Some(predicate) = crate::assert::predicate(&name) else {
+            let known: Vec<&str> = crate::assert::names().collect();
+            self.resolver.report(
+                Diagnostic::error(Code::UnknownName, format!("nothing is claimed by `{name}`"))
+                    .at(name_span, "not a claim musa can prove")
+                    .maybe_help(
+                        crate::diagnose::nearest(&name, known.iter().copied())
+                            .map(|near| format!("did you mean `{near}`?")),
+                    )
+                    .note(format!("the claims are: {}", known.join(", "))),
+            );
+            self.failed = true;
+            return None;
+        };
+        let arguments = assertion.args();
+        if arguments.len() != predicate.parameters.len() {
+            let wanted: Vec<&str> = predicate
+                .parameters
+                .iter()
+                .map(|parameter| parameter.as_str())
+                .collect();
+            self.resolver.report(
+                Diagnostic::error(
+                    Code::WrongArity,
+                    format!(
+                        "`{name}` takes {}, and {} written",
+                        spell_arguments(predicate.parameters.len()),
+                        spell_written(arguments.len())
+                    ),
+                )
+                .at(name_span, "this claim's arguments do not match it")
+                .help(if wanted.is_empty() {
+                    format!("`{name}()` — it reads the passage and needs nothing else")
+                } else {
+                    format!("`{name}({})`", wanted.join(", "))
+                })
+                .note(predicate.checks),
+            );
+            self.failed = true;
+            return None;
+        }
+        let mut checked = Vec::new();
+        for (argument, parameter) in arguments.iter().zip(predicate.parameters) {
+            let node = argument.syntax();
+            let span = crate::resolve::trimmed_span(node);
+            let expected = match parameter {
+                crate::assert::ParamType::Policy => {
+                    let word: String = significant_tokens(node).map(|token| token.text().to_owned()).collect();
+                    let Some(policy) = crate::assert::Realization::named(&word) else {
+                        let spellings: Vec<&str> = crate::assert::Realization::ALL
+                            .iter()
+                            .map(|policy| policy.as_str())
+                            .collect();
+                        self.resolver.report(
+                            Diagnostic::error(Code::UnknownWord, format!("`{word}` is not a realization policy"))
+                                .at(span, "expected one of three words")
+                                .maybe_help(
+                                    crate::diagnose::nearest(&word, spellings.iter().copied())
+                                        .map(|near| format!("did you mean `{near}`?")),
+                                )
+                                .note(
+                                    "`exactly` is set equality, `may_omit` lets a member be missing, \
+                                     and `may_add` lets other notes sound",
+                                ),
+                        );
+                        self.failed = true;
+                        return None;
+                    };
+                    checked.push(CheckedArgument::Policy(policy));
+                    continue;
+                }
+                crate::assert::ParamType::Scale => Type::Scale,
+                crate::assert::ParamType::Chord => Type::ChordClass,
+                crate::assert::ParamType::Count => Type::Nat,
+                crate::assert::ParamType::Ranges => Type::List(Box::new(Type::Product(vec![Type::Pitch, Type::Pitch]))),
+            };
+            let expression = child_of(node, is_expr_node)?;
+            let value = self.check(&expression, Some(&expected))?;
+            checked.push(match parameter {
+                crate::assert::ParamType::Scale => CheckedArgument::Scale(value),
+                crate::assert::ParamType::Chord => CheckedArgument::Chord(value),
+                crate::assert::ParamType::Count => CheckedArgument::Count(value),
+                crate::assert::ParamType::Ranges => CheckedArgument::Ranges(value),
+                crate::assert::ParamType::Policy => continue,
+            });
+        }
+        Some(CheckedClaim {
+            predicate,
+            arguments: checked,
         })
     }
 
@@ -4309,6 +4470,10 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 };
                 scales.insert(span_key(*span), value);
             }
+            let mut claims = IndexMap::new();
+            for (span, claim) in &music.claims {
+                claims.insert(span_key(*span), eval_claim(claim, environment, meter)?);
+            }
             let mut bindings = IndexMap::new();
             for name in &music.bindings {
                 let bound = match environment.get(name)? {
@@ -4346,6 +4511,7 @@ fn eval(expression: &Expr, environment: &IndexMap<String, Value>, meter: &mut Wo
                 uses,
                 pitches: Box::new(pitches),
                 scales: Box::new(scales),
+                claims: Box::new(claims),
                 keys: Box::default(),
                 bindings,
                 role: music.role.clone(),
@@ -4526,6 +4692,7 @@ fn apply_builtin(builtin: &BuiltinValue, provided: Vec<Option<Value>>, span: Sou
         uses: IndexMap::new(),
         pitches: Box::default(),
         scales: Box::default(),
+        claims: Box::default(),
         keys: Box::default(),
         bindings: IndexMap::new(),
         role: None,
@@ -5422,6 +5589,82 @@ fn music_items(node: &SyntaxNode) -> Vec<VoiceItem> {
         declaration.items()
     } else {
         Vec::new()
+    }
+}
+
+/// Evaluate a checked claim's arguments and hand them to the assertion
+/// registry.
+///
+/// This is the whole bridge between the value language and the claim family:
+/// `Value` does not leave this module, and `crate::assert::Argument` is the
+/// five shapes that do. Adding a claim therefore cannot widen what a checker
+/// can see — it can only ask for one of these again.
+fn eval_claim(
+    claim: &CheckedClaim,
+    environment: &IndexMap<String, Value>,
+    meter: &mut crate::core_budget::WorkMeter,
+) -> Option<crate::assert::Claim> {
+    let mut arguments = Vec::new();
+    for argument in &claim.arguments {
+        arguments.push(match argument {
+            CheckedArgument::Policy(policy) => crate::assert::Argument::Policy(*policy),
+            CheckedArgument::Scale(expression) => {
+                let Value::Scale(scale) = eval(expression, environment, meter)? else {
+                    return None;
+                };
+                crate::assert::Argument::Scale(scale)
+            }
+            CheckedArgument::Chord(expression) => {
+                let Value::ChordClass(chord) = eval(expression, environment, meter)? else {
+                    return None;
+                };
+                crate::assert::Argument::Chord(chord)
+            }
+            CheckedArgument::Count(expression) => {
+                let Value::Nat(count) = eval(expression, environment, meter)? else {
+                    return None;
+                };
+                crate::assert::Argument::Count(count)
+            }
+            CheckedArgument::Ranges(expression) => {
+                let Value::List { values, .. } = eval(expression, environment, meter)? else {
+                    return None;
+                };
+                crate::assert::Argument::Ranges(
+                    values
+                        .iter()
+                        .map(|pair| {
+                            let Value::Product(bounds) = pair else {
+                                return None;
+                            };
+                            match (bounds.first(), bounds.get(1)) {
+                                (Some(Value::Pitch(low)), Some(Value::Pitch(high))) => Some((*low, *high)),
+                                _ => None,
+                            }
+                        })
+                        .collect::<Option<Vec<_>>>()?,
+                )
+            }
+        });
+    }
+    crate::assert::Claim::build(claim.predicate.name, arguments)
+}
+
+/// `two arguments`, `no arguments` — what a claim's signature asks for.
+fn spell_arguments(count: usize) -> String {
+    match count {
+        0 => "no arguments".to_owned(),
+        1 => "one argument".to_owned(),
+        other => format!("{other} arguments"),
+    }
+}
+
+/// `none were`, `one was`, `three were` — what the source actually wrote.
+fn spell_written(count: usize) -> String {
+    match count {
+        0 => "none were".to_owned(),
+        1 => "one was".to_owned(),
+        other => format!("{other} were"),
     }
 }
 

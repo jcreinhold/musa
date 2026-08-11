@@ -599,6 +599,7 @@ fn occurrence_facts(
         | ExpansionStep::MapNotePitches
         | ExpansionStep::ScaleContext { .. }
         | ExpansionStep::TemplateInstance { .. }
+        | ExpansionStep::Assertion { .. }
         | ExpansionStep::Specialization { .. } => None,
     });
     let motif = call_site.map(|span| motif_name(source, span.start, span.end));
@@ -764,6 +765,7 @@ fn step(step: &ExpansionStep, source: &str) -> String {
         ExpansionStep::Inversion { ref axis } => format!("invert around {axis}"),
         ExpansionStep::MapNotePitches => "map note pitches".to_owned(),
         ExpansionStep::ScaleContext { ref scale } => format!("in {scale}"),
+        ExpansionStep::Assertion { ref claim } => format!("assert {claim}"),
         ExpansionStep::Specialization { .. } => "specialized".to_owned(),
         // The instance, not the template: two instances of one template are
         // two places, and Origin's job is to say which one this is.

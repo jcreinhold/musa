@@ -66,6 +66,7 @@ const VOICE_ITEMS = ($) => [
   $.hairpin_statement,
   $.senza_statement,
   $.in_scale_statement,
+  $.assert_statement,
   $.stack_statement,
 ];
 
@@ -796,6 +797,19 @@ module.exports = grammar({
         // Right-associative: a bar takes every item it can, and the next
         // `|` is what stops it — the hand parser's exit-before-dispatch.
         prec.right(seq('|', repeat(choice(...BAR_ITEMS($))))),
+      ),
+
+    // Parser::assert_stmt — `assert pitches_in(scale c major) { ... }`. The
+    // parentheses are written even when the claim takes no arguments, so that
+    // the grammar tells `assert fills_meter()` apart from a name someone
+    // misremembered. Which names are claims is the compiler's registry, not
+    // the grammar's: the shape is here, the vocabulary is there.
+    assert_statement: ($) =>
+      seq(
+        'assert',
+        field('claim', $.identifier),
+        field('arguments', $.expression_argument_list),
+        field('body', $.block),
       ),
 
     slur_statement: ($) => seq('slur', field('body', $.block)),

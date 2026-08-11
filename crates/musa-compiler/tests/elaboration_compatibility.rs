@@ -107,7 +107,7 @@ fn backend_snapshot_digest(prefix: &str) -> Result<(usize, String)> {
 /// it is refreshed, and the manifest carries the list. Reviewing a baseline
 /// diff then means checking that the section above it explains the section
 /// below it.
-const BREAKS: [(u32, &str, &str); 6] = [
+const BREAKS: [(u32, &str, &str); 7] = [
     (
         109,
         "`use` no longer imports; the import statement is spelled `import`",
@@ -137,6 +137,11 @@ const BREAKS: [(u32, &str, &str); 6] = [
         114,
         "a type parameter is angle-bracketed: `Option<Pitch>` replaces `Option[Pitch]`, and `[` means a list",
         "parser::the_old_type_parameter_brackets_are_migration_errors",
+    ),
+    (
+        116,
+        "`assert` is a statement keyword, so it is no longer available as a name",
+        "parser::assert_is_no_longer_available_as_a_name",
     ),
 ];
 

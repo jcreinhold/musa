@@ -1,0 +1,21 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unmet-claim
+
+  × `chord c major over e` puts `e` in the bass, and `c3` is lowest
+    ╭─[examples/broken/claim-wrong-bass.musa:14:17]
+ 13 │                 voice v {
+ 14 │ ╭─▶                 assert realizes(first_inversion, exactly) {
+ 15 │ │                       [c3 e3 g3]/1
+    · │                       ──────┬─────
+    · │                             ╰── this is the lowest note sounding
+ 16 │ ├─▶                 }
+    · ╰──── the passage claims the chord's own bass
+ 17 │                 }
+    ╰────
+
+  note: OMT 019: the lowest note is what decides inversion, whatever the chord's root is
+
+1 problem (1 error)

@@ -1,0 +1,20 @@
+// An inverted chord class designates a bass, and the lowest note sounding is
+// what decides inversion. These are the right three pitch classes in the
+// wrong order: root position, under a claim of first inversion.
+piece "Wrong Note Lowest" {
+    import std::harmony;
+
+    fn same(content: ChordClass) -> ChordClass { content }
+
+    let first_inversion: ChordClass = option_fold(chord c major, same, inversion(chord c major, 1));
+
+    score {
+        part piano {
+            voice v {
+                assert realizes(first_inversion, exactly) {
+                    [c3 e3 g3]/1
+                }
+            }
+        }
+    }
+}

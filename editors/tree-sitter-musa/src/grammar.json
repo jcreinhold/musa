@@ -2420,6 +2420,10 @@
               },
               {
                 "type": "SYMBOL",
+                "name": "assert_statement"
+              },
+              {
+                "type": "SYMBOL",
                 "name": "stack_statement"
               }
             ]
@@ -2706,6 +2710,10 @@
               {
                 "type": "SYMBOL",
                 "name": "in_scale_statement"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "assert_statement"
               },
               {
                 "type": "SYMBOL",
@@ -3733,6 +3741,10 @@
               },
               {
                 "type": "SYMBOL",
+                "name": "assert_statement"
+              },
+              {
+                "type": "SYMBOL",
                 "name": "stack_statement"
               }
             ]
@@ -4344,6 +4356,39 @@
                 }
               }
             ]
+          }
+        }
+      ]
+    },
+    "assert_statement": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "STRING",
+          "value": "assert"
+        },
+        {
+          "type": "FIELD",
+          "name": "claim",
+          "content": {
+            "type": "SYMBOL",
+            "name": "identifier"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "arguments",
+          "content": {
+            "type": "SYMBOL",
+            "name": "expression_argument_list"
+          }
+        },
+        {
+          "type": "FIELD",
+          "name": "body",
+          "content": {
+            "type": "SYMBOL",
+            "name": "block"
           }
         }
       ]

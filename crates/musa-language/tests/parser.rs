@@ -283,6 +283,7 @@ fn typed_views_read_the_new_statements() {
             | VoiceItem::Chord(_)
             | VoiceItem::Use(_)
             | VoiceItem::InScale(_)
+            | VoiceItem::Assert(_)
             | VoiceItem::Stack(_)
             | VoiceItem::Transpose(_)
             | VoiceItem::Repeat(_)
@@ -346,6 +347,7 @@ fn the_transformations_and_their_bodies_are_typed_views() {
             | VoiceItem::Chord(_)
             | VoiceItem::Use(_)
             | VoiceItem::InScale(_)
+            | VoiceItem::Assert(_)
             | VoiceItem::Stack(_)
             | VoiceItem::Transpose(_)
             | VoiceItem::Repeat(_)
@@ -394,6 +396,7 @@ fn a_specialized_occurrence_carries_its_overrides_and_takes_no_semicolon() {
             | VoiceItem::Rest(_)
             | VoiceItem::Chord(_)
             | VoiceItem::InScale(_)
+            | VoiceItem::Assert(_)
             | VoiceItem::Stack(_)
             | VoiceItem::Transpose(_)
             | VoiceItem::Repeat(_)
@@ -706,6 +709,19 @@ fn the_old_option_constructors_are_migration_errors() {
     insta::assert_snapshot!(print_errors(&doc));
 }
 
+/// `assert` became a statement keyword (prompt 116), so it is no longer a
+/// name. The refusal is the ordinary one every keyword gives — there is no
+/// bespoke migration sentence, because there is no old *meaning* to translate:
+/// a piece that called something `assert` was naming it, and the fix is to
+/// name it something else. What the snapshot records is that the declaration
+/// is refused at the word and recovery restarts at the next declaration,
+/// rather than the word being taken as a name anywhere downstream.
+#[test]
+fn assert_is_no_longer_available_as_a_name() {
+    let doc = parse("piece \"Old\" { let assert: Nat = 1; }");
+    insta::assert_snapshot!(print_errors(&doc));
+}
+
 /// A block delimits one expression. Two of them is the rule being broken,
 /// and saying so is how a statement language stays out of this one.
 #[test]
@@ -749,6 +765,7 @@ fn a_hairpin_names_its_direction_and_its_mark() {
             | VoiceItem::Chord(_)
             | VoiceItem::Use(_)
             | VoiceItem::InScale(_)
+            | VoiceItem::Assert(_)
             | VoiceItem::Stack(_)
             | VoiceItem::Transpose(_)
             | VoiceItem::Repeat(_)

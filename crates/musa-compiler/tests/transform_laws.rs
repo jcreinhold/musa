@@ -279,6 +279,7 @@ fn the_variation_fixture_says_where_every_note_came_from() {
                         ExpansionStep::Inversion { axis } => format!("invert around {axis}"),
                         ExpansionStep::MapNotePitches => "map note pitches".to_owned(),
                         ExpansionStep::ScaleContext { scale } => format!("in {scale}"),
+                        ExpansionStep::Assertion { claim } => format!("assert {claim}"),
                         ExpansionStep::Specialization { .. } => "specialized".to_owned(),
                         ExpansionStep::TemplateInstance { alias, .. } => format!("make {alias}"),
                     })

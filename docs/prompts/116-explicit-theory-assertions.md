@@ -1,7 +1,7 @@
 ---
 id: 116
 slug: explicit-theory-assertions
-status: in-progress
+status: done
 depends_on: [101, 102, 107]
 phase: 3
 ---

@@ -1,0 +1,22 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+unmet-claim
+
+  × `d3` is not a member of `chord c major`
+    ╭─[examples/broken/claim-exactly-adds-a-note.musa:8:17]
+  7 │                 voice v {
+  8 │ ╭─▶                 assert realizes(chord c major, exactly) {
+  9 │ │                       [c3 d3 e3 g3]/1
+    · │                       ───────┬───────
+    · │                              ╰── this note is not in the chord
+ 10 │ ├─▶                 }
+    · ╰──── the passage claims to realize it
+ 11 │                 }
+    ╰────
+  help: `chord c major` is c e g
+
+  note: `exactly` permits no added tones; `may_add` is the policy that does
+
+1 problem (1 error)

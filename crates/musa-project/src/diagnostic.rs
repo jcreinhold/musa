@@ -345,6 +345,24 @@ pub fn explain(code: &str) -> Option<&'static str> {
              now wrong in a way nothing flags, because each still spells fine. A \
              `motif` makes the repetition a fact the compiler can check."
         }
+        musa_compiler::Code::UnmetClaim => {
+            "An `assert` claims something about the passage inside it, and the \
+             passage does not do it.\n\n\
+             This never happens unasked. Musa has no opinion about whether a \
+             piece stays in its key, spells its chords completely, or keeps \
+             four voices in their ranges — until a composer writes the claim \
+             down, at which point checking it is the whole point of having \
+             written it. The diagnostic names the smallest counterexample: the \
+             one note that leaves the collection, the member that never \
+             sounds, the voice that goes out of range. Nothing is repaired, \
+             because a claim that the compiler could satisfy by editing the \
+             music would not be a claim about the music.\n\n\
+             The claims are `fills_meter()`, `pitches_in(scale)`, \
+             `realizes(chord, policy)`, `voices(count)`, and \
+             `within_ranges(ranges)`. A measure claim that fails reports as \
+             `does-not-add-up` instead, because a bar too long is that same \
+             mistake and has said so since bars existed."
+        }
     })
 }
 

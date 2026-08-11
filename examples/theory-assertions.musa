@@ -1,0 +1,98 @@
+// Nothing below is a rule about music. Every `assert` here is a claim a
+// composer chose to write down about one passage, and the compiler either
+// proves it or says exactly which note refuses. Delete an assertion and the
+// piece is unchanged: an assertion adds no note, no time, and no barline, and
+// the only trace it leaves is one line of provenance under the notes it
+// covers.
+//
+// The claims are a fixed family, not an extension point. There are five, they
+// are checked after the passage has been instantiated in its real context,
+// and nothing here becomes a global style rule because it happens to be
+// checkable locally — a piece may leave a scale on the next system and no
+// warning follows it out.
+piece "Theory Assertions" {
+    import std::harmony;
+
+    fn same(content: ChordClass) -> ChordClass { content }
+
+    // C major with its third designated as the bass. `inversion` answers an
+    // `Option`, and a total language unwraps one by naming what happens when
+    // there is nothing there: the fallback is the root-position chord, which
+    // the assertion below would then refuse rather than quietly accept.
+    let first_inversion: ChordClass = option_fold(chord c major, same, inversion(chord c major, 1));
+
+    score {
+        part choir {
+            clef treble;
+
+            voice v {
+                // The claim `bar { ... }` has been making since it was
+                // introduced, written out in full. `fills_meter()` reads the
+                // meter in force where it stands — 4/4 here, because this
+                // piece writes no `meter` — and proves the passage is one
+                // measure of it.
+                assert fills_meter() {
+                    c4/4
+                    d4/4
+                    e4/4
+                    f4/4
+                }
+
+                // Membership is about spelling, not about sound. `f#4` would
+                // fail this claim as F-sharp: the compiler reports it, and
+                // never reads it as G-flat or as a raised fourth degree.
+                assert pitches_in(scale c major) {
+                    g4/4
+                    a4/4
+                    b4/4
+                    c5/4
+                }
+
+                // Three policies, three different claims. `exactly` is set
+                // equality on pitch classes: every member sounds, and nothing
+                // else does. Doubling is invisible to all three, because
+                // which member is doubled is a fact about the voicing.
+                assert realizes(chord c major, exactly) {
+                    [c3 e3 g3]/1
+                }
+
+                // `may_omit` lets a member go missing. The fifth of a
+                // dominant seventh is the one that usually does.
+                assert realizes(chord g dominant7, may_omit) {
+                    [g3 b3 f4]/1
+                }
+
+                // `may_add` lets other notes sound. The passing D is not a
+                // member of C major and this policy is how a composer says so
+                // on purpose.
+                assert realizes(chord c major, may_add) {
+                    c4/4
+                    d4/4
+                    e4/4
+                    g4/4
+                }
+
+                // An inverted class claims which note is lowest, and the
+                // claim is proved by looking at the lowest note.
+                assert realizes(first_inversion, exactly) {
+                    [e3 g3 c4]/1
+                }
+
+                // Four notes wherever anything sounds. Silence is not a
+                // violation: a moment where nothing sounds is no voices, not
+                // a wrong number of them.
+                assert voices(4) {
+                    [c3 g3 c4 e4]/1
+                }
+
+                // The ranges are given lowest voice first, and the passage's
+                // own notes say which voice is which — the compiler has no
+                // notion of "the alto". These four are the SATB ranges, bass
+                // to soprano.
+                assert within_ranges([(f2, d4), (c3, g4), (g3, d5), (c4, g5)]) {
+                    [c3 g3 c4 e4]/1
+                }
+            }
+        }
+    }
+}

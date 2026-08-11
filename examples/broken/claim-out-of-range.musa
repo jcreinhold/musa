@@ -1,0 +1,13 @@
+// The ranges are given lowest voice first, and these are the SATB ranges from
+// bass to soprano. The top note is a fourth above where a soprano stops.
+piece "Above The Soprano" {
+    score {
+        part choir {
+            voice v {
+                assert within_ranges([(f2, d4), (c3, g4), (g3, d5), (c4, g5)]) {
+                    [c3 g3 c4 c6]/1
+                }
+            }
+        }
+    }
+}

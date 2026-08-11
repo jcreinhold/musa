@@ -335,6 +335,8 @@ enum RawToken {
     ToKw,
     #[token("bar", priority = 3)]
     BarKw,
+    #[token("assert", priority = 3)]
+    AssertKw,
     #[token("ending", priority = 3)]
     EndingKw,
     #[token("fragment", priority = 3)]
@@ -498,6 +500,7 @@ impl RawToken {
             | Self::OverKw
             | Self::SenzaKw
             | Self::BarKw
+            | Self::AssertKw
             | Self::EndingKw
             | Self::LetKw
             | Self::FnKw
@@ -623,6 +626,7 @@ impl RawToken {
             Self::OverKw => SyntaxKind::OverKw,
             Self::SenzaKw => SyntaxKind::SenzaKw,
             Self::BarKw => SyntaxKind::BarKw,
+            Self::AssertKw => SyntaxKind::AssertKw,
             Self::EndingKw => SyntaxKind::EndingKw,
             Self::LetKw => SyntaxKind::LetKw,
             Self::FnKw => SyntaxKind::FnKw,

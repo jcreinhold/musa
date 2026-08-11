@@ -1,0 +1,22 @@
+---
+source: crates/musa/tests/cli.rs
+expression: "String::from_utf8_lossy(&output.stderr)"
+---
+does-not-add-up
+
+  × this passage is 1/4 short
+    ╭─[examples/broken/claim-not-a-measure.musa:10:17]
+  9 │                 voice right {
+ 10 │ ╭─▶                 assert fills_meter() {
+ 11 │ │                       c4/4 d4/4
+ 12 │ ├─▶                 }
+    · ╰──── these add up to 1/2
+ 13 │                 }
+    ╰────
+  help: add `rest/4`, or lengthen one of the durations
+
+  note: `meter 3/4` makes a bar 3/4
+  fix: add `rest/4`
+       11:30: insert ` rest/4`
+
+1 problem (1 error)

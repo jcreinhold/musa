@@ -193,11 +193,11 @@ assert pitches_in(scale c major) {
 }
 
 assert pitches_in(scale c major) {
-    c5/4 fs5/4 g5/2
+    c5/4 f#5/4 g5/2
 }
 ```
 
-The first succeeds and returns the body as music. The second is a compile error at `fs5`, with the predicate's witness
+The first succeeds and returns the body as music. The second is a compile error at `f#5`, with the predicate's witness
 and the enclosing assertion in the diagnostic. `assert p(args) { body }` desugars to `checked(p(args), music { body })`;
 `p` must be a constructor invariant or decidable assertion returning a structured witness, not an interpretive analysis.
 It is drawn from a fixed registry rather than from the composer's own definitions, and the name says what is read: this

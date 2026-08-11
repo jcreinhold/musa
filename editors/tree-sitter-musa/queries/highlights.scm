@@ -78,6 +78,7 @@
   "diminuendo"
   "to"
   "bar"
+  "assert"
   "ending"
   "mobile"
   "improvise"
@@ -251,6 +252,11 @@
 
 ; The studio's processors are the language's builtins.
 (call_expression name: (identifier) @function.builtin)
+
+; A claim is one of a fixed few the compiler knows, so it paints as a builtin
+; rather than as something the piece defined — nothing in a `.musa` file
+; declares `pitches_in`.
+(assert_statement claim: (identifier) @function.builtin)
 
 ; --- Fields and arguments: red ---------------------------------------------------
 ;
