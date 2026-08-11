@@ -1,7 +1,7 @@
 ---
 id: 114
 slug: angle-bracketed-type-parameters
-status: pending
+status: in-progress
 depends_on: [113]
 phase: 3
 ---
@@ -71,7 +71,7 @@ cargo nextest run -p musa-language -p musa-compiler -p musa-lsp -p musa-project
 cargo clippy --all-targets -p musa-language -p musa-compiler -p musa-lsp -- -D warnings
 cargo fmt --check
 cargo run -p musa -- check examples/tonal-construction.musa
-cargo run -p musa -- check examples/post-tonal-study.musa
+cargo run -p musa -- check examples/serial-forms.musa
 cargo run -p musa -- format examples/tonal-construction.musa --check
 npm --prefix editors/tree-sitter-musa test
 ```
