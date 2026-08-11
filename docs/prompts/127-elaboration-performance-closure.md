@@ -23,6 +23,8 @@ boundaries. Preserve the audio-bridge baseline unchanged except for explicitly c
 - `docs/interface/06-performance.md` and all existing B-budget definitions.
 - `docs/language/02-core.md`, `03-music.md`, `04-templates-and-modules.md`, `06-kernel-escape.md`, and `07-analysis.md`.
 - Cache, semantic-hash, last-valid-artifact, realization, and provenance invariants from prompts 43, 50, 67, and 77.
+- `crates/musa-compiler/src/elaborate.rs` — `Share`, `music_key`, and `scale_in_force`; and
+  `crates/musa-compiler/tests/scale_context_laws.rs`, which fixes what a call site's pitch context means.
 - `docs/kernel/10-term-calculus.md` §"Provenance of the sharing discipline", and Peyton Jones (1987) Chapters 14.7.2,
   15, and 23. Chapter 15 defines the technique this prompt must measure; Chapter 23 is why it must be measured rather
   than assumed.
@@ -47,20 +49,38 @@ the relevant elaboration/context environment, source/instance identity required 
 and compiler/stdlib format version. Prove cached and uncached results equal in kernel normal form, ordered diagnostics,
 provenance, analyses, and resource failures. Eviction may change time and memory, never semantics or diagnostic order.
 
-**Measure the sharing gap explicitly, and decide it with the measurement.** The `Share` type in
-`crates/musa-compiler/src/elaborate.rs` shares a motif body keyed on everything its payloads depend on, so two calls
-with *different* arguments share nothing — common-subexpression elimination on the call, not full laziness. A body's
-argument-independent subexpressions are therefore re-elaborated once per distinct argument;
-`examples/tuplet-fixture.musa`'s `motif turn(root)` is the shape, with its second note independent of `root`. Add a
-workload that scales this deliberately — a large motif body whose majority is argument-independent, called with many
-distinct arguments — and report elaboration time, allocations, and occurrence count against a hand-hoisted equivalent.
-That difference is the whole prize; if it is immaterial at realistic sizes, record the number and close the question.
+**Measure the sharing gaps explicitly, and decide them with the measurement.** The `Share` type in
+`crates/musa-compiler/src/elaborate.rs` keys an elaborated body on `music_key`, and that key includes the **call span**.
+Two calls therefore share a body only when they are written in the same place, which is why `examples/changes.musa`
+binds one twenty-two-occurrence body twice under two names. There are two gaps, and they are not the same size:
 
-If it is material, implement hoisting of argument-independent subexpressions to piece-level bindings, under three
-conditions and no others:
+- **The call-site gap.** Two identical calls at different sites duplicate the body outright. This is *below*
+  common-subexpression elimination rather than above it: the key separates calls that denote the same thing.
+- **The full-laziness gap.** A body's argument-independent subexpressions are re-elaborated once per distinct argument.
+  `examples/tuplet-fixture.musa`'s `motif turn(root)` is the shape, with its second note independent of `root`.
 
-- **Semantics unchanged.** Kernel normal form, ordered diagnostics, provenance, and semantic hash identical before and
-  after, proved by differential test on the compatibility corpus. The hoisted binding is a `let`, so this is T2.
+Add a workload that scales each deliberately — many identical calls at distinct sites, and a large motif body whose
+majority is argument-independent called with many distinct arguments — and report elaboration time, allocations, and
+occurrence count against a hand-written equivalent. That difference is the whole prize; a gap that is immaterial at
+realistic sizes is closed by recording its number.
+
+**The call span is load-bearing until something replaces it.** `music_key` records `cx.scale` but not `cx.pitch_scale`,
+and a body reads the scale in force *at the call* (`scale_in_force`): the innermost `in scale`, or else the key latest
+at the cursor. Distinct call spans are what keep two readings of one saved phrase apart today, and
+`crates/musa-compiler/tests/scale_context_laws.rs::one_bound_phrase_elaborates_differently_under_two_scales` fails the
+moment the span is dropped on its own. Closing the call-site gap therefore means keying on the *effective* pitch
+context, and showing that what a shared body would otherwise stop doing once per call — the diagnostics reported from
+inside it, the output meter's charge, and the realization decision sequence — is either unchanged or re-charged at the
+reference.
+
+If a gap is material, close it — the call-site gap by a sound key, the full-laziness gap by hoisting
+argument-independent subexpressions to piece-level bindings — under three conditions and no others:
+
+- **Semantics unchanged.** Evaluated kernel normal form, ordered diagnostics, provenance, and semantic hash identical
+  before and after, proved by differential test on the compatibility corpus. The shared binding is a `let`, so this is
+  T2, and the *printed* term is allowed to shrink: a `let` bound once and used twice is the same term as the same body
+  written twice, which is what T2 says. The kernel-corpus goldens record the printed term and are refreshed with the
+  measurement that authorizes them.
 - **Visible, not magic.** The hoist appears as an Origin step. Peyton Jones (1987) §23.2.1's point transfers even though
   its laziness caveats do not: whether the sharing is found depends on how the source was written, and a performance
   property that turns on syntactic accident must be inspectable rather than silent.
@@ -85,6 +105,7 @@ source construct; “faster” is not permission to make accepted programs machi
 - Extended Criterion/UI benchmark suites and checked-in workloads, results, machine metadata, and comparison report.
 - Profiles for each failed or materially regressed workload, with the chosen fix linked to the observed hotspot.
 - Focused internal optimizations and cached/uncached differential law tests where measurement justifies them.
+- Both sharing gaps decided by their measured numbers, each either closed or recorded as immaterial.
 - Updated `docs/interface/06-performance.md` and language resource-budget documentation with measured thresholds and
   scaling variables.
 - A public-surface and dependency audit confirming performance work did not leak compiler internals or add a new crate.
