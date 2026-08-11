@@ -42,6 +42,12 @@ behaviors rather than gaining a vague catch-all branch.
 Every rule has a stable id, source citation/local derivation, minimal passing/failing fixture, and a false-positive
 counterexample. The assertion form preserves music on success; analysis findings remain separate reports.
 
+An assertion's passage is the music inside its own braces and nothing else, which is what keeps the claim local: a
+composer reading `assert follows(satb_parallel_perfects) { … }` can see everything it is about. So the assertable rules
+— the ones decidable from a passage's own sonorities — have content only where the passage is chordal. Four voices
+written as four voices are four passages, and a `follows` claim around one of them is vacuously true. The four-voice
+fixtures are therefore read by `musa analyze`, and the assertion is demonstrated where it can fail.
+
 ## Target
 
 - Analysis profiles/findings and assertion adapters through prompt 117/109 boundaries.
@@ -50,6 +56,8 @@ counterexample. The assertion form preserves music on success; analysis findings
   is named by the request and never by the source: a profile is the analyst's question, and a document that answered it
   in advance would be asserting a style it merely happens to be written in. `profile` is also already the performance
   keyword, so a second sense of the word in the surface language would be a collision as well as a category error.
+- `examples/analysis/asserted-voicings.musa`: the assertable rules asserted on chordal passages, one passing and one
+  failing per rule, with the header stating why an assertion around a single line would have claimed nothing.
 - `crates/musa-compiler/tests/voice_leading_validation.rs`: one invariant, boundary, and counterexample per rule id;
   tie/span normalization; fourth-above-bass context; analysis/assertion separation.
 - `docs/language/07-analysis.md`: rule table with OMT file/section, strength, assumptions, and known limits.
