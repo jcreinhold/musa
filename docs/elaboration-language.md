@@ -1,10 +1,10 @@
 # The elaboration language — contextual music, total functions, and a typed kernel escape
 
 **Status: non-governing design input.** This document evaluates and replaces the earlier proposal of the same name.
-Prompt 92 has split its accepted decisions into the precise candidate specification at `docs/language/README.md`.
-That candidate is the implementation contract for prompts 93–138, but `docs/course-correction.md` and `docs/kernel/`
-continue to govern until prompt 139's conformance audit graduates it. Where this essay and the split candidate differ,
-the split candidate is the proposal to implement.
+Prompt 92 has split its accepted decisions into the precise candidate specification at `docs/language/README.md`. That
+candidate is the implementation contract for prompts 93–138, but `docs/course-correction.md` and `docs/kernel/` continue
+to govern until prompt 139's conformance audit graduates it. Where this essay and the split candidate differ, the split
+candidate is the proposal to implement.
 
 The proposal is grounded in the design conversation that produced the first draft, the current compiler, the kernel
 specification, the interface's Origin view, and the *Open Music Theory* corpus at
@@ -15,10 +15,10 @@ specification, the interface's Origin view, and the *Open Music Theory* corpus a
 The direction is right and the first formalization is not.
 
 Musa does need a typed, total elaboration language above the temporal kernel. General functions should replace the
-present two-kind motif substitution mechanism; `motif` should survive as musician-facing syntax for one particular
-kind of function. Users should be able to author kernel terms, both as standalone `.musa.kernel` files and through a
-typed local escape. The ordinary notation language should remain the default and should not expose this machinery
-unless a composer asks for it.
+present two-kind motif substitution mechanism; `motif` should survive as musician-facing syntax for one particular kind
+of function. Users should be able to author kernel terms, both as standalone `.musa.kernel` files and through a typed
+local escape. The ordinary notation language should remain the default and should not expose this machinery unless a
+composer asks for it.
 
 Seven claims in the first draft must not become design premises:
 
@@ -29,9 +29,8 @@ Seven claims in the first draft must not become design premises:
    used. Once reduced to `Timeline[ScoreFact]`, it is too late to re-elaborate it under another scale. The missing type
    is a contextual `music` value, distinct from a closed kernel term.
 3. **Bare STLC is insufficient.** A simply typed lambda calculus terminates, but without finite data eliminators it
-   cannot express “make `n` copies,” map a row, or fold a chord's members. Musa needs a total higher-order calculus
-   with finite inductive data and structural folds—not general recursion, and not a first-order imitation of
-   functions.
+   cannot express “make `n` copies,” map a row, or fold a chord's members. Musa needs a total higher-order calculus with
+   finite inductive data and structural folds—not general recursion, and not a first-order imitation of functions.
 4. **A key is not a scale embedding into absolute pitches.** A key has no register, and minor keys admit natural,
    harmonic, and melodic-minor collections (OMT 014). `degree(c minor, 5) : pitch` is therefore underdetermined.
 5. **Names and marks are not erased by kernel equality.** A marked kernel reference applies a payload map (T6), and
@@ -71,8 +70,8 @@ motif turn(root: pitch = c5) {
 }
 ```
 
-This is interval arithmetic. It does not need a key. In the pitch algebra below, it is the action of the interval
-group on written pitches.
+This is interval arithmetic. It does not need a key. In the pitch algebra below, it is the action of the interval group
+on written pitches.
 
 A genuinely diatonic neighbour is different and must say which scale supplies the steps:
 
@@ -124,8 +123,8 @@ use canon(theme(), transpose(P5), 1/2)
 This is the named need that invalidates the first-order fence. Higher-order values do not threaten termination;
 unrestricted recursion does. `transpose(P5)` is a total function value, not user-defined syntax.
 
-Higher-order access need not expose the representation of `music`. A narrow traversal supports user-defined pitch
-work while keeping annotations and provenance under compiler control:
+Higher-order access need not expose the representation of `music`. A narrow traversal supports user-defined pitch work
+while keeping annotations and provenance under compiler control:
 
 ```musa
 fn harmonize(subject: music, answer_pitch: pitch -> pitch) -> music {
@@ -136,10 +135,9 @@ fn harmonize(subject: music, answer_pitch: pitch -> pitch) -> music {
 }
 ```
 
-`map_note_pitches` visits written pitches in note and sounded-chord events, preserves their times, and deliberately
-does not rewrite key signatures or chord-symbol annotations. A diatonic `answer_pitch` handles `locate`'s `option`
-explicitly or uses a checked standard-library helper. This is enough to make the traversal total and its ownership
-unambiguous.
+`map_note_pitches` visits written pitches in note and sounded-chord events, preserves their times, and deliberately does
+not rewrite key signatures or chord-symbol annotations. A diatonic `answer_pitch` handles `locate`'s `option` explicitly
+or uses a checked standard-library helper. This is enough to make the traversal total and its ownership unambiguous.
 
 ### 2.4 Chord identity separated from voicing
 
@@ -149,9 +147,9 @@ let voicing = close_position(harmony, bass: c4); % exact pitches and inversion
 play(voicing, 1/2)
 ```
 
-An optional musician-facing form such as `stack c4 maj7/2` may desugar to those operations with the absolute root
-`c4` fixing the register. A `chord` whose root is only pitch class cannot directly become sounded notes: register,
-doubling, spacing, and bass are independent choices (OMT 017–019, 075–076).
+An optional musician-facing form such as `stack c4 maj7/2` may desugar to those operations with the absolute root `c4`
+fixing the register. A `chord` whose root is only pitch class cannot directly become sounded notes: register, doubling,
+spacing, and bass are independent choices (OMT 017–019, 075–076).
 
 ### 2.5 A local, typed kernel escape
 
@@ -167,8 +165,8 @@ fn delayed_double(subject: music) -> music {
 }
 ```
 
-The text between antiquotations is the kernel interchange term language. `${subject}` is a typed host-language hole,
-not a free kernel name. The completed term must be closed and well formed before it can enter a score.
+The text between antiquotations is the kernel interchange term language. `${subject}` is a typed host-language hole, not
+a free kernel name. The completed term must be closed and well formed before it can enter a score.
 
 ## 3. The semantic layers
 
@@ -255,15 +253,15 @@ require an explicit surface inference/elaboration design, not an unmentioned ext
 Core terms include variables, `let`, functions, application, data construction, case analysis, and structural folds.
 There is deliberately no `fix`, unrestricted recursion, mutation, I/O, exception effect, thread, or syntax reflection.
 
-`repeat n { m }` is a musician-facing spelling of a natural-number fold whose result type is `music`. Row operations
-are list maps/folds. A sequence generator can therefore accept a computed finite count without smuggling recursion into
-the language.
+`repeat n { m }` is a musician-facing spelling of a natural-number fold whose result type is `music`. Row operations are
+list maps/folds. A sequence generator can therefore accept a computed finite count without smuggling recursion into the
+language.
 
 This core is strongly normalizing: every well-typed closed term evaluates in finitely many steps. The theorem follows
-from the ordinary normalization argument for STLC plus strictly positive finite data and structural eliminators. It
-does **not** imply that every program is cheap: `repeat 10^12` terminates in the mathematical sense and is still an
-unacceptable compilation. Implementations need deterministic size/work budgets and a resource diagnostic; the budget
-is operational policy, not a fake termination proof.
+from the ordinary normalization argument for STLC plus strictly positive finite data and structural eliminators. It does
+**not** imply that every program is cheap: `repeat 10^12` terminates in the mathematical sense and is still an
+unacceptable compilation. Implementations need deterministic size/work budgets and a resource diagnostic; the budget is
+operational policy, not a fake termination proof.
 
 ### 4.3 Static and dynamic judgments
 
@@ -281,8 +279,8 @@ The required metatheory is:
 3. **Strong normalization.** A closed well-typed term has no infinite reduction path.
 4. **Determinism.** Call-by-value evaluation chooses one result.
 
-Musical operations with a genuinely partial domain do not become hidden evaluator failure. They use one of three
-honest encodings:
+Musical operations with a genuinely partial domain do not become hidden evaluator failure. They use one of three honest
+encodings:
 
 - a refined input type (`positive_ratio`, `triad` rather than arbitrary `chord_class`);
 - an `option` result (`locate : scale -> pitch -> option scale_pitch`);
@@ -320,8 +318,8 @@ expression position uses ordinary application. Existing `use name(args)` syntax 
 
 Calling a named music-producing function records a provenance step. That step is metadata over musical facts, not part
 of beta reduction and not a new kernel operation. Pitch-only helper calls need not clutter a note's Origin path; their
-source expression is already the definition span. The exact provenance policy is syntax-directed and centralized, not
-an effect users can intercept.
+source expression is already the definition span. The exact provenance policy is syntax-directed and centralized, not an
+effect users can intercept.
 
 ## 5. The missing concept: contextual `music`
 
@@ -342,8 +340,8 @@ KernelFragment = {
 close : KernelFragment → closed Term[ScoreFact]
 ```
 
-`Beat` is the absolute notated position of the fragment's start. `ElabEnv` contains only information a reusable
-fragment is allowed to read, including:
+`Beat` is the absolute notated position of the fragment's start. `ElabEnv` contains only information a reusable fragment
+is allowed to read, including:
 
 - the score scope in which its facts will live;
 - the optional scale used by degree operations;
@@ -353,24 +351,24 @@ fragment is allowed to read, including:
 It does **not** expose mutable user state. Transposition and stretching are operations on `music`, not magic environment
 fields. Key and meter declarations are score structure, discussed below.
 
-`music` is context-reading but context-neutral. Statements whose meaning is “from here onward”—key, meter, tempo,
-and clef changes—remain structural piece/voice items and are rejected inside reusable material, as they are today. The
+`music` is context-reading but context-neutral. Statements whose meaning is “from here onward”—key, meter, tempo, and
+clef changes—remain structural piece/voice items and are rejected inside reusable material, as they are today. The
 enclosing structural pass places those facts and supplies their tracks to instantiation. A `music` value may contain
 events, region-local annotations, and lexically scoped `in scale`, because none changes a sibling or its caller's
 subsequent context. This restriction is what makes `sequence` and `overlay` below compositional without a hidden state
 effect or order-dependent merging of parallel context changes.
 
-This is a semantic characterization, not a public Rust representation. Internally `Music` may be an HIR closure, a
-typed expression plus environment, or another structure chosen for incremental compilation. Callers may not know.
-The private binding environment is what lets two calls share one elaborated body, as the current piece-level `Share`
-does. Composition unions compatible binding environments; `close` emits the dominating kernel `let`s once. Requiring
-every small fragment to carry its own closed copy would preserve meaning and accidentally destroy sharing.
+This is a semantic characterization, not a public Rust representation. Internally `Music` may be an HIR closure, a typed
+expression plus environment, or another structure chosen for incremental compilation. Callers may not know. The private
+binding environment is what lets two calls share one elaborated body, as the current piece-level `Share` does.
+Composition unions compatible binding environments; `close` emits the dominating kernel `let`s once. Requiring every
+small fragment to carry its own closed copy would preserve meaning and accidentally destroy sharing.
 
 ### 5.2 Composition laws
 
 Instantiation must respect the kernel algebra while accounting for placement. Suppressing `Checked` and the compatible
-binding environments in the notation below, if
-`instantiate(m, ρ, p) = (t, d)` and `instantiate(n, ρ, p + d) = (u, e)`, then:
+binding environments in the notation below, if `instantiate(m, ρ, p) = (t, d)` and `instantiate(n, ρ, p + d) = (u, e)`,
+then:
 
 ```text
 instantiate(sequence(m, n), ρ, p) = (seq t u, d + e)
@@ -417,8 +415,8 @@ fn phrase(s: scale) -> music { ... }
 use phrase(scale g major)
 ```
 
-Lexical rebinding is mercy for a musical region; explicit parameters are useful at library boundaries. They agree
-under `≈music`; provenance may still distinguish the two spellings.
+Lexical rebinding is mercy for a musical region; explicit parameters are useful at library boundaries. They agree under
+`≈music`; provenance may still distinguish the two spellings.
 
 ### 5.4 What may not be rebound this way
 
@@ -428,11 +426,11 @@ change checks without changing the score. Emitting facts would make it a structu
 context. The current `meter` statement remains the honest operation. A future `rebar` transform would need its own
 specified effect on meter facts and notation; it is not generic context rebinding.
 
-Likewise, `in scale g major` is **not** declared modulation or tonicization. It chooses coordinates for generative
-pitch operations and emits no key signature. A `key g major` statement emits the score fact and changes the default
-scale for subsequent material at that score location. Tonicization and harmonic analysis are annotations/analyses,
-not inferred from a lexical compiler setting. This avoids turning OMT 050–051's interpretive continuum into a false
-binary language semantics.
+Likewise, `in scale g major` is **not** declared modulation or tonicization. It chooses coordinates for generative pitch
+operations and emits no key signature. A `key g major` statement emits the score fact and changes the default scale for
+subsequent material at that score location. Tonicization and harmonic analysis are annotations/analyses, not inferred
+from a lexical compiler setting. This avoids turning OMT 050–051's interpretive continuum into a false binary language
+semantics.
 
 ## 6. Pitch, scale, key, and register
 
@@ -449,9 +447,9 @@ alteration(d, c) = c - natural(d)
 (d, c) + (δd, δc) = (d + δd, c + δc)
 ```
 
-Intervals form the abelian group `ℤ × ℤ` under componentwise addition and act on pitches by the displayed formula.
-This makes transposition spelling preserving by definition: letters move by `δd`, sounding height by `δc`, and the
-resulting accidental is derived from their difference (OMT 005, 016, 099–100).
+Intervals form the abelian group `ℤ × ℤ` under componentwise addition and act on pitches by the displayed formula. This
+makes transposition spelling preserving by definition: letters move by `δd`, sounding height by `δc`, and the resulting
+accidental is derived from their difference (OMT 005, 016, 099–100).
 
 The mathematical value permits arbitrary integer alteration, making the action total and its group laws true. The
 ordinary notation surface may accept only natural through double accidentals, and a backend may reject an unengraveable
@@ -461,11 +459,11 @@ result with a diagnostic. A representability limit is not part of the pitch alge
 therefore retains spelling: it is not a MIDI number and does not identify D-sharp with E-flat merely because a tuning
 later assigns the same frequency.
 
-Serial and pitch-class set theory use a different quotient, `pc12 = ℤ/12ℤ`, which deliberately forgets spelling as
-well as register. The projection `forget_spelling : pitchclass -> pc12` is total; its inverse requires an explicit
-spelling policy and is not a function Musa may guess. A `row12` is a checked 12-element permutation of `pc12`; an
-arbitrary pitch-class sequence remains `list pc12`. This keeps the serial group action exact without weakening written
-pitch identity elsewhere.
+Serial and pitch-class set theory use a different quotient, `pc12 = ℤ/12ℤ`, which deliberately forgets spelling as well
+as register. The projection `forget_spelling : pitchclass -> pc12` is total; its inverse requires an explicit spelling
+policy and is not a function Musa may guess. A `row12` is a checked 12-element permutation of `pc12`; an arbitrary
+pitch-class sequence remains `list pc12`. This keeps the serial group action exact without weakening written pitch
+identity elsewhere.
 
 ### 6.2 Scale and key are distinct
 
@@ -501,8 +499,8 @@ at_degree     : pitch_frame -> degree -> pitch
 `frame` supplies the missing register by choosing an absolute tonic whose pitch class agrees with the scale. It lifts
 the periodic pitch-class map to an embedding of integer degrees into absolute written pitches. `locate`/`step` is the
 convenient route when a motif already has a root pitch. The surface expression `root step 1` elaborates to “locate
-`root` in the ambient scale, move one coordinate, return its written pitch,” with a precise diagnostic if no scale is
-in force or the root is not a member.
+`root` in the ambient scale, move one coordinate, return its written pitch,” with a precise diagnostic if no scale is in
+force or the root is not a member.
 
 Chromatic motion remains `pitch up interval`. Diatonic and chromatic motion intentionally do not share an operator and
 need not commute.
@@ -528,8 +526,8 @@ This makes theoretical domains precise:
   They are not partial `chord -> chord` functions over suspended, quartal, or altered chords.
 - `invert_chord` changes the designated bass member of a chord class. A voicing operation realizes that inversion; it
   does not confuse root with the lowest pitch (OMT 019).
-- `stack(c4, major7)` may be standard-library sugar for a specified close-position voicing above the absolute root
-  `c4`. `stack(c, major7)` is incomplete and must not pretend otherwise.
+- `stack(c4, major7)` may be standard-library sugar for a specified close-position voicing above the absolute root `c4`.
+  `stack(c, major7)` is incomplete and must not pretend otherwise.
 - Applied chords, mixture, common-chord searches, and rule-of-the-octave harmonizations consume explicit key/scale and
   chord values. They are library algorithms, not facts every note must satisfy.
 
@@ -561,8 +559,8 @@ otherwise remain ordinary higher-order functions.
 
 ### 8.2 Source standard libraries
 
-Operations expressible through functions, finite data, and the primitive interface belong in `.musa` libraries. A
-useful organization follows mathematical domain, without turning that organization into compiler ontology:
+Operations expressible through functions, finite data, and the primitive interface belong in `.musa` libraries. A useful
+organization follows mathematical domain, without turning that organization into compiler ontology:
 
 - `pitch` / `scale`: interval actions, degree operations, modes and collections;
 - `harmony`: chord spelling, inversions, voicing policies, applied chords;
@@ -570,14 +568,14 @@ useful organization follows mathematical domain, without turning that organizati
 - `serial`: rows and T/I/R/RI;
 - `schemas`: diatonic sequences, rule of the octave, and other named constructions.
 
-OMT is a grounding and regression corpus: it supplies terminology, examples, and expected laws. It is not a closed
-world and not an admission rule. An unnamed but orthogonal and useful operation may belong; a named textbook operation
-still stays derived when the core can express it.
+OMT is a grounding and regression corpus: it supplies terminology, examples, and expected laws. It is not a closed world
+and not an admission rule. An unnamed but orthogonal and useful operation may belong; a named textbook operation still
+stays derived when the core can express it.
 
 The serial algebra must be stated accurately. Transpositions and inversions of `pc12` generate a dihedral action of
 order 24 (under the convention where `D12` has 24 elements). Row reversal commutes with that pitch-class action,
-yielding up to 48 P/I/R/RI forms for a generic `row12`. “The row operations generate D12” and
-“there are 48 forms” cannot both describe the same group without this extra reversal factor.
+yielding up to 48 P/I/R/RI forms for a generic `row12`. “The row operations generate D12” and “there are 48 forms”
+cannot both describe the same group without this extra reversal factor.
 
 ### 8.3 Analysis and verification
 
@@ -590,8 +588,8 @@ it, annotate a chord without deriving the notes from it, and ask an analysis to 
 
 The language should distinguish three strengths of guarantee:
 
-- **Type/constructor invariant, before a core value exists:** positive stretch, exact duration, `row12` uniqueness,
-  and PLR's `triad` domain.
+- **Type/constructor invariant, before a core value exists:** positive stretch, exact duration, `row12` uniqueness, and
+  PLR's `triad` domain.
 - **Explicit musical assertion, after each contextual instantiation:** a named bar fills its meter, selected notes
   realize this chord symbol, or pitches lie in this scale.
 - **Interpretive analysis, on request over closed facts:** inferred key, Roman numeral, tonicization/modulation,
@@ -617,12 +615,12 @@ The exact claim has a syntactic part and a typed semantic part:
 > with a registered adapter, the unified route produces the same checked term and kernel denotation as direct parsing
 > with that adapter.
 
-The current interchange grammar has a required `% musa-kernel-1` header and exactly one `composition` declaration.
-The unified source-document grammar therefore has a `kernel-file` top-level alternative owned by the kernel grammar;
-it must not reimplement a drifting copy. The extension chooses tooling defaults, not meaning. A kernel document exposes
-its one composition as the document's typed result. It is not silently rewritten into a surface `library` containing
-plural compositions the kernel grammar does not have. If Musa does not own the named payload type, it may preserve and
-edit the syntactically valid document but must refuse evaluation rather than invent a payload meaning.
+The current interchange grammar has a required `% musa-kernel-1` header and exactly one `composition` declaration. The
+unified source-document grammar therefore has a `kernel-file` top-level alternative owned by the kernel grammar; it must
+not reimplement a drifting copy. The extension chooses tooling defaults, not meaning. A kernel document exposes its one
+composition as the document's typed result. It is not silently rewritten into a surface `library` containing plural
+compositions the kernel grammar does not have. If Musa does not own the named payload type, it may preserve and edit the
+syntactically valid document but must refuse evaluation rather than invent a payload meaning.
 
 This inclusion does **not** mean every kernel payload type is score material. A standalone `Timeline[A]` is valid when
 the kernel consumer owns `A`. Only a `Term[ScoreFact]` whose facts pass the context-neutral material check can be
@@ -664,8 +662,8 @@ Inside a raw splice Musa provides:
 - a `KernelSplice` provenance step on every score fact leaving the splice.
 
 It does not infer or enforce surface-only relationships inside the raw term: bar assertions, degree membership,
-music-theory lints, motif editing structure, or source-level transform laws. An antiquoted value retains its typed
-facts and its own derivation provenance, but a raw `scale`, `shift`, or `restrict` around it may invalidate
+music-theory lints, motif editing structure, or source-level transform laws. An antiquoted value retains its typed facts
+and its own derivation provenance, but a raw `scale`, `shift`, or `restrict` around it may invalidate
 placement-sensitive surface checks it passed before the raw operation. The entire splice therefore carries a
 `KernelSplice` step and makes no stronger surface guarantee than the completed raw term. Exact outer extent and payload
 typing still hold.
@@ -683,9 +681,9 @@ The kernel keeps its existing equality:
 T ≡kernel U  iff their canonical Timeline[ScoreFact] forms agree
 ```
 
-Because provenance is carried in payloads and marked references may map payloads, two differently marked
-instantiations need not be `≡kernel`. For laws about sounding/notated content independent of source history, define an
-explicit payload projection:
+Because provenance is carried in payloads and marked references may map payloads, two differently marked instantiations
+need not be `≡kernel`. For laws about sounding/notated content independent of source history, define an explicit payload
+projection:
 
 ```text
 erase_origin : ScoreFact -> MusicalFact
@@ -765,8 +763,8 @@ a function on `music`; neither should be sold as an OCaml functor.
 - a voice establishes identity, absolute placement, and context-change authority;
 - turning either into `music` would leak those structural policies into every transform.
 
-The request for a family of pieces or voices parameterized by key, scale, subject, or transform is nevertheless real.
-It needs a small *declaration-level template* judgment beside, not inside, the value calculus:
+The request for a family of pieces or voices parameterized by key, scale, subject, or transform is nevertheless real. It
+needs a small *declaration-level template* judgment beside, not inside, the value calculus:
 
 ```text
 Γ ⊢ e : τ
@@ -815,8 +813,8 @@ Two materially different implementation boundaries were considered.
 ### Alternative A — a public `musa-elaboration` crate
 
 This would expose `Type`, `Value`, `Closure`, `Music`, environments, and evaluation errors. Today it has one caller,
-`musa-compiler`; its types are precisely the volatile choices this design is still settling. A new crate would turn
-pass boundaries into public architecture and force callers to know how elaboration is staged. Reject it.
+`musa-compiler`; its types are precisely the volatile choices this design is still settling. A new crate would turn pass
+boundaries into public architecture and force callers to know how elaboration is staged. Reject it.
 
 ### Alternative B — one deep private compiler subsystem
 
@@ -852,8 +850,8 @@ Every future construct or library addition must answer these questions in order:
 
 1. **Meaning.** Does it compute a base value, contextual `music`, a kernel term, a structural declaration/template, or
    an analysis result? One construct may not straddle these categories silently.
-2. **Derivability.** Can it be written as an ordinary total function using existing operations? If yes, it is a
-   library function, not a compiler primitive or keyword.
+2. **Derivability.** Can it be written as an ordinary total function using existing operations? If yes, it is a library
+   function, not a compiler primitive or keyword.
 3. **Context honesty.** Which environment fields and score position facts may it read? Does a lexical override change
    actual score facts or only generative coordinates? The name and documentation must say which.
 4. **Domain honesty.** Is the operation total on its declared type? PLR takes `triad`, not arbitrary `chord_class`;
@@ -870,23 +868,22 @@ Every future construct or library addition must answer these questions in order:
     but never substitutes for these answers.
 
 User-defined syntax macros are not part of this proposal. Hygienic token-tree or syntax-object macros do not
-*necessarily* make parsing impossible, so that was not a sound rejection argument in the first draft. They are still
-the wrong first tool: all named motivating transformations are value-level computations; syntax reflection would add a
+*necessarily* make parsing impossible, so that was not a sound rejection argument in the first draft. They are still the
+wrong first tool: all named motivating transformations are value-level computations; syntax reflection would add a
 second staging/provenance system before one is needed. If a future construct truly cannot be expressed as a function,
 macros require a separate typed quotation, hygiene, phase, formatting, and Origin design.
 
 ## 15. Laws and verification obligations
 
-The design is accepted only if the following become executable checks or formal arguments at the prompt that
-introduces them:
+The design is accepted only if the following become executable checks or formal arguments at the prompt that introduces
+them:
 
 - **Type soundness and normalization** for the elaboration core.
 - **Context laws** for `in scale`, including shadowing and distribution over sequence/overlay.
 - **Open-binding law:** binding a `music` value does not capture the scale at the binding site.
 - **Context-neutrality law:** reusable `music` cannot emit a context-track change; declaration templates retain the
   structural authority needed to parameterize such changes.
-- **Kernel soundness:** closing every successful instantiation yields a closed, `Term::check`-passing
-  `Term[ScoreFact]`.
+- **Kernel soundness:** closing every successful instantiation yields a closed, `Term::check`-passing `Term[ScoreFact]`.
 - **Desugaring laws:** each surface form agrees with its core expansion under `≈music`.
 - **Provenance law:** desugaring/instantiation adds the specified Origin path without changing temporal support except
   where the transform itself does.
@@ -907,9 +904,9 @@ introduces them:
   context tracks, decisions, and Origin paths as before.
 
 The grounding corpus should include at least: the root-dependent turn, a major/dorian re-instantiation, a multi-voice
-canon, a chord class realized in two voicings, a minor-key passage choosing harmonic versus natural minor explicitly,
-a generic twelve-tone row with 48 distinct forms and a symmetric counterexample, and a kernel splice containing both
-raw and antiquoted material.
+canon, a chord class realized in two voicings, a minor-key passage choosing harmonic versus natural minor explicitly, a
+generic twelve-tone row with 48 distinct forms and a symmetric counterexample, and a kernel splice containing both raw
+and antiquoted material.
 
 ## 16. Migration shape
 
@@ -944,8 +941,8 @@ before code, and no prompt is allowed to introduce a second public compiler faca
 - The notation for altered scale degrees and for choosing a register (`near`, an explicit tonic frame, or another
   musician-tested spelling).
 - The first set of voicing policies beyond explicit pitch lists and close position.
-- The surface spelling of declaration-template definition and instantiation, and the first module signature worth
-  adding beyond direct typed parameters.
+- The surface spelling of declaration-template definition and instantiation, and the first module signature worth adding
+  beyond direct typed parameters.
 
 None of these changes the semantic center. The load-bearing decisions are settled here: total higher-order functions,
 finite folds, contextual `music`, explicit scale/register, typed kernel quotation, provenance-aware equality, and a

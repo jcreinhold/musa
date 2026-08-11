@@ -32,54 +32,54 @@ Maps syntax tree nodes to highlight capture names. Zed themes assign colors to e
 
 These are the captures Zed themes recognize. Using captures outside this set will compile but produce no highlighting.
 
-| Capture                    | Use for                                             |
-| -------------------------- | --------------------------------------------------- |
-| `@attribute`               | Attributes, decorators, annotations                 |
-| `@boolean`                 | Boolean literals (`true`, `false`)                  |
-| `@comment`                 | Line and block comments                             |
-| `@comment.doc`             | Documentation comments                              |
-| `@constant`                | Named constants                                     |
-| `@constant.builtin`        | Built-in constants (`true`, `false`, `nil`, `self`) |
-| `@constructor`             | Constructors, variant names                         |
-| `@embedded`                | Embedded content (e.g., code in templates)          |
-| `@emphasis`                | Emphasized text (italic)                            |
-| `@emphasis.strong`         | Strongly emphasized text (bold)                     |
-| `@enum`                    | Enum types                                          |
-| `@function`                | Function definitions and references                 |
-| `@function.builtin`        | Built-in functions                                  |
-| `@function.method`         | Method definitions                                  |
-| `@function.special`        | Special functions (macros, decorators)              |
-| `@hint`                    | Hint annotations                                    |
-| `@keyword`                 | General keywords                                    |
-| `@label`                   | Labels, targets                                     |
-| `@link_text`               | Link text in markup                                 |
-| `@link_uri`                | Link URLs in markup                                 |
-| `@number`                  | Numeric literals                                    |
-| `@operator`                | Operators (`+`, `-`, `->`, etc.)                    |
-| `@predictive`              | Predictive/ghost text                               |
-| `@preproc`                 | Preprocessor directives                             |
-| `@primary`                 | Primary/prominent elements                          |
-| `@property`                | Object properties, struct fields                    |
-| `@punctuation`             | General punctuation                                 |
-| `@punctuation.bracket`     | Brackets `()`, `[]`, `{}`                           |
-| `@punctuation.delimiter`   | Delimiters: `,`, `;`, `:`                           |
-| `@punctuation.list_marker` | List markers in markup                              |
-| `@punctuation.special`     | Special punctuation                                 |
-| `@string`                  | String literals                                     |
-| `@string.escape`           | Escape sequences in strings                         |
-| `@string.regex`            | Regular expressions                                 |
-| `@string.special`          | Special strings                                     |
-| `@string.special.symbol`   | Symbols (e.g., Ruby `:symbol`)                      |
-| `@tag`                     | Tags (HTML, XML)                                    |
-| `@tag.doctype`             | DOCTYPE declarations                                |
-| `@text.literal`            | Literal/verbatim text                               |
-| `@title`                   | Titles, headings                                    |
-| `@type`                    | Type names                                          |
-| `@type.builtin`            | Built-in types (`i32`, `String`, etc.)              |
-| `@variable`                | Variables                                           |
-| `@variable.parameter`      | Function/method parameters                          |
-| `@variable.special`        | Special variables (`self`, `this`, `super`)         |
-| `@variant`                 | Enum variants, union members                        |
+| Capture | Use for |
+| --- | --- |
+| `@attribute` | Attributes, decorators, annotations |
+| `@boolean` | Boolean literals (`true`, `false`) |
+| `@comment` | Line and block comments |
+| `@comment.doc` | Documentation comments |
+| `@constant` | Named constants |
+| `@constant.builtin` | Built-in constants (`true`, `false`, `nil`, `self`) |
+| `@constructor` | Constructors, variant names |
+| `@embedded` | Embedded content (e.g., code in templates) |
+| `@emphasis` | Emphasized text (italic) |
+| `@emphasis.strong` | Strongly emphasized text (bold) |
+| `@enum` | Enum types |
+| `@function` | Function definitions and references |
+| `@function.builtin` | Built-in functions |
+| `@function.method` | Method definitions |
+| `@function.special` | Special functions (macros, decorators) |
+| `@hint` | Hint annotations |
+| `@keyword` | General keywords |
+| `@label` | Labels, targets |
+| `@link_text` | Link text in markup |
+| `@link_uri` | Link URLs in markup |
+| `@number` | Numeric literals |
+| `@operator` | Operators (`+`, `-`, `->`, etc.) |
+| `@predictive` | Predictive/ghost text |
+| `@preproc` | Preprocessor directives |
+| `@primary` | Primary/prominent elements |
+| `@property` | Object properties, struct fields |
+| `@punctuation` | General punctuation |
+| `@punctuation.bracket` | Brackets `()`, `[]`, `{}` |
+| `@punctuation.delimiter` | Delimiters: `,`, `;`, `:` |
+| `@punctuation.list_marker` | List markers in markup |
+| `@punctuation.special` | Special punctuation |
+| `@string` | String literals |
+| `@string.escape` | Escape sequences in strings |
+| `@string.regex` | Regular expressions |
+| `@string.special` | Special strings |
+| `@string.special.symbol` | Symbols (e.g., Ruby `:symbol`) |
+| `@tag` | Tags (HTML, XML) |
+| `@tag.doctype` | DOCTYPE declarations |
+| `@text.literal` | Literal/verbatim text |
+| `@title` | Titles, headings |
+| `@type` | Type names |
+| `@type.builtin` | Built-in types (`i32`, `String`, etc.) |
+| `@variable` | Variables |
+| `@variable.parameter` | Function/method parameters |
+| `@variable.special` | Special variables (`self`, `this`, `super`) |
+| `@variant` | Enum variants, union members |
 
 ### Highlight Priority
 
@@ -115,16 +115,16 @@ the top and specific overrides at the bottom.
 
 ### Differences from nvim-treesitter
 
-| nvim-treesitter                      | Zed                    | Notes                                                        |
-| ------------------------------------ | ---------------------- | ------------------------------------------------------------ |
-| `@keyword.function`                  | `@keyword`             | Zed themes typically don't distinguish keyword subcategories |
-| `@keyword.return`                    | `@keyword`             | Same — use `@keyword` for all keywords                       |
-| `@keyword.conditional`               | `@keyword`             | Same                                                         |
-| `@function.call`                     | `@function`            | Zed may not distinguish definition vs. call                  |
-| `@type.definition`                   | `@type`                | Use `@type` for both definitions and references              |
-| `@number.float`                      | `@number`              | No float subcategory in Zed                                  |
-| `@variable.builtin`                  | `@variable.special`    | Different name for `self`/`this`                             |
-| `@punctuation.bracket` in highlights | `@punctuation.bracket` | Same, but brackets.scm uses `@open`/`@close`                 |
+| nvim-treesitter | Zed | Notes |
+| --- | --- | --- |
+| `@keyword.function` | `@keyword` | Zed themes typically don't distinguish keyword subcategories |
+| `@keyword.return` | `@keyword` | Same — use `@keyword` for all keywords |
+| `@keyword.conditional` | `@keyword` | Same |
+| `@function.call` | `@function` | Zed may not distinguish definition vs. call |
+| `@type.definition` | `@type` | Use `@type` for both definitions and references |
+| `@number.float` | `@number` | No float subcategory in Zed |
+| `@variable.builtin` | `@variable.special` | Different name for `self`/`this` |
+| `@punctuation.bracket` in highlights | `@punctuation.bracket` | Same, but brackets.scm uses `@open`/`@close` |
 
 **Practical advice:** Start with the standard captures from the table above. If a subcategory capture
 (`@keyword.function`) doesn't produce different highlighting from the parent (`@keyword`), it's because the active Zed
@@ -139,13 +139,13 @@ Defines the code structure shown in Zed's outline panel (Cmd+Shift+O) and breadc
 
 ### Captures
 
-| Capture          | Purpose                                                                |
-| ---------------- | ---------------------------------------------------------------------- |
-| `@item`          | Marks a node as a navigable outline entry                              |
-| `@name`          | The label shown for the entry (must be inside `@item`)                 |
-| `@context`       | Parent context shown above the entry (e.g., `impl Foo` above a method) |
-| `@context.extra` | Additional context (e.g., type parameters)                             |
-| `@annotation`    | Annotations shown alongside the entry                                  |
+| Capture | Purpose |
+| --- | --- |
+| `@item` | Marks a node as a navigable outline entry |
+| `@name` | The label shown for the entry (must be inside `@item`) |
+| `@context` | Parent context shown above the entry (e.g., `impl Foo` above a method) |
+| `@context.extra` | Additional context (e.g., type parameters) |
+| `@annotation` | Annotations shown alongside the entry |
 
 ### Pattern Examples
 
@@ -181,7 +181,7 @@ Defines the code structure shown in Zed's outline panel (Cmd+Shift+O) and breadc
 
 - Every `@item` must contain a `@name` — entries without names are ignored.
 - `@context` creates a visual grouping (shown as a breadcrumb parent). The `@context` node must be an ancestor of
-    `@item`.
+  `@item`.
 - Outline entries appear in document order. Nesting follows the parse tree structure.
 - This file is Zed-specific — nvim-treesitter does not use `outline.scm`.
 
@@ -193,9 +193,9 @@ Defines bracket pairs for matching and rainbow highlighting.
 
 ### Captures
 
-| Capture  | Purpose         |
-| -------- | --------------- |
-| `@open`  | Opening bracket |
+| Capture | Purpose |
+| --- | --- |
+| `@open` | Opening bracket |
 | `@close` | Closing bracket |
 
 ### Pattern Examples
@@ -216,7 +216,7 @@ Defines bracket pairs for matching and rainbow highlighting.
 ### Key Rules
 
 - These captures are only for bracket highlighting/matching — not for syntax highlighting (that's `@punctuation.bracket`
-    in `highlights.scm`).
+  in `highlights.scm`).
 - Each `@open`/`@close` should appear as a standalone pattern or a paired pattern.
 
 ______________________________________________________________________
@@ -227,12 +227,12 @@ Controls automatic indentation when pressing Enter or reformatting.
 
 ### Captures
 
-| Capture          | Purpose                                        |
-| ---------------- | ---------------------------------------------- |
-| `@indent`        | Increase indent after this node                |
-| `@end`           | Decrease indent at this node                   |
+| Capture | Purpose |
+| --- | --- |
+| `@indent` | Increase indent after this node |
+| `@end` | Decrease indent at this node |
 | `@indent.always` | Always indent (even if on same line as parent) |
-| `@outdent`       | Outdent this line one level                    |
+| `@outdent` | Outdent this line one level |
 
 ### Pattern Examples
 
@@ -259,7 +259,7 @@ Controls automatic indentation when pressing Enter or reformatting.
 - `@indent` says "children of this node are indented one level."
 - `@end` says "this token should be dedented to match its opening."
 - These interact with `increase_indent_pattern` / `decrease_indent_pattern` from `config.toml`. The query-based approach
-    takes precedence when both are present.
+  takes precedence when both are present.
 
 ______________________________________________________________________
 
@@ -269,10 +269,10 @@ Tells Zed to parse regions of the file with a different language's grammar.
 
 ### Captures
 
-| Capture               | Purpose                                             |
-| --------------------- | --------------------------------------------------- |
-| `@injection.content`  | The text region to parse with the injected language |
-| `@injection.language` | A node whose text names the language                |
+| Capture | Purpose |
+| --- | --- |
+| `@injection.content` | The text region to parse with the injected language |
+| `@injection.language` | A node whose text names the language |
 
 ### Properties
 
@@ -324,14 +324,14 @@ Defines Vim-style text objects for `i`/`a` motions.
 
 ### Captures
 
-| Capture            | Purpose                         |
-| ------------------ | ------------------------------- |
-| `@function.around` | Whole function (for `af`)       |
-| `@function.inside` | Function body only (for `if`)   |
-| `@class.around`    | Whole class/type (for `ac`)     |
-| `@class.inside`    | Class/type body only (for `ic`) |
-| `@comment.around`  | Whole comment (for `agc`)       |
-| `@comment.inside`  | Comment content only            |
+| Capture | Purpose |
+| --- | --- |
+| `@function.around` | Whole function (for `af`) |
+| `@function.inside` | Function body only (for `if`) |
+| `@class.around` | Whole class/type (for `ac`) |
+| `@class.inside` | Class/type body only (for `ic`) |
+| `@comment.around` | Whole comment (for `agc`) |
+| `@comment.inside` | Comment content only |
 
 ### Pattern Examples
 
@@ -353,9 +353,9 @@ Detects runnable code (test functions, main functions) and shows a run button in
 
 ### Captures
 
-| Capture | Purpose                  |
-| ------- | ------------------------ |
-| `@run`  | Marks a node as runnable |
+| Capture | Purpose |
+| --- | --- |
+| `@run` | Marks a node as runnable |
 
 ### Properties
 
@@ -391,8 +391,8 @@ Marks sensitive content that should be hidden during screen sharing (Zed's colla
 
 ### Captures
 
-| Capture   | Purpose                               |
-| --------- | ------------------------------------- |
+| Capture | Purpose |
+| --- | --- |
 | `@redact` | Content to hide during screen sharing |
 
 ### Pattern Examples
@@ -410,8 +410,8 @@ Defines which constructs can be collapsed with code folding.
 
 ### Captures
 
-| Capture | Purpose                 |
-| ------- | ----------------------- |
+| Capture | Purpose |
+| --- | --- |
 | `@fold` | Node that can be folded |
 
 ### Pattern Examples
@@ -439,11 +439,11 @@ Defines variable scoping for rename refactoring and reference highlighting.
 
 ### Captures
 
-| Capture             | Purpose                                 |
-| ------------------- | --------------------------------------- |
-| `@local.scope`      | Creates a new scope                     |
+| Capture | Purpose |
+| --- | --- |
+| `@local.scope` | Creates a new scope |
 | `@local.definition` | Defines a variable in the current scope |
-| `@local.reference`  | References a variable                   |
+| `@local.reference` | References a variable |
 
 ### Pattern Examples
 
@@ -472,14 +472,14 @@ Defines tags for code navigation (similar to ctags). Used for "go to definition"
 
 ### Captures
 
-| Capture                | Purpose              |
-| ---------------------- | -------------------- |
-| `@definition.function` | Function definition  |
-| `@definition.method`   | Method definition    |
-| `@definition.type`     | Type definition      |
-| `@definition.module`   | Module definition    |
-| `@definition.constant` | Constant definition  |
-| `@reference.call`      | Function/method call |
+| Capture | Purpose |
+| --- | --- |
+| `@definition.function` | Function definition |
+| `@definition.method` | Method definition |
+| `@definition.type` | Type definition |
+| `@definition.module` | Module definition |
+| `@definition.constant` | Constant definition |
+| `@reference.call` | Function/method call |
 
 ### Pattern Examples
 
@@ -529,8 +529,8 @@ or supplement tree-sitter highlighting.
 ### Key Rules
 
 - Users must enable semantic tokens in Zed settings: `"semantic_tokens": "combined"` (or `"replace"` to fully replace
-    tree-sitter highlighting).
+  tree-sitter highlighting).
 - Rules with `modifiers` are more specific and take precedence over rules without.
 - The `token_type` values come from the LSP's `semanticTokensProvider` capability — check what your language server
-    reports.
+  reports.
 - The `highlight` value must be a Zed capture name from the highlights.scm table above.

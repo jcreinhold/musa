@@ -23,15 +23,15 @@ without turning a piece, part, voice, context track, studio graph, or source AST
 
 ## Design
 
-Implement the separate judgment `Γ ⊢ template(params) D : params => declaration κ`, for `κ` equal to piece or voice
-in this prompt. A template is not a value; instantiation evaluates arguments in the total core, substitutes values
-into a typed declaration template, assigns stable generative identities derived from template definition plus
-instance site, and yields ordinary declarations before context tracks and `music` instantiate.
+Implement the separate judgment `Γ ⊢ template(params) D : params => declaration κ`, for `κ` equal to piece or voice in
+this prompt. A template is not a value; instantiation evaluates arguments in the total core, substitutes values into a
+typed declaration template, assigns stable generative identities derived from template definition plus instance site,
+and yields ordinary declarations before context tracks and `music` instantiate.
 
 The dependency graph is finite and acyclic. Duplicate/recursive instance paths, identity collisions, missing/extra
 arguments, and structural-kind mismatch are diagnostics with both definition and instance labels. A parameterized voice
-may contain key/meter/tempo/clef statements because each instance has one structural placement and identity; a
-`music` parameter remains context-neutral. Templates accept higher-order arguments such as `music -> music` but cannot
+may contain key/meter/tempo/clef statements because each instance has one structural placement and identity; a `music`
+parameter remains context-neutral. Templates accept higher-order arguments such as `music -> music` but cannot
 return/take first-class `piece` or `voice` values or inspect their source.
 
 A document remains one piece or one library, so an instance site is placed by the kind it makes: a root `make` of a
@@ -40,8 +40,8 @@ body sees its own parameters and nothing from the site that instantiates it; ins
 site's scope. Sharing one template across documents is the import question prompt 104 answers, not this one.
 
 Prove/test determinism, stable identity under unrelated edits, distinct identity for distinct instance sites,
-alpha-renaming, substitution/type preservation, acyclic termination, and equivalence with handwritten declarations
-under musical equality plus a specified template-instance Origin step.
+alpha-renaming, substitution/type preservation, acyclic termination, and equivalence with handwritten declarations under
+musical equality plus a specified template-instance Origin step.
 
 ## Target
 

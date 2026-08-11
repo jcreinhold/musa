@@ -11,17 +11,17 @@ phase: 2
 ## Task
 
 Spell an accidental the way a musician does. `fs3` and `ef4` are decoded; `f#3` and `eb4` are read — `#` and `b` are
-what every DAW, chord chart and lead sheet uses, and the letters `s` and `f` were only ever a workaround for a
-character set nobody is short of. This prompt changes the pitch literal, adds the `PitchClass` node the change needs
-where an accidental appears without an octave, and migrates the whole corpus.
+what every DAW, chord chart and lead sheet uses, and the letters `s` and `f` were only ever a workaround for a character
+set nobody is short of. This prompt changes the pitch literal, adds the `PitchClass` node the change needs where an
+accidental appears without an octave, and migrates the whole corpus.
 
 ## Read
 
-- `crates/musa-language/src/lexer.rs` — the pitch regex, and the test asserting a bare `a`–`g` lexes as an
-  `Identifier` and not a pitch.
+- `crates/musa-language/src/lexer.rs` — the pitch regex, and the test asserting a bare `a`–`g` lexes as an `Identifier`
+  and not a pitch.
 - `crates/musa-compiler/src/pitch.rs` — `WrittenPitch::parse`, `PitchClass::parse`, and their `Display`s.
-- `crates/musa-language/src/parser.rs` — `key_stmt`, which expects two `Identifier`s, and `chord_symbol`, which takes
-  an `Identifier`-or-`PitchLiteral` then an optional `Integer`.
+- `crates/musa-language/src/parser.rs` — `key_stmt`, which expects two `Identifier`s, and `chord_symbol`, which takes an
+  `Identifier`-or-`PitchLiteral` then an optional `Integer`.
 
 ## Design
 
@@ -31,9 +31,9 @@ where an accidental appears without an octave, and migrates the whole corpus.
 [a-g](##|bb|[#bn])?-?[0-9]+
 ```
 
-`b` is both a letter and a flat, and there is no ambiguity because the letter is always at position 0: `b2` is B,
-`bb2` is B♭, `bbb2` is B𝄫. A pitch is letter, then optional accidental, then octave, and nothing else can start where
-a pitch starts.
+`b` is both a letter and a flat, and there is no ambiguity because the letter is always at position 0: `b2` is B, `bb2`
+is B♭, `bbb2` is B𝄫. A pitch is letter, then optional accidental, then octave, and nothing else can start where a pitch
+starts.
 
 **The octave stays required.** Making it optional so a bare `a`–`g` could be a pitch would break `key a minor;`,
 `mobile { a; b; c; }`, and every motif parameter named `a` — the lexer asserts this deliberately today, and it stays
@@ -52,15 +52,15 @@ So a `PitchClass` node, built by the parser as `Identifier Hash{0,2}` — flats 
 `abb` are already one identifier — and printed tight by the same mechanism `Position` and `ChordSymbol` already use.
 `resolve::parse_key` reads the node's text rather than one token, and `chord_symbol` accepts `Hash`.
 
-This is the asymmetry the design has to live with: a sharp is a separate token and a flat is not. It is invisible in
-the source and confined to one node.
+This is the asymmetry the design has to live with: a sharp is a separate token and a flat is not. It is invisible in the
+source and confined to one node.
 
 ## Target
 
 - `crates/musa-language/src/lexer.rs`: the regex, and cases for `b2`/`bb2`/`bbb2`/`f#3`/`c##3`/`en5`/`a-1`.
 - `crates/musa-language/src/parser.rs`, `ast.rs`, `syntax_kind.rs`: the `PitchClass` node, used by `key` and
-  `chord_symbol`. **Not `invert around`**, whose axis is a whole pitch (`invert around c5`) and so is one
-  `PitchLiteral` however it is spelled — the node exists only where the octave is absent.
+  `chord_symbol`. **Not `invert around`**, whose axis is a whole pitch (`invert around c5`) and so is one `PitchLiteral`
+  however it is spelled — the node exists only where the octave is absent.
 - `crates/musa-language/src/formatter.rs`: `PitchClass` joins the tight-node list.
 - `crates/musa-compiler/src/pitch.rs`: `WrittenPitch::parse`, `PitchClass::parse`, both `Display`s.
 - `crates/musa-compiler/src/resolve.rs` and `elaborate.rs`: the two diagnostics that offer "an optional `s` or `f`".
@@ -94,5 +94,5 @@ printed in the source's own spelling.
 - **No optional octave**, at any point, for any reason. `c4` is scientific pitch and the digit is the octave.
 - **No Unicode accidentals** (`♯`, `♭`) in source. They are output, not input.
 - **No `x` for a double sharp.** `##` composes; `x` is a fourth thing to learn.
-- **No change to how a pitch is spelled anywhere but the source language** — MEI, MusicXML and the kernel keep their
-  own spellings, which are not musa's to choose.
+- **No change to how a pitch is spelled anywhere but the source language** — MEI, MusicXML and the kernel keep their own
+  spellings, which are not musa's to choose.

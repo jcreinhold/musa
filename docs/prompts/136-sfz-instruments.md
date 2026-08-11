@@ -11,16 +11,15 @@ phase: 4
 ## Task
 
 Import a documented SFZ v1-compatible core into Musa's native sample-map representation. SFZ is an interchange adapter,
-not Musa's instrument semantics: every accepted opcode has one explicit translation, every unsupported or dialect
-opcode is diagnosed by name, and the runtime remains the deterministic sampler built by prompt 135.
+not Musa's instrument semantics: every accepted opcode has one explicit translation, every unsupported or dialect opcode
+is diagnosed by name, and the runtime remains the deterministic sampler built by prompt 135.
 
 ## Read
 
 - `docs/language/09-assets-and-packages.md`; prompts 133 and 131.
-- SFZ format overview, headers, regions, samples, and opcode/version table:
-  `https://sfzformat.com/`, `https://sfzformat.com/headers/`,
-  `https://sfzformat.com/headers/region/`, `https://sfzformat.com/opcodes/sample/`, and
-  `https://sfzformat.com/opcodes/`. The catalogue mixes SFZ v1/v2, ARIA, and LinuxSampler extensions; never describe
+- SFZ format overview, headers, regions, samples, and opcode/version table: `https://sfzformat.com/`,
+  `https://sfzformat.com/headers/`, `https://sfzformat.com/headers/region/`, `https://sfzformat.com/opcodes/sample/`,
+  and `https://sfzformat.com/opcodes/`. The catalogue mixes SFZ v1/v2, ARIA, and LinuxSampler extensions; never describe
   that union as one implemented standard.
 - At least two maintained open-source SFZ players' conformance/status documentation for compatibility evidence, while
   treating the format documentation above as the semantic source. Record versions and disagreements.

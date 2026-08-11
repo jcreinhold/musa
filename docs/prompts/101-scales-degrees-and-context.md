@@ -19,8 +19,8 @@ different use sites without emitting a key signature or pretending to infer modu
 - `docs/language/03-musical-domains.md` and the contextual laws in `00-semantics.md`.
 - OMT `013-major-scales-scale-degrees-and-key-signatures.md`, `014-minor-scales-scale-degrees-and-key-signatures.md`
   (natural/harmonic/melodic minor and the one minor key signature),
-  `015-introduction-to-diatonic-modes-and-the-chromatic-scale.md`, `016-intervals.md`,
-  `105-diatonic-modes.md`, `106-collections.md`, and `107-analyzing-with-modes-scales-and-collections.md`.
+  `015-introduction-to-diatonic-modes-and-the-chromatic-scale.md`, `016-intervals.md`, `105-diatonic-modes.md`,
+  `106-collections.md`, and `107-analyzing-with-modes-scales-and-collections.md`.
 - Prompt 63/65 context tracks: a written key is a located score fact; material may read but not write context.
 
 ## Design

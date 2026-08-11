@@ -38,18 +38,17 @@ reference = name, [ "@", string ] ;
 ## Reading notes
 
 - **`shift by d t` is sugar** for `sequence { timeline d { }; t }`. It may be written; it is never printed.
-- **A payload is an opaque quoted string.** The kernel never looks inside one; it hands the string to the consumer
-  that owns the payload type — for musa, `musa-compiler` and its `ScoreFact`. The type annotation exists so a reader
-  can *refuse* a file whose payloads it does not own.
+- **A payload is an opaque quoted string.** The kernel never looks inside one; it hands the string to the consumer that
+  owns the payload type — for musa, `musa-compiler` and its `ScoreFact`. The type annotation exists so a reader can
+  *refuse* a file whose payloads it does not own.
 - **A reference may carry a mark**, `subject @ "…"`, an opaque string the payload's owner interprets. A consumer that
-  does not recognize a mark applies the identity: it has read the music and skipped a provenance detail it does not
-  own.
+  does not recognize a mark applies the identity: it has read the music and skipped a provenance detail it does not own.
 - **`let` is the only sharing form.** A file declares exactly one composition; shadowing is rejected, and references
   must be acyclic.
 - **There is no `map`.** Naming a payload function would require a syntax for functions; payloads arrive already
   transformed.
-- **Writing is not normalizing.** The printer prints the term it is given — a canon prints as a `let` and two
-  `shift`s. Normalizing is a separate call; `musa kernel <file> --normalized` makes it.
+- **Writing is not normalizing.** The printer prints the term it is given — a canon prints as a `let` and two `shift`s.
+  Normalizing is a separate call; `musa kernel <file> --normalized` makes it.
 
 ## An example
 
@@ -66,6 +65,6 @@ kernel "example" {
 }
 ```
 
-The meaning of every production — the denotation, the well-formedness rules, the laws — is specified in
-`docs/kernel/` in the repository, and where that specification and this grammar disagree, the semantics is right: a
-notation cannot promise a meaning the semantics does not define.
+The meaning of every production — the denotation, the well-formedness rules, the laws — is specified in `docs/kernel/`
+in the repository, and where that specification and this grammar disagree, the semantics is right: a notation cannot
+promise a meaning the semantics does not define.

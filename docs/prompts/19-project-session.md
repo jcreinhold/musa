@@ -57,8 +57,8 @@ nor the desktop app ever chains compiler → render → engine calls themselves.
 - Move the prompt-12/13 orchestration here: `export(ExportRequest::{Wav, Mei, LilyPond, PerformanceDump})` and an
   internal `prepare_playback()` that rebuilds and reinstalls the engine plan after each valid compile (debouncing/engine
   ownership policy: session owns an optional `AudioEngine`; `play`/`stop`/`seek` commands pass through to it).
-- Rewrite `musa` on top of `ProjectSession` — every subcommand becomes a few lines (§15.8). This is the proof the
-  facade is deep: the CLI shrinks.
+- Rewrite `musa` on top of `ProjectSession` — every subcommand becomes a few lines (§15.8). This is the proof the facade
+  is deep: the CLI shrinks.
 - Debounced compilation (§10.7) is a caller concern (the GUI debounces keystrokes); the session compiles synchronously
   per `apply`. Note the decision; worker-thread compilation arrives only if profiling demands it.
 

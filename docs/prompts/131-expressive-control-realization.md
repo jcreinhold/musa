@@ -10,10 +10,10 @@ phase: 3
 
 ## Task
 
-Complete the typed bridge from score interpretation to sound. Turn gesture-lane controls into each assigned
-instrument's exposed controls, resolve them to private DSP parameters during audio preparation, and execute sample-
-accurate events or deterministic ramps. Dynamics, hairpins, articulations, slurs, pedal, and custom automation become
-audible without making any notation fact denote a DSP operation.
+Complete the typed bridge from score interpretation to sound. Turn gesture-lane controls into each assigned instrument's
+exposed controls, resolve them to private DSP parameters during audio preparation, and execute sample- accurate events
+or deterministic ramps. Dynamics, hairpins, articulations, slurs, pedal, and custom automation become audible without
+making any notation fact denote a DSP operation.
 
 ## Read
 
@@ -26,8 +26,8 @@ audible without making any notation fact denote a DSP operation.
 
 ## Design
 
-Profiles map notation into standard gestures/controls; instruments map those controls into implementation behavior.
-At minimum:
+Profiles map notation into standard gestures/controls; instruments map those controls into implementation behavior. At
+minimum:
 
 - dynamics and hairpins produce normalized `expression` values/curves;
 - accents/marcato produce per-note `emphasis` in addition to any profile gate choice;

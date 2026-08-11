@@ -61,7 +61,7 @@ Commit as `Render clips and fixed media cues`.
 
 ## Stop
 
-- No microphone recording, destructive editing, waveform editor, beat detection, transient slicing, or
-  pitch-preserving time stretching.
+- No microphone recording, destructive editing, waveform editor, beat detection, transient slicing, or pitch-preserving
+  time stretching.
 - No audio bytes or decoder handles cross into the compiler/kernel.
 - No silent callback underrun or callback-time asset load.

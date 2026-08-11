@@ -1,7 +1,7 @@
 # Format source
 
-`musa format` owns layout: indentation, statement-per-line, blank lines, comment attachment. A hand that adjusts them
-is wasting itself.
+`musa format` owns layout: indentation, statement-per-line, blank lines, comment attachment. A hand that adjusts them is
+wasting itself.
 
 ```bash
 musa format first.musa           # rewrite in place

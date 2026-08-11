@@ -35,9 +35,9 @@ through provenance, outline symbols, certain fixes, semantic tokens, and complet
 dependency list: `musa-project`, `musa-language`, `lsp-server`, `lsp-types`.
 
 The second edge to `musa-language` — which no other shell has — is deliberate and the repair must state its reason:
-semantic tokens and completion must answer on *half-typed* source, which the session cannot describe (its facts are
-the last valid compile's). The desktop solved this with a second tokenizer in TypeScript fed a generated vocabulary;
-the server has the real lexer in-process and uses it. Formatting likewise calls `musa_language::format` directly and
+semantic tokens and completion must answer on *half-typed* source, which the session cannot describe (its facts are the
+last valid compile's). The desktop solved this with a second tokenizer in TypeScript fed a generated vocabulary; the
+server has the real lexer in-process and uses it. Formatting likewise calls `musa_language::format` directly and
 **never** issues `ProjectCommand::Format`: a format request must not land in the session's undo history.
 
 ### Protocol crate
@@ -51,8 +51,8 @@ holds a `cpal::Stream` in an `Option`, buying nothing.
 
 One public function, `serve`, over stdio; `src/main.rs` calls it. Everything else is private:
 
-- `workspace` — URI → `ProjectSession`, full-document sync (`TextDocumentSyncKind::Full`; pieces are small and full
-  sync is what the desktop's editor already does).
+- `workspace` — URI → `ProjectSession`, full-document sync (`TextDocumentSyncKind::Full`; pieces are small and full sync
+  is what the desktop's editor already does).
 - `convert` — the *only* module that knows LSP's coordinate system: byte spans ↔ 0-based UTF-16 ranges, via
   `Utf16Offsets`. One place, one direction per function, law-tested on non-ASCII source.
 - one handler per request kind — each a lookup into the snapshot's facts plus a `convert` call.
@@ -87,10 +87,10 @@ cargo fmt --check
 ```
 
 Behavior checks run over `Connection::memory()` against the committed fixtures: `glass-mountain.musa` publishes no
-diagnostics; `broken/missing-semicolon.musa` publishes its diagnostic with its fix available as a code action; hover
-on a note reports its spelled pitch and bar:beat; definition on `use sigh()` lands on the motif body; symbols list a
-sectioned piece's outline; semantic tokens cover a deliberately broken document; completion offers keywords. One
-manual smoke test against a real client (Neovim or VS Code's generic LSP support) before flipping status.
+diagnostics; `broken/missing-semicolon.musa` publishes its diagnostic with its fix available as a code action; hover on
+a note reports its spelled pitch and bar:beat; definition on `use sigh()` lands on the motif body; symbols list a
+sectioned piece's outline; semantic tokens cover a deliberately broken document; completion offers keywords. One manual
+smoke test against a real client (Neovim or VS Code's generic LSP support) before flipping status.
 
 ## Stop
 

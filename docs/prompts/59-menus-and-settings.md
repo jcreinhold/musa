@@ -75,9 +75,9 @@ its own: label at the left, choices at the right, no boxes (§7). Each row is a 
 | Text size | Small · Normal · Large · Larger |
 | Vim mode | Off · On |
 
-Theme has three because `ThemeChoice` always had three — `chosen: null` is *follow the system* — and the menu's
-"Switch theme" could only ever reach two of them. A composer who overrode the theme once had no way back to following
-the system short of clearing `localStorage`. Naming the third state is the whole fix.
+Theme has three because `ThemeChoice` always had three — `chosen: null` is *follow the system* — and the menu's "Switch
+theme" could only ever reach two of them. A composer who overrode the theme once had no way back to following the system
+short of clearing `localStorage`. Naming the third state is the whole fix.
 
 ### What this must not become
 
@@ -128,8 +128,8 @@ Commit as `Group the menus and give preferences a home`.
   satisfying the second, and the sample came back `NaN` — which failed roughly one full run in two, on a number nobody
   had measured. B8 was repaired this way in prompt 50; B2 now waits the same way.
 - **`Settings…` is a named descriptor, not a lookup.** Searching `COMMANDS` for the id needed an `expect`, guarded by a
-  test. Naming the descriptor in the registry and putting *that* in the list makes a registry which stopped declaring
-  it fail the build instead.
+  test. Naming the descriptor in the registry and putting *that* in the list makes a registry which stopped declaring it
+  fail the build instead.
 - **Preferences persist, and now say so once.** Text size and vim each had an "outlives the window" test; the theme had
   none. The sheet sets all three together, so one test sets all three, reloads, and reads them back.
 
@@ -137,6 +137,6 @@ Commit as `Group the menus and give preferences a home`.
 
 - No new commands beyond `settings.open`.
 - No preferences that do not exist today.
-- No custom in-window menu bar: the native menu is the menu, and a second one drawn in the webview would be two menus
-  to keep in step.
+- No custom in-window menu bar: the native menu is the menu, and a second one drawn in the webview would be two menus to
+  keep in step.
 - No settings that live in the project file. Preferences are the app's; the document is the document's.

@@ -25,7 +25,7 @@ The server answers from the project's own session. It computes nothing of its ow
 ## Tree-sitter
 
 `editors/tree-sitter-musa` holds a tree-sitter grammar and editor queries (highlighting, outline, text objects) for
-editors that prefer a local grammar — Zed, Neovim, Helix. It is a second reader of the language, held honest by a
-test that runs the real lexer against it, so it cannot drift from the language musa compiles.
+editors that prefer a local grammar — Zed, Neovim, Helix. It is a second reader of the language, held honest by a test
+that runs the real lexer against it, so it cannot drift from the language musa compiles.
 
 Use both: tree-sitter highlights before the server answers, and the server answers what highlighting cannot know.

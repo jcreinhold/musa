@@ -13,8 +13,8 @@ and still mislead the player who reads them. Its rules, in short:
 4. **Say it once.** Two identical bars is an accident of phrasing; three is a motif that has not been named yet. The
    cost of the copy is not the typing but the edit: change one and the others are silently wrong.
 5. **A waiver lives next to the sin.** A lint can be wrong about a spot. The waiver is written in the source, directly
-   above the construct it waives, naming the codes it suppresses. There is no project-level switch and no
-   configuration file, on purpose: a standard that can be switched off silently is a rumour of a standard.
+   above the construct it waives, naming the codes it suppresses. There is no project-level switch and no configuration
+   file, on purpose: a standard that can be switched off silently is a rumour of a standard.
 
 ```musa
 // musa:allow(unused-material) — kept for the B section, which is not written yet

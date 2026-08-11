@@ -19,21 +19,21 @@ one named repairing prompt.
 
 ## Read
 
-- Prompt 38 and `docs/kernel/09-performance.md`: reuse P1–P5, the three existing fixtures, `divan`, and the rule that
-  a benchmark seam stays private.
+- Prompt 38 and `docs/kernel/09-performance.md`: reuse P1–P5, the three existing fixtures, `divan`, and the rule that a
+  benchmark seam stays private.
 - Prompt 49's sharing workload and provenance-byte-identity requirement.
 - `docs/language/05-verification.md` and `docs/interface/06-performance.md` B1/B2.
 - `crates/musa-compiler/src/bench.rs`, `benches/pipeline.rs`, and every caller of `musa_compiler::compile`.
 - `crates/musa-compiler/src/{profile,performance,studio}.rs`, `crates/musa-audio/src/{studio,plan,offline}.rs`, and
-  `crates/musa-engine`'s prepared-plan handoff. Read the actual code paths: do not copy claims about exact studio values,
-  event routing, or parameter consumption from prose without verifying them.
+  `crates/musa-engine`'s prepared-plan handoff. Read the actual code paths: do not copy claims about exact studio
+  values, event routing, or parameter consumption from prose without verifying them.
 
 ## Design
 
 Add three scenario columns without changing what compilation does:
 
-- **open-shape** — current syntax arranged as many motifs used under different prevailing contexts and placements;
-  until prompt 101 adds scale, key/meter and bar checks supply the context pressure.
+- **open-shape** — current syntax arranged as many motifs used under different prevailing contexts and placements; until
+  prompt 101 adds scale, key/meter and bar checks supply the context pressure.
 - **higher-order-shape** — a generated current-syntax fixture with the same note count expressed through nested
   repeat/use/transform structure; it measures traversal and sharing without pretending old syntax has functions.
 - **declaration-heavy** — many small motifs, fragments, imports, and references, including unused declarations, to
@@ -47,10 +47,9 @@ peak resident bytes where the harness can report it credibly. Build fixtures out
 command, sample method, uncertainty, and the source generator. Do not turn a median from one run into a universal
 absolute gate; keep the existing relative 10% review rule and B1/B2 end-to-end budgets.
 
-Create a compatibility manifest from committed fixtures: semantic hash, normalized kernel text digest, stable
-diagnostic codes/labels, Origin-path projection, performance lanes, studio intent, prepared graph summary, and the
-existing MEI/LilyPond/MusicXML/MIDI/WAV goldens. It is a test oracle, not a new serialization format and not a public
-API.
+Create a compatibility manifest from committed fixtures: semantic hash, normalized kernel text digest, stable diagnostic
+codes/labels, Origin-path projection, performance lanes, studio intent, prepared graph summary, and the existing
+MEI/LilyPond/MusicXML/MIDI/WAV goldens. It is a test oracle, not a new serialization format and not a public API.
 
 Keep a machine-readable expected-change ledger beside the manifest. It records, rather than blesses, the current shared
 note-stream warning, ignored `Parameter` event, processor-hover gap, graph-topology modulation address, and eager studio
@@ -60,13 +59,14 @@ known-wrong audio merely because it was baselined.
 
 ## Target
 
-- `tests/fixtures/{open-shape,higher-order-shape,declaration-heavy,audio-bridge}.musa` and their deterministic generator.
+- `tests/fixtures/{open-shape,higher-order-shape,declaration-heavy,audio-bridge}.musa` and their deterministic
+  generator.
 - `crates/musa-compiler/benches/pipeline.rs` and private benchmark seams only as needed.
-- `docs/language/06-performance.md`: workloads, baseline table, measurement protocol, relative gate, B1/B2 relation,
-  and the rule for resource-exhaustion benchmarks added at prompt 96.
+- `docs/language/06-performance.md`: workloads, baseline table, measurement protocol, relative gate, B1/B2 relation, and
+  the rule for resource-exhaustion benchmarks added at prompt 96.
 - `crates/musa-compiler/tests/elaboration_compatibility.rs`: manifest generation/checking with an explicit update flag.
-- An audio compatibility/benchmark test at the narrowest existing owner; do not publish graph or DSP internals merely
-  so the manifest can inspect them.
+- An audio compatibility/benchmark test at the narrowest existing owner; do not publish graph or DSP internals merely so
+  the manifest can inspect them.
 - Committed compatibility manifest under `tests/fixtures/` or the existing snapshot location.
 
 ## Check

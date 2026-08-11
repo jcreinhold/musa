@@ -44,8 +44,8 @@ One component, `Seam.svelte`, used by both screens that show text — Compose an
 `01-visual-language.md` §7 and §8 describe one seam and there should be one of it.
 
 It is `role="separator"` with `aria-orientation="vertical"`, `tabindex="0"`, and an accessible name that says what it
-sizes. `aria-valuenow` is the column's measured width in pixels, so what a screen reader announces is what is on
-screen rather than what was asked for.
+sizes. `aria-valuenow` is the column's measured width in pixels, so what a screen reader announces is what is on screen
+rather than what was asked for.
 
 | Gesture | Result |
 | --- | --- |
@@ -59,10 +59,10 @@ Arrows are what makes the drag legal under WCAG 2.5.7 (`03-interaction.md` §2: 
 reach a capability, never a capability). The seam is chrome and is only reachable by `Tab`, so its unmodified arrows do
 not collide with the score's — the scope rule in §3 holds without an exception.
 
-The seam takes no space of its own. It is a 9px transparent strip laid over the column's existing `--rule` hairline,
-and it paints that hairline in the inspector's three weights: `--rule` at rest, `--ink-muted` on hover, `--plate` on
-focus (§7). No handle, no grip dots, no widening bar — the hairline already is the affordance, and this is the whole of
-its feedback.
+The seam takes no space of its own. It is a 9px transparent strip laid over the column's existing `--rule` hairline, and
+it paints that hairline in the inspector's three weights: `--rule` at rest, `--ink-muted` on hover, `--plate` on focus
+(§7). No handle, no grip dots, no widening bar — the hairline already is the affordance, and this is the whole of its
+feedback.
 
 ### Two guards, and only one of them governs an ask
 
@@ -119,8 +119,8 @@ Commit as `Let the composer widen the source column`.
 
 - **The seam lives inside the column, not between the halves.** A separator standing between two landmarks is page
   content belonging to neither, and axe says so — `region`, "all page content should be contained by landmarks". So
-  `SourcePane` grows its own seam on its right edge, absolutely positioned over the hairline that was already there.
-  The layout is unchanged, the component tree is simpler, and the screens pass callbacks rather than placing a sibling.
+  `SourcePane` grows its own seam on its right edge, absolutely positioned over the hairline that was already there. The
+  layout is unchanged, the component tree is simpler, and the screens pass callbacks rather than placing a sibling.
 - **A `$effect` that reads what it writes is an effect Svelte drops.** An early version measured with
   `width = pane ? … : width`, which made the effect depend on `width` and silently stopped updating — the separator
   announced a number from before the drag. Splitting the write from the read fixed it; measuring by `bind:clientWidth`
@@ -133,7 +133,7 @@ Commit as `Let the composer widen the source column`.
 
 - No second draggable seam. The margins are not panels and do not resize (§7).
 - No width in the project file. This is the app's state, not the document's (`05-states.md`).
-- No auto-sizing, ever: not to the longest line, not on open, not after a format. That is the thing §8's reason
-  forbids, and this prompt does not touch it.
+- No auto-sizing, ever: not to the longest line, not on open, not after a format. That is the thing §8's reason forbids,
+  and this prompt does not touch it.
 - No collapse-by-drag. `⌘'` hides the column and the drag has a floor; a seam dragged to zero is a column a composer
   cannot find again.

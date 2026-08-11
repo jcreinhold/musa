@@ -17,8 +17,8 @@ boundaries from generated facts and tested examples.
 
 ## Read
 
-- Prompts 122 and 122 seams; all of `docs/language/08-performance-and-sound.md` and `09-assets-and-packages.md`;
-  prompts 128–140 completion/repair notes.
+- Prompts 122 and 122 seams; all of `docs/language/08-performance-and-sound.md` and `09-assets-and-packages.md`; prompts
+  128–140 completion/repair notes.
 - OMT chapters cited by prompt 92/133; SFZ sources cited by prompt 136; SoundFont 2.04 source cited by prompt 137.
 - Current LSP, VS Code, Zed, desktop virtual documents, keyword docs, generated stdlib docs, and handbook checker.
 

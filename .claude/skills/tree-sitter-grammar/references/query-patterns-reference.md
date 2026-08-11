@@ -223,100 +223,100 @@ Standard names from nvim-treesitter. Theme matching uses longest prefix match.
 
 ### Identifiers
 
-| Capture                       | Use For                              |
-| ----------------------------- | ------------------------------------ |
-| `@variable`                   | General variables                    |
-| `@variable.builtin`           | `self`, `this`, `super`              |
-| `@variable.parameter`         | Function parameters                  |
+| Capture | Use For |
+| --- | --- |
+| `@variable` | General variables |
+| `@variable.builtin` | `self`, `this`, `super` |
+| `@variable.parameter` | Function parameters |
 | `@variable.parameter.builtin` | Special parameters (`cls` in Python) |
-| `@variable.member`            | Struct/object fields                 |
-| `@constant`                   | Constants                            |
-| `@constant.builtin`           | `true`, `false`, `nil`, `None`       |
-| `@constant.macro`             | Macro-defined constants              |
-| `@module`                     | Module/namespace names               |
-| `@module.builtin`             | Built-in modules                     |
-| `@label`                      | Labels, goto targets                 |
+| `@variable.member` | Struct/object fields |
+| `@constant` | Constants |
+| `@constant.builtin` | `true`, `false`, `nil`, `None` |
+| `@constant.macro` | Macro-defined constants |
+| `@module` | Module/namespace names |
+| `@module.builtin` | Built-in modules |
+| `@label` | Labels, goto targets |
 
 ### Literals
 
-| Capture                  | Use For                               |
-| ------------------------ | ------------------------------------- |
-| `@string`                | String literals                       |
-| `@string.documentation`  | Doc strings                           |
-| `@string.regexp`         | Regex literals                        |
-| `@string.escape`         | Escape sequences (`\n`, `\t`)         |
-| `@string.special`        | Other special strings                 |
+| Capture | Use For |
+| --- | --- |
+| `@string` | String literals |
+| `@string.documentation` | Doc strings |
+| `@string.regexp` | Regex literals |
+| `@string.escape` | Escape sequences (`\n`, `\t`) |
+| `@string.special` | Other special strings |
 | `@string.special.symbol` | Symbols/atoms (`:foo` in Ruby/Elixir) |
-| `@string.special.url`    | URLs                                  |
-| `@string.special.path`   | File paths                            |
-| `@character`             | Character literals                    |
-| `@character.special`     | Special characters                    |
-| `@boolean`               | `true` / `false`                      |
-| `@number`                | Integer literals                      |
-| `@number.float`          | Float literals                        |
+| `@string.special.url` | URLs |
+| `@string.special.path` | File paths |
+| `@character` | Character literals |
+| `@character.special` | Special characters |
+| `@boolean` | `true` / `false` |
+| `@number` | Integer literals |
+| `@number.float` | Float literals |
 
 ### Types
 
-| Capture              | Use For                                         |
-| -------------------- | ----------------------------------------------- |
-| `@type`              | Type names                                      |
-| `@type.builtin`      | Built-in types (`int`, `String`)                |
-| `@type.definition`   | Type being defined (in `type Foo = ...`)        |
-| `@attribute`         | Attributes/annotations (`#[...]`, `@decorator`) |
-| `@attribute.builtin` | Built-in attributes                             |
-| `@property`          | Object/struct property names                    |
+| Capture | Use For |
+| --- | --- |
+| `@type` | Type names |
+| `@type.builtin` | Built-in types (`int`, `String`) |
+| `@type.definition` | Type being defined (in `type Foo = ...`) |
+| `@attribute` | Attributes/annotations (`#[...]`, `@decorator`) |
+| `@attribute.builtin` | Built-in attributes |
+| `@property` | Object/struct property names |
 
 ### Functions
 
-| Capture                 | Use For                             |
-| ----------------------- | ----------------------------------- |
-| `@function`             | Function names (definition)         |
-| `@function.builtin`     | Built-in functions (`print`, `len`) |
-| `@function.call`        | Function names (call site)          |
-| `@function.macro`       | Macro names                         |
-| `@function.method`      | Method names (definition)           |
-| `@function.method.call` | Method names (call site)            |
-| `@constructor`          | Constructor names                   |
-| `@operator`             | Operator symbols                    |
+| Capture | Use For |
+| --- | --- |
+| `@function` | Function names (definition) |
+| `@function.builtin` | Built-in functions (`print`, `len`) |
+| `@function.call` | Function names (call site) |
+| `@function.macro` | Macro names |
+| `@function.method` | Method names (definition) |
+| `@function.method.call` | Method names (call site) |
+| `@constructor` | Constructor names |
+| `@operator` | Operator symbols |
 
 ### Keywords
 
-| Capture                        | Use For                                     |
-| ------------------------------ | ------------------------------------------- |
-| `@keyword`                     | General keywords                            |
-| `@keyword.coroutine`           | `async`, `await`, `yield`                   |
-| `@keyword.function`            | `fn`, `func`, `def`, `lambda`               |
-| `@keyword.operator`            | `and`, `or`, `not`, `in` (word operators)   |
-| `@keyword.import`              | `use`, `import`, `from`, `include`          |
-| `@keyword.type`                | `type`, `struct`, `enum`, `data`            |
-| `@keyword.modifier`            | `pub`, `mut`, `static`, `const`, `abstract` |
-| `@keyword.repeat`              | `for`, `while`, `loop`                      |
-| `@keyword.return`              | `return`, `yield`                           |
-| `@keyword.debug`               | `assert`, `debug`, `unreachable`            |
-| `@keyword.exception`           | `try`, `catch`, `throw`, `raise`            |
-| `@keyword.conditional`         | `if`, `else`, `match`, `switch`, `case`     |
-| `@keyword.conditional.ternary` | `?` `:` in ternary                          |
-| `@keyword.directive`           | Preprocessor directives                     |
-| `@keyword.directive.define`    | `#define`                                   |
+| Capture | Use For |
+| --- | --- |
+| `@keyword` | General keywords |
+| `@keyword.coroutine` | `async`, `await`, `yield` |
+| `@keyword.function` | `fn`, `func`, `def`, `lambda` |
+| `@keyword.operator` | `and`, `or`, `not`, `in` (word operators) |
+| `@keyword.import` | `use`, `import`, `from`, `include` |
+| `@keyword.type` | `type`, `struct`, `enum`, `data` |
+| `@keyword.modifier` | `pub`, `mut`, `static`, `const`, `abstract` |
+| `@keyword.repeat` | `for`, `while`, `loop` |
+| `@keyword.return` | `return`, `yield` |
+| `@keyword.debug` | `assert`, `debug`, `unreachable` |
+| `@keyword.exception` | `try`, `catch`, `throw`, `raise` |
+| `@keyword.conditional` | `if`, `else`, `match`, `switch`, `case` |
+| `@keyword.conditional.ternary` | `?` `:` in ternary |
+| `@keyword.directive` | Preprocessor directives |
+| `@keyword.directive.define` | `#define` |
 
 ### Punctuation
 
-| Capture                  | Use For                                          |
-| ------------------------ | ------------------------------------------------ |
-| `@punctuation.delimiter` | `,` `;` `:` `::` `.`                             |
-| `@punctuation.bracket`   | `(` `)` `[` `]` `{` `}` `<` `>`                  |
-| `@punctuation.special`   | String interpolation delimiters, template syntax |
+| Capture | Use For |
+| --- | --- |
+| `@punctuation.delimiter` | `,` `;` `:` `::` `.` |
+| `@punctuation.bracket` | `(` `)` `[` `]` `{` `}` `<` `>` |
+| `@punctuation.special` | String interpolation delimiters, template syntax |
 
 ### Comments
 
-| Capture                  | Use For                        |
-| ------------------------ | ------------------------------ |
-| `@comment`               | General comments               |
+| Capture | Use For |
+| --- | --- |
+| `@comment` | General comments |
 | `@comment.documentation` | Doc comments (`///`, `/** */`) |
-| `@comment.error`         | ERROR/FIXME in comments        |
-| `@comment.warning`       | WARNING/HACK in comments       |
-| `@comment.todo`          | TODO/XXX in comments           |
-| `@comment.note`          | NOTE/INFO in comments          |
+| `@comment.error` | ERROR/FIXME in comments |
+| `@comment.warning` | WARNING/HACK in comments |
+| `@comment.todo` | TODO/XXX in comments |
+| `@comment.note` | NOTE/INFO in comments |
 
 ### Markup (for embedded documentation)
 
@@ -326,13 +326,13 @@ Standard names from nvim-treesitter. Theme matching uses longest prefix match.
 
 ### Special
 
-| Capture                                                       | Use For                    |
-| ------------------------------------------------------------- | -------------------------- |
-| `@diff.plus` / `@diff.minus` / `@diff.delta`                  | Diff highlights            |
-| `@tag` / `@tag.builtin` / `@tag.attribute` / `@tag.delimiter` | HTML/XML tags              |
-| `@none`                                                       | Explicitly no highlighting |
-| `@conceal`                                                    | Concealable text           |
-| `@spell` / `@nospell`                                         | Spellcheck control         |
+| Capture | Use For |
+| --- | --- |
+| `@diff.plus` / `@diff.minus` / `@diff.delta` | Diff highlights |
+| `@tag` / `@tag.builtin` / `@tag.attribute` / `@tag.delimiter` | HTML/XML tags |
+| `@none` | Explicitly no highlighting |
+| `@conceal` | Concealable text |
+| `@spell` / `@nospell` | Spellcheck control |
 
 ______________________________________________________________________
 
@@ -400,13 +400,13 @@ Embed sub-languages within nodes:
 
 ### Injection Properties
 
-| Property                     | Meaning                                     |
-| ---------------------------- | ------------------------------------------- |
-| `injection.language`         | Hard-code the injection language            |
-| `injection.combined`         | All matching nodes parsed as one document   |
+| Property | Meaning |
+| --- | --- |
+| `injection.language` | Hard-code the injection language |
+| `injection.combined` | All matching nodes parsed as one document |
 | `injection.include-children` | Include child node text in injected content |
-| `injection.self`             | Re-parse with same language                 |
-| `injection.parent`           | Re-parse with parent document's language    |
+| `injection.self` | Re-parse with same language |
+| `injection.parent` | Re-parse with parent document's language |
 
 ______________________________________________________________________
 
@@ -465,16 +465,16 @@ ______________________________________________________________________
 
 ### Indent Captures
 
-| Capture          | Meaning                                 |
-| ---------------- | --------------------------------------- |
-| `@indent.begin`  | Children should be indented             |
-| `@indent.end`    | End of indented block                   |
-| `@indent.align`  | Hanging/aligned indent (Python-style)   |
-| `@indent.dedent` | Dedent children                         |
-| `@indent.branch` | Dedent the node itself                  |
+| Capture | Meaning |
+| --- | --- |
+| `@indent.begin` | Children should be indented |
+| `@indent.end` | End of indented block |
+| `@indent.align` | Hanging/aligned indent (Python-style) |
+| `@indent.dedent` | Dedent children |
+| `@indent.branch` | Dedent the node itself |
 | `@indent.ignore` | No indentation changes inside this node |
-| `@indent.auto`   | Use `autoindent` behavior               |
-| `@indent.zero`   | Set to column 0                         |
+| `@indent.auto` | Use `autoindent` behavior |
+| `@indent.zero` | Set to column 0 |
 
 ______________________________________________________________________
 

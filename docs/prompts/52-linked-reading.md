@@ -17,8 +17,8 @@ links attention, which is what reading a score actually is.
 
 ## Read
 
-- `docs/interface/04-provenance.md` — Origin view is the *held* answer to "where did this come from". This prompt is
-  the *unheld* one, and the two must not look alike or the lens stops meaning anything.
+- `docs/interface/04-provenance.md` — Origin view is the *held* answer to "where did this come from". This prompt is the
+  *unheld* one, and the two must not look alike or the lens stops meaning anything.
 - `docs/interface/01-visual-language.md` §2 (two hues, each with one meaning) and §6 (three animations, and this is not
   one of them); `03-interaction.md` §1–§2 (selection is not hover), §6 (the accessibility floor).
 - `docs/interface/06-performance.md` — hover is a pointer-rate event and must be frame-local.
@@ -31,8 +31,8 @@ links attention, which is what reading a score actually is.
 ### The one idea
 
 **The two views share one focus.** Whatever the pointer is over — a notehead on the page, a line in the source — is the
-focus, and the focus is marked in *both* views at once, in the same weight, in the same frame. There is one focus, not
-a score hover and a source hover that happen to agree.
+focus, and the focus is marked in *both* views at once, in the same weight, in the same frame. There is one focus, not a
+score hover and a source hover that happen to agree.
 
 ### It must not look like selection, and must not look like the lens
 
@@ -81,8 +81,8 @@ usually comes from two statements.** Pretending otherwise is what makes the curr
 
 A feature that only exists on hover is a feature most people never find. Two quiet, permanent signals:
 
-- The inspector's `ORIGIN` row already prints `sigh() ▸ note 1  line 19` and already links the line number. It gains
-  the sibling count when there is one — `line 19 · 2 notes` — so the plural answer is visible before anyone hovers.
+- The inspector's `ORIGIN` row already prints `sigh() ▸ note 1  line 19` and already links the line number. It gains the
+  sibling count when there is one — `line 19 · 2 notes` — so the plural answer is visible before anyone hovers.
 - In the source column's gutter, a line that produced music on the *currently visible page* gets a `--rule` tick beside
   its number. Not a hue and not a count: just the difference between "this line makes sound" and "this line is
   scaffolding", which is the shape of a musa file at a glance.
@@ -122,10 +122,10 @@ Nothing musical is derived in the frontend either way (`03-interaction.md` §7).
 
 - **A mark under a note has to ask for the notehead.** An event's box is the notehead, the stem, the flag, and any
   ledger lines, so a hairline under *that* lands two staff spaces below a stem-down quarter. `headsFor` in
-  `score/geometry.ts` is `boxesFor` restricted to `g.notehead`, falling back to the whole element for rests and
-  anything else the engraver draws without a head.
-- **The sibling count belongs to the trailing, not to the path.** `line 19 · 2 notes` reads as one fact about where
-  the note came from. Put in the row's body it would read as a second control, and it is not one.
+  `score/geometry.ts` is `boxesFor` restricted to `g.notehead`, falling back to the whole element for rests and anything
+  else the engraver draws without a head.
+- **The sibling count belongs to the trailing, not to the path.** `line 19 · 2 notes` reads as one fact about where the
+  note came from. Put in the row's body it would read as a second control, and it is not one.
 
 ## Check
 

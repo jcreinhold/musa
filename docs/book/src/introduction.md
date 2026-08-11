@@ -1,7 +1,7 @@
 # Introduction
 
-Musa is a notation-first music language and workbench. You write a piece as text, and musa compiles it into a score
-you can engrave, a performance you can hear, and files other programs can read.
+Musa is a notation-first music language and workbench. You write a piece as text, and musa compiles it into a score you
+can engrave, a performance you can hear, and files other programs can read.
 
 ```musa
 piece "twinkle" {

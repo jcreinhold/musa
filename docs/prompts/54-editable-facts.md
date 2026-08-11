@@ -38,8 +38,8 @@ can carry, including the ones it does not carry yet. One move answers three ques
 this piece already said, and where do I click to say something it has not.
 
 That is also the whole answer to "how would anyone know they can annotate the composer". Not a help bar, not a tour, not
-a first-run overlay: **the list of what a piece can say is the list of fields, and the empty ones are on it.** A help bar
-would be a second place to state something the interface should be able to show directly, and it would need to be
+a first-run overlay: **the list of what a piece can say is the list of fields, and the empty ones are on it.** A help
+bar would be a second place to state something the interface should be able to show directly, and it would need to be
 maintained against the thing it describes.
 
 ### 1. Editable is visible at rest
@@ -52,8 +52,8 @@ An editable value carries a hairline underline in three weights:
 | Hover | `1px` `--ink-muted` |
 | Focus | `1px` `--plate` |
 
-Only editable values get one, which is what makes it a signal and not decoration — `POSITION`, `VOICE`, and `ORIGIN` stay
-bare, and the difference between the rows that take a value and the rows that report one becomes visible without
+Only editable values get one, which is what makes it a signal and not decoration — `POSITION`, `VOICE`, and `ORIGIN`
+stay bare, and the difference between the rows that take a value and the rows that report one becomes visible without
 reading either.
 
 This is a repair, and the reason is worth stating: an affordance that appears on hover can only be discovered by someone
@@ -80,9 +80,9 @@ METER       4/4
 - **"Nothing selected" had to be made to exist first.** `Workspace.focused` falls back to the score's first event so
   that entry, the active voice, and the position readout always have somewhere to start — which meant the inspector was
   never handed `undefined` and its empty branch was unreachable code. The two questions are different: `focused` is
-  "where is work happening", `chosen` is "what did the composer pick", and only the second is allowed to have no
-  answer. The inspector reads `chosen`. Keyboard navigation still starts from `focused`, so the first arrow on a freshly
-  opened piece still lands in the music.
+  "where is work happening", `chosen` is "what did the composer pick", and only the second is allowed to have no answer.
+  The inspector reads `chosen`. Keyboard navigation still starts from `focused`, so the first arrow on a freshly opened
+  piece still lands in the music.
 - **Committing an empty value into a named role deletes the statement.** Adding and removing a line of front matter are
   the same gesture, and neither needs a button.
 - **The title cannot be emptied.** A piece with no name has nothing for the file, the page head, or the frame to print;
@@ -99,12 +99,12 @@ uses everywhere else. `Esc` puts it back. Nothing else on the page becomes edita
 
 This needs no new mechanism, because **Verovio passes an encoded page head's `xml:id`s straight through to the SVG**,
 exactly as it does a note's — measured, not assumed. So the MEI backend writes the head itself, with `front-title`,
-`front-subtitle`, `front-composer`, and `front-arranger` ids, `<pgFoot>`'s line gains `front-copyright`, the app asks for
-`header: "encoded"` in place of `"auto"`, and hit-testing a title is then the same machinery, and the same clause of
+`front-subtitle`, `front-composer`, and `front-arranger` ids, `<pgFoot>`'s line gains `front-copyright`, the app asks
+for `header: "encoded"` in place of `"auto"`, and hit-testing a title is then the same machinery, and the same clause of
 §7, as hit-testing a notehead.
 
-**On the page the underline is hover-only, and this is the one exception to §1.** Two reasons, and the second is the
-one that decides it. The chrome is an interface and can afford to advertise; the page is the artifact, and a title
+**On the page the underline is hover-only, and this is the one exception to §1.** Two reasons, and the second is the one
+that decides it. The chrome is an interface and can afford to advertise; the page is the artifact, and a title
 permanently underlined is a page that looks like a web form rather than like an edition — the opposite of what the page
 apparatus was added for. Discovery does not depend on it, because §2's list prints all five roles whether or not the
 piece has filled them in. And the mechanism §1 uses is not available here anyway: Blink paints `text-decoration` on SVG
@@ -164,7 +164,8 @@ not the meter's denominator. That judgement lives in one place and this is not i
   - `lib/score/` — front-matter hit-testing and the in-place input over the page.
 - Tests:
   - Rust: each field set on a piece that has it and a piece that does not; each field emptied; `Title` refusing; a value
-    that does not compile leaving the session unchanged; the inserted statement landing where the formatter would put it.
+    that does not compile leaving the session unchanged; the inserted statement landing where the formatter would put
+    it.
   - unit: the id → field mapping.
   - Playwright: type into the empty inspector row, click the title on the page and rename the piece, change the meter in
     the band — and assert in each case the `setHeader` the interface *issued*, plus that the rename is a single undo.

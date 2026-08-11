@@ -16,12 +16,10 @@ music is ambiguous; verify explicit annotations when asked; never turn an analys
 
 ## Read
 
-- OMT `020-roman-numerals.md`, `036-introduction-to-harmony-cadences-and-phrase-endings.md`, `037`–`048` on
-  phrase-model harmonic functions, `050-tonicization.md`,
-  `051-extended-tonicization-and-modulation-to-closely-related-keys.md`,
+- OMT `020-roman-numerals.md`, `036-introduction-to-harmony-cadences-and-phrase-endings.md`, `037`–`048` on phrase-model
+  harmonic functions, `050-tonicization.md`, `051-extended-tonicization-and-modulation-to-closely-related-keys.md`,
   `052`–`056` on phrase/form context, and `061-modal-mixture.md`.
-- OMT 051 §“Tonicization versus modulation”: duration/formal emphasis make this a continuum, not a syntax-level
-  bit.
+- OMT 051 §“Tonicization versus modulation”: duration/formal emphasis make this a continuum, not a syntax-level bit.
 - Prompts 35, 65, 107, and 110; key/harmony/phrase annotations are evidence, not unquestionable truth.
 
 ## Design
@@ -38,8 +36,8 @@ criteria underdetermine the distinction, return both candidates and the evidence
 
 Algorithms are deterministic and benchmarked on committed excerpts/constructed fixtures whose intended readings are
 documented. Tests include chromatic non-chord tones, mixture, pivot-chord ambiguity, direct modulation, tonicized
-dominant, deceptive cadence, half cadence, imperfect/perfect authentic cadence, and a passage for which “unknown” is
-the only honest answer.
+dominant, deceptive cadence, half cadence, imperfect/perfect authentic cadence, and a passage for which “unknown” is the
+only honest answer.
 
 ## Target
 

@@ -10,9 +10,9 @@ phase: 3
 
 ## Task
 
-Introduce the missing instrument-independent performance object between `Timeline<ScoreFact>` and scheduled DSP
-events. Profiles interpret notation into exact note gestures, technique/grouping information, and typed musical control
-curves; tempo/groove/tuning then schedule those gestures. No gesture names a graph node, processor, MIDI controller, or
+Introduce the missing instrument-independent performance object between `Timeline<ScoreFact>` and scheduled DSP events.
+Profiles interpret notation into exact note gestures, technique/grouping information, and typed musical control curves;
+tempo/groove/tuning then schedule those gestures. No gesture names a graph node, processor, MIDI controller, or
 render-plan parameter index.
 
 ## Read
@@ -31,11 +31,10 @@ per-note controls. A lane also carries piecewise exact `ControlCurve`s keyed by 
 small control value family. Standard keys include expression, emphasis, separation, brightness, sustain, and legato;
 namespaced custom keys are admitted only with a declaration in prompt 129.
 
-For a hairpin on `[s,e]`, specify and test
-`E(b) = d0 + (d1-d0) * p((b-s)/(e-s))`, with exact profile endpoints and kernel `Progress p`. Curve construction is
-normative; frame/control-rate sampling is downstream. Preserve symbolic technique/group identity even when a numeric
-fallback is also available, so a sample instrument may select legato or staccato regions rather than receiving only a
-gate multiplier.
+For a hairpin on `[s,e]`, specify and test `E(b) = d0 + (d1-d0) * p((b-s)/(e-s))`, with exact profile endpoints and
+kernel `Progress p`. Curve construction is normative; frame/control-rate sampling is downstream. Preserve symbolic
+technique/group identity even when a numeric fallback is also available, so a sample instrument may select legato or
+staccato regions rather than receiving only a gate multiplier.
 
 Keep the public compiler facade narrow. Compare (and record) a separate public `PerformanceIntent` artifact with the
 chosen design in which private exact gestures are scheduled into a caller-oriented `PerformancePlan`; publish only the
@@ -47,7 +46,8 @@ minimum immutable lane/control information required by MIDI and `musa-audio`. `P
 - Private exact gesture construction and revised scheduled performance lanes/events.
 - Profile-to-gesture interpretation for all existing marks with byte/semantic parity where the old model was expressive
   enough; explicit retained/fallback information where it was not.
-- Algebraic/property tests for curve endpoints, monotonic hairpins, grouping, exactness, context changes, and scheduling.
+- Algebraic/property tests for curve endpoints, monotonic hairpins, grouping, exactness, context changes, and
+  scheduling.
 - MIDI remains a separate consumer with documented mappings/losses; no studio dependency enters the compiler pass.
 
 ## Check

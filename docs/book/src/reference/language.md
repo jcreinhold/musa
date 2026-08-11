@@ -1,7 +1,7 @@
 # The language
 
-A `.musa` file is one piece or one library. This page surveys the surface syntax; `examples/` in the repository holds
-a runnable fixture for every construct named here.
+A `.musa` file is one piece or one library. This page surveys the surface syntax; `examples/` in the repository holds a
+runnable fixture for every construct named here.
 
 ## A piece
 
@@ -58,8 +58,8 @@ part violin {
 }
 ```
 
-A bar means nothing — its contents elaborate exactly as they would without it. What it buys is the assertion: a
-dropped duration would otherwise move every later barline, silently.
+A bar means nothing — its contents elaborate exactly as they would without it. What it buys is the assertion: a dropped
+duration would otherwise move every later barline, silently.
 
 ## Context changes
 
@@ -99,9 +99,9 @@ voice lead {
 }
 ```
 
-`motif` takes parameters and is reused by `use`; `fragment` is named material without parameters. The transforms
-include `transpose`, `stretch`, `retrograde`, `invert`, and `in scale c dorian { ... }` for scale-local stepwise
-motion. Recursion is rejected: every piece compiles to a finite score.
+`motif` takes parameters and is reused by `use`; `fragment` is named material without parameters. The transforms include
+`transpose`, `stretch`, `retrograde`, `invert`, and `in scale c dorian { ... }` for scale-local stepwise motion.
+Recursion is rejected: every piece compiles to a finite score.
 
 ## Annotation
 
@@ -185,5 +185,5 @@ import std::pitch;
 import "lib/my-matters.musa";
 ```
 
-A quoted path resolves relative to the importing file. `std::` names the bundled
-[standard library](stdlib.md); it is reserved, never searched on disk, and there is no implicit prelude.
+A quoted path resolves relative to the importing file. `std::` names the bundled [standard library](stdlib.md); it is
+reserved, never searched on disk, and there is no implicit prelude.

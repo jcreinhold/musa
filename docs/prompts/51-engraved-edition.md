@@ -64,11 +64,11 @@ piece "Glass Mountain" {
   genuinely needed later it is a fifth statement, decided then.
 - **The title stays the `piece` name.** There is no `title` statement; a piece already has a name and a second way to
   spell it is a way for them to disagree.
-- **All four are optional, and absence prints nothing.** A page with an empty composer line is worse than a page
-  without one (`05-states.md` §2 applies to paper too).
+- **All four are optional, and absence prints nothing.** A page with an empty composer line is worse than a page without
+  one (`05-states.md` §2 applies to paper too).
 - **`musa.toml`'s `composer` is the fallback, not a competitor.** A piece that names its own composer uses it; a piece
-  that does not inherits the project's. Resolution happens once, in `musa-project`, so every backend and the GUI see
-  one answer. This is the reason `ProjectMeta` was built in the first place.
+  that does not inherits the project's. Resolution happens once, in `musa-project`, so every backend and the GUI see one
+  answer. This is the reason `ProjectMeta` was built in the first place.
 - Formatter: the four sit in a block with `tempo`/`meter`/`key`, in source order, one per line. The formatter does not
   reorder them — a composer who put the dedication-ish line first meant it there.
 
@@ -87,21 +87,21 @@ None of this is new language; it is the backends emitting what the plan already 
 - **The final measure gets `right="end"`**, which is the thin-thick barline. A score that stops mid-air reads as a
   fragment, and musa's pieces are finite by construction.
 - **Measure numbers**: `mnumInterval: 0`, which is Verovio's spelling of one number at the head of each system — the
-  modern editorial default, as against a number on every bar, which is a proof-reading copy. (The option counts a
-  repeat interval, so 0 is per-system and any *n* > 0 means every *n* bars.) Verovio draws them above the top staff.
+  modern editorial default, as against a number on every bar, which is a proof-reading copy. (The option counts a repeat
+  interval, so 0 is per-system and any *n* > 0 means every *n* bars.) Verovio draws them above the top staff.
 - **Running head, page numbers, and the copyright line**: Verovio's `header: "auto"` and `footer: "auto"` with the MEI
   head supply all three — title and subtitle centred on page 1 with composer and arranger to the right, a running head
   after it, and the copyright at the foot.
-- **LilyPond** gains the matching `\header { title composer arranger subtitle copyright }` block, and **MusicXML**
-  gains `<work><work-title>` and `<identification><creator type="composer">`, `type="arranger"`, and `<rights>`.
-  A backend that dropped the front matter would make export a lossy operation, which §12 forbids.
+- **LilyPond** gains the matching `\header { title composer arranger subtitle copyright }` block, and **MusicXML** gains
+  `<work><work-title>` and `<identification><creator type="composer">`, `type="arranger"`, and `<rights>`. A backend
+  that dropped the front matter would make export a lossy operation, which §12 forbids.
 
 ### What this is not
 
-- Not a page-layout model. The boundary, in the words `02-engraving.md` §4 now uses: **musa may use MEI's own
-  vocabulary for which region of the page a line of front matter belongs to — head or foot, centred or right. It may
-  not state a coordinate, a margin, a rastral size, a system or page break, or anything at all that is per-page.** This
-  prompt already spends the first half of that on `<pgFoot>`, for the reason given there; prompt 54 spends the rest on
+- Not a page-layout model. The boundary, in the words `02-engraving.md` §4 now uses: **musa may use MEI's own vocabulary
+  for which region of the page a line of front matter belongs to — head or foot, centred or right. It may not state a
+  coordinate, a margin, a rastral size, a system or page break, or anything at all that is per-page.** This prompt
+  already spends the first half of that on `<pgFoot>`, for the reason given there; prompt 54 spends the rest on
   `<pgHead>`, and there is nothing further to spend.
 - Not a template or style system. One edition style, the one in `02-engraving.md`.
 

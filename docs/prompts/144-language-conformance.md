@@ -13,8 +13,8 @@ phase: 4
 Audit prompts 92–143 as one language release, close every compatibility, law, theory, provenance, tooling,
 documentation, performance, sound, asset, package, and real-time obligation, and graduate `docs/language/` from
 candidate to governing. This prompt adds no feature. It demonstrates that one well-typed source semantics reaches the
-kernel, renderers, performance gestures, instruments, audio, project, editors, and desktop without a competing
-evaluator or undocumented exception.
+kernel, renderers, performance gestures, instruments, audio, project, editors, and desktop without a competing evaluator
+or undocumented exception.
 
 ## Read
 
@@ -34,8 +34,8 @@ where possible; review every manual bridge. At minimum it must cover:
 - total evaluation, finite data, budget determinism, closure/partial-application semantics, and module abstraction;
 - contextual `Music`, structural folds, canonical composition laws, template identity, provenance multiplicity, and
   cached/uncached equality;
-- written pitch/interval action, scales/degrees/context, chord class/voicing, pc12/set/row operations,
-  transformations, tonal construction, schemas, assertions, tonal analysis, and voice-leading/counterpoint profiles;
+- written pitch/interval action, scales/degrees/context, chord class/voicing, pc12/set/row operations, transformations,
+  tonal construction, schemas, assertions, tonal analysis, and voice-leading/counterpoint profiles;
 - `.musa.kernel` document inclusion and local typed quote/antiquote, including hygiene, unknown payloads, source maps,
   and the context-neutral boundary;
 - exact performance gestures/control curves, tempo/tuning realization, typed instrument contracts, private sound
@@ -50,8 +50,8 @@ documented semantic normal-form or observation equality. Review all diagnostic w
 technical terminology and a musician-comprehensible first sentence.
 
 Search for and remove or document stale alternate paths: legacy direct lowering, duplicate theory algorithms, public
-HIR/evaluator types, global note streams, raw public DSP parameter ids, exposed private graph addresses, unchecked
-asset paths, handwritten editor vocabularies, mutable expanded ASTs, and source-independent widget state. Do not delete
+HIR/evaluator types, global note streams, raw public DSP parameter ids, exposed private graph addresses, unchecked asset
+paths, handwritten editor vocabularies, mutable expanded ASTs, and source-independent widget state. Do not delete
 accepted compatibility behavior merely because the new path exists.
 
 Graduation is conditional. If any row lacks implementation or evidence, leave `docs/language/` candidate, repair the

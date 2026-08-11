@@ -305,15 +305,15 @@ mean a second code path for small documents.
 
 ### The corpus, qualitatively
 
-`examples/kernel/canon.musa.kernel` is the visible payoff, and it is what the prompt asked to see: two `let` bindings and two
-marked references, where before it was every occurrence of both voices written out. The subject appears once. Five of
-the nine files are **byte-identical** to prompt 48's — `counterpoint`, `invention`, `profile-fixture`, `twinkle`,
-`tuplet-fixture` — because a run of adjacent literals is coalesced back into one `timeline` block. That was not free
-either: without coalescing, every note printed as its own nested `timeline` inside a `sequence` and the corpus grew 30%
-across the board while saying nothing new. The four that changed are exactly the four with structure to show: `canon`
-and `glass-mountain` have motifs, `variation` has a motif and transformations, and `annotated` has slurs, phrases and
-hairpins, whose region facts now print as the `overlay` they always were. The rule the printer follows is the one the
-prompt wanted: **show the structure a composer wrote, and no structure they did not.**
+`examples/kernel/canon.musa.kernel` is the visible payoff, and it is what the prompt asked to see: two `let` bindings
+and two marked references, where before it was every occurrence of both voices written out. The subject appears once.
+Five of the nine files are **byte-identical** to prompt 48's — `counterpoint`, `invention`, `profile-fixture`,
+`twinkle`, `tuplet-fixture` — because a run of adjacent literals is coalesced back into one `timeline` block. That was
+not free either: without coalescing, every note printed as its own nested `timeline` inside a `sequence` and the corpus
+grew 30% across the board while saying nothing new. The four that changed are exactly the four with structure to show:
+`canon` and `glass-mountain` have motifs, `variation` has a motif and transformations, and `annotated` has slurs,
+phrases and hairpins, whose region facts now print as the `overlay` they always were. The rule the printer follows is
+the one the prompt wanted: **show the structure a composer wrote, and no structure they did not.**
 
 ### Prompt 50 — the gate, measured, and closed
 

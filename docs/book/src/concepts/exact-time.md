@@ -13,9 +13,9 @@ Physical seconds are a separate domain, introduced by performance realization. T
 converts a position in musical time to a position in seconds. This is what makes tempo different from key or meter —
 those are facts the score states; tempo is a reading of the score, and a piece can carry more than one reading.
 
-The consequences run one way. A beat-fitted audio clip follows tempo, because its duration is musical. A fixed-media
-cue keeps its recorded seconds, because a recording knows nothing of the beat; musa never manufactures a musical
-extent for it.
+The consequences run one way. A beat-fitted audio clip follows tempo, because its duration is musical. A fixed-media cue
+keeps its recorded seconds, because a recording knows nothing of the beat; musa never manufactures a musical extent for
+it.
 
 ## Where floats are allowed
 

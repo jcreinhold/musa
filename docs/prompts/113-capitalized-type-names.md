@@ -21,8 +21,8 @@ about — and that neither of them had right. No type is added, none is removed,
 - `docs/language/01-surface.md` §3, which lists the primitive value types and spells the pitch-class type `spelled_pc`
   where `crates/musa-compiler/src/core.rs` spells it `pitchclass`.
 - Open Music Theory `099-pitch-and-pitch-class.md` and `003-reading-clefs.md`, which decide what this type is called:
-  the first defines a pitch class as octave *and enharmonic* equivalence, the second calls the octave-free spelled
-  thing a letter name.
+  the first defines a pitch class as octave *and enharmonic* equivalence, the second calls the octave-free spelled thing
+  a letter name.
 - `crates/musa-language/src/parser.rs`, `type_atom` — the whitelist of six keywords a type name is allowed to be is the
   evidence for this prompt, not an incidental detail.
 - Prompt 109 for the migration-diagnostic shape a spelling change takes here, including its applicable fix.
@@ -45,11 +45,11 @@ Scale  Key  Degree  Frame  ChordClass  Triad  Roman  Voicing
 Pc12  PcSet12  Row12  Music  Option  List        None  Some
 ```
 
-`pitchclass` becomes `NoteName`, and neither `PitchClass` nor `SpelledPc` is the answer. OMT 99 defines a pitch class
-as a group of pitches related by octave *and enharmonic* equivalence, so a type in which C♯ and D♭ differ is not a
-pitch class — `Pc12` is. What this type holds is a letter and an accidental with the octave dropped, which OMT 3 calls
-a letter name. `NoteName` is that in a word every musician already has, and it carries the distinction without
-explaining it: a name is a spelling, so of course two names spell two things.
+`pitchclass` becomes `NoteName`, and neither `PitchClass` nor `SpelledPc` is the answer. OMT 99 defines a pitch class as
+a group of pitches related by octave *and enharmonic* equivalence, so a type in which C♯ and D♭ differ is not a pitch
+class — `Pc12` is. What this type holds is a letter and an accidental with the octave dropped, which OMT 3 calls a
+letter name. `NoteName` is that in a word every musician already has, and it carries the distinction without explaining
+it: a name is a spelling, so of course two names spell two things.
 
 `Some` and `None` move with their type, as in Rust, because they are constructors of `Option` and not free words. The
 alternative — capitals for types, lowercase for their constructors — asks a reader to hold two rules where one will do.

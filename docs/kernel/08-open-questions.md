@@ -26,9 +26,9 @@ That trigger fired at prompt 66, and the working stance is **confirmed, not reve
 candidate — a `choose` term form — is refused for four reasons set out in `11-realization.md`: it cannot express the
 repertoire it is proposed for (*In C* is unbounded, Klavierstück XI is 19! orderings, Cage and Feldman draw from a
 continuum); it makes T2 ambiguous, because whether sharing shares the *decision* has two musically real readings and no
-canonical one; it destroys T3, T4 and N6 together, so there is no normal form and no semantic hash, which is what
-prompt 43 keyed recompilation on; and it destroys the interchange artifact that justified it, since a file containing
-`choose` needs a choice environment shipped alongside it.
+canonical one; it destroys T3, T4 and N6 together, so there is no normal form and no semantic hash, which is what prompt
+43 keyed recompilation on; and it destroys the interchange artifact that justified it, since a file containing `choose`
+needs a choice environment shipped alongside it.
 
 The provenance need the trigger asked about is answered **above** the kernel by a `ChoicePath` — a structural path of
 names, not a span and not a `DeclarationId` — with randomness derived per path rather than from a stream. The kernel
@@ -78,18 +78,18 @@ implemented canonical **serialization** only (N5). The working stance was: no pa
 kernel files exists (another implementation, a visualizer, a test oracle written in kernel text).
 
 **That trigger has fired, and this is what fired it.** The consumer is `musa kernel` (prompt 48): a command that reads a
-`.musa.kernel` file and evaluates it, which is a producer/consumer pair independent of the compiler and therefore the second
-implementation the stance was waiting for. What made it worth building is sharing — a term language with `let` says
-"this is that material again", which no serialization of *values* can say, and which is the difference between a canon's
-interchange file being one subject or four copies of one.
+`.musa.kernel` file and evaluates it, which is a producer/consumer pair independent of the compiler and therefore the
+second implementation the stance was waiting for. What made it worth building is sharing — a term language with `let`
+says "this is that material again", which no serialization of *values* can say, and which is the difference between a
+canon's interchange file being one subject or four copies of one.
 
 The order the stance implies was followed rather than short-circuited: specify first (prompt 46, `10-term-calculus.md`),
 implement and prove (prompt 47), and only then parse (prompt 48).
 
 **Resolution.** `musa-kernel/src/text.rs` holds a printer and a parser over an opaque payload; `musa-compiler` supplies
 `ScoreFact`'s form; `musa kernel <file.musa>` prints and `musa kernel --check <file.kernel>` reads. The deliverable is
-`examples/kernel/*.musa.kernel` — nine committed files a second implementation is validated against by reading one, computing
-its normal form and semantic hash, and comparing. The round-trip law holds over generated terms
+`examples/kernel/*.musa.kernel` — nine committed files a second implementation is validated against by reading one,
+computing its normal form and semantic hash, and comparing. The round-trip law holds over generated terms
 (`musa-kernel/tests/terms.rs`) and over every fixture (`musa-compiler/tests/kernel_interop.rs`).
 
 Two things the stance predicted wrong, both repaired in place:
@@ -136,9 +136,9 @@ still one (`prevailing`), and the threshold is unmet by a wider margin than befo
   key for `ScoreFact` quotients away the definition span and declaration id an interchange file must carry. The key
   stayed untouched, the interchange text became a second function, and no golden or semantic hash moved. Consequently
   `musa kernel --normalized` prints the *interchange* spelling of the normal form, which `--check` accepts — a strictly
-  better artifact than N5 bytes, which nothing can read. Also: `examples/kernel/*.musa.kernel` are plain files rather than
-  insta snapshots, because a corpus that exists to be read by another implementation must be readable as kernel text,
-  not wrapped in a `.snap` preamble.
+  better artifact than N5 bytes, which nothing can read. Also: `examples/kernel/*.musa.kernel` are plain files rather
+  than insta snapshots, because a corpus that exists to be read by another implementation must be readable as kernel
+  text, not wrapped in a `.snap` preamble.
 
 ## Falsification corpus status (§33)
 

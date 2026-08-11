@@ -22,13 +22,12 @@ Failure creates no value and is an error at the smallest source range that falsi
 ## 2. Explicit assertions
 
 `assert predicate(args) { body }` is used for optional, decidable compositional requirements. The predicate observes a
-finite typed value or the controlled view of a finite `music` value and returns either evidence or counterexamples.
-The successful result is the unchanged body; assertions never repair or respell music.
+finite typed value or the controlled view of a finite `music` value and returns either evidence or counterexamples. The
+successful result is the unchanged body; assertions never repair or respell music.
 
-Predicate names carry practice and assumptions: `species.first_above(cantus)` is honest;
-`valid_counterpoint(cantus)` is not. Scale membership, range, spacing, row property, and user-declared finite predicates
-fit this layer. Diagnostics include predicate, assumptions, witness locations, and a counterexample; they do not merely
-say “false.”
+Predicate names carry practice and assumptions: `species.first_above(cantus)` is honest; `valid_counterpoint(cantus)` is
+not. Scale membership, range, spacing, row property, and user-declared finite predicates fit this layer. Diagnostics
+include predicate, assumptions, witness locations, and a counterexample; they do not merely say “false.”
 
 ## 3. Interpretive analyses
 
@@ -111,6 +110,6 @@ diagnostic codes and salient labels, not whole prose strings.
 ## 7. Graduation evidence
 
 Prompt 142 records: every law and counterexample fixture; benchmark baselines and variance policy; old/new corpus
-compatibility; public API diff; kernel constructor diff (which must be empty); reproducible asset lock audit; live/offline
-audio comparison; and a contradiction scan of all governing documents. Only then may `README.md` change from candidate
-to governing.
+compatibility; public API diff; kernel constructor diff (which must be empty); reproducible asset lock audit;
+live/offline audio comparison; and a contradiction scan of all governing documents. Only then may `README.md` change
+from candidate to governing.

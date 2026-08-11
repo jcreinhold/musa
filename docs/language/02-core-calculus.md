@@ -1,21 +1,21 @@
 # Total elaboration core
 
-The core is a monomorphic, pure, call-by-value simply typed lambda calculus with finite data and structural
-eliminators. Surface conveniences elaborate into this core before evaluation. It is deliberately more expressive than
-the kernel and deliberately less expressive than a general-purpose programming language.
+The core is a monomorphic, pure, call-by-value simply typed lambda calculus with finite data and structural eliminators.
+Surface conveniences elaborate into this core before evaluation. It is deliberately more expressive than the kernel and
+deliberately less expressive than a general-purpose programming language.
 
 ## 1. Syntax
 
-Let base types `b` include the finite and exact musical domains named in `01-surface.md`. Each musical domain beyond
-the prompt-95 fragment enters through §5.8's conservative-extension theorem and its checked discipline, not by
-assumption. Core types are:
+Let base types `b` include the finite and exact musical domains named in `01-surface.md`. Each musical domain beyond the
+prompt-95 fragment enters through §5.8's conservative-extension theorem and its checked discipline, not by assumption.
+Core types are:
 
 ```text
 τ ::= b | unit | bool | nat | ratio | τ × τ | option τ | list τ | τ → τ | music
 ```
 
-`declaration κ`, `structure`, `piece`, `part`, `voice`, `Term[A]`, `Timeline[A]`, `Signal`, and DSP nodes are not
-value types. `music` is abstract: user code has constructors and controlled transforms but no representation eliminator.
+`declaration κ`, `structure`, `piece`, `part`, `voice`, `Term[A]`, `Timeline[A]`, `Signal`, and DSP nodes are not value
+types. `music` is abstract: user code has constructors and controlled transforms but no representation eliminator.
 
 Terms are variables, literals, products/projections, constructors, lambdas, application, non-recursive `let`,
 conditionals, finite primitive operations, and these eliminators:
@@ -32,9 +32,9 @@ operations return `option` or a diagnostic-bearing assertion witness.
 
 There is no `fix`, recursive binding, while loop, exception, mutation, I/O, reflection, syntax value, dynamic cast, or
 effect handler. Functions may be higher-order. User definitions are monomorphic and every parameter/result type is
-written; there is no user generic-parameter syntax in this candidate. Compiler-owned `fold`/`map` primitives have
-finite type schemes instantiated to monomorphic core operations during checking. Runtime/System-F polymorphism and
-implicit let-generalization are absent; adding user parametric polymorphism requires a later specification.
+written; there is no user generic-parameter syntax in this candidate. Compiler-owned `fold`/`map` primitives have finite
+type schemes instantiated to monomorphic core operations during checking. Runtime/System-F polymorphism and implicit
+let-generalization are absent; adding user parametric polymorphism requires a later specification.
 
 ## 2. Static semantics
 
@@ -55,12 +55,12 @@ The standard rules for products, sums, arrows, and immutable bindings apply. Rep
 ```
 
 Literal constructors enforce refinements such as nonnegative `duration`, finite scale members, and row bijectivity.
-These are constructor judgments returning a value or a located diagnostic; they do not introduce dependent types.
-Named predicates used by `assert` return finite evidence that the assertion layer can report.
+These are constructor judgments returning a value or a located diagnostic; they do not introduce dependent types. Named
+predicates used by `assert` return finite evidence that the assertion layer can report.
 
 Only compiler-owned primitives may construct `music`. `map_note_pitches` accepts a total `pitch → pitch` and visits a
-documented subset of musical payload positions; it does not reveal them as a list. A kernel quote has a dedicated
-typing rule and cannot be encoded by string operations.
+documented subset of musical payload positions; it does not reveal them as a list. A kernel quote has a dedicated typing
+rule and cannot be encoded by string operations.
 
 ## 3. Dynamic semantics
 
@@ -77,8 +77,8 @@ declarations, diagnostic witnesses, and provenance steps is source-stable, never
 Strong normalization does not bound a terminating program to useful project size. Musa therefore maintains one
 deterministic meter over checking and evaluation. A finite aggregate operation charges its known count and logical
 result shape before entering its loop or allocating its result; nested work is charged when its enclosing operation is
-reached. All values remain private until the whole declaration graph succeeds, so exhaustion publishes neither a
-partial value nor a partial score. The meter covers:
+reached. All values remain private until the whole declaration graph succeeds, so exhaustion publishes neither a partial
+value nor a partial score. The meter covers:
 
 - monomorphized definition count and closure environment size;
 - natural/list fold work, including products induced by nested folds;
@@ -99,8 +99,8 @@ tighten the accepted envelope deliberately.
 This section fixes the proof obligation already implemented by prompt 95. Options, lists, folds, primitive pitch
 operations, and `music` extend the calculus later and require their own compatibility cases; they are not smuggled into
 this theorem by an appeal to “standard STLC.” §5.6 discharges finite data, §5.7 discharges `music`, and §5.8 discharges
-every musical base type and compiler-owned operation added after prompt 95. Let `b` range over `bool`, `nat`, `ratio`, `duration`, `pitch`, and
-`interval`. The implemented fragment is:
+every musical base type and compiler-owned operation added after prompt 95. Let `b` range over `bool`, `nat`, `ratio`,
+`duration`, `pitch`, and `interval`. The implemented fragment is:
 
 ```text
 σ,τ ::= unit | b | (τ₁ × … × τₙ) | (τ₁,…,τₙ) → τ
@@ -112,15 +112,14 @@ v   ::= c | (v₁,…,vₙ) | λ(x₁:τ₁,…,xₙ:τₙ).e
 There is no anonymous-function surface syntax. A checked named `fn` supplies the lambda, and an acyclic named `let`
 graph supplies the lexical lets. A `fn` body is written `{ e }` (prompt 112), and the braces are a **derived form**
 erased by the elaboration `⟦{ e }⟧ = ⟦e⟧`: a block holds exactly one expression, so `⟦·⟧` is defined on it by that one
-equation and is total. The erasure is applied where the surface is read, before any core term exists, so the set of
-core terms above is unchanged and every theorem in §§5.2–5.5 quantifies over exactly the same set it did before the
-form was added. There is no new value form, no new reduction rule, and hence no new case in preservation, progress,
-determinism, or strong normalization — not because a block resembles a parenthesis, but because after `⟦·⟧` there is
-no block left for a proof to be about. Multi-argument arrows and applications are notation for the corresponding curried
-STLC terms. A surface call with named arguments is permuted into parameter order; an omitted default is inserted in
-that order and may refer only to earlier parameters. Thus defaults and argument names add no core reduction rule.
-Products currently have introduction but no surface projection, which is a conservative sublanguage of the product
-calculus.
+equation and is total. The erasure is applied where the surface is read, before any core term exists, so the set of core
+terms above is unchanged and every theorem in §§5.2–5.5 quantifies over exactly the same set it did before the form was
+added. There is no new value form, no new reduction rule, and hence no new case in preservation, progress, determinism,
+or strong normalization — not because a block resembles a parenthesis, but because after `⟦·⟧` there is no block left
+for a proof to be about. Multi-argument arrows and applications are notation for the corresponding curried STLC terms. A
+surface call with named arguments is permuted into parameter order; an omitted default is inserted in that order and may
+refer only to earlier parameters. Thus defaults and argument names add no core reduction rule. Products currently have
+introduction but no surface projection, which is a conservative sublanguage of the product calculus.
 
 ### 5.1 Static judgments
 
@@ -143,16 +142,16 @@ x:τ ∈ Γ                         Γ ⊢ eᵢ : τᵢ  (all i)
 Γ ⊢ let x:σ = e₁ in e₂ : τ
 ```
 
-Top-level signatures are collected before bodies are checked, so a later declaration may be referenced. From each
-body the checker records an edge to every free named declaration. Acceptance requires the resulting finite graph to be
-acyclic. A topological ordering `d₁,…,dₖ` then denotes the closed term
-`let d₁=e₁ in … let dₖ=eₖ in (d₁,…,dₖ)`; an edge can only point to an earlier binding in this ordering. This gives
-forward references lexical meaning without giving Musa recursive binding.
+Top-level signatures are collected before bodies are checked, so a later declaration may be referenced. From each body
+the checker records an edge to every free named declaration. Acceptance requires the resulting finite graph to be
+acyclic. A topological ordering `d₁,…,dₖ` then denotes the closed term `let d₁=e₁ in … let dₖ=eₖ in (d₁,…,dₖ)`; an edge
+can only point to an earlier binding in this ordering. This gives forward references lexical meaning without giving Musa
+recursive binding.
 
 ### 5.2 Small-step and big-step semantics
 
-For the proof, capture-avoiding simultaneous substitution is written `e[v̄/x̄]`. Evaluation contexts enforce
-left-to-right call by value:
+For the proof, capture-avoiding simultaneous substitution is written `e[v̄/x̄]`. Evaluation contexts enforce left-to-right
+call by value:
 
 ```text
 E ::= [] | (v₁,…,vᵢ₋₁,E,eᵢ₊₁,…,eₙ)
@@ -164,8 +163,8 @@ let x:σ = v in e       → e[v/x]                        Letᵥ
 e → e′                 ⇒ E[e] → E[e′]                 Context
 ```
 
-The implementation uses environments rather than copying syntax. Write `ρ ⊨ Γ` when `dom(ρ)=dom(Γ)` and each
-`ρ(x)` is a closed value of type `Γ(x)`. Its big-step judgment is:
+The implementation uses environments rather than copying syntax. Write `ρ ⊨ Γ` when `dom(ρ)=dom(Γ)` and each `ρ(x)` is a
+closed value of type `Γ(x)`. Its big-step judgment is:
 
 ```text
 ρ(x)=v
@@ -204,21 +203,21 @@ the extended context. ∎
 **Substitution.** If `Γ,x:σ ⊢ e : τ` and `Γ ⊢ v : σ`, then `Γ ⊢ e[v/x] : τ`.
 
 *Proof.* Induction on the derivation of `Γ,x:σ ⊢ e : τ`. The variable case is either `x`, where the second premise is
-the result, or another variable, where `Var` is unchanged. Products and applications follow componentwise. For a
-lambda or let binder, alpha-rename it fresh, use weakening for `v` under the extended context, and apply the induction
+the result, or another variable, where `Var` is unchanged. Products and applications follow componentwise. For a lambda
+or let binder, alpha-rename it fresh, use weakening for `v` under the extended context, and apply the induction
 hypothesis to the body. Simultaneous substitution follows by iterating this lemma over distinct parameters. ∎
 
-**Environment substitution.** If `ρ ⊨ Γ` and `Γ ⊢ e : τ`, replacing every free `x` in `e` by `ρ(x)` yields a closed
-term of type `τ`.
+**Environment substitution.** If `ρ ⊨ Γ` and `Γ ⊢ e : τ`, replacing every free `x` in `e` by `ρ(x)` yields a closed term
+of type `τ`.
 
 *Proof.* Repeated application of substitution in any order, since the substituted values are closed. ∎
 
 **Canonical forms.** A closed value of base type is a constant of that base type; a closed value of product type is a
-product of values of the component types; a closed value of arrow type is a lambda (equivalently, an environment
-closure whose environment realizes the lambda’s free-variable context).
+product of values of the component types; a closed value of arrow type is a lambda (equivalently, an environment closure
+whose environment realizes the lambda’s free-variable context).
 
-*Proof.* Inspect the value grammar, then invert its typing rule. `unit` is presently uninhabited by surface literals,
-so its closed-value case is vacuous until a unit constructor is introduced. ∎
+*Proof.* Inspect the value grammar, then invert its typing rule. `unit` is presently uninhabited by surface literals, so
+its closed-value case is vacuous until a unit constructor is introduced. ∎
 
 ### 5.4 Safety and determinism
 
@@ -231,9 +230,9 @@ induction hypothesis there, and rebuild the same derivation. Exact constants do 
 **Theorem 2 — progress.** If `∅ ⊢ e : τ`, then `e` is a value or some `e′` satisfies `e → e′`.
 
 *Proof.* Induct on typing. Literals and lambdas are values. For a product, select the leftmost non-value premise or
-conclude by the value grammar. For application, first advance the function, then the leftmost non-value argument; if
-all are values, canonical forms makes the function a lambda and `βᵥ` applies. A let advances its bound expression or
-uses `Letᵥ`. There are no stuck primitive operations in this fragment. ∎
+conclude by the value grammar. For application, first advance the function, then the leftmost non-value argument; if all
+are values, canonical forms makes the function a lambda and `βᵥ` applies. A let advances its bound expression or uses
+`Letᵥ`. There are no stuck primitive operations in this fragment. ∎
 
 **Theorem 3 — determinism.** If `e → e₁` and `e → e₂`, then `e₁=e₂`.
 
@@ -264,24 +263,24 @@ unique product normal form.
 `eγ ∈ R_τ`.
 
 *Proof.* Induct on the typing derivation. Variables use the hypothesis; constants are normal forms. Products use the
-component induction hypotheses and the product candidate. For a lambda, take arbitrary reducible arguments; `βᵥ`
-reduces its application to the body under the extended reducible substitution, so the induction hypothesis and
-candidate closure give the result. Application follows directly from the arrow candidate. `let` is the lambda case
-via `let x=e₁ in e₂ ≡ (λx.e₂)e₁`. ∎
+component induction hypotheses and the product candidate. For a lambda, take arbitrary reducible arguments; `βᵥ` reduces
+its application to the body under the extended reducible substitution, so the induction hypothesis and candidate closure
+give the result. Application follows directly from the arrow candidate. `let` is the lambda case via
+`let x=e₁ in e₂ ≡ (λx.e₂)e₁`. ∎
 
 **Theorem 4 — strong normalization.** Every well-typed term in the prompt-95 fragment is strongly normalizing.
 
-*Proof.* Apply the fundamental lemma with the empty substitution. An accepted declaration graph expands to a finite
-nest of non-recursive lets because DFS rejects every back edge. The expansion is therefore a well-typed term of this
-fragment and is strongly normalizing. ∎
+*Proof.* Apply the fundamental lemma with the empty substitution. An accepted declaration graph expands to a finite nest
+of non-recursive lets because DFS rejects every back edge. The expansion is therefore a well-typed term of this fragment
+and is strongly normalizing. ∎
 
 **Corollary — deterministic total evaluation.** Every accepted closed prompt-95 expression evaluates to exactly one
-value of its declared type. Existence follows from normalization plus progress; type preservation follows from
-Theorem 1; uniqueness follows from Theorem 3. The environment big-step evaluator returns that value by induction on
-its derivation and the environment-substitution lemma.
+value of its declared type. Existence follows from normalization plus progress; type preservation follows from Theorem
+1; uniqueness follows from Theorem 3. The environment big-step evaluator returns that value by induction on its
+derivation and the environment-substitution lemma.
 
-The implementation checks the computational counterpart at every declaration boundary: evaluation returning no value
-or a value whose reconstructed type differs from the checked type is reported as a compiler-invariant failure. The
+The implementation checks the computational counterpart at every declaration boundary: evaluation returning no value or
+a value whose reconstructed type differs from the checked type is reported as a compiler-invariant failure. The
 generated-law tests additionally compare the production environment evaluator with a separate small substitution
 evaluator and exercise products, lexical capture, higher-order functions, defaults, and rejected cycles.
 
@@ -335,9 +334,9 @@ option_fold(z,s,some(x)) → s(x)
 ```
 
 The implementation iterates rather than building these recursive terms; the equations specify the result. `map` and
-`filter` are list folds, `range(n)` constructs `[0,…,n−1]`, and value `repeat(x,n)` constructs `n` copies of `x`.
-Their rank-1 schemes are compiler-owned and instantiated once at a concrete type at each direct call. They cannot be
-stored as polymorphic values, partially applied, or used to infer a polymorphic user definition.
+`filter` are list folds, `range(n)` constructs `[0,…,n−1]`, and value `repeat(x,n)` constructs `n` copies of `x`. Their
+rank-1 schemes are compiler-owned and instantiated once at a concrete type at each direct call. They cannot be stored as
+polymorphic values, partially applied, or used to infer a polymorphic user definition.
 
 Extend the reducibility candidates by:
 
@@ -369,8 +368,8 @@ well-formedness judgment requires:
 4. `d` and `n` agree structurally with `t` after its bindings are instantiated; and
 5. all facts have the requested scope, exact nonnegative placement, and a complete `Origin`.
 
-**Lemma 1 — compatible composition.** If `F₁,…,Fₖ` are well formed, their sequential and overlay compositions are
-well formed. Sequence has extent `Σᵢdᵢ` and count `Σᵢnᵢ`; overlay has extent `maxᵢdᵢ` and the same count sum.
+**Lemma 1 — compatible composition.** If `F₁,…,Fₖ` are well formed, their sequential and overlay compositions are well
+formed. Sequence has extent `Σᵢdᵢ` and count `Σᵢnᵢ`; overlay has extent `maxᵢdᵢ` and the same count sum.
 
 *Proof.* The kernel constructors validate nonempty finite operands and preserve literal well-formedness. Musa's shared
 binding table interns equal contextual instances by a conservative key. A new binding is appended only after every
@@ -386,15 +385,15 @@ evaluated.
 `Scope` and `Origin`; it does not change spans, multiplicity, ordering, or extent. Its operation is total because the
 checker constructs the mark rather than accepting arbitrary mark text at this boundary. ∎
 
-**Theorem 4 — contextual instantiation and closure.** If `Γ ⊢ m : music`, `ρ ⊨ Γ`, `p` is a valid exact placement,
-and the deterministic resource meter accepts the required output, then `instantiate(m,ρ,p)` returns a finite
-well-formed fragment. Closing that fragment returns a closed, checked `Term[ScoreFact]` whose evaluation has exactly
-the fragment's `n` occurrences.
+**Theorem 4 — contextual instantiation and closure.** If `Γ ⊢ m : music`, `ρ ⊨ Γ`, `p` is a valid exact placement, and
+the deterministic resource meter accepts the required output, then `instantiate(m,ρ,p)` returns a finite well-formed
+fragment. Closing that fragment returns a closed, checked `Term[ScoreFact]` whose evaluation has exactly the fragment's
+`n` occurrences.
 
-*Proof.* Use well-founded induction on the pair consisting of the declaration dependency rank and the finite syntax
-size of `m`. A note, rest, point mark, or region constructs a finite literal; exact rational validation supplies its
-span, and the checked scalar environment supplies any pitch or duration variable. A region overlays one valid fact on
-the inductively obtained body. Sequence and voice overlay follow from Lemma 1. A `use` targets either a value already
+*Proof.* Use well-founded induction on the pair consisting of the declaration dependency rank and the finite syntax size
+of `m`. A note, rest, point mark, or region constructs a finite literal; exact rational validation supplies its span,
+and the checked scalar environment supplies any pitch or duration variable. A region overlays one valid fact on the
+inductively obtained body. Sequence and voice overlay follow from Lemma 1. A `use` targets either a value already
 evaluated in the acyclic declaration graph or a syntactically nested checked value of smaller size; apply the induction
 hypothesis and Lemma 2. A finite repeat uses a checked natural count, and the existing transpose, stretch, inversion,
 retrograde, tie, and specialization operations are total finite transformations already covered by their kernel and
@@ -408,8 +407,8 @@ succeed. Structural occurrence accounting uses addition, multiplication by a fin
 region; the resource preflight occurs before occurrence-sized allocation, so accepted evaluation is finite and has
 exactly `n` occurrences. ∎
 
-Prompt 98 may add higher-order constructors only by proving that each maps well-formed finite fragments to
-well-formed finite fragments; it does not reopen this closure argument.
+Prompt 98 may add higher-order constructors only by proving that each maps well-formed finite fragments to well-formed
+finite fragments; it does not reopen this closure argument.
 
 ### 5.8 Musical domains as a conservative extension
 
@@ -431,8 +430,8 @@ exhaustive is a checked law:
 A δ-primitive must satisfy four conditions:
 
 - **D1 inertness.** Its base types have no eliminator. A closed value of a musical base type is an opaque constant; no
-  reduction rule inspects its structure, and the only pattern that may match it is a literal or a catch-all, which
-  §5.6 already requires to be followed by a catch-all arm.
+  reduction rule inspects its structure, and the only pattern that may match it is a literal or a catch-all, which §5.6
+  already requires to be followed by a catch-all arm.
 - **D2 totality.** For every tuple of closed values of the declared argument types the primitive yields a closed value
   of the declared result type. Partiality is expressed *in the result type* as an `option` — never as a stuck term, a
   panic, or a diagnostic.
@@ -442,22 +441,22 @@ A δ-primitive must satisfy four conditions:
   §4 meter before construction begins.
 
 **Theorem 5 — conservative extension.** Let `𝔅` be the base types of the proved fragment. Adding a base type `b ∉ 𝔅`
-with no eliminator, together with any finite set of δ-primitives over `𝔅 ∪ {b}` satisfying D1–D4, preserves
-Theorems 1–4.
+with no eliminator, together with any finite set of δ-primitives over `𝔅 ∪ {b}` satisfying D1–D4, preserves Theorems
+1–4.
 
 *Proof.* Take `R_b(t) ⟺ t : b ∧ t ∈ SN`, which is the clause §5.5 already assigns every base type, so candidate
 properties (i)–(iii) hold by the existing induction with one additional leaf and no new case shape. *Preservation*: by
 D2 the primitive's actual result type is its declared result type, so inverting its application rule goes through
-unchanged. *Progress*: an application whose arguments are all values steps by D2, one with a non-value argument steps
-by `Context`, and D1 removes the only other way a value of `b` could stand at a redex position; so no δ application is
+unchanged. *Progress*: an application whose arguments are all values steps by D2, one with a non-value argument steps by
+`Context`, and D1 removes the only other way a value of `b` could stand at a redex position; so no δ application is
 stuck. *Determinism*: D3 makes the primitive a function, and the leftmost-context decomposition of §5.4 is unchanged
 because no new context former is introduced. *Strong normalization*: by D2 a δ redex whose arguments are values
 contracts to a value in one step, and values are normal, so the fundamental lemma's new case is immediate. The arrow,
 product, option, list, and `music` cases of §5.5–§5.7 quantify over the base-type set without inspecting it and
 therefore carry over verbatim. ∎
 
-**Corollary.** A later musical domain needs no new proof — it needs a base type with no eliminator, primitive
-signatures containing no arrow, and a discharge of D1–D4.
+**Corollary.** A later musical domain needs no new proof — it needs a base type with no eliminator, primitive signatures
+containing no arrow, and a discharge of D1–D4.
 
 The theorem concerns the type system only. That a German sixth spells its top note as an augmented sixth, that `ii` is
 minor in a major collection, and that a harmonic-minor `III7` is honestly absent rather than rounded to a named chord

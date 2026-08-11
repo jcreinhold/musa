@@ -10,10 +10,10 @@ phase: 3
 
 ## Task
 
-Make `instrument` the deep score-to-sound abstraction. An instrument exposes a typed gesture/control signature and
-hides whether it is implemented by oscillators, samples, or later adapters. Replace the shallow public patch topology
-boundary with one audio preparation operation that binds scheduled performance lanes, instrument declarations, and mix
-intent into an opaque prepared plan.
+Make `instrument` the deep score-to-sound abstraction. An instrument exposes a typed gesture/control signature and hides
+whether it is implemented by oscillators, samples, or later adapters. Replace the shallow public patch topology boundary
+with one audio preparation operation that binds scheduled performance lanes, instrument declarations, and mix intent
+into an opaque prepared plan.
 
 ## Read
 
@@ -38,9 +38,9 @@ Compare two real module boundaries in completion notes:
 2. `musa-audio` exposes one preparation operation over caller-oriented performance/studio intent and returns an opaque
    prepared audio plan consumed by offline rendering and the engine.
 
-Choose the second unless caller inspection proves otherwise. Graph compiler, node addresses, resolved parameter
-indices, buffers, sample voices, and DSP processor instances remain private to `musa-audio`. The engine receives only a
-prepared, RT-safe plan and transport commands.
+Choose the second unless caller inspection proves otherwise. Graph compiler, node addresses, resolved parameter indices,
+buffers, sample voices, and DSP processor instances remain private to `musa-audio`. The engine receives only a prepared,
+RT-safe plan and transport commands.
 
 ## Target
 

@@ -1,7 +1,7 @@
 # Semantic staging and ownership
 
-This document fixes the objects Musa computes and the boundaries between them. “Must” is normative for prompts
-93–141; candidate precedence is defined in `README.md`.
+This document fixes the objects Musa computes and the boundaries between them. “Must” is normative for prompts 93–141;
+candidate precedence is defined in `README.md`.
 
 ## 1. Representations
 
@@ -33,8 +33,8 @@ stereo Signal
 ```
 
 There is no implicit `Timeline[Timeline[A]] → Timeline[A]`. `music` composition chooses `sequence` or `overlay`, and
-then elaborates to the corresponding kernel term. A `Timeline[ScoreFact]` is the result of evaluating a closed term,
-not the universal intermediate type.
+then elaborates to the corresponding kernel term. A `Timeline[ScoreFact]` is the result of evaluating a closed term, not
+the universal intermediate type.
 
 ## 2. Judgments
 
@@ -47,9 +47,9 @@ The value stage uses the ordinary static and evaluation judgments:
 Σ ⊢ D ⇓decl Δ                    declaration-template expansion
 ```
 
-`Σ` is the finite static environment of declarations and compiler primitives. `Γ` contains immutable value bindings.
-The declaration kinds are `library`, `piece`, `part`, `voice`, `performance`, `instrument`, `mix`, and `structure`; they
-are not value types.
+`Σ` is the finite static environment of declarations and compiler primitives. `Γ` contains immutable value bindings. The
+declaration kinds are `library`, `piece`, `part`, `voice`, `performance`, `instrument`, `mix`, and `structure`; they are
+not value types.
 
 Compiler ownership is an information boundary, not a convenience category. An operation may be primitive only when it
 needs the intentionally hidden contextual-`music` representation, source-aware provenance, direct kernel construction,
@@ -73,8 +73,8 @@ KernelFragment = {
 close : KernelFragment → Closed Term[ScoreFact]
 ```
 
-`ElabEnv` contains score scope, the optional local scale, prevailing key and meter tracks, and compiler-owned Origin
-and realization context. It has no mutable user state. `Beat` is the exact rational notated onset. `close` hoists the
+`ElabEnv` contains score scope, the optional local scale, prevailing key and meter tracks, and compiler-owned Origin and
+realization context. It has no mutable user state. `Beat` is the exact rational notated onset. `close` hoists the
 fragment's shared bindings, rejects a free kernel variable or malformed `ScoreFact`, and returns one closed term.
 
 The two staging judgments are therefore:
@@ -118,18 +118,17 @@ The sole pitch traversal is
 map_note_pitches : (Pitch -> Pitch) -> Music -> Music.
 ```
 
-For an occurrence `o = ([a,b), f)` its action is `([a,b), mapPitch(g,f))`, where `mapPitch` changes the written pitch
-of `Note` and `Grace` facts and is the identity on every other `FactKind`; sounded chord tones are represented by
-simultaneous `Note` facts at this layer. In particular it does not map the tonic of `Key` or the root of `Harmony`.
-This distinction is music-theoretic, not merely representational: a key signature and a Roman-numeral/chord analysis
-state a tonal reading, while a written note states a sounded pitch. Rewriting the latter does not prove the former has
-changed.
+For an occurrence `o = ([a,b), f)` its action is `([a,b), mapPitch(g,f))`, where `mapPitch` changes the written pitch of
+`Note` and `Grace` facts and is the identity on every other `FactKind`; sounded chord tones are represented by
+simultaneous `Note` facts at this layer. In particular it does not map the tonic of `Key` or the root of `Harmony`. This
+distinction is music-theoretic, not merely representational: a key signature and a Roman-numeral/chord analysis state a
+tonal reading, while a written note states a sounded pitch. Rewriting the latter does not prove the former has changed.
 
-The temporal-support law follows directly: the traversal changes no occurrence span and no term constructor, hence
-the set of pairs `(onset, extent)` and the enclosing timeline extent are identical before and after mapping. Identity
-and composition follow by cases on the exhaustive `FactKind` table: on pitch-bearing facts they reduce to the
-corresponding function equations; on all other facts both sides are the identity. Origin is deliberately finer: one
-`MapNotePitches` step is retained, so equality holds under `≈facts`, not byte-for-byte payload equality.
+The temporal-support law follows directly: the traversal changes no occurrence span and no term constructor, hence the
+set of pairs `(onset, extent)` and the enclosing timeline extent are identical before and after mapping. Identity and
+composition follow by cases on the exhaustive `FactKind` table: on pitch-bearing facts they reduce to the corresponding
+function equations; on all other facts both sides are the identity. Origin is deliberately finer: one `MapNotePitches`
+step is retained, so equality holds under `≈facts`, not byte-for-byte payload equality.
 
 Interval answers use Musa's signed pair of written diatonic steps and semitones. This follows the distinction between
 generic interval size and specific quality in *Open Music Theory*, “Intervals” (`016-intervals.md`): `P8` therefore

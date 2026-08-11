@@ -107,10 +107,10 @@ later prompt may preserve wrong sound by copying the old digest.
 ## Gates and budgets
 
 The migration gate is relative: P1 or P2 moving more than 10% on any comparable workload requires a recorded rerun,
-allocation comparison, and explicit justification in the implementing prompt. One machine's median is not an absolute
-CI threshold. The end-to-end authority remains `docs/interface/06-performance.md`: B1 is ≤120 ms after debounce and B2
-is ≤400 ms with the previous engraving visible. Even the declaration-heavy P1 is below 0.5 ms here, so these rows
-diagnose the compiler; they do not replace B1/B2.
+allocation comparison, and explicit justification in the implementing prompt. One machine's median is not an absolute CI
+threshold. The end-to-end authority remains `docs/interface/06-performance.md`: B1 is ≤120 ms after debounce and B2 is
+≤400 ms with the previous engraving visible. Even the declaration-heavy P1 is below 0.5 ms here, so these rows diagnose
+the compiler; they do not replace B1/B2.
 
 Prompt 96's resource-exhaustion cases are a separate suite. They must use generated bounded inputs, report the bound,
 measure time-to-diagnostic and maximum allocation, and run outside these steady-state samples. A rejected cyclic or
@@ -157,8 +157,8 @@ measures time to the deterministic diagnostic, separately from successful compil
 
 The curve is linear over this deliberately allocation-heavy closure evaluator: about 0.155 µs and five transient
 allocations per fold iteration. Total allocated bytes are churn, not retained size—the flat maximum-live column is the
-reason the table reports both. Scheduler noise dominates the smallest rows; these local medians are design evidence,
-not CI timing thresholds. Boundary tests, rather than timing, fix acceptance exactly.
+reason the table reports both. Scheduler noise dominates the smallest rows; these local medians are design evidence, not
+CI timing thresholds. Boundary tests, rather than timing, fix acceptance exactly.
 
 Prompt 96 sets one internal deterministic meter with these language-version limits:
 
@@ -170,8 +170,8 @@ Prompt 96 sets one internal deterministic meter with these language-version limi
 | monomorphized prelude instances | 2,048 | far above ordinary declaration counts; a generated 2,049-call boundary fixture fixes the diagnostic |
 | estimated music occurrences | 1,000,000 | reserves substantial headroom over the 1,572-occurrence large fixture; prompt 97 activates the charge and prompt 123 retunes from music-producing curves |
 
-There is no public “make it bigger” compiler option: no current caller needs one, and exposing five implementation
-knobs as language API would make builds disagree silently. Each rejection names the operation, metric, attempted count,
-and limit with code `resource-limit`. Aggregate operations preflight their known shape before allocation; earlier
-private values are discarded, no snapshot is returned, and `ProjectSession` retains its last-valid engraving and
-playback artifacts. This is resource rejection of a finite program, never a nontermination diagnosis or timeout.
+There is no public “make it bigger” compiler option: no current caller needs one, and exposing five implementation knobs
+as language API would make builds disagree silently. Each rejection names the operation, metric, attempted count, and
+limit with code `resource-limit`. Aggregate operations preflight their known shape before allocation; earlier private
+values are discarded, no snapshot is returned, and `ProjectSession` retains its last-valid engraving and playback
+artifacts. This is resource rejection of a finite program, never a nontermination diagnosis or timeout.

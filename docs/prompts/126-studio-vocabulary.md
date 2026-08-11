@@ -31,8 +31,8 @@ different questions into one descriptor and do not introduce a new crate for a t
 
 Canonicalize filter `resonance`; accept `q` as a source-compatible deprecated alias with a certain code action. Hover
 explains that resonance is conventionally represented by quality factor Q. Existing source and audio remain unchanged
-until explicitly edited. Terms such as `bus`, `send`, `patch`, `room`, and `main` are documented as studio concepts,
-not presumed prior knowledge.
+until explicitly edited. Terms such as `bus`, `send`, `patch`, `room`, and `main` are documented as studio concepts, not
+presumed prior knowledge.
 
 Plain identifiers used as processor calls receive hover/signature/completion just as keywords do. Imported declarations
 show their defining source; built-ins say `builtin`. Generate reference tables and UI labels from the catalogue. Add an

@@ -137,8 +137,8 @@ four: a tie crossing an item boundary (merging joins two occurrences into one, w
 `retrograde` and `invert` and `stretch` (payload maps and mirroring, applied during elaboration), and a `use` with
 `with { … }` overrides (which respell notes of *this* call). Each of these evaluates its reference, which instantiates
 the body exactly as direct expansion would have built it — so the sharing is spent, not lost, and the binding it made is
-pruned when the piece's term is closed. This is why `examples/kernel/variation.musa.kernel` has one `let` for five `use`s:
-four of its five are inside a transformation.
+pruned when the piece's term is closed. This is why `examples/kernel/variation.musa.kernel` has one `let` for five
+`use`s: four of its five are inside a transformation.
 
 The rejected option was to share only where the expansion path would be identical, which for `repeat` is never, and
 which would therefore have bought nothing. What was *not* an option was dropping the iteration index: the Origin view is
@@ -159,8 +159,8 @@ close       : KernelFragment → checked closed Term[ScoreFact]
 
 `KernelFragment` hides a term, an acyclic compatible binding environment, exact extent, and exact eventual occurrence
 count. Sequence adds extents; overlay takes their maximum; both add occurrence counts. Closing retains only reachable
-bindings, wraps them in dependency order, and checks the resulting term before the semantic boundary evaluates it.
-There is no `Timeline[Timeline[A]]`, flattening operation, public HIR, or public environment type.
+bindings, wraps them in dependency order, and checks the resulting term before the semantic boundary evaluates it. There
+is no `Timeline[Timeline[A]]`, flattening operation, public HIR, or public environment type.
 
 The source forms are roles and assertions over that interface:
 
@@ -178,23 +178,23 @@ second semantic implementation. General functions and bindings returning `music`
 checked `Music` representation and the same instantiator.
 
 Music is **context-reading and context-neutral**. Placement, duration scale, transformation stack, call scope, and
-Origin are supplied at each use. Structural mutations—key, meter, tempo, and clef changes—remain in the piece/voice
-walk and are rejected inside reusable material, because “from here onward” has no unique meaning in a value usable at
-several places. A call's reference mark changes only payload scope and provenance, so sharing preserves temporal facts.
-The proof that this construction is finite, closed, and well typed is `docs/language/02-core-calculus.md` §5.7.
+Origin are supplied at each use. Structural mutations—key, meter, tempo, and clef changes—remain in the piece/voice walk
+and are rejected inside reusable material, because “from here onward” has no unique meaning in a value usable at several
+places. A call's reference mark changes only payload scope and provenance, so sharing preserves temporal facts. The
+proof that this construction is finite, closed, and well typed is `docs/language/02-core-calculus.md` §5.7.
 
 ## `ScoreFact`'s interchange text form (prompts 48, 86)
 
 A kernel file carries payloads as opaque quoted strings (`01-grammar.md`); this is what `ScoreFact` puts inside one. It
 is specified here, with the payload, rather than in the grammar, because the kernel neither writes it nor reads it.
 
-A label is a **flat, whitespace-separated stream of words**. Flat is load-bearing: the first form nested five
-separators five deep and escaped each level again at the next, so one colon inside a motif call reached the file as
-eight backslashes. Nothing here nests, so nothing is escaped twice.
+A label is a **flat, whitespace-separated stream of words**. Flat is load-bearing: the first form nested five separators
+five deep and escaped each level again at the next, so one colon inside a motif call reached the file as eight
+backslashes. Nothing here nests, so nothing is escaped twice.
 
-A word is either **bare** — no whitespace, no `'`, no `\`, no bracket — or **quoted**, `'…'` escaping `\` and `'`.
-Every free-text field is quoted *always*, even where quoting would not be needed: that is what keeps `mark text '8'`
-and `mark ottava 8` apart without case analysis, and it means a payload never contains `"`, so the kernel's own string
+A word is either **bare** — no whitespace, no `'`, no `\`, no bracket — or **quoted**, `'…'` escaping `\` and `'`. Every
+free-text field is quoted *always*, even where quoting would not be needed: that is what keeps `mark text '8'` and
+`mark ottava 8` apart without case analysis, and it means a payload never contains `"`, so the kernel's own string
 escape has nothing to double.
 
 ```text
@@ -238,21 +238,21 @@ Five rules make it read back:
 
 - **Names, not positions.** Absence is absence rather than a counted run of empty fields, so a tempo marking that is
   only a metronome mark is `tempo 1/4=96` and not seven fields of which four are empty.
-- **Elision is a biconditional, never a guess.** `def` is written iff the definition span differs from the source
-  span; `#n` iff the declaration is not zero; `via` iff the expansion path is non-empty; `spelled` iff the spelling
-  differs from how a ratio is written; `tied` iff the pieces are not exactly the one value. The span itself is never
-  elided, so `[0:0]` is written as it stands.
-- **Every rational is `p/q`, or `p` when the denominator is one.** Durations still carry the written spelling *and*
-  the exact value *and* the tied pieces where those differ, because a tuplet keeps the symbol while changing what it
-  sounds for (§2) and no one of the three derives the others.
+- **Elision is a biconditional, never a guess.** `def` is written iff the definition span differs from the source span;
+  `#n` iff the declaration is not zero; `via` iff the expansion path is non-empty; `spelled` iff the spelling differs
+  from how a ratio is written; `tied` iff the pieces are not exactly the one value. The span itself is never elided, so
+  `[0:0]` is written as it stands.
+- **Every rational is `p/q`, or `p` when the denominator is one.** Durations still carry the written spelling *and* the
+  exact value *and* the tied pieces where those differ, because a tuplet keeps the symbol while changing what it sounds
+  for (§2) and no one of the three derives the others.
 - **A hairpin's shape is its `Progress` in canonical form** — the one place where N3's key and the interchange text
   coincide, because a `Progress` has no provenance to quotient away.
 - **`tied` is absent.** It is elaboration-only and false on every fact that leaves elaboration: a tie says two noteheads
   spell one occurrence, which is resolved before a timeline exists. A file carrying it would describe a state no
   timeline is ever in.
 
-A reference's mark is the same word stream — `depth <n> [ "origin" <span> ] [ "scope" <scope> ] [ "via" <step>… ]` —
-so a file has one tokenization and one escape rule throughout.
+A reference's mark is the same word stream — `depth <n> [ "origin" <span> ] [ "scope" <scope> ] [ "via" <step>… ]` — so
+a file has one tokenization and one escape rule throughout.
 
 Everything the value holds is present, including the definition span and the declaration id that `canonical_key` (N3)
 deliberately drops. That is why these are two functions and not one: N3 is the *equality* serialization and may
@@ -330,8 +330,8 @@ it.
 ## Prompt-92 language candidate
 
 The rules above remain the governing account of the implemented grammar. `docs/language/` is the candidate contract for
-prompts 93–138 and becomes governing only after prompt 139. Its private elaboration subsystem adds a total value calculus
-and contextual, context-neutral `music`; neither is a kernel type. The candidate staging is:
+prompts 93–138 and becomes governing only after prompt 139. Its private elaboration subsystem adds a total value
+calculus and contextual, context-neutral `music`; neither is a kernel type. The candidate staging is:
 
 ```text
 typed total expression → contextual Music → closed Term[ScoreFact] → Timeline[ScoreFact]

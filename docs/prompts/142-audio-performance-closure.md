@@ -11,9 +11,9 @@ phase: 4
 ## Task
 
 Measure the complete performance→instrument→audio pipeline against prompt 93's audio baseline and realistic native,
-sampled, media, routing, and UI workloads. Explain every material regression and optimize only demonstrated
-bottlenecks while preserving exact intent, deterministic realization, deep module boundaries, source authority, and
-the callback's no-allocation/no-lock/no-I/O contract.
+sampled, media, routing, and UI workloads. Explain every material regression and optimize only demonstrated bottlenecks
+while preserving exact intent, deterministic realization, deep module boundaries, source authority, and the callback's
+no-allocation/no-lock/no-I/O contract.
 
 ## Read
 

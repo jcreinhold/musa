@@ -22,13 +22,13 @@ instrument output. Two parts selecting the same instrument declaration remain tw
 
 ## Design
 
-Carry three different identities: stable part, selected instrument declaration, and prepared instrument instance. Do
-not encode one as another or infer routing by display name. Lane-scoped scheduled events bind to one instance during
+Carry three different identities: stable part, selected instrument declaration, and prepared instrument instance. Do not
+encode one as another or infer routing by display name. Lane-scoped scheduled events bind to one instance during
 preparation and become compact private indices only inside the prepared plan. Note-on/off identity is instance-safe;
 voice stealing in one part cannot end another part's voice.
 
-The default instrument is instantiated once per otherwise-unassigned part. A route/send whose source is a part uses
-that part instance's output; a bus source remains a bus. If two parts share one instrument declaration, their sends may
+The default instrument is instantiated once per otherwise-unassigned part. A route/send whose source is a part uses that
+part instance's output; a bus source remains a bus. If two parts share one instrument declaration, their sends may
 differ and their audio is not deduplicated. Missing, duplicate, and cyclic bindings are compile-time diagnostics with
 source spans.
 

@@ -144,20 +144,20 @@ bool tree_sitter_musa_external_scanner_scan(
 
 ### Fields
 
-| Field           | Type       | Description                                                                   |
-| --------------- | ---------- | ----------------------------------------------------------------------------- |
-| `lookahead`     | `int32_t`  | Next character (Unicode codepoint). `0` at EOF but also for NUL — use `eof()` |
-| `result_symbol` | `TSSymbol` | Set to the token type before returning `true`                                 |
+| Field | Type | Description |
+| --- | --- | --- |
+| `lookahead` | `int32_t` | Next character (Unicode codepoint). `0` at EOF but also for NUL — use `eof()` |
+| `result_symbol` | `TSSymbol` | Set to the token type before returning `true` |
 
 ### Methods
 
-| Method                       | Signature                        | Description                                                                      |
-| ---------------------------- | -------------------------------- | -------------------------------------------------------------------------------- |
-| `advance`                    | `void (*)(TSLexer *, bool skip)` | Consume one character. `skip=true` treats it as whitespace (excluded from token) |
-| `mark_end`                   | `void (*)(TSLexer *)`            | Mark current position as token end. Enables lookahead beyond token boundary      |
-| `get_column`                 | `uint32_t (*)(TSLexer *)`        | Current column (codepoints since line start). Recalculated each call             |
-| `is_at_included_range_start` | `bool (*)(const TSLexer *)`      | For multi-language docs — detects range boundaries                               |
-| `eof`                        | `bool (*)(const TSLexer *)`      | **Preferred** way to check end-of-file                                           |
+| Method | Signature | Description |
+| --- | --- | --- |
+| `advance` | `void (*)(TSLexer *, bool skip)` | Consume one character. `skip=true` treats it as whitespace (excluded from token) |
+| `mark_end` | `void (*)(TSLexer *)` | Mark current position as token end. Enables lookahead beyond token boundary |
+| `get_column` | `uint32_t (*)(TSLexer *)` | Current column (codepoints since line start). Recalculated each call |
+| `is_at_included_range_start` | `bool (*)(const TSLexer *)` | For multi-language docs — detects range boundaries |
+| `eof` | `bool (*)(const TSLexer *)` | **Preferred** way to check end-of-file |
 
 ### Helper Macros
 
@@ -434,16 +434,16 @@ void destroy(void *p) {
 
 ## Common Pitfalls
 
-| Pitfall                                    | Prevention                                                                                                                                |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Infinite loop from zero-width token        | Always advance or return in loops; check `eof()`                                                                                          |
-| `result_symbol` set but returns `false`    | Only set `result_symbol` when returning `true`                                                                                            |
+| Pitfall | Prevention |
+| --- | --- |
+| Infinite loop from zero-width token | Always advance or return in loops; check `eof()` |
+| `result_symbol` set but returns `false` | Only set `result_symbol` when returning `true` |
 | `advance` without `mark_end` for lookahead | Call `mark_end` at every safe boundary (after initial digits, after decimal part, etc.) so failed speculation reverts to correct position |
-| `scan()` early return prevents fallthrough | Use `if (scan_x(lexer)) return true;` not `return scan_x(lexer);` — failed scan must allow trying next token type                         |
-| Serialization overflow                     | Check `size < TREE_SITTER_SERIALIZATION_BUFFER_SIZE` in loops                                                                             |
-| Asymmetric serialize/deserialize           | Test with incremental edits; always clear state before deserialize                                                                        |
-| `lookahead == 0` for EOF check             | Use `lexer->eof(lexer)` — NUL characters also have `lookahead == 0`                                                                       |
-| Using `advance(false)` for whitespace      | Use `skip(lexer)` (i.e., `advance(true)`) for whitespace that shouldn't be part of any token                                              |
-| Forgot error recovery handling             | Always add error sentinel; check at top of `scan()`                                                                                       |
-| String keywords in externals               | Including `'if'` in externals forces scanner call for every `if` — use only for non-keyword tokens                                        |
-| Wrong token type order                     | `enum TokenType` order must exactly match `externals` array order in grammar.js                                                           |
+| `scan()` early return prevents fallthrough | Use `if (scan_x(lexer)) return true;` not `return scan_x(lexer);` — failed scan must allow trying next token type |
+| Serialization overflow | Check `size < TREE_SITTER_SERIALIZATION_BUFFER_SIZE` in loops |
+| Asymmetric serialize/deserialize | Test with incremental edits; always clear state before deserialize |
+| `lookahead == 0` for EOF check | Use `lexer->eof(lexer)` — NUL characters also have `lookahead == 0` |
+| Using `advance(false)` for whitespace | Use `skip(lexer)` (i.e., `advance(true)`) for whitespace that shouldn't be part of any token |
+| Forgot error recovery handling | Always add error sentinel; check at top of `scan()` |
+| String keywords in externals | Including `'if'` in externals forces scanner call for every `if` — use only for non-keyword tokens |
+| Wrong token type order | `enum TokenType` order must exactly match `externals` array order in grammar.js |

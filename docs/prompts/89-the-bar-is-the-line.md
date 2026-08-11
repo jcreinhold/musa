@@ -11,18 +11,18 @@ phase: 2
 ## Task
 
 Make the bar the unit of a line. Music's unit is the beat group; musa's is the note, and the consequence is
-`examples/bulgarian.musa`, which spends 96 lines on fifteen bars and carries a comment apologising in prose for what
-its layout hides. This prompt replaces the anonymous `bar { … }` block with a `|` separator, drops the semicolon from
+`examples/bulgarian.musa`, which spends 96 lines on fifteen bars and carries a comment apologising in prose for what its
+layout hides. This prompt replaces the anonymous `bar { … }` block with a `|` separator, drops the semicolon from
 events, replaces `chord [c3, g3] 1/2;` with `[c3 g3]/2`, gives accent and marcato the marks notation gives them, and
 converts the corpus.
 
 ## Read
 
 - `docs/initial-design-roadmap.md` on `bar { }`: *"A bar means nothing… What the brace buys is the assertion."* The
-  assertion is what survives; the brace is what does not. Also *"Newlines should be trivia, not syntax"* — which is
-  why one bar per line is prompt 90's decision and not this one's.
-- `docs/style-guide.md` §1 — a named bar "plays where it stands, so its name is an *address*". A named bar is
-  material and keeps its block; an anonymous one is not and does not.
+  assertion is what survives; the brace is what does not. Also *"Newlines should be trivia, not syntax"* — which is why
+  one bar per line is prompt 90's decision and not this one's.
+- `docs/style-guide.md` §1 — a named bar "plays where it stands, so its name is an *address*". A named bar is material
+  and keeps its block; an anonymous one is not and does not.
 - `crates/musa-language/src/parser.rs` — `voice_items`, `bar_stmt`, `nested_bar`, `articulations`, `VOICE_RECOVERY`.
 - `crates/musa-language/src/ast.rs` — `voice_items`, which already reads both a `Block` child and direct children.
 - `crates/musa-language/src/edits.rs` — the whole mutation API, and the one place that *writes* note syntax.
@@ -36,16 +36,16 @@ BarStmt[ Pipe, <items…> ]                  anonymous — a separator, as notat
 BarStmt[ BarKw, Identifier?, Block[…] ]    named — material, and it keeps its address
 ```
 
-No new node kind, and `ast.rs` needs no change at all: `voice_items` already reads both shapes. Three consequences
-worth asserting rather than assuming:
+No new node kind, and `ast.rs` needs no change at all: `voice_items` already reads both shapes. Three consequences worth
+asserting rather than assuming:
 
 - `BarStmt::name()` reads only **direct** identifier tokens, and a `|`-bar's direct tokens are the pipe and trivia —
-  every identifier is inside a `NoteStmt` or an `ArticulationList`. So a `|`-bar is anonymous **by tree shape**, not
-  by a check that could be forgotten.
+  every identifier is inside a `NoteStmt` or an `ArticulationList`. So a `|`-bar is anonymous **by tree shape**, not by
+  a check that could be forgotten.
 - `content_end()`, `lint::copied_bars` and `elaborate_bar`'s bar-length check all keep working unchanged, which means
   `|` inherits the assertion the brace was there for.
-- `voice_items` gains `Pipe` to its exit condition **and** its dispatch, exit checked first, so `| a | b` closes one
-  bar before opening the next and never trips `nested_bar`. What else closes it is below.
+- `voice_items` gains `Pipe` to its exit condition **and** its dispatch, exit checked first, so `| a | b` closes one bar
+  before opening the next and never trips `nested_bar`. What else closes it is below.
 
 `bulgarian.musa` has no bars today and so has never been length-checked. Giving it barlines subjects it to
 `check_bar_length` for the first time. It passes — eight bars of 7/8 and seven of 4/4 both come to 7 — but it is a
@@ -62,13 +62,13 @@ rather than in the run of noteheads. Stated once, in the words the language shou
 That sentence is the help line on the stray-`;` parse error and the rule paragraph under `musa explain syntax`. Both
 readers meet it at the moment they need it, and neither gets a different version of it.
 
-**A grace note ends itself too.** `grace { c5 staccato d5 }`, not `grace { c5 staccato; d5; }`. A grace note is a
-pitch and the marks written on it — the same word an event is, minus the duration it does not have — so the same
-reason applies, and applying it only to the three *statements* would leave the one place a pitch is written without a
-duration as the one place a `;` is still required. The group's `}` ends the last grace note, which is what the rule's
-second clause already says. Two consequences, both wanted: the formatter writes a grace group on one line for the
-same reason it writes a bar on one line — a run of events is horizontal — and `grace_stmt` eats leading trivia before
-opening its node, so the comment above a group stays above it rather than inside the line.
+**A grace note ends itself too.** `grace { c5 staccato d5 }`, not `grace { c5 staccato; d5; }`. A grace note is a pitch
+and the marks written on it — the same word an event is, minus the duration it does not have — so the same reason
+applies, and applying it only to the three *statements* would leave the one place a pitch is written without a duration
+as the one place a `;` is still required. The group's `}` ends the last grace note, which is what the rule's second
+clause already says. Two consequences, both wanted: the formatter writes a grace group on one line for the same reason
+it writes a bar on one line — a run of events is horizontal — and `grace_stmt` eats leading trivia before opening its
+node, so the comment above a group stays above it rather than inside the line.
 
 The `grace` *rule* in a `performance` profile — `grace { steal = 1/8; from = principal; }` — is untouched. Those are
 settings, not events, and `steal = 1/8` is exactly the kind of statement whose `;` the rule keeps.
@@ -81,22 +81,21 @@ exactly that shape inside a motif (`root 1/8 tenuto; d5 1/8;`). The `;` is what 
 > `Rational` or `Integer`.
 
 One token of lookahead on a kind, using the `nth_significant` helper that already exists for the same class of problem
-in the studio grammar. `Identifier Identifier` needs no rule: a note's duration is read *before* the articulations
-are, and the duration is mandatory, so the second word is the duration and there is nothing left to guess at.
+in the studio grammar. `Identifier Identifier` needs no rule: a note's duration is read *before* the articulations are,
+and the duration is mandatory, so the second word is the duration and there is nothing left to guess at.
 
 ### Where a `|` bar ends
 
 A brace said where a bar ended. A pipe has to be told, and "at the next pipe" is not enough: `ending 1 { … }` written
 under a `|` would otherwise be swallowed by the bar above it, and the bar would be an ending too long.
 
-> **A `|` bar ends at the next `|`, at the end of its block, or before a statement that is itself at least a bar
-> long** — `bar`, `repeat`, `ending`, `senza`, `mobile`, `improvise`, `transpose`, `retrograde`, `invert`, `stretch`,
-> `phrase`.
+> **A `|` bar ends at the next `|`, at the end of its block, or before a statement that is itself at least a bar long**
+> — `bar`, `repeat`, `ending`, `senza`, `mobile`, `improvise`, `transpose`, `retrograde`, `invert`, `stretch`, `phrase`.
 
 Stated as a whitelist of what *continues* a bar — the events, and the things written among them: `use`, `dynamic`,
 `clef`, `meter`, `key`, `tempo`, `mark`, `crescendo`, `diminuendo`, `tuplet`, `slur`, `grace`. A statement kind added
-next year therefore ends the bar, which is wrong where the composer can see it, rather than lengthening the bar,
-which is wrong where only the length check notices.
+next year therefore ends the bar, which is wrong where the composer can see it, rather than lengthening the bar, which
+is wrong where only the length check notices.
 
 A brace resets it: a `tuplet` inside a `|` bar reads its own block, so `block()` clears the flag and restores it.
 
@@ -109,10 +108,10 @@ One consequence, and it is the right one: a voice that plays whole bars by name 
 `|` cannot appear inside an event, so it is a stronger resync anchor than `;` ever was: one malformed note poisons one
 bar instead of running to the next statement keyword. `VOICE_RECOVERY` gains `Pipe` and `LBracket`.
 
-For the semicolon a reader will type out of habit, `voice_items` gains an explicit arm: *"a note does not end in
-`;`"*, with `with_fix("remove `;`", "")`. Deletion fixes already work — `SyntaxError::with_fix` replaces the error's
-own span and `apply_edits` accepts an empty replacement — so this costs ten lines and is the whole migration story for
-every file written before today.
+For the semicolon a reader will type out of habit, `voice_items` gains an explicit arm: *"a note does not end in `;`"*,
+with `with_fix("remove `;`", "")`. Deletion fixes already work — `SyntaxError::with_fix` replaces the error's own span
+and `apply_edits` accepts an empty replacement — so this costs ten lines and is the whole migration story for every file
+written before today.
 
 ### Chords, and two marks
 
@@ -124,10 +123,10 @@ bracket says. `ChordKw` is deleted everywhere.
 needs no change at all. The mapping is a new `shorthand: Option<&'static str>` column on `MarkDef`, because a table is
 what `marks.rs` is for.
 
-Tenuto gets no mark, deliberately: `-` collides with `Minus`, with the negative octave in `a-1`, and `c4/4->` would
-lex as the existing `Arrow`. Staccato gets no mark because `.` is spent on the augmentation dot, and notation tells
-those two apart by vertical position, which text cannot. **Every articulation word stays legal**; these two are
-shorthand, not a replacement.
+Tenuto gets no mark, deliberately: `-` collides with `Minus`, with the negative octave in `a-1`, and `c4/4->` would lex
+as the existing `Arrow`. Staccato gets no mark because `.` is spent on the augmentation dot, and notation tells those
+two apart by vertical position, which text cannot. **Every articulation word stays legal**; these two are shorthand, not
+a replacement.
 
 ### `edits.rs`, where the breakage is silent
 
@@ -142,8 +141,8 @@ shorthand, not a replacement.
 
 ### The corpus is converted by hand
 
-Not by a tool. These files are executable specifications, each conversion embeds a judgement about where the beat
-groups fall, and a `musa migrate` subcommand would be dead surface the moment it finished.
+Not by a tool. These files are executable specifications, each conversion embeds a judgement about where the beat groups
+fall, and a `musa migrate` subcommand would be dead surface the moment it finished.
 
 ```
 voice melody {
@@ -165,15 +164,15 @@ bulgarian's explanatory comment is deleted in the same commit, because the group
   mapped in `articulation_names`.
 - `crates/musa-language/src/edits.rs`: the six rows above.
 - `crates/musa-language/src/formatter.rs`: `>` and `^` close up to the note the way `/` and `.` do; an event ends its
-  own line — nothing inside it does that now the `;` is gone; and `inline_bar` becomes `inline_run`, covering the
-  grace group for the same reason it covers the bar. None of that is bar *layout*; that is still prompt 90.
+  own line — nothing inside it does that now the `;` is gone; and `inline_bar` becomes `inline_run`, covering the grace
+  group for the same reason it covers the bar. None of that is bar *layout*; that is still prompt 90.
 - `crates/musa-compiler/src/marks.rs`: `MarkDef::shorthand`.
 - `crates/musa-project/src/diagnostic.rs`: `explain("syntax")` states the rule, in the same words the parse error uses.
 - `editors/tree-sitter-musa/grammar.js` + regenerated `src/parser.c`, and `queries/highlights.scm`.
-- Every `examples/**/*.musa`, converted. `examples/broken/extra-semicolon.musa` is added — the `;` a reader who
-  learned the old syntax types after a note. `broken/missing-semicolon.musa` stays: `clef treble` without its `;` is
-  still a genuinely missing terminator, and it is the fixture `crates/musa-lsp/tests/lsp_laws.rs` reads, which this
-  prompt may not touch. `broken/bar-too-short.musa` is rewritten with `|`.
+- Every `examples/**/*.musa`, converted. `examples/broken/extra-semicolon.musa` is added — the `;` a reader who learned
+  the old syntax types after a note. `broken/missing-semicolon.musa` stays: `clef treble` without its `;` is still a
+  genuinely missing terminator, and it is the fixture `crates/musa-lsp/tests/lsp_laws.rs` reads, which this prompt may
+  not touch. `broken/bar-too-short.musa` is rewritten with `|`.
 - Every golden, snapshot and fixture that follows.
 
 ## Check

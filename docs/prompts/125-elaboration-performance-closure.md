@@ -10,12 +10,12 @@ phase: 3
 
 ## Task
 
-Measure the score/elaboration implementation through prompt 124 against prompt 93's frozen workloads and new worst-plausible musical
-workloads, explain every material regression, and optimize only demonstrated bottlenecks. Close the language block with
-budgets that cover compiler latency, memory and allocation growth, editor queries, analysis, template expansion, and
-kernel quotation without weakening determinism, totality, provenance, diagnostics, or module boundaries. Preserve the
-audio-bridge baseline unchanged except for explicitly completed expected-change entries; prompt 142 performs the audio
-preparation/render/asset closure after those features exist.
+Measure the score/elaboration implementation through prompt 124 against prompt 93's frozen workloads and new
+worst-plausible musical workloads, explain every material regression, and optimize only demonstrated bottlenecks. Close
+the language block with budgets that cover compiler latency, memory and allocation growth, editor queries, analysis,
+template expansion, and kernel quotation without weakening determinism, totality, provenance, diagnostics, or module
+boundaries. Preserve the audio-bridge baseline unchanged except for explicitly completed expected-change entries; prompt
+142 performs the audio preparation/render/asset closure after those features exist.
 
 ## Read
 

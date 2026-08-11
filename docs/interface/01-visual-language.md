@@ -221,12 +221,12 @@ The Compose workspace, as an arrangement of the elements roadmap §14.3 requires
   document says.
 - **Source column**: source and diagnostics, at the *left edge*, full height, on `--surround-in` behind one `--rule`
   hairline — the same two materials and the same seam §8 gives the Source workspace. Closed by default in Compose; shown
-  with `⌘'`, from the View menu, or from the palette. It opens at the **source measure** (§8)
-  and it never resizes *itself*: it does not grow with its text, because a pane with an opinion about every line would
-  move the page under the reader on every keystroke. The composer may still say otherwise — the seam between the column
-  and the page is a separator, dragged to widen it and double-clicked to return it to the measure, and the width it is
-  left at is the app's and comes back next launch (prompt 60). That is a default overridden, which is a different act
-  from a pane sizing itself. The source scrolls inside it. Problems list beneath it, in the same column.
+  with `⌘'`, from the View menu, or from the palette. It opens at the **source measure** (§8) and it never resizes
+  *itself*: it does not grow with its text, because a pane with an opinion about every line would move the page under
+  the reader on every keystroke. The composer may still say otherwise — the seam between the column and the page is a
+  separator, dragged to widen it and double-clicked to return it to the measure, and the width it is left at is the
+  app's and comes back next launch (prompt 60). That is a default overridden, which is a different act from a pane
+  sizing itself. The source scrolls inside it. Problems list beneath it, in the same column.
 
 **The top margin is a band of rows, not a bar.** 48px is its minimum, not its height. What it carries has grown past
 what one row holds at the window's own minimum width — the transport, note entry, the Origin pin, the position and the

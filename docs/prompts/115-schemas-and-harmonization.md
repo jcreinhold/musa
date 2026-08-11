@@ -21,8 +21,8 @@ expressivity lives in ordinary functions and finite folds rather than an expandi
   `049-diatonic-sequences-in-middles.md`, and `069-chromatic-sequences.md`.
 - OMT `039-embellishing-tones.md` where a schema needs a passing/suspension distinction.
 - Prompts 98, 101–102, and 107; every output remains explicit chord class/voicing/music and reads a named scale/key.
-- Prompt 110 for the module tree these files live in, and prompt 108 for the discipline any new primitive must
-  discharge — which is the sharper form of this prompt's existing "stop and demonstrate" rule.
+- Prompt 110 for the module tree these files live in, and prompt 108 for the discipline any new primitive must discharge
+  — which is the sharper form of this prompt's existing "stop and demonstrate" rule.
 
 ## Design
 
@@ -32,9 +32,9 @@ duration functions to produce `music`. Rule-of-the-Octave ascent and descent are
 35 gives direction-dependent harmonizations. Chromatic variants carry their alterations explicitly.
 
 For every exported function, source docs cite the exact OMT section and state: input domain, output shape, direction,
-scale/key assumption, inversion/voice-leading policy if any, and what is not guaranteed. Encode finite index formulas
-in a small reference table and prove with property tests that generated roots/degrees follow the pattern modulo the
-scale cycle, counts determine finite extent, and zero/one counts have normal meanings.
+scale/key assumption, inversion/voice-leading policy if any, and what is not guaranteed. Encode finite index formulas in
+a small reference table and prove with property tests that generated roots/degrees follow the pattern modulo the scale
+cycle, counts determine finite extent, and zero/one counts have normal meanings.
 
 The musician-facing fixtures must read as named musical intentions, while the library source remains legible to a
 developer learning Musa's functions, folds, options, and higher-order parameters. If an algorithm requires a hidden
@@ -48,9 +48,9 @@ primitive, stop and demonstrate what information source code cannot express befo
 - `examples/{diatonic-sequences,rule-of-the-octave}.musa`, rendered with at least two voicing/rhythm policies.
 - `crates/musa-compiler/tests/schema_generation_laws.rs`: OMT examples, reference index patterns, direction, extent,
   finite boundaries, and source-library-versus-reference agreement.
-- A primitive-ownership test proving this prompt adds no compiler primitive unless a documented repair was necessary.
-  If one is necessary, it discharges prompt 108's D1–D4 and appears in that registry; there is no longer a route by
-  which a primitive enters without one.
+- A primitive-ownership test proving this prompt adds no compiler primitive unless a documented repair was necessary. If
+  one is necessary, it discharges prompt 108's D1–D4 and appears in that registry; there is no longer a route by which a
+  primitive enters without one.
 
 ## Check
 

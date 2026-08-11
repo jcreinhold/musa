@@ -23,15 +23,15 @@ boundary explicit, tested, and shared by native instruments, samples, mix levels
 
 ## Design
 
-Introduce one private/compiler-facing written-quantity representation containing an exact rational magnitude, unit,
-and enough spelling/span information for diagnostics and token-scoped edits. Decimal syntax denotes the exact decimal
+Introduce one private/compiler-facing written-quantity representation containing an exact rational magnitude, unit, and
+enough spelling/span information for diagnostics and token-scoped edits. Decimal syntax denotes the exact decimal
 rational; unit normalization (`ms` versus `s`) is exact. Equality used for compilation is exact value plus dimension;
 source equality still distinguishes spellings where the lossless CST does.
 
-Conversion to `f32`/`f64`, dB→linear, filter coefficients, sample-rate ratios, and frame counts happens in
-`musa-audio` plan preparation or the existing performance frame boundary, never during parsing or `StudioSpec`
-construction. Specify rounding and finite/range failure. A UI edit preserves the written unit and replaces only its
-token; it does not rewrite `30 ms` as `0.03 s`.
+Conversion to `f32`/`f64`, dB→linear, filter coefficients, sample-rate ratios, and frame counts happens in `musa-audio`
+plan preparation or the existing performance frame boundary, never during parsing or `StudioSpec` construction. Specify
+rounding and finite/range failure. A UI edit preserves the written unit and replaces only its token; it does not rewrite
+`30 ms` as `0.03 s`.
 
 Avoid a generic units framework. Implement only the dimensions and operations with real Musa callers; prove exact unit
 conversion and differential parity for previously accepted values.

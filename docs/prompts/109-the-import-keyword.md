@@ -28,9 +28,9 @@ error carrying an applicable fix.
 
 ## Design
 
-`use e;` is the score's most common statement and the one a musician writes — a hundred and thirty-two sites against
-the import form's twenty-four — so it keeps the shorter, more musical word. `import` is already what `01-surface.md`
-calls the production, and `import path;` needs no lookahead to tell it from anything else.
+`use e;` is the score's most common statement and the one a musician writes — a hundred and thirty-two sites against the
+import form's twenty-four — so it keeps the shorter, more musical word. `import` is already what `01-surface.md` calls
+the production, and `import path;` needs no lookahead to tell it from anything else.
 
 `use` is a splice and not an application: it checks `e : music`, instantiates it at the current cursor, and sequences
 it. `use name(args);` is that same rule applied to a call rather than a second invocation mechanism. Nothing about that
@@ -42,13 +42,13 @@ located at the `use` token, names both meanings, and carries an applicable fix t
 prompt 56's machinery exists for and what makes a hard error affordable here.
 
 The `as` alias clause lands in this prompt even though its only caller is prompt 110, because it belongs to the same
-production and touching the import grammar twice would mean regenerating the editor grammars twice. It parses,
-formats, highlights, and round-trips — and it binds nothing, because there is nothing yet to bind it into. Today an
-import is flat and total: the library's declarations are merged into the importing file's namespace and the module
-itself has no name in scope, so an alias has no referent to rename. §3's `as` qualifies *one* module's names to
-resolve a collision against another, which needs both the qualified namespace and the collision, and prompt 110 brings
-both. Adding a public `alias()` accessor here would be a reader with no reader — the CST is lossless, so the token is
-preserved for prompt 110 whether or not anything asks for it today.
+production and touching the import grammar twice would mean regenerating the editor grammars twice. It parses, formats,
+highlights, and round-trips — and it binds nothing, because there is nothing yet to bind it into. Today an import is
+flat and total: the library's declarations are merged into the importing file's namespace and the module itself has no
+name in scope, so an alias has no referent to rename. §3's `as` qualifies *one* module's names to resolve a collision
+against another, which needs both the qualified namespace and the collision, and prompt 110 brings both. Adding a public
+`alias()` accessor here would be a reader with no reader — the CST is lossless, so the token is preserved for prompt 110
+whether or not anything asks for it today.
 
 Everything downstream of the token is mechanical and must all move together, or the drift laws will say so: the lexer's
 keyword set, the CST node kind, the formatter's rendering, the tree-sitter grammar and its corpus, the highlight
@@ -59,8 +59,8 @@ queries, the LSP's completion and semantic tokens, the lexed fixtures, and every
 
 - The `import` keyword in the lexer, the repaired import production in the parser, and its CST node; `import` accepts a
   quoted relative path or a module path, with an optional `as IDENT` that parses and round-trips and binds nothing.
-- The migration diagnostic for `use "…";` and `use std::…;`, with a located applicable fix, and a snapshot test for
-  each of the two old shapes.
+- The migration diagnostic for `use "…";` and `use std::…;`, with a located applicable fix, and a snapshot test for each
+  of the two old shapes.
 - Every import site rewritten across `examples/`, `stdlib/`, and the test corpora.
 - `editors/tree-sitter-musa` grammar, corpus, and queries updated, with the lexer drift law green.
 - Formatter rendering plus its idempotence and round-trip laws; LSP completion, semantic tokens, and keyword

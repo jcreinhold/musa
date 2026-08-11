@@ -319,7 +319,7 @@ specific subtype.
 ## Hidden Rules and Naming Conventions
 
 - **`_`-prefixed rules** (e.g., `$._expression`) are hidden from the CST. They don't produce named nodes — their content
-    is inlined into the parent.
+  is inlined into the parent.
 - **Regular rules** (e.g., `$.binary_expression`) produce named CST nodes.
 - **String literals** (e.g., `'fn'`, `'+'`) produce anonymous CST nodes (appear in tree but unnamed).
 

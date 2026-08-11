@@ -11,9 +11,9 @@ phase: 3
 ## Task
 
 Implement the candidate's musician-facing sound-selection and room/mix surface over the independent declarations now
-supported by the compiler. A part can choose an instrument and performance profile in one readable action, hear a
-stable default when it says nothing, and graduate to exposed controls or the private instrument-authoring language
-without learning graph topology first.
+supported by the compiler. A part can choose an instrument and performance profile in one readable action, hear a stable
+default when it says nothing, and graduate to exposed controls or the private instrument-authoring language without
+learning graph topology first.
 
 ## Read
 

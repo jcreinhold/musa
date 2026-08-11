@@ -133,44 +133,44 @@ the endpoints and may differ between them. That is the same latitude a consumer 
 ### A gradual tempo change is the second reader of that rule (prompt 73)
 
 A `Tempo` payload may carry a `Ramp`: where the speed arrives, how far it reaches, and a `Progress` saying how the
-change is spread across that reach. Two consumers read the same payload for genuinely different purposes, which is
-what the rule above exists for.
+change is spread across that reach. Two consumers read the same payload for genuinely different purposes, which is what
+the rule above exists for.
 
-- **The engraver samples it not at all.** No notation format has a continuous tempo, so the page prints the word
-  where the ramp begins and the speed where it arrives, and the middle is the reader's. MEI, MusicXML and LilyPond
-  each get a marking at both ends.
+- **The engraver samples it not at all.** No notation format has a continuous tempo, so the page prints the word where
+  the ramp begins and the speed where it arrives, and the middle is the reader's. MEI, MusicXML and LilyPond each get a
+  marking at both ends.
 - **The performance layer integrates it exactly.** The rate is linear in *seconds per beat* along the shape, so the
   elapsed time over each of the shape's pieces is `(u₁ − u₀) · (s₀ + s₁) / 2` — the trapezoid rule, which for a
   piecewise-linear rate is not an approximation but the integral. Every value stays rational.
-- **MIDI samples it, and picks its own density.** SMF has one set-tempo event or a run of them; musa's exporter
-  writes **32 per whole note** of a ramp's reach. That number is the exporter's, stated here and not in the score, and
-  a conforming consumer may choose another. It will agree at the endpoints and may differ between them.
+- **MIDI samples it, and picks its own density.** SMF has one set-tempo event or a run of them; musa's exporter writes
+  **32 per whole note** of a ramp's reach. That number is the exporter's, stated here and not in the score, and a
+  conforming consumer may choose another. It will agree at the endpoints and may differ between them.
 
-Interpolating **beats per minute** instead would put the rate's reciprocal under the integral and leave the
-rationals, which §4 forbids — so the exactness requirement decides a question that looks like a matter of taste. It
-happens to agree with practice: an orchestra told to slow down evenly slows evenly in duration.
+Interpolating **beats per minute** instead would put the rate's reciprocal under the integral and leave the rationals,
+which §4 forbids — so the exactness requirement decides a question that looks like a matter of taste. It happens to
+agree with practice: an orchestra told to slow down evenly slows evenly in duration.
 
 ### A scope is the third reader, and the one MIDI cannot follow (prompt 75)
 
-Every context fact carries a `Scope`, and `Meter` and `Tempo` inherit by `Override`: a part that states its own is
-read at its own and every other scope reads the piece's. Polymeter and polytempo are therefore not an extension of
-this format — a file written before either existed is already a legal file with every part in the piece's scope, and
-a file with them differs only in which scope some occurrences carry.
+Every context fact carries a `Scope`, and `Meter` and `Tempo` inherit by `Override`: a part that states its own is read
+at its own and every other scope reads the piece's. Polymeter and polytempo are therefore not an extension of this
+format — a file written before either existed is already a legal file with every part in the piece's scope, and a file
+with them differs only in which scope some occurrences carry.
 
 What differs is what each consumer can do with it.
 
 - **A consumer of the kernel file loses nothing.** The scope is in the occurrence, so "the meter for part 1" is a
   question the file answers.
-- **MusicXML has a measure list per part and MEI does not.** MusicXML therefore carries divergent barlines exactly;
-  MEI states each staff's meter on its `<staffDef>` but numbers `<measure>` for the score, so a piece whose barlines
+- **MusicXML has a measure list per part and MEI does not.** MusicXML therefore carries divergent barlines exactly; MEI
+  states each staff's meter on its `<staffDef>` but numbers `<measure>` for the score, so a piece whose barlines
   genuinely diverge is exported with a warning saying which measure numbering the document carries. LilyPond needs
   Timing moved from `Score` to `Staff`, which the export writes.
-- **SMF has one tempo track and one time-signature track, and no scope at all.** A polytempo performance is exported
-  by resolving every lane against its own map and writing every note at the frame it actually sounds. The file is
-  therefore **sonically exact and notationally wrong**: it plays correctly, and the tempo it states is the piece's
-  reference rather than any part's. Both losses are reported by the exporter. This is the one place in this document
-  where a format is asked to say something it cannot, and the honest degradation is to be right about the sound and
-  explicit about the notation.
+- **SMF has one tempo track and one time-signature track, and no scope at all.** A polytempo performance is exported by
+  resolving every lane against its own map and writing every note at the frame it actually sounds. The file is therefore
+  **sonically exact and notationally wrong**: it plays correctly, and the tempo it states is the piece's reference
+  rather than any part's. Both losses are reported by the exporter. This is the one place in this document where a
+  format is asked to say something it cannot, and the honest degradation is to be right about the sound and explicit
+  about the notation.
 
 ## What a conforming consumer of a kernel file owes (prompt 48)
 
@@ -201,26 +201,26 @@ consumer, and only two:
 1. **A `.musa.kernel` file is the projection of one realization, not of the work.** Its header says which realization
    produced it, and reproducing the file means being given the same one. A file of a piece that fixes everything has
    nothing extra to say, which is why every file written before prompt 66 stays valid.
-2. **A consumer never chooses.** Choosing happened once, before the term existed. A consumer that draws a random
-   number has produced a different piece, and the semantic hash will say so.
+2. **A consumer never chooses.** Choosing happened once, before the term existed. A consumer that draws a random number
+   has produced a different piece, and the semantic hash will say so.
 
-What a consumer does **not** owe, again: understanding the freedom. An open repeat reaches it as an ordinary
-occurrence with a payload it may or may not know, on the same terms as every other payload.
+What a consumer does **not** owe, again: understanding the freedom. An open repeat reaches it as an ordinary occurrence
+with a payload it may or may not know, on the same terms as every other payload.
 
 ## A notation export of a freedom is lossy, and says so (prompt 68)
 
-Prompt 68 gives three of those freedoms a surface — a mobile's order, a freely-held duration, an improvised frame —
-and none of MEI, `LilyPond`, or `MusicXML` has an element that means any of them. What each export therefore carries is:
+Prompt 68 gives three of those freedoms a surface — a mobile's order, a freely-held duration, an improvised frame — and
+none of MEI, `LilyPond`, or `MusicXML` has an element that means any of them. What each export therefore carries is:
 
 - the **realized** music, written out in full, exactly as this compilation read the piece; and
 - the **instruction** as a text direction over it — `any order — this reading: …`, `hold to 2`, `improvise over Dm7 |
   G7` — placed at the region's start, and at its end where it spans more than a measure.
 
 That is a reading of the work rather than the work, so `render_notation` reports it: one warning per lost kind, per
-render, on `RenderedNotation::warnings` and out of the CLI on stderr. **A silent lossy export is a contract
-violation**; a loud one is the format's limit, honestly stated. A consumer reading such a file gets a complete,
-exactly-timed piece and a human-readable note that it was one of several — which is the most either format can carry,
-and more than a bare export would.
+render, on `RenderedNotation::warnings` and out of the CLI on stderr. **A silent lossy export is a contract violation**;
+a loud one is the format's limit, honestly stated. A consumer reading such a file gets a complete, exactly-timed piece
+and a human-readable note that it was one of several — which is the most either format can carry, and more than a bare
+export would.
 
 MIDI carries the realization and nothing else, and warns about nothing: a performance is exactly what MIDI is for.
 
@@ -230,12 +230,12 @@ where the fragments, their chosen order, and the bounds of a held note all survi
 ## A grace note is written, not read (prompt 71)
 
 A grace note is a **point occurrence**: start equal to end, standing at the onset of the note it leans on, carrying a
-written pitch, its own marks, and an `index` giving its place in the group. It has no written duration, and that is
-the fact rather than an omission — so a consumer cannot read a length off the page, and must not invent one and call
-it the piece.
+written pitch, its own marks, and an `index` giving its place in the group. It has no written duration, and that is the
+fact rather than an omission — so a consumer cannot read a length off the page, and must not invent one and call it the
+piece.
 
-How long it sounds and whose time it takes are the **profile's** (`musa_compiler::GracePolicy`: `steal` and `from`).
-Two profiles read the same page as an appoggiatura on the beat and an acciaccatura ahead of it, and the engraving is
+How long it sounds and whose time it takes are the **profile's** (`musa_compiler::GracePolicy`: `steal` and `from`). Two
+profiles read the same page as an appoggiatura on the beat and an acciaccatura ahead of it, and the engraving is
 byte-identical under both.
 
 Every notation format offers to settle this for you, and a conforming backend declines all three offers:
@@ -246,16 +246,15 @@ Every notation format offers to settle this for you, and a conforming backend de
 | `MusicXML` | `steal-time-previous` / `steal-time-following` | neither attribute; `<grace slash="yes"/>` and no `<duration>` |
 | `LilyPond` | `\acciaccatura` / `\appoggiatura` | `\grace { … }` |
 
-`LilyPond` is the one worth naming, because its vocabulary complects the two layers hardest: its only *neutral*
-command is `\grace`, and the two named ones each add a slash, a slur, and a reading. musa writes `\grace` and lets the
-house style do what a performer does. The written durations inside it (`c8`) are stem flags, not lengths — MEI's
-`dur="8"` and `MusicXML`'s `<type>eighth</type>` are the same instruction, and no consumer may read any of the three
-as time.
+`LilyPond` is the one worth naming, because its vocabulary complects the two layers hardest: its only *neutral* command
+is `\grace`, and the two named ones each add a slash, a slur, and a reading. musa writes `\grace` and lets the house
+style do what a performer does. The written durations inside it (`c8`) are stem flags, not lengths — MEI's `dur="8"` and
+`MusicXML`'s `<type>eighth</type>` are the same instruction, and no consumer may read any of the three as time.
 
 The order within a group is normative. Normalization (05, N2) sorts occurrences by span and then by payload key, and
-every grace in a group shares a span — so the order lives in the payload's `index`, and a consumer that prints or
-plays them in any other order is printing different music. `examples/graces.musa` and `examples/graces-reordered.musa`
-are the conformance pair: identical but for two reversed groups, and their kernel terms differ.
+every grace in a group shares a span — so the order lives in the payload's `index`, and a consumer that prints or plays
+them in any other order is printing different music. `examples/graces.musa` and `examples/graces-reordered.musa` are the
+conformance pair: identical but for two reversed groups, and their kernel terms differ.
 
 ## Falsification duty (§33)
 

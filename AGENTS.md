@@ -47,10 +47,10 @@ them drift silently.
 | `docs/interface/` | the desktop interface specification (governing) |
 | `docs/prompts/` | numbered implementation prompts + README |
 
-Dependency direction is one-way: language → compiler → {render, audio} → engine → project → {cli, lsp, desktop},
-with `musa-kernel` a leaf that `musa-compiler` (and later consumers) depend on, and `musa-lsp` the one shell that also
-depends on `musa-language` (highlighting and completion answer on half-typed source, which the session's facts
-cannot describe — roadmap §15.11). No dependency points upward.
+Dependency direction is one-way: language → compiler → {render, audio} → engine → project → {cli, lsp, desktop}, with
+`musa-kernel` a leaf that `musa-compiler` (and later consumers) depend on, and `musa-lsp` the one shell that also
+depends on `musa-language` (highlighting and completion answer on half-typed source, which the session's facts cannot
+describe — roadmap §15.11). No dependency points upward.
 
 ## Commands
 

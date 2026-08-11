@@ -5,10 +5,10 @@ room. It remains downstream of score semantics because a written mark is not a w
 instrument and the room of the work, not an accumulating substitute for recording, editing, mixing, and mastering in a
 DAW.
 
-OMT `007-other-aspects-of-notation.md` treats dynamics, articulation, and tempo as notation whose realization depends
-on performers and instruments. OMT `074-swing-rhythms.md` distinguishes written subdivision from performed swing and
-notes that the ratio varies. OMT `084-drumbeats.md` records both performed and sampled/programmed percussion practice.
-OMT `114-core-principles-of-orchestration.md` and `116-transcription-from-piano.md` show orchestration as a choice among
+OMT `007-other-aspects-of-notation.md` treats dynamics, articulation, and tempo as notation whose realization depends on
+performers and instruments. OMT `074-swing-rhythms.md` distinguishes written subdivision from performed swing and notes
+that the ratio varies. OMT `084-drumbeats.md` records both performed and sampled/programmed percussion practice. OMT
+`114-core-principles-of-orchestration.md` and `116-transcription-from-piano.md` show orchestration as a choice among
 realizations, not a deterministic property of pitch content. These are the reasons profiles and instruments interpret
 score facts rather than changing their meaning.
 
@@ -37,11 +37,11 @@ performance profile, instrument, and mix declarations remain independently edita
 operation validates and binds them into an immutable plan; neither ordinary callers nor the real-time callback assemble
 these stages piecemeal.
 
-The present independent `PerformancePlan`/`StudioSpec` handoff has the right ownership but an insufficient contract:
-it turns profiles into a few floats before knowing the instrument, discards part identity at graph input, declares but
-ignores `PerformanceEvent::Parameter`, and exposes graph-stage addressing as if it were musical control. Prompts
-125–129 replace those debts. A rejected combined score-audio object would make notation edits mutate DSP state and
-would destroy independent export, caching, and UI projections.
+The present independent `PerformancePlan`/`StudioSpec` handoff has the right ownership but an insufficient contract: it
+turns profiles into a few floats before knowing the instrument, discards part identity at graph input, declares but
+ignores `PerformanceEvent::Parameter`, and exposes graph-stage addressing as if it were musical control. Prompts 125–129
+replace those debts. A rejected combined score-audio object would make notation edits mutate DSP state and would destroy
+independent export, caching, and UI projections.
 
 ## 2. Performance gestures
 
@@ -69,14 +69,14 @@ note's sounding tail remains an instrument behavior and may extend after release
 exact piecewise-linear `Progress`; discontinuities are ordered point changes. Exponential frequency/gain laws belong to
 an instrument's physical mapping, not to normalized gesture arithmetic.
 
-A profile is a named interpretation `R(P,S,−)`. It reads symbolic dynamics, hairpins, accents, staccato, tenuto,
-fermata policy, grace policy, slurs, phrase marks, and groove and emits only controls/gestures admitted by `S`. A
-hairpin may become an `expression` curve because the profile declares that reading. It cannot become a filter sweep by
-convention. A slur normally creates phrase/legato grouping; it is neither an ADSR envelope nor proof that sound remains
-continuous on every instrument.
+A profile is a named interpretation `R(P,S,−)`. It reads symbolic dynamics, hairpins, accents, staccato, tenuto, fermata
+policy, grace policy, slurs, phrase marks, and groove and emits only controls/gestures admitted by `S`. A hairpin may
+become an `expression` curve because the profile declares that reading. It cannot become a filter sweep by convention. A
+slur normally creates phrase/legato grouping; it is neither an ADSR envelope nor proof that sound remains continuous on
+every instrument.
 
-Precisely, if a hairpin spans `[s,e]`, its profile maps the prevailing and target dynamics to exact values `d₀,d₁`,
-and its written shape is `p : [0,1] → [0,1]`, then for `s ≤ b ≤ e`:
+Precisely, if a hairpin spans `[s,e]`, its profile maps the prevailing and target dynamics to exact values `d₀,d₁`, and
+its written shape is `p : [0,1] → [0,1]`, then for `s ≤ b ≤ e`:
 
 ```text
 expression(b) = d₀ + (d₁-d₀) · p((b-s)/(e-s)).
@@ -149,9 +149,9 @@ instrument glass conforms note_instrument {
 
 `oscillator`, `envelope`, `lowpass`, `resonance`, ports, and units are closed built-in vocabulary documented by hover
 and the handbook; they do not arrive from an implicit import. Advanced graph paths are legal only inside the private
-implementation. The `map` clauses prove conformance by implementing semantic controls. A profile can name
-`brightness`; it cannot name `voice.lowpass.cutoff`. Replacing the graph with a sample map preserves the signature while
-changing every private address.
+implementation. The `map` clauses prove conformance by implementing semantic controls. A profile can name `brightness`;
+it cannot name `voice.lowpass.cutoff`. Replacing the graph with a sample map preserves the signature while changing
+every private address.
 
 The graph language retains typed audio/control/gate/note ports, explicit delay for cycles, precompiled topology, and
 bounded processors. New built-ins require a musician/audio-engineer definition, units/ranges/defaults, RT-safe
@@ -190,14 +190,14 @@ part violin {
 `sound i using p;` desugars to three independent declarations: select profile `p` for the containing part, assign its
 `PartId` to instrument `i`, and route that part output to `master`. The expert surface spells those as `profile`,
 `assign`, and `route`, and can add sends. A part may instead carry defaults, but after resolution there is exactly one
-selected instrument and profile. The formatter and hover explain `sound`, `assign`, `send`, `room`, `bus`, `route`,
-and every built-in processor. A `room` is a named shared ambience path. A `bus` is the advanced general form:
-a named signal-summing path with an effect chain. `send part -> room at level` copies a part signal to it; `route x ->
-master` selects what reaches stereo output. Voice is not mixer track, and part is not synthesizer.
+selected instrument and profile. The formatter and hover explain `sound`, `assign`, `send`, `room`, `bus`, `route`, and
+every built-in processor. A `room` is a named shared ambience path. A `bus` is the advanced general form: a named
+signal-summing path with an effect chain. `send part -> room at level` copies a part signal to it; `route x -> master`
+selects what reaches stereo output. Voice is not mixer track, and part is not synthesizer.
 
 `studio { ... }` is a source grouping retained for compatibility and readability. Elaboration separates its assignments,
-instrument implementation declarations, and mix declarations before preparation; it is not a combined score/audio
-value or one mutable compiler object.
+instrument implementation declarations, and mix declarations before preparation; it is not a combined score/audio value
+or one mutable compiler object.
 
 An unbound part uses the language-edition declarations `std.sound.basic_sine` and `std.performance.neutral` and is
 routed to `master`. This preserves audible zero-setup playback without hiding the effective choice: hover and the Sound
@@ -229,15 +229,15 @@ Unsupported realization is explicit:
 
 ## 7. Exact-to-physical boundary
 
-Source numbers, profile mappings, gesture positions, normalized controls, units, and curves remain integers/rationals
-or dimensioned exact quantities through `GestureTimeline`. Tempo integration uses the canonical exact map already
-specified by the backend contract: seconds per beat is piecewise linear along exact `Progress`, so each segment has an
-exact rational trapezoidal integral. Unsupported shapes are rejected rather than sampled early.
+Source numbers, profile mappings, gesture positions, normalized controls, units, and curves remain integers/rationals or
+dimensioned exact quantities through `GestureTimeline`. Tempo integration uses the canonical exact map already specified
+by the backend contract: seconds per beat is piecewise linear along exact `Progress`, so each segment has an exact
+rational trapezoidal integral. Unsupported shapes are rejected rather than sampled early.
 
 `prepare_audio(sample_rate, block_limit, options)` is the single late approximation boundary. It:
 
-1. integrates groove and tempo and rounds event boundaries to frames by the documented nearest-frame, ties-to-even
-   rule while preserving monotonic order;
+1. integrates groove and tempo and rounds event boundaries to frames by the documented nearest-frame, ties-to-even rule
+   while preserving monotonic order;
 2. asks tuning for physical frequency;
 3. maps semantic controls through the selected instrument implementation to dimensioned DSP values;
 4. converts those values to the implementation's `f32`/`f64` representation;
@@ -254,8 +254,8 @@ are handled during preparation or by a documented bounded real-time policy.
 
 Processors define state transitions per sample, not per callback block. Smoothing and automation are functions of
 absolute frame index. Therefore splitting a frame interval into legal callback blocks preserves output. Floating-point
-tests use a processor-specific tolerance where algebraic reassociation is unavoidable; deterministic offline export
-uses one documented summation order.
+tests use a processor-specific tolerance where algebraic reassociation is unavoidable; deterministic offline export uses
+one documented summation order.
 
 Offline and live execution call the same `RenderPlan::render` over the same scheduled lane representation. Offline may
 choose block sizes and write files; it may not substitute a different synthesis algorithm. The law is:

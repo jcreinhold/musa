@@ -14,13 +14,13 @@ are bundled.
 
 ## What you are looking at
 
-The score is the main surface — a genuinely engraved page, not a sketch. The text is one keystroke away and never in
-the way. Editing the text recompiles the piece; invalid source keeps the last valid score on the page rather than
-blanking it.
+The score is the main surface — a genuinely engraved page, not a sketch. The text is one keystroke away and never in the
+way. Editing the text recompiles the piece; invalid source keeps the last valid score on the page rather than blanking
+it.
 
 The app's signature is **Origin view**. Every note is either authored — you typed it — or generated — the compiler
 produced it by expanding a motif or transform. Hold the Origin key and the page separates: authored music stays full
-ink, generated music falls back, and hovering a generated note traces it back to the occurrence that produced it, on
-the page and in the source.
+ink, generated music falls back, and hovering a generated note traces it back to the occurrence that produced it, on the
+page and in the source.
 
 The design behind all of this is explained under [The desktop interface](../concepts/interface.md).

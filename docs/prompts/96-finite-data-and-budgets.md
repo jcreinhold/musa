@@ -22,8 +22,8 @@ value-size, and output-size limits whose diagnostics distinguish resource reject
 
 ## Design
 
-The production core remains monomorphic. `list τ`, `option τ`, and their eliminators are typed families instantiated
-at concrete types; prelude-facing rank-1 schemes are elaborated by monomorphizing a finite copy per use. Do not smuggle
+The production core remains monomorphic. `list τ`, `option τ`, and their eliminators are typed families instantiated at
+concrete types; prelude-facing rank-1 schemes are elaborated by monomorphizing a finite copy per use. Do not smuggle
 impredicative System F or unrestricted inference into a feature described as STLC.
 
 Natural and list folds recurse only over a structurally smaller constructor. Extend the normalization proof by the

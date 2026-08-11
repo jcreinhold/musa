@@ -12,8 +12,8 @@ phase: 3
 
 Implement PLR and the named contextual transformations SNH as ordinary Musa standard-library functions over the
 major/minor-triad refinement. Preserve spelling in the constructive domain, state finite pitch-class group claims only
-after the explicit `pc12` projection, and make transformation chains compose as normal functions rather than keywords
-or compiler cases.
+after the explicit `pc12` projection, and make transformation chains compose as normal functions rather than keywords or
+compiler cases.
 
 ## Read
 
@@ -34,17 +34,17 @@ Writing those definitions needs one operation the spelled domain does not have y
 written pitch class. A chord class is rooted on a `pitchclass`, every transformation names the root of its image by an
 interval from the root of its argument (`L` on a minor triad is the major triad a major third below it), and today a
 `pitchclass` can only be obtained — from `pitchclass_of` or `chord_root` — never moved. Reading a member out of the
-argument covers only the transformations that move upward through a chord tone, which is half of them, so this hole
-is what makes the other half unwritable rather than merely awkward. The `up`/`down` operator that already transposes a
+argument covers only the transformations that move upward through a chord tone, which is half of them, so this hole is
+what makes the other half unwritable rather than merely awkward. The `up`/`down` operator that already transposes a
 `pitch` therefore extends to a `pitchclass`, spelled exactly as it is for a pitch and with the octave simply absent:
 `root up M3` is a `pitchclass` when `root` is one. This is an existing operator gaining the neighbouring domain, not a
 new primitive, and the expected primitive count below is still zero.
 
 Prove from the definitions that all six operations are involutions on spelled major/minor triads. Do not assert every
-finite Neo-Riemannian group relation on the infinite spelled domain: project with `forget_spelling` to the `pc12`
-triad action. State the quotient law there and test the corresponding finite Tonnetz cycles. Transformation-chain
-examples must round-trip through chord spelling and a caller-chosen voicing policy; the library never sounds an unvoiced
-chord class.
+finite Neo-Riemannian group relation on the infinite spelled domain: project with `forget_spelling` to the `pc12` triad
+action. State the quotient law there and test the corresponding finite Tonnetz cycles. Transformation-chain examples
+must round-trip through chord spelling and a caller-chosen voicing policy; the library never sounds an unvoiced chord
+class.
 
 ## Target
 

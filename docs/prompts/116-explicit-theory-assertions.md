@@ -29,8 +29,7 @@ a global style rule merely because it can be checked locally.
 Use the assertion syntax fixed by `docs/language/01-surface.md`. Its predicate is one of a typed, documented family over
 a coherent private view—not an arbitrary `ScoreFact` callback or user reflection. Evaluate after contextual
 instantiation so ambient scale, absolute placement, and exact spans are real. A successful assertion returns the same
-kernel facts/extent under `≈facts`, adding an `Assertion` Origin step only; a failure names the claim, smallest
-witness,
+kernel facts/extent under `≈facts`, adding an `Assertion` Origin step only; a failure names the claim, smallest witness,
 expected domain, and source spans for assertion and offending material.
 
 Initial assertions:

@@ -10,15 +10,15 @@ phase: 2
 
 ## Task
 
-`repeat` becomes notation. A repeated passage is engraved once between repeat barlines and played the number of times
-it says, instead of being copied onto the page; `ending 1 { … }` and `ending 2 { … }` give it first and second endings.
+`repeat` becomes notation. A repeated passage is engraved once between repeat barlines and played the number of times it
+says, instead of being copied onto the page; `ending 1 { … }` and `ending 2 { … }` give it first and second endings.
 What the composer writes once, the page prints once, and the performance plays twice.
 
 ## Read
 
 - Roadmap §2's layer table — *motif definition ≠ its expansions*, *notated duration ≠ performed duration*. A notated
-  repeat and its performance are two representations of one statement, and this prompt is the case that proves the
-  table is load-bearing.
+  repeat and its performance are two representations of one statement, and this prompt is the case that proves the table
+  is load-bearing.
 - Prompt 06 (`repeat n { … }` as it exists), prompt 49 (it is already a kernel `let` referenced n times — the sharing
   this prompt needs is already in the term).
 - Prompt 07 / `crates/musa-render/src/plan.rs` — where barlines are decided.
@@ -61,12 +61,12 @@ Pass *k* plays the body, then the ending numbered *k*. Rules, each with its own 
 - An ending outside a `repeat` is an error whose help is the shape above.
 
 All four reuse `Code::Misplaced` from prompt 56 rather than taking codes of their own. A code is a rule a composer can
-look up with `musa explain`, and "this is not where that goes" is one rule; four codes for four spellings of it would
-be four pages saying the same sentence. The sentence that differs is the message, and the message is where the
-difference belongs.
+look up with `musa explain`, and "this is not where that goes" is one rule; four codes for four spellings of it would be
+four pages saying the same sentence. The sentence that differs is the message, and the message is where the difference
+belongs.
 
-`ending` parses wherever a note does, and the compiler — not the parser — reports one written outside a repeat. A
-syntax error there could only say the grammar disagreed; the compiler can say what the composer meant to write.
+`ending` parses wherever a note does, and the compiler — not the parser — reports one written outside a repeat. A syntax
+error there could only say the grammar disagreed; the compiler can say what the composer meant to write.
 
 ### What reaches each side
 
@@ -86,22 +86,22 @@ that it does not have them. A fact survives evaluation, which is what facts are 
 
 ### Notated position ≠ performed position
 
-Printing the body once means the page is shorter than the performance, and everything downstream of the plan —
-measure numbers, tempo and section marks, barlines — is positioned by absolute time. So the plan computes a **fold**:
-the sorted list of performed intervals the page drops (each pass after the first, minus the endings that print), and
-one function that maps a performed moment to its notated one by subtracting the dropped length before it. The kept
-intervals in performed order turn out to be exactly print order, so the fold reorders nothing.
+Printing the body once means the page is shorter than the performance, and everything downstream of the plan — measure
+numbers, tempo and section marks, barlines — is positioned by absolute time. So the plan computes a **fold**: the sorted
+list of performed intervals the page drops (each pass after the first, minus the endings that print), and one function
+that maps a performed moment to its notated one by subtracting the dropped length before it. The kept intervals in
+performed order turn out to be exactly print order, so the fold reorders nothing.
 
 The fold lives in `plan.rs` and nowhere else. This is the point: two clocks are tolerable in one function and
-intolerable spread across four backends, so the plan is the only code that ever holds both, and `NotationPlan` is
-stated wholly in notated time.
+intolerable spread across four backends, so the plan is the only code that ever holds both, and `NotationPlan` is stated
+wholly in notated time.
 
 ### One system, one repeat
 
 A repeat barline is drawn across the whole system, so a repeat that one voice writes and another does not cannot be
 drawn at all. Only repeats that *every sounding voice* states identically fold; the rest are written out on the page,
-which is exactly what musa did before this prompt, so nothing regresses. The composer gets a warning — `Code::Ignored`, since something
-was skipped and the piece still plays — that says the passage is written out and why.
+which is exactly what musa did before this prompt, so nothing regresses. The composer gets a warning — `Code::Ignored`,
+since something was skipped and the piece still plays — that says the passage is written out and why.
 
 This is a real limit, not a shortcut. Two voices repeating different spans is not a page that exists.
 
@@ -113,12 +113,12 @@ already there.
 
 ### LilyPond writes the brackets by hand
 
-`\repeat volta 2 { … } \alternative { … }` is the idiomatic spelling and it is unusable here: it needs the repeat to
-be a syntactic container in the emitted `.ly`, and musa emits a flat run of measures with barlines between them.
-Reshaping the LilyPond backend around one construct's nesting would complicate every other thing it prints. Instead
-each barline carries a `\set Score.repeatCommands`, which is the escape hatch LilyPond provides for exactly this, and
-the commands at one barline are merged into a single `\set` — two adjacent `\set`s do not compose, the second wins,
-and an `end-repeat` silently lost that way is a wrong page.
+`\repeat volta 2 { … } \alternative { … }` is the idiomatic spelling and it is unusable here: it needs the repeat to be
+a syntactic container in the emitted `.ly`, and musa emits a flat run of measures with barlines between them. Reshaping
+the LilyPond backend around one construct's nesting would complicate every other thing it prints. Instead each barline
+carries a `\set Score.repeatCommands`, which is the escape hatch LilyPond provides for exactly this, and the commands at
+one barline are merged into a single `\set` — two adjacent `\set`s do not compose, the second wins, and an `end-repeat`
+silently lost that way is a wrong page.
 
 Volta brackets are written in the topmost staff's first lane only, as engravers write them.
 
@@ -140,13 +140,13 @@ Found along the way, and repaired here:
 
 - `musa format --check` wrote a `.recovery` copy beside every file it rejected. It formatted the document to find out,
   and an unsaved edit is autosaved. `ProjectSession::is_formatted` answers the question without making the edit.
-- `format_check_passes_on_canonical_examples` checked one example, so the rest had drifted out of canonical form.
-  It now checks all of them, and `canon.musa` and `variation.musa` are reformatted to match.
+- `format_check_passes_on_canonical_examples` checked one example, so the rest had drifted out of canonical form. It now
+  checks all of them, and `canon.musa` and `variation.musa` are reformatted to match.
 - Four stray `.recovery` copies had been committed by earlier prompts. Deleted, and `*.recovery` is now ignored: an
   autosave copy sits beside the file it recovers and is deleted on save, so none of them belongs in history.
 
-An `ending`'s block breaks across lines like every other block; only `bar` prints on one line. An ending is a
-container of bars, and the one-line rule is about bars.
+An `ending`'s block breaks across lines like every other block; only `bar` prints on one line. An ending is a container
+of bars, and the one-line rule is about bars.
 
 ## Check
 

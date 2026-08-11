@@ -10,12 +10,12 @@ phase: 3
 
 ## Task
 
-Make the score/elaboration portion of the candidate language understandable in editors: type-aware hover, signature help, completion,
-definition/references/rename, symbols/folding, diagnostics/fixes, standard-library navigation, analysis requests, and
-kernel-document/quote support. All answers come from compiler/project facts or the lossless syntax of half-typed source;
-the LSP and editor extensions do not grow a second type checker or theory engine. This prompt establishes the generated
-fact/documentation seam that prompt 141 extends to instruments, controls, processors, assets, and packages; it does not
-claim whole-language tooling closure.
+Make the score/elaboration portion of the candidate language understandable in editors: type-aware hover, signature
+help, completion, definition/references/rename, symbols/folding, diagnostics/fixes, standard-library navigation,
+analysis requests, and kernel-document/quote support. All answers come from compiler/project facts or the lossless
+syntax of half-typed source; the LSP and editor extensions do not grow a second type checker or theory engine. This
+prompt establishes the generated fact/documentation seam that prompt 141 extends to instruments, controls, processors,
+assets, and packages; it does not claim whole-language tooling closure.
 
 ## Read
 
@@ -26,9 +26,9 @@ claim whole-language tooling closure.
 ## Design
 
 Extend the existing thin LSP boundary, not its dependency graph. Compiler/project expose only caller-oriented immutable
-facts needed by more than one surface; do not publish HIR, closures, environments, unification variables, module
-tables, or raw `Music`. Syntax-only features continue to use `musa-language` on invalid source; semantic answers use
-the last valid compilation and clearly label staleness where relevant.
+facts needed by more than one surface; do not publish HIR, closures, environments, unification variables, module tables,
+or raw `Music`. Syntax-only features continue to use `musa-language` on invalid source; semantic answers use the last
+valid compilation and clearly label staleness where relevant.
 
 Required behavior:
 

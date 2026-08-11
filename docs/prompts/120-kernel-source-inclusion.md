@@ -26,8 +26,8 @@ grammar or pretending an unknown payload type has Musa score meaning.
 
 The first-line `% musa-kernel-1` header selects the kernel-document alternative. `musa-kernel` remains the one owner of
 the interchange grammar and checked term; `musa-language` owns a lossless document wrapper/dispatch, comments, edits,
-and diagnostics without reimplementing term semantics. Tree-sitter recognizes the same top-level alternative and is
-held to committed kernel fixtures by a drift test.
+and diagnostics without reimplementing term semantics. Tree-sitter recognizes the same top-level alternative and is held
+to committed kernel fixtures by a drift test.
 
 State/test two laws separately:
 
@@ -37,8 +37,8 @@ State/test two laws separately:
 
 For unknown payload names, preserve, highlight, and format the syntactically valid file but refuse evaluation/export
 with an unsupported-payload diagnostic. `ScoreFact` whole-score documents may contain context facts and compile to the
-ordinary projections/backends. A kernel document has exactly one composition result; it is not rewritten into a
-surface library or plural declaration set.
+ordinary projections/backends. A kernel document has exactly one composition result; it is not rewritten into a surface
+library or plural declaration set.
 
 ## Target
 

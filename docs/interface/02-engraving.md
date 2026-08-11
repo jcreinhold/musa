@@ -23,8 +23,8 @@ interface Engraver {
 ```
 
 No component outside this module touches a Verovio toolkit, an MEI string, or a raw SVG string. The module's home is
-`packages/musa-engrave` (prompt 141): one engraver shared by the desktop UI and `@musa/web`, so the two platforms
-cannot drift on a provenance-critical detail.
+`packages/musa-engrave` (prompt 141): one engraver shared by the desktop UI and `@musa/web`, so the two platforms cannot
+drift on a provenance-critical detail.
 
 ## 2. The worker rule
 
@@ -98,8 +98,8 @@ mnumInterval:      0               // one measure number at the head of each sys
                                    // interval, so 0 is per-system and any n > 0 is a number every n bars
 ```
 
-**The page is an edition, not a run of staves** (prompt 51). The head, the foot, the measure numbers, the part labels
-in `<staffDef>`, and the final thin-thick barline are all things musa *names* and Verovio *places*.
+**The page is an edition, not a run of staves** (prompt 51). The head, the foot, the measure numbers, the part labels in
+`<staffDef>`, and the final thin-thick barline are all things musa *names* and Verovio *places*.
 
 Where the line is, exactly: **musa may use MEI's own vocabulary for which region of the page a line of front matter
 belongs to — head or foot, centred or right. It may not state a coordinate, a margin, a rastral size, a system or page
@@ -170,48 +170,46 @@ Engraving quality without a regression net decays within three prompts. The net:
 
 ## 10. Unmeasured music (prompt 74)
 
-A cadenza, a chant line, an unmeasured prelude: real durations, no barlines. Where a passage is unmeasured, **space
-is what tells the reader how long a note is**, because no barline and no beat position is doing it. That is a
-spacing rule, and spacing is Verovio's — so the rule this document fixes is what musa is allowed to say about it.
+A cadenza, a chant line, an unmeasured prelude: real durations, no barlines. Where a passage is unmeasured, **space is
+what tells the reader how long a note is**, because no barline and no beat position is doing it. That is a spacing rule,
+and spacing is Verovio's — so the rule this document fixes is what musa is allowed to say about it.
 
-**musa names the passage; the engraver spaces it.** The MEI backend writes `<measure metcon="false" right="invis">`
-for an unmeasured stretch, which is MEI's own vocabulary for "this measure is not controlled by the meter" and "do
-not draw the line that closes it". Nothing else is stated: no per-measure spacing coefficient, no coordinate, no
-width. That is the same line §4 draws for the page head — musa names a fact every edition agrees on, and Verovio
-places it.
+**musa names the passage; the engraver spaces it.** The MEI backend writes `<measure metcon="false" right="invis">` for
+an unmeasured stretch, which is MEI's own vocabulary for "this measure is not controlled by the meter" and "do not draw
+the line that closes it". Nothing else is stated: no per-measure spacing coefficient, no coordinate, no width. That is
+the same line §4 draws for the page head — musa names a fact every edition agrees on, and Verovio places it.
 
 This is not a smaller answer than "musa positions unmeasured notes proportionally". It is the same answer arriving
 through the layer that owns it: durations in an unmeasured stretch are exact and unchanged (§2 of the roadmap — the
-barlines stop, the clock does not), and the global `spacingLinear` / `spacingNonLinear` pair in §4 is already what
-turns duration into width. A passage with no barlines to justify against gets that spacing without a bar's worth of
+barlines stop, the clock does not), and the global `spacingLinear` / `spacingNonLinear` pair in §4 is already what turns
+duration into width. A passage with no barlines to justify against gets that spacing without a bar's worth of
 justification stretched over it, which is proportional notation as a page rather than as an instruction.
 
-The one thing the interface owes such a passage is that it **must not look like a mistake**: an unmeasured stretch
-is drawn with the same weight and the same colour as measured music. It is not greyed, not bracketed, and not
-annotated with a badge. A composer who wrote `senza { ... }` wrote music, not a hole.
+The one thing the interface owes such a passage is that it **must not look like a mistake**: an unmeasured stretch is
+drawn with the same weight and the same colour as measured music. It is not greyed, not bracketed, and not annotated
+with a badge. A composer who wrote `senza { ... }` wrote music, not a hole.
 
 ## 11. Non-aligned barlines (prompt 75)
 
-Everything above §10 assumes that a barline crossing a system crosses all of it. **It does not.** A part may state
-its own meter, and two parts in 7/8 and 4/4 have barlines that meet again every seven whole notes and nowhere else.
-That is ordinary music — Balkan ensembles, Ives, Nancarrow, most West African drumming — and this document has to
-say so, because the visual language above was written as though a system had one grid.
+Everything above §10 assumes that a barline crossing a system crosses all of it. **It does not.** A part may state its
+own meter, and two parts in 7/8 and 4/4 have barlines that meet again every seven whole notes and nowhere else. That is
+ordinary music — Balkan ensembles, Ives, Nancarrow, most West African drumming — and this document has to say so,
+because the visual language above was written as though a system had one grid.
 
 Three rules, and none of them is a new mechanism.
 
-**A system may have staves whose barlines do not align.** Nothing in this document may assume that a vertical at
-measure *n* is a single line down the page. Selection, the playhead, the Origin view and every overlay in §8 anchor
-to a *time*, not to a barline, and were already written that way — a barline is what a time *looks like* on one
-staff.
+**A system may have staves whose barlines do not align.** Nothing in this document may assume that a vertical at measure
+*n* is a single line down the page. Selection, the playhead, the Origin view and every overlay in §8 anchor to a *time*,
+not to a barline, and were already written that way — a barline is what a time *looks like* on one staff.
 
-**Measure numbers are per staff, and the score's number is the first staff's.** A measure number is a coordinate in
-one part's barlines, so under polymeter there is no single answer to "what measure is this". The interface shows
-the number of the staff the reader is in, and any piece-wide number — a rehearsal mark, a section marker, the
-outline pane's rows — is the score's, which is the first staff's. Both readings are true; showing them without
-saying which is which would be the mistake.
+**Measure numbers are per staff, and the score's number is the first staff's.** A measure number is a coordinate in one
+part's barlines, so under polymeter there is no single answer to "what measure is this". The interface shows the number
+of the staff the reader is in, and any piece-wide number — a rehearsal mark, a section marker, the outline pane's rows —
+is the score's, which is the first staff's. Both readings are true; showing them without saying which is which would be
+the mistake.
 
-**The engraver aligns by time, not by measure.** Verovio is given each staff's own meter in its `<staffDef>` and
-lines the staves up by their contents, which is what it does anyway. musa does not compute a vertical, a coordinate
-or a bar width for this any more than it does for anything else in §1. Where the formats cannot express it — MEI
-numbers measures for the score, so a piece whose barlines genuinely diverge is exported with a warning — the export
-says so, and the interface shows the warning it is given rather than hiding it.
+**The engraver aligns by time, not by measure.** Verovio is given each staff's own meter in its `<staffDef>` and lines
+the staves up by their contents, which is what it does anyway. musa does not compute a vertical, a coordinate or a bar
+width for this any more than it does for anything else in §1. Where the formats cannot express it — MEI numbers measures
+for the score, so a piece whose barlines genuinely diverge is exported with a warning — the export says so, and the
+interface shows the warning it is given rather than hiding it.

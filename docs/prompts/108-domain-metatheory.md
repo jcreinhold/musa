@@ -11,12 +11,12 @@ phase: 3
 ## Task
 
 Discharge the proof obligation that prompts 100–107 accumulated and never paid. `02-core-calculus.md` §5 proves
-preservation, progress, determinism, and strong normalization for a fragment whose base types are exactly `bool`,
-`nat`, `ratio`, `duration`, `pitch`, and `interval`, and says in its own words that later additions "are not smuggled
-into this theorem by an appeal to 'standard STLC.'" Twelve musical base types and sixty-nine compiler-owned operations
-have since entered with no compatibility case. Prove §5.8's conservative-extension theorem once, parametrically, and
-make the primitive-ownership registry the mechanically checked witness for its premises — so that the next domain costs
-a registry entry rather than a new induction, and cannot be added without one.
+preservation, progress, determinism, and strong normalization for a fragment whose base types are exactly `bool`, `nat`,
+`ratio`, `duration`, `pitch`, and `interval`, and says in its own words that later additions "are not smuggled into this
+theorem by an appeal to 'standard STLC.'" Twelve musical base types and sixty-nine compiler-owned operations have since
+entered with no compatibility case. Prove §5.8's conservative-extension theorem once, parametrically, and make the
+primitive-ownership registry the mechanically checked witness for its premises — so that the next domain costs a
+registry entry rather than a new induction, and cannot be added without one.
 
 ## Read
 
@@ -34,8 +34,8 @@ never, and rot silently as prompts 117–120 add more domains. §5.8 therefore s
 type, and this prompt's work is to make its premises *checked facts about the implementation* rather than claims in
 prose.
 
-Every compiler-owned primitive belongs to exactly one of three families, and disjointness and exhaustiveness are
-laws rather than comments:
+Every compiler-owned primitive belongs to exactly one of three families, and disjointness and exhaustiveness are laws
+rather than comments:
 
 - **δ-primitives**, whose argument and result types are base types or finite constructors (`option`, `list`, product)
   over base types, with no arrow anywhere in the signature. Every musical operation added by prompts 100–107 is one.
@@ -44,20 +44,20 @@ laws rather than comments:
 - **music primitives**, already proved in §5.7 and constrained by prompt 98.
 
 A δ-primitive must satisfy D1 inertness, D2 totality, D3 purity, and D4 finiteness as §5.8 states them. Two of the four
-are the interesting ones in this codebase. **D2** is why `scale_chord` returns `option[chord_class]` and reports
-absence for a collection stacking to no nameable sonority: partiality lives in the result type, and a primitive that
-raised a diagnostic instead would break progress. **D1** is why no musical base type has a destructuring pattern —
-a `scale` is an opaque constant and everything observable about it is observed by applying a δ-primitive.
+are the interesting ones in this codebase. **D2** is why `scale_chord` returns `option[chord_class]` and reports absence
+for a collection stacking to no nameable sonority: partiality lives in the result type, and a primitive that raised a
+diagnostic instead would break progress. **D1** is why no musical base type has a destructuring pattern — a `scale` is
+an opaque constant and everything observable about it is observed by applying a δ-primitive.
 
 `PRIMITIVE_OWNERSHIP` already records each operation's spelling and the information it hides. It gains a family
 classification and a declared signature, and the declared signature becomes the single place a primitive's arity and
 types are stated — the checker's arity groups and the evaluator's destructuring read from it rather than restating it,
 which is how the "sixty-nine" entries stopped agreeing with the checker twice during prompt 107.
 
-The sampling law is the one place judgment is required. A domain that is finite is sampled exhaustively; one that is
-not is generated to a bound documented in the test and stable across runs, because a sampling law that varies per run
-is not a law. The generator is seeded and deterministic, and the bound is a constant in the test rather than a
-property-test configuration knob.
+The sampling law is the one place judgment is required. A domain that is finite is sampled exhaustively; one that is not
+is generated to a bound documented in the test and stable across runs, because a sampling law that varies per run is not
+a law. The generator is seeded and deterministic, and the bound is a constant in the test rather than a property-test
+configuration knob.
 
 This prompt adds no base type, no primitive, and no musical vocabulary. If discharging D1–D4 exposes an existing
 primitive that violates one of them, that is a finding: repair the primitive under this prompt and record what it was,
@@ -65,8 +65,8 @@ because a violation found by the gate is exactly the gate working.
 
 ## Target
 
-- `PrimitiveOwnership` gains a family and a declared signature; the checker and evaluator read arity and types from
-  that declaration instead of restating them.
+- `PrimitiveOwnership` gains a family and a declared signature; the checker and evaluator read arity and types from that
+  declaration instead of restating them.
 - The inert base types named as a closed set, and their inertness established as a **law rather than a new gate**.
   `check_pattern` already refuses a `some`, list, or product pattern whose target is not the matching constructor type,
   and already reports `type-mismatch` with a label naming the matched value's type — so the rejection this prompt was
@@ -76,8 +76,8 @@ because a violation found by the gate is exactly the gate working.
   satisfies "it failed" vacuously, and one of these patterns does produce a parse error under a different binding name.
 - The law suite, proving: every primitive classified exactly once; families disjoint and exhaustive; no δ-primitive
   signature containing an arrow; every base type reachable from a δ signature inert; and every δ-primitive returning a
-  value of its declared type over its sample — never panicking, never diagnosing, never absent at a non-`option`
-  result type.
+  value of its declared type over its sample — never panicking, never diagnosing, never absent at a non-`option` result
+  type.
 
   It lives in `core.rs`'s test module beside the existing `every_compiler_owned_operation_names_its_hidden_information`
   law, **not** in `crates/musa-compiler/tests/`. `Type`, `Value`, and `Primitive` are `pub(crate)`, and an integration

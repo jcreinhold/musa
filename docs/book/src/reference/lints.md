@@ -1,7 +1,7 @@
 # Lint codes
 
-The lints enforce the machine-checkable subset of the [style guide](../concepts/style-guide.md). Each fires as a
-warning with its place; `musa explain <code>` prints the rule behind one.
+The lints enforce the machine-checkable subset of the [style guide](../concepts/style-guide.md). Each fires as a warning
+with its place; `musa explain <code>` prints the rule behind one.
 
 | Code | Fires when |
 | --- | --- |
@@ -26,5 +26,5 @@ motif answer() {
 
 `musa:allow` takes one or more comma-separated codes and suppresses exactly those codes on the construct whose leading
 comment it is — nothing else, and nothing further away. A waiver with no code is no waiver. There is no project-level
-switch and no configuration file: the source is canonical, and a standard that can be switched off silently is a
-rumour of a standard.
+switch and no configuration file: the source is canonical, and a standard that can be switched off silently is a rumour
+of a standard.

@@ -37,8 +37,8 @@ functions returning `option voicing` or diagnostics when their range/spacing pre
 -> music` sounds exactly those pitches. Musician sugar such as `stack c4 maj7/2` must desugar to one documented close-
 position policy with the absolute root fixing register; `stack c maj7/2` is incomplete and rejected.
 
-Chord spelling follows the diatonic letter stack and interval quality from OMT 017–018, not pitch-class arithmetic
-that can spell a third as a second. Property tests compare a small reference formula across roots/qualities and cover
+Chord spelling follows the diatonic letter stack and interval quality from OMT 017–018, not pitch-class arithmetic that
+can spell a third as a second. Property tests compare a small reference formula across roots/qualities and cover
 inversions, extensions, omissions, and backend round trips. No constructor asserts that separately authored notes match
 an annotation; prompt 116 adds that explicit claim.
 
@@ -46,8 +46,8 @@ an annotation; prompt 116 adds that explicit claim.
 
 - Typed chord/voicing values, constructors, source syntax/desugaring, diagnostics, and `std::harmony`/`std::voicing`.
 - Migration of current `ChordSymbol` callers without exposing evaluator values or adding a theory crate.
-- `examples/chord-voicings.musa`: one chord class in two inversions and three voicings, including a jazz rootless
-  policy with its omitted root explicit.
+- `examples/chord-voicings.musa`: one chord class in two inversions and three voicings, including a jazz rootless policy
+  with its omitted root explicit.
 - `crates/musa-compiler/tests/chord_construction_laws.rs`: spelling formula, refinement, inversion/root/bass,
   voicing-policy preconditions, and annotation independence.
 - MEI/LilyPond/MusicXML/MIDI tests proving written spelling and sounded notes survive separately.

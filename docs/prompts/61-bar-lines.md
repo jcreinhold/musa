@@ -13,8 +13,8 @@ phase: 3
 Measure numbering becomes a **function of the meters in force** rather than a division by one number. Today every
 measure:beat conversion in the workspace divides by `MeterMap::measure_len()`, a scalar; nine functions in `plan.rs`
 alone thread it as a parameter. Replace all of them with one `BarLines` value that answers `at`, `time_of`, and
-`measures`, and that is built from a meter sequence even though — until prompt 64 — that sequence always has exactly
-one element.
+`measures`, and that is built from a meter sequence even though — until prompt 64 — that sequence always has exactly one
+element.
 
 This prompt adds **no grammar, no feature, and no visible behaviour**. Every golden in the repository must stay
 byte-identical. That is what makes it worth doing first: it is the only point at which this refactor can be proved
@@ -38,11 +38,11 @@ rather than argued.
 
 ### The one idea
 
-`measure_of(at, measure_len)` is not a function of the piece; it is a function of *one number about the piece*, and
-that number is the reason musa cannot change meter. Passing it as a parameter through nine call sites is what makes
-the restriction invisible: nothing in `plan_lane`'s signature says "this piece has a single time signature", so
-nothing objects. Replace the number with a value that can hold the general case, and the restriction becomes one line
-in one constructor instead of an assumption spread across three crates.
+`measure_of(at, measure_len)` is not a function of the piece; it is a function of *one number about the piece*, and that
+number is the reason musa cannot change meter. Passing it as a parameter through nine call sites is what makes the
+restriction invisible: nothing in `plan_lane`'s signature says "this piece has a single time signature", so nothing
+objects. Replace the number with a value that can hold the general case, and the restriction becomes one line in one
+constructor instead of an assumption spread across three crates.
 
 ```rust
 // crates/musa-compiler/src/bars.rs
@@ -84,31 +84,31 @@ impl BarLines {
 
 ### Three things a naive version gets wrong
 
-**Zero-length measures.** `measure_len` can be `0` — `plan.rs` guards it in five places with an early return of `1`
-or `0`, and those guards are the only reason a degenerate meter does not divide by zero. Pull that guard into the
+**Zero-length measures.** `measure_len` can be `0` — `plan.rs` guards it in five places with an early return of `1` or
+`0`, and those guards are the only reason a degenerate meter does not divide by zero. Pull that guard into the
 constructor: `BarLines::uniform` with a non-positive measure length produces a **single unbounded stretch**, so
-everything is measure 1 and `at` never divides. The five scattered guards then delete, and the error is defined out
-of existence rather than handled five times (PoSD ch. 10).
+everything is measure 1 and `at` never divides. The five scattered guards then delete, and the error is defined out of
+existence rather than handled five times (PoSD ch. 10).
 
-**`Fold` renumbers measures.** Prompt 58's `Fold` maps written time to sounding time so a repeat prints once and
-plays twice. Notation therefore needs `BarLines` over **folded** time, and performance and `facts.rs` need it over
+**`Fold` renumbers measures.** Prompt 58's `Fold` maps written time to sounding time so a repeat prints once and plays
+twice. Notation therefore needs `BarLines` over **folded** time, and performance and `facts.rs` need it over
 **unfolded** time. Two instances, constructed deliberately at the two call sites, with the reason in the module
 documentation — not one instance with a flag, which would put the choice in the hands of whoever calls last.
 
-**`Share` reuses a body.** A body elaborated once and referenced twice sits at two absolute times, so a bar-length
-check that consults `BarLines` inside a shared body would get one of the two answers. Today this cannot bite,
-because there is one meter. Prompt 64 makes it real; this prompt writes the invariant down in `bars.rs`'s module
-documentation so 64 has something to break rather than something to discover.
+**`Share` reuses a body.** A body elaborated once and referenced twice sits at two absolute times, so a bar-length check
+that consults `BarLines` inside a shared body would get one of the two answers. Today this cannot bite, because there is
+one meter. Prompt 64 makes it real; this prompt writes the invariant down in `bars.rs`'s module documentation so 64 has
+something to break rather than something to discover.
 
 ### Who owns it
 
-`BarLines` lives in `musa-compiler` and is reachable from `ScoreSnapshot`, because the meters that determine it are
-the compiler's. `musa-render` and `musa-project` consume it and construct nothing except the folded instance, which
-is notation's own business and belongs in `plan.rs`.
+`BarLines` lives in `musa-compiler` and is reachable from `ScoreSnapshot`, because the meters that determine it are the
+compiler's. `musa-render` and `musa-project` consume it and construct nothing except the folded instance, which is
+notation's own business and belongs in `plan.rs`.
 
 `positioned`, `measure_of` and `last_measure_of` all disappear into `BarLines::at`, which is the test of whether the
-module is deep: three functions that each re-derived the same division become one call that hides the fold, the
-guard, and the 1-based offset.
+module is deep: three functions that each re-derived the same division become one call that hides the fold, the guard,
+and the 1-based offset.
 
 ### The property that matters
 
@@ -118,19 +118,18 @@ for every BarLines b and every measure m in b.measures():
 ```
 
 as a `proptest` over generated meter sequences — generated, not fixed, because prompt 64's constructor must inherit a
-test that already exercises the general case. Eight call sites depend on this being an inverse; none of them checks
-it today.
+test that already exercises the general case. Eight call sites depend on this being an inverse; none of them checks it
+today.
 
 ## Target
 
-- `crates/musa-compiler/src/bars.rs` (new): `BarLines`, `BarBeat`, `Measure`, `uniform`, `at`, `time_of`,
-  `measure_at`, `measures`; the `Fold` and `Share` invariants in the module doc comment.
-- `crates/musa-compiler/src/score.rs`: `ScoreSnapshot::bars()`. `MeterMap` and `measure_len()` stay for now — prompt
-  63 is what deletes them.
+- `crates/musa-compiler/src/bars.rs` (new): `BarLines`, `BarBeat`, `Measure`, `uniform`, `at`, `time_of`, `measure_at`,
+  `measures`; the `Fold` and `Share` invariants in the module doc comment.
+- `crates/musa-compiler/src/score.rs`: `ScoreSnapshot::bars()`. `MeterMap` and `measure_len()` stay for now — prompt 63
+  is what deletes them.
 - `crates/musa-compiler/src/{elaborate,resolve}.rs`, `crates/musa-project/src/facts.rs`,
-  `crates/musa-render/src/plan.rs`: every `measure_len` parameter and every division removed;
-  `facts.rs::position`, `plan.rs::measure_of`, `plan.rs::last_measure_of`, and `plan.rs::positioned`'s arithmetic
-  deleted.
+  `crates/musa-render/src/plan.rs`: every `measure_len` parameter and every division removed; `facts.rs::position`,
+  `plan.rs::measure_of`, `plan.rs::last_measure_of`, and `plan.rs::positioned`'s arithmetic deleted.
 - `crates/musa-compiler/tests/bars.rs`: the inverse property, the degenerate-meter case, and a fixed-input test per
   deleted function so the replacements are compared against what they replace rather than against themselves.
 
@@ -153,45 +152,43 @@ The empty golden diff is the whole proof. A behaviour change here is a bug in th
 ## Repairs made while implementing
 
 **`BarLines::uniform` takes no extent, because no caller had one to give.** The prompt's signature was
-`uniform(meter, extent)`, and the extent had exactly one candidate use — bounding `measures()` — which the real
-caller does not want: `plan_staff` computes its own per-staff span and asks for the measures covering *that*, not the
-piece. So `measures()` became `measures_through(span)`, the extent parameter went, and `time_of` became total past
-the end rather than returning `None` there. `resolve_position` already had its own past-the-end diagnostic with its
-own wording, and moving that decision into `BarLines` would have replaced a good error with a silent `None`.
+`uniform(meter, extent)`, and the extent had exactly one candidate use — bounding `measures()` — which the real caller
+does not want: `plan_staff` computes its own per-staff span and asks for the measures covering *that*, not the piece. So
+`measures()` became `measures_through(span)`, the extent parameter went, and `time_of` became total past the end rather
+than returning `None` there. `resolve_position` already had its own past-the-end diagnostic with its own wording, and
+moving that decision into `BarLines` would have replaced a good error with a silent `None`.
 
 **`closing` was written off by one, and the existing suite caught it.** The deleted `last_measure_of` returned the
-`ceil` index *as* the measure number, not the index plus one — so a first draft that reused `at`'s numbering made
-every tuplet appear to cross a barline. Four tests failed, including `tuplet-fixture.musa` failing to compile at
-all. Recorded because it is the answer to "did the goldens actually cover this": they did, and it is the reason the
-prompt's decisive check is a diff rather than a review.
+`ceil` index *as* the measure number, not the index plus one — so a first draft that reused `at`'s numbering made every
+tuplet appear to cross a barline. Four tests failed, including `tuplet-fixture.musa` failing to compile at all. Recorded
+because it is the answer to "did the goldens actually cover this": they did, and it is the reason the prompt's decisive
+check is a diff rather than a review.
 
-**`check_tuplets`'s epsilon is gone.** It compared bar indices with `(end - 1/1_000_000)` to stop a group ending
-exactly on a barline from counting as crossing it. `closing` asks that question exactly, so the fudge factor
-deleted rather than moved — the clearest evidence in this prompt that the missing abstraction was the *pair*
-`at`/`closing`, not the division.
+**`check_tuplets`'s epsilon is gone.** It compared bar indices with `(end - 1/1_000_000)` to stop a group ending exactly
+on a barline from counting as crossing it. `closing` asks that question exactly, so the fudge factor deleted rather than
+moved — the clearest evidence in this prompt that the missing abstraction was the *pair* `at`/`closing`, not the
+division.
 
 **Two `measure_len` sites survive on purpose, and the Check above is narrowed to say so.**
 
-- `plan_lane` and `assign_beams` take the length of *the measure being planned*, which is now
-  `Measure::length()` and is per-measure rather than per-piece. That parameter is correct in the general case; only
-  its provenance changed.
+- `plan_lane` and `assign_beams` take the length of *the measure being planned*, which is now `Measure::length()` and is
+  per-measure rather than per-piece. That parameter is correct in the general case; only its provenance changed.
 - `ly.rs::measure_length` and `musicxml.rs::measure_length` derive a length from the **plan**, downstream of every
-  compiler-side change, and rewriting them would have been an exporter change in a prompt that promised none. They
-  are what prompt 64 has to reach when a plan stops having one measure length; noted here rather than discovered
-  there.
+  compiler-side change, and rewriting them would have been an exporter change in a prompt that promised none. They are
+  what prompt 64 has to reach when a plan stops having one measure length; noted here rather than discovered there.
 
 **The non-empty invariant is structural, not defended.** `BarLines` holds `first: Stretch` and `rest: Vec<Stretch>`
-rather than one `Vec`, so the two lookups have no fallback to get wrong. Clippy's `unwrap_or`-with-a-constructor
-warning is what prompted the change; the warning was right for a better reason than it knew.
+rather than one `Vec`, so the two lookups have no fallback to get wrong. Clippy's `unwrap_or`-with-a-constructor warning
+is what prompted the change; the warning was right for a better reason than it knew.
 
-**The performance claim is measured against a baseline, not asserted.** `cargo bench -p musa-compiler` was run
-against `HEAD` in a `git worktree` and against the change, on the same machine in the same session. Every P1–P5
-median moved by under 2% and most moved down; allocation counts are identical. `BarLines::uniform` allocates
-nothing — an empty `Vec` does not — and `stretch_at` iterates a list that is empty until mid-piece meter exists.
+**The performance claim is measured against a baseline, not asserted.** `cargo bench -p musa-compiler` was run against
+`HEAD` in a `git worktree` and against the change, on the same machine in the same session. Every P1–P5 median moved by
+under 2% and most moved down; allocation counts are identical. `BarLines::uniform` allocates nothing — an empty `Vec`
+does not — and `stretch_at` iterates a list that is empty until mid-piece meter exists.
 
 **`is_measured` replaced five scattered zero guards**, in `plan.rs` (three), `elaborate.rs`, and `resolve.rs`. The
-degenerate meter is now one unbounded measure decided in one place, which is PoSD ch. 10 applied to a case the
-codebase had already handled five times and could have handled inconsistently at any point.
+degenerate meter is now one unbounded measure decided in one place, which is PoSD ch. 10 applied to a case the codebase
+had already handled five times and could have handled inconsistently at any point.
 
 Commit as `Make measure numbering a function of the meters in force`.
 
@@ -200,6 +197,6 @@ Commit as `Make measure numbering a function of the meters in force`.
 - No grammar. `meter` remains a piece-level declaration until prompt 64.
 - No `from_changes` constructor, no meter-change type, no `ContextTrack` — prompts 63 and 64.
 - No mid-piece anything. If a golden moves, the refactor is wrong; do not update the golden.
-- No pickup measures, no irregular bars, no `senza misura` (prompt 74). `BarLines` must be *able* to express them;
-  this prompt does not let anyone write one.
+- No pickup measures, no irregular bars, no `senza misura` (prompt 74). `BarLines` must be *able* to express them; this
+  prompt does not let anyone write one.
 - Do not merge the folded and unfolded instances "since they are equal today". They are equal today by accident.

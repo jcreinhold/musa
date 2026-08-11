@@ -38,24 +38,24 @@ facts are empty when the source does not compile: references describe the last v
 ### Three handlers
 
 - `textDocument/references` — the recorded use spans plus the declaration, converted once by prompt 77's `convert`.
-- `textDocument/prepareRename` — succeeds when the position is inside a recorded declaration or use span, so the
-  client learns *before* prompting whether rename is possible.
+- `textDocument/prepareRename` — succeeds when the position is inside a recorded declaration or use span, so the client
+  learns *before* prompting whether rename is possible.
 - `textDocument/rename` — a workspace edit replacing exactly the recorded spans. Before answering, the new name is
-  checked against the reference record itself: colliding with an existing name in scope, or spelling something the
-  lexer would not read as a name, is refused with a reason — not applied and diagnosed afterwards.
+  checked against the reference record itself: colliding with an existing name in scope, or spelling something the lexer
+  would not read as a name, is refused with a reason — not applied and diagnosed afterwards.
 
 ### One document
 
-Rename and references cover the open document. A motif used from an imported library resolves to a declaration in a
-file the session treats as read-only; reporting its uses there is honest, rewriting them is not. Cross-file rename is
+Rename and references cover the open document. A motif used from an imported library resolves to a declaration in a file
+the session treats as read-only; reporting its uses there is honest, rewriting them is not. Cross-file rename is
 deferred to the day imports get a workspace model — say so in the refusal, not in silence.
 
 ## Target
 
 - `musa-compiler`: the reference record in `resolve.rs`/`scope.rs`; exposed through the compile result.
 - `musa-project`: restated reference facts on the snapshot.
-- `musa-lsp`: the three handlers; tests for rename-through-transform (a motif used inside `transpose`), references
-  from a use and from the declaration, refusal cases (collision, non-name, imported declaration).
+- `musa-lsp`: the three handlers; tests for rename-through-transform (a motif used inside `transpose`), references from
+  a use and from the declaration, refusal cases (collision, non-name, imported declaration).
 
 ## Check
 
@@ -66,8 +66,8 @@ cargo fmt --check
 ```
 
 Behavior: renaming the motif in `glass-mountain.musa` rewrites its declaration and every `use` and nothing else;
-references on `glass_pad` in the studio find the patch declaration and the `assign`; renaming to an existing name or
-to `4x` is refused; a document that does not compile answers references from the last valid compile, flagged as such.
+references on `glass_pad` in the studio find the patch declaration and the `assign`; renaming to an existing name or to
+`4x` is refused; a document that does not compile answers references from the last valid compile, flagged as such.
 
 ## Stop
 

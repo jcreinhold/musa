@@ -1,13 +1,13 @@
 # The temporal kernel
 
 Musa maintains two pictures at once. The surface language is expressive and musician-oriented: notes, motifs, repeats,
-transpositions, voices, keys. The temporal kernel is a small, exact semantics the surface language elaborates into.
-The kernel exists to give every downstream consumer one precise answer:
+transpositions, voices, keys. The temporal kernel is a small, exact semantics the surface language elaborates into. The
+kernel exists to give every downstream consumer one precise answer:
 
 > What musical facts exist, and where do they exist in musical time?
 
-How the facts were produced, how they are displayed, and how they sound all belong to layers above or below the
-kernel, never inside it.
+How the facts were produced, how they are displayed, and how they sound all belong to layers above or below the kernel,
+never inside it.
 
 ## The model
 
@@ -15,8 +15,8 @@ Musical time is ambient: it exists independently of what occurs within it. A ker
 musical time `[0, d]` plus zero or more typed occurrences `(s, e, a)` supported within it — each with a start, an end,
 and a payload.
 
-A region with no note occurrence is silent with respect to notes. Nothing represents silence: a rest glyph is a
-notation decision a backend makes about an uncovered region, not kernel ontology.
+A region with no note occurrence is silent with respect to notes. Nothing represents silence: a rest glyph is a notation
+decision a backend makes about an uncovered region, not kernel ontology.
 
 ## Three structural forms
 
@@ -40,9 +40,9 @@ but musically opaque: the kernel knows where, when, for how long, and what typed
 ## Why a kernel at all
 
 Without a small semantic basis, every surface construct becomes something each backend must independently understand,
-each transformation must traverse, and equality must account for. The kernel is the smallest complete semantic basis:
-a construct earns kernel status only when removing it makes an important class of musical meanings impossible to
-represent faithfully across independent consumers.
+each transformation must traverse, and equality must account for. The kernel is the smallest complete semantic basis: a
+construct earns kernel status only when removing it makes an important class of musical meanings impossible to represent
+faithfully across independent consumers.
 
 The full specification — grammar, denotational semantics, algebraic laws, normalization, elaboration — lives in
 `docs/kernel/` in the repository.

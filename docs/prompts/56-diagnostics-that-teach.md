@@ -64,16 +64,16 @@ pub struct Label { pub span: Span, pub text: String, pub primary: bool }
 pub struct Fix { pub title: String, pub edits: Vec<TextEdit> }
 ```
 
-`message` and `label.text` say different things and the difference is the whole discipline. The message is what is
-wrong with the piece; the label is what is wrong *at that character*. `cannot find 'sigh'` / `not declared in this
-piece` — never the same words twice.
+`message` and `label.text` say different things and the difference is the whole discipline. The message is what is wrong
+with the piece; the label is what is wrong *at that character*. `cannot find 'sigh'` / `not declared in this piece` —
+never the same words twice.
 
 ### Codes, not numbers
 
 `E0412` is a lookup key for people who already know the system. `unknown-name` is a lookup key and an explanation, and
-it survives being read aloud. Codes are kebab-case, stable once shipped, and listed in one module. `musa explain
-<code>` prints the long form: what the rule is, one example that breaks it, and the same example fixed. Only codes whose
-rule is non-obvious get an explanation; the rest are their own.
+it survives being read aloud. Codes are kebab-case, stable once shipped, and listed in one module. `musa explain <code>`
+prints the long form: what the rule is, one example that breaks it, and the same example fixed. Only codes whose rule is
+non-obvious get an explanation; the rest are their own.
 
 ### Fixes are data
 
@@ -122,11 +122,11 @@ run: `3 problems (2 errors, 1 warning)`.
 
 - `crates/musa-language`: `SyntaxError` gains `code`, secondary labels, `help`, and `fixes`; parser messages rewritten
   to the standard above; the recovery fixtures re-snapshotted.
-- `crates/musa-compiler`: `Diagnostic` as above; `Code`; a private `nearest` name-suggester; every `Diagnostic::error`
-  / `warning` call site given a code and a labelled span, and a help line where one exists.
+- `crates/musa-compiler`: `Diagnostic` as above; `Code`; a private `nearest` name-suggester; every `Diagnostic::error` /
+  `warning` call site given a code and a labelled span, and a help line where one exists.
 - `crates/musa-project`: the restated `Diagnostic` with `Position` on every label; `explain(code)`.
-- `crates/musa`: labels, help, note, and fixes rendered; `musa explain <code>`; the summary line; a non-zero exit
-  that still prints the count.
+- `crates/musa`: labels, help, note, and fixes rendered; `musa explain <code>`; the summary line; a non-zero exit that
+  still prints the count.
 - `apps/musa-desktop`: the problems list shows `line:column`, the primary label, and — when a diagnostic carries exactly
   one fix — a control that applies it. Byte offsets leave the interface.
 - `docs/interface/05-states.md`: the problems list's contract updated to match.
@@ -147,7 +147,7 @@ npm --prefix apps/musa-desktop/ui run check && npm --prefix apps/musa-desktop/ui
 ## Stop
 
 - No language changes. Bars and repeats are prompts 57 and 58; this prompt only makes their diagnostics possible.
-- No quick-fix menu in the app beyond a single certain fix per diagnostic. A ranked list of candidate fixes is an
-  editor feature and needs its own prompt.
+- No quick-fix menu in the app beyond a single certain fix per diagnostic. A ranked list of candidate fixes is an editor
+  feature and needs its own prompt.
 - No `ariadne`, and no second renderer. Roadmap §15 names `miette`.
 - No LSP. The structure here is what an LSP would need, which is the point, but the server is not this prompt.

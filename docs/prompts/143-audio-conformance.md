@@ -18,8 +18,8 @@ real-time row before the whole-language graduation prompt may run. This prompt a
 ## Read
 
 - Prompt 93 baseline and expected-change ledger; all prompt 126–140 completion/repair notes and benchmark artifacts.
-- The candidate sound/assets specs, roadmap/course-correction/kernel boundaries, interface specification, handbook,
-  SFZ support matrix, SoundFont support matrix, package/asset schemas, and public crate facades.
+- The candidate sound/assets specs, roadmap/course-correction/kernel boundaries, interface specification, handbook, SFZ
+  support matrix, SoundFont support matrix, package/asset schemas, and public crate facades.
 - Every audio preparation/offline/live/project/CLI/LSP/desktop caller and every unsafe/RT-sensitive block.
 
 ## Design

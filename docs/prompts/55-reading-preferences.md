@@ -74,14 +74,14 @@ asked for vim reads is unchanged.
 
 **The three conflicts, named, because each of them is a way to get this wrong.**
 
-- **`Esc`.** The app's `Esc` clears the selection, or — with nothing selected — puts the source column away. In vim it is
-  the most-pressed key there is, and an editor that cannot leave insert mode is not an editor. So: while vim mode is on
-  *and* the source column has focus, `Esc` is vim's. Everywhere else it is unchanged. That is the one binding the mode
-  moves, and `03-interaction.md` §3 gains the row.
+- **`Esc`.** The app's `Esc` clears the selection, or — with nothing selected — puts the source column away. In vim it
+  is the most-pressed key there is, and an editor that cannot leave insert mode is not an editor. So: while vim mode is
+  on *and* the source column has focus, `Esc` is vim's. Everywhere else it is unchanged. That is the one binding the
+  mode moves, and `03-interaction.md` §3 gains the row.
 - **`u` and `⌘Z` must be the same undo.** `SourceEditor` deliberately keeps no history of its own, because ⌘Z is the
-  project's undo over revisions and two stacks over one document disagree about what the document is. Vim's `u` and
-  `⌃r` are therefore rebound to `session.undo()` and `session.redo()`. A vim mode that quietly reintroduced a second
-  history would be a worse bug than not having vim mode.
+  project's undo over revisions and two stacks over one document disagree about what the document is. Vim's `u` and `⌃r`
+  are therefore rebound to `session.undo()` and `session.redo()`. A vim mode that quietly reintroduced a second history
+  would be a worse bug than not having vim mode.
 - **`:w` saves the project.** One save, one path, the same command the menu runs. `:q` does nothing: closing a document
   from inside its text is a footgun, and the window already has a close.
 

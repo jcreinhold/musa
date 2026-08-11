@@ -32,8 +32,8 @@ only by an explicit non-reproducible scratch command and cannot produce a releas
 
 ## 2. Exact-pinned packages without a solver
 
-The roadmap's relative-import-only rule remains governing until prompt 142. This candidate extends it in prompts
-131–132 with a fetch layer, not a package ecosystem or dependency solver. Project syntax is:
+The roadmap's relative-import-only rule remains governing until prompt 142. This candidate extends it in prompts 131–132
+with a fetch layer, not a package ecosystem or dependency solver. Project syntax is:
 
 ```toml
 [packages]
@@ -46,13 +46,13 @@ Source resolves a package path explicitly:
 import "pkg:orchestra/instruments/strings.musa";
 ```
 
-A remote package is the package shape `04-templates-and-modules.md` fixes — `musa.toml`, a source root, and a `mod`
-tree — fetched by exact pin rather than bundled. Prompt 132 adds the fetch layer and the lockfile and no second notion
-of what a package is.
+A remote package is the package shape `04-templates-and-modules.md` fixes — `musa.toml`, a source root, and a `mod` tree
+— fetched by exact pin rather than bundled. Prompt 132 adds the fetch layer and the lockfile and no second notion of
+what a package is.
 
 `rev` is a full immutable commit object ID with explicit `sha1:` or `sha256:` algorithm. Branches, tags, version ranges,
-“latest,” registries, and implicit network lookup are rejected. `musa fetch` materializes and verifies the exact tree
-in a content-addressed project cache and writes `musa.lock`. Ordinary `build`, `check`, `play`, and `render` are offline
+“latest,” registries, and implicit network lookup are rejected. `musa fetch` materializes and verifies the exact tree in
+a content-addressed project cache and writes `musa.lock`. Ordinary `build`, `check`, `play`, and `render` are offline
 operations over the lock and cache. They never fetch.
 
 Packages may name their own exact-pinned packages. Resolution is graph collection, not constraint solving: two edges
@@ -77,8 +77,8 @@ instrument solo_strings from "pkg:orchestra/solo-violin.sfz"
 
 The semantic object is a checked `SampleMap`: immutable audio regions plus predicates over typed gestures, selection
 priority, pitch/root mapping, loop/release behavior, and deterministic variation state. The runtime carries per-voice
-sample position/rate/state and obeys the same allocation, stealing, and RT laws as a synthesized implementation.
-For score playback, any stochastic/round-robin choice becomes a selection token derived on the control side from the
+sample position/rate/state and obeys the same allocation, stealing, and RT laws as a synthesized implementation. For
+score playback, any stochastic/round-robin choice becomes a selection token derived on the control side from the
 realization seed and stable gesture identity and is recorded in realization provenance. Live input uses the same
 control-side token service with a stable input ordinal. The audio callback consumes tokens and never draws randomness.
 
@@ -106,15 +106,14 @@ clip pulse from "assets/pulse.wav" fit 4/1 by rate;
 cue pulse at 9:1;
 ```
 
-The declaration records source duration `L` and target musical duration `D`. For `by rate`, at performed beat `b`
-within cue onset `b₀`, normalized source phase is `(b-b₀)/D`; tempo changes alter its physical derivative, so the whole
-asset remains fitted to the beat interval and pitch follows resampling rate. `by loop` instead plays at natural rate,
-restarts as needed, and truncates at the beat end. `by crop` plays once at natural rate, truncating whichever of asset or
-beat support outlasts the other and leaving any remaining support silent. There is no pitch-preserving warp promise.
-Loop count is explicit:
-`cue pulse at 9:1 repeat 4;`. The cue elaborates to an interval `ScoreFact::MusicalClip` with exact beat support and an
-opaque `AssetRef`; it is not a note. The kernel applies only its ordinary temporal laws and remains opaque to the media
-reference and fit policy.
+The declaration records source duration `L` and target musical duration `D`. For `by rate`, at performed beat `b` within
+cue onset `b₀`, normalized source phase is `(b-b₀)/D`; tempo changes alter its physical derivative, so the whole asset
+remains fitted to the beat interval and pitch follows resampling rate. `by loop` instead plays at natural rate, restarts
+as needed, and truncates at the beat end. `by crop` plays once at natural rate, truncating whichever of asset or beat
+support outlasts the other and leaving any remaining support silent. There is no pitch-preserving warp promise. Loop
+count is explicit: `cue pulse at 9:1 repeat 4;`. The cue elaborates to an interval `ScoreFact::MusicalClip` with exact
+beat support and an opaque `AssetRef`; it is not a note. The kernel applies only its ordinary temporal laws and remains
+opaque to the media reference and fit policy.
 
 ### Fixed-media cue
 
@@ -132,12 +131,12 @@ start(harbor) = θ(b₀)
 end(harbor)   = θ(b₀) + L
 ```
 
-A later tempo edit may move the onset in seconds but cannot stretch the recording or manufacture a musical end beat.
-The cue elaborates to a point `ScoreFact::FixedMediaCue` containing Origin, an opaque `AssetRef`, and playback settings.
+A later tempo edit may move the onset in seconds but cannot stretch the recording or manufacture a musical end beat. The
+cue elaborates to a point `ScoreFact::FixedMediaCue` containing Origin, an opaque `AssetRef`, and playback settings.
 Kernel transforms may move, copy, or restrict that point; they do not stretch or reverse audio. Physical seconds, raw or
 decoded samples, and fixed-media extent never enter `Term[ScoreFact]` or `Timeline[ScoreFact]`. The asset table beside
-the score snapshot supplies `L` to performance preparation. This is the honest exception
-to “everything has a beat duration,” useful for field recording and fixed-media/timeline practice (OMT
+the score snapshot supplies `L` to performance preparation. This is the honest exception to “everything has a beat
+duration,” useful for field recording and fixed-media/timeline practice (OMT
 `098-twentieth-century-rhythmic-techniques.md`).
 
 ### Temporal action table
@@ -155,11 +154,11 @@ playback-rate sign in a later specification.
 | retrograde in extent `d` | note supports relocate by the score law | interval relocates and source still plays forward | point moves from `b` to `d-b`; audio is not reversed |
 | pitch transpose/invert | written note pitch changes before sample selection | no effect | no effect |
 
-For fixed media, every listed temporal operation can change only `b₀`; substituting the new onset into
-`end=θ(b₀)+L` proves physical-duration invariance. For a `by rate` clip, normalized phase depends only on the affine beat
-coordinate in its transformed interval, proving that it reaches 0 and 1 at the transformed endpoints. Restriction must
-therefore retain the original affine phase anchor; resetting it would violate the restriction law by changing audible
-content that remained inside the window.
+For fixed media, every listed temporal operation can change only `b₀`; substituting the new onset into `end=θ(b₀)+L`
+proves physical-duration invariance. For a `by rate` clip, normalized phase depends only on the affine beat coordinate
+in its transformed interval, proving that it reaches 0 and 1 at the transformed endpoints. Restriction must therefore
+retain the original affine phase anchor; resetting it would violate the restriction law by changing audible content that
+remained inside the window.
 
 ## 5. Routing recorded media
 
@@ -187,8 +186,8 @@ bound to bounded lock-free streaming buffers before playback. Capacity and missi
 side. A stream underrun follows one documented engine diagnostic/recovery policy; it never performs file I/O on the
 callback to catch up.
 
-Offline rendering uses the same prepared instruments, media lanes, mix graph, and render operation as live playback.
-The lockfile, adapter algorithms, realization choices, sample rate, and deterministic render options are sufficient to
+Offline rendering uses the same prepared instruments, media lanes, mix graph, and render operation as live playback. The
+lockfile, adapter algorithms, realization choices, sample rate, and deterministic render options are sufficient to
 reproduce promised offline bytes. Platform decoders that cannot meet this contract are converted to a canonical cached
 PCM representation during fetch/preparation and identified in the closure.
 

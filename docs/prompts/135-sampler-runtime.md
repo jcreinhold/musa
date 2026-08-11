@@ -45,7 +45,8 @@ and denormal/NaN safety. Asset failure prevents plan installation rather than fa
 - Project/audio asset preparation and bounded-memory reporting; no decoder state in compiler facts.
 - Tiny native sample-map fixture exercising pitch regions, velocity layers, round-robin, loop, release, pedal, and
   instrument swapping.
-- Determinism, isolation, frame/block partition, loop, resampling, voice-stealing, NaN, allocation, and offline/live laws.
+- Determinism, isolation, frame/block partition, loop, resampling, voice-stealing, NaN, allocation, and offline/live
+  laws.
 
 ## Check
 

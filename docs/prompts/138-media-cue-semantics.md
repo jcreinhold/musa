@@ -17,8 +17,8 @@ before any clip player is written.
 
 ## Read
 
-- `docs/language/08-performance-and-sound.md` and `09-assets-and-packages.md`; kernel occurrence/transform laws;
-  backend contract's Beat→Second realization; prompt 70's printed `sample`/`cue` marks; prompt 133 assets.
+- `docs/language/08-performance-and-sound.md` and `09-assets-and-packages.md`; kernel occurrence/transform laws; backend
+  contract's Beat→Second realization; prompt 70's printed `sample`/`cue` marks; prompt 133 assets.
 - OMT `098-twentieth-century-rhythmic-techniques.md` on timeline notation using seconds. Cite it for the musical
   distinction; state the exact Musa behavior as local definitions and laws.
 - Existing `FactKind`, point occurrences, `Progress`, realization/provenance, notation loss reporting, and audio export

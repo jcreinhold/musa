@@ -83,10 +83,10 @@ Decision    the fill, first choice ▸ 4 passes          keep this one
 Three rules, and they are the whole design.
 
 - **The words are the core's.** *the fill, first choice* and *4 passes* are musical sentences, computed where the
-  decision was made (`03-interaction.md` §7). The interface never assembles either, and never shows the internal path
-  it uses to name the site.
-- **It is a step in the provenance, not a control panel.** Everything else in the row reads the same way the Origin
-  path does: the left half opens the source at the construct that asked, the trailing offer is one word.
+  decision was made (`03-interaction.md` §7). The interface never assembles either, and never shows the internal path it
+  uses to name the site.
+- **It is a step in the provenance, not a control panel.** Everything else in the row reads the same way the Origin path
+  does: the left half opens the source at the construct that asked, the trailing offer is one word.
 - **The offer is `keep this one`, and once taken it reads `kept`.** Same control, same place: an offer becomes a state.
   A kept decision is the one thing a new performance leaves alone.
 

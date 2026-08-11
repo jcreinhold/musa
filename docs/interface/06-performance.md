@@ -35,17 +35,16 @@ score (`tests/fixtures/large-score.musa`, created at prompt 22) for the large ca
   UI test suite for the prompt that owns the surface, and the budget table above is the assertion table.
 - Failures are reported as measurements, not as "slow". A regression that misses B2 by 40 ms says so.
 - **One gesture per trial.** The engraver marks `musa:score` for every page that arrives, and that includes the
-  neighbour pages the observer renders in the background (`02-engraving.md` §7). A trial must therefore settle before
-  it starts and read the first mark *after* its own gesture; otherwise it either ends on the previous trial's
-  background page and measures nothing, or inherits the layout that trial walked away from and measures two gestures
-  as one. Both were happening in B8 — in strict alternation, so a quarter of every run was double-counted and p95, by
-  construction, reported one of the doubles at 267–275 ms. Isolated, the same build measures 117–194 ms per step,
-  p95 183–194 ms. B8 asserts a floor as well as a ceiling for this reason: a step that measured nothing is not a fast
-  step.
+  neighbour pages the observer renders in the background (`02-engraving.md` §7). A trial must therefore settle before it
+  starts and read the first mark *after* its own gesture; otherwise it either ends on the previous trial's background
+  page and measures nothing, or inherits the layout that trial walked away from and measures two gestures as one. Both
+  were happening in B8 — in strict alternation, so a quarter of every run was double-counted and p95, by construction,
+  reported one of the doubles at 267–275 ms. Isolated, the same build measures 117–194 ms per step, p95 183–194 ms. B8
+  asserts a floor as well as a ceiling for this reason: a step that measured nothing is not a fast step.
 - These are **per-gesture** budgets. Stepping zoom again before the previous layout has finished queues a second full
   Verovio layout behind the first, and the second step costs roughly the sum. That is the honest cost of a gesture the
-  composer made while the machine was still working on the last one, and no per-step number covers it; coalescing
-  rapid steps would, and is not implemented.
+  composer made while the machine was still working on the last one, and no per-step number covers it; coalescing rapid
+  steps would, and is not implemented.
 
 ## 3. The structural rules the budgets imply
 

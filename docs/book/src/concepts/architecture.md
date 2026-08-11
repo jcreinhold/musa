@@ -30,8 +30,8 @@ the CLI's check, and the app's score all come from one session over one compiler
 
 Types from implementation libraries never cross crate boundaries. Parser internals stay in `musa-language`, DSP
 internals in `musa-audio`, device types in `musa-engine`. Public facades are narrow: `parse`, `compile`,
-`render_notation`, `compile_graph`, `AudioEngine`, `ProjectSession`. A consumer that needs something the facade does
-not offer is evidence the facade is missing a feature, not a reason to reach around it.
+`render_notation`, `compile_graph`, `AudioEngine`, `ProjectSession`. A consumer that needs something the facade does not
+offer is evidence the facade is missing a feature, not a reason to reach around it.
 
 ## Real-time separation
 

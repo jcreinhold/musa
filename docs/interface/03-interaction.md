@@ -46,8 +46,8 @@ type Selection =
 invents a construct. That is what makes dragging safe here and not elsewhere: every engraved event carries the span of
 the token that produced it, so a gesture names a token rather than describing an intention. Voice ownership cannot
 change, because voices are blocks of text and no gesture edits block structure. An accidental is never guessed, because
-the step gesture carries the existing one through and the accidental gesture leaves the step alone. Duration has its
-own axis. A tie or a tuplet spans more than one statement, so a one-token gesture cannot make or unmake one, and a drag
+the step gesture carries the existing one through and the accidental gesture leaves the step alone. Duration has its own
+axis. A tie or a tuplet spans more than one statement, so a one-token gesture cannot make or unmake one, and a drag
 whose result would need one refuses and says which construct it would need. A gesture against generated music is the
 `04-provenance.md` §4 choice, unchanged.
 

@@ -413,13 +413,13 @@ Run `tree-sitter generate --report-states-for-rule RULE` to see which states hav
 
 ### Step 2: Classify
 
-| Type                     | Resolution                                                          |
-| ------------------------ | ------------------------------------------------------------------- |
-| Operator precedence      | `prec.left` / `prec.right` with PREC table                          |
-| Lexical ambiguity        | `token(prec(N, ...))`                                               |
-| Type/expression overlap  | Syntactic disambiguator (turbofish) or `prec.dynamic` + `conflicts` |
-| Keyword sensitivity      | `reserved` sets                                                     |
-| Context-sensitive tokens | External scanner                                                    |
+| Type | Resolution |
+| --- | --- |
+| Operator precedence | `prec.left` / `prec.right` with PREC table |
+| Lexical ambiguity | `token(prec(N, ...))` |
+| Type/expression overlap | Syntactic disambiguator (turbofish) or `prec.dynamic` + `conflicts` |
+| Keyword sensitivity | `reserved` sets |
+| Context-sensitive tokens | External scanner |
 
 ### Step 3: Prefer Static Over Dynamic
 

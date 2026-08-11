@@ -7,8 +7,8 @@ musa check first.musa
 musa check examples/*.musa        # several files in one run
 ```
 
-Diagnostics are errors or warnings. Warnings carry *certain fixes* — repairs the compiler knows are safe. Apply them
-in place:
+Diagnostics are errors or warnings. Warnings carry *certain fixes* — repairs the compiler knows are safe. Apply them in
+place:
 
 ```bash
 musa check first.musa --fix
@@ -22,8 +22,8 @@ musa explain redundant-marking
 
 The lint codes and their waivers are listed under [Lint codes](../reference/lints.md).
 
-A piece can have more than one reading of its performance (a `.performance` sidecar next to the source). Pick which
-one to compile:
+A piece can have more than one reading of its performance (a `.performance` sidecar next to the source). Pick which one
+to compile:
 
 ```bash
 musa check first.musa --seed 3

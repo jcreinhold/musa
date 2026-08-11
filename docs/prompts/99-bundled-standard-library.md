@@ -12,8 +12,8 @@ phase: 3
 
 Create the bundled `.musa` standard-library mechanism that later theory prompts populate. Standard functions must be
 ordinary Musa source compiled through the same type checker and evaluator as user libraries; only operations that need
-hidden `music` representation, provenance, or kernel construction remain registered primitives. Give imports one
-stable, installation-independent spelling and preserve source locations into bundled files.
+hidden `music` representation, provenance, or kernel construction remain registered primitives. Give imports one stable,
+installation-independent spelling and preserve source locations into bundled files.
 
 ## Read
 
@@ -61,5 +61,5 @@ Commit as `Add the bundled Musa standard library`.
 - No pitch, scale, chord, serial, transformational, schema, or analysis library yet.
 - No network package manager, registry, user-global library path, lockfile, or semver solver.
 - No new public Rust theory API or pass-through standard-library crate.
-- No transparent prelude import beyond the exact small set chosen in `01-surface.md`; hidden names make source harder
-  to understand.
+- No transparent prelude import beyond the exact small set chosen in `01-surface.md`; hidden names make source harder to
+  understand.

@@ -23,8 +23,8 @@ one keyword and everything that spells it.
 - `docs/language-correction.md` §B.4, which states where the static layer's qualification and the import rule
   deliberately differ. That distinction is the reason the two words were confusable and the reason they must not be.
 - Prompt 109 for the migration-diagnostic shape a keyword change takes here, including its applicable fix.
-- Prompt 80 for the tree-sitter drift law: the grammar is held to the real lexer token-for-token, so a keyword change
-  is a change in two places that a test compares.
+- Prompt 80 for the tree-sitter drift law: the grammar is held to the real lexer token-for-token, so a keyword change is
+  a change in two places that a test compares.
 
 ## Design
 
@@ -48,9 +48,9 @@ template structure InKey(home: key) : TonalContext { … }
 make Home = InKey(key g major);
 ```
 
-Keeping `module` for both and telling them apart by what follows the name — as Rust tells `mod foo;` from
-`mod foo { }` — is rejected. Rust's two forms are the same idea written twice; these are two ideas. A reader who has to
-scan past a name to learn which construct they are in is being charged for a decision the language could have made.
+Keeping `module` for both and telling them apart by what follows the name — as Rust tells `mod foo;` from `mod foo { }`
+— is rejected. Rust's two forms are the same idea written twice; these are two ideas. A reader who has to scan past a
+name to learn which construct they are in is being charged for a decision the language could have made.
 
 Nothing else moves. `M.member` still qualifies, a sealed structure still hides what its signature omits, generative
 identity is still the digest of the instance, and `make` still names an instantiation. The compiler's `module.rs` keeps
@@ -63,8 +63,8 @@ The migration is a hard error with an applicable fix, on prompt 109's precedent 
 
 - `structure` and `template structure` in the lexer, parser, CST node kinds, and formatter; `module` removed from that
   position.
-- The migration diagnostic for `module Name : Sig { … }` and `template module`, each with a located applicable fix and
-  a snapshot test.
+- The migration diagnostic for `module Name : Sig { … }` and `template module`, each with a located applicable fix and a
+  snapshot test.
 - Every declaration site rewritten across `examples/`, `stdlib/`, and the test corpora, including
   `examples/module-functor-study.musa` and `stdlib/src/context.musa`.
 - `docs/language/04-templates-and-modules.md` §4 repaired to the new spelling throughout, including its grammar

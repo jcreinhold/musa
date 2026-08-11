@@ -1,7 +1,7 @@
 # Write for the studio
 
-A piece can describe its own sound in a `studio` block. Patches are signal chains, modulation is a typed connection to
-a named parameter, and the mix is written the way it is heard.
+A piece can describe its own sound in a `studio` block. Patches are signal chains, modulation is a typed connection to a
+named parameter, and the mix is written the way it is heard.
 
 ## A patch
 
@@ -36,8 +36,8 @@ The destination is a path through the patch — here, the cutoff of the `lowpass
 
 ## Assignment and routing
 
-A patch is wiring; wiring no part connects to is a cable that ends in the air. Assign parts to patches, and route
-their output:
+A patch is wiring; wiring no part connects to is a cable that ends in the air. Assign parts to patches, and route their
+output:
 
 ```musa
 assign violin -> glass_pad;

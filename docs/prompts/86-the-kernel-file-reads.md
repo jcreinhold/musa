@@ -11,10 +11,10 @@ phase: 3
 ## Task
 
 Make a kernel file legible to a person. Prompt 48 made the interchange artifact real and the corpus in
-`examples/kernel/` is the deliverable a second implementation is validated against — but its payload label is packed
-to the point of being unreadable, so the artifact cannot be checked by eye, and a golden diff cannot be reviewed. This
-prompt replaces the label's five-separator packed encoding with a flat, named, quoted token stream, and moves the
-corpus to `.musa.kernel` so the extension says whose file it is.
+`examples/kernel/` is the deliverable a second implementation is validated against — but its payload label is packed to
+the point of being unreadable, so the artifact cannot be checked by eye, and a golden diff cannot be reviewed. This
+prompt replaces the label's five-separator packed encoding with a flat, named, quoted token stream, and moves the corpus
+to `.musa.kernel` so the extension says whose file it is.
 
 ## Read
 
@@ -24,11 +24,11 @@ corpus to `.musa.kernel` so the extension says whose file it is.
 - `docs/kernel/07-backend-contract.md` §"What a conforming consumer owes" — the three obligations, and the sentence
   after them saying what a consumer does **not** owe: understanding the payload. That is why the payload's spelling is
   free, and why nobody had reason to fix it until now.
-- `crates/musa-kernel/src/text.rs` — `TextPayload`, `print`, `parse`, `write_string`. The kernel carries a payload as
-  an opaque `"…"`-quoted string escaping `"`, `\` and newline, and never looks inside.
+- `crates/musa-kernel/src/text.rs` — `TextPayload`, `print`, `parse`, `write_string`. The kernel carries a payload as an
+  opaque `"…"`-quoted string escaping `"`, `\` and newline, and never looks inside.
 - `crates/musa-compiler/src/factext.rs` — the whole of it. This prompt rewrites it.
-- `crates/musa-compiler/src/elaborate.rs` `instantiate` (the `Var`-mark reader) and `mark_of`, whose doc comment
-  already concedes the fault: *"a reader counting backslashes is a reader who has stopped reading the music."*
+- `crates/musa-compiler/src/elaborate.rs` `instantiate` (the `Var`-mark reader) and `mark_of`, whose doc comment already
+  concedes the fault: *"a reader counting backslashes is a reader who has stopped reading the music."*
 
 ## Design
 
@@ -41,8 +41,8 @@ definition span and the declaration id; the interchange form must reproduce the 
 normal forms, and zero `insta` snapshots.** The only files that change are the 24 goldens.
 
 **But it is a format change, not a print change.** The label is read back on two paths, and both must move together:
-`ScoreFact::from_text`, and `instantiate`, which parses a `Var` mark with `read_step`/`read_span`/`read_scope` on
-every `--check`.
+`ScoreFact::from_text`, and `instantiate`, which parses a `Var` mark with `read_step`/`read_span`/`read_scope` on every
+`--check`.
 
 ### What is actually wrong
 
@@ -62,13 +62,13 @@ A label is a **flat whitespace-separated token stream**. Flat is the whole answe
 nothing is escaped twice. A token is either
 
 - a **bare word** — no whitespace, no `'`, no `\` — used for pitches, ratios, integers, and vocabulary names; or
-- a **quoted word** — `'…'` with `\\` and `\'` — used for **every** free-text field, always, even when it would not
-  need quoting.
+- a **quoted word** — `'…'` with `\\` and `\'` — used for **every** free-text field, always, even when it would not need
+  quoting.
 
 "Always" is the injectivity argument: `mark text '8'` is `Text("8")` and `mark ottava 8` is `Number(8)`, and one rule
 keeps them apart without case analysis. Quoting with `'` also means a payload never contains `"`, so the kernel's own
-string escape has nothing to double except a literal backslash in composer text — the eight-backslash case becomes
-four, and the ordinary case becomes none.
+string escape has nothing to double except a literal backslash in composer text — the eight-backslash case becomes four,
+and the ordinary case becomes none.
 
 ```
 label   := scope kind origin
@@ -79,11 +79,11 @@ step    := "motif" span | "repeat" N | "transpose" N N | "stretch" ratio
          | "retrograde" | "invert" quoted | "special" span
 ```
 
-`[` and `]` delimit themselves, so `[191:198 #4]` is four words without the spaces that would otherwise separate
-them — and a bare word therefore contains no bracket either.
+`[` and `]` delimit themselves, so `[191:198 #4]` is four words without the spaces that would otherwise separate them —
+and a bare word therefore contains no bracket either.
 
-`voice 2 11` and not `voice 2.11`, because `a_facts_text_form_writes_no_decimals` asserts a payload contains no `.`
-at all — a strictness worth keeping, and a scope index is not worth weakening it for.
+`voice 2 11` and not `voice 2.11`, because `a_facts_text_form_writes_no_decimals` asserts a payload contains no `.` at
+all — a strictness worth keeping, and a scope index is not worth weakening it for.
 
 Every kind, written out — this table is the specification:
 
@@ -118,13 +118,13 @@ ratio    := N "/" N | N
 
 `1/4` for every note whose written value is what it sounds; `1/3 spelled '1/4 ~ 1/12' tied 1/4 1/12` for one that is
 not. A whole note is `1`, not `1/1`, which is not cosmetic: the language spells a whole note `1`, and `spelled` elides
-exactly when the spelling equals the written ratio, so a `p/q`-only writer would have printed `1/1 spelled '1'` on
-every long note in the corpus. A run of ratios ends at the first token that is not one, which is unambiguous because everything that can follow
-— an articulation name, `free`, `[` — is not ratio-shaped.
+exactly when the spelling equals the written ratio, so a `p/q`-only writer would have printed `1/1 spelled '1'` on every
+long note in the corpus. A run of ratios ends at the first token that is not one, which is unambiguous because
+everything that can follow — an articulation name, `free`, `[` — is not ratio-shaped.
 
 `Progress` keeps its canonical key (`u/d:v/e,…`) unchanged: it is one bare token, it contains no whitespace, and
-`read_progress`'s doc comment already argues that for `Progress` the canonical key *is* the text form because it has
-no provenance to omit.
+`read_progress`'s doc comment already argues that for `Progress` the canonical key *is* the text form because it has no
+provenance to omit.
 
 ### The five elisions, each an iff
 
@@ -138,9 +138,9 @@ Reading reconstructs the value exactly because every elision is a biconditional,
 | `spelled …` | the spelling is the value written `p/q` |
 | `tied …` | the pieces are exactly `[value]` |
 
-The origin group itself is never omitted: a span is not optional, so a fact whose source span is `0:0` prints
-`[0:0]`. It is also what ends the kind — an articulation run, a mobile's order and a mark's absent argument all stop
-at the `[`, which is why no vocabulary word is spelled with a bracket.
+The origin group itself is never omitted: a span is not optional, so a fact whose source span is `0:0` prints `[0:0]`.
+It is also what ends the kind — an articulation run, a mobile's order and a mark's absent argument all stop at the `[`,
+which is why no vocabulary word is spelled with a bracket.
 
 ### Before and after
 
@@ -166,30 +166,30 @@ order — within a voice that is already time order, which reads better than N2'
 ### The extension
 
 `.kernel` says nothing about whose file it is, and collides with a word every operating system and compiler already
-owns. The repo has two precedents for a suffix musa writes beside a piece, and they agree with each other:
-`sonata.musa` → `sonata.musa.recovery` (`autosave.rs`) and `sonata.musa` → `sonata.musa.performance`
-(`realization.rs`). A kernel file is the third of exactly that kind, so it is spelled the same way: **`.musa.kernel`**.
+owns. The repo has two precedents for a suffix musa writes beside a piece, and they agree with each other: `sonata.musa`
+→ `sonata.musa.recovery` (`autosave.rs`) and `sonata.musa` → `sonata.musa.performance` (`realization.rs`). A kernel file
+is the third of exactly that kind, so it is spelled the same way: **`.musa.kernel`**.
 
-`invention.kernel` → `invention.musa.kernel`; the variant marker stays ahead of the suffix, so `canon.normal.kernel`
-→ `canon.normal.musa.kernel`.
+`invention.kernel` → `invention.musa.kernel`; the variant marker stays ahead of the suffix, so `canon.normal.kernel` →
+`canon.normal.musa.kernel`.
 
-An abbreviation was considered and rejected on the format's own rule quoted above: `.musak` is a portmanteau rather
-than a word, which is the "unexplained shorthand" `01-grammar.md` names; and `.kern` is Humdrum's, a real music format
-this one should not be confused with.
+An abbreviation was considered and rejected on the format's own rule quoted above: `.musak` is a portmanteau rather than
+a word, which is the "unexplained shorthand" `01-grammar.md` names; and `.kern` is Humdrum's, a real music format this
+one should not be confused with.
 
-**Only the extension moves.** `kernel` also names the grammar's leading keyword (`kernel "Name" {`), the crate, the
-CLI verb, and `docs/kernel/`. None of those changes, and a blanket substitution would break the format.
+**Only the extension moves.** `kernel` also names the grammar's leading keyword (`kernel "Name" {`), the crate, the CLI
+verb, and `docs/kernel/`. None of those changes, and a blanket substitution would break the format.
 
 ## Target
 
-- `crates/musa-compiler/src/factext.rs`: `to_text`/`from_text` rewritten around one `Words` type that is a writer
-  when built up and a reader when split. `join`/`escape`/`split_escaped` go, and with them the six `pub(crate)`
-  fragments `elaborate.rs` used to assemble a mark out of — `scope_text`, `span_text`, `step_text`, `read_scope`,
-  `read_span`, `read_step`. In their place, two items that say what the caller actually wants:
-  `reference_mark(&ReferenceMark) -> String` and `read_reference_mark(&str) -> Option<ReferenceMark>`. Six pieces of
-  a format become one named thing, which is the point of putting the format in one module.
-- `crates/musa-compiler/src/elaborate.rs`: `mark_of` and `instantiate` become calls to those two, and `mark_of`'s
-  doc comment loses the apology.
+- `crates/musa-compiler/src/factext.rs`: `to_text`/`from_text` rewritten around one `Words` type that is a writer when
+  built up and a reader when split. `join`/`escape`/`split_escaped` go, and with them the six `pub(crate)` fragments
+  `elaborate.rs` used to assemble a mark out of — `scope_text`, `span_text`, `step_text`, `read_scope`, `read_span`,
+  `read_step`. In their place, two items that say what the caller actually wants:
+  `reference_mark(&ReferenceMark) -> String` and `read_reference_mark(&str) -> Option<ReferenceMark>`. Six pieces of a
+  format become one named thing, which is the point of putting the format in one module.
+- `crates/musa-compiler/src/elaborate.rs`: `mark_of` and `instantiate` become calls to those two, and `mark_of`'s doc
+  comment loses the apology.
 - `crates/musa-project/src/export.rs`: `ExportRequest::extension()` returns `musa.kernel` — the one authoritative
   spelling; the CLI's `write_artifact` derives every path from it.
 - `crates/musa/src/main.rs`: the two usage lines naming `<file.kernel>`.
@@ -198,8 +198,8 @@ CLI verb, and `docs/kernel/`. None of those changes, and a blanket substitution 
   `canon.normal` literal, and the two assertions that pin a packed spelling.
 - `docs/kernel/06-surface-elaboration.md`: the payload EBNF and its two worked examples.
 - `docs/kernel/{01,07,08,09}.md`: the extension, wherever the corpus is named.
-- `Makefile`: `make snapshots` sets `UPDATE_KERNEL_GOLDENS=1`, which it does not today — the one command that claims
-  to regenerate every golden must actually do so.
+- `Makefile`: `make snapshots` sets `UPDATE_KERNEL_GOLDENS=1`, which it does not today — the one command that claims to
+  regenerate every golden must actually do so.
 - `.gitignore`: `*.performance` beside `*.recovery`.
 
 ## Check
@@ -232,11 +232,11 @@ By eye, which is the point of the prompt: `examples/kernel/invention.musa.kernel
 
 - **No change to `canonical_key`, `Timeline::normalize`, the semantic hash, or normal form.** This is the text form
   only, and the evidence that they are separable is that no `.snap` moves.
-- **No `.musa.kernel` → `.musa` direction, and no editor support, highlighting or formatter for kernel files**
-  (prompt 48's Stop stands).
+- **No `.musa.kernel` → `.musa` direction, and no editor support, highlighting or formatter for kernel files** (prompt
+  48's Stop stands).
 - **No payload grammar in `musa-kernel`.** The kernel stays generic in `A` and keeps handing an opaque string to the
   caller's `TextPayload`; a kernel that knew what a note was would be the §12 violation the crate exists to prevent.
 - **No renaming of the `kernel` keyword, the `musa-kernel` crate, the `musa kernel` subcommand, or `docs/kernel/`.**
 - **No sorting of occurrences.** `--normalized` is where canonical order lives.
-- **No new `FactKind`, no new `ExpansionStep`, and no change to what a fact carries.** Same values, spelled so they
-  can be read.
+- **No new `FactKind`, no new `ExpansionStep`, and no change to what a fact carries.** Same values, spelled so they can
+  be read.

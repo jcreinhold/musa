@@ -10,8 +10,8 @@ phase: 3
 
 ## Task
 
-Make functions over `music` genuinely higher order and demonstrate the capability with two different musical clients:
-a delayed canon taking a `music -> music` answer function, and a harmonizer taking a `pitch -> pitch` mapping. Add the
+Make functions over `music` genuinely higher order and demonstrate the capability with two different musical clients: a
+delayed canon taking a `music -> music` answer function, and a harmonizer taking a `pitch -> pitch` mapping. Add the
 small controlled traversal needed for user-defined pitch work without exposing kernel facts, source ASTs, or the
 representation of contextual music.
 

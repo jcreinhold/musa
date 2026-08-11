@@ -68,10 +68,10 @@ The CLI underneath is `musa`:
 cargo run -p musa -- render examples/glass-mountain.musa --to lilypond -o mountain.ly
 ```
 
-For editor integration there is a language server: build it once (`cargo build -p musa-lsp`) and point any
-LSP-speaking editor at the `musa-lsp` binary over stdio. It speaks the session's vocabulary — diagnostics with
-their certain fixes, hover that answers musically, go-to-definition through provenance, outline symbols, canonical
-formatting, semantic tokens, and completion — and computes nothing of its own.
+For editor integration there is a language server: build it once (`cargo build -p musa-lsp`) and point any LSP-speaking
+editor at the `musa-lsp` binary over stdio. It speaks the session's vocabulary — diagnostics with their certain fixes,
+hover that answers musically, go-to-definition through provenance, outline symbols, canonical formatting, semantic
+tokens, and completion — and computes nothing of its own.
 
 `examples/` holds the pieces the test suite compiles on every run. They are executable specifications rather than demos
 — `glass-mountain.musa` exercises motifs, transposition, and the studio; `tuplet-fixture.musa` and

@@ -10,15 +10,15 @@ phase: 4
 
 ## Task
 
-Give Musa projects a secure, provenance-preserving asset model for samples and recordings before a decoder is added.
-The canonical build input becomes source plus manifest/lock plus content-addressed assets; editable intent remains in
+Give Musa projects a secure, provenance-preserving asset model for samples and recordings before a decoder is added. The
+canonical build input becomes source plus manifest/lock plus content-addressed assets; editable intent remains in
 source, while external bytes are named, typed, verified, and loaded only on the control side.
 
 ## Read
 
 - `docs/language/09-assets-and-packages.md`; roadmap §§10.6, 13.2, 16, 18 Phase 4; prompt 84 project ownership.
-- Current `Project`, import closure, `Compilation`/`ValidArtifacts`, semantic hash, export cache, CLI/project error model,
-  and every path-opening call.
+- Current `Project`, import closure, `Compilation`/`ValidArtifacts`, semantic hash, export cache, CLI/project error
+  model, and every path-opening call.
 - Repository dependency policy before selecting an audio metadata/decoder crate. A new dependency requires a deliberate
   roadmap repair and license/security review in the prompt commit.
 

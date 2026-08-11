@@ -15,10 +15,10 @@ program that feel unfinished, and they are disproportionately what a new user me
   diagnostics are shown in the compiler's own words — the interface adds location and a way to get there, and does not
   paraphrase.
 - **Empty is an invitation.** Never "No data."
-- **A reading of an open work is a performance, not a seed** (prompt 76). *Performance 42*, never *Seed: 42*; *the
-  fill, first choice*, never a path or an identifier; *4 passes*, never *count=4*. A decision the composer has settled
-  reads *kept*. The number is the one implementation word that survives, because it is genuinely the information: it is
-  what a composer types to come back to a reading they liked.
+- **A reading of an open work is a performance, not a seed** (prompt 76). *Performance 42*, never *Seed: 42*; *the fill,
+  first choice*, never a path or an identifier; *4 passes*, never *count=4*. A decision the composer has settled reads
+  *kept*. The number is the one implementation word that survives, because it is genuinely the information: it is what a
+  composer types to come back to a reading they liked.
 - Sentence case everywhere. No exclamation marks. No emoji.
 
 ## 2. First run and empty states
@@ -82,19 +82,19 @@ A diagnostic is a small document, not a sentence (prompt 56): a claim, the place
 advice, and — where the repair is unambiguous — the edit itself. The list shows all five, in the order they are read.
 
 - Listed in source order. Each is at most four lines: severity glyph and message in `--t-body`, the **location** in
-  `--t-value` `--ink-muted` at the right; then the **primary label** and the **help line**, indented to clear the
-  glyph, both `--ink-muted`; then the **fix**, if there is one.
+  `--t-value` `--ink-muted` at the right; then the **primary label** and the **help line**, indented to clear the glyph,
+  both `--ink-muted`; then the **fix**, if there is one.
 - **The location is `line:column`, 1-based, columns counted in characters.** Never a byte offset. Rust computes it
   (`03-interaction.md` §7 does not put line numbers on the frontend's list) and it arrives on every label.
 - The label says what is wrong *at that character* and never repeats the message. `missing `;`` / *it goes here*, not
   the same words twice.
 - **A fix is a control, and only when there is exactly one.** Labelled with the action in sentence case — *Add `;`*,
-  *Write `1400 Hz`* — in `--plate`, because the application is acting for you, under a hairline underline and in no
-  box (`01-visual-language.md` §7). Applying it is an ordinary edit: it goes through the same path a keystroke does
-  and `⌘Z` reverses it. A diagnostic carrying two candidate repairs offers neither; a menu of guesses is an editor
-  feature and is not this.
-- Backticks in the compiler's prose are the compiler's spelling, not markup to print. What they quote is set in the
-  mono face; the words themselves are unchanged, and are still the compiler's own (§1).
+  *Write `1400 Hz`* — in `--plate`, because the application is acting for you, under a hairline underline and in no box
+  (`01-visual-language.md` §7). Applying it is an ordinary edit: it goes through the same path a keystroke does and `⌘Z`
+  reverses it. A diagnostic carrying two candidate repairs offers neither; a menu of guesses is an editor feature and is
+  not this.
+- Backticks in the compiler's prose are the compiler's spelling, not markup to print. What they quote is set in the mono
+  face; the words themselves are unchanged, and are still the compiler's own (§1).
 - Clicking a problem moves the caret in the source and, when the diagnostic has a score location, flashes the
   corresponding system on the leaf once.
 - The severity glyph is a shape, not just a color (`03-interaction.md` §5): a filled square for errors, hollow for
@@ -142,9 +142,9 @@ Four consequences.
 
 - **It appears only where it means something.** A determinate piece has no performance row in Settings, no Decision step
   in the inspector, and no sentence anywhere explaining a freedom it does not have.
-- **It is in the one undo history.** Reading again, keeping a decision, and releasing one are moves like any other:
-  `⌘Z` puts the reading back. Unlike a preference, a performance changes the music on the page, so it must be
-  reversible where the music is.
+- **It is in the one undo history.** Reading again, keeping a decision, and releasing one are moves like any other: `⌘Z`
+  puts the reading back. Unlike a preference, a performance changes the music on the page, so it must be reversible
+  where the music is.
 - **It does not mark the document unsaved.** Nothing about the file changed.
 - **A new performance is a new score.** The selection is let go of rather than carried across it: event identity is a
   position in the score, so a piece read again renumbers, and a selection kept would silently describe another note

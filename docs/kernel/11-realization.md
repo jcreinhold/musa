@@ -34,24 +34,24 @@ The obvious design is a term form — `choose { a | b | c }` — argued for exac
 the four reasons are recorded here because this is a design that will be proposed again.
 
 1. **It cannot express the repertoire it is proposed for.** Read the table above. A finite alternative set covers the
-   narrowest subcase — "one of these three endings" — and leaves out every piece that motivated the feature. A form
-   that fails its own examples is not a kernel form.
+   narrowest subcase — "one of these three endings" — and leaves out every piece that motivated the feature. A form that
+   fails its own examples is not a kernel form.
 
-2. **It breaks T2 (`let` transparency).** In `let x = choose { a | b } in over x x`, does sharing share the
-   *decision*? Both readings are musically real: one performer's choice heard twice, or two performers choosing
-   independently. Neither is canonical, which is §16's "no canonical `join`" wearing a new costume. T2 is not a
-   decoration — it is what prompt 49's measured −36% elaboration time and −60% allocations rest on, because it is what
-   makes it safe to evaluate a shared body once.
+2. **It breaks T2 (`let` transparency).** In `let x = choose { a | b } in over x x`, does sharing share the *decision*?
+   Both readings are musically real: one performer's choice heard twice, or two performers choosing independently.
+   Neither is canonical, which is §16's "no canonical `join`" wearing a new costume. T2 is not a decoration — it is what
+   prompt 49's measured −36% elaboration time and −60% allocations rest on, because it is what makes it safe to evaluate
+   a shared body once.
 
 3. **It breaks T3, T4 and N6 together.** Evaluation stops being deterministic and stops being unique, so there is no
    normal form, so there is no semantic hash. Prompt 43 keyed the session's recompilation on that hash: editing an
    unchosen branch would change the work without changing the hash, and the session would not recompile. One term form
    would silently break a feature four prompts away.
 
-4. **It destroys the artifact that justified it.** A `.musa.kernel` file containing `choose` cannot be normalized or hashed
-   without a choice environment, so the environment must ship alongside the file — which makes the file a *realization*
-   corpus after all, at the cost of every theorem above. The argument for `choose` is self-defeating: it buys nothing
-   the refused design does not already give, and it pays for it in four places.
+4. **It destroys the artifact that justified it.** A `.musa.kernel` file containing `choose` cannot be normalized or
+   hashed without a choice environment, so the environment must ship alongside the file — which makes the file a
+   *realization* corpus after all, at the cost of every theorem above. The argument for `choose` is self-defeating: it
+   buys nothing the refused design does not already give, and it pays for it in four places.
 
 Applying §34's rule literally: removing `choose` makes nothing impossible, and adding it makes two consumers — the
 engraver and the interchange format — strictly worse. It stays out. **§35 item 11 is upheld, not amended**: it forbids
@@ -72,9 +72,9 @@ source ──elaborate(realization)──▶ Term<ScoreFact> ──evaluate─�
 Two halves, and the split is the whole design:
 
 - **The freedom is written in the source and survives into the timeline as ordinary occurrences.** The page can
-  therefore print *ad lib.*, "repeat as many times as you like", a boxed fragment, or a proportional duration —
-  because the instruction is a fact like any other fact, not a hole where a fact would be. This is prompt 58's rule
-  exactly: *the timeline holds every pass; the page prints the instruction once.*
+  therefore print *ad lib.*, "repeat as many times as you like", a boxed fragment, or a proportional duration — because
+  the instruction is a fact like any other fact, not a hole where a fact would be. This is prompt 58's rule exactly:
+  *the timeline holds every pass; the page prints the instruction once.*
 
 - **The decision is a `Realization`: a seed plus a set of explicit overrides.** It is an input to elaboration, not a
   thing the kernel knows about. By the time a `Term` exists, every choice is made — so evaluation is still total, still
@@ -105,10 +105,10 @@ belongs to.
 each voice, so the k-th such site in every voice is one site with one decision. This was written "part, voice, motif,
 bar" when the document was drafted, and prompt 67 found the reading wrong: prompt 57's rule is that a repeat barline
 crosses the system, so a repeat the page can *draw* is one repeat of the whole piece, written once in each voice that
-sounds under it. A per-voice path would decide it several times over and the voices would come apart — and the
-engraver, which already refuses to draw repeats whose counts disagree, would silently write the passage out. It is the
-same argument prompt 64 made for `meter`, reaching the same answer: what is written at a place in the piece belongs to
-the piece.
+sounds under it. A per-voice path would decide it several times over and the voices would come apart — and the engraver,
+which already refuses to draw repeats whose counts disagree, would silently write the passage out. It is the same
+argument prompt 64 made for `meter`, reaching the same answer: what is written at a place in the piece belongs to the
+piece.
 
 A freedom that genuinely *is* one player's — *In C*, where each performer repeats independently and no barline could
 span them — is a different construct with a per-voice path, and belongs with the rest of open form (prompt 68).
@@ -129,15 +129,15 @@ seed.
 
 ## The cost, conceded up front
 
-**The score view stops being a function of the source alone.** Every law of the form "same source, same picture"
-becomes "same source *and the same realization*, same picture". That is a real weakening of a real guarantee, and the
-two consequences must be paid rather than hidden:
+**The score view stops being a function of the source alone.** Every law of the form "same source, same picture" becomes
+"same source *and the same realization*, same picture". That is a real weakening of a real guarantee, and the two
+consequences must be paid rather than hidden:
 
 1. **Fixtures pin a seed.** A regression fixture whose realization is unpinned is not a fixture. Every golden that
    touches an indeterminate construct states its realization in the file.
-2. **The interface must be able to show the realization.** A composer who cannot see which decisions produced this
-   page cannot tell why the page changed — and would rightly conclude the editor is unreliable. That is prompt 76's
-   job, and it is a condition of this design rather than a nicety on top of it.
+2. **The interface must be able to show the realization.** A composer who cannot see which decisions produced this page
+   cannot tell why the page changed — and would rightly conclude the editor is unreliable. That is prompt 76's job, and
+   it is a condition of this design rather than a nicety on top of it.
 
 This is the honest price. It is smaller than the price of `choose`, and it is paid in one place instead of in four
 theorems.
@@ -146,18 +146,17 @@ theorems.
 
 Adding to `07-backend-contract.md`'s list, and changing none of it:
 
-1. **A `.musa.kernel` file is the projection of one realization.** It is not the work; it is one reading of the work. Its
-   header says which realization produced it, and a consumer that reproduces the file must be given the same one.
-2. **A consumer never chooses.** Choosing happens once, above the kernel, before a term exists. A consumer that draws
-   a random number has produced a different piece and the semantic hash will say so.
-3. **An unknown realization header is a refusal, not a default.** Reading a file whose realization you cannot
-   reproduce and pretending otherwise is the one failure mode this whole design exists to prevent.
+1. **A `.musa.kernel` file is the projection of one realization.** It is not the work; it is one reading of the work.
+   Its header says which realization produced it, and a consumer that reproduces the file must be given the same one.
+2. **A consumer never chooses.** Choosing happens once, above the kernel, before a term exists. A consumer that draws a
+   random number has produced a different piece and the semantic hash will say so.
+3. **An unknown realization header is a refusal, not a default.** Reading a file whose realization you cannot reproduce
+   and pretending otherwise is the one failure mode this whole design exists to prevent.
 
 ## What this does not settle
 
 - **Q1 (infinite/live patterns)** and **Q5 (recursion)** stay open. An unbounded repeat count resembles both and is
   neither: the count is chosen at compile time and the result is an ordinary finite timeline.
 - **No probability distributions, no weighted choice, no Markov models.** A seed and an override set is the whole
-  mechanism. Generative composition is a different product, and one that would want the kernel to be a different
-  thing.
+  mechanism. Generative composition is a different product, and one that would want the kernel to be a different thing.
 - **No surface syntax.** Prompt 68 writes it, against this document.

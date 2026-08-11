@@ -9,10 +9,10 @@ alternatives: §4's signatures and structures are a checking-time abstraction la
 
 A **package** is a directory containing `musa.toml` and a source root. Its root file `lib.musa` declares its children
 with `mod`, a directory module declares its own in `mod.musa`, and module paths nest to any depth. Resolution follows
-those declarations and never scans the directory: a `.musa` file under the source root that no `mod` reaches is
-rejected as declared nowhere, and a `mod` naming no file is rejected as missing. The bundled standard library is one
-such package, embedded at build time so that its `musa-stdlib:/std/…` URIs are readable without filesystem access, with
-the embedding generated from the `mod` traversal rather than transcribed beside it.
+those declarations and never scans the directory: a `.musa` file under the source root that no `mod` reaches is rejected
+as declared nowhere, and a `mod` naming no file is rejected as missing. The bundled standard library is one such
+package, embedded at build time so that its `musa-stdlib:/std/…` URIs are readable without filesystem access, with the
+embedding generated from the `mod` traversal rather than transcribed beside it.
 
 `import "path.musa";` imports a local `library`; `import std::list;` and `import std::tonal::harmony;` import bundled
 modules. Both run through the same parser, checker, evaluator, cycle detection, and name-collision rules, and both bind
@@ -37,8 +37,8 @@ For `κ ∈ {library, piece, part, voice, performance, instrument, mix, structur
 ```
 
 `⇒declaration` belongs only to the static judgment; it is not the value arrow. Arguments are evaluated by the total
-core, substituted capture-avoidantly into typed declaration holes, and then ordinary declarations are checked.
-Expansion precedes context-track construction and contextual-music instantiation. A template cannot receive or return a
+core, substituted capture-avoidantly into typed declaration holes, and then ordinary declarations are checked. Expansion
+precedes context-track construction and contextual-music instantiation. A template cannot receive or return a
 declaration as a value, enumerate declarations, inspect source text, or emit a template dynamically.
 
 The static dependency graph over `make`, imports, and functor applications must be finite and acyclic. A cycle is a
@@ -56,10 +56,9 @@ GeneratedId  = versioned_digest(GeneratedKey)
 The digest algorithm and canonical encodings are versioned. The compiler retains keys while assigning IDs and rejects
 the astronomically unlikely digest collision instead of identifying two declarations. Argument values do not determine
 identity: editing `study_in_g`'s musical key changes its content without turning it into an unrelated piece. Two
-instance sites with equal
-arguments remain distinct. The explicit `as` name is the source address but is not hashed identity. Moving a site may
-change `SiteId`; an editor move operation records an identity-preserving source edit when it can prove the move.
-Generated Origin paths contain both the definition path and instance identity.
+instance sites with equal arguments remain distinct. The explicit `as` name is the source address but is not hashed
+identity. Moving a site may change `SiteId`; an editor move operation records an identity-preserving source edit when it
+can prove the move. Generated Origin paths contain both the definition path and instance identity.
 
 **Identity laws.** Recompiling unchanged build closure yields the same IDs. No two different declaration paths within
 one accepted project yield the same ID. Alpha-renaming a private template parameter or the explicit instance name does
@@ -92,16 +91,16 @@ An instance is placed by the kind it makes, because a document is still one piec
 stands at the file root and is that file's piece, and a voice instance stands among a part's voices.
 
 A template voice may contain key, meter, tempo, and clef declarations because expansion produces an ordinary identity-
-bearing voice before those structural contexts are computed. A `music` value may not contain those declarations. This
-is the semantic reason both constructs exist.
+bearing voice before those structural contexts are computed. A `music` value may not contain those declarations. This is
+the semantic reason both constructs exist.
 
 Score, performance, instrument, and mix templates may share value parameters but still expand to separate declarations.
 A piece template does not package mutable studio state into a piece value.
 
 ## 4. Signatures and structures
 
-Structures are static named collections of values. A signature says what a structure must provide; a structure
-provides it; a `template structure` is a functor from structures to a structure. The implemented spelling is:
+Structures are static named collections of values. A signature says what a structure must provide; a structure provides
+it; a `template structure` is a functor from structures to a structure. The implemented spelling is:
 
 ```musa
 signature CanonMaterial {
@@ -122,15 +121,15 @@ template structure DelayedCanon(C: CanonMaterial, gap: Duration): CanonMaterial 
 make DelayedCanon(FifthMaterial, 1/2) as FifthCanon;
 ```
 
-A signature member is a `let` without its definition: a name and the type. Values, functions, and `music`
-bindings are all `let` members, because a function is a value of arrow type. Member kinds that name an identity-bearing
-declaration — `instrument`, `profile`, `patch` — are not implemented; when they arrive they will be spelled by their own
-keyword in the same position, and matching for them will be nominal rather than transparent.
+A signature member is a `let` without its definition: a name and the type. Values, functions, and `music` bindings are
+all `let` members, because a function is a value of arrow type. Member kinds that name an identity-bearing declaration —
+`instrument`, `profile`, `patch` — are not implemented; when they arrive they will be spelled by their own keyword in
+the same position, and matching for them will be nominal rather than transparent.
 
-Matching is transparent and by name: every member the signature lists must be defined by the structure with exactly
-that type, and a missing or mistyped member is reported at both the signature's member and the structure. A member the
-signature does not list is private — usable by the structure's own definitions and nameable by nothing outside it,
-which is what sealing means here.
+Matching is transparent and by name: every member the signature lists must be defined by the structure with exactly that
+type, and a missing or mistyped member is reported at both the signature's member and the structure. A member the
+signature does not list is private — usable by the structure's own definitions and nameable by nothing outside it, which
+is what sealing means here.
 
 Paths are `Structure.member`, and inside a structure a sibling member is read by its bare name. Unqualified lookup never
 searches remote packages or every imported module.
@@ -138,9 +137,9 @@ searches remote packages or every imported module.
 Functor application checks the argument's signature against the parameter's, expands once at the named site, seals the
 result to the result signature, and assigns a stable generative identity derived from the functor, the argument
 structures' identities, and the instance site — never the argument *expressions*, so two sites given equal arguments
-stay two structures, and never a span, so editing the text above a site does not change what it made. Instance sites are ordered by
-what they consume rather than by where they are written, and a cycle among them is refused: instantiation happens once,
-before anything is evaluated, so a functor consuming what it produces has no base case.
+stay two structures, and never a span, so editing the text above a site does not change what it made. Instance sites are
+ordered by what they consume rather than by where they are written, and a cycle among them is refused: instantiation
+happens once, before anything is evaluated, so a functor consuming what it produces has no base case.
 
 Expansion is *binding*, not rewriting: the body is checked once per instance in a scope where `C` names the structure
 the site passed, so no syntax is copied, no span moves, and no name can be captured. A functor sees exactly its
@@ -150,10 +149,10 @@ There is no `structure` value type, first-class structure unpacking, recursive s
 or Rust `Functor` trait — and the reason is the same one in every case. A structure is a *name for a group of
 declarations*: it holds no state, is never a value, and has stopped existing by the time anything is evaluated. A Rust
 trait would model a functor as a value with methods and a public structure object would model a structure as a thing
-that exists at run time;
-neither is true, and either would invite the applicative sharing this design refuses. What a functor *is* is a second
-checking pass over one body, so what it is written as is a scope — see `crates/musa-compiler/src/module.rs`, where the
-whole of it is one `NameScope` and a flattening into the namespace the core already has.
+that exists at run time; neither is true, and either would invite the applicative sharing this design refuses. What a
+functor *is* is a second checking pass over one body, so what it is written as is a scope — see
+`crates/musa-compiler/src/module.rs`, where the whole of it is one `NameScope` and a flattening into the namespace the
+core already has.
 
 ## 5. Resolution and compilation order
 

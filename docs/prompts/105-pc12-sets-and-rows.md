@@ -10,8 +10,8 @@ phase: 3
 
 ## Task
 
-Add the unspelled `pc12 = ℤ/12ℤ` domain, finite pitch-class sets, and the checked `row12` refinement; implement
-exact transposition/inversion, normal/prime forms, row operations/matrices, and row-property queries as ordinary
+Add the unspelled `pc12 = ℤ/12ℤ` domain, finite pitch-class sets, and the checked `row12` refinement; implement exact
+transposition/inversion, normal/prime forms, row operations/matrices, and row-property queries as ordinary
 standard-library computation. Keep this algebra explicitly separated from written pitch spelling and prove the
 24-versus-48 group accounting the earlier proposal misstated.
 
@@ -38,12 +38,13 @@ generic rows have orbit 48, symmetric rows have a proper orbit by stabilizer. Te
 small exhaustive modular reference model.
 
 Normal-order and prime-form tie breaking follows the exact OMT convention named in the docs and has brute-force
-agreement tests over all small sets. Matrix convention is explicit—OMT 109 presents more than one—and the surface
-name states the chosen zero convention rather than calling one universal.
+agreement tests over all small sets. Matrix convention is explicit—OMT 109 presents more than one—and the surface name
+states the chosen zero convention rather than calling one universal.
 
 ## Target
 
-- Core/refined values and checked constructors needed by source; `std::post_tonal::pcset` and `std::post_tonal::serial` implemented in `.musa`.
+- Core/refined values and checked constructors needed by source; `std::post_tonal::pcset` and `std::post_tonal::serial`
+  implemented in `.musa`.
 - Source syntax only where literals materially improve row readability; otherwise lists/functions suffice.
 - `examples/serial-forms.musa`: a generic row with 48 distinct forms, a symmetric counterexample, a matrix, and a
   spelling projection that must be explicit.

@@ -38,8 +38,8 @@ preserves comments predictably.
   their line). Whatever rules you choose, encode them as insta snapshots so review is textual.
 - `TextEdit` is a simple `(TextRange, String)` replacement type; `apply_edits` is a small utility now, load-bearing for
   score-editing in prompt 16.
-- `musa` gains real argument handling (hand-rolled or `clap` — if `clap`, add it and update `deny.toml` review in
-  the same commit):
+- `musa` gains real argument handling (hand-rolled or `clap` — if `clap`, add it and update `deny.toml` review in the
+  same commit):
   - `musa format <file>` — rewrite in place, or `--check` to exit non-zero on diff.
   - `musa check <file>` — lex + parse, print diagnostics with `miette` (roadmap §10.4), exit non-zero on errors.
     Semantic checks arrive in prompt 05 and extend this command; structure the command so that happens by adding a pass,

@@ -18,8 +18,8 @@ must not destroy: the kernel is a quotient *of* the source, and the mapping back
 Every compiled fact carries an `Origin`: the source span it came from, and the expansion path — through which motif
 uses, which transforms — it took to arrive. This is recorded exactly, not approximated.
 
-Provenance answers the question a composer working with transformed material asks constantly: *where did this come
-from, and what happens if I change it?* It powers:
+Provenance answers the question a composer working with transformed material asks constantly: *where did this come from,
+and what happens if I change it?* It powers:
 
 - **go-to-definition** in the language server, from a generated note to the construct that produced it;
 - **Origin view** in the desktop app, where authored and generated music read differently on the page;

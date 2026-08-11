@@ -27,10 +27,10 @@ without adding a statement form, a `let`-in-block, a `return`, or a second seque
 
 ## Design
 
-`fn` is the only declaration in the language whose body is not braced. `piece`, `library`, `voice`, `motif`,
-`fragment`, `signature`, `structure`, and `music` all write their contents between braces; `fn` alone writes `= e;`.
-The inconsistency was defended as forced by the absence of a statement language, and that defense confuses a block with
-a statement sequence. A block is a delimiter. Rust's function body is a block *expression* whose value is its trailing
+`fn` is the only declaration in the language whose body is not braced. `piece`, `library`, `voice`, `motif`, `fragment`,
+`signature`, `structure`, and `music` all write their contents between braces; `fn` alone writes `= e;`. The
+inconsistency was defended as forced by the absence of a statement language, and that defense confuses a block with a
+statement sequence. A block is a delimiter. Rust's function body is a block *expression* whose value is its trailing
 expression, and that is exactly the shape adopted here.
 
 The block form is deliberately minimal, and its minimality is the whole safety argument:
@@ -51,10 +51,10 @@ expression is, because a rule with one exception is two rules, and because `matc
 with it available. It gains no meaning there: parenthesizing an expression in braces does nothing.
 
 Two consequences look like objections and are not. A `music`-valued function reads
-`fn triad(register: frame) -> music { music { … } }`; the doubled brace is honest, since the outer delimits the
-function and the inner is a `music` value, and they are two different things that happen to abut. And a `match` body
-loses its trailing semicolon, which was the one place the old form read well — inside braces it reads better, next to
-every other `match` in the language.
+`fn triad(register: frame) -> music { music { … } }`; the doubled brace is honest, since the outer delimits the function
+and the inner is a `music` value, and they are two different things that happen to abut. And a `match` body loses its
+trailing semicolon, which was the one place the old form read well — inside braces it reads better, next to every other
+`match` in the language.
 
 This prompt runs before the theory block resumes because it touches every function in `stdlib/`, and the standard
 library grows with every prompt after it. Migrating fifty functions now is cheaper than migrating two hundred later.
@@ -73,8 +73,8 @@ The old spelling becomes a hard error with a located applicable fix, on prompt 1
   embedded in Rust tests, which the corpus tools do not reach.
 - `docs/language/02-core-calculus.md` §5 gains the derived form and the sentence discharging it; `01-surface.md`'s `fn`
   production and its formatter rules are repaired.
-- Formatter rendering plus its idempotence and round-trip laws: a braced body on one line when it fits, indented when
-  it does not.
+- Formatter rendering plus its idempotence and round-trip laws: a braced body on one line when it fits, indented when it
+  does not.
 - `editors/tree-sitter-musa` grammar, corpus, and queries updated, with the lexer drift law green.
 - LSP completion, semantic tokens, signature help, and the generated desktop highlight fixtures.
 - Prompt 93's frozen compatibility baseline updated for this deliberate break, with the break *named* in the baseline
@@ -99,8 +99,8 @@ Commit as `Give a function body braces`.
 
 - No statement language. No `let` in a block, no `return`, no `;`-separated sequence, no early exit, and no block with
   two expressions.
-- No anonymous functions, lambdas, or closures; `02-core-calculus.md` §5's "a checked named `fn` supplies the lambda"
-  is unchanged, and this prompt only changes how one is delimited.
+- No anonymous functions, lambdas, or closures; `02-core-calculus.md` §5's "a checked named `fn` supplies the lambda" is
+  unchanged, and this prompt only changes how one is delimited.
 - No change to `let` declarations, signature members, or any other `=`; this is about `fn` alone.
 - Do not accept both spellings, and do not add a compatibility flag or edition mechanism to allow the old one.
 - No change to type syntax, parameter defaults, or the arrow type.

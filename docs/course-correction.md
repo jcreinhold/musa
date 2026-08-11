@@ -864,19 +864,18 @@ The second changes its physical-time interpretation.
 
 There are two things called tempo, and this section is about the second one.
 
-| | What it is | Who reads it |
+|  | What it is | Who reads it |
 | --- | --- | --- |
 | The **marking** | `♩ = 92`, *Allegro*, written at a place in the score | the engraver, the exporters |
 | The **map** | the monotone `Beat → Second` above | the performance plan, the engine |
 
-The marking is a scoped context fact on the timeline, like a key, a meter or a clef: it has a place, it is printed,
-and it is part of the piece's semantic identity. The map is not in the snapshot at all — `IntegratedTempoMap` builds
-it in `musa-compiler/src/performance.rs` from the markings that carry a metronome, and from no others.
+The marking is a scoped context fact on the timeline, like a key, a meter or a clef: it has a place, it is printed, and
+it is part of the piece's semantic identity. The map is not in the snapshot at all — `IntegratedTempoMap` builds it in
+`musa-compiler/src/performance.rs` from the markings that carry a metronome, and from no others.
 
-`tempo "Andante";` is what proves they are separate: it prints, it enters the timeline, and it contributes no
-segment. A piece that states no metronome mark anywhere is performed at a quarter = 120, and that default lives in
-the performance layer rather than in the score, because it is a fact about playing an unmarked page rather than a
-fact about the page.
+`tempo "Andante";` is what proves they are separate: it prints, it enters the timeline, and it contributes no segment. A
+piece that states no metronome mark anywhere is performed at a quarter = 120, and that default lives in the performance
+layer rather than in the score, because it is a fact about playing an unmarked page rather than a fact about the page.
 
 Until prompt 72 the implementation had one struct, `TempoMap`, that the notation planner and the performance lowerer
 both read — the notated/performed collapse roadmap §2 forbids, and the reason a tempo-only edit did not move the
@@ -916,11 +915,11 @@ This keeps score semantics and signal-processing semantics independently coheren
 
 > **Candidate refinement (prompt 92; not governing until prompt 139):** `docs/language/08-performance-and-sound.md`
 > makes the realization/instrument boundary typed and explicit:
-> `Timeline[ScoreFact] → GestureTimeline[InstrumentSignature] → ScheduledGestureLane → Signal → stereo mix`.
-> Profiles interpret notation into exact musical gestures and semantic `ControlKey`s; instrument implementations map
-> those controls privately to native graphs or sample maps. Part identity survives to its prepared instrument. This
-> repairs the current shared-note-stream and ignored-parameter debts without moving audio, seconds, samples, or buses
-> into the kernel.
+> `Timeline[ScoreFact] → GestureTimeline[InstrumentSignature] → ScheduledGestureLane → Signal → stereo mix`. Profiles
+> interpret notation into exact musical gestures and semantic `ControlKey`s; instrument implementations map those
+> controls privately to native graphs or sample maps. Part identity survives to its prepared instrument. This repairs
+> the current shared-note-stream and ignored-parameter debts without moving audio, seconds, samples, or buses into the
+> kernel.
 
 ---
 
@@ -1333,8 +1332,8 @@ The anti-pattern is not “domain-specific syntax.”
 The anti-pattern is **domain-specific semantic accretion without a stable lower algebra**.
 
 The candidate respects that rule: every score construction closes to the existing `Term[ScoreFact]`, and its sound and
-asset declarations remain downstream consumers. The fact that the candidate settles a surface choice is not authority
-to add a kernel constructor.
+asset declarations remain downstream consumers. The fact that the candidate settles a surface choice is not authority to
+add a kernel constructor.
 
 ---
 
@@ -1411,43 +1410,43 @@ The candidate kernel should support clean elaboration of at least:
 
 4. **Tuplets and polyrhythm** Exact rational temporal relationships.
 
-5. **Changing meter and key** Contextual temporal information without semantic special cases. *(Proven at prompts
-   63–64, and pushed to its edge at prompt 74: `meter none` is a **value** of the meter context, not a mechanism
-   beside it, so music with no barlines needed no kernel form, no second time coordinate, and no new special case.
+5. **Changing meter and key** Contextual temporal information without semantic special cases. *(Proven at prompts 63–64,
+   and pushed to its edge at prompt 74: `meter none` is a **value** of the meter context, not a mechanism beside it, so
+   music with no barlines needed no kernel form, no second time coordinate, and no new special case.
    `examples/changing-meter.musa`, `examples/modulation.musa`, `examples/cadenza.musa`, `examples/chant.musa`.)*
 
-6. **Accelerando/ritardando** Distinguish symbolic beat structure from physical-time realization. *(Proven at
-   prompt 73: a gradual change is a `Progress` in the tempo marking's payload, integrated exactly at realization
-   and printed at both ends on the page. The symbolic timeline does not move — no notehead changes place —
-   which is the distinction stated as a test. `examples/rubato.musa`, `examples/riser.musa`.)*
+6. **Accelerando/ritardando** Distinguish symbolic beat structure from physical-time realization. *(Proven at prompt 73:
+   a gradual change is a `Progress` in the tempo marking's payload, integrated exactly at realization and printed at
+   both ends on the page. The symbolic timeline does not move — no notehead changes place — which is the distinction
+   stated as a test. `examples/rubato.musa`, `examples/riser.musa`.)*
 
-7. **Glissando/crescendo** Determine where continuous temporal behavior belongs. *(Proven at prompt 44: a shape is
-   a `Progress` in the payload, not a term form. `examples/annotated.musa`.)*
+7. **Glissando/crescendo** Determine where continuous temporal behavior belongs. *(Proven at prompt 44: a shape is a
+   `Progress` in the payload, not a term form. `examples/annotated.musa`.)*
 
 8. **Loop-based electronic music** Surface iteration producing finite observations. *(Proven at prompt 67: a ranged
    repeat is decided once at compile time and everything below it is an ordinary exact repeat.
    `examples/loop-lengths.musa`.)*
 
-9. **Controlled aleatory** Multiple possible realizations producing ordinary finite kernels. *(Design settled at
-   prompt 66, implemented at 67, given a surface at 68: `docs/kernel/11-realization.md`. Proven by
-   `examples/mobile.musa` — nineteen fragments, 19! orderings, one permutation in the payload — and by
-   `examples/in-c.musa`, fifty-three decision sites that survive an edit to each other.)*
+9. **Controlled aleatory** Multiple possible realizations producing ordinary finite kernels. *(Design settled at prompt
+   66, implemented at 67, given a surface at 68: `docs/kernel/11-realization.md`. Proven by `examples/mobile.musa` —
+   nineteen fragments, 19! orderings, one permutation in the payload — and by `examples/in-c.musa`, fifty-three decision
+   sites that survive an edit to each other.)*
 
 10. **An improvisational/live process** Verify that the finite kernel remains a useful observation/interchange target
     even when the producer is reactive. *(Proven at prompt 68 as far as it can be, and no further:
-    `examples/changes.musa` writes the improvised chorus as a frame of the right length with the changes on it, so
-    the interchange file holds a complete, finite, exactly-timed piece and the instruction a player needs. What is
-    **not** proven, and is refused rather than deferred, is a reactive producer: musa compiles a reading of the
-    work, it does not follow one. See prompt 68's Stop list.)*
+    `examples/changes.musa` writes the improvised chorus as a frame of the right length with the changes on it, so the
+    interchange file holds a complete, finite, exactly-timed piece and the instruction a player needs. What is **not**
+    proven, and is refused rather than deferred, is a reactive producer: musa compiles a reading of the work, it does
+    not follow one. See prompt 68's Stop list.)*
 
-11. **Polymeter and polytempo** Parts counted and paced independently of the score around them. *(Proven at
-    prompt 75, and the item is worth reading for how little it cost: `Meter` and `Tempo` already inherited by
-    `Override` and `BarLines` was already built on an arbitrary sequence of meters, so both are a **scope argument**
-    — `bars(scope)`, `IntegratedTempoMap::new(score, scope, …)` — and neither is a kernel form, a term, or a second
-    algorithm. `examples/bulgarian.musa` (7/8 against 4/4, barlines that diverge), `examples/hemiola.musa` (6/8
-    against 3/4, one grid beamed two ways), `examples/canon-x.musa` (Nancarrow's shape: one part accelerating while
-    the other decelerates). The lossy lowering this item exists to expose is real and is exactly one: SMF has one
-    tempo track, so a polytempo export is sonically exact and notationally wrong, and says so.)*
+11. **Polymeter and polytempo** Parts counted and paced independently of the score around them. *(Proven at prompt 75,
+    and the item is worth reading for how little it cost: `Meter` and `Tempo` already inherited by `Override` and
+    `BarLines` was already built on an arbitrary sequence of meters, so both are a **scope argument** — `bars(scope)`,
+    `IntegratedTempoMap::new(score, scope, …)` — and neither is a kernel form, a term, or a second algorithm.
+    `examples/bulgarian.musa` (7/8 against 4/4, barlines that diverge), `examples/hemiola.musa` (6/8 against 3/4, one
+    grid beamed two ways), `examples/canon-x.musa` (Nancarrow's shape: one part accelerating while the other
+    decelerates). The lossy lowering this item exists to expose is real and is exactly one: SMF has one tempo track, so
+    a polytempo export is sonically exact and notationally wrong, and says so.)*
 
 If several of these require awkward or lossy lowering, reconsider the kernel.
 

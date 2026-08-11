@@ -10,21 +10,20 @@ phase: 3
 
 ## Task
 
-Turn the implemented score language and bundled theory library into one tested reference with two reading paths: musicians
-can learn by musical task and language developers can recover the grammar, typing, elaboration, laws, ownership, and
-performance model precisely. Replace the proposal's provisional examples with compiling Musa source and make every
-public standard-library operation discoverable from source, editor hover, and the handbook without duplicating its
-definition. This is not the final whole-language handbook: prompt 141 adds performance, instruments, studio, assets,
-packages, samples, and clips before prompt 144 graduates the complete specification.
+Turn the implemented score language and bundled theory library into one tested reference with two reading paths:
+musicians can learn by musical task and language developers can recover the grammar, typing, elaboration, laws,
+ownership, and performance model precisely. Replace the proposal's provisional examples with compiling Musa source and
+make every public standard-library operation discoverable from source, editor hover, and the handbook without
+duplicating its definition. This is not the final whole-language handbook: prompt 141 adds performance, instruments,
+studio, assets, packages, samples, and clips before prompt 144 graduates the complete specification.
 
 ## Read
 
 - `docs/elaboration-language.md`, `docs/language/`, `docs/kernel/`, the roadmap language sections, and the style guide.
 - Prompts 92–123 and every bundled `.musa` source file introduced by them.
-- The relevant Open Music Theory chapters under
-  `~/Code/papers/music-theory/open-music-theory/` cited by prompts 100–119. In particular, use
-  `013-major-scales-scale-degrees-and-key-signatures.md`, `016-intervals.md`, `017-triads.md`,
-  `018-seventh-chords.md`, `020-roman-numerals.md`, `022-chords-in-satb-style.md`, the `023`–`030`
+- The relevant Open Music Theory chapters under `~/Code/papers/music-theory/open-music-theory/` cited by prompts
+  100–119. In particular, use `013-major-scales-scale-degrees-and-key-signatures.md`, `016-intervals.md`,
+  `017-triads.md`, `018-seventh-chords.md`, `020-roman-numerals.md`, `022-chords-in-satb-style.md`, the `023`–`030`
   species/counterpoint chapters, `033`–`035` on schemas, `072-neo-riemannian-triadic-progressions.md`, and the
   `099`–`110` pitch-class/set/serial chapters. Cite the exact file used rather than only its number.
 
@@ -44,9 +43,9 @@ The handbook has a musician-facing task path and an implementor-facing reference
   absent from OMT, cite the numbered definition/law/proof in `docs/language/`; do not launder an implementation choice
   into “music theory says”;
 - make the developer path specify surface grammar, typing judgments, context requirements, desugaring, evaluation,
-  normalization, resource diagnostics, provenance, caching invariants, module ownership, public/private boundaries,
-  and extension recipes. Include a worked trace from source through contextual `Music`, kernel term, occurrences, and
-  a rendered result;
+  normalization, resource diagnostics, provenance, caching invariants, module ownership, public/private boundaries, and
+  extension recipes. Include a worked trace from source through contextual `Music`, kernel term, occurrences, and a
+  rendered result;
 - generate the standard-library API index and editor documentation from authoritative declarations/doc comments.
   Handwritten prose may teach and cross-link but must not repeat signatures or parameter defaults.
 
@@ -62,9 +61,9 @@ errors and snapshot their plain-language diagnostic and repair. Test all interna
   source and validates the cited local chapters and internal links.
 - An explicit citation map from each implemented music-theory domain to the relevant local OMT chapter or Musa proof.
 - Compiling positive examples and diagnostic goldens for negative examples in `examples/` or focused doc-test fixtures.
-- Reconciliation of `docs/elaboration-language.md`: mark resolved choices as implemented, link to governing
-  candidate `docs/language/`, and retain rejected alternatives and rationale as design history. Do not call the
-  candidate governing before prompt 144.
+- Reconciliation of `docs/elaboration-language.md`: mark resolved choices as implemented, link to governing candidate
+  `docs/language/`, and retain rejected alternatives and rationale as design history. Do not call the candidate
+  governing before prompt 144.
 
 ## Check
 

@@ -18,16 +18,16 @@ music-theory guarantees the raw term bypasses.
 ## Read
 
 - `docs/language/00-semantics.md`, `01-surface.md`, and `05-verification.md` quotation sections.
-- `docs/kernel/01-grammar.md`, K1–K7 in `02-static-semantics.md`, T1–T6 in `10-term-calculus.md`, prompt 49's
-  reference marks, and prompt 120's grammar ownership.
+- `docs/kernel/01-grammar.md`, K1–K7 in `02-static-semantics.md`, T1–T6 in `10-term-calculus.md`, prompt 49's reference
+  marks, and prompt 120's grammar ownership.
 - Prompt 116 assertion placement and prompts 63–65 context-authority facts.
 
 ## Design
 
 The local form quotes exactly the kernel `composition-expression` grammar extended only with typed holes; it does not
 contain a version header or top-level composition declaration. `${e}` requires `e : music`. At quote instantiation,
-instantiate each hole once under the host environment at the structurally computed quotation locus: sequence adds
-exact prefix extents, overlay preserves the locus, shift translates, positive time scale scales the relative offset,
+instantiate each hole once under the host environment at the structurally computed quotation locus: sequence adds exact
+prefix extents, overlay preserves the locus, shift translates, positive time scale scales the relative offset,
 restriction does not relocate starts, and a `let` value begins at its enclosing locus.
 
 Bind each hole to a compiler-generated fresh kernel name, close the quote around those bindings, and reject capture by

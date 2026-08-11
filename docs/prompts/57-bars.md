@@ -10,10 +10,10 @@ phase: 2
 
 ## Task
 
-The language gains the unit every musician already thinks in. `bar { … }` groups a run of events, checks that it adds
-up to one measure, and can be named where it is written so a later bar can play it again. A bar is a brace you can
-select, copy, and paste, and a name you can reuse — and, because it declares what it claims to be, it is the first
-construct in musa that can be *wrong* in a way musa can point at.
+The language gains the unit every musician already thinks in. `bar { … }` groups a run of events, checks that it adds up
+to one measure, and can be named where it is written so a later bar can play it again. A bar is a brace you can select,
+copy, and paste, and a name you can reuse — and, because it declares what it claims to be, it is the first construct in
+musa that can be *wrong* in a way musa can point at.
 
 ## Read
 
@@ -37,8 +37,8 @@ dropped `1/4` in the fourth bar does not produce an error; it produces every lat
 the composer has to proofread against their own intentions. Writing the bar down turns that from proofreading into a
 diagnostic.
 
-Everything else the brief asks for — copy, paste, name, reuse — follows from having a delimiter. The check is what
-makes the delimiter worth typing.
+Everything else the brief asks for — copy, paste, name, reuse — follows from having a delimiter. The check is what makes
+the delimiter worth typing.
 
 ### The grammar
 
@@ -77,8 +77,8 @@ cycle-checker.
 ### What a bar means
 
 Nothing. A bar elaborates to exactly what its contents elaborate to — the braces are erased after they are checked. A
-named bar elaborates to a `let` and its uses to references, which is prompt 49's machinery unchanged. There is no bar
-in the kernel, no bar in `ScoreSnapshot`, and no bar in the notation plan, because the notation plan already knows where
+named bar elaborates to a `let` and its uses to references, which is prompt 49's machinery unchanged. There is no bar in
+the kernel, no bar in `ScoreSnapshot`, and no bar in the notation plan, because the notation plan already knows where
 measures are.
 
 ### What the check can honestly say
@@ -92,8 +92,8 @@ brace.
 ### Irregular lengths are deferred, and the reason is honest
 
 *(Paid by prompt 64. `MeterMap` is a `ContextTrack<Meter>`, the meter changes where the music changes, and all four
-exporters write the change. An irregular bar is written as the two meter statements it is; the `bar 5/4 { … }` sugar
-and the pickup stayed out, for the reasons prompt 64 records.)*
+exporters write the change. An irregular bar is written as the two meter statements it is; the `bar 5/4 { … }` sugar and
+the pickup stayed out, for the reasons prompt 64 records.)*
 
 This prompt was designed with `bar 5/4 { … }` and a `bar 1/4 { … }` pickup, on the argument that an irregular length is
 a meter occurrence and goes where prompt 40 put meter. Prompt 40 did not put it there. `MeterMap` holds **one** meter
@@ -129,10 +129,10 @@ The code is prompt 56's existing `does-not-add-up`, not a new pair. A bar that m
 misses its bracket are the same mistake at different scales, and the composer who has read one explanation has read
 both.
 
-Advice about a piece that does not compile is advice about a piece that does not exist, so the measure-sanity and
-tuplet warnings are suppressed once an error has been reported. Without that, a bar one quarter long also produces
-"voice `right` in part `piano` stops part-way through measure 3" — true, useless, and stacked on top of the diagnostic
-that explains it.
+Advice about a piece that does not compile is advice about a piece that does not exist, so the measure-sanity and tuplet
+warnings are suppressed once an error has been reported. Without that, a bar one quarter long also produces "voice
+`right` in part `piano` stops part-way through measure 3" — true, useless, and stacked on top of the diagnostic that
+explains it.
 
 ### Copy and paste is a formatting decision
 
@@ -143,8 +143,8 @@ bar { c5 1/4; e5 1/4; g5 1/4; e5 1/4; }
 ```
 
 That is the difference between a bar you can select with a double-click and drag into the next voice, and six lines you
-have to count. The formatter keeps a bar inline while it fits and breaks it the way a block breaks when it does not — and
-a bar carrying a comment always breaks, because a `//` swallows everything after it on the line.
+have to count. The formatter keeps a bar inline while it fits and breaks it the way a block breaks when it does not —
+and a bar carrying a comment always breaks, because a `//` swallows everything after it on the line.
 
 The budget is 96 columns, not the 48 of `01-visual-language.md` §8. A bar sits four levels in — piece, score, part,
 voice — so it starts at column 16, and four quarter notes with pitches and durations is another 40; at 48 no real bar
