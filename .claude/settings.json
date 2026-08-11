@@ -44,19 +44,20 @@
       "WebFetch",
       "WebSearch"
     ],
-    "ask": [
-      "Bash(git stash)",
-      "Bash(git stash apply *)",
-      "Bash(git stash drop *)",
-      "Bash(git stash pop *)",
-      "Bash(git stash push *)",
-      "Bash(git reset *)",
-      "Bash(rm -rf *)",
-      "Bash(npm install *)",
-      "Bash(pnpm install *)"
-    ],
+    "ask": ["Bash(rm -rf *)", "Bash(npm install *)"],
     "deny": [
-      "Bash(cargo publish *)"
+      "Bash(pip install *)",
+      "Bash(git stash)",
+      "Bash(git stash *)",
+      "Bash(git reset)",
+      "Bash(git reset *)",
+      "Bash(git restore*)",
+      "Bash(git clean)",
+      "Bash(git clean *)",
+      "Bash(git checkout .)",
+      "Bash(git checkout -- *)",
+      "Bash(git commit -a*)",
+      "Bash(git commit --all*)"
     ]
   },
   "hooks": {
