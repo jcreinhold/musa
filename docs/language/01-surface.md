@@ -188,11 +188,11 @@ analysis. No iterator exposes a `ScoreFact` or kernel occurrence.
 ## 4. Assertions and analyses
 
 ```musa
-assert fits_scale(scale c major) {
+assert pitches_in(scale c major) {
     c5/4 e5/4 g5/2
 }
 
-assert fits_scale(scale c major) {
+assert pitches_in(scale c major) {
     c5/4 fs5/4 g5/2
 }
 ```
@@ -200,6 +200,10 @@ assert fits_scale(scale c major) {
 The first succeeds and returns the body as music. The second is a compile error at `fs5`, with the predicate's witness
 and the enclosing assertion in the diagnostic. `assert p(args) { body }` desugars to `checked(p(args), music { body })`;
 `p` must be a constructor invariant or decidable assertion returning a structured witness, not an interpretive analysis.
+It is drawn from a fixed registry rather than from the composer's own definitions, and the name says what is read: this
+one reads the passage's sounded written pitches, so `pitches_in` is what it is called. §2 of `05-verification.md` is the
+rule the naming follows, and `fits_scale` — which this example said before prompt 116 — is what it rules out, since
+nothing in the word "fits" says which of a passage's properties was looked at.
 
 Interpretation is named and non-blocking:
 

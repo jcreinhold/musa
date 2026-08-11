@@ -1,7 +1,7 @@
 ---
 id: 116
 slug: explicit-theory-assertions
-status: pending
+status: in-progress
 depends_on: [101, 102, 107]
 phase: 3
 ---
@@ -36,12 +36,24 @@ Initial assertions:
 
 - `fills_meter`/existing named-bar law at every use site;
 - `pitches_in(scale)` over sounded written pitches, with chromatic alterations reported rather than respelled;
-- `realizes(chord_class|chord_symbol)` with explicit policy for omissions/doublings/non-chord tones;
+- `realizes(chord_class, policy)` with explicit policy for omissions/doublings/non-chord tones;
 - `voices(count)` and `within_ranges(ranges)` for a selected voicing/passage.
 
+`realizes` takes a **chord class**, and not also a chord symbol, though this prompt was drafted asking for both.
+`crates/musa-compiler/src/harmony.rs` opens by saying a chord symbol is "recorded, never interpreted": nothing in musa
+derives notes from one or checks that the notes under it agree with it, and later theory libraries are algorithms over
+that model rather than parts of it. Deriving members from a `ChordSymbol` here would be the compiler doing the deriving,
+which is the sentence that module exists to keep true. There is also no `ChordSymbol` value in the elaboration language
+and no expression that produces one — `harmony "fmaj7";` is a statement — so the second spelling would have to be a
+string argument in a language whose whole argument for itself is that its musical values are typed. `chord c major7` is
+how a chord class is written, it is what the assertion needs, and one spelling is enough. What OMT `075` contributes is
+its *content* rule, and that rule reaches the checker through the class.
+
 The chord realization policy is a typed parameter so strict pitch-set equality, subset-with-doubling, and allowed
-non-chord-tone modes are different claims. Assertions may wrap generated or handwritten music. A raw local kernel quote
-in prompt 121 intentionally does not inherit surface assertions unless the assertion is outside the quote.
+non-chord-tone modes are different claims. Its type is owned by the predicate registry rather than added to the
+elaboration language: three inhabitants no function can take or return would be language surface with no caller, which
+`AGENTS.md` forbids in the same breath as deep modules. Assertions may wrap generated or handwritten music. A raw local
+kernel quote in prompt 121 intentionally does not inherit surface assertions unless the assertion is outside the quote.
 
 ## Target
 
