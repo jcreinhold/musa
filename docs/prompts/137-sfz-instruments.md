@@ -8,8 +8,8 @@ phase: 4
 
 # SFZ Instruments Enter Through a Checked Adapter
 
-> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into
-> another, or replace it. Read `docs/core-boundary.md` first.
+> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into another, or
+> replace it. Read `docs/core-boundary.md` first.
 
 ## Task
 

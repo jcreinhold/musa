@@ -228,6 +228,7 @@ intuition-driven tuning. Anything slower must be measured on a real workload bef
 | 122 | elaboration-language-tooling | 3 | One compiler-backed semantic tooling model across editors |
 | 123 | elaboration-workbench | 3 | Musician-first desktop interaction for types, origin, assertions, analysis |
 | 124 | language-and-theory-handbook | 3 | Tested musician and implementor paths with theory citations |
+| 125 | core-boundary-decision | 3 | What the core is a calculus of, decided and costed before the sound block |
 | 126 | elaboration-performance-closure | 3 | Profiled latency, allocation, memory, caching, and budget closure |
 | 127 | studio-vocabulary | 3 | One generated processor/parameter vocabulary, hover, terminology |
 | 128 | exact-studio-values | 3 | Exact written quantities through audio preparation |
@@ -461,8 +462,12 @@ visual programming model.
 
 **124–126 close the score-elaboration implementation without prematurely graduating the language.** 124 tests two
 documentation paths — one by musical task and one by language implementation — and generates standard-library signatures
-from source. 126 compares score elaboration to 93's baseline and permits caching or incrementality only when semantic
-keys and measured need are demonstrated. Audio retains its frozen baseline and receives its own measured closure at 141.
+from source. 125 stops before the sound block and answers the question nineteen prompts were about to assume: what the
+core is a calculus of. It takes a census of every surface construct against the kernel term it elaborates to, costs
+three answers against that census, settles whether signals join an inductive calculus at all, and is allowed to repair,
+delete, and create prompts — the sound block is contingent on it. 126 compares score elaboration to 93's baseline and
+permits caching or incrementality only when semantic keys and measured need are demonstrated. Audio retains its frozen
+baseline and receives its own measured closure at 141.
 
 **127–133 replace the accidental score↔DSP wire with a typed instrument boundary.** 127 makes the studio vocabulary
 discoverable from one catalogue; 128 restores exact written quantities; 129 names the missing object, an exact

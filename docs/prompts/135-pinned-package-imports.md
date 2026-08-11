@@ -8,8 +8,8 @@ phase: 4
 
 # A Library May Live Elsewhere Without Making Builds Implicit
 
-> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into
-> another, or replace it. Read `docs/core-boundary.md` first.
+> **Contingent on prompt 125.** The core-boundary decision may repair this prompt's Design, fold it into another, or
+> replace it. Read `docs/core-boundary.md` first.
 
 ## Task
 
