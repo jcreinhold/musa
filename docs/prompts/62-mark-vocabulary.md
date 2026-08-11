@@ -87,7 +87,7 @@ pub fn lookup(name: &str) -> Option<&'static MarkDef>;
 Three emitters shaped by `Placement`, not N shaped by mark. `ly.rs`, `mei.rs`, and `musicxml.rs` each lose a five-arm
 `match` and gain one lookup of the backend's own name column. That is the whole payoff, and it is the reason the table
 carries backend names rather than the backends carrying tables: a mark's spelling in three formats is one fact about the
-mark, and splitting it three ways is what produced three `match`es that could drift.
+mark, and splitting it three ways is what produced three `match` expressions that could drift.
 
 Only `Placement::Attached` has a producer in this prompt. `Point` and `Span` are in the enum because the table would
 otherwise have to be redesigned at prompt 70 — but a `Placement` with no producer and no emitter is dead surface, so the

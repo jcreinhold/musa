@@ -123,7 +123,7 @@ test -s docs/language/04-templates-and-modules.md
 test -s docs/language/05-verification.md
 test -s docs/language/08-performance-and-sound.md
 test -s docs/language/09-assets-and-packages.md
-rg -n "Timeline\[Timeline|context-neutral|pc12|declaration template|antiquotation" \
+rg -n "Timeline\x5bTimeline|context-neutral|pc12|declaration template|antiquotation" \
   docs/language docs/kernel/06-surface-elaboration.md
 rg -n "GestureTimeline|instrument signature|ControlKey|fixed-media|offline" docs/language
 git diff --check

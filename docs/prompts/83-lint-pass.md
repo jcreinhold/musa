@@ -13,7 +13,7 @@ phase: 3
 Teach the compiler to warn about notation that is spelled correctly and still misleads: names nobody speaks, markings
 that change nothing, gradual changes that arrive nowhere, and repetition written as copies instead of as a motif. The
 rules are the machine-checkable subset of `docs/style-guide.md`, and they travel as ordinary `Warning` diagnostics with
-ordinary `Fix`es, so every surface that already shows diagnostics — `musa check`, the language server, both editors, the
+ordinary `Fix` values, so every surface that already shows diagnostics — `musa check`, the language server, both editors, the
 desktop — shows lints with no new plumbing.
 
 ## Read

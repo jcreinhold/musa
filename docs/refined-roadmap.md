@@ -501,11 +501,13 @@ and
 
 Thus the orientation-preserving rational affine group
 
+```text
 [
 \operatorname{Aff}^+(\mathbb Q)
 ===============================
 
 \mathbb Q\rtimes\mathbb Q_{>0} ]
+```
 
 acts on global musical time by
 
@@ -529,30 +531,36 @@ Fix a payload carrier set (A).
 
 For duration (d\in D), define the possible occurrences:
 
+```text
 [
 G_A(d)
 ======
 
 {(s,e,a)\mid 0\le s\le e\le d,; a\in A }. ]
+```
 
 Define:
 
+```text
 [
 \mathcal T_A(d)
 ===============
 
 \operatorname{FinMultiset}(G_A(d)). ]
+```
 
 A timeline of duration (d) is therefore a finite multiset of typed occurrences supported in the ambient interval
 ([0,d]).
 
 The complete denotation is:
 
+```text
 [
 \mathcal T_A
 ============
 
 \coprod_{d\in D}\mathcal T_A(d). ]
+```
 
 An element is written:
 
@@ -578,11 +586,13 @@ timeline d {
 
 define:
 
+```text
 [
 \llbracket M\rrbracket
 ======================
 
 \left( d,; [(s_1,e_1,\llbracket a_1\rrbracket), \ldots, (s_n,e_n,\llbracket a_n\rrbracket)] \right). ]
+```
 
 The brackets denote a multiset, not a set.
 
@@ -633,20 +643,24 @@ and
 
 Define translation of an occurrence multiset by (d):
 
+```text
 [
 \tau_d(F)
 =========
 
 {(d+s,d+t,a)\mid(s,t,a)\in F}. ]
+```
 
 Then:
 
+```text
 [
 \boxed{
 \llbracket sequence{M;N}\rrbracket
 ==================================
 
 (d+e,;E\uplus\tau_d(F)). } ]
+```
 
 Here (\uplus) is multiset union.
 
@@ -656,11 +670,13 @@ For multiple operands, iterate this definition from left to right.
 
 Sequence is associative:
 
+```text
 [
 (M;N);P
 =======
 
 M;(N;P) ]
+```
 
 denotationally.
 
@@ -672,6 +688,7 @@ timeline 0 beats {}
 
 because:
 
+```text
 [
 (0,\varnothing);(d,E)
 =====================
@@ -679,14 +696,17 @@ because:
 # (d,E)
 
 (d,E);(0,\varnothing). ]
+```
 
 Duration is a monoid homomorphism:
 
+```text
 [
 \operatorname{duration}(M;N)
 ============================
 
 \operatorname{duration}(M) + \operatorname{duration}(N). ]
+```
 
 Therefore:
 
@@ -712,12 +732,14 @@ The shorter timeline is simply regarded as content over the larger ambient inter
 
 Then:
 
+```text
 [
 \boxed{
 M\oplus N
 =========
 
 (m,;E\uplus F). } ]
+```
 
 This is `overlay`.
 
@@ -725,11 +747,13 @@ This is `overlay`.
 
 Overlay is associative:
 
+```text
 [
 (M\oplus N)\oplus P
 ===================
 
 M\oplus(N\oplus P). ]
+```
 
 It is commutative:
 
@@ -771,11 +795,13 @@ there is a canonical map:
 
 defined by:
 
+```text
 [
 \operatorname{extend}_{d,e}(d,E)
 ================================
 
 (e,E). ]
+```
 
 Nothing is added.
 
@@ -785,6 +811,7 @@ It is not padding with a silence event.
 
 For each (d\le e\le f):
 
+```text
 [
 \operatorname{extend}*{e,f}
 \circ
@@ -792,6 +819,7 @@ For each (d\le e\le f):
 ===========================
 
 \operatorname{extend}_{d,f}. ]
+```
 
 And:
 
@@ -799,11 +827,13 @@ And:
 
 Each extension preserves overlay:
 
+```text
 [
 \operatorname{extend}_{d,e}(M\oplus N)
 ======================================
 
 \operatorname{extend}*{d,e}(M) \oplus \operatorname{extend}*{d,e}(N). ]
+```
 
 So the fixed-duration overlay monoids form a covariant system over the ordered duration domain.
 
@@ -866,12 +896,14 @@ Suppose:
 
 Then:
 
+```text
 [
 \boxed{
 (M\oplus N);(P\oplus Q)
 =======================
 
 (M;P)\oplus(N;Q). } ]
+```
 
 Both sides contain:
 
@@ -946,11 +978,13 @@ Restriction obeys:
 
 and:
 
+```text
 [
 \rho_{J,K}\circ\rho_{I,J}
 =========================
 
 \rho_{I,K}. ]
+```
 
 Thus:
 
@@ -1003,12 +1037,14 @@ for every bounded interval (I), satisfying:
 
 So:
 
+```text
 [
 \boxed{
 Pattern[A]
 ==========
 
 \text{compatible finite kernel observations over bounded time windows.} } ]
+```
 
 The kernel remains finite.
 
@@ -1045,29 +1081,35 @@ Then:
 
 and:
 
+```text
 [
 \mathcal T(g\circ f)
 ====================
 
 \mathcal T(g)\circ\mathcal T(f). ]
+```
 
 So temporal timelines are **functorial in their payload**.
 
 They also preserve both principal operations:
 
+```text
 [
 \mathcal T(f)(M;N)
 ==================
 
 \mathcal T(f)(M); \mathcal T(f)(N) ]
+```
 
 and:
 
+```text
 [
 \mathcal T(f)(M\oplus N)
 ========================
 
 \mathcal T(f)(M) \oplus \mathcal T(f)(N). ]
+```
 
 This is the mathematical reason that things like transposition should normally live outside the temporal kernel.
 
@@ -1090,11 +1132,13 @@ For:
 
 define:
 
+```text
 [
 S_r(d,E)
 ========
 
 \left( rd,; {(rs,re,a)\mid(s,e,a)\in E} \right). ]
+```
 
 Then:
 
@@ -1108,19 +1152,23 @@ Thus positive rational scaling acts on timelines.
 
 It respects sequence:
 
+```text
 [
 S_r(M;N)
 ========
 
 S_r(M);S_r(N), ]
+```
 
 and overlay:
 
+```text
 [
 S_r(M\oplus N)
 ==============
 
 S_r(M)\oplus S_r(N). ]
+```
 
 So augmentation and diminution are not arbitrary compiler rewrites; they arise from a genuine group action.
 
@@ -1140,19 +1188,23 @@ No `Stretch` kernel node is required.
 
 For nonnegative (b), define delayed placement:
 
+```text
 [
 D_b(d,E)
 ========
 
 (d+b,\tau_b(E)). ]
+```
 
 But:
 
+```text
 [
 D_b(M)
 ======
 
 ( b,\varnothing ); M. ]
+```
 
 So delay is **derived from ambient time plus sequence**.
 
@@ -1466,11 +1518,13 @@ a presheaf of occurrence observations on bounded time intervals.
 
 ### Conditional synchronized interchange
 
+```text
 [
 (M\oplus N);(P\oplus Q)
 =======================
 
 (M;P)\oplus(N;Q) ]
+```
 
 when the first pair and second pair respectively have equal durations.
 

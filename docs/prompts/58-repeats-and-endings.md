@@ -72,7 +72,7 @@ error there could only say the grammar disagreed; the compiler can say what the 
 
 | | Score | Performance |
 | --- | --- | --- |
-| body | once, between `|:` and `:|` | *n* times |
+| body | once, between `\|:` and `:\|` | *n* times |
 | `ending k` | once, under a volta bracket labelled *k* | on pass *k* only |
 
 The timeline keeps the notes for every pass — playback, `musa render --to wav`, and the semantic hash are unchanged by

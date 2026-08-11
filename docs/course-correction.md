@@ -296,19 +296,23 @@ and:
 
 define:
 
+```text
 [
 M;N
 ===
 
 (d+e,\ E\uplus\tau_d(F)), ]
+```
 
 where:
 
+```text
 [
 \tau_d(s,t,a)
 =============
 
 (d+s,d+t,a). ]
+```
 
 So the second timeline is translated by the duration of the first.
 
@@ -326,11 +330,13 @@ where:
 
 Duration must satisfy:
 
+```text
 [
 duration(M;N)
 =============
 
 duration(M)+duration(N). ]
+```
 
 `sequence` is therefore associative temporal concatenation.
 
@@ -350,11 +356,13 @@ and:
 
 define:
 
+```text
 [
 M\oplus N
 =========
 
 (\max(d,e),E\uplus F). ]
+```
 
 Nothing is inserted into the uncovered portion of the shorter timeline.
 
@@ -366,11 +374,13 @@ Required laws:
 
 and:
 
+```text
 [
 (M\oplus N)\oplus P
 ===================
 
 M\oplus(N\oplus P). ]
+```
 
 Do **not** impose:
 
@@ -392,11 +402,13 @@ For:
 
 define:
 
+```text
 [
 extend_{d,e}(d,E)
 =================
 
 (e,E). ]
+```
 
 No occurrence is introduced.
 
@@ -408,11 +420,13 @@ Required coherence:
 
 and:
 
+```text
 [
 extend_{e,f}\circ extend_{d,e}
 ==============================
 
 extend_{d,f}. ]
+```
 
 Overlay must respect ambient extension.
 
@@ -458,11 +472,13 @@ and:
 
 then:
 
+```text
 [
 (M\oplus N);(P\oplus Q)
 =======================
 
 (M;P)\oplus(N;Q). ]
+```
 
 Musically:
 
@@ -536,11 +552,13 @@ Required laws:
 
 and:
 
+```text
 [
 Timeline(g\circ f)
 ==================
 
 Timeline(g)\circ Timeline(f). ]
+```
 
 It also preserves:
 
@@ -597,11 +615,13 @@ A delayed timeline can be represented by extending the ambient before its occurr
 
 Conceptually:
 
+```text
 [
 delay_b(M)
 ==========
 
 (b,\varnothing);M. ]
+```
 
 Therefore delay does not need an independent primitive semantic constructor either.
 
@@ -679,11 +699,13 @@ Restriction must obey:
 
 and nested restriction composition:
 
+```text
 [
 restrict_K(restrict_J(M))
 =========================
 
 restrict_K(M) ]
+```
 
 for:
 
@@ -783,7 +805,7 @@ The kernel should be understood as a **semantic quotient** of richer source stru
 
 ---
 
-# 21. Key, meter, harmony, etc.
+# 21. Key, meter, harmony, etc
 
 Do not create special temporal kernel forms for them.
 

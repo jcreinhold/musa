@@ -86,7 +86,7 @@ advice, and — where the repair is unambiguous — the edit itself. The list sh
   both `--ink-muted`; then the **fix**, if there is one.
 - **The location is `line:column`, 1-based, columns counted in characters.** Never a byte offset. Rust computes it
   (`03-interaction.md` §7 does not put line numbers on the frontend's list) and it arrives on every label.
-- The label says what is wrong *at that character* and never repeats the message. `missing `;`` / *it goes here*, not
+- The label says what is wrong *at that character* and never repeats the message. ``missing `;` `` / *it goes here*, not
   the same words twice.
 - **A fix is a control, and only when there is exactly one.** Labelled with the action in sentence case — *Add `;`*,
   *Write `1400 Hz`* — in `--plate`, because the application is acting for you, under a hairline underline and in no box

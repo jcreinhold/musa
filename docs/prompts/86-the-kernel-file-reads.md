@@ -107,7 +107,7 @@ Every kind, written out — this table is the specification:
 | `Repeat` | `repeat 4` · `repeat 6 from 4 to 16` |
 | `Ending` | `ending 2 pass 3` |
 | `Mobile` | `mobile 'a' 'b' order 1 0` |
-| `Improvise` | `improvise` · `improvise over 'Dm7 | G7'` |
+| `Improvise` | `improvise` · `improvise over 'Dm7 \| G7'` |
 
 A duration is `ratio` alone in the common case, and grows only when it must:
 

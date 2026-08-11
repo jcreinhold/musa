@@ -49,10 +49,10 @@ Musa definitions; importing a module is explicit and never searches the filesyst
   - `TonalContext.voicing_for: ChordClass -> Option[Voicing]` — How this context voices a chord class. Absent when the
     class cannot be voiced from the register it chose.
 - `structure CMajor: TonalContext` — C major, spelled from middle C.
-- `voicing_for(content: ChordClass) -> Option[Voicing] { close_position(content, c4) }` — 
+- `voicing_for(content: ChordClass) -> Option[Voicing] { close_position(content, c4) }` —
 - `structure ANaturalMinor: TonalContext` — A natural minor, spelled from the A below middle C. The same four members,
   answered differently — which is what makes the two structures interchangeable everywhere `TonalContext` is asked for.
-- `voicing_for(content: ChordClass) -> Option[Voicing] { close_position(content, a3) }` — 
+- `voicing_for(content: ChordClass) -> Option[Voicing] { close_position(content, a3) }` —
 
 ## `std::core`
 
