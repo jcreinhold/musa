@@ -24,8 +24,8 @@ music is ambiguous; verify explicit annotations when asked; never turn an analys
 
 ## Design
 
-Segment simultaneities by an explicit request policy (attacks, sustained coverage, or harmony-lane windows). Roman
-analysis takes a key candidate and uses prompt 107's constructive spelling as a reference; it reports exact, incomplete,
+Segment simultaneities by an explicit request policy (attacks, notated beats, or harmony-lane windows). Roman analysis
+takes a key candidate and uses prompt 107's constructive spelling as a reference; it reports exact, incomplete,
 non-chord-tone, and conflicting fits separately. Cadence classification requires the OMT-defined harmonic/melodic/formal
 evidence and states which evidence is missing rather than labeling any V–I a perfect authentic cadence.
 
