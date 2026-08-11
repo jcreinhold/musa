@@ -70,7 +70,7 @@ error there could only say the grammar disagreed; the compiler can say what the 
 
 ### What reaches each side
 
-| | Score | Performance |
+|  | Score | Performance |
 | --- | --- | --- |
 | body | once, between `\|:` and `:\|` | *n* times |
 | `ending k` | once, under a volta bracket labelled *k* | on pass *k* only |

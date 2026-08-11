@@ -350,9 +350,9 @@ Four rules a writer of quotes needs, and each one is the same rule the rest of t
   the quote is Musa source, so the host's comment syntax is the one that applies. The kernel's `%` lines belong to
   `.musa.kernel` documents, which are not written inside a piece.
 - **A raw payload says what the material is, and nothing about where it goes.** It states no scope and no origin; both
-  are supplied by the use, exactly as they are for any shared body, and a quote that spells either is refused. A
-  key, meter, clef or tempo payload is refused for the same reason at one remove — a `music` value may read the
-  context supplied at each use and may not settle it.
+  are supplied by the use, exactly as they are for any shared body, and a quote that spells either is refused. A key,
+  meter, clef or tempo payload is refused for the same reason at one remove — a `music` value may read the context
+  supplied at each use and may not settle it.
 - **The quotation locus is where a hole is *instantiated*, not where its facts land.** The two differ under `let`: a
   hole in a `let` value is instantiated once, at the `let`'s own locus, and each reference then places the finished
   facts wherever the term writes it. Every fact leaving a quote records that locus.

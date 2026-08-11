@@ -108,30 +108,30 @@ deny = [
 # still flagged. Re-audit after each tauri/wry major bump and prune entries
 # whose duplicate has disappeared.
 skip = [
-  { name = "base64", version = "0.21.7" },        # swift-rs (tauri-utils)
-  { name = "bitflags", version = "1.3.2" },      # fluent-uri/lsp-types, webkit2gtk
-  { name = "getrandom", version = "0.3.4" },     # tauri (vs uuid 0.4)
-  { name = "hashbrown", version = "0.12.3" },    # indexmap 1.9 (schemars)
-  { name = "hashbrown", version = "0.14.5" },    # rowan 0.17
-  { name = "heck", version = "0.4.1" },          # glib-macros (gtk)
-  { name = "indexmap", version = "1.9.3" },      # schemars 0.8 (tauri)
-  { name = "png", version = "0.17.16" },         # tauri-codegen/ico (vs muda 0.18)
-  { name = "proc-macro-crate", version = "1.3.1" }, # gtk3-macros
-  { name = "proc-macro-crate", version = "2.0.2" }, # glib-macros
-  { name = "rustc-hash", version = "1.1.0" },    # rowan 0.17
-  { name = "serde_spanned", version = "0.6.9" }, # toml_edit 0.20 (gtk system-deps)
-  { name = "syn", version = "1.0.109" },         # proc-macro-error (glib-macros)
-  { name = "syn", version = "2.0.119" },         # pre-syn-3 proc macros
-  { name = "thiserror", version = "1.0.69" },    # cairo-rs/gtk family
+  { name = "base64", version = "0.21.7" },              # swift-rs (tauri-utils)
+  { name = "bitflags", version = "1.3.2" },             # fluent-uri/lsp-types, webkit2gtk
+  { name = "getrandom", version = "0.3.4" },            # tauri (vs uuid 0.4)
+  { name = "hashbrown", version = "0.12.3" },           # indexmap 1.9 (schemars)
+  { name = "hashbrown", version = "0.14.5" },           # rowan 0.17
+  { name = "heck", version = "0.4.1" },                 # glib-macros (gtk)
+  { name = "indexmap", version = "1.9.3" },             # schemars 0.8 (tauri)
+  { name = "png", version = "0.17.16" },                # tauri-codegen/ico (vs muda 0.18)
+  { name = "proc-macro-crate", version = "1.3.1" },     # gtk3-macros
+  { name = "proc-macro-crate", version = "2.0.2" },     # glib-macros
+  { name = "rustc-hash", version = "1.1.0" },           # rowan 0.17
+  { name = "serde_spanned", version = "0.6.9" },        # toml_edit 0.20 (gtk system-deps)
+  { name = "syn", version = "1.0.109" },                # proc-macro-error (glib-macros)
+  { name = "syn", version = "2.0.119" },                # pre-syn-3 proc macros
+  { name = "thiserror", version = "1.0.69" },           # cairo-rs/gtk family
   { name = "thiserror-impl", version = "1.0.69" },
-  { name = "toml", version = "0.8.2" },          # system-deps (gtk build)
-  { name = "toml", version = "0.9.12" },         # cargo_toml (tauri-build)
-  { name = "toml_datetime", version = "0.6.3" }, # toml_edit 0.20
-  { name = "toml_datetime", version = "0.7.5" }, # toml 0.9
-  { name = "toml_edit", version = "0.19.15" },   # proc-macro-crate 1.3 (gtk3-macros)
-  { name = "toml_edit", version = "0.20.2" },    # proc-macro-crate 2.0 (glib-macros)
-  { name = "unicode-width", version = "0.1.14" },# miette 7.6
-  { name = "windows", version = "0.61.3" },      # tao/wry (vs cpal/midir 0.62)
+  { name = "toml", version = "0.8.2" },                 # system-deps (gtk build)
+  { name = "toml", version = "0.9.12" },                # cargo_toml (tauri-build)
+  { name = "toml_datetime", version = "0.6.3" },        # toml_edit 0.20
+  { name = "toml_datetime", version = "0.7.5" },        # toml 0.9
+  { name = "toml_edit", version = "0.19.15" },          # proc-macro-crate 1.3 (gtk3-macros)
+  { name = "toml_edit", version = "0.20.2" },           # proc-macro-crate 2.0 (glib-macros)
+  { name = "unicode-width", version = "0.1.14" },       # miette 7.6
+  { name = "windows", version = "0.61.3" },             # tao/wry (vs cpal/midir 0.62)
   { name = "windows-collections", version = "0.2.0" },
   { name = "windows-core", version = "0.61.2" },
   { name = "windows-future", version = "0.2.1" },
@@ -139,14 +139,14 @@ skip = [
   { name = "windows-numerics", version = "0.2.0" },
   { name = "windows-result", version = "0.3.4" },
   { name = "windows-strings", version = "0.4.2" },
-  { name = "windows-sys", version = "0.59.0" },   # window-vibrancy, winreg
-  { name = "windows-sys", version = "0.60.2" },   # rfd
+  { name = "windows-sys", version = "0.59.0" },         # window-vibrancy, winreg
+  { name = "windows-sys", version = "0.60.2" },         # rfd
   { name = "windows-targets", version = "0.52.6" },
   { name = "windows-threading", version = "0.1.0" },
   { name = "windows_x86_64_gnu", version = "0.52.6" },
   { name = "windows_x86_64_msvc", version = "0.52.6" },
-  { name = "winnow", version = "0.5.40" },       # toml_edit 0.19/0.20
-  { name = "winnow", version = "0.7.15" },       # toml 0.9 (cargo_toml)
+  { name = "winnow", version = "0.5.40" },              # toml_edit 0.19/0.20
+  { name = "winnow", version = "0.7.15" },              # toml 0.9 (cargo_toml)
 ]
 
 # Similarly to `skip` allows you to skip certain crates from being checked

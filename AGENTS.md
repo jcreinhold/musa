@@ -10,8 +10,8 @@ the semantic core is Rust, the UI is a replaceable projection.
    rules, and what is explicitly rejected or deferred. Read the cited sections before changing anything structural.
 2. **`docs/course-correction.md`** — the semantic course correction: a small temporal kernel (ambient exact rational
    time, typed occurrences, `timeline`/`sequence`/`overlay`) is the ontology; the surface language elaborates into it.
-   Where it and the roadmap disagree, the course correction wins. Its authoritative elaboration is **`docs/kernel/`**
-   (the kernel specification; candidate until prompt 12 graduates it).
+   Where it and the roadmap disagree, the course correction wins. Its authoritative elaboration is **`docs/kernel/`**,
+   the governing kernel specification.
 3. **`docs/interface/`** — the desktop interface specification: visual language, engraving quality bar, interaction and
    selection model, Origin view, states and voice, performance budgets. Roadmap §14 fixes the app's *architecture*;
    `docs/interface/` fixes everything §14 leaves open, and §14's wireframe is not a visual spec. Governing since prompt
@@ -40,17 +40,23 @@ them drift silently.
 | `crates/musa-project` | ProjectSession facade: documents, revisions, commands, exports |
 | `crates/musa` | thin CLI over musa-project, installed as the `musa` binary |
 | `crates/musa-lsp` | thin language server (LSP) over musa-project + musa-language |
+| `crates/musa-wasm` | wasm-bindgen shell: musa source → MEI for `@musa/web` |
 | `apps/musa-desktop` | thin Tauri shell + Svelte UI over musa-project |
+| `packages/musa-engrave` | shared worker engraver: Verovio behind the `Engraver` interface |
+| `packages/musa-web` | `@musa/web` — typeset musa scores in the browser |
 | `editors/tree-sitter-musa` | tree-sitter grammar + editor queries, held to the real lexer by the drift law |
+| `stdlib/` | the standard library as a real package (`musa.toml` + `src/`) |
 | `examples/` | `.musa` fixtures — executable specifications, not demos |
-| `docs/kernel/` | the temporal-kernel specification (candidate until prompt 12) |
+| `docs/kernel/` | the temporal-kernel specification (governing) |
 | `docs/interface/` | the desktop interface specification (governing) |
+| `docs/language/` | the elaboration-language specification (candidate until prompt 145) |
 | `docs/prompts/` | numbered implementation prompts + README |
 
 Dependency direction is one-way: language → compiler → {render, audio} → engine → project → {cli, lsp, desktop}, with
 `musa-kernel` a leaf that `musa-compiler` (and later consumers) depend on, and `musa-lsp` the one shell that also
 depends on `musa-language` (highlighting and completion answer on half-typed source, which the session's facts cannot
-describe — roadmap §15.11). No dependency points upward.
+describe — roadmap §15.11). `musa-wasm` is a fourth shell, over compiler + render, and `packages/*` sits below it in
+TypeScript. No dependency points upward.
 
 ## Commands
 
@@ -60,16 +66,21 @@ cargo nextest run [-p <crate>]            # fall back to cargo test if nextest m
 cargo nextest run --run-ignored all       # adds the slow tests; minutes, not seconds
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
+taplo fmt --check                         # TOML
+mdwright fmt-check                        # Markdown
 cargo deny check                          # if cargo-deny installed
 ```
 
-All four must be green before committing. The workspace lints in `Cargo.toml` are strict on purpose: fix the code, do
-not allow-list lints.
+All of these must be green before committing. The workspace lints in `Cargo.toml` are strict on purpose: fix the code,
+do not allow-list lints.
 
-**Slow tests are `#[ignore]`d and named as such.** A test that costs minutes rather than seconds is one nobody runs, so
-the default suite excludes it and asks for it by name. Marking one is a decision that has to be argued in its doc
-comment: what the test protects, what still covers that contract in the fast suite, and what breadth is being deferred
-to the explicit run. A slow test with no such note is a slow test that should have been made fast.
+**Two build systems.** `cargo build --workspace` covers `crates/*` and the Tauri shell only. `packages/*` and
+`apps/musa-desktop/ui` are a pnpm workspace: `pnpm -r check` and `pnpm -r test` there. Touching one side does not check
+the other.
+
+**Slow tests carry `#[ignore]` and say so in their name**, so the default suite asks for them by name. Marking one
+requires a doc comment arguing it: what the test protects, what still covers that contract in the fast suite, and what
+breadth is deferred. A slow test without that note should have been made fast.
 
 ## Standards
 
@@ -84,6 +95,8 @@ to the explicit run. A slow test with no such note is a slow test that should ha
 - **Real-time rules.** The audio callback never allocates, locks, does I/O, logs, or destroys large objects. Plans are
   preallocated on the control side and cross the boundary on `rtrb` queues.
 - **Exact time.** Musical time is rational (`num-rational`); floats appear only at the performance/DSP edge.
+- **`.musa` style.** `docs/style-guide.md` owns what the formatter cannot say — naming, and spellings that are correct
+  and still mislead the player. The lint pass enforces its machine-checkable subset; each rule names its diagnostic.
 - **Dependencies.** New crates must come from the roadmap §15 dependency lists and be added in the prompt that needs
   them. FundSP/CPAL/Rowan types stay private to their crate.
 
