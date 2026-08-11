@@ -25,6 +25,24 @@ impl MusicalTime {
     pub fn as_ratio(self) -> Ratio<i64> {
         self.0
     }
+
+    /// Read a time spelled the way the language spells a duration: `3`,
+    /// `1/2`, `7/8` — whole notes from the piece start.
+    ///
+    /// `None` for anything outside that spelling, including a zero
+    /// denominator and a negative value, so a caller reporting "that is not a
+    /// position" never has to decide what a bad one meant.
+    pub fn parse(text: &str) -> Option<Self> {
+        let (numerator, denominator) = match text.split_once('/') {
+            Some((numerator, denominator)) => (numerator, denominator.parse::<i64>().ok()?),
+            None => (text, 1),
+        };
+        let numerator = numerator.parse::<i64>().ok()?;
+        if denominator <= 0 || numerator < 0 {
+            return None;
+        }
+        Some(Self(Ratio::new(numerator, denominator)))
+    }
 }
 
 impl std::fmt::Display for MusicalTime {

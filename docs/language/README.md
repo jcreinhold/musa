@@ -24,6 +24,7 @@ projects source rather than owning another mutable score, instrument, or mix mod
 | `03-musical-domains.md` | typed theory domains, definitions, sources, and counterexamples |
 | `04-templates-and-modules.md` | declaration templates, stable identity, signatures, static functors |
 | `05-verification.md` | invariants, assertions, analyses, laws, and implementation gates |
+| `07-analysis.md` | the analysis boundary, findings and evidence, and the admission rule for a new kind |
 | `08-performance-and-sound.md` | score-to-gesture-to-instrument-to-signal semantics |
 | `09-assets-and-packages.md` | reproducible assets, packages, sample maps, clips, and fixed media |
 

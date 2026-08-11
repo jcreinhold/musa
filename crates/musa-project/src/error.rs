@@ -90,6 +90,11 @@ pub enum ProjectError {
     /// The audio engine could not be opened or commanded.
     #[error("audio engine: {0}")]
     Engine(String),
+
+    /// An analysis request named something the score does not have, or a
+    /// window with no music in it. The score is untouched: an analysis reads.
+    #[error("cannot analyze: {0}")]
+    Analysis(String),
 }
 
 impl ProjectError {

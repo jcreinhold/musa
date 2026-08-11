@@ -468,7 +468,11 @@ impl From<&ProjectError> for ErrorDto {
             ProjectError::RejectedEdit { .. }
             | ProjectError::NoSuchEvent(_)
             | ProjectError::Uneditable(_)
-            | ProjectError::NotYetImplemented { .. } => ErrorKindDto::Document,
+            | ProjectError::NotYetImplemented { .. }
+            // An analysis request that named a part or a window this score
+            // does not have is a mistake about the document, not a backend
+            // that failed: nothing was attempted.
+            | ProjectError::Analysis(_) => ErrorKindDto::Document,
             ProjectError::NothingTo(_) | ProjectError::NoValidScore => ErrorKindDto::Nothing,
             ProjectError::Performance(_)
             | ProjectError::Notation(_)

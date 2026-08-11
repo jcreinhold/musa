@@ -433,3 +433,68 @@ fn format_diff_shows_the_change_and_writes_nothing() -> std::io::Result<()> {
     assert_eq!(std::fs::read_to_string(&path)?, messy);
     std::fs::remove_file(&path)
 }
+
+/// `musa analyze` prints the report the compiler built, in the order the
+/// compiler built it, and says nothing about whether the piece is good.
+///
+/// The snapshot is the point: a report a reader cannot diff against yesterday's
+/// is a report nobody can act on (`docs/language/07-analysis.md` §4).
+#[test]
+fn analyze_prints_a_deterministic_report() -> std::io::Result<()> {
+    let annotated = format!("{}/../../examples/annotated.musa", env!("CARGO_MANIFEST_DIR"));
+    let output = musa(&["analyze", &annotated, "--kind", "facts"])?;
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    let text = String::from_utf8_lossy(&output.stdout).into_owned();
+    let again = musa(&["analyze", &annotated, "--kind", "facts"])?;
+    assert_eq!(
+        text,
+        String::from_utf8_lossy(&again.stdout),
+        "two runs printed different reports"
+    );
+    insta::assert_snapshot!("analyze_facts", text);
+    Ok(())
+}
+
+/// The window and the scope both narrow the report, and JSON says the same
+/// thing the text does.
+#[test]
+fn analyze_honours_scope_window_and_format() -> std::io::Result<()> {
+    let annotated = format!("{}/../../examples/annotated.musa", env!("CARGO_MANIFEST_DIR"));
+    let output = musa(&[
+        "analyze", &annotated, "--kind", "facts", "--part", "piano", "--voice", "lead", "--from", "1", "--to", "2",
+        "--format", "json",
+    ])?;
+    assert!(output.status.success(), "stderr: {:?}", output.stderr);
+    insta::assert_snapshot!("analyze_facts_window_json", String::from_utf8_lossy(&output.stdout));
+    Ok(())
+}
+
+/// A request the score cannot answer fails; a request with nothing in it does
+/// not. An analysis is not a check.
+#[test]
+fn analyze_refuses_a_bad_request_and_accepts_an_empty_one() -> std::io::Result<()> {
+    let annotated = format!("{}/../../examples/annotated.musa", env!("CARGO_MANIFEST_DIR"));
+    let bad = musa(&["analyze", &annotated, "--kind", "facts", "--part", "harpsichord"])?;
+    assert!(!bad.status.success());
+    let stderr = String::from_utf8_lossy(&bad.stderr);
+    assert!(stderr.contains("no part named `harpsichord`"), "stderr: {stderr}");
+    assert!(
+        stderr.contains("`piano`"),
+        "the error did not say what there is: {stderr}"
+    );
+
+    let unknown = musa(&["analyze", &annotated, "--kind", "tonal"])?;
+    assert!(!unknown.status.success());
+    assert!(
+        String::from_utf8_lossy(&unknown.stderr).contains("is not an analysis"),
+        "an unadmitted kind was accepted"
+    );
+
+    let empty = musa(&["analyze", &annotated, "--kind", "facts", "--from", "90", "--to", "99"])?;
+    assert!(empty.status.success(), "an empty window was treated as a failure");
+    assert!(
+        String::from_utf8_lossy(&empty.stdout).contains("0 findings"),
+        "an empty window reported something"
+    );
+    Ok(())
+}

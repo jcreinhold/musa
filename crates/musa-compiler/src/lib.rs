@@ -25,6 +25,7 @@
 //! full provenance path explaining why it exists; expansion always terminates
 //! (the language has no recursion).
 
+mod analysis;
 mod assert;
 mod bars;
 /// Measurement seams for the benchmark suite. Not an interface: see the
@@ -63,6 +64,10 @@ mod studio;
 mod template;
 mod time;
 
+pub use crate::analysis::{
+    AnalysisError, AnalysisFinding, AnalysisKind, AnalysisReport, AnalysisRequest, AnalysisScope, Evidence,
+    Observation, Standing, analyze,
+};
 pub use crate::bars::{BarBeat, BarLines, Measure};
 pub use crate::chord::chord_types;
 pub use crate::compile::{Compilation, CompileOptions, DocumentKind, SourceDocument, compile};

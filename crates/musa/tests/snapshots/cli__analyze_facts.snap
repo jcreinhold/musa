@@ -1,0 +1,26 @@
+---
+source: crates/musa/tests/cli.rs
+expression: text
+---
+facts — reads the score's own statements: what sounds, what rests, what is written above the staff, and what is in force
+  assuming the score compiled: an analysis reads a finished snapshot, never half-resolved source
+  assuming written spelling is kept: `d#4` is reported as D-sharp and never as E-flat
+  assuming nothing outside the requested scope and window was read, and nothing about it is claimed
+
+      1:1  fact      meter-in-force   4/4 is in force
+      1:1  fact      key-in-force     A minor is in force
+      1:1  fact      written-harmony  `am` is written above the staff        line 18
+      1:1  fact      sounding-pitch   A4 sounds for 1/4                      piano/lead, line 29
+      1:2  fact      sounding-pitch   C5 sounds for 1/4                      piano/lead, line 30
+      1:3  fact      sounding-pitch   E5 sounds for 1/2                      piano/lead, line 31
+      2:1  fact      written-harmony  `fmaj7` is written above the staff     line 19
+      2:1  fact      sounding-pitch   F5 sounds for 1/2                      piano/lead, line 32
+      2:3  fact      sounding-pitch   E5 sounds for 1/2                      piano/lead, line 33
+      3:1  fact      written-harmony  `e7` is written above the staff        line 20
+      3:1  fact      sounding-pitch   B4 sounds for 1/4                      piano/lead, line 36
+      3:2  fact      sounding-pitch   E5 sounds for 1/4                      piano/lead, line 37
+      3:3  fact      sounding-pitch   G♯5 sounds for 1/2                     piano/lead, line 38
+      4:1  fact      written-harmony  `am` is written above the staff        line 21
+      4:1  fact      sounding-pitch   A5 sounds for 1                        piano/lead, line 39
+
+15 findings

@@ -28,7 +28,7 @@ pub struct Fraction {
 }
 
 impl Fraction {
-    fn from_ratio(ratio: num_rational::Ratio<i64>) -> Self {
+    pub(crate) fn from_ratio(ratio: num_rational::Ratio<i64>) -> Self {
         Self {
             numerator: *ratio.numer(),
             denominator: *ratio.denom(),
@@ -669,7 +669,7 @@ fn pitches_of(kind: &ScoreEventKind) -> Vec<String> {
 
 /// A pitch as a reader expects it — `A4`, `G♯4`, `B♭2` — rather than in the
 /// language's ASCII spelling.
-fn written(pitch: WrittenPitch) -> String {
+pub(crate) fn written(pitch: WrittenPitch) -> String {
     format!(
         "{}{}{}",
         pitch.letter.as_char().to_ascii_uppercase(),
@@ -678,7 +678,7 @@ fn written(pitch: WrittenPitch) -> String {
     )
 }
 
-fn pitch_class(class: PitchClass) -> String {
+pub(crate) fn pitch_class(class: PitchClass) -> String {
     format!(
         "{}{}",
         class.letter.as_char().to_ascii_uppercase(),
@@ -698,7 +698,7 @@ fn accidental(steps: i32) -> String {
     }
 }
 
-fn mode(mode: Mode) -> &'static str {
+pub(crate) fn mode(mode: Mode) -> &'static str {
     match mode {
         Mode::Major => "major",
         Mode::Minor => "minor",

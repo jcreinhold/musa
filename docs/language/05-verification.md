@@ -64,6 +64,10 @@ choice.
 There is no privileged “the analysis.” Two methods may return different well-typed results. A failed or ambiguous
 analysis is data, not malformed music. Prompts 115–117 must keep construction APIs independent of analysis APIs.
 
+`07-analysis.md` elaborates this layer: the observation boundary, what a finding and its evidence mean, and the rule a
+new analysis kind must satisfy before it ships — an abstract domain, an abstraction map, and a soundness claim, in the
+shape Peyton Jones (1987) §22.1 gives a program analysis. It governs the analysis service; this section governs it.
+
 ## 4. Semantic laws
 
 Implementations must test the following at the equality named in `00-semantics.md`.

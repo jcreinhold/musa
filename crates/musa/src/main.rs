@@ -10,7 +10,8 @@ mod ignore;
 use std::process::ExitCode;
 
 use musa_project::{
-    ExportArtifact, ExportRequest, MidiMode, ProjectCommand, ProjectSession, Realization, TransportRequest,
+    AnalysisKind, AnalysisRequest, AnalysisScope, ExportArtifact, ExportRequest, MidiMode, MusicalTime, ProjectCommand,
+    ProjectSession, Realization, TransportRequest,
 };
 
 fn main() -> ExitCode {
@@ -23,6 +24,7 @@ fn main() -> ExitCode {
         Some("render") => with_seed(args.get(1..).unwrap_or_default(), cmd_render),
         Some("play") => cmd_play(args.get(1..).unwrap_or_default()),
         Some("kernel") => with_seed(args.get(1..).unwrap_or_default(), cmd_kernel),
+        Some("analyze") => with_seed(args.get(1..).unwrap_or_default(), cmd_analyze),
         Some(other) if !other.starts_with('-') => {
             eprintln!("error: `{other}` is not a musa command");
             eprintln!();
@@ -79,6 +81,10 @@ fn print_usage() {
     println!("  musa play <file.musa> [--loop]         live playback through the audio engine");
     println!("  musa kernel <file.musa> [--normalized] print the piece as kernel interchange text");
     println!("  musa kernel --check <file.musa.kernel> parse, check, and evaluate kernel text");
+    println!("  musa analyze <file.musa> --kind facts  observe a score without changing it");
+    println!("      --format text | json                 how to print the report (default: text)");
+    println!("      --part <name> [--voice <name>]       read one part, or one of its voices");
+    println!("      --from <n> --to <n>                  read only [from, to), in whole notes");
     println!("  --seed <n>  on check, render and kernel: which performance to compile");
 }
 
@@ -216,6 +222,156 @@ fn cmd_render(args: &[String], realization: &Realization) -> ExitCode {
         | ExportRequest::PerformanceDump
         | ExportRequest::NotationPlanDump
         | _ => write_artifact(path, &artifact, output, request.extension()),
+    }
+}
+
+/// `musa analyze <file.musa> --kind <kind> [--format text|json] [--part <name>
+/// [--voice <name>]] [--from <n> --to <n>]`
+///
+/// Reading only. The exit code says whether the *request* could be answered,
+/// never what the report contains: an analysis is not a check, and a piece
+/// with nothing in the window is a piece with nothing in the window
+/// (`docs/language/07-analysis.md` §1).
+fn cmd_analyze(args: &[String], realization: &Realization) -> ExitCode {
+    let mut path: Option<&str> = None;
+    let mut kind = "facts";
+    let mut format = "text";
+    let mut part: Option<&str> = None;
+    let mut voice: Option<&str> = None;
+    let mut from: Option<&str> = None;
+    let mut to: Option<&str> = None;
+    let mut index = 0;
+    while index < args.len() {
+        let Some(arg) = args.get(index).map(String::as_str) else {
+            break;
+        };
+        match arg {
+            "--kind" => {
+                kind = args.get(index.saturating_add(1)).map_or("facts", String::as_str);
+                index = index.saturating_add(2);
+            }
+            "--format" => {
+                format = args.get(index.saturating_add(1)).map_or("text", String::as_str);
+                index = index.saturating_add(2);
+            }
+            "--part" => {
+                part = args.get(index.saturating_add(1)).map(String::as_str);
+                index = index.saturating_add(2);
+            }
+            "--voice" => {
+                voice = args.get(index.saturating_add(1)).map(String::as_str);
+                index = index.saturating_add(2);
+            }
+            "--from" => {
+                from = args.get(index.saturating_add(1)).map(String::as_str);
+                index = index.saturating_add(2);
+            }
+            "--to" => {
+                to = args.get(index.saturating_add(1)).map(String::as_str);
+                index = index.saturating_add(2);
+            }
+            other => {
+                path = Some(other);
+                index = index.saturating_add(1);
+            }
+        }
+    }
+    let Some(path) = path else {
+        eprintln!("error: analyze needs a file");
+        return ExitCode::FAILURE;
+    };
+    let Some(kind) = AnalysisKind::named(kind) else {
+        eprintln!("error: `{kind}` is not an analysis (facts)");
+        return ExitCode::FAILURE;
+    };
+    let mut request = AnalysisRequest::new(kind);
+    request = match (part, voice) {
+        (None, None) => request,
+        (Some(part), None) => request.scoped(AnalysisScope::Part(part.to_owned())),
+        (Some(part), Some(voice)) => request.scoped(AnalysisScope::Voice {
+            part: part.to_owned(),
+            voice: voice.to_owned(),
+        }),
+        // A voice is a voice *of* a part, so naming one alone names nothing.
+        (None, Some(_)) => {
+            eprintln!("error: --voice needs --part: a voice is named within a part");
+            return ExitCode::FAILURE;
+        }
+    };
+    match (from, to) {
+        (None, None) => {}
+        (Some(from), Some(to)) => {
+            let (Some(from), Some(to)) = (MusicalTime::parse(from), MusicalTime::parse(to)) else {
+                eprintln!("error: --from and --to are whole notes, written `3` or `7/8`");
+                return ExitCode::FAILURE;
+            };
+            request = request.within(from, to);
+        }
+        _ => {
+            eprintln!("error: --from and --to go together: a window has two ends");
+            return ExitCode::FAILURE;
+        }
+    }
+    let session = match open(path, realization) {
+        Ok(session) => session,
+        Err(code) => return code,
+    };
+    let facts = match session.analyze(&request) {
+        Ok(facts) => facts,
+        Err(error) => {
+            eprintln!("error: {path}: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    match format {
+        "json" => println!("{}", facts.to_json()),
+        "text" => print_analysis(&facts),
+        other => {
+            eprintln!("error: --format {other} is not a format (text | json)");
+            return ExitCode::FAILURE;
+        }
+    }
+    ExitCode::SUCCESS
+}
+
+/// Print a report the way a person reads one: what ran, what it assumed, and
+/// one line per finding in the report's own order.
+fn print_analysis(facts: &musa_project::AnalysisFacts) {
+    println!("{} — {}", facts.kind, facts.method);
+    for assumption in &facts.assumptions {
+        println!("  assuming {assumption}");
+    }
+    println!();
+    for finding in &facts.findings {
+        let place = format!("{}:{}", finding.bar, fraction(finding.beat));
+        let where_seen = match finding.evidence {
+            musa_project::EvidenceFacts::Event {
+                ref part,
+                ref voice,
+                line,
+                ..
+            } => format!("{part}/{voice}, line {line}"),
+            musa_project::EvidenceFacts::Annotation { line, .. } => format!("line {line}"),
+            musa_project::EvidenceFacts::InForce => String::new(),
+        };
+        let row = format!(
+            "  {place:>7}  {:<9} {:<16} {:<38} {where_seen}",
+            finding.standing, finding.code, finding.summary,
+        );
+        println!("{}", row.trim_end());
+    }
+    println!();
+    let count = u32::try_from(facts.findings.len()).unwrap_or(u32::MAX);
+    println!("{count} {}", plural(count, "finding"));
+}
+
+/// `1` rather than `1/1`, because a beat is usually a whole number and
+/// `1/1` reads as a mistake.
+fn fraction(value: musa_project::Fraction) -> String {
+    if value.denominator == 1 {
+        value.numerator.to_string()
+    } else {
+        format!("{}/{}", value.numerator, value.denominator)
     }
 }
 

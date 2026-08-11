@@ -1,7 +1,7 @@
 ---
 id: 117
 slug: analysis-service
-status: pending
+status: done
 depends_on: [42, 99, 116]
 phase: 3
 ---

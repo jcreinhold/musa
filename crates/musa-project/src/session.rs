@@ -441,6 +441,24 @@ impl ProjectSession {
         }
     }
 
+    /// Observe the last score that compiled, without changing it.
+    ///
+    /// The one caller-facing analysis operation (prompt 117). It reads: no
+    /// revision is minted, no diagnostic is raised, and the source is
+    /// untouched — an analysis that could report *into* the session would be
+    /// a lint with extra steps, and prompt 83 drew that line.
+    ///
+    /// # Errors
+    /// [`ProjectError::NoValidScore`] if the piece has never compiled, or
+    /// [`ProjectError::Analysis`] when the request names a part or voice this
+    /// score does not have, or a window with no music in it.
+    pub fn analyze(&self, request: &musa_compiler::AnalysisRequest) -> Result<crate::AnalysisFacts, ProjectError> {
+        let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
+        let report =
+            musa_compiler::analyze(&valid.score, request).map_err(|error| ProjectError::Analysis(error.to_string()))?;
+        Ok(crate::AnalysisFacts::derive(&report, &valid.score, &valid.source))
+    }
+
     /// Start listening to a MIDI keyboard, and report which one.
     ///
     /// Idempotent, and never an error: a machine with no keyboard answers
