@@ -1,7 +1,7 @@
 ---
 id: 119
 slug: voice-leading-and-counterpoint
-status: pending
+status: in-progress
 depends_on: [102, 116, 117]
 phase: 3
 ---

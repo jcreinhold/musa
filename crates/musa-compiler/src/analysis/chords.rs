@@ -264,7 +264,7 @@ fn compare(
 /// notes this vocabulary does not stack, and answering with the triad
 /// underneath would be comparing the notes against a chord the source did not
 /// write.
-fn spelled(symbol: &ChordSymbol) -> Option<ChordClass> {
+pub(super) fn spelled(symbol: &ChordSymbol) -> Option<ChordClass> {
     let kind = match (symbol.quality(), symbol.seventh()) {
         (ChordQuality::Major, None) => ChordType::Major,
         (ChordQuality::Major, Some(Seventh::Major)) => ChordType::Major7,

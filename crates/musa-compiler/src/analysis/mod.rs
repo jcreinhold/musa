@@ -49,7 +49,7 @@
 
 use crate::chord::ChordClass;
 use crate::harmony::ChordSymbol;
-use crate::origin::SourceSpan;
+use crate::origin::{Interval, SourceSpan};
 use crate::pitch::{PitchClass, WrittenPitch};
 use crate::scope::Scope;
 use crate::score::{EventId, Key, Meter, PartId, ScoreSnapshot, VoiceId};
@@ -70,11 +70,22 @@ pub enum AnalysisKind {
     Tonal,
     /// Cadences, with the evidence each one does and does not have.
     Cadences,
+    /// How the voices of a chordal texture move, against a named style profile.
+    VoiceLeading,
+    /// Species counterpoint against a designated cantus firmus.
+    Counterpoint,
 }
 
 impl AnalysisKind {
     /// Every kind, in the order a listing prints them.
-    pub const ALL: [Self; 4] = [Self::Facts, Self::Chords, Self::Tonal, Self::Cadences];
+    pub const ALL: [Self; 6] = [
+        Self::Facts,
+        Self::Chords,
+        Self::Tonal,
+        Self::Cadences,
+        Self::VoiceLeading,
+        Self::Counterpoint,
+    ];
 
     /// How the kind is written on a command line.
     pub fn as_str(self) -> &'static str {
@@ -83,6 +94,8 @@ impl AnalysisKind {
             Self::Chords => "chords",
             Self::Tonal => "tonal",
             Self::Cadences => "cadences",
+            Self::VoiceLeading => "voice-leading",
+            Self::Counterpoint => "counterpoint",
         }
     }
 
@@ -106,6 +119,12 @@ impl AnalysisKind {
             }
             Self::Cadences => {
                 "looks at each potential cadence point for the harmonic, melodic, and formal evidence OMT 036 requires, and says which of it is missing"
+            }
+            Self::VoiceLeading => {
+                "reads the motion between adjacent sonorities against the rules of the requested style profile, and reports each departure with the rule's own strength"
+            }
+            Self::Counterpoint => {
+                "reads a counterpoint against its designated cantus firmus under the rules of the requested species (OMT 023-028)"
             }
         }
     }
@@ -137,8 +156,209 @@ impl AnalysisKind {
                 "phrase endings come from what the source marks — a `phrase`, a rest, or the end of the piece — never from a guess about form",
                 "a subverted cadence looks exactly like a cadence to a reader of pitch alone, so a candidate here is not a decision",
             ],
+            Self::VoiceLeading | Self::Counterpoint => &[
+                "the requested profile is a historical pedagogy and not a law of music: a departure is a departure from that style and nothing more",
+                "each rule carries its own strength — definitional, hard within the exercise, or a guideline — and the report never flattens the three",
+                "voices, spans, and intervals are the notated ones, with ties already joined; performed time is never read for a notational rule",
+            ],
         }
     }
+}
+
+/// The style a voice-leading or counterpoint reading is against.
+///
+/// Named data rather than a hidden compiler mode: a profile is chosen in the
+/// request, printed in the report, and its rule list is part of what the
+/// report says. Two profiles reading one passage will disagree, and that is
+/// the honest situation — the disagreement is between two traditions, and the
+/// request names which one is speaking.
+///
+/// Its parameters live on [`AnalysisRequest`] rather than inside the variants.
+/// A species profile needs a designated cantus firmus, but a request also
+/// needs a scope, a window, and a key, and a profile whose variants carried
+/// half of those would be a second request type with the same job.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AnalysisProfile {
+    /// Four-voice chorale-style part writing (OMT 022).
+    Satb,
+    /// First species: note against note.
+    Species1,
+    /// Second species: two notes against one.
+    Species2,
+    /// Third species: four notes against one.
+    Species3,
+    /// Fourth species: syncopated notes against one, tied across the bar.
+    Species4,
+    /// Fifth species: the previous four, mixed measure by measure.
+    Species5,
+    /// Jazz voicing motion (OMT 076), whose rules are guidelines by its own
+    /// account.
+    JazzVoiceLeading,
+}
+
+impl AnalysisProfile {
+    /// Every profile, in the order a listing prints them.
+    pub const ALL: [Self; 7] = [
+        Self::Satb,
+        Self::Species1,
+        Self::Species2,
+        Self::Species3,
+        Self::Species4,
+        Self::Species5,
+        Self::JazzVoiceLeading,
+    ];
+
+    /// How the profile is written on a command line.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Satb => "satb_common_practice",
+            Self::Species1 => "species_1",
+            Self::Species2 => "species_2",
+            Self::Species3 => "species_3",
+            Self::Species4 => "species_4",
+            Self::Species5 => "species_5",
+            Self::JazzVoiceLeading => "jazz_voice_leading",
+        }
+    }
+
+    /// The profile written as `name`, or `None` if none is.
+    pub fn named(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|profile| profile.as_str() == name)
+    }
+
+    /// Which analysis this profile is a profile of.
+    ///
+    /// A profile belongs to exactly one kind, so a request that pairs them
+    /// wrongly is refused rather than quietly reinterpreted.
+    pub fn kind(self) -> AnalysisKind {
+        match self {
+            Self::Satb | Self::JazzVoiceLeading => AnalysisKind::VoiceLeading,
+            Self::Species1 | Self::Species2 | Self::Species3 | Self::Species4 | Self::Species5 => {
+                AnalysisKind::Counterpoint
+            }
+        }
+    }
+
+    /// Whether this profile reads a designated cantus firmus.
+    pub fn needs_cantus(self) -> bool {
+        matches!(self.kind(), AnalysisKind::Counterpoint)
+    }
+
+    /// What the profile takes for granted about the music it is given, beyond
+    /// what its kind already states.
+    pub fn assumptions(self) -> &'static [&'static str] {
+        match self {
+            Self::Satb => &[
+                "four voices, written as four voices: a chord written inside one voice is reported as a departure from the profile's own definition, not silently split",
+                "voices are ordered by where they lie, lowest first, whatever order the source declares them in",
+                "the doubling and tendency-tone rules read the key in force; where no key is written, they are not checked and say so",
+            ],
+            Self::Species1 | Self::Species2 | Self::Species3 | Self::Species4 | Self::Species5 => &[
+                "exactly two voices, one of which the request designates as the cantus firmus",
+                "the species is the rhythmic relation between them; a counterpoint that does not stand in it is reported against the species that was asked for",
+                "the perfect fourth is a dissonance against the bass and a consonance above it (OMT 023), and which one it is depends on the voice below",
+            ],
+            Self::JazzVoiceLeading => &[
+                "voices are the positions of a voicing counted from the bottom, because a jazz voicing is a chord and not four independent lines",
+                "the written harmony lane supplies the chord: nothing here derives a symbol from the notes",
+                "every rule is a guideline by OMT 076's own account, and none of them is reported as anything else",
+            ],
+        }
+    }
+}
+
+/// What a style makes of a departure from one of its rules.
+///
+/// Three strengths and not a severity scale. The distinction is about where
+/// the rule comes from, not about how much it matters: a definitional rule
+/// says what the profile is *about*, an exercise rule is binding inside the
+/// exercise the profile models, and a guideline is advice its own source
+/// gives as advice. Nothing here is a claim that music which departs is bad
+/// music.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Strength {
+    /// The profile is defined by this. Music that departs is not being read
+    /// wrongly — it is not what the profile describes.
+    Definitional,
+    /// Binding within the exercise the profile models, and stated as binding
+    /// by the source cited.
+    Exercise,
+    /// Advice, given as advice by the source cited.
+    Guideline,
+}
+
+impl Strength {
+    /// The word a report prints.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Definitional => "definitional",
+            Self::Exercise => "hard in this exercise",
+            Self::Guideline => "guideline",
+        }
+    }
+}
+
+/// One rule of a profile, as a reader of a finding sees it.
+///
+/// Four fields, all of which a finding needs and none of which it can invent:
+/// the id an assertion can name, the sentence the rule states, the strength
+/// its tradition gives it, and the page it comes from. A rule with no citation
+/// cannot be constructed, because this type is only ever built from the
+/// registry.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct RuleName {
+    id: &'static str,
+    states: &'static str,
+    strength: Strength,
+    cites: &'static str,
+}
+
+impl RuleName {
+    /// The stable id: `satb_parallel_perfects`. What a filter matches and what
+    /// an assertion names.
+    pub fn id(self) -> &'static str {
+        self.id
+    }
+
+    /// What the rule states, in the voice of the style that states it.
+    pub fn states(self) -> &'static str {
+        self.states
+    }
+
+    /// What that style makes of a departure.
+    pub fn strength(self) -> Strength {
+        self.strength
+    }
+
+    /// Where it is written down: `OMT 022 §Spacing`.
+    pub fn cites(self) -> &'static str {
+        self.cites
+    }
+}
+
+impl std::fmt::Display for RuleName {
+    fn fmt(&self, out: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        out.write_str(self.id)
+    }
+}
+
+/// Every rule any profile checks, in registry order.
+///
+/// Public because a caller that renders a rule table — the documentation, an
+/// interface panel listing what a profile will look at — must not have to run
+/// an analysis to discover the rules exist.
+pub fn rule_names() -> impl Iterator<Item = RuleName> {
+    rules::RULES.iter().map(|rule| rule.name())
+}
+
+/// The rules a composer may name in an `assert follows(…)`, in registry order.
+///
+/// Crate-visible rather than public: it is the vocabulary of one statement in
+/// the elaboration language, and the language's own checker is its only
+/// caller. What is public is [`rule_names`], because a reader of a report
+/// needs every rule and not only the assertable ones.
+pub(crate) fn assertable() -> impl Iterator<Item = RuleName> {
+    rules::ASSERTABLE.iter().map(|rule| rule.name())
 }
 
 /// Which music to read.
@@ -175,6 +395,8 @@ pub struct AnalysisRequest {
     window: Option<(MusicalTime, MusicalTime)>,
     segmentation: Segmentation,
     key: Option<Key>,
+    profile: Option<AnalysisProfile>,
+    cantus: Option<String>,
 }
 
 /// How to decide which notes count as sounding together.
@@ -182,7 +404,7 @@ pub struct AnalysisRequest {
 /// A policy and not a discovery. Which notes form a chord is the first
 /// interpretive choice in any harmonic analysis, and the three answers below
 /// genuinely disagree on real music — a passing tone is inside the sonority
-/// under [`Self::Attacks`] and outside it under [`Self::Sustained`]. So the
+/// under [`Self::Attacks`] and outside it under [`Self::Beats`]. So the
 /// caller states it, the report carries it in its assumptions, and no
 /// algorithm here pretends the question was settled for it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -233,6 +455,8 @@ impl AnalysisRequest {
             window: None,
             segmentation: Segmentation::Attacks,
             key: None,
+            profile: None,
+            cantus: None,
         }
     }
 
@@ -272,6 +496,30 @@ impl AnalysisRequest {
         self.key = Some(key);
         self
     }
+
+    /// Read against this style profile.
+    ///
+    /// Required by [`AnalysisKind::VoiceLeading`] and
+    /// [`AnalysisKind::Counterpoint`] and refused by every other kind: there
+    /// is no default style, because a default style would be this library
+    /// choosing a pedagogy on the caller's behalf and then not saying so.
+    #[must_use]
+    pub fn under(mut self, profile: AnalysisProfile) -> Self {
+        self.profile = Some(profile);
+        self
+    }
+
+    /// Name the voice that is the cantus firmus.
+    ///
+    /// A species exercise has a given line and a written one, and which is
+    /// which is not recoverable from the notes — the cantus is a whole note
+    /// per bar in the first species and so is the counterpoint. So the request
+    /// says, and a species request that does not is refused.
+    #[must_use]
+    pub fn designating(mut self, cantus: impl Into<String>) -> Self {
+        self.cantus = Some(cantus.into());
+        self
+    }
 }
 
 /// A request no score could answer.
@@ -306,6 +554,40 @@ pub enum AnalysisError {
         from: MusicalTime,
         /// Where it was asked to stop.
         to: MusicalTime,
+    },
+    /// The kind reads against a style and the request named none.
+    #[error("`{}` reads against a style profile; name one with a profile", .kind.as_str())]
+    ProfileRequired {
+        /// The kind that was asked for.
+        kind: AnalysisKind,
+    },
+    /// The profile belongs to a different kind than the one requested.
+    #[error("`{}` is a profile of `{}`, not of `{}`", .profile.as_str(), .profile.kind().as_str(), .kind.as_str())]
+    WrongProfile {
+        /// The profile that was named.
+        profile: AnalysisProfile,
+        /// The kind it was asked for under.
+        kind: AnalysisKind,
+    },
+    /// A species profile with no cantus firmus designated.
+    #[error("`{}` reads a counterpoint against a cantus firmus; name the voice that is the cantus", .profile.as_str())]
+    NoCantus {
+        /// The profile that needs one.
+        profile: AnalysisProfile,
+    },
+    /// The designated cantus names no voice the request selected.
+    #[error("no voice named `{name}` in the music read; it has {}", spell(.available))]
+    NoSuchCantus {
+        /// The name that was designated.
+        name: String,
+        /// The voice names the reading found, in score order.
+        available: Vec<String>,
+    },
+    /// A species profile given something other than two voices.
+    #[error("species counterpoint reads two voices; this request selects {found}")]
+    NotTwoVoices {
+        /// How many voices the request selected.
+        found: usize,
     },
 }
 
@@ -483,6 +765,35 @@ pub enum Observation {
         /// Where the tonicized chord ends.
         to: MusicalTime,
     },
+    /// A rule the requested profile checked over a stretch of music.
+    ///
+    /// Reported whether or not anything departs from it, because a report that
+    /// listed only departures would leave a reader unable to tell a passage
+    /// that satisfies a rule from one the reading never looked at.
+    RuleInForce {
+        /// The rule, with its strength and its citation.
+        rule: RuleName,
+        /// Where the profile began reading.
+        from: MusicalTime,
+    },
+    /// A place where the music departs from one of the profile's rules.
+    ///
+    /// The observation is the motion, which is a fact about the notes. What
+    /// the style makes of it is `rule.strength()`, and the two are separate on
+    /// purpose: parallel fifths are a mistake in one exercise, a technique in
+    /// another, and the same two notes in both.
+    Departure {
+        /// The rule departed from.
+        rule: RuleName,
+        /// The voices involved, named the way the profile names them.
+        voices: Vec<String>,
+        /// The interval at issue, for a rule that is about one.
+        interval: Option<Interval>,
+        /// Where the departure begins.
+        from: MusicalTime,
+        /// Where it ends.
+        to: MusicalTime,
+    },
     /// A longer-term change of tonic (OMT 051).
     Modulation {
         /// The key being left.
@@ -657,7 +968,9 @@ impl Observation {
             Self::KeyInForce { from, .. }
             | Self::MeterInForce { from, .. }
             | Self::KeyRegion { from, .. }
-            | Self::Tonicization { from, .. } => from,
+            | Self::Tonicization { from, .. }
+            | Self::RuleInForce { from, .. } => from,
+            Self::Departure { from, .. } => from,
         }
     }
 
@@ -678,6 +991,8 @@ impl Observation {
             Self::Cadence { .. } => 10,
             Self::Sounding { .. } => 11,
             Self::Silence { .. } => 12,
+            Self::RuleInForce { .. } => 13,
+            Self::Departure { .. } => 14,
         }
     }
 }
@@ -834,6 +1149,7 @@ impl AnalysisFinding {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AnalysisReport {
     kind: AnalysisKind,
+    profile: Option<AnalysisProfile>,
     findings: Vec<AnalysisFinding>,
 }
 
@@ -843,14 +1159,27 @@ impl AnalysisReport {
         self.kind
     }
 
+    /// The style profile it read against, for the kinds that read against one.
+    pub fn profile(&self) -> Option<AnalysisProfile> {
+        self.profile
+    }
+
     /// One line saying what it does.
     pub fn method(&self) -> &'static str {
         self.kind.method()
     }
 
-    /// What it took for granted.
-    pub fn assumptions(&self) -> &'static [&'static str] {
-        self.kind.assumptions()
+    /// What it took for granted: the kind's assumptions, then the profile's.
+    ///
+    /// Owned rather than borrowed because a profiled reading assumes two sets
+    /// of things and a reader needs both — the alternative was a second
+    /// accessor whose caller would have to remember to print it.
+    pub fn assumptions(&self) -> Vec<&'static str> {
+        let mut assumptions = self.kind.assumptions().to_vec();
+        if let Some(profile) = self.profile {
+            assumptions.extend_from_slice(profile.assumptions());
+        }
+        assumptions
     }
 
     /// Everything it saw, in a deterministic order: by instant, then by the
@@ -894,6 +1223,7 @@ impl AnalysisReport {
 pub fn analyze(snapshot: &ScoreSnapshot, request: &AnalysisRequest) -> Result<AnalysisReport, AnalysisError> {
     let lanes = select(snapshot, &request.scope)?;
     let window = window_of(request)?;
+    let profile = profile_of(request)?;
     let findings = match request.kind {
         AnalysisKind::Facts => facts::observe(snapshot, &lanes, &request.scope, window),
         AnalysisKind::Chords => {
@@ -908,12 +1238,39 @@ pub fn analyze(snapshot: &ScoreSnapshot, request: &AnalysisRequest) -> Result<An
             let slices = segment::slices(snapshot, &lanes, request.segmentation, window);
             cadence::observe(snapshot, &lanes, &slices, request.key)
         }
+        AnalysisKind::VoiceLeading => voice_leading::observe(snapshot, &lanes, profile, request.key, window)?,
+        AnalysisKind::Counterpoint => {
+            counterpoint::observe(snapshot, &lanes, profile, request.cantus.as_deref(), window)?
+        }
     };
     Ok(AnalysisReport {
         kind: request.kind,
+        profile,
         findings,
     }
     .canonical())
+}
+
+/// The profile the request selects, checked against the kind that will use it.
+///
+/// Both directions are errors and both are the caller's to fix: a kind that
+/// reads against a style with no style named cannot pick one, and a style
+/// named for the wrong kind is a request that means something the caller did
+/// not write.
+fn profile_of(request: &AnalysisRequest) -> Result<Option<AnalysisProfile>, AnalysisError> {
+    let profiled = matches!(request.kind, AnalysisKind::VoiceLeading | AnalysisKind::Counterpoint);
+    match (request.profile, profiled) {
+        (Some(profile), true) if profile.kind() != request.kind => Err(AnalysisError::WrongProfile {
+            profile,
+            kind: request.kind,
+        }),
+        (Some(profile), true) => Ok(Some(profile)),
+        (None, true) => Err(AnalysisError::ProfileRequired { kind: request.kind }),
+        // A profile on a kind that reads no style is ignored rather than
+        // refused: the field is a builder, and a caller reusing one request
+        // for several kinds should not have to unset it.
+        (_, false) => Ok(None),
+    }
 }
 
 /// The half-open window a request selects, or the error saying it selects
@@ -1025,6 +1382,10 @@ fn order(finding: &AnalysisFinding) -> (MusicalTime, u8, u32, u32, u64, u32) {
 
 mod cadence;
 mod chords;
+mod counterpoint;
 mod facts;
+mod motion;
+mod rules;
 mod segment;
 mod tonal;
+mod voice_leading;

@@ -39,6 +39,7 @@
 // (see `time.rs`); the workspace lint is allowed at module scope for that.
 #![allow(clippy::arithmetic_side_effects)]
 
+use crate::analysis::RuleName;
 use crate::chord::ChordClass;
 use crate::diagnose::{Code, Diagnostic};
 use crate::origin::SourceSpan;
@@ -166,6 +167,8 @@ pub(crate) enum ParamType {
     Ranges,
     /// One of [`Realization`]'s three words.
     Policy,
+    /// The id of a rule an assertion may name.
+    Rule,
 }
 
 impl ParamType {
@@ -176,6 +179,9 @@ impl ParamType {
             Self::Chord => "ChordClass",
             Self::Count => "Nat",
             Self::Ranges => "List<(Pitch, Pitch)>",
+            // Likewise a word: a rule id names a row of the analysis rule
+            // registry, and the registry is not a value in the language.
+            Self::Rule => "rule id",
             // The three words themselves, because a policy has no type in
             // the elaboration language to name here — it is a word the
             // registry reads, and the honest way to say what is expected is
@@ -201,6 +207,8 @@ pub(crate) enum Argument {
     Ranges(Vec<(WrittenPitch, WrittenPitch)>),
     /// A realization policy.
     Policy(Realization),
+    /// A named voice-leading rule.
+    Rule(RuleName),
 }
 
 /// Reading an argument back out, one shape at a time.
@@ -242,6 +250,14 @@ impl Argument {
         }
     }
 
+    fn rule(self) -> Option<RuleName> {
+        if let Self::Rule(rule) = self {
+            Some(rule)
+        } else {
+            None
+        }
+    }
+
     fn policy(self) -> Option<Realization> {
         if let Self::Policy(policy) = self {
             Some(policy)
@@ -270,7 +286,7 @@ pub(crate) struct Predicate {
 
 /// Every claim a composer may write. This list *is* the family — there is no
 /// registration, no extension point, and no user predicate.
-pub(crate) const CLAIMS: [Predicate; 5] = [
+pub(crate) const CLAIMS: [Predicate; 6] = [
     Predicate {
         name: "fills_meter",
         parameters: &[],
@@ -295,6 +311,11 @@ pub(crate) const CLAIMS: [Predicate; 5] = [
         name: "within_ranges",
         parameters: &[ParamType::Ranges],
         checks: "each voice of each sonority, counted from the bottom, lies within the range given for it",
+    },
+    Predicate {
+        name: "follows",
+        parameters: &[ParamType::Rule],
+        checks: "no two sonorities of the passage depart from the named voice-leading rule",
     },
 ];
 
@@ -327,6 +348,8 @@ pub(crate) enum Claim {
     Voices(u64),
     /// Where each voice may lie, lowest first.
     WithinRanges(Vec<(WrittenPitch, WrittenPitch)>),
+    /// A named voice-leading rule the passage does not depart from.
+    Follows(RuleName),
 }
 
 impl Claim {
@@ -346,6 +369,7 @@ impl Claim {
             },
             "voices" => Self::Voices(arguments.next()?.count()?),
             "within_ranges" => Self::WithinRanges(arguments.next()?.ranges()?),
+            "follows" => Self::Follows(arguments.next()?.rule()?),
             _ => return None,
         };
         arguments.next().is_none().then_some(claim)
@@ -365,6 +389,7 @@ impl Claim {
             Self::Realizes { chord, policy } => format!("realizes({chord}, {})", policy.as_str()),
             Self::Voices(count) => format!("voices({count})"),
             Self::WithinRanges(ranges) => format!("within_ranges({} ranges)", ranges.len()),
+            Self::Follows(rule) => format!("follows({rule})"),
         }
     }
 }
@@ -383,6 +408,7 @@ pub(crate) fn check(claim: &Claim, passage: &Passage, settled: &Settled<'_>) -> 
         Claim::Realizes { chord, policy } => realizes(passage, *chord, *policy),
         Claim::Voices(count) => voices(passage, *count),
         Claim::WithinRanges(ranges) => within_ranges(passage, ranges),
+        Claim::Follows(rule) => follows(passage, *rule),
     }
 }
 
