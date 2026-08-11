@@ -1,5 +1,5 @@
 /**
- * Copy the musa compiler wasm beside the CDN bundle (prompt 143): it is the
+ * Copy the musa compiler wasm beside the CDN bundle (prompt 150): it is the
  * one external asset `musa-web.js` needs, and the script resolves it from
  * its own directory.
  */

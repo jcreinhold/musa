@@ -2,7 +2,7 @@
 id: 80
 slug: tree-sitter-grammar
 status: done
-depends_on: [3]
+depends_on: [03]
 phase: 3
 ---
 

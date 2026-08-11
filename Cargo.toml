@@ -113,7 +113,7 @@ map_unwrap_or = "warn"
 needless_collect = "warn"
 
 [profile.wasm]
-# Web typesetting artifact (prompt 138): size over speed, then wasm-opt -Oz.
+# Web typesetting artifact (prompt 145): size over speed, then wasm-opt -Oz.
 codegen-units = 1
 inherits = "release"
 lto = true

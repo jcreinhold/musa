@@ -4,7 +4,7 @@ import dts from "vite-plugin-dts";
 /**
  * The npm library build: one ESM module. Verovio stays external (a peer —
  * one version across the workspace, chosen by the app); the CDN build that
- * inlines everything is prompt 143's.
+ * inlines everything is prompt 150's.
  */
 export default defineConfig(({ command }) => ({
   plugins: [dts({ include: ["src"] })],

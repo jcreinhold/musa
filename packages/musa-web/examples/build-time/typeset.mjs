@@ -1,5 +1,5 @@
 /**
- * The static-site recipe (prompt 143): typeset every `text/musa` block in a
+ * The static-site recipe (prompt 150): typeset every `text/musa` block in a
  * glob of HTML at build time, so the deployed page needs no wasm and no JS
  * at all. Runs in Node, where the engraver takes its in-process path.
  *

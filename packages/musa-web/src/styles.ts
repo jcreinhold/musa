@@ -1,5 +1,5 @@
 /**
- * The package's own styling (prompt 141): minimal, injected once per
+ * The package's own styling (prompt 148): minimal, injected once per
  * document and once per shadow root, and deliberately ordinary CSS so an
  * embedder can override every rule. Nothing here sizes the music — that is
  * the engraver's layout, not the stylesheet's.

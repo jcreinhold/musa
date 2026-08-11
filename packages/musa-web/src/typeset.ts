@@ -1,5 +1,5 @@
 /**
- * DOM typesetting (prompt 141): the MathJax.typesetPromise / mermaid.run
+ * DOM typesetting (prompt 148): the MathJax.typesetPromise / mermaid.run
  * analog. Scan a root for musa snippets, typeset each one, and swap the
  * engraved SVG in — with the source kept in the document, because text is
  * canonical on the web too.
@@ -134,7 +134,7 @@ function targetFor(element: Element): Element | ShadowRoot {
 }
 
 /**
- * The opt-in observer (prompt 141 rule 6): one per typeset root, re-running
+ * The opt-in observer (prompt 148 rule 6): one per typeset root, re-running
  * the scan as nodes arrive. Text changes inside processed elements are not
  * tracked — that is what `reprocess` is for.
  */

@@ -1,4 +1,4 @@
-# Toolchain for the web wasm artifact (prompt 138), the post-wasm-pack way.
+# Toolchain for the web wasm artifact (prompt 145), the post-wasm-pack way.
 # `mise install` provides wasm-bindgen-cli and wasm-opt; the Rust target is
 # `rustup target add wasm32-unknown-unknown`.
 

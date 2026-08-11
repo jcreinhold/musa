@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 /**
- * The DOM suite (prompt 141): real pages served by vite's dev server, so the
+ * The DOM suite (prompt 148): real pages served by vite's dev server, so the
  * package's source is exercised exactly as a browser would load it.
  */
 export default defineConfig({
