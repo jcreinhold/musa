@@ -14,7 +14,13 @@ import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { TransportDto } from "./generated/TransportDto";
-import type { EditImpact, MidiEntry, ProjectSnapshot } from "../state/snapshot";
+import type {
+  AnalysisFacts,
+  EditImpact,
+  LibraryDocument,
+  MidiEntry,
+  ProjectSnapshot,
+} from "../state/snapshot";
 
 /** Whether the interface is running inside the desktop shell. */
 export function inShell(): boolean {
@@ -64,6 +70,18 @@ export const bridge = {
   /** Read a MIDI keyboard, or stop reading it. */
   listenToMidi: (listening: boolean, caret: string | null) =>
     call<ProjectSnapshot>("listen_to_midi", { listening, caret }),
+  /**
+   * Read the last valid score and report what one analysis saw. Asked for,
+   * never volunteered (`08-elaboration.md` §5).
+   */
+  analyze: (kind: string) => call<AnalysisFacts>("analyze", { kind }),
+  /**
+   * Open a bundled library module. `start`/`end` are the handle the snapshot
+   * handed out beside the URI, passed back untouched — they index a document
+   * this side has never seen.
+   */
+  libraryDocument: (uri: string, start: number | null, end: number | null) =>
+    call<LibraryDocument>("library_document", { uri, start, end }),
 
   /** Subscribe to a shell event. Resolves to the unsubscribe function. */
   async on<K extends keyof Events>(

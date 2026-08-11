@@ -42,6 +42,7 @@ mod error;
 mod export;
 mod facts;
 mod imports;
+mod library;
 mod logging;
 mod midi;
 mod playback;
@@ -63,8 +64,10 @@ pub use crate::error::ProjectError;
 pub use crate::export::{ExportArtifact, ExportRequest, KernelReport, check_kernel};
 pub use crate::facts::{
     DecisionFact, EventFacts, EventKind, Fraction, HeaderFact, ItemFact, NameFact, NameKind, OccurrenceFacts,
-    OriginFacts, OutlineFacts, OutlineKind, ParameterFact, PartFacts, ScoreFacts, SourceLocation, TypeFact, VoiceFacts,
+    OriginFacts, OutlineFacts, OutlineKind, ParameterFact, PartFacts, ScoreFacts, SourceLocation, StepFact, StepKind,
+    TypeFact, VoiceFacts,
 };
+pub use crate::library::{LibraryDocument, library_document};
 pub use crate::logging::{FILTER_VARIABLE, Logging};
 pub use crate::midi::MidiEntry;
 pub use crate::position::Position;

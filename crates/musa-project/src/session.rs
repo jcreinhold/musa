@@ -497,6 +497,44 @@ impl ProjectSession {
         Ok(crate::AnalysisFacts::derive(&report, &valid.score, &valid.source))
     }
 
+    /// [`Self::analyze`], as a frontend receives it: every span restated in
+    /// UTF-16 code units, and the revision it read.
+    ///
+    /// The same contract [`ProjectSnapshot::to_wire`] states, for the same
+    /// reason and by the same walk. A report's spans point into the source the
+    /// snapshot already carries, so a frontend that received them in bytes
+    /// would reveal the wrong characters in exactly the documents where it
+    /// matters — the ones with an accented word or an em dash in them.
+    ///
+    /// The revision is the score's, not the document's: an analysis reads the
+    /// last valid compile (`analyze` refuses without one), so a reader typing
+    /// into a piece that no longer parses is still looking at a reading of the
+    /// score in front of them. It is here rather than derived on the frontend
+    /// because only this side knows which compile was read
+    /// (`08-elaboration.md` §8).
+    ///
+    /// # Errors
+    /// Whatever [`Self::analyze`] refuses for.
+    pub fn analyze_wire(&self, request: &musa_compiler::AnalysisRequest) -> Result<serde_json::Value, ProjectError> {
+        /// The report, plus the compile it is a reading of.
+        #[derive(serde::Serialize)]
+        struct Reading<'a> {
+            revision: u64,
+            #[serde(flatten)]
+            report: &'a crate::AnalysisFacts,
+        }
+
+        let facts = self.analyze(request)?;
+        let valid = self.valid.as_ref().ok_or(ProjectError::NoValidScore)?;
+        let reading = Reading {
+            revision: valid.revision.0,
+            report: &facts,
+        };
+        let mut wire = serde_json::to_value(&reading).unwrap_or(serde_json::Value::Null);
+        crate::utf16::translate_spans(&mut wire, &crate::Utf16Offsets::new(&valid.source));
+        Ok(wire)
+    }
+
     /// Start listening to a MIDI keyboard, and report which one.
     ///
     /// Idempotent, and never an error: a machine with no keyboard answers

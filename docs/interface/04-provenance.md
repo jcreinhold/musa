@@ -70,6 +70,12 @@ The path reads outside-in, in containment order: the `use sigh()` that produced 
 reveals its declaration in the source column. The line number opens the source at that line. This row is how the answer
 to "where did this come from" is available without holding a key.
 
+*Extended (prompt 124).* A step is no longer a bare word. The elaboration language made steps into *places* — a template
+instance is written at a `make`, an assertion at its `assert`, a kernel quotation at the splice that put the material
+there — so each step carries what kind of step it is and, when it is a place, where it is written.
+[`08-elaboration.md`](08-elaboration.md) §4 fixes the kinds, what each one opens, and the rule that a step which is not
+a place gets no invented span.
+
 ### The Decision step (prompt 76)
 
 An open work is one whose page cannot be read off its source: `repeat 2 to 6` says what the piece allows, and how many

@@ -102,6 +102,77 @@ fn unicode_fixture_is_current() -> Result {
     write_or_compare(&fixtures_dir().join("unicode-fixture.snapshot.json"), &json)
 }
 
+/// The pieces the elaboration workbench is built against (prompt 124).
+///
+/// Three, because the screen has three different things to be right about and
+/// one piece cannot exercise them: a term declared in a bundled module, an
+/// expansion path that runs through a kernel quote, and an assertion the
+/// compiler refused. The last does not compile, which is the point — the
+/// interface has to show a claim at the place it was written even when the
+/// piece around it is not a score yet.
+#[test]
+fn elaboration_fixtures_are_current() -> Result {
+    for (name, file) in [
+        ("stdlib-basics", "stdlib-basics.musa"),
+        ("kernel-splice", "kernel-splice.musa"),
+        ("refused-claim", "broken/claim-not-a-measure.musa"),
+    ] {
+        let source = std::fs::read_to_string(example(file))?;
+        let session = ProjectSession::from_text(source, file);
+        assert_eq!(
+            session.snapshot().compiles(),
+            name != "refused-claim",
+            "{name} compiles when it should not, or the other way round"
+        );
+
+        let mut json = serde_json::to_string_pretty(&anonymous(session.snapshot().to_wire()))?;
+        json.push('\n');
+        write_or_compare(&fixtures_dir().join(format!("{name}.snapshot.json")), &json)?;
+    }
+    Ok(())
+}
+
+/// A reading with more than one answer in it.
+///
+/// `pivot-ambiguity.musa` is the passage two keys both explain, so the tonal
+/// reading reports both rather than choosing (`08-elaboration.md` §5). The
+/// interface's job is to keep them both on screen, and it needs a committed
+/// report to be held to that.
+#[test]
+fn analysis_fixture_is_current() -> Result {
+    let source = std::fs::read_to_string(example("analysis/pivot-ambiguity.musa"))?;
+    let session = ProjectSession::from_text(source, "pivot-ambiguity.musa");
+    assert!(session.snapshot().compiles(), "the fixture piece must compile");
+
+    let request = musa_compiler::AnalysisRequest::new(musa_compiler::AnalysisKind::Tonal);
+    let mut json = serde_json::to_string_pretty(&session.analyze_wire(&request)?)?;
+    json.push('\n');
+    write_or_compare(&fixtures_dir().join("pivot-ambiguity.analysis.json"), &json)
+}
+
+/// The bundled modules `stdlib-basics.musa` draws on, as documents.
+///
+/// The interface opens these read-only when a composer follows a term it did
+/// not declare (`08-elaboration.md` §3), and it must show the module's real
+/// text rather than a paraphrase — so the text is committed here, from the
+/// same function the shell calls.
+#[test]
+fn library_fixtures_are_current() -> Result {
+    let mut documents = serde_json::Map::new();
+    for uri in [
+        "musa-stdlib:/std/core.musa",
+        "musa-stdlib:/std/list.musa",
+        "musa-stdlib:/std/option.musa",
+    ] {
+        let document = musa_project::library_document(uri, None).ok_or("the module is not bundled")?;
+        documents.insert(uri.to_owned(), serde_json::to_value(&document)?);
+    }
+
+    let mut json = serde_json::to_string_pretty(&Value::Object(documents))?;
+    json.push('\n');
+    write_or_compare(&fixtures_dir().join("library-documents.json"), &json)
+}
+
 /// One MEI per engraving fixture (`docs/interface/02-engraving.md` §9).
 #[test]
 fn mei_fixtures_are_current() -> Result {

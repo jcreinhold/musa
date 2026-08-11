@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 
 import { fixture } from "../../src/lib/state/fixtures";
 import { Workspace } from "../../src/lib/state/selection.svelte";
-import type { ProjectSnapshot } from "../../src/lib/state/snapshot";
+import type { OccurrenceFacts, ProjectSnapshot } from "../../src/lib/state/snapshot";
 
 const snapshot = fixture("glass-mountain").snapshot as ProjectSnapshot;
 
@@ -20,12 +20,17 @@ function workspace(): Workspace {
   return new Workspace(() => snapshot);
 }
 
+/** An expansion path read as the words the Origin row prints. */
+function labels(occurrence: OccurrenceFacts | undefined): string[] {
+  return (occurrence?.path ?? []).map((step) => step.label);
+}
+
 describe("occurrences", () => {
   it("are two expansions of one motif, one of them transformed", () => {
     const [first, second] = workspace().occurrences;
     expect(workspace().occurrences).toHaveLength(2);
-    expect(first?.path).toEqual(["sigh()"]);
-    expect(second?.path).toEqual(["transpose down P5", "sigh()"]);
+    expect(labels(first)).toEqual(["sigh()"]);
+    expect(labels(second)).toEqual(["transpose down P5", "sigh()"]);
     expect(first?.motif).toBe("sigh");
     expect(second?.motif).toBe("sigh");
     // Two occurrences, never one: identity is the whole expansion path, so

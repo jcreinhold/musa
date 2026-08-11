@@ -1,7 +1,7 @@
 ---
 id: 124
 slug: elaboration-workbench
-status: pending
+status: done
 depends_on: [116, 118, 119, 122]
 phase: 3
 ---

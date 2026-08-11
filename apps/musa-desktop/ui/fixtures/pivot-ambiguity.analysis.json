@@ -1,0 +1,3480 @@
+{
+  "revision": 0,
+  "kind": "tonal",
+  "method": "reads each simultaneity as a Roman numeral against every key the passage supports, and reports tonicization and modulation candidates with the OMT 050-051 criteria each satisfies",
+  "assumptions": [
+    "common-practice Western tonality: these numerals describe that repertoire and nothing beyond it",
+    "a key written in the source is strong evidence about the key and not a proof of it (OMT 051)",
+    "tonicization and modulation lie on a continuum; where the criteria underdetermine it, both readings are reported (OMT 051)"
+  ],
+  "findings": [
+    {
+      "code": "key-region",
+      "standing": "candidate",
+      "summary": "C major accounts for the music up to 3",
+      "at": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "bar": 1,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-8",
+            "span": {
+              "start": 2470,
+              "end": 2474
+            },
+            "line": 66
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-9",
+            "span": {
+              "start": 2493,
+              "end": 2497
+            },
+            "line": 67
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-a",
+            "span": {
+              "start": 2516,
+              "end": 2520
+            },
+            "line": 68
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "every sounding class is in the key's collection",
+          "satisfied": true,
+          "cites": "OMT 013"
+        },
+        {
+          "criterion": "the key is the one the source writes",
+          "satisfied": true,
+          "cites": "OMT 051"
+        }
+      ]
+    },
+    {
+      "code": "key-region",
+      "standing": "candidate",
+      "summary": "A minor accounts for the music up to 3",
+      "at": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "bar": 1,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-8",
+            "span": {
+              "start": 2470,
+              "end": 2474
+            },
+            "line": 66
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-9",
+            "span": {
+              "start": 2493,
+              "end": 2497
+            },
+            "line": 67
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-a",
+            "span": {
+              "start": 2516,
+              "end": 2520
+            },
+            "line": 68
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "every sounding class is in the key's collection",
+          "satisfied": true,
+          "cites": "OMT 013"
+        },
+        {
+          "criterion": "the key is the one the source writes",
+          "satisfied": false,
+          "cites": "OMT 051"
+        }
+      ]
+    },
+    {
+      "code": "key-region",
+      "standing": "candidate",
+      "summary": "F major accounts for the music up to 3",
+      "at": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "bar": 1,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-8",
+            "span": {
+              "start": 2470,
+              "end": 2474
+            },
+            "line": 66
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-9",
+            "span": {
+              "start": 2493,
+              "end": 2497
+            },
+            "line": 67
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-a",
+            "span": {
+              "start": 2516,
+              "end": 2520
+            },
+            "line": 68
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "every sounding class is in the key's collection",
+          "satisfied": true,
+          "cites": "OMT 013"
+        },
+        {
+          "criterion": "the key is the one the source writes",
+          "satisfied": false,
+          "cites": "OMT 051"
+        }
+      ]
+    },
+    {
+      "code": "key-region",
+      "standing": "candidate",
+      "summary": "D minor accounts for the music up to 3",
+      "at": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "bar": 1,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-8",
+            "span": {
+              "start": 2470,
+              "end": 2474
+            },
+            "line": 66
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-9",
+            "span": {
+              "start": 2493,
+              "end": 2497
+            },
+            "line": 67
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-a",
+            "span": {
+              "start": 2516,
+              "end": 2520
+            },
+            "line": 68
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "every sounding class is in the key's collection",
+          "satisfied": true,
+          "cites": "OMT 013"
+        },
+        {
+          "criterion": "the key is the one the source writes",
+          "satisfied": false,
+          "cites": "OMT 051"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "I in C major — exact fit",
+      "at": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "bar": 1,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-8",
+            "span": {
+              "start": 2470,
+              "end": 2474
+            },
+            "line": 66
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "III in A minor — exact fit",
+      "at": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "bar": 1,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-8",
+            "span": {
+              "start": 2470,
+              "end": 2474
+            },
+            "line": 66
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "V in F major — exact fit",
+      "at": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "bar": 1,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-8",
+            "span": {
+              "start": 2470,
+              "end": 2474
+            },
+            "line": 66
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "VII in D minor — exact fit",
+      "at": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "bar": 1,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 0,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-8",
+            "span": {
+              "start": 2470,
+              "end": 2474
+            },
+            "line": 66
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-0",
+            "span": {
+              "start": 2077,
+              "end": 2089
+            },
+            "line": 52
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "IV in C major — exact fit",
+      "at": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "bar": 2,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-9",
+            "span": {
+              "start": 2493,
+              "end": 2497
+            },
+            "line": 67
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "VI in A minor — exact fit",
+      "at": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "bar": 2,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-9",
+            "span": {
+              "start": 2493,
+              "end": 2497
+            },
+            "line": 67
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "I in F major — exact fit",
+      "at": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "bar": 2,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-9",
+            "span": {
+              "start": 2493,
+              "end": 2497
+            },
+            "line": 67
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "III in D minor — exact fit",
+      "at": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "bar": 2,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-9",
+            "span": {
+              "start": 2493,
+              "end": 2497
+            },
+            "line": 67
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-1",
+            "span": {
+              "start": 2112,
+              "end": 2124
+            },
+            "line": 53
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "vi in C major — exact fit",
+      "at": {
+        "numerator": 2,
+        "denominator": 1
+      },
+      "bar": 3,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-a",
+            "span": {
+              "start": 2516,
+              "end": 2520
+            },
+            "line": 68
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "i in A minor — exact fit",
+      "at": {
+        "numerator": 2,
+        "denominator": 1
+      },
+      "bar": 3,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-a",
+            "span": {
+              "start": 2516,
+              "end": 2520
+            },
+            "line": 68
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "iii in F major — exact fit",
+      "at": {
+        "numerator": 2,
+        "denominator": 1
+      },
+      "bar": 3,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-a",
+            "span": {
+              "start": 2516,
+              "end": 2520
+            },
+            "line": 68
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "v in D minor — exact fit",
+      "at": {
+        "numerator": 2,
+        "denominator": 1
+      },
+      "bar": 3,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-a",
+            "span": {
+              "start": 2516,
+              "end": 2520
+            },
+            "line": 68
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "ii in G major — exact fit",
+      "at": {
+        "numerator": 2,
+        "denominator": 1
+      },
+      "bar": 3,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-a",
+            "span": {
+              "start": 2516,
+              "end": 2520
+            },
+            "line": 68
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        },
+        {
+          "criterion": "the chord is diatonic in the key before it as well",
+          "satisfied": true,
+          "cites": "OMT 051"
+        }
+      ]
+    },
+    {
+      "code": "key-region",
+      "standing": "candidate",
+      "summary": "G major accounts for the music up to 8",
+      "at": {
+        "numerator": 3,
+        "denominator": 1
+      },
+      "bar": 4,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 8,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-b",
+            "span": {
+              "start": 2539,
+              "end": 2543
+            },
+            "line": 69
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-c",
+            "span": {
+              "start": 2562,
+              "end": 2566
+            },
+            "line": 70
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-d",
+            "span": {
+              "start": 2585,
+              "end": 2589
+            },
+            "line": 71
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-e",
+            "span": {
+              "start": 2608,
+              "end": 2612
+            },
+            "line": 72
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-f",
+            "span": {
+              "start": 2631,
+              "end": 2635
+            },
+            "line": 73
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "every sounding class is in the key's collection",
+          "satisfied": true,
+          "cites": "OMT 013"
+        },
+        {
+          "criterion": "the key is the one the source writes",
+          "satisfied": false,
+          "cites": "OMT 051"
+        }
+      ]
+    },
+    {
+      "code": "key-region",
+      "standing": "candidate",
+      "summary": "E minor accounts for the music up to 8",
+      "at": {
+        "numerator": 3,
+        "denominator": 1
+      },
+      "bar": 4,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 8,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-b",
+            "span": {
+              "start": 2539,
+              "end": 2543
+            },
+            "line": 69
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-c",
+            "span": {
+              "start": 2562,
+              "end": 2566
+            },
+            "line": 70
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-d",
+            "span": {
+              "start": 2585,
+              "end": 2589
+            },
+            "line": 71
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-e",
+            "span": {
+              "start": 2608,
+              "end": 2612
+            },
+            "line": 72
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-f",
+            "span": {
+              "start": 2631,
+              "end": 2635
+            },
+            "line": 73
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "every sounding class is in the key's collection",
+          "satisfied": true,
+          "cites": "OMT 013"
+        },
+        {
+          "criterion": "the key is the one the source writes",
+          "satisfied": false,
+          "cites": "OMT 051"
+        }
+      ]
+    },
+    {
+      "code": "modulation",
+      "standing": "candidate",
+      "summary": "C major gives way to G major — pivot approach",
+      "at": {
+        "numerator": 3,
+        "denominator": 1
+      },
+      "bar": 4,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 8,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-a",
+            "span": {
+              "start": 2516,
+              "end": 2520
+            },
+            "line": 68
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-b",
+            "span": {
+              "start": 2539,
+              "end": 2543
+            },
+            "line": 69
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-c",
+            "span": {
+              "start": 2562,
+              "end": 2566
+            },
+            "line": 70
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-d",
+            "span": {
+              "start": 2585,
+              "end": 2589
+            },
+            "line": 71
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-e",
+            "span": {
+              "start": 2608,
+              "end": 2612
+            },
+            "line": 72
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-f",
+            "span": {
+              "start": 2631,
+              "end": 2635
+            },
+            "line": 73
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "a chord diatonic in both keys prepares the change",
+          "satisfied": true,
+          "cites": "OMT 051"
+        },
+        {
+          "criterion": "the new key holds to the end of the passage",
+          "satisfied": true,
+          "cites": "OMT 051"
+        },
+        {
+          "criterion": "a cadence in the new key confirms it",
+          "satisfied": false,
+          "cites": "OMT 051"
+        }
+      ]
+    },
+    {
+      "code": "tonicization",
+      "standing": "candidate",
+      "summary": "V of C major is tonicized",
+      "at": {
+        "numerator": 3,
+        "denominator": 1
+      },
+      "bar": 4,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 8,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-a",
+            "span": {
+              "start": 2516,
+              "end": 2520
+            },
+            "line": 68
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-2",
+            "span": {
+              "start": 2147,
+              "end": 2159
+            },
+            "line": 54
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-b",
+            "span": {
+              "start": 2539,
+              "end": 2543
+            },
+            "line": 69
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-c",
+            "span": {
+              "start": 2562,
+              "end": 2566
+            },
+            "line": 70
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-d",
+            "span": {
+              "start": 2585,
+              "end": 2589
+            },
+            "line": 71
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-e",
+            "span": {
+              "start": 2608,
+              "end": 2612
+            },
+            "line": 72
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-f",
+            "span": {
+              "start": 2631,
+              "end": 2635
+            },
+            "line": 73
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "a chord diatonic in both keys prepares the change",
+          "satisfied": true,
+          "cites": "OMT 051"
+        },
+        {
+          "criterion": "the new key holds to the end of the passage",
+          "satisfied": true,
+          "cites": "OMT 051"
+        },
+        {
+          "criterion": "a cadence in the new key confirms it",
+          "satisfied": false,
+          "cites": "OMT 051"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "V in G major — exact fit",
+      "at": {
+        "numerator": 3,
+        "denominator": 1
+      },
+      "bar": 4,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-b",
+            "span": {
+              "start": 2539,
+              "end": 2543
+            },
+            "line": 69
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "VII in E minor — exact fit",
+      "at": {
+        "numerator": 3,
+        "denominator": 1
+      },
+      "bar": 4,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-b",
+            "span": {
+              "start": 2539,
+              "end": 2543
+            },
+            "line": 69
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "V/V in C major — exact fit",
+      "at": {
+        "numerator": 3,
+        "denominator": 1
+      },
+      "bar": 4,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-b",
+            "span": {
+              "start": 2539,
+              "end": 2543
+            },
+            "line": 69
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-3",
+            "span": {
+              "start": 2238,
+              "end": 2251
+            },
+            "line": 57
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        },
+        {
+          "criterion": "the chord is read in the key the passage is leaving",
+          "satisfied": true,
+          "cites": "OMT 050"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "I in G major — exact fit",
+      "at": {
+        "numerator": 4,
+        "denominator": 1
+      },
+      "bar": 5,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 5,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-c",
+            "span": {
+              "start": 2562,
+              "end": 2566
+            },
+            "line": 70
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "III in E minor — exact fit",
+      "at": {
+        "numerator": 4,
+        "denominator": 1
+      },
+      "bar": 5,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 5,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-c",
+            "span": {
+              "start": 2562,
+              "end": 2566
+            },
+            "line": 70
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-4",
+            "span": {
+              "start": 2274,
+              "end": 2286
+            },
+            "line": 58
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "ii in G major — exact fit",
+      "at": {
+        "numerator": 5,
+        "denominator": 1
+      },
+      "bar": 6,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 5,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 6,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-d",
+            "span": {
+              "start": 2585,
+              "end": 2589
+            },
+            "line": 71
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "iv in E minor — exact fit",
+      "at": {
+        "numerator": 5,
+        "denominator": 1
+      },
+      "bar": 6,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 5,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 6,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-d",
+            "span": {
+              "start": 2585,
+              "end": 2589
+            },
+            "line": 71
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-5",
+            "span": {
+              "start": 2309,
+              "end": 2321
+            },
+            "line": 59
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "V7 in G major — exact fit",
+      "at": {
+        "numerator": 6,
+        "denominator": 1
+      },
+      "bar": 7,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 6,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 7,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-e",
+            "span": {
+              "start": 2608,
+              "end": 2612
+            },
+            "line": 72
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "VII7 in E minor — exact fit",
+      "at": {
+        "numerator": 6,
+        "denominator": 1
+      },
+      "bar": 7,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 6,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 7,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-e",
+            "span": {
+              "start": 2608,
+              "end": 2612
+            },
+            "line": 72
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-6",
+            "span": {
+              "start": 2344,
+              "end": 2357
+            },
+            "line": 60
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "I in G major — exact fit",
+      "at": {
+        "numerator": 7,
+        "denominator": 1
+      },
+      "bar": 8,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 7,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 8,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-f",
+            "span": {
+              "start": 2631,
+              "end": 2635
+            },
+            "line": 73
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    },
+    {
+      "code": "numeral",
+      "standing": "candidate",
+      "summary": "III in E minor — exact fit",
+      "at": {
+        "numerator": 7,
+        "denominator": 1
+      },
+      "bar": 8,
+      "beat": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "evidence": {
+        "kind": "passage",
+        "from": {
+          "numerator": 7,
+          "denominator": 1
+        },
+        "to": {
+          "numerator": 8,
+          "denominator": 1
+        },
+        "notes": [
+          {
+            "part": "piano",
+            "voice": "lower",
+            "event": "event-f",
+            "span": {
+              "start": 2631,
+              "end": 2635
+            },
+            "line": 73
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          },
+          {
+            "part": "piano",
+            "voice": "upper",
+            "event": "event-7",
+            "span": {
+              "start": 2380,
+              "end": 2392
+            },
+            "line": 61
+          }
+        ]
+      },
+      "grounds": [
+        {
+          "criterion": "the chord the numeral names is what sounds",
+          "satisfied": true,
+          "cites": "OMT 026"
+        }
+      ]
+    }
+  ]
+}

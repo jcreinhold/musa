@@ -47,6 +47,8 @@ pub fn run() -> tauri::Result<()> {
             commands::export,
             commands::snapshot,
             commands::listen_to_midi,
+            commands::analyze,
+            commands::library_document,
         ])
         .run(context)
 }

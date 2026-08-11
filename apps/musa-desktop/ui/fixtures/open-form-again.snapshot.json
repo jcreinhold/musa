@@ -75,7 +75,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-0",
@@ -120,7 +124,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-0",
@@ -165,7 +173,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 3,
           "occurrence": "occurrence-0",
@@ -210,7 +222,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 4,
           "occurrence": "occurrence-0",
@@ -255,7 +271,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-1",
@@ -300,7 +320,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-1",
@@ -345,7 +369,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 3,
           "occurrence": "occurrence-1",
@@ -390,7 +418,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 4,
           "occurrence": "occurrence-1",
@@ -435,7 +467,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-2",
@@ -480,7 +516,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-2",
@@ -525,7 +565,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 3,
           "occurrence": "occurrence-2",
@@ -570,7 +614,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 4,
           "occurrence": "occurrence-2",
@@ -615,7 +663,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-3",
@@ -660,7 +712,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-3",
@@ -705,7 +761,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 3,
           "occurrence": "occurrence-3",
@@ -750,7 +810,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 4,
           "occurrence": "occurrence-3",
@@ -795,7 +859,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 5,
           "occurrence": "occurrence-0",
@@ -840,7 +908,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 6,
           "occurrence": "occurrence-0",
@@ -885,7 +957,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 7,
           "occurrence": "occurrence-0",
@@ -930,7 +1006,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 8,
           "occurrence": "occurrence-0",
@@ -975,7 +1055,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 9,
           "occurrence": "occurrence-0",
@@ -1020,7 +1104,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 5,
           "occurrence": "occurrence-1",
@@ -1065,7 +1153,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 6,
           "occurrence": "occurrence-1",
@@ -1110,7 +1202,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 7,
           "occurrence": "occurrence-1",
@@ -1155,7 +1251,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 8,
           "occurrence": "occurrence-1",
@@ -1200,7 +1300,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 9,
           "occurrence": "occurrence-1",
@@ -1245,7 +1349,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 5,
           "occurrence": "occurrence-2",
@@ -1290,7 +1398,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 6,
           "occurrence": "occurrence-2",
@@ -1335,7 +1447,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 7,
           "occurrence": "occurrence-2",
@@ -1380,7 +1496,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 8,
           "occurrence": "occurrence-2",
@@ -1425,7 +1545,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 9,
           "occurrence": "occurrence-2",
@@ -1470,7 +1594,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 5,
           "occurrence": "occurrence-3",
@@ -1515,7 +1643,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 6,
           "occurrence": "occurrence-3",
@@ -1560,7 +1692,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 7,
           "occurrence": "occurrence-3",
@@ -1605,7 +1741,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 8,
           "occurrence": "occurrence-3",
@@ -1650,7 +1790,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 9,
           "occurrence": "occurrence-3",
@@ -1695,7 +1839,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-4",
@@ -1740,7 +1888,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-4",
@@ -1785,7 +1937,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 3,
           "occurrence": "occurrence-4",
@@ -1830,7 +1986,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 4,
           "occurrence": "occurrence-4",
@@ -1875,7 +2035,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 5,
           "occurrence": "occurrence-4",
@@ -1920,7 +2084,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-5",
@@ -1965,7 +2133,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-5",
@@ -2010,7 +2182,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 3,
           "occurrence": "occurrence-5",
@@ -2055,7 +2231,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 4,
           "occurrence": "occurrence-5",
@@ -2100,7 +2280,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 5,
           "occurrence": "occurrence-5",
@@ -2141,7 +2325,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 10,
           "occurrence": "occurrence-0",
@@ -2186,7 +2374,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 11,
           "occurrence": "occurrence-0",
@@ -2227,7 +2419,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 12,
           "occurrence": "occurrence-0",
@@ -2272,7 +2468,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 13,
           "occurrence": "occurrence-0",
@@ -2313,7 +2513,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 14,
           "occurrence": "occurrence-0",
@@ -2358,7 +2562,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 15,
           "occurrence": "occurrence-0",
@@ -2399,7 +2607,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 16,
           "occurrence": "occurrence-0",
@@ -2444,7 +2656,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 17,
           "occurrence": "occurrence-0",
@@ -2485,7 +2701,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 10,
           "occurrence": "occurrence-1",
@@ -2530,7 +2750,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 11,
           "occurrence": "occurrence-1",
@@ -2571,7 +2795,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 12,
           "occurrence": "occurrence-1",
@@ -2616,7 +2844,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 13,
           "occurrence": "occurrence-1",
@@ -2657,7 +2889,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 14,
           "occurrence": "occurrence-1",
@@ -2702,7 +2938,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 15,
           "occurrence": "occurrence-1",
@@ -2743,7 +2983,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 16,
           "occurrence": "occurrence-1",
@@ -2788,7 +3032,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 17,
           "occurrence": "occurrence-1",
@@ -2829,7 +3077,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 10,
           "occurrence": "occurrence-2",
@@ -2874,7 +3126,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 11,
           "occurrence": "occurrence-2",
@@ -2915,7 +3171,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 12,
           "occurrence": "occurrence-2",
@@ -2960,7 +3220,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 13,
           "occurrence": "occurrence-2",
@@ -3001,7 +3265,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 14,
           "occurrence": "occurrence-2",
@@ -3046,7 +3314,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 15,
           "occurrence": "occurrence-2",
@@ -3087,7 +3359,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 16,
           "occurrence": "occurrence-2",
@@ -3132,7 +3408,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 17,
           "occurrence": "occurrence-2",
@@ -3173,7 +3453,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 10,
           "occurrence": "occurrence-3",
@@ -3218,7 +3502,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 11,
           "occurrence": "occurrence-3",
@@ -3259,7 +3547,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 12,
           "occurrence": "occurrence-3",
@@ -3304,7 +3596,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 13,
           "occurrence": "occurrence-3",
@@ -3345,7 +3641,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 14,
           "occurrence": "occurrence-3",
@@ -3390,7 +3690,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 15,
           "occurrence": "occurrence-3",
@@ -3431,7 +3735,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 16,
           "occurrence": "occurrence-3",
@@ -3476,7 +3784,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 17,
           "occurrence": "occurrence-3",
@@ -3521,7 +3833,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 18,
           "occurrence": "occurrence-0",
@@ -3566,7 +3882,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 19,
           "occurrence": "occurrence-0",
@@ -3611,7 +3931,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 20,
           "occurrence": "occurrence-0",
@@ -3656,7 +3980,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 21,
           "occurrence": "occurrence-0",
@@ -3701,7 +4029,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 22,
           "occurrence": "occurrence-0",
@@ -3746,7 +4078,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 23,
           "occurrence": "occurrence-0",
@@ -3791,7 +4127,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 24,
           "occurrence": "occurrence-0",
@@ -3836,7 +4176,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 25,
           "occurrence": "occurrence-0",
@@ -3881,7 +4225,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 18,
           "occurrence": "occurrence-1",
@@ -3926,7 +4274,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 19,
           "occurrence": "occurrence-1",
@@ -3971,7 +4323,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 20,
           "occurrence": "occurrence-1",
@@ -4016,7 +4372,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 21,
           "occurrence": "occurrence-1",
@@ -4061,7 +4421,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 22,
           "occurrence": "occurrence-1",
@@ -4106,7 +4470,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 23,
           "occurrence": "occurrence-1",
@@ -4151,7 +4519,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 24,
           "occurrence": "occurrence-1",
@@ -4196,7 +4568,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 25,
           "occurrence": "occurrence-1",
@@ -4241,7 +4617,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 18,
           "occurrence": "occurrence-2",
@@ -4286,7 +4666,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 19,
           "occurrence": "occurrence-2",
@@ -4331,7 +4715,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 20,
           "occurrence": "occurrence-2",
@@ -4376,7 +4764,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 21,
           "occurrence": "occurrence-2",
@@ -4421,7 +4813,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 22,
           "occurrence": "occurrence-2",
@@ -4466,7 +4862,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 23,
           "occurrence": "occurrence-2",
@@ -4511,7 +4911,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 24,
           "occurrence": "occurrence-2",
@@ -4556,7 +4960,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 25,
           "occurrence": "occurrence-2",
@@ -4601,7 +5009,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 18,
           "occurrence": "occurrence-3",
@@ -4646,7 +5058,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 19,
           "occurrence": "occurrence-3",
@@ -4691,7 +5107,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 20,
           "occurrence": "occurrence-3",
@@ -4736,7 +5156,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 21,
           "occurrence": "occurrence-3",
@@ -4781,7 +5205,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 22,
           "occurrence": "occurrence-3",
@@ -4826,7 +5254,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 23,
           "occurrence": "occurrence-3",
@@ -4871,7 +5303,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 24,
           "occurrence": "occurrence-3",
@@ -4916,7 +5352,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 25,
           "occurrence": "occurrence-3",
@@ -4961,7 +5401,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 6,
           "occurrence": "occurrence-4",
@@ -5006,7 +5450,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 7,
           "occurrence": "occurrence-4",
@@ -5051,7 +5499,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 8,
           "occurrence": "occurrence-4",
@@ -5096,7 +5548,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 9,
           "occurrence": "occurrence-4",
@@ -5141,7 +5597,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 10,
           "occurrence": "occurrence-4",
@@ -5186,7 +5646,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 11,
           "occurrence": "occurrence-4",
@@ -5231,7 +5695,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 12,
           "occurrence": "occurrence-4",
@@ -5276,7 +5744,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 13,
           "occurrence": "occurrence-4",
@@ -5321,7 +5793,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 6,
           "occurrence": "occurrence-5",
@@ -5366,7 +5842,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 7,
           "occurrence": "occurrence-5",
@@ -5411,7 +5891,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 8,
           "occurrence": "occurrence-5",
@@ -5456,7 +5940,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 9,
           "occurrence": "occurrence-5",
@@ -5501,7 +5989,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 10,
           "occurrence": "occurrence-5",
@@ -5546,7 +6038,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 11,
           "occurrence": "occurrence-5",
@@ -5591,7 +6087,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 12,
           "occurrence": "occurrence-5",
@@ -5636,7 +6136,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 13,
           "occurrence": "occurrence-5",
@@ -5681,7 +6185,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 26,
           "occurrence": "occurrence-0",
@@ -5726,7 +6234,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 27,
           "occurrence": "occurrence-0",
@@ -5771,7 +6283,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 28,
           "occurrence": "occurrence-0",
@@ -5816,7 +6332,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 26,
           "occurrence": "occurrence-1",
@@ -5861,7 +6381,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 27,
           "occurrence": "occurrence-1",
@@ -5906,7 +6430,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 28,
           "occurrence": "occurrence-1",
@@ -5951,7 +6479,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 26,
           "occurrence": "occurrence-2",
@@ -5996,7 +6528,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 27,
           "occurrence": "occurrence-2",
@@ -6041,7 +6577,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 28,
           "occurrence": "occurrence-2",
@@ -6086,7 +6626,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 26,
           "occurrence": "occurrence-3",
@@ -6131,7 +6675,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 27,
           "occurrence": "occurrence-3",
@@ -6176,7 +6724,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 28,
           "occurrence": "occurrence-3",
@@ -6221,7 +6773,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 29,
           "occurrence": "occurrence-0",
@@ -6266,7 +6822,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 30,
           "occurrence": "occurrence-0",
@@ -6311,7 +6871,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 31,
           "occurrence": "occurrence-0",
@@ -6356,7 +6920,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 1"
+            {
+              "label": "repeat 1",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 32,
           "occurrence": "occurrence-0",
@@ -6401,7 +6969,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 29,
           "occurrence": "occurrence-1",
@@ -6446,7 +7018,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 30,
           "occurrence": "occurrence-1",
@@ -6491,7 +7067,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 31,
           "occurrence": "occurrence-1",
@@ -6536,7 +7116,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 2"
+            {
+              "label": "repeat 2",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 32,
           "occurrence": "occurrence-1",
@@ -6581,7 +7165,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 29,
           "occurrence": "occurrence-2",
@@ -6626,7 +7214,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 30,
           "occurrence": "occurrence-2",
@@ -6671,7 +7263,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 31,
           "occurrence": "occurrence-2",
@@ -6716,7 +7312,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 3"
+            {
+              "label": "repeat 3",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 32,
           "occurrence": "occurrence-2",
@@ -6761,7 +7361,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 29,
           "occurrence": "occurrence-3",
@@ -6806,7 +7410,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 30,
           "occurrence": "occurrence-3",
@@ -6851,7 +7459,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 31,
           "occurrence": "occurrence-3",
@@ -6896,7 +7508,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 4"
+            {
+              "label": "repeat 4",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 32,
           "occurrence": "occurrence-3",
@@ -6941,7 +7557,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 14,
           "occurrence": "occurrence-4",
@@ -6986,7 +7606,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 15,
           "occurrence": "occurrence-4",
@@ -7031,7 +7655,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 16,
           "occurrence": "occurrence-4",
@@ -7076,7 +7704,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 5"
+            {
+              "label": "repeat 5",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 17,
           "occurrence": "occurrence-4",
@@ -7121,7 +7753,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 14,
           "occurrence": "occurrence-5",
@@ -7166,7 +7802,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 15,
           "occurrence": "occurrence-5",
@@ -7211,7 +7851,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 16,
           "occurrence": "occurrence-5",
@@ -7256,7 +7900,11 @@
         "origin": {
           "generated": true,
           "path": [
-            "repeat 6"
+            {
+              "label": "repeat 6",
+              "kind": "transform",
+              "span": null
+            }
           ],
           "noteIndex": 17,
           "occurrence": "occurrence-5",
@@ -7277,7 +7925,11 @@
       {
         "id": "occurrence-0",
         "path": [
-          "repeat 1"
+          {
+            "label": "repeat 1",
+            "kind": "transform",
+            "span": null
+          }
         ],
         "label": "repeat 1",
         "motif": null,
@@ -7325,7 +7977,11 @@
       {
         "id": "occurrence-1",
         "path": [
-          "repeat 2"
+          {
+            "label": "repeat 2",
+            "kind": "transform",
+            "span": null
+          }
         ],
         "label": "repeat 2",
         "motif": null,
@@ -7373,7 +8029,11 @@
       {
         "id": "occurrence-2",
         "path": [
-          "repeat 3"
+          {
+            "label": "repeat 3",
+            "kind": "transform",
+            "span": null
+          }
         ],
         "label": "repeat 3",
         "motif": null,
@@ -7421,7 +8081,11 @@
       {
         "id": "occurrence-3",
         "path": [
-          "repeat 4"
+          {
+            "label": "repeat 4",
+            "kind": "transform",
+            "span": null
+          }
         ],
         "label": "repeat 4",
         "motif": null,
@@ -7469,7 +8133,11 @@
       {
         "id": "occurrence-4",
         "path": [
-          "repeat 5"
+          {
+            "label": "repeat 5",
+            "kind": "transform",
+            "span": null
+          }
         ],
         "label": "repeat 5",
         "motif": null,
@@ -7502,7 +8170,11 @@
       {
         "id": "occurrence-5",
         "path": [
-          "repeat 6"
+          {
+            "label": "repeat 6",
+            "kind": "transform",
+            "span": null
+          }
         ],
         "label": "repeat 6",
         "motif": null,
@@ -7608,5 +8280,58 @@
     "sampleRate": 48000,
     "loopRegion": null
   },
-  "contents": null
+  "contents": null,
+  "terms": [],
+  "names": [
+    {
+      "name": "drums",
+      "kind": "part",
+      "declaration": {
+        "start": 732,
+        "end": 737
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "kick",
+      "kind": "voice",
+      "declaration": {
+        "start": 758,
+        "end": 762
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "hats",
+      "kind": "voice",
+      "declaration": {
+        "start": 1118,
+        "end": 1122
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "bass",
+      "kind": "part",
+      "declaration": {
+        "start": 1678,
+        "end": 1682
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "line",
+      "kind": "voice",
+      "declaration": {
+        "start": 1703,
+        "end": 1707
+      },
+      "external": null,
+      "uses": []
+    }
+  ]
 }

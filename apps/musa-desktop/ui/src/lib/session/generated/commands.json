@@ -108,6 +108,24 @@
     "available": true
   },
   {
+    "id": "edit.definition",
+    "title": "Go to the declaration",
+    "section": "edit",
+    "submenu": null,
+    "apart": true,
+    "accelerator": "CmdOrCtrl+Shift+D",
+    "available": true
+  },
+  {
+    "id": "edit.uses",
+    "title": "Select every use",
+    "section": "edit",
+    "submenu": null,
+    "apart": false,
+    "accelerator": "CmdOrCtrl+Shift+U",
+    "available": true
+  },
+  {
     "id": "view.workspace.contents",
     "title": "Contents",
     "section": "view",

@@ -19,7 +19,13 @@ import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { EditDto } from "./generated/EditDto";
 import type { StudioEditDto } from "./generated/StudioEditDto";
-import type { EditImpact, MidiEntry, ProjectSnapshot } from "../state/snapshot";
+import type {
+  AnalysisFacts,
+  EditImpact,
+  LibraryDocument,
+  MidiEntry,
+  ProjectSnapshot,
+} from "../state/snapshot";
 
 /**
  * How long typing settles before the source is compiled
@@ -71,6 +77,8 @@ export type Link = Pick<
   | "askToOpenProject"
   | "askToSave"
   | "listenToMidi"
+  | "analyze"
+  | "libraryDocument"
 >;
 
 /**
@@ -124,6 +132,26 @@ export class Session {
    * workspace sets this; the session only carries it.
    */
   played: ((entry: MidiEntry) => void) | null = null;
+
+  /**
+   * A bundled module being read, or null while the piece is
+   * (`08-elaboration.md` §3).
+   *
+   * Beside the snapshot rather than inside it, because it is not the
+   * document: nothing about it is editable, it is never saved, it takes no
+   * revision, and closing it leaves the piece exactly as it was.
+   */
+  library = $state<LibraryDocument | null>(null);
+
+  /**
+   * The last analysis this session ran, or null while none has been asked
+   * for. Asked for, never volunteered, and kept until it is asked again.
+   */
+  report = $state<AnalysisFacts | null>(null);
+
+  /** Which analysis is in flight, so the panel can say it is reading. */
+  reading = $state<string | null>(null);
+
   #announcedProblems = false;
 
   #settle: ReturnType<typeof setTimeout> | undefined;
@@ -211,6 +239,11 @@ export class Session {
    * words over the new piece's score. The problems latch resets too, so a
    * second piece that does not compile opens the source column for the same
    * reason the first one did (`05-states.md` §4).
+   *
+   * A report goes with them. Its findings name events and spans in the piece
+   * that was on screen, and a reading of one piece shown beside another is
+   * the same error as a selection carried across a new performance
+   * (`05-states.md` §9). The library module stays: it is nobody's piece.
    */
   #adopt(): void {
     clearTimeout(this.#settle);
@@ -218,6 +251,8 @@ export class Session {
     this.#issued = 0;
     this.#applied = 0;
     this.#announcedProblems = false;
+    this.report = null;
+    this.reading = null;
   }
 
   /** Show a failure until it is superseded (`05-states.md` §7). */
@@ -448,6 +483,47 @@ export class Session {
       this.fail(thrown);
       return null;
     }
+  }
+
+  /**
+   * Read the score one way and keep what it saw.
+   *
+   * The previous report stays on screen while this one runs, and a refusal
+   * leaves it there: a reader shown zero findings would conclude the music is
+   * clean (`08-elaboration.md` §8).
+   */
+  async analyze(kind: string): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    this.reading = kind;
+    try {
+      this.report = await link.analyze(kind);
+    } catch (thrown) {
+      this.fail(thrown);
+    } finally {
+      this.reading = null;
+    }
+  }
+
+  /**
+   * Open a bundled module for reading, at the declaration a term named.
+   *
+   * The handle is the snapshot's own: this side never measures another
+   * document's text, and passes back exactly what it was given.
+   */
+  async openLibrary(uri: string, start: number | null = null, end: number | null = null): Promise<void> {
+    const link = this.#link;
+    if (!link) return;
+    try {
+      this.library = await link.libraryDocument(uri, start, end);
+    } catch (thrown) {
+      this.fail(thrown);
+    }
+  }
+
+  /** Put the library module away and go back to the piece. */
+  closeLibrary(): void {
+    this.library = null;
   }
 
   /**

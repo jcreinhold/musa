@@ -80,8 +80,8 @@ pub use crate::elaborate::kernel_normal_form;
 pub use crate::groove::Groove;
 pub use crate::harmony::{ChordQuality, ChordSymbol, Seventh};
 pub use crate::imports::{
-    ImportSources, STANDARD_LIBRARY_LANGUAGE_VERSION, resolve_import, standard_library_modules,
-    standard_library_reference, standard_library_source,
+    ImportSources, STANDARD_LIBRARY_LANGUAGE_VERSION, resolve_import, standard_library_module,
+    standard_library_modules, standard_library_reference, standard_library_source,
 };
 #[doc(hidden)]
 pub use crate::kernel_text::{

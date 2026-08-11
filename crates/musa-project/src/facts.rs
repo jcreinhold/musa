@@ -55,9 +55,9 @@ pub struct OriginFacts {
     /// False when the user typed this note; true when the compiler produced
     /// it by expanding something.
     pub generated: bool,
-    /// The expansion path, one display segment per step: `["sigh()",
-    /// "transpose down P5"]`. Empty for authored events.
-    pub path: Vec<String>,
+    /// The expansion path, outside in, one step per act of expansion. Empty
+    /// for authored events.
+    pub path: Vec<StepFact>,
     /// Which note of its occurrence this is, 1-based — the `▸ note 3` tail
     /// of the inspector's Origin row. Absent for authored events.
     pub note_index: Option<u32>,
@@ -83,6 +83,61 @@ pub struct OriginFacts {
     pub decision: Option<usize>,
 }
 
+/// One step of an expansion path, as the Origin row reads it.
+///
+/// A step used to be a bare string, which was enough while every step was a
+/// motif application or a transform block and the row's only control was
+/// "select what this produced". The elaboration language made steps into
+/// *places*: a template instance is written at a `make`, an assertion at its
+/// `assert`, a kernel quotation at the splice that put the material there,
+/// and a composer following provenance wants to open each one. A segment
+/// therefore carries where it is written, and what kind of thing it is, so
+/// the interface can word and style it without reading the label back.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StepFact {
+    /// What to print: `sigh()`, `transpose down P5`, `make Upper`.
+    pub label: String,
+    /// What kind of step it is.
+    pub kind: StepKind,
+    /// Where it is written, for revealing it in the source column.
+    ///
+    /// Absent for a step that has no written site of its own: a `repeat`
+    /// iteration is a *count*, and the block it counts is already the step
+    /// beside it. A frontend that invented a span for one would be pointing
+    /// at something that is not there.
+    pub span: Option<crate::diagnostic::Span>,
+}
+
+/// What one expansion step is.
+///
+/// Named rather than inferred from the label, because the label is prose that
+/// the core spells and the interface must not parse (`03-interaction.md` §7).
+/// Exhaustive, and matched exhaustively: a new step in the language arrives
+/// as a compile error in every consumer rather than as a silent "other".
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum StepKind {
+    /// A motif or score function was applied here. The unit a composer
+    /// selects, and the innermost step of most paths.
+    Occurrence,
+    /// A declaration template was expanded at a `make` site. Named by the
+    /// instance rather than the template: two instances are two places.
+    Instance,
+    /// A transform block was in force: `transpose`, `stretch`, `retrograde`,
+    /// `invert`, a note-pitch map, a lexical scale, or a repeat iteration.
+    Transform,
+    /// An `assert` was in force and its claim held. Provenance only — an
+    /// assertion produces no music, which is exactly why it is worth saying
+    /// that it covered this passage.
+    Assertion,
+    /// The material entered through a kernel quotation, at this locus in the
+    /// quoted term's own time.
+    Splice,
+    /// A `with` clause respelled this note of its occurrence.
+    Specialization,
+}
+
 /// One expansion, and everything it produced
 /// (`docs/interface/04-provenance.md` §2).
 ///
@@ -96,8 +151,8 @@ pub struct OriginFacts {
 pub struct OccurrenceFacts {
     /// Stable within one compile; the id events point at.
     pub id: String,
-    /// The expansion path, outside in: `["transpose down P5", "sigh()"]`.
-    pub path: Vec<String>,
+    /// The expansion path, outside in: `transpose down P5 ▸ sigh()`.
+    pub path: Vec<StepFact>,
     /// The path as one line, for a margin bracket's label.
     pub label: String,
     /// The motif's name, when a motif produced this: `sigh`.
@@ -580,7 +635,7 @@ fn outline_facts(
 /// One occurrence's row, built the first time an event from it is met.
 fn occurrence_facts(
     at: usize,
-    path: &[String],
+    path: &[StepFact],
     steps: &[ExpansionStep],
     score: &ScoreSnapshot,
     lines: &LineIndex,
@@ -622,7 +677,11 @@ fn occurrence_facts(
     OccurrenceFacts {
         id: format!("occurrence-{at:x}"),
         path: path.to_vec(),
-        label: path.join(" \u{25b8} "),
+        label: path
+            .iter()
+            .map(|step| step.label.as_str())
+            .collect::<Vec<_>>()
+            .join(" \u{25b8} "),
         motif,
         declaration,
         use_site,
@@ -755,24 +814,67 @@ fn decided_under(taken: &[musa_compiler::DecisionRecord], span: musa_compiler::S
 /// the name is read back out of the source at that span — `use sigh();`
 /// becomes `sigh()`. Reading it here rather than in the frontend keeps the
 /// rule that the interface renders what it is handed.
-fn step(step: &ExpansionStep, source: &str) -> String {
+fn step(step: &ExpansionStep, source: &str) -> StepFact {
+    let at = |span: musa_compiler::SourceSpan| {
+        Some(crate::diagnostic::Span {
+            start: span.start,
+            end: span.end,
+        })
+    };
     match *step {
-        ExpansionStep::MotifApplication { call_site } => call_site_name(source, call_site.start, call_site.end),
-        ExpansionStep::RepeatIteration(index) => format!("repeat {}", index.saturating_add(1)),
-        ExpansionStep::Transposition(interval) => format!("transpose {}", interval_name(interval)),
-        ExpansionStep::Stretch(factor) => format!("stretch {}/{}", factor.numer(), factor.denom()),
-        ExpansionStep::Retrograde => "retrograde".to_owned(),
-        ExpansionStep::Inversion { ref axis } => format!("invert around {axis}"),
-        ExpansionStep::MapNotePitches => "map note pitches".to_owned(),
-        ExpansionStep::ScaleContext { ref scale } => format!("in {scale}"),
-        ExpansionStep::Assertion { ref claim } => format!("assert {claim}"),
-        ExpansionStep::Specialization { .. } => "specialized".to_owned(),
+        ExpansionStep::MotifApplication { call_site } => StepFact {
+            label: call_site_name(source, call_site.start, call_site.end),
+            kind: StepKind::Occurrence,
+            span: at(call_site),
+        },
+        // A transform block's own span is not on the step: the block is
+        // written around the `use` beside it, and the occurrence's site
+        // already opens the source there. Saying nothing beats pointing at
+        // the wrong bracket.
+        ExpansionStep::RepeatIteration(index) => transform(format!("repeat {}", index.saturating_add(1))),
+        ExpansionStep::Transposition(interval) => transform(format!("transpose {}", interval_name(interval))),
+        ExpansionStep::Stretch(factor) => transform(format!("stretch {}/{}", factor.numer(), factor.denom())),
+        ExpansionStep::Retrograde => transform("retrograde".to_owned()),
+        ExpansionStep::Inversion { ref axis } => transform(format!("invert around {axis}")),
+        ExpansionStep::MapNotePitches => transform("map note pitches".to_owned()),
+        ExpansionStep::ScaleContext { ref scale } => transform(format!("in {scale}")),
+        // An assertion produces no music, so this step is the whole of what
+        // it left behind — and the whole reason it is worth a segment is that
+        // a composer can open the claim that covered this passage.
+        ExpansionStep::Assertion { ref claim } => StepFact {
+            label: format!("assert {claim}"),
+            kind: StepKind::Assertion,
+            span: None,
+        },
+        ExpansionStep::Specialization { override_site } => StepFact {
+            label: "specialized".to_owned(),
+            kind: StepKind::Specialization,
+            span: at(override_site),
+        },
         // The instance, not the template: two instances of one template are
         // two places, and Origin's job is to say which one this is.
-        ExpansionStep::TemplateInstance { ref alias, .. } => format!("make {alias}"),
+        ExpansionStep::TemplateInstance { ref alias, site, .. } => StepFact {
+            label: format!("make {alias}"),
+            kind: StepKind::Instance,
+            span: at(site),
+        },
         // The locus, not the quote: a reader following a spliced note back
-        // wants to know where in the assembled term it was put.
-        ExpansionStep::KernelSplice { at } => format!("splice at {}/{}", at.numer(), at.denom()),
+        // wants to know where in the assembled term it was put. The locus is
+        // a *time*, not a place in the text, so there is nothing to open.
+        ExpansionStep::KernelSplice { at: locus } => StepFact {
+            label: format!("splice at {}/{}", locus.numer(), locus.denom()),
+            kind: StepKind::Splice,
+            span: None,
+        },
+    }
+}
+
+/// A transform step: prose, no site of its own.
+fn transform(label: String) -> StepFact {
+    StepFact {
+        label,
+        kind: StepKind::Transform,
+        span: None,
     }
 }
 

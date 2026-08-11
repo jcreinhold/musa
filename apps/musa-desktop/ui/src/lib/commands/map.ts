@@ -64,6 +64,13 @@ export interface Surface {
    * reach a capability rather than a capability only a pointer has (WCAG 2.5.7).
    */
   respell(steps: number, accidental: boolean): void;
+  /**
+   * Follow the name at the caret to where it is declared, opening the bundled
+   * module when the declaration is in one (`08-elaboration.md` §2).
+   */
+  definition(): void;
+  /** Select every resolved use of the name at the caret. */
+  uses(): void;
   /** Open a workspace (roadmap §14.4). */
   show(which: Screen): void;
   palette(open: boolean): void;
@@ -147,6 +154,8 @@ export const COMMANDS: readonly Command[] = [
   command("edit.undo", "Edit", ({ session }) => void session.undo()),
   command("edit.redo", "Edit", ({ session }) => void session.redo()),
   command("edit.format", "Edit", ({ session }) => void session.format()),
+  command("edit.definition", "Edit", ({ definition }) => definition()),
+  command("edit.uses", "Edit", ({ uses }) => uses()),
 
   own("score.previous", "Previous note", "Score", "ArrowLeft", ({ workspace }) =>
     workspace?.step(-1),

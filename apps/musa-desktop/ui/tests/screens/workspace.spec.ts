@@ -126,7 +126,13 @@ test("origin view marks the declaration and the use, in the workspace too", asyn
  */
 test("the caret is drawn, and drawn in the hue that means 'here'", async ({ page }) => {
   await inSource(page);
-  await source(page).locator(".cm-line").nth(3).click();
+  // By its text, and scrolled to first. The column opens showing the statement
+  // that placed the focused music, which is well down the file, so the fourth
+  // line is above the fold — and a click at its coordinates would land on
+  // whatever is at that point on screen instead.
+  const fourth = source(page).locator(".cm-line").filter({ hasText: "copyright" });
+  await fourth.scrollIntoViewIfNeeded();
+  await fourth.click();
 
   const cursor = page.locator(".cm-cursor-primary");
   await expect(cursor).toHaveCount(1);

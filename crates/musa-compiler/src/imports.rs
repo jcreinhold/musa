@@ -139,6 +139,19 @@ pub fn standard_library_source(uri: &str) -> Option<&'static str> {
     standard_library().module(&standard_library_path(uri)?)
 }
 
+/// The module path a bundled URI names, as the language spells it:
+/// `musa-stdlib:/std/pitch.musa` is `pitch`.
+///
+/// What an interface titles the document with. The URI is a locator and reads
+/// like one; a reader following `triad` to its declaration is looking at a
+/// module, and the module has a name. Answered here rather than parsed by the
+/// caller so that the URI scheme is spelled in exactly one place.
+#[must_use]
+pub fn standard_library_module(uri: &str) -> Option<String> {
+    let path = standard_library_path(uri)?;
+    standard_library().module(&path).map(|_| path)
+}
+
 /// Every bundled module, in stable documentation and packaging order.
 pub fn standard_library_modules() -> impl Iterator<Item = (String, &'static str)> {
     standard_library()

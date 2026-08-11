@@ -191,7 +191,14 @@
         "origin": {
           "generated": true,
           "path": [
-            "sigh()"
+            {
+              "label": "sigh()",
+              "kind": "occurrence",
+              "span": {
+                "start": 1318,
+                "end": 1329
+              }
+            }
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-0",
@@ -236,7 +243,14 @@
         "origin": {
           "generated": true,
           "path": [
-            "sigh()"
+            {
+              "label": "sigh()",
+              "kind": "occurrence",
+              "span": {
+                "start": 1318,
+                "end": 1329
+              }
+            }
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-0",
@@ -281,7 +295,14 @@
         "origin": {
           "generated": true,
           "path": [
-            "sigh()"
+            {
+              "label": "sigh()",
+              "kind": "occurrence",
+              "span": {
+                "start": 1318,
+                "end": 1329
+              }
+            }
           ],
           "noteIndex": 3,
           "occurrence": "occurrence-0",
@@ -326,7 +347,14 @@
         "origin": {
           "generated": true,
           "path": [
-            "sigh(g5)"
+            {
+              "label": "sigh(g5)",
+              "kind": "occurrence",
+              "span": {
+                "start": 1346,
+                "end": 1359
+              }
+            }
           ],
           "noteIndex": 1,
           "occurrence": "occurrence-1",
@@ -371,7 +399,14 @@
         "origin": {
           "generated": true,
           "path": [
-            "sigh(g5)"
+            {
+              "label": "sigh(g5)",
+              "kind": "occurrence",
+              "span": {
+                "start": 1346,
+                "end": 1359
+              }
+            }
           ],
           "noteIndex": 2,
           "occurrence": "occurrence-1",
@@ -416,7 +451,14 @@
         "origin": {
           "generated": true,
           "path": [
-            "sigh(g5)"
+            {
+              "label": "sigh(g5)",
+              "kind": "occurrence",
+              "span": {
+                "start": 1346,
+                "end": 1359
+              }
+            }
           ],
           "noteIndex": 3,
           "occurrence": "occurrence-1",
@@ -566,7 +608,14 @@
       {
         "id": "occurrence-0",
         "path": [
-          "sigh()"
+          {
+            "label": "sigh()",
+            "kind": "occurrence",
+            "span": {
+              "start": 1318,
+              "end": 1329
+            }
+          }
         ],
         "label": "sigh()",
         "motif": "sigh",
@@ -588,7 +637,14 @@
       {
         "id": "occurrence-1",
         "path": [
-          "sigh(g5)"
+          {
+            "label": "sigh(g5)",
+            "kind": "occurrence",
+            "span": {
+              "start": 1346,
+              "end": 1359
+            }
+          }
         ],
         "label": "sigh(g5)",
         "motif": "sigh",
@@ -737,5 +793,78 @@
     "sampleRate": 48000,
     "loopRegion": null
   },
-  "contents": null
+  "contents": null,
+  "terms": [
+    {
+      "name": "sigh",
+      "kind": "motif",
+      "signature": "motif sigh(root: Pitch = d5)",
+      "summary": null,
+      "result": {
+        "name": "Music",
+        "distinction": "notated material"
+      },
+      "parameters": [
+        {
+          "name": "root",
+          "label": "root: Pitch = d5",
+          "ty": {
+            "name": "Pitch",
+            "distinction": "a written pitch: letter, accidental, and octave"
+          },
+          "default": "d5"
+        }
+      ],
+      "deprecation": null,
+      "readOnly": false,
+      "site": {
+        "where": "open",
+        "span": {
+          "start": 931,
+          "end": 935
+        }
+      }
+    }
+  ],
+  "names": [
+    {
+      "name": "sigh",
+      "kind": "motif",
+      "declaration": {
+        "start": 931,
+        "end": 935
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 1322,
+          "end": 1326
+        },
+        {
+          "start": 1350,
+          "end": 1354
+        }
+      ]
+    },
+    {
+      "name": "piano",
+      "kind": "part",
+      "declaration": {
+        "start": 1109,
+        "end": 1114
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "lead",
+      "kind": "voice",
+      "declaration": {
+        "start": 1161,
+        "end": 1165
+      },
+      "external": null,
+      "uses": []
+    }
+  ]
 }

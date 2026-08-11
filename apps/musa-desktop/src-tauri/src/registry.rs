@@ -156,6 +156,25 @@ pub const COMMANDS: &[CommandDescriptor] = &[
         Some("CmdOrCtrl+Shift+F"),
         true,
     )),
+    // Following a name and gathering its uses are two readings of the one
+    // fact the resolver computed (`08-elaboration.md` §2). They are here, in
+    // Edit, because they act on the caret in the text — and they are commands
+    // rather than a hover affordance so that a composer who never touches a
+    // pointer can do both.
+    apart(command(
+        "edit.definition",
+        "Go to the declaration",
+        Section::Edit,
+        Some("CmdOrCtrl+Shift+D"),
+        true,
+    )),
+    command(
+        "edit.uses",
+        "Select every use",
+        Section::Edit,
+        Some("CmdOrCtrl+Shift+U"),
+        true,
+    ),
     // The volume, before the piece: a contents page is what a bound book puts
     // in front of its first movement, and `⌘0` is the number before the four
     // workspaces for the same reason.

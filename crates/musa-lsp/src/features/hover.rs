@@ -175,7 +175,8 @@ fn at_event(score: &ScoreFacts, byte: u32, lines: &LineIndex) -> Option<Hover> {
     let mut text = describe_event(spelled);
     if !spelled.origin.path.is_empty() {
         text.push_str("\ngenerated: ");
-        text.push_str(&spelled.origin.path.join(" ▸ "));
+        let steps: Vec<&str> = spelled.origin.path.iter().map(|step| step.label.as_str()).collect();
+        text.push_str(&steps.join(" ▸ "));
     }
     Some(answer(lines, spelled.origin.definition_span, text))
 }

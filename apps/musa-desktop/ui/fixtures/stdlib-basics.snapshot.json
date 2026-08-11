@@ -1,0 +1,1098 @@
+{
+  "document": 0,
+  "name": "stdlib-basics.musa",
+  "kind": "piece",
+  "source": "// Standard modules are explicit, version-matched source libraries. Their\n// functions pass through the same checker and evaluator as these definitions.\npiece \"Standard Library Basics\" {\n    import std::core;\n    import std::list;\n    import std::option;\n\n    let subject: Music = music {\n        c4/4\n        d4/4\n    };\n\n    fn same_pitch(p: Pitch) -> Pitch { p }\n\n    let answer: Music = compose_music(transpose(P8), retrograde, subject);\n    let chosen: Pitch = pitch_or_else(c4, same_pitch, Some(e4));\n    let counting: List<Nat> = naturals(4);\n\n    score {\n        part strings {\n            voice duet {\n                use overlay(subject, shift(1/2, answer));\n                c5/2\n                rest/2\n            }\n        }\n    }\n}\n",
+  "revision": 0,
+  "compiles": true,
+  "unsaved": true,
+  "autosaved": false,
+  "recovery": null,
+  "midiPort": null,
+  "diagnostics": [],
+  "mei": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mei xmlns=\"http://www.music-encoding.org/ns/mei\" meiversion=\"5.0\">\n  <meiHead>\n    <fileDesc>\n      <titleStmt>\n        <title>Standard Library Basics</title>\n      </titleStmt>\n      <pubStmt/>\n    </fileDesc>\n  </meiHead>\n  <music>\n    <body>\n      <mdiv>\n        <score>\n          <scoreDef meter.count=\"4\" meter.unit=\"4\">\n            <pgHead>\n              <rend halign=\"center\" valign=\"top\">\n                <rend xml:id=\"front-title\" fontsize=\"x-large\">Standard Library Basics</rend>\n              </rend>\n            </pgHead>\n            <pgHead2>\n              <rend halign=\"center\" valign=\"top\" fontsize=\"small\">– <num label=\"page\">#</num> –</rend>\n            </pgHead2>\n            <staffGrp>\n              <staffDef n=\"1\" lines=\"5\">\n                <label>strings</label>\n                <labelAbbr>str.</labelAbbr>\n              </staffDef>\n            </staffGrp>\n          </scoreDef>\n          <section>\n            <measure n=\"1\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-0\" dur=\"4\" oct=\"4\" pname=\"c\"/>\n                  <note xml:id=\"event-1\" dur=\"4\" oct=\"4\" pname=\"d\"/>\n                  <note xml:id=\"event-2\" dur=\"4\" oct=\"5\" pname=\"d\"/>\n                  <note xml:id=\"event-3\" dur=\"4\" oct=\"5\" pname=\"c\"/>\n                </layer>\n              </staff>\n            </measure>\n            <measure n=\"2\" right=\"end\">\n              <staff n=\"1\">\n                <layer xml:id=\"layer-1-1\" n=\"1\">\n                  <note xml:id=\"event-4\" dur=\"2\" oct=\"5\" pname=\"c\"/>\n                  <rest xml:id=\"event-5\" dur=\"2\"/>\n                </layer>\n              </staff>\n            </measure>\n          </section>\n        </score>\n      </mdiv>\n    </body>\n  </music>\n</mei>",
+  "score": {
+    "title": "Standard Library Basics",
+    "tempoBpm": 120,
+    "tempoBeat": {
+      "numerator": 1,
+      "denominator": 4
+    },
+    "key": null,
+    "meterCount": 4,
+    "meterUnit": 4,
+    "parts": [
+      {
+        "name": "strings",
+        "voices": [
+          {
+            "name": "duet",
+            "generated": true
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "id": "event-0",
+        "part": "strings",
+        "voice": "duet",
+        "kind": "note",
+        "pitch": "C4",
+        "pitches": [
+          "C4"
+        ],
+        "pitchSpellings": [
+          "c4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 0,
+        "endFrames": 24000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "overlay(subject, shift(1/2, answer))",
+              "kind": "occurrence",
+              "span": {
+                "start": 627,
+                "end": 668
+              }
+            }
+          ],
+          "noteIndex": 1,
+          "occurrence": "occurrence-0",
+          "line": 22,
+          "span": {
+            "start": 627,
+            "end": 668
+          },
+          "definitionSpan": {
+            "start": 297,
+            "end": 301
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-1",
+        "part": "strings",
+        "voice": "duet",
+        "kind": "note",
+        "pitch": "D4",
+        "pitches": [
+          "D4"
+        ],
+        "pitchSpellings": [
+          "d4"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 2,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 24000,
+        "endFrames": 48000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "overlay(subject, shift(1/2, answer))",
+              "kind": "occurrence",
+              "span": {
+                "start": 627,
+                "end": 668
+              }
+            }
+          ],
+          "noteIndex": 2,
+          "occurrence": "occurrence-0",
+          "line": 22,
+          "span": {
+            "start": 627,
+            "end": 668
+          },
+          "definitionSpan": {
+            "start": 310,
+            "end": 314
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-2",
+        "part": "strings",
+        "voice": "duet",
+        "kind": "note",
+        "pitch": "D5",
+        "pitches": [
+          "D5"
+        ],
+        "pitchSpellings": [
+          "d5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 48000,
+        "endFrames": 72000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "overlay(subject, shift(1/2, answer))",
+              "kind": "occurrence",
+              "span": {
+                "start": 627,
+                "end": 668
+              }
+            },
+            {
+              "label": "transpose up P8",
+              "kind": "transform",
+              "span": null
+            },
+            {
+              "label": "retrograde",
+              "kind": "transform",
+              "span": null
+            }
+          ],
+          "noteIndex": 1,
+          "occurrence": "occurrence-1",
+          "line": 22,
+          "span": {
+            "start": 627,
+            "end": 668
+          },
+          "definitionSpan": {
+            "start": 310,
+            "end": 314
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-3",
+        "part": "strings",
+        "voice": "duet",
+        "kind": "note",
+        "pitch": "C5",
+        "pitches": [
+          "C5"
+        ],
+        "pitchSpellings": [
+          "c5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 4
+        },
+        "durationSpelling": "1/4",
+        "bar": 1,
+        "beat": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 72000,
+        "endFrames": 96000,
+        "origin": {
+          "generated": true,
+          "path": [
+            {
+              "label": "overlay(subject, shift(1/2, answer))",
+              "kind": "occurrence",
+              "span": {
+                "start": 627,
+                "end": 668
+              }
+            },
+            {
+              "label": "transpose up P8",
+              "kind": "transform",
+              "span": null
+            },
+            {
+              "label": "retrograde",
+              "kind": "transform",
+              "span": null
+            }
+          ],
+          "noteIndex": 2,
+          "occurrence": "occurrence-1",
+          "line": 22,
+          "span": {
+            "start": 627,
+            "end": 668
+          },
+          "definitionSpan": {
+            "start": 297,
+            "end": 301
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-4",
+        "part": "strings",
+        "voice": "duet",
+        "kind": "note",
+        "pitch": "C5",
+        "pitches": [
+          "C5"
+        ],
+        "pitchSpellings": [
+          "c5"
+        ],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 2,
+        "beat": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 96000,
+        "endFrames": 144000,
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 23,
+          "span": {
+            "start": 685,
+            "end": 689
+          },
+          "definitionSpan": {
+            "start": 685,
+            "end": 689
+          },
+          "decision": null
+        }
+      },
+      {
+        "id": "event-5",
+        "part": "strings",
+        "voice": "duet",
+        "kind": "rest",
+        "pitch": null,
+        "pitches": [],
+        "pitchSpellings": [],
+        "duration": {
+          "numerator": 1,
+          "denominator": 2
+        },
+        "durationSpelling": "1/2",
+        "bar": 2,
+        "beat": {
+          "numerator": 3,
+          "denominator": 1
+        },
+        "key": null,
+        "clef": null,
+        "onsetFrames": 144000,
+        "endFrames": 192000,
+        "origin": {
+          "generated": false,
+          "path": [],
+          "noteIndex": null,
+          "occurrence": null,
+          "line": 24,
+          "span": {
+            "start": 706,
+            "end": 712
+          },
+          "definitionSpan": {
+            "start": 706,
+            "end": 712
+          },
+          "decision": null
+        }
+      }
+    ],
+    "occurrences": [
+      {
+        "id": "occurrence-0",
+        "path": [
+          {
+            "label": "overlay(subject, shift(1/2, answer))",
+            "kind": "occurrence",
+            "span": {
+              "start": 627,
+              "end": 668
+            }
+          }
+        ],
+        "label": "overlay(subject, shift(1/2, answer))",
+        "motif": "overlay",
+        "declaration": null,
+        "useSite": {
+          "start": 627,
+          "end": 668
+        },
+        "line": 22,
+        "events": [
+          "event-0",
+          "event-1"
+        ]
+      },
+      {
+        "id": "occurrence-1",
+        "path": [
+          {
+            "label": "overlay(subject, shift(1/2, answer))",
+            "kind": "occurrence",
+            "span": {
+              "start": 627,
+              "end": 668
+            }
+          },
+          {
+            "label": "transpose up P8",
+            "kind": "transform",
+            "span": null
+          },
+          {
+            "label": "retrograde",
+            "kind": "transform",
+            "span": null
+          }
+        ],
+        "label": "overlay(subject, shift(1/2, answer)) ▸ transpose up P8 ▸ retrograde",
+        "motif": "overlay",
+        "declaration": null,
+        "useSite": {
+          "start": 627,
+          "end": 668
+        },
+        "line": 22,
+        "events": [
+          "event-2",
+          "event-3"
+        ]
+      }
+    ],
+    "outline": [],
+    "header": [
+      {
+        "field": "title",
+        "value": "Standard Library Basics"
+      },
+      {
+        "field": "subtitle",
+        "value": null
+      },
+      {
+        "field": "composer",
+        "value": null
+      },
+      {
+        "field": "arranger",
+        "value": null
+      },
+      {
+        "field": "copyright",
+        "value": null
+      },
+      {
+        "field": "tempo",
+        "value": null
+      },
+      {
+        "field": "meter",
+        "value": null
+      },
+      {
+        "field": "key",
+        "value": null
+      }
+    ],
+    "performance": null,
+    "decisions": []
+  },
+  "studio": {
+    "declared": false,
+    "patches": [],
+    "buses": [],
+    "signals": [],
+    "assignments": [
+      {
+        "part": "strings",
+        "patch": null
+      }
+    ],
+    "sends": [],
+    "routes": []
+  },
+  "scoreRevision": 0,
+  "playback": {
+    "playing": false,
+    "positionFrames": 0,
+    "totalFrames": 0,
+    "sampleRate": 48000,
+    "loopRegion": null
+  },
+  "contents": null,
+  "terms": [
+    {
+      "name": "identity_ratio",
+      "kind": "function",
+      "signature": "fn identity_ratio(value: Ratio) -> Ratio",
+      "summary": "Return an exact rational unchanged. This is useful when a public API wants to say explicitly that it preserves a proportion.",
+      "result": {
+        "name": "Ratio",
+        "distinction": "an exact rational number"
+      },
+      "parameters": [
+        {
+          "name": "value",
+          "label": "value: Ratio",
+          "ty": {
+            "name": "Ratio",
+            "distinction": "an exact rational number"
+          },
+          "default": null
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/core.musa",
+        "start": 156,
+        "end": 170
+      }
+    },
+    {
+      "name": "identity_nat",
+      "kind": "function",
+      "signature": "fn identity_nat(value: Nat) -> Nat",
+      "summary": "Return a natural number unchanged.",
+      "result": {
+        "name": "Nat",
+        "distinction": "a whole number, zero or more"
+      },
+      "parameters": [
+        {
+          "name": "value",
+          "label": "value: Nat",
+          "ty": {
+            "name": "Nat",
+            "distinction": "a whole number, zero or more"
+          },
+          "default": null
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/core.musa",
+        "start": 254,
+        "end": 266
+      }
+    },
+    {
+      "name": "compose_music",
+      "kind": "function",
+      "signature": "fn compose_music(first: Music -> Music, second: Music -> Music, value: Music) -> Music",
+      "summary": "Apply the second musical transformation, then the first.",
+      "result": {
+        "name": "Music",
+        "distinction": "notated material"
+      },
+      "parameters": [
+        {
+          "name": "first",
+          "label": "first: Music -> Music",
+          "ty": {
+            "name": "Music -> Music",
+            "distinction": null
+          },
+          "default": null
+        },
+        {
+          "name": "second",
+          "label": "second: Music -> Music",
+          "ty": {
+            "name": "Music -> Music",
+            "distinction": null
+          },
+          "default": null
+        },
+        {
+          "name": "value",
+          "label": "value: Music",
+          "ty": {
+            "name": "Music",
+            "distinction": "notated material"
+          },
+          "default": null
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/core.musa",
+        "start": 368,
+        "end": 381
+      }
+    },
+    {
+      "name": "compose_pitch",
+      "kind": "function",
+      "signature": "fn compose_pitch(first: Pitch -> Pitch, second: Pitch -> Pitch, value: Pitch) -> Pitch",
+      "summary": "Apply the second pitch function, then the first.",
+      "result": {
+        "name": "Pitch",
+        "distinction": "a written pitch: letter, accidental, and octave"
+      },
+      "parameters": [
+        {
+          "name": "first",
+          "label": "first: Pitch -> Pitch",
+          "ty": {
+            "name": "Pitch -> Pitch",
+            "distinction": null
+          },
+          "default": null
+        },
+        {
+          "name": "second",
+          "label": "second: Pitch -> Pitch",
+          "ty": {
+            "name": "Pitch -> Pitch",
+            "distinction": null
+          },
+          "default": null
+        },
+        {
+          "name": "value",
+          "label": "value: Pitch",
+          "ty": {
+            "name": "Pitch",
+            "distinction": "a written pitch: letter, accidental, and octave"
+          },
+          "default": null
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/core.musa",
+        "start": 553,
+        "end": 566
+      }
+    },
+    {
+      "name": "naturals",
+      "kind": "function",
+      "signature": "fn naturals(count: Nat) -> List<Nat>",
+      "summary": "The natural numbers from zero up to, but not including, count.",
+      "result": {
+        "name": "List<Nat>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "count",
+          "label": "count: Nat",
+          "ty": {
+            "name": "Nat",
+            "distinction": "a whole number, zero or more"
+          },
+          "default": null
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 87,
+        "end": 95
+      }
+    },
+    {
+      "name": "map_pitches",
+      "kind": "function",
+      "signature": "fn map_pitches(function: Pitch -> Pitch, values: List<Pitch>) -> List<Pitch>",
+      "summary": "Apply one pitch function to every member of a finite pitch list.",
+      "result": {
+        "name": "List<Pitch>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "function",
+          "label": "function: Pitch -> Pitch",
+          "ty": {
+            "name": "Pitch -> Pitch",
+            "distinction": null
+          },
+          "default": null
+        },
+        {
+          "name": "values",
+          "label": "values: List<Pitch>",
+          "ty": {
+            "name": "List<Pitch>",
+            "distinction": null
+          },
+          "default": null
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 218,
+        "end": 229
+      }
+    },
+    {
+      "name": "filter_pitches",
+      "kind": "function",
+      "signature": "fn filter_pitches(predicate: Pitch -> Bool, values: List<Pitch>) -> List<Pitch>",
+      "summary": "Keep the pitches for which predicate returns true.",
+      "result": {
+        "name": "List<Pitch>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "predicate",
+          "label": "predicate: Pitch -> Bool",
+          "ty": {
+            "name": "Pitch -> Bool",
+            "distinction": null
+          },
+          "default": null
+        },
+        {
+          "name": "values",
+          "label": "values: List<Pitch>",
+          "ty": {
+            "name": "List<Pitch>",
+            "distinction": null
+          },
+          "default": null
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 396,
+        "end": 410
+      }
+    },
+    {
+      "name": "repeat_music",
+      "kind": "function",
+      "signature": "fn repeat_music(value: Music, count: Nat) -> List<Music>",
+      "summary": "Repeat one contextual music value count times as finite data.",
+      "result": {
+        "name": "List<Music>",
+        "distinction": null
+      },
+      "parameters": [
+        {
+          "name": "value",
+          "label": "value: Music",
+          "ty": {
+            "name": "Music",
+            "distinction": "notated material"
+          },
+          "default": null
+        },
+        {
+          "name": "count",
+          "label": "count: Nat",
+          "ty": {
+            "name": "Nat",
+            "distinction": "a whole number, zero or more"
+          },
+          "default": null
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/list.musa",
+        "start": 592,
+        "end": 604
+      }
+    },
+    {
+      "name": "pitch_or_else",
+      "kind": "function",
+      "signature": "fn pitch_or_else(fallback: Pitch, present: Pitch -> Pitch, value: Option<Pitch>) -> Pitch",
+      "summary": "Read an optional pitch, using fallback when it is absent and present when it is available.",
+      "result": {
+        "name": "Pitch",
+        "distinction": "a written pitch: letter, accidental, and octave"
+      },
+      "parameters": [
+        {
+          "name": "fallback",
+          "label": "fallback: Pitch",
+          "ty": {
+            "name": "Pitch",
+            "distinction": "a written pitch: letter, accidental, and octave"
+          },
+          "default": null
+        },
+        {
+          "name": "present",
+          "label": "present: Pitch -> Pitch",
+          "ty": {
+            "name": "Pitch -> Pitch",
+            "distinction": null
+          },
+          "default": null
+        },
+        {
+          "name": "value",
+          "label": "value: Option<Pitch>",
+          "ty": {
+            "name": "Option<Pitch>",
+            "distinction": null
+          },
+          "default": null
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/option.musa",
+        "start": 122,
+        "end": 135
+      }
+    },
+    {
+      "name": "nat_or_else",
+      "kind": "function",
+      "signature": "fn nat_or_else(fallback: Nat, present: Nat -> Nat, value: Option<Nat>) -> Nat",
+      "summary": "Read an optional natural number under the same explicit policy.",
+      "result": {
+        "name": "Nat",
+        "distinction": "a whole number, zero or more"
+      },
+      "parameters": [
+        {
+          "name": "fallback",
+          "label": "fallback: Nat",
+          "ty": {
+            "name": "Nat",
+            "distinction": "a whole number, zero or more"
+          },
+          "default": null
+        },
+        {
+          "name": "present",
+          "label": "present: Nat -> Nat",
+          "ty": {
+            "name": "Nat -> Nat",
+            "distinction": null
+          },
+          "default": null
+        },
+        {
+          "name": "value",
+          "label": "value: Option<Nat>",
+          "ty": {
+            "name": "Option<Nat>",
+            "distinction": null
+          },
+          "default": null
+        }
+      ],
+      "deprecation": null,
+      "readOnly": true,
+      "site": {
+        "where": "library",
+        "uri": "musa-stdlib:/std/option.musa",
+        "start": 342,
+        "end": 353
+      }
+    },
+    {
+      "name": "subject",
+      "kind": "value",
+      "signature": "let subject: Music",
+      "summary": null,
+      "result": {
+        "name": "Music",
+        "distinction": "notated material"
+      },
+      "parameters": [],
+      "deprecation": null,
+      "readOnly": false,
+      "site": {
+        "where": "open",
+        "span": {
+          "start": 264,
+          "end": 271
+        }
+      }
+    },
+    {
+      "name": "same_pitch",
+      "kind": "function",
+      "signature": "fn same_pitch(p: Pitch) -> Pitch",
+      "summary": null,
+      "result": {
+        "name": "Pitch",
+        "distinction": "a written pitch: letter, accidental, and octave"
+      },
+      "parameters": [
+        {
+          "name": "p",
+          "label": "p: Pitch",
+          "ty": {
+            "name": "Pitch",
+            "distinction": "a written pitch: letter, accidental, and octave"
+          },
+          "default": null
+        }
+      ],
+      "deprecation": null,
+      "readOnly": false,
+      "site": {
+        "where": "open",
+        "span": {
+          "start": 330,
+          "end": 340
+        }
+      }
+    },
+    {
+      "name": "answer",
+      "kind": "value",
+      "signature": "let answer: Music",
+      "summary": null,
+      "result": {
+        "name": "Music",
+        "distinction": "notated material"
+      },
+      "parameters": [],
+      "deprecation": null,
+      "readOnly": false,
+      "site": {
+        "where": "open",
+        "span": {
+          "start": 375,
+          "end": 381
+        }
+      }
+    },
+    {
+      "name": "chosen",
+      "kind": "value",
+      "signature": "let chosen: Pitch",
+      "summary": null,
+      "result": {
+        "name": "Pitch",
+        "distinction": "a written pitch: letter, accidental, and octave"
+      },
+      "parameters": [],
+      "deprecation": null,
+      "readOnly": false,
+      "site": {
+        "where": "open",
+        "span": {
+          "start": 450,
+          "end": 456
+        }
+      }
+    },
+    {
+      "name": "counting",
+      "kind": "value",
+      "signature": "let counting: List<Nat>",
+      "summary": null,
+      "result": {
+        "name": "List<Nat>",
+        "distinction": null
+      },
+      "parameters": [],
+      "deprecation": null,
+      "readOnly": false,
+      "site": {
+        "where": "open",
+        "span": {
+          "start": 515,
+          "end": 523
+        }
+      }
+    }
+  ],
+  "names": [
+    {
+      "name": "subject",
+      "kind": "value",
+      "declaration": {
+        "start": 264,
+        "end": 271
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 432,
+          "end": 439
+        },
+        {
+          "start": 639,
+          "end": 646
+        }
+      ]
+    },
+    {
+      "name": "same_pitch",
+      "kind": "function",
+      "declaration": {
+        "start": 330,
+        "end": 340
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 484,
+          "end": 494
+        }
+      ]
+    },
+    {
+      "name": "answer",
+      "kind": "value",
+      "declaration": {
+        "start": 375,
+        "end": 381
+      },
+      "external": null,
+      "uses": [
+        {
+          "start": 659,
+          "end": 665
+        }
+      ]
+    },
+    {
+      "name": "chosen",
+      "kind": "value",
+      "declaration": {
+        "start": 450,
+        "end": 456
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "counting",
+      "kind": "value",
+      "declaration": {
+        "start": 515,
+        "end": 523
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "compose_music",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/core.musa",
+      "uses": [
+        {
+          "start": 391,
+          "end": 404
+        }
+      ]
+    },
+    {
+      "name": "pitch_or_else",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/option.musa",
+      "uses": [
+        {
+          "start": 466,
+          "end": 479
+        }
+      ]
+    },
+    {
+      "name": "naturals",
+      "kind": "function",
+      "declaration": null,
+      "external": "musa-stdlib:/std/list.musa",
+      "uses": [
+        {
+          "start": 537,
+          "end": 545
+        }
+      ]
+    },
+    {
+      "name": "strings",
+      "kind": "part",
+      "declaration": {
+        "start": 576,
+        "end": 583
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "duet",
+      "kind": "voice",
+      "declaration": {
+        "start": 604,
+        "end": 608
+      },
+      "external": null,
+      "uses": []
+    }
+  ]
+}

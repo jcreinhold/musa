@@ -1,0 +1,67 @@
+{
+  "document": 0,
+  "name": "broken/claim-not-a-measure.musa",
+  "kind": "piece",
+  "source": "// `fills_meter()` is the bar's own claim written out, and it fails the same\n// way a bar does: this passage is a quarter short of the 3/4 measure it says\n// it is one of.\npiece \"Short Claim\" {\n    meter 3/4;\n\n    score {\n        part piano {\n            voice right {\n                assert fills_meter() {\n                    c4/4 d4/4\n                }\n            }\n        }\n    }\n}\n",
+  "revision": 0,
+  "compiles": false,
+  "unsaved": true,
+  "autosaved": false,
+  "recovery": null,
+  "midiPort": null,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "does-not-add-up",
+      "message": "this passage is 1/4 short",
+      "labels": [
+        {
+          "span": {
+            "start": 285,
+            "end": 355
+          },
+          "at": {
+            "line": 10,
+            "column": 17
+          },
+          "text": "these add up to 1/2",
+          "primary": true
+        }
+      ],
+      "help": "add `rest/4`, or lengthen one of the durations",
+      "note": "`meter 3/4` makes a bar 3/4",
+      "fixes": [
+        {
+          "title": "add `rest/4`",
+          "edits": [
+            {
+              "span": {
+                "start": 337,
+                "end": 337
+              },
+              "replacement": " rest/4"
+            }
+          ]
+        }
+      ],
+      "span": {
+        "start": 285,
+        "end": 355
+      }
+    }
+  ],
+  "mei": null,
+  "score": null,
+  "studio": null,
+  "scoreRevision": null,
+  "playback": {
+    "playing": false,
+    "positionFrames": 0,
+    "totalFrames": 0,
+    "sampleRate": 48000,
+    "loopRegion": null
+  },
+  "contents": null,
+  "terms": [],
+  "names": []
+}

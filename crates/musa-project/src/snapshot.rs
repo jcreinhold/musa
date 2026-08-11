@@ -240,6 +240,81 @@ struct SnapshotWire<'a> {
     playback: PlaybackState,
     /// Absent for a session opened on its own; a project always sends it.
     contents: Option<&'a crate::contents::ContentsFacts>,
+    /// Every declaration in scope, as `08-elaboration.md` §1 shows one.
+    terms: Vec<TermWire<'a>>,
+    /// Every resolved name, for definition and references.
+    names: Vec<NameWire<'a>>,
+}
+
+/// One declaration, as the term panel and the completion list read it.
+///
+/// A deliberate projection of [`ItemFact`](crate::ItemFact) rather than the
+/// fact itself, and the reason is the wire's own invariant: **an offset that
+/// crosses the wire indexes the document that crossed with it.** Spans are
+/// restated in UTF-16 code units by [`crate::utf16::translate_spans`], using
+/// the open source's index, so a byte range into `std::pitch` sent in that
+/// shape would be silently translated against the wrong text. A declaration
+/// somewhere else therefore travels as a [`SiteWire::Library`] — the module's
+/// URI and an opaque range the frontend only ever hands back — and the
+/// frontend cannot mistake it for a place in the text it is showing.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TermWire<'a> {
+    name: &'a str,
+    kind: crate::facts::NameKind,
+    /// `fn triad(root: NoteName) -> ChordClass`, as the source spells it.
+    signature: &'a str,
+    /// The comment block above the declaration, as one paragraph.
+    summary: Option<&'a str>,
+    /// What it evaluates to.
+    result: Option<&'a crate::facts::TypeFact>,
+    parameters: &'a [crate::facts::ParameterFact],
+    /// What to write instead, when the declaration says it is deprecated.
+    deprecation: Option<&'a str>,
+    /// Whether an editor may write to it.
+    read_only: bool,
+    /// Where it is declared.
+    site: SiteWire<'a>,
+}
+
+/// Where a declaration is written, as the wire may state it.
+#[derive(serde::Serialize)]
+#[serde(tag = "where", rename_all = "camelCase")]
+enum SiteWire<'a> {
+    /// In the document this snapshot carries. `span` indexes its `source`.
+    Open {
+        /// The declaration's own name token.
+        span: crate::diagnostic::Span,
+    },
+    /// In another document — a bundled library module.
+    ///
+    /// `start` and `end` are byte offsets *in that module*, not code-unit
+    /// offsets in anything the frontend is holding. They are a handle: the
+    /// frontend hands them back when it asks to open the module, and the
+    /// backend states them in that document's own measure then.
+    Library {
+        /// The module's readable virtual URI.
+        uri: &'a str,
+        start: u32,
+        end: u32,
+    },
+}
+
+/// One resolved name, for definition and references.
+///
+/// Same projection, same reason: a declaration in another document is named
+/// by its URI, and the wire carries no offset into a text it did not send.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NameWire<'a> {
+    name: &'a str,
+    kind: crate::facts::NameKind,
+    /// The declaration's name token, when it is in this document.
+    declaration: Option<crate::diagnostic::Span>,
+    /// The module it is declared in, when it is not.
+    external: Option<&'a str>,
+    /// Every resolved use's name token, in the order the resolver met them.
+    uses: &'a [crate::diagnostic::Span],
 }
 
 impl ProjectSnapshot<'_> {
@@ -275,6 +350,8 @@ impl ProjectSnapshot<'_> {
             score_revision: self.score_revision().map(|revision| revision.0),
             playback: self.playback,
             contents: self.contents,
+            terms: self.items().iter().map(term).collect(),
+            names: self.names().iter().map(name).collect(),
         })
         // `SnapshotWire` is a plain struct of strings, numbers, and derived
         // types; `to_value` fails only on things it cannot contain, such as a
@@ -282,6 +359,42 @@ impl ProjectSnapshot<'_> {
         .unwrap_or(serde_json::Value::Null);
         crate::utf16::translate_spans(&mut wire, &offsets);
         wire
+    }
+}
+
+/// One declaration, projected onto the wire.
+fn term(item: &crate::facts::ItemFact) -> TermWire<'_> {
+    TermWire {
+        name: &item.name,
+        kind: item.kind,
+        signature: &item.signature,
+        summary: item.summary.as_deref(),
+        result: item.result.as_ref(),
+        parameters: &item.parameters,
+        deprecation: item.deprecation.as_deref(),
+        read_only: item.read_only,
+        site: match item.uri {
+            None => SiteWire::Open { span: item.span },
+            Some(ref uri) => SiteWire::Library {
+                uri,
+                start: item.span.start,
+                end: item.span.end,
+            },
+        },
+    }
+}
+
+/// One resolved name, projected onto the wire.
+fn name(reference: &crate::facts::NameFact) -> NameWire<'_> {
+    NameWire {
+        name: &reference.name,
+        kind: reference.kind,
+        declaration: reference.declaration,
+        external: reference
+            .external_declaration
+            .as_ref()
+            .map(|location| location.uri.as_str()),
+        uses: &reference.uses,
     }
 }
 

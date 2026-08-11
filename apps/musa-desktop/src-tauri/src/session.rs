@@ -68,6 +68,12 @@ enum Job {
     /// depends on the key in force where it lands, and a piece modulates. It
     /// is an engraved event id, the identity the page already selects by.
     Midi(bool, Option<String>),
+    /// Read the last valid score, and report what one analysis saw.
+    ///
+    /// A job like the others because it reads the session's score, and
+    /// deliberately not a mutating one: an analysis mints no revision and
+    /// raises no diagnostic (`docs/interface/08-elaboration.md` §5).
+    Analyze(String),
 }
 
 /// An `apply` that is either a document command or history navigation.
@@ -147,6 +153,10 @@ impl SessionHandle {
     pub(crate) fn listen_to_midi(&self, listening: bool, caret: Option<String>) -> Reply {
         self.ask(Job::Midi(listening, caret))
     }
+
+    pub(crate) fn analyze(&self, kind: String) -> Reply {
+        self.ask(Job::Analyze(kind))
+    }
 }
 
 /// The session thread.
@@ -183,7 +193,7 @@ fn run(app: &AppHandle, inbox: &Receiver<(Job, Sender<Reply>)>) {
                 listening = wanted;
                 caret.clone_from(at);
             }
-            let mutating = !matches!(job, Job::Snapshot | Job::Impact(_) | Job::Midi(..));
+            let mutating = !matches!(job, Job::Snapshot | Job::Impact(_) | Job::Midi(..) | Job::Analyze(_));
             let answer = perform(&mut session, job);
             let changed = mutating && answer.is_ok();
             // A dropped receiver means the webview went away mid-command;
@@ -304,6 +314,14 @@ fn perform(session: &mut Option<Project>, job: Job) -> Reply {
             serde_json::to_value(impact).map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
         }
         Job::Snapshot => session.as_mut().map(snapshot_json).ok_or_else(no_project),
+        Job::Analyze(kind) => {
+            let open = session.as_ref().ok_or_else(no_project)?;
+            let kind = musa_project::AnalysisKind::named(&kind)
+                .ok_or_else(|| ErrorDto::shell(ErrorKindDto::Backend, format!("`{kind}` is not an analysis")))?;
+            open.current()
+                .analyze_wire(&musa_project::AnalysisRequest::new(kind))
+                .map_err(|error| ErrorDto::from(&error))
+        }
         Job::Midi(listening, _) => {
             let open = session.as_mut().ok_or_else(no_project)?;
             if listening {

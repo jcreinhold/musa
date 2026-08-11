@@ -19,6 +19,8 @@
   import Leaf from "../lib/ui/Leaf.svelte";
   import Margin from "../lib/ui/Margin.svelte";
   import SourcePane from "../lib/ui/SourcePane.svelte";
+  import Findings from "./Findings.svelte";
+  import ANALYSES from "../lib/session/generated/analysis-kinds.json";
   import Workspaces from "../lib/ui/Workspaces.svelte";
   import type { Screen } from "../lib/commands/map";
   import { SOURCE_FLOOR, type Preferences } from "../lib/session/preferences.svelte";
@@ -45,6 +47,7 @@
     oncandidate,
     oncaret,
     ondiagnostic,
+    onreveal,
     onshow,
   }: {
     session: Session;
@@ -71,6 +74,8 @@
     /** The caret moved; the score follows it (§14.4's other direction). */
     oncaret?: (offset: number) => void;
     ondiagnostic?: (diagnostic: Diagnostic) => void;
+    /** Open the source at a span: what a finding's evidence reaches. */
+    onreveal?: (span: Span) => void;
     onshow: (which: Screen) => void;
   } = $props();
 
@@ -86,7 +91,40 @@
 
   /** The stage, so the seam can ask how much of it is still spare. */
   let stage: HTMLElement | null = $state(null);
+
+  /**
+   * The bundled module being read, when one is (`08-elaboration.md` §3).
+   *
+   * It replaces the text and nothing else: the page keeps showing the piece,
+   * because the module is not a score and the composer has not left theirs.
+   */
+  const library = $derived(session.library);
+
+  /** Where in the module the term was, restated by the core in its measure. */
+  const libraryReveal = $derived(
+    library?.span ? { span: library.span, focus: true } : null,
+  );
 </script>
+
+<!--
+  A reading of the piece, under the problems with it. Two different things
+  share this column and the design is keeping them apart: a diagnostic says
+  something is wrong, a finding says something was seen (`08-elaboration.md`
+  §5).
+-->
+{#snippet footer()}
+  {#if library === null}
+    <Findings
+      report={session.report}
+      reading={session.reading}
+      revision={snapshot?.scoreRevision ?? snapshot?.revision ?? null}
+      kinds={ANALYSES}
+      onask={session.live ? (kind) => void session.analyze(kind) : undefined}
+      onselect={(events) => (workspace.selection = { kind: "event", events })}
+      {onreveal}
+    />
+  {/if}
+{/snippet}
 
 {#if snapshot}
   <div class="source-workspace">
@@ -104,11 +142,17 @@
 
     <div class="panes">
       <SourcePane
-        source={session.text}
-        editable={session.live}
-        {diagnostics}
+        source={library?.text ?? session.text}
+        editable={session.live && library === null}
+        library={library && { name: library.name }}
+        onclose={library ? () => session.closeLibrary() : undefined}
+        onlibrary={(uri, start, end) => void session.openLibrary(uri, start, end)}
+        terms={snapshot.terms}
+        names={snapshot.names}
+        diagnostics={library ? [] : diagnostics}
         {highlight}
-        {reveal}
+        reveal={library ? libraryReveal : reveal}
+        {footer}
         focus={focus.marked}
         {sounding}
         {candidate}

@@ -67,10 +67,39 @@ export interface Diagnostic {
   span: Span | null;
 }
 
+/**
+ * What kind of expansion one step of a path was.
+ *
+ * Origin does not say "something happened here" — a composer reading a
+ * generated note asks *which* construct made it, and the answer chooses the
+ * word the row prints and the icon beside it.
+ */
+export type StepKind =
+  | "occurrence"
+  | "instance"
+  | "transform"
+  | "assertion"
+  | "splice"
+  | "specialization";
+
+/**
+ * One step of an expansion path, as the Origin row reads it.
+ *
+ * `span` is what makes a step navigable: the call site, instance site, or
+ * override site the step names. Null where the step is not a place in the
+ * source — a transform is an argument to a block, and an assertion is a claim
+ * about music rather than a point in it.
+ */
+export interface StepFact {
+  label: string;
+  kind: StepKind;
+  span: Span | null;
+}
+
 export interface OriginFacts {
   generated: boolean;
-  /** Containment order, outside in: `["transpose down P5", "sigh()"]`. */
-  path: string[];
+  /** Containment order, outside in: `transpose down P5 ▸ sigh()`. */
+  path: StepFact[];
   noteIndex: number | null;
   line: number;
   span: Span;
@@ -136,7 +165,7 @@ export interface CandidateEdit {
 export interface OccurrenceFacts {
   id: string;
   /** Containment order, outside in. */
-  path: string[];
+  path: StepFact[];
   /** The path as one line, for a margin bracket's label. */
   label: string;
   /** The motif's name, when a motif produced this. */
@@ -409,7 +438,175 @@ export interface ProjectSnapshot {
   playback: PlaybackState;
   /** The project this piece is one of, or null when nothing is open. */
   contents: ContentsFacts | null;
+  /** Every declaration in scope (`08-elaboration.md` §1). */
+  terms: TermFacts[];
+  /** Every resolved name, for definition and references. */
+  names: NameFacts[];
 }
+
+/** What a name names. The compiler's own list. */
+export type NameKind =
+  | "value"
+  | "function"
+  | "motif"
+  | "bar"
+  | "fragment"
+  | "part"
+  | "voice"
+  | "patch"
+  | "module"
+  | "template";
+
+/** One type, as a reader is shown it. */
+export interface TypeFacts {
+  /** As it is spelled in source: `NoteName`, `List<Pitch>`. */
+  name: string;
+  /**
+   * The one line separating this type from the one it is confused with.
+   * The disclosure of `08-elaboration.md` §1, never the first sentence.
+   */
+  distinction: string | null;
+}
+
+/** One parameter of a callable declaration. */
+export interface ParameterFacts {
+  name: string;
+  /** The substring of {@link TermFacts.signature} this parameter occupies. */
+  label: string;
+  ty: TypeFacts;
+  /** The default as written, when the caller may omit it. */
+  default: string | null;
+}
+
+/**
+ * Where a declaration is written.
+ *
+ * Two shapes, because they are two different things. `open` carries a span
+ * into the source this snapshot also carries, in the code units the frontend
+ * counts in. `library` carries a module and an **opaque** range: those numbers
+ * index a document the frontend has never seen, and the only thing it may do
+ * with them is hand them back to `libraryDocument`, which restates them in
+ * that module's own measure.
+ */
+export type TermSite =
+  | { where: "open"; span: Span }
+  | { where: "library"; uri: string; start: number; end: number };
+
+/** One declaration, as the term tooltip and the completion list read it. */
+export interface TermFacts {
+  name: string;
+  kind: NameKind;
+  /** `fn triad(root: NoteName) -> ChordClass`, as the source spells it. */
+  signature: string;
+  /** The comment block above the declaration, as one paragraph. */
+  summary: string | null;
+  result: TypeFacts | null;
+  parameters: ParameterFacts[];
+  /** What to write instead, when the declaration says it is deprecated. */
+  deprecation: string | null;
+  readOnly: boolean;
+  site: TermSite;
+}
+
+/** One resolved name: where it is declared, and everywhere it is used. */
+export interface NameFacts {
+  name: string;
+  kind: NameKind;
+  /** The declaration's name token, when it is in this document. */
+  declaration: Span | null;
+  /** The module it is declared in, when it is not. */
+  external: string | null;
+  /** Every resolved use, in the order the resolver met them. */
+  uses: Span[];
+}
+
+/** A bundled module opened for reading (`08-elaboration.md` §3). */
+export interface LibraryDocument {
+  uri: string;
+  /** The module as the language spells it: `pitch`, `theory::cadence`. */
+  name: string;
+  text: string;
+  /** What to reveal in it, in this text's own measure. */
+  span: Span | null;
+}
+
+/**
+ * What one analysis saw.
+ *
+ * An observation, never a verdict: nothing here is a diagnostic, and nothing
+ * here is painted red (`08-elaboration.md` §5).
+ */
+export interface AnalysisFacts {
+  /**
+   * The score revision this is a reading of.
+   *
+   * The core's, not a number this side kept: an analysis reads the last valid
+   * compile, and only the core knows which one that was. A report whose
+   * revision is behind the snapshot's is a reading of an older score, and says
+   * so rather than being shown as current (`08-elaboration.md` §8).
+   */
+  revision: number;
+  /** Which analysis ran, by its own name. */
+  kind: string;
+  /** One line saying what it does. */
+  method: string;
+  /** The style profile it read against, when it read against one. Absent for
+   * the kinds that read the notation alone. */
+  profile?: string | null;
+  /** What it took for granted, in its own words. */
+  assumptions: string[];
+  findings: FindingFacts[];
+}
+
+/** One thing an analysis saw, and what it has to say for it. */
+export interface FindingFacts {
+  code: string;
+  /** How it stands: a word, never a colour and never a percentage. */
+  standing: string;
+  summary: string;
+  at: Fraction;
+  bar: number;
+  beat: Fraction;
+  evidence: EvidenceFacts;
+  /** Each criterion, whether it held, and what it cites. */
+  grounds: GroundFacts[];
+  rule: RuleFacts | null;
+}
+
+/** The rule a finding was read under. */
+export interface RuleFacts {
+  id: string;
+  states: string;
+  strength: string;
+  cites: string;
+}
+
+/** One criterion behind a finding. An unsatisfied ground is the information. */
+export interface GroundFacts {
+  criterion: string;
+  satisfied: boolean;
+  cites: string;
+}
+
+/** One note a finding points at. */
+export interface NoteFacts {
+  part: string;
+  voice: string;
+  /** The engraved event's identity — what a selection is made of. */
+  event: string;
+  span: Span;
+  line: number;
+}
+
+/**
+ * Where a finding can be seen. Tagged, because the reader's first question is
+ * which of the four it is: three are places and the fourth is not.
+ */
+export type EvidenceFacts =
+  | ({ kind: "event" } & NoteFacts)
+  | { kind: "passage"; from: Fraction; to: Fraction; notes: NoteFacts[] }
+  | { kind: "annotation"; span: Span; line: number }
+  | { kind: "inForce" };
 
 /**
  * The project's listing, when there is more than one file to choose between.

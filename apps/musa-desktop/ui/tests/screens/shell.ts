@@ -17,10 +17,25 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 
 /** The pieces the stub can open, both written by `musa-project`'s tests. */
-export type Piece = "glass-mountain" | "large-score" | "annotated" | "open-form" | "open-form-again";
+export type Piece =
+  | "glass-mountain"
+  | "large-score"
+  | "annotated"
+  | "open-form"
+  | "open-form-again"
+  /** Terms declared in bundled modules, used in a piece (prompt 124). */
+  | "stdlib-basics"
+  /** An expansion path that runs through a kernel quote. */
+  | "kernel-splice"
+  /** A claim the compiler refused: a piece that does not compile. */
+  | "refused-claim";
 
 function snapshotOf(piece: Piece): string {
   return fileURLToPath(new URL(`../../fixtures/${piece}.snapshot.json`, import.meta.url));
+}
+
+function fixtureFile(name: string): string {
+  return fileURLToPath(new URL(`../../fixtures/${name}`, import.meta.url));
 }
 
 /**
@@ -55,10 +70,31 @@ export async function stubShell(
     // it again" answers with, and the stub has no other way to produce one.
     // For a determinate piece nothing ever asks for it.
     again: { ...(JSON.parse(readFileSync(snapshotOf("open-form-again"), "utf8")) as object), document: 1 },
+    // What the elaboration screens are answered with: one committed reading,
+    // the bundled modules as documents, and the compiler's own list of what
+    // it can be asked. All three are written by `musa-project`'s tests.
+    report: JSON.parse(readFileSync(fixtureFile("pivot-ambiguity.analysis.json"), "utf8")) as Record<string, unknown>,
+    modules: JSON.parse(readFileSync(fixtureFile("library-documents.json"), "utf8")) as Record<
+      string,
+      Record<string, unknown>
+    >,
+    kinds: JSON.parse(
+      readFileSync(
+        fileURLToPath(new URL("../../src/lib/session/generated/analysis-kinds.json", import.meta.url)),
+        "utf8",
+      ),
+    ) as { kind: string; method: string }[],
     volume,
   };
   await page.addInitScript(
-    (both: Record<"open" | "other" | "again", Record<string, unknown>> & { volume: boolean }) => {
+    (
+      both: Record<"open" | "other" | "again", Record<string, unknown>> & {
+        volume: boolean;
+        report: Record<string, unknown>;
+        modules: Record<string, Record<string, unknown>>;
+        kinds: { kind: string; method: string }[];
+      },
+    ) => {
     const seed = both.open;
     const handlers = new Map<number, (payload: unknown) => void>();
     const events = new Map<string, number[]>();
@@ -376,6 +412,30 @@ export async function stubShell(
         return answer();
       },
       edit_impact: (args) => impactOf(args.edit as Record<string, unknown>),
+      // A reading. The stub holds one real report and answers every other
+      // question with the honest empty one — which is a state the panel has
+      // to render, and the only one a stub can produce truthfully.
+      analyze: (args) => {
+        const kind = args.kind as string;
+        // The reading is of the score that compiled, which is the number the
+        // core would answer with and the one that makes it go stale.
+        const revision = (current.scoreRevision as number | null) ?? (current.revision as number);
+        if (kind === both.report.kind) return { ...both.report, revision };
+        const known = both.kinds.find((offered) => offered.kind === kind);
+        if (!known) throw { kind: "backend", message: `\`${kind}\` is not an analysis` };
+        return { revision, kind, method: known.method, profile: null, assumptions: [], findings: [] };
+      },
+      // A bundled module, read-only. The place comes back in the module's own
+      // units; that translating it is really the core's arithmetic and not a
+      // coincidence of ASCII is `musa_project::library`'s laws.
+      library_document: (args) => {
+        const uri = args.uri as string;
+        const module = both.modules[uri];
+        if (!module) throw { kind: "backend", message: `\`${uri}\` is not bundled` };
+        const start = args.start as number | null;
+        const end = args.end as number | null;
+        return { ...module, span: start === null || start === undefined ? null : { start, end } };
+      },
       apply: (args) => {
         const command = args.command as {
           kind: string;

@@ -13,7 +13,7 @@
    * the compiler's, highlighted spans are provenance, and the caret's meaning
    * is reported outward rather than interpreted here (`03-interaction.md` §7).
    */
-  import { closeBrackets } from "@codemirror/autocomplete";
+  import { autocompletion, closeBrackets, type CompletionSource } from "@codemirror/autocomplete";
   import { defaultKeymap, indentWithTab } from "@codemirror/commands";
   import { bracketMatching, foldGutter, foldKeymap, syntaxHighlighting } from "@codemirror/language";
   import { setDiagnostics } from "@codemirror/lint";
@@ -48,7 +48,8 @@
 
   import { musa, musaHighlighting, docParts, keywordDoc, proseRuns, type KeywordDoc } from "../lang-musa";
   import type { Reveal } from "../state/reveal";
-  import type { Diagnostic, Span } from "../state/snapshot";
+  import type { Diagnostic, NameFacts, Span, TermFacts } from "../state/snapshot";
+  import { termAt } from "../state/terms";
   import { modal as modalKeymap, serve } from "./vim";
 
   let {
@@ -67,6 +68,9 @@
     onundo,
     onredo,
     onsave,
+    terms = [],
+    names = [],
+    onlibrary,
   }: {
     source: string;
     /** The compiler's own, never recomputed here (`05-states.md` §5). */
@@ -111,6 +115,16 @@
     onundo?: () => void;
     onredo?: () => void;
     onsave?: () => void;
+    /**
+     * Every declaration in scope, and every resolved name, from the last
+     * valid compile (`08-elaboration.md` §2). Both are the core's: what a
+     * term means, where it is declared, and which uses are the same name are
+     * all answers only the resolver has.
+     */
+    terms?: TermFacts[];
+    names?: NameFacts[];
+    /** Follow a term into a bundled module, by the handle it carries. */
+    onlibrary?: (uri: string, start: number, end: number) => void;
   } = $props();
 
   /** The provenance marks, carried in the editor's own state. */
@@ -413,6 +427,46 @@
       paddingTop: "var(--s-2)",
       whiteSpace: "pre-wrap",
     },
+    /*
+     * A term's own documentation, in the same leaf at the same size. The
+     * signature leads because it is what the composer is checking; everything
+     * under it is the declaration's own words (`08-elaboration.md` §2).
+     */
+    ".cm-musa-term-doc": {
+      maxWidth: "48ch",
+      padding: "var(--s-3) var(--s-4)",
+    },
+    ".cm-musa-term-doc p": { margin: "var(--s-2) 0 0" },
+    ".cm-musa-term-doc .signature": {
+      fontFamily: "var(--f-mono)",
+      margin: "0",
+      whiteSpace: "pre-wrap",
+    },
+    ".cm-musa-term-doc .deprecated": { color: "var(--chalk)" },
+    ".cm-musa-term-doc ul": {
+      margin: "var(--s-2) 0 0",
+      paddingLeft: "var(--s-4)",
+    },
+    ".cm-musa-term-doc code": { fontFamily: "var(--f-mono)" },
+    ".cm-musa-term-doc summary": {
+      color: "var(--ink-muted)",
+      cursor: "pointer",
+      marginTop: "var(--s-2)",
+    },
+    ".cm-musa-term-doc .site": {
+      background: "none",
+      border: "0",
+      borderTop: "1px solid var(--rule)",
+      color: "var(--ink-muted)",
+      cursor: "pointer",
+      display: "block",
+      font: "inherit",
+      marginTop: "var(--s-2)",
+      padding: "var(--s-2) 0 0",
+      textAlign: "left",
+      width: "100%",
+    },
+    ".cm-musa-term-doc .site:hover": { color: "var(--ink)" },
   });
 
   let host = $state<HTMLElement | undefined>();
@@ -457,6 +511,8 @@
       musa(),
       syntaxHighlighting(musaHighlighting),
       keywordDocs,
+      termDocs,
+      autocompletion({ override: [termCompletions], activateOnTyping: false }),
       marks,
       focusMarks,
       gutterMarks,
@@ -563,6 +619,139 @@
       create: () => ({ dom: renderKeywordDoc(found.doc) }),
     };
   });
+
+  /*
+   * A term teaches too, and the words are the source's own: the signature as
+   * it is written, the comment above the declaration, and — behind a
+   * disclosure — what only a language implementor wants
+   * (`08-elaboration.md` §1). Nothing here is inferred; a name the compiler
+   * did not resolve has no tooltip, because a guess would be the interface
+   * having a theory of the language.
+   */
+
+  /** What a declaration says about itself, set: the two lines, then the rest. */
+  function renderTerm(term: TermFacts): HTMLElement {
+    const dom = document.createElement("div");
+    dom.className = "cm-musa-term-doc";
+
+    const signature = document.createElement("pre");
+    signature.className = "signature";
+    signature.textContent = term.signature;
+    dom.append(signature);
+
+    if (term.summary !== null) {
+      const summary = document.createElement("p");
+      summary.className = "summary";
+      summary.textContent = term.summary;
+      dom.append(summary);
+    }
+
+    // A deprecation is not detail: it is the one thing a reader must act on,
+    // so it stays above the fold and says what to write instead.
+    if (term.deprecation !== null) {
+      const deprecated = document.createElement("p");
+      deprecated.className = "deprecated";
+      deprecated.textContent = `Deprecated — ${term.deprecation}`;
+      dom.append(deprecated);
+    }
+
+    if (term.parameters.length > 0) {
+      const list = document.createElement("ul");
+      list.className = "parameters";
+      for (const parameter of term.parameters) {
+        const item = document.createElement("li");
+        const label = document.createElement("code");
+        label.textContent = parameter.label;
+        item.append(label);
+        if (parameter.default !== null) {
+          item.append(document.createTextNode(" — may be left out"));
+        }
+        list.append(item);
+      }
+      dom.append(list);
+    }
+
+    const detail = details(term);
+    if (detail.length > 0) {
+      const disclosure = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = "language detail";
+      disclosure.append(summary);
+      for (const line of detail) {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = line;
+        disclosure.append(paragraph);
+      }
+      dom.append(disclosure);
+    }
+
+    // A term the composer did not declare was declared somewhere, and that
+    // somewhere is readable (`08-elaboration.md` §3). The line says where
+    // before it offers to go there, so the offer is not the only way to learn
+    // it — `⌘⇧D` reaches the same module from the keyboard.
+    if (term.site.where === "library") {
+      const { uri, start, end } = term.site;
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "site";
+      open.textContent = `Declared in ${uri} — read it`;
+      open.addEventListener("click", () => onlibrary?.(uri, start, end));
+      dom.append(open);
+    }
+    return dom;
+  }
+
+  /** What the disclosure holds: types as types, and where the text lives. */
+  function details(term: TermFacts): string[] {
+    const lines: string[] = [];
+    if (term.result) {
+      lines.push(
+        term.result.distinction === null
+          ? term.result.name
+          : `${term.result.name} — ${term.result.distinction}`,
+      );
+    }
+    for (const parameter of term.parameters) {
+      if (parameter.ty.distinction !== null) {
+        lines.push(`${parameter.name}: ${parameter.ty.name} — ${parameter.ty.distinction}`);
+      }
+    }
+    return lines;
+  }
+
+  const termDocs = hoverTooltip((view, pos) => {
+    const term = termAt({ terms, names }, pos);
+    if (!term) return null;
+    const word = view.state.wordAt(pos);
+    return {
+      pos: word?.from ?? pos,
+      end: word?.to ?? pos,
+      above: true,
+      create: () => ({ dom: renderTerm(term) }),
+    };
+  });
+
+  /**
+   * The completion list: the declarations in scope, in the order the core
+   * listed them, each with its signature beside it and its summary under it.
+   *
+   * Explicit only. A list that opened itself on every letter would put a
+   * popup over the music a composer is typing beside; `⌃Space` asks for it,
+   * which is what the keyboard sheet says.
+   */
+  const termCompletions: CompletionSource = (context) => {
+    const word = context.matchBefore(/[A-Za-z_][A-Za-z0-9_]*/);
+    if (!word && !context.explicit) return null;
+    return {
+      from: word?.from ?? context.pos,
+      options: terms.map((term) => ({
+        label: term.name,
+        detail: term.signature,
+        info: term.summary ?? undefined,
+        type: term.kind === "function" || term.kind === "motif" ? "function" : "variable",
+      })),
+    };
+  };
 
   // Built once, for the life of the element. The document and the settings
   // are read untracked on purpose: an editor that was torn down and rebuilt

@@ -1,4 +1,4 @@
-//! The whole bridge. Ten commands, and it stays this small.
+//! The whole bridge. Twelve commands, and it stays this small.
 //!
 //! Nothing here decides anything musical: each command translates a DTO into
 //! a `musa-project` request, hands it to the session thread, and returns what
@@ -131,4 +131,42 @@ pub fn listen_to_midi(
 #[tauri::command]
 pub fn snapshot(session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
     session.snapshot()
+}
+
+/// Read the last valid score and report what one analysis saw.
+///
+/// `kind` is the analysis's own command-line spelling, which is what the
+/// snapshot's findings and the language server's lenses both name it by. The
+/// request is the default one — the whole score, segmented at attacks —
+/// because a panel has nowhere to put a narrowing and prompt 142 owns the
+/// screen that would.
+///
+/// # Errors
+/// If no piece is open, it has never compiled, or the kind is not one this
+/// compiler runs. Refused rather than answered empty: a reader shown zero
+/// findings would conclude the music is clean
+/// (`docs/interface/08-elaboration.md` §8).
+#[tauri::command]
+pub fn analyze(kind: String, session: State<'_, SessionHandle>) -> Result<Value, ErrorDto> {
+    session.analyze(kind)
+}
+
+/// The bundled library module `uri` names, with `start..end` restated in its
+/// own measure.
+///
+/// The handle is the one the snapshot handed out beside the URI: a term
+/// declared outside the open document travels as a module and an opaque byte
+/// range, because a span on the wire indexes the document the wire carried
+/// (`docs/interface/08-elaboration.md` §3). No session state is touched — a
+/// bundled module is compiled into the binary and is the same in every
+/// window.
+///
+/// # Errors
+/// If no bundled module answers to that URI.
+#[tauri::command]
+pub fn library_document(uri: String, start: Option<u32>, end: Option<u32>) -> Result<Value, ErrorDto> {
+    let at = start.zip(end);
+    let document = musa_project::library_document(&uri, at)
+        .ok_or_else(|| ErrorDto::shell(ErrorKindDto::Nothing, format!("`{uri}` is not a bundled Musa module")))?;
+    serde_json::to_value(document).map_err(|error| ErrorDto::shell(ErrorKindDto::Backend, error.to_string()))
 }

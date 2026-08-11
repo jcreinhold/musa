@@ -1,0 +1,20 @@
+{
+  "musa-stdlib:/std/core.musa": {
+    "uri": "musa-stdlib:/std/core.musa",
+    "name": "core",
+    "text": "library {\n    // Return an exact rational unchanged. This is useful when a public API\n    // wants to say explicitly that it preserves a proportion.\n    fn identity_ratio(value: Ratio) -> Ratio { value }\n\n    // Return a natural number unchanged.\n    fn identity_nat(value: Nat) -> Nat { value }\n\n    // Apply the second musical transformation, then the first.\n    fn compose_music(first: Music -> Music, second: Music -> Music, value: Music) -> Music {\n        first(second(value))\n    }\n\n    // Apply the second pitch function, then the first.\n    fn compose_pitch(first: Pitch -> Pitch, second: Pitch -> Pitch, value: Pitch) -> Pitch {\n        first(second(value))\n    }\n}\n",
+    "span": null
+  },
+  "musa-stdlib:/std/list.musa": {
+    "uri": "musa-stdlib:/std/list.musa",
+    "name": "list",
+    "text": "library {\n    // The natural numbers from zero up to, but not including, count.\n    fn naturals(count: Nat) -> List<Nat> { range(count) }\n\n    // Apply one pitch function to every member of a finite pitch list.\n    fn map_pitches(function: Pitch -> Pitch, values: List<Pitch>) -> List<Pitch> {\n        map(function, values)\n    }\n\n    // Keep the pitches for which predicate returns true.\n    fn filter_pitches(predicate: Pitch -> Bool, values: List<Pitch>) -> List<Pitch> {\n        filter(predicate, values)\n    }\n\n    // Repeat one contextual music value count times as finite data.\n    fn repeat_music(value: Music, count: Nat) -> List<Music> { repeat(value, count) }\n}\n",
+    "span": null
+  },
+  "musa-stdlib:/std/option.musa": {
+    "uri": "musa-stdlib:/std/option.musa",
+    "name": "option",
+    "text": "library {\n    // Read an optional pitch, using fallback when it is absent and present\n    // when it is available.\n    fn pitch_or_else(fallback: Pitch, present: Pitch -> Pitch, value: Option<Pitch>) -> Pitch {\n        option_fold(fallback, present, value)\n    }\n\n    // Read an optional natural number under the same explicit policy.\n    fn nat_or_else(fallback: Nat, present: Nat -> Nat, value: Option<Nat>) -> Nat {\n        option_fold(fallback, present, value)\n    }\n}\n",
+    "span": null
+  }
+}

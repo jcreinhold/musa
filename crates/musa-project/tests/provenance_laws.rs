@@ -39,6 +39,11 @@ fn quoted(source: &str, span: musa_project::Span) -> String {
     source.get(range).unwrap_or("").to_owned()
 }
 
+/// An expansion path read as the words the Origin row prints.
+fn labels(entry: &OccurrenceFacts) -> Vec<&str> {
+    entry.path.iter().map(|step| step.label.as_str()).collect()
+}
+
 fn occurrence<'a>(score: &'a ScoreFacts, id: &str) -> Option<&'a OccurrenceFacts> {
     score.occurrences.iter().find(|entry| entry.id == id)
 }
@@ -55,10 +60,10 @@ fn glass_mountain_has_two_occurrences_of_one_motif() {
     let plain = score.occurrences.first().expect("a first occurrence");
     let transposed = score.occurrences.get(1).expect("a second occurrence");
 
-    assert_eq!(plain.path, vec!["sigh()".to_owned()]);
+    assert_eq!(labels(plain), vec!["sigh()"]);
     assert_eq!(
-        transposed.path,
-        vec!["transpose down P5".to_owned(), "sigh()".to_owned()],
+        labels(transposed),
+        vec!["transpose down P5", "sigh()"],
         "the path reads outside in: the `use` sits inside the transform block"
     );
     assert_eq!(transposed.label, "transpose down P5 \u{25b8} sigh()");

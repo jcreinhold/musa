@@ -289,7 +289,10 @@ export class Workspace {
     if (depth >= here.origin.path.length && this.selectOccurrence(here.origin.occurrence)) return;
     const prefix = here.origin.path.slice(0, depth);
     const kin = voiceEvents(this.snapshot, here.part, here.voice).filter((event) =>
-      prefix.every((segment, index) => event.origin.path[index] === segment),
+      // Compared by label: two steps that print the same word came from the
+      // same construct, and the step's own span is where that construct is,
+      // not a distinguishing mark between siblings.
+      prefix.every((segment, index) => event.origin.path[index]?.label === segment.label),
     );
     if (kin.length === 0) return;
     this.adrift = null;
@@ -453,7 +456,7 @@ export class Workspace {
         : `${event.pitches.join(" ")} ${event.durationSpelling}`;
     const where = `${event.part}, ${event.voice}, bar ${event.bar} beat ${event.beat.numerator}`;
     const origin = event.origin.generated
-      ? `, generated from ${event.origin.path[event.origin.path.length - 1] ?? "an expansion"}`
+      ? `, generated from ${event.origin.path[event.origin.path.length - 1]?.label ?? "an expansion"}`
       : "";
     return `${what}, ${where}${origin}`;
   }

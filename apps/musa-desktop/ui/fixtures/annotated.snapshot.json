@@ -551,5 +551,28 @@
     "sampleRate": 48000,
     "loopRegion": null
   },
-  "contents": null
+  "contents": null,
+  "terms": [],
+  "names": [
+    {
+      "name": "piano",
+      "kind": "part",
+      "declaration": {
+        "start": 756,
+        "end": 761
+      },
+      "external": null,
+      "uses": []
+    },
+    {
+      "name": "lead",
+      "kind": "voice",
+      "declaration": {
+        "start": 808,
+        "end": 812
+      },
+      "external": null,
+      "uses": []
+    }
+  ]
 }

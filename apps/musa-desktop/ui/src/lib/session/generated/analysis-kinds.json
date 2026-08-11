@@ -1,0 +1,26 @@
+[
+  {
+    "kind": "facts",
+    "method": "reads the score's own statements: what sounds, what rests, what is written above the staff, and what is in force"
+  },
+  {
+    "kind": "chords",
+    "method": "segments the music into simultaneities and reports every chord class whose members stand in a stated relation to each one (OMT 017-019)"
+  },
+  {
+    "kind": "tonal",
+    "method": "reads each simultaneity as a Roman numeral against every key the passage supports, and reports tonicization and modulation candidates with the OMT 050-051 criteria each satisfies"
+  },
+  {
+    "kind": "cadences",
+    "method": "looks at each potential cadence point for the harmonic, melodic, and formal evidence OMT 036 requires, and says which of it is missing"
+  },
+  {
+    "kind": "voice-leading",
+    "method": "reads the motion between adjacent sonorities against the rules of the requested style profile, and reports each departure with the rule's own strength"
+  },
+  {
+    "kind": "counterpoint",
+    "method": "reads a counterpoint against its designated cantus firmus under the rules of the requested species (OMT 023-028)"
+  }
+]

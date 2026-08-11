@@ -19,8 +19,9 @@
   import SourceEditor from "./SourceEditor.svelte";
   import Ticked from "./Ticked.svelte";
   import { applyFix, asControl, labelOf, onlyFix, placeOf } from "../state/fix";
+  import type { Snippet } from "svelte";
   import type { Reveal } from "../state/reveal";
-  import type { Diagnostic, Span } from "../state/snapshot";
+  import type { Diagnostic, NameFacts, Span, TermFacts } from "../state/snapshot";
 
   let {
     source,
@@ -45,10 +46,31 @@
     onsave,
     ondiagnostic,
     onhide,
+    terms = [],
+    names = [],
+    library = null,
+    onclose,
+    onlibrary,
+    footer,
   }: {
     source: string;
     diagnostics: Diagnostic[];
     editable?: boolean;
+    /** Every declaration in scope, for hover and completion. */
+    terms?: TermFacts[];
+    /** Every resolved name, for what the hover is about. */
+    names?: NameFacts[];
+    /**
+     * The bundled module this column is showing instead of the piece
+     * (`08-elaboration.md` §3). It says what it is and takes no edits.
+     */
+    library?: { name: string } | null;
+    /** Put the library module away and go back to the piece. */
+    onclose?: () => void;
+    /** Follow a term into a bundled module. */
+    onlibrary?: (uri: string, start: number, end: number) => void;
+    /** What the column shows beneath the problems — the findings panel. */
+    footer?: Snippet;
     /** Spans to mark in the source: the provenance of what is on screen. */
     highlight?: Span[];
     /** The focus, in the text: what spells the music and what placed it. */
@@ -123,7 +145,20 @@
   style={width === null ? undefined : `--asked: min(${width}px, var(--source-room, 60vw))`}
   bind:clientWidth={measured}
 >
-  {#if onhide}
+  <!--
+    A bundled module says what it is, in words and not only in a shape: it is
+    library material, it is read-only, and closing it comes back to the piece
+    (`08-elaboration.md` §3). The head is always present here, even where the
+    piece's would not be, because a document that cannot be written into has
+    to say so somewhere.
+  -->
+  {#if library}
+    <div class="head library">
+      <span class="what">{library.name}</span>
+      <span class="badge">Standard library — read-only</span>
+      {#if onclose}<button type="button" class="hide" onclick={onclose}>Close</button>{/if}
+    </div>
+  {:else if onhide}
     <div class="head">
       <span class="what">Source</span>
       {#if errors.length > 0}
@@ -160,6 +195,9 @@
       {onundo}
       {onredo}
       {onsave}
+      {terms}
+      {names}
+      {onlibrary}
     />
   </div>
 
@@ -202,6 +240,9 @@
       {/each}
     </ul>
   {/if}
+
+  <!-- A reading of the piece, beneath the problems with it (§5's contrast). -->
+  {#if footer}{@render footer()}{/if}
 
   <!--
     The seam, last so it is over everything, and inside the column so it is
@@ -278,6 +319,21 @@
 
   .problems {
     color: var(--chalk);
+  }
+
+  /*
+   * A library module is named the way the language names it, in the mono face
+   * a module path is written in, and the badge beside it says in words what
+   * the missing caret says by absence.
+   */
+  .head.library .what {
+    font-family: var(--f-mono);
+    color: var(--ink);
+  }
+
+  .badge {
+    font-size: var(--t-micro-size);
+    color: var(--ink-faint);
   }
 
   .hide {

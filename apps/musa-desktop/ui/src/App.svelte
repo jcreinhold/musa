@@ -39,6 +39,7 @@
   import { Playhead, soundingAt } from "./lib/state/playhead.svelte";
   import { NoteEntry } from "./lib/state/entry.svelte";
   import { anchorFor, played, stroke } from "./lib/state/compose";
+  import { definitionAt, usesAt } from "./lib/state/terms";
   import type { Candidate } from "./lib/state/gesture.svelte";
   import { shiftAccidental, shiftStep } from "./lib/score/steps";
   import type { EditDto } from "./lib/session/generated/EditDto";
@@ -453,6 +454,45 @@
     void issue({ kind: "changePitch", event: note.id, pitch, mode: "editDefinition" });
   }
 
+  /**
+   * Follow the name at the caret to its declaration
+   * (`08-elaboration.md` §2).
+   *
+   * Three answers, and the third is the interesting one: a declaration in
+   * this document is a caret move, one in a bundled module opens that module
+   * read-only, and a name the compiler never resolved does nothing at all. It
+   * does nothing rather than guessing, because a guess would be the interface
+   * having a theory of the language — and because the compiler will already
+   * have said what is wrong in the problems list.
+   */
+  function goToDefinition(): void {
+    const known = session.snapshot;
+    if (!known || caretAt === null) return;
+    const site = definitionAt(known, caretAt);
+    if (!site) return;
+    if (site.where === "open") open(site.span);
+    else void session.openLibrary(site.uri, site.start, site.end);
+  }
+
+  /**
+   * Select every resolved use of the name at the caret, and the music they
+   * made.
+   *
+   * Uses, not text matches. What the composer gets is the one selection the
+   * application has — the notes those statements produced — because that is
+   * what a selection is made of here (`03-interaction.md` §1).
+   */
+  function selectUses(): void {
+    const known = session.snapshot;
+    if (!known || caretAt === null) return;
+    const spans = usesAt(known, caretAt);
+    if (spans.length === 0) return;
+    const events = spans.flatMap((span) => workspace.eventsForSpan(span));
+    if (events.length > 0) workspace.selection = { kind: "event", events };
+    const first = spans[0];
+    if (first) open(first);
+  }
+
   const surface: Surface = {
     session,
     theme,
@@ -466,6 +506,8 @@
     entry: toggleEntry,
     respell,
     extract,
+    definition: goToDefinition,
+    uses: selectUses,
     show: (which) => (screen = which),
     palette: (open) => (paletteOpen = open),
     keys: (open) => (keysOpen = open),
@@ -743,6 +785,7 @@
     oncandidate={(moving) => void preview(moving)}
     oncaret={followCaret}
     ondiagnostic={showDiagnostic}
+    onreveal={open}
     onshow={(which) => (screen = which)}
   />
 {:else if session.snapshot}

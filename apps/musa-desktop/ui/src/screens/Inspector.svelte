@@ -16,7 +16,25 @@
     HeaderFact,
     OccurrenceFacts,
     Span,
+    StepKind,
   } from "../lib/state/snapshot";
+
+  /**
+   * What each kind of expansion step is called, for the control's accessible
+   * name (`08-elaboration.md` §§4, 7).
+   *
+   * Words rather than glyphs, and the same words the specification uses. The
+   * visible path is already a shape a reader takes in at a glance; a reader
+   * who is hearing it needs the shape said out loud.
+   */
+  const STEP_KINDS: Record<StepKind, string> = {
+    occurrence: "occurrence",
+    instance: "template instance",
+    transform: "transform",
+    assertion: "assertion",
+    splice: "kernel quotation",
+    specialization: "specialization",
+  };
   import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";
 
   let {
@@ -285,6 +303,14 @@
       produced in this voice; the innermost segment is the occurrence itself,
       so it selects the whole expansion and reveals the motif's declaration in
       the source column; the line number opens the source at the `use` statement.
+
+      A step also says what *kind* of step it is (`08-elaboration.md` §4): the
+      word is the core's, and the interface prints it as the control's
+      accessible name so that "template instance make Upper" is what a screen
+      reader says where a sighted reader sees the shape of the path. A step
+      that is not a place in the source — a transform is an argument to a
+      block — is still a control, because it still selects what it produced;
+      it simply has nothing to reveal.
     -->
     <TypographicRow label="Origin">
       {#snippet trailing()}
@@ -301,12 +327,14 @@
           {#each event.origin.path as segment, index (index)}
             {#if index > 0}<span class="sep">▸</span>{/if}<button
               type="button"
-              class="segment"
+              class="segment {segment.kind}"
+              aria-label="{STEP_KINDS[segment.kind]} {segment.label}"
               disabled={onorigin === undefined}
               onclick={() => {
                 mark("origin");
                 onorigin?.(index + 1);
-              }}>{segment}</button
+                if (segment.span && onreveal) onreveal(segment.span);
+              }}>{segment.label}</button
             >
           {/each}
           {#if event.origin.noteIndex !== null}<span class="sep">▸</span><span class="segment note"

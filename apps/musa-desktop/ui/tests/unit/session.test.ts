@@ -77,6 +77,20 @@ function recorder(): Recorder {
     askToOpen: vi.fn(async () => "/tmp/piece.musa"),
     askToSave: vi.fn(async () => "/tmp/out.mei"),
     listenToMidi: vi.fn(async () => VALID),
+    analyze: vi.fn(async (kind: string) => ({
+      revision,
+      kind,
+      method: "counts what it sees",
+      profile: null,
+      assumptions: [],
+      findings: [],
+    })),
+    libraryDocument: vi.fn(async (uri: string) => ({
+      uri,
+      name: "core",
+      text: "let identity_nat = ...\n",
+      span: null,
+    })),
   };
   return link;
 }
@@ -225,6 +239,105 @@ describe("the stale revision", () => {
     session.sourceOpen = false;
     session.receive(snapshotOf("piece {{", VALID.revision + 2, false));
     expect(session.sourceOpen).toBe(false);
+  });
+});
+
+describe("asking the score a question", () => {
+  it("says which reading is in flight, and stops saying so when it lands", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+
+    const asked = session.analyze("cadences");
+    expect(session.reading).toBe("cadences");
+    await asked;
+    expect(session.reading).toBeNull();
+    expect(session.report?.kind).toBe("cadences");
+  });
+
+  /*
+   * A reader shown zero findings would conclude the music is clean. So a
+   * refusal leaves the last reading where it was and says what went wrong
+   * (`08-elaboration.md` §8).
+   */
+  it("keeps the last reading when the next one is refused", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+    await session.analyze("cadences");
+
+    link.analyze = vi.fn(async () => {
+      throw { kind: "backend", message: "no valid score" };
+    });
+    await session.analyze("tonal");
+    expect(session.report?.kind).toBe("cadences");
+    expect(session.notice).toEqual({ tone: "failure", message: "no valid score" });
+  });
+
+  /*
+   * A reading names events and spans in the piece it read. Shown beside a
+   * different piece it would point at the wrong notes, which is the same error
+   * as carrying a selection across a new performance.
+   */
+  it("forgets a reading of the piece that was closed", async () => {
+    const link = recorder();
+    link.openProject = vi.fn(async () => ({ ...VALID, document: VALID.document + 1, revision: 0 }));
+    const session = new Session(link);
+    session.receive(VALID);
+    await session.analyze("cadences");
+    expect(session.report).not.toBeNull();
+
+    await session.open("/tmp/second.musa");
+    expect(session.report).toBeNull();
+    expect(session.reading).toBeNull();
+  });
+
+  /*
+   * An edit does not: the reading is still of a score the composer can see, and
+   * it carries the revision it read so the panel can say it is behind. Throwing
+   * it away on a keystroke would make analysis unusable while typing.
+   */
+  it("keeps a reading across an edit, tagged with the score it read", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+    await session.analyze("cadences");
+    const read = session.report?.revision;
+
+    session.receive(snapshotOf("piece \"Later\" {}", VALID.revision + 1));
+    expect(session.report?.revision).toBe(read);
+    expect(session.snapshot?.revision).toBeGreaterThan(read ?? 0);
+  });
+});
+
+describe("opening a bundled module", () => {
+  it("holds it beside the piece, and gives it back", async () => {
+    const link = recorder();
+    const session = new Session(link);
+    session.receive(VALID);
+
+    await session.openLibrary("musa-stdlib:/std/core.musa", 254, 266);
+    expect(session.library?.name).toBe("core");
+    expect(link.libraryDocument).toHaveBeenCalledWith("musa-stdlib:/std/core.musa", 254, 266);
+    // The piece is still open behind it: a module is not a document that
+    // replaced the composer's own.
+    expect(session.snapshot).toBe(VALID);
+
+    session.closeLibrary();
+    expect(session.library).toBeNull();
+  });
+
+  it("says so when the module is not one the compiler bundles", async () => {
+    const link = recorder();
+    link.libraryDocument = vi.fn(async () => {
+      throw { kind: "backend", message: "`std::nowhere` is not bundled" };
+    });
+    const session = new Session(link);
+    session.receive(VALID);
+
+    await session.openLibrary("musa-stdlib:/std/nowhere.musa");
+    expect(session.library).toBeNull();
+    expect(session.notice?.tone).toBe("failure");
   });
 });
 
