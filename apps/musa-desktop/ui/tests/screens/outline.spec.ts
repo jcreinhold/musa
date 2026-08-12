@@ -31,10 +31,7 @@ async function rows(page: Page): Promise<string[]> {
 /** The event the score pane says is current. */
 async function current(page: Page): Promise<string> {
   return page.evaluate(
-    () =>
-      document
-        .querySelector('[role="application"]')
-        ?.getAttribute("aria-activedescendant") ?? "",
+    () => document.querySelector('[role="application"]')?.getAttribute("aria-activedescendant") ?? "",
   );
 }
 
@@ -45,46 +42,29 @@ test.beforeEach(async ({ page }) => {
   await engraved(page);
 });
 
-test("the outline lists the piece's structure in playing order", async ({
-  page,
-}) => {
+test("the outline lists the piece's structure in playing order", async ({ page }) => {
   // Sections and the phrases inside them, interleaved the way they are
   // reached — not sections first and phrases after.
-  expect(await rows(page)).toEqual([
-    "Exposition 1",
-    "antecedent 1",
-    "Development 3",
-    "consequent 3",
-  ]);
+  expect(await rows(page)).toEqual(["Exposition 1", "antecedent 1", "Development 3", "consequent 3"]);
 });
 
 test("choosing a section selects the note it names", async ({ page }) => {
-  await page
-    .getByRole("navigation", { name: "Structure" })
-    .getByText("Development")
-    .click();
+  await page.getByRole("navigation", { name: "Structure" }).getByText("Development").click();
   // `event-5` is the first note of bar 3, where the marker is written.
   await expect.poll(() => current(page)).toBe("event-5");
 });
 
-test("choosing a marker opens the source at the statement that wrote it", async ({
-  page,
-}) => {
+test("choosing a marker opens the source at the statement that wrote it", async ({ page }) => {
   // The source column is shut until something asks for it.
   await expect(source(page)).toBeHidden();
-  await page
-    .getByRole("navigation", { name: "Structure" })
-    .getByText("Exposition")
-    .click();
+  await page.getByRole("navigation", { name: "Structure" }).getByText("Exposition").click();
   await expect(pane(page)).toBeVisible();
   await expect(source(page)).toBeVisible();
   await expect(source(page)).toContainText('section "Exposition" at 1:1;');
 });
 
 test("the outline says where the selection is", async ({ page }) => {
-  const development = page
-    .getByRole("navigation", { name: "Structure" })
-    .getByText("Development");
+  const development = page.getByRole("navigation", { name: "Structure" }).getByText("Development");
   await development.click();
   // Every passage the selection is inside is marked — the section and the
   // phrase within it — and the ones it has left are not.
@@ -99,9 +79,7 @@ test("the outline says where the selection is", async ({ page }) => {
 
 test("the chord symbols are engraved above the staff", async ({ page }) => {
   const harmony = await page.evaluate(() =>
-    [...document.querySelectorAll(".engraving .harm")].map(
-      (element) => element.textContent?.trim() ?? "",
-    ),
+    [...document.querySelectorAll(".engraving .harm")].map((element) => element.textContent?.trim() ?? ""),
   );
   expect(harmony.join(" ")).toContain("am");
 });

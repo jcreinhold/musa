@@ -34,8 +34,7 @@ export const REGISTERED = registry as readonly CommandDescriptor[];
 export type Screen = "contents" | "compose" | "sound" | "mix" | "source";
 
 /** Where a command belongs in the palette and the keyboard sheet. */
-export type Group =
-  "File" | "Edit" | "Score" | "Transport" | "View" | "Settings" | "Help";
+export type Group = "File" | "Edit" | "Score" | "Transport" | "View" | "Settings" | "Help";
 
 /** The parts of the interface a command can reach. */
 export interface Surface {
@@ -99,9 +98,7 @@ export interface Command {
 }
 
 /** The registry's words for a command, so the two cannot disagree. */
-function registered(
-  id: string,
-): Pick<CommandDescriptor, "title" | "accelerator"> {
+function registered(id: string): Pick<CommandDescriptor, "title" | "accelerator"> {
   const found = REGISTERED.find((command) => command.id === id);
   return { title: found?.title ?? id, accelerator: found?.accelerator ?? null };
 }
@@ -120,11 +117,7 @@ function scopeFor(accelerator: string | null): Command["scope"] {
   return /CmdOrCtrl|Alt/.test(accelerator) ? "global" : "score";
 }
 
-function command(
-  id: string,
-  group: Group,
-  run: (surface: Surface) => void,
-): Command {
+function command(id: string, group: Group, run: (surface: Surface) => void): Command {
   const known = registered(id);
   return { id, group, run, scope: scopeFor(known.accelerator), ...known };
 }
@@ -150,33 +143,13 @@ function own(
 export const COMMANDS: readonly Command[] = [
   command("file.new", "File", ({ session }) => void session.create()),
   command("file.open", "File", ({ session }) => void session.open()),
-  command(
-    "file.openProject",
-    "File",
-    ({ session }) => void session.openProject(),
-  ),
+  command("file.openProject", "File", ({ session }) => void session.openProject()),
   command("file.save", "File", ({ session }) => void session.save()),
   command("file.saveAll", "File", ({ session }) => void session.saveAll()),
-  command(
-    "file.export.mei",
-    "File",
-    ({ session }) => void session.exportTo("mei"),
-  ),
-  command(
-    "file.export.lilypond",
-    "File",
-    ({ session }) => void session.exportTo("lilyPond"),
-  ),
-  command(
-    "file.export.musicxml",
-    "File",
-    ({ session }) => void session.exportTo("musicXml"),
-  ),
-  command(
-    "file.export.wav",
-    "File",
-    ({ session }) => void session.exportTo("wav"),
-  ),
+  command("file.export.mei", "File", ({ session }) => void session.exportTo("mei")),
+  command("file.export.lilypond", "File", ({ session }) => void session.exportTo("lilyPond")),
+  command("file.export.musicxml", "File", ({ session }) => void session.exportTo("musicXml")),
+  command("file.export.wav", "File", ({ session }) => void session.exportTo("wav")),
 
   command("edit.undo", "Edit", ({ session }) => void session.undo()),
   command("edit.redo", "Edit", ({ session }) => void session.redo()),
@@ -184,69 +157,23 @@ export const COMMANDS: readonly Command[] = [
   command("edit.definition", "Edit", ({ definition }) => definition()),
   command("edit.uses", "Edit", ({ uses }) => uses()),
 
-  own(
-    "score.previous",
-    "Previous note",
-    "Score",
-    "ArrowLeft",
-    ({ workspace }) => workspace?.step(-1),
-  ),
-  own("score.next", "Next note", "Score", "ArrowRight", ({ workspace }) =>
-    workspace?.step(1),
-  ),
+  own("score.previous", "Previous note", "Score", "ArrowLeft", ({ workspace }) => workspace?.step(-1)),
+  own("score.next", "Next note", "Score", "ArrowRight", ({ workspace }) => workspace?.step(1)),
   // The keyboard's half of the horizontal drag: the range a composer would
   // otherwise have to drag out (`03-interaction.md` §2, WCAG 2.5.7).
-  own(
-    "score.extend.previous",
-    "Extend the selection back",
-    "Score",
-    "Shift+ArrowLeft",
-    ({ workspace }) => workspace?.stretch(-1),
+  own("score.extend.previous", "Extend the selection back", "Score", "Shift+ArrowLeft", ({ workspace }) =>
+    workspace?.stretch(-1),
   ),
-  own(
-    "score.extend.next",
-    "Extend the selection forward",
-    "Score",
-    "Shift+ArrowRight",
-    ({ workspace }) => workspace?.stretch(1),
+  own("score.extend.next", "Extend the selection forward", "Score", "Shift+ArrowRight", ({ workspace }) =>
+    workspace?.stretch(1),
   ),
-  own("score.voice.up", "Voice above", "Score", "ArrowUp", ({ workspace }) =>
-    workspace?.voice(-1),
-  ),
-  own(
-    "score.voice.down",
-    "Voice below",
-    "Score",
-    "ArrowDown",
-    ({ workspace }) => workspace?.voice(1),
-  ),
-  own(
-    "score.bar.previous",
-    "Previous bar",
-    "Score",
-    "Alt+ArrowLeft",
-    ({ workspace }) => workspace?.bar(-1),
-  ),
-  own(
-    "score.bar.next",
-    "Next bar",
-    "Score",
-    "Alt+ArrowRight",
-    ({ workspace }) => workspace?.bar(1),
-  ),
-  own(
-    "score.first",
-    "First note of the voice",
-    "Score",
-    "Home",
-    ({ workspace }) => workspace?.edge("first"),
-  ),
-  own("score.last", "Last note of the voice", "Score", "End", ({ workspace }) =>
-    workspace?.edge("last"),
-  ),
-  own("score.part.next", "Next part", "Score", "Tab", ({ workspace }) =>
-    workspace?.part(1),
-  ),
+  own("score.voice.up", "Voice above", "Score", "ArrowUp", ({ workspace }) => workspace?.voice(-1)),
+  own("score.voice.down", "Voice below", "Score", "ArrowDown", ({ workspace }) => workspace?.voice(1)),
+  own("score.bar.previous", "Previous bar", "Score", "Alt+ArrowLeft", ({ workspace }) => workspace?.bar(-1)),
+  own("score.bar.next", "Next bar", "Score", "Alt+ArrowRight", ({ workspace }) => workspace?.bar(1)),
+  own("score.first", "First note of the voice", "Score", "Home", ({ workspace }) => workspace?.edge("first")),
+  own("score.last", "Last note of the voice", "Score", "End", ({ workspace }) => workspace?.edge("last")),
+  own("score.part.next", "Next part", "Score", "Tab", ({ workspace }) => workspace?.part(1)),
   // Note entry is a mode because the unmodified letters already belong to the
   // navigation map: `f` follows and `l` loops, so a bare `f` cannot also be
   // the note F. `N` is how a composer says "the letters are notes now", and it
@@ -255,86 +182,40 @@ export const COMMANDS: readonly Command[] = [
   // Extraction is the composer noticing they have written the same idea
   // twice; `M` for motif, and the name is asked for in the margin rather than
   // in a dialog that would take the notes off the screen.
-  own("score.extract", "Extract a motif", "Score", "M", (surface) =>
-    surface.extract(),
-  ),
+  own("score.extract", "Extract a motif", "Score", "M", (surface) => surface.extract()),
   // The keyboard equivalents of the vertical drag. `⌥` because the bare
   // arrows are navigation and the shifted ones are entry's accidental.
-  own("score.step.up", "Up a step", "Score", "Alt+ArrowUp", (surface) =>
-    surface.respell(1, false),
+  own("score.step.up", "Up a step", "Score", "Alt+ArrowUp", (surface) => surface.respell(1, false)),
+  own("score.step.down", "Down a step", "Score", "Alt+ArrowDown", (surface) => surface.respell(-1, false)),
+  own("score.accidental.up", "Raise the accidental", "Score", "Alt+Shift+ArrowUp", (surface) =>
+    surface.respell(1, true),
   ),
-  own("score.step.down", "Down a step", "Score", "Alt+ArrowDown", (surface) =>
-    surface.respell(-1, false),
-  ),
-  own(
-    "score.accidental.up",
-    "Raise the accidental",
-    "Score",
-    "Alt+Shift+ArrowUp",
-    (surface) => surface.respell(1, true),
-  ),
-  own(
-    "score.accidental.down",
-    "Lower the accidental",
-    "Score",
-    "Alt+Shift+ArrowDown",
-    (surface) => surface.respell(-1, true),
+  own("score.accidental.down", "Lower the accidental", "Score", "Alt+Shift+ArrowDown", (surface) =>
+    surface.respell(-1, true),
   ),
   // Escape is the one Score command that is global: giving up is answered
   // wherever the composer happens to be, including the source column.
-  own(
-    "score.clear",
-    "Clear the selection",
-    "Score",
-    "Escape",
-    (surface) => surface.escape(),
-    "global",
-  ),
+  own("score.clear", "Clear the selection", "Score", "Escape", (surface) => surface.escape(), "global"),
 
-  own(
-    "transport.play",
-    "Play or pause",
-    "Transport",
-    "Space",
-    ({ session }) => void session.toggle(),
-  ),
+  own("transport.play", "Play or pause", "Transport", "Space", ({ session }) => void session.toggle()),
   own(
     "transport.play.selection",
     "Play from the selection",
     "Transport",
     "Shift+Space",
-    (surface) =>
-      void surface.session.playFrom(
-        surface.workspace?.focused?.onsetFrames ?? 0,
-      ),
+    (surface) => void surface.session.playFrom(surface.workspace?.focused?.onsetFrames ?? 0),
   ),
-  own(
-    "transport.stop",
-    "Stop and return to the start",
-    "Transport",
-    "Enter",
-    ({ session }) => void session.stop(),
-  ),
-  own("transport.loop", "Loop the selection", "Transport", "L", (surface) =>
-    surface.loop(),
-  ),
-  own("transport.follow", "Follow the playhead", "Transport", "F", (surface) =>
-    surface.follow(),
-  ),
+  own("transport.stop", "Stop and return to the start", "Transport", "Enter", ({ session }) => void session.stop()),
+  own("transport.loop", "Loop the selection", "Transport", "L", (surface) => surface.loop()),
+  own("transport.follow", "Follow the playhead", "Transport", "F", (surface) => surface.follow()),
 
   // The lens itself is held rather than run (`04-provenance.md` §2), so what
   // the map carries is the pin: the same view, kept, for anyone who cannot
   // hold a key and work the pointer at once.
-  own("view.origin", "Pin Origin view (hold O)", "View", "Shift+O", (surface) =>
-    surface.origin(),
-  ),
+  own("view.origin", "Pin Origin view (hold O)", "View", "Shift+O", (surface) => surface.origin()),
 
-  command("view.workspace.contents", "View", (surface) =>
-    surface.show("contents"),
-  ),
-  command("view.workspace.compose", "View", (surface) =>
-    surface.show("compose"),
-  ),
+  command("view.workspace.contents", "View", (surface) => surface.show("contents")),
+  command("view.workspace.compose", "View", (surface) => surface.show("compose")),
   command("view.workspace.sound", "View", (surface) => surface.show("sound")),
   command("view.workspace.mix", "View", (surface) => surface.show("mix")),
   command("view.workspace.source", "View", (surface) => surface.show("source")),
@@ -342,11 +223,7 @@ export const COMMANDS: readonly Command[] = [
   command("view.zoom.out", "View", (surface) => surface.zoom(-1)),
   command("view.zoom.in", "View", (surface) => surface.zoom(1)),
   command("view.zoom.reset", "View", (surface) => surface.resetZoom()),
-  command(
-    "view.source",
-    "View",
-    ({ session }) => (session.sourceOpen = !session.sourceOpen),
-  ),
+  command("view.source", "View", ({ session }) => (session.sourceOpen = !session.sourceOpen)),
   command("view.palette", "View", (surface) => surface.palette(true)),
 
   // Preferences: the app's own state, never the document's, and gathered
@@ -354,18 +231,10 @@ export const COMMANDS: readonly Command[] = [
   command("settings.open", "Settings", (surface) => surface.settings(true)),
   // The frame's text, which is a different question from the score's size
   //. `⌘⌥=` rather than `⌘=` for exactly that reason.
-  command("settings.text.larger", "Settings", ({ preferences }) =>
-    preferences.stepText(1),
-  ),
-  command("settings.text.smaller", "Settings", ({ preferences }) =>
-    preferences.stepText(-1),
-  ),
-  command("settings.text.reset", "Settings", ({ preferences }) =>
-    preferences.resetText(),
-  ),
-  command("settings.vim", "Settings", ({ preferences }) =>
-    preferences.toggleVim(),
-  ),
+  command("settings.text.larger", "Settings", ({ preferences }) => preferences.stepText(1)),
+  command("settings.text.smaller", "Settings", ({ preferences }) => preferences.stepText(-1)),
+  command("settings.text.reset", "Settings", ({ preferences }) => preferences.resetText()),
+  command("settings.vim", "Settings", ({ preferences }) => preferences.toggleVim()),
   command("settings.theme", "Settings", ({ theme }) => theme.toggle()),
 
   command("help.keys", "Help", (surface) => surface.keys(true)),
@@ -421,10 +290,7 @@ export function matches(accelerator: string, event: KeyboardEvent): boolean {
  * focus, `global` anywhere else. Unmodified keys belong to the score, so that
  * typing an `f` in the source column is an `f` and not a follow-mode toggle.
  */
-export function commandFor(
-  event: KeyboardEvent,
-  within: "global" | "score" = "global",
-): Command | undefined {
+export function commandFor(event: KeyboardEvent, within: "global" | "score" = "global"): Command | undefined {
   return COMMANDS.find(
     (candidate) =>
       candidate.accelerator !== null &&

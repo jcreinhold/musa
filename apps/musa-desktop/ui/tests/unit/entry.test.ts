@@ -13,12 +13,7 @@
 import { describe, expect, it } from "vitest";
 
 import { stroke, anchorFor, played } from "../../src/lib/state/compose";
-import {
-  NoteEntry,
-  octaveOf,
-  spellDuration,
-  spellPitch,
-} from "../../src/lib/state/entry.svelte";
+import { NoteEntry, octaveOf, spellDuration, spellPitch } from "../../src/lib/state/entry.svelte";
 import { fixture } from "../../src/lib/state/fixtures";
 import { Workspace } from "../../src/lib/state/selection.svelte";
 import type { ProjectSnapshot } from "../../src/lib/state/snapshot";
@@ -274,11 +269,7 @@ describe("a note played in on a MIDI keyboard", () => {
     entry.shiftOctave(-2);
     const asked = played(["bb2"], entry, space);
 
-    expect(
-      asked.kind === "edit" &&
-        asked.edit.kind === "insertNote" &&
-        asked.edit.note,
-    ).toEqual({
+    expect(asked.kind === "edit" && asked.edit.kind === "insertNote" && asked.edit.note).toEqual({
       kind: "note",
       pitch: "bb2",
       duration: "1/4",

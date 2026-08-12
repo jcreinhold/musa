@@ -14,12 +14,7 @@
    */
   import Position from "../lib/ui/Position.svelte";
   import Ticked from "../lib/ui/Ticked.svelte";
-  import type {
-    AnalysisFacts,
-    FindingFacts,
-    NoteFacts,
-    Span,
-  } from "../lib/state/snapshot";
+  import type { AnalysisFacts, FindingFacts, NoteFacts, Span } from "../lib/state/snapshot";
 
   let {
     report = null,
@@ -91,9 +86,7 @@
    * (`05-states.md` §4, `08-elaboration.md` §8). Unknown revisions are not
    * stale: an absent number is no evidence of one.
    */
-  const stale = $derived(
-    report !== null && revision !== null && report.revision < revision,
-  );
+  const stale = $derived(report !== null && revision !== null && report.revision < revision);
 
   function show(finding: FindingFacts): void {
     const notes = notesOf(finding);
@@ -114,9 +107,7 @@
       <button
         type="button"
         class="kind"
-        class:current={report !== null &&
-          reading === null &&
-          report.kind === offered.kind}
+        class:current={report !== null && reading === null && report.kind === offered.kind}
         aria-busy={reading === offered.kind}
         title={offered.method}
         disabled={onask === undefined}
@@ -131,9 +122,7 @@
       accept them can stop there. That is the whole reason they are printed.
     -->
     {#if stale}
-      <p class="stale" role="status">
-        Read before the last change. Ask again to read the score as it stands.
-      </p>
+      <p class="stale" role="status">Read before the last change. Ask again to read the score as it stands.</p>
     {/if}
     <p class="method">{report.method}</p>
     {#if report.profile}
@@ -156,13 +145,7 @@
           <li>
             <button type="button" class="finding" onclick={() => show(finding)}>
               <span class="summary"><Ticked text={finding.summary} /></span>
-              <span class="where"
-                ><Position
-                  bar={finding.bar}
-                  beat={finding.beat}
-                  size="value"
-                /></span
-              >
+              <span class="where"><Position bar={finding.bar} beat={finding.beat} size="value" /></span>
             </button>
             <p class="standing">
               <span class="word">{finding.standing}</span>
@@ -183,13 +166,9 @@
                     rather than by colour alone (`03-interaction.md` §5).
                   -->
                   <li class:missing={!ground.satisfied}>
-                    <span class="glyph" aria-hidden="true"
-                      >{ground.satisfied ? "▪" : "▫"}</span
-                    >
+                    <span class="glyph" aria-hidden="true">{ground.satisfied ? "▪" : "▫"}</span>
                     <span class="criterion">{ground.criterion}</span>
-                    <span class="held"
-                      >{ground.satisfied ? "" : "not shown"}</span
-                    >
+                    <span class="held">{ground.satisfied ? "" : "not shown"}</span>
                     <span class="cites">{ground.cites}</span>
                   </li>
                 {/each}

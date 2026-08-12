@@ -112,13 +112,30 @@ test-unit: node_modules ## Run the UI unit tests only (fast)
 ## ------------------------------------------------------------------- gates --
 
 .PHONY: fmt
-fmt: ## Format Rust sources (and TOML, if taplo is installed) in place
+fmt: node_modules ## Format Rust, TOML, Markdown, and the UI in place
 	$(CARGO) fmt --all
 	@if command -v taplo >/dev/null 2>&1; then taplo fmt; fi
+	@if command -v mdwright >/dev/null 2>&1; then mdwright fmt; fi
+	$(PNPM) run format
+
+# Each formatter owns disjoint files: Prettier is barred from Markdown, which is
+# mdwright's, and from the generated directories, which are their generators'.
+.PHONY: fmt-check
+fmt-check: node_modules ## Check every formatter without writing
+	$(CARGO) fmt --all --check
+	@if command -v taplo >/dev/null 2>&1; then taplo fmt --check; \
+	else echo "taplo not installed — skipping"; fi
+	@if command -v mdwright >/dev/null 2>&1; then mdwright fmt-check; \
+	else echo "mdwright not installed — skipping"; fi
+	$(PNPM) run format:check
 
 .PHONY: lint
 lint: ## Clippy over the workspace, warnings denied
 	$(CARGO) clippy --workspace --all-targets -- -D warnings
+
+.PHONY: lint-ui
+lint-ui: node_modules ## ESLint over the UI
+	$(PNPM) run lint
 
 .PHONY: typecheck
 typecheck: node_modules ## Svelte + TypeScript check of the UI
@@ -131,8 +148,9 @@ deny: ## Audit dependencies (licences, advisories); no-op if cargo-deny is absen
 
 .PHONY: verify
 verify: ## Everything CI would check, in the order that fails fastest
-	$(CARGO) fmt --all --check
+	$(MAKE) fmt-check
 	$(MAKE) lint
+	$(MAKE) lint-ui
 	$(MAKE) test-rust
 	$(MAKE) typecheck
 	$(MAKE) test-ui

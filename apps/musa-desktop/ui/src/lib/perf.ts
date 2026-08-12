@@ -32,8 +32,7 @@ export type Moment =
   | "lens";
 
 const enabled =
-  typeof globalThis.location !== "undefined" &&
-  new URLSearchParams(globalThis.location.search).has("perf");
+  typeof globalThis.location !== "undefined" && new URLSearchParams(globalThis.location.search).has("perf");
 
 /** Record that a budgeted moment just happened. */
 export function mark(moment: Moment): void {

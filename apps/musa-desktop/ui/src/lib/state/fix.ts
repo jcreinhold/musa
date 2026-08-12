@@ -23,9 +23,7 @@ import type { Diagnostic, Fix } from "./snapshot";
  * than clamped, because a replacement at the wrong place is worse than none.
  */
 export function applyFix(source: string, fix: Fix): string {
-  const ordered = [...fix.edits].sort(
-    (left, right) => right.span.start - left.span.start,
-  );
+  const ordered = [...fix.edits].sort((left, right) => right.span.start - left.span.start);
   let text = source;
   for (const edit of ordered) {
     const { start, end } = edit.span;
@@ -48,18 +46,14 @@ export function onlyFix(diagnostic: Diagnostic): Fix | null {
 
 /** Where a diagnostic points, as `12:5`, or null when it points nowhere. */
 export function placeOf(diagnostic: Diagnostic): string | null {
-  const label =
-    diagnostic.labels.find((candidate) => candidate.primary) ??
-    diagnostic.labels[0];
+  const label = diagnostic.labels.find((candidate) => candidate.primary) ?? diagnostic.labels[0];
   if (!label) return null;
   return `${label.at.line}:${label.at.column}`;
 }
 
 /** The primary label's text, when there is one worth showing. */
 export function labelOf(diagnostic: Diagnostic): string | null {
-  const label =
-    diagnostic.labels.find((candidate) => candidate.primary) ??
-    diagnostic.labels[0];
+  const label = diagnostic.labels.find((candidate) => candidate.primary) ?? diagnostic.labels[0];
   return label?.text ?? null;
 }
 

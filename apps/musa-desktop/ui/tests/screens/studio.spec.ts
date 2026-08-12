@@ -35,22 +35,13 @@ function edits(page: Page): Promise<Record<string, unknown>[]> {
   return page.evaluate(() => window.__musaEdits);
 }
 
-test("⌘2 shows the chosen part's patch as the chain the source spells", async ({
-  page,
-}) => {
+test("⌘2 shows the chosen part's patch as the chain the source spells", async ({ page }) => {
   await inSound(page);
 
   // Glass Mountain's `glass_pad`, in the order `|>` runs it. Not a canvas:
   // a list, top to bottom, matching the text.
   const stages = page.locator(".sound-workspace .chain .processor");
-  await expect(stages).toHaveText([
-    "oscillator",
-    "oscillator",
-    "gain",
-    "mix",
-    "envelope",
-    "lowpass",
-  ]);
+  await expect(stages).toHaveText(["oscillator", "oscillator", "gain", "mix", "envelope", "lowpass"]);
 
   // The values are the compiler's, in the units the language writes them in.
   await expect(page.locator(".sound-workspace .chain")).toContainText("1400");
@@ -58,20 +49,14 @@ test("⌘2 shows the chosen part's patch as the chain the source spells", async 
 
   // And the one the `lfo` moves says so, rather than showing a control that
   // appears to disagree with what is heard (§13.7).
-  await expect(page.locator(".sound-workspace .modulated")).toContainText(
-    "modulated by lfo",
-  );
+  await expect(page.locator(".sound-workspace .modulated")).toContainText("modulated by lfo");
 });
 
-test("a part says which patch plays it, and can be pointed at another", async ({
-  page,
-}) => {
+test("a part says which patch plays it, and can be pointed at another", async ({ page }) => {
   await inSound(page);
 
   await expect(page.locator(".sound-workspace .parts")).toContainText("violin");
-  await expect(page.locator(".sound-workspace .parts")).toContainText(
-    "glass_pad",
-  );
+  await expect(page.locator(".sound-workspace .parts")).toContainText("glass_pad");
 
   // One patch is declared, so the picker offers it and nothing invented.
   const picker = page.locator(".sound-workspace .picker select");
@@ -79,9 +64,7 @@ test("a part says which patch plays it, and can be pointed at another", async ({
   await expect(picker.locator("option")).toHaveText(["glass_pad"]);
 });
 
-test("moving a parameter issues an edit against the source, not against a copy", async ({
-  page,
-}) => {
+test("moving a parameter issues an edit against the source, not against a copy", async ({ page }) => {
   await inSound(page);
 
   const cutoff = page.locator("#glass_pad-5-cutoff");

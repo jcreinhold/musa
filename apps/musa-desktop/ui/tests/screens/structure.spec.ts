@@ -36,8 +36,7 @@ async function structure(page: Page): Promise<string> {
     let events = 0;
     for (const element of root.querySelectorAll("*")) {
       tags.set(element.tagName, (tags.get(element.tagName) ?? 0) + 1);
-      for (const name of element.classList)
-        classes.set(name, (classes.get(name) ?? 0) + 1);
+      for (const name of element.classList) classes.set(name, (classes.get(name) ?? 0) + 1);
       for (const attribute of ["fill", "stroke", "color"]) {
         const value = element.getAttribute(attribute);
         if (value !== null) paints.add(`${attribute}=${value}`);

@@ -18,22 +18,13 @@
   import Workspaces from "../lib/ui/Workspaces.svelte";
   import { REPEAT_RIGHT_LEFT } from "../lib/ui/glyphs";
   import type { Screen } from "../lib/commands/map";
-  import {
-    SOURCE_FLOOR,
-    type Preferences,
-  } from "../lib/session/preferences.svelte";
+  import { SOURCE_FLOOR, type Preferences } from "../lib/session/preferences.svelte";
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
   import type { Focus } from "../lib/state/focus.svelte";
   import type { Candidate } from "../lib/state/gesture.svelte";
-  import {
-    volumeOf,
-    type Diagnostic,
-    type EditImpact,
-    type OutlineFacts,
-    type Span,
-  } from "../lib/state/snapshot";
+  import { volumeOf, type Diagnostic, type EditImpact, type OutlineFacts, type Span } from "../lib/state/snapshot";
   import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";
   import type { NoteEntry } from "../lib/state/entry.svelte";
   import SourcePane from "../lib/ui/SourcePane.svelte";
@@ -180,9 +171,7 @@
       ? (score?.decisions?.[chosen.origin.decision] ?? null)
       : null,
   );
-  const problems = $derived(
-    snapshot?.diagnostics.filter((d) => d.severity === "error") ?? [],
-  );
+  const problems = $derived(snapshot?.diagnostics.filter((d) => d.severity === "error") ?? []);
 
   /**
    * The narrowest a leaf is still a page. Below this the staves are a ribbon
@@ -239,11 +228,7 @@
             edit, and announcing it each time would talk over the composer.
             What is announced is the save itself, in the margin's notice.
           -->
-          <span class="state"
-            >{snapshot.autosaved
-              ? "Unsaved — recovery copy kept"
-              : "Unsaved"}</span
-          >
+          <span class="state">{snapshot.autosaved ? "Unsaved — recovery copy kept" : "Unsaved"}</span>
         {/if}
         <Workspaces current="compose" volume={contents !== null} {onshow} />
       </div>
@@ -261,29 +246,13 @@
         it is an edit and declining it is the composer's to decide (§15.7).
       -->
       {#if snapshot.recovery !== null}
-        <div
-          class="recovery"
-          role="group"
-          aria-label="Unsaved work from the last session"
-        >
+        <div class="recovery" role="group" aria-label="Unsaved work from the last session">
           <p>Unsaved work from a session that did not close.</p>
-          <button
-            type="button"
-            class="text"
-            onclick={() => void session.recover(true)}>Restore it</button
-          >
-          <button
-            type="button"
-            class="text"
-            onclick={() => void session.recover(false)}>Discard it</button
-          >
+          <button type="button" class="text" onclick={() => void session.recover(true)}>Restore it</button>
+          <button type="button" class="text" onclick={() => void session.recover(false)}>Discard it</button>
         </div>
       {:else if session.notice}
-        <p
-          class="notice"
-          class:failure={session.notice.tone === "failure"}
-          role="status"
-        >
+        <p class="notice" class:failure={session.notice.tone === "failure"} role="status">
           {session.notice.message}
         </p>
       {:else if session.stale && session.shownRevision !== null}
@@ -300,8 +269,7 @@
             class="text"
             disabled={!session.live}
             aria-pressed={snapshot.playback.playing}
-            onclick={() => void session.toggle()}
-            >{snapshot.playback.playing ? "Pause" : "Play"}</button
+            onclick={() => void session.toggle()}>{snapshot.playback.playing ? "Pause" : "Play"}</button
           >
           <button
             type="button"
@@ -316,12 +284,7 @@
             disabled={!session.live}
             onclick={onloop}
           />
-          <button
-            type="button"
-            class="text"
-            aria-pressed={follow !== "off"}
-            onclick={onfollow}>Follow</button
-          >
+          <button type="button" class="text" aria-pressed={follow !== "off"} onclick={onfollow}>Follow</button>
         </div>
 
         <!--
@@ -335,9 +298,9 @@
           aria-pressed={entry.on}
           title="Write notes with the letter keys — N"
           onclick={onentry}
-          >Notes{#if entry.on}<span class="duration" aria-hidden="true"
-              >{entry.glyph}</span
-            ><span class="visually-hidden">
+          >Notes{#if entry.on}<span class="duration" aria-hidden="true">{entry.glyph}</span><span
+              class="visually-hidden"
+            >
               — duration {entry.duration}</span
             >{/if}</button
         >
@@ -349,9 +312,7 @@
           (roadmap §14.8).
         -->
         {#if entry.on && snapshot.midiPort}
-          <span class="port" title="Notes played here are written at the caret"
-            >{snapshot.midiPort}</span
-          >
+          <span class="port" title="Notes played here are written at the caret">{snapshot.midiPort}</span>
         {/if}
 
         <!--
@@ -384,34 +345,17 @@
           learn.
         -->
         <div class="view" role="group" aria-label="View">
-          <button
-            type="button"
-            class="text"
-            aria-pressed={mode === "page"}
-            onclick={() => onmode("page")}>Pages</button
+          <button type="button" class="text" aria-pressed={mode === "page"} onclick={() => onmode("page")}>Pages</button
           >
-          <button
-            type="button"
-            class="text"
-            aria-pressed={mode === "continuous"}
-            onclick={() => onmode("continuous")}>Continuous</button
+          <button type="button" class="text" aria-pressed={mode === "continuous"} onclick={() => onmode("continuous")}
+            >Continuous</button
           >
         </div>
 
         <div class="zoom">
-          <button
-            type="button"
-            class="text"
-            onclick={() => onzoom(-1)}
-            aria-label="Zoom out">−</button
-          >
+          <button type="button" class="text" onclick={() => onzoom(-1)} aria-label="Zoom out">−</button>
           <span class="level">{zoom}&thinsp;%</span>
-          <button
-            type="button"
-            class="text"
-            onclick={() => onzoom(1)}
-            aria-label="Zoom in">+</button
-          >
+          <button type="button" class="text" onclick={() => onzoom(1)} aria-label="Zoom in">+</button>
         </div>
       </div>
     </Margin>
@@ -463,20 +407,12 @@
         {#if score}
           <div class="parts" class:after={contents !== null}>
             <PartsList parts={score.parts} {workspace} {origin} />
-            <Outline
-              outline={score.outline}
-              active={outlineAt}
-              onselect={onoutline}
-            />
+            <Outline outline={score.outline} active={outlineAt} onselect={onoutline} />
           </div>
         {/if}
       </Margin>
 
-      <main
-        class="stage"
-        class:continuous={mode === "continuous"}
-        bind:this={stage}
-      >
+      <main class="stage" class:continuous={mode === "continuous"} bind:this={stage}>
         <Leaf stale={session.stale}>
           {#if score}
             <Score
@@ -510,9 +446,7 @@
               what it has to say is in its diagnostics.
             -->
             <p class="empty">
-              {problems.length > 0
-                ? "No score yet — the source has problems."
-                : "No score in this file."}
+              {problems.length > 0 ? "No score yet — the source has problems." : "No score in this file."}
             </p>
           {/if}
         </Leaf>
@@ -535,12 +469,8 @@
             {oncancel}
             {onname}
             {oncancelname}
-            onpitch={session.live && chosen
-              ? (pitch) => onpitch(chosen.id, pitch)
-              : undefined}
-            onduration={session.live && chosen
-              ? (duration) => onduration(chosen.id, duration)
-              : undefined}
+            onpitch={session.live && chosen ? (pitch) => onpitch(chosen.id, pitch) : undefined}
+            onduration={session.live && chosen ? (duration) => onduration(chosen.id, duration) : undefined}
             {onreveal}
             header={score.header}
             onheader={session.live ? onheader : undefined}
@@ -778,10 +708,7 @@
     --source-room: max(300px, calc(100vw - 440px - 320px));
     --stage-floor: 420px;
 
-    grid-template-columns: auto minmax(0, 200px) minmax(0, 1fr) minmax(
-        0,
-        240px
-      );
+    grid-template-columns: auto minmax(0, 200px) minmax(0, 1fr) minmax(0, 240px);
   }
 
   /*
@@ -828,10 +755,7 @@
       --source-cap: max(300px, calc(100vw - 350px - var(--stage-floor)));
       --source-room: max(300px, calc(100vw - 350px - 320px));
 
-      grid-template-columns: auto minmax(0, 150px) minmax(0, 1fr) minmax(
-          0,
-          200px
-        );
+      grid-template-columns: auto minmax(0, 150px) minmax(0, 1fr) minmax(0, 200px);
     }
   }
 

@@ -60,13 +60,9 @@ function ghost(page: Page) {
  * the swap is the ink that is leaving. The box is re-read until it settles,
  * which is a fact about driving the engraving rather than about the gesture.
  */
-async function boxOf(
-  page: Page,
-  selector: string,
-): Promise<{ x: number; y: number; width: number; height: number }> {
+async function boxOf(page: Page, selector: string): Promise<{ x: number; y: number; width: number; height: number }> {
   const note = page.locator(selector).first();
-  let settled: { x: number; y: number; width: number; height: number } | null =
-    null;
+  let settled: { x: number; y: number; width: number; height: number } | null = null;
   await expect(async () => {
     await expect(note).toHaveCount(1, { timeout: 250 });
     const box = await note.boundingBox();
@@ -78,11 +74,7 @@ async function boxOf(
 }
 
 /** Press in the middle of a note, or — for a renotation — on its right edge. */
-async function pressOn(
-  page: Page,
-  selector: string,
-  edge = false,
-): Promise<void> {
+async function pressOn(page: Page, selector: string, edge = false): Promise<void> {
   const box = await boxOf(page, selector);
   const x = edge ? box.x + box.width - 1 : box.x + box.width / 2;
   await page.mouse.move(x, box.y + box.height / 2);
@@ -97,12 +89,7 @@ async function pressOn(
  * engraving from a test rather than about the gesture, so it is retried in
  * one place instead of being waited for in seven.
  */
-async function dragOn(
-  page: Page,
-  selector: string,
-  dx: number,
-  dy: number,
-): Promise<void> {
+async function dragOn(page: Page, selector: string, dx: number, dy: number): Promise<void> {
   await expect(async () => {
     await page.mouse.up();
     await pressOn(page, selector, dx !== 0 && dy === 0);
@@ -154,9 +141,7 @@ test("a drag up two steps writes the note two steps up", async ({ page }) => {
   expect(await edits(page)).toHaveLength(0);
 
   await page.mouse.up();
-  await expect
-    .poll(() => page.evaluate(() => window.__musaEdits.length))
-    .toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__musaEdits.length)).toBe(1);
   expect((await edits(page))[0]).toMatchObject({
     kind: "changePitch",
     event: "event-c",
@@ -167,9 +152,7 @@ test("a drag up two steps writes the note two steps up", async ({ page }) => {
   await expect(ghost(page)).toHaveCount(0);
 });
 
-test("a drag that comes back where it started writes nothing", async ({
-  page,
-}) => {
+test("a drag that comes back where it started writes nothing", async ({ page }) => {
   const space = await staffSpace(page);
   await dragOn(page, AUTHORED, 0, -space);
 
@@ -195,9 +178,7 @@ test("Esc mid-drag leaves the document exactly as it was", async ({ page }) => {
   expect(await text(page)).toBe(before);
 });
 
-test("the source column stands the token the drag would write", async ({
-  page,
-}) => {
+test("the source column stands the token the drag would write", async ({ page }) => {
   await toggleSource(page);
   await expect(source(page)).toBeVisible();
   const before = await text(page);
@@ -216,9 +197,7 @@ test("the source column stands the token the drag would write", async ({
   expect(await text(page)).toBe(before);
 });
 
-test("a drag on generated music asks the same question a keystroke does", async ({
-  page,
-}) => {
+test("a drag on generated music asks the same question a keystroke does", async ({ page }) => {
   const space = await staffSpace(page);
   await dragOn(page, GENERATED, 0, -space);
   await page.mouse.up();
@@ -230,9 +209,7 @@ test("a drag on generated music asks the same question a keystroke does", async 
   expect(await edits(page)).toHaveLength(0);
 
   await choice.getByRole("button", { name: /Edit the motif/ }).click();
-  await expect
-    .poll(() => page.evaluate(() => window.__musaEdits.length))
-    .toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__musaEdits.length)).toBe(1);
   expect((await edits(page))[0]).toMatchObject({
     kind: "changePitch",
     event: "event-3",
@@ -240,17 +217,13 @@ test("a drag on generated music asks the same question a keystroke does", async 
   });
 });
 
-test("a drag on the right edge renotates instead of respelling", async ({
-  page,
-}) => {
+test("a drag on the right edge renotates instead of respelling", async ({ page }) => {
   const space = await staffSpace(page);
   // Two rungs shorter: a whole note becomes a half.
   await dragOn(page, AUTHORED, -space * 3, 0);
   await page.mouse.up();
 
-  await expect
-    .poll(() => page.evaluate(() => window.__musaEdits.length))
-    .toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__musaEdits.length)).toBe(1);
   expect((await edits(page))[0]).toMatchObject({
     kind: "changeDuration",
     event: "event-c",
@@ -274,38 +247,27 @@ test("a horizontal drag is still a range selection", async ({ page }) => {
   expect(await edits(page)).toHaveLength(0);
 });
 
-test("with entry armed, a click on an empty step writes a note there", async ({
-  page,
-}) => {
+test("with entry armed, a click on an empty step writes a note there", async ({ page }) => {
   await page.getByRole("button", { name: /^Notes/ }).click();
   const space = await staffSpace(page);
   const box = await boxOf(page, AUTHORED);
 
   // Two steps above the note beside it, on blank staff.
-  await page.mouse.click(
-    box.x + box.width * 2.5,
-    box.y + box.height / 2 - space,
-  );
+  await page.mouse.click(box.x + box.width * 2.5, box.y + box.height / 2 - space);
 
-  await expect
-    .poll(() => page.evaluate(() => window.__musaEdits.length))
-    .toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__musaEdits.length)).toBe(1);
   expect((await edits(page))[0]).toMatchObject({
     kind: "insertNote",
     note: { kind: "note", pitch: "c5", duration: "1/4" },
   });
 });
 
-test("a gesture in flight has no accessibility violations", async ({
-  page,
-}) => {
+test("a gesture in flight has no accessibility violations", async ({ page }) => {
   const { default: AxeBuilder } = await import("@axe-core/playwright");
   const space = await staffSpace(page);
   await dragOn(page, AUTHORED, 0, -space);
 
-  const { violations } = await new AxeBuilder({ page })
-    .disableRules(["svg-img-alt"])
-    .analyze();
+  const { violations } = await new AxeBuilder({ page }).disableRules(["svg-img-alt"]).analyze();
   expect(violations.map((violation) => violation.id)).toEqual([]);
   await page.keyboard.press("Escape");
   await page.mouse.up();

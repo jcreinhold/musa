@@ -13,8 +13,7 @@
    * itself is untouched — not dimmed, not blurred, not overlaid: it is still
    * correct, it is only older.
    */
-  let { children, stale = false }: { children: Snippet; stale?: boolean } =
-    $props();
+  let { children, stale = false }: { children: Snippet; stale?: boolean } = $props();
 </script>
 
 <div class="leaf" class:stale>{@render children()}</div>

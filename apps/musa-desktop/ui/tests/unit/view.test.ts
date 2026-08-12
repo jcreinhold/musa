@@ -57,10 +57,7 @@ describe("the view mode", () => {
   });
 
   it("survives a store holding something that is not a mode", () => {
-    globalThis.localStorage?.setItem(
-      "musa:view-modes",
-      '{"sketch.musa":"sideways"}',
-    );
+    globalThis.localStorage?.setItem("musa:view-modes", '{"sketch.musa":"sideways"}');
     expect(new ViewPreferences().mode("sketch.musa")).toBe("page");
   });
 });

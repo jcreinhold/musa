@@ -41,12 +41,7 @@ describe("the engraved page", () => {
     const mei = snapshot.mei ?? "";
     // Glass Mountain names four of the five; it has no arranger, and an
     // unnamed role prints nothing rather than an empty line.
-    for (const id of [
-      "front-title",
-      "front-subtitle",
-      "front-composer",
-      "front-copyright",
-    ]) {
+    for (const id of ["front-title", "front-subtitle", "front-composer", "front-copyright"]) {
       expect(mei).toContain(`xml:id="${id}"`);
     }
     expect(mei).not.toContain("front-arranger");
@@ -68,8 +63,7 @@ describe("what the piece says about itself", () => {
   });
 
   it("spells the values the way the source spells them", () => {
-    const said = (field: string) =>
-      snapshot.score?.header.find((fact) => fact.field === field)?.value;
+    const said = (field: string) => snapshot.score?.header.find((fact) => fact.field === field)?.value;
     // Not `♩ = 72` and not `A minor`: a field that read one dialect and wrote
     // another would be a second language to keep working.
     expect(said("tempo")).toBe("quarter = 72");

@@ -30,9 +30,7 @@ function load(): Record<string, ViewMode> {
     const stored: unknown = JSON.parse(shelf()?.getItem(STORE) ?? "{}");
     if (typeof stored !== "object" || stored === null) return {};
     return Object.fromEntries(
-      Object.entries(stored as Record<string, unknown>).filter(
-        ([, mode]) => mode === "page" || mode === "continuous",
-      ),
+      Object.entries(stored as Record<string, unknown>).filter(([, mode]) => mode === "page" || mode === "continuous"),
     ) as Record<string, ViewMode>;
   } catch {
     return {};
@@ -68,10 +66,7 @@ export function stepForPinch(step: number, factor: number): number {
   const from = ZOOM_STEPS[step] ?? 100;
   const wanted = from * factor;
   return ZOOM_STEPS.reduce(
-    (best, level, index) =>
-      Math.abs(level - wanted) < Math.abs((ZOOM_STEPS[best] ?? 100) - wanted)
-        ? index
-        : best,
+    (best, level, index) => (Math.abs(level - wanted) < Math.abs((ZOOM_STEPS[best] ?? 100) - wanted) ? index : best),
     step,
   );
 }

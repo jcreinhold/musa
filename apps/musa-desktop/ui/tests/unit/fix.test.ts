@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  applyFix,
-  asControl,
-  labelOf,
-  onlyFix,
-  placeOf,
-} from "../../src/lib/state/fix";
+import { applyFix, asControl, labelOf, onlyFix, placeOf } from "../../src/lib/state/fix";
 import type { Diagnostic, Fix } from "../../src/lib/state/snapshot";
 
 function diagnostic(over: Partial<Diagnostic> = {}): Diagnostic {
@@ -61,15 +55,11 @@ describe("applyFix", () => {
 
 describe("onlyFix", () => {
   it("returns the one fix", () => {
-    expect(onlyFix(diagnostic({ fixes: [insert(0, ";")] }))?.title).toBe(
-      "add `;`",
-    );
+    expect(onlyFix(diagnostic({ fixes: [insert(0, ";")] }))?.title).toBe("add `;`");
   });
 
   it("refuses to choose between two", () => {
-    expect(
-      onlyFix(diagnostic({ fixes: [insert(0, ";"), insert(1, "}")] })),
-    ).toBeNull();
+    expect(onlyFix(diagnostic({ fixes: [insert(0, ";"), insert(1, "}")] }))).toBeNull();
   });
 
   it("is null with none", () => {

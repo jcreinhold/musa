@@ -14,26 +14,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { engraved } from "./engraved";
-import {
-  caret,
-  toggleSource,
-  marked,
-  rewrite,
-  selected,
-  source,
-} from "./source";
+import { caret, toggleSource, marked, rewrite, selected, source } from "./source";
 import { stubShell } from "./shell";
 
 /** Where the generated notes are, and what colour they are in, right now. */
-async function generated(
-  page: Page,
-): Promise<{ box: DOMRect; color: string }[]> {
+async function generated(page: Page): Promise<{ box: DOMRect; color: string }[]> {
   return page.evaluate(() =>
-    [
-      ...document.querySelectorAll(
-        '.engraving .arriving g[data-generated="true"]',
-      ),
-    ].map((element) => ({
+    [...document.querySelectorAll('.engraving .arriving g[data-generated="true"]')].map((element) => ({
       box: element.getBoundingClientRect().toJSON() as DOMRect,
       color: globalThis.getComputedStyle(element).color,
     })),
@@ -57,14 +44,9 @@ test.beforeEach(async ({ page }) => {
   await engraved(page);
 });
 
-test("holding the lens re-inks the generated music and moves nothing", async ({
-  page,
-}) => {
+test("holding the lens re-inks the generated music and moves nothing", async ({ page }) => {
   const before = await generated(page);
-  expect(
-    before.length,
-    "glass-mountain's violin is generated",
-  ).toBeGreaterThanOrEqual(10);
+  expect(before.length, "glass-mountain's violin is generated").toBeGreaterThanOrEqual(10);
 
   await inScore(page);
   await page.keyboard.down("o");
@@ -72,9 +54,7 @@ test("holding the lens re-inks the generated music and moves nothing", async ({
   await settled(page);
   const held = await generated(page);
 
-  expect(held.map((note) => note.color)).not.toEqual(
-    before.map((note) => note.color),
-  );
+  expect(held.map((note) => note.color)).not.toEqual(before.map((note) => note.color));
   // The one thing the lens may never do: move the music (§5).
   expect(held.map((note) => note.box)).toEqual(before.map((note) => note.box));
 
@@ -82,9 +62,7 @@ test("holding the lens re-inks the generated music and moves nothing", async ({
   await expect(page.locator(".overlay g.bracket")).toHaveCount(0);
   await settled(page);
   const released = await generated(page);
-  expect(released.map((note) => note.color)).toEqual(
-    before.map((note) => note.color),
-  );
+  expect(released.map((note) => note.color)).toEqual(before.map((note) => note.color));
 });
 
 test("every occurrence gets a bracket that names it", async ({ page }) => {
@@ -98,31 +76,21 @@ test("every occurrence gets a bracket that names it", async ({ page }) => {
   await expect(labels.nth(1)).toHaveText("transpose down P5 ▸ sigh()");
 });
 
-test("hovering a generated note draws one trace to its bracket", async ({
-  page,
-}) => {
+test("hovering a generated note draws one trace to its bracket", async ({ page }) => {
   await inScore(page);
   await page.keyboard.down("o");
   await expect(page.locator(".overlay g.bracket").first()).toBeVisible();
 
   await expect(page.locator(".overlay line.trace")).toHaveCount(0);
-  await page
-    .locator('.engraving .arriving [id="event-4"]')
-    .first()
-    .hover({ force: true });
+  await page.locator('.engraving .arriving [id="event-4"]').first().hover({ force: true });
   // One line, never two: a trace per notehead would be a diagram, not an answer.
   await expect(page.locator(".overlay line.trace")).toHaveCount(1);
 });
 
-test("clicking a generated note while held selects the whole occurrence", async ({
-  page,
-}) => {
+test("clicking a generated note while held selects the whole occurrence", async ({ page }) => {
   await inScore(page);
   await page.keyboard.down("o");
-  await page
-    .locator('.engraving .arriving [id="event-4"]')
-    .first()
-    .click({ force: true });
+  await page.locator('.engraving .arriving [id="event-4"]').first().click({ force: true });
 
   // The five notes one `use sigh()` produced, not the notehead under the
   // pointer (§2) — six haloes, because one of them is tied across a barline
@@ -141,9 +109,7 @@ test("a bracket is itself the control for its occurrence", async ({ page }) => {
   await expect(page.locator(".inspector")).toContainText("transpose down P5");
 });
 
-test("the lens can be pinned for anyone who cannot hold a key", async ({
-  page,
-}) => {
+test("the lens can be pinned for anyone who cannot hold a key", async ({ page }) => {
   const toggle = page.getByRole("button", { name: "Origin" });
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
@@ -159,14 +125,9 @@ test("the lens can be pinned for anyone who cannot hold a key", async ({
   await expect(page.locator(".overlay g.bracket")).toHaveCount(0);
 });
 
-test("the source says where too, and the parts list dims what is authored", async ({
-  page,
-}) => {
+test("the source says where too, and the parts list dims what is authored", async ({ page }) => {
   await toggleSource(page);
-  await page
-    .locator('.engraving .arriving [id="event-4"]')
-    .first()
-    .click({ force: true });
+  await page.locator('.engraving .arriving [id="event-4"]').first().click({ force: true });
 
   // The declaration and the use statement, both marked, neither invented here.
   await expect.poll(() => marked(page)).not.toHaveLength(0);
@@ -181,22 +142,15 @@ test("the source says where too, and the parts list dims what is authored", asyn
   await expect(page.locator(".parts .voice.generated.aside")).toHaveCount(0);
 });
 
-test("the origin row's line number opens the source at the use statement", async ({
-  page,
-}) => {
-  await page
-    .locator('.engraving .arriving [id="event-4"]')
-    .first()
-    .click({ force: true });
+test("the origin row's line number opens the source at the use statement", async ({ page }) => {
+  await page.locator('.engraving .arriving [id="event-4"]').first().click({ force: true });
   await page.locator(".inspector button.segment.line").click();
 
   await expect(source(page)).toBeVisible();
   await expect.poll(() => selected(page)).toBe("use sigh();");
 });
 
-test("a diagnostic is a place in the source, not a notification", async ({
-  page,
-}) => {
+test("a diagnostic is a place in the source, not a notification", async ({ page }) => {
   await toggleSource(page);
   await rewrite(page, 'piece "Glass Mountain" {');
   // Wait for the *compiler's* answer, not for a list of the right length: the
@@ -209,9 +163,7 @@ test("a diagnostic is a place in the source, not a notification", async ({
   await expect(page.locator(".diagnostics .message")).toHaveText("missing }");
 
   // The place is stated the way a person says it — `1:25`, never `24`.
-  await expect(page.locator(".diagnostics .where")).toHaveText(
-    `1:${text.length + 1}`,
-  );
+  await expect(page.locator(".diagnostics .where")).toHaveText(`1:${text.length + 1}`);
   await page.locator(".diagnostics button.problem").click();
 
   // The caret goes where the compiler is pointing, and the field keeps focus

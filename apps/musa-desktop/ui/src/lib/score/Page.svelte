@@ -59,9 +59,7 @@
     const arriving = page?.svg;
     if (arriving === showing) return;
     const instant =
-      showing === undefined ||
-      globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ===
-        true;
+      showing === undefined || globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
     outgoing = instant ? undefined : showing;
     showing = arriving;
     clearTimeout(fade);

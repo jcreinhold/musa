@@ -31,9 +31,7 @@ export type Piece =
   | "refused-claim";
 
 function snapshotOf(piece: Piece): string {
-  return fileURLToPath(
-    new URL(`../../fixtures/${piece}.snapshot.json`, import.meta.url),
-  );
+  return fileURLToPath(new URL(`../../fixtures/${piece}.snapshot.json`, import.meta.url));
 }
 
 function fixtureFile(name: string): string {
@@ -78,28 +76,20 @@ export async function stubShell(
     // it again" answers with, and the stub has no other way to produce one.
     // For a determinate piece nothing ever asks for it.
     again: {
-      ...(JSON.parse(
-        readFileSync(snapshotOf("open-form-again"), "utf8"),
-      ) as object),
+      ...(JSON.parse(readFileSync(snapshotOf("open-form-again"), "utf8")) as object),
       document: 1,
     },
     // What the elaboration screens are answered with: one committed reading,
     // the bundled modules as documents, and the compiler's own list of what
     // it can be asked. All three are written by `musa-project`'s tests.
-    report: JSON.parse(
-      readFileSync(fixtureFile("pivot-ambiguity.analysis.json"), "utf8"),
-    ) as Record<string, unknown>,
-    modules: JSON.parse(
-      readFileSync(fixtureFile("library-documents.json"), "utf8"),
-    ) as Record<string, Record<string, unknown>>,
+    report: JSON.parse(readFileSync(fixtureFile("pivot-ambiguity.analysis.json"), "utf8")) as Record<string, unknown>,
+    modules: JSON.parse(readFileSync(fixtureFile("library-documents.json"), "utf8")) as Record<
+      string,
+      Record<string, unknown>
+    >,
     kinds: JSON.parse(
       readFileSync(
-        fileURLToPath(
-          new URL(
-            "../../src/lib/session/generated/analysis-kinds.json",
-            import.meta.url,
-          ),
-        ),
+        fileURLToPath(new URL("../../src/lib/session/generated/analysis-kinds.json", import.meta.url)),
         "utf8",
       ),
     ) as { kind: string; method: string }[],
@@ -123,15 +113,9 @@ export async function stubShell(
        * The project, when the seeds are filed as one: two pieces and the
        * library they draw on, named as `examples/album/` names them.
        */
-      const FILES = [
-        "pieces/01-first.musa",
-        "pieces/02-second.musa",
-        "library/motifs.musa",
-      ] as const;
+      const FILES = ["pieces/01-first.musa", "pieces/02-second.musa", "library/motifs.musa"] as const;
       const titleOf = (snapshot: Record<string, unknown>): string =>
-        ((snapshot.score as { title?: string } | null)?.title ??
-          (snapshot.name as string)) ||
-        "";
+        ((snapshot.score as { title?: string } | null)?.title ?? (snapshot.name as string)) || "";
 
       /** Every piece of the project that has been opened, by file name. */
       // A volume just opened has been read from disk and nothing has been typed
@@ -166,8 +150,7 @@ export async function stubShell(
        */
       function listing(): Record<string, unknown> | null {
         if (!both.volume) return null;
-        const at = (file: string) =>
-          file === showing ? current : (held[file] ?? {});
+        const at = (file: string) => (file === showing ? current : (held[file] ?? {}));
         const entry = (file: string, used: boolean) => ({
           title: file === FILES[2] ? "motifs.musa" : titleOf(at(file)),
           file,
@@ -185,8 +168,7 @@ export async function stubShell(
       }
 
       const balanced = (source: string): boolean =>
-        (source.match(/\{/g) ?? []).length ===
-        (source.match(/\}/g) ?? []).length;
+        (source.match(/\{/g) ?? []).length === (source.match(/\}/g) ?? []).length;
 
       /** The 1-based line and column of the end of `source`, as Rust states it. */
       function place(source: string): { line: number; column: number } {
@@ -272,8 +254,7 @@ export async function stubShell(
         };
       }
 
-      const notes = (): Note[] =>
-        ((current.score as { events?: Note[] } | null)?.events ?? []) as Note[];
+      const notes = (): Note[] => ((current.score as { events?: Note[] } | null)?.events ?? []) as Note[];
 
       /**
        * What an edit would change, by the core's own rule: every event spelled
@@ -289,13 +270,9 @@ export async function stubShell(
        * which is enough to prove the interface marks what it is told to and
        * shows what it is given.
        */
-      function writesOf(
-        edit: Record<string, unknown>,
-        span: Span | undefined,
-      ): Record<string, unknown>[] {
+      function writesOf(edit: Record<string, unknown>, span: Span | undefined): Record<string, unknown>[] {
         const kind = edit.kind as string;
-        const value = (kind === "changePitch" ? edit.pitch : edit.duration) as
-          string | undefined;
+        const value = (kind === "changePitch" ? edit.pitch : edit.duration) as string | undefined;
         if (!span || value === undefined) return [];
         const text = (current.source as string).slice(span.start, span.end);
         const written = /^(\s*)(\S+?)\/(\S+?)\s*$/.exec(text);
@@ -313,12 +290,8 @@ export async function stubShell(
             ];
       }
 
-      function impactOf(
-        edit: Record<string, unknown>,
-      ): Record<string, unknown> {
-        const target = notes().find(
-          (note) => note.id === (edit.event as string | undefined),
-        );
+      function impactOf(edit: Record<string, unknown>): Record<string, unknown> {
+        const target = notes().find((note) => note.id === (edit.event as string | undefined));
         const origin = target?.origin;
         const writes = writesOf(edit, origin?.definitionSpan);
         if (!origin?.generated) {
@@ -348,15 +321,11 @@ export async function stubShell(
             }[];
           }
         ).occurrences;
-        const label = (expansions ?? []).find(
-          (each) => each.id === origin.occurrence,
-        );
+        const label = (expansions ?? []).find((each) => each.id === origin.occurrence);
         // A `with` clause belongs to the call, so an occurrence whose call also
         // produced other occurrences — a `use` inside a `repeat` — has no "just
         // this one". Same rule as the core's, over the same facts.
-        const runs = (expansions ?? []).filter(
-          (each) => each.useSite.start === label?.useSite.start,
-        ).length;
+        const runs = (expansions ?? []).filter((each) => each.useSite.start === label?.useSite.start).length;
         return {
           generated: true,
           motif: label?.label.split(" ▸ ").pop() ?? null,
@@ -408,10 +377,7 @@ export async function stubShell(
        * reading is a different score to lay out — and because keeping a
        * decision has to be undoable like everything else.
        */
-      function reperform(
-        performance: number,
-        keeps: (decision: Decision) => boolean,
-      ): Record<string, unknown> {
+      function reperform(performance: number, keeps: (decision: Decision) => boolean): Record<string, unknown> {
         const score = current.score as Score | null;
         const revision = (current.revision as number) + 1;
         current = {
@@ -430,10 +396,7 @@ export async function stubShell(
         return answer();
       }
 
-      const commands: Record<
-        string,
-        (args: Record<string, unknown>) => unknown
-      > = {
+      const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
         snapshot: () => answer(),
         // Turning to another file of the project. The piece left behind keeps
         // its text, its unsaved mark and its revision, so the stub holds the
@@ -448,8 +411,7 @@ export async function stubShell(
           return answer();
         },
         save_all: () => {
-          for (const file of Object.keys(held))
-            held[file] = { ...held[file], unsaved: false };
+          for (const file of Object.keys(held)) held[file] = { ...held[file], unsaved: false };
           current = { ...current, unsaved: false };
           return answer();
         },
@@ -474,9 +436,7 @@ export async function stubShell(
           const kind = args.kind as string;
           // The reading is of the score that compiled, which is the number the
           // core would answer with and the one that makes it go stale.
-          const revision =
-            (current.scoreRevision as number | null) ??
-            (current.revision as number);
+          const revision = (current.scoreRevision as number | null) ?? (current.revision as number);
           if (kind === both.report.kind) return { ...both.report, revision };
           const known = both.kinds.find((offered) => offered.kind === kind);
           if (!known)
@@ -499,8 +459,7 @@ export async function stubShell(
         library_document: (args) => {
           const uri = args.uri as string;
           const module = both.modules[uri];
-          if (!module)
-            throw { kind: "backend", message: `\`${uri}\` is not bundled` };
+          if (!module) throw { kind: "backend", message: `\`${uri}\` is not bundled` };
           const start = args.start as number | null;
           const end = args.end as number | null;
           return {
@@ -553,13 +512,8 @@ export async function stubShell(
                   const trimmed = line.trim();
                   const opens = (trimmed.match(/\{/g) ?? []).length;
                   const closes = (trimmed.match(/\}/g) ?? []).length;
-                  const at = trimmed.startsWith("}")
-                    ? Math.max(depth - 1, 0)
-                    : depth;
-                  depth = Math.max(
-                    at + opens - closes + (trimmed.startsWith("}") ? 1 : 0),
-                    0,
-                  );
+                  const at = trimmed.startsWith("}") ? Math.max(depth - 1, 0) : depth;
+                  depth = Math.max(at + opens - closes + (trimmed.startsWith("}") ? 1 : 0), 0);
                   return trimmed === "" ? "" : "    ".repeat(at) + trimmed;
                 })
                 .join("\n"),
@@ -622,9 +576,8 @@ export async function stubShell(
             history.push(current);
             const keep = command.kind === "keep";
             const which = command.decision as string;
-            return reperform(
-              (current.score as Score | null)?.performance ?? 0,
-              (decision) => (decision.path === which ? keep : decision.pinned),
+            return reperform((current.score as Score | null)?.performance ?? 0, (decision) =>
+              decision.path === which ? keep : decision.pinned,
             );
           }
           return answer();
@@ -641,19 +594,15 @@ export async function stubShell(
           // engine guarantees. Anything less and a test would prove the
           // interface works against a stub that ignores what it asked for.
           if (command.kind === "play") playback.playing = true;
-          if (command.kind === "pause" || command.kind === "stop")
-            playback.playing = false;
+          if (command.kind === "pause" || command.kind === "stop") playback.playing = false;
           if (command.kind === "stop") playback.positionFrames = 0;
-          if (command.kind === "seek")
-            playback.positionFrames = command.frame ?? 0;
-          if (command.kind === "setLoop")
-            playback.loopRegion = [command.start ?? 0, command.end ?? 0];
+          if (command.kind === "seek") playback.positionFrames = command.frame ?? 0;
+          if (command.kind === "setLoop") playback.loopRegion = [command.start ?? 0, command.end ?? 0];
           if (command.kind === "clearLoop") playback.loopRegion = null;
           current = { ...current, playback };
           // The tests read this to prove the interface asked for the loop it
           // drew, rather than drawing one it never sent.
-          window.__musaLoop =
-            (playback.loopRegion as [number, number] | null) ?? null;
+          window.__musaLoop = (playback.loopRegion as [number, number] | null) ?? null;
           return current;
         },
         // A machine with a keyboard plugged in; the no-device case is
@@ -686,8 +635,7 @@ export async function stubShell(
               events.set(name, [...(events.get(name) ?? []), id]);
               return Promise.resolve(id);
             }
-            if (command === "plugin:event|unlisten")
-              return Promise.resolve(null);
+            if (command === "plugin:event|unlisten") return Promise.resolve(null);
             const answer = commands[command];
             return answer
               ? Promise.resolve(answer(args))

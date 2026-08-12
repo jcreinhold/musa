@@ -21,12 +21,7 @@
   import { applyFix, asControl, labelOf, onlyFix, placeOf } from "../state/fix";
   import type { Snippet } from "svelte";
   import type { Reveal } from "../state/reveal";
-  import type {
-    Diagnostic,
-    NameFacts,
-    Span,
-    TermFacts,
-  } from "../state/snapshot";
+  import type { Diagnostic, NameFacts, Span, TermFacts } from "../state/snapshot";
 
   let {
     source,
@@ -123,9 +118,7 @@
     onhide?: () => void;
   } = $props();
 
-  const errors = $derived(
-    diagnostics.filter((diagnostic) => diagnostic.severity === "error"),
-  );
+  const errors = $derived(diagnostics.filter((diagnostic) => diagnostic.severity === "error"));
 
   /**
    * What this column actually measures, for the seam to speak and to drag
@@ -149,9 +142,7 @@
 <section
   class="source-pane"
   aria-label="Source"
-  style={width === null
-    ? undefined
-    : `--asked: min(${width}px, var(--source-room, 60vw))`}
+  style={width === null ? undefined : `--asked: min(${width}px, var(--source-room, 60vw))`}
   bind:clientWidth={measured}
 >
   <!--
@@ -165,9 +156,7 @@
     <div class="head library">
       <span class="what">{library.name}</span>
       <span class="badge">Standard library — read-only</span>
-      {#if onclose}<button type="button" class="hide" onclick={onclose}
-          >Close</button
-        >{/if}
+      {#if onclose}<button type="button" class="hide" onclick={onclose}>Close</button>{/if}
     </div>
   {:else if onhide}
     <div class="head">
@@ -232,11 +221,7 @@
             the message again — it says something the message does not — and
             the help line only appears when there is advice worth a line.
           -->
-          <button
-            type="button"
-            class="problem"
-            onclick={() => ondiagnostic?.(diagnostic)}
-          >
+          <button type="button" class="problem" onclick={() => ondiagnostic?.(diagnostic)}>
             <span class="glyph {diagnostic.severity}" aria-hidden="true"></span>
             <span class="message"><Ticked text={diagnostic.message} /></span>
             {#if place}<span class="where">{place}</span>{/if}
@@ -268,14 +253,7 @@
     inside the column's landmark.
   -->
   {#if onwiden && onreset}
-    <Seam
-      label="Source"
-      width={measured}
-      {floor}
-      spare={spare ?? (() => 0)}
-      {onwiden}
-      {onreset}
-    />
+    <Seam label="Source" width={measured} {floor} spare={spare ?? (() => 0)} {onwiden} {onreset} />
   {/if}
 </section>
 

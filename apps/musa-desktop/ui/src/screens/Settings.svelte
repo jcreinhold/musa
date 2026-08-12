@@ -12,10 +12,7 @@
    * Nothing here is the document's. Tempo, key, and title are the piece's and
    * are edited where they are printed.
    */
-  import type {
-    Preferences,
-    TextSize,
-  } from "../lib/session/preferences.svelte";
+  import type { Preferences, TextSize } from "../lib/session/preferences.svelte";
   import { TEXT_SIZES } from "../lib/session/preferences.svelte";
   import type { Theme, ThemeChoice } from "../lib/session/theme.svelte";
   import Leaf from "../lib/ui/Leaf.svelte";
@@ -56,11 +53,7 @@
   };
 </script>
 
-<div
-  class="scrim"
-  role="presentation"
-  onclick={(event) => event.target === event.currentTarget && onclose()}
->
+<div class="scrim" role="presentation" onclick={(event) => event.target === event.currentTarget && onclose()}>
   <div class="sheet" role="dialog" aria-modal="true" aria-label="Settings">
     <Leaf>
       <div class="body">
@@ -73,8 +66,7 @@
               <button
                 type="button"
                 aria-pressed={theme.chosen === option.value}
-                onclick={() => theme.choose(option.value)}
-                >{option.label}</button
+                onclick={() => theme.choose(option.value)}>{option.label}</button
               >
             {/each}
           </div>
@@ -87,8 +79,7 @@
               <button
                 type="button"
                 aria-pressed={preferences.textSize === size}
-                onclick={() => preferences.chooseText(size)}
-                >{SIZES[size]}</button
+                onclick={() => preferences.chooseText(size)}>{SIZES[size]}</button
               >
             {/each}
           </div>
@@ -97,22 +88,13 @@
         <div class="row">
           <span class="label" id="settings-vim">Vim mode</span>
           <div class="choices" role="group" aria-labelledby="settings-vim">
-            <button
-              type="button"
-              aria-pressed={!preferences.vim}
-              onclick={() => preferences.setVim(false)}>Off</button
-            >
-            <button
-              type="button"
-              aria-pressed={preferences.vim}
-              onclick={() => preferences.setVim(true)}>On</button
-            >
+            <button type="button" aria-pressed={!preferences.vim} onclick={() => preferences.setVim(false)}>Off</button>
+            <button type="button" aria-pressed={preferences.vim} onclick={() => preferences.setVim(true)}>On</button>
           </div>
         </div>
 
         <p class="note">
-          These are the application's, not the piece's — they follow you between
-          scores and never appear in the file.
+          These are the application's, not the piece's — they follow you between scores and never appear in the file.
         </p>
 
         <!--
@@ -133,11 +115,7 @@
         {#if performance !== null}
           <div class="row performance">
             <span class="label" id="settings-performance">Performance</span>
-            <div
-              class="choices"
-              role="group"
-              aria-labelledby="settings-performance"
-            >
+            <div class="choices" role="group" aria-labelledby="settings-performance">
               <input
                 class="number"
                 type="number"
@@ -147,21 +125,15 @@
                 value={performance}
                 onchange={(event) => {
                   const asked = Number(event.currentTarget.value);
-                  if (Number.isFinite(asked) && asked >= 0)
-                    onperformance?.(Math.floor(asked));
+                  if (Number.isFinite(asked) && asked >= 0) onperformance?.(Math.floor(asked));
                 }}
               />
-              <button
-                type="button"
-                onclick={() => onperformance?.(performance + 1)}
-                >New performance</button
-              >
+              <button type="button" onclick={() => onperformance?.(performance + 1)}>New performance</button>
             </div>
           </div>
           <p class="note">
-            This piece leaves something open, and this is the reading in force.
-            It is the project's, not the file's — everyone who opens the piece
-            gets the piece, and this is how you heard it.
+            This piece leaves something open, and this is the reading in force. It is the project's, not the file's —
+            everyone who opens the piece gets the piece, and this is how you heard it.
           </p>
         {/if}
 

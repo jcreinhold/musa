@@ -25,9 +25,7 @@ for (const fixture of FIXTURES) {
       await page.emulateMedia({ colorScheme: theme });
       await page.goto(`/?score=${fixture}&view=sheet`);
       await engraved(page);
-      await expect(page.locator(".sheet")).toHaveScreenshot(
-        `${fixture}-${theme}.png`,
-      );
+      await expect(page.locator(".sheet")).toHaveScreenshot(`${fixture}-${theme}.png`);
     });
   }
 }

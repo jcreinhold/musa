@@ -35,9 +35,7 @@ function line(span: { start: number; end: number }): {
 }
 
 function origin(id: string) {
-  const event = (snapshot.score?.events ?? []).find(
-    (candidate) => candidate.id === id,
-  );
+  const event = (snapshot.score?.events ?? []).find((candidate) => candidate.id === id);
   if (!event) throw new Error(`no ${id} in the fixture`);
   return event.origin;
 }
@@ -93,13 +91,7 @@ describe("focusing a line of the text", () => {
   it("resolves a use line to the whole expansion", () => {
     const shared = focus();
     shared.pointLine(line(origin(GENERATED).span));
-    expect(shared.marked.events).toEqual([
-      "event-0",
-      "event-1",
-      "event-2",
-      "event-3",
-      "event-4",
-    ]);
+    expect(shared.marked.events).toEqual(["event-0", "event-1", "event-2", "event-3", "event-4"]);
   });
 
   it("resolves an authored note's own line to that note", () => {

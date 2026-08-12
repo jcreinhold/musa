@@ -24,9 +24,7 @@ const FIELDS: Record<string, HeaderFieldDto> = {
 };
 
 /** The field a printed line's id names, or null if the id names none. */
-export function fieldForId(
-  id: string | null | undefined,
-): HeaderFieldDto | null {
+export function fieldForId(id: string | null | undefined): HeaderFieldDto | null {
   return (id && FIELDS[id]) || null;
 }
 
@@ -64,11 +62,7 @@ function alignOf(element: Element): FrontMatterAt["align"] {
  * came to. Nothing musical is computed here: this is where a control goes,
  * which is the same thing a halo's rectangle is.
  */
-export function measureFront(
-  container: HTMLElement,
-  element: Element,
-  field: HeaderFieldDto,
-): FrontMatterAt {
+export function measureFront(container: HTMLElement, element: Element, field: HeaderFieldDto): FrontMatterAt {
   const box = element.getBoundingClientRect();
   const frame = container.getBoundingClientRect();
   return {
@@ -92,11 +86,8 @@ export function measureFront(
  */
 function renderedFontSize(element: Element, renderedWidth: number): number {
   const inner = element.querySelector("[font-size]") ?? element;
-  const declared = Number.parseFloat(
-    globalThis.getComputedStyle(inner).fontSize,
-  );
+  const declared = Number.parseFloat(globalThis.getComputedStyle(inner).fontSize);
   const measured = (element as SVGGraphicsElement).getBBox?.();
-  const scale =
-    measured && measured.width > 0 ? renderedWidth / measured.width : 1;
+  const scale = measured && measured.width > 0 ? renderedWidth / measured.width : 1;
   return Number.isFinite(declared) ? declared * scale : 16;
 }

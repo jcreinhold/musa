@@ -38,8 +38,7 @@
             class="voice"
             class:generated={voice.generated}
             class:aside={origin && !voice.generated}
-            class:active={active?.part === part.name &&
-              active?.voice === voice.name}
+            class:active={active?.part === part.name && active?.voice === voice.name}
             onclick={() => workspace.selectVoice(part.name, voice.name)}
           >
             {voice.name}

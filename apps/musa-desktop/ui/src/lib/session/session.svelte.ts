@@ -19,13 +19,7 @@ import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { EditDto } from "./generated/EditDto";
 import type { StudioEditDto } from "./generated/StudioEditDto";
-import type {
-  AnalysisFacts,
-  EditImpact,
-  LibraryDocument,
-  MidiEntry,
-  ProjectSnapshot,
-} from "../state/snapshot";
+import type { AnalysisFacts, EditImpact, LibraryDocument, MidiEntry, ProjectSnapshot } from "../state/snapshot";
 
 /**
  * How long typing settles before the source is compiled
@@ -88,14 +82,7 @@ export type Link = Pick<
  * arriving, and dropping the draft on its way back would undo whatever was
  * typed while it was in flight.
  */
-const REWRITES = new Set([
-  "format",
-  "undo",
-  "redo",
-  "editScore",
-  "editStudio",
-  "restoreRecovery",
-]);
+const REWRITES = new Set(["format", "undo", "redo", "editScore", "editStudio", "restoreRecovery"]);
 
 /**
  * The file extension an export writes, for the targets whose name is not it.
@@ -221,14 +208,9 @@ export class Session {
       if (!opening) return;
       this.#adopt();
     }
-    if (
-      current?.document === snapshot.document &&
-      snapshot.revision < current.revision
-    )
-      return;
+    if (current?.document === snapshot.document && snapshot.revision < current.revision) return;
     this.snapshot = snapshot;
-    if (this.draft !== null && this.draft === snapshot.source)
-      this.draft = null;
+    if (this.draft !== null && this.draft === snapshot.source) this.draft = null;
     if (!snapshot.compiles && !this.#announcedProblems) {
       this.#announcedProblems = true;
       this.sourceOpen = true;
@@ -424,10 +406,7 @@ export class Session {
    * again whenever it moves: what a note is spelled as depends on the key in
    * force there, and a piece modulates.
    */
-  async listenToMidi(
-    listening: boolean,
-    caret: string | null = null,
-  ): Promise<void> {
+  async listenToMidi(listening: boolean, caret: string | null = null): Promise<void> {
     const link = this.#link;
     if (!link) return;
     try {
@@ -465,18 +444,12 @@ export class Session {
    * liked this reading needs to be able to come back to it.
    */
   async newPerformance(performance: number): Promise<void> {
-    await this.run(
-      { kind: "newPerformance", performance: whole(performance) },
-      () => `Performance ${performance}.`,
-    );
+    await this.run({ kind: "newPerformance", performance: whole(performance) }, () => `Performance ${performance}.`);
   }
 
   /** Keep one decision as it came out, or let it go back to being drawn. */
   async keepDecision(decision: string, keep: boolean): Promise<void> {
-    await this.run(
-      { kind: keep ? "keep" : "release", decision },
-      keep ? () => "Kept." : () => "Released.",
-    );
+    await this.run({ kind: keep ? "keep" : "release", decision }, keep ? () => "Kept." : () => "Released.");
   }
 
   /**
@@ -522,11 +495,7 @@ export class Session {
    * The handle is the snapshot's own: this side never measures another
    * document's text, and passes back exactly what it was given.
    */
-  async openLibrary(
-    uri: string,
-    start: number | null = null,
-    end: number | null = null,
-  ): Promise<void> {
+  async openLibrary(uri: string, start: number | null = null, end: number | null = null): Promise<void> {
     const link = this.#link;
     if (!link) return;
     try {
@@ -596,9 +565,7 @@ export class Session {
 
   /** `Space`: play, or stop if the transport is already running. */
   async toggle(): Promise<void> {
-    await (this.snapshot?.playback.playing === true
-      ? this.stop()
-      : this.play());
+    await (this.snapshot?.playback.playing === true ? this.stop() : this.play());
   }
 
   /** `⇧Space`: play from a point in the performance, in frames. */
@@ -610,9 +577,7 @@ export class Session {
   /** Loop a region of the performance, or stop looping. */
   async loop(region: [number, number] | null): Promise<void> {
     await this.move(
-      region === null
-        ? { kind: "clearLoop" }
-        : { kind: "setLoop", start: whole(region[0]), end: whole(region[1]) },
+      region === null ? { kind: "clearLoop" } : { kind: "setLoop", start: whole(region[0]), end: whole(region[1]) },
     );
   }
 

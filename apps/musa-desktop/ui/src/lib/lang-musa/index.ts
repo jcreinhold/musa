@@ -11,13 +11,7 @@
  * indented changes nothing.
  */
 
-import {
-  LanguageSupport,
-  StreamLanguage,
-  foldService,
-  indentService,
-  indentUnit,
-} from "@codemirror/language";
+import { LanguageSupport, StreamLanguage, foldService, indentService, indentUnit } from "@codemirror/language";
 
 import { CLASS_TAGS } from "./highlight";
 import { read, type ReaderState } from "./tokenize";
@@ -52,8 +46,7 @@ const musaStream = StreamLanguage.define<ReaderState>({
  */
 const musaIndent = indentService.of((context, pos) => {
   const here = context.state.doc.lineAt(pos);
-  const previous =
-    here.number > 1 ? context.state.doc.line(here.number - 1).text : "";
+  const previous = here.number > 1 ? context.state.doc.line(here.number - 1).text : "";
   const base = /^\s*/.exec(previous)?.[0].length ?? 0;
   const opened = previous.trimEnd().endsWith("{") ? INDENT.length : 0;
   const closed = here.text.trimStart().startsWith("}") ? INDENT.length : 0;
@@ -72,11 +65,7 @@ const musaIndent = indentService.of((context, pos) => {
 const musaFold = foldService.of((state, start, end) => {
   if (!state.doc.lineAt(start).text.trimEnd().endsWith("{")) return null;
   let depth = 0;
-  for (
-    let number = state.doc.lineAt(start).number;
-    number <= state.doc.lines;
-    number += 1
-  ) {
+  for (let number = state.doc.lineAt(start).number; number <= state.doc.lines; number += 1) {
     const line = state.doc.line(number);
     let quoted = false;
     for (let at = 0; at < line.text.length; at += 1) {
@@ -95,25 +84,9 @@ const musaFold = foldService.of((state, start, end) => {
 
 /** The language, with the editor settings that belong to it. */
 export function musa(): LanguageSupport {
-  return new LanguageSupport(musaStream, [
-    indentUnit.of(INDENT),
-    musaIndent,
-    musaFold,
-  ]);
+  return new LanguageSupport(musaStream, [indentUnit.of(INDENT), musaIndent, musaFold]);
 }
 
 export { CLASS_TAGS, musaHighlighting } from "./highlight";
-export {
-  docParts,
-  keywordDoc,
-  proseRuns,
-  type DocParts,
-  type KeywordDoc,
-  type ProseRun,
-} from "./keywords";
-export {
-  TOKEN_CLASSES,
-  tokenize,
-  type Token,
-  type TokenClass,
-} from "./tokenize";
+export { docParts, keywordDoc, proseRuns, type DocParts, type KeywordDoc, type ProseRun } from "./keywords";
+export { TOKEN_CLASSES, tokenize, type Token, type TokenClass } from "./tokenize";

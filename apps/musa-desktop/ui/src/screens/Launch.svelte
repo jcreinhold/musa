@@ -19,12 +19,7 @@
    */
   import Leaf from "../lib/ui/Leaf.svelte";
 
-  let {
-    onopen,
-    onopenproject,
-    onnew,
-  }: { onopen: () => void; onopenproject: () => void; onnew: () => void } =
-    $props();
+  let { onopen, onopenproject, onnew }: { onopen: () => void; onopenproject: () => void; onnew: () => void } = $props();
 
   /**
    * How many staves the page is ruled with.
@@ -64,12 +59,7 @@
   <nav class="start" aria-label="Start">
     {#each START as action, index (action.title)}
       <!-- svelte-ignore a11y_autofocus -->
-      <button
-        type="button"
-        class="action"
-        autofocus={index === 0}
-        onclick={action.run}
-      >
+      <button type="button" class="action" autofocus={index === 0} onclick={action.run}>
         <span>{action.title}</span>
         <span class="key" aria-hidden="true">{action.key}</span>
       </button>
@@ -151,11 +141,7 @@
   .stave {
     flex: 0 0 auto;
     height: calc(var(--sp) * 4 + 1px);
-    background: repeating-linear-gradient(
-      to bottom,
-      var(--rule) 0 1px,
-      transparent 1px var(--sp)
-    );
+    background: repeating-linear-gradient(to bottom, var(--rule) 0 1px, transparent 1px var(--sp));
   }
 
   /*

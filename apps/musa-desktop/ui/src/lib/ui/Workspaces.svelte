@@ -49,8 +49,7 @@
       aria-current={current === workspace.id ? "page" : undefined}
       onclick={() => onshow(workspace.id)}
     >
-      {workspace.name}<span class="key" aria-hidden="true">{workspace.key}</span
-      >
+      {workspace.name}<span class="key" aria-hidden="true">{workspace.key}</span>
     </button>
   {/each}
 </nav>

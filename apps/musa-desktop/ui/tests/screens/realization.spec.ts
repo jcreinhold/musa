@@ -20,17 +20,14 @@ import { stubShell } from "./shell";
 const sheet = (page: Page) => page.getByRole("dialog", { name: "Settings" });
 
 /** The performance in force, as the field states it. */
-const performance = (page: Page) =>
-  sheet(page).getByRole("spinbutton", { name: "Performance" });
+const performance = (page: Page) => sheet(page).getByRole("spinbutton", { name: "Performance" });
 
 const inspector = (page: Page) => page.locator(".inspector");
 
 /** The events the engraver has actually put on the page right now. */
 function rendered(page: Page): Promise<string[]> {
   return page.evaluate(() =>
-    [...document.querySelectorAll('.engraving .arriving g[id^="event-"]')].map(
-      (element) => element.id,
-    ),
+    [...document.querySelectorAll('.engraving .arriving g[id^="event-"]')].map((element) => element.id),
   );
 }
 
@@ -54,9 +51,7 @@ async function reengraved(page: Page, before: string[]): Promise<void> {
 
 /** Open the settings sheet the way the menu and the palette both do. */
 async function settings(page: Page): Promise<void> {
-  await page.evaluate(() =>
-    window.__musaEmit("musa://command", "settings.open"),
-  );
+  await page.evaluate(() => window.__musaEmit("musa://command", "settings.open"));
   await expect(sheet(page)).toBeVisible();
 }
 
@@ -72,9 +67,7 @@ test.describe("an open work", () => {
     await engraved(page);
   });
 
-  test("settings names the performance, and gives a way to another one", async ({
-    page,
-  }) => {
+  test("settings names the performance, and gives a way to another one", async ({ page }) => {
     await settings(page);
     await expect(performance(page)).toHaveValue("4");
 
@@ -84,9 +77,7 @@ test.describe("an open work", () => {
     await expect(performance(page)).toHaveValue("5");
   });
 
-  test("a new performance is a different reading of the same source", async ({
-    page,
-  }) => {
+  test("a new performance is a different reading of the same source", async ({ page }) => {
     await page.locator(UNDER).click({ force: true });
     await expect(inspector(page)).toContainText("2 passes");
 
@@ -105,18 +96,14 @@ test.describe("an open work", () => {
     await expect(inspector(page)).toContainText("6 passes");
   });
 
-  test("a performance you liked is a number you can type back", async ({
-    page,
-  }) => {
+  test("a performance you liked is a number you can type back", async ({ page }) => {
     await settings(page);
     await performance(page).fill("8");
     await performance(page).blur();
     await expect(performance(page)).toHaveValue("8");
   });
 
-  test("the inspector says what the note was played under", async ({
-    page,
-  }) => {
+  test("the inspector says what the note was played under", async ({ page }) => {
     await page.locator(UNDER).click({ force: true });
 
     // Both halves are the core's own words: what was left open, and what this
@@ -131,30 +118,22 @@ test.describe("an open work", () => {
    * reading that let the kick run twice and the hats six times would not be a
    * reading of this piece, and the fixture is the piece that would catch it.
    */
-  test("one question is one row, however many voices write it", async ({
-    page,
-  }) => {
+  test("one question is one row, however many voices write it", async ({ page }) => {
     await page.locator(UNDER).click({ force: true });
     await expect(inspector(page).getByText("the first choice")).toHaveCount(1);
   });
 
-  test("a note no open construct covers has no decision to show", async ({
-    page,
-  }) => {
+  test("a note no open construct covers has no decision to show", async ({ page }) => {
     await page.locator(OUTSIDE).click({ force: true });
     await expect(inspector(page)).not.toContainText("Decision");
   });
 
   test("a kept decision holds across a new performance", async ({ page }) => {
     await page.locator(UNDER).click({ force: true });
-    await inspector(page)
-      .getByRole("button", { name: "keep this one" })
-      .click();
+    await inspector(page).getByRole("button", { name: "keep this one" }).click();
 
     // The offer becomes a state, in the same word and the same place.
-    await expect(
-      inspector(page).getByRole("button", { name: "kept" }),
-    ).toBeVisible();
+    await expect(inspector(page).getByRole("button", { name: "kept" })).toBeVisible();
 
     await settings(page);
     await sheet(page).getByRole("button", { name: "New performance" }).click();
@@ -166,9 +145,7 @@ test.describe("an open work", () => {
     await settled(page);
     await page.locator(UNDER).click({ force: true });
     await expect(inspector(page)).toContainText("2 passes");
-    await expect(
-      inspector(page).getByRole("button", { name: "kept" }),
-    ).toBeVisible();
+    await expect(inspector(page).getByRole("button", { name: "kept" })).toBeVisible();
   });
 });
 

@@ -46,9 +46,7 @@ for (const size of SIZES) {
       await engraved(page);
       await toggleSource(page);
       await engraved(page);
-      await expect(page).toHaveScreenshot(
-        `compose-source-${size.name}-${theme}.png`,
-      );
+      await expect(page).toHaveScreenshot(`compose-source-${size.name}-${theme}.png`);
     });
   }
 }
@@ -86,9 +84,7 @@ test("clicking empty leaf clears the selection", async ({ page }) => {
   await expect(page.locator(".overlay rect.selection")).toHaveCount(0);
 });
 
-test("the source column pushes the leaf sideways and never covers it", async ({
-  page,
-}) => {
+test("the source column pushes the leaf sideways and never covers it", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await stubShell(page);
   await page.goto("/");
@@ -106,7 +102,5 @@ test("the source column pushes the leaf sideways and never covers it", async ({
   expect(after?.height ?? 0).toBe(before?.height ?? 0);
 
   // And it stands beside the page rather than over it.
-  expect((column?.x ?? 0) + (column?.width ?? 0)).toBeLessThanOrEqual(
-    after?.x ?? 0,
-  );
+  expect((column?.x ?? 0) + (column?.width ?? 0)).toBeLessThanOrEqual(after?.x ?? 0);
 });

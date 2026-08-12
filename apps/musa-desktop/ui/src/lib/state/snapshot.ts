@@ -74,13 +74,7 @@ export interface Diagnostic {
  * generated note asks *which* construct made it, and the answer chooses the
  * word the row prints and the icon beside it.
  */
-export type StepKind =
-  | "occurrence"
-  | "instance"
-  | "transform"
-  | "assertion"
-  | "splice"
-  | "specialization";
+export type StepKind = "occurrence" | "instance" | "transform" | "assertion" | "splice" | "specialization";
 
 /**
  * One step of an expansion path, as the Origin row reads it.
@@ -446,16 +440,7 @@ export interface ProjectSnapshot {
 
 /** What a name names. The compiler's own list. */
 export type NameKind =
-  | "value"
-  | "function"
-  | "motif"
-  | "bar"
-  | "fragment"
-  | "part"
-  | "voice"
-  | "patch"
-  | "module"
-  | "template";
+  "value" | "function" | "motif" | "bar" | "fragment" | "part" | "voice" | "patch" | "module" | "template";
 
 /** One type, as a reader is shown it. */
 export interface TypeFacts {
@@ -488,9 +473,7 @@ export interface ParameterFacts {
  * with them is hand them back to `libraryDocument`, which restates them in
  * that module's own measure.
  */
-export type TermSite =
-  | { where: "open"; span: Span }
-  | { where: "library"; uri: string; start: number; end: number };
+export type TermSite = { where: "open"; span: Span } | { where: "library"; uri: string; start: number; end: number };
 
 /** One declaration, as the term tooltip and the completion list read it. */
 export interface TermFacts {
@@ -616,18 +599,13 @@ export type EvidenceFacts =
  * than in each screen so that "is this a volume" is asked one way everywhere
  * (`07-the-volume.md`).
  */
-export function volumeOf(
-  snapshot: ProjectSnapshot | null | undefined,
-): ContentsFacts | null {
+export function volumeOf(snapshot: ProjectSnapshot | null | undefined): ContentsFacts | null {
   const listing = snapshot?.contents ?? null;
   if (!listing) return null;
   return listing.pieces.length + listing.material.length > 1 ? listing : null;
 }
 
 /** The event with this id, or undefined. */
-export function eventById(
-  snapshot: ProjectSnapshot,
-  id: string,
-): EventFacts | undefined {
+export function eventById(snapshot: ProjectSnapshot, id: string): EventFacts | undefined {
   return snapshot.score?.events.find((event) => event.id === id);
 }

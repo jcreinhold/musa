@@ -15,10 +15,7 @@ import { pane, source, text, toggleSource } from "./source";
 
 /** Run a command the way the native menu and the palette both do. */
 async function run(page: Page, id: string): Promise<void> {
-  await page.evaluate(
-    (command) => window.__musaEmit("musa://command", command),
-    id,
-  );
+  await page.evaluate((command) => window.__musaEmit("musa://command", command), id);
 }
 
 /** The computed size of a piece of the frame's own type, in pixels. */
@@ -26,9 +23,7 @@ async function frameType(page: Page): Promise<number> {
   return page
     .locator("nav.workspaces button")
     .first()
-    .evaluate((node) =>
-      Number.parseFloat(globalThis.getComputedStyle(node).fontSize),
-    );
+    .evaluate((node) => Number.parseFloat(globalThis.getComputedStyle(node).fontSize));
 }
 
 /**
@@ -41,10 +36,7 @@ async function frameType(page: Page): Promise<number> {
  * share of its page would be a second zoom.
  */
 async function staffShare(page: Page): Promise<number> {
-  const staff = await page
-    .locator(".engraving .page svg g.staff")
-    .first()
-    .boundingBox();
+  const staff = await page.locator(".engraving .page svg g.staff").first().boundingBox();
   const leaf = await page.locator(".engraving .page").first().boundingBox();
   return (staff?.height ?? 0) / (leaf?.height ?? 1);
 }
@@ -56,9 +48,7 @@ test.beforeEach(async ({ page }) => {
   await engraved(page);
 });
 
-test("a step larger is the frame's type, and only the frame's", async ({
-  page,
-}) => {
+test("a step larger is the frame's type, and only the frame's", async ({ page }) => {
   const before = await frameType(page);
   const share = await staffShare(page);
 
@@ -81,9 +71,7 @@ test("a step larger is the frame's type, and only the frame's", async ({
   // which is the same drift a window resize of the same size produces. The
   // smallest zoom step is 10% (`ZOOM_STEPS`). What this has to tell apart is
   // those two, and 5% sits between them.
-  await expect
-    .poll(async () => (await staffShare(page)) / share)
-    .toBeCloseTo(1, 1);
+  await expect.poll(async () => (await staffShare(page)) / share).toBeCloseTo(1, 1);
 
   await run(page, "settings.text.reset");
   await expect.poll(() => frameType(page)).toBeCloseTo(before, 1);
@@ -91,11 +79,9 @@ test("a step larger is the frame's type, and only the frame's", async ({
 
 test("the ladder has four rungs and stops at both ends", async ({ page }) => {
   const normal = await frameType(page);
-  for (let step = 0; step < 5; step += 1)
-    await run(page, "settings.text.larger");
+  for (let step = 0; step < 5; step += 1) await run(page, "settings.text.larger");
   const largest = await frameType(page);
-  for (let step = 0; step < 5; step += 1)
-    await run(page, "settings.text.smaller");
+  for (let step = 0; step < 5; step += 1) await run(page, "settings.text.smaller");
   const smallest = await frameType(page);
 
   expect(largest / normal).toBeCloseTo(1.3, 2);
@@ -112,9 +98,7 @@ test("the size outlives the window it was chosen in", async ({ page }) => {
   expect(await frameType(page)).toBeCloseTo(before * 1.15, 1);
 });
 
-test("with vim off, Esc still puts the source column away", async ({
-  page,
-}) => {
+test("with vim off, Esc still puts the source column away", async ({ page }) => {
   await toggleSource(page);
   await source(page).click();
   await page.keyboard.press("Escape");
@@ -124,9 +108,7 @@ test("with vim off, Esc still puts the source column away", async ({
   await expect(pane(page)).toHaveCount(0);
 });
 
-test("with vim on, Esc leaves insert mode and the column stays", async ({
-  page,
-}) => {
+test("with vim on, Esc leaves insert mode and the column stays", async ({ page }) => {
   await run(page, "settings.vim");
   await toggleSource(page);
   await source(page).click();
@@ -145,9 +127,7 @@ test("with vim on, Esc leaves insert mode and the column stays", async ({
   await expect(pane(page)).toHaveCount(1);
 });
 
-test("vim's undo is the project's undo, not a second history", async ({
-  page,
-}) => {
+test("vim's undo is the project's undo, not a second history", async ({ page }) => {
   await run(page, "settings.vim");
   await toggleSource(page);
   await source(page).click();
@@ -155,18 +135,14 @@ test("vim's undo is the project's undo, not a second history", async ({
   const before = await page.evaluate(() => window.__musaRevision);
   await page.keyboard.press("i");
   await page.keyboard.insertText("// a note to self\n");
-  await expect
-    .poll(() => page.evaluate(() => window.__musaRevision))
-    .toBeGreaterThan(before);
+  await expect.poll(() => page.evaluate(() => window.__musaRevision)).toBeGreaterThan(before);
   await page.keyboard.press("Escape");
 
   await page.keyboard.press("u");
   // The revision went back, which is the whole point: `u` and `⌘Z` are one
   // undo over one document, and a vim history beside the project's would
   // disagree with it about what the document is.
-  await expect
-    .poll(() => page.evaluate(() => window.__musaRevision))
-    .toBe(before);
+  await expect.poll(() => page.evaluate(() => window.__musaRevision)).toBe(before);
 });
 
 test("`:w` is the project's save", async ({ page }) => {
@@ -181,9 +157,7 @@ test("`:w` is the project's save", async ({ page }) => {
   await page.keyboard.insertText("w");
   await page.keyboard.press("Enter");
 
-  await expect
-    .poll(() => page.evaluate(() => window.__musaSaves))
-    .toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.__musaSaves)).toBeGreaterThan(0);
 });
 
 test("the mode outlives the window it was turned on in", async ({ page }) => {
@@ -195,9 +169,7 @@ test("the mode outlives the window it was turned on in", async ({ page }) => {
   await expect(page.locator(".cm-vim-panel")).toContainText("NORMAL");
 });
 
-test("vim mode changes the keys and nothing about the document", async ({
-  page,
-}) => {
+test("vim mode changes the keys and nothing about the document", async ({ page }) => {
   await toggleSource(page);
   const before = await text(page);
   await run(page, "settings.vim");
@@ -217,9 +189,7 @@ test.describe("settings", () => {
 
   /** The choice currently in force in the row named `label`. */
   function inForce(page: Page, label: string) {
-    return sheet(page)
-      .getByRole("group", { name: label })
-      .locator('button[aria-pressed="true"]');
+    return sheet(page).getByRole("group", { name: label }).locator('button[aria-pressed="true"]');
   }
 
   test("⌘, opens it, and Esc closes it", async ({ page }) => {
@@ -239,15 +209,11 @@ test.describe("settings", () => {
     await expect(inForce(page, "Vim mode")).toHaveText("Off");
   });
 
-  test("choosing a text size takes it, and the sheet says so", async ({
-    page,
-  }) => {
+  test("choosing a text size takes it, and the sheet says so", async ({ page }) => {
     const before = await frameType(page);
     await run(page, "settings.open");
 
-    await sheet(page)
-      .getByRole("button", { name: "Large", exact: true })
-      .click();
+    await sheet(page).getByRole("button", { name: "Large", exact: true }).click();
     await expect(inForce(page, "Text size")).toHaveText("Large");
     await expect.poll(() => frameType(page)).toBeGreaterThan(before);
   });
@@ -268,9 +234,7 @@ test.describe("settings", () => {
     await expect(inForce(page, "Theme")).toHaveText("System");
   });
 
-  test("vim mode is turned on here and holds in the source", async ({
-    page,
-  }) => {
+  test("vim mode is turned on here and holds in the source", async ({ page }) => {
     await run(page, "settings.open");
     await sheet(page).getByRole("button", { name: "On" }).click();
     await expect(inForce(page, "Vim mode")).toHaveText("On");
@@ -310,9 +274,7 @@ test.describe("settings", () => {
     await run(page, "settings.open");
     await expect(sheet(page)).toBeVisible();
 
-    const { violations } = await new AxeBuilder({ page })
-      .disableRules(["svg-img-alt"])
-      .analyze();
+    const { violations } = await new AxeBuilder({ page }).disableRules(["svg-img-alt"]).analyze();
     expect(violations.map((violation) => violation.id)).toEqual([]);
   });
 });
@@ -341,8 +303,7 @@ test("the frame at Larger, in the dark", async ({ page }) => {
  * loses so much room that it stops being a page.
  */
 test.describe("the source column's width", () => {
-  const seam = (page: Page) =>
-    page.getByRole("separator", { name: "Source width" });
+  const seam = (page: Page) => page.getByRole("separator", { name: "Source width" });
 
   /** What the column measures right now, in pixels. */
   async function wide(page: Page): Promise<number> {
@@ -398,9 +359,7 @@ test.describe("the source column's width", () => {
 
     // A stride is bigger than a nudge, which is the whole reason it exists.
     await page.keyboard.press("Shift+ArrowRight");
-    await expect
-      .poll(() => wide(page))
-      .toBeGreaterThan(nudged + (nudged - before));
+    await expect.poll(() => wide(page)).toBeGreaterThan(nudged + (nudged - before));
 
     await page.keyboard.press("Home");
     await expect.poll(() => wide(page)).toBeCloseTo(before, 0);
@@ -409,8 +368,7 @@ test.describe("the source column's width", () => {
   test("the width outlives the window it was chosen in", async ({ page }) => {
     const before = await wide(page);
     await seam(page).focus();
-    for (let step = 0; step < 4; step += 1)
-      await page.keyboard.press("Shift+ArrowRight");
+    for (let step = 0; step < 4; step += 1) await page.keyboard.press("Shift+ArrowRight");
     const chosen = await wide(page);
     expect(chosen).toBeGreaterThan(before);
 
@@ -427,9 +385,7 @@ test.describe("the source column's width", () => {
     await expect(seam(page)).toHaveAttribute("aria-valuenow", /\d+/);
     await expect(seam(page)).toHaveAttribute("aria-orientation", "vertical");
 
-    const { violations } = await new AxeBuilder({ page })
-      .disableRules(["svg-img-alt"])
-      .analyze();
+    const { violations } = await new AxeBuilder({ page }).disableRules(["svg-img-alt"]).analyze();
     expect(violations.map((violation) => violation.id)).toEqual([]);
   });
 });

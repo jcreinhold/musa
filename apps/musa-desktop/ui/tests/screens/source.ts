@@ -37,9 +37,7 @@ export function source(page: Page): Locator {
  */
 export function text(page: Page): Promise<string> {
   return source(page).evaluate((node) =>
-    [...node.querySelectorAll(".cm-line")]
-      .map((line) => line.textContent ?? "")
-      .join("\n"),
+    [...node.querySelectorAll(".cm-line")].map((line) => line.textContent ?? "").join("\n"),
   );
 }
 
@@ -66,10 +64,7 @@ export function caret(page: Page): Promise<number> {
     const range = selection.getRangeAt(0);
     let offset = 0;
     for (const line of node.querySelectorAll(".cm-line")) {
-      if (
-        line === range.startContainer ||
-        line.contains(range.startContainer)
-      ) {
+      if (line === range.startContainer || line.contains(range.startContainer)) {
         const before = node.ownerDocument.createRange();
         before.setStart(line, 0);
         before.setEnd(range.startContainer, range.startOffset);
@@ -83,9 +78,7 @@ export function caret(page: Page): Promise<number> {
 
 /** What the editor has selected, as text. */
 export function selected(page: Page): Promise<string> {
-  return source(page).evaluate(
-    (node) => node.ownerDocument.getSelection()?.toString() ?? "",
-  );
+  return source(page).evaluate((node) => node.ownerDocument.getSelection()?.toString() ?? "");
 }
 
 /**
@@ -96,8 +89,6 @@ export function selected(page: Page): Promise<string> {
  */
 export function marked(page: Page): Promise<string[]> {
   return source(page).evaluate((node) =>
-    [...node.querySelectorAll(".cm-musa-origin")].map(
-      (mark) => mark.textContent ?? "",
-    ),
+    [...node.querySelectorAll(".cm-musa-origin")].map((mark) => mark.textContent ?? ""),
   );
 }

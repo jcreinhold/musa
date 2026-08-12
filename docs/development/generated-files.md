@@ -68,6 +68,28 @@ Verified after the change:
 | `pnpm run lint` (ESLint) | clean |
 | `cargo test -p musa-desktop`, then `git status` | tree clean; what it regenerates matches what is committed |
 
-Note that `format:check` is in no build target — `pnpm run format` is a `--write` command someone runs by hand. That is
-how these directories got rewritten in the first place, and the ignore file is what stops it happening again. Prettier
-still reports style issues in about ninety hand-written UI files; that is pre-existing and gated nowhere.
+The strongest confirmation is that `pnpm run format` — the exact hand-run `--write` that rewrote these directories in
+the first place — was run again afterwards and reformatted ninety hand-written files while touching neither generated
+directory.
+
+`prettier --check` and `eslint` used to be in no build target, which is why nothing caught the rewrite at the time — and
+neither were `taplo fmt --check` or `mdwright fmt-check`, though `AGENTS.md` called all of them must-be-green. They are
+now gates: `make fmt-check` runs all four formatters, `make lint-ui` runs ESLint, and `make verify` runs both. So a
+formatting pass over a generated file is stopped by the ignore file, and drift anywhere else fails the build rather than
+waiting to be swept up by a tidy-up commit.
+
+## Who owns which files
+
+Four formatters run over this repo, and they only coexist because their territories are disjoint:
+
+| Formatter | Owns | Kept off |
+| --- | --- | --- |
+| `cargo fmt` | `*.rs` | — |
+| `taplo` | `*.toml` | — |
+| `mdwright` | `*.md`, everywhere | — |
+| Prettier | the UI's `*.ts`, `*.svelte`, `*.json`, `*.html`, `*.css` | Markdown, and both generated directories |
+| the generator tests | `src/lib/session/generated/`, `fixtures/` | — |
+
+Prettier is barred from Markdown because it pads table columns and `mdwright` collapses them; left overlapping, the two
+rewrite each other forever. That is the same failure as the generated directories, and it has the same remedy: one
+writer per file, stated in `.prettierignore`.

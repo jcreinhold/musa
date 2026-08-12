@@ -65,11 +65,7 @@ async function inScore(page: Page): Promise<void> {
 
 /** Where both views are scrolled to, so a hover can be shown not to move them. */
 function scrolls(page: Page): Promise<number[]> {
-  return page.evaluate(() =>
-    [...document.querySelectorAll(".engraving, .cm-scroller")].map(
-      (node) => node.scrollTop,
-    ),
-  );
+  return page.evaluate(() => [...document.querySelectorAll(".engraving, .cm-scroller")].map((node) => node.scrollTop));
 }
 
 test.beforeEach(async ({ page }) => {
@@ -81,9 +77,7 @@ test.beforeEach(async ({ page }) => {
   await expect(source(page)).toBeVisible();
 });
 
-test("pointing at a generated note marks both places that wrote it", async ({
-  page,
-}) => {
+test("pointing at a generated note marks both places that wrote it", async ({ page }) => {
   await expect(spelling(page)).toHaveCount(0);
   await pointAt(page, GENERATED);
 
@@ -93,18 +87,14 @@ test("pointing at a generated note marks both places that wrote it", async ({
   await expect(placed(page)).toHaveText("23");
 });
 
-test("and marks the siblings that line spelled in the other occurrence", async ({
-  page,
-}) => {
+test("and marks the siblings that line spelled in the other occurrence", async ({ page }) => {
   await pointAt(page, GENERATED);
   // The motif is used twice, so this line spelled two notes. Marking one of
   // them is the lie the editing choice later has to correct with a number.
   await expect(hairlines(page)).toHaveCount(2);
 });
 
-test("pointing at a line in the source marks the notes it produced", async ({
-  page,
-}) => {
+test("pointing at a line in the source marks the notes it produced", async ({ page }) => {
   await expect(hairlines(page)).toHaveCount(0);
   await page.locator(".cm-line", { hasText: SPELLS }).first().hover();
   // The same answer from the other side: one line, two notes.
@@ -116,17 +106,13 @@ test("pointing at a line in the source marks the notes it produced", async ({
   await expect(placed(page)).toHaveCount(0);
 });
 
-test("pointing at a use statement marks the whole expansion", async ({
-  page,
-}) => {
+test("pointing at a use statement marks the whole expansion", async ({ page }) => {
   await page.locator(".cm-line", { hasText: "use sigh();" }).first().hover();
   // Five notes, one of them tied across a barline and therefore drawn twice.
   await expect(hairlines(page)).toHaveCount(6);
 });
 
-test("the focus follows the keyboard, so it is on for someone who never hovers", async ({
-  page,
-}) => {
+test("the focus follows the keyboard, so it is on for someone who never hovers", async ({ page }) => {
   await inScore(page);
   await expect(spelling(page)).toHaveCount(0);
   await page.keyboard.press("ArrowRight");
@@ -139,9 +125,7 @@ test("the focus follows the keyboard, so it is on for someone who never hovers",
   await expect(spelling(page)).toHaveText("c5/2");
 });
 
-test("the focus changes nothing else: not the selection, not the scroll", async ({
-  page,
-}) => {
+test("the focus changes nothing else: not the selection, not the scroll", async ({ page }) => {
   const before = await scrolls(page);
   await expect(page.locator(".overlay rect.selection")).toHaveCount(0);
 
@@ -166,9 +150,7 @@ test("the focus does not survive leaving the leaf", async ({ page }) => {
   await expect(spelling(page)).toHaveCount(0);
 });
 
-test("a line that makes music on the page in view is ticked in the gutter", async ({
-  page,
-}) => {
+test("a line that makes music on the page in view is ticked in the gutter", async ({ page }) => {
   const ticked = page.locator(".cm-lineNumbers .cm-musa-sounds");
   // The five lines of the motif, the two `use` statements, and the eight
   // authored notes below them — and nothing in the studio block.
@@ -180,9 +162,7 @@ test("a line that makes music on the page in view is ticked in the gutter", asyn
   expect(numbers).not.toContain("53");
 });
 
-test("the origin row says how many notes the line spelled, before anyone hovers", async ({
-  page,
-}) => {
+test("the origin row says how many notes the line spelled, before anyone hovers", async ({ page }) => {
   const generated = page.locator(GENERATED).first();
   await expect(async () => {
     await generated.click({ force: true });
@@ -193,10 +173,7 @@ test("the origin row says how many notes the line spelled, before anyone hovers"
 
   // An authored note's line spelled exactly one, and a count of one is not a
   // fact worth printing.
-  await page
-    .locator('.engraving .arriving [id="event-a"]')
-    .first()
-    .click({ force: true });
+  await page.locator('.engraving .arriving [id="event-a"]').first().click({ force: true });
   await expect(page.locator(".inspector .kin")).toHaveCount(0);
 });
 

@@ -29,14 +29,10 @@ export type TokenClass = (typeof classes)[number];
 export const TOKEN_CLASSES: readonly TokenClass[] = classes;
 
 /** The words and marks the composer types literally. */
-const SPELLED = new Map<string, TokenClass>(
-  spellings as [string, TokenClass][],
-);
+const SPELLED = new Map<string, TokenClass>(spellings as [string, TokenClass][]);
 
 /** The marks, longest first, so `->` is read before `-`. */
-const MARKS = [...SPELLED.keys()]
-  .filter((text) => !/^[A-Za-z]/.test(text))
-  .sort((a, b) => b.length - a.length);
+const MARKS = [...SPELLED.keys()].filter((text) => !/^[A-Za-z]/.test(text)).sort((a, b) => b.length - a.length);
 
 /** One token: what it is, and where. */
 export interface Token {
@@ -92,9 +88,7 @@ function word(source: string, from: number): Token {
   const sharps = /^(##|#)/.exec(rest);
   const afterSharps = sharps ? rest.slice(sharps[0].length) : rest;
   const octave = /^-?[0-9]+/.exec(afterSharps);
-  const spelled = sharps
-    ? /^[a-g]$/.test(letters)
-    : /^[a-g](bb|[bn])?$/.test(letters);
+  const spelled = sharps ? /^[a-g]$/.test(letters) : /^[a-g](bb|[bn])?$/.test(letters);
   if (octave && spelled) {
     return {
       class: "pitch",
@@ -121,9 +115,7 @@ function word(source: string, from: number): Token {
 
 /** A number: a rational, a float, or an integer, in the lexer's order. */
 function number(source: string, from: number): Token {
-  const match = /^[0-9]+\/[0-9]+|^[0-9]+\.[0-9]+|^[0-9]+/.exec(
-    source.slice(from),
-  );
+  const match = /^[0-9]+\/[0-9]+|^[0-9]+\.[0-9]+|^[0-9]+/.exec(source.slice(from));
   const text = match?.[0] ?? at(source, from);
   return {
     class: text.includes("/") ? "duration" : "number",
@@ -175,11 +167,7 @@ function comment(source: string, from: number, opening: boolean): Read {
  * Never returns without advancing: an unreadable byte is one invalid token,
  * which is what the lexer does with it too.
  */
-export function read(
-  source: string,
-  from: number,
-  state: ReaderState = OPEN,
-): Read {
+export function read(source: string, from: number, state: ReaderState = OPEN): Read {
   if (state.inComment) return comment(source, from, false);
 
   const here = at(source, from);

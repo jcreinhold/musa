@@ -29,23 +29,13 @@
   import { ZOOM_STEPS } from "musa-engrave";
   import { bridge } from "./lib/session/bridge";
   import type { Reveal } from "./lib/state/reveal";
-  import {
-    commandFor,
-    dispatch,
-    type Screen,
-    type Surface,
-  } from "./lib/commands/map";
+  import { commandFor, dispatch, type Screen, type Surface } from "./lib/commands/map";
   import { Preferences } from "./lib/session/preferences.svelte";
   import { Session } from "./lib/session/session.svelte";
   import { ThemeChoice } from "./lib/session/theme.svelte";
   import { mark } from "./lib/perf";
   import { fixture } from "./lib/state/fixtures";
-  import {
-    volumeOf,
-    type Diagnostic,
-    type OutlineFacts,
-    type Span,
-  } from "./lib/state/snapshot";
+  import { volumeOf, type Diagnostic, type OutlineFacts, type Span } from "./lib/state/snapshot";
   import { Playhead, soundingAt } from "./lib/state/playhead.svelte";
   import { NoteEntry } from "./lib/state/entry.svelte";
   import { anchorFor, played, stroke } from "./lib/state/compose";
@@ -118,9 +108,7 @@
    * source column stands in is the token the edit will replace, not a guess
    * the frontend re-derived.
    */
-  let candidate = $state<{ start: number; end: number; text: string } | null>(
-    null,
-  );
+  let candidate = $state<{ start: number; end: number; text: string } | null>(null);
 
   /** The candidate the core was last asked about, so a stale answer is dropped. */
   let asking: string | null = null;
@@ -269,9 +257,7 @@
    * The notes sounding right now. Empty while stopped, so a paused score
    * shows the selection rather than a frozen tint of where it stopped.
    */
-  const playing = $derived(
-    playhead.playing ? soundingAt(events, playhead.frame) : [],
-  );
+  const playing = $derived(playhead.playing ? soundingAt(events, playhead.frame) : []);
 
   function stepZoom(by: number): void {
     const next = Math.min(Math.max(zoomStep + by, 0), ZOOM_STEPS.length - 1);
@@ -472,9 +458,7 @@
     const note = workspace.chosen;
     const spelling = note?.pitchSpellings[0];
     if (!note || spelling === undefined) return;
-    const pitch = accidental
-      ? shiftAccidental(spelling, steps)
-      : shiftStep(spelling, steps);
+    const pitch = accidental ? shiftAccidental(spelling, steps) : shiftStep(spelling, steps);
     if (pitch === null || pitch === spelling) return;
     void issue({
       kind: "changePitch",
@@ -597,8 +581,7 @@
     // an editor that cannot leave insert mode is not an editor. So while vim
     // mode is on and the caret is in the source, `Esc` is vim's. Everywhere
     // else, and with vim off, it is unchanged.
-    if (event.key === "Escape" && preferences.vim && inSource(event.target))
-      return;
+    if (event.key === "Escape" && preferences.vim && inSource(event.target)) return;
     const command = commandFor(event, scopeOf(event.target));
     if (!command) return;
     event.preventDefault();
@@ -619,9 +602,7 @@
     const events = session.snapshot?.score?.events ?? [];
     const anchored = events.find((event) => event.id === before);
     if (!anchored) return;
-    const voice = events.filter(
-      (e) => e.part === anchored.part && e.voice === anchored.voice,
-    );
+    const voice = events.filter((e) => e.part === anchored.part && e.voice === anchored.voice);
     const index = voice.findIndex((e) => e.id === before);
     const written = at.kind === "before" ? voice[index] : voice[index + 1];
     if (written) workspace.select(written.id);
@@ -642,11 +623,7 @@
     // each other, so re-announcing what is already chosen would be the two of
     // them talking forever.
     const chosen = workspace.selected;
-    if (
-      chosen.length === events.length &&
-      chosen.every((id, at) => id === events[at])
-    )
-      return;
+    if (chosen.length === events.length && chosen.every((id, at) => id === events[at])) return;
     workspace.selection = { kind: "event", events };
   }
 
@@ -662,10 +639,8 @@
       // Not when the caret is already in that note's text: the note was
       // chosen *by* the caret, and moving the caret to where it already is
       // would be the two views arguing with each other.
-      if (caretAt !== null && span.start <= caretAt && caretAt < span.end)
-        return;
-      if (reveal?.span.start === span.start && reveal.span.end === span.end)
-        return;
+      if (caretAt !== null && span.start <= caretAt && caretAt < span.end) return;
+      if (reveal?.span.start === span.start && reveal.span.end === span.end) return;
       open(span, false);
     });
   });
@@ -675,14 +650,11 @@
     if (event.key === "Alt") return true;
     // `⇧O` is the pin, which is a command and not a hold.
     if (event.key !== "o" || event.shiftKey) return false;
-    return (
-      !event.metaKey && !event.ctrlKey && scopeOf(event.target) === "score"
-    );
+    return !event.metaKey && !event.ctrlKey && scopeOf(event.target) === "score";
   }
 
   function onkeyup(event: KeyboardEvent): void {
-    if (event.key === "Alt" || event.key === "o" || event.key === "O")
-      held = false;
+    if (event.key === "Alt" || event.key === "o" || event.key === "O") held = false;
   }
 
   /**
@@ -694,8 +666,7 @@
   }
 
   const pinnedTheme = parameters.get("theme");
-  if (pinnedTheme === "light" || pinnedTheme === "dark")
-    theme.chosen = pinnedTheme;
+  if (pinnedTheme === "light" || pinnedTheme === "dark") theme.chosen = pinnedTheme;
 
   if (!session.live && chosen.snapshot) session.snapshot = chosen.snapshot;
 
@@ -747,8 +718,7 @@
     const event = workspace.focused;
     const kind = workspace.selection.kind;
     untrack(() => {
-      selectionSaid =
-        kind === "none" || !event ? "" : workspace.describe(event);
+      selectionSaid = kind === "none" || !event ? "" : workspace.describe(event);
     });
   });
 
@@ -803,11 +773,7 @@
 {#if !session.live && parameters.get("view") === "sheet"}
   <Sheet fixture={chosen} />
 {:else if session.snapshot?.contents && leaf === "contents"}
-  <Contents
-    contents={session.snapshot.contents}
-    onchoose={turnTo}
-    onshow={(which) => (screen = which)}
-  />
+  <Contents contents={session.snapshot.contents} onchoose={turnTo} onshow={(which) => (screen = which)} />
 {:else if session.snapshot && leaf === "sound"}
   <Sound {session} onshow={(which) => (screen = which)} />
 {:else if session.snapshot && leaf === "mix"}
@@ -872,8 +838,7 @@
       const note = { kind: "note", pitch, duration: entry.duration } as const;
       if (at) void write({ kind: "insertNote", at, note }, at);
     }}
-    onpitch={(event, pitch) =>
-      void issue({ kind: "changePitch", event, pitch, mode: "editDefinition" })}
+    onpitch={(event, pitch) => void issue({ kind: "changePitch", event, pitch, mode: "editDefinition" })}
     onduration={(event, duration) =>
       void issue({
         kind: "changeDuration",
@@ -881,8 +846,7 @@
         duration,
         mode: "editDefinition",
       })}
-    onheader={(field, value) =>
-      void session.editScore({ kind: "setHeader", field, value })}
+    onheader={(field, value) => void session.editScore({ kind: "setHeader", field, value })}
     onkeep={(decision, keep) => void session.keepDecision(decision, keep)}
     onreveal={open}
     ondiagnostic={showDiagnostic}

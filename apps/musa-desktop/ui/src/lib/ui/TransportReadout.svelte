@@ -15,12 +15,7 @@
    * knowing something it will not act on. They are the same three fields the
    * inspector shows, in a second place, with the same commit rule.
    */
-  import type {
-    Fraction as Rational,
-    HeaderFact,
-    PlaybackState,
-    ScoreFacts,
-  } from "../state/snapshot";
+  import type { Fraction as Rational, HeaderFact, PlaybackState, ScoreFacts } from "../state/snapshot";
   import type { HeaderFieldDto } from "../session/generated/HeaderFieldDto";
   import EditableValue from "./EditableValue.svelte";
   import Position from "./Position.svelte";
@@ -44,24 +39,18 @@
     onheader?: (field: HeaderFieldDto, value: string) => void;
   } = $props();
 
-  const note = $derived(
-    tempoNote(score.tempoBeat.numerator, score.tempoBeat.denominator),
-  );
+  const note = $derived(tempoNote(score.tempoBeat.numerator, score.tempoBeat.denominator));
 
   /** What the source says for one of the three, for the field to start from. */
   const said = $derived(
-    (field: HeaderFieldDto) =>
-      score.header.find((fact: HeaderFact) => fact.field === field)?.value ??
-      "",
+    (field: HeaderFieldDto) => score.header.find((fact: HeaderFact) => fact.field === field)?.value ?? "",
   );
 </script>
 
 <div class="readout" class:stale>
   <div class="where">
     <Position {bar} {beat} />
-    <span class="time"
-      >{elapsed(playback.positionFrames, playback.sampleRate)}</span
-    >
+    <span class="time">{elapsed(playback.positionFrames, playback.sampleRate)}</span>
   </div>
   <dl class="facts">
     <!--
@@ -73,11 +62,7 @@
       <dt>Tempo</dt>
       <dd class:editable={onheader}>
         {#if onheader}
-          <EditableValue
-            value={said("tempo")}
-            label="Tempo"
-            onchange={(next) => onheader("tempo", next)}
-          />
+          <EditableValue value={said("tempo")} label="Tempo" onchange={(next) => onheader("tempo", next)} />
         {:else}
           {#if note}<span class="note" aria-hidden="true">{note}</span>{/if}
           <span class="bpm">= {score.tempoBpm}</span>
@@ -102,11 +87,7 @@
       <dt>Meter</dt>
       <dd class:editable={onheader}>
         {#if onheader}
-          <EditableValue
-            value={said("meter")}
-            label="Meter"
-            onchange={(next) => onheader("meter", next)}
-          />
+          <EditableValue value={said("meter")} label="Meter" onchange={(next) => onheader("meter", next)} />
         {:else}{score.meterCount}/{score.meterUnit}{/if}
       </dd>
     </div>

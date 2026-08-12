@@ -46,10 +46,7 @@
   function onkeydown(event: KeyboardEvent): void {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      at = Math.min(
-        Math.max(at + (event.key === "ArrowDown" ? 1 : -1), 0),
-        shown.length - 1,
-      );
+      at = Math.min(Math.max(at + (event.key === "ArrowDown" ? 1 : -1), 0), shown.length - 1);
       return;
     }
     if (event.key === "Enter" && chosen) {
@@ -71,11 +68,7 @@
   standard, and the same action has a key (`Esc`) and a place in the map, so
   no operation is pointer-only (§5).
 -->
-<div
-  class="scrim"
-  role="presentation"
-  onclick={(event) => event.target === event.currentTarget && onclose()}
->
+<div class="scrim" role="presentation" onclick={(event) => event.target === event.currentTarget && onclose()}>
   <div class="palette" role="dialog" aria-modal="true" aria-label="Commands">
     <Leaf>
       <div class="body">

@@ -8,10 +8,7 @@
    * playhead that spoke every frame would make the app unusable with a screen
    * reader, which is the opposite of accessible.
    */
-  let {
-    selection = "",
-    transport = "",
-  }: { selection?: string; transport?: string } = $props();
+  let { selection = "", transport = "" }: { selection?: string; transport?: string } = $props();
 </script>
 
 <div class="announcer">

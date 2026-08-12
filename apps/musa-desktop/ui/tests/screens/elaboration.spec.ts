@@ -40,13 +40,8 @@ test.describe("terms", () => {
     await inSource(page);
   });
 
-  test("hovering a term shows the declaration's own words", async ({
-    page,
-  }) => {
-    await source(page)
-      .getByText("compose_music", { exact: false })
-      .first()
-      .hover();
+  test("hovering a term shows the declaration's own words", async ({ page }) => {
+    await source(page).getByText("compose_music", { exact: false }).first().hover();
     const tooltip = page.locator(".cm-musa-term-doc");
     await expect(tooltip).toBeVisible();
     // The signature is the source's, and the detail a reader has to ask for.
@@ -54,13 +49,8 @@ test.describe("terms", () => {
     await expect(tooltip.locator("summary")).toHaveText("language detail");
   });
 
-  test("hovering a word the compiler did not resolve shows nothing", async ({
-    page,
-  }) => {
-    await source(page)
-      .getByText("Standard Library Basics", { exact: false })
-      .first()
-      .hover();
+  test("hovering a word the compiler did not resolve shows nothing", async ({ page }) => {
+    await source(page).getByText("Standard Library Basics", { exact: false }).first().hover();
     await expect(page.locator(".cm-musa-term-doc")).toHaveCount(0);
   });
 
@@ -69,9 +59,7 @@ test.describe("terms", () => {
    * composer who never touches a pointer must be able to follow a name and
    * gather its uses (`08-elaboration.md` §7).
    */
-  test("⌘⇧D opens the module a term the composer did not declare came from", async ({
-    page,
-  }) => {
+  test("⌘⇧D opens the module a term the composer did not declare came from", async ({ page }) => {
     await caretOn(page, "naturals");
     await page.keyboard.press("ControlOrMeta+Shift+D");
 
@@ -83,9 +71,7 @@ test.describe("terms", () => {
     await expect(source(page)).toContainText("fn naturals");
   });
 
-  test("closing the module comes back to the piece, unchanged", async ({
-    page,
-  }) => {
+  test("closing the module comes back to the piece, unchanged", async ({ page }) => {
     await caretOn(page, "naturals");
     await page.keyboard.press("ControlOrMeta+Shift+D");
     await expect(page.locator(".head.library")).toBeVisible();
@@ -96,9 +82,7 @@ test.describe("terms", () => {
     await expect(source(page)).not.toHaveAttribute("aria-readonly", "true");
   });
 
-  test("⌘⇧D on a term declared here moves the caret rather than opening a module", async ({
-    page,
-  }) => {
+  test("⌘⇧D on a term declared here moves the caret rather than opening a module", async ({ page }) => {
     await caretOn(page, "answer");
     await page.keyboard.press("ControlOrMeta+Shift+D");
     await expect(page.locator(".head.library")).toHaveCount(0);
@@ -114,9 +98,7 @@ test.describe("an expansion through a kernel quote", () => {
     await engraved(page);
   });
 
-  test("Origin prints every step, and names each by what it is", async ({
-    page,
-  }) => {
+  test("Origin prints every step, and names each by what it is", async ({ page }) => {
     await page
       .locator(String.raw`.engraving [id="event-0"] use`)
       .first()
@@ -130,9 +112,7 @@ test.describe("an expansion through a kernel quote", () => {
     // The kind is in the accessible name, so a screen reader hears what a
     // sighted reader sees in the row's shape (`03-interaction.md` §5).
     await expect(segments.first()).toHaveAccessibleName(/^assertion /);
-    await expect(path.locator(".segment.splice")).toHaveAccessibleName(
-      /^kernel quotation /,
-    );
+    await expect(path.locator(".segment.splice")).toHaveAccessibleName(/^kernel quotation /);
   });
 
   /*
@@ -140,9 +120,7 @@ test.describe("an expansion through a kernel quote", () => {
    * at a time in a kernel term, not at an offset in the file, and a row that
    * moved the caret to the nearest brace would be inventing a source map.
    */
-  test("a step with no place in the source moves no caret", async ({
-    page,
-  }) => {
+  test("a step with no place in the source moves no caret", async ({ page }) => {
     // Compose with its source column showing: the Origin row and the text have
     // to be on screen together for "nothing moved" to mean anything. The note
     // is chosen first, while the page still has the whole width.
@@ -182,19 +160,13 @@ test.describe("readings", () => {
     await expect(findings(page).locator(".method")).toHaveCount(0);
   });
 
-  test("an ambiguous reading keeps both answers, and neither is an error", async ({
-    page,
-  }) => {
-    await findings(page)
-      .getByRole("button", { name: "tonal", exact: true })
-      .click();
+  test("an ambiguous reading keeps both answers, and neither is an error", async ({ page }) => {
+    await findings(page).getByRole("button", { name: "tonal", exact: true }).click();
 
     // Method and assumptions first: a reader who does not accept them can stop
     // there, which is the whole reason they are printed (§5).
     await expect(findings(page).locator(".method")).toBeVisible();
-    await expect(
-      findings(page).locator(".assumptions li").first(),
-    ).toBeVisible();
+    await expect(findings(page).locator(".assumptions li").first()).toBeVisible();
 
     // Two key regions, both standing, because two keys explain this passage.
     const regions = findings(page).locator("li .standing .word");
@@ -204,22 +176,14 @@ test.describe("readings", () => {
     await expect(findings(page).locator(".diagnostic")).toHaveCount(0);
   });
 
-  test("a finding takes the selection to the notes it is about", async ({
-    page,
-  }) => {
-    await findings(page)
-      .getByRole("button", { name: "tonal", exact: true })
-      .click();
+  test("a finding takes the selection to the notes it is about", async ({ page }) => {
+    await findings(page).getByRole("button", { name: "tonal", exact: true }).click();
     await findings(page).locator("button.finding").first().click();
     await expect(page.locator(".overlay rect.selection").first()).toBeVisible();
   });
 
-  test("a reading of a score that has changed says so, and stays on screen", async ({
-    page,
-  }) => {
-    await findings(page)
-      .getByRole("button", { name: "tonal", exact: true })
-      .click();
+  test("a reading of a score that has changed says so, and stays on screen", async ({ page }) => {
+    await findings(page).getByRole("button", { name: "tonal", exact: true }).click();
     await expect(findings(page).locator(".method")).toBeVisible();
     const summaries = await findings(page).locator("button.finding").count();
     expect(summaries).toBeGreaterThan(0);
@@ -227,27 +191,18 @@ test.describe("readings", () => {
     // A compile the composer's typing produced: a newer score, same reading.
     await page.evaluate(() => window.__musaSet({ scoreRevision: 999 }));
     await expect(findings(page).locator(".stale")).toBeVisible();
-    await expect(findings(page).locator("button.finding")).toHaveCount(
-      summaries,
-    );
+    await expect(findings(page).locator("button.finding")).toHaveCount(summaries);
   });
 
   test("an analysis with nothing to report says so", async ({ page }) => {
-    await findings(page)
-      .getByRole("button", { name: "cadences", exact: true })
-      .click();
-    await expect(findings(page).locator(".nothing")).toHaveText(
-      "Nothing found.",
-    );
+    await findings(page).getByRole("button", { name: "cadences", exact: true }).click();
+    await expect(findings(page).locator(".nothing")).toHaveText("Nothing found.");
   });
 
-  test("every reading the compiler offers can be asked for by keyboard", async ({
-    page,
-  }) => {
+  test("every reading the compiler offers can be asked for by keyboard", async ({ page }) => {
     const buttons = findings(page).getByRole("button");
     expect(await buttons.count()).toBe(6);
-    for (const button of await buttons.all())
-      await expect(button).toBeEnabled();
+    for (const button of await buttons.all()) await expect(button).toBeEnabled();
   });
 });
 
@@ -269,9 +224,7 @@ for (const size of SIZES) {
     await page.goto("/");
     await engraved(page);
     await inSource(page);
-    await findings(page)
-      .getByRole("button", { name: "tonal", exact: true })
-      .click();
+    await findings(page).getByRole("button", { name: "tonal", exact: true }).click();
     await expect(findings(page).locator(".method")).toBeVisible();
     await expect(page).toHaveScreenshot(`findings-${size.name}-light.png`);
   });

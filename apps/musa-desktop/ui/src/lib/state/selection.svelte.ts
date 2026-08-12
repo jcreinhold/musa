@@ -9,12 +9,7 @@
  * model, constructed alongside note entry.
  */
 
-import type {
-  EventFacts,
-  OccurrenceFacts,
-  ProjectSnapshot,
-  Span,
-} from "./snapshot";
+import type { EventFacts, OccurrenceFacts, ProjectSnapshot, Span } from "./snapshot";
 
 export type Selection =
   | { kind: "none" }
@@ -23,14 +18,8 @@ export type Selection =
   | { kind: "range"; part: string; voice: string; from: string; to: string };
 
 /** The events of one voice, in the order the core listed them. */
-function voiceEvents(
-  snapshot: ProjectSnapshot | null,
-  part: string,
-  voice: string,
-): EventFacts[] {
-  return (snapshot?.score?.events ?? []).filter(
-    (event) => event.part === part && event.voice === voice,
-  );
+function voiceEvents(snapshot: ProjectSnapshot | null, part: string, voice: string): EventFacts[] {
+  return (snapshot?.score?.events ?? []).filter((event) => event.part === part && event.voice === voice);
 }
 
 export class Workspace {
@@ -69,17 +58,11 @@ export class Workspace {
       case "event":
         return selection.events;
       case "range": {
-        const events = voiceEvents(
-          this.snapshot,
-          selection.part,
-          selection.voice,
-        );
+        const events = voiceEvents(this.snapshot, selection.part, selection.voice);
         const from = events.findIndex((event) => event.id === selection.from);
         const to = events.findIndex((event) => event.id === selection.to);
         if (from < 0 || to < 0) return [];
-        return events
-          .slice(Math.min(from, to), Math.max(from, to) + 1)
-          .map((event) => event.id);
+        return events.slice(Math.min(from, to), Math.max(from, to) + 1).map((event) => event.id);
       }
       case "none":
       case "caret":
@@ -95,9 +78,7 @@ export class Workspace {
   get focused(): EventFacts | undefined {
     const [first] = this.selected;
     const events = this.snapshot?.score?.events ?? [];
-    return first === undefined
-      ? events[0]
-      : events.find((event) => event.id === first);
+    return first === undefined ? events[0] : events.find((event) => event.id === first);
   }
 
   /**
@@ -131,12 +112,7 @@ export class Workspace {
     const anchor = events.find((candidate) => candidate.id === anchorId);
     const event = events.find((candidate) => candidate.id === id);
     if (!event) return;
-    if (
-      extend &&
-      anchor &&
-      anchor.part === event.part &&
-      anchor.voice === event.voice
-    ) {
+    if (extend && anchor && anchor.part === event.part && anchor.voice === event.voice) {
       this.selection = {
         kind: "range",
         part: event.part,
@@ -153,9 +129,7 @@ export class Workspace {
   selectVoice(part: string, voice: string): void {
     this.adrift = null;
     const [first] = voiceEvents(this.snapshot, part, voice);
-    this.selection = first
-      ? { kind: "event", events: [first.id] }
-      : { kind: "caret", part, voice, before: "end" };
+    this.selection = first ? { kind: "event", events: [first.id] } : { kind: "caret", part, voice, before: "end" };
   }
 
   clear(): void {
@@ -180,10 +154,7 @@ export class Workspace {
   /** Where in its voice the working position is: the anchor event's index. */
   #at(events: EventFacts[]): number {
     const selection = this.selection;
-    const id =
-      selection.kind === "caret"
-        ? selection.before
-        : (this.selected[0] ?? this.focused?.id);
+    const id = selection.kind === "caret" ? selection.before : (this.selected[0] ?? this.focused?.id);
     if (id === undefined || id === "end") return events.length - 1;
     return events.findIndex((event) => event.id === id);
   }
@@ -266,23 +237,16 @@ export class Workspace {
     const here = events[Math.max(this.#at(events), 0)];
     if (!here) return;
     const wanted = by < 0 ? [...events].reverse() : events;
-    this.#land(
-      wanted.find((event) =>
-        by < 0 ? event.bar < here.bar : event.bar > here.bar,
-      ),
-    );
+    this.#land(wanted.find((event) => (by < 0 ? event.bar < here.bar : event.bar > here.bar)));
   }
 
   /** `↑` `↓`: the previous or next voice of the active part, in staff order. */
   voice(by: number): void {
     const active = this.#voice;
-    const part = this.snapshot?.score?.parts.find(
-      (candidate) => candidate.name === active?.part,
-    );
+    const part = this.snapshot?.score?.parts.find((candidate) => candidate.name === active?.part);
     if (!active || !part) return;
     const at = part.voices.findIndex((voice) => voice.name === active.voice);
-    const next =
-      part.voices[Math.min(Math.max(at + by, 0), part.voices.length - 1)];
+    const next = part.voices[Math.min(Math.max(at + by, 0), part.voices.length - 1)];
     if (next) this.selectVoice(part.name, next.name);
   }
 
@@ -290,11 +254,8 @@ export class Workspace {
   part(by: number): void {
     const parts = this.snapshot?.score?.parts ?? [];
     if (parts.length === 0) return;
-    const at = parts.findIndex(
-      (candidate) => candidate.name === this.#voice?.part,
-    );
-    const next =
-      parts[(((at + by) % parts.length) + parts.length) % parts.length];
+    const at = parts.findIndex((candidate) => candidate.name === this.#voice?.part);
+    const next = parts[(((at + by) % parts.length) + parts.length) % parts.length];
     const voice = next?.voices[0];
     if (next && voice) this.selectVoice(next.name, voice.name);
   }
@@ -326,20 +287,13 @@ export class Workspace {
     // The innermost segment *is* the occurrence, and the core already listed
     // exactly what it produced — across voices and staves, which a path
     // prefix within one voice cannot reach (`04-provenance.md` §2).
-    if (
-      depth >= here.origin.path.length &&
-      this.selectOccurrence(here.origin.occurrence)
-    )
-      return;
+    if (depth >= here.origin.path.length && this.selectOccurrence(here.origin.occurrence)) return;
     const prefix = here.origin.path.slice(0, depth);
-    const kin = voiceEvents(this.snapshot, here.part, here.voice).filter(
-      (event) =>
-        // Compared by label: two steps that print the same word came from the
-        // same construct, and the step's own span is where that construct is,
-        // not a distinguishing mark between siblings.
-        prefix.every(
-          (segment, index) => event.origin.path[index]?.label === segment.label,
-        ),
+    const kin = voiceEvents(this.snapshot, here.part, here.voice).filter((event) =>
+      // Compared by label: two steps that print the same word came from the
+      // same construct, and the step's own span is where that construct is,
+      // not a distinguishing mark between siblings.
+      prefix.every((segment, index) => event.origin.path[index]?.label === segment.label),
     );
     if (kin.length === 0) return;
     this.adrift = null;
@@ -353,9 +307,7 @@ export class Workspace {
 
   /** The occurrence with this id, or undefined. */
   occurrence(id: string | null): OccurrenceFacts | undefined {
-    return id === null
-      ? undefined
-      : this.occurrences.find((candidate) => candidate.id === id);
+    return id === null ? undefined : this.occurrences.find((candidate) => candidate.id === id);
   }
 
   /**
@@ -373,9 +325,7 @@ export class Workspace {
 
   /** The expansion that produced an event, when one did. */
   occurrenceOf(eventId: string | null): OccurrenceFacts | undefined {
-    const event = (this.snapshot?.score?.events ?? []).find(
-      (candidate) => candidate.id === eventId,
-    );
+    const event = (this.snapshot?.score?.events ?? []).find((candidate) => candidate.id === eventId);
     return this.occurrence(event?.origin.occurrence ?? null);
   }
 
@@ -397,12 +347,9 @@ export class Workspace {
    * marks would chase the pointer around the page (`04-provenance.md` §2).
    */
   originSpans(held: boolean): Span[] {
-    const occurrence =
-      (held ? this.hoveredOccurrence : undefined) ?? this.selectedOccurrence;
+    const occurrence = (held ? this.hoveredOccurrence : undefined) ?? this.selectedOccurrence;
     if (!occurrence) return [];
-    return [occurrence.declaration, occurrence.useSite].filter(
-      (span) => span !== null,
-    );
+    return [occurrence.declaration, occurrence.useSite].filter((span) => span !== null);
   }
 
   /**
@@ -428,11 +375,7 @@ export class Workspace {
   eventsForSpan(span: Span | null): string[] {
     if (!span) return [];
     return (this.snapshot?.score?.events ?? [])
-      .filter(
-        (event) =>
-          event.origin.span.start <= span.start &&
-          span.start < event.origin.span.end,
-      )
+      .filter((event) => event.origin.span.start <= span.start && span.start < event.origin.span.end)
       .map((event) => event.id);
   }
 
@@ -447,8 +390,7 @@ export class Workspace {
   get caretAt(): { id: string; side: "before" | "after" } | null {
     const selection = this.selection;
     if (selection.kind !== "caret") return null;
-    if (selection.before !== "end")
-      return { id: selection.before, side: "before" };
+    if (selection.before !== "end") return { id: selection.before, side: "before" };
     const events = voiceEvents(this.snapshot, selection.part, selection.voice);
     const last = events[events.length - 1];
     return last ? { id: last.id, side: "after" } : null;
@@ -478,21 +420,15 @@ export class Workspace {
     const surviving = gone
       ? previous.filter(
           (event) =>
-            event.part === gone.part &&
-            event.voice === gone.voice &&
-            events.some((kept) => kept.id === event.id),
+            event.part === gone.part && event.voice === gone.voice && events.some((kept) => kept.id === event.id),
         )
       : [];
     const at = gone ? previous.indexOf(gone) : -1;
-    const nearest = surviving.reduce<EventFacts | undefined>(
-      (best, candidate) => {
-        if (!best) return candidate;
-        const distance = (event: EventFacts) =>
-          Math.abs(previous.indexOf(event) - at);
-        return distance(candidate) < distance(best) ? candidate : best;
-      },
-      undefined,
-    );
+    const nearest = surviving.reduce<EventFacts | undefined>((best, candidate) => {
+      if (!best) return candidate;
+      const distance = (event: EventFacts) => Math.abs(previous.indexOf(event) - at);
+      return distance(candidate) < distance(best) ? candidate : best;
+    }, undefined);
 
     if (nearest) {
       this.selection = { kind: "event", events: [nearest.id] };
@@ -510,9 +446,7 @@ export class Workspace {
    */
   describe(event: EventFacts): string {
     const what =
-      event.kind === "rest"
-        ? `${event.durationSpelling} rest`
-        : `${event.pitches.join(" ")} ${event.durationSpelling}`;
+      event.kind === "rest" ? `${event.durationSpelling} rest` : `${event.pitches.join(" ")} ${event.durationSpelling}`;
     const where = `${event.part}, ${event.voice}, bar ${event.bar} beat ${event.beat.numerator}`;
     const origin = event.origin.generated
       ? `, generated from ${event.origin.path[event.origin.path.length - 1]?.label ?? "an expansion"}`

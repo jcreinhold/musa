@@ -8,3 +8,7 @@ playwright-report
 # See docs/development/generated-files.md.
 src/lib/session/generated
 fixtures
+
+# Markdown belongs to mdwright, which is the repo-wide gate. Prettier pads table
+# columns and mdwright collapses them, so the two rewrite each other forever.
+*.md

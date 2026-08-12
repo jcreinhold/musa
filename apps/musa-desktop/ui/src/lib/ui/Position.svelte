@@ -8,11 +8,7 @@
   import type { Fraction as Rational } from "../state/snapshot";
   import Fraction from "./Fraction.svelte";
 
-  let {
-    bar,
-    beat,
-    size = "large",
-  }: { bar: number; beat: Rational; size?: "large" | "value" } = $props();
+  let { bar, beat, size = "large" }: { bar: number; beat: Rational; size?: "large" | "value" } = $props();
 
   const whole = $derived(beat.denominator === 1);
 </script>
@@ -21,15 +17,11 @@
   `img` because it is a graphic with a name: the parts are set typographically
   and hidden from assistive technology, and the whole is read as one phrase.
 -->
-<span
-  class="position {size}"
-  role="img"
-  aria-label="bar {bar} beat {beat.numerator}/{beat.denominator}"
->
-  <span class="bar" aria-hidden="true">{bar}</span><span
-    class="colon"
-    aria-hidden="true">:</span
-  ><span class="beat" aria-hidden="true">
+<span class="position {size}" role="img" aria-label="bar {bar} beat {beat.numerator}/{beat.denominator}">
+  <span class="bar" aria-hidden="true">{bar}</span><span class="colon" aria-hidden="true">:</span><span
+    class="beat"
+    aria-hidden="true"
+  >
     {#if whole}{beat.numerator}{:else}<Fraction value={beat} />{/if}
   </span>
 </span>

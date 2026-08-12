@@ -47,9 +47,7 @@ function p95(samples: number[]): number {
 /** A mark's time since navigation started, or `NaN` if it never happened. */
 async function at(page: Page, moment: string): Promise<number> {
   return page.evaluate(
-    (name) =>
-      performance.getEntriesByName(`musa:${name}`, "mark")[0]?.startTime ??
-      Number.NaN,
+    (name) => performance.getEntriesByName(`musa:${name}`, "mark")[0]?.startTime ?? Number.NaN,
     moment,
   );
 }
@@ -70,8 +68,7 @@ async function at(page: Page, moment: string): Promise<number> {
  */
 async function quiet(page: Page): Promise<void> {
   await page.waitForFunction(async () => {
-    const drawn = (): number =>
-      performance.getEntriesByName("musa:score", "mark").length;
+    const drawn = (): number => performance.getEntriesByName("musa:score", "mark").length;
     const before = drawn();
     await new Promise((settle) => setTimeout(settle, 150));
     return drawn() === before;
@@ -86,33 +83,23 @@ async function quiet(page: Page): Promise<void> {
  */
 async function after(page: Page, from: string): Promise<number> {
   return page.evaluate((name) => {
-    const gesture = performance.getEntriesByName(`musa:${name}`, "mark")[0]
-      ?.startTime;
+    const gesture = performance.getEntriesByName(`musa:${name}`, "mark")[0]?.startTime;
     if (gesture === undefined) return Number.NaN;
-    const ink = performance
-      .getEntriesByName("musa:score", "mark")
-      .find((mark) => mark.startTime > gesture);
+    const ink = performance.getEntriesByName("musa:score", "mark").find((mark) => mark.startTime > gesture);
     return ink === undefined ? Number.NaN : ink.startTime - gesture;
   }, from);
 }
 
 test.describe("launch", () => {
-  test("B6: the shell paints before the score, within 400 ms", async ({
-    page,
-  }) => {
+  test("B6: the shell paints before the score, within 400 ms", async ({ page }) => {
     const shell: number[] = [];
     await stubShell(page);
     for (let trial = 0; trial < TRIALS; trial += 1) {
       await page.goto("/?perf=1");
-      await page.waitForFunction(
-        () => performance.getEntriesByName("musa:shell", "mark").length > 0,
-      );
+      await page.waitForFunction(() => performance.getEntriesByName("musa:shell", "mark").length > 0);
       shell.push(await at(page, "shell"));
     }
-    expect(
-      record("B6", p95(shell)),
-      `shell painted at p95 ${Math.round(p95(shell))} ms`,
-    ).toBeLessThanOrEqual(400);
+    expect(record("B6", p95(shell)), `shell painted at p95 ${Math.round(p95(shell))} ms`).toBeLessThanOrEqual(400);
   });
 
   test("B7: the score is on the leaf within 1.5 s", async ({ page }) => {
@@ -123,15 +110,10 @@ test.describe("launch", () => {
       await engraved(page);
       score.push(await at(page, "score"));
     }
-    expect(
-      record("B7", p95(score)),
-      `score painted at p95 ${Math.round(p95(score))} ms`,
-    ).toBeLessThanOrEqual(1500);
+    expect(record("B7", p95(score)), `score painted at p95 ${Math.round(p95(score))} ms`).toBeLessThanOrEqual(1500);
   });
 
-  test("B6 before B7: the frame never waits on the engraver", async ({
-    page,
-  }) => {
+  test("B6 before B7: the frame never waits on the engraver", async ({ page }) => {
     await stubShell(page);
     await page.goto("/?perf=1");
     await engraved(page);
@@ -139,9 +121,7 @@ test.describe("launch", () => {
   });
 });
 
-test("B1: a keystroke reaches diagnostics within 120 ms of the debounce", async ({
-  page,
-}) => {
+test("B1: a keystroke reaches diagnostics within 120 ms of the debounce", async ({ page }) => {
   await stubShell(page);
   await page.goto("/?perf=1");
   await engraved(page);
@@ -153,12 +133,8 @@ test("B1: a keystroke reaches diagnostics within 120 ms of the debounce", async 
     // Every trial alternates between two sources so that each one is a real
     // change; setting the text the document already has compiles nothing.
     await rewrite(page, trial % 2 === 0 ? `piece "A" {}` : `piece "B" {}`);
-    await page.waitForFunction(
-      () => performance.getEntriesByName("musa:snapshot", "mark").length > 0,
-    );
-    samples.push(
-      (await at(page, "snapshot")) - (await at(page, "edit")) - SETTLE_MS,
-    );
+    await page.waitForFunction(() => performance.getEntriesByName("musa:snapshot", "mark").length > 0);
+    samples.push((await at(page, "snapshot")) - (await at(page, "edit")) - SETTLE_MS);
   }
   expect(
     record("B1", p95(samples)),
@@ -180,16 +156,12 @@ test.describe("selection", () => {
   async function distinctNotes(page: Page): Promise<string[]> {
     return page.evaluate(() => [
       ...new Set(
-        [...document.querySelectorAll('.engraving g[id^="event-"]')].map(
-          (element) => element.id.replace(/-t\d+$/, ""),
-        ),
+        [...document.querySelectorAll('.engraving g[id^="event-"]')].map((element) => element.id.replace(/-t\d+$/, "")),
       ),
     ]);
   }
 
-  test("B3: the halo is drawn in the frame the click happened in", async ({
-    page,
-  }) => {
+  test("B3: the halo is drawn in the frame the click happened in", async ({ page }) => {
     await stubShell(page);
     await page.goto("/?perf=1");
     await engraved(page);
@@ -204,9 +176,7 @@ test.describe("selection", () => {
         .locator(`[id="${(trial % 2 === 0 ? notes[1] : notes[2]) ?? ""}"]`)
         .first()
         .click({ force: true });
-      await page.waitForFunction(
-        () => performance.getEntriesByName("musa:halo", "mark").length > 0,
-      );
+      await page.waitForFunction(() => performance.getEntriesByName("musa:halo", "mark").length > 0);
       samples.push((await at(page, "halo")) - (await at(page, "select")));
     }
     expect(
@@ -230,15 +200,12 @@ test.describe("selection", () => {
         .locator(`[id="${(trial % 2 === 0 ? notes[1] : notes[2]) ?? ""}"]`)
         .first()
         .click({ force: true });
-      await page.waitForFunction(
-        () => performance.getEntriesByName("musa:inspector", "mark").length > 0,
-      );
+      await page.waitForFunction(() => performance.getEntriesByName("musa:inspector", "mark").length > 0);
       samples.push((await at(page, "inspector")) - (await at(page, "select")));
     }
-    expect(
-      record("B4", p95(samples)),
-      `inspector populated at p95 ${Math.round(p95(samples))} ms`,
-    ).toBeLessThanOrEqual(100);
+    expect(record("B4", p95(samples)), `inspector populated at p95 ${Math.round(p95(samples))} ms`).toBeLessThanOrEqual(
+      100,
+    );
   });
 
   /**
@@ -258,32 +225,24 @@ test.describe("selection", () => {
     for (let trial = 0; trial < TRIALS; trial += 1) {
       await page.evaluate(() => performance.clearMarks());
       await page.keyboard.down("o");
-      await page.waitForFunction(
-        () => performance.getEntriesByName("musa:halo", "mark").length > 0,
-      );
+      await page.waitForFunction(() => performance.getEntriesByName("musa:halo", "mark").length > 0);
       samples.push((await at(page, "halo")) - (await at(page, "lens")));
       await page.keyboard.up("o");
     }
-    expect(
-      record("B9", p95(samples)),
-      `Origin view opened at p95 ${Math.round(p95(samples))} ms`,
-    ).toBeLessThanOrEqual(120);
+    expect(record("B9", p95(samples)), `Origin view opened at p95 ${Math.round(p95(samples))} ms`).toBeLessThanOrEqual(
+      120,
+    );
   });
 
   /**
    * The same rule for the Origin row's segments: following one is an ink
    * change too, and must cost like one.
    */
-  test("B9: following an origin segment costs no more than an ink change", async ({
-    page,
-  }) => {
+  test("B9: following an origin segment costs no more than an ink change", async ({ page }) => {
     await stubShell(page);
     await page.goto("/?perf=1");
     await engraved(page);
-    await page
-      .locator('.engraving g[id^="event-"]')
-      .first()
-      .click({ force: true });
+    await page.locator('.engraving g[id^="event-"]').first().click({ force: true });
     const segment = page.locator(".inspector button.segment").first();
     await expect(segment).toBeVisible();
 
@@ -291,9 +250,7 @@ test.describe("selection", () => {
     for (let trial = 0; trial < TRIALS; trial += 1) {
       await page.evaluate(() => performance.clearMarks());
       await segment.click();
-      await page.waitForFunction(
-        () => performance.getEntriesByName("musa:halo", "mark").length > 0,
-      );
+      await page.waitForFunction(() => performance.getEntriesByName("musa:halo", "mark").length > 0);
       samples.push((await at(page, "halo")) - (await at(page, "origin")));
     }
     expect(
@@ -312,9 +269,7 @@ test.describe("the large score", () => {
   // A 100-bar layout is real work, and each trial does it twenty times.
   test.slow();
 
-  test("B2: an edit is re-engraved within 400 ms of the keystroke", async ({
-    page,
-  }) => {
+  test("B2: an edit is re-engraved within 400 ms of the keystroke", async ({ page }) => {
     await stubShell(page, "large-score");
     await page.goto("/?perf=1");
     await engraved(page);
@@ -339,9 +294,7 @@ test.describe("the large score", () => {
         const gesture = performance.getEntriesByName("musa:edit", "mark")[0];
         return (
           gesture !== undefined &&
-          performance
-            .getEntriesByName("musa:score", "mark")
-            .some((mark) => mark.startTime > gesture.startTime)
+          performance.getEntriesByName("musa:score", "mark").some((mark) => mark.startTime > gesture.startTime)
         );
       });
       // The 180 ms debounce is inside this number, as the budget states it:
@@ -349,10 +302,7 @@ test.describe("the large score", () => {
       // The ink read is the ink that came *after* the keystroke, for the
       // reason `after` gives: the first two trials of this loop used to land
       // on the opening layout's background pages and report 79 ms and −26 ms.
-      const [edit, snapshot] = [
-        await at(page, "edit"),
-        await at(page, "snapshot"),
-      ];
+      const [edit, snapshot] = [await at(page, "edit"), await at(page, "snapshot")];
       const drawn = await after(page, "edit");
       samples.push(drawn);
       round.push(snapshot - edit - SETTLE_MS);
@@ -399,16 +349,12 @@ test.describe("the large score", () => {
       await page.evaluate(() => performance.clearMarks());
       // In and out alternately, so no trial runs off the end of the ladder
       // and measures a step that never happened.
-      await page
-        .getByRole("button", { name: trial % 2 === 0 ? "Zoom in" : "Zoom out" })
-        .click();
+      await page.getByRole("button", { name: trial % 2 === 0 ? "Zoom in" : "Zoom out" }).click();
       await page.waitForFunction(() => {
         const zoom = performance.getEntriesByName("musa:zoom", "mark")[0];
         return (
           zoom !== undefined &&
-          performance
-            .getEntriesByName("musa:score", "mark")
-            .some((mark) => mark.startTime > zoom.startTime)
+          performance.getEntriesByName("musa:score", "mark").some((mark) => mark.startTime > zoom.startTime)
         );
       });
       samples.push(await after(page, "zoom"));
@@ -426,9 +372,7 @@ test.describe("the large score", () => {
   });
 });
 
-test("B10: nothing is scheduled while the transport is stopped", async ({
-  page,
-}) => {
+test("B10: nothing is scheduled while the transport is stopped", async ({ page }) => {
   await stubShell(page);
   // Counted from the page's own side, because "no timers" is a claim about
   // the code, not about a CPU sample taken through an automation harness.
@@ -458,17 +402,9 @@ test("B10: nothing is scheduled while the transport is stopped", async ({
   await page.waitForTimeout(1000);
   const after = await page.evaluate(() => ({ ...window.__musaSchedules }));
 
-  expect(
-    after.frames - before.frames,
-    "animation frames requested while idle",
-  ).toBe(0);
-  expect(
-    after.intervals - before.intervals,
-    "intervals started while idle",
-  ).toBe(0);
-  expect(after.timeouts - before.timeouts, "timeouts started while idle").toBe(
-    0,
-  );
+  expect(after.frames - before.frames, "animation frames requested while idle").toBe(0);
+  expect(after.intervals - before.intervals, "intervals started while idle").toBe(0);
+  expect(after.timeouts - before.timeouts, "timeouts started while idle").toBe(0);
 });
 
 /**
@@ -482,18 +418,14 @@ test("B10: nothing is scheduled while the transport is stopped", async ({
  * redraw — from the snapshot arriving to the ink — because that is the part
  * this control adds, and the part a regression would land in.
  */
-test("B11: a new reading is on the leaf within 250 ms of the snapshot", async ({
-  page,
-}) => {
+test("B11: a new reading is on the leaf within 250 ms of the snapshot", async ({ page }) => {
   await stubShell(page, "open-form");
   await page.goto("/?perf=1");
   await engraved(page);
   await quiet(page);
 
   const sheet = page.getByRole("dialog", { name: "Settings" });
-  await page.evaluate(() =>
-    window.__musaEmit("musa://command", "settings.open"),
-  );
+  await page.evaluate(() => window.__musaEmit("musa://command", "settings.open"));
   await expect(sheet).toBeVisible();
   const again = sheet.getByRole("button", { name: "New performance" });
 
@@ -505,9 +437,7 @@ test("B11: a new reading is on the leaf within 250 ms of the snapshot", async ({
       const arrived = performance.getEntriesByName("musa:snapshot", "mark")[0];
       return (
         arrived !== undefined &&
-        performance
-          .getEntriesByName("musa:score", "mark")
-          .some((mark) => mark.startTime > arrived.startTime)
+        performance.getEntriesByName("musa:score", "mark").some((mark) => mark.startTime > arrived.startTime)
       );
     });
     samples.push(await after(page, "snapshot"));
@@ -534,17 +464,13 @@ test("B11: a new reading is on the leaf within 250 ms of the snapshot", async ({
  * because that list stays on screen either side of the turn, which is what
  * lets "the previous page is visible throughout" be checked at all.
  */
-test("B12: a piece already opened is on the leaf within 400 ms", async ({
-  page,
-}) => {
+test("B12: a piece already opened is on the leaf within 400 ms", async ({ page }) => {
   await stubShell(page, "glass-mountain", "annotated", true);
   await page.goto("/?perf=1");
   await engraved(page);
   await quiet(page);
 
-  const rows = page
-    .getByRole("navigation", { name: "Contents" })
-    .getByRole("button");
+  const rows = page.getByRole("navigation", { name: "Contents" }).getByRole("button");
   // Open the second piece once, so both are in hand and every trial below is
   // a turn back rather than a first opening.
   await rows.nth(1).click();
@@ -564,9 +490,7 @@ test("B12: a piece already opened is on the leaf within 400 ms", async ({
       const arrived = performance.getEntriesByName("musa:snapshot", "mark")[0];
       return (
         arrived !== undefined &&
-        performance
-          .getEntriesByName("musa:score", "mark")
-          .some((mark) => mark.startTime > arrived.startTime)
+        performance.getEntriesByName("musa:score", "mark").some((mark) => mark.startTime > arrived.startTime)
       );
     });
     samples.push(await after(page, "snapshot"));

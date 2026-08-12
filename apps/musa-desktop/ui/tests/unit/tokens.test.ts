@@ -15,10 +15,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-const TOKENS = readFileSync(
-  fileURLToPath(new URL("../../src/lib/design/tokens.css", import.meta.url)),
-  "utf8",
-);
+const TOKENS = readFileSync(fileURLToPath(new URL("../../src/lib/design/tokens.css", import.meta.url)), "utf8");
 
 /** The declarations inside one `{ … }` block, as a token → value map. */
 function block(selector: string): Map<string, string> {
@@ -27,9 +24,7 @@ function block(selector: string): Map<string, string> {
   const open = TOKENS.indexOf("{", start);
   const close = TOKENS.indexOf("}", open);
   const declarations = new Map<string, string>();
-  for (const [, name, value] of TOKENS.slice(open, close).matchAll(
-    /(--[\w-]+):\s*([^;]+);/g,
-  )) {
+  for (const [, name, value] of TOKENS.slice(open, close).matchAll(/(--[\w-]+):\s*([^;]+);/g)) {
     declarations.set(name, value.trim());
   }
   return declarations;
@@ -50,9 +45,7 @@ function luminance(hex: string): number {
 }
 
 function contrast(foreground: string, background: string): number {
-  const [light, dark] = [luminance(foreground), luminance(background)].sort(
-    (a, b) => b - a,
-  );
+  const [light, dark] = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
   return (light + 0.05) / (dark + 0.05);
 }
 
@@ -71,21 +64,14 @@ describe.each([
 ])("%s tokens", (_theme, selector) => {
   const tokens = block(selector);
 
-  it.each(REQUIRED)(
-    "%s holds %s:1 on the leaf and on the surround",
-    (token, floor) => {
-      const foreground = tokens.get(token);
-      const leaf = tokens.get("--leaf");
-      const surround = tokens.get("--surround");
-      expect(foreground && leaf && surround).toBeTruthy();
-      expect(contrast(foreground ?? "", leaf ?? "")).toBeGreaterThanOrEqual(
-        floor,
-      );
-      expect(contrast(foreground ?? "", surround ?? "")).toBeGreaterThanOrEqual(
-        floor,
-      );
-    },
-  );
+  it.each(REQUIRED)("%s holds %s:1 on the leaf and on the surround", (token, floor) => {
+    const foreground = tokens.get(token);
+    const leaf = tokens.get("--leaf");
+    const surround = tokens.get("--surround");
+    expect(foreground && leaf && surround).toBeTruthy();
+    expect(contrast(foreground ?? "", leaf ?? "")).toBeGreaterThanOrEqual(floor);
+    expect(contrast(foreground ?? "", surround ?? "")).toBeGreaterThanOrEqual(floor);
+  });
 
   it("keeps the leaf a distinct object, not the surround", () => {
     expect(tokens.get("--leaf")).not.toBe(tokens.get("--surround"));

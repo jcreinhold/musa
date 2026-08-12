@@ -21,18 +21,8 @@
   import { onMount, untrack } from "svelte";
 
   import { mark } from "../perf";
-  import {
-    createEngraver,
-    type Engraver,
-    type Layout,
-    type PageSvg,
-  } from "musa-engrave";
-  import {
-    modeOptions,
-    pageFor,
-    pixelsPerUnit,
-    type ViewMode,
-  } from "musa-engrave";
+  import { createEngraver, type Engraver, type Layout, type PageSvg } from "musa-engrave";
+  import { modeOptions, pageFor, pixelsPerUnit, type ViewMode } from "musa-engrave";
   import type { Workspace } from "../state/selection.svelte";
   import Page from "./Page.svelte";
   import {
@@ -51,25 +41,14 @@
     type Marks,
     type Rect,
   } from "./geometry";
-  import {
-    HANDLE_SPACES,
-    RUNG_SPACES,
-    STEP_SPACES,
-    THRESHOLD_PX,
-    shiftStep,
-    stepsFor,
-  } from "./steps";
+  import { HANDLE_SPACES, RUNG_SPACES, STEP_SPACES, THRESHOLD_PX, shiftStep, stepsFor } from "./steps";
   import type { Focus } from "../state/focus.svelte";
   import { Gesture } from "../state/gesture.svelte";
   import type { Candidate } from "../state/gesture.svelte";
   import type { NoteEntry } from "../state/entry.svelte";
   import type { EventFacts } from "../state/snapshot";
   import { eventIdOf } from "./ids";
-  import {
-    frontFieldOf,
-    measureFront,
-    type FrontMatterAt,
-  } from "./front-matter";
+  import { frontFieldOf, measureFront, type FrontMatterAt } from "./front-matter";
   import type { HeaderFieldDto } from "../session/generated/HeaderFieldDto";
 
   let {
@@ -207,17 +186,12 @@
    * turned out to be — so the scale is stated instead: the same CSS pixels per
    * page unit that page view would have used at this zoom (§4).
    */
-  const scale = $derived(
-    mode === "continuous" ? pixelsPerUnit(zoom) : undefined,
-  );
+  const scale = $derived(mode === "continuous" ? pixelsPerUnit(zoom) : undefined);
   /** What to keep in the document: what is on screen, plus a page either side. */
   const wanted = $derived(
     new Set(
       [...visible].flatMap((page) =>
-        Array.from(
-          { length: NEIGHBOURS * 2 + 1 },
-          (_, offset) => page - NEIGHBOURS + offset,
-        ),
+        Array.from({ length: NEIGHBOURS * 2 + 1 }, (_, offset) => page - NEIGHBOURS + offset),
       ),
     ),
   );
@@ -237,9 +211,7 @@
     const container = host;
     if (!container) return undefined;
     const top = container.getBoundingClientRect().top;
-    for (const element of container.querySelectorAll<SVGGraphicsElement>(
-      'g[id^="event-"]',
-    )) {
+    for (const element of container.querySelectorAll<SVGGraphicsElement>('g[id^="event-"]')) {
       const at = element.getBoundingClientRect().top - top;
       if (at >= 0) return { id: element.id, offset: at };
     }
@@ -253,13 +225,10 @@
     const page = await engraver.locate(held.id);
     if (page !== null) await ensure(page);
     await new Promise(requestAnimationFrame);
-    const element = container.querySelector<SVGGraphicsElement>(
-      `[id="${held.id}"]`,
-    );
+    const element = container.querySelector<SVGGraphicsElement>(`[id="${held.id}"]`);
     if (!element) return;
     const top = container.getBoundingClientRect().top;
-    container.scrollTop +=
-      element.getBoundingClientRect().top - top - held.offset;
+    container.scrollTop += element.getBoundingClientRect().top - top - held.offset;
   }
 
   /** Render a page if it is not already in hand. */
@@ -283,10 +252,7 @@
     const key = `${revision}:${mei.length}`;
     const held = loaded === undefined ? undefined : anchor();
     const attempt = (inFlight += 1);
-    const next =
-      key === loaded
-        ? await engraver.relayout(options)
-        : await engraver.load(mei, revision, options);
+    const next = key === loaded ? await engraver.relayout(options) : await engraver.load(mei, revision, options);
     // A layout overtaken while it was computing is dropped rather than shown:
     // the caller has already asked for its replacement (§2).
     if (attempt !== inFlight) return;
@@ -418,8 +384,7 @@
       return;
     }
     const occurrenceOf = (id: string) =>
-      workspace?.snapshot?.score?.events.find((event) => event.id === id)
-        ?.origin.occurrence ?? null;
+      workspace?.snapshot?.score?.events.find((event) => event.id === id)?.origin.occurrence ?? null;
     const grow = (rect: Rect) => pad(rect, HALO_SPACES, staffSpace);
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local accumulator, assigned whole below
     const measured = new Map<number, Marks>();
@@ -431,21 +396,16 @@
       const here = bracketed.get(number) ?? [];
       const at = traced ? first(traced) : null;
       const occurrence = traced ? occurrenceOf(traced) : null;
-      const bracket =
-        at && occurrence ? bracketNear(here, occurrence, at) : undefined;
+      const bracket = at && occurrence ? bracketNear(here, occurrence, at) : undefined;
       measured.set(number, {
         selection: ids.flatMap(boxes).map(grow),
-        hover:
-          hovered && !ids.includes(hovered) ? boxes(hovered).map(grow) : [],
+        hover: hovered && !ids.includes(hovered) ? boxes(hovered).map(grow) : [],
         focus: focused.flatMap((id) => headsFor(element, id)),
         candidate: pending ? ghostFor(element, pending) : null,
         playing: sounding.flatMap(boxes).map(grow),
         caret: caret ? caretRect(first(caret.id), caret.side) : null,
         loop: from && to ? { from, to } : null,
-        flash:
-          flashing.length > 0
-            ? runsFor(element, flashing).map((where) => where.system)
-            : [],
+        flash: flashing.length > 0 ? runsFor(element, flashing).map((where) => where.system) : [],
         brackets: here,
         trace: bracket && at ? traceTo(bracket, at) : null,
       });
@@ -473,9 +433,7 @@
       const ids = new Set<string>();
       for (const [number, element] of arriving(container)) {
         if (!pages.has(number)) continue;
-        for (const drawn of element.querySelectorAll<SVGGraphicsElement>(
-          'g[id^="event-"]',
-        )) {
+        for (const drawn of element.querySelectorAll<SVGGraphicsElement>('g[id^="event-"]')) {
           const id = eventIdOf(drawn);
           if (id) ids.add(id);
         }
@@ -491,10 +449,7 @@
    */
   function caretRect(rect: Rect | null, side: "before" | "after"): Rect | null {
     if (rect === null) return null;
-    const x =
-      side === "before"
-        ? rect.x - staffSpace / 2
-        : rect.x + rect.width + staffSpace / 2;
+    const x = side === "before" ? rect.x - staffSpace / 2 : rect.x + rect.width + staffSpace / 2;
     return { ...rect, x, width: 0 };
   }
 
@@ -513,20 +468,13 @@
     if (follow === "off" || first === undefined || !container) return;
     void marks;
     untrack(() => {
-      const element = container.querySelector<SVGGraphicsElement>(
-        `[id="${first}"]`,
-      );
+      const element = container.querySelector<SVGGraphicsElement>(`[id="${first}"]`);
       if (!element) return;
       const seen = container.getBoundingClientRect();
       const at = element.getBoundingClientRect();
-      const inside =
-        at.top >= seen.top &&
-        at.bottom <= seen.bottom &&
-        at.left >= seen.left &&
-        at.right <= seen.right;
+      const inside = at.top >= seen.top && at.bottom <= seen.bottom && at.left >= seen.left && at.right <= seen.right;
       if (inside) return;
-      if (follow === "page")
-        element.closest(".page")?.scrollIntoView({ block: "start" });
+      if (follow === "page") element.closest(".page")?.scrollIntoView({ block: "start" });
       else element.scrollIntoView({ block: "nearest", inline: "center" });
     });
   });
@@ -544,12 +492,9 @@
     if (!target || !container) return;
     void marks;
     untrack(() => {
-      const element = container.querySelector<SVGGraphicsElement>(
-        `[id="${target.id}"]`,
-      );
+      const element = container.querySelector<SVGGraphicsElement>(`[id="${target.id}"]`);
       if (!element) return;
-      if (mode === "page")
-        element.closest(".page")?.scrollIntoView({ block: "start" });
+      if (mode === "page") element.closest(".page")?.scrollIntoView({ block: "start" });
       else element.scrollIntoView({ block: "nearest", inline: "center" });
     });
   });
@@ -569,15 +514,8 @@
     const describe = workspace.describe.bind(workspace);
     untrack(() => {
       void arrived;
-      const facts = new Map(
-        (workspace.snapshot?.score?.events ?? []).map((event) => [
-          event.id,
-          event,
-        ]),
-      );
-      for (const element of container.querySelectorAll<SVGGraphicsElement>(
-        'g[id^="event-"]',
-      )) {
+      const facts = new Map((workspace.snapshot?.score?.events ?? []).map((event) => [event.id, event]));
+      for (const element of container.querySelectorAll<SVGGraphicsElement>('g[id^="event-"]')) {
         const event = facts.get(eventIdOf(element) ?? "");
         if (event === undefined) continue;
         // `img` is the honest role for an engraved note: a graphic with a
@@ -644,8 +582,7 @@
     renaming = null;
     if (!open) return;
     const next = draft.trim();
-    const before =
-      header.find((fact) => fact.field === open.field)?.value ?? "";
+    const before = header.find((fact) => fact.field === open.field)?.value ?? "";
     if (next !== before) onheader?.(open.field, next);
   }
 
@@ -726,9 +663,7 @@
     }
     // Held lens: a click asks about provenance, so the unit is the whole
     // expansion rather than the notehead under the pointer (§2).
-    const generated = workspace.snapshot?.score?.events.find(
-      (candidate) => candidate.id === id,
-    );
+    const generated = workspace.snapshot?.score?.events.find((candidate) => candidate.id === id);
     if (origin && generated?.origin.occurrence) {
       workspace.selectOccurrence(generated.origin.occurrence);
       return;
@@ -799,16 +734,11 @@
     const at = element ? pointIn(element, event.clientX, event.clientY) : null;
     if (!staff || !element || !at) return false;
     const anchor = nearestNote(element, staff, at.x);
-    const note = workspace?.snapshot?.score?.events.find(
-      (each) => each.id === anchor,
-    );
+    const note = workspace?.snapshot?.score?.events.find((each) => each.id === anchor);
     const spelling = note?.pitchSpellings[0];
     const [head] = anchor === null ? [] : headsFor(element, anchor);
     if (!head || spelling === undefined) return false;
-    const pitch = shiftStep(
-      spelling,
-      stepsFor(at.y - (head.y + head.height / 2), staffSpace),
-    );
+    const pitch = shiftStep(spelling, stepsFor(at.y - (head.y + head.height / 2), staffSpace));
     if (pitch === null) return false;
     oninsert(pitch);
     return true;
@@ -851,11 +781,8 @@
 
   function onpointermove(event: PointerEvent): void {
     if (drag.event !== null) {
-      const element =
-        (event.target as Element).closest<HTMLElement>(".arriving") ?? host;
-      const at = element
-        ? pointIn(element, event.clientX, event.clientY)
-        : null;
+      const element = (event.target as Element).closest<HTMLElement>(".arriving") ?? host;
+      const at = element ? pointIn(element, event.clientX, event.clientY) : null;
       if (at) drag.move(at.x, at.y, staffSpace);
       // A drag that turned out to be horizontal is a range selection, which
       // is what a drag on the leaf has always meant (§2).
@@ -969,10 +896,7 @@
   {onpointerleave}
   {onwheel}
 >
-  <div
-    class="pages"
-    style:transform={gesture === 1 ? undefined : `scale(${gesture})`}
-  >
+  <div class="pages" style:transform={gesture === 1 ? undefined : `scale(${gesture})`}>
     {#each Array.from({ length: pages }, (_, index) => index + 1) as number (number)}
       <div use:observe data-page={number} class="slot">
         <Page

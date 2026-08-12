@@ -23,12 +23,7 @@ const SCALE: Record<TextSize, number> = {
 };
 
 /** In order, so a step is an index and stepping past the end stops there. */
-export const TEXT_SIZES: readonly TextSize[] = [
-  "small",
-  "normal",
-  "large",
-  "larger",
-];
+export const TEXT_SIZES: readonly TextSize[] = ["small", "normal", "large", "larger"];
 
 const SIZE_KEY = "musa.text-size";
 const VIM_KEY = "musa.vim";
@@ -90,8 +85,7 @@ export class Preferences {
   /** `+1` a step larger, `-1` a step smaller; the ends are the ends. */
   stepText(by: number): void {
     const at = TEXT_SIZES.indexOf(this.textSize);
-    const next =
-      TEXT_SIZES[Math.min(Math.max(at + by, 0), TEXT_SIZES.length - 1)];
+    const next = TEXT_SIZES[Math.min(Math.max(at + by, 0), TEXT_SIZES.length - 1)];
     if (next) this.#size(next);
   }
 

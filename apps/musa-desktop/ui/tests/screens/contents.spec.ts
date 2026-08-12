@@ -16,9 +16,7 @@ import { rewrite, text, toggleSource } from "./source";
 
 /** The running order, on the contents page. */
 function order(page: Page): Locator {
-  return page
-    .getByRole("navigation", { name: "Running order" })
-    .getByRole("button");
+  return page.getByRole("navigation", { name: "Running order" }).getByRole("button");
 }
 
 /** The running order, in the left margin of a piece. */
@@ -55,26 +53,18 @@ test("a project of one shows no contents anywhere", async ({ page }) => {
   await page.goto("/");
   await engraved(page);
 
-  const workspaces = page
-    .getByRole("navigation", { name: "Workspace" })
-    .getByRole("button");
+  const workspaces = page.getByRole("navigation", { name: "Workspace" }).getByRole("button");
   await expect(workspaces).toHaveCount(4);
   await expect(workspaces.filter({ hasText: "Contents" })).toHaveCount(0);
-  await expect(page.getByRole("navigation", { name: "Contents" })).toHaveCount(
-    0,
-  );
+  await expect(page.getByRole("navigation", { name: "Contents" })).toHaveCount(0);
 
   // And the binding leads nowhere: the page stays on the leaf.
   await page.keyboard.press("ControlOrMeta+0");
   await expect(page.locator(".engraving svg.definition-scale")).toBeVisible();
-  await expect(
-    page.getByRole("navigation", { name: "Running order" }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Running order" })).toHaveCount(0);
 });
 
-test("the contents page prints the running order the manifest sets", async ({
-  page,
-}) => {
+test("the contents page prints the running order the manifest sets", async ({ page }) => {
   await album(page);
   await contents(page);
 
@@ -85,17 +75,11 @@ test("the contents page prints the running order the manifest sets", async ({
   // Two pieces, in the manifest's order, each named as it names itself and
   // numbered as the volume counts.
   await expect(order(page)).toHaveCount(2);
-  await expect(order(page).nth(0).locator(".title")).toHaveText(
-    "Glass Mountain",
-  );
-  await expect(order(page).nth(0).locator(".file")).toHaveText(
-    "pieces/01-first.musa",
-  );
+  await expect(order(page).nth(0).locator(".title")).toHaveText("Glass Mountain");
+  await expect(order(page).nth(0).locator(".file")).toHaveText("pieces/01-first.musa");
   await expect(order(page).nth(0).locator(".position")).toHaveText("01");
   await expect(order(page).nth(1).locator(".title")).toHaveText("Annotated");
-  await expect(order(page).nth(1).locator(".file")).toHaveText(
-    "pieces/02-second.musa",
-  );
+  await expect(order(page).nth(1).locator(".file")).toHaveText("pieces/02-second.musa");
   await expect(order(page).nth(1).locator(".position")).toHaveText("02");
 
   // The piece in hand is the first, and it says so in ink and in a rule —
@@ -114,47 +98,33 @@ test("the contents page prints the running order the manifest sets", async ({
   const faces = await order(page)
     .nth(0)
     .evaluate((row) => ({
-      title: getComputedStyle(row.querySelector(".title") as Element)
-        .fontFamily,
+      title: getComputedStyle(row.querySelector(".title") as Element).fontFamily,
       file: getComputedStyle(row.querySelector(".file") as Element).fontFamily,
-      score: getComputedStyle(document.documentElement).getPropertyValue(
-        "--f-score-text",
-      ),
-      mono: getComputedStyle(document.documentElement).getPropertyValue(
-        "--f-mono",
-      ),
+      score: getComputedStyle(document.documentElement).getPropertyValue("--f-score-text"),
+      mono: getComputedStyle(document.documentElement).getPropertyValue("--f-mono"),
     }));
   expect(named(faces.title)).toBe(named(faces.score));
   expect(named(faces.file)).toBe(named(faces.mono));
   expect(named(faces.title)).not.toBe(named(faces.file));
 });
 
-test("the margin lists the pieces, and the piece in hand is marked", async ({
-  page,
-}) => {
+test("the margin lists the pieces, and the piece in hand is marked", async ({ page }) => {
   await album(page);
 
   // The margin reads outside in — volume, then parts — and it lists pieces
   // only: material is reached from the contents page, deliberately.
   await expect(inMargin(page)).toHaveCount(2);
   await expect(inMargin(page).nth(0)).toHaveAttribute("aria-current", "page");
-  await expect(inMargin(page).nth(0).locator(".name")).toHaveText(
-    "Glass Mountain",
-  );
+  await expect(inMargin(page).nth(0).locator(".name")).toHaveText("Glass Mountain");
   await expect(inMargin(page).nth(1).locator(".name")).toHaveText("Annotated");
 });
 
-test("choosing a piece draws it, and the selection is let go", async ({
-  page,
-}) => {
+test("choosing a piece draws it, and the selection is let go", async ({ page }) => {
   await album(page);
 
   // Take hold of a note in the piece on screen, so there is a selection to
   // lose.
-  await page
-    .locator('.engraving [id="event-d"]')
-    .first()
-    .click({ force: true });
+  await page.locator('.engraving [id="event-d"]').first().click({ force: true });
   await expect(page.locator(".overlay .selection")).toHaveCount(1);
 
   await contents(page);
@@ -168,10 +138,7 @@ test("choosing a piece draws it, and the selection is let go", async ({
   // on screen, and in this one it names nothing (`05-states.md` §9).
   await expect(page.locator(".overlay .selection")).toHaveCount(0);
   const chosen = await page.evaluate(
-    () =>
-      document
-        .querySelector('[role="application"]')
-        ?.getAttribute("aria-activedescendant") ?? "",
+    () => document.querySelector('[role="application"]')?.getAttribute("aria-activedescendant") ?? "",
   );
   expect(chosen).toBe("");
 
@@ -179,9 +146,7 @@ test("choosing a piece draws it, and the selection is let go", async ({
   await expect(inMargin(page).nth(1)).toHaveAttribute("aria-current", "page");
 });
 
-test("a piece keeps its text across a turn away, and its row says edited", async ({
-  page,
-}) => {
+test("a piece keeps its text across a turn away, and its row says edited", async ({ page }) => {
   await album(page);
   await toggleSource(page);
   await rewrite(page, 'piece "Glass Mountain" {\n    c4 1;\n}');
@@ -199,14 +164,10 @@ test("a piece keeps its text across a turn away, and its row says edited", async
   await expect(order(page).nth(1)).not.toContainText("edited");
 
   await order(page).nth(0).click();
-  await expect
-    .poll(() => text(page))
-    .toBe('piece "Glass Mountain" {\n    c4 1;\n}');
+  await expect.poll(() => text(page)).toBe('piece "Glass Mountain" {\n    c4 1;\n}');
 });
 
-test("a library opens in the text, and is not a blank window", async ({
-  page,
-}) => {
+test("a library opens in the text, and is not a blank window", async ({ page }) => {
   await album(page);
   await contents(page);
 
@@ -224,9 +185,7 @@ test("a library opens in the text, and is not a blank window", async ({
   await expect.poll(() => text(page)).toContain("motif rise()");
 });
 
-test("in use marks exactly the material the piece in hand imports", async ({
-  page,
-}) => {
+test("in use marks exactly the material the piece in hand imports", async ({ page }) => {
   await album(page);
   await contents(page);
   await expect(material(page)).toContainText("in use");

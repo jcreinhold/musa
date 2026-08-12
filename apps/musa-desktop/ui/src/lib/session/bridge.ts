@@ -14,13 +14,7 @@ import type { ErrorDto } from "./generated/ErrorDto";
 import type { ExportTargetDto } from "./generated/ExportTargetDto";
 import type { TemplateDto } from "./generated/TemplateDto";
 import type { TransportDto } from "./generated/TransportDto";
-import type {
-  AnalysisFacts,
-  EditImpact,
-  LibraryDocument,
-  MidiEntry,
-  ProjectSnapshot,
-} from "../state/snapshot";
+import type { AnalysisFacts, EditImpact, LibraryDocument, MidiEntry, ProjectSnapshot } from "../state/snapshot";
 
 /** Whether the interface is running inside the desktop shell. */
 export function inShell(): boolean {
@@ -40,29 +34,19 @@ async function core(): Promise<typeof import("@tauri-apps/api/core")> {
   return import("@tauri-apps/api/core");
 }
 
-async function call<T>(
-  command: string,
-  args: Record<string, unknown>,
-): Promise<T> {
+async function call<T>(command: string, args: Record<string, unknown>): Promise<T> {
   const { invoke } = await core();
   return invoke<T>(command, args);
 }
 
 /** True when a rejected promise carries the shell's own failure shape. */
 export function isFailure(thrown: unknown): thrown is ErrorDto {
-  return (
-    typeof thrown === "object" &&
-    thrown !== null &&
-    "kind" in thrown &&
-    "message" in thrown
-  );
+  return typeof thrown === "object" && thrown !== null && "kind" in thrown && "message" in thrown;
 }
 
 export const bridge = {
-  openProject: (path: string) =>
-    call<ProjectSnapshot>("open_project", { path }),
-  newProject: (template: TemplateDto, path: string | null) =>
-    call<ProjectSnapshot>("new_project", { template, path }),
+  openProject: (path: string) => call<ProjectSnapshot>("open_project", { path }),
+  newProject: (template: TemplateDto, path: string | null) => call<ProjectSnapshot>("new_project", { template, path }),
   /** Turn to another file of the project already open. */
   showPiece: (file: string) => call<ProjectSnapshot>("show_piece", { file }),
   /** Write every piece of it that has unsaved edits. */
@@ -70,8 +54,7 @@ export const bridge = {
   apply: (command: CommandDto) => call<ProjectSnapshot>("apply", { command }),
   /** What an edit would change, asked before it is made. */
   editImpact: (edit: EditDto) => call<EditImpact>("edit_impact", { edit }),
-  transport: (command: TransportDto) =>
-    call<ProjectSnapshot>("transport", { command }),
+  transport: (command: TransportDto) => call<ProjectSnapshot>("transport", { command }),
   exportTo: (target: ExportTargetDto, path: string | null) =>
     call<{ path: string }>("export", { request: { target, path } }),
   snapshot: () => call<ProjectSnapshot>("snapshot", {}),
@@ -92,10 +75,7 @@ export const bridge = {
     call<LibraryDocument>("library_document", { uri, start, end }),
 
   /** Subscribe to a shell event. Resolves to the unsubscribe function. */
-  async on<K extends keyof Events>(
-    name: K,
-    handle: (payload: Events[K]) => void,
-  ): Promise<() => void> {
+  async on<K extends keyof Events>(name: K, handle: (payload: Events[K]) => void): Promise<() => void> {
     const { listen } = await import("@tauri-apps/api/event");
     return listen<Events[K]>(name, (event) => handle(event.payload));
   },

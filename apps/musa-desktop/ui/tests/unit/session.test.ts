@@ -9,22 +9,14 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  SETTLE_MS,
-  Session,
-  type Link,
-} from "../../src/lib/session/session.svelte";
+import { SETTLE_MS, Session, type Link } from "../../src/lib/session/session.svelte";
 import fixture from "../../fixtures/glass-mountain.snapshot.json";
 import type { ProjectSnapshot } from "../../src/lib/state/snapshot";
 
 const VALID = fixture as unknown as ProjectSnapshot;
 
 /** A snapshot of `source` at `revision`, compiling or not, as the core would. */
-function snapshotOf(
-  source: string,
-  revision: number,
-  compiles = true,
-): ProjectSnapshot {
+function snapshotOf(source: string, revision: number, compiles = true): ProjectSnapshot {
   return {
     ...VALID,
     source,
@@ -65,8 +57,7 @@ function recorder(): Recorder {
     saveAll: vi.fn(async () => VALID),
     askToOpenProject: vi.fn(async () => null),
     apply: vi.fn(async (command) => {
-      const source =
-        command.kind === "setSource" ? command.source : VALID.source;
+      const source = command.kind === "setSource" ? command.source : VALID.source;
       link.applied.push(source);
       return link.answer(source);
     }),
@@ -334,11 +325,7 @@ describe("opening a bundled module", () => {
 
     await session.openLibrary("musa-stdlib:/std/core.musa", 254, 266);
     expect(session.library?.name).toBe("core");
-    expect(link.libraryDocument).toHaveBeenCalledWith(
-      "musa-stdlib:/std/core.musa",
-      254,
-      266,
-    );
+    expect(link.libraryDocument).toHaveBeenCalledWith("musa-stdlib:/std/core.musa", 254, 266);
     // The piece is still open behind it: a module is not a document that
     // replaced the composer's own.
     expect(session.snapshot).toBe(VALID);

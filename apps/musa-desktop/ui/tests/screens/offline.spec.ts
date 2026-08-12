@@ -13,16 +13,10 @@ import { expect, test } from "@playwright/test";
 
 import { engraved } from "./engraved";
 
-test("the application makes no request off its own origin", async ({
-  page,
-  baseURL,
-}) => {
+test("the application makes no request off its own origin", async ({ page, baseURL }) => {
   const foreign: string[] = [];
   page.on("request", (request) => {
-    if (
-      !request.url().startsWith(baseURL ?? "") &&
-      !request.url().startsWith("data:")
-    ) {
+    if (!request.url().startsWith(baseURL ?? "") && !request.url().startsWith("data:")) {
       foreign.push(request.url());
     }
   });
@@ -37,24 +31,13 @@ test("the bundled faces are the ones actually used", async ({ page }) => {
   await page.goto("/");
   await engraved(page);
 
-  const families = await page.evaluate(() =>
-    [...document.fonts].map((face) => face.family),
-  );
-  expect(families).toEqual(
-    expect.arrayContaining([
-      "Bravura",
-      "Academico",
-      "Instrument Sans",
-      "Recursive Mono",
-    ]),
-  );
+  const families = await page.evaluate(() => [...document.fonts].map((face) => face.family));
+  expect(families).toEqual(expect.arrayContaining(["Bravura", "Academico", "Instrument Sans", "Recursive Mono"]));
 
   // Every one of them resolved locally; a face that failed to load would sit
   // in "unloaded" or "error" after the page settled.
   const unresolved = await page.evaluate(() =>
-    [...document.fonts]
-      .filter((face) => face.status === "error")
-      .map((face) => face.family),
+    [...document.fonts].filter((face) => face.status === "error").map((face) => face.family),
   );
   expect(unresolved).toStrictEqual([]);
 });

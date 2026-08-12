@@ -56,9 +56,7 @@ describe("text to page", () => {
     const events = workspace().eventsForSpan({ start: at, end: at + 1 });
     expect(events).toHaveLength(1);
 
-    const chosen = workspace().snapshot?.score?.events.find(
-      (event) => event.id === events[0],
-    );
+    const chosen = workspace().snapshot?.score?.events.find((event) => event.id === events[0]);
     expect(text(chosen?.origin.span as Span)).toBe("f5/4");
   });
 
@@ -70,17 +68,13 @@ describe("text to page", () => {
 
 describe("page to text", () => {
   it("a chosen note marks the text it was written as", () => {
-    const chosen = snapshot.score?.events.find(
-      (event) => !event.origin.generated,
-    );
+    const chosen = snapshot.score?.events.find((event) => !event.origin.generated);
     expect(chosen).toBeDefined();
     const space = workspace();
     space.select(chosen?.id ?? "");
     const spans = space.sourceSpans(false);
     expect(spans).toHaveLength(1);
-    expect(text(spans[0] as Span)).toMatch(
-      /^[a-g](?:##|bb|[#bn])?-?[0-9]+\/\d+$/,
-    );
+    expect(text(spans[0] as Span)).toMatch(/^[a-g](?:##|bb|[#bn])?-?[0-9]+\/\d+$/);
   });
 
   it("a note from a motif marks where it is declared and where it was used", () => {
@@ -101,9 +95,7 @@ describe("the outline", () => {
     const rows = snapshot.score?.outline ?? [];
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
-      expect(text(row.span), `outline row ${row.name}`).toMatch(
-        /^(section|phrase) "/,
-      );
+      expect(text(row.span), `outline row ${row.name}`).toMatch(/^(section|phrase) "/);
     }
   });
 

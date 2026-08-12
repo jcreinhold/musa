@@ -21,9 +21,7 @@ export interface KeywordDoc {
   doc: string;
 }
 
-const DOCS = new Map<string, KeywordDoc>(
-  (docs as KeywordDoc[]).map((doc) => [doc.spelling, doc]),
-);
+const DOCS = new Map<string, KeywordDoc>((docs as KeywordDoc[]).map((doc) => [doc.spelling, doc]));
 
 /** The keyword's documentation, or undefined for a word that is not a keyword. */
 export function keywordDoc(word: string): KeywordDoc | undefined {

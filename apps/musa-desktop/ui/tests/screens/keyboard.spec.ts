@@ -18,9 +18,7 @@ import { stubShell } from "./shell";
  * over a value, not a form — so they are found by the label they print.
  */
 async function field(page: Page, label: string): Promise<string> {
-  const row = page.locator(
-    `.inspector .row:has(.label:text-is("${label}")) .value`,
-  );
+  const row = page.locator(`.inspector .row:has(.label:text-is("${label}")) .value`);
   return (await row.first().innerText()).trim();
 }
 
@@ -62,9 +60,7 @@ test("arrows walk the voice and the inspector follows", async ({ page }) => {
   expect(last).not.toBe(first);
 });
 
-test("the selected note is haloed and named for a screen reader", async ({
-  page,
-}) => {
+test("the selected note is haloed and named for a screen reader", async ({ page }) => {
   await inScore(page);
   await page.keyboard.press("ArrowRight");
 
@@ -79,9 +75,7 @@ test("the selected note is haloed and named for a screen reader", async ({
   expect(described).toMatch(/bar \d+ beat \d+/);
 });
 
-test("the arrows belong to the score, and the source keeps its own letters", async ({
-  page,
-}) => {
+test("the arrows belong to the score, and the source keeps its own letters", async ({ page }) => {
   await toggleSource(page);
   await source(page).click();
   // `f` is the follow binding in the score; in the source it is an `f`, and
@@ -105,9 +99,7 @@ test("⌘K opens the palette, which runs a command by name", async ({ page }) =>
   await expect(page.getByRole("dialog", { name: "Keyboard" })).toBeHidden();
 });
 
-test("the keyboard sheet prints the bindings the map actually has", async ({
-  page,
-}) => {
+test("the keyboard sheet prints the bindings the map actually has", async ({ page }) => {
   await inScore(page);
   await page.keyboard.press("Shift+?");
   const sheet = page.getByRole("dialog", { name: "Keyboard" });
@@ -116,9 +108,7 @@ test("the keyboard sheet prints the bindings the map actually has", async ({
   await expect(sheet.getByText("⌥→", { exact: true })).toBeVisible();
 });
 
-test("a bar is looped from the selection and marked in the margin", async ({
-  page,
-}) => {
+test("a bar is looped from the selection and marked in the margin", async ({ page }) => {
   await inScore(page);
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("Shift+ArrowRight");

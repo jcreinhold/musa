@@ -92,9 +92,7 @@ describe("the playhead between engine positions", () => {
     }
     // Expressed in the unit the budget uses: frames of *display*, not audio.
     const drift = (worst.off / RATE) * 1000;
-    expect(drift, `worst deviation ${drift.toFixed(3)} ms`).toBeLessThan(
-      FRAME_MS,
-    );
+    expect(drift, `worst deviation ${drift.toFixed(3)} ms`).toBeLessThan(FRAME_MS);
   });
 
   it("stops rather than inventing a performance the engine is not having", () => {
@@ -107,19 +105,14 @@ describe("the playhead between engine positions", () => {
     // further: a silent engine is a stalled transport, not a fast one.
     for (let step = 0; step < 40; step += 1) frames.tick();
     const led = ((playhead.frame - (RATE * INTERVAL_MS) / 1000) / RATE) * 1000;
-    expect(led, `led the engine by ${led.toFixed(1)} ms`).toBeLessThanOrEqual(
-      INTERVAL_MS * 2,
-    );
+    expect(led, `led the engine by ${led.toFixed(1)} ms`).toBeLessThanOrEqual(INTERVAL_MS * 2);
   });
 
   it("B10: schedules nothing once the transport stops", () => {
     const playhead = new Playhead();
     playhead.receive(playback(0), 0);
     frames.tick();
-    expect(
-      frames.scheduled,
-      "a frame is pending while playing",
-    ).toBeGreaterThan(0);
+    expect(frames.scheduled, "a frame is pending while playing").toBeGreaterThan(0);
 
     playhead.receive(playback(1000, false), frames.now);
     expect(frames.scheduled, "nothing is pending once stopped").toBe(0);
@@ -135,19 +128,10 @@ describe("the playhead between engine positions", () => {
 });
 
 describe("what is sounding", () => {
-  const event = (
-    id: string,
-    onsetFrames: number,
-    endFrames: number,
-    kind = "note",
-  ): EventFacts => ({ id, kind, onsetFrames, endFrames }) as EventFacts;
+  const event = (id: string, onsetFrames: number, endFrames: number, kind = "note"): EventFacts =>
+    ({ id, kind, onsetFrames, endFrames }) as EventFacts;
 
-  const events = [
-    event("a", 0, 100),
-    event("b", 100, 200),
-    event("c", 100, 200),
-    event("r", 200, 300, "rest"),
-  ];
+  const events = [event("a", 0, 100), event("b", 100, 200), event("c", 100, 200), event("r", 200, 300, "rest")];
 
   it("reads the frames the core supplied, half-open at the end", () => {
     expect(soundingAt(events, 0)).toEqual(["a"]);

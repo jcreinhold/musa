@@ -16,11 +16,7 @@ import refusedFixture from "../../fixtures/refused-claim.snapshot.json";
 import report from "../../fixtures/pivot-ambiguity.analysis.json";
 import { Workspace } from "../../src/lib/state/selection.svelte";
 import { applyFix, onlyFix } from "../../src/lib/state/fix";
-import type {
-  AnalysisFacts,
-  ProjectSnapshot,
-  StepFact,
-} from "../../src/lib/state/snapshot";
+import type { AnalysisFacts, ProjectSnapshot, StepFact } from "../../src/lib/state/snapshot";
 
 const SPLICED = kernelFixture as unknown as ProjectSnapshot;
 const REFUSED = refusedFixture as unknown as ProjectSnapshot;
@@ -45,17 +41,14 @@ describe("an expansion path through a kernel quote", () => {
    * deciding which of them the composer meant.
    */
   it("names each step by what it is, not by where it happens to point", () => {
-    const kinds = new Set(
-      events.flatMap((event) => event.origin.path.map((step) => step.kind)),
-    );
+    const kinds = new Set(events.flatMap((event) => event.origin.path.map((step) => step.kind)));
     expect(kinds).toContain("occurrence");
     expect(kinds).toContain("splice");
     expect(kinds).toContain("assertion");
   });
 
   it("keeps every step it was given, rather than choosing a convenient one", () => {
-    for (const event of events)
-      expect(event.origin.path.length).toBeGreaterThan(1);
+    for (const event of events) expect(event.origin.path.length).toBeGreaterThan(1);
   });
 
   /*
@@ -69,9 +62,7 @@ describe("an expansion path through a kernel quote", () => {
     const placed = steps.filter((step) => step.span !== null);
     expect(placed).not.toHaveLength(0);
     for (const step of placed) expect(step.kind).toBe("occurrence");
-    expect(
-      steps.some((step) => step.kind === "splice" && step.span === null),
-    ).toBe(true);
+    expect(steps.some((step) => step.kind === "splice" && step.span === null)).toBe(true);
   });
 
   it("still selects the whole expansion from any note of it", () => {
@@ -88,9 +79,7 @@ describe("a claim the compiler refused", () => {
 
   it("is reported at the passage the claim was written about", () => {
     expect(problem?.span).not.toBeNull();
-    expect(
-      REFUSED.source.slice(problem?.span?.start, problem?.span?.end),
-    ).toContain("assert");
+    expect(REFUSED.source.slice(problem?.span?.start, problem?.span?.end)).toContain("assert");
   });
 
   it("keeps the piece off the stand: nothing was engraved from it", () => {
@@ -125,17 +114,13 @@ describe("a reading with more than one answer", () => {
    * (`08-elaboration.md` §5).
    */
   it("keeps both readings of the pivot, each with its own standing", () => {
-    const regions = READING.findings.filter(
-      (finding) => finding.code === "key-region",
-    );
+    const regions = READING.findings.filter((finding) => finding.code === "key-region");
     expect(regions.length).toBeGreaterThan(1);
     for (const finding of regions) expect(finding.standing).toBeTruthy();
   });
 
   it("says which evidence a finding does not have, rather than dropping it", () => {
-    const grounded = READING.findings.filter(
-      (finding) => finding.grounds.length > 0,
-    );
+    const grounded = READING.findings.filter((finding) => finding.grounds.length > 0);
     expect(grounded).not.toHaveLength(0);
     for (const finding of grounded) {
       for (const ground of finding.grounds) {

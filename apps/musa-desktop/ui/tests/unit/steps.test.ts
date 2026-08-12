@@ -107,9 +107,7 @@ describe("the duration ladder", () => {
 
   it("stops at the ends rather than inventing a duration", () => {
     expect(renotate(LADDER[0] ?? "", 1)).toBe(LADDER[0]);
-    expect(renotate(LADDER[LADDER.length - 1] ?? "", -1)).toBe(
-      LADDER[LADDER.length - 1],
-    );
+    expect(renotate(LADDER[LADDER.length - 1] ?? "", -1)).toBe(LADDER[LADDER.length - 1]);
   });
 
   it("writes nothing for a duration that is not on the ladder", () => {

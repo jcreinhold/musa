@@ -13,18 +13,9 @@
    * the compiler's, highlighted spans are provenance, and the caret's meaning
    * is reported outward rather than interpreted here (`03-interaction.md` §7).
    */
-  import {
-    autocompletion,
-    closeBrackets,
-    type CompletionSource,
-  } from "@codemirror/autocomplete";
+  import { autocompletion, closeBrackets, type CompletionSource } from "@codemirror/autocomplete";
   import { defaultKeymap, indentWithTab } from "@codemirror/commands";
-  import {
-    bracketMatching,
-    foldGutter,
-    foldKeymap,
-    syntaxHighlighting,
-  } from "@codemirror/language";
+  import { bracketMatching, foldGutter, foldKeymap, syntaxHighlighting } from "@codemirror/language";
   import { setDiagnostics } from "@codemirror/lint";
   import {
     Compartment,
@@ -55,21 +46,9 @@
 
   import { untrack } from "svelte";
 
-  import {
-    musa,
-    musaHighlighting,
-    docParts,
-    keywordDoc,
-    proseRuns,
-    type KeywordDoc,
-  } from "../lang-musa";
+  import { musa, musaHighlighting, docParts, keywordDoc, proseRuns, type KeywordDoc } from "../lang-musa";
   import type { Reveal } from "../state/reveal";
-  import type {
-    Diagnostic,
-    NameFacts,
-    Span,
-    TermFacts,
-  } from "../state/snapshot";
+  import type { Diagnostic, NameFacts, Span, TermFacts } from "../state/snapshot";
   import { termAt } from "../state/terms";
   import { modal as modalKeymap, serve } from "./vim";
 
@@ -158,11 +137,7 @@
         if (effect.is(setMarks)) {
           return Decoration.set(
             effect.value
-              .filter(
-                (span) =>
-                  span.end > span.start &&
-                  span.end <= transaction.newDoc.length,
-              )
+              .filter((span) => span.end > span.start && span.end <= transaction.newDoc.length)
               .map((span) => marked.range(span.start, span.end)),
             true,
           );
@@ -196,13 +171,8 @@
       for (const effect of transaction.effects) {
         if (!effect.is(setFocus)) continue;
         const span = effect.value.definition;
-        const fits =
-          span &&
-          span.end > span.start &&
-          span.end <= transaction.newDoc.length;
-        return fits && span
-          ? Decoration.set([spelling.range(span.start, span.end)])
-          : Decoration.none;
+        const fits = span && span.end > span.start && span.end <= transaction.newDoc.length;
+        return fits && span ? Decoration.set([spelling.range(span.start, span.end)]) : Decoration.none;
       }
       return current.map(transaction.changes);
     },
@@ -248,18 +218,11 @@
       for (const effect of transaction.effects) {
         if (!effect.is(setCandidate)) continue;
         const write = effect.value;
-        if (
-          !write ||
-          write.end > transaction.newDoc.length ||
-          write.end < write.start
-        ) {
+        if (!write || write.end > transaction.newDoc.length || write.end < write.start) {
           return Decoration.none;
         }
         return Decoration.set([
-          Decoration.replace({ widget: new Candidate(write.text) }).range(
-            write.start,
-            write.end,
-          ),
+          Decoration.replace({ widget: new Candidate(write.text) }).range(write.start, write.end),
         ]);
       }
       return current.map(transaction.changes);
@@ -299,9 +262,7 @@
         const { place, sounding } = effect.value;
         const ranges: Range<GutterMarker>[] = [
           ...lineStarts(doc, sounding).map((at) => SOUNDS.range(at)),
-          ...lineStarts(doc, place ? [place] : []).map((at) =>
-            PLACED.range(at),
-          ),
+          ...lineStarts(doc, place ? [place] : []).map((at) => PLACED.range(at)),
         ];
         return RangeSet.of(ranges, true);
       }
@@ -403,10 +364,9 @@
       borderLeftWidth: "2px",
       marginLeft: "-1px",
     },
-    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection":
-      {
-        backgroundColor: "var(--plate-wash)",
-      },
+    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
+      backgroundColor: "var(--plate-wash)",
+    },
     /*
      * Provenance, in the one hue that ever means it. Inside the mark the hue
      * is the ground, so the type goes back to full ink: `--plate` on
@@ -537,9 +497,7 @@
    * the caret is still exactly where it was.
    */
   function blinkRate(): number {
-    return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-      ? 0
-      : 1200;
+    return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 1200;
   }
 
   function extensions(): Extension[] {
@@ -580,8 +538,7 @@
         spellcheck: "false",
       }),
       EditorView.updateListener.of((update) => {
-        if (update.docChanged && !echoing)
-          onedit?.(update.state.doc.toString());
+        if (update.docChanged && !echoing) onedit?.(update.state.doc.toString());
         if (update.selectionSet) oncaret?.(update.state.selection.main.head);
       }),
       // Which line the pointer is on, so the page can mark what that line
@@ -763,16 +720,12 @@
     const lines: string[] = [];
     if (term.result) {
       lines.push(
-        term.result.distinction === null
-          ? term.result.name
-          : `${term.result.name} — ${term.result.distinction}`,
+        term.result.distinction === null ? term.result.name : `${term.result.name} — ${term.result.distinction}`,
       );
     }
     for (const parameter of term.parameters) {
       if (parameter.ty.distinction !== null) {
-        lines.push(
-          `${parameter.name}: ${parameter.ty.name} — ${parameter.ty.distinction}`,
-        );
+        lines.push(`${parameter.name}: ${parameter.ty.name} — ${parameter.ty.distinction}`);
       }
     }
     return lines;
@@ -807,10 +760,7 @@
         label: term.name,
         detail: term.signature,
         info: term.summary ?? undefined,
-        type:
-          term.kind === "function" || term.kind === "motif"
-            ? "function"
-            : "variable",
+        type: term.kind === "function" || term.kind === "motif" ? "function" : "variable",
       })),
     };
   };
@@ -823,9 +773,7 @@
   $effect(() => {
     if (!host) return;
     const parent = host;
-    const editor = untrack(
-      () => new EditorView({ doc: source, extensions: extensions(), parent }),
-    );
+    const editor = untrack(() => new EditorView({ doc: source, extensions: extensions(), parent }));
     // A scrolling region has to be reachable from the keyboard, and
     // CodeMirror marks its scroller `tabindex="-1"`. Making it a tab stop
     // that hands focus straight to the text is what makes "Tab into the
@@ -857,10 +805,7 @@
     let start = 0;
     while (start < limit && from[start] === to[start]) start += 1;
     let tail = 0;
-    while (
-      tail < limit - start &&
-      from[from.length - 1 - tail] === to[to.length - 1 - tail]
-    ) {
+    while (tail < limit - start && from[from.length - 1 - tail] === to[to.length - 1 - tail]) {
       tail += 1;
     }
     return {
@@ -956,17 +901,8 @@
           .filter((diagnostic) => diagnostic.span !== null)
           .map((diagnostic) => ({
             from: Math.min(diagnostic.span?.start ?? 0, length),
-            to: Math.min(
-              Math.max(
-                diagnostic.span?.end ?? 0,
-                (diagnostic.span?.start ?? 0) + 1,
-              ),
-              length,
-            ),
-            severity:
-              diagnostic.severity === "error"
-                ? ("error" as const)
-                : ("warning" as const),
+            to: Math.min(Math.max(diagnostic.span?.end ?? 0, (diagnostic.span?.start ?? 0) + 1), length),
+            severity: diagnostic.severity === "error" ? ("error" as const) : ("warning" as const),
             message: diagnostic.message,
           })),
       ),

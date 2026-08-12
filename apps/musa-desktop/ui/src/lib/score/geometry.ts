@@ -22,10 +22,7 @@ function pageRoot(container: ParentNode): SVGGraphicsElement | null {
 }
 
 /** One engraved element's box, expressed in the page's coordinates. */
-function boxOf(
-  root: SVGGraphicsElement,
-  element: SVGGraphicsElement,
-): Rect | null {
+function boxOf(root: SVGGraphicsElement, element: SVGGraphicsElement): Rect | null {
   const rootMatrix = root.getScreenCTM();
   const elementMatrix = element.getScreenCTM();
   if (!rootMatrix || !elementMatrix) return null;
@@ -54,10 +51,7 @@ export function boxesFor(container: ParentNode, id: string): Rect[] {
   return elementsOf(container, id)
     .filter((element): element is SVGGraphicsElement => "getBBox" in element)
     .map((element) => boxOf(root, element))
-    .filter(
-      (rect): rect is Rect =>
-        rect !== null && rect.width > 0 && rect.height > 0,
-    );
+    .filter((rect): rect is Rect => rect !== null && rect.width > 0 && rect.height > 0);
 }
 
 /**
@@ -74,17 +68,12 @@ export function headsFor(container: ParentNode, id: string): Rect[] {
   if (!root) return [];
   return elementsOf(container, id)
     .flatMap((element) => {
-      const heads = [
-        ...element.querySelectorAll<SVGGraphicsElement>("g.notehead"),
-      ];
+      const heads = [...element.querySelectorAll<SVGGraphicsElement>("g.notehead")];
       if (heads.length > 0) return heads;
       return "getBBox" in element ? [element as SVGGraphicsElement] : [];
     })
     .map((element) => boxOf(root, element))
-    .filter(
-      (rect): rect is Rect =>
-        rect !== null && rect.width > 0 && rect.height > 0,
-    );
+    .filter((rect): rect is Rect => rect !== null && rect.width > 0 && rect.height > 0);
 }
 
 /** A screen point in page units, with the scale that got it there. */
@@ -103,11 +92,7 @@ export interface PagePoint {
  * converted once on the way in rather than the geometry being converted back
  * out at every step.
  */
-export function pointIn(
-  container: ParentNode,
-  x: number,
-  y: number,
-): PagePoint | null {
+export function pointIn(container: ParentNode, x: number, y: number): PagePoint | null {
   const root = pageRoot(container);
   const matrix = root?.getScreenCTM();
   if (!root || !matrix) return null;
@@ -127,17 +112,11 @@ export function pointIn(
  * from too. Nothing here decides what pitch that is — it names an event, and
  * the snapshot says the rest.
  */
-export function nearestNote(
-  container: ParentNode,
-  staff: Element,
-  x: number,
-): string | null {
+export function nearestNote(container: ParentNode, staff: Element, x: number): string | null {
   const root = pageRoot(container);
   if (!root) return null;
   let best: { id: string; off: number } | null = null;
-  for (const drawn of staff.querySelectorAll<SVGGraphicsElement>(
-    'g[id^="event-"]',
-  )) {
+  for (const drawn of staff.querySelectorAll<SVGGraphicsElement>('g[id^="event-"]')) {
     const rect = boxOf(root, drawn);
     if (!rect) continue;
     const off = Math.abs(rect.x + rect.width / 2 - x);
@@ -228,12 +207,7 @@ export const CLEARANCE_SPACES = 1.2;
 export const OVERHANG_SPACES = 0.4;
 
 /** The bracket over one run of one expansion's output. */
-export function bracketOver(
-  id: string,
-  label: string,
-  run: Rect,
-  staffSpace: number,
-): Bracket {
+export function bracketOver(id: string, label: string, run: Rect, staffSpace: number): Bracket {
   const over = staffSpace * OVERHANG_SPACES;
   return {
     id,
@@ -270,20 +244,14 @@ export function traceTo(bracket: Bracket, rect: Rect): Trace {
  * or failing that the nearest — a run and its bracket are the same notes, so
  * containment is the answer except at the rounding of a box edge.
  */
-export function bracketNear(
-  brackets: Bracket[],
-  id: string,
-  rect: Rect,
-): Bracket | undefined {
+export function bracketNear(brackets: Bracket[], id: string, rect: Rect): Bracket | undefined {
   const mid = rect.x + rect.width / 2;
   const off = (bracket: Bracket) =>
-    Math.max(bracket.x - mid, mid - (bracket.x + bracket.width), 0) +
-    Math.abs(bracket.y - rect.y);
+    Math.max(bracket.x - mid, mid - (bracket.x + bracket.width), 0) + Math.abs(bracket.y - rect.y);
   return brackets
     .filter((bracket) => bracket.id === id)
     .reduce<Bracket | undefined>(
-      (best, bracket) =>
-        best === undefined || off(bracket) < off(best) ? bracket : best,
+      (best, bracket) => (best === undefined || off(bracket) < off(best) ? bracket : best),
       undefined,
     );
 }

@@ -79,9 +79,8 @@ cargo build --workspace
 cargo nextest run [-p <crate>]            # fall back to cargo test if nextest missing
 cargo nextest run --run-ignored all       # adds the slow tests; minutes, not seconds
 cargo clippy --workspace --all-targets -- -D warnings
-cargo fmt --check
-taplo fmt --check                         # TOML
-mdwright fmt-check                        # Markdown
+make fmt-check                            # Rust, TOML, Markdown, and the UI, all four
+make lint-ui                              # ESLint over the UI
 make docs-check                           # docs/ links, teaching examples, mdbook build
 cargo deny check                          # if cargo-deny installed
 ```
@@ -91,7 +90,13 @@ do not allow-list lints.
 
 **Two build systems.** `cargo build --workspace` covers `crates/*` and the Tauri shell only. `packages/*` and
 `apps/musa-desktop/ui` are a pnpm workspace: `pnpm -r check` and `pnpm -r test` there. Touching one side does not check
-the other.
+the other. `make fmt` writes both sides — `cargo fmt`, `taplo`, and Prettier — so run it rather than `pnpm run format`
+alone.
+
+**Generated files are never formatted.** `apps/musa-desktop/ui/src/lib/session/generated/` and
+`apps/musa-desktop/ui/fixtures/` are written by generator tests and compared byte for byte; `.prettierignore` excludes
+both. Change the generator and regenerate, never the file — see
+[`docs/development/generated-files.md`](docs/development/generated-files.md).
 
 **Slow tests carry `#[ignore]` and say so in their name**, so the default suite asks for them by name. Marking one
 requires a doc comment arguing it: what the test protects, what still covers that contract in the fast suite, and what
