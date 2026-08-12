@@ -39,8 +39,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "G4",
-        "pitches": ["G4"],
-        "pitchSpellings": ["g4"],
+        "pitches": [
+          "G4"
+        ],
+        "pitchSpellings": [
+          "g4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -78,8 +82,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "B4",
-        "pitches": ["B4"],
-        "pitchSpellings": ["b4"],
+        "pitches": [
+          "B4"
+        ],
+        "pitchSpellings": [
+          "b4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -117,8 +125,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "D5",
-        "pitches": ["D5"],
-        "pitchSpellings": ["d5"],
+        "pitches": [
+          "D5"
+        ],
+        "pitchSpellings": [
+          "d5"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -156,8 +168,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "D5",
-        "pitches": ["D5"],
-        "pitchSpellings": ["d5"],
+        "pitches": [
+          "D5"
+        ],
+        "pitchSpellings": [
+          "d5"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -204,8 +220,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "C5",
-        "pitches": ["C5"],
-        "pitchSpellings": ["c5"],
+        "pitches": [
+          "C5"
+        ],
+        "pitchSpellings": [
+          "c5"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -252,8 +272,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "B4",
-        "pitches": ["B4"],
-        "pitchSpellings": ["b4"],
+        "pitches": [
+          "B4"
+        ],
+        "pitchSpellings": [
+          "b4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -300,8 +324,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "G5",
-        "pitches": ["G5"],
-        "pitchSpellings": ["g5"],
+        "pitches": [
+          "G5"
+        ],
+        "pitchSpellings": [
+          "g5"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -348,8 +376,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "C5",
-        "pitches": ["C5"],
-        "pitchSpellings": ["c5"],
+        "pitches": [
+          "C5"
+        ],
+        "pitchSpellings": [
+          "c5"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -396,8 +428,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "B4",
-        "pitches": ["B4"],
-        "pitchSpellings": ["b4"],
+        "pitches": [
+          "B4"
+        ],
+        "pitchSpellings": [
+          "b4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -444,8 +480,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "F5",
-        "pitches": ["F5"],
-        "pitchSpellings": ["f5"],
+        "pitches": [
+          "F5"
+        ],
+        "pitchSpellings": [
+          "f5"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -483,8 +523,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "D5",
-        "pitches": ["D5"],
-        "pitchSpellings": ["d5"],
+        "pitches": [
+          "D5"
+        ],
+        "pitchSpellings": [
+          "d5"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -522,8 +566,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "G4",
-        "pitches": ["G4"],
-        "pitchSpellings": ["g4"],
+        "pitches": [
+          "G4"
+        ],
+        "pitchSpellings": [
+          "g4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -580,7 +628,11 @@
           "end": 1329
         },
         "line": 39,
-        "events": ["event-3", "event-4", "event-5"]
+        "events": [
+          "event-3",
+          "event-4",
+          "event-5"
+        ]
       },
       {
         "id": "occurrence-1",
@@ -605,7 +657,11 @@
           "end": 1359
         },
         "line": 40,
-        "events": ["event-6", "event-7", "event-8"]
+        "events": [
+          "event-6",
+          "event-7",
+          "event-8"
+        ]
       }
     ],
     "outline": [

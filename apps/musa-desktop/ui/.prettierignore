@@ -3,6 +3,8 @@ node_modules
 test-results
 playwright-report
 
-# Written by ts-rs from the Rust DTO definitions, and compared byte for byte by a
-# currency test. Formatting them makes that test fail; see docs/development/generated-files.md.
+# Written by a program, and compared byte for byte by a currency test. Formatting
+# them makes that test fail against an edit nobody made — it has happened, twice.
+# See docs/development/generated-files.md.
 src/lib/session/generated
+fixtures

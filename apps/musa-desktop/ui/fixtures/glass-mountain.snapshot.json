@@ -52,8 +52,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "E5",
-        "pitches": ["E5"],
-        "pitchSpellings": ["e5"],
+        "pitches": [
+          "E5"
+        ],
+        "pitchSpellings": [
+          "e5"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 2
@@ -148,8 +152,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "C5",
-        "pitches": ["C5"],
-        "pitchSpellings": ["c5"],
+        "pitches": [
+          "C5"
+        ],
+        "pitchSpellings": [
+          "c5"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 2
@@ -196,8 +204,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "B4",
-        "pitches": ["B4"],
-        "pitchSpellings": ["b4"],
+        "pitches": [
+          "B4"
+        ],
+        "pitchSpellings": [
+          "b4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -244,8 +256,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "A4",
-        "pitches": ["A4"],
-        "pitchSpellings": ["a4"],
+        "pitches": [
+          "A4"
+        ],
+        "pitchSpellings": [
+          "a4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 2
@@ -292,8 +308,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "A4",
-        "pitches": ["A4"],
-        "pitchSpellings": ["a4"],
+        "pitches": [
+          "A4"
+        ],
+        "pitchSpellings": [
+          "a4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 2
@@ -398,8 +418,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "F4",
-        "pitches": ["F4"],
-        "pitchSpellings": ["f4"],
+        "pitches": [
+          "F4"
+        ],
+        "pitchSpellings": [
+          "f4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 2
@@ -451,8 +475,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "E4",
-        "pitches": ["E4"],
-        "pitchSpellings": ["e4"],
+        "pitches": [
+          "E4"
+        ],
+        "pitchSpellings": [
+          "e4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 4
@@ -504,8 +532,12 @@
         "voice": "lead",
         "kind": "note",
         "pitch": "D4",
-        "pitches": ["D4"],
-        "pitchSpellings": ["d4"],
+        "pitches": [
+          "D4"
+        ],
+        "pitchSpellings": [
+          "d4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 2
@@ -557,8 +589,12 @@
         "voice": "upper",
         "kind": "note",
         "pitch": "C5",
-        "pitches": ["C5"],
-        "pitchSpellings": ["c5"],
+        "pitches": [
+          "C5"
+        ],
+        "pitchSpellings": [
+          "c5"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 1
@@ -596,8 +632,12 @@
         "voice": "upper",
         "kind": "note",
         "pitch": "C5",
-        "pitches": ["C5"],
-        "pitchSpellings": ["c5"],
+        "pitches": [
+          "C5"
+        ],
+        "pitchSpellings": [
+          "c5"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 1
@@ -635,8 +675,12 @@
         "voice": "upper",
         "kind": "note",
         "pitch": "A4",
-        "pitches": ["A4"],
-        "pitchSpellings": ["a4"],
+        "pitches": [
+          "A4"
+        ],
+        "pitchSpellings": [
+          "a4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 1
@@ -674,8 +718,12 @@
         "voice": "upper",
         "kind": "note",
         "pitch": "G♯4",
-        "pitches": ["G♯4"],
-        "pitchSpellings": ["g#4"],
+        "pitches": [
+          "G♯4"
+        ],
+        "pitchSpellings": [
+          "g#4"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 1
@@ -713,8 +761,12 @@
         "voice": "bass",
         "kind": "note",
         "pitch": "A2",
-        "pitches": ["A2"],
-        "pitchSpellings": ["a2"],
+        "pitches": [
+          "A2"
+        ],
+        "pitchSpellings": [
+          "a2"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 1
@@ -752,8 +804,12 @@
         "voice": "bass",
         "kind": "note",
         "pitch": "F2",
-        "pitches": ["F2"],
-        "pitchSpellings": ["f2"],
+        "pitches": [
+          "F2"
+        ],
+        "pitchSpellings": [
+          "f2"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 1
@@ -791,8 +847,12 @@
         "voice": "bass",
         "kind": "note",
         "pitch": "D2",
-        "pitches": ["D2"],
-        "pitchSpellings": ["d2"],
+        "pitches": [
+          "D2"
+        ],
+        "pitchSpellings": [
+          "d2"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 1
@@ -830,8 +890,12 @@
         "voice": "bass",
         "kind": "note",
         "pitch": "E2",
-        "pitches": ["E2"],
-        "pitchSpellings": ["e2"],
+        "pitches": [
+          "E2"
+        ],
+        "pitchSpellings": [
+          "e2"
+        ],
         "duration": {
           "numerator": 1,
           "denominator": 1
@@ -888,7 +952,13 @@
           "end": 414
         },
         "line": 23,
-        "events": ["event-0", "event-1", "event-2", "event-3", "event-4"]
+        "events": [
+          "event-0",
+          "event-1",
+          "event-2",
+          "event-3",
+          "event-4"
+        ]
       },
       {
         "id": "occurrence-1",
@@ -918,7 +988,13 @@
           "end": 483
         },
         "line": 26,
-        "events": ["event-5", "event-6", "event-7", "event-8", "event-9"]
+        "events": [
+          "event-5",
+          "event-6",
+          "event-7",
+          "event-8",
+          "event-9"
+        ]
       }
     ],
     "outline": [],
