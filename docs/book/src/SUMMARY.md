@@ -6,6 +6,14 @@
 
 - [Getting started](tutorials/getting-started.md)
 
+# Writing music
+
+- [First pieces](guide/first-pieces.md)
+- [Keys, degrees, and chords](guide/keys-degrees-and-chords.md)
+- [When you need a name](guide/names.md)
+- [Claims and readings](guide/claims-and-readings.md)
+- [Cookbook](guide/cookbook.md)
+
 # How-to guides
 
 - [Check and fix a piece](how-to/check.md)
@@ -26,6 +34,7 @@
 - [Source and provenance](concepts/provenance.md)
 - [The desktop interface](concepts/interface.md)
 - [The style guide](concepts/style-guide.md)
+- [What musa refuses to blur](concepts/distinctions.md)
 
 # Reference
 

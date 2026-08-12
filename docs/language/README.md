@@ -29,14 +29,16 @@ projects source rather than owning another mutable score, instrument, or mix mod
 | `07-analysis.md` | the analysis boundary, findings and evidence, and the admission rule for a new kind |
 | `08-performance-and-sound.md` | score-to-gesture-to-instrument-to-signal semantics |
 | `09-assets-and-packages.md` | reproducible assets, packages, sample maps, clips, and fixed media |
-| `handbook/` | the two-path handbook: a musician's task path and an implementor's reference |
+| `citations.md` | every theoretical claim in these documents, and the chapter or proof it comes from |
 
 The numbering deliberately leaves room for future notation and analysis documents without renumbering the sound and
 project contracts.
 
-The handbook **teaches**; these documents **decide**. It quotes fixtures rather than inventing syntax, generates every
-standard-library signature from the compiler's own record, and is checked by `scripts/check-language-docs.sh`. Where the
-two disagree, the specification is right and the handbook has a bug.
+These documents **decide**; [`../book/`](../book/src/introduction.md) **teaches**. The teaching pages quote fixtures
+rather than inventing syntax and generate every standard-library signature from the compiler's own record, and
+`scripts/check-docs.sh` holds them to it. Where the two disagree, the specification is right and the book has a bug. The
+implementor's path — grammar to kernel, laws, ownership, and extension recipes — is
+[`../architecture/implementor-reference.md`](../architecture/implementor-reference.md).
 
 ## Graduation
 

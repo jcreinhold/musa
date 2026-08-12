@@ -13,6 +13,8 @@ Read them in this order:
 3. [process-runtime.md](process-runtime.md) explains how `musa-audio` prepares a graph for the real-time engine.
 4. [spec-to-implementation-map.md](spec-to-implementation-map.md) marks each planned feature as implemented, partial, or
    absent.
+5. [implementor-reference.md](implementor-reference.md) is the orientation for someone changing the compiler: grammar to
+   kernel, the laws each stage owes, and the recipe for adding a domain, an analysis kind, or an assertion.
 
 `docs/roadmap.md` remains the broad roadmap. These pages give more precise boundaries where the later cross-stage
 specification changed or clarified that roadmap.

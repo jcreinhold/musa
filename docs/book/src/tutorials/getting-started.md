@@ -35,7 +35,8 @@ piece "first" {
 ```
 
 Read the notes aloud: `c4/4` is middle C for a quarter note, `g4/2` the G above it for a half, `rest/1` a whole measure
-of rest. Durations are exact fractions of a whole note.
+of rest. Durations are exact fractions of a whole note. [First pieces](../guide/first-pieces.md) takes this apart
+properly; this lesson only gets it playing.
 
 ## Check it
 
@@ -66,6 +67,8 @@ Playback runs through the built-in audio engine. Without a `studio` block the pa
 
 ## Where to go next
 
+- [First pieces](../guide/first-pieces.md) — notes, bars, voices, parts, and reusable phrases, worked through against
+  the repository's own fixtures. Start here; the four chapters after it build on it.
 - [The language](../reference/language.md) — the full surface syntax.
 - `examples/` in the repository — pieces the test suite compiles on every run. `glass-mountain.musa` exercises motifs,
   transposition, and the studio; `annotated.musa` shows phrases, sections, and chord symbols.

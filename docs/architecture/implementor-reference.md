@@ -33,9 +33,9 @@ Three rules follow, and they are the ones most often reached for:
 
 ## 2. Surface to kernel
 
-The surface grammar is settled in [`../01-surface.md`](../01-surface.md) §1; the total value calculus and its
-metatheoretic obligations are [`../02-core-calculus.md`](../02-core-calculus.md); the elaboration rules per construct
-are `../../kernel/06-surface-elaboration.md`.
+The surface grammar is settled in [`01-surface.md`](../language/01-surface.md) §1; the total value calculus and its
+metatheoretic obligations are [`02-core-calculus.md`](../language/02-core-calculus.md); the elaboration rules per
+construct are `../../kernel/06-surface-elaboration.md`.
 
 The shape to hold in mind:
 
@@ -56,8 +56,8 @@ be elaborated from the three that exist, the specification is what changes, not 
 
 ### Typing, briefly
 
-Judgments are in [`../02-core-calculus.md`](../02-core-calculus.md) §2 and the staging judgments in
-[`../00-semantics.md`](../00-semantics.md) §2. Two things surprise newcomers:
+Judgments are in [`02-core-calculus.md`](../language/02-core-calculus.md) §2 and the staging judgments in
+[`00-semantics.md`](../language/00-semantics.md) §2. Two things surprise newcomers:
 
 - **`Music` is contextual.** A music value carries no key and no scale. It elaborates under whatever context is in force
   at its *use* site, which is why one saved phrase can mean two things at two sites and why elaboration is not a pure
@@ -157,7 +157,7 @@ Three invariants to preserve when adding a pass:
 
 Termination is not enough: a total language can still ask for a score nobody can hold. One deterministic meter runs over
 checking and evaluation, charging a finite operation's known count *before* it enters its loop
-([`../02-core-calculus.md`](../02-core-calculus.md) §4). It covers monomorphized definition count and closure
+([`02-core-calculus.md`](../language/02-core-calculus.md) §4). It covers monomorphized definition count and closure
 environment size, fold work including products induced by nesting, generated occurrence and kernel binding counts,
 instantiation count and dependency depth, and quotation size after substitution.
 
@@ -187,7 +187,7 @@ compiler internals.
 
 ## 7. Modules, ownership, and what is public
 
-[`../04-templates-and-modules.md`](../04-templates-and-modules.md) decides; the operational consequences are:
+[`04-templates-and-modules.md`](../language/04-templates-and-modules.md) decides; the operational consequences are:
 
 - **A signature seals.** A member a signature does not list is private to the structure that defines it, and naming it
   from outside is an error rather than a coincidence that works. The generated reference publishes exactly the sealed
@@ -202,9 +202,10 @@ compiler internals.
 ## 8. Extension recipes
 
 **Adding a base type.** A new base type is admitted by a registry entry rather than a new induction
-([`../02-core-calculus.md`](../02-core-calculus.md) §5.8). The price of that cheap admission is a row in
-[`../03-musical-domains.md`](../03-musical-domains.md) §6 stating what the type means, where the meaning comes from, and
-a falsifying example. A row with no falsifier is a type that has not said what it is for, and could have been a `Nat`.
+([`02-core-calculus.md`](../language/02-core-calculus.md) §5.8). The price of that cheap admission is a row in
+[`03-musical-domains.md`](../language/03-musical-domains.md) §6 stating what the type means, where the meaning comes
+from, and a falsifying example. A row with no falsifier is a type that has not said what it is for, and could have been
+a `Nat`.
 
 **Adding a standard-library operation.** Write it in `stdlib/src/` as ordinary Musa, with a comment block above it: the
 comment is what the editor shows on hover and what the generated reference publishes, and
@@ -212,12 +213,12 @@ comment is what the editor shows on hover and what the generated reference publi
 new. Nothing else is registered anywhere — a bundled module is compiled from its own `mod` declarations, so a file that
 is not declared is a fault rather than a hidden module.
 
-**Adding an analysis kind.** The admission rule is [`../07-analysis.md`](../07-analysis.md) §2 and §6, and it is
+**Adding an analysis kind.** The admission rule is [`07-analysis.md`](../language/07-analysis.md) §2 and §6, and it is
 demanding on purpose: state the abstract domain, the abstraction map α, and what the concretization γ admits. Without a
 stated α, "candidate" and "fact" mean nothing.
 
-**Adding an assertion kind.** Don't, without changing [`../05-verification.md`](../05-verification.md). The family is
-fixed at five, and a style rule is not an assertion kind — it is an argument to `follows`.
+**Adding an assertion kind.** Don't, without changing [`05-verification.md`](../language/05-verification.md). The family
+is fixed at five, and a style rule is not an assertion kind — it is an argument to `follows`.
 
 **Adding a diagnostic.** Add a fixture to `examples/broken/`. The rendered report is snapshotted whole, at a fixed width
 and without colour, so a help line cannot stop matching its message unnoticed.

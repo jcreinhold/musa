@@ -1,7 +1,7 @@
 # Keys, degrees, and chords
 
-Everything in [01](01-first-pieces.md) was a note you typed. This chapter is about writing the *reason* for a note
-instead — a degree of a collection, a member of a chord — and letting the compiler work out which note that is.
+Everything in [First pieces](first-pieces.md) was a note you typed. This chapter is about writing the *reason* for a
+note instead — a degree of a collection, a member of a chord — and letting the compiler work out which note that is.
 
 Nothing here is automatic. Musa will not pick a minor collection for you, will not voice a chord for you, and will not
 decide that your passage has modulated. Each of those is a decision, and the language makes you write it down.
@@ -167,7 +167,7 @@ collection it was realized against.
 operations.
 
 Reading a numeral *off* a passage is a different activity with a different answer, and it is in
-[04](04-claims-and-readings.md).
+[Claims and readings](claims-and-readings.md).
 
 ## 5. When the spelling stops mattering
 
@@ -175,7 +175,8 @@ Twelve-tone and pitch-class-set work is an algebra over `pc12 = ℤ/12ℤ`, and 
 which letter the note was written with. `std::post_tonal::pcset` holds sets, normal order, prime form, and
 interval-class vectors; `std::post_tonal::serial` holds rows, their forms, and their matrices. Going back into notation
 is `spelled_in`, which takes the collection that decides the spelling and answers nothing where that collection has no
-such note — see `examples/serial-forms.musa`, and [06 §2](06-distinctions.md#2-a-pitch-class-is-not-a-residue-mod-12).
+such note — see `examples/serial-forms.musa`, and
+[What musa refuses to blur §2](../concepts/distinctions.md#2-a-pitch-class-is-not-a-residue-mod-12).
 
 The remaining bundled modules are the plumbing: `std::core` for exact rationals and the small total operations,
 `std::list` for finite lists, and `std::pitch` for the named written intervals.

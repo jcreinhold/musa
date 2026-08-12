@@ -29,7 +29,7 @@ the repository does not require it to build.
 | repeats with first and second endings | OMT `057-binary-form.md` |
 
 `meter none` — an unmeasured passage — is not from a chapter. It is a notational fact Musa needs because chant and
-cadenzas exist, and it is specified in [`../01-surface.md`](../01-surface.md).
+cadenzas exist, and it is specified in [`01-surface.md`](01-surface.md).
 
 ## 2. Pitch, interval, and pitch class
 
@@ -37,13 +37,13 @@ cadenzas exist, and it is specified in [`../01-surface.md`](../01-surface.md).
 | --- | --- |
 | `Pitch` and `Interval` as staff-and-chromatic pairs | OMT `005-half-steps-whole-steps-and-accidentals.md`, `016-intervals.md` |
 | interval names (`M3`, `d5`, `P8`) and their qualities | OMT `016-intervals.md` |
-| `NoteName`: a spelled pitch class, octave forgotten | Musa definition — the quotient lemma, [`../03-musical-domains.md`](../03-musical-domains.md) §1 |
+| `NoteName`: a spelled pitch class, octave forgotten | Musa definition — the quotient lemma, [`03-musical-domains.md`](03-musical-domains.md) §1 |
 | `Pc12`: `ℤ/12ℤ`, where `B♯ = C` | OMT `099-pitch-and-pitch-class.md`, `100-intervals-in-integer-notation.md` |
 
 Musa proves two things here rather than citing them, because they are what make spelling survive arithmetic: that
 interval addition is a **faithful action** on `ℤ²`, and that the action **descends** to the octave quotient. Both are in
-[`../03-musical-domains.md`](../03-musical-domains.md) §1, and the consequence a composer sees is
-[06 §1](06-distinctions.md#1-written-pitch-is-not-sounding-pitch).
+[`03-musical-domains.md`](03-musical-domains.md) §1, and the consequence a composer sees is
+[What musa refuses to blur §1](../book/src/concepts/distinctions.md#1-written-pitch-is-not-sounding-pitch).
 
 ## 3. Scales, keys, modes, and collections
 
@@ -57,7 +57,8 @@ interval addition is a **faithful action** on `ℤ²`, and that the action **des
 | `Degree` and `Frame`: an ordinal plus its register | Musa definition — the round-trip lemma, `../03-musical-domains.md` §2 |
 
 The separation of `Key` from `Scale` is Musa's, forced by minor: OMT `014` describes three collections that share one
-key signature, and no single collection can stand for the key. See [06 §3](06-distinctions.md#3-a-key-is-not-a-scale).
+key signature, and no single collection can stand for the key. See
+[What musa refuses to blur §3](../book/src/concepts/distinctions.md#3-a-key-is-not-a-scale).
 
 ## 4. Harmony
 
@@ -122,7 +123,7 @@ step, returning what repeated and what never arrived.
 Every style rule Musa checks is in the registry at `crates/musa-compiler/src/analysis/rules.rs`, and **every row of that
 registry carries a citation** — a rule whose source is "everyone knows" is exactly what the registry exists to refuse.
 The full table, with each rule's strength and the section it cites, is
-[`../07-analysis.md`](../07-analysis.md#voice-leading-and-counterpoint).
+[`07-analysis.md`](07-analysis.md#voice-leading-and-counterpoint).
 
 | Profile | Where it comes from |
 | --- | --- |
@@ -133,7 +134,8 @@ The full table, with each rule's strength and the section it cites, is
 
 The profiles are named in the request precisely because they disagree. OMT `022` and OMT `076` take opposite views of
 parallel fifths, and they are both right about the music they describe; a reading that averaged them would describe
-none. See [06 §8](06-distinctions.md#8-a-failed-claim-is-not-a-style-violation).
+none. See
+[What musa refuses to blur §8](../book/src/concepts/distinctions.md#8-a-failed-claim-is-not-a-style-violation).
 
 ## 9. Cadences and analysis
 
@@ -142,7 +144,7 @@ none. See [06 §8](06-distinctions.md#8-a-failed-claim-is-not-a-style-violation)
 | cadence types and the criteria each one needs | OMT `036-introduction-to-harmony-cadences-and-phrase-endings.md` |
 | tonicization read apart from modulation | OMT `050-tonicization.md`, `051-extended-tonicization-and-modulation-to-closely-related-keys.md` |
 | a minor key read through natural *and* harmonic collections | OMT `014-minor-scales-scale-degrees-and-key-signatures.md` |
-| the standing of a reading that has alternatives | Musa definition — the admission rule, [`../07-analysis.md`](../07-analysis.md) §2 |
+| the standing of a reading that has alternatives | Musa definition — the admission rule, [`07-analysis.md`](07-analysis.md) §2 |
 
 Each cadence finding names the criteria it met and the ones it did not, taken from OMT `036` — which is what lets a
 report say "authentic, but the soprano does not arrive on the tonic" instead of picking a label.
@@ -157,18 +159,17 @@ report say "authentic, but the soprano does not arrive on the tonic" instead of 
 
 OMT `074` is explicit that the swing ratio varies and is not what the page says, which is the whole reason notated
 duration and performed duration are different types
-([06 §10](06-distinctions.md#10-notated-time-is-not-performed-time)).
+([What musa refuses to blur §10](../book/src/concepts/distinctions.md#10-notated-time-is-not-performed-time)).
 
-Instruments, the studio, and orchestration are specified in
-[`../08-performance-and-sound.md`](../08-performance-and-sound.md) against OMT `114-core-principles-of-orchestration.md`
-and `116-transcription-from-piano.md`, and are built by prompts 130–142. Their citations belong to that specification
-until then; prompt 143 adds their half of this handbook.
+Instruments, the studio, and orchestration are specified in [`08-performance-and-sound.md`](08-performance-and-sound.md)
+against OMT `114-core-principles-of-orchestration.md` and `116-transcription-from-piano.md`, and are built by prompts
+130–142. Their citations belong to that specification until then; prompt 143 adds their half of this handbook.
 
 ## 11. What Musa proves for itself
 
 Six results are not cited because they are not OMT's; they are stated and proved in
-[`../03-musical-domains.md`](../03-musical-domains.md), and each exists to license an operation that would otherwise be
-a convention.
+[`03-musical-domains.md`](03-musical-domains.md), and each exists to license an operation that would otherwise be a
+convention.
 
 | Result | What it licenses |
 | --- | --- |
@@ -180,8 +181,8 @@ a convention.
 | finite closure | row transformations are total after construction |
 
 Everything below the musical layer — the total core calculus, the temporal kernel, elaboration, and normalization — is
-Musa's own and is specified in [`../02-core-calculus.md`](../02-core-calculus.md) and `../../kernel/`. No music theory
-is cited there, because none is used: the kernel knows about exact time and typed occurrences and nothing about notes.
+Musa's own and is specified in [`02-core-calculus.md`](02-core-calculus.md) and `../kernel/`. No music theory is cited
+there, because none is used: the kernel knows about exact time and typed occurrences and nothing about notes.
 
 ## 12. Cited, and deliberately not implemented
 

@@ -49,7 +49,7 @@ musa render examples/twinkle.musa --to lilypond
 
 Sharps and flats are written after the letter: `g#4`, `bb4`, `f##3`. A spelling is a decision Musa keeps — `g#4` and
 `ab4` are two different notes that happen to sound alike, and nothing in the compiler will quietly turn one into the
-other ([06 §1](06-distinctions.md#1-written-pitch-is-not-sounding-pitch)).
+other ([What musa refuses to blur §1](../concepts/distinctions.md#1-written-pitch-is-not-sounding-pitch)).
 
 From `examples/chant.musa`:
 
@@ -160,7 +160,8 @@ articulation attached to the event before it.
 
 ## 5. Where to go next
 
-- Degrees, collections, and harmony you construct rather than type out: [02](02-keys-degrees-and-chords.md).
-- The same phrase in several keys, or the same piece made twice: [03](03-when-you-need-a-name.md).
-- Writing down a claim about a passage and having the compiler check it: [04](04-claims-and-readings.md).
-- A specific task, quickly: [05](05-cookbook.md).
+- Degrees, collections, and harmony you construct rather than type out:
+  [Keys, degrees, and chords](keys-degrees-and-chords.md).
+- The same phrase in several keys, or the same piece made twice: [When you need a name](names.md).
+- Writing down a claim about a passage and having the compiler check it: [Claims and readings](claims-and-readings.md).
+- A specific task, quickly: [Cookbook](cookbook.md).

@@ -143,7 +143,7 @@ The exit code of `musa analyze` says whether the *request* could be answered, ne
 with nothing in it is a window with nothing in it.
 
 The kinds that ship, what each one's abstract domain is, and the admission rule a new kind must pass are in
-[`../07-analysis.md`](../07-analysis.md).
+[`docs/language/07-analysis.md`](../../../language/07-analysis.md).
 
 ## 3. The kernel quote
 

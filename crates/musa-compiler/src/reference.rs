@@ -1,7 +1,7 @@
 //! The bundled library's reference, written from what the checker recorded.
 //!
 //! One fact, three readers. A composer hovering `close_position` in the editor,
-//! a reader of `stdlib/reference.md`, and the handbook under `docs/language/`
+//! a reader of `stdlib/reference.md`, and the guide under `docs/book/`
 //! are all asking the same question — what does this name mean, and what may I
 //! write after it — and the answer is [`crate::docs::ItemDoc`], produced by the
 //! pass that checked the declaration. Nothing here re-reads the source.

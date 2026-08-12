@@ -481,7 +481,7 @@ impl std::fmt::Display for Type {
 /// class written where music was wanted, a degree where a pitch was, a key
 /// where a collection was — and those are not slips at all. They are a reader
 /// meeting a separation this language makes and ordinary musical talk does
-/// not (`docs/language/handbook/06-distinctions.md`), and the useful thing to
+/// not (`docs/book/src/concepts/distinctions.md`), and the useful thing to
 /// say is not "these differ" but *which operation crosses the gap, and what it
 /// needs from you that the value on its own does not carry*.
 ///

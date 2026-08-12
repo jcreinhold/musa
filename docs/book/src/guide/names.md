@@ -173,4 +173,4 @@ lives in a nested file; nothing else about it is different. Binding is flat — 
 simply in scope.
 
 Follow a name to its declaration in the editor and you get the bundled module's own source, read-only, because there is
-no file on disk to edit. Every published name is listed in [`stdlib/reference.md`](../../../stdlib/reference.md).
+no file on disk to edit. Every published name is listed in [`stdlib/reference.md`](../../../../stdlib/reference.md).
