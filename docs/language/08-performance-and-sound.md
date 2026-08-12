@@ -1,6 +1,6 @@
 # Performance and sound
 
-> **`docs/core-boundary.md` governs where this document differs.** The `GestureTimeline` named below is the temporal
+> **`docs/governance/01-constitution.md` §7 governs where this document differs.** The `GestureTimeline` named below is the temporal
 > kernel at a gesture payload — `Timeline<Gesture>` — not a structure with its own ordering, equality, or hash. Signals
 > stay outside the core; the prepared render plan is what crosses, under the law `R1`.
 

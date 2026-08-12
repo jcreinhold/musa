@@ -8,8 +8,9 @@ phase: 4
 
 # A Library May Live Elsewhere Without Making Builds Implicit
 
-> **Governed by `docs/core-boundary.md`.** Prompt 126 decided that the core is a calculus of occurrences of any
-> canonical payload, that signals stay outside it, and what that forbids. Read it before this prompt's Design.
+> **Governed by `docs/governance/01-constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of
+> occurrences of any canonical payload, that signals stay outside it, and what that forbids. Read them before this
+> prompt's Design.
 
 ## Task
 

@@ -8,8 +8,9 @@ phase: 4
 
 # Audit the Performance and Sound Language
 
-> **Governed by `docs/core-boundary.md`.** Prompt 126 decided that the core is a calculus of occurrences of any
-> canonical payload, that signals stay outside it, and what that forbids. Read it before this prompt's Design.
+> **Governed by `docs/governance/01-constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of
+> occurrences of any canonical payload, that signals stay outside it, and what that forbids. Read them before this
+> prompt's Design.
 
 ## Task
 
@@ -20,7 +21,7 @@ real-time row before the whole-language graduation prompt may run. This prompt a
 
 ## Read
 
-- `docs/core-boundary.md` §6 in full — the eight things the decision forbids are audit rows here, and this is the prompt
+- `docs/governance/01-constitution.md` §7 and §4 in full — the things the decision forbids are audit rows here, and this is the prompt
   that catches a later prompt having quietly re-opened one. `docs/kernel/12-payload-admission.md`'s admission table.
 - `docs/spec/03-process-calculus.md`, `04-identity-and-realization.md`, and the architecture spec-to-implementation map.
 - Prompt 93 baseline and expected-change ledger; all prompt 128–142 completion/repair notes and benchmark artifacts.
@@ -43,7 +44,7 @@ and observed result. At minimum cover:
 - source-edit authority, Origin/navigation, generated docs, editor drift, accessibility, stale/error states;
 - offline/live equality, deterministic outputs, NaN/silence laws, callback/retirement instrumentation, and prompt 144
   budgets;
-- **the core boundary itself** — one row per `docs/core-boundary.md` §6 rule, each with executable evidence rather than
+- **the core boundary itself** — one row per rule forbidden by `docs/governance/01-constitution.md` §7 and §4, each with executable evidence rather than
   a reading:
   - no fourth combinator, and no addition to `musa-kernel`'s public surface since prompt 126 (`git diff` on the facade
     is the evidence);
@@ -66,7 +67,7 @@ failure, reinstall, and callback underrun if streaming was admitted. Audit depen
 remove dead compatibility internals but retain accepted source aliases according to their deprecation policy.
 
 A red row in the core-boundary group is repaired at the owning prompt, or — if the rule itself turns out to be wrong —
-by amending `docs/core-boundary.md` §6 and `docs/course-correction.md` §36 together, which is a decision and therefore
+by amending `docs/governance/01-constitution.md` §7, by its README's amendment procedure, which is a decision and therefore
 not this prompt's to make alone. If any row is red or unowned, repair the smallest responsible prompt/design and stop
 this prompt. Do not weaken a law, support claim, golden, or budget to make the matrix green. This audit does not yet
 graduate `docs/language/`; prompt 146 does so only after combining it with the score/elaboration audit.

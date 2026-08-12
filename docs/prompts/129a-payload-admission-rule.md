@@ -11,7 +11,7 @@ phase: 3
 ## Task
 
 Write the payload-admission rule into `docs/kernel/` **before** prompt 130 admits the first payload that is not
-`ScoreFact`, repair the verified unframed semantic-identity bug, and state exact `R1`. `docs/core-boundary.md` decided
+`ScoreFact`, repair the verified unframed semantic-identity bug, and state exact `R1`. Prompt 126 decided
 that the core is a calculus of occurrences of any canonical payload. The later proof review found that the current N5
 display writer is not an injective encoding and that “injective on values” contradicts `ScoreFact` deliberately dropping
 fields. This prompt repairs the governing rule and implementation together; it adds no temporal operation or compiler
@@ -19,7 +19,7 @@ feature.
 
 ## Read
 
-- `docs/core-boundary.md` — the decision, §4's obligations, §5's boundary, §6's list of what is forbidden.
+- `docs/governance/01-constitution.md` §7 and §4 — the decision, its boundary, and its list of what is forbidden.
 - `docs/kernel/00-purpose.md` §12 (payload opacity), `03-denotational-semantics.md` D1–D12, `04-algebraic-laws.md`
   L1–L24 and X1–X3, `05-normalization.md` N1–N7, `07-backend-contract.md`, `10-term-calculus.md` T1–T6 and the scope
   rule.
@@ -45,7 +45,7 @@ A new document, `docs/kernel/12-payload-admission.md`, stating in this order:
    changes the quotient version.
 3. **What a payload may not do.** Add an operation to the kernel; require the kernel to inspect it; carry absolute time
    (seconds, frames, samples); carry a coinductive value. Each with the law or boundary that forbids it, citing
-   `docs/core-boundary.md` §6.
+   `docs/governance/01-constitution.md` §7.
 4. **Law transport.** L1–L23, X1–X3, and T1–T6 hold at every admitted payload **unchanged**, by genericity of the
    statements over `A` — not by a new proof per payload. L24 holds conditionally: at a payload carrying a `Progress`.
    N1–N7 hold given `Canonical`. Say which laws are transported and which are conditional, and say that the law suite's
@@ -111,7 +111,7 @@ law needs a different *statement*, the admission rule is wrong and this prompt i
   the suite says what it protects.
 - Versioned schema metadata on every current `Canonical` implementation and a framed semantic hash writer separate from
   `Display`, with the exact/adversarial regressions above.
-- `docs/core-boundary.md` §4's obligation 1 marked satisfied, with the document it points at.
+- the payload-admission obligation marked satisfied, with the document it points at.
 
 ## Check
 
@@ -119,7 +119,7 @@ law needs a different *statement*, the admission rule is wrong and this prompt i
 cargo nextest run -p musa-kernel
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check
-mdwright fmt-check docs/kernel/*.md docs/core-boundary.md
+mdwright fmt-check docs/kernel/*.md docs/governance/*.md
 python3 scripts/renumber-prompts.py audit
 ```
 
@@ -130,6 +130,6 @@ The law suite must pass at both payloads with the same property statements. Comm
 - No new temporal operation, term form, or dependency. Public `Canonical` metadata may change only as required to make
   the existing equality/hash contract exact.
 - No gesture payload. Prompt 130 defines it; this prompt defines what it will have to satisfy.
-- No signal payload, and no re-opening of `docs/core-boundary.md` §5.
+- No signal payload, and no re-opening of `docs/governance/01-constitution.md` §4.
 - No change to which `ScoreFact` fields its key observes. Add its owner/version metadata and record the current
   quotient; a different quotient is a separate design decision.

@@ -73,7 +73,7 @@ source for claims about `ff9dbcc`.
 
 ### 3.1 It contradicts the documents it claims to sit under
 
-**VERIFIED.** [Core boundary §6](../core-boundary.md#6-what-this-forbids) says that reopening any forbid requires a
+**VERIFIED.** The core boundary's list of what the decision forbids (now `docs/governance/01-constitution.md` §7) says that reopening any forbid requires a
 joint amendment of that document and course-correction §36. Its forbid 5 is “No dependent indices in the kernel.” Its
 forbid 1 fixes the kernel forms and says a new convenience must elaborate from them. [Course correction
 §36](../course-correction.md#36-amendment-prompt-126-what-the-core-is-a-calculus-of) independently says that the

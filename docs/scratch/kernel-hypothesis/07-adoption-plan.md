@@ -31,10 +31,10 @@ this directory existed, which makes them unbiased instruments.
 
 | Prompt | What it builds | Which atom it gates | The reading to take |
 | --- | --- | --- | --- |
-| [116](../prompts/116-explicit-theory-assertions.md) — Explicit Musical Assertions | checked claims over a passage, with provenance and teaching diagnostics | **Atom 6 / Amendment VI** | Its Task already says "nothing becomes a global style rule merely because it can be checked locally." If the assertion family needs invariance side-conditions to be stated by hand, Atom 6 has its demand. |
-| [117](../prompts/117-analysis-service.md) — Typed Observation Service | the evidence model | **Amendment VI** | Whether a finding can carry its derivation, or degenerates to a verdict |
-| [118](../prompts/118-tonal-analysis.md) — Evidence-Based Tonal and Cadential Analysis | key and cadence claims | **Atom 4 (layers), Amendment III** | Cadence detection needs metrical position. If it has to ask "which meter region am I in" and the answer is ambiguous under a hypermetrical reading, Atom 4 has its demand. |
-| [119](../prompts/119-voice-leading-and-counterpoint.md) — Voice-Leading and Counterpoint Profiles | SATB, species 1–5, jazz motion | **Atom 2 (succession)** | Its Read section already says to read "current voice identity." This is the decisive test. |
+| [116](../../prompts/116-explicit-theory-assertions.md) — Explicit Musical Assertions | checked claims over a passage, with provenance and teaching diagnostics | **Atom 6 / Amendment VI** | Its Task already says "nothing becomes a global style rule merely because it can be checked locally." If the assertion family needs invariance side-conditions to be stated by hand, Atom 6 has its demand. |
+| [117](../../prompts/117-analysis-service.md) — Typed Observation Service | the evidence model | **Amendment VI** | Whether a finding can carry its derivation, or degenerates to a verdict |
+| [118](../../prompts/118-tonal-analysis.md) — Evidence-Based Tonal and Cadential Analysis | key and cadence claims | **Atom 4 (layers), Amendment III** | Cadence detection needs metrical position. If it has to ask "which meter region am I in" and the answer is ambiguous under a hypermetrical reading, Atom 4 has its demand. |
+| [119](../../prompts/119-voice-leading-and-counterpoint.md) — Voice-Leading and Counterpoint Profiles | SATB, species 1–5, jazz motion | **Atom 2 (succession)** | Its Read section already says to read "current voice identity." This is the decisive test. |
 
 Prompt 119 is the one to watch. It is the consumer that most wants lines, and its own Design already encodes Amendment
 VI almost word for word — profiles "state their style," rules are marked "definitional, hard within that exercise, or a
@@ -130,7 +130,7 @@ Nothing yet. Concretely:
   evidence. A kernel-shape change is the one irreversible-feeling move here and it should be the last one made.
 - **Renumbering.** Per the standing convention, new work becomes numbered prompts with the rest renumbered. Track A and
   B prompts belong in the phase-3 block (115–127). A Track C prompt belongs *after*
-  [146](../prompts/146-language-conformance.md), the whole-language conformance and graduation prompt, because changing
+  [146](../../prompts/146-language-conformance.md), the whole-language conformance and graduation prompt, because changing
   the kernel denotation before the language is graduated against it would invalidate the graduation.
 - **This directory's status.** It stays research. If Tracks A and B land, `00-constitution.md`'s Amendments III, V, and
   VI get folded into `docs/course-correction.md` as amendments to it, and Amendments II and IV are either withdrawn or
@@ -190,7 +190,7 @@ In order, smallest first:
 1. Run Track A step 1 — the quotient audit. It is half a day and it either produces Atom 6's demand or removes it.
 2. Write the explicit-polymeter fixture (Track B step 2). It is an hour and it is a permanent regression test either
    way.
-3. ~~Resume the prompt stack at [114](../prompts/114-angle-bracketed-type-parameters.md) and run through 119 as written,
+3. ~~Resume the prompt stack at [114](../../prompts/114-angle-bracketed-type-parameters.md) and run through 119 as written,
    reading 116–119 as the gates in §2 rather than as ordinary features.~~ **Done**; 114–119 are all `done`.
 4. ~~Return here after 119 with the evidence, and decide Atom 2 then.~~ **Done**; see Gate 2. Atom 2 is withdrawn and
    Track C is closed, which leaves Track A (items 1 and 2 above) as the whole of the outstanding work here.

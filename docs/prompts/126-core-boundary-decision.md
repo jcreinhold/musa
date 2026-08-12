@@ -105,7 +105,7 @@ repair and the decision that forces it are one change.
 
 ## Target
 
-- `docs/core-boundary.md` — the decision document: the census, the three candidates, the five tests applied to each, the
+- The core-boundary decision record (`docs/scratch/61-core-boundary-decision-record.md`): the census, the three candidates, the five tests applied to each, the
   chosen answer, the signal question settled, and the ledger over prompts 127–146. It states its own precedence: it
   governs over `docs/language/` where they differ, and sits under `docs/course-correction.md` — an amendment to the
   course correction is written into the course correction itself, in this commit, or it has not been made.
@@ -113,14 +113,14 @@ repair and the decision that forces it are one change.
   work the decision requires that no prompt covers, inserted with `scripts/renumber-prompts.py`.
 - Updated `docs/prompts/README.md` (index table, block summaries) and `AGENTS.md` (governing-document list, prompt
   count).
-- A `docs/core-boundary.md` §"What this forbids" listing what the chosen answer takes off the table, so that a later
+- A `docs/governance/01-constitution.md` §7 listing what the chosen answer takes off the table, so that a later
   prompt cannot quietly re-open it.
 
 ## Check
 
 ```sh
 python3 scripts/renumber-prompts.py audit
-mdwright fmt-check docs/core-boundary.md docs/prompts/*.md docs/language/*.md AGENTS.md
+mdwright fmt-check docs/governance/*.md docs/prompts/*.md docs/language/*.md AGENTS.md
 cargo nextest run -p musa-kernel -p musa-compiler
 cargo clippy --workspace --all-targets -- -D warnings
 cargo fmt --check

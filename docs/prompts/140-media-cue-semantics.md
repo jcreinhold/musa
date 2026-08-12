@@ -8,8 +8,9 @@ phase: 4
 
 # A Recording Has Either Musical Extent or Physical Duration
 
-> **Governed by `docs/core-boundary.md`.** Prompt 126 decided that the core is a calculus of occurrences of any
-> canonical payload, that signals stay outside it, and what that forbids. Read it before this prompt's Design.
+> **Governed by `docs/governance/01-constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of
+> occurrences of any canonical payload, that signals stay outside it, and what that forbids. Read them before this
+> prompt's Design.
 
 ## Task
 
@@ -20,7 +21,7 @@ before any clip player is written.
 
 ## Read
 
-- `docs/core-boundary.md` §5 and §6 rule 4 — the boundary this prompt draws at the surface is the same one the core
+- `docs/governance/01-constitution.md` §4 and §7 — the boundary this prompt draws at the surface is the same one the core
   boundary draws in the type system, and rule 4 is the constraint the cue payload has to satisfy.
   `docs/kernel/12-payload-admission.md` from prompt 129a for what a media payload owes.
 - `docs/language/08-performance-and-sound.md` and `09-assets-and-packages.md`; kernel occurrence/transform laws; backend
@@ -41,7 +42,7 @@ Define three disjoint constructs:
 3. A **fixed-media cue** is a point occurrence at beat `b` referencing an asset and playback settings. Its physical
    start is `tempo(b)` and its physical end is `tempo(b)+L`; its asset duration `L` is never stored as a kernel extent.
 
-**This distinction is `docs/core-boundary.md` §5 at the surface, and the Design must say so.** A musical clip has
+**This distinction is `docs/governance/01-constitution.md` §4 at the surface, and the Design must say so.** A musical clip has
 musical extent, so it is an occurrence in a timeline and every kernel law applies to it. A fixed-media cue has physical
 duration, which the core has no vocabulary for, so it is a *point* occurrence carrying an asset reference and playback
 settings — and its duration `L` belongs to the prepared plan, not to any payload. §6 rule 4 forbids absolute time in a
@@ -81,6 +82,6 @@ Commit as `Define musical clips and fixed media cues`.
 - No seconds-long kernel occurrence, automatic inference from `mark sample`, waveform editing, recording, or hidden
   tempo stretching.
 - No physical duration, sample count, or frame index in any payload, including a cue's. `L` is a prepared-plan fact
-  (`docs/core-boundary.md` §6 rule 4).
+  (`docs/governance/01-constitution.md` §4).
 - No pitch-preserving time-warp promise; it needs a separate quality/performance design if requested later.
 - No playback or DSP implementation — prompt 141.

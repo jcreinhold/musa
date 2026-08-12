@@ -13,11 +13,11 @@ the semantic core is Rust, the UI is a replaceable projection.
    time, typed occurrences, `timeline`/`sequence`/`overlay`) is the ontology; the surface language elaborates into it.
    Where it and the roadmap disagree, the course correction wins. Its authoritative elaboration is **`docs/kernel/`**,
    the governing kernel specification. §36 is its boundary amendment, refined by the cross-stage specification.
-3. **`docs/core-boundary.md`** — what the core is a calculus *of*: occurrences of any canonical payload over exact
-   rational time, `ScoreFact` being one payload and the performance gesture another. Signals stay outside the core
-   because a signal is coinductive and a process graph has no musical extent. A complete semantic preparation result
-   crosses under exact `R1`; the private process IR has its own formal tick semantics. Its §"What this forbids" is hard
-   to re-open: amend it and course correction §36 together.
+3. **`docs/governance/01-constitution.md` §7 and §4** — what the core is a calculus *of*: occurrences of any canonical
+   payload over exact rational time, `ScoreFact` being one payload and the performance gesture another. Signals stay
+   outside the core because a signal is coinductive and a process graph has no musical extent. A complete semantic
+   preparation result crosses under exact `R1`; the private process IR has its own formal tick semantics. What these
+   forbid is hard to re-open — only through `docs/governance/README.md`'s amendment procedure.
 4. **`docs/spec/`** and **`docs/architecture/`** — the cross-stage formal specification and its Rust realization map.
    The spec owns presentation/pass/process/identity semantics; architecture says what current code implements or lacks.
    They refine **`docs/initial-design-roadmap.md`**, which still owns the broad crate/product plan.
@@ -56,7 +56,6 @@ them drift silently.
 | `stdlib/` | the standard library as a real package (`musa.toml` + `src/`) |
 | `examples/` | `.musa` fixtures — executable specifications, not demos |
 | `docs/kernel/` | the temporal-kernel specification (governing) |
-| `docs/core-boundary.md` | what the core is a calculus of, and what that forbids (governing) |
 | `docs/governance/` | constitutional commitments and derived obligations (governing) |
 | `docs/spec/` | cross-stage presentations, derivations, process semantics, identity (governing) |
 | `docs/architecture/` | implementation strategy and spec-to-code status map |

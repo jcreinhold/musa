@@ -8,8 +8,9 @@ phase: 3
 
 # Instruments Expose Contracts and Hide Implementations
 
-> **Governed by `docs/core-boundary.md`.** Prompt 126 decided that the core is a calculus of occurrences of any
-> canonical payload, that signals stay outside it, and what that forbids. Read it before this prompt's Design.
+> **Governed by `docs/governance/01-constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of
+> occurrences of any canonical payload, that signals stay outside it, and what that forbids. Read them before this
+> prompt's Design.
 
 ## Task
 
@@ -20,8 +21,8 @@ into an opaque prepared plan.
 
 ## Read
 
-- `docs/core-boundary.md` §5 — the signal question, and why the prepared plan is the object that crosses. `R1` in
-  `docs/kernel/07-backend-contract.md`, which this prompt's preparation operation must satisfy.
+- `docs/governance/01-constitution.md` §4 — the signal question, and why the prepared plan is the object that crosses.
+  `R1` in `docs/kernel/07-backend-contract.md`, which this prompt's preparation operation must satisfy.
 - `docs/spec/03-process-calculus.md`, `04-identity-and-realization.md`, and `docs/architecture/process-runtime.md`;
   these fix the private IR, whole-node scheduling, exact preparation signature, and factorization/cache premises.
 - `docs/language/08-performance-and-sound.md`; roadmap §§2, 6.5, 10.6, 13, 15.
@@ -49,10 +50,10 @@ Choose the second unless caller inspection proves otherwise. Graph compiler, nod
 buffers, sample voices, and DSP processor instances remain private to `musa-audio`. The engine receives only a prepared,
 RT-safe plan and transport commands.
 
-**The prepared execution is the object that crosses the signal boundary.** `docs/core-boundary.md` §5 settled that
-signals stay outside the core: a signal is coinductive where a timeline is inductive and finite, and a signal graph has
-no extent. The consequence for this prompt is precise, and it is the reason preparation is one operation rather than
-several:
+**The prepared execution is the object that crosses the signal boundary.** `docs/governance/01-constitution.md` §4
+settled that signals stay outside the core: a signal is coinductive where a timeline is inductive and finite, and a
+signal graph has no extent. The consequence for this prompt is precise, and it is the reason preparation is one
+operation rather than several:
 
 - Implement the conceptual signature
   `prepare_execution(Sem_Gesture, Bindings, Seed, Options) -> Result<PreparedExecution, PrepareError>`. `Options`

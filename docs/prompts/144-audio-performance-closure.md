@@ -8,8 +8,9 @@ phase: 4
 
 # Close Audio Preparation and Rendering Against Measurement
 
-> **Governed by `docs/core-boundary.md`.** Prompt 126 decided that the core is a calculus of occurrences of any
-> canonical payload, that signals stay outside it, and what that forbids. Read it before this prompt's Design.
+> **Governed by `docs/governance/01-constitution.md` §7 and §4.** Prompt 126 decided that the core is a calculus of
+> occurrences of any canonical payload, that signals stay outside it, and what that forbids. Read them before this
+> prompt's Design.
 
 ## Task
 
@@ -20,7 +21,7 @@ no-allocation/no-lock/no-I/O contract.
 
 ## Read
 
-- `docs/core-boundary.md` §5, whose deferral of the signal question names *this prompt's measurement* as one of the two
+- `docs/governance/01-constitution.md` §4, whose deferral of the signal question names *this prompt's measurement* as one of the two
   events that reopens it. `R1` in `docs/kernel/07-backend-contract.md`.
 - Prompt 93 baseline/expected-change ledger, prompt 127 score-elaboration report, `docs/interface/06-performance.md`,
   roadmap §§13.2/17.5, and all completion notes from prompts 130–143.
@@ -50,7 +51,7 @@ method, uncertainty, and raw results.
 `Sem_Gesture` and unequal presentation-only fields; under equal bindings, seed, and complete options they must return
 the same complete preparation `Result`. Then vary each option, binding, and seed independently to prove it is in the
 exact argument record rather than ambient. Lineage may differ and is measured separately. A preparation difference under
-equal complete inputs means the boundary is wrong and is reported against `docs/core-boundary.md` §5.
+equal complete inputs means the boundary is wrong and is reported against `docs/governance/01-constitution.md` §4.
 
 Frame comparison is a second conditional experiment: hold allocation/initial node and register state, external input
 history, parameters, and processor conformance fixed, then compare output. Report whether the promise is exact bits or a

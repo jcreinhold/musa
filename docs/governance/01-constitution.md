@@ -59,6 +59,26 @@ own current result.
 Musical timelines do not contain sample streams. Preparing audio is the explicit step that chooses sample rate,
 channels, instruments, processor settings, and initial state.
 
+Two independent reasons keep them apart, and both are worth stating because the separation is otherwise easy to read as
+mere tidiness.
+
+The first is about how each is defined. A sample stream is defined by what it produces at each observation and has no
+last sample; a timeline is a length plus a *finite* collection of events, and the guarantee that processing it always
+terminates is derived from that finiteness. Putting a stream inside a timeline event would require either that the
+stream be finite, in which case it is not a stream, or that the timeline give up finiteness, in which case every rule
+that depends on processing terminating is gone.
+
+The second is musical. A studio graph has no length. It names processors and connections; asking how long it lasts is
+the same kind of question as asking how long a mixing desk lasts. Every timeline rule is stated over a length, so
+something with no length cannot be the value of a timeline event.
+
+This decision reopens on either of two events and nothing else. **One:** someone proposes a written musa construct whose
+meaning is genuinely a signal *with* a notated length — something that sounds continuously and that other music is
+positioned against. Live coding and reactive input are the likely sources. **Two:** the rule in §"Audio preparation
+receives every choice as an argument" of the obligations is measured false — equal complete arguments produce different
+prepared results, meaning the preparation step is reading state nobody passed it. Deferring without one of these
+triggers is not permitted.
+
 ## 5. Representations stay connected by recorded conversions
 
 Notation, analysis, performance gestures, MIDI, and audio do not share one data model. They stay coherent because Musa
@@ -88,3 +108,29 @@ Each stored format must state:
 Human-readable display text is not a safe identity format. A hash is also not proof of equality: two different byte
 strings can have the same finite hash. Hashes may find likely matches, but code whose correctness depends on equality
 must compare the full recorded values after the lookup.
+
+## 7. One timeline structure serves every kind of event
+
+The timeline of §3 does not know what kind of thing its events hold. Notation events are one kind. Performance gestures
+are another. Both are the same structure at a different kind of value, and both get the same lengths, the same
+combination rules, and the same notion of equality without any of it being proved twice.
+
+This is a decision about what the structure is a calculus *of*, and it has three consequences that a later change may
+not quietly undo.
+
+**A second temporal container is a defect.** If something has a length and finitely many things positioned inside it, it
+is a timeline. Writing a second one — a list of start/end/value triples with its own ordering and its own idea of
+equality — is exactly the drift this decision exists to prevent, and it is audited for.
+
+**The structure knows nothing musical.** A pitch, a part, a voice, and a gesture are defined by the layers above and
+merely satisfy what the timeline asks of a value. The timeline layer never depends on a musical type, in the same
+direction that already holds for notation events.
+
+**Events are not indexed by their musical role.** It is tempting to make part, voice, metre, tuning, and transposition
+part of an event's *type*, so that pairing the wrong two is rejected before it runs. Musa does not, and the reason is
+that the decision is one-way. Once those indices are load-bearing, every rule, every proof, and every consumer is
+written in terms of them, and they cannot be removed by deletion: operations that were only meaningful under an index
+have no meaning without it, and callers that relied on an index to guarantee something must guarantee it another way.
+Musa has one real motivation for indexing — that a wrong part-and-voice pairing should be caught early — and that is
+already served by name resolution, at the cost of one diagnostic. Paying an irreversible rewrite for it is not a
+decision this project has the evidence to make.

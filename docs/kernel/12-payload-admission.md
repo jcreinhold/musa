@@ -41,10 +41,10 @@ is an equality design decision and requires reviewing and normally incrementing 
 
 An admission may not:
 
-- add a kernel operation or term form—`10-term-calculus.md`'s scope rule and `core-boundary.md` §6.1 apply;
-- require the kernel to inspect musical content—payload opacity and `core-boundary.md` §6.8 apply;
-- carry absolute seconds, frames, or samples—K2 and `core-boundary.md` §6.4 apply; or
-- carry a coinductive stream or process—a finite timeline is not a signal, under `core-boundary.md` §5–6.
+- add a kernel operation or term form—`10-term-calculus.md`'s scope rule and the constitution's §7 apply;
+- require the kernel to inspect musical content—payload opacity and the constitution's §7 apply;
+- carry absolute seconds, frames, or samples—K2 and the constitution's §4 apply; or
+- carry a coinductive stream or process—a finite timeline is not a signal, under the constitution's §4–6.
 
 An exact rational control shape indexed by normalized local occurrence time is finite payload data. A sample stream is
 not.
