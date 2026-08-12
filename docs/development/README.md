@@ -10,7 +10,7 @@ new contributor would lose an afternoon rediscovering it.
 
 | Page | What it answers |
 | --- | --- |
-| [macos-gatekeeper.md](macos-gatekeeper.md) | Why the test suite appears to hang on macOS after any change to `musa-compiler`. Diagnosis measured; **no fix confirmed yet** |
+| [macos-gatekeeper.md](macos-gatekeeper.md) | Why the test suite appears to hang on macOS after any change to `musa-compiler`. Diagnosis and costs measured; how to work around it, and what is still unresolved |
 
 What does *not* belong here: anything that decides semantics (that is `../governance/`, `../spec/`, and the per-stage
 specifications), anything about which crate implements what (`../architecture/`), and anything a composer would read
