@@ -140,14 +140,15 @@ scrutinee. The annotation context and erase rule handle both annotation cases.
 If `e -> e₁` and `e -> e₂`, then `e₁ = e₂`.
 
 **Method:** prove unique decomposition into one evaluation context and one redex. `Match-First` chooses one least arm;
-operation functions and join lookup are functional.
+operation functions are functional. Joins have already been erased and are not cases of this relation.
 
 ## 4. Lowering correctness
 
 ### Lemma 4.1: join erasure preserves types and results
 
 Replace a non-recursive join by an ordinary local function and each tail jump by one complete call. The translated term
-has the same type. If either form terminates, both terminate with the same ordinary value.
+has the same type and ordinary result. Evaluation begins only after this erasure, so raw joins are not terms of the
+progress or termination theorems.
 
 ### Lemma 4.2: one compiled pattern row is correct
 
@@ -218,9 +219,9 @@ trace, or returns the unique first phase-limit diagnostic. It never commits a st
 
 ### Theorem 6.1: clients cannot name a hidden constructor
 
-In a resolved client node originating from client source or antiquotation, every constructor id is public in the
-imported interface. A hidden constructor id can appear in generated syntax only when the owning module's exported
-adapter quoted it at definition scope. Such an adapter is an owner-defined constructor operation, not client forgery.
+In a resolved client node originating from client source or preserved input syntax, every constructor id is public in
+the imported interface. A hidden constructor id can appear in generated syntax only when the owning module's exported
+adapter used a checked `definition_name`. Such an adapter is an owner-defined constructor operation, not client forgery.
 
 No client pattern can inspect a hidden constructor unless an owner-exported adapter deliberately emits that pattern.
 
@@ -235,10 +236,11 @@ not a stable ABI promise.
 
 ## 7. Expansion
 
-### Lemma 7.1: adapter definitions compile by rank
+### Lemma 7.1: adapter definitions compile without expansion
 
-Every rank-zero adapter compiles without invoking another adapter. If every adapter below rank `n` compiles to a total
-deterministic function, a rank-`n` adapter compiles under the same source theorem.
+Every adapter definition contains no adapter region. Its ordinary subterms use the source theorem. Its six transformer
+builders have fixed types and deterministic finite reductions, so the whole adapter compiles to a total deterministic
+function. Emitted-call rank is checked later and plays no role in compiling the definition.
 
 ### Lemma 7.2: the expansion measure decreases
 
@@ -262,18 +264,19 @@ does not change the expansion result.
 
 ### Theorem 7.5: expansion preserves hygiene
 
-Quoted, antiquoted, and fresh identifiers resolve according to their definition, use, and fresh scopes respectively.
+Definition, preserved input, and local-slot identifiers resolve according to their definition, use, and local scopes.
 Expansion cannot capture or forge another scope.
 
-**Method:** structural induction on quotation plus authenticated opaque scope ids.
+**Method:** structural induction on the finite builder result plus authenticated opaque scope ids and the exact
+`(ExpansionContext, binding path)` rule.
 
 ### Theorem 7.6: every generated node has finite source attribution
 
 Every output node either keeps original source info or names one unique expansion record and child. Following parent
 records ends at an original use site after finitely many links.
 
-**Method:** induction on expansion steps; `ExpansionId` and child numbers are fresh, and Theorem 7.3 makes the record
-list finite.
+**Method:** induction on expansion steps; `ExpansionId` is the exact adapter-region path, node paths are unique by the
+adapter checker, and Theorem 7.3 makes the record list finite.
 
 ### Theorem 7.7: checked expansion is source-safe
 
@@ -286,20 +289,22 @@ lowered result returns one value of `τ` or the fixed limit diagnostic. Adapter 
 
 ### Lemma 8.1: recipe construction is finite
 
-Every well-typed `Music` operation returns a finite `ScoreRecipe`. `ValidMusic` decides lexical share/use validity and
-payload admission.
+Every well-typed `Music` operation returns a finite `ScoreRecipe` or a stated build error. `ValidMusic` separately
+decides lexical share/use validity and payload admission.
 
 ### Lemma 8.2: admitted maps preserve fact templates
 
-Every `ScoreMapId` maps one admitted `FactTemplate` to one admitted template and terminates deterministically.
+Every `ScoreMapId` maps one admitted `FactTemplate` to one admitted template. `music_map` validates and unfolds the
+finite selected recipe, maps each resulting fact, returns a share-free finite recipe, and terminates deterministically.
 
 ### Theorem 8.3: closing `Music` is total and type safe
 
 For finite `m` and `κ`, `close_music(m, κ)` terminates with one `MusicError` or `Ok(t)`. If it returns `Ok(t)`, then `t`
 is finite, closed, and has type `Term<ScoreFact>`.
 
-**Method:** structural induction on the recipe, with a finite lexical environment for `Share` and `Use`. Sequence,
-overlay, payload map, binding, and marked reference use their governed temporal typing rules. Lemma 8.2 handles maps.
+**Method:** validate, then use structural induction on the recipe with a finite lexical environment for `Share` and
+`Use`. Sequence, overlay, binding, and marked reference use their governed temporal typing rules. Pending payload maps
+cannot occur; Lemma 8.2 proves their earlier rewrite.
 
 ### Corollary 8.4: temporal evaluation is finite
 
@@ -317,9 +322,10 @@ paths as identities.
 
 ### Theorem 9.2: typed stage passes compose
 
-If pass `P : A -> Result<PassResult<A, B>, E>` and pass `Q : B -> Result<PassResult<B, C>, F>` both succeed and every
-path selected for composition meets at the exact same `B` anchor, their composition is a valid `PassResult<A, C>`. If an
-anchor differs, composition returns a diagnostic rather than a false path.
+If pass `P : A -> Result<PassResult<A, B>, E>` and pass `Q : B -> Result<PassResult<B, C>, F>` both return valid
+results, compose every `Q` target path with all `P` paths required by its exact `B` source anchors. The result covers
+every target anchor in `C`. If one required anchor or version differs, composition returns a diagnostic rather than a
+partial origin record.
 
 ## 10. Paper-program coverage
 

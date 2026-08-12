@@ -103,7 +103,11 @@ ship.
 32. [31-proof-prototype.md](31-proof-prototype.md) attacks the narrowed rules and selects the direct termination proof.
 33. [32-proof-outline.md](32-proof-outline.md) freezes the theorem statements, assumptions, and dependency order.
 34. [33-metatheory.md](33-metatheory.md) proves principal inference, type safety, termination, bounded expansion,
-    privacy, `Music` closure, and exact-anchor stage composition. It is the frozen target for independent review.
+    privacy, `Music` closure, and exact-anchor stage composition.
+35. [34-proof-review.md](34-proof-review.md) rejects the first proof target with four exact High-severity
+    counterexamples and five Medium-severity gaps.
+36. [35-proof-repair.md](35-proof-repair.md) records the one permitted repair: explicit transformer builders, join
+    erasure, expression charges, pre-close score-map rewriting, and complete pass coverage.
 
 Later numbered notes implement the remaining gate in order: two adapter trials, five complete musical programs, the
 formal specification, three proof documents, and at most two independent proof reviews. Only a passing design moves to

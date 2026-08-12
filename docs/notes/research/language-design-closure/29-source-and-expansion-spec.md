@@ -391,6 +391,9 @@ that constructor id is absent from its `Σ`.
 An annotation checks one monotype. Explicit `∀` is not source syntax. The operation arrow `⇒` marks a first-order,
 saturated compiler operation; it is not a source function type and cannot be stored or partially called.
 
+“First-order” means that no function arrow occurs anywhere inside an argument or result type, including inside a nominal
+field. An operation therefore cannot receive, return, or hide a source closure.
+
 Every operation descriptor states one total deterministic function on well-typed values. A recoverable domain failure is
 represented by a `Result` in its return type. A compiler resource-limit error is outside the source value.
 
@@ -485,7 +488,7 @@ The lossless tree retains comments, whitespace, exact bytes, and source ranges.
 
 ```text
 SourceInfo = Original(SourceRange)
-           | Generated(ExpansionId, ChildNumber)
+           | Generated(ExpansionId, NodePath)
 
 Syntax = Missing(SourceInfo)
        | Token(SourceInfo, TokenKind, Text)
@@ -496,6 +499,15 @@ Syntax = Missing(SourceInfo)
 `Scopes` is an opaque compiler value. Package code can preserve and compare it; only the compiler can make a raw scope
 id. `BlockSyntax` and `ExprSyntax` are hidden checked wrappers around `Syntax`. Package code cannot forge them from
 arbitrary text.
+
+Each adapter call also receives:
+
+```text
+ExpansionContext = opaque(build node, source file, region path, parent expansion path)
+```
+
+The compiler derives the context by numbering adapter regions in a fixed pre-order traversal. Equality is exact
+structural equality. There is no random choice, hash claim, clock, or mutable counter.
 
 The compiler exposes `fold_syntax`:
 
@@ -511,7 +523,93 @@ fold_syntax:
 
 It is the generated fold for the finite `Syntax` tree.
 
-### 8.4 Adapter descriptors and ranks
+### 8.4 The transformer language
+
+Adapter bodies use the ordinary total value language plus these separate, saturated builder forms:
+
+```text
+generated_token(ctx, node_path, kind, text)
+definition_name(ctx, node_path, resolved_name)
+local_name(ctx, node_path, binding_path, hint)
+generated_group(ctx, node_path, delimiter, children)
+checked_expression(ctx, syntax)
+anchor_at(ctx, source_info)
+```
+
+The transformer judgment is `Σ ; Γ ⊢T e : τ`. Every ordinary expression rule remains unchanged under `⊢T`. The six
+additional schemes are:
+
+```text
+generated_token:
+  ExpansionContext × NodePath × TokenKind × Text -> Syntax
+definition_name:
+  ExpansionContext × NodePath × DefinitionName -> Syntax
+local_name:
+  ExpansionContext × NodePath × BindingPath × Text -> Syntax
+generated_group:
+  ExpansionContext × NodePath × Delimiter × List<Syntax> -> Syntax
+checked_expression:
+  ExpansionContext × Syntax -> Result<ExprSyntax, SyntaxBuildError>
+anchor_at:
+  ExpansionContext × SourceInfo -> Anchor
+```
+
+`ExpansionContext`, `NodePath`, `BindingPath`, `DefinitionName`, and the checked wrappers are abstract nominal types.
+Only a resolved name in the adapter's defining module can inhabit `DefinitionName`.
+
+`NodePath` and `BindingPath` are finite lists of natural numbers. A transformer derives them from the path of an input
+syntax node plus fixed role numbers. This supports arbitrary finite input without a stateful allocator.
+`checked_expression` rejects duplicate node paths. Repeating one binding path refers to the same local binder; declaring
+two binders at one binding path is rejected. Thus “local” means “bound at this explicit coordinate,” not “return a
+different answer each time.”
+
+The typing and reduction rules are direct. For example:
+
+```text
+ctx : ExpansionContext    p q : List<Nat>    h : Text
+──────────────────────────────────────────────────── T-Local
+local_name(ctx, p, q, h) : Syntax
+
+local_name(ctx, p, q, h)
+  -> Identifier(Generated(expansion_id(ctx), p), h,
+                [LocalScope(expansion_id(ctx), q)])
+```
+
+`generated_token` and `generated_group` use their node paths as generated source coordinates. `definition_name` carries
+the `DefinitionScope` recorded when its `resolved_name` was checked. Existing input syntax is inserted as an ordinary
+`Syntax` value and keeps its use-site scopes and source information. `anchor_at` returns the authenticated pair of the
+adapter use site and the given descendant source path. `checked_expression` either returns the hidden `ExprSyntax`
+wrapper after the fixed expression parser accepts the tree or returns `SyntaxBuildError`.
+
+For evaluated arguments their reductions are exactly:
+
+```text
+generated_token(ctx, p, k, t)
+  -> Token(Generated(expansion_id(ctx), p), k, t)
+
+definition_name(ctx, p, d)
+  -> Identifier(Generated(expansion_id(ctx), p), spelling(d), scopes(d))
+
+generated_group(ctx, p, delimiter, children)
+  -> Group(Generated(expansion_id(ctx), p), delimiter, children)
+
+anchor_at(ctx, source)
+  -> Anchor(use_site(ctx), source)
+```
+
+The `local_name` rule is displayed above. `checked_expression` applies one fixed finite parser and then validates node
+paths, binder paths, and the restriction on output forms. Its unique result is `Ok(ExprSyntax(tree))` or the first error
+in source order. It never resolves an ordinary name or infers a type.
+
+All six forms are pure deterministic functions of finite displayed inputs. They have no function value, partial call, or
+access to inferred types. Their result types are fixed before ordinary inference. Their reducibility case is the same as
+a total first-order constructor operation: evaluated finite arguments produce one finite value in one step. Their
+logical cost uses §10.6.
+
+This is not general quotation. Helpers in the adapter support library build common call, list, record, and constructor
+trees from these six forms. They are total ordinary functions over `Syntax` and lists.
+
+### 8.5 Adapter descriptors and ranks
 
 An adapter descriptor contains:
 
@@ -527,20 +625,23 @@ AdapterDescriptor = {
 }
 ```
 
-The declared adapter-call graph must be finite and acyclic. Define `rank(A)` as one plus the greatest rank of an adapter
+Adapter definitions must contain no adapter regions. They may use only fixed Musa syntax and the transformer forms in
+§8.4. This is the bootstrap rule; no definition-time adapter graph exists.
+
+The declared emitted-call graph must be finite and acyclic. Define `rank(A)` as one plus the greatest rank of an adapter
 that `A` may call; an adapter that calls none has rank zero. The compiler derives ranks and rejects a cycle.
 
 The expansion function has the one public type:
 
 ```text
-expand_A: BlockSyntax -> Result<ExprSyntax, SyntaxError_A>
+expand_A: ExpansionContext × BlockSyntax -> Result<ExprSyntax, SyntaxError_A>
 ```
 
-It is an already checked total Musa function. It can use finite data, folds, syntax quotation, antiquotation, and fresh
-hygienic names. It cannot read an inferred type, expected type, ordinary importing-module value, file, network, clock,
+It is an already checked total transformer function. It can use finite data, folds, existing input syntax, and the six
+builder forms. It cannot read an inferred type, expected type, ordinary importing-module value, file, network, clock,
 random source, project service, audio service, or mutable compiler state.
 
-### 8.5 Expansion step and termination measure
+### 8.6 Expansion step and termination measure
 
 One expansion step replaces a named region for adapter `A` with the finite syntax returned by `expand_A`. Any adapter
 regions in that result must name adapters in the descriptor's lower-rank list.
@@ -552,19 +653,19 @@ strictly decreases `μ`.
 Expansion repeatedly chooses the leftmost outermost unexpanded region. It stops at the first error or when `μ` is empty.
 The choice rule is fixed, although confluence is unnecessary because the result is already deterministic.
 
-### 8.6 Hygiene
+### 8.7 Hygiene
 
-Syntax quotation distinguishes three identifier origins:
+The transformer distinguishes three identifier origins:
 
-1. a quoted identifier receives the adapter definition scope;
-2. an antiquoted identifier keeps its use-site scopes; and
-3. `fresh_name(hint)` receives a new scope that no source identifier has.
+1. `definition_name` receives the adapter definition scope;
+2. an existing input identifier keeps its use-site scopes; and
+3. `local_name(ctx, node_path, binding_path, hint)` receives the exact local scope `(expansion_id(ctx), binding_path)`.
 
 Package code cannot remove or forge these scope ids. Ordinary resolution compares both the name and scopes. Therefore a
-quoted helper cannot capture a use-site name, an antiquoted name still refers from its use site, and a fresh name cannot
-collide accidentally.
+definition helper cannot capture a use-site name, a preserved name still refers from its use site, and two declared
+local binders cannot collide.
 
-### 8.7 Source attribution
+### 8.8 Source attribution
 
 Each successful adapter call creates:
 
@@ -579,14 +680,14 @@ ExpansionRecord = {
 }
 ```
 
-An antiquoted node retains its original `SourceInfo`. Every new quoted node receives
-`Generated(expansion id, child number)`. Child numbers are unique within the record. Following `Generated` links reaches
+An existing input node retains its original `SourceInfo`. Every new builder node receives
+`Generated(expansion id, node path)`. Node paths are unique within the output tree. Following `Generated` links reaches
 one finite chain of records and ends at an original use site and adapter definition.
 
 This record explains source expansion. It is not a musical derivation step. Musical derivation begins only when the
 checked value crosses a musical stage boundary.
 
-### 8.8 Editing and printing
+### 8.9 Editing and printing
 
 An editable adapter also defines:
 
@@ -667,7 +768,7 @@ The core makes these facts explicit:
 Polymorphic schemes and source patterns are gone. Instantiated monotypes remain as proof and validation data but are
 erased from ordinary values.
 
-The core adds two control forms:
+Match lowering may temporarily use two control forms:
 
 ```text
 join j(x₁ : τ₁, ..., xₙ : τₙ) : τ = body in continuation
@@ -675,7 +776,18 @@ jump j(v₁, ..., vₙ)
 ```
 
 A join name is not a value. It cannot be returned, stored, passed to a function, or called from outside its lexical
-body. `jump` is allowed only in tail position.
+body. `jump` is allowed only in tail position. These forms belong to the lowering algorithm, not to the executable core.
+Before evaluation, the compiler erases each acyclic join in dependency order:
+
+```text
+join j(x̄) : τ = body in continuation
+  ↦ let j = fn(x̄): body in continuation
+
+jump j(v̄) ↦ j(v̄)
+```
+
+The output is ordinary core syntax. The executable core grammar, typing judgment, values, contexts, and reduction
+relation contain no `join` or `jump`.
 
 The typing rules are:
 
@@ -808,27 +920,29 @@ op(v₁, ..., vₙ) -> v
 must obey the phase resource contract. File access, devices, clocks, randomness, audio stepping, and package resolution
 are not compiler operations in source evaluation.
 
-### 10.5 Join evaluation
+### 10.5 Join erasure
 
-The core evaluator carries a finite lexical join table `J`. Entering a `join` adds its parameter list, body, and current
-value environment to `J`, then evaluates the continuation. A tail `jump` looks up exactly one join, binds its already
-evaluated arguments, and evaluates the stored body. Joins cannot be recursive and cannot refer to a later join cycle.
-
-This rule gives the same result as substituting the shared fallback at each jump, but evaluates only the selected path.
+The compiler rejects recursive or forward-cyclic join dependencies, then applies the erasure in §9.4. The join typing
+rule and `Fn` assign the same parameter and result types. The jump rule and complete `Call` rule assign the same result
+type. Both forms substitute the same evaluated arguments into the same body. Induction on the finite join dependency
+order therefore proves that erasure preserves typing and ordinary evaluation results. Logical charges are defined only
+after erasure, on the one canonical executable core.
 
 ### 10.6 Deterministic logical charges
 
-Every reduction has a rule tag. Its logical cost is:
+Every executable core expression has a structural `semantic_size`: one for the outer node plus the sizes of its finite
+children. The value cases agree with this definition. A closure also includes its ordered capture vector. Every
+reduction has a rule tag. Unique decomposition selects a redex `r` and its reduct `r'`; that step costs:
 
 ```text
-1 + semantic_size(inputs read by the rule) + semantic_size(value produced)
+1 + semantic_size(r) + semantic_size(r')
 ```
 
-`semantic_size` counts constructor and syntax nodes, Unicode scalar values, and the bit lengths of naturals and reduced
-rational numerators and denominators. A closure counts its core body nodes plus its fixed ordered capture vector and the
-semantic size of each captured value. Each compiler-owned opaque value type supplies a versioned structural size
-function in its operation descriptor. The count follows the value tree even when an implementation shares memory. It
-does not depend on an allocator, CPU instruction, pointer address, hash table order, or cache warmth.
+`semantic_size` counts expression, constructor, and syntax nodes, Unicode scalar values, and the bit lengths of naturals
+and reduced rational numerators and denominators. A closure counts its core body nodes plus its fixed ordered capture
+vector and the semantic size of each captured value. Each compiler-owned opaque value type supplies a versioned
+structural size function in its operation descriptor. The count follows the value tree even when an implementation
+shares memory. It does not depend on an allocator, CPU instruction, pointer address, hash table order, or cache warmth.
 
 The compiler keeps separate counters for lexing, expansion, resolution, inference, source evaluation, temporal
 evaluation, and preparation. A pure step computes its candidate result and logical charge, then commits the result only

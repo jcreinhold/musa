@@ -48,15 +48,15 @@ is a finite `ScoreRecipe`:
 
 ```text
 ScoreRecipe = Empty
-            | Fact(relative span, FactTemplate, source anchor)
+            | Fact(relative span, FactTemplate, FactOrigin)
             | Sequence(ScoreRecipe, ScoreRecipe)
             | Overlay(ScoreRecipe, ScoreRecipe)
-            | MapPayload(ScoreMapId, ScoreRecipe, source anchor)
             | Share(RecipeName, ScoreRecipe, ScoreRecipe)
             | Use(RecipeName, generation site)
 ```
 
-A relative span has nonnegative exact rational start and end. A `FactTemplate` contains every musical field of one
+A relative span has nonnegative exact rational start and end. `FactOrigin` contains the original source anchor and an
+ordered finite list of `(ScoreMapId, map anchor)` steps. A `FactTemplate` contains every musical field of one
 `ScoreFact`, including written facts, named context changes, and presentation detail. It lacks only final score scope,
 absolute placement, and the complete origin path. Closing supplies those three fields.
 
@@ -71,13 +71,20 @@ music_empty: Unit ⇒ Music
 music_fact: RelativeSpan × FactTemplate × Anchor ⇒ Music
 music_sequence: Music × Music ⇒ Music
 music_overlay: Music × Music ⇒ Music
-music_map: ScoreMapId × Music × Anchor ⇒ Music
+music_map: ScoreMapId × Music × Anchor ⇒ Result<Music, MusicBuildError>
 music_share: RecipeName × Music × Music ⇒ Result<Music, MusicBuildError>
 music_use: RecipeName × Anchor ⇒ Music
 ```
 
-They construct this finite tree. `music_share` rejects a duplicate name; `ValidMusic` rejects a free or forward `Use`
-and any binding cycle. The typed body normally calls package wrappers, not these operations directly.
+They construct this finite tree. `music_map` first validates and unfolds every `Share` and `Use` in its finite argument,
+then applies the admitted map to each resulting fact and appends `(map id, map anchor)` to its `FactOrigin`. Its result
+contains no `Share` or `Use`. It does not call a nonexistent temporal-term map, and mapping one use cannot change an
+unmapped use. The operation charges for the fully expanded result, so it may return a resource error before committing a
+large rewrite. `music_share` rejects a duplicate name; `ValidMusic` rejects a free or forward `Use` and any binding
+cycle. The typed body normally calls package wrappers, not these operations directly.
+
+Nested maps run inside out. `music_map(g, music_map(f, m))` applies `f` and then `g`, and the fact origin lists those
+steps in that order.
 
 All theory- or adapter-specific choices must be supplied before a package returns `Music`. Examples include:
 
@@ -118,15 +125,19 @@ looked up an unstated global key.”
 
 ### 2.3 Validity contract
 
-Write `ValidMusic(m)` when `m` is a finite recipe built by admitted operations and every stored payload satisfies the
-`ScoreFact` schema.
+Write `FiniteMusic(m)` when `m` is a finite recipe whose local fields have the right representation. Every compiler
+operation returns `FiniteMusic` or a stated `MusicBuildError`.
+
+Write `ValidMusic(m)` when, in addition, every stored payload satisfies the `ScoreFact` schema, every share name is
+unique in its lexical region, and every `Use` names an earlier enclosing `Share`. Validity is a decidable whole-recipe
+check. A bare `music_use("missing", anchor)` is finite but invalid.
 
 The compiler-owned constructors satisfy:
 
 ```text
 well-typed Music arguments
 ──────────────────────────
-operation result is ValidMusic
+operation result is FiniteMusic or a stated MusicBuildError
 ```
 
 The close contract is:
@@ -181,6 +192,17 @@ Combined(source anchors, target anchor, evidence)
 ```
 
 Every anchor must exist in its exact representation version.
+
+A `PassResult<S, T>` is valid only when every addressable target anchor in `output` has at least one path ending there.
+Each path must start at a declared source root, source anchor, or generation site accepted by the pass descriptor. Extra
+paths that end outside the output are forbidden. Combined and generated steps may have several incoming source anchors,
+but they still cover one exact target anchor.
+
+To compose `P : A -> B` with `Q : B -> C`, retain the intermediate `B` presentation and form this path set: for each
+path `q` covering a target anchor of `C`, concatenate `q` with every `P` path that ends at each exact `B` source anchor
+used by the first step of `q`. If any required `B` anchor has no exact match, composition returns a diagnostic.
+Deduplicate only exact duplicate complete paths, in the fixed path order. This construction covers every target anchor
+because `Q` does, and it never selects an empty subset by choice.
 
 Expansion records from note 29 are source maps, not these musical conversion steps. The first musical pass starts from
 the adapter use-site anchor and may retain the adapter definition as evidence.
@@ -258,10 +280,10 @@ staff transcription is lossless merely because its function returned successfull
 `close_music` first translates the private recipe at logical origin zero, then delays the whole term by
 `MusicalContext.placement`. It traverses the recipe structurally:
 
-- `Fact` fills the scope, keeps its relative span, and starts the origin at `source_root` and the fact's source anchor;
+- `Fact` fills the scope, keeps its relative span, starts the origin at `source_root` and the fact's source anchor, then
+  appends its ordered map steps;
 - `Sequence` closes both children and builds temporal sequence;
 - `Overlay` closes both children and builds temporal overlay;
-- `MapPayload` inserts the admitted payload map and its derivation step;
 - `Share` closes its definition once as a marked temporal binding, then closes its body; and
 - `Use` emits a marked reference whose derivation records the bound root and generation site; and
 - the final outer delay supplies the one ambient placement without changing internal sequence offsets.

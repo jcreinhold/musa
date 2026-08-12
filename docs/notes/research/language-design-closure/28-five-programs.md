@@ -253,7 +253,7 @@ fn evidence(function):
     Dominant -> "moves toward the tonic under this analysis"
     Other -> "this method assigns no function"
 
-pub fn analyze(key, before, chord, after):
+pub fn analyze(key, chord, after):
   match chord:
     AnonymousChord(members) -> Err(CannotAnalyzeAnonymousChord)
     NamedChord(symbol, members) ->
@@ -271,8 +271,8 @@ pub fn write(voicing, duration):
     VoicingValue(pitches) -> staff.chord(pitches, duration)
 ```
 
-`before`, `symbol`, and `members` are intentionally unused in small branches where the analysis does not need them. The
-lint can report that fact without changing the semantics.
+`members` is intentionally unused in one branch because this analysis uses the declared chord symbol. The lint can
+report that fact without changing the semantics.
 
 ### 2.2 Client source
 
@@ -287,7 +287,6 @@ let tonic = tonal.build(tonal.CMinor)
 
 let claim = tonal.analyze(
   tonal.CMinorKey,
-  None,
   neapolitan,
   Some(tonal.GSeven),
 )
@@ -312,7 +311,7 @@ The compiler infers:
 build: ChordSymbol -> Chord
 transpose_up_semitone: Chord -> Chord
 voice: VoicingPolicy × Chord -> Voicing
-analyze: Key × Option<ChordSymbol> × Chord × Option<ChordSymbol>
+analyze: Key × Chord × Option<ChordSymbol>
          -> Result<FunctionClaim, TonalError>
 write: Voicing × WrittenDuration -> StaffDocument
 claim: Result<FunctionClaim, TonalError>
@@ -957,6 +956,7 @@ pub fn transcribe(request, target):
 import trial.ensemble_tuning as tuning
 import std.result as result
 import std.notation.staff as staff
+import std.performance.gesture as gesture
 
 let request = tuning.TuneRequest:
   degree = tuning.UpperFifth
@@ -970,7 +970,7 @@ let target = result.map(
 
 let performance_route = result.map(
   target,
-  fn(value): paired_frequency_gesture(
+  fn(value): gesture.paired_frequency(
     value.lower_hz,
     value.upper_hz,
     value.target_beats_per_second,
@@ -1045,6 +1045,7 @@ bomba, and it must not be published under that name without practitioner review.
 ```musa
 // trial/live_dialogue.musa
 import std.notation.staff as staff
+import std.performance.gesture as gesture
 
 pub type Cue:
   Begin
@@ -1095,9 +1096,9 @@ pub fn step(state, movement):
 
 pub fn gesture(response):
   match response:
-    Listen -> silence_gesture(1/16)
-    DrumAnswer(name) -> named_drum_gesture(name)
-    Stop -> release_all_gesture()
+    Listen -> gesture.silence(1/16)
+    DrumAnswer(name) -> gesture.named_drum(name)
+    Stop -> gesture.release_all()
 
 pub fn cue_sheet():
   let page = staff.sequence([

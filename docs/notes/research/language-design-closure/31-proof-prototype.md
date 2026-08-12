@@ -156,24 +156,24 @@ finite multiset of lower ranks strictly decreases the multiset measure.
 
 ### 5.2 Expansion inside adapter definitions
 
-The termination argument could be circular if proving adapter totality required the expansion theorem for an adapter of
-the same rank. Adapter packages compile in rank order. Rank-zero definitions contain no adapter call. A rank-`n` adapter
-may use only already checked lower-rank adapters. Induction on rank breaks the circle.
+The termination argument would be circular if proving adapter totality required the expansion theorem. Adapter
+definitions therefore contain no adapter region. They use fixed Musa syntax plus the six transformer builders. Ranks
+order only the adapter calls that expanded output may contain.
 
 ### 5.3 Capturing a use-site name
 
 Suppose an adapter introduces `helper`, while the use site already binds `helper`. Text-only substitution can capture
 one or the other.
 
-Quoted `helper` carries the adapter's definition scope. Antiquoted use-site syntax keeps its use-site scopes. A fresh
-helper receives a new opaque scope. Resolution compares scopes as well as text, and package code cannot forge or erase
-them. The three names remain distinct.
+`definition_name` gives `helper` the adapter's definition scope. Existing input syntax keeps its use-site scopes. A
+local helper receives the scope determined by the explicit expansion context and binder slot. Resolution compares scopes
+as well as text, and package code cannot forge or erase them. The three names remain distinct.
 
 ### 5.4 Lying about source
 
-An adapter cannot give a new node an arbitrary original range. Quoted nodes receive
-`Generated(expansion id, child number)`. Antiquoted nodes retain their existing source info. The compiler, not the
-package, creates both checked wrappers and generated ids.
+An adapter cannot give a new node an arbitrary original range. Builder nodes receive
+`Generated(expansion id, node path)`. Existing input nodes retain their source info. The compiler, not the package,
+creates checked wrappers, contexts, scopes, anchors, and generated ids.
 
 Following parent expansion records terminates because there are finitely many expansion steps. Each generated node
 therefore reaches an original use site.
@@ -192,8 +192,9 @@ root.
 ### 6.2 Storing source closures
 
 If `Music` stored arbitrary source functions, close termination and equality would inherit every closure detail. The
-private recipe instead stores a fixed finite grammar and admitted first-order `ScoreMapId`s. Source functions can
-compute a recipe, but the recipe itself contains no source closure.
+private recipe instead stores a fixed finite grammar. An admitted first-order `ScoreMapId` rewrites a finite recipe
+before close, unfolding any references in the selected argument and recording the map on each rewritten fact. Source
+functions can compute a recipe, but the recipe itself contains no source closure or pending payload map.
 
 ### 6.3 Free shared references
 
@@ -261,17 +262,18 @@ The final proof assumes:
 3. build-local ids are fresh and table lookup is functional;
 4. nominal declaration dependencies are acyclic except for one permitted polynomial self-reference;
 5. source values are immutable finite trees and closures;
-6. value definitions and join dependencies are acyclic;
+6. value definitions and lowering-only join dependencies are acyclic, and join erasure finishes before evaluation;
 7. each compiler operation is first-order, total, deterministic, type preserving, and reducibility preserving;
 8. each syntax wrapper, scope id, generated source id, and resolved declaration id is compiler-authenticated;
-9. each adapter definition has already passed the source-language theorem at a lower expansion rank;
-10. each `ScoreMapId` is total, deterministic, type preserving, and admitted by the `ScoreFact` schema;
+9. each adapter definition contains no adapter region and has passed the source and transformer rules;
+10. each `ScoreMapId` is total, deterministic, preserves admitted fact templates, and its finite recipe rewrite obeys
+    the explicit reference-unfolding rule;
 11. temporal-kernel typing and normalization obey their governing specification; and
 12. later stage passes return only records accepted by the governed derivation registry.
 
-These are implementation contracts, not conclusions smuggled into the theorem. In particular, assumption 10 does not say
-close succeeds. It says an admitted payload map preserves payload typing. The close proof still handles every recipe
-constructor and every stated error.
+These are implementation contracts, not conclusions smuggled into the theorem. Assumption 10 gives one checked rewrite
+step; it does not assert that an arbitrary recipe is valid or that close succeeds. The close proof still handles every
+remaining recipe constructor and every stated error.
 
 ## 9. Prototype verdict
 

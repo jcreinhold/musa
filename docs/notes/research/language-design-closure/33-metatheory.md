@@ -18,12 +18,14 @@ Fix one build. Assume:
 2. each table lookup is functional and every assigned id is fresh within the build;
 3. nominal dependencies are acyclic except for the one permitted polynomial self-reference;
 4. source values are immutable finite constructor trees and closures;
-5. value declarations and compiler-local join dependencies are acyclic;
+5. value declarations and lowering-only join dependencies are acyclic, and joins are erased before evaluation;
 6. each compiler operation is first-order, total, deterministic, type preserving, and reducibility preserving;
 7. scope ids, checked syntax wrappers, generated source ids, and resolved declaration ids can be made only by the
    compiler;
-8. adapter call edges form a finite acyclic graph and an adapter may emit calls only to declared lower-rank adapters;
-9. each admitted score map is first-order, total, deterministic, and preserves the admitted `ScoreFact` template schema;
+8. adapter definitions contain no adapter region; emitted adapter-call edges form a finite acyclic graph and an adapter
+   may emit calls only to declared lower-rank adapters;
+9. each admitted score map is first-order, total, deterministic, preserves admitted fact templates, and obeys the finite
+   reference-unfolding rewrite in note 30;
 10. the temporal kernel satisfies its governing typing and normalization rules; and
 11. every later pass record is accepted by the governing presentation, anchor, evidence, and loss schemas.
 
@@ -237,8 +239,6 @@ If `Σ ; ∅ ⊢ e : τ` and `e -> e'`, then `Σ ; ∅ ⊢ e' : τ`.
 - **Fold.** Lemma 2.3 types every recursively folded proper child at result type `R`, then types the selected algebra
   application at `R`.
 - **Operation.** Assumption 6 gives a value at the descriptor's return type.
-- **Join and jump.** The join table records the parameter and result types checked by the `Join` rule. Substituting
-  typed jump arguments into the captured body uses Lemma 4.3.
 
 For a context step, induction on the context grammar replaces one premise by another term of the same type. The outer
 typing rule is unchanged. ∎
@@ -260,8 +260,6 @@ If `Σ ; ∅ ⊢ e : τ`, then `e` is a value or there is an `e'` with `e -> e'`
 - For a match with a value scrutinee, Lemma 4.6 supplies at least one matching arm, and the finite ordered list has one
   least matching index.
 - A recursive value has one constructor, so the matching fold algebra applies.
-- A typed jump names one lexical join and has all arguments evaluated; join lookup applies.
-
 The explicit `(E : τ)` context is essential in the annotation case. ∎
 
 ### Lemma 5.3: unique decomposition
@@ -271,14 +269,14 @@ Every closed well-typed non-value is uniquely `E[r]`, where `E` is an evaluation
 **Proof.** Structural induction on the term. Each compound form chooses the first non-value child in its stated
 left-to-right order. If no child remains, its outer typing and canonical forms select exactly one redex. Evaluation
 contexts do not overlap a value position. `Match-First` chooses the least successful arm; a functional operation
-registry and join table choose one rule. ∎
+registry chooses one rule. Joins have already been erased. ∎
 
 ### Theorem 5.4: evaluation is deterministic
 
 If `e -> e₁` and `e -> e₂`, then `e₁ = e₂`.
 
 **Proof.** By Lemma 5.3, both steps use the same context and redex. Beta substitution, field lookup, selected match arm,
-fold algebra, operation function, and join lookup are functional. Therefore both reducts are equal. ∎
+fold algebra, and operation function are functional. Therefore both reducts are equal. ∎
 
 ## 6. Ordered match lowering
 
@@ -437,8 +435,6 @@ instances, then `T_η(τ, θ(e))`.
 - A fold uses Lemma 7.3.
 - An operation uses Lemma 7.4.
 - An annotation uses its inner hypothesis and one erase step.
-- A join first uses Lemma 6.3 to erase acyclic joins, then applies the function and let cases already proved.
-
 Every administrative prefix is finite and covered by Lemma 7.1. ∎
 
 ### Theorem 7.6: closed well-typed source terms terminate
@@ -450,9 +446,10 @@ If `Σ ; ∅ ⊢ e : τ`, there is exactly one value `v` with `e ->* v`.
 
 ### Corollary 7.7: the limited evaluator terminates deterministically
 
-**Proof.** The mathematical reduction has finitely many deterministic steps by Theorem 7.6. At each step, semantic size
-and charge are computable from finite values. The limited evaluator either commits that unique step or returns the
-unique first limit diagnostic. Therefore it also terminates. ∎
+**Proof.** The mathematical reduction has finitely many deterministic steps by Theorem 7.6. Unique decomposition gives
+one finite redex `r` and deterministic finite reduct `r'`. Their structural sizes make
+`1 + semantic_size(r) + semantic_size(r')` computable. The limited evaluator either commits that unique step or returns
+the unique first limit diagnostic. Therefore it also terminates. ∎
 
 ## 8. Hidden constructors
 
@@ -461,16 +458,16 @@ unique first limit diagnostic. Therefore it also terminates. ∎
 Let constructor `C` be private to module `M`. In a resolved expression belonging to a client module:
 
 1. original client syntax cannot resolve a constructor occurrence or pattern to `C`;
-2. antiquoted client syntax cannot resolve to `C`; and
-3. generated syntax can resolve to `C` only when an adapter exported by `M` quoted `C` with `M`'s definition scope.
+2. preserved client input syntax cannot resolve to `C`; and
+3. generated syntax can resolve to `C` only when an adapter exported by `M` used a checked `definition_name` for `C`.
 
 **Proof.** The client import table contains only the interface of `M`, and that interface omits `C`. Thus ordinary
-qualified or short lookup cannot return its id. An antiquoted identifier retains client use-site scopes, so the same
+qualified or short lookup cannot return its id. A preserved identifier retains client use-site scopes, so the same
 lookup applies. Textual spelling cannot forge `M`'s opaque definition scope by assumption 7.
 
-A quoted identifier from code checked inside `M` carries `M`'s definition scope and may therefore name `C`. If `M`
-exports that adapter, the construction or inspection is an operation deliberately supplied by the owner, just as an
-exported ordinary function may call a private constructor. Fresh identifiers have new scopes and cannot equal `C`'s
+A `definition_name` checked inside `M` carries `M`'s definition scope and may therefore name `C`. If `M` exports that
+adapter, the construction or inspection is an operation deliberately supplied by the owner, just as an exported ordinary
+function may call a private constructor. Local-slot identifiers have expansion-local scopes and cannot equal `C`'s
 binding. These exhaust the identifier origins. ∎
 
 ### Corollary 8.2: module sealing preserves abstraction
@@ -486,15 +483,15 @@ stable across builds.
 
 ## 9. Syntax expansion
 
-### Lemma 9.1: adapters compile in rank order
+### Lemma 9.1: adapter definitions compile without expansion
 
-Every adapter can be checked before a module that uses it, and checking adapter rank `n` relies only on already checked
-lower ranks.
+Every adapter definition checks and terminates without invoking another adapter.
 
-**Proof.** The finite adapter call graph is acyclic by assumption 8, so it has a topological order and the rank in note
-29. A rank-zero adapter emits no adapter call; its source is handled directly by Theorems 2.4, 3.3–3.5, 5.1–5.4, and
-7.6. Assume those results for ranks below `n`. Expanding a rank-`n` definition invokes only those lower ranks, so its
-ordinary resolved body can be checked and shown total by the same theorems. Induction reaches every finite rank. ∎
+**Proof.** Assumption 8 excludes adapter regions from definitions. Ordinary subterms use Theorems 2.4, 3.3–3.5, 5.1–5.4,
+and 7.6. Each transformer builder has one fixed typing rule and one deterministic finite reduction on finite arguments.
+Structural induction on the adapter body proves typing; the reducibility proof adds one total first-order case per
+builder. Algorithm W treats each saturated builder as one rigid known scheme, so its principal-type case is the same as
+`op`. Emitted-call ranks concern the returned syntax, not this proof. ∎
 
 ### Lemma 9.2: one expansion step lowers the rank multiset
 
@@ -517,9 +514,10 @@ For equal grouped syntax, syntax imports, adapter definitions, compiler options,
 equal output syntax and records or the same diagnostic and charge trace.
 
 **Proof.** Induct on the well-founded rank multiset. The strategy selects the same leftmost outermost call. The same
-adapter function receives the same finite `BlockSyntax`; source evaluation is deterministic by Theorem 5.4 and limited
-evaluation by Corollary 7.7. On success it creates child ids in fixed order and yields equal finite syntax. The
-remaining multiset is smaller, so the induction hypothesis applies. On error both runs stop at the same point. ∎
+adapter function receives the same explicit `ExpansionContext` and finite `BlockSyntax`; source evaluation is
+deterministic by Theorem 5.4 and limited evaluation by Corollary 7.7. Its node and scope ids are structural functions of
+the context and literal slots. On success it yields equal finite syntax. The remaining multiset is smaller, so the
+induction hypothesis applies. On error both runs stop at the same point. ∎
 
 ### Theorem 9.5: expansion is independent of type inference
 
@@ -532,14 +530,16 @@ the same result. ∎
 
 ### Theorem 9.6: expansion is hygienic
 
-Quoted identifiers resolve from the adapter definition, antiquoted identifiers retain their use-site binding, and fresh
-identifiers capture neither.
+Definition identifiers resolve from the adapter definition, preserved input identifiers retain their use-site binding,
+and local-slot identifiers capture neither.
 
-**Proof.** Induct on quoted syntax.
+**Proof.** Induct on the finite syntax built by the transformer.
 
-- The compiler attaches the definition scope to a literal quoted identifier.
-- Antiquotation copies the complete existing identifier including scopes.
-- `fresh_name` asks the compiler for an id unequal to every existing id.
+- `definition_name` attaches the checked definition scope.
+- Inserting existing syntax copies the complete identifier including scopes.
+- `local_name(ctx, node_path, binding_path, hint)` attaches `LocalScope(expansion_id(ctx), binding_path)`. The adapter
+  checker gives distinct declared binders distinct binding paths; repeated uses of one binding path deliberately refer
+  to one binder.
 - Groups and other nodes apply the hypotheses componentwise.
 
 Package code cannot construct, remove, or rewrite a raw scope id. Ordinary resolution compares the scoped identity, not
@@ -548,8 +548,8 @@ rank. ∎
 
 ### Theorem 9.7: every output node has finite source attribution
 
-**Proof.** Induct on expansion steps. Existing and antiquoted nodes retain their prior `SourceInfo`, whose chain is
-finite by the induction hypothesis. Every new node receives the current fresh `ExpansionId` and unique child number. The
+**Proof.** Induct on expansion steps. Existing nodes retain their prior `SourceInfo`, whose chain is finite by the
+induction hypothesis. Every new node receives the exact context-derived `ExpansionId` and checked unique node path. The
 record names the exact use site and optional parent. Parent records were created earlier in the finite sequence. Theorem
 9.3 says only finitely many records are created. Following parents therefore ends at an original use site; it cannot
 cycle forward to a later record. ∎
@@ -573,24 +573,33 @@ preserving by Theorem 6.4. Evaluation preserves type and progresses by Theorems 
 1. `m` is a finite `ScoreRecipe`;
 2. each relative span has `0 ≤ start ≤ end`;
 3. every `FactTemplate` is admitted by the current `ScoreFact` schema;
-4. each `ScoreMapId` is admitted under assumption 9;
-5. share names are unique in their lexical region; and
-6. each `Use` names an enclosing earlier `Share`, so the binding graph is acyclic.
+4. share names are unique in their lexical region; and
+5. each `Use` names an enclosing earlier `Share`, so the binding graph is acyclic.
 
 These checks are decidable by structural traversal with a finite lexical name stack.
 
 ### Lemma 10.2: source `Music` operations return finite recipes
 
-Every successful well-typed `Music` operation returns a finite recipe. `music_share` either returns `MusicBuildError` or
-preserves validity.
+Every successful well-typed `Music` operation returns a finite recipe. This is `FiniteMusic`, not necessarily
+`ValidMusic`.
 
 **Proof.** Each operation allocates one constructor around already finite argument values. It does not call itself or
-store a source closure. `music_fact` checks the finite span and template. `music_map` checks the map id. `music_share`
-checks its finite body with the extended lexical name stack and rejects duplicates; `music_use` creates one finite leaf,
-whose binding is accepted when the enclosing recipe is validated. Structural induction over a finite sequence of
-operation calls proves finiteness. ∎
+store a source closure. `music_fact` checks the finite span and template. `music_share` rejects a local duplicate;
+`music_use` creates one finite leaf whose binding is checked only in the complete recipe. Structural induction over a
+finite sequence of operation calls proves finiteness. ∎
 
-### Lemma 10.3: zero-origin closing preserves temporal typing
+### Lemma 10.3: selective score-map rewriting terminates and preserves admission
+
+If `music_map(id, m, anchor)` succeeds, it returns one finite share-free recipe whose facts are admitted. A mapped use
+cannot change an unmapped use of the same binding.
+
+**Proof.** First decide `ValidMusic(m)`. Traverse its finite lexical binding tree and replace each `Use` by its earlier
+finite definition. The binding relation is acyclic, so induction on the number of enclosing bindings and then on recipe
+size proves termination. Apply the admitted map from assumption 9 to each unfolded fact and append the map anchor to
+that fact's origin. Sequence and overlay recurse componentwise. The output has no reference node and every fact remains
+admitted. Since only the argument subtree is traversed, a sibling use outside it is unchanged. ∎
+
+### Lemma 10.4: zero-origin closing preserves temporal typing
 
 If `ValidMusic(m)` and the score scope and source root are valid, translating `m` at logical origin zero returns a
 closed finite `Term<ScoreFact>` or a stated `MusicError`.
@@ -598,13 +607,12 @@ closed finite `Term<ScoreFact>` or a stated `MusicError`.
 **Proof.** Induct on `m`, carrying a finite environment from share name to well-typed marked temporal binding.
 
 - `Empty` translates to the typed empty term.
-- `Fact(span, template, anchor)` fills the valid score scope and finite origin beginning at the source root and anchor.
-  Admission gives a `ScoreFact`. The checked relative span yields a finite typed occurrence term.
+- `Fact(span, template, origin)` fills the valid score scope and finite origin beginning at the source root and original
+  anchor, then appends the origin's admitted map steps. Admission gives a `ScoreFact`. The checked relative span yields
+  a finite typed occurrence term.
 - `Sequence(left, right)` uses both induction hypotheses. On two successes, the governed sequence constructor returns a
   finite term of the same payload type. It supplies relative placement of the right term.
 - `Overlay(left, right)` is the same argument with governed unequal-length overlay. No padding premise is needed.
-- `MapPayload(id, child, anchor)` closes the child. Assumption 9 maps admitted templates to admitted templates and the
-  governed term payload map preserves `Term<ScoreFact>` typing while adding the named origin step.
 - `Share(name, definition, body)` closes the finite definition under the current environment, enters its typed marked
   binding, and closes the body under the extended environment.
 - `Use(name, site)` finds the one earlier typed binding guaranteed by validity and emits the governed marked reference.
@@ -613,19 +621,19 @@ closed finite `Term<ScoreFact>` or a stated `MusicError`.
 An invalid scope, root, payload, map, or defensive name check returns its stated finite error. No case gets stuck or
 recurses on the original recipe. ∎
 
-### Theorem 10.4: `close_music` is total and type safe
+### Theorem 10.5: `close_music` is total and type safe
 
 For finite `Music` value `m` and finite `MusicalContext κ`, close returns exactly one `Err(error)` or `Ok(t)`. On
 success, `t` is finite, closed, and has type `Term<ScoreFact>`.
 
 **Proof.** Decide `ValidMusic` and context validity by finite traversal. On failure, return the unique ordered first
-error. On success, apply Lemma 10.3 at origin zero. Finally wrap the successful term in the governed delay by
+error. On success, apply Lemma 10.4 at origin zero. Finally wrap the successful term in the governed delay by
 `κ.placement`. The context check guarantees a nonnegative exact ratio, so delay preserves finiteness, closure, and
 typing. Determinism of every check, admitted map, and temporal constructor gives one result. ∎
 
-### Corollary 10.5: successful music closes to a finite timeline
+### Corollary 10.6: successful music closes to a finite timeline
 
-**Proof.** Theorem 10.4 gives a closed finite well-typed temporal term. Governing kernel normalization returns one
+**Proof.** Theorem 10.5 gives a closed finite well-typed temporal term. Governing kernel normalization returns one
 finite `Timeline<ScoreFact>`. ∎
 
 ## 11. Typed stage composition
@@ -641,14 +649,18 @@ empty list changes nothing. If endpoints differ, no typed concatenation exists. 
 
 ### Theorem 11.2: successful typed passes compose
 
-Suppose pass `P` returns a valid `PassResult<A, B>` and pass `Q` returns a valid `PassResult<B, C>`. For every selected
-path pair whose exact `B` presentation version and anchor agree, their concatenation is a valid `A`-to-`C` path. Keeping
-the outputs and concatenating losses in pass order yields a valid composite result.
+Suppose pass `P` returns a valid `PassResult<A, B>` and pass `Q` returns a valid `PassResult<B, C>`. For every path of
+`Q`, take every exact `B` source anchor used by its first step and prepend all covering `P` paths that end there. If a
+required anchor lacks a match, composition returns a diagnostic. Otherwise the resulting paths, `Q`'s output, the
+retained intermediate presentation, and losses in pass order form a valid `PassResult<A, C>`.
 
 **Proof.** The pass descriptors fix compatible source, target, evidence, and loss schemas. The exact endpoint premise
-allows Theorem 11.1 on each selected pair. Every intermediate anchor and step remains in the concatenated path, so the
-registry can validate it. Ordered finite-list concatenation gives the loss list. A version or anchor mismatch fails the
-premise and returns a diagnostic rather than fabricating equality. ∎
+allows Theorem 11.1 on each required pair. Validity of `Q` gives at least one path for every addressable target anchor
+in `C`. The construction processes every such path, never an arbitrary subset. Validity of `P` supplies complete
+ancestry for each matched `B` anchor. Therefore every `C` anchor remains covered from `A`, including generated and
+combined steps. Every intermediate anchor and step remains in the concatenated path, so the registry can validate it.
+Exact-path deduplication and ordered finite-list concatenation give deterministic paths and losses. A version or anchor
+mismatch returns a diagnostic rather than fabricating equality. ∎
 
 The theorem applies whether the path goes source-to-notation, phrase-to-gesture, gesture-to-process, or through another
 declared pair. It does not require one chain that every project follows.
@@ -713,7 +725,7 @@ Under the assumptions in §1, for every finite source module accepted by the can
 8. a successful close normalizes to a finite exact timeline under the accepted kernel laws; and
 9. later typed pass records compose only at exact equal anchored representations.
 
-**Proof.** Items 1–9 are Theorems 9.3–9.8, 2.4 and 3.3–3.5, 6.4, 5.1–5.4 and 7.6, 8.1, 9.8, 10.4, Corollary 10.5, and
+**Proof.** Items 1–9 are Theorems 9.3–9.8, 2.4 and 3.3–3.5, 6.4, 5.1–5.4 and 7.6, 8.1, 9.8, 10.5, Corollary 10.6, and
 Theorem 11.2 respectively. Their assumptions are exactly those fixed in §1. ∎
 
 ## 14. What the theorem deliberately leaves open

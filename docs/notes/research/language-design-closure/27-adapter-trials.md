@@ -24,7 +24,7 @@ The compiler supplies the same finite syntax tree to every adapter:
 
 ```text
 SourceInfo = Original(source range)
-           | Generated(expansion id, child number)
+           | Generated(expansion id, node path)
 
 Syntax = Missing(SourceInfo)
        | Token(SourceInfo, token kind, exact text)
@@ -46,9 +46,18 @@ fold_syntax:
 significant_lines: BlockSyntax -> List<LineSyntax>
 line_parts: LineSyntax -> List<Syntax>
 source_of: Syntax -> SourceInfo
-quote_expr: QuotedExpression -> ExprSyntax
-fresh_name: Text -> Identifier
+generated_token: ExpansionContext × NodePath × TokenKind × Text -> Syntax
+definition_name: ExpansionContext × NodePath × DefinitionName -> Syntax
+local_name: ExpansionContext × NodePath × BindingPath × Text -> Syntax
+generated_group: ExpansionContext × NodePath × Delimiter × List<Syntax> -> Syntax
+checked_expression: ExpansionContext × Syntax -> Result<ExprSyntax, SyntaxBuildError>
+anchor_at: ExpansionContext × SourceInfo -> Anchor
 ```
+
+`NodePath` and `BindingPath` are finite lists of natural numbers. An adapter derives them from input-tree paths and
+fixed role numbers. Each generated node has one path. Repeated use of one binding path refers to the same binder;
+distinct binders use distinct paths. `checked_expression` validates these conditions and derives exact generated ids
+from the explicit context and paths. There is no hidden fresh-name counter.
 
 `significant_lines` drops blank lines and comments from the adapter's semantic view. It does not remove them from the
 lossless source tree. An edit still sees the original bytes and ranges.
@@ -56,7 +65,7 @@ lossless source tree. An edit still sees the original bytes and ranges.
 Both adapters expose the same three jobs:
 
 ```text
-expand: BlockSyntax -> Result<ExprSyntax, SyntaxError>
+expand: ExpansionContext × BlockSyntax -> Result<ExprSyntax, SyntaxError>
 edit: BlockSyntax × EditCommand -> Result<List<TextEdit>, EditError>
 print: AdapterValue -> Result<BlockSyntax, PrintLoss>
 ```
@@ -509,7 +518,7 @@ define a type, run an effect, or evaluate source text. Giving adapters those pow
 without making either example simpler.
 
 The trial also rejects a single built-in musical syntax. Staff and studio notation are package data with package
-parsers. The compiler owns only the fixed token and grouping rules, the finite syntax value, hygienic quotation, source
+parsers. The compiler owns only the fixed token and grouping rules, the finite syntax value, hygienic builders, source
 maps, deterministic limits, and the three adapter operations.
 
 ## 6. Decision
