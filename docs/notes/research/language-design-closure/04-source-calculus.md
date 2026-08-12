@@ -70,9 +70,11 @@ type ::= base
        | bridge-type
 ```
 
-A `bridge-type` is a compiler-owned type used at one stage boundary, such as written `Pitch` or `NoteName`. Section 8
-limits these types. A theory package may not add a bridge type by asking the compiler for another special case. It must
-use ordinary user-defined data unless a stage boundary requires more.
+A `bridge-type` is a compiler-owned type used at one stage boundary, such as written `Pitch` or `NoteName`. During
+migration it also includes every musical base type accepted by the current compiler, so old checked programs still embed
+in the new core. Section 8 lists the ownership decision: most of those compatibility types then move behind ordinary
+theory packages. A theory package may not add a bridge type by asking the compiler for another special case. It must use
+ordinary user-defined data unless a stage boundary requires more.
 
 `Unit`, `Bool`, and `Nat` have their usual meanings. `Nat` contains the non-negative integers that fit the
 implementation's stated bound. Checked operations report overflow instead of wrapping.
@@ -147,7 +149,15 @@ term ::= variable
        | [] | term :: term
        | Ok(term) | Err(term)
        | match term { arm_1 ... arm_n }
+       | fold_nat(count, initial, step)
        | fold_list(list, initial, step)
+       | fold_option(item, initial, step)
+       | map(function, list)
+       | filter(predicate, list)
+       | range(count)
+       | repeat(value, count)
+       | controlled_music_operation(term_1, ..., term_n)
+       | checked_kernel_quote
        | primitive(term_1, ..., term_n)
        | annotation(term, type)
 ```
@@ -212,7 +222,8 @@ A match is exhaustive when one of these tests succeeds:
 - a user-data match covers every constructor visible inside the defining structure.
 
 Outside a sealed structure, clients cannot name private constructors. They must use the operations exported by the
-structure. A match on an abstract type is therefore rejected.
+structure. A client may use `_` or a bare variable to ignore or pass through an abstract value, but it cannot use a
+constructor pattern to inspect that value.
 
 For `Nat`, `Ratio`, `Text`, functions, products, `Music`, and opaque bridge types, a match needs a catch-all arm unless
 a compiler-owned rule proves coverage.
@@ -340,11 +351,11 @@ this contract:
 Ordinary compiler operations are first order: their argument and result types contain no function type. `fold_list` and
 the other finite folds are language reduction rules, not foreign operations.
 
-The current language has one higher-order music transform, `map_note_pitches`. It remains only under its existing
-stronger contract: the input `Music` recipe has a finite occurrence bound; the transform visits only its documented
-finite pitch positions; it applies the supplied total source function once at each visited position; and its proof shows
-that this traversal preserves good values and ends. No open registry may add another higher-order compiler operation.
-This narrow exception preserves the current language without letting an operation hide an unbounded callback loop.
+The current language has one higher-order music transform, `map_note_pitches`. Source evaluation does not run its
+callback. It stores the total `Pitch -> Pitch` function in a finite `Music` recipe. When that recipe is instantiated,
+the adapter visits only the documented pitch positions in its finite occurrence bound and applies the function once at
+each position. No open registry may add another higher-order compiler operation. This narrow exception preserves the
+current language without letting an operation hide an unbounded callback loop.
 
 Expected failures return `Result`. A compiler panic is an implementation bug, not a language outcome.
 
@@ -395,7 +406,7 @@ The acyclic rank order defines user types one at a time, so this last clause doe
 have the same private set inside their structure; clients can use the set only through exported functions.
 
 `[[Music]]` is the set of finite score recipes whose application behavior satisfies Section 10. A recipe denotes a total
-function from an explicit notation context to either a finite kernel fragment or a stated error. Source code cannot call
+function from an explicit musical context to either a finite kernel fragment or a stated error. Source code cannot call
 that function directly; the stage boundary does.
 
 A well-typed term denotes a total function from the values of its free variables to the value of its result type.
@@ -414,17 +425,19 @@ The source evaluator treats `Music` as an abstract value. A recipe may contain f
 program, named notation requests, and references to source spans. It cannot read a hidden key, tuning, tempo, or global
 current score.
 
-After source evaluation, the compiler applies a recipe to an explicit notation context:
+After source evaluation, the compiler applies a recipe to an explicit musical context:
 
 ```text
 instantiate:
-  Music * NotationContext
+  Music * MusicalContext
   -> Result<KernelFragment<ScoreFact>, InstantiationError>
 ```
 
-`NotationContext` contains only stage facts needed by notation: for example, the selected staff, clef policy, and
-capabilities of the target notation adapter. A theory key, raga, ensemble tuning, or harmonic interpretation is a normal
-source value passed to the package operation that built the `Music`. It is not smuggled into `NotationContext`.
+`MusicalContext` contains the explicit stage facts needed to close score material: for example, placement, score scope,
+meter and key facts written in the piece, selected staff, clef policy, and target notation capabilities. Compatibility
+operations may read the current compiler's explicit local scale field during migration. A theory key, raga, ensemble
+tuning, or harmonic interpretation in a new package is a normal source value passed to the operation that built the
+`Music`. It is not smuggled into `MusicalContext`.
 
 `KernelFragment<ScoreFact>` is finite but may still have named open ports or placement requests. Closing checks those
 requests:

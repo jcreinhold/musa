@@ -46,5 +46,7 @@ ship.
 8. [07-proof-prototype.md](07-proof-prototype.md) attacks the proof and compares two proof routes.
 9. [08-proof-outline.md](08-proof-outline.md) fixes the theorem statements and proof order.
 10. [09-metatheory.md](09-metatheory.md) gives the full proof under explicit compiler and stage contracts.
+11. [10-proof-review.md](10-proof-review.md) records the failed first independent review.
+12. [11-proof-repair.md](11-proof-repair.md) records the one permitted repair.
 
 Later files will give the proof outline, final proof, review, and decision.

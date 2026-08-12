@@ -73,7 +73,7 @@ Say a closed term terminates when call-by-value evaluation reaches a value in fi
 
 Define `R_A(v)`, meaning “`v` is a good value of type `A`,” by induction on `m(A)`:
 
-- a base or bridge value is good when it is a well-typed canonical value;
+- a base, bridge, or `Music` value is good when it is a well-typed canonical value;
 - a product is good when every field is good;
 - `None` is good, and `Some(v)` is good when `v` is good;
 - a finite list is good when every element is good;
@@ -104,7 +104,7 @@ type, then the closed instance of `e` is reducible at `A`.
   into that arm gives a good result by its induction hypothesis.
 - A list fold terminates by induction on the finite list. Each step uses the good step function and accumulator.
 - An ordinary compiler operation terminates and returns a good result by its first-order totality contract. The admitted
-  music traversal terminates by induction on its finite occurrence bound.
+  music transform constructs one finite recipe node; its later instantiation traverses the finite occurrence bound.
 
 The empty substitution gives termination for every closed, well-typed term.
 
@@ -121,10 +121,11 @@ bad: (Unit -> Unit) -> Unit
 and implement `bad(f)` by calling `f(())` forever. Its type alone would not expose the loop. The termination theorem
 would be false.
 
-**Repair adopted:** ordinary compiler operations are first order and satisfy a checked totality contract. Finite folds
-stay inside the language semantics. The one existing higher-order music transform, `map_note_pitches`, has its own
-bounded-traversal rule: it visits a finite occurrence bound and applies a reducible source function once per documented
-pitch position. The registry is not open to arbitrary higher-order operations.
+**Repair adopted:** ordinary compiler operations are first order and satisfy a checked totality contract. All seven
+structural operations stay inside the language semantics. The one existing higher-order music transform,
+`map_note_pitches`, constructs a finite source recipe without calling its function. The recipe adapter later visits a
+finite occurrence bound and applies the total function once per documented pitch position. The registry is not open to
+arbitrary higher-order operations.
 
 ### 6.2 A nominal cycle through a list
 
@@ -170,7 +171,7 @@ data environment.
 If `Music` reads a global key or tuning during evaluation, the same source term can change meaning without a changed
 input. Evaluation determinism and stage records would both lie.
 
-**Repair already present:** theory context is an ordinary source value. The later notation context is an explicit input
+**Repair already present:** theory context is an ordinary source value. The later musical context is an explicit input
 to `instantiate`.
 
 ### 6.7 A source stream
@@ -187,16 +188,17 @@ The remaining claims need less machinery:
 - **Decidable checking:** every syntax tree and resolved graph is finite; name lookup, cycle tests, rank calculation,
   structural type equality, and finite coverage tests all decide an answer.
 - **Preservation:** substitution, constructor inversion, and primitive soundness cover every reduction rule.
-- **Progress:** canonical forms plus exhaustive matching cover every closed term. Abstract values are only matched
-  inside compiled bodies that retain their private constructors.
+- **Progress:** canonical forms plus exhaustive matching cover every closed term. Clients may use a wildcard or
+  whole-value binder for an abstract value, but only compiled bodies with the private constructor table may use a
+  constructor pattern.
 - **Determinism:** evaluation contexts choose one leftmost call-by-value redex; each redex has one rule; compiler
   operations are deterministic.
 - **Unforgeability:** a client cannot resolve a private constructor, so no accepted client core term can contain that
   constructor except inside an imported compiled body.
-- **Old-fragment preservation:** the new rules leave old core typing and reduction rules unchanged. This is a statement
-  about the old expression fragment, not about identifiers that a future parser may reserve as new keywords.
-- **`Music` closure:** this follows only from the stated `instantiate` and `close` contracts. It is not a consequence of
-  source typing alone.
+- **Old-fragment preservation:** the exhaustive embedding table covers every old core form. Old simultaneous calls may
+  take several curried target steps, so the proof uses a finite forward simulation rather than identical reductions.
+- **`Music` closure:** source construction must first preserve the finite private recipe invariant. Instantiation and
+  closing then prove the error-or-closed-term result from the smaller atom and transform contracts.
 - **Stage composition:** this follows only for passes whose derivation records satisfy the accepted cross-stage rules.
 
 ## 8. Prototype verdict

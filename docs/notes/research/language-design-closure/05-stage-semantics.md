@@ -80,17 +80,19 @@ source ancestry.
 
 ### 3.3 Context application to a closed temporal term
 
-**Input.** A `Music` value and an explicit `NotationContext`.
+**Input.** A `Music` value and an explicit `MusicalContext` containing placement, score scope, structural score facts,
+and notation-target facts.
 
 **Output.** Either a stated error or a closed `Term<ScoreFact>` in the temporal kernel.
 
 **Errors.** Unsupported notation requests, missing open ports, invalid exact placements, or adapter-specific limits.
 
 **Equality.** The output uses the temporal kernel's semantic equality. The compiler does not claim that two arbitrary
-`Music` values are decidably equal.
+`Music` values are decidably equal. A later pass must still consume the exact stored output anchor; semantic equality
+does not permit one derivation record to be substituted for another.
 
 **Record.** Every score fact points back to the recipe request and source facts that produced it. The record also names
-facts supplied by the explicit notation context.
+facts supplied by the explicit musical context.
 
 ### 3.4 Temporal evaluation to a finite timeline
 

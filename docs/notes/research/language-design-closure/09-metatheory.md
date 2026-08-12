@@ -52,10 +52,11 @@ Ordinary compiler operations satisfy all of these conditions:
 Expected failures appear inside `Option` or `Result`. A panic, hidden diagnostic, clock read, random read, or global
 musical context violates the contract.
 
-Finite natural, list, and option folds are core reduction rules. The existing `map_note_pitches` operation is the one
-admitted higher-order music transform. Its input `Music` value carries a finite occurrence bound. It visits only the
-documented pitch positions within that bound and calls its supplied total source function once at each visited position.
-No other higher-order foreign operation is admitted.
+All seven structural operations are core rules: natural, list, and option folds, `map`, `filter`, `range`, and `repeat`.
+The existing `map_note_pitches` operation is the one admitted higher-order music transform. Source evaluation only
+stores its total function in a finite recipe. Instantiation later visits the documented pitch positions within the
+recipe's finite occurrence bound and calls the function once at each position. No other higher-order foreign operation
+is admitted.
 
 These assumptions are necessary. A foreign operation of type `(Unit -> Unit) -> Unit` could otherwise call its argument
 forever and refute termination.
@@ -94,10 +95,13 @@ ambiguous, and duplicate names. It assigns fresh nominal names in source order. 
 orders, and Lemma 3.2 assigns ranks.
 
 Checking then visits definitions in dependency order. Each typing rule inspects a strict subterm, a finite argument
-list, or a finite match-arm list. Structural type equality recurses over two finite type trees. `None`, `[]`, `Ok`, and
-`Err` use a supplied expected type, so the checker never searches for a missing type argument. Flat-pattern coverage is
-a finite test over `Bool`, `Option`, `List`, `Result`, or the finite constructor list in `Delta`; all other subject
-types need a catch-all arm. Signature matching compares two finite member tables and checks each body once.
+list, a finite quote-hole list, or a finite match-arm list. Structural type equality recurses over two finite type
+trees. `None`, `[]`, `Ok`, and `Err` use a supplied expected type, so the checker never searches for a missing type
+argument. The seven structural-operation schemes are instantiated from their displayed argument types, without search.
+Flat-pattern coverage is a finite test over `Bool`, `Option`, `List`, `Result`, or the finite constructor list in
+`Delta`; all other subject types need a catch-all arm. Signature matching compares two finite member tables and checks
+each body once. Kernel quotation invokes the already decidable finite kernel checker on one finite term and its exact
+finite hole table.
 
 No rule guesses a type, unfolds a recursive declaration, solves an arithmetic formula, or searches an infinite space.
 Every phase therefore ends. Each choice uses source order or an exact table key, so success is unique up to the names
@@ -195,8 +199,14 @@ then `Delta; Sigma; empty |- e' : A`.
 - A natural, list, or option fold either returns its initial value or applies its typed step function to one canonical
   field and a typed accumulator. Its result type is unchanged.
 - An ordinary compiler operation returns its declared type by the operation contract.
-- `map_note_pitches` returns `Music` by its admitted traversal contract; each callback call preserves `Pitch` by the
-  ordinary function application case.
+- `map` and `filter` private states retain the types in their administrative typing rules. Each callback call preserves
+  its stated result type by the ordinary function application case. `range` and `repeat` construct lists with the
+  declared member type.
+- Every controlled music operation returns a typed finite recipe. `map_note_pitches` stores a value of type
+  `Pitch -> Pitch` and a `Music`; it does not run the callback at this stage. A checked quote stores its checked kernel
+  term and typed `Music` holes.
+- An annotation first steps its subject under the `(E:A)` context; once the subject is a value, erasure preserves its
+  checked type.
 - A step inside a left-to-right evaluation context preserves the subterm type by induction. Rebuilding the surrounding
   typing rule preserves the whole type.
 
@@ -213,18 +223,20 @@ For an application, first step the function, then the argument. If both are valu
 call rule. `let` behaves the same way.
 
 For a match, first step its subject. If the subject is a value, Lemma 4.4 gives its outer form. The coverage rule
-ensures that the corresponding constructor arm or a catch-all arm exists, so the match steps. A client cannot write a
-match on an abstract type; a compiled structure body that can write the match retains the needed private entry in
-`Delta`.
+ensures that the corresponding constructor arm or a catch-all arm exists, so the match steps. A client may ignore or
+bind an abstract value through a catch-all, but cannot write a constructor pattern for it. A compiled structure body
+that can write constructor patterns retains the needed private entry in `Delta`.
 
-A fold first evaluates its arguments. Canonical natural, list, and option forms select one fold rule. An ordinary
-compiler call with value arguments steps by totality. The admitted music traversal steps over its finite private
-representation. No closed, well-typed case is stuck. ∎
+A fold first evaluates its arguments. Canonical natural, list, and option forms select one fold rule. `map` and `filter`
+enter typed private states; a state either finishes or evaluates one callback. `range` and `repeat` with value arguments
+produce their finite list values. An ordinary compiler call with value arguments steps by totality. A controlled music
+operation or checked quote with value arguments produces its finite recipe value. An annotation steps its subject or
+erases a value annotation. No closed, well-typed case is stuck. ∎
 
 ### Lemma 5.3. A non-value has one evaluation-context decomposition
 
-Every closed, well-typed non-value is either one basic redex or can be written in exactly one way as `E[r]`, where `E`
-selects the next left-to-right call-by-value position and `r` is a basic redex.
+Every closed, well-typed non-value can be written in exactly one way as `E[r]`, where `r` is a basic redex and `E` may
+be the empty context `hole`.
 
 **Proof.** Induct on the term shape. For a form with several fields, the first non-value field is unique. For an
 application the function position precedes the argument. For a match the subject is the only evaluated position before
@@ -282,16 +294,22 @@ Lemma 6.1 makes this definition valid. It does not assume the theorem it will pr
 
 ### Lemma 6.2. The admitted operations preserve good values
 
-Applying an ordinary compiler operation to good closed arguments ends at a good result. Applying `map_note_pitches` to a
-good pitch function and good `Music` value ends at a good `Music` value.
+Applying an ordinary compiler operation to good closed arguments ends at a good result. Each structural operation maps
+good arguments to a good finite result. Applying a controlled music operation to good arguments ends at a good finite
+`Music` recipe.
 
 **Proof.** Ordinary operation types are first order. By the operation contract, the call ends at a closed, well-typed,
 finite value. Induction on the result type shows that such a first-order value is good.
 
-For `map_note_pitches`, the input recipe has a finite occurrence bound. Induct on the number of visited pitch positions.
-At zero positions the unchanged finite recipe is good. At the next position, goodness of the supplied function makes its
-call end at a good `Pitch`; the traversal replaces that one pitch and continues with a smaller remaining count. Thus the
-whole traversal ends at a finite `Music` value. ∎
+For a natural, list, or option fold, use its finite canonical input. For `map`, induct on the remaining input list in
+`map_state`; goodness of the callback makes each `map_wait` expression end at a good output member. `filter` is the same
+argument with a good `Bool` decision. `range(n)` and `repeat(v,n)` construct exactly `n` good members after finite
+preflight.
+
+A controlled music operation constructs one finite recipe node from good values. In particular,
+`map_note_pitches(function,music)` stores the good function and recipe; it does not call the function now. A checked
+quote stores a finite checked term and finitely many good recipe holes. Both results are closed canonical `Music`
+values. Section 11 separately proves that source construction preserves the stronger private recipe invariant. ∎
 
 ### Theorem 6.3. Fundamental reducibility lemma
 
@@ -313,8 +331,14 @@ type. The resulting closed term is reducible at `A`.
 - For a natural fold, induct on the finite natural value. For a list fold, induct on the finite list. For an option
   fold, inspect its one constructor. The initial value and step functions are good by their induction hypotheses, so
   every finite step yields a good accumulator.
+- For `map`, induct on the finite remaining input of its private state. Each good callback ends at a good result and the
+  remaining list shortens. `filter` is the same argument with a good `Bool` decision. `range(n)` and `repeat(v,n)` make
+  finite lists of exactly `n` good members.
+- A controlled music operation or checked quote constructs a finite good recipe value from good arguments. It does not
+  instantiate the recipe during source reduction.
 - Compiler operations follow from Lemma 6.2.
-- An annotation has the same meaning as its checked term.
+- An annotation reduces its subject under `(E:A)`, then erases the value annotation. Its subject induction hypothesis
+  therefore gives the same good value.
 
 Every typing rule is covered. ∎
 
@@ -337,7 +361,9 @@ evaluation of the closed instance of `e` reaches a value whose denotation is `d`
 **Proof.** Induct on the typing derivation, using Theorem 6.4 to know that evaluation ends. Literals, products, and
 constructors follow their set definitions. Function application follows the mathematical function denoted by the
 closure. A match selects the same tagged union case in both meanings. Finite folds satisfy the same base and step
-equations in both meanings. Compiler operations agree by their contracts. Determinism rules out another result. ∎
+equations in both meanings. `map`, `filter`, `range`, and `repeat` traverse or construct the same finite lists as their
+set functions. Controlled music operations construct the corresponding recipe node. Compiler operations agree by their
+contracts. Determinism rules out another result. ∎
 
 The theorem is soundness, not full abstraction. Two different source terms may denote the same function even though the
 language has no way to decide that equality.
@@ -353,15 +379,15 @@ structure's private constructors from `Sigma` before any client is checked. No o
 constructor node. Generated core inside the structure was checked earlier against its retained private table and is
 marked with that structure as its origin. ∎
 
-### Theorem 8.2. Sealed constructors cannot be forged
+### Theorem 8.2. Sealed constructors cannot be forged or inspected
 
-Let `M.T` be abstract in `M`'s public signature. No accepted client-originated core node can construct or directly match
-a value of `M.T`.
+Let `M.T` be abstract in `M`'s public signature. No accepted client-originated core node can name a private constructor,
+construct `M.T` with one, or use a constructor pattern to inspect `M.T`.
 
-**Proof.** Construction would require a private constructor name, which Lemma 8.1 excludes. Direct nominal matching also
-requires the private constructor set to type and check coverage, but the public environment exposes only the abstract
-name `M.T`; the match rule therefore rejects it. Calls to exported functions remain allowed. Their compiled bodies
-retain the private data table and may safely construct or inspect the value. ∎
+**Proof.** Construction or constructor-pattern inspection would require a private constructor name, which Lemma 8.1
+excludes. Calls to exported functions remain allowed. Their compiled bodies retain the private data table and may safely
+construct or inspect the value. A client may match `_` or a bare binder against `M.T`; those patterns discard or pass
+through the whole value and reveal no constructor or field. ∎
 
 The theorem depends on the compiler not exposing an unchecked value decoder. This calculus has none.
 
@@ -392,49 +418,136 @@ states. They also make no cache claim.
 
 ## 10. The old expression fragment
 
-Let `Old` be the already accepted expression core before the additions in this proposal. Embed its types, terms, values,
-finite folds, `Music` constructors, and admitted operations without changing them.
+Let `Old` be the complete current checked expression core. The embedding is the exhaustive table in
+`04a-formal-rules.md` §12. It covers every current `ExprKind`, all seven structural eliminators, all eight controlled
+music operations, and typed kernel quotation. The migration bridge set contains every current base type.
+
+Values are related by `v approximately embed w` as follows: base and bridge values agree exactly; products, options,
+lists, and recipes agree component by component; and functions are related when they send related arguments to related
+results. The function clause accounts for the target's unary currying of the old simultaneous parameter list.
 
 ### Theorem 10.1. The new calculus conservatively extends `Old`
 
-For every closed old term `e`:
+For every closed old term `e` whose old checking and evaluation succeed:
 
 1. if `Old` gives `e` type `A`, the new calculus gives the embedded term the embedded type `A`;
-2. every old step is the same new step; and
-3. old and new evaluation reach the same value.
+2. if `e -->Old e'`, then `embed(e) -->* embed(e')`; and
+3. if old evaluation reaches `v`, new evaluation reaches a related value `w`.
 
-**Proof.** Induct on the old typing derivation for the first claim. Every old rule appears unchanged. New rules have new
-outer forms and are never needed.
+**Proof.** Induct on the old typing derivation for the first claim. Literal, name, product, `Option`, list, match,
+bridge, and first-order primitive cases use the corresponding new rule. The three folds and four other structural
+operations use the rules in `04a` §6.7. Current controlled music operations use their closed table. `map_note_pitches`
+uses its separate typing rule. A checked quotation uses the same checked kernel term and the induction hypotheses for
+its finite hole list. An old multi-argument function becomes nested unary lambdas, and repeated `LambdaCheck` gives the
+curried type corresponding to the old parameter list. Named call arguments are put in parameter order and defaults
+inserted before repeated `Application` rules. This covers the table.
 
-For the second claim, inspect the old reduction rule. The new semantics retains it with the same evaluation order.
-Finite folds keep their structural rules. Old first-order operations retain their entries and contracts.
-`map_note_pitches` retains its bounded traversal rather than entering the open ordinary-operation family.
+For the second claim, inspect the old reduction. Unchanged scalar and structural-value rules take the same step. One old
+simultaneous beta step becomes the finite sequence of unary beta steps in parameter order. The three folds use their
+displayed equations. One old aggregate `map` or `filter` step becomes the finite private-state traversal; `range` and
+`repeat` construct the same canonical list. Determinism of related callback applications gives the same list members. A
+current music operation becomes the same finite recipe node. `map_note_pitches` stores the same callback and source
+recipe without calling it. A quote stores the same checked term, loci, and related hole recipes. Thus every old step is
+matched by finitely many new steps.
 
-For the third claim, repeatedly use the second claim. Both evaluations end, and determinism gives the same value. ∎
+For the third claim, induct on the successful old evaluation, repeatedly using the simulation. The function case uses
+the definition of the value relation; every first-order value is structurally identical after erasing fresh nominal
+names and unary closure administration. New evaluation ends by Theorem 6.4 and determinism fixes the related result. ∎
 
 This is a core-language theorem. A later parser change may reserve new words, and a later library migration may replace
 built-in musical names with imports. Those source-compatibility questions need their own implementation plan.
 
 ## 11. Closing `Music`
 
-The source proof treats `Music` as an abstract finite value. The next result needs an adapter contract because source
-typing cannot inspect the private recipe representation.
+The source proof treats `Music` as abstract. This section discharges the adapter invariant instead of assuming the
+successful conclusion.
 
-Assume:
+### 11.1 The private recipe invariant
 
-1. `instantiate(music, context)` is total, deterministic, and type preserving;
-2. every successful result is a finite, well-formed `KernelFragment<ScoreFact>`;
-3. `close(fragment)` is total and deterministic; and
-4. every successful close result is a closed, well-typed temporal `Term<ScoreFact>`.
+A private recipe is a finite directed acyclic graph built from these nodes:
 
-### Theorem 11.1. A `Music` value closes or reports an error
+```text
+Atom(request, finite output bound)
+Sequence(recipe list)
+Overlay(recipe list)
+Transform(name, finite scalar arguments, recipe)
+MapPitches(total Pitch -> Pitch function, recipe)
+Quote(checked kernel term, finite named recipe holes with exact loci)
+Play(finite voicing, exact duration)
+Reference(earlier recipe node)
+```
 
-For every closed `music: Music` and well-formed explicit `NotationContext`, instantiation followed by closing finishes
-with either a stated error or a finite, closed, well-typed `Term<ScoreFact>`.
+Current note, rest, region, assertion, and contextual-use forms are `Atom` or finite combinations of these nodes. A
+bounded source repeat becomes a finite `Sequence`. Every node records complete source origin. An edge points only to an
+earlier completed node. Each node has a structural bound on the occurrences its successful instantiation can produce.
 
-**Proof.** Totality of `instantiate` gives two cases. An error is a stated final result. On success, its contract gives
-a finite, well-formed fragment. Totality of `close` again gives two cases. An error is stated; a success is the finite,
-closed, well-typed temporal term promised by the fourth assumption. ∎
+A recipe is valid when:
+
+1. its graph is finite and acyclic;
+2. captured values have their checked source types;
+3. every atom adapter is total and deterministic and either reports a stated error or returns a finite admitted
+   `ScoreFact` fragment within its bound;
+4. every transform is a total finite kernel construction or payload map and preserves admitted payloads;
+5. every quote has passed the kernel checker, its free names are exactly its distinct holes, and each locus is valid;
+6. its occurrence bound is the sum for sequence and overlay, is preserved by transforms, and is computed structurally
+   for a quote, including every use of every hole;
+7. it reads only its explicit `MusicalContext` and never changes that context; and
+8. its resource preflight occurs before occurrence-sized allocation.
+
+The initial compiler bridges and every later bridge must prove these eight clauses for each recipe constructor it adds.
+
+### Lemma 11.1. Source construction preserves valid recipes
+
+Every closed, well-typed source expression of type `Music` evaluates to a valid finite recipe.
+
+**Proof.** Induct on the source typing and evaluation that can produce `Music`. An atom constructor has a finite request
+and bound by its checked bridge entry. Sequence and overlay combine finite acyclic graphs in source order, point only to
+completed operands, and use the stated sum and maximum extent rules. A finite repeat makes finitely many references to
+one completed body. Each ordinary transform adds one node and preserves the bound and admitted payload type by its
+closed table contract. `map_note_pitches` adds one `MapPitches` node holding a good total source function; it does not
+run the function. A checked quote has the exact finite term and hole table established by its typing rule. `Play` stores
+a finite voicing and exact duration. A use or captured `Music` value refers only to a value already completed in the
+acyclic definition graph. No case creates a back edge, unbounded collection, or hidden context read. ∎
+
+### Lemma 11.2. Instantiation preserves the fragment invariant
+
+Instantiating a valid recipe under a well-formed explicit `MusicalContext` finishes with either a stated error or a
+finite well-formed `KernelFragment<ScoreFact>` within the recipe's bound.
+
+**Proof.** Visit the finite recipe graph in dependency-first order and induct on its nodes. An atom finishes by its
+adapter contract. Sequence and overlay use the accepted kernel constructors on the inductively obtained fragments; they
+keep finite compatible binding tables, add occurrence bounds, and use sum or maximum extent as specified. Each ordinary
+transform terminates and preserves admitted payloads by its table contract.
+
+For `MapPitches`, first instantiate its source. The successful fragment has at most its finite occurrence bound. Visit
+the documented pitch-bearing facts in canonical order. The stored source function is closed and well typed, so Theorem
+6.4 makes each of the finitely many calls finish at a `Pitch`; preservation supplies the result type. Replacing only
+those pitch fields preserves occurrence support and admitted `ScoreFact` formation.
+
+For `Quote`, instantiate its finite holes by induction. Bind each successful fragment at its checked distinct name and
+locus. The quote's free-name equality says no other name remains, and the checked kernel term plus admitted hole terms
+gives a finite well-formed fragment. `Play` either reports its stated invalid-duration error or creates one finite fact
+per tone in its finite voicing. A reference reuses an earlier completed result with a new origin step. Resource
+exhaustion is a stated error before large allocation. Every case ends and respects the bound. ∎
+
+### Lemma 11.3. Closing a valid fragment is total and sound
+
+Closing a finite well-formed fragment finishes with either a stated closure error or a closed, well-typed
+`Term<ScoreFact>`.
+
+**Proof.** Keep only bindings reachable from the fragment root. Their dependency graph is a finite subgraph of the
+acyclic recipe order. Wrap them in reverse dependency order, so every name is bound outside each use. Then run the
+decidable kernel checker. A missing name, invalid payload, or invalid exact placement becomes its stated closure error.
+On success, the checker establishes that the term is closed, well typed, finite, and carries admitted `ScoreFact`
+payloads. ∎
+
+### Theorem 11.4. A `Music` value closes or reports an error
+
+For every closed, well-typed source expression `music: Music` and well-formed explicit `MusicalContext`, evaluation,
+instantiation, and closing finish with either a stated error or a finite, closed, well-typed `Term<ScoreFact>`.
+
+**Proof.** Lemma 11.1 gives a valid recipe. Lemma 11.2 gives an instantiation error or a finite valid fragment. In the
+success case, Lemma 11.3 gives a closure error or the required term. ∎
 
 The explicit context is load-bearing. A hidden current key, tuning, staff, or target would not be an input to the
 theorem and would break repeatability.
@@ -450,15 +563,17 @@ each edge and the losses it may record.
 
 ### Theorem 12.1. Adjacent valid passes compose
 
-Suppose pass `P` returns a valid result from representation `A` to `B`, and pass `Q` returns a valid result from that
-same `B` value to `C`. If both rule tables are well formed, the accepted composition operation returns a valid path from
-`A` to `C` and the normalized combined loss record.
+Suppose pass `P` returns a valid result from representation `A` to `B`, and pass `Q` consumes that exact stored `B`
+result and returns a valid result from `B` to `C`. For every joined path, require the full ending anchor of `P`—its
+`PresentationRef` and local anchor id—to equal the full starting anchor of `Q`. If both pass descriptors are well
+formed, exact-anchor path concatenation returns a valid path from `A` to `C`. The composite loss list is the ordered
+concatenation of `P`'s valid loss records followed by `Q`'s valid loss records.
 
-**Proof.** Every end anchor of a path from `P` that `Q` uses is the start anchor and semantic identity recorded by `Q`.
-The governing composition rule joins at that anchor while retaining the intermediate step, including any generated root
-and site. Source and target types agree by the premise, so the joined path is typed. The governing loss operation
-combines and normalizes the two valid loss lists. Its closure law gives another valid list. Thus the composite is well
-formed. ∎
+**Proof.** The exact shared anchor is the premise of the governing path-joining rule. Concatenation keeps that anchor
+and both steps, including any generated root and site. Source and target representation kinds agree through the same
+stored anchor, so the joined path is typed. Every record in the concatenated loss list was already valid under its own
+pass descriptor, and ordered list concatenation changes no record. Thus the composite paths and loss list are well
+formed. No loss normalization or semantic-equality substitution is claimed. ∎
 
 ### Corollary 12.2. A finite source-to-preparation path composes
 

@@ -23,8 +23,9 @@ The proof assumes:
 2. Nominal names are distinct within the build. Consistent renaming of all fresh names preserves lookup.
 3. Data dependencies and value dependencies are finite and acyclic.
 4. Every ordinary operation in `P` is first order, pure, deterministic, total on closed well-typed arguments, type
-   preserving, finite, and charged by a fixed rule. Structural folds use their language rules. The sole admitted
-   higher-order music traversal satisfies the finite occurrence-bound rule stated in `04-source-calculus.md`.
+   preserving, finite, and charged by a fixed rule. All seven structural operations use their language rules. The sole
+   admitted higher-order music operation stores its function in a finite recipe; the later adapter traversal satisfies
+   the finite occurrence-bound rule stated in `04-source-calculus.md`.
 5. The accepted temporal kernel and cross-stage specifications satisfy their governing theorems.
 
 The main source judgments are:
@@ -156,10 +157,11 @@ If `Delta; Sigma; empty |- e : A`, then there is a value `v` such that `Delta |-
 
 This theorem applies only to the source core. It does not say that a process graph or live run reaches a final value.
 
-### Theorem 7. Sealed constructors cannot be forged
+### Theorem 7. Sealed constructors cannot be forged or inspected
 
 Let structure `M` define nominal type `M.T` with constructors hidden by signature sealing. If client source resolves and
-checks using `Sigma`, no client-originated core node constructs or directly matches a value of `M.T`.
+checks using `Sigma`, no client-originated core node names a private constructor, constructs `M.T` with one, or uses a
+constructor pattern to inspect it. A wildcard or binder match remains legal because it reveals no representation.
 
 Imported compiled bodies may construct or match `M.T` using the retained private environment. The theorem does not claim
 that an untyped byte string cannot be maliciously passed to an unsafe runtime decoder; no such decoder is part of this
@@ -168,35 +170,33 @@ calculus.
 ### Theorem 8. Conservative expression extension
 
 Let `e` be accepted by the existing expression fragment before `Text`, `Result`, user data, and structures are added.
-Embed its old types, terms, values, and primitive entries unchanged into the new core. Then:
+Embed every current checked form through the exhaustive table in `04a-formal-rules.md` §12. Then:
 
 1. `e` has the same type;
-2. every old reduction step is the same new reduction step; and
-3. its final value is unchanged.
+2. every old reduction step is simulated by finitely many new steps; and
+3. its final value is structurally the same, with curried function values related by application behavior.
 
 This theorem does not promise that future surface syntax reserves no new keywords. It also does not cover the separate
 later task of moving built-in musical concepts into packages.
 
 ### Theorem 9. Closing `Music`
 
-Assume the notation adapter satisfies:
+First prove the private recipe invariant for every atom, composition, controlled transform, mapped-pitch recipe, checked
+quote, sounded voicing, and acyclic reference. Then prove that instantiation returns a stated error or a finite
+well-formed fragment and that closing returns a stated error or a closed, well-typed `Term<ScoreFact>`.
 
-1. `instantiate` is total, deterministic, and type preserving;
-2. every successful fragment is finite;
-3. `close` is total and deterministic; and
-4. every successful close result is a closed, well-typed `Term<ScoreFact>`.
+Then for every closed, well-typed source expression `music: Music` and well-formed explicit context `c`, evaluation,
+application, and closing finish with either a stated error or a finite, closed, well-typed temporal term.
 
-Then for every closed source value `music: Music` and well-formed explicit context `c`, applying and closing `music`
-finishes with either a stated error or a finite, closed, well-typed temporal term.
-
-The conclusion is conditional on the adapter contract. Source typing alone cannot prove facts about an opaque adapter.
+The conclusion remains conditional only on the finite atom and transform contracts listed by the recipe invariant; their
+checked table is the implementation witness. Source typing alone cannot prove an unlisted foreign adapter safe.
 
 ### Theorem 10. Typed stage passes compose
 
-Assume two adjacent successful pass results satisfy the accepted cross-stage formation rules, the second consumes the
-first output at the same representation type and semantic identity, and their rule registries are well formed. Then the
-accepted derivation composition operation produces a well-formed composite path. Its loss record is the normalized
-combination prescribed by the governing specification.
+Assume two adjacent successful pass results satisfy the accepted cross-stage formation rules and the second consumes the
+exact stored output anchor of the first, including `PresentationRef` and local anchor id. Then exact-anchor path
+concatenation produces a well-formed composite path. Ordered concatenation of the two already valid loss lists remains a
+valid list; no normalization law is assumed.
 
 This theorem applies repeatedly along any finite source-to-preparation path. For an unbounded audio run it applies to
 each finite prefix; it does not create a final infinite value.

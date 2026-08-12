@@ -11,10 +11,10 @@ The examples assume this small, fixed adapter surface:
 
 ```text
 notation_note:
-  Text -> Nat -> Duration -> Result<Music, NotationError>
+  Text -> Nat -> Duration -> Result<Music, Text>
 
 notation_chord:
-  List<(Text, Nat)> -> Duration -> Result<Music, NotationError>
+  List<(Text, Nat)> -> Duration -> Result<Music, Text>
 
 music_empty: Unit -> Music
 music_then: Music -> Music -> Music
@@ -29,10 +29,18 @@ whole: Duration
 either returns a score recipe or explains why it cannot write the request. It knows nothing about keys, chords, harmonic
 function, phrases, or ensemble tuning.
 
+Every code block uses the surface elaboration table in `04a-formal-rules.md` §4. In particular, `f(a,b)` becomes
+`(f(a))(b)`, `[a,b]` becomes `a :: b :: []`, and `fold_list(items,initial,step)` becomes the core
+`list_fold(initial,step,items)`. These are the only conveniences used below.
+
 The stage examples also name these ordinary records. They are not source-language types:
 
 ```text
-NotationContext = {
+MusicalContext = {
+  placement: Ratio,
+  score_scope: ScoreScope,
+  meter_track: List<MeterFact>,
+  key_track: List<KeyFact>,
   staff: StaffId,
   clef_policy: ClefPolicy,
   target: NotationTarget
@@ -558,6 +566,12 @@ let phrase_tokens: List<PhraseToken> = [
 ];
 
 let phrase_result: Result<PhraseModel.Phrase, PhraseError> = PhraseModel.make(phrase_tokens);
+
+let phrase_gestures: Result<List<GestureIntent>, PhraseError> =
+  match phrase_result {
+    Err(error) => Err(error);
+    Ok(phrase) => Ok(PhraseModel.perform(phrase));
+  };
 ```
 
 ### 3.2 Type derivation
@@ -572,17 +586,18 @@ let phrase_result: Result<PhraseModel.Phrase, PhraseError> = PhraseModel.make(ph
 
 ### 3.3 Evaluation and stage trace
 
-For `phrase_tokens`, `PhraseModel.perform` evaluates to:
+For `phrase_tokens`, `phrase_gestures` evaluates to:
 
 ```text
-[
+Ok([
   OscillateSvara(Ga, quarter),
   ApproachSvaraFromBelow(Ri, quarter),
   HoldSvara(Sa, half)
-]
+])
 ```
 
-That value can pass directly to the gesture interpreter. `PhraseModel.transcribe` instead returns score `Music` plus:
+The host handles `Err` as a phrase error. On `Ok(gesture_intents)`, it passes exactly `gesture_intents` to the named
+gesture interpreter. `PhraseModel.transcribe` instead returns score `Music` plus:
 
 ```text
 [
@@ -813,6 +828,10 @@ For a successful `cadence`, the remaining inputs are:
 
 ```text
 notation_context = {
+  placement: 0/1,
+  score_scope: Voice(Staff1, 1),
+  meter_track: [MeterAt(0/1, 4, 4)],
+  key_track: [KeyAt(0/1, "C minor")],
   staff: Staff1,
   clef_policy: TrebleAndBass,
   target: MusicXML4
@@ -822,7 +841,17 @@ bindings = {
   Staff1: Instrument("built-in.piano.v1")
 }
 
-seed = 28411
+performance_profile = "measured-keyboard.v1"
+
+performance_context = {
+  performer: "default-keyboard-player",
+  instrument_capabilities: "keyboard-standard.v1",
+  tempo_and_timing: "written-tempo.v1"
+}
+
+realization_seed = 28411
+
+preparation_seed = 9107
 
 options = {
   sample_rate: 48000,
@@ -831,30 +860,42 @@ options = {
 }
 ```
 
-The typed stages are:
+The host first handles the source result exactly once:
 
 ```text
-cadence Music
-  -> instantiate(cadence, notation_context)
+match cadence {
+  Err(error) => stop with SourceValueError(error)
+  Ok(cadence_music) => continue with cadence_music
+}
+```
+
+In the successful branch, the typed stages are:
+
+```text
+cadence_music: Music
+  -> instantiate(cadence_music, notation_context)
   -> close(fragment)
   -> Term<ScoreFact>
   -> Timeline<ScoreFact>
-  -> interpret("measured-keyboard.v1")
+  -> interpret(score_timeline,
+               performance_profile,
+               performance_context,
+               realization_seed)
   -> Timeline<Gesture>
-  -> prepare(gestures, bindings, seed, options)
+  -> prepare(gestures, bindings, preparation_seed, options)
   -> PreparedExecution
   -> step(input_block_0, state_0)
   -> (audio_block_0, state_1)
 ```
 
-Every arrow has the inputs and errors listed in `05-stage-semantics.md`. The source term terminates at `Music`; the host
-starts process stepping only after preparation succeeds.
+Every arrow has the inputs and errors listed in `05-stage-semantics.md`. The source term terminates at `Result`; the
+host continues with `Music` only in its `Ok` branch and starts process stepping only after preparation succeeds.
 
 ### 5.4 What belongs where
 
-The cadence uses a tonal theory package. `NotationContext` belongs to notation. Instrument bindings and render options
-belong to studio preparation. Sample production belongs to the process engine. None should become an implicit field of
-`Music`.
+The cadence uses a tonal theory package. `MusicalContext` belongs to score instantiation and includes its notation
+target. Instrument bindings and render options belong to studio preparation. Sample production belongs to the process
+engine. None should become an implicit field of `Music`.
 
 ## 6. A finite live protocol and an unbounded run
 
