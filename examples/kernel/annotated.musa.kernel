@@ -6,39 +6,39 @@ kernel "Annotated" {
       sequence {
         overlay {
           timeline 2 {
-            occurrence "voice 0 0 note a4 1/4 [873:877 #4]" from 0 to 1/4;
-            occurrence "voice 0 0 note c5 1/4 [898:902 #4]" from 1/4 to 1/2;
-            occurrence "voice 0 0 note e5 1/2 [923:927 #4]" from 1/2 to 1;
-            occurrence "voice 0 0 note f5 1/2 [948:952 #4]" from 1 to 3/2;
-            occurrence "voice 0 0 note e5 1/2 [973:977 #4]" from 3/2 to 2;
+            occurrence "voice 0 0 note a4 1/4 [878:882 #4]" from 0 to 1/4;
+            occurrence "voice 0 0 note c5 1/4 [903:907 #4]" from 1/4 to 1/2;
+            occurrence "voice 0 0 note e5 1/2 [928:932 #4]" from 1/2 to 1;
+            occurrence "voice 0 0 note f5 1/2 [953:957 #4]" from 1 to 3/2;
+            occurrence "voice 0 0 note e5 1/2 [978:982 #4]" from 3/2 to 2;
           };
           timeline 2 {
-            occurrence "voice 0 0 phrase 'antecedent' [831:995 #4]" from 0 to 2;
+            occurrence "voice 0 0 phrase 'antecedent' [836:1000 #4]" from 0 to 2;
           }
         };
         overlay {
           timeline 2 {
-            occurrence "voice 0 0 note b4 1/4 [1054:1058 #4]" from 0 to 1/4;
-            occurrence "voice 0 0 note e5 1/4 [1079:1083 #4]" from 1/4 to 1/2;
-            occurrence "voice 0 0 note g#5 1/2 [1104:1109 #4]" from 1/2 to 1;
-            occurrence "voice 0 0 note a5 1 [1130:1134 #4]" from 1 to 2;
+            occurrence "voice 0 0 note b4 1/4 [1059:1063 #4]" from 0 to 1/4;
+            occurrence "voice 0 0 note e5 1/4 [1084:1088 #4]" from 1/4 to 1/2;
+            occurrence "voice 0 0 note g#5 1/2 [1109:1114 #4]" from 1/2 to 1;
+            occurrence "voice 0 0 note a5 1 [1135:1139 #4]" from 1 to 2;
           };
           timeline 2 {
-            occurrence "voice 0 0 phrase 'consequent' [1012:1152 #4]" from 0 to 2;
+            occurrence "voice 0 0 phrase 'consequent' [1017:1157 #4]" from 0 to 2;
           }
         }
       };
       timeline 4 {
-        occurrence "piece meter 4/4 [497:512]" from 0 to 4;
-        occurrence "piece tempo 1/4=96 [477:497]" from 0 to 4;
-        occurrence "piece key a minor [512:529]" from 0 to 4;
-        occurrence "part 0 clef treble [776:788]" from 0 to 4;
-        occurrence "piece section 'Exposition' [551:579]" from 0 to 0;
-        occurrence "piece section 'Development' [588:617]" from 2 to 2;
-        occurrence "piece harmony 'am' [649:659]" from 0 to 0;
-        occurrence "piece harmony 'fmaj7' [672:685]" from 1 to 1;
-        occurrence "piece harmony 'e7' [698:708]" from 2 to 2;
-        occurrence "piece harmony 'am' [721:731]" from 3 to 3;
+        occurrence "piece meter 4/4 [502:517]" from 0 to 4;
+        occurrence "piece tempo 1/4=96 [482:502]" from 0 to 4;
+        occurrence "piece key a minor [517:534]" from 0 to 4;
+        occurrence "part 0 clef treble [781:793]" from 0 to 4;
+        occurrence "piece section 'Exposition' [556:584]" from 0 to 0;
+        occurrence "piece section 'Development' [593:622]" from 2 to 2;
+        occurrence "piece harmony 'am' [654:664]" from 0 to 0;
+        occurrence "piece harmony 'fmaj7' [677:690]" from 1 to 1;
+        occurrence "piece harmony 'e7' [703:713]" from 2 to 2;
+        occurrence "piece harmony 'am' [726:736]" from 3 to 3;
       }
     };
 }

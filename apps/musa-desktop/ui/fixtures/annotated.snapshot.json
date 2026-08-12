@@ -66,12 +66,12 @@
           "occurrence": null,
           "line": 29,
           "span": {
-            "start": 873,
-            "end": 877
+            "start": 878,
+            "end": 882
           },
           "definitionSpan": {
-            "start": 873,
-            "end": 877
+            "start": 878,
+            "end": 882
           },
           "decision": null
         }
@@ -109,12 +109,12 @@
           "occurrence": null,
           "line": 30,
           "span": {
-            "start": 898,
-            "end": 902
+            "start": 903,
+            "end": 907
           },
           "definitionSpan": {
-            "start": 898,
-            "end": 902
+            "start": 903,
+            "end": 907
           },
           "decision": null
         }
@@ -152,12 +152,12 @@
           "occurrence": null,
           "line": 31,
           "span": {
-            "start": 923,
-            "end": 927
+            "start": 928,
+            "end": 932
           },
           "definitionSpan": {
-            "start": 923,
-            "end": 927
+            "start": 928,
+            "end": 932
           },
           "decision": null
         }
@@ -195,12 +195,12 @@
           "occurrence": null,
           "line": 32,
           "span": {
-            "start": 948,
-            "end": 952
+            "start": 953,
+            "end": 957
           },
           "definitionSpan": {
-            "start": 948,
-            "end": 952
+            "start": 953,
+            "end": 957
           },
           "decision": null
         }
@@ -238,12 +238,12 @@
           "occurrence": null,
           "line": 33,
           "span": {
-            "start": 973,
-            "end": 977
+            "start": 978,
+            "end": 982
           },
           "definitionSpan": {
-            "start": 973,
-            "end": 977
+            "start": 978,
+            "end": 982
           },
           "decision": null
         }
@@ -281,12 +281,12 @@
           "occurrence": null,
           "line": 36,
           "span": {
-            "start": 1054,
-            "end": 1058
+            "start": 1059,
+            "end": 1063
           },
           "definitionSpan": {
-            "start": 1054,
-            "end": 1058
+            "start": 1059,
+            "end": 1063
           },
           "decision": null
         }
@@ -324,12 +324,12 @@
           "occurrence": null,
           "line": 37,
           "span": {
-            "start": 1079,
-            "end": 1083
+            "start": 1084,
+            "end": 1088
           },
           "definitionSpan": {
-            "start": 1079,
-            "end": 1083
+            "start": 1084,
+            "end": 1088
           },
           "decision": null
         }
@@ -367,12 +367,12 @@
           "occurrence": null,
           "line": 38,
           "span": {
-            "start": 1104,
-            "end": 1109
+            "start": 1109,
+            "end": 1114
           },
           "definitionSpan": {
-            "start": 1104,
-            "end": 1109
+            "start": 1109,
+            "end": 1114
           },
           "decision": null
         }
@@ -410,12 +410,12 @@
           "occurrence": null,
           "line": 39,
           "span": {
-            "start": 1130,
-            "end": 1134
+            "start": 1135,
+            "end": 1139
           },
           "definitionSpan": {
-            "start": 1130,
-            "end": 1134
+            "start": 1135,
+            "end": 1139
           },
           "decision": null
         }
@@ -436,8 +436,8 @@
         "endFrames": 240000,
         "line": 14,
         "span": {
-          "start": 551,
-          "end": 579
+          "start": 556,
+          "end": 584
         }
       },
       {
@@ -453,8 +453,8 @@
         "endFrames": 240000,
         "line": 28,
         "span": {
-          "start": 831,
-          "end": 995
+          "start": 836,
+          "end": 1000
         }
       },
       {
@@ -470,8 +470,8 @@
         "endFrames": 480000,
         "line": 15,
         "span": {
-          "start": 588,
-          "end": 617
+          "start": 593,
+          "end": 622
         }
       },
       {
@@ -487,8 +487,8 @@
         "endFrames": 480000,
         "line": 35,
         "span": {
-          "start": 1012,
-          "end": 1152
+          "start": 1017,
+          "end": 1157
         }
       }
     ],
@@ -558,8 +558,8 @@
       "name": "piano",
       "kind": "part",
       "declaration": {
-        "start": 756,
-        "end": 761
+        "start": 761,
+        "end": 766
       },
       "external": null,
       "uses": []
@@ -568,8 +568,8 @@
       "name": "lead",
       "kind": "voice",
       "declaration": {
-        "start": 808,
-        "end": 812
+        "start": 813,
+        "end": 817
       },
       "external": null,
       "uses": []

@@ -30,8 +30,8 @@ expression: "String::from_utf8_lossy(&output.stdout)"
         "voice": "lead",
         "event": "event-3",
         "span": {
-          "start": 948,
-          "end": 952
+          "start": 953,
+          "end": 957
         },
         "line": 32
       },
@@ -56,8 +56,8 @@ expression: "String::from_utf8_lossy(&output.stdout)"
         "voice": "lead",
         "event": "event-4",
         "span": {
-          "start": 973,
-          "end": 977
+          "start": 978,
+          "end": 982
         },
         "line": 33
       },

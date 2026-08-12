@@ -1,5 +1,5 @@
 # musa audio-bridge compatibility manifest v1
-# Test oracle only; timing and allocation samples live in docs/language/06-performance.md.
+# Test oracle only; timing and allocation samples live in docs/rules/language/06-performance.md.
 lane=0:oboe:8:242fef1b404ea055
 lane=1:viola:8:f96a2669c12f451a
 sample-rate=48000

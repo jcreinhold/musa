@@ -5,145 +5,145 @@
 kernel "Nineteen" {
   composition main : Timeline[ScoreFact] =
     let shared0 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note bb4 1/2 [4294967295:4294967295 def 2070:2075 #17]" from 0 to 1/2;
-        occurrence "voice 4294967295 4294967295 note c#5 1/2 [4294967295:4294967295 def 2084:2089 #17]" from 1/2 to 1;
+        occurrence "voice 4294967295 4294967295 note bb4 1/2 [4294967295:4294967295 def 2076:2081 #17]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note c#5 1/2 [4294967295:4294967295 def 2090:2095 #17]" from 1/2 to 1;
       }
     in let shared1 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note a4 1/2 [4294967295:4294967295 def 1282:1286 #8]" from 0 to 1/2;
-        occurrence "voice 4294967295 4294967295 note d#5 1/2 [4294967295:4294967295 def 1295:1300 #8]" from 1/2 to 1;
+        occurrence "voice 4294967295 4294967295 note a4 1/2 [4294967295:4294967295 def 1288:1292 #8]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note d#5 1/2 [4294967295:4294967295 def 1301:1306 #8]" from 1/2 to 1;
       }
     in let shared2 = timeline 2 {
-        occurrence "voice 4294967295 4294967295 note f#5 1 [4294967295:4294967295 def 2133:2138 #18]" from 0 to 1;
-        occurrence "voice 4294967295 4294967295 note c5 1 [4294967295:4294967295 def 2147:2151 #18]" from 1 to 2;
+        occurrence "voice 4294967295 4294967295 note f#5 1 [4294967295:4294967295 def 2139:2144 #18]" from 0 to 1;
+        occurrence "voice 4294967295 4294967295 note c5 1 [4294967295:4294967295 def 2153:2157 #18]" from 1 to 2;
       }
     in let shared3 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note b5 1/8 [4294967295:4294967295 def 1981:1985 #16]" from 0 to 1/8;
-        occurrence "voice 4294967295 4294967295 note g4 1/8 [4294967295:4294967295 def 1994:1998 #16]" from 1/8 to 1/4;
-        occurrence "voice 4294967295 4294967295 note ab5 1/4 [4294967295:4294967295 def 2007:2012 #16]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note d5 1/2 [4294967295:4294967295 def 2021:2025 #16]" from 1/2 to 1;
+        occurrence "voice 4294967295 4294967295 note b5 1/8 [4294967295:4294967295 def 1987:1991 #16]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note g4 1/8 [4294967295:4294967295 def 2000:2004 #16]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note ab5 1/4 [4294967295:4294967295 def 2013:2018 #16]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note d5 1/2 [4294967295:4294967295 def 2027:2031 #16]" from 1/2 to 1;
       }
     in let shared4 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note ab5 1/8 [4294967295:4294967295 def 1721:1726 #14]" from 0 to 1/8;
-        occurrence "voice 4294967295 4294967295 note d5 1/4 [4294967295:4294967295 def 1735:1739 #14]" from 1/8 to 3/8;
-        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 1748:1752 #14]" from 3/8 to 1/2;
-        occurrence "voice 4294967295 4294967295 note bb4 1/8 [4294967295:4294967295 def 1761:1766 #14]" from 1/2 to 5/8;
-        occurrence "voice 4294967295 4294967295 note c#5 1/4 [4294967295:4294967295 def 1775:1780 #14]" from 5/8 to 7/8;
-        occurrence "voice 4294967295 4294967295 note eb4 1/8 [4294967295:4294967295 def 1789:1794 #14]" from 7/8 to 1;
+        occurrence "voice 4294967295 4294967295 note ab5 1/8 [4294967295:4294967295 def 1727:1732 #14]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note d5 1/4 [4294967295:4294967295 def 1741:1745 #14]" from 1/8 to 3/8;
+        occurrence "voice 4294967295 4294967295 note e5 1/8 [4294967295:4294967295 def 1754:1758 #14]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note bb4 1/8 [4294967295:4294967295 def 1767:1772 #14]" from 1/2 to 5/8;
+        occurrence "voice 4294967295 4294967295 note c#5 1/4 [4294967295:4294967295 def 1781:1786 #14]" from 5/8 to 7/8;
+        occurrence "voice 4294967295 4294967295 note eb4 1/8 [4294967295:4294967295 def 1795:1800 #14]" from 7/8 to 1;
       }
     in let shared5 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note b5 1/8 [4294967295:4294967295 def 947:951 #4]" from 0 to 1/8;
-        occurrence "voice 4294967295 4294967295 note g4 1/8 [4294967295:4294967295 def 960:964 #4]" from 1/8 to 1/4;
-        occurrence "voice 4294967295 4294967295 note ab5 1/4 [4294967295:4294967295 def 973:978 #4]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note d5 1/2 [4294967295:4294967295 def 987:991 #4]" from 1/2 to 1;
+        occurrence "voice 4294967295 4294967295 note b5 1/8 [4294967295:4294967295 def 953:957 #4]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note g4 1/8 [4294967295:4294967295 def 966:970 #4]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note ab5 1/4 [4294967295:4294967295 def 979:984 #4]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note d5 1/2 [4294967295:4294967295 def 993:997 #4]" from 1/2 to 1;
       }
     in let shared6 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note g4 1/2 [4294967295:4294967295 def 1340:1344 #9]" from 0 to 1/2;
-        occurrence "voice 4294967295 4294967295 note ab5 1/4 [4294967295:4294967295 def 1353:1358 #9]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note d5 1/4 [4294967295:4294967295 def 1367:1371 #9]" from 3/4 to 1;
+        occurrence "voice 4294967295 4294967295 note g4 1/2 [4294967295:4294967295 def 1346:1350 #9]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note ab5 1/4 [4294967295:4294967295 def 1359:1364 #9]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note d5 1/4 [4294967295:4294967295 def 1373:1377 #9]" from 3/4 to 1;
       }
     in let shared7 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note bb4 1/2 [4294967295:4294967295 def 1031:1036 #5]" from 0 to 1/2;
-        occurrence "voice 4294967295 4294967295 note c#5 1/2 [4294967295:4294967295 def 1045:1050 #5]" from 1/2 to 1;
+        occurrence "voice 4294967295 4294967295 note bb4 1/2 [4294967295:4294967295 def 1037:1042 #5]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note c#5 1/2 [4294967295:4294967295 def 1051:1056 #5]" from 1/2 to 1;
       }
     in let shared8 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note eb4 1/8 [4294967295:4294967295 def 1837:1842 #15]" from 0 to 1/8;
-        occurrence "voice 4294967295 4294967295 note a4 1/8 [4294967295:4294967295 def 1851:1855 #15]" from 1/8 to 1/4;
-        occurrence "voice 4294967295 4294967295 note d#5 1/8 [4294967295:4294967295 def 1864:1869 #15]" from 1/4 to 3/8;
-        occurrence "voice 4294967295 4294967295 note f#5 1/8 [4294967295:4294967295 def 1878:1883 #15]" from 3/8 to 1/2;
-        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 1892:1896 #15]" from 1/2 to 5/8;
-        occurrence "voice 4294967295 4294967295 note b5 1/8 [4294967295:4294967295 def 1905:1909 #15]" from 5/8 to 3/4;
-        occurrence "voice 4294967295 4294967295 note g4 1/8 [4294967295:4294967295 def 1918:1922 #15]" from 3/4 to 7/8;
-        occurrence "voice 4294967295 4294967295 note ab5 1/8 [4294967295:4294967295 def 1931:1936 #15]" from 7/8 to 1;
+        occurrence "voice 4294967295 4294967295 note eb4 1/8 [4294967295:4294967295 def 1843:1848 #15]" from 0 to 1/8;
+        occurrence "voice 4294967295 4294967295 note a4 1/8 [4294967295:4294967295 def 1857:1861 #15]" from 1/8 to 1/4;
+        occurrence "voice 4294967295 4294967295 note d#5 1/8 [4294967295:4294967295 def 1870:1875 #15]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note f#5 1/8 [4294967295:4294967295 def 1884:1889 #15]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note c5 1/8 [4294967295:4294967295 def 1898:1902 #15]" from 1/2 to 5/8;
+        occurrence "voice 4294967295 4294967295 note b5 1/8 [4294967295:4294967295 def 1911:1915 #15]" from 5/8 to 3/4;
+        occurrence "voice 4294967295 4294967295 note g4 1/8 [4294967295:4294967295 def 1924:1928 #15]" from 3/4 to 7/8;
+        occurrence "voice 4294967295 4294967295 note ab5 1/8 [4294967295:4294967295 def 1937:1942 #15]" from 7/8 to 1;
       }
     in let shared9 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note c#5 1/4 [4294967295:4294967295 def 1413:1418 #10]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note eb4 1/4 [4294967295:4294967295 def 1427:1432 #10]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note a4 1/4 [4294967295:4294967295 def 1441:1445 #10]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note d#5 1/4 [4294967295:4294967295 def 1454:1459 #10]" from 3/4 to 1;
+        occurrence "voice 4294967295 4294967295 note c#5 1/4 [4294967295:4294967295 def 1419:1424 #10]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note eb4 1/4 [4294967295:4294967295 def 1433:1438 #10]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note a4 1/4 [4294967295:4294967295 def 1447:1451 #10]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note d#5 1/4 [4294967295:4294967295 def 1460:1465 #10]" from 3/4 to 1;
       }
     in let shared10 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note g4 1/2 [4294967295:4294967295 def 2394:2398 #21]" from 0 to 1/2;
-        occurrence "voice 4294967295 4294967295 note ab5 1/4 [4294967295:4294967295 def 2407:2412 #21]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note d5 1/4 [4294967295:4294967295 def 2421:2425 #21]" from 3/4 to 1;
+        occurrence "voice 4294967295 4294967295 note g4 1/2 [4294967295:4294967295 def 2400:2404 #21]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note ab5 1/4 [4294967295:4294967295 def 2413:2418 #21]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note d5 1/4 [4294967295:4294967295 def 2427:2431 #21]" from 3/4 to 1;
       }
     in let shared11 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note d5 1/16 [4294967295:4294967295 def 2195:2200 #19]" from 0 to 1/16;
-        occurrence "voice 4294967295 4294967295 note e5 1/16 [4294967295:4294967295 def 2209:2214 #19]" from 1/16 to 1/8;
-        occurrence "voice 4294967295 4294967295 note bb4 1/16 [4294967295:4294967295 def 2223:2229 #19]" from 1/8 to 3/16;
-        occurrence "voice 4294967295 4294967295 note c#5 1/16 [4294967295:4294967295 def 2238:2244 #19]" from 3/16 to 1/4;
-        occurrence "voice 4294967295 4294967295 note eb4 1/4 [4294967295:4294967295 def 2253:2258 #19]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note a4 1/4 [4294967295:4294967295 def 2267:2271 #19]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note d#5 1/4 [4294967295:4294967295 def 2280:2285 #19]" from 3/4 to 1;
+        occurrence "voice 4294967295 4294967295 note d5 1/16 [4294967295:4294967295 def 2201:2206 #19]" from 0 to 1/16;
+        occurrence "voice 4294967295 4294967295 note e5 1/16 [4294967295:4294967295 def 2215:2220 #19]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note bb4 1/16 [4294967295:4294967295 def 2229:2235 #19]" from 1/8 to 3/16;
+        occurrence "voice 4294967295 4294967295 note c#5 1/16 [4294967295:4294967295 def 2244:2250 #19]" from 3/16 to 1/4;
+        occurrence "voice 4294967295 4294967295 note eb4 1/4 [4294967295:4294967295 def 2259:2264 #19]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note a4 1/4 [4294967295:4294967295 def 2273:2277 #19]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note d#5 1/4 [4294967295:4294967295 def 2286:2291 #19]" from 3/4 to 1;
       }
     in let shared12 = timeline 2 {
-        occurrence "voice 4294967295 4294967295 note f#5 1 [4294967295:4294967295 def 1092:1097 #6]" from 0 to 1;
-        occurrence "voice 4294967295 4294967295 note c5 1 [4294967295:4294967295 def 1106:1110 #6]" from 1 to 2;
+        occurrence "voice 4294967295 4294967295 note f#5 1 [4294967295:4294967295 def 1098:1103 #6]" from 0 to 1;
+        occurrence "voice 4294967295 4294967295 note c5 1 [4294967295:4294967295 def 1112:1116 #6]" from 1 to 2;
       }
     in let shared13 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note a4 1/2 [4294967295:4294967295 def 2331:2335 #20]" from 0 to 1/2;
-        occurrence "voice 4294967295 4294967295 note d#5 1/2 [4294967295:4294967295 def 2344:2349 #20]" from 1/2 to 1;
+        occurrence "voice 4294967295 4294967295 note a4 1/2 [4294967295:4294967295 def 2337:2341 #20]" from 0 to 1/2;
+        occurrence "voice 4294967295 4294967295 note d#5 1/2 [4294967295:4294967295 def 2350:2355 #20]" from 1/2 to 1;
       }
     in let shared14 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note c5 3/4 [4294967295:4294967295 def 1501:1506 #11]" from 0 to 3/4;
-        occurrence "voice 4294967295 4294967295 note b5 1/4 [4294967295:4294967295 def 1515:1519 #11]" from 3/4 to 1;
+        occurrence "voice 4294967295 4294967295 note c5 3/4 [4294967295:4294967295 def 1507:1512 #11]" from 0 to 3/4;
+        occurrence "voice 4294967295 4294967295 note b5 1/4 [4294967295:4294967295 def 1521:1525 #11]" from 3/4 to 1;
       }
     in let shared15 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note d5 1/16 [4294967295:4294967295 def 1151:1156 #7]" from 0 to 1/16;
-        occurrence "voice 4294967295 4294967295 note e5 1/16 [4294967295:4294967295 def 1165:1170 #7]" from 1/16 to 1/8;
-        occurrence "voice 4294967295 4294967295 note bb4 1/16 [4294967295:4294967295 def 1179:1185 #7]" from 1/8 to 3/16;
-        occurrence "voice 4294967295 4294967295 note c#5 1/16 [4294967295:4294967295 def 1194:1200 #7]" from 3/16 to 1/4;
-        occurrence "voice 4294967295 4294967295 note eb4 1/4 [4294967295:4294967295 def 1209:1214 #7]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note a4 1/4 [4294967295:4294967295 def 1223:1227 #7]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note d#5 1/4 [4294967295:4294967295 def 1236:1241 #7]" from 3/4 to 1;
+        occurrence "voice 4294967295 4294967295 note d5 1/16 [4294967295:4294967295 def 1157:1162 #7]" from 0 to 1/16;
+        occurrence "voice 4294967295 4294967295 note e5 1/16 [4294967295:4294967295 def 1171:1176 #7]" from 1/16 to 1/8;
+        occurrence "voice 4294967295 4294967295 note bb4 1/16 [4294967295:4294967295 def 1185:1191 #7]" from 1/8 to 3/16;
+        occurrence "voice 4294967295 4294967295 note c#5 1/16 [4294967295:4294967295 def 1200:1206 #7]" from 3/16 to 1/4;
+        occurrence "voice 4294967295 4294967295 note eb4 1/4 [4294967295:4294967295 def 1215:1220 #7]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note a4 1/4 [4294967295:4294967295 def 1229:1233 #7]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note d#5 1/4 [4294967295:4294967295 def 1242:1247 #7]" from 3/4 to 1;
       }
     in let shared16 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 1560:1564 #12]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note bb4 1/8 [4294967295:4294967295 def 1573:1578 #12]" from 1/4 to 3/8;
-        occurrence "voice 4294967295 4294967295 note c#5 1/8 [4294967295:4294967295 def 1587:1592 #12]" from 3/8 to 1/2;
-        occurrence "voice 4294967295 4294967295 note eb4 1/2 [4294967295:4294967295 def 1601:1606 #12]" from 1/2 to 1;
+        occurrence "voice 4294967295 4294967295 note e5 1/4 [4294967295:4294967295 def 1566:1570 #12]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note bb4 1/8 [4294967295:4294967295 def 1579:1584 #12]" from 1/4 to 3/8;
+        occurrence "voice 4294967295 4294967295 note c#5 1/8 [4294967295:4294967295 def 1593:1598 #12]" from 3/8 to 1/2;
+        occurrence "voice 4294967295 4294967295 note eb4 1/2 [4294967295:4294967295 def 1607:1612 #12]" from 1/2 to 1;
       }
     in let shared17 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note c#5 1/4 [4294967295:4294967295 def 2470:2475 #22]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note eb4 1/4 [4294967295:4294967295 def 2484:2489 #22]" from 1/4 to 1/2;
-        occurrence "voice 4294967295 4294967295 note a4 1/4 [4294967295:4294967295 def 2498:2502 #22]" from 1/2 to 3/4;
-        occurrence "voice 4294967295 4294967295 note d#5 1/4 [4294967295:4294967295 def 2511:2516 #22]" from 3/4 to 1;
+        occurrence "voice 4294967295 4294967295 note c#5 1/4 [4294967295:4294967295 def 2476:2481 #22]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note eb4 1/4 [4294967295:4294967295 def 2490:2495 #22]" from 1/4 to 1/2;
+        occurrence "voice 4294967295 4294967295 note a4 1/4 [4294967295:4294967295 def 2504:2508 #22]" from 1/2 to 3/4;
+        occurrence "voice 4294967295 4294967295 note d#5 1/4 [4294967295:4294967295 def 2517:2522 #22]" from 3/4 to 1;
       }
     in let shared18 = timeline 1 {
-        occurrence "voice 4294967295 4294967295 note d#5 1/4 [4294967295:4294967295 def 1646:1651 #13]" from 0 to 1/4;
-        occurrence "voice 4294967295 4294967295 note f#5 1/2 [4294967295:4294967295 def 1660:1665 #13]" from 1/4 to 3/4;
-        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 1674:1678 #13]" from 3/4 to 1;
+        occurrence "voice 4294967295 4294967295 note d#5 1/4 [4294967295:4294967295 def 1652:1657 #13]" from 0 to 1/4;
+        occurrence "voice 4294967295 4294967295 note f#5 1/2 [4294967295:4294967295 def 1666:1671 #13]" from 1/4 to 3/4;
+        occurrence "voice 4294967295 4294967295 note c5 1/4 [4294967295:4294967295 def 1680:1684 #13]" from 3/4 to 1;
       }
     in overlay {
       overlay {
         sequence {
-          shared0 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared1 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared2 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared3 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared4 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared5 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared6 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared7 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared8 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared9 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared10 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared11 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared12 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared13 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared14 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared15 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared16 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared17 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263";
-          shared18 @ "depth 0 origin 2599:3263 scope voice 0 0 via motif 2599:3263"
+          shared0 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared1 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared2 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared3 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared4 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared5 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared6 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared7 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared8 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared9 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared10 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared11 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared12 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared13 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared14 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared15 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared16 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared17 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269";
+          shared18 @ "depth 0 origin 2605:3269 scope voice 0 0 via motif 2605:3269"
         };
         timeline 21 {
-          occurrence "voice 0 0 mobile 'group_one' 'group_two' 'group_three' 'group_four' 'group_five' 'group_six' 'group_seven' 'group_eight' 'group_nine' 'group_ten' 'group_eleven' 'group_twelve' 'group_thirteen' 'group_fourteen' 'group_fifteen' 'group_sixteen' 'group_seventeen' 'group_eighteen' 'group_nineteen' order 13 4 14 12 10 0 5 1 11 6 17 15 2 16 7 3 8 18 9 [2599:3263 #23]" from 0 to 21;
+          occurrence "voice 0 0 mobile 'group_one' 'group_two' 'group_three' 'group_four' 'group_five' 'group_six' 'group_seven' 'group_eight' 'group_nine' 'group_ten' 'group_eleven' 'group_twelve' 'group_thirteen' 'group_fourteen' 'group_fifteen' 'group_sixteen' 'group_seventeen' 'group_eighteen' 'group_nineteen' order 13 4 14 12 10 0 5 1 11 6 17 15 2 16 7 3 8 18 9 [2605:3269 #23]" from 0 to 21;
         }
       };
       timeline 21 {
-        occurrence "piece meter 4/4 [880:895]" from 0 to 21;
-        occurrence "piece tempo 1/4=92 [859:880]" from 0 to 21;
-        occurrence "piece key c major [895:912]" from 0 to 21;
+        occurrence "piece meter 4/4 [886:901]" from 0 to 21;
+        occurrence "piece tempo 1/4=92 [865:886]" from 0 to 21;
+        occurrence "piece key c major [901:918]" from 0 to 21;
       }
     };
 }

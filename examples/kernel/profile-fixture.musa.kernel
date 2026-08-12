@@ -4,30 +4,30 @@ kernel "Profile Fixture" {
   composition main : Timeline[ScoreFact] =
     overlay {
       timeline 2 {
-        occurrence "voice 0 0 dynamic p [1303:1313 #4]" from 0 to 0;
-        occurrence "voice 0 0 note c5 1/4 staccato [1330:1343 #4]" from 0 to 1/4;
-        occurrence "voice 0 0 note d5 1/4 staccato [1360:1373 #4]" from 1/4 to 1/2;
-        occurrence "voice 0 0 note e5 1/2 [1390:1394 #4]" from 1/2 to 1;
-        occurrence "voice 0 0 dynamic f [1411:1421 #4]" from 1 to 1;
-        occurrence "voice 0 0 note g5 1/4 staccato [1438:1451 #4]" from 1 to 5/4;
-        occurrence "voice 0 0 note a5 1/4 [1468:1472 #4]" from 5/4 to 3/2;
-        occurrence "voice 0 0 note b5 1/2 [1489:1493 #4]" from 3/2 to 2;
+        occurrence "voice 0 0 dynamic p [1308:1318 #4]" from 0 to 0;
+        occurrence "voice 0 0 note c5 1/4 staccato [1335:1348 #4]" from 0 to 1/4;
+        occurrence "voice 0 0 note d5 1/4 staccato [1365:1378 #4]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note e5 1/2 [1395:1399 #4]" from 1/2 to 1;
+        occurrence "voice 0 0 dynamic f [1416:1426 #4]" from 1 to 1;
+        occurrence "voice 0 0 note g5 1/4 staccato [1443:1456 #4]" from 1 to 5/4;
+        occurrence "voice 0 0 note a5 1/4 [1473:1477 #4]" from 5/4 to 3/2;
+        occurrence "voice 0 0 note b5 1/2 [1494:1498 #4]" from 3/2 to 2;
       };
       timeline 2 {
-        occurrence "voice 1 0 dynamic mf [1634:1645 #5]" from 0 to 0;
-        occurrence "voice 1 0 note c3 1/4 staccato [1662:1675 #5]" from 0 to 1/4;
-        occurrence "voice 1 0 note e3 1/4 tenuto [1692:1703 #5]" from 1/4 to 1/2;
-        occurrence "voice 1 0 note g3 1/2 accent [1720:1725 #5]" from 1/2 to 1;
-        occurrence "voice 1 0 dynamic p [1742:1752 #5]" from 1 to 1;
-        occurrence "voice 1 0 note c3 1/2 [1769:1773 #5]" from 1 to 3/2;
-        occurrence "voice 1 0 note g2 1/2 [1790:1794 #5]" from 3/2 to 2;
+        occurrence "voice 1 0 dynamic mf [1639:1650 #5]" from 0 to 0;
+        occurrence "voice 1 0 note c3 1/4 staccato [1667:1680 #5]" from 0 to 1/4;
+        occurrence "voice 1 0 note e3 1/4 tenuto [1697:1708 #5]" from 1/4 to 1/2;
+        occurrence "voice 1 0 note g3 1/2 accent [1725:1730 #5]" from 1/2 to 1;
+        occurrence "voice 1 0 dynamic p [1747:1757 #5]" from 1 to 1;
+        occurrence "voice 1 0 note c3 1/2 [1774:1778 #5]" from 1 to 3/2;
+        occurrence "voice 1 0 note g2 1/2 [1795:1799 #5]" from 3/2 to 2;
       };
       timeline 2 {
-        occurrence "piece meter 4/4 [318:333]" from 0 to 2;
-        occurrence "piece tempo 1/4=100 [297:318]" from 0 to 2;
-        occurrence "piece key c major [333:350]" from 0 to 2;
-        occurrence "part 0 clef treble [1221:1233]" from 0 to 2;
-        occurrence "part 1 clef bass [1552:1562]" from 0 to 2;
+        occurrence "piece meter 4/4 [323:338]" from 0 to 2;
+        occurrence "piece tempo 1/4=100 [302:323]" from 0 to 2;
+        occurrence "piece key c major [338:355]" from 0 to 2;
+        occurrence "part 0 clef treble [1226:1238]" from 0 to 2;
+        occurrence "part 1 clef bass [1557:1567]" from 0 to 2;
       }
     };
 }

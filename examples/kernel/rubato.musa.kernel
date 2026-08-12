@@ -4,35 +4,35 @@ kernel "Rubato" {
   composition main : Timeline[ScoreFact] =
     overlay {
       timeline 7 {
-        occurrence "voice 0 0 dynamic mp [1247:1258 #4]" from 0 to 0;
-        occurrence "voice 0 0 note d5 1/4 [1387:1391 #4]" from 0 to 1/4;
-        occurrence "voice 0 0 note g5 1/4 [1408:1412 #4]" from 1/4 to 1/2;
-        occurrence "voice 0 0 note a5 1/4 [1429:1433 #4]" from 1/2 to 3/4;
-        occurrence "voice 0 0 note b5 1/4 [1450:1454 #4]" from 3/4 to 1;
-        occurrence "voice 0 0 note c6 1/2 [1472:1476 #4]" from 1 to 3/2;
-        occurrence "voice 0 0 note b5 1/2 [1493:1497 #4]" from 3/2 to 2;
-        occurrence "piece tempo 1/4=72 'rit.' to 48 over 2 0/1:0/1,1/1:1/1 [1592:1629 #4]" from 2 to 2;
-        occurrence "voice 0 0 note a5 1/4 [1646:1650 #4]" from 2 to 9/4;
-        occurrence "voice 0 0 note g5 1/4 [1667:1671 #4]" from 9/4 to 5/2;
-        occurrence "voice 0 0 note f#5 1/4 [1688:1693 #4]" from 5/2 to 11/4;
-        occurrence "voice 0 0 note e5 1/4 [1710:1714 #4]" from 11/4 to 3;
-        occurrence "voice 0 0 note d5 1/2 [1732:1736 #4]" from 3 to 7/2;
-        occurrence "voice 0 0 note b4 1/2 [1753:1757 #4]" from 7/2 to 4;
-        occurrence "piece tempo 1/4=72 'a tempo' [1922:1947 #4]" from 4 to 4;
-        occurrence "voice 0 0 note g5 1/4 [1964:1968 #4]" from 4 to 17/4;
-        occurrence "voice 0 0 note a5 1/4 [1985:1989 #4]" from 17/4 to 9/2;
-        occurrence "voice 0 0 note b5 1/4 [2006:2010 #4]" from 9/2 to 19/4;
-        occurrence "voice 0 0 note c6 1/4 [2027:2031 #4]" from 19/4 to 5;
-        occurrence "piece tempo 'poco rit.' over 1 0/1:0/1,1/1:1/1 [2159:2186 #4]" from 5 to 5;
-        occurrence "voice 0 0 note d6 1/2 [2203:2207 #4]" from 5 to 11/2;
-        occurrence "voice 0 0 note b5 1/2 [2224:2228 #4]" from 11/2 to 6;
-        occurrence "voice 0 0 note g5 1 [2246:2250 #4]" from 6 to 7;
+        occurrence "voice 0 0 dynamic mp [1252:1263 #4]" from 0 to 0;
+        occurrence "voice 0 0 note d5 1/4 [1392:1396 #4]" from 0 to 1/4;
+        occurrence "voice 0 0 note g5 1/4 [1413:1417 #4]" from 1/4 to 1/2;
+        occurrence "voice 0 0 note a5 1/4 [1434:1438 #4]" from 1/2 to 3/4;
+        occurrence "voice 0 0 note b5 1/4 [1455:1459 #4]" from 3/4 to 1;
+        occurrence "voice 0 0 note c6 1/2 [1477:1481 #4]" from 1 to 3/2;
+        occurrence "voice 0 0 note b5 1/2 [1498:1502 #4]" from 3/2 to 2;
+        occurrence "piece tempo 1/4=72 'rit.' to 48 over 2 0/1:0/1,1/1:1/1 [1597:1634 #4]" from 2 to 2;
+        occurrence "voice 0 0 note a5 1/4 [1651:1655 #4]" from 2 to 9/4;
+        occurrence "voice 0 0 note g5 1/4 [1672:1676 #4]" from 9/4 to 5/2;
+        occurrence "voice 0 0 note f#5 1/4 [1693:1698 #4]" from 5/2 to 11/4;
+        occurrence "voice 0 0 note e5 1/4 [1715:1719 #4]" from 11/4 to 3;
+        occurrence "voice 0 0 note d5 1/2 [1737:1741 #4]" from 3 to 7/2;
+        occurrence "voice 0 0 note b4 1/2 [1758:1762 #4]" from 7/2 to 4;
+        occurrence "piece tempo 1/4=72 'a tempo' [1927:1952 #4]" from 4 to 4;
+        occurrence "voice 0 0 note g5 1/4 [1969:1973 #4]" from 4 to 17/4;
+        occurrence "voice 0 0 note a5 1/4 [1990:1994 #4]" from 17/4 to 9/2;
+        occurrence "voice 0 0 note b5 1/4 [2011:2015 #4]" from 9/2 to 19/4;
+        occurrence "voice 0 0 note c6 1/4 [2032:2036 #4]" from 19/4 to 5;
+        occurrence "piece tempo 'poco rit.' over 1 0/1:0/1,1/1:1/1 [2164:2191 #4]" from 5 to 5;
+        occurrence "voice 0 0 note d6 1/2 [2208:2212 #4]" from 5 to 11/2;
+        occurrence "voice 0 0 note b5 1/2 [2229:2233 #4]" from 11/2 to 6;
+        occurrence "voice 0 0 note g5 1 [2251:2255 #4]" from 6 to 7;
       };
       timeline 7 {
-        occurrence "piece meter 4/4 [1112:1127]" from 0 to 7;
-        occurrence "piece tempo 1/4=72 [1092:1112]" from 0 to 7;
-        occurrence "piece key g major [1127:1144]" from 0 to 7;
-        occurrence "part 0 clef treble [1192:1204]" from 0 to 7;
+        occurrence "piece meter 4/4 [1117:1132]" from 0 to 7;
+        occurrence "piece tempo 1/4=72 [1097:1117]" from 0 to 7;
+        occurrence "piece key g major [1132:1149]" from 0 to 7;
+        occurrence "part 0 clef treble [1197:1209]" from 0 to 7;
       }
     };
 }
