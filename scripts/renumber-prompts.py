@@ -85,9 +85,7 @@ class Prompt:
 
 
 def repo_root() -> Path:
-    out = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, check=True
-    ).stdout
+    out = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, check=True).stdout
     return Path(out.strip())
 
 
@@ -256,10 +254,11 @@ def apply(root: Path, stack: list[Prompt], moves: dict[int, int], bare_in: Itera
         after, inferred = rewrite(before, moves, stems, ranks, bare=path.resolve() in bare)
         if after != before:
             touched.append((path, after))
-        for span in inferred:
-            guessed.append(f"  {path.relative_to(root)}: uncued range {span}")
-        for line_no, line in unclaimed(before, after, moves):
-            review.append(f"  {path.relative_to(root)}:{line_no}: {line.strip()[:110]}")
+        guessed.extend(f"  {path.relative_to(root)}: uncued range {span}" for span in inferred)
+        review.extend(
+            f"  {path.relative_to(root)}:{line_no}: {line.strip()[:110]}"
+            for line_no, line in unclaimed(before, after, moves)
+        )
 
     print(f"\n{len(touched)} files rewritten")
     for path, _ in touched:
@@ -319,9 +318,11 @@ def audit(stack: list[Prompt]) -> int:
         if depends is None:
             problems.append(f"{prompt.path.name}: no depends_on in frontmatter")
             continue
-        for dep in (d.strip() for d in depends["ids"].split(",") if d.strip()):
-            if dep not in by_label:
-                problems.append(f"{prompt.path.name}: depends_on {dep}, which is not a prompt")
+        problems.extend(
+            f"{prompt.path.name}: depends_on {dep}, which is not a prompt"
+            for dep in (d.strip() for d in depends["ids"].split(",") if d.strip())
+            if dep not in by_label
+        )
 
     ranks = sorted({p.number for p in stack})
     gaps = [n for n in range(ranks[0], ranks[-1]) if n not in set(ranks)] if ranks else []

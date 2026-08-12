@@ -9,10 +9,14 @@
   let { value, title }: { value: Fraction; title?: string } = $props();
 </script>
 
-<span class="fraction" title={title} aria-label="{value.numerator} over {value.denominator}">
-  <span class="num">{value.numerator}</span><span class="bar" aria-hidden="true">/</span><span
-    class="den">{value.denominator}</span
-  >
+<span
+  class="fraction"
+  {title}
+  aria-label="{value.numerator} over {value.denominator}"
+>
+  <span class="num">{value.numerator}</span><span class="bar" aria-hidden="true"
+    >/</span
+  ><span class="den">{value.denominator}</span>
 </span>
 
 <style>

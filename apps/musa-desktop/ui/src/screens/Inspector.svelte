@@ -165,7 +165,9 @@
   // exact value earns its space only when the two differ — a dotted quarter
   // written `1/4.` and sounding `3/8` is worth saying; `1/2` twice is not.
   const asWritten = $derived(
-    event && event.durationSpelling !== `${event.duration.numerator}/${event.duration.denominator}`
+    event &&
+      event.durationSpelling !==
+        `${event.duration.numerator}/${event.duration.denominator}`
       ? event.durationSpelling
       : undefined,
   );
@@ -182,7 +184,9 @@
     {#if choice}
       <div class="choice" role="group" aria-label="Editing generated music">
         <p class="about">
-          This note comes from <span class="from">{choice.occurrence ?? "an expansion"}</span>.
+          This note comes from <span class="from"
+            >{choice.occurrence ?? "an expansion"}</span
+          >.
         </p>
         <button type="button" class="option" onclick={() => onconfirm?.()}>
           <span class="what">Edit the motif</span>
@@ -205,7 +209,9 @@
               : "this call runs more than once, so an override would change every run"}</span
           >
         </button>
-        <button type="button" class="cancel" onclick={() => oncancel?.()}>Cancel</button>
+        <button type="button" class="cancel" onclick={() => oncancel?.()}
+          >Cancel</button
+        >
       </div>
     {/if}
 
@@ -222,7 +228,10 @@
           submitName();
         }}
       >
-        <p class="about">Extract {naming} {naming === 1 ? "note" : "notes"} into a motif.</p>
+        <p class="about">
+          Extract {naming}
+          {naming === 1 ? "note" : "notes"} into a motif.
+        </p>
         <input
           class="name"
           type="text"
@@ -241,7 +250,9 @@
     {/if}
 
     {#if adrift}
-      <p class="adrift" role="status">{adrift} — this is the nearest note in the same voice.</p>
+      <p class="adrift" role="status">
+        {adrift} — this is the nearest note in the same voice.
+      </p>
     {/if}
 
     <!--
@@ -251,18 +262,27 @@
       learn. A single note only: a chord is four values in one row, which is a
       field this row is not.
     -->
-    <TypographicRow label={event.kind === "chord" ? "Pitches" : "Pitch"} editable>
+    <TypographicRow
+      label={event.kind === "chord" ? "Pitches" : "Pitch"}
+      editable
+    >
       {#if event.kind === "note" && onpitch}
         <EditableValue
           value={event.pitchSpellings[0] ?? ""}
           label="Pitch"
           onchange={(next) => onpitch(next)}
         />
-      {:else if sounds}{event.pitches.join(" ")}{:else}<span class="rest">rest</span>{/if}
+      {:else if sounds}{event.pitches.join(" ")}{:else}<span class="rest"
+          >rest</span
+        >{/if}
     </TypographicRow>
 
     {#snippet written()}written {asWritten}{/snippet}
-    <TypographicRow label="Duration" editable trailing={asWritten ? written : undefined}>
+    <TypographicRow
+      label="Duration"
+      editable
+      trailing={asWritten ? written : undefined}
+    >
       {#if onduration}
         <EditableValue
           value={event.durationSpelling}
@@ -315,12 +335,14 @@
     <TypographicRow label="Origin">
       {#snippet trailing()}
         {#if at && onreveal}
-          <button type="button" class="segment line" onclick={() => onreveal(at)}
-            >line {event.origin.line}</button
+          <button
+            type="button"
+            class="segment line"
+            onclick={() => onreveal(at)}>line {event.origin.line}</button
           >
-        {:else}line {event.origin.line}{/if}{#if siblings > 1}<span class="sep">·</span><span
-            class="kin">{siblings} notes</span
-          >{/if}
+        {:else}line {event.origin.line}{/if}{#if siblings > 1}<span class="sep"
+            >·</span
+          ><span class="kin">{siblings} notes</span>{/if}
       {/snippet}
       {#if event.origin.generated}
         <span class="path">
@@ -337,8 +359,8 @@
               }}>{segment.label}</button
             >
           {/each}
-          {#if event.origin.noteIndex !== null}<span class="sep">▸</span><span class="segment note"
-              >note {event.origin.noteIndex}</span
+          {#if event.origin.noteIndex !== null}<span class="sep">▸</span><span
+              class="segment note">note {event.origin.noteIndex}</span
             >{/if}
         </span>
       {:else}
@@ -374,7 +396,8 @@
               type="button"
               class="segment"
               onclick={() => onreveal(decision.span)}>{decision.asked}</button
-            >{:else}<span class="segment">{decision.asked}</span>{/if}<span class="sep">▸</span
+            >{:else}<span class="segment">{decision.asked}</span>{/if}<span
+            class="sep">▸</span
           ><span class="segment answered">{decision.answered}</span>
         </span>
       </TypographicRow>

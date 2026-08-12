@@ -43,6 +43,7 @@ function caretAt(needle: string): number {
 }
 
 it("the fixture is the reason this file exists", () => {
+  // eslint-disable-next-line no-control-regex -- the ASCII range is the point: the fixture must contain non-ASCII source
   expect(source).toMatch(/[^\u0000-\u007f]/);
   // …and the divergence has to accumulate before the notes, or the spans
   // below would be right by accident.

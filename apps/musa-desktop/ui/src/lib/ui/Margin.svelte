@@ -19,9 +19,18 @@
     side,
     label,
     children,
-  }: { side: "top" | "left" | "right" | "bottom"; label?: string; children: Snippet } = $props();
+  }: {
+    side: "top" | "left" | "right" | "bottom";
+    label?: string;
+    children: Snippet;
+  } = $props();
 
-  const LANDMARKS = { top: "header", left: "aside", right: "aside", bottom: "footer" } as const;
+  const LANDMARKS = {
+    top: "header",
+    left: "aside",
+    right: "aside",
+    bottom: "footer",
+  } as const;
 </script>
 
 <svelte:element this={LANDMARKS[side]} class="margin {side}" aria-label={label}>

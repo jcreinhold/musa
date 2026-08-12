@@ -39,7 +39,9 @@
   let dragging = $state<number | null>(null);
   const shown = $derived(dragging ?? param.value);
 
-  const span = $derived(Math.max(param.maximum - param.minimum, Number.EPSILON));
+  const span = $derived(
+    Math.max(param.maximum - param.minimum, Number.EPSILON),
+  );
   /**
    * A round step near a thousandth of the range: fine enough that a drag feels
    * continuous, and a power of ten so the value under the handle is a number a
@@ -77,7 +79,8 @@
     }}
   />
   <output class="value" for={id}
-    >{reads(shown)}{#if param.unit}<span class="unit">{param.unit}</span>{/if}</output
+    >{reads(shown)}{#if param.unit}<span class="unit">{param.unit}</span
+      >{/if}</output
   >
   <!--
     A modulated parameter's written value is what the signal moves around, so

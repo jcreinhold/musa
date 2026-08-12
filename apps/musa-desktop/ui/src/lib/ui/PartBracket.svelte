@@ -26,7 +26,13 @@
 </script>
 
 {#if height > horn * 2}
-  <svg class="bracket" width={WIDTH} {height} viewBox="0 0 {WIDTH} {height}" aria-hidden="true">
+  <svg
+    class="bracket"
+    width={WIDTH}
+    {height}
+    viewBox="0 0 {WIDTH} {height}"
+    aria-hidden="true"
+  >
     <text x="0" y={horn} font-size={SIZE}>{BRACKET_TOP}</text>
     <rect x="0" y={horn} width={SPINE} height={spine} />
     <text x="0" y={height - horn} font-size={SIZE}>{BRACKET_BOTTOM}</text>

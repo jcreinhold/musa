@@ -22,6 +22,7 @@ import { durationGlyph } from "../ui/glyphs";
  * is the denominator where the digit allows it, and the three that do not fit
  * on one key take the nearest free digit.
  */
+// eslint-disable-next-line svelte/prefer-svelte-reactivity -- a static module constant, not state
 export const DURATION_KEYS: ReadonlyMap<string, number> = new Map([
   ["1", 1],
   ["2", 2],

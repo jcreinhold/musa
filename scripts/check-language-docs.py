@@ -9,7 +9,7 @@ Four questions, asked of every Markdown file under `docs/language/`:
    shipped parser would refuse. The question is asked of `handbook/` and not of
    the specification beside it: those documents illustrate rules with
    deliberately compressed fragments, and several of them specify sound and
-   asset syntax that prompts 130–142 have not built yet. Holding the whole
+   asset syntax that prompts 130-142 have not built yet. Holding the whole
    candidate to its corpus is prompt 146's graduation audit
    (`../05-verification.md` §7), not this checker's.
 2. Does every internal link land? A relative path must exist, and an `#anchor`
@@ -35,9 +35,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs" / "language"
 HANDBOOK = DOCS / "handbook"
 CORPUS = [ROOT / "examples", ROOT / "stdlib" / "src"]
-OMT = pathlib.Path(
-    os.environ.get("OMT_ROOT", pathlib.Path.home() / "Code/papers/music-theory/open-music-theory")
-)
+OMT = pathlib.Path(os.environ.get("OMT_ROOT", pathlib.Path.home() / "Code/papers/music-theory/open-music-theory"))
 
 FENCE = re.compile(r"^(\s*)```([A-Za-z0-9_-]*)\s*$")
 LINK = re.compile(r"(?<!!)\[[^\]^]*\]\(([^)\s]+)\)")
@@ -99,7 +97,7 @@ def contains(source: list[str], block: list[str]) -> bool:
         margin = min(margins)
         if all(
             (line[margin:].rstrip() if line.strip() else "") == expected
-            for line, expected in zip(window, block)
+            for line, expected in zip(window, block, strict=True)
         ):
             return True
     return False
@@ -127,11 +125,7 @@ def anchors(path: pathlib.Path) -> set[str]:
 
 
 def check_examples() -> list[str]:
-    corpus = {
-        path: path.read_text().splitlines()
-        for directory in CORPUS
-        for path in directory.rglob("*.musa")
-    }
+    corpus = {path: path.read_text().splitlines() for directory in CORPUS for path in directory.rglob("*.musa")}
     problems = []
     for path in sorted(HANDBOOK.rglob("*.md")):
         for line, tag, block in fences(path):
@@ -177,9 +171,11 @@ def check_citations() -> list[str]:
     problems = []
     for path in markdown_files():
         for number, line in enumerate(path.read_text().splitlines(), start=1):
-            for cited in CITATION.findall(line):
-                if not (OMT / cited).exists():
-                    problems.append(f"{path.relative_to(ROOT)}:{number}: no OMT chapter `{cited}`")
+            problems.extend(
+                f"{path.relative_to(ROOT)}:{number}: no OMT chapter `{cited}`"
+                for cited in CITATION.findall(line)
+                if not (OMT / cited).exists()
+            )
     return problems
 
 

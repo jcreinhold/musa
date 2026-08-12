@@ -44,19 +44,24 @@
     onheader?: (field: HeaderFieldDto, value: string) => void;
   } = $props();
 
-  const note = $derived(tempoNote(score.tempoBeat.numerator, score.tempoBeat.denominator));
+  const note = $derived(
+    tempoNote(score.tempoBeat.numerator, score.tempoBeat.denominator),
+  );
 
   /** What the source says for one of the three, for the field to start from. */
   const said = $derived(
     (field: HeaderFieldDto) =>
-      score.header.find((fact: HeaderFact) => fact.field === field)?.value ?? "",
+      score.header.find((fact: HeaderFact) => fact.field === field)?.value ??
+      "",
   );
 </script>
 
 <div class="readout" class:stale>
   <div class="where">
     <Position {bar} {beat} />
-    <span class="time">{elapsed(playback.positionFrames, playback.sampleRate)}</span>
+    <span class="time"
+      >{elapsed(playback.positionFrames, playback.sampleRate)}</span
+    >
   </div>
   <dl class="facts">
     <!--

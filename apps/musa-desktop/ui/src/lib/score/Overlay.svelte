@@ -12,7 +12,13 @@
    * Loop is a pair of repeat brackets in the margin, never a coloured
    * rectangle.
    */
-  import { TICK_SPACES, type Bracket, type Ghost, type Rect, type Trace } from "./geometry";
+  import {
+    TICK_SPACES,
+    type Bracket,
+    type Ghost,
+    type Rect,
+    type Trace,
+  } from "./geometry";
 
   let {
     box,
@@ -87,7 +93,14 @@
   style:display={box.width > 0 ? undefined : "none"}
 >
   {#each hover as rect, index (index)}
-    <rect class="hover" x={rect.x} y={rect.y} width={rect.width} height={rect.height} rx={radius} />
+    <rect
+      class="hover"
+      x={rect.x}
+      y={rect.y}
+      width={rect.width}
+      height={rect.height}
+      rx={radius}
+    />
   {/each}
 
   {#each playing as rect, index (index)}
@@ -148,8 +161,9 @@
       {@const tick = staffSpace * TICK_SPACES}
       <path
         class="candidate span"
-        d="M {candidate.rect.x} {candidate.rect.y - tick} L {candidate.rect.x} {candidate.rect
-          .y} L {right} {candidate.rect.y} L {right} {candidate.rect.y - tick}"
+        d="M {candidate.rect.x} {candidate.rect.y - tick} L {candidate.rect
+          .x} {candidate.rect.y} L {right} {candidate.rect
+          .y} L {right} {candidate.rect.y - tick}"
       />
     {/if}
     {#if candidate.label}
@@ -184,7 +198,8 @@
   {/if}
 
   {#if loop}
-    {@const top = Math.min(loop.from.y, loop.to.y) - staffSpace * BRACKET_SPACES}
+    {@const top =
+      Math.min(loop.from.y, loop.to.y) - staffSpace * BRACKET_SPACES}
     {@const bottom =
       Math.max(loop.from.y + loop.from.height, loop.to.y + loop.to.height) +
       staffSpace * BRACKET_SPACES}
@@ -197,10 +212,16 @@
     />
     <path
       class="loop"
-      d="M {right - staffSpace} {top} L {right} {top} L {right} {bottom} L {right -
+      d="M {right -
+        staffSpace} {top} L {right} {top} L {right} {bottom} L {right -
         staffSpace} {bottom}"
     />
-    <circle class="loop dot" cx={left + staffSpace / 2} cy={top + staffSpace} r={staffSpace / 4} />
+    <circle
+      class="loop dot"
+      cx={left + staffSpace / 2}
+      cy={top + staffSpace}
+      r={staffSpace / 4}
+    />
     <circle
       class="loop dot"
       cx={right - staffSpace / 2}
@@ -242,14 +263,22 @@
       onpointerdown={(event) => event.stopPropagation()}
       onclick={() => onoccurrence?.(bracket.id)}
       onkeydown={(event) => {
-        if (event.key === "Enter" || event.key === " ") onoccurrence?.(bracket.id);
+        if (event.key === "Enter" || event.key === " ")
+          onoccurrence?.(bracket.id);
       }}
     >
       <path
         class="span"
-        d="M {bracket.x} {bracket.y + tick} L {bracket.x} {bracket.y} L {right} {bracket.y} L {right} {bracket.y + tick}"
+        d="M {bracket.x} {bracket.y +
+          tick} L {bracket.x} {bracket.y} L {right} {bracket.y} L {right} {bracket.y +
+          tick}"
       />
-      <text class="label" x={bracket.x} y={bracket.y - tick} font-size={LABEL_SIZE}>
+      <text
+        class="label"
+        x={bracket.x}
+        y={bracket.y - tick}
+        font-size={LABEL_SIZE}
+      >
         {bracket.label}
       </text>
       <!-- The band above the run is the hit area; a hairline is not clickable. -->
@@ -264,7 +293,13 @@
   {/each}
 
   {#if trace}
-    <line class="trace" x1={trace.x1} y1={trace.y1} x2={trace.x2} y2={trace.y2} />
+    <line
+      class="trace"
+      x1={trace.x1}
+      y1={trace.y1}
+      x2={trace.x2}
+      y2={trace.y2}
+    />
   {/if}
 </svg>
 

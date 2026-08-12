@@ -46,7 +46,10 @@
   function onkeydown(event: KeyboardEvent): void {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      at = Math.min(Math.max(at + (event.key === "ArrowDown" ? 1 : -1), 0), shown.length - 1);
+      at = Math.min(
+        Math.max(at + (event.key === "ArrowDown" ? 1 : -1), 0),
+        shown.length - 1,
+      );
       return;
     }
     if (event.key === "Enter" && chosen) {

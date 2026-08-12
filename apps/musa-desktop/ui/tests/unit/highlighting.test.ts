@@ -46,6 +46,7 @@ it("is checked against a source that is not ASCII", () => {
   // equal for every ASCII file and diverge for every other one
   // (`03-interaction.md` §7.1). If every example were ASCII, the suite would
   // pass whether or not the two sides agreed about the measure.
+  // eslint-disable-next-line no-control-regex -- the ASCII range is the point: the fixture must contain a non-ASCII piece
   expect(pieces.some((piece) => /[^\u0000-\u007f]/.test(sourceOf(piece)))).toBe(
     true,
   );

@@ -13,9 +13,18 @@
    * the compiler's, highlighted spans are provenance, and the caret's meaning
    * is reported outward rather than interpreted here (`03-interaction.md` §7).
    */
-  import { autocompletion, closeBrackets, type CompletionSource } from "@codemirror/autocomplete";
+  import {
+    autocompletion,
+    closeBrackets,
+    type CompletionSource,
+  } from "@codemirror/autocomplete";
   import { defaultKeymap, indentWithTab } from "@codemirror/commands";
-  import { bracketMatching, foldGutter, foldKeymap, syntaxHighlighting } from "@codemirror/language";
+  import {
+    bracketMatching,
+    foldGutter,
+    foldKeymap,
+    syntaxHighlighting,
+  } from "@codemirror/language";
   import { setDiagnostics } from "@codemirror/lint";
   import {
     Compartment,
@@ -46,9 +55,21 @@
 
   import { untrack } from "svelte";
 
-  import { musa, musaHighlighting, docParts, keywordDoc, proseRuns, type KeywordDoc } from "../lang-musa";
+  import {
+    musa,
+    musaHighlighting,
+    docParts,
+    keywordDoc,
+    proseRuns,
+    type KeywordDoc,
+  } from "../lang-musa";
   import type { Reveal } from "../state/reveal";
-  import type { Diagnostic, NameFacts, Span, TermFacts } from "../state/snapshot";
+  import type {
+    Diagnostic,
+    NameFacts,
+    Span,
+    TermFacts,
+  } from "../state/snapshot";
   import { termAt } from "../state/terms";
   import { modal as modalKeymap, serve } from "./vim";
 
@@ -137,7 +158,11 @@
         if (effect.is(setMarks)) {
           return Decoration.set(
             effect.value
-              .filter((span) => span.end > span.start && span.end <= transaction.newDoc.length)
+              .filter(
+                (span) =>
+                  span.end > span.start &&
+                  span.end <= transaction.newDoc.length,
+              )
               .map((span) => marked.range(span.start, span.end)),
             true,
           );
@@ -171,8 +196,13 @@
       for (const effect of transaction.effects) {
         if (!effect.is(setFocus)) continue;
         const span = effect.value.definition;
-        const fits = span && span.end > span.start && span.end <= transaction.newDoc.length;
-        return fits && span ? Decoration.set([spelling.range(span.start, span.end)]) : Decoration.none;
+        const fits =
+          span &&
+          span.end > span.start &&
+          span.end <= transaction.newDoc.length;
+        return fits && span
+          ? Decoration.set([spelling.range(span.start, span.end)])
+          : Decoration.none;
       }
       return current.map(transaction.changes);
     },
@@ -186,7 +216,11 @@
    * the text is untouched until the pointer comes up, so `Esc` costs nothing
    * and undo has one step rather than one per pixel.
    */
-  const setCandidate = StateEffect.define<{ start: number; end: number; text: string } | null>();
+  const setCandidate = StateEffect.define<{
+    start: number;
+    end: number;
+    text: string;
+  } | null>();
 
   class Candidate extends WidgetType {
     readonly #text: string;
@@ -214,11 +248,18 @@
       for (const effect of transaction.effects) {
         if (!effect.is(setCandidate)) continue;
         const write = effect.value;
-        if (!write || write.end > transaction.newDoc.length || write.end < write.start) {
+        if (
+          !write ||
+          write.end > transaction.newDoc.length ||
+          write.end < write.start
+        ) {
           return Decoration.none;
         }
         return Decoration.set([
-          Decoration.replace({ widget: new Candidate(write.text) }).range(write.start, write.end),
+          Decoration.replace({ widget: new Candidate(write.text) }).range(
+            write.start,
+            write.end,
+          ),
         ]);
       }
       return current.map(transaction.changes);
@@ -240,6 +281,7 @@
 
   /** The starts of the lines these spans are on, deduplicated and in order. */
   function lineStarts(doc: Text, spans: readonly Span[]): number[] {
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local set inside a pure helper, not state
     const starts = new Set<number>();
     for (const span of spans) {
       if (span.start < 0 || span.start > doc.length) continue;
@@ -257,7 +299,9 @@
         const { place, sounding } = effect.value;
         const ranges: Range<GutterMarker>[] = [
           ...lineStarts(doc, sounding).map((at) => SOUNDS.range(at)),
-          ...lineStarts(doc, place ? [place] : []).map((at) => PLACED.range(at)),
+          ...lineStarts(doc, place ? [place] : []).map((at) =>
+            PLACED.range(at),
+          ),
         ];
         return RangeSet.of(ranges, true);
       }
@@ -306,7 +350,10 @@
     // fill — a highlighted row behind the text would be a second wash arguing
     // with the provenance wash that means something.
     ".cm-activeLine": { backgroundColor: "transparent" },
-    ".cm-activeLineGutter": { backgroundColor: "transparent", color: "var(--ink)" },
+    ".cm-activeLineGutter": {
+      backgroundColor: "transparent",
+      color: "var(--ink)",
+    },
     /*
      * The focus. Three marks can now be true of one line at once —
      * selected, provenance, focused — so each is a different *shape*: the
@@ -321,7 +368,10 @@
      * the token it would replace stands. `--plate` because it is not in the
      * file yet: the hue that already means *derived, or live*.
      */
-    ".cm-musa-candidate": { color: "var(--plate)", borderBottom: "1px solid var(--plate)" },
+    ".cm-musa-candidate": {
+      color: "var(--plate)",
+      borderBottom: "1px solid var(--plate)",
+    },
     /*
      * And the quiet permanent one: a line that made music on the page in view
      * gets a tick beside its number. Not a hue and not a count — just the
@@ -353,9 +403,10 @@
       borderLeftWidth: "2px",
       marginLeft: "-1px",
     },
-    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
-      backgroundColor: "var(--plate-wash)",
-    },
+    "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection":
+      {
+        backgroundColor: "var(--plate-wash)",
+      },
     /*
      * Provenance, in the one hue that ever means it. Inside the mark the hue
      * is the ground, so the type goes back to full ink: `--plate` on
@@ -486,7 +537,9 @@
    * the caret is still exactly where it was.
    */
   function blinkRate(): number {
-    return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : 1200;
+    return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+      ? 0
+      : 1200;
   }
 
   function extensions(): Extension[] {
@@ -522,9 +575,13 @@
       EditorView.lineWrapping,
       // The editable surface is the field, and it says what it is: every
       // test and every screen reader finds the source by this name.
-      EditorView.contentAttributes.of({ "aria-label": "Source", spellcheck: "false" }),
+      EditorView.contentAttributes.of({
+        "aria-label": "Source",
+        spellcheck: "false",
+      }),
       EditorView.updateListener.of((update) => {
-        if (update.docChanged && !echoing) onedit?.(update.state.doc.toString());
+        if (update.docChanged && !echoing)
+          onedit?.(update.state.doc.toString());
         if (update.selectionSet) oncaret?.(update.state.selection.main.head);
       }),
       // Which line the pointer is on, so the page can mark what that line
@@ -713,7 +770,9 @@
     }
     for (const parameter of term.parameters) {
       if (parameter.ty.distinction !== null) {
-        lines.push(`${parameter.name}: ${parameter.ty.name} — ${parameter.ty.distinction}`);
+        lines.push(
+          `${parameter.name}: ${parameter.ty.name} — ${parameter.ty.distinction}`,
+        );
       }
     }
     return lines;
@@ -748,7 +807,10 @@
         label: term.name,
         detail: term.signature,
         info: term.summary ?? undefined,
-        type: term.kind === "function" || term.kind === "motif" ? "function" : "variable",
+        type:
+          term.kind === "function" || term.kind === "motif"
+            ? "function"
+            : "variable",
       })),
     };
   };
@@ -795,7 +857,10 @@
     let start = 0;
     while (start < limit && from[start] === to[start]) start += 1;
     let tail = 0;
-    while (tail < limit - start && from[from.length - 1 - tail] === to[to.length - 1 - tail]) {
+    while (
+      tail < limit - start &&
+      from[from.length - 1 - tail] === to[to.length - 1 - tail]
+    ) {
       tail += 1;
     }
     return {
@@ -843,7 +908,9 @@
   });
 
   $effect(() => {
-    view?.dispatch({ effects: writable.reconfigure(EditorState.readOnly.of(!editable)) });
+    view?.dispatch({
+      effects: writable.reconfigure(EditorState.readOnly.of(!editable)),
+    });
   });
 
   // Turning the mode on and off is a reconfiguration, not a rebuild: the
@@ -889,8 +956,17 @@
           .filter((diagnostic) => diagnostic.span !== null)
           .map((diagnostic) => ({
             from: Math.min(diagnostic.span?.start ?? 0, length),
-            to: Math.min(Math.max(diagnostic.span?.end ?? 0, (diagnostic.span?.start ?? 0) + 1), length),
-            severity: diagnostic.severity === "error" ? ("error" as const) : ("warning" as const),
+            to: Math.min(
+              Math.max(
+                diagnostic.span?.end ?? 0,
+                (diagnostic.span?.start ?? 0) + 1,
+              ),
+              length,
+            ),
+            severity:
+              diagnostic.severity === "error"
+                ? ("error" as const)
+                : ("warning" as const),
             message: diagnostic.message,
           })),
       ),

@@ -1,0 +1,78 @@
+# Tooling configuration for the repository's Python, adapted from
+# `~/Code/proofs/pyproject.toml`.
+#
+# This file is virtual — no `[project]` table — because nothing is built or
+# published from `scripts/`. Its only jobs are to configure ruff and ty for the
+# standalone scripts beside it (`check-language-docs.py`, `renumber-prompts.py`,
+# `build-wasm.sh`'s Python helpers, and whatever joins them). Unlike in proofs,
+# there is no uv workspace here: these scripts use the standard library alone,
+# so they are run with a bare `python3` rather than `uv run`.
+#
+# There is deliberately no sibling `ruff.toml` or `ty.toml`: both tools prefer
+# their own file over the `[tool.*]` tables here, so keeping one of each would
+# silently demote this file's settings to decoration.
+
+# ─── ruff ─────────────────────────────────────────────────────────────
+#
+# https://docs.astral.sh/ruff/configuration/
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+
+[tool.ruff.lint]
+ignore = [
+  "PLC0415", # import outside top level (deferred imports on cold code paths)
+  "PLR0912", # too many branches
+  "PLR0913", # too many arguments
+  "PLR0915", # too many statements
+  "PLR0917", # too many positional arguments
+  "PLR2004", # magic value comparison
+  "RUF001",
+]
+select = [
+  "B",    # flake8-bugbear
+  "C4",   # flake8-comprehensions
+  "E",    # pycodestyle errors
+  "F",    # pyflakes
+  "I",    # isort
+  "PERF", # perflint
+  "PL",   # pylint
+  "PTH",  # flake8-use-pathlib
+  "RUF",  # ruff-specific rules
+  "SIM",  # flake8-simplify
+  "UP",   # pyupgrade
+  "W",    # pycodestyle warnings
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/test_*.py" = ["PLR2004", "S101"]
+"**/tests/**" = ["PLR2004", "S101"]
+
+[tool.ruff.format]
+indent-style = "space"
+line-ending = "auto"
+quote-style = "double"
+
+# ─── ty ───────────────────────────────────────────────────────────────
+#
+# No `python` environment is declared: the scripts here are standard-library
+# only and there is no venv to resolve third-party imports from. Should a
+# script gain a third-party dependency, either add it to a venv and point
+# `python = ".venv"` at it, or carry an inline `# ty: ignore[unresolved-import]`
+# naming the script's PEP 723 header — the way proofs handles its standalone
+# tools — so `unresolved-import` stays an error everywhere else.
+
+[tool.ty.environment]
+# First-party root: the scripts themselves, so ty follows imports between them
+# by bare module name.
+root = ["."]
+
+[tool.ty.src]
+exclude = [
+  # Tests exercise deliberately malformed input and lean on pytest fixtures
+  # whose types ty cannot infer; their diagnostics are noise, not defects.
+  # None exist yet, but the exclusion is cheaper than the surprise.
+  "**/test_*.py",
+  "**/tests/**",
+]

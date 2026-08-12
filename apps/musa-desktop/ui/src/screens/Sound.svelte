@@ -35,10 +35,14 @@
 
   /** Which part's sound is being read. The first, until one is chosen. */
   let chosen = $state<string | null>(null);
-  const part = $derived(parts.find((row) => row.part === chosen) ?? parts[0] ?? null);
+  const part = $derived(
+    parts.find((row) => row.part === chosen) ?? parts[0] ?? null,
+  );
 
   const patch = $derived(
-    part?.patch ? (studio?.patches.find((it) => it.name === part.patch) ?? null) : null,
+    part?.patch
+      ? (studio?.patches.find((it) => it.name === part.patch) ?? null)
+      : null,
   );
 
   /** Every patch a part could be pointed at. */
@@ -48,7 +52,12 @@
     void session.editStudio(edit, said);
   }
 
-  function setParam(container: ContainerFacts, stage: number, param: string, value: number): void {
+  function setParam(
+    container: ContainerFacts,
+    stage: number,
+    param: string,
+    value: number,
+  ): void {
     edit({
       kind: "setParam",
       container: container.kind,
@@ -65,10 +74,14 @@
     <Margin side="top">
       <div class="identity">
         <h1 class="title">{snapshot.score?.title ?? ""}</h1>
-        <Workspaces current="sound" volume={volume} {onshow} />
+        <Workspaces current="sound" {volume} {onshow} />
       </div>
       {#if session.notice}
-        <p class="notice" class:failure={session.notice.tone === "failure"} role="status">
+        <p
+          class="notice"
+          class:failure={session.notice.tone === "failure"}
+          role="status"
+        >
           {session.notice.message}
         </p>
       {/if}
@@ -99,8 +112,8 @@
                built-in voice, and saying so is more use than an empty rack
                (`05-states.md` §2, §14.8). -->
           <p class="empty">
-            This piece has no <code>studio</code> block, so every part sounds through the built-in
-            voice. Write one in the Source workspace to shape it.
+            This piece has no <code>studio</code> block, so every part sounds through
+            the built-in voice. Write one in the Source workspace to shape it.
           </p>
         {:else if part}
           <section class="patch" aria-label="Patch">
@@ -115,7 +128,11 @@
                     const patchName = event.currentTarget.value;
                     if (patchName) {
                       edit(
-                        { kind: "assignPatch", part: part.part, patch: patchName },
+                        {
+                          kind: "assignPatch",
+                          part: part.part,
+                          patch: patchName,
+                        },
                         `${part.part} plays through ${patchName}.`,
                       );
                     }
@@ -136,8 +153,8 @@
                 {#each patch.stages as stage (stage.index)}
                   <li class="stage-row">
                     <h3 class="stage-name">
-                      <span class="processor">{stage.processor}</span>{#if stage.label}<span
-                          class="label">{stage.label}</span
+                      <span class="processor">{stage.processor}</span
+                      >{#if stage.label}<span class="label">{stage.label}</span
                         >{/if}
                     </h3>
                     {#if stage.params.length === 0}
@@ -148,7 +165,8 @@
                           {param}
                           id={`${patch.name}-${stage.index}-${param.name}`}
                           editable={session.live}
-                          onchange={(value) => setParam(patch, stage.index, param.name, value)}
+                          onchange={(value) =>
+                            setParam(patch, stage.index, param.name, value)}
                         />
                       {/each}
                     {/if}
@@ -157,7 +175,8 @@
               </ol>
             {:else}
               <p class="empty">
-                {part.part} has no patch of its own, so it sounds through the built-in voice.
+                {part.part} has no patch of its own, so it sounds through the built-in
+                voice.
               </p>
             {/if}
           </section>
@@ -178,7 +197,8 @@
                     {param}
                     id={`${signal.name}-${stage.index}-${param.name}`}
                     editable={session.live}
-                    onchange={(value) => setParam(signal, stage.index, param.name, value)}
+                    onchange={(value) =>
+                      setParam(signal, stage.index, param.name, value)}
                   />
                 {/each}
               {/each}
@@ -204,7 +224,10 @@
 
   .body {
     display: grid;
-    grid-template-columns: minmax(9rem, auto) minmax(0, 1fr) minmax(12rem, auto);
+    grid-template-columns: minmax(9rem, auto) minmax(0, 1fr) minmax(
+        12rem,
+        auto
+      );
     min-height: 0;
   }
 

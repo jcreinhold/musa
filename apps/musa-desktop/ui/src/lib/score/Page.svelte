@@ -60,7 +60,8 @@
     if (arriving === showing) return;
     const instant =
       showing === undefined ||
-      globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+      globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ===
+        true;
     outgoing = instant ? undefined : showing;
     showing = arriving;
     clearTimeout(fade);
@@ -76,10 +77,14 @@
   style:height={scale === undefined ? undefined : `${box.height * scale}px`}
 >
   {#if outgoing}
+    <!-- The ink is Verovio SVG rendered from the project's own score (§render),
+         not outside input. -->
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
     <div class="ink outgoing">{@html outgoing}</div>
   {/if}
   {#if showing && page}
     <div class="ink arriving">
+      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
       {@html showing}
       <Overlay
         box={page.box}

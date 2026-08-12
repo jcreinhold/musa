@@ -19,7 +19,12 @@
     editable = false,
     trailing,
     children,
-  }: { label: string; editable?: boolean; trailing?: Snippet; children: Snippet } = $props();
+  }: {
+    label: string;
+    editable?: boolean;
+    trailing?: Snippet;
+    children: Snippet;
+  } = $props();
 </script>
 
 <div class="row">

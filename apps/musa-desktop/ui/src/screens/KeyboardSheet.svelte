@@ -11,9 +11,19 @@
 
   let { onclose }: { onclose: () => void } = $props();
 
-  const GROUPS: Group[] = ["Score", "Transport", "View", "File", "Edit", "Settings", "Help"];
+  const GROUPS: Group[] = [
+    "Score",
+    "Transport",
+    "View",
+    "File",
+    "Edit",
+    "Settings",
+    "Help",
+  ];
 
-  const bound = $derived(COMMANDS.filter((command) => command.accelerator !== null));
+  const bound = $derived(
+    COMMANDS.filter((command) => command.accelerator !== null),
+  );
 </script>
 
 <div
@@ -27,7 +37,9 @@
         <h2 class="title">Keyboard</h2>
         <div class="groups">
           {#each GROUPS as group (group)}
-            {@const commands = bound.filter((command) => command.group === group)}
+            {@const commands = bound.filter(
+              (command) => command.group === group,
+            )}
             {#if commands.length > 0}
               <section>
                 <h3 class="group">{group}</h3>

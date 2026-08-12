@@ -35,7 +35,9 @@
   const studio = $derived(snapshot?.studio ?? null);
 
   /** A part's level is whatever `gain` its patch writes — no more, no less. */
-  function levels(patch: string | null): { container: ContainerFacts; stage: number }[] {
+  function levels(
+    patch: string | null,
+  ): { container: ContainerFacts; stage: number }[] {
     const found = studio?.patches.find((it) => it.name === patch);
     if (!found) return [];
     return found.stages
@@ -51,7 +53,12 @@
     void session.editStudio(next, said);
   }
 
-  function setParam(container: ContainerFacts, stage: number, param: string, value: number): void {
+  function setParam(
+    container: ContainerFacts,
+    stage: number,
+    param: string,
+    value: number,
+  ): void {
     edit({
       kind: "setParam",
       container: container.kind,
@@ -64,7 +71,10 @@
 
   /** Where a source's signal goes, in the studio's own words. */
   function destination(source: string): string | null {
-    return studio?.routes.find((route) => route.source === source)?.destination ?? null;
+    return (
+      studio?.routes.find((route) => route.source === source)?.destination ??
+      null
+    );
   }
 
   const sendMax = 6;
@@ -76,10 +86,14 @@
     <Margin side="top">
       <div class="identity">
         <h1 class="title">{snapshot.score?.title ?? ""}</h1>
-        <Workspaces current="mix" volume={volume} {onshow} />
+        <Workspaces current="mix" {volume} {onshow} />
       </div>
       {#if session.notice}
-        <p class="notice" class:failure={session.notice.tone === "failure"} role="status">
+        <p
+          class="notice"
+          class:failure={session.notice.tone === "failure"}
+          role="status"
+        >
           {session.notice.message}
         </p>
       {/if}
@@ -88,8 +102,8 @@
     <main class="stage">
       {#if !studio?.declared}
         <p class="empty">
-          This piece has no <code>studio</code> block, so there is nothing to balance yet: every
-          part sounds through the built-in voice, straight to the master.
+          This piece has no <code>studio</code> block, so there is nothing to balance
+          yet: every part sounds through the built-in voice, straight to the master.
         </p>
       {:else}
         <section class="group" aria-label="Parts">
@@ -100,7 +114,9 @@
                 <h3 class="strip-name">{row.part}</h3>
                 <p class="strip-route">
                   {row.patch ?? "built-in voice"}{#if destination(row.part)}
-                    <span class="arrow" aria-hidden="true">→</span>{destination(row.part)}{/if}
+                    <span class="arrow" aria-hidden="true">→</span>{destination(
+                      row.part,
+                    )}{/if}
                 </p>
               </header>
               {#each levels(row.patch) as level (level.stage)}
@@ -110,13 +126,16 @@
                     {param}
                     id={`mix-${row.part}-${level.stage}-gain`}
                     editable={session.live}
-                    onchange={(value) => setParam(level.container, level.stage, "gain", value)}
+                    onchange={(value) =>
+                      setParam(level.container, level.stage, "gain", value)}
                   />
                 {/if}
               {/each}
               {#each studio.sends.filter((send) => send.source === row.part) as send (send.bus)}
                 <div class="send">
-                  <label class="send-name" for={`send-${send.source}-${send.bus}`}
+                  <label
+                    class="send-name"
+                    for={`send-${send.source}-${send.bus}`}
                     >send to {send.bus}</label
                   >
                   <input
@@ -136,8 +155,11 @@
                         decibels: event.currentTarget.valueAsNumber,
                       })}
                   />
-                  <output class="send-value" for={`send-${send.source}-${send.bus}`}
-                    >{send.decibels.toFixed(1)}<span class="unit">dB</span></output
+                  <output
+                    class="send-value"
+                    for={`send-${send.source}-${send.bus}`}
+                    >{send.decibels.toFixed(1)}<span class="unit">dB</span
+                    ></output
                   >
                 </div>
               {/each}
@@ -153,8 +175,11 @@
                 <header class="strip-head">
                   <h3 class="strip-name">{bus.name}</h3>
                   <p class="strip-route">
-                    {bus.stages.map((stage) => stage.processor).join(" → ")}{#if destination(bus.name)}
-                      <span class="arrow" aria-hidden="true">→</span>{destination(bus.name)}{/if}
+                    {bus.stages
+                      .map((stage) => stage.processor)
+                      .join(" → ")}{#if destination(bus.name)}
+                      <span class="arrow" aria-hidden="true">→</span
+                      >{destination(bus.name)}{/if}
                   </p>
                 </header>
                 {#each bus.stages as stage (stage.index)}
@@ -163,7 +188,8 @@
                       {param}
                       id={`mix-${bus.name}-${stage.index}-${param.name}`}
                       editable={session.live}
-                      onchange={(value) => setParam(bus, stage.index, param.name, value)}
+                      onchange={(value) =>
+                        setParam(bus, stage.index, param.name, value)}
                     />
                   {/each}
                 {/each}

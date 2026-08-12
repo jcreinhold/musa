@@ -18,13 +18,22 @@
   import Workspaces from "../lib/ui/Workspaces.svelte";
   import { REPEAT_RIGHT_LEFT } from "../lib/ui/glyphs";
   import type { Screen } from "../lib/commands/map";
-  import { SOURCE_FLOOR, type Preferences } from "../lib/session/preferences.svelte";
+  import {
+    SOURCE_FLOOR,
+    type Preferences,
+  } from "../lib/session/preferences.svelte";
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
   import type { Focus } from "../lib/state/focus.svelte";
   import type { Candidate } from "../lib/state/gesture.svelte";
-  import { volumeOf, type Diagnostic, type EditImpact, type OutlineFacts, type Span } from "../lib/state/snapshot";
+  import {
+    volumeOf,
+    type Diagnostic,
+    type EditImpact,
+    type OutlineFacts,
+    type Span,
+  } from "../lib/state/snapshot";
   import type { HeaderFieldDto } from "../lib/session/generated/HeaderFieldDto";
   import type { NoteEntry } from "../lib/state/entry.svelte";
   import SourcePane from "../lib/ui/SourcePane.svelte";
@@ -171,7 +180,9 @@
       ? (score?.decisions?.[chosen.origin.decision] ?? null)
       : null,
   );
-  const problems = $derived(snapshot?.diagnostics.filter((d) => d.severity === "error") ?? []);
+  const problems = $derived(
+    snapshot?.diagnostics.filter((d) => d.severity === "error") ?? [],
+  );
 
   /**
    * The narrowest a leaf is still a page. Below this the staves are a ribbon
@@ -229,10 +240,12 @@
             What is announced is the save itself, in the margin's notice.
           -->
           <span class="state"
-            >{snapshot.autosaved ? "Unsaved — recovery copy kept" : "Unsaved"}</span
+            >{snapshot.autosaved
+              ? "Unsaved — recovery copy kept"
+              : "Unsaved"}</span
           >
         {/if}
-        <Workspaces current="compose" volume={contents !== null} onshow={onshow} />
+        <Workspaces current="compose" volume={contents !== null} {onshow} />
       </div>
 
       <!--
@@ -248,17 +261,29 @@
         it is an edit and declining it is the composer's to decide (§15.7).
       -->
       {#if snapshot.recovery !== null}
-        <div class="recovery" role="group" aria-label="Unsaved work from the last session">
+        <div
+          class="recovery"
+          role="group"
+          aria-label="Unsaved work from the last session"
+        >
           <p>Unsaved work from a session that did not close.</p>
-          <button type="button" class="text" onclick={() => void session.recover(true)}
-            >Restore it</button
+          <button
+            type="button"
+            class="text"
+            onclick={() => void session.recover(true)}>Restore it</button
           >
-          <button type="button" class="text" onclick={() => void session.recover(false)}
-            >Discard it</button
+          <button
+            type="button"
+            class="text"
+            onclick={() => void session.recover(false)}>Discard it</button
           >
         </div>
       {:else if session.notice}
-        <p class="notice" class:failure={session.notice.tone === "failure"} role="status">
+        <p
+          class="notice"
+          class:failure={session.notice.tone === "failure"}
+          role="status"
+        >
           {session.notice.message}
         </p>
       {:else if session.stale && session.shownRevision !== null}
@@ -275,7 +300,8 @@
             class="text"
             disabled={!session.live}
             aria-pressed={snapshot.playback.playing}
-            onclick={() => void session.toggle()}>{snapshot.playback.playing ? "Pause" : "Play"}</button
+            onclick={() => void session.toggle()}
+            >{snapshot.playback.playing ? "Pause" : "Play"}</button
           >
           <button
             type="button"
@@ -309,8 +335,11 @@
           aria-pressed={entry.on}
           title="Write notes with the letter keys — N"
           onclick={onentry}
-          >Notes{#if entry.on}<span class="duration" aria-hidden="true">{entry.glyph}</span
-            ><span class="visually-hidden"> — duration {entry.duration}</span>{/if}</button
+          >Notes{#if entry.on}<span class="duration" aria-hidden="true"
+              >{entry.glyph}</span
+            ><span class="visually-hidden">
+              — duration {entry.duration}</span
+            >{/if}</button
         >
 
         <!--
@@ -370,12 +399,18 @@
         </div>
 
         <div class="zoom">
-          <button type="button" class="text" onclick={() => onzoom(-1)} aria-label="Zoom out"
-            >−</button
+          <button
+            type="button"
+            class="text"
+            onclick={() => onzoom(-1)}
+            aria-label="Zoom out">−</button
           >
           <span class="level">{zoom}&thinsp;%</span>
-          <button type="button" class="text" onclick={() => onzoom(1)} aria-label="Zoom in"
-            >+</button
+          <button
+            type="button"
+            class="text"
+            onclick={() => onzoom(1)}
+            aria-label="Zoom in">+</button
           >
         </div>
       </div>
@@ -423,40 +458,48 @@
       -->
       <Margin side="left" label="Parts">
         {#if contents}
-          <RunningOrder {contents} onchoose={onchoose} />
+          <RunningOrder {contents} {onchoose} />
         {/if}
         {#if score}
           <div class="parts" class:after={contents !== null}>
             <PartsList parts={score.parts} {workspace} {origin} />
-            <Outline outline={score.outline} active={outlineAt} onselect={onoutline} />
+            <Outline
+              outline={score.outline}
+              active={outlineAt}
+              onselect={onoutline}
+            />
           </div>
         {/if}
       </Margin>
 
-      <main class="stage" class:continuous={mode === "continuous"} bind:this={stage}>
+      <main
+        class="stage"
+        class:continuous={mode === "continuous"}
+        bind:this={stage}
+      >
         <Leaf stale={session.stale}>
           {#if score}
             <Score
-            mei={snapshot.mei ?? ""}
-            revision={snapshot.scoreRevision ?? snapshot.revision}
-            {zoom}
-            {mode}
-            {workspace}
-            {onpinch}
-            {playing}
-            {loop}
-            {follow}
-            {origin}
-            {focus}
-            {onvisible}
-            {entry}
-            spell={!session.sourceOpen}
-            onedit={session.live ? onedit : undefined}
-            oncandidate={session.live ? oncandidate : undefined}
-            oninsert={session.live ? oninsert : undefined}
-            {flash}
-            {bring}
-            header={score.header}
+              mei={snapshot.mei ?? ""}
+              revision={snapshot.scoreRevision ?? snapshot.revision}
+              {zoom}
+              {mode}
+              {workspace}
+              {onpinch}
+              {playing}
+              {loop}
+              {follow}
+              {origin}
+              {focus}
+              {onvisible}
+              {entry}
+              spell={!session.sourceOpen}
+              onedit={session.live ? onedit : undefined}
+              oncandidate={session.live ? oncandidate : undefined}
+              oninsert={session.live ? oninsert : undefined}
+              {flash}
+              {bring}
+              header={score.header}
               onheader={session.live ? onheader : undefined}
             />
           {:else}
@@ -478,25 +521,27 @@
       <Margin side="right" label="Inspector">
         {#if score}
           <Inspector
-          event={chosen}
-          adrift={workspace.adrift}
-          occurrence={workspace.selectedOccurrence}
-          {choice}
-          {naming}
-          onorigin={(depth) => workspace.selectOrigin(depth)}
-          {decision}
-          onkeep={session.live ? onkeep : undefined}
-          siblings={focus.spelled(chosen?.origin.definitionSpan)}
-          {onconfirm}
-          {onspecialize}
-          {oncancel}
-          {onname}
-          {oncancelname}
-          onpitch={session.live && chosen ? (pitch) => onpitch(chosen.id, pitch) : undefined}
-          onduration={session.live && chosen
-            ? (duration) => onduration(chosen.id, duration)
-            : undefined}
-          {onreveal}
+            event={chosen}
+            adrift={workspace.adrift}
+            occurrence={workspace.selectedOccurrence}
+            {choice}
+            {naming}
+            onorigin={(depth) => workspace.selectOrigin(depth)}
+            {decision}
+            onkeep={session.live ? onkeep : undefined}
+            siblings={focus.spelled(chosen?.origin.definitionSpan)}
+            {onconfirm}
+            {onspecialize}
+            {oncancel}
+            {onname}
+            {oncancelname}
+            onpitch={session.live && chosen
+              ? (pitch) => onpitch(chosen.id, pitch)
+              : undefined}
+            onduration={session.live && chosen
+              ? (duration) => onduration(chosen.id, duration)
+              : undefined}
+            {onreveal}
             header={score.header}
             onheader={session.live ? onheader : undefined}
           />
@@ -733,7 +778,10 @@
     --source-room: max(300px, calc(100vw - 440px - 320px));
     --stage-floor: 420px;
 
-    grid-template-columns: auto minmax(0, 200px) minmax(0, 1fr) minmax(0, 240px);
+    grid-template-columns: auto minmax(0, 200px) minmax(0, 1fr) minmax(
+        0,
+        240px
+      );
   }
 
   /*
@@ -780,7 +828,10 @@
       --source-cap: max(300px, calc(100vw - 350px - var(--stage-floor)));
       --source-room: max(300px, calc(100vw - 350px - 320px));
 
-      grid-template-columns: auto minmax(0, 150px) minmax(0, 1fr) minmax(0, 200px);
+      grid-template-columns: auto minmax(0, 150px) minmax(0, 1fr) minmax(
+          0,
+          200px
+        );
     }
   }
 

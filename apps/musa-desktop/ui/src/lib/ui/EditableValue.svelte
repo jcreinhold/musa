@@ -114,7 +114,9 @@
   the same pass as everything else.
 -->
 <div class="field">
-  <span class="sizer" aria-hidden="true">{draft || placeholder || ""}&nbsp;</span>
+  <span class="sizer" aria-hidden="true"
+    >{draft || placeholder || ""}&nbsp;</span
+  >
   <textarea
     class="entry"
     rows="1"
@@ -127,8 +129,7 @@
     onfocus={() => (editing = true)}
     onblur={commit}
     {oninput}
-    {onkeydown}
-  ></textarea>
+    {onkeydown}></textarea>
 </div>
 
 <style>

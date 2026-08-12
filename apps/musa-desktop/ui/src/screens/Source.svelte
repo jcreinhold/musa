@@ -23,7 +23,10 @@
   import ANALYSES from "../lib/session/generated/analysis-kinds.json";
   import Workspaces from "../lib/ui/Workspaces.svelte";
   import type { Screen } from "../lib/commands/map";
-  import { SOURCE_FLOOR, type Preferences } from "../lib/session/preferences.svelte";
+  import {
+    SOURCE_FLOOR,
+    type Preferences,
+  } from "../lib/session/preferences.svelte";
   import type { Session } from "../lib/session/session.svelte";
   import type { Workspace } from "../lib/state/selection.svelte";
   import type { Reveal } from "../lib/state/reveal";
@@ -131,10 +134,14 @@
     <Margin side="top">
       <div class="identity">
         <h1 class="title">{snapshot.score?.title ?? ""}</h1>
-        <Workspaces current="source" volume={volume} onshow={onshow} />
+        <Workspaces current="source" {volume} {onshow} />
       </div>
       {#if session.notice}
-        <p class="notice" class:failure={session.notice.tone === "failure"} role="status">
+        <p
+          class="notice"
+          class:failure={session.notice.tone === "failure"}
+          role="status"
+        >
           {session.notice.message}
         </p>
       {/if}
@@ -146,7 +153,8 @@
         editable={session.live && library === null}
         library={library && { name: library.name }}
         onclose={library ? () => session.closeLibrary() : undefined}
-        onlibrary={(uri, start, end) => void session.openLibrary(uri, start, end)}
+        onlibrary={(uri, start, end) =>
+          void session.openLibrary(uri, start, end)}
         terms={snapshot.terms}
         names={snapshot.names}
         diagnostics={library ? [] : diagnostics}
@@ -171,7 +179,11 @@
         onreset={() => preferences.resetSource()}
       />
 
-      <main class="stage" class:continuous={mode === "continuous"} bind:this={stage}>
+      <main
+        class="stage"
+        class:continuous={mode === "continuous"}
+        bind:this={stage}
+      >
         <Leaf stale={session.stale}>
           <Score
             mei={snapshot.mei ?? ""}

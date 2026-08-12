@@ -23,7 +23,8 @@
     onopen,
     onopenproject,
     onnew,
-  }: { onopen: () => void; onopenproject: () => void; onnew: () => void } = $props();
+  }: { onopen: () => void; onopenproject: () => void; onnew: () => void } =
+    $props();
 
   /**
    * How many staves the page is ruled with.
@@ -63,7 +64,12 @@
   <nav class="start" aria-label="Start">
     {#each START as action, index (action.title)}
       <!-- svelte-ignore a11y_autofocus -->
-      <button type="button" class="action" autofocus={index === 0} onclick={action.run}>
+      <button
+        type="button"
+        class="action"
+        autofocus={index === 0}
+        onclick={action.run}
+      >
         <span>{action.title}</span>
         <span class="key" aria-hidden="true">{action.key}</span>
       </button>
