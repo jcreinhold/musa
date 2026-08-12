@@ -2,10 +2,14 @@
 
 ## The rule
 
-Everything under `apps/musa-desktop/ui/src/lib/session/generated/` is written by a program, and its exact bytes are a
-test fixture. A currency test regenerates each file and compares. Reformatting one — by hand, by a formatter, or by a
-tidy-up pass — changes the bytes without changing the generator, so the comparison fails and the failure names the file
-rather than the edit that broke it.
+Two directories under `apps/musa-desktop/ui/` are written by a program, and their exact bytes are test fixtures:
+
+- **`src/lib/session/generated/`** — `ts-rs` DTOs, the token and module tables.
+- **`fixtures/`** — the `.snapshot.json`, `.mei`, and `lexed/` goldens, written by `musa-project`'s generator tests.
+
+A currency test regenerates each file and compares. Reformatting one — by hand, by a formatter, or by a tidy-up pass —
+changes the bytes without changing the generator, so the comparison fails and the failure names the file rather than the
+edit that broke it.
 
 If a generated file needs to change, change the generator and regenerate:
 
@@ -36,23 +40,34 @@ git log --oneline -3 -- apps/musa-desktop/ui/src/lib/session/generated/spellings
 A commit about formatting, readability, or consistency touching a generated file is the answer. Regenerating restores
 byte-identical content to the version before that commit, which is the confirmation.
 
-This has happened: a formatting pass collapsed `spellings.json` from 450 lines to 114, and the two currency tests failed
-from then on. Regenerating reproduced the pre-pass file exactly.
+This has happened, in one pass, across both directories: `spellings.json` collapsed from 450 lines to 114, and
+`large-score.snapshot.json` gained 44,848 lines. Eight currency tests failed from then on. Regenerating reproduced the
+pre-pass files byte for byte, which is what proved no semantics had changed.
 
-## The `.ts` DTOs, and why Prettier ignores them
+## Why Prettier now ignores both directories
 
-The `.ts` files in that directory had a standing fight between two writers:
+The two directories had a standing fight between two writers. The clearest case is the DTOs:
 
 - `ts-rs` writes them from the Rust type definitions and emits `export type SpanDto = { start: number, end: number, };`
 - Prettier rewrites that to `export type SpanDto = { start: number; end: number };`
 
 Whichever ran last won. Running the Rust suite dirtied the working tree with a dozen reformatted DTOs that nobody had
-edited; running `pnpm run format` put them back.
+edited; running `pnpm run format` put them back. The `.json` goldens under `fixtures/` had the same fight, and lost it
+harder — that is the pass described above.
 
-`ts-rs` wins, because its output is the fixture the currency test compares against and Prettier's is not.
-`apps/musa-desktop/ui/.prettierignore` now lists `src/lib/session/generated`, so the formatter skips the directory
-entirely. Verified afterwards: `pnpm run format:check` no longer names any file under `generated/`, and `make typecheck`
-— the gate that actually reads these types — is clean at 460 files, 0 errors.
+The generators win, because their output is what the currency tests compare against and Prettier's is not.
+`apps/musa-desktop/ui/.prettierignore` now lists `src/lib/session/generated` and `fixtures`, so the formatter skips them
+entirely, and the generator-emitted form is what is committed.
 
-Note that `format:check` is in no build target; `pnpm run format` is a `--write` command someone runs by hand. That is
-how the directory got rewritten in the first place, and the ignore file is what stops it happening again.
+Verified after the change:
+
+| Check | Result |
+| --- | --- |
+| `pnpm run format:check` | names no file under `generated/` or `fixtures/` |
+| `pnpm -r check` (Svelte + `tsc` over all three projects) | clean — the UI at 460 files, 0 errors, 0 warnings |
+| `pnpm run lint` (ESLint) | clean |
+| `cargo test -p musa-desktop`, then `git status` | tree clean; what it regenerates matches what is committed |
+
+Note that `format:check` is in no build target — `pnpm run format` is a `--write` command someone runs by hand. That is
+how these directories got rewritten in the first place, and the ignore file is what stops it happening again. Prettier
+still reports style issues in about ninety hand-written UI files; that is pre-existing and gated nowhere.
